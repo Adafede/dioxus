@@ -10,7 +10,11 @@ path = "src/main.rs"
 
 [dependencies]
 shared       = { path = "../../crates/shared" }
-dioxus       = "0.7"
+# Use the workspace pin (`dioxus = "0.7"`, `features = ["web"]`) so dx can
+# auto-detect the `wasm32-unknown-unknown` target. Without a platform
+# feature, dioxus-cli 0.7+ fails with "Could not automatically detect
+# target triple".
+dioxus       = { workspace = true }
 dioxus-router = { workspace = true }
 reqwest      = { workspace = true }
 urlencoding  = { workspace = true }

@@ -9,8 +9,13 @@ members = [
 
 # ── Shared dependency versions ────────────────────────────────────────────────
 [workspace.dependencies]
-dioxus         = { version = "0.6", features = ["web"] }
-dioxus-router  = "0.6"
+# Keep the `dioxus` / `dioxus-router` major versions aligned with the
+# pinned `dioxus-cli` in `.github/workflows/deploy.yml` (^0.7). Mixing
+# majors across workspace members causes `dx build` to fail with
+# "Could not automatically detect target triple" because the CLI picks
+# up the wrong crate metadata.
+dioxus         = { version = "0.7", features = ["web"] }
+dioxus-router  = "0.7"
 serde          = { version = "1", features = ["derive"] }
 serde_json     = "1"
 reqwest        = { version = "0.12", features = ["json"] }

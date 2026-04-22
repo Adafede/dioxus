@@ -29,16 +29,23 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install dioxus-cli
-        run: cargo install dioxus-cli
+        # Pin the CLI to a version compatible with the `dioxus` crate used
+        # by the apps. `--locked` avoids surprise upgrades of transitive
+        # deps, which have broken dx builds in the past.
+        run: cargo install dioxus-cli --version ^0.7 --locked
 
       # ── Build each app ──────────────────────────────────────────────────
+      # `--platform web` is specified explicitly so the build does not
+      # depend on dioxus-cli's auto-detection (which requires the `web`
+      # feature to be enabled on the `dioxus` crate dependency). The
+      # `default_platform` key in `Dioxus.toml` is ignored by dx ≥ 0.7.
       - name: Build lotus-explorer
         working-directory: apps/lotus-explorer
-        run: dx build --release
+        run: dx build --release --platform web
 
       - name: Build hello-world
         working-directory: apps/hello-world
-        run: dx build --release
+        run: dx build --release --platform web
 
       # ── Assemble a combined site ────────────────────────────────────────
       # Each app is served under /<app-name>/
