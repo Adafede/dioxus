@@ -17,8 +17,6 @@ pub fn ResultsTable(
     /// rather than content-based — we never scan the whole Vec just to decide
     /// whether the table needs to re-render.
     entries: ReadSignal<Rows>,
-    /// Full filtered dataset — kept for future in-memory export paths.
-    export_rows: ReadSignal<Rows>,
     stats: DatasetStats,
     total_stats: Option<DatasetStats>,
     total_matches: Option<usize>,
@@ -32,15 +30,14 @@ pub fn ResultsTable(
     /// filenames (taxon slug + optional search-type suffix).
     criteria: ReadSignal<SearchCriteria>,
 ) -> Element {
-    let _ = export_rows; // reserved for future in-memory export paths
-    // When `total_stats` is available we already hold exact counts for the
-    // whole filtered dataset (the parser scans every CSV row even past the
-    // display cap), so no "+" suffix is needed. Only fall back to the
-    // capped `stats` — and only then show "+" — when we really don't know
-    // the true totals.
-    let has_full_stats = total_stats.is_some();
-    let display_stats = total_stats.unwrap_or_else(|| stats.clone());
+    // JSON/TTL exports re-fetch via `execute_sparql_cached`, which returns
+    // the last CSV body instantly — no need to keep a full in-memory row set.
+    let display_stats = total_stats
+        .as_ref()
+        .cloned()
+        .unwrap_or_else(|| stats.clone());
     let total = entries.read().len();
+    let has_full_stats = total_stats.is_some();
     let stats_partial = if has_full_stats {
         false
     } else {
@@ -305,6 +302,9 @@ pub fn ResultsTable(
             if let Some(q) = sparql_query.as_deref() {
                 details { class: "query-panel",
                     summary { "SPARQL query" }
+                    div { class: "query-panel-actions",
+                        crate::components::copy_button::CopyButton { text: q.to_string(), title: "Copy SPARQL query" }
+                    }
                     pre { class: "query-text", "{q}" }
                 }
             }

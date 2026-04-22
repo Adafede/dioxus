@@ -6,6 +6,7 @@ mod models;
 mod queries;
 mod sparql;
 
+use components::copy_button::CopyButton;
 use components::results_table::ResultsTable;
 use components::search_panel::{KetcherPanel, SearchPanel};
 use dioxus::prelude::*;
@@ -27,7 +28,6 @@ fn App() -> Element {
     // Entries live behind an `Arc<[…]>` so prop/signal clones are a single
     // refcount bump instead of duplicating the whole result buffer.
     let mut entries: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
-    let mut export_rows: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
     let mut loading: Signal<bool> = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
     let mut searched_once: Signal<bool> = use_signal(|| false);
@@ -36,7 +36,6 @@ fn App() -> Element {
     let mut query_hash: Signal<Option<String>> = use_signal(|| None);
     let mut result_hash: Signal<Option<String>> = use_signal(|| None);
     let mut sparql_query: Signal<Option<String>> = use_signal(|| None);
-    let mut truncated: Signal<Option<(usize, usize)>> = use_signal(|| None);
     let mut metadata_json: Signal<Option<String>> = use_signal(|| None);
     let mut total_matches: Signal<Option<usize>> = use_signal(|| None);
     let mut total_stats: Signal<Option<DatasetStats>> = use_signal(|| None);
@@ -45,7 +44,12 @@ fn App() -> Element {
     let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
 
     // Memoised derived state — recomputed only when their inputs change.
-    let stats = use_memo(move || DatasetStats::from_entries(&entries.read()));
+    // If we have precise totals from the parser, use them directly. Otherwise
+    // fall back to counting over the display slice.
+    let stats = use_memo(move || match total_stats.read().as_ref() {
+        Some(s) => s.clone(),
+        None => DatasetStats::from_entries(&entries.read()),
+    });
     let shareable_url =
         use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));
 
@@ -65,13 +69,11 @@ fn App() -> Element {
         *searched_once.write() = true;
         *loading.write() = true;
         *entries.write() = Arc::<[CompoundEntry]>::from([]);
-        *export_rows.write() = Arc::<[CompoundEntry]>::from([]);
         *taxon_notice.write() = None;
         *resolved_qid.write() = None;
         *query_hash.write() = None;
         *result_hash.write() = None;
         *sparql_query.write() = None;
-        *truncated.write() = None;
         *metadata_json.write() = None;
         *total_matches.write() = None;
         *total_stats.write() = None;
@@ -81,7 +83,7 @@ fn App() -> Element {
         spawn(async move {
             match do_search(crit.clone()).await {
                 Ok(mut outcome) => {
-                    // Client-side post-filters (mass, year) — mirrors Python FilterService.
+                    // Client-side post-filters (mass, year, formula).
                     if crit.has_mass_filter() {
                         outcome.rows.retain(|e| {
                             e.mass
@@ -100,12 +102,21 @@ fn App() -> Element {
                             .retain(|e| formula_matches(e.formula.as_deref(), &crit));
                     }
 
-                    let full_count = outcome.rows.len();
-                    let cap = TABLE_ROW_LIMIT;
-                    let was_truncated = full_count > cap;
+                    // `parse_compounds_csv_capped` bounds `outcome.rows` to at
+                    // most `TABLE_ROW_LIMIT`; `outcome.total_matches` carries
+                    // the true distinct-triple count. The "Showing X of Y rows"
+                    // pagination line and the `Entries` stat badge already
+                    // communicate truncation — no separate notice needed.
+
                     let (q_hash, r_hash) =
                         compute_hashes(outcome.qid.as_deref().unwrap_or(""), &crit, &outcome.rows);
-                    let full_stats = DatasetStats::from_entries(&outcome.rows);
+                    // Reuse the exact stats the parser already computed if we
+                    // have them; otherwise derive from the kept rows. Never
+                    // walk the full row set twice.
+                    let full_stats = outcome
+                        .total_stats
+                        .clone()
+                        .unwrap_or_else(|| DatasetStats::from_entries(&outcome.rows));
                     let meta_str = export::build_metadata_json(export::MetadataInputs {
                         criteria: &crit,
                         qid: outcome.qid.as_deref(),
@@ -115,17 +126,10 @@ fn App() -> Element {
                         result_hash: &r_hash,
                     });
 
-                    // Materialise rows into refcounted slices once — no further
-                    // buffer copies when we hand them out to the table / exports.
-                    let export_slice: Rows = Arc::from(outcome.rows.clone().into_boxed_slice());
-                    let display_slice: Rows = if was_truncated {
-                        outcome.rows.truncate(cap);
-                        Arc::from(outcome.rows.into_boxed_slice())
-                    } else {
-                        export_slice.clone()
-                    };
+                    // Move (not clone) the Vec straight into the refcounted
+                    // slice. No per-row String allocations happen here.
+                    let display_slice: Rows = Arc::from(outcome.rows.into_boxed_slice());
 
-                    *export_rows.write() = export_slice;
                     *resolved_qid.write() = outcome.qid;
                     *taxon_notice.write() = outcome.warning;
                     *query_hash.write() = Some(q_hash);
@@ -133,12 +137,7 @@ fn App() -> Element {
                     *sparql_query.write() = Some(outcome.query);
                     *metadata_json.write() = Some(meta_str);
                     *total_matches.write() = outcome.total_matches;
-                    *total_stats.write() = outcome.total_stats.clone();
-                    *truncated.write() = if was_truncated {
-                        Some((cap, full_count))
-                    } else {
-                        None
-                    };
+                    *total_stats.write() = outcome.total_stats;
                     *entries.write() = display_slice;
                     *loading.write() = false;
                 }
@@ -198,6 +197,10 @@ fn App() -> Element {
                             span { class: "meta-key", "Resolved taxon" }
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{qid}" }
+                            CopyButton {
+                                text: qid.to_string(),
+                                title: "Copy taxon QID",
+                            }
                         }
                     }
                     if let (Some(qh), Some(rh)) = (
@@ -209,10 +212,18 @@ fn App() -> Element {
                             span { class: "meta-key", "Query hash" }
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{&qh[..12]}" }
+                            CopyButton {
+                                text: qh.to_string(),
+                                title: "Copy full query hash (SHA-256)",
+                            }
                             span { class: "meta-sep", "·" }
                             span { class: "meta-key", "Result hash" }
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{&rh[..12]}" }
+                            CopyButton {
+                                text: rh.to_string(),
+                                title: "Copy full result hash (SHA-256)",
+                            }
                         }
                     }
                     if let Some(n) = *total_matches.read() {
@@ -230,6 +241,10 @@ fn App() -> Element {
                     div { class: "notice notice-info", role: "status",
                         span { class: "notice-label", "Share" }
                         code { class: "notice-value", "{share}" }
+                        CopyButton {
+                            text: absolute_share_url(share),
+                            title: "Copy shareable link",
+                        }
                     }
                 }
 
@@ -237,15 +252,6 @@ fn App() -> Element {
                     div { class: "notice notice-warn", role: "status",
                         span { class: "notice-label", "Notice" }
                         span { class: "notice-value", "{warning}" }
-                    }
-                }
-
-                if let Some((cap, total)) = *truncated.read() {
-                    div { class: "notice notice-warn", role: "status",
-                        span { class: "notice-label", "Truncated" }
-                        span { class: "notice-value",
-                            "Showing the first {cap} of {total} rows in-browser. Downloads run on the full query."
-                        }
                     }
                 }
 
@@ -277,7 +283,6 @@ fn App() -> Element {
                 } else {
                     ResultsTable {
                         entries,
-                        export_rows,
                         stats: stats.read().clone(),
                         total_stats: total_stats.read().clone(),
                         total_matches: *total_matches.read(),
@@ -562,33 +567,31 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
         }
     };
 
+    // Single unlimited fetch — QLever honours `Accept-Encoding: gzip` (browsers
+    // add it automatically for wasm fetch), so the CSV body comes back
+    // transparently gzip-compressed and ungzipped by the browser: network
+    // transfer is ~5–10× smaller than the raw CSV. The parser below visits
+    // every row for exact stats but only materializes full `CompoundEntry`
+    // structs for the first `TABLE_ROW_LIMIT` (display cap). Overflow rows
+    // only touch the three QID columns needed for counting.
     let csv = sparql::execute_sparql(&sparql_query)
         .await
         .map_err(|e| format!("Query failed: {e}"))?;
-    #[cfg(target_arch = "wasm32")]
+
     let (rows, full_stats, parse_capped) =
         sparql::parse_compounds_csv_capped(&csv, TABLE_ROW_LIMIT)
             .map_err(|e| format!("Parse error: {e}"))?;
-    #[cfg(not(target_arch = "wasm32"))]
-    let (rows, full_stats, parse_capped) = {
-        let parsed_rows =
-            sparql::parse_compounds_csv(&csv).map_err(|e| format!("Parse error: {e}"))?;
-        let stats = DatasetStats::from_entries(&parsed_rows);
-        (parsed_rows, stats, false)
-    };
 
+    // We always know exact totals (the parser walked every row); the display
+    // may still be capped to `TABLE_ROW_LIMIT`, which just means we render
+    // fewer rows — stats and metadata stay accurate.
     let total_matches: Option<usize> = Some(full_stats.n_entries);
+    let total_stats_out: Option<DatasetStats> = Some(full_stats.clone());
 
-    if parse_capped {
-        let mut msg = format!(
-            "Large result set detected. Rendering first {} rows in browser for stability; downloads still run on the full query.",
-            TABLE_ROW_LIMIT
-        );
-        if let Some(existing) = warning.take() {
-            msg = format!("{existing} {msg}");
-        }
-        warning = Some(msg);
-    }
+    // Truncation is self-evident from the "Showing X of Y rows" line and the
+    // `Entries` stat badge — no textual notice needed. We deliberately keep
+    // `warning` reserved for taxon-resolution messages only.
+    let _ = parse_capped;
 
     Ok(SearchOutcome {
         rows,
@@ -596,7 +599,7 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
         warning,
         query: sparql_query,
         total_matches,
-        total_stats: Some(full_stats),
+        total_stats: total_stats_out,
     })
 }
 
@@ -767,6 +770,22 @@ fn build_shareable_url(criteria: &SearchCriteria) -> Option<String> {
         .collect::<Vec<_>>()
         .join("&");
     Some(format!("?{query}"))
+}
+
+/// Turn a relative `?foo=bar` share fragment into an absolute URL rooted at
+/// the current page — the form users actually want when they paste the link
+/// into a chat / email. On native (no `window`) it just returns `share`.
+fn absolute_share_url(share: &str) -> String {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(win) = web_sys::window() {
+            let loc = win.location();
+            if let (Ok(origin), Ok(pathname)) = (loc.origin(), loc.pathname()) {
+                return format!("{origin}{pathname}{share}");
+            }
+        }
+    }
+    share.to_string()
 }
 
 fn initial_criteria_from_url() -> SearchCriteria {

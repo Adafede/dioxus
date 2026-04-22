@@ -19,6 +19,31 @@ fn owned_or_empty(s: &str) -> String {
     }
 }
 
+#[inline]
+fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
+    const FNV_PRIME: Wrapping<u64> = Wrapping(1099511628211);
+    for b in bytes {
+        h ^= Wrapping(*b as u64);
+        h *= FNV_PRIME;
+    }
+    h
+}
+
+#[inline]
+fn fnv1a_one(bytes: &[u8]) -> u64 {
+    fnv1a_extend(Wrapping(14695981039346656037u64), bytes).0
+}
+
+fn entry_key_fingerprint(compound_qid: &[u8], taxon_qid: &[u8], reference_qid: &[u8]) -> u64 {
+    let mut h = Wrapping(14695981039346656037u64);
+    h = fnv1a_extend(h, compound_qid);
+    h = fnv1a_extend(h, &[0x1f]);
+    h = fnv1a_extend(h, taxon_qid);
+    h = fnv1a_extend(h, &[0x1f]);
+    h = fnv1a_extend(h, reference_qid);
+    h.0
+}
+
 fn parse_entity_id(value: &str) -> String {
     let qid = extract_qid(value);
     if !qid.is_empty() {
@@ -30,7 +55,6 @@ fn parse_entity_id(value: &str) -> String {
         return String::new();
     }
 
-    // Handle typed literals, e.g. "134630"^^<http://www.w3.org/2001/XMLSchema#integer>
     let lexical = trimmed
         .split("^^")
         .next()
@@ -51,35 +75,15 @@ fn parse_entity_id(value: &str) -> String {
     String::new()
 }
 
-#[inline]
-fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
-    const FNV_PRIME: Wrapping<u64> = Wrapping(1099511628211);
-    for b in bytes {
-        h ^= Wrapping(*b as u64);
-        h *= FNV_PRIME;
-    }
-    h
-}
-
-#[inline]
-#[allow(dead_code)]
-fn fnv1a_one(bytes: &[u8]) -> u64 {
-    fnv1a_extend(Wrapping(14695981039346656037u64), bytes).0
-}
-
-fn entry_key_fingerprint(compound_qid: &str, taxon_qid: &str, reference_qid: &str) -> u64 {
-    let mut h = Wrapping(14695981039346656037u64);
-    h = fnv1a_extend(h, compound_qid.as_bytes());
-    h = fnv1a_extend(h, &[0x1f]);
-    h = fnv1a_extend(h, taxon_qid.as_bytes());
-    h = fnv1a_extend(h, &[0x1f]);
-    h = fnv1a_extend(h, reference_qid.as_bytes());
-    h.0
-}
-
 // ── SPARQL execution ──────────────────────────────────────────────────────────
 
 /// Execute a SPARQL query against the QLever Wikidata endpoint.
+///
+/// QLever honours `Accept-Encoding: gzip`; browsers add that header
+/// automatically for `fetch`, so on wasm the CSV body is transparently
+/// gzip-compressed over the wire (typically 5–10× smaller than the
+/// uncompressed payload) and transparently decompressed before it reaches
+/// this code. No extra work required on our side.
 pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
     shared_execute(sparql, QLEVER_WIKIDATA).await
 }
@@ -120,85 +124,24 @@ pub async fn execute_sparql_cached(sparql: &str) -> Result<std::rc::Rc<String>, 
 
 // ── Compound CSV parser ───────────────────────────────────────────────────────
 
-/// Parse QLever CSV output into `CompoundEntry` rows.
-///
-/// Column names must match exactly what the queries in `queries.rs` project:
-/// `compound`, `compoundLabel`, `compound_inchikey`, `compound_smiles_iso`,
-/// `compound_smiles_conn`, `compound_mass`, `compound_formula`,
-/// `taxon`, `taxon_name`, `ref_qid`, `ref_title`, `ref_doi`, `ref_date`, `statement`.
+/// Parse a full QLever CSV response into `CompoundEntry` rows.
 pub fn parse_compounds_csv(csv_text: &str) -> Result<Vec<CompoundEntry>, FetchError> {
-    let mut rdr = csv::ReaderBuilder::new()
-        .has_headers(true)
-        .flexible(true)
-        .from_reader(csv_text.as_bytes());
-
-    let headers = rdr
-        .headers()
-        .map_err(|e| FetchError::Parse(e.to_string()))?
-        .clone();
-
-    // Column indices — safe to pre-compute once
-    let c_compound = col_idx(&headers, "compound");
-    let c_label = col_idx(&headers, "compoundLabel");
-    let c_inchikey = col_idx(&headers, "compound_inchikey");
-    let c_smiles_iso = col_idx(&headers, "compound_smiles_iso");
-    let c_smiles_con = col_idx(&headers, "compound_smiles_conn");
-    let c_mass = col_idx(&headers, "compound_mass");
-    let c_formula = col_idx(&headers, "compound_formula");
-    let c_taxon = col_idx(&headers, "taxon");
-    let c_taxon_name = col_idx(&headers, "taxon_name");
-    let c_ref_qid = col_idx(&headers, "ref_qid");
-    let c_ref_title = col_idx(&headers, "ref_title");
-    let c_ref_doi = col_idx(&headers, "ref_doi");
-    let c_ref_date = col_idx(&headers, "ref_date");
-    let c_statement = col_idx(&headers, "statement");
-
-    let mut entries: Vec<CompoundEntry> = Vec::with_capacity(1024);
-    let mut seen: HashSet<u64> = HashSet::with_capacity(2048);
-
-    for result in rdr.records() {
-        let rec = result.map_err(|e| FetchError::Parse(e.to_string()))?;
-
-        let compound_qid = parse_entity_id(field(&rec, c_compound));
-        if compound_qid.is_empty() {
-            continue;
-        }
-
-        let taxon_qid = parse_entity_id(field(&rec, c_taxon));
-        let reference_qid = parse_entity_id(field(&rec, c_ref_qid));
-
-        // Deduplicate: same compound × taxon × reference = one row
-        let key = entry_key_fingerprint(&compound_qid, &taxon_qid, &reference_qid);
-        if !seen.insert(key) {
-            continue;
-        }
-
-        entries.push(CompoundEntry {
-            compound_qid,
-            name: owned_or_empty(field(&rec, c_label)),
-            inchikey: non_empty(field(&rec, c_inchikey)),
-            // Prefer isomeric SMILES, fall back to connectivity SMILES (same as Python)
-            smiles: coalesce(field(&rec, c_smiles_iso), field(&rec, c_smiles_con)),
-            mass: field(&rec, c_mass).parse::<f64>().ok(),
-            formula: non_empty(field(&rec, c_formula)),
-            taxon_qid,
-            taxon_name: owned_or_empty(field(&rec, c_taxon_name)),
-            reference_qid,
-            ref_title: non_empty(field(&rec, c_ref_title)),
-            ref_doi: clean_doi(field(&rec, c_ref_doi)),
-            pub_year: parse_year(field(&rec, c_ref_date)),
-            statement: non_empty(field(&rec, c_statement)),
-        });
-    }
-
-    Ok(entries)
+    let (rows, _stats, _capped) = parse_compounds_csv_capped(csv_text, usize::MAX)?;
+    Ok(rows)
 }
 
-/// Parse QLever CSV output into `CompoundEntry` rows, materializing at most
-/// `max_rows` unique entries.
+/// Fast single-pass parser over the QLever CSV stream.
 ///
-/// Returns `(rows, total_distinct, was_capped)`.
-#[allow(dead_code)]
+/// * **Every** data row contributes to `DatasetStats` and to the exact
+///   `n_entries` count, so metadata / download totals are always accurate.
+/// * Only the first `max_rows` *distinct* `(compound, taxon, reference)`
+///   triples are materialised into full `CompoundEntry` structs. Rows past
+///   that cap only touch their three QID columns (for dedup + stat
+///   fingerprinting) — no allocation for names, SMILES, titles, DOIs or
+///   dates, which is where the old parser was spending its time on very
+///   large result sets.
+///
+/// Returns `(display_rows, full_stats, was_capped)`.
 pub fn parse_compounds_csv_capped(
     csv_text: &str,
     max_rows: usize,
@@ -209,50 +152,81 @@ pub fn parse_compounds_csv_capped(
         .from_reader(csv_text.as_bytes());
 
     let headers = rdr
-        .headers()
+        .byte_headers()
         .map_err(|e| FetchError::Parse(e.to_string()))?
         .clone();
 
-    let c_compound = col_idx(&headers, "compound");
-    let c_label = col_idx(&headers, "compoundLabel");
-    let c_inchikey = col_idx(&headers, "compound_inchikey");
-    let c_smiles_iso = col_idx(&headers, "compound_smiles_iso");
-    let c_smiles_con = col_idx(&headers, "compound_smiles_conn");
-    let c_mass = col_idx(&headers, "compound_mass");
-    let c_formula = col_idx(&headers, "compound_formula");
-    let c_taxon = col_idx(&headers, "taxon");
-    let c_taxon_name = col_idx(&headers, "taxon_name");
-    let c_ref_qid = col_idx(&headers, "ref_qid");
-    let c_ref_title = col_idx(&headers, "ref_title");
-    let c_ref_doi = col_idx(&headers, "ref_doi");
-    let c_ref_date = col_idx(&headers, "ref_date");
-    let c_statement = col_idx(&headers, "statement");
+    let find = |name: &str| -> Option<usize> { headers.iter().position(|h| h == name.as_bytes()) };
 
-    let mut entries: Vec<CompoundEntry> = Vec::with_capacity(max_rows.min(2048));
-    let mut seen: HashSet<u64> = HashSet::with_capacity(max_rows.saturating_mul(4).min(1 << 20));
+    let c_compound = find("compound");
+    let c_label = find("compoundLabel");
+    let c_inchikey = find("compound_inchikey");
+    let c_smiles_iso = find("compound_smiles_iso");
+    let c_smiles_con = find("compound_smiles_conn");
+    let c_mass = find("compound_mass");
+    let c_formula = find("compound_formula");
+    let c_taxon = find("taxon");
+    let c_taxon_name = find("taxon_name");
+    let c_ref_qid = find("ref_qid");
+    let c_ref_title = find("ref_title");
+    let c_ref_doi = find("ref_doi");
+    let c_ref_date = find("ref_date");
+    let c_statement = find("statement");
+
+    let initial_cap = max_rows.min(2048);
+    let mut entries: Vec<CompoundEntry> = Vec::with_capacity(initial_cap);
+    // Dedup-by-triple using 64-bit FNV fingerprints — no String allocations.
+    let mut seen: HashSet<u64> = HashSet::with_capacity(initial_cap.saturating_mul(2));
+    // Per-entity fingerprint sets for accurate stats without storing strings.
+    let mut compound_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
+    let mut taxon_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
+    let mut ref_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
     let mut total_distinct = 0usize;
-    // Dedup by u64 fingerprint — avoids ~3–4 MB of duplicated String allocations
-    // for 100 k-row result sets when we only need `.len()` at the end.
-    let mut compound_fps: HashSet<u64> = HashSet::with_capacity(max_rows);
-    let mut taxon_fps: HashSet<u64> = HashSet::with_capacity(max_rows);
-    let mut ref_fps: HashSet<u64> = HashSet::with_capacity(max_rows);
 
-    for result in rdr.records() {
-        let rec = result.map_err(|e| FetchError::Parse(e.to_string()))?;
+    // Scratch buffers reused every row — avoids three `String` allocations per
+    // overflow row (the hot path for huge taxa).
+    let mut compound_qid = String::new();
+    let mut taxon_qid = String::new();
+    let mut reference_qid = String::new();
 
-        let compound_qid = parse_entity_id(field(&rec, c_compound));
+    let mut rec = csv::ByteRecord::new();
+    while rdr
+        .read_byte_record(&mut rec)
+        .map_err(|e| FetchError::Parse(e.to_string()))?
+    {
+        compound_qid.clear();
+        if let Some(i) = c_compound {
+            if let Some(b) = rec.get(i) {
+                fill_qid(&mut compound_qid, b);
+            }
+        }
         if compound_qid.is_empty() {
             continue;
         }
+        taxon_qid.clear();
+        if let Some(i) = c_taxon {
+            if let Some(b) = rec.get(i) {
+                fill_qid(&mut taxon_qid, b);
+            }
+        }
+        reference_qid.clear();
+        if let Some(i) = c_ref_qid {
+            if let Some(b) = rec.get(i) {
+                fill_qid(&mut reference_qid, b);
+            }
+        }
 
-        let taxon_qid = parse_entity_id(field(&rec, c_taxon));
-        let reference_qid = parse_entity_id(field(&rec, c_ref_qid));
-
-        let key = entry_key_fingerprint(&compound_qid, &taxon_qid, &reference_qid);
+        // Dedup by (compound, taxon, ref) triple.
+        let key = entry_key_fingerprint(
+            compound_qid.as_bytes(),
+            taxon_qid.as_bytes(),
+            reference_qid.as_bytes(),
+        );
         if !seen.insert(key) {
             continue;
         }
 
+        // ── Stats (always, every row) ──
         total_distinct += 1;
         compound_fps.insert(fnv1a_one(compound_qid.as_bytes()));
         if !taxon_qid.is_empty() {
@@ -262,25 +236,39 @@ pub fn parse_compounds_csv_capped(
             ref_fps.insert(fnv1a_one(reference_qid.as_bytes()));
         }
 
+        // ── Past the display cap? Skip heavy string work. ──
         if entries.len() >= max_rows {
-            // Keep scanning for exact total_distinct, but skip extra row materialization.
             continue;
         }
 
+        // Materialise the full entry — only touches the remaining fields for
+        // rows that will actually be rendered.
+        let label = byte_field_str(&rec, c_label);
+        let inchikey = byte_field_str(&rec, c_inchikey);
+        let smiles_iso = byte_field_str(&rec, c_smiles_iso);
+        let smiles_con = byte_field_str(&rec, c_smiles_con);
+        let mass = byte_field_str(&rec, c_mass);
+        let formula = byte_field_str(&rec, c_formula);
+        let taxon_name = byte_field_str(&rec, c_taxon_name);
+        let ref_title = byte_field_str(&rec, c_ref_title);
+        let ref_doi = byte_field_str(&rec, c_ref_doi);
+        let ref_date = byte_field_str(&rec, c_ref_date);
+        let statement = byte_field_str(&rec, c_statement);
+
         entries.push(CompoundEntry {
-            compound_qid,
-            name: owned_or_empty(field(&rec, c_label)),
-            inchikey: non_empty(field(&rec, c_inchikey)),
-            smiles: coalesce(field(&rec, c_smiles_iso), field(&rec, c_smiles_con)),
-            mass: field(&rec, c_mass).parse::<f64>().ok(),
-            formula: non_empty(field(&rec, c_formula)),
-            taxon_qid,
-            taxon_name: owned_or_empty(field(&rec, c_taxon_name)),
-            reference_qid,
-            ref_title: non_empty(field(&rec, c_ref_title)),
-            ref_doi: clean_doi(field(&rec, c_ref_doi)),
-            pub_year: parse_year(field(&rec, c_ref_date)),
-            statement: non_empty(field(&rec, c_statement)),
+            compound_qid: compound_qid.clone(),
+            name: owned_or_empty(label),
+            inchikey: non_empty(inchikey),
+            smiles: coalesce(smiles_iso, smiles_con),
+            mass: mass.parse::<f64>().ok(),
+            formula: non_empty(formula),
+            taxon_qid: taxon_qid.clone(),
+            taxon_name: owned_or_empty(taxon_name),
+            reference_qid: reference_qid.clone(),
+            ref_title: non_empty(ref_title),
+            ref_doi: clean_doi(ref_doi),
+            pub_year: parse_year(ref_date),
+            statement: non_empty(statement),
         });
     }
 
@@ -290,8 +278,65 @@ pub fn parse_compounds_csv_capped(
         n_references: ref_fps.len(),
         n_entries: total_distinct,
     };
-    let was_capped = total_distinct > max_rows;
+    let was_capped = total_distinct > entries.len();
     Ok((entries, stats, was_capped))
+}
+
+/// Decode a byte field as a trimmed UTF-8 string slice. QLever always emits
+/// UTF-8; on malformed input we fall back to `""`.
+#[inline]
+fn byte_field_str<'a>(rec: &'a csv::ByteRecord, idx: Option<usize>) -> &'a str {
+    match idx.and_then(|i| rec.get(i)) {
+        Some(bytes) => std::str::from_utf8(bytes).unwrap_or("").trim(),
+        None => "",
+    }
+}
+
+/// Parse a Wikidata entity column into `out` without extra allocations,
+/// handling all three shapes QLever can emit:
+///  1. Full URI: `http://www.wikidata.org/entity/Q12345`
+///  2. Bare QID: `Q12345`
+///  3. Typed integer literal: `"134630"^^<…#integer>` (we prefix `Q`).
+fn fill_qid(out: &mut String, bytes: &[u8]) {
+    let s = match std::str::from_utf8(bytes) {
+        Ok(s) => s.trim(),
+        Err(_) => return,
+    };
+    if s.is_empty() {
+        return;
+    }
+
+    // Full URI — only accept when the suffix really is Q<digits>.
+    if let Some(idx) = s.rfind("wikidata.org/entity/") {
+        let rest = &s[idx + "wikidata.org/entity/".len()..];
+        if rest.len() >= 2
+            && rest.as_bytes()[0] == b'Q'
+            && rest.bytes().skip(1).all(|b| b.is_ascii_digit())
+        {
+            out.push_str(rest);
+            return;
+        }
+    }
+
+    // Typed-literal lexical form, e.g. `"134630"^^<...#integer>`.
+    let lexical = s.split("^^").next().unwrap_or(s).trim().trim_matches('"');
+
+    if lexical.is_empty() {
+        return;
+    }
+
+    if lexical.as_bytes().first() == Some(&b'Q')
+        && lexical.len() >= 2
+        && lexical[1..].bytes().all(|b| b.is_ascii_digit())
+    {
+        out.push_str(lexical);
+        return;
+    }
+
+    if lexical.bytes().all(|b| b.is_ascii_digit()) {
+        out.push('Q');
+        out.push_str(lexical);
+    }
 }
 
 // ── Taxon CSV parser ──────────────────────────────────────────────────────────
@@ -323,5 +368,3 @@ pub fn parse_taxon_csv(csv_text: &str) -> Result<Vec<TaxonMatch>, FetchError> {
     }
     Ok(matches)
 }
-
-// ...no separate count-query parser needed; totals are computed in-stream.

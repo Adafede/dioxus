@@ -9,9 +9,9 @@ use std::sync::Arc;
 /// Mirrors the Python `CONFIG["table_row_limit"]` which caps at 100 in
 /// Pyodide/WASM (to preserve memory / keep the UI snappy) and 1000 otherwise.
 #[cfg(target_arch = "wasm32")]
-pub const TABLE_ROW_LIMIT: usize = 5_000;
+pub const TABLE_ROW_LIMIT: usize = 2_000;
 #[cfg(not(target_arch = "wasm32"))]
-pub const TABLE_ROW_LIMIT: usize = 1_000_000;
+pub const TABLE_ROW_LIMIT: usize = 2_000_000;
 
 // Default element-range ceilings. Values at or within
 // `[0, DEFAULT_*_MAX]` are considered "inactive" (Python: `min_val == 0 &&
