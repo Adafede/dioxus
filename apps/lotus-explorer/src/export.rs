@@ -24,7 +24,7 @@ pub const WD_COLOR_HYPERLINK: &str = "#3377c4";
 pub const APP_VERSION: &str = "0.1.0";
 pub const APP_NAME: &str = "LOTUS Wikidata Explorer (Dioxus port)";
 pub const APP_URL: &str =
-    "https://github.com/Adafede/marimo/blob/main/apps/lotus_wikidata_explorer.py";
+    "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer";
 pub const QLEVER_ENDPOINT: &str = "https://qlever.dev/api/wikidata";
 
 // ── Utility: ISO-8601 "now" ───────────────────────────────────────────────────

@@ -299,8 +299,8 @@ fn Footer() -> Element {
                     links(
                             &[
                                 (
-                                    "https://github.com/Adafede/marimo/blob/main/apps/lotus_wikidata_explorer.py",
-                                    "lotus_wikidata_explorer.py",
+                                    "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer",
+                                    "lotus-explorer",
                                 ),
                             ],
                             "footer-link code",
