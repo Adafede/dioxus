@@ -48,12 +48,17 @@ jobs:
         run: dx build --release --platform web
 
       # ── Assemble a combined site ────────────────────────────────────────
-      # Each app is served under /<app-name>/
+      # Each app is served under /<app-name>/.
+      #
+      # dx 0.7 writes the web bundle to
+      #   target/dx/<package-name>/release/web/public/
+      # regardless of `out_dir` in `Dioxus.toml` (that key is ignored by
+      # dioxus-cli ≥ 0.7).
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp -r apps/lotus-explorer/dist _site/lotus-explorer
-          cp -r apps/hello-world/dist    _site/hello-world
+          cp -r target/dx/lotus-explorer/release/web/public _site/lotus-explorer
+          cp -r target/dx/hello-world/release/web/public    _site/hello-world
 
           # Root index listing
           cat > _site/index.html << 'EOF'
