@@ -19,10 +19,10 @@ pub enum FetchError {
 impl std::fmt::Display for FetchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Network(e)   => write!(f, "Network error: {e}"),
+            Self::Network(e) => write!(f, "Network error: {e}"),
             Self::Http(s, msg) => write!(f, "HTTP {s}: {msg}"),
-            Self::Parse(e)     => write!(f, "Parse error: {e}"),
-            Self::Empty        => write!(f, "Query returned no results"),
+            Self::Parse(e) => write!(f, "Parse error: {e}"),
+            Self::Empty => write!(f, "Query returned no results"),
         }
     }
 }
@@ -154,7 +154,11 @@ pub fn extract_qid(s: &str) -> String {
 /// Return `Some(s)` only if `s` is non-empty after trimming.
 pub fn non_empty(s: &str) -> Option<String> {
     let t = s.trim();
-    if t.is_empty() { None } else { Some(t.to_string()) }
+    if t.is_empty() {
+        None
+    } else {
+        Some(t.to_string())
+    }
 }
 
 /// Prefer `a`, fall back to `b`, return None if both empty.

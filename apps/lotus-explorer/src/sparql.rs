@@ -42,7 +42,6 @@ fn parse_entity_id(value: &str) -> String {
     String::new()
 }
 
-
 // ── SPARQL execution ──────────────────────────────────────────────────────────
 
 /// Execute a SPARQL query against the QLever Wikidata endpoint.
@@ -70,20 +69,20 @@ pub fn parse_compounds_csv(csv_text: &str) -> Result<Vec<CompoundEntry>, FetchEr
         .clone();
 
     // Column indices — safe to pre-compute once
-    let c_compound   = col_idx(&headers, "compound");
-    let c_label      = col_idx(&headers, "compoundLabel");
-    let c_inchikey   = col_idx(&headers, "compound_inchikey");
+    let c_compound = col_idx(&headers, "compound");
+    let c_label = col_idx(&headers, "compoundLabel");
+    let c_inchikey = col_idx(&headers, "compound_inchikey");
     let c_smiles_iso = col_idx(&headers, "compound_smiles_iso");
     let c_smiles_con = col_idx(&headers, "compound_smiles_conn");
-    let c_mass       = col_idx(&headers, "compound_mass");
-    let c_formula    = col_idx(&headers, "compound_formula");
-    let c_taxon      = col_idx(&headers, "taxon");
+    let c_mass = col_idx(&headers, "compound_mass");
+    let c_formula = col_idx(&headers, "compound_formula");
+    let c_taxon = col_idx(&headers, "taxon");
     let c_taxon_name = col_idx(&headers, "taxon_name");
-    let c_ref_qid    = col_idx(&headers, "ref_qid");
-    let c_ref_title  = col_idx(&headers, "ref_title");
-    let c_ref_doi    = col_idx(&headers, "ref_doi");
-    let c_ref_date   = col_idx(&headers, "ref_date");
-    let c_statement  = col_idx(&headers, "statement");
+    let c_ref_qid = col_idx(&headers, "ref_qid");
+    let c_ref_title = col_idx(&headers, "ref_title");
+    let c_ref_doi = col_idx(&headers, "ref_doi");
+    let c_ref_date = col_idx(&headers, "ref_date");
+    let c_statement = col_idx(&headers, "statement");
 
     let mut entries: Vec<CompoundEntry> = Vec::new();
     let mut seen: HashSet<(String, String, String)> = HashSet::new();
@@ -96,30 +95,34 @@ pub fn parse_compounds_csv(csv_text: &str) -> Result<Vec<CompoundEntry>, FetchEr
             continue;
         }
 
-        let taxon_qid     = parse_entity_id(field(&rec, c_taxon));
+        let taxon_qid = parse_entity_id(field(&rec, c_taxon));
         let reference_qid = parse_entity_id(field(&rec, c_ref_qid));
 
         // Deduplicate: same compound × taxon × reference = one row
-        let key = (compound_qid.clone(), taxon_qid.clone(), reference_qid.clone());
+        let key = (
+            compound_qid.clone(),
+            taxon_qid.clone(),
+            reference_qid.clone(),
+        );
         if !seen.insert(key) {
             continue;
         }
 
         entries.push(CompoundEntry {
             compound_qid,
-            name:          field(&rec, c_label).to_string(),
-            inchikey:      non_empty(field(&rec, c_inchikey)),
+            name: field(&rec, c_label).to_string(),
+            inchikey: non_empty(field(&rec, c_inchikey)),
             // Prefer isomeric SMILES, fall back to connectivity SMILES (same as Python)
-            smiles:        coalesce(field(&rec, c_smiles_iso), field(&rec, c_smiles_con)),
-            mass:          field(&rec, c_mass).parse::<f64>().ok(),
-            formula:       non_empty(field(&rec, c_formula)),
+            smiles: coalesce(field(&rec, c_smiles_iso), field(&rec, c_smiles_con)),
+            mass: field(&rec, c_mass).parse::<f64>().ok(),
+            formula: non_empty(field(&rec, c_formula)),
             taxon_qid,
-            taxon_name:    field(&rec, c_taxon_name).to_string(),
+            taxon_name: field(&rec, c_taxon_name).to_string(),
             reference_qid,
-            ref_title:     non_empty(field(&rec, c_ref_title)),
-            ref_doi:       clean_doi(field(&rec, c_ref_doi)),
-            pub_year:      parse_year(field(&rec, c_ref_date)),
-            statement:     non_empty(field(&rec, c_statement)),
+            ref_title: non_empty(field(&rec, c_ref_title)),
+            ref_doi: clean_doi(field(&rec, c_ref_doi)),
+            pub_year: parse_year(field(&rec, c_ref_date)),
+            statement: non_empty(field(&rec, c_statement)),
         });
     }
 
@@ -142,12 +145,12 @@ pub fn parse_taxon_csv(csv_text: &str) -> Result<Vec<TaxonMatch>, FetchError> {
         .clone();
 
     let c_taxon = col_idx(&headers, "taxon");
-    let c_name  = col_idx(&headers, "taxon_name");
+    let c_name = col_idx(&headers, "taxon_name");
 
     let mut matches = Vec::new();
     for result in rdr.records() {
         let rec = result.map_err(|e| FetchError::Parse(e.to_string()))?;
-        let qid  = parse_entity_id(field(&rec, c_taxon));
+        let qid = parse_entity_id(field(&rec, c_taxon));
         let name = field(&rec, c_name).to_string();
         if !qid.is_empty() && !name.is_empty() {
             matches.push(TaxonMatch { qid, name });

@@ -1,6 +1,6 @@
-use dioxus::prelude::*;
 use crate::models::*;
 use crate::queries::{classify_structure, StructureKind};
+use dioxus::prelude::*;
 
 #[component]
 pub fn SearchPanel(
@@ -307,8 +307,8 @@ pub fn KetcherPanel() -> Element {
 
 fn kind_class(k: StructureKind) -> &'static str {
     match k {
-        StructureKind::Empty        => "empty",
-        StructureKind::Smiles       => "smiles",
+        StructureKind::Empty => "empty",
+        StructureKind::Smiles => "smiles",
         StructureKind::MolfileV2000 => "mol2000",
         StructureKind::MolfileV3000 => "mol3000",
     }
@@ -316,10 +316,12 @@ fn kind_class(k: StructureKind) -> &'static str {
 
 fn kind_note(k: StructureKind) -> &'static str {
     match k {
-        StructureKind::Empty        => "",
-        StructureKind::Smiles       => "  Sent as a single-line SPARQL literal.",
+        StructureKind::Empty => "",
+        StructureKind::Smiles => "  Sent as a single-line SPARQL literal.",
         StructureKind::MolfileV2000 => "  Forwarded verbatim to SACHEM scoredSubstructureSearch.",
-        StructureKind::MolfileV3000 => "  Forwarded verbatim to SACHEM scoredSubstructureSearch (CTAB v3000).",
+        StructureKind::MolfileV3000 => {
+            "  Forwarded verbatim to SACHEM scoredSubstructureSearch (CTAB v3000)."
+        }
     }
 }
 
@@ -386,4 +388,3 @@ fn ElemStateSelect(
         }
     }
 }
-

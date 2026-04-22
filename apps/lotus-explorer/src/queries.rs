@@ -317,8 +317,8 @@ impl StructureKind {
     /// Short human label used in the UI hint.
     pub fn label(self) -> &'static str {
         match self {
-            Self::Empty        => "—",
-            Self::Smiles       => "SMILES",
+            Self::Empty => "—",
+            Self::Smiles => "SMILES",
             Self::MolfileV2000 => "Molfile V2000",
             Self::MolfileV3000 => "Molfile V3000",
         }
@@ -375,4 +375,3 @@ pub fn escape_structure_literal(smiles: &str) -> String {
         format!("\"{escaped}\"")
     }
 }
-

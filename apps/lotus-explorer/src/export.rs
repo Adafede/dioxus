@@ -12,10 +12,14 @@ use serde_json::{json, Map, Value};
 // Wikidata colour palette (matches Python CONFIG).  Values are kept in Rust
 // for any code paths that need the colours programmatically (e.g. future
 // CLI reports); CSS rules use them via `--wd-*` custom properties.
-#[allow(dead_code)] pub const WD_COLOR_COMPOUND:  &str = "#990000"; // red
-#[allow(dead_code)] pub const WD_COLOR_TAXON:     &str = "#339966"; // green
-#[allow(dead_code)] pub const WD_COLOR_REFERENCE: &str = "#006699"; // blue
-#[allow(dead_code)] pub const WD_COLOR_HYPERLINK: &str = "#3377c4";
+#[allow(dead_code)]
+pub const WD_COLOR_COMPOUND: &str = "#990000"; // red
+#[allow(dead_code)]
+pub const WD_COLOR_TAXON: &str = "#339966"; // green
+#[allow(dead_code)]
+pub const WD_COLOR_REFERENCE: &str = "#006699"; // blue
+#[allow(dead_code)]
+pub const WD_COLOR_HYPERLINK: &str = "#3377c4";
 
 pub const APP_VERSION: &str = "0.1.0";
 pub const APP_NAME: &str = "LOTUS Wikidata Explorer (Dioxus port)";
@@ -61,7 +65,11 @@ fn epoch_to_ymdhms(secs: i64) -> (i32, u32, u32, u32, u32, u32) {
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
     let mp = (5 * doy + 2) / 153;
     let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { (mp + 3) as u32 } else { (mp - 9) as u32 };
+    let m = if mp < 10 {
+        (mp + 3) as u32
+    } else {
+        (mp - 9) as u32
+    };
     let y = if m <= 2 { y + 1 } else { y };
     (y as i32, m, d, hh, mm, ss)
 }
@@ -111,12 +119,42 @@ pub fn criteria_to_filters_value(criteria: &SearchCriteria) -> Value {
             mf.insert("exact_formula".into(), Value::String(exact.into()));
         }
         for (name, min, max, default_max) in [
-            ("carbon",     criteria.c_min, criteria.c_max, crate::models::DEFAULT_C_MAX),
-            ("hydrogen",   criteria.h_min, criteria.h_max, crate::models::DEFAULT_H_MAX),
-            ("nitrogen",   criteria.n_min, criteria.n_max, crate::models::DEFAULT_N_MAX),
-            ("oxygen",     criteria.o_min, criteria.o_max, crate::models::DEFAULT_O_MAX),
-            ("phosphorus", criteria.p_min, criteria.p_max, crate::models::DEFAULT_P_MAX),
-            ("sulfur",     criteria.s_min, criteria.s_max, crate::models::DEFAULT_S_MAX),
+            (
+                "carbon",
+                criteria.c_min,
+                criteria.c_max,
+                crate::models::DEFAULT_C_MAX,
+            ),
+            (
+                "hydrogen",
+                criteria.h_min,
+                criteria.h_max,
+                crate::models::DEFAULT_H_MAX,
+            ),
+            (
+                "nitrogen",
+                criteria.n_min,
+                criteria.n_max,
+                crate::models::DEFAULT_N_MAX,
+            ),
+            (
+                "oxygen",
+                criteria.o_min,
+                criteria.o_max,
+                crate::models::DEFAULT_O_MAX,
+            ),
+            (
+                "phosphorus",
+                criteria.p_min,
+                criteria.p_max,
+                crate::models::DEFAULT_P_MAX,
+            ),
+            (
+                "sulfur",
+                criteria.s_min,
+                criteria.s_max,
+                crate::models::DEFAULT_S_MAX,
+            ),
         ] {
             if min > 0 || max < default_max {
                 mf.insert(name.into(), json!({ "min": min, "max": max }));
@@ -125,8 +163,8 @@ pub fn criteria_to_filters_value(criteria: &SearchCriteria) -> Value {
         let halogens: Vec<(&str, ElementState)> = vec![
             ("fluorine", criteria.f_state),
             ("chlorine", criteria.cl_state),
-            ("bromine",  criteria.br_state),
-            ("iodine",   criteria.i_state),
+            ("bromine", criteria.br_state),
+            ("iodine", criteria.i_state),
         ];
         let mut hal = Map::new();
         for (name, state) in halogens {
@@ -172,7 +210,10 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
             .and_then(|v| v.as_str())
             .unwrap_or("substructure");
         (
-            format!("LOTUS Data — {} search in {effective_taxon}", title_case(st)),
+            format!(
+                "LOTUS Data — {} search in {effective_taxon}",
+                title_case(st)
+            ),
             format!(
                 "Chemical compounds from {effective_taxon}. Retrieved via LOTUS \
                  Wikidata Explorer with {st} chemical search (SACHEM/IDSM)."
@@ -181,7 +222,9 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
     } else {
         (
             format!("LOTUS Data — {effective_taxon}"),
-            format!("Chemical compounds from {effective_taxon}. Retrieved via LOTUS Wikidata Explorer."),
+            format!(
+                "Chemical compounds from {effective_taxon}. Retrieved via LOTUS Wikidata Explorer."
+            ),
         )
     };
 
@@ -217,11 +260,17 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
         sq.insert("legacy_param_key".into(), "smiles".into());
         sq.insert(
             "search_type".into(),
-            c.get("search_type").cloned().unwrap_or(json!("substructure")),
+            c.get("search_type")
+                .cloned()
+                .unwrap_or(json!("substructure")),
         );
         sq.insert(
             "input_format".into(),
-            Value::String(if multiline { "molfile".into() } else { "smiles".into() }),
+            Value::String(if multiline {
+                "molfile".into()
+            } else {
+                "smiles".into()
+            }),
         );
         if let Some(t) = c.get("similarity_threshold").cloned() {
             sq.insert("similarity_threshold".into(), t);
@@ -247,7 +296,10 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
     }
 
     let mut meta = Map::new();
-    meta.insert("@context".into(), Value::String("https://schema.org/".into()));
+    meta.insert(
+        "@context".into(),
+        Value::String("https://schema.org/".into()),
+    );
     meta.insert("@type".into(), Value::String("Dataset".into()));
     meta.insert("name".into(), Value::String(dataset_name));
     meta.insert("description".into(), Value::String(description));
@@ -290,9 +342,18 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
     meta.insert(
         "variablesMeasured".into(),
         json!([
-            "compound_name", "compound_smiles", "compound_inchikey", "compound_mass",
-            "molecular_formula", "taxon_name", "reference_title", "reference_doi",
-            "reference_date", "compound_qid", "taxon_qid", "reference_qid",
+            "compound_name",
+            "compound_smiles",
+            "compound_inchikey",
+            "compound_mass",
+            "molecular_formula",
+            "taxon_name",
+            "reference_title",
+            "reference_doi",
+            "reference_date",
+            "compound_qid",
+            "taxon_qid",
+            "reference_qid",
         ]),
     );
     meta.insert("search_parameters".into(), Value::Object(search_params));
@@ -386,9 +447,7 @@ pub fn build_ttl(rows: &[CompoundEntry], meta: MetadataInputs<'_>) -> String {
     out.push_str(&format!(
         "    schema:name \"LOTUS Wikidata Explorer query result\" ;\n"
     ));
-    out.push_str(&format!(
-        "    schema:version \"{APP_VERSION}\" ;\n"
-    ));
+    out.push_str(&format!("    schema:version \"{APP_VERSION}\" ;\n"));
     out.push_str(&format!(
         "    schema:dateCreated \"{}\"^^xsd:dateTime ;\n",
         now_iso8601()
@@ -414,10 +473,7 @@ pub fn build_ttl(rows: &[CompoundEntry], meta: MetadataInputs<'_>) -> String {
             out.push_str(&format!("wd:{} ", e.compound_qid));
             let mut props: Vec<String> = Vec::new();
             if !e.name.trim().is_empty() {
-                props.push(format!(
-                    "    schema:name {}",
-                    ttl_literal(&e.name)
-                ));
+                props.push(format!("    schema:name {}", ttl_literal(&e.name)));
             }
             if let Some(ik) = &e.inchikey {
                 props.push(format!("    wdt:P235 {}", ttl_literal(ik)));
@@ -457,9 +513,7 @@ pub fn build_ttl(rows: &[CompoundEntry], meta: MetadataInputs<'_>) -> String {
                 out.push_str(&format!(" ; wdt:P356 {}", ttl_literal(d)));
             }
             if let Some(y) = e.pub_year {
-                out.push_str(&format!(
-                    " ; wdt:P577 \"{y:04}-01-01\"^^xsd:date"
-                ));
+                out.push_str(&format!(" ; wdt:P577 \"{y:04}-01-01\"^^xsd:date"));
             }
             out.push_str(" .\n");
         }
@@ -548,5 +602,3 @@ pub fn generate_filename(taxon: &str, ext: &str, search_type: Option<&str>) -> S
         _ => format!("{date}_lotus_{safe}.{ext}"),
     }
 }
-
-

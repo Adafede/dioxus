@@ -6,10 +6,10 @@ mod models;
 mod queries;
 mod sparql;
 
+use components::results_table::ResultsTable;
+use components::search_panel::{KetcherPanel, SearchPanel};
 use dioxus::prelude::*;
 use models::*;
-use components::search_panel::{SearchPanel, KetcherPanel};
-use components::results_table::ResultsTable;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
@@ -23,9 +23,9 @@ fn main() {
 #[component]
 fn App() -> Element {
     let criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
-    let mut entries:  Signal<Vec<CompoundEntry>> = use_signal(Vec::new);
-    let mut loading:  Signal<bool> = use_signal(|| false);
-    let mut error:    Signal<Option<String>> = use_signal(|| None);
+    let mut entries: Signal<Vec<CompoundEntry>> = use_signal(Vec::new);
+    let mut loading: Signal<bool> = use_signal(|| false);
+    let mut error: Signal<Option<String>> = use_signal(|| None);
     let mut searched_once: Signal<bool> = use_signal(|| false);
     let mut taxon_notice: Signal<Option<String>> = use_signal(|| None);
     let mut resolved_qid: Signal<Option<String>> = use_signal(|| None);
@@ -36,8 +36,8 @@ fn App() -> Element {
     let mut truncated: Signal<Option<(usize, usize)>> = use_signal(|| None);
     let mut metadata_json: Signal<Option<String>> = use_signal(|| None);
     let mut export_rows: Signal<Vec<CompoundEntry>> = use_signal(Vec::new);
-    let sort:     Signal<SortState> = use_signal(SortState::default);
-    let mut page:     Signal<usize> = use_signal(|| 0usize);
+    let sort: Signal<SortState> = use_signal(SortState::default);
+    let mut page: Signal<usize> = use_signal(|| 0usize);
 
     // ── Search handler ────────────────────────────────────────────────────────
     let on_search = move |_| {
@@ -47,13 +47,11 @@ fn App() -> Element {
         let crit = criteria.read().clone();
 
         if !crit.is_valid() {
-            *error.write() = Some(
-                "Please enter a taxon name / QID, or a SMILES structure.".into(),
-            );
+            *error.write() = Some("Please enter a taxon name / QID, or a SMILES structure.".into());
             return;
         }
 
-        *error.write()   = None;
+        *error.write() = None;
         *searched_once.write() = true;
         *loading.write() = true;
         *entries.write() = Vec::new();
@@ -66,7 +64,7 @@ fn App() -> Element {
         *sparql_query.write() = None;
         *truncated.write() = None;
         *metadata_json.write() = None;
-        *page.write()    = 0;
+        *page.write() = 0;
 
         spawn(async move {
             match do_search(crit.clone()).await {
@@ -74,16 +72,20 @@ fn App() -> Element {
                     // Client-side post-filters (mass, year) — mirrors Python FilterService
                     if crit.has_mass_filter() {
                         outcome.rows.retain(|e| {
-                            e.mass.map_or(false, |m| m >= crit.mass_min && m <= crit.mass_max)
+                            e.mass
+                                .map_or(false, |m| m >= crit.mass_min && m <= crit.mass_max)
                         });
                     }
                     if crit.has_year_filter() {
                         outcome.rows.retain(|e| {
-                            e.pub_year.map_or(true, |y| y >= crit.year_min && y <= crit.year_max)
+                            e.pub_year
+                                .map_or(true, |y| y >= crit.year_min && y <= crit.year_max)
                         });
                     }
                     if crit.has_formula_filter() {
-                        outcome.rows.retain(|e| formula_matches(e.formula.as_deref(), &crit));
+                        outcome
+                            .rows
+                            .retain(|e| formula_matches(e.formula.as_deref(), &crit));
                     }
 
                     // Apply the display-only row cap *after* filtering so the
@@ -93,11 +95,8 @@ fn App() -> Element {
                     let full_count = outcome.rows.len();
                     let cap = TABLE_ROW_LIMIT;
                     let was_truncated = full_count > cap;
-                    let (q_hash, r_hash) = compute_hashes(
-                        outcome.qid.as_deref().unwrap_or(""),
-                        &crit,
-                        &outcome.rows,
-                    );
+                    let (q_hash, r_hash) =
+                        compute_hashes(outcome.qid.as_deref().unwrap_or(""), &crit, &outcome.rows);
                     let full_stats = DatasetStats::from_entries(&outcome.rows);
                     let meta_str = export::build_metadata_json(export::MetadataInputs {
                         criteria: &crit,
@@ -121,12 +120,16 @@ fn App() -> Element {
                     *shareable_url.write() = share_url;
                     *sparql_query.write() = Some(outcome.query);
                     *metadata_json.write() = Some(meta_str);
-                    *truncated.write() = if was_truncated { Some((cap, full_count)) } else { None };
+                    *truncated.write() = if was_truncated {
+                        Some((cap, full_count))
+                    } else {
+                        None
+                    };
                     *entries.write() = outcome.rows;
                     *loading.write() = false;
                 }
                 Err(e) => {
-                    *error.write()   = Some(e);
+                    *error.write() = Some(e);
                     *loading.write() = false;
                 }
             }
@@ -361,7 +364,7 @@ struct SearchOutcome {
 }
 
 async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
-    let taxon  = crit.taxon.trim().to_string();
+    let taxon = crit.taxon.trim().to_string();
     // Preserve Molfile blocks verbatim — leading blank lines and whitespace
     // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
     // must reach SACHEM untouched, otherwise the query silently returns
@@ -370,7 +373,10 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
     let smiles = {
         let normalized = crit.smiles.replace("\r\n", "\n").replace('\r', "\n");
         let kind = queries::classify_structure(&normalized);
-        if matches!(kind, queries::StructureKind::MolfileV2000 | queries::StructureKind::MolfileV3000) {
+        if matches!(
+            kind,
+            queries::StructureKind::MolfileV2000 | queries::StructureKind::MolfileV3000
+        ) {
             normalized
         } else {
             normalized.trim().to_string()
@@ -382,7 +388,9 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
         None
     } else if taxon == "*" {
         Some("*".to_string())
-    } else if taxon.to_uppercase().starts_with('Q') && taxon[1..].chars().all(|c| c.is_ascii_digit()) {
+    } else if taxon.to_uppercase().starts_with('Q')
+        && taxon[1..].chars().all(|c| c.is_ascii_digit())
+    {
         Some(taxon.to_uppercase())
     } else {
         let sanitized = sanitize_taxon_input(&taxon);
@@ -390,26 +398,45 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
         let csv = sparql::execute_sparql(&query)
             .await
             .map_err(|e| format!("Taxon search failed: {e}"))?;
-        let matches = sparql::parse_taxon_csv(&csv)
-            .map_err(|e| format!("Taxon parse failed: {e}"))?;
+        let matches =
+            sparql::parse_taxon_csv(&csv).map_err(|e| format!("Taxon parse failed: {e}"))?;
         if matches.is_empty() {
             return Err(format!("Taxon '{taxon}' not found in Wikidata."));
         }
         let lower = sanitized.to_lowercase();
-        let exact: Vec<&TaxonMatch> = matches.iter().filter(|m| m.name.to_lowercase() == lower).collect();
-        let best = exact.first().copied().or_else(|| matches.first()).ok_or_else(|| "Taxon resolution failed".to_string())?;
+        let exact: Vec<&TaxonMatch> = matches
+            .iter()
+            .filter(|m| m.name.to_lowercase() == lower)
+            .collect();
+        let best = exact
+            .first()
+            .copied()
+            .or_else(|| matches.first())
+            .ok_or_else(|| "Taxon resolution failed".to_string())?;
         if sanitized != taxon {
-            warning = Some(format!("Input standardized from '{taxon}' to '{sanitized}'."));
+            warning = Some(format!(
+                "Input standardized from '{taxon}' to '{sanitized}'."
+            ));
         }
         if exact.len() > 1 || (exact.is_empty() && matches.len() > 1) {
-            let names = matches.iter().take(4).map(|m| format!("{} ({})", m.name, m.qid)).collect::<Vec<_>>().join(", ");
-            warning = Some(format!("Ambiguous taxon name; using {} ({}). Candidates: {}", best.name, best.qid, names));
+            let names = matches
+                .iter()
+                .take(4)
+                .map(|m| format!("{} ({})", m.name, m.qid))
+                .collect::<Vec<_>>()
+                .join(", ");
+            warning = Some(format!(
+                "Ambiguous taxon name; using {} ({}). Candidates: {}",
+                best.name, best.qid, names
+            ));
         }
         Some(best.qid.clone())
     };
 
     let sparql_query = if !smiles.is_empty() {
-        let effective_type = if (smiles.contains('\n') || smiles.contains('\r')) && crit.smiles_search_type == SmilesSearchType::Similarity {
+        let effective_type = if (smiles.contains('\n') || smiles.contains('\r'))
+            && crit.smiles_search_type == SmilesSearchType::Similarity
+        {
             SmilesSearchType::Substructure
         } else {
             crit.smiles_search_type
@@ -419,7 +446,12 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
             Some(qid) => Some(qid),
             None => None,
         };
-        queries::query_sachem(&smiles, effective_type, crit.smiles_threshold, taxon_for_sachem)
+        queries::query_sachem(
+            &smiles,
+            effective_type,
+            crit.smiles_threshold,
+            taxon_for_sachem,
+        )
     } else {
         match taxon_qid.as_deref() {
             Some("*") | None => queries::query_all_compounds(),
@@ -430,10 +462,14 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
     let csv = sparql::execute_sparql(&sparql_query)
         .await
         .map_err(|e| format!("Query failed: {e}"))?;
-    let rows = sparql::parse_compounds_csv(&csv)
-        .map_err(|e| format!("Parse error: {e}"))?;
+    let rows = sparql::parse_compounds_csv(&csv).map_err(|e| format!("Parse error: {e}"))?;
 
-    Ok(SearchOutcome { rows, qid: taxon_qid, warning, query: sparql_query })
+    Ok(SearchOutcome {
+        rows,
+        qid: taxon_qid,
+        warning,
+        query: sparql_query,
+    })
 }
 
 fn sanitize_taxon_input(taxon: &str) -> String {
@@ -559,18 +595,31 @@ fn parse_formula_counts(formula: &str) -> BTreeMap<String, i32> {
     out
 }
 
-fn compute_hashes(qid: &str, criteria: &SearchCriteria, rows: &[CompoundEntry]) -> (String, String) {
+fn compute_hashes(
+    qid: &str,
+    criteria: &SearchCriteria,
+    rows: &[CompoundEntry],
+) -> (String, String) {
     let normalized_qid = if qid.trim().is_empty() { "*" } else { qid };
     let normalized_taxon = criteria.taxon.trim();
     let mut query_source = format!("{}|{}", normalized_qid, normalized_taxon);
     let params = criteria.shareable_query_params();
     if !params.is_empty() {
         query_source.push('|');
-        query_source.push_str(&params.into_iter().map(|(k, v)| format!("{}={}", k, v)).collect::<Vec<_>>().join("&"));
+        query_source.push_str(
+            &params
+                .into_iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>()
+                .join("&"),
+        );
     }
     let query_hash = format!("{:x}", Sha256::digest(query_source.as_bytes()));
 
-    let mut compounds = rows.iter().map(|e| e.compound_qid.as_str()).collect::<Vec<_>>();
+    let mut compounds = rows
+        .iter()
+        .map(|e| e.compound_qid.as_str())
+        .collect::<Vec<_>>();
     compounds.sort_unstable();
     compounds.dedup();
     let result_source = compounds.join("|");
@@ -644,8 +693,12 @@ fn read_url_query_params() -> BTreeMap<String, String> {
             let mut parts = pair.splitn(2, '=');
             let key = parts.next().unwrap_or_default();
             let val = parts.next().unwrap_or_default();
-            let key_decoded = urlencoding::decode(key).map(|v| v.into_owned()).unwrap_or_else(|_| key.to_string());
-            let val_decoded = urlencoding::decode(val).map(|v| v.into_owned()).unwrap_or_else(|_| val.to_string());
+            let key_decoded = urlencoding::decode(key)
+                .map(|v| v.into_owned())
+                .unwrap_or_else(|_| key.to_string());
+            let val_decoded = urlencoding::decode(val)
+                .map(|v| v.into_owned())
+                .unwrap_or_else(|_| val.to_string());
             out.insert(key_decoded, val_decoded);
         }
         out

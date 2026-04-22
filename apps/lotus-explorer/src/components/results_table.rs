@@ -1,6 +1,6 @@
-use dioxus::prelude::*;
 use crate::export;
 use crate::models::*;
+use dioxus::prelude::*;
 
 const PAGE_SIZE: usize = 10;
 
@@ -15,9 +15,9 @@ pub fn ResultsTable(
     /// Full filtered dataset — exports run over this so the files contain
     /// every row even when the on-screen table is display-capped.
     export_rows: Vec<CompoundEntry>,
-    stats:   DatasetStats,
-    sort:    Signal<SortState>,
-    page:    Signal<usize>,
+    stats: DatasetStats,
+    sort: Signal<SortState>,
+    page: Signal<usize>,
     sparql_query: Option<String>,
     metadata_json: Option<String>,
     query_hash: Option<String>,
@@ -36,14 +36,21 @@ pub fn ResultsTable(
         let s = sort.read();
         sorted.sort_by(|a, b| {
             let cmp = match s.col {
-                SortColumn::Name      => a.name.cmp(&b.name),
-                SortColumn::Mass      => a.mass.partial_cmp(&b.mass).unwrap_or(std::cmp::Ordering::Equal),
-                SortColumn::Formula   => a.formula.cmp(&b.formula),
+                SortColumn::Name => a.name.cmp(&b.name),
+                SortColumn::Mass => a
+                    .mass
+                    .partial_cmp(&b.mass)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+                SortColumn::Formula => a.formula.cmp(&b.formula),
                 SortColumn::TaxonName => a.taxon_name.cmp(&b.taxon_name),
-                SortColumn::PubYear   => a.pub_year.cmp(&b.pub_year),
-                SortColumn::RefTitle  => a.ref_title.cmp(&b.ref_title),
+                SortColumn::PubYear => a.pub_year.cmp(&b.pub_year),
+                SortColumn::RefTitle => a.ref_title.cmp(&b.ref_title),
             };
-            if s.dir == SortDir::Desc { cmp.reverse() } else { cmp }
+            if s.dir == SortDir::Desc {
+                cmp.reverse()
+            } else {
+                cmp
+            }
         });
     }
 
@@ -56,14 +63,26 @@ pub fn ResultsTable(
 
     let sort_icon = |col: SortColumn| -> &'static str {
         let s = sort.read();
-        if s.col == col { if s.dir == SortDir::Asc { "↑" } else { "↓" } } else { "" }
+        if s.col == col {
+            if s.dir == SortDir::Asc {
+                "↑"
+            } else {
+                "↓"
+            }
+        } else {
+            ""
+        }
     };
 
     let toggle_sort = |col: SortColumn| {
         move |_: Event<MouseData>| {
             let mut s = sort.write();
             if s.col == col {
-                s.dir = if s.dir == SortDir::Asc { SortDir::Desc } else { SortDir::Asc };
+                s.dir = if s.dir == SortDir::Asc {
+                    SortDir::Desc
+                } else {
+                    SortDir::Asc
+                };
             } else {
                 s.col = col;
                 s.dir = SortDir::Asc;
@@ -80,30 +99,31 @@ pub fn ResultsTable(
     } else {
         Some(match criteria.smiles_search_type {
             SmilesSearchType::Substructure => "substructure",
-            SmilesSearchType::Similarity   => "similarity",
+            SmilesSearchType::Similarity => "similarity",
         })
     };
-    let csv_filename      = export::generate_filename(&criteria.taxon, "csv",    search_type_suffix);
-    let json_filename     = export::generate_filename(&criteria.taxon, "ndjson", search_type_suffix);
-    let ttl_filename      = export::generate_filename(&criteria.taxon, "ttl",    search_type_suffix);
+    let csv_filename = export::generate_filename(&criteria.taxon, "csv", search_type_suffix);
+    let json_filename = export::generate_filename(&criteria.taxon, "ndjson", search_type_suffix);
+    let ttl_filename = export::generate_filename(&criteria.taxon, "ttl", search_type_suffix);
     // Metadata filename mirrors Python: `{query_hash}_{result_hash}_metadata.json`.
     let metadata_filename = match (query_hash.as_deref(), result_hash.as_deref()) {
         (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
         _ => export::generate_filename(&criteria.taxon, "metadata.json", search_type_suffix),
     };
-    let csv_url  = export_available.then(|| export::to_data_url("text/csv", &build_csv(&export_rows)));
-    let json_url = export_available.then(|| export::to_data_url("application/x-ndjson", &export::build_ndjson(&export_rows)));
-    let ttl_url  = export_available
-        .then(|| {
-            let meta = export::MetadataInputs {
-                criteria: &SearchCriteria::default(), // filled in for header-only fields
-                qid: None,
-                stats: &stats,
-                query_hash: query_hash.as_deref().unwrap_or(""),
-                result_hash: result_hash.as_deref().unwrap_or(""),
-            };
-            export::to_data_url("text/turtle", &export::build_ttl(&export_rows, meta))
-        });
+    let csv_url =
+        export_available.then(|| export::to_data_url("text/csv", &build_csv(&export_rows)));
+    let json_url = export_available
+        .then(|| export::to_data_url("application/x-ndjson", &export::build_ndjson(&export_rows)));
+    let ttl_url = export_available.then(|| {
+        let meta = export::MetadataInputs {
+            criteria: &SearchCriteria::default(), // filled in for header-only fields
+            qid: None,
+            stats: &stats,
+            query_hash: query_hash.as_deref().unwrap_or(""),
+            result_hash: result_hash.as_deref().unwrap_or(""),
+        };
+        export::to_data_url("text/turtle", &export::build_ttl(&export_rows, meta))
+    });
     let metadata_url = metadata_json
         .as_deref()
         .map(|m| export::to_data_url("application/ld+json", m));
@@ -254,7 +274,7 @@ fn Pager(
     on_next: EventHandler<MouseEvent>,
 ) -> Element {
     let start = cur * PAGE_SIZE + 1;
-    let end   = ((cur + 1) * PAGE_SIZE).min(total);
+    let end = ((cur + 1) * PAGE_SIZE).min(total);
     rsx! {
         div { class: "pagination-bar",
             button { class: "btn btn-sm", disabled: cur == 0,
@@ -270,10 +290,10 @@ fn Pager(
 
 #[component]
 fn Row(entry: CompoundEntry) -> Element {
-    let wu  = entry.compound_url();
-    let tu  = entry.taxon_url();
-    let ru  = entry.reference_url();
-    let su  = entry.scholia_url();
+    let wu = entry.compound_url();
+    let tu = entry.taxon_url();
+    let ru = entry.reference_url();
+    let su = entry.scholia_url();
     let doi = entry.doi_url();
     let depict = entry.depict_url();
     let statement_url = entry.statement_url();
@@ -452,7 +472,9 @@ fn build_csv(rows: &[CompoundEntry]) -> String {
             stmt_str.as_str(),
         ];
         for (i, f) in fields.iter().enumerate() {
-            if i > 0 { out.push(','); }
+            if i > 0 {
+                out.push(',');
+            }
             out.push_str(&csv_escape(f));
         }
         out.push('\n');
@@ -468,4 +490,3 @@ fn csv_escape(s: &str) -> String {
         s.to_string()
     }
 }
-
