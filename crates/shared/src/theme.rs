@@ -17,18 +17,18 @@ html, body { height: 100%; }
   --bg:        #f8fafc;
   --bg2:       #ffffff;
   --surface:   #f8fafc;
-  --surface2:  #eef2f7;
-  --border:    #dbe3ee;
+  --surface2:  #e9eef5;
+  --border:    #c7d2e2;
   --text:      #0f172a;
-  --text2:     #334155;
-  --text3:     #64748b;
-  --accent:    #2563eb;
-  --accent2:   #1e40af;
+  --text2:     #1f2937;
+  --text3:     #475569;
+  --accent:    #006699;
+  --accent2:   #004d73;
   --green:     #15803d;
   --red:       #dc2626;
   --yellow:    #a16207;
   --purple:    #7c3aed;
-  --radius:    8px;
+  --radius:    10px;
   --radius-sm: 4px;
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-sm: 0 4px 14px rgba(15, 23, 42, 0.06);
@@ -41,7 +41,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -80,7 +80,7 @@ a:hover { text-decoration: underline; }
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
   border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 7px 14px; font-size: 13px; font-weight: 500;
+  padding: 8px 14px; font-size: 14px; font-weight: 600;
   cursor: pointer; background: var(--surface); color: var(--text);
   box-shadow: var(--shadow-xs);
   transition: background .15s, border-color .15s, box-shadow .15s;
@@ -89,7 +89,7 @@ a:hover { text-decoration: underline; }
 .btn:hover:not(:disabled) { background: var(--surface2); box-shadow: var(--shadow-sm); }
 .btn-primary { background: var(--accent2); border-color: var(--accent2); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
-.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-sm { padding: 5px 10px; font-size: 13px; }
 
 /* ── Badges ──────────────────────────────────────────────────────────────── */
 .badge { display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600; }
@@ -120,7 +120,7 @@ a:hover { text-decoration: underline; }
 .form-input, .form-textarea {
   background:var(--surface); border:1px solid var(--border);
   border-radius:var(--radius-sm); color:var(--text);
-  padding:8px 10px; font-size:13px; width:100%;
+  padding:9px 11px; font-size:14px; width:100%;
   font-family:var(--sans); transition:border-color .15s;
 }
 .form-input:focus, .form-textarea:focus { outline:none; border-color:var(--accent); }

@@ -801,7 +801,7 @@ const APP_CSS: &str = r#"
   --wd-compound:  #990000;   /* red   — compounds  */
   --wd-taxon:     #339966;   /* green — taxa       */
   --wd-reference: #006699;   /* blue  — references */
-  --wd-hyperlink: #3377c4;
+  --wd-hyperlink: #484848;
 }
 
 /* ── Layout ──────────────────────────────────────────────────────────────── */
@@ -814,8 +814,8 @@ const APP_CSS: &str = r#"
 /* ── Page header ─────────────────────────────────────────────────────────── */
 .page-header { padding:24px 28px 18px; border-bottom:1px solid var(--border); background:var(--bg2);
                box-shadow:var(--shadow-xs); }
-.page-title  { font-size:20px; font-weight:700; letter-spacing:-.02em; }
-.page-sub    { font-size:13px; color:var(--text2); margin-top:6px; }
+.page-title  { font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--wd-reference); }
+.page-sub    { font-size:14px; color:var(--text2); margin-top:6px; }
 .page-meta   { font-size:11px; color:var(--text3); margin-top:6px; display:flex; gap:6px;
                flex-wrap:wrap; align-items:baseline; }
 .meta-key    { text-transform:uppercase; letter-spacing:.8px; font-weight:600; }
@@ -848,9 +848,9 @@ const APP_CSS: &str = r#"
 .form-section.nested { padding-left:10px; border-left:1px solid var(--border); margin-top:4px; }
 .form-label      { font-size:11px; font-weight:600; color:var(--text);
                    text-transform:uppercase; letter-spacing:.6px; }
-.form-label.sm   { font-size:10px; font-weight:500; color:var(--text2);
+.form-label.sm   { font-size:11px; font-weight:600; color:var(--text2);
                    text-transform:none; letter-spacing:0; }
-.form-hint       { font-size:11px; color:var(--text3); }
+.form-hint       { font-size:12px; color:var(--text3); }
 .radio-group     { display:flex; gap:14px; }
 .radio-label     { display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;
                    color:var(--text2); }
@@ -888,10 +888,10 @@ const APP_CSS: &str = r#"
 
 /* Search button — subtle, not gradient. */
 .search-btn      { display:flex; align-items:center; justify-content:center; gap:8px;
-                   background:var(--accent2); color:#fff; border:0; border-radius:var(--radius-sm);
-                   padding:10px 16px; font-size:13px; font-weight:600; cursor:pointer;
+                   background:var(--wd-hyperlink); color:#fff; border:0; border-radius:var(--radius-sm);
+                   padding:11px 16px; font-size:14px; font-weight:700; cursor:pointer;
                    box-shadow:var(--shadow-xs); transition:background .15s, box-shadow .15s; }
-.search-btn:hover:not(:disabled)    { background:var(--accent); }
+.search-btn:hover:not(:disabled)    { background:#2b66ad; }
 .search-btn:hover:not(:disabled)    { box-shadow:var(--shadow-sm); }
 .search-btn:disabled                { opacity:.5; cursor:not-allowed; }
 
@@ -932,12 +932,13 @@ const APP_CSS: &str = r#"
 
 .table-scroll    { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius);
                    background:var(--bg2); box-shadow:var(--shadow-sm); }
-.results-table   { width:100%; border-collapse:collapse; font-size:13px; }
+.results-table   { width:100%; border-collapse:collapse; font-size:14px; }
 .results-table thead { position:sticky; top:0; z-index:2; background:var(--bg2); }
 .sort-th, .th-static { padding:10px 12px; text-align:left; font-size:10px; font-weight:600;
                        color:var(--text3); border-bottom:1px solid var(--border);
                        white-space:nowrap; user-select:none;
                        text-transform:uppercase; letter-spacing:.8px; }
+.th-static { color:var(--wd-reference); }
 .sort-th         { cursor:pointer; }
 .sort-th:hover   { color:var(--text); }
 .sort-icon       { color:var(--text3); font-size:10px; margin-left:2px; }
@@ -949,9 +950,13 @@ const APP_CSS: &str = r#"
 .stat-bar        { display:flex; flex-wrap:wrap; gap:18px; align-items:baseline; }
 .stat-badge      { display:flex; flex-direction:column; gap:2px; }
 .stat-icon       { display:none; }          /* keep markup minimal, hide legacy icons */
-.stat-value      { font-size:17px; font-weight:600; color:var(--text); font-variant-numeric:tabular-nums; }
+.stat-value      { font-size:18px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
 .stat-label      { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.8px;
                    font-weight:600; }
+.stat-badge:nth-child(1) .stat-value { color:var(--wd-compound); }
+.stat-badge:nth-child(2) .stat-value { color:var(--wd-taxon); }
+.stat-badge:nth-child(3) .stat-value { color:var(--wd-reference); }
+.stat-badge:nth-child(4) .stat-value { color:var(--wd-hyperlink); }
 
 /* ── Cell types ──────────────────────────────────────────────────────────── */
 .td-depict       { width:130px; padding:6px 10px !important; }
@@ -963,8 +968,24 @@ const APP_CSS: &str = r#"
 .cell-primary    { font-weight:500; }
 .primary-link    { color:var(--text); }
 .primary-link:hover { color:var(--wd-hyperlink); text-decoration:none; }
-.primary-link.taxon { color:var(--wd-taxon); font-style:italic; }
-.primary-link.taxon:hover { color:#2d8656; }
+
+/* Entity-link identity mapping:
+   compounds = red, taxa links = green (except taxon name), references/statement = blue. */
+.td-compound a:not(.primary-link) { color:var(--wd-compound); }
+.td-compound a:not(.primary-link):hover { color:#7f0000; text-decoration:none; }
+
+.td-taxon a { color:var(--wd-taxon); }
+.td-taxon a:hover { color:#2d8656; text-decoration:none; }
+.primary-link.taxon { color:var(--text); font-style:italic; }
+.primary-link.taxon:hover { color:var(--text); text-decoration:none; }
+
+.td-ref a:not(.primary-link) { color:var(--wd-reference); }
+.td-ref a:not(.primary-link):hover { color:#00507a; text-decoration:none; }
+
+.td-compound .primary-link,
+.td-ref .primary-link { color:var(--text); }
+.td-compound .primary-link:hover,
+.td-ref .primary-link:hover { color:var(--text); text-decoration:none; }
 
 /* Unified ID badge */
 .badge-row       { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
@@ -978,14 +999,16 @@ const APP_CSS: &str = r#"
                             border-color:rgba(51,153,102,.35); }
 .td-ref      .id-badge.wd { background:rgba(0,102,153,.15); color:var(--wd-reference);
                             border-color:rgba(0,102,153,.35); }
-.id-badge.sc     { background:rgba(88,166,255,.12); color:var(--accent); border-color:rgba(88,166,255,.3); }
-.id-badge.doi    { background:rgba(210,153,34,.12); color:var(--yellow);  border-color:rgba(210,153,34,.35); }
-.id-badge.stmt   { background:rgba(188,140,255,.1);  color:var(--purple);  border-color:rgba(188,140,255,.28); }
+.id-badge.sc     { background:rgba(153,0,0,.12); color:var(--wd-compound); border-color:rgba(153,0,0,.3); }
+.id-badge.doi    { background:rgba(0,102,153,.12); color:var(--wd-reference); border-color:rgba(0,102,153,.3); }
+.id-badge.stmt   { background:rgba(0,102,153,.12); color:var(--wd-reference); border-color:rgba(0,102,153,.3); }
+.id-badge.stmt.mono { color:var(--wd-reference); border-color:rgba(0,102,153,.3); background:rgba(0,102,153,.12); }
 .id-badge.mono   { background:var(--surface); color:var(--text2); border-color:var(--border); }
+.id-badge.mono.inchikey { background:rgba(153,0,0,.12); color:var(--wd-compound); border-color:rgba(153,0,0,.3); }
 
 .td-mono         { font-family:var(--mono); font-size:11px; white-space:nowrap; }
 .td-num          { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
-.td-formula .formula { font-family:var(--mono); font-size:12px; color:var(--purple); }
+.td-formula .formula { font-family:var(--mono); font-size:12px; color:var(--text); }
 .td-year         { text-align:center; color:var(--text2); white-space:nowrap; font-variant-numeric:tabular-nums; }
 .na              { color:var(--text3); }
 
@@ -1052,8 +1075,8 @@ const APP_CSS: &str = r#"
   .sidebar.mobile-closed .search-panel { display:none; }
   .sidebar.mobile-open .search-panel { display:flex; }
 
-  .page-title { font-size:16px; }
-  .page-sub { font-size:12px; }
+  .page-title { font-size:18px; }
+  .page-sub { font-size:13px; }
   .search-panel { gap:12px; }
   .radio-group, .range-inputs, .toolbar-actions, .footer-row { flex-wrap:wrap; }
   .range-pair { min-width:120px; }
@@ -1062,7 +1085,7 @@ const APP_CSS: &str = r#"
   .form-input, .form-textarea, .search-btn, select, input, textarea { font-size:16px; }
 
   .results-wrap { gap:10px; }
-  .results-table { font-size:12px; }
+  .results-table { font-size:13px; }
   .sort-th, .th-static { padding:8px 8px; font-size:9px; }
   .data-row td { padding:8px 8px; }
 

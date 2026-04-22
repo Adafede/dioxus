@@ -460,7 +460,7 @@ fn Row(entry: CompoundEntry) -> Element {
                             href: "{search_url}",
                             target: "_blank",
                             rel: "noopener noreferrer",
-                            class: "id-badge mono",
+                            class: "id-badge mono inchikey",
                             title: "{ik}",
                             aria_label: "Search Wikidata for InChIKey {ik}",
                             "{short_inchikey(ik)}"
@@ -560,7 +560,7 @@ fn Row(entry: CompoundEntry) -> Element {
                             class: "id-badge stmt mono",
                             title: "{stmt}",
                             aria_label: "Wikidata statement {stmt}",
-                            "stmt"
+                            "statement"
                         }
                     }
                 }
