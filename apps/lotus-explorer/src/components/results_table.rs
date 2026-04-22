@@ -2,21 +2,23 @@ use crate::export;
 use crate::models::*;
 use crate::sparql;
 use dioxus::prelude::*;
+use std::sync::Arc;
 
 const VIRTUAL_INITIAL_ROWS: usize = 120;
 const VIRTUAL_STEP_ROWS: usize = 200;
 
 /// Human-facing QLever UI endpoint (for the "Open in QLever" deep-link).
-/// The JSON API lives at `https://qlever.dev/api/wikidata`; the interactive
-/// UI is one path up at `https://qlever.dev/wikidata`.
 const QLEVER_UI: &str = "https://qlever.dev/wikidata";
 
 #[component]
 pub fn ResultsTable(
-    entries: Vec<CompoundEntry>,
-    /// Full filtered dataset — exports run over this so the files contain
-    /// every row even when the on-screen table is display-capped.
-    export_rows: Vec<CompoundEntry>,
+    /// Display rows (capped to `TABLE_ROW_LIMIT`). Passed as a `Signal` so the
+    /// prop diff is identity-based (pointer compare on the generational-box id)
+    /// rather than content-based — we never scan the whole Vec just to decide
+    /// whether the table needs to re-render.
+    entries: ReadSignal<Rows>,
+    /// Full filtered dataset — kept for future in-memory export paths.
+    export_rows: ReadSignal<Rows>,
     stats: DatasetStats,
     total_stats: Option<DatasetStats>,
     total_matches: Option<usize>,
@@ -28,31 +30,47 @@ pub fn ResultsTable(
     result_hash: Option<String>,
     /// Active search criteria — used to build Python-compatible download
     /// filenames (taxon slug + optional search-type suffix).
-    criteria: SearchCriteria,
+    criteria: ReadSignal<SearchCriteria>,
 ) -> Element {
+    let _ = export_rows; // reserved for future in-memory export paths
+    // When `total_stats` is available we already hold exact counts for the
+    // whole filtered dataset (the parser scans every CSV row even past the
+    // display cap), so no "+" suffix is needed. Only fall back to the
+    // capped `stats` — and only then show "+" — when we really don't know
+    // the true totals.
+    let has_full_stats = total_stats.is_some();
     let display_stats = total_stats.unwrap_or_else(|| stats.clone());
-    let stats_partial = total_matches
-        .map(|n| n > entries.len())
-        .unwrap_or(entries.len() >= TABLE_ROW_LIMIT);
+    let total = entries.read().len();
+    let stats_partial = if has_full_stats {
+        false
+    } else {
+        total_matches
+            .map(|n| n > total)
+            .unwrap_or(total >= TABLE_ROW_LIMIT)
+    };
     let entries_value = total_matches.unwrap_or(display_stats.n_entries);
-    let total = entries.len();
     let _ = page;
 
-    // Sort
-    let mut sorted = entries.clone();
-    {
-        let s = sort.read();
-        sorted.sort_by(|a, b| {
+    // Memoised sort: compute a permutation of row indices instead of cloning
+    // the whole Vec to sort it. Recomputes only when `entries` or `sort`
+    // actually change.
+    let sorted_indices: Memo<Arc<[u32]>> = use_memo(move || {
+        let rows = entries.read();
+        let s = *sort.read();
+        let mut idx: Vec<u32> = (0..rows.len() as u32).collect();
+        idx.sort_by(|&a, &b| {
+            let ea = &rows[a as usize];
+            let eb = &rows[b as usize];
             let cmp = match s.col {
-                SortColumn::Name => a.name.cmp(&b.name),
-                SortColumn::Mass => a
+                SortColumn::Name => ea.name.cmp(&eb.name),
+                SortColumn::Mass => ea
                     .mass
-                    .partial_cmp(&b.mass)
+                    .partial_cmp(&eb.mass)
                     .unwrap_or(std::cmp::Ordering::Equal),
-                SortColumn::Formula => a.formula.cmp(&b.formula),
-                SortColumn::TaxonName => a.taxon_name.cmp(&b.taxon_name),
-                SortColumn::PubYear => a.pub_year.cmp(&b.pub_year),
-                SortColumn::RefTitle => a.ref_title.cmp(&b.ref_title),
+                SortColumn::Formula => ea.formula.cmp(&eb.formula),
+                SortColumn::TaxonName => ea.taxon_name.cmp(&eb.taxon_name),
+                SortColumn::PubYear => ea.pub_year.cmp(&eb.pub_year),
+                SortColumn::RefTitle => ea.ref_title.cmp(&eb.ref_title),
             };
             if s.dir == SortDir::Desc {
                 cmp.reverse()
@@ -60,14 +78,14 @@ pub fn ResultsTable(
                 cmp
             }
         });
-    }
+        Arc::from(idx.into_boxed_slice())
+    });
 
     let mut visible_rows_limit = use_signal(|| VIRTUAL_INITIAL_ROWS);
-    let visible_count = (*visible_rows_limit.read()).min(sorted.len());
-    let visible_rows: Vec<CompoundEntry> = sorted.iter().take(visible_count).cloned().collect();
+    let visible_count = (*visible_rows_limit.read()).min(total);
 
-    let sort_icon = |col: SortColumn| -> &'static str {
-        let s = sort.read();
+    let sort_icon = move |col: SortColumn| -> &'static str {
+        let s = *sort.read();
         if s.col == col {
             if s.dir == SortDir::Asc { "↑" } else { "↓" }
         } else {
@@ -75,7 +93,7 @@ pub fn ResultsTable(
         }
     };
 
-    let toggle_sort = |col: SortColumn| {
+    let toggle_sort = move |col: SortColumn| {
         move |_: Event<MouseData>| {
             let mut s = sort.write();
             if s.col == col {
@@ -92,31 +110,36 @@ pub fn ResultsTable(
         }
     };
 
-    // ── Export (runs over the *full* filtered set, not just the visible page) ──
+    // ── Export filenames & URLs (memoised; only rebuild when inputs change) ──
     let export_available = sparql_query.is_some() || metadata_json.is_some();
-    // Python-compatible filenames: {YYYYMMDD}_lotus_{safe_taxon}[_{search_type}].{ext}
-    let search_type_suffix: Option<&str> = if criteria.smiles.trim().is_empty() {
-        None
-    } else {
-        Some(match criteria.smiles_search_type {
-            SmilesSearchType::Substructure => "substructure",
-            SmilesSearchType::Similarity => "similarity",
-        })
-    };
-    let csv_filename = export::generate_filename(&criteria.taxon, "csv", search_type_suffix);
-    let json_filename = export::generate_filename(&criteria.taxon, "ndjson", search_type_suffix);
-    let ttl_filename = export::generate_filename(&criteria.taxon, "ttl", search_type_suffix);
+
+    let csv_filename = use_memo(move || {
+        let c = criteria.read();
+        export::generate_filename(&c.taxon, "csv", search_type_suffix(&c))
+    });
+    let json_filename = use_memo(move || {
+        let c = criteria.read();
+        export::generate_filename(&c.taxon, "ndjson", search_type_suffix(&c))
+    });
+    let ttl_filename = use_memo(move || {
+        let c = criteria.read();
+        export::generate_filename(&c.taxon, "ttl", search_type_suffix(&c))
+    });
+
     // Metadata filename mirrors Python: `{query_hash}_{result_hash}_metadata.json`.
     let metadata_filename = match (query_hash.as_deref(), result_hash.as_deref()) {
         (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
-        _ => export::generate_filename(&criteria.taxon, "metadata.json", search_type_suffix),
+        _ => {
+            let c = criteria.read();
+            export::generate_filename(&c.taxon, "metadata.json", search_type_suffix(&c))
+        }
     };
-    let metadata_body = metadata_json.clone();
+
     let qlever_ui_url = sparql_query
         .as_deref()
         .map(|q| format!("{QLEVER_UI}?query={}", urlencoding::encode(q)));
-    let download_busy = use_signal(|| false);
-    let download_status: Signal<Option<String>> = use_signal(|| None);
+    let mut download_busy = use_signal(|| false);
+    let mut download_status: Signal<Option<String>> = use_signal(|| None);
     let download_status_text = download_status
         .read()
         .clone()
@@ -168,16 +191,14 @@ pub fn ResultsTable(
                                     r#type: "button",
                                     disabled: *download_busy.read(),
                                     onclick: {
-                                        let filename = csv_filename.clone();
                                         let q = query.to_string();
-                                        let mut busy = download_busy;
-                                        let mut status = download_status;
                                         move |_| {
-                                            *busy.write() = true;
-                                            *status.write() = Some("Starting CSV download...".to_string());
+                                            let filename = csv_filename.read().clone();
+                                            *download_busy.write() = true;
+                                            *download_status.write() = Some("Starting CSV download...".to_string());
                                             trigger_query_csv_download(&q, &filename);
-                                            *busy.write() = false;
-                                            *status.write() = None;
+                                            *download_busy.write() = false;
+                                            *download_status.write() = None;
                                         }
                                     },
                                     title: "Download all rows as CSV",
@@ -189,27 +210,20 @@ pub fn ResultsTable(
                                     disabled: *download_busy.read(),
                                     onclick: {
                                         let q = query.to_string();
-                                        let filename = json_filename.clone();
-                                        let mut busy = download_busy;
-                                        let mut status = download_status;
                                         move |_| {
-                                            *busy.write() = true;
-                                            *status.write() = Some("Preparing JSON download...".to_string());
-                                            spawn({
-                                                let q = q.clone();
-                                                let filename = filename.clone();
-                                                let mut busy = busy;
-                                                let mut status = status;
-                                                async move {
-                                                    if let Ok(csv) = sparql::execute_sparql(&q).await {
-                                                        if let Ok(rows) = sparql::parse_compounds_csv(&csv) {
-                                                            let body = export::build_ndjson(&rows);
-                                                            trigger_download(&filename, "application/x-ndjson", &body);
-                                                        }
+                                            let q = q.clone();
+                                            let filename = json_filename.read().clone();
+                                            *download_busy.write() = true;
+                                            *download_status.write() = Some("Preparing JSON download...".to_string());
+                                            spawn(async move {
+                                                if let Ok(csv) = sparql::execute_sparql_cached(&q).await {
+                                                    if let Ok(rows) = sparql::parse_compounds_csv(csv.as_str()) {
+                                                        let body = export::build_ndjson(&rows);
+                                                        trigger_download(&filename, "application/x-ndjson", &body);
                                                     }
-                                                    *busy.write() = false;
-                                                    *status.write() = None;
                                                 }
+                                                *download_busy.write() = false;
+                                                *download_status.write() = None;
                                             });
                                         }
                                     },
@@ -222,49 +236,36 @@ pub fn ResultsTable(
                                     disabled: *download_busy.read(),
                                     onclick: {
                                         let q = query.to_string();
-                                        let filename = ttl_filename.clone();
                                         let query_hash_value = query_hash.clone();
                                         let result_hash_value = result_hash.clone();
-                                        let criteria_value = criteria.clone();
-                                        let mut busy = download_busy;
-                                        let mut status = download_status;
                                         move |_| {
-                                            *busy.write() = true;
-                                            *status.write() = Some("Preparing TTL download...".to_string());
-                                            spawn({
-                                                let q = q.clone();
-                                                let filename = filename.clone();
-                                                let query_hash_value = query_hash_value.clone();
-                                                let result_hash_value = result_hash_value.clone();
-                                                let criteria_value = criteria_value.clone();
-                                                let mut busy = busy;
-                                                let mut status = status;
-                                                async move {
-                                                    if let Ok(csv) = sparql::execute_sparql(&q).await {
-                                                        if let Ok(rows) = sparql::parse_compounds_csv(&csv) {
-                                                            let full_stats = DatasetStats::from_entries(&rows);
-                                                            let ttl = export::build_ttl(
-                                                                &rows,
-                                                                export::MetadataInputs {
-                                                                    criteria: &criteria_value,
-                                                                    qid: None,
-                                                                    stats: &full_stats,
-                                                                    number_of_records_override:
-                                                                        Some(full_stats.n_entries),
-                                                                    query_hash: query_hash_value
-                                                                        .as_deref()
-                                                                        .unwrap_or(""),
-                                                                    result_hash: result_hash_value
-                                                                        .as_deref()
-                                                                        .unwrap_or(""),
-                                                                },
-                                                            );
-                                                            trigger_download(&filename, "text/turtle", &ttl);
-                                                        }
+                                            let q = q.clone();
+                                            let filename = ttl_filename.read().clone();
+                                            let qh = query_hash_value.clone();
+                                            let rh = result_hash_value.clone();
+                                            let crit = criteria.peek().clone();
+                                            *download_busy.write() = true;
+                                            *download_status.write() = Some("Preparing TTL download...".to_string());
+                                            spawn(async move {
+                                                if let Ok(csv) = sparql::execute_sparql_cached(&q).await {
+                                                    if let Ok(rows) = sparql::parse_compounds_csv(csv.as_str()) {
+                                                        let full_stats = DatasetStats::from_entries(&rows);
+                                                        let ttl = export::build_ttl(
+                                                            &rows,
+                                                            export::MetadataInputs {
+                                                                criteria: &crit,
+                                                                qid: None,
+                                                                stats: &full_stats,
+                                                                number_of_records_override: Some(full_stats.n_entries),
+                                                                query_hash: qh.as_deref().unwrap_or(""),
+                                                                result_hash: rh.as_deref().unwrap_or(""),
+                                                            },
+                                                        );
+                                                        trigger_download(&filename, "text/turtle", &ttl);
                                                     }
-                                                    *busy.write() = false;
-                                                    *status.write() = None;
                                                 }
+                                                *download_busy.write() = false;
+                                                *download_status.write() = None;
                                             });
                                         }
                                     },
@@ -272,14 +273,14 @@ pub fn ResultsTable(
                                     "TTL"
                                 }
                             }
-                            if let Some(body) = metadata_body.as_ref() {
+                            if let Some(body) = metadata_json.as_ref() {
                                 button {
                                     class: "btn btn-sm",
                                     r#type: "button",
                                     disabled: *download_busy.read(),
                                     onclick: {
-                                        let filename = metadata_filename.clone();
                                         let body = body.clone();
+                                        let filename = metadata_filename.clone();
                                         move |_| trigger_download(&filename, "application/ld+json", &body)
                                     },
                                     title: "Download Schema.org metadata (JSON-LD)",
@@ -320,7 +321,7 @@ pub fn ResultsTable(
                             class: "btn btn-sm",
                             r#type: "button",
                             onclick: move |_| {
-                                let next = (*visible_rows_limit.read()).saturating_add(VIRTUAL_STEP_ROWS);
+                                let next = (*visible_rows_limit.peek()).saturating_add(VIRTUAL_STEP_ROWS);
                                 *visible_rows_limit.write() = next;
                             },
                             "Load {VIRTUAL_STEP_ROWS} more"
@@ -410,10 +411,21 @@ pub fn ResultsTable(
                             }
                         }
                         tbody {
-                            for entry in visible_rows.iter() {
-                                Row {
-                                    key: "{entry.compound_qid}-{entry.taxon_qid}-{entry.reference_qid}",
-                                    entry: entry.clone(),
+                            {
+                                let rows = entries.read();
+                                let order = sorted_indices.read();
+                                let visible: Vec<CompoundEntry> = order
+                                    .iter()
+                                    .take(visible_count)
+                                    .map(|&i| rows[i as usize].clone())
+                                    .collect();
+                                rsx! {
+                                    for entry in visible {
+                                        Row {
+                                            key: "{entry.compound_qid}-{entry.taxon_qid}-{entry.reference_qid}",
+                                            entry,
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -426,7 +438,7 @@ pub fn ResultsTable(
                             class: "btn btn-sm",
                             r#type: "button",
                             onclick: move |_| {
-                                let next = (*visible_rows_limit.read()).saturating_add(VIRTUAL_STEP_ROWS);
+                                let next = (*visible_rows_limit.peek()).saturating_add(VIRTUAL_STEP_ROWS);
                                 *visible_rows_limit.write() = next;
                             },
                             "Load more"
@@ -435,6 +447,17 @@ pub fn ResultsTable(
                 }
             }
         }
+    }
+}
+
+fn search_type_suffix(criteria: &SearchCriteria) -> Option<&'static str> {
+    if criteria.smiles.trim().is_empty() {
+        None
+    } else {
+        Some(match criteria.smiles_search_type {
+            SmilesSearchType::Substructure => "substructure",
+            SmilesSearchType::Similarity => "similarity",
+        })
     }
 }
 
@@ -455,34 +478,32 @@ fn StatBadge(value: usize, label: &'static str, plus: bool) -> Element {
     }
 }
 
-// Pagination is intentionally replaced by chunked rendering to keep the DOM
-// small while still allowing users to progressively load large result sets.
-
 #[component]
 fn Row(entry: CompoundEntry) -> Element {
-    let wu = entry.compound_url();
-    let tu = entry.taxon_url();
-    let ru = entry.reference_url();
-    let su = entry.scholia_url();
-    let doi = entry.doi_url();
-    let depict = entry.depict_url();
-    let statement_url = entry.statement_url();
+    // URLs can be interpolated inline in RSX — no need for intermediate
+    // `String` allocations. Only DOI / depict / statement / inchikey search
+    // require conditional work, so those are the only helpers we still call.
+    let compound_qid = entry.compound_qid.clone();
+    let taxon_qid = entry.taxon_qid.clone();
+    let reference_qid = entry.reference_qid.clone();
+    let doi_url = entry.doi_url();
+    let depict_url = entry.depict_url();
     let statement_id = entry.statement_id();
-    let name = if entry.name.trim().is_empty() {
-        entry.compound_qid.clone()
+    let name: &str = if entry.name.trim().is_empty() {
+        entry.compound_qid.as_str()
     } else {
-        entry.name.clone()
+        entry.name.as_str()
     };
     let inchikey_search = entry
         .inchikey
-        .as_ref()
+        .as_deref()
         .map(|ik| format!("https://www.wikidata.org/wiki/Special:Search?search={ik}"));
 
     rsx! {
         tr { class: "data-row",
             // ── Structure depiction ─────────────────────────────────────────
             td { class: "td-depict",
-                if let Some(url) = depict {
+                if let Some(url) = depict_url {
                     a {
                         href: "{url}",
                         target: "_blank",
@@ -506,7 +527,7 @@ fn Row(entry: CompoundEntry) -> Element {
             td { class: "td-compound",
                 div { class: "cell-primary",
                     a {
-                        href: "{wu}",
+                        href: "https://www.wikidata.org/entity/{compound_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "primary-link",
@@ -515,23 +536,27 @@ fn Row(entry: CompoundEntry) -> Element {
                 }
                 div { class: "badge-row",
                     a {
-                        href: "{wu}",
+                        href: "https://www.wikidata.org/entity/{compound_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge wd",
                         title: "Open in Wikidata",
-                        aria_label: "Wikidata {entry.compound_qid}",
-                        "{entry.compound_qid}"
+                        aria_label: "Wikidata {compound_qid}",
+                        "{compound_qid}"
                     }
                     a {
-                        href: "{su}",
+                        href: "https://scholia.toolforge.org/chemical/{compound_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge sc",
                         title: "Open in Scholia",
                         "Scholia"
                     }
-                    if let (Some(ik), Some(search_url)) = (&entry.inchikey, inchikey_search.as_deref()) {
+                    if let (Some(ik), Some(search_url)) = (
+                        entry.inchikey.as_deref(),
+                        inchikey_search.as_deref(),
+                    )
+                    {
                         a {
                             href: "{search_url}",
                             target: "_blank",
@@ -555,7 +580,7 @@ fn Row(entry: CompoundEntry) -> Element {
             }
             // ── Formula ─────────────────────────────────────────────────────
             td { class: "td-formula",
-                if let Some(f) = &entry.formula {
+                if let Some(f) = entry.formula.as_deref() {
                     span { class: "formula", "{f}" }
                 } else {
                     span { class: "na", "—" }
@@ -566,7 +591,7 @@ fn Row(entry: CompoundEntry) -> Element {
             td { class: "td-taxon",
                 div { class: "cell-primary",
                     a {
-                        href: "{tu}",
+                        href: "https://www.wikidata.org/entity/{taxon_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "primary-link taxon",
@@ -575,13 +600,13 @@ fn Row(entry: CompoundEntry) -> Element {
                 }
                 div { class: "badge-row",
                     a {
-                        href: "{tu}",
+                        href: "https://www.wikidata.org/entity/{taxon_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge wd",
                         title: "Open in Wikidata",
-                        aria_label: "Wikidata {entry.taxon_qid}",
-                        "{entry.taxon_qid}"
+                        aria_label: "Wikidata {taxon_qid}",
+                        "{taxon_qid}"
                     }
                 }
             }
@@ -589,9 +614,9 @@ fn Row(entry: CompoundEntry) -> Element {
             // ── Reference: title link + QID / DOI / statement badges ────────
             td { class: "td-ref",
                 div { class: "cell-primary",
-                    if let Some(t) = &entry.ref_title {
+                    if let Some(t) = entry.ref_title.as_deref() {
                         a {
-                            href: "{ru}",
+                            href: "https://www.wikidata.org/entity/{reference_qid}",
                             target: "_blank",
                             rel: "noopener noreferrer",
                             class: "primary-link",
@@ -600,25 +625,25 @@ fn Row(entry: CompoundEntry) -> Element {
                         }
                     } else {
                         a {
-                            href: "{ru}",
+                            href: "https://www.wikidata.org/entity/{reference_qid}",
                             target: "_blank",
                             rel: "noopener noreferrer",
                             class: "primary-link",
-                            "{entry.reference_qid}"
+                            "{reference_qid}"
                         }
                     }
                 }
                 div { class: "badge-row",
                     a {
-                        href: "{ru}",
+                        href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge wd",
                         title: "Open in Wikidata",
-                        aria_label: "Wikidata {entry.reference_qid}",
-                        "{entry.reference_qid}"
+                        aria_label: "Wikidata {reference_qid}",
+                        "{reference_qid}"
                     }
-                    if let Some(url) = doi {
+                    if let Some(url) = doi_url {
                         a {
                             href: "{url}",
                             target: "_blank",
@@ -628,9 +653,9 @@ fn Row(entry: CompoundEntry) -> Element {
                             "DOI"
                         }
                     }
-                    if let (Some(url), Some(stmt)) = (statement_url.as_deref(), statement_id.as_deref()) {
+                    if let Some(stmt) = statement_id.as_deref() {
                         a {
-                            href: "{url}",
+                            href: "https://www.wikidata.org/entity/statement/{stmt}",
                             target: "_blank",
                             rel: "noopener noreferrer",
                             class: "id-badge stmt mono",
@@ -654,9 +679,8 @@ fn Row(entry: CompoundEntry) -> Element {
     }
 }
 
-fn short_inchikey(ik: &str) -> String {
-    // Show only the 14-char connectivity hash (first block) so the badge stays compact.
-    ik.split('-').next().unwrap_or(ik).to_string()
+fn short_inchikey(ik: &str) -> &str {
+    ik.split('-').next().unwrap_or(ik)
 }
 
 /// ARIA `aria-sort` value for a column header.
@@ -680,57 +704,7 @@ fn truncate_title(title: &str, max_chars: usize) -> String {
     out
 }
 
-// ── CSV export ────────────────────────────────────────────────────────────────
-
-/// Build a standalone CSV document for the full filtered dataset. Column
-/// order mirrors the Python `build_display_dataframe` export layout.
-#[allow(dead_code)]
-fn build_csv(rows: &[CompoundEntry]) -> String {
-    let mut out = String::with_capacity(rows.len() * 256);
-    out.push_str(
-        "compound_qid,compound_name,compound_inchikey,compound_smiles,compound_mass,\
-         compound_formula,taxon_qid,taxon_name,reference_qid,reference_title,\
-         reference_doi,reference_year,statement_id\n",
-    );
-    for e in rows {
-        let mass_str = e.mass.map(|m| format!("{m}")).unwrap_or_default();
-        let year_str = e.pub_year.map(|y| y.to_string()).unwrap_or_default();
-        let stmt_str = e.statement_id().unwrap_or_default();
-        let fields: [&str; 13] = [
-            e.compound_qid.as_str(),
-            e.name.as_str(),
-            e.inchikey.as_deref().unwrap_or(""),
-            e.smiles.as_deref().unwrap_or(""),
-            mass_str.as_str(),
-            e.formula.as_deref().unwrap_or(""),
-            e.taxon_qid.as_str(),
-            e.taxon_name.as_str(),
-            e.reference_qid.as_str(),
-            e.ref_title.as_deref().unwrap_or(""),
-            e.ref_doi.as_deref().unwrap_or(""),
-            year_str.as_str(),
-            stmt_str.as_str(),
-        ];
-        for (i, f) in fields.iter().enumerate() {
-            if i > 0 {
-                out.push(',');
-            }
-            out.push_str(&csv_escape(f));
-        }
-        out.push('\n');
-    }
-    out
-}
-
-#[allow(dead_code)]
-fn csv_escape(s: &str) -> String {
-    if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
-        let escaped = s.replace('"', "\"\"");
-        format!("\"{escaped}\"")
-    } else {
-        s.to_string()
-    }
-}
+// ── Download helpers ──────────────────────────────────────────────────────────
 
 fn trigger_download(filename: &str, mime: &str, body: &str) {
     #[cfg(target_arch = "wasm32")]
@@ -740,8 +714,6 @@ fn trigger_download(filename: &str, mime: &str, body: &str) {
         let mime_json = serde_json::to_string(mime)
             .unwrap_or_else(|_| "\"application/octet-stream\"".to_string());
         let body_json = serde_json::to_string(body).unwrap_or_else(|_| "\"\"".to_string());
-        // iOS/Orion often ignore `a[download]` for data URLs. Blob URLs with
-        // an explicit iOS fallback (open in a new tab) are more reliable.
         let script = format!(
             r#"(() => {{
   const filename = {filename_json};
@@ -783,7 +755,6 @@ fn trigger_query_csv_download(sparql_query: &str, filename: &str) {
         let query_json = serde_json::to_string(sparql_query).unwrap_or_else(|_| "\"\"".to_string());
         let filename_json =
             serde_json::to_string(filename).unwrap_or_else(|_| "\"download.csv\"".to_string());
-        // Fetch full CSV via POST and force the app's filename convention.
         let script = format!(
             r#"(() => {{
   const endpoint = {endpoint_json};
@@ -811,7 +782,6 @@ fn trigger_query_csv_download(sparql_query: &str, filename: &str) {
       setTimeout(() => URL.revokeObjectURL(url), 0);
     }})
     .catch(() => {{
-      // Fallback: at least open QLever UI with query if fetch/download fails.
       const ui = "https://qlever.dev/wikidata?query=" + encodeURIComponent(query);
       window.open(ui, "_blank", "noopener,noreferrer");
     }});

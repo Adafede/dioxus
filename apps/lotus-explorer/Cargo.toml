@@ -16,15 +16,12 @@ csv = { workspace = true }
 # feature, dioxus-cli 0.7+ fails with "Could not automatically detect
 # target triple".
 dioxus = { workspace = true }
-dioxus-router = { workspace = true }
-js-sys.workspace = true
 log = { workspace = true }
-reqwest = { workspace = true }
 serde_json = { workspace = true }
-sha2 = "0.10"
+sha2 = { version = "0.10", default-features = false }
 shared = { path = "../../crates/shared" }
 urlencoding = { workspace = true }
-web-sys.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true }
+web-sys = { workspace = true, features = ["Window", "Location"] }

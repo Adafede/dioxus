@@ -12,6 +12,8 @@ use dioxus::prelude::*;
 use models::*;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
+use std::sync::Arc;
+
 
 fn main() {
     console_log::init_with_level(log::Level::Debug).ok();
@@ -23,7 +25,10 @@ fn main() {
 #[component]
 fn App() -> Element {
     let criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
-    let mut entries: Signal<Vec<CompoundEntry>> = use_signal(Vec::new);
+    // Entries live behind an `Arc<[…]>` so prop/signal clones are a single
+    // refcount bump instead of duplicating the whole result buffer.
+    let mut entries: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
+    let mut export_rows: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
     let mut loading: Signal<bool> = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
     let mut searched_once: Signal<bool> = use_signal(|| false);
@@ -31,23 +36,26 @@ fn App() -> Element {
     let mut resolved_qid: Signal<Option<String>> = use_signal(|| None);
     let mut query_hash: Signal<Option<String>> = use_signal(|| None);
     let mut result_hash: Signal<Option<String>> = use_signal(|| None);
-    let mut shareable_url: Signal<Option<String>> = use_signal(|| None);
     let mut sparql_query: Signal<Option<String>> = use_signal(|| None);
     let mut truncated: Signal<Option<(usize, usize)>> = use_signal(|| None);
     let mut metadata_json: Signal<Option<String>> = use_signal(|| None);
     let mut total_matches: Signal<Option<usize>> = use_signal(|| None);
     let mut total_stats: Signal<Option<DatasetStats>> = use_signal(|| None);
-    let mut export_rows: Signal<Vec<CompoundEntry>> = use_signal(Vec::new);
     let sort: Signal<SortState> = use_signal(SortState::default);
     let mut page: Signal<usize> = use_signal(|| 0usize);
     let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
 
+    // Memoised derived state — recomputed only when their inputs change.
+    let stats = use_memo(move || DatasetStats::from_entries(&entries.read()));
+    let shareable_url =
+        use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));
+
     // ── Search handler ────────────────────────────────────────────────────────
     let on_search = move |_| {
-        if *loading.read() {
+        if *loading.peek() {
             return;
         }
-        let crit = criteria.read().clone();
+        let crit = criteria.peek().clone();
 
         if !crit.is_valid() {
             *error.write() = Some("Please enter a taxon name / QID, or a SMILES structure.".into());
@@ -57,13 +65,12 @@ fn App() -> Element {
         *error.write() = None;
         *searched_once.write() = true;
         *loading.write() = true;
-        *entries.write() = Vec::new();
-        *export_rows.write() = Vec::new();
+        *entries.write() = Arc::<[CompoundEntry]>::from([]);
+        *export_rows.write() = Arc::<[CompoundEntry]>::from([]);
         *taxon_notice.write() = None;
         *resolved_qid.write() = None;
         *query_hash.write() = None;
         *result_hash.write() = None;
-        *shareable_url.write() = None;
         *sparql_query.write() = None;
         *truncated.write() = None;
         *metadata_json.write() = None;
@@ -75,7 +82,7 @@ fn App() -> Element {
         spawn(async move {
             match do_search(crit.clone()).await {
                 Ok(mut outcome) => {
-                    // Client-side post-filters (mass, year) — mirrors Python FilterService
+                    // Client-side post-filters (mass, year) — mirrors Python FilterService.
                     if crit.has_mass_filter() {
                         outcome.rows.retain(|e| {
                             e.mass
@@ -94,10 +101,6 @@ fn App() -> Element {
                             .retain(|e| formula_matches(e.formula.as_deref(), &crit));
                     }
 
-                    // Apply the display-only row cap *after* filtering so the
-                    // hashes we compute below cover the whole filtered result
-                    // (matches Python behaviour where the query itself has no
-                    // LIMIT and the cap is purely a UI concern).
                     let full_count = outcome.rows.len();
                     let cap = TABLE_ROW_LIMIT;
                     let was_truncated = full_count > cap;
@@ -112,19 +115,22 @@ fn App() -> Element {
                         query_hash: &q_hash,
                         result_hash: &r_hash,
                     });
-                    // Keep a complete copy of the filtered rows so exports can
-                    // cover the whole dataset even when the display is capped.
-                    *export_rows.write() = outcome.rows.clone();
-                    if was_truncated {
-                        outcome.rows.truncate(cap);
-                    }
-                    let share_url = build_shareable_url(&crit);
 
+                    // Materialise rows into refcounted slices once — no further
+                    // buffer copies when we hand them out to the table / exports.
+                    let export_slice: Rows = Arc::from(outcome.rows.clone().into_boxed_slice());
+                    let display_slice: Rows = if was_truncated {
+                        outcome.rows.truncate(cap);
+                        Arc::from(outcome.rows.into_boxed_slice())
+                    } else {
+                        export_slice.clone()
+                    };
+
+                    *export_rows.write() = export_slice;
                     *resolved_qid.write() = outcome.qid;
                     *taxon_notice.write() = outcome.warning;
                     *query_hash.write() = Some(q_hash);
                     *result_hash.write() = Some(r_hash);
-                    *shareable_url.write() = share_url;
                     *sparql_query.write() = Some(outcome.query);
                     *metadata_json.write() = Some(meta_str);
                     *total_matches.write() = outcome.total_matches;
@@ -134,7 +140,7 @@ fn App() -> Element {
                     } else {
                         None
                     };
-                    *entries.write() = outcome.rows;
+                    *entries.write() = display_slice;
                     *loading.write() = false;
                 }
                 Err(e) => {
@@ -145,11 +151,7 @@ fn App() -> Element {
         });
     };
 
-    let stats = DatasetStats::from_entries(&entries.read());
-
     rsx! {
-        style { dangerous_inner_html: shared::theme::BASE_CSS }
-        style { dangerous_inner_html: APP_CSS }
 
         div { class: "app-layout",
             // ── Left sidebar ──────────────────────────────────────────────
@@ -160,7 +162,7 @@ fn App() -> Element {
                     aria_label: if *mobile_filters_open.read() { "Hide filters" } else { "Show filters" },
                     aria_expanded: if *mobile_filters_open.read() { "true" } else { "false" },
                     onclick: move |_| {
-                        let next = !*mobile_filters_open.read();
+                        let next = !*mobile_filters_open.peek();
                         *mobile_filters_open.write() = next;
                     },
                     if *mobile_filters_open.read() {
@@ -177,7 +179,7 @@ fn App() -> Element {
                         alt: "LOTUS Ferris logo",
                         width: "180",
                         height: "180",
-                        loading: "eager",
+                        loading: "lazy",
                         decoding: "async",
                     }
                 }
@@ -223,8 +225,6 @@ fn App() -> Element {
                     }
                 }
 
-                // Ketcher structure editor — full-width in the main panel so
-                // the drawing canvas has enough room.
                 KetcherPanel {}
 
                 if let Some(share) = shareable_url.read().as_deref() {
@@ -277,9 +277,9 @@ fn App() -> Element {
                     WelcomeScreen {}
                 } else {
                     ResultsTable {
-                        entries: entries.read().clone(),
-                        export_rows: export_rows.read().clone(),
-                        stats,
+                        entries,
+                        export_rows,
+                        stats: stats.read().clone(),
                         total_stats: total_stats.read().clone(),
                         total_matches: *total_matches.read(),
                         sort,
@@ -288,7 +288,7 @@ fn App() -> Element {
                         metadata_json: metadata_json.read().clone(),
                         query_hash: query_hash.read().clone(),
                         result_hash: result_hash.read().clone(),
-                        criteria: criteria.read().clone(),
+                        criteria,
                     }
                 }
 
@@ -302,72 +302,35 @@ fn App() -> Element {
 
 #[component]
 fn Footer() -> Element {
-    // Tiny helper to render a list of (href, text) pairs separated by `·`.
-    let links = |items: &[(&'static str, &'static str)], class: &'static str| -> Vec<Element> {
-        let mut out = Vec::with_capacity(items.len() * 2);
-        for (i, (href, text)) in items.iter().enumerate() {
-            if i > 0 {
-                out.push(rsx! {
-                    span { class: "footer-sep", "·" }
-                });
-            }
-            out.push(rsx! {
-                a {
-                    class: "{class}",
-                    href: "{href}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    "{text}"
-                }
-            });
-        }
-        out
-    };
-
     rsx! {
         footer { class: "app-footer",
-            div { class: "footer-row",
-                span { class: "footer-label", "Data" }
-                {
-                    links(
-                            &[
-                                ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
-                                ("https://www.wikidata.org/", "Wikidata"),
-                            ],
-                            "footer-link data",
-                        )
-                        .into_iter()
-                }
+            FooterRow {
+                label: "Data",
+                class: "footer-link data",
+                links: &[
+                    ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
+                    ("https://www.wikidata.org/", "Wikidata"),
+                ],
             }
-            div { class: "footer-row",
-                span { class: "footer-label", "Code" }
-                {
-                    links(
-                            &[
-                                (
-                                    "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer",
-                                    "lotus-explorer",
-                                ),
-                            ],
-                            "footer-link code",
-                        )
-                        .into_iter()
-                }
+            FooterRow {
+                label: "Code",
+                class: "footer-link code",
+                links: &[
+                    (
+                        "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer",
+                        "lotus-explorer",
+                    ),
+                ],
             }
-            div { class: "footer-row",
-                span { class: "footer-label", "Tools" }
-                {
-                    links(
-                            &[
-                                ("https://github.com/cdk/depict", "CDK Depict"),
-                                ("https://idsm.elixir-czech.cz/", "IDSM"),
-                                ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
-                                ("https://qlever.dev/wikidata", "QLever"),
-                            ],
-                            "footer-link tool",
-                        )
-                        .into_iter()
-                }
+            FooterRow {
+                label: "Tools",
+                class: "footer-link tool",
+                links: &[
+                    ("https://github.com/cdk/depict", "CDK Depict"),
+                    ("https://idsm.elixir-czech.cz/", "IDSM"),
+                    ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
+                    ("https://qlever.dev/wikidata", "QLever"),
+                ],
             }
             div { class: "footer-row",
                 span { class: "footer-label", "License" }
@@ -388,6 +351,31 @@ fn Footer() -> Element {
                     "AGPL-3.0"
                 }
                 span { class: "footer-aside", " for code" }
+            }
+        }
+    }
+}
+
+#[component]
+fn FooterRow(
+    label: &'static str,
+    class: &'static str,
+    links: &'static [(&'static str, &'static str)],
+) -> Element {
+    rsx! {
+        div { class: "footer-row",
+            span { class: "footer-label", "{label}" }
+            for (i, (href, text)) in links.iter().enumerate() {
+                if i > 0 {
+                    span { class: "footer-sep", "·" }
+                }
+                a {
+                    class: "{class}",
+                    href: "{href}",
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    "{text}"
+                }
             }
         }
     }
@@ -849,341 +837,3 @@ fn read_url_query_params() -> BTreeMap<String, String> {
         BTreeMap::new()
     }
 }
-
-// ── App-specific CSS (layout + LOTUS/Wikidata palette) ───────────────────────
-
-const APP_CSS: &str = r#"
-/* ── Wikidata colour palette (matches Python CONFIG) ─────────────────────── */
-:root {
-  --wd-compound:  #990000;   /* red   — compounds  */
-  --wd-taxon:     #339966;   /* green — taxa       */
-  --wd-reference: #006699;   /* blue  — references */
-  --wd-hyperlink: #3377c4;
-}
-
-/* ── Layout ──────────────────────────────────────────────────────────────── */
-.app-layout    { display:flex; height:100vh; overflow:hidden; }
-.sidebar       { width:320px; min-width:280px; height:100vh; overflow-y:auto;
-                 background:var(--bg2); border-right:1px solid var(--border); flex-shrink:0;
-                 box-shadow:var(--shadow-sm); display:flex; flex-direction:column; }
-.main-content  { flex:1; height:100vh; overflow-y:auto; display:flex; flex-direction:column; }
-
-/* ── Perceived performance ─────────────────────────────────────────────── */
-.welcome,
-.results-wrap,
-.query-panel,
-.ketcher-panel,
-.table-scroll {
-  content-visibility: auto;
-  contain-intrinsic-size: 900px;
-}
-
-/* ── Page header ─────────────────────────────────────────────────────────── */
-.page-header { padding:24px 28px 18px; border-bottom:1px solid var(--border); background:var(--bg2);
-               box-shadow:var(--shadow-xs); }
-.page-brand  { display:flex; align-items:center; gap:12px; }
-.page-title  { font-size:22px; font-weight:800; letter-spacing:-.02em; line-height:1.08; color:var(--wd-reference); }
-.page-sub    { font-size:14px; color:var(--text2); margin-top:6px; }
-.page-meta   { font-size:11px; color:var(--text3); margin-top:6px; display:flex; gap:6px;
-               flex-wrap:wrap; align-items:baseline; }
-.meta-key    { text-transform:uppercase; letter-spacing:.8px; font-weight:600; }
-.meta-val.mono { font-family:var(--mono); color:var(--text2); }
-.meta-sep    { color:var(--text3); }
-
-/* ── Notices (info / warn / error) ───────────────────────────────────────── */
-.notice           { margin:12px 28px 0; padding:10px 14px; display:flex; align-items:baseline;
-                    gap:12px; border-radius:var(--radius); font-size:13px;
-                    border:1px solid var(--border); background:var(--bg2); box-shadow:var(--shadow-xs); }
-.notice-label     { text-transform:uppercase; letter-spacing:.6px; font-size:10px; font-weight:600;
-                    padding:2px 6px; border-radius:3px; flex-shrink:0; }
-.notice-value     { flex:1; color:var(--text); word-break:break-word; }
-.notice-info      { border-color:rgba(88,166,255,.3);  background:rgba(88,166,255,.05); }
-.notice-info     .notice-label { background:rgba(88,166,255,.15); color:var(--accent); }
-.notice-warn      { border-color:rgba(210,153,34,.35); background:rgba(210,153,34,.05); }
-.notice-warn     .notice-label { background:rgba(210,153,34,.2);  color:var(--yellow); }
-.notice-error     { border-color:rgba(248,81,73,.4);   background:rgba(248,81,73,.05); }
-.notice-error    .notice-label { background:rgba(248,81,73,.2);   color:var(--red); }
-.notice-dismiss   { margin-left:auto; background:none; border:0; color:inherit; cursor:pointer;
-                    font-size:18px; line-height:1; padding:0 4px; opacity:.7; }
-.notice-dismiss:hover { opacity:1; }
-
-.notice,
-.query-panel,
-.ketcher-panel,
-.table-scroll,
-.search-btn,
-.btn {
-  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .12s ease;
-}
-
-.btn:active,
-.search-btn:active {
-  transform: translateY(1px);
-}
-
-/* ── Search panel (sidebar) ──────────────────────────────────────────────── */
-.search-panel    { padding:22px 20px; display:flex; flex-direction:column; gap:18px;
-                   background:var(--bg2); flex:1; }
-.filters-toggle  { display:none; }
-.sidebar-logo-wrap { margin-top:auto; padding:14px 12px 18px; display:flex; justify-content:center;
-                    border-top:1px solid var(--border); }
-.sidebar-logo { display:block; width:180px; height:180px; }
-
-.form-section    { display:flex; flex-direction:column; gap:5px; }
-.form-section.nested { padding-left:10px; border-left:1px solid var(--border); margin-top:4px; }
-.form-label      { font-size:11px; font-weight:600; color:var(--text);
-                   text-transform:uppercase; letter-spacing:.6px; }
-.form-label.sm   { font-size:11px; font-weight:600; color:var(--text2);
-                   text-transform:none; letter-spacing:0; }
-.form-hint       { font-size:12px; color:var(--text3); }
-.radio-group     { display:flex; gap:14px; }
-.radio-label     { display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;
-                   color:var(--text2); }
-.radio-label input { accent-color:var(--accent); }
-.range-input     { width:100%; accent-color:var(--accent); margin-top:4px; }
-.range-inputs    { display:flex; align-items:flex-end; gap:8px; }
-.range-pair      { display:flex; flex-direction:column; gap:3px; }
-.range-sep       { color:var(--text3); padding-bottom:8px; }
-
-/* ── Structure section: format pill + Ketcher editor ─────────────────────── */
-.form-textarea.mono, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.kind-pill        { display:inline-block; padding:1px 7px; border-radius:999px; font-size:10px;
-                    font-weight:700; letter-spacing:.4px; text-transform:uppercase;
-                    margin-right:6px; color:#fff; background:var(--text3); }
-.kind-pill[data-kind="smiles"]  { background:var(--accent2, #5b6cff); }
-.kind-pill[data-kind="mol2000"] { background:#c97a2b; }
-.kind-pill[data-kind="mol3000"] { background:#2b8f57; }
-.kind-note        { color:var(--text3); }
-
-.ketcher-panel    { margin:14px 28px 0; border:1px solid var(--border);
-                    border-radius:var(--radius); background:var(--bg2); box-shadow:var(--shadow-sm); }
-.ketcher-panel > summary { cursor:pointer; padding:12px 16px; font-size:13px; font-weight:600;
-                           color:var(--text); letter-spacing:.3px; user-select:none;
-                           list-style:none; }
-.ketcher-panel > summary::-webkit-details-marker { display:none; }
-.ketcher-panel > summary::before { content:"▸ "; color:var(--text3); font-size:11px; }
-.ketcher-panel[open] > summary::before { content:"▾ "; }
-.ketcher-wrap     { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
-.ketcher-iframe   { width:100%; height:min(78vh, 820px); min-height:600px;
-                    border:1px solid var(--border); border-radius:var(--radius-sm);
-                    background:#fff; }
-.ketcher-hint     { margin-top:2px; font-size:12px; color:var(--text2); }
-.ketcher-install  { color:var(--text3); font-size:10px; line-height:1.4; }
-.ketcher-install a { color:var(--accent); }
-
-/* Search button — subtle, not gradient. */
-.search-btn      { display:flex; align-items:center; justify-content:center; gap:8px;
-                   background:var(--wd-hyperlink); color:#fff; border:0; border-radius:var(--radius-sm);
-                   padding:11px 16px; font-size:14px; font-weight:700; cursor:pointer;
-                   box-shadow:var(--shadow-xs); transition:background .15s, box-shadow .15s; }
-.search-btn:hover:not(:disabled)    { background:#2b66ad; }
-.search-btn:hover:not(:disabled)    { box-shadow:var(--shadow-sm); }
-.search-btn:disabled                { opacity:.5; cursor:not-allowed; }
-
-/* ── Welcome ─────────────────────────────────────────────────────────────── */
-.welcome         { padding:40px 28px; max-width:720px; display:flex; flex-direction:column; gap:32px; }
-.welcome-hero h2 { font-size:22px; font-weight:600; letter-spacing:-.01em; }
-.welcome-lead    { font-size:14px; color:var(--text2); margin-top:10px; line-height:1.6; max-width:560px; }
-.welcome-examples h3 { font-size:11px; font-weight:600; color:var(--text3);
-                       text-transform:uppercase; letter-spacing:1.2px; margin-bottom:10px; }
-.example-list    { list-style:none; display:flex; flex-direction:column; gap:6px; }
-.example-item    { display:flex; gap:14px; align-items:baseline; padding:6px 0;
-                   border-bottom:1px solid var(--border); }
-.example-item:last-child { border-bottom:0; }
-.example-value   { font-family:var(--mono); font-size:12px; color:var(--accent);
-                   background:var(--surface); padding:2px 8px; border-radius:3px;
-                   min-width:160px; white-space:nowrap; }
-.example-note    { font-size:13px; color:var(--text2); }
-
-/* ── Results ─────────────────────────────────────────────────────────────── */
-.results-wrap    { padding:18px 28px; display:flex; flex-direction:column; gap:14px; }
-.results-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px;
-                   flex-wrap:wrap; }
-.toolbar-actions { display:flex; gap:8px; align-items:center; }
-
-/* SPARQL query panel */
-.query-panel     { background:var(--surface); border:1px solid var(--border);
-                   border-radius:var(--radius); box-shadow:var(--shadow-xs); }
-.query-panel > summary { cursor:pointer; padding:8px 14px; font-size:11px; color:var(--text2);
-                         user-select:none; text-transform:uppercase; letter-spacing:.8px;
-                         font-weight:600; list-style:none; }
-.query-panel > summary::-webkit-details-marker { display:none; }
-.query-panel > summary::before { content:"▸ "; color:var(--text3); }
-.query-panel[open] > summary::before { content:"▾ "; }
-.query-panel > summary:hover { color:var(--text); }
-.query-text      { padding:12px 16px; margin:0; font-family:var(--mono); font-size:11.5px;
-                   color:var(--text); background:var(--bg); border-top:1px solid var(--border);
-                   white-space:pre-wrap; word-break:break-word; max-height:320px; overflow:auto; }
-
-.table-scroll    { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius);
-                   background:var(--bg2); box-shadow:var(--shadow-sm); }
-.results-table   { width:100%; border-collapse:collapse; font-size:14px; }
-.results-table thead { position:sticky; top:0; z-index:2; background:var(--bg2); }
-.sort-th, .th-static { padding:10px 12px; text-align:left; font-size:10px; font-weight:600;
-                       color:var(--text3); border-bottom:1px solid var(--border);
-                       white-space:nowrap; user-select:none;
-                       text-transform:uppercase; letter-spacing:.8px; }
-.th-static { color:var(--wd-reference); }
-.sort-th         { cursor:pointer; }
-.sort-th:hover   { color:var(--text); }
-.sort-icon       { color:var(--text3); font-size:10px; margin-left:2px; }
-.data-row        { border-bottom:1px solid var(--border); transition:background .1s; }
-.data-row:hover  { background:var(--surface2); }
-.data-row td     { padding:10px 12px; vertical-align:middle; }
-
-/* ── Stats (inline tags instead of emoji badges) ─────────────────────────── */
-.stat-bar        { display:flex; flex-wrap:wrap; gap:18px; align-items:baseline; }
-.stat-badge      { display:flex; flex-direction:column; gap:2px; }
-.stat-icon       { display:none; }          /* keep markup minimal, hide legacy icons */
-.stat-value      { font-size:18px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
-.stat-label      { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.8px;
-                   font-weight:600; }
-.stat-badge:nth-child(1) .stat-value { color:var(--wd-compound); }
-.stat-badge:nth-child(2) .stat-value { color:var(--wd-taxon); }
-.stat-badge:nth-child(3) .stat-value { color:var(--wd-reference); }
-.stat-badge:nth-child(4) .stat-value { color:var(--wd-hyperlink); }
-
-/* ── Cell types ──────────────────────────────────────────────────────────── */
-.td-depict       { width:130px; padding:6px 10px !important; }
-.depict-img      { display:block; background:#fff; border:1px solid var(--border);
-                   border-radius:6px; width:120px; height:72px; object-fit:contain; box-shadow:var(--shadow-xs); }
-.td-compound     { min-width:220px; max-width:280px; }
-.td-taxon        { min-width:170px; max-width:230px; }
-.td-ref          { min-width:220px; max-width:320px; }
-.cell-primary    { font-weight:500; }
-.primary-link    { color:var(--text); }
-.primary-link:hover { color:var(--wd-hyperlink); text-decoration:none; }
-
-/* Entity-link identity mapping:
-   compounds = red, taxa links = green (except taxon name), references/statement = blue. */
-.td-compound a:not(.primary-link) { color:var(--wd-compound); }
-.td-compound a:not(.primary-link):hover { color:#7f0000; text-decoration:none; }
-
-.td-taxon a { color:var(--wd-taxon); }
-.td-taxon a:hover { color:#2d8656; text-decoration:none; }
-.primary-link.taxon { color:var(--text); font-style:italic; }
-.primary-link.taxon:hover { color:var(--text); text-decoration:none; }
-
-.td-ref a:not(.primary-link) { color:var(--wd-reference); }
-.td-ref a:not(.primary-link):hover { color:#00507a; text-decoration:none; }
-
-.td-compound .primary-link,
-.td-ref .primary-link { color:var(--text); }
-.td-compound .primary-link:hover,
-.td-ref .primary-link:hover { color:var(--text); text-decoration:none; }
-
-/* Unified ID badge */
-.badge-row       { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
-.id-badge        { display:inline-block; font-size:10px; padding:1px 6px; border-radius:3px;
-                   font-weight:600; text-decoration:none !important; line-height:1.5;
-                   border:1px solid transparent; font-family:var(--mono); }
-.id-badge:hover  { filter:brightness(1.15); }
-.td-compound .id-badge.wd { background:rgba(153,0,0,.12);  color:var(--wd-compound);
-                            border-color:rgba(153,0,0,.35); }
-.td-taxon    .id-badge.wd { background:rgba(51,153,102,.12); color:var(--wd-taxon);
-                            border-color:rgba(51,153,102,.35); }
-.td-ref      .id-badge.wd { background:rgba(0,102,153,.15); color:var(--wd-reference);
-                            border-color:rgba(0,102,153,.35); }
-.id-badge.sc     { background:rgba(153,0,0,.12); color:var(--wd-compound); border-color:rgba(153,0,0,.3); }
-.id-badge.doi    { background:rgba(0,102,153,.12); color:var(--wd-reference); border-color:rgba(0,102,153,.3); }
-.id-badge.stmt   { background:rgba(0,102,153,.12); color:var(--wd-reference); border-color:rgba(0,102,153,.3); }
-.id-badge.stmt.mono { color:var(--wd-reference); border-color:rgba(0,102,153,.3); background:rgba(0,102,153,.12); }
-.id-badge.mono   { background:var(--surface); color:var(--text2); border-color:var(--border); }
-.id-badge.mono.inchikey { background:rgba(153,0,0,.12); color:var(--wd-compound); border-color:rgba(153,0,0,.3); }
-
-.td-mono         { font-family:var(--mono); font-size:11px; white-space:nowrap; }
-.td-num          { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
-.td-formula .formula { font-family:var(--mono); font-size:12px; color:var(--text); }
-.td-year         { text-align:center; color:var(--text2); white-space:nowrap; font-variant-numeric:tabular-nums; }
-.na              { color:var(--text3); }
-
-/* ── Footer ──────────────────────────────────────────────────────────────── */
-.app-footer      { margin-top:auto; padding:20px 28px; border-top:1px solid var(--border);
-                   background:var(--bg2); color:var(--text2);
-                   display:flex; flex-direction:column; gap:8px; font-size:12px; box-shadow:var(--shadow-xs); }
-.footer-row      { display:flex; flex-wrap:wrap; gap:6px; align-items:baseline; }
-.footer-label    { color:var(--text3); font-weight:600; text-transform:uppercase;
-                   font-size:10px; letter-spacing:1px; min-width:56px; }
-.footer-sep      { color:var(--text3); }
-.footer-aside    { color:var(--text3); font-size:11px; }
-.footer-link           { color:var(--text);  text-decoration:none; }
-.footer-link:hover     { text-decoration:underline; }
-.footer-link.data      { color:var(--wd-compound); }
-.footer-link.code      { color:var(--wd-taxon); }
-.footer-link.tool      { color:var(--wd-reference); }
-.footer-link.muted     { color:var(--text2); }
-
-/* ── Download button group ───────────────────────────────────────────────── */
-.dl-group        { display:inline-flex; isolation:isolate; }
-.dl-group .btn   { border-radius:0; border-right-width:0; }
-.dl-group .btn:hover { z-index:1; }
-.dl-group .btn:first-child { border-top-left-radius:var(--radius-sm);
-                             border-bottom-left-radius:var(--radius-sm); }
-.dl-group .btn:last-child  { border-top-right-radius:var(--radius-sm);
-                             border-bottom-right-radius:var(--radius-sm);
-                             border-right-width:1px; }
-
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width:768px) {
-  .app-layout   { flex-direction:column; height:auto; min-height:100vh; overflow:visible; }
-  .sidebar      { width:100%; height:auto; max-height:none; overflow-y:visible; }
-  .main-content { height:auto; min-height:0; overflow-y:visible; }
-  .page-header, .welcome, .results-wrap, .app-footer { padding-left:18px; padding-right:18px; }
-  .notice       { margin-left:18px; margin-right:18px; }
-  .ketcher-panel { margin-left:18px; margin-right:18px; }
-  .ketcher-iframe { height:min(70vh, 560px); min-height:420px; }
-}
-
-@media (max-width:480px) {
-  .sidebar { padding:0; }
-  .search-panel { padding:14px 12px; }
-  .page-header, .welcome, .results-wrap, .app-footer { padding-left:12px; padding-right:12px; }
-  .notice, .ketcher-panel { margin-left:12px; margin-right:12px; }
-  .notice { padding:8px 10px; gap:8px; flex-direction:column; align-items:flex-start; }
-  .notice-dismiss { align-self:flex-end; margin-left:0; }
-
-  .filters-toggle {
-    display:flex;
-    width:calc(100% - 24px);
-    margin:12px;
-    padding:10px 12px;
-    justify-content:center;
-    align-items:center;
-    border:1px solid var(--border);
-    border-radius:var(--radius-sm);
-    background:var(--bg2);
-    color:var(--text);
-    font-size:16px;
-    font-weight:600;
-    cursor:pointer;
-  }
-  .sidebar.mobile-closed .search-panel { display:none; }
-  .sidebar.mobile-open .search-panel { display:flex; }
-
-  .page-title { font-size:18px; }
-  .page-sub { font-size:13px; }
-  .sidebar-logo-wrap { padding-top:10px; padding-bottom:12px; }
-  .sidebar-logo { width:120px; height:120px; }
-  .search-panel { gap:12px; }
-  .radio-group, .range-inputs, .toolbar-actions, .footer-row { flex-wrap:wrap; }
-  .range-pair { min-width:120px; }
-
-  /* Prevent iOS Safari auto-zoom when focusing controls. */
-  .form-input, .form-textarea, .search-btn, select, input, textarea { font-size:16px; }
-
-  .results-wrap { gap:10px; }
-  .results-table { font-size:13px; }
-  .sort-th, .th-static { padding:8px 8px; font-size:9px; }
-  .data-row td { padding:8px 8px; }
-
-  .td-depict { width:98px; padding:4px 6px !important; }
-  .depict-img { width:88px; height:56px; }
-  .td-compound, .td-taxon, .td-ref { min-width:150px; max-width:220px; }
-  .id-badge { font-size:9px; padding:1px 5px; }
-
-  .example-item { flex-direction:column; align-items:flex-start; gap:6px; }
-  .example-value { min-width:0; width:100%; white-space:normal; word-break:break-word; }
-
-  .ketcher-iframe { height:min(62vh, 420px); min-height:300px; }
-}
-"#;

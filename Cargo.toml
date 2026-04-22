@@ -14,10 +14,9 @@ csv = "1"
 # Keep patch-level versions aligned with the pinned `dioxus-cli` in
 # `.github/workflows/deploy.yml`.
 dioxus = { version = "=0.7.6", features = ["web"] }
-dioxus-router = "=0.7.6"
 js-sys = "0.3"
 log = "0.4"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 urlencoding = "2"
@@ -30,6 +29,8 @@ opt-level = 1
 # ── Release profile — tiny WASM ───────────────────────────────────────────────
 [profile.release]
 opt-level = "z"
-lto = true
+lto = "fat"
 panic = "abort"
 codegen-units = 1
+strip = "symbols"
+debug = false

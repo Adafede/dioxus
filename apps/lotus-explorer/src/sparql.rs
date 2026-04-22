@@ -39,18 +39,19 @@ fn parse_entity_id(value: &str) -> String {
         .trim_matches('"');
 
     if let Some(rest) = lexical.strip_prefix('Q') {
-        if !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit()) {
+        if !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()) {
             return lexical.to_string();
         }
     }
 
-    if !lexical.is_empty() && lexical.chars().all(|c| c.is_ascii_digit()) {
+    if !lexical.is_empty() && lexical.bytes().all(|b| b.is_ascii_digit()) {
         return format!("Q{lexical}");
     }
 
     String::new()
 }
 
+#[inline]
 fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
     const FNV_PRIME: Wrapping<u64> = Wrapping(1099511628211);
     for b in bytes {
@@ -60,9 +61,14 @@ fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
     h
 }
 
+#[inline]
+#[allow(dead_code)]
+fn fnv1a_one(bytes: &[u8]) -> u64 {
+    fnv1a_extend(Wrapping(14695981039346656037u64), bytes).0
+}
+
 fn entry_key_fingerprint(compound_qid: &str, taxon_qid: &str, reference_qid: &str) -> u64 {
-    // Fast 64-bit fingerprint for dedup keys.
-    let mut h = Wrapping(14695981039346656037u64); // FNV offset basis
+    let mut h = Wrapping(14695981039346656037u64);
     h = fnv1a_extend(h, compound_qid.as_bytes());
     h = fnv1a_extend(h, &[0x1f]);
     h = fnv1a_extend(h, taxon_qid.as_bytes());
@@ -78,6 +84,40 @@ pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
     shared_execute(sparql, QLEVER_WIKIDATA).await
 }
 
+// Single-entry "most recent query" CSV cache. Clicking CSV → JSON → TTL on the
+// same result set would otherwise re-fetch the full dataset three times. The
+// cache is cleared implicitly on the next distinct query.
+#[cfg(target_arch = "wasm32")]
+thread_local! {
+    static CSV_CACHE: std::cell::RefCell<Option<(u64, std::rc::Rc<String>)>>
+        = const { std::cell::RefCell::new(None) };
+}
+
+/// Execute a SPARQL query, reusing the CSV body from the previous call when
+/// the query text is identical (same FNV-1a fingerprint).
+pub async fn execute_sparql_cached(sparql: &str) -> Result<std::rc::Rc<String>, FetchError> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let key = fnv1a_one(sparql.as_bytes());
+        if let Some(hit) = CSV_CACHE.with(|c| {
+            c.borrow()
+                .as_ref()
+                .and_then(|(k, v)| (*k == key).then(|| v.clone()))
+        }) {
+            return Ok(hit);
+        }
+        let body = shared_execute(sparql, QLEVER_WIKIDATA).await?;
+        let rc = std::rc::Rc::new(body);
+        CSV_CACHE.with(|c| *c.borrow_mut() = Some((key, rc.clone())));
+        Ok(rc)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let body = shared_execute(sparql, QLEVER_WIKIDATA).await?;
+        Ok(std::rc::Rc::new(body))
+    }
+}
+
 // ── Compound CSV parser ───────────────────────────────────────────────────────
 
 /// Parse QLever CSV output into `CompoundEntry` rows.
@@ -86,7 +126,6 @@ pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
 /// `compound`, `compoundLabel`, `compound_inchikey`, `compound_smiles_iso`,
 /// `compound_smiles_conn`, `compound_mass`, `compound_formula`,
 /// `taxon`, `taxon_name`, `ref_qid`, `ref_title`, `ref_doi`, `ref_date`, `statement`.
-#[allow(dead_code)]
 pub fn parse_compounds_csv(csv_text: &str) -> Result<Vec<CompoundEntry>, FetchError> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
@@ -159,6 +198,7 @@ pub fn parse_compounds_csv(csv_text: &str) -> Result<Vec<CompoundEntry>, FetchEr
 /// `max_rows` unique entries.
 ///
 /// Returns `(rows, total_distinct, was_capped)`.
+#[allow(dead_code)]
 pub fn parse_compounds_csv_capped(
     csv_text: &str,
     max_rows: usize,
@@ -189,11 +229,13 @@ pub fn parse_compounds_csv_capped(
     let c_statement = col_idx(&headers, "statement");
 
     let mut entries: Vec<CompoundEntry> = Vec::with_capacity(max_rows.min(2048));
-    let mut seen: HashSet<u64> = HashSet::with_capacity(max_rows.saturating_mul(4));
+    let mut seen: HashSet<u64> = HashSet::with_capacity(max_rows.saturating_mul(4).min(1 << 20));
     let mut total_distinct = 0usize;
-    let mut compounds: HashSet<String> = HashSet::new();
-    let mut taxa: HashSet<String> = HashSet::new();
-    let mut references: HashSet<String> = HashSet::new();
+    // Dedup by u64 fingerprint — avoids ~3–4 MB of duplicated String allocations
+    // for 100 k-row result sets when we only need `.len()` at the end.
+    let mut compound_fps: HashSet<u64> = HashSet::with_capacity(max_rows);
+    let mut taxon_fps: HashSet<u64> = HashSet::with_capacity(max_rows);
+    let mut ref_fps: HashSet<u64> = HashSet::with_capacity(max_rows);
 
     for result in rdr.records() {
         let rec = result.map_err(|e| FetchError::Parse(e.to_string()))?;
@@ -212,12 +254,12 @@ pub fn parse_compounds_csv_capped(
         }
 
         total_distinct += 1;
-        compounds.insert(compound_qid.clone());
+        compound_fps.insert(fnv1a_one(compound_qid.as_bytes()));
         if !taxon_qid.is_empty() {
-            taxa.insert(taxon_qid.clone());
+            taxon_fps.insert(fnv1a_one(taxon_qid.as_bytes()));
         }
         if !reference_qid.is_empty() {
-            references.insert(reference_qid.clone());
+            ref_fps.insert(fnv1a_one(reference_qid.as_bytes()));
         }
 
         if entries.len() >= max_rows {
@@ -243,9 +285,9 @@ pub fn parse_compounds_csv_capped(
     }
 
     let stats = DatasetStats {
-        n_compounds: compounds.len(),
-        n_taxa: taxa.len(),
-        n_references: references.len(),
+        n_compounds: compound_fps.len(),
+        n_taxa: taxon_fps.len(),
+        n_references: ref_fps.len(),
         n_entries: total_distinct,
     };
     let was_capped = total_distinct > max_rows;

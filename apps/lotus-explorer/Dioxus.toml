@@ -13,4 +13,4 @@ title = "LOTUS Wikidata Explorer"
 
 [web.watcher]
 reload_html = true
-watch_path = ["src", "assets", "../../crates/shared/src"]
+watch_path = ["src", "assets", "public", "../../crates/shared/src"]

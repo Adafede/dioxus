@@ -9,18 +9,6 @@
 use crate::models::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType};
 use serde_json::{Map, Value, json};
 
-// Wikidata colour palette (matches Python CONFIG).  Values are kept in Rust
-// for any code paths that need the colours programmatically (e.g. future
-// CLI reports); CSS rules use them via `--wd-*` custom properties.
-#[allow(dead_code)]
-pub const WD_COLOR_COMPOUND: &str = "#990000"; // red
-#[allow(dead_code)]
-pub const WD_COLOR_TAXON: &str = "#339966"; // green
-#[allow(dead_code)]
-pub const WD_COLOR_REFERENCE: &str = "#006699"; // blue
-#[allow(dead_code)]
-pub const WD_COLOR_HYPERLINK: &str = "#3377c4";
-
 pub const APP_VERSION: &str = "0.1.0";
 pub const APP_NAME: &str = "LOTUS Wikidata Explorer (Dioxus port)";
 pub const APP_URL: &str = "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer";
@@ -543,13 +531,6 @@ fn ttl_literal(s: &str) -> String {
         .replace('\r', r"\r")
         .replace('\t', r"\t");
     format!("\"{escaped}\"")
-}
-
-// ── `data:` URLs for browser download ─────────────────────────────────────────
-
-#[allow(dead_code)]
-pub fn to_data_url(mime: &str, body: &str) -> String {
-    format!("data:{mime};charset=utf-8,{}", urlencoding::encode(body))
 }
 
 // ── Download filenames (mirrors Python `generate_filename`) ──────────────────

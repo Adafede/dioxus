@@ -107,18 +107,47 @@ pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, Fetc
 }
 
 fn looks_like_gateway_error(body: &str) -> bool {
-    let sample: String = body.chars().take(2048).collect();
-    let low = sample.to_ascii_lowercase();
-    let html = low.contains("<html")
-        || low.contains("<!doctype")
-        || low.contains("<head")
-        || low.contains("<title");
-    let gateway = low.contains("bad gateway")
-        || low.contains("gateway timeout")
-        || low.contains("service unavailable")
-        || low.contains("upstream")
-        || low.contains("nginx")
-        || low.contains("cloudflare");
+    // Inspect at most ~2 KiB; work on borrowed bytes to avoid allocation.
+    let end = body.len().min(2048);
+    let sample = &body[..body
+        .is_char_boundary(end)
+        .then_some(end)
+        .unwrap_or_else(|| {
+            // back up to the previous char boundary
+            let mut i = end;
+            while i > 0 && !body.is_char_boundary(i) {
+                i -= 1;
+            }
+            i
+        })];
+    // Case-insensitive `contains` without allocating a lowercase copy.
+    fn contains_ci(h: &str, needle: &str) -> bool {
+        if needle.len() > h.len() {
+            return false;
+        }
+        let nb = needle.as_bytes();
+        let hb = h.as_bytes();
+        for i in 0..=hb.len() - nb.len() {
+            if hb[i..i + nb.len()]
+                .iter()
+                .zip(nb)
+                .all(|(a, b)| a.eq_ignore_ascii_case(b))
+            {
+                return true;
+            }
+        }
+        false
+    }
+    let html = contains_ci(sample, "<html")
+        || contains_ci(sample, "<!doctype")
+        || contains_ci(sample, "<head")
+        || contains_ci(sample, "<title");
+    let gateway = contains_ci(sample, "bad gateway")
+        || contains_ci(sample, "gateway timeout")
+        || contains_ci(sample, "service unavailable")
+        || contains_ci(sample, "upstream")
+        || contains_ci(sample, "nginx")
+        || contains_ci(sample, "cloudflare");
     html && gateway
 }
 

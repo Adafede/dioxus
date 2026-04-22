@@ -241,7 +241,11 @@ pub fn SearchPanel(
 #[component]
 fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
     let mut c = criteria;
-    let kind = classify_structure(&c.read().smiles);
+    // Memoise the classifier: `classify_structure` uppercases the whole
+    // Molfile on every call. Recompute only when the SMILES text changes,
+    // not on every unrelated re-render of the search panel.
+    let kind = use_memo(move || classify_structure(&c.read().smiles));
+    let kind_value = *kind.read();
 
     rsx! {
         div { class: "form-section",
@@ -255,10 +259,14 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
                 oninput: move |e| c.write().smiles = e.value(),
                 rows: "4",
             }
-            if kind != StructureKind::Empty {
+            if kind_value != StructureKind::Empty {
                 p { class: "form-hint",
-                    span { class: "kind-pill", "data-kind": "{kind_class(kind)}", "{kind.label()}" }
-                    span { class: "kind-note", {kind_note(kind)} }
+                    span {
+                        class: "kind-pill",
+                        "data-kind": "{kind_class(kind_value)}",
+                        "{kind_value.label()}"
+                    }
+                    span { class: "kind-note", {kind_note(kind_value)} }
                 }
             } else {
                 p { class: "form-hint",
