@@ -21,7 +21,7 @@ dioxus-apps/
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
-cargo install dioxus-cli
+cargo install dioxus-cli --version 0.7.6 --locked
 ```
 
 ## Running an app locally
@@ -39,7 +39,7 @@ dx serve
 
 ```bash
 make build APP=lotus-explorer
-# output → apps/lotus-explorer/dist/
+# output → target/dx/lotus-explorer/release/web/public/
 ```
 
 ## Adding a new app
@@ -52,7 +52,7 @@ make build APP=lotus-explorer
 
 ## Deployment
 
-Each app builds to a self-contained `dist/` folder (HTML + WASM + JS). 
+Each app builds to `target/dx/<app-name>/release/web/public/` (HTML + WASM + JS).
 Deploy any of them to:
 - **GitHub Pages** — see `.github/workflows/deploy.yml`
 - **Cloudflare Pages** — point build command to `make build APP=<name>`

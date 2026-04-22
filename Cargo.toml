@@ -1,38 +1,35 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/shared",
-    "apps/lotus-explorer",
-    "apps/hello-world",
-    # Add future apps here — one line per app
+  "apps/hello-world",
+  "apps/lotus-explorer",
+  "crates/shared",
+  # Add future apps here — one line per app
 ]
 
 # ── Shared dependency versions ────────────────────────────────────────────────
 [workspace.dependencies]
-# Keep the `dioxus` / `dioxus-router` major versions aligned with the
-# pinned `dioxus-cli` in `.github/workflows/deploy.yml` (^0.7). Mixing
-# majors across workspace members causes `dx build` to fail with
-# "Could not automatically detect target triple" because the CLI picks
-# up the wrong crate metadata.
-dioxus         = { version = "0.7", features = ["web"] }
-dioxus-router  = "0.7"
-serde          = { version = "1", features = ["derive"] }
-serde_json     = "1"
-reqwest        = { version = "0.12", features = ["json"] }
-urlencoding    = "2"
-csv            = "1"
-log            = "0.4"
-console_log    = "0.2"
-wasm-bindgen   = "0.2"
-js-sys         = "0.3"
-web-sys        = { version = "0.3", features = ["Window"] }
-
-# ── Release profile — tiny WASM ───────────────────────────────────────────────
-[profile.release]
-opt-level     = "z"
-lto           = true
-codegen-units = 1
-panic         = "abort"
+console_log = "0.2"
+csv = "1"
+# Keep patch-level versions aligned with the pinned `dioxus-cli` in
+# `.github/workflows/deploy.yml`.
+dioxus = { version = "=0.7.6", features = ["web"] }
+dioxus-router = "=0.7.6"
+js-sys = "0.3"
+log = "0.4"
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+urlencoding = "2"
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Window"] }
 
 [profile.dev]
 opt-level = 1
+
+# ── Release profile — tiny WASM ───────────────────────────────────────────────
+[profile.release]
+opt-level = "z"
+lto = true
+panic = "abort"
+codegen-units = 1

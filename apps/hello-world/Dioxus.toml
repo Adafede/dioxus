@@ -1,7 +1,7 @@
 [application]
-name             = "hello-world"
+name = "hello-world"
 default_platform = "web"
-asset_dir        = "assets"
+asset_dir = "assets"
 # Note: dx ≥ 0.7 writes the web bundle to
 #   target/dx/<package-name>/release/web/public/
 # and ignores any `out_dir` key set here.
@@ -11,4 +11,4 @@ title = "Hello World"
 
 [web.watcher]
 reload_html = true
-watch_path  = ["src", "assets"]
+watch_path = ["src", "assets"]

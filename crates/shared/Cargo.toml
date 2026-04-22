@@ -1,12 +1,12 @@
 [package]
-name        = "shared"
-version     = "0.1.0"
-edition     = "2021"
+name = "shared"
+version = "0.1.0"
+edition = "2026"
 description = "Shared theme, components and SPARQL utilities for dioxus-apps"
 
 [dependencies]
-dioxus      = { workspace = true }
-urlencoding = { workspace = true }
-csv         = { workspace = true }
-log         = { workspace = true }
+csv = { workspace = true }
+dioxus = { workspace = true }
+log = { workspace = true }
 reqwest.workspace = true
+urlencoding = { workspace = true }
