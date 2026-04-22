@@ -34,7 +34,7 @@ jobs:
         run: cargo install dioxus-cli --version 0.7.6 --locked
 
       - name: Verify dx version
-        run: dx --version | grep -E "\b0\.7\.5\b"
+        run: dx --version | grep -E "\b0\.7\.6\b"
 
       # ── Build each app ──────────────────────────────────────────────────
       # `--platform web` is specified explicitly so the build does not
@@ -43,11 +43,11 @@ jobs:
       # `default_platform` key in `Dioxus.toml` is ignored by dx ≥ 0.7.
       - name: Build lotus-explorer
         working-directory: apps/lotus-explorer
-        run: dx build --release --platform web --debug-symbols false
+        run: dx build --release --platform web --debug-symbols false --base-path "/${{ github.event.repository.name }}/lotus-explorer/"
 
       - name: Build hello-world
         working-directory: apps/hello-world
-        run: dx build --release --platform web --debug-symbols false
+        run: dx build --release --platform web --debug-symbols false --base-path "/${{ github.event.repository.name }}/hello-world/"
 
       # ── Assemble a combined site ────────────────────────────────────────
       # Each app is served under /<app-name>/.
