@@ -994,9 +994,9 @@ const APP_CSS: &str = r#"
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width:768px) {
-  .app-layout   { flex-direction:column; }
-  .sidebar      { width:100%; height:auto; overflow-y:visible; }
-  .main-content { height:auto; }
+  .app-layout   { flex-direction:column; height:auto; min-height:100vh; overflow:visible; }
+  .sidebar      { width:100%; height:auto; max-height:none; overflow-y:visible; }
+  .main-content { height:auto; min-height:0; overflow-y:visible; }
   .page-header, .welcome, .results-wrap, .app-footer { padding-left:18px; padding-right:18px; }
   .notice       { margin-left:18px; margin-right:18px; }
   .ketcher-panel { margin-left:18px; margin-right:18px; }
