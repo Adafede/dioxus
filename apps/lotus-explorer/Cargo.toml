@@ -1,0 +1,27 @@
+[package]
+name        = "lotus-explorer"
+version     = "0.1.0"
+edition     = "2021"
+description = "LOTUS Wikidata natural-product occurrence explorer"
+
+[[bin]]
+name = "lotus-explorer"
+path = "src/main.rs"
+
+[dependencies]
+shared       = { path = "../../crates/shared" }
+dioxus       = "0.7"
+dioxus-router = { workspace = true }
+reqwest      = { workspace = true }
+urlencoding  = { workspace = true }
+csv          = { workspace = true }
+log          = { workspace = true }
+console_log  = { workspace = true }
+sha2         = "0.10"
+serde_json   = { workspace = true }
+web-sys.workspace = true
+js-sys.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }
+

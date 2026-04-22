@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/shared",
+    "apps/lotus-explorer",
+    "apps/hello-world",
+    # Add future apps here — one line per app
+]
+
+# ── Shared dependency versions ────────────────────────────────────────────────
+[workspace.dependencies]
+dioxus         = { version = "0.6", features = ["web"] }
+dioxus-router  = "0.6"
+serde          = { version = "1", features = ["derive"] }
+serde_json     = "1"
+reqwest        = { version = "0.12", features = ["json"] }
+urlencoding    = "2"
+csv            = "1"
+log            = "0.4"
+console_log    = "0.2"
+wasm-bindgen   = "0.2"
+js-sys         = "0.3"
+web-sys        = { version = "0.3", features = ["Window"] }
+
+# ── Release profile — tiny WASM ───────────────────────────────────────────────
+[profile.release]
+opt-level     = "z"
+lto           = true
+codegen-units = 1
+panic         = "abort"
+
+[profile.dev]
+opt-level = 1

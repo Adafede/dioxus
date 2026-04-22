@@ -1,0 +1,14 @@
+[application]
+name             = "lotus-explorer"
+default_platform = "web"
+out_dir          = "dist"
+asset_dir        = "assets"
+
+[web.app]
+title = "LOTUS Wikidata Explorer"
+# Set base_path when serving under a subpath, e.g.:
+# base_path = "/lotus-explorer"
+
+[web.watcher]
+reload_html = true
+watch_path  = ["src", "assets", "../../crates/shared/src"]

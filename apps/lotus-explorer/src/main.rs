@@ -8,7 +8,7 @@ mod sparql;
 
 use dioxus::prelude::*;
 use models::*;
-use components::search_panel::SearchPanel;
+use components::search_panel::{SearchPanel, KetcherPanel};
 use components::results_table::ResultsTable;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -172,6 +172,10 @@ fn App() -> Element {
                     }
                 }
 
+                // Ketcher structure editor — full-width in the main panel so
+                // the drawing canvas has enough room.
+                KetcherPanel {}
+
                 if let Some(share) = shareable_url.read().as_deref() {
                     div { class: "notice notice-info", role: "status",
                         span { class: "notice-label", "Share" }
@@ -230,6 +234,7 @@ fn App() -> Element {
                         metadata_json: metadata_json.read().clone(),
                         query_hash: query_hash.read().clone(),
                         result_hash: result_hash.read().clone(),
+                        criteria: criteria.read().clone(),
                     }
                 }
 
@@ -357,7 +362,20 @@ struct SearchOutcome {
 
 async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
     let taxon  = crit.taxon.trim().to_string();
-    let smiles = crit.smiles.trim().to_string();
+    // Preserve Molfile blocks verbatim — leading blank lines and whitespace
+    // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
+    // must reach SACHEM untouched, otherwise the query silently returns
+    // no matches. Only trim single-line SMILES inputs. Mirrors the Python
+    // `validate_and_escape` behaviour.
+    let smiles = {
+        let normalized = crit.smiles.replace("\r\n", "\n").replace('\r', "\n");
+        let kind = queries::classify_structure(&normalized);
+        if matches!(kind, queries::StructureKind::MolfileV2000 | queries::StructureKind::MolfileV3000) {
+            normalized
+        } else {
+            normalized.trim().to_string()
+        }
+    };
 
     let mut warning: Option<String> = None;
     let taxon_qid: Option<String> = if taxon.is_empty() {
@@ -711,18 +729,19 @@ const APP_CSS: &str = r#"
 .kind-pill[data-kind="mol3000"] { background:#2b8f57; }
 .kind-note        { color:var(--text3); }
 
-.ketcher-panel    { margin-top:6px; border:1px solid var(--border); border-radius:var(--radius-sm);
-                    background:var(--bg2); }
-.ketcher-panel > summary { cursor:pointer; padding:8px 12px; font-size:12px; font-weight:600;
-                           color:var(--text2); letter-spacing:.3px; user-select:none;
+.ketcher-panel    { margin:14px 28px 0; border:1px solid var(--border);
+                    border-radius:var(--radius); background:var(--bg2); }
+.ketcher-panel > summary { cursor:pointer; padding:12px 16px; font-size:13px; font-weight:600;
+                           color:var(--text); letter-spacing:.3px; user-select:none;
                            list-style:none; }
 .ketcher-panel > summary::-webkit-details-marker { display:none; }
-.ketcher-panel > summary::before { content:"▸ "; color:var(--text3); font-size:10px; }
+.ketcher-panel > summary::before { content:"▸ "; color:var(--text3); font-size:11px; }
 .ketcher-panel[open] > summary::before { content:"▾ "; }
-.ketcher-wrap     { padding:0 10px 10px; display:flex; flex-direction:column; gap:8px; }
-.ketcher-iframe   { width:100%; height:520px; border:1px solid var(--border);
-                    border-radius:var(--radius-sm); background:#fff; }
-.ketcher-hint     { margin-top:2px; }
+.ketcher-wrap     { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+.ketcher-iframe   { width:100%; height:min(78vh, 820px); min-height:600px;
+                    border:1px solid var(--border); border-radius:var(--radius-sm);
+                    background:#fff; }
+.ketcher-hint     { margin-top:2px; font-size:12px; color:var(--text2); }
 .ketcher-install  { color:var(--text3); font-size:10px; line-height:1.4; }
 .ketcher-install a { color:var(--accent); }
 
@@ -860,5 +879,7 @@ const APP_CSS: &str = r#"
   .main-content { height:auto; }
   .page-header, .welcome, .results-wrap, .app-footer { padding-left:18px; padding-right:18px; }
   .notice       { margin-left:18px; margin-right:18px; }
+  .ketcher-panel { margin-left:18px; margin-right:18px; }
+  .ketcher-iframe { height:min(70vh, 560px); min-height:420px; }
 }
 "#;
