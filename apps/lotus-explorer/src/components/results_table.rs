@@ -106,11 +106,9 @@ pub fn ResultsTable(
         (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
         _ => export::generate_filename(&criteria.taxon, "metadata.json", search_type_suffix),
     };
-    let csv_url =
-        export_available.then(|| export::to_data_url("text/csv", &build_csv(&export_rows)));
-    let json_url = export_available
-        .then(|| export::to_data_url("application/x-ndjson", &export::build_ndjson(&export_rows)));
-    let ttl_url = export_available.then(|| {
+    let csv_body = export_available.then(|| build_csv(&export_rows));
+    let json_body = export_available.then(|| export::build_ndjson(&export_rows));
+    let ttl_body = export_available.then(|| {
         let meta = export::MetadataInputs {
             criteria: &SearchCriteria::default(), // filled in for header-only fields
             qid: None,
@@ -118,11 +116,9 @@ pub fn ResultsTable(
             query_hash: query_hash.as_deref().unwrap_or(""),
             result_hash: result_hash.as_deref().unwrap_or(""),
         };
-        export::to_data_url("text/turtle", &export::build_ttl(&export_rows, meta))
+        export::build_ttl(&export_rows, meta)
     });
-    let metadata_url = metadata_json
-        .as_deref()
-        .map(|m| export::to_data_url("application/ld+json", m));
+    let metadata_body = metadata_json.clone();
     let qlever_ui_url = sparql_query
         .as_deref()
         .map(|q| format!("{QLEVER_UI}?query={}", urlencoding::encode(q)));
@@ -146,38 +142,54 @@ pub fn ResultsTable(
                             class: "dl-group",
                             role: "group",
                             aria_label: "Download results",
-                            if let Some(url) = csv_url.as_deref() {
-                                a {
+                            if let Some(body) = csv_body.as_ref() {
+                                button {
                                     class: "btn btn-sm",
-                                    href: "{url}",
-                                    download: "{csv_filename}",
+                                    r#type: "button",
+                                    onclick: {
+                                        let filename = csv_filename.clone();
+                                        let body = body.clone();
+                                        move |_| trigger_download(&filename, "text/csv", &body)
+                                    },
                                     title: "Download the full result set ({export_rows.len()} rows) as CSV",
                                     "CSV"
                                 }
                             }
-                            if let Some(url) = json_url.as_deref() {
-                                a {
+                            if let Some(body) = json_body.as_ref() {
+                                button {
                                     class: "btn btn-sm",
-                                    href: "{url}",
-                                    download: "{json_filename}",
+                                    r#type: "button",
+                                    onclick: {
+                                        let filename = json_filename.clone();
+                                        let body = body.clone();
+                                        move |_| trigger_download(&filename, "application/x-ndjson", &body)
+                                    },
                                     title: "Download the full result set as newline-delimited JSON",
                                     "JSON"
                                 }
                             }
-                            if let Some(url) = ttl_url.as_deref() {
-                                a {
+                            if let Some(body) = ttl_body.as_ref() {
+                                button {
                                     class: "btn btn-sm",
-                                    href: "{url}",
-                                    download: "{ttl_filename}",
+                                    r#type: "button",
+                                    onclick: {
+                                        let filename = ttl_filename.clone();
+                                        let body = body.clone();
+                                        move |_| trigger_download(&filename, "text/turtle", &body)
+                                    },
                                     title: "Download the full result set as RDF Turtle",
                                     "TTL"
                                 }
                             }
-                            if let Some(url) = metadata_url.as_deref() {
-                                a {
+                            if let Some(body) = metadata_body.as_ref() {
+                                button {
                                     class: "btn btn-sm",
-                                    href: "{url}",
-                                    download: "{metadata_filename}",
+                                    r#type: "button",
+                                    onclick: {
+                                        let filename = metadata_filename.clone();
+                                        let body = body.clone();
+                                        move |_| trigger_download(&filename, "application/ld+json", &body)
+                                    },
                                     title: "Download Schema.org metadata (JSON-LD)",
                                     "Metadata"
                                 }
@@ -651,5 +663,48 @@ fn csv_escape(s: &str) -> String {
         format!("\"{escaped}\"")
     } else {
         s.to_string()
+    }
+}
+
+fn trigger_download(filename: &str, mime: &str, body: &str) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let filename_json =
+            serde_json::to_string(filename).unwrap_or_else(|_| "\"download.txt\"".to_string());
+        let mime_json = serde_json::to_string(mime)
+            .unwrap_or_else(|_| "\"application/octet-stream\"".to_string());
+        let body_json = serde_json::to_string(body).unwrap_or_else(|_| "\"\"".to_string());
+        // iOS/Orion often ignore `a[download]` for data URLs. Blob URLs with
+        // an explicit iOS fallback (open in a new tab) are more reliable.
+        let script = format!(
+            r#"(() => {{
+  const filename = {filename_json};
+  const mime = {mime_json};
+  const content = {body_json};
+  const blob = new Blob([content], {{ type: mime }});
+  const url = URL.createObjectURL(blob);
+  const nav = window.navigator;
+  const ua = nav.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+  if (isIOS) {{
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return;
+  }}
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}})();"#
+        );
+        let _ = js_sys::eval(&script);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = (filename, mime, body);
     }
 }

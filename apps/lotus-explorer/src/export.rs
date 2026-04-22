@@ -544,6 +544,7 @@ fn ttl_literal(s: &str) -> String {
 
 // ── `data:` URLs for browser download ─────────────────────────────────────────
 
+#[allow(dead_code)]
 pub fn to_data_url(mime: &str, body: &str) -> String {
     format!("data:{mime};charset=utf-8,{}", urlencoding::encode(body))
 }
