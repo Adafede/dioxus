@@ -801,7 +801,7 @@ const APP_CSS: &str = r#"
   --wd-compound:  #990000;   /* red   — compounds  */
   --wd-taxon:     #339966;   /* green — taxa       */
   --wd-reference: #006699;   /* blue  — references */
-  --wd-hyperlink: #484848;
+  --wd-hyperlink: #3377c4;
 }
 
 /* ── Layout ──────────────────────────────────────────────────────────────── */

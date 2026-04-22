@@ -14,6 +14,7 @@ html, body { height: 100%; }
 
 /* ── Design tokens ───────────────────────────────────────────────────────── */
 :root {
+  color-scheme: light dark;
   --bg:        #f8fafc;
   --bg2:       #ffffff;
   --surface:   #f8fafc;
@@ -35,6 +36,28 @@ html, body { height: 100%; }
   --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.09);
   --mono:      'Fira Code', ui-monospace, SFMono-Regular, 'JetBrains Mono', Consolas, monospace;
   --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #0f1117;
+    --bg2:       #161b22;
+    --surface:   #21262d;
+    --surface2:  #2d333b;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --text2:     #c9d1d9;
+    --text3:     #8b949e;
+    --accent:    #58a6ff;
+    --accent2:   #388bfd;
+    --green:     #3fb950;
+    --red:       #f85149;
+    --yellow:    #d29922;
+    --purple:    #bc8cff;
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
 }
 
 body {
