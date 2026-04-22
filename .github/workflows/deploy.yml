@@ -1,0 +1,99 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install dioxus-cli
+        run: cargo install dioxus-cli
+
+      # ── Build each app ──────────────────────────────────────────────────
+      - name: Build lotus-explorer
+        working-directory: apps/lotus-explorer
+        run: dx build --release
+
+      - name: Build hello-world
+        working-directory: apps/hello-world
+        run: dx build --release
+
+      # ── Assemble a combined site ────────────────────────────────────────
+      # Each app is served under /<app-name>/
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -r apps/lotus-explorer/dist _site/lotus-explorer
+          cp -r apps/hello-world/dist    _site/hello-world
+
+          # Root index listing
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>dioxus-apps</title>
+            <style>
+              body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; padding: 0 1rem; }
+              h1 { font-size: 1.5rem; }
+              ul { list-style: none; padding: 0; }
+              li { margin: 0.75rem 0; }
+              a { color: #58a6ff; text-decoration: none; font-size: 1.1rem; }
+              a:hover { text-decoration: underline; }
+              p.desc { color: #8b949e; font-size: 0.9rem; margin: 0.2rem 0 0 0; }
+            </style>
+          </head>
+          <body>
+            <h1>🦀 dioxus-apps</h1>
+            <ul>
+              <li>
+                <a href="./lotus-explorer/">🌸 LOTUS Wikidata Explorer</a>
+                <p class="desc">Natural product compound × taxon × reference browser</p>
+              </li>
+              <li>
+                <a href="./hello-world/">👋 Hello World</a>
+                <p class="desc">Minimal template for new apps</p>
+              </li>
+            </ul>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

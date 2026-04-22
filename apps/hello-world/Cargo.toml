@@ -1,0 +1,15 @@
+[package]
+name        = "hello-world"
+version     = "0.1.0"
+edition     = "2021"
+description = "Minimal Dioxus web-app template — copy this to start a new app"
+
+[[bin]]
+name = "hello-world"
+path = "src/main.rs"
+
+[dependencies]
+shared      = { path = "../../crates/shared" }
+dioxus      = { workspace = true }
+log         = { workspace = true }
+console_log = { workspace = true }
