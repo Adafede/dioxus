@@ -38,6 +38,7 @@ fn App() -> Element {
     let mut export_rows: Signal<Vec<CompoundEntry>> = use_signal(Vec::new);
     let sort: Signal<SortState> = use_signal(SortState::default);
     let mut page: Signal<usize> = use_signal(|| 0usize);
+    let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
 
     // ── Search handler ────────────────────────────────────────────────────────
     let on_search = move |_| {
@@ -65,6 +66,7 @@ fn App() -> Element {
         *truncated.write() = None;
         *metadata_json.write() = None;
         *page.write() = 0;
+        *mobile_filters_open.write() = false;
 
         spawn(async move {
             match do_search(crit.clone()).await {
@@ -144,7 +146,23 @@ fn App() -> Element {
 
         div { class: "app-layout",
             // ── Left sidebar ──────────────────────────────────────────────
-            aside { class: "sidebar",
+            aside {
+                class: if *mobile_filters_open.read() { "sidebar mobile-open" } else { "sidebar mobile-closed" },
+                button {
+                    class: "filters-toggle",
+                    r#type: "button",
+                    aria_label: if *mobile_filters_open.read() { "Hide filters" } else { "Show filters" },
+                    aria_expanded: if *mobile_filters_open.read() { "true" } else { "false" },
+                    onclick: move |_| {
+                        let next = !*mobile_filters_open.read();
+                        *mobile_filters_open.write() = next;
+                    },
+                    if *mobile_filters_open.read() {
+                        "Hide filters"
+                    } else {
+                        "Show filters"
+                    }
+                }
                 SearchPanel { criteria, on_search, loading: *loading.read() }
             }
 
@@ -822,6 +840,7 @@ const APP_CSS: &str = r#"
 
 /* ── Search panel (sidebar) ──────────────────────────────────────────────── */
 .search-panel    { padding:22px 20px; display:flex; flex-direction:column; gap:18px; }
+.filters-toggle  { display:none; }
 
 .form-section    { display:flex; flex-direction:column; gap:5px; }
 .form-section.nested { padding-left:10px; border-left:1px solid var(--border); margin-top:4px; }
@@ -1001,5 +1020,56 @@ const APP_CSS: &str = r#"
   .notice       { margin-left:18px; margin-right:18px; }
   .ketcher-panel { margin-left:18px; margin-right:18px; }
   .ketcher-iframe { height:min(70vh, 560px); min-height:420px; }
+}
+
+@media (max-width:480px) {
+  .sidebar { padding:0; }
+  .search-panel { padding:14px 12px; }
+  .page-header, .welcome, .results-wrap, .app-footer { padding-left:12px; padding-right:12px; }
+  .notice, .ketcher-panel { margin-left:12px; margin-right:12px; }
+  .notice { padding:8px 10px; gap:8px; flex-direction:column; align-items:flex-start; }
+  .notice-dismiss { align-self:flex-end; margin-left:0; }
+
+  .filters-toggle {
+    display:flex;
+    width:calc(100% - 24px);
+    margin:12px;
+    padding:10px 12px;
+    justify-content:center;
+    align-items:center;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    background:var(--bg2);
+    color:var(--text);
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .sidebar.mobile-closed .search-panel { display:none; }
+  .sidebar.mobile-open .search-panel { display:flex; }
+
+  .page-title { font-size:16px; }
+  .page-sub { font-size:12px; }
+  .search-panel { gap:12px; }
+  .radio-group, .range-inputs, .toolbar-actions, .footer-row { flex-wrap:wrap; }
+  .range-pair { min-width:120px; }
+
+  /* Prevent iOS Safari auto-zoom when focusing controls. */
+  .form-input, .form-textarea, .search-btn, select, input, textarea { font-size:16px; }
+
+  .results-wrap { gap:10px; }
+  .results-table { font-size:12px; }
+  .sort-th, .th-static { padding:8px 8px; font-size:9px; }
+  .data-row td { padding:8px 8px; }
+
+  .td-depict { width:98px; padding:4px 6px !important; }
+  .depict-img { width:88px; height:56px; }
+  .td-compound, .td-taxon, .td-ref { min-width:150px; max-width:220px; }
+  .id-badge { font-size:9px; padding:1px 5px; }
+
+  .example-item { flex-direction:column; align-items:flex-start; gap:6px; }
+  .example-value { min-width:0; width:100%; white-space:normal; word-break:break-word; }
+
+  .ketcher-iframe { height:min(62vh, 420px); min-height:300px; }
 }
 "#;
