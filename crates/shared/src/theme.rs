@@ -14,22 +14,25 @@ html, body { height: 100%; }
 
 /* ── Design tokens ───────────────────────────────────────────────────────── */
 :root {
-  --bg:        #0f1117;
-  --bg2:       #161b22;
-  --surface:   #21262d;
-  --surface2:  #2d333b;
-  --border:    #30363d;
-  --text:      #e6edf3;
-  --text2:     #8b949e;
-  --text3:     #6e7681;
-  --accent:    #58a6ff;
-  --accent2:   #388bfd;
-  --green:     #3fb950;
-  --red:       #f85149;
-  --yellow:    #d29922;
-  --purple:    #bc8cff;
+  --bg:        #f8fafc;
+  --bg2:       #ffffff;
+  --surface:   #f8fafc;
+  --surface2:  #eef2f7;
+  --border:    #dbe3ee;
+  --text:      #0f172a;
+  --text2:     #334155;
+  --text3:     #64748b;
+  --accent:    #2563eb;
+  --accent2:   #1e40af;
+  --green:     #15803d;
+  --red:       #dc2626;
+  --yellow:    #a16207;
+  --purple:    #7c3aed;
   --radius:    8px;
   --radius-sm: 4px;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 4px 14px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.09);
   --mono:      'Fira Code', ui-monospace, SFMono-Regular, 'JetBrains Mono', Consolas, monospace;
   --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
@@ -39,12 +42,14 @@ body {
   color: var(--text);
   font-family: var(--sans);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-a { color: var(--accent); text-decoration: none; }
+a { color: var(--accent); text-decoration: none; transition: color .15s ease; }
 a:hover { text-decoration: underline; }
+
+::selection { background: rgba(37, 99, 235, .14); color: var(--text); }
 
 /* ── Accessibility: visible keyboard focus everywhere ────────────────────── */
 :focus-visible {
@@ -77,10 +82,11 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--border); border-radius: var(--radius-sm);
   padding: 7px 14px; font-size: 13px; font-weight: 500;
   cursor: pointer; background: var(--surface); color: var(--text);
-  transition: background .15s, border-color .15s;
+  box-shadow: var(--shadow-xs);
+  transition: background .15s, border-color .15s, box-shadow .15s;
 }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
-.btn:hover:not(:disabled) { background: var(--surface2); }
+.btn:hover:not(:disabled) { background: var(--surface2); box-shadow: var(--shadow-sm); }
 .btn-primary { background: var(--accent2); border-color: var(--accent2); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
 .btn-sm { padding: 4px 10px; font-size: 12px; }

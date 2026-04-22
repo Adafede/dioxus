@@ -146,8 +146,7 @@ fn App() -> Element {
 
         div { class: "app-layout",
             // ── Left sidebar ──────────────────────────────────────────────
-            aside {
-                class: if *mobile_filters_open.read() { "sidebar mobile-open" } else { "sidebar mobile-closed" },
+            aside { class: if *mobile_filters_open.read() { "sidebar mobile-open" } else { "sidebar mobile-closed" },
                 button {
                     class: "filters-toggle",
                     r#type: "button",
@@ -808,13 +807,15 @@ const APP_CSS: &str = r#"
 /* ── Layout ──────────────────────────────────────────────────────────────── */
 .app-layout    { display:flex; height:100vh; overflow:hidden; }
 .sidebar       { width:320px; min-width:280px; height:100vh; overflow-y:auto;
-                 background:var(--bg2); border-right:1px solid var(--border); flex-shrink:0; }
+                 background:var(--bg2); border-right:1px solid var(--border); flex-shrink:0;
+                 box-shadow:var(--shadow-sm); }
 .main-content  { flex:1; height:100vh; overflow-y:auto; display:flex; flex-direction:column; }
 
 /* ── Page header ─────────────────────────────────────────────────────────── */
-.page-header { padding:22px 28px 16px; border-bottom:1px solid var(--border); background:var(--bg2); }
-.page-title  { font-size:18px; font-weight:600; letter-spacing:-.01em; }
-.page-sub    { font-size:13px; color:var(--text2); margin-top:4px; }
+.page-header { padding:24px 28px 18px; border-bottom:1px solid var(--border); background:var(--bg2);
+               box-shadow:var(--shadow-xs); }
+.page-title  { font-size:20px; font-weight:700; letter-spacing:-.02em; }
+.page-sub    { font-size:13px; color:var(--text2); margin-top:6px; }
 .page-meta   { font-size:11px; color:var(--text3); margin-top:6px; display:flex; gap:6px;
                flex-wrap:wrap; align-items:baseline; }
 .meta-key    { text-transform:uppercase; letter-spacing:.8px; font-weight:600; }
@@ -824,7 +825,7 @@ const APP_CSS: &str = r#"
 /* ── Notices (info / warn / error) ───────────────────────────────────────── */
 .notice           { margin:12px 28px 0; padding:10px 14px; display:flex; align-items:baseline;
                     gap:12px; border-radius:var(--radius); font-size:13px;
-                    border:1px solid var(--border); background:var(--surface); }
+                    border:1px solid var(--border); background:var(--bg2); box-shadow:var(--shadow-xs); }
 .notice-label     { text-transform:uppercase; letter-spacing:.6px; font-size:10px; font-weight:600;
                     padding:2px 6px; border-radius:3px; flex-shrink:0; }
 .notice-value     { flex:1; color:var(--text); word-break:break-word; }
@@ -839,7 +840,8 @@ const APP_CSS: &str = r#"
 .notice-dismiss:hover { opacity:1; }
 
 /* ── Search panel (sidebar) ──────────────────────────────────────────────── */
-.search-panel    { padding:22px 20px; display:flex; flex-direction:column; gap:18px; }
+.search-panel    { padding:22px 20px; display:flex; flex-direction:column; gap:18px;
+                   background:var(--bg2); }
 .filters-toggle  { display:none; }
 
 .form-section    { display:flex; flex-direction:column; gap:5px; }
@@ -869,7 +871,7 @@ const APP_CSS: &str = r#"
 .kind-note        { color:var(--text3); }
 
 .ketcher-panel    { margin:14px 28px 0; border:1px solid var(--border);
-                    border-radius:var(--radius); background:var(--bg2); }
+                    border-radius:var(--radius); background:var(--bg2); box-shadow:var(--shadow-sm); }
 .ketcher-panel > summary { cursor:pointer; padding:12px 16px; font-size:13px; font-weight:600;
                            color:var(--text); letter-spacing:.3px; user-select:none;
                            list-style:none; }
@@ -888,8 +890,9 @@ const APP_CSS: &str = r#"
 .search-btn      { display:flex; align-items:center; justify-content:center; gap:8px;
                    background:var(--accent2); color:#fff; border:0; border-radius:var(--radius-sm);
                    padding:10px 16px; font-size:13px; font-weight:600; cursor:pointer;
-                   transition:background .15s; }
+                   box-shadow:var(--shadow-xs); transition:background .15s, box-shadow .15s; }
 .search-btn:hover:not(:disabled)    { background:var(--accent); }
+.search-btn:hover:not(:disabled)    { box-shadow:var(--shadow-sm); }
 .search-btn:disabled                { opacity:.5; cursor:not-allowed; }
 
 /* ── Welcome ─────────────────────────────────────────────────────────────── */
@@ -908,14 +911,14 @@ const APP_CSS: &str = r#"
 .example-note    { font-size:13px; color:var(--text2); }
 
 /* ── Results ─────────────────────────────────────────────────────────────── */
-.results-wrap    { padding:16px 28px; display:flex; flex-direction:column; gap:14px; }
+.results-wrap    { padding:18px 28px; display:flex; flex-direction:column; gap:14px; }
 .results-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px;
                    flex-wrap:wrap; }
 .toolbar-actions { display:flex; gap:8px; align-items:center; }
 
 /* SPARQL query panel */
 .query-panel     { background:var(--surface); border:1px solid var(--border);
-                   border-radius:var(--radius); }
+                   border-radius:var(--radius); box-shadow:var(--shadow-xs); }
 .query-panel > summary { cursor:pointer; padding:8px 14px; font-size:11px; color:var(--text2);
                          user-select:none; text-transform:uppercase; letter-spacing:.8px;
                          font-weight:600; list-style:none; }
@@ -927,7 +930,8 @@ const APP_CSS: &str = r#"
                    color:var(--text); background:var(--bg); border-top:1px solid var(--border);
                    white-space:pre-wrap; word-break:break-word; max-height:320px; overflow:auto; }
 
-.table-scroll    { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); }
+.table-scroll    { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius);
+                   background:var(--bg2); box-shadow:var(--shadow-sm); }
 .results-table   { width:100%; border-collapse:collapse; font-size:13px; }
 .results-table thead { position:sticky; top:0; z-index:2; background:var(--bg2); }
 .sort-th, .th-static { padding:10px 12px; text-align:left; font-size:10px; font-weight:600;
@@ -938,7 +942,7 @@ const APP_CSS: &str = r#"
 .sort-th:hover   { color:var(--text); }
 .sort-icon       { color:var(--text3); font-size:10px; margin-left:2px; }
 .data-row        { border-bottom:1px solid var(--border); transition:background .1s; }
-.data-row:hover  { background:var(--surface); }
+.data-row:hover  { background:var(--surface2); }
 .data-row td     { padding:10px 12px; vertical-align:middle; }
 
 /* ── Stats (inline tags instead of emoji badges) ─────────────────────────── */
@@ -952,7 +956,7 @@ const APP_CSS: &str = r#"
 /* ── Cell types ──────────────────────────────────────────────────────────── */
 .td-depict       { width:130px; padding:6px 10px !important; }
 .depict-img      { display:block; background:#fff; border:1px solid var(--border);
-                   border-radius:4px; width:120px; height:72px; object-fit:contain; }
+                   border-radius:6px; width:120px; height:72px; object-fit:contain; box-shadow:var(--shadow-xs); }
 .td-compound     { min-width:220px; max-width:280px; }
 .td-taxon        { min-width:170px; max-width:230px; }
 .td-ref          { min-width:220px; max-width:320px; }
@@ -988,7 +992,7 @@ const APP_CSS: &str = r#"
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 .app-footer      { margin-top:auto; padding:20px 28px; border-top:1px solid var(--border);
                    background:var(--bg2); color:var(--text2);
-                   display:flex; flex-direction:column; gap:8px; font-size:12px; }
+                   display:flex; flex-direction:column; gap:8px; font-size:12px; box-shadow:var(--shadow-xs); }
 .footer-row      { display:flex; flex-wrap:wrap; gap:6px; align-items:baseline; }
 .footer-label    { color:var(--text3); font-weight:600; text-transform:uppercase;
                    font-size:10px; letter-spacing:1px; min-width:56px; }
