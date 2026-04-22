@@ -14,7 +14,6 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-
 fn main() {
     console_log::init_with_level(log::Level::Debug).ok();
     dioxus::launch(App);
