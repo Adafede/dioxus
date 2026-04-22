@@ -811,6 +811,16 @@ const APP_CSS: &str = r#"
                  box-shadow:var(--shadow-sm); }
 .main-content  { flex:1; height:100vh; overflow-y:auto; display:flex; flex-direction:column; }
 
+/* ── Perceived performance ─────────────────────────────────────────────── */
+.welcome,
+.results-wrap,
+.query-panel,
+.ketcher-panel,
+.table-scroll {
+  content-visibility: auto;
+  contain-intrinsic-size: 900px;
+}
+
 /* ── Page header ─────────────────────────────────────────────────────────── */
 .page-header { padding:24px 28px 18px; border-bottom:1px solid var(--border); background:var(--bg2);
                box-shadow:var(--shadow-xs); }
@@ -838,6 +848,20 @@ const APP_CSS: &str = r#"
 .notice-dismiss   { margin-left:auto; background:none; border:0; color:inherit; cursor:pointer;
                     font-size:18px; line-height:1; padding:0 4px; opacity:.7; }
 .notice-dismiss:hover { opacity:1; }
+
+.notice,
+.query-panel,
+.ketcher-panel,
+.table-scroll,
+.search-btn,
+.btn {
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .12s ease;
+}
+
+.btn:active,
+.search-btn:active {
+  transform: translateY(1px);
+}
 
 /* ── Search panel (sidebar) ──────────────────────────────────────────────── */
 .search-panel    { padding:22px 20px; display:flex; flex-direction:column; gap:18px;

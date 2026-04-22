@@ -5,8 +5,8 @@
 //! ```
 
 pub const BASE_CSS: &str = r#"
-/* ── Typography (Fira Code for code, system sans for everything else) ────── */
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
+/* ── Typography ───────────────────────────────────────────────────────────── */
+/* Keep fonts local/system-only for faster first paint and fewer network deps. */
 
 /* ── Reset & base ────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

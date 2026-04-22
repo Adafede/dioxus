@@ -347,6 +347,7 @@ pub fn KetcherPanel() -> Element {
                     src: "{KETCHER_URL}",
                     class: "ketcher-iframe",
                     title: "Ketcher structure editor",
+                    "loading": "lazy",
                     "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
                 }
                 p { class: "form-hint ketcher-hint",

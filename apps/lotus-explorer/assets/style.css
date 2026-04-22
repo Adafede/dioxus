@@ -1,6 +1,3 @@
-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-}
+/* Intentionally minimal.
+   Layout is fully controlled by `shared::theme::BASE_CSS` and
+   `APP_CSS` in `src/main.rs`. */
