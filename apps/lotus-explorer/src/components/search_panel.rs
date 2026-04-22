@@ -24,12 +24,14 @@ pub fn SearchPanel(
                     spellcheck: "false",
                     placeholder: "Gentiana lutea · Q34317 · *",
                     value: "{c.read().taxon}",
-                    oninput:   move |e| c.write().taxon = e.value(),
-                    onkeydown: move |e| { if e.key() == Key::Enter { on_search.call(()); } }
+                    oninput: move |e| c.write().taxon = e.value(),
+                    onkeydown: move |e| {
+                        if e.key() == Key::Enter {
+                            on_search.call(());
+                        }
+                    },
                 }
-                p { class: "form-hint",
-                    "Name, Wikidata QID or * for the full dataset."
-                }
+                p { class: "form-hint", "Name, Wikidata QID or * for the full dataset." }
             }
 
             // ── Structure (SMILES or Molfile V2000/V3000) ────────────────
@@ -43,12 +45,17 @@ pub fn SearchPanel(
                         label { class: "form-label sm", r#for: "mass-min", "Min" }
                         input {
                             id: "mass-min",
-                            r#type: "number", class: "form-input sm",
-                            min: "0", max: "2000", step: "1",
+                            r#type: "number",
+                            class: "form-input sm",
+                            min: "0",
+                            max: "2000",
+                            step: "1",
                             value: "{c.read().mass_min}",
                             oninput: move |e| {
-                                if let Ok(v) = e.value().parse::<f64>() { c.write().mass_min = v; }
-                            }
+                                if let Ok(v) = e.value().parse::<f64>() {
+                                    c.write().mass_min = v;
+                                }
+                            },
                         }
                     }
                     span { class: "range-sep", "–" }
@@ -56,12 +63,17 @@ pub fn SearchPanel(
                         label { class: "form-label sm", r#for: "mass-max", "Max" }
                         input {
                             id: "mass-max",
-                            r#type: "number", class: "form-input sm",
-                            min: "0", max: "2000", step: "1",
+                            r#type: "number",
+                            class: "form-input sm",
+                            min: "0",
+                            max: "2000",
+                            step: "1",
                             value: "{c.read().mass_max}",
                             oninput: move |e| {
-                                if let Ok(v) = e.value().parse::<f64>() { c.write().mass_max = v; }
-                            }
+                                if let Ok(v) = e.value().parse::<f64>() {
+                                    c.write().mass_max = v;
+                                }
+                            },
                         }
                     }
                 }
@@ -75,12 +87,17 @@ pub fn SearchPanel(
                         label { class: "form-label sm", r#for: "year-min", "From" }
                         input {
                             id: "year-min",
-                            r#type: "number", class: "form-input sm",
-                            min: "{DEFAULT_YEAR_MIN}", max: "{current_year()}", step: "1",
+                            r#type: "number",
+                            class: "form-input sm",
+                            min: "{DEFAULT_YEAR_MIN}",
+                            max: "{current_year()}",
+                            step: "1",
                             value: "{c.read().year_min}",
                             oninput: move |e| {
-                                if let Ok(v) = e.value().parse::<i32>() { c.write().year_min = v; }
-                            }
+                                if let Ok(v) = e.value().parse::<i32>() {
+                                    c.write().year_min = v;
+                                }
+                            },
                         }
                     }
                     span { class: "range-sep", "–" }
@@ -88,12 +105,17 @@ pub fn SearchPanel(
                         label { class: "form-label sm", r#for: "year-max", "To" }
                         input {
                             id: "year-max",
-                            r#type: "number", class: "form-input sm",
-                            min: "{DEFAULT_YEAR_MIN}", max: "{current_year()}", step: "1",
+                            r#type: "number",
+                            class: "form-input sm",
+                            min: "{DEFAULT_YEAR_MIN}",
+                            max: "{current_year()}",
+                            step: "1",
                             value: "{c.read().year_max}",
                             oninput: move |e| {
-                                if let Ok(v) = e.value().parse::<i32>() { c.write().year_max = v; }
-                            }
+                                if let Ok(v) = e.value().parse::<i32>() {
+                                    c.write().year_max = v;
+                                }
+                            },
                         }
                     }
                 }
@@ -126,20 +148,72 @@ pub fn SearchPanel(
                     }
 
                     div { class: "range-inputs",
-                        NumPair { label: "C", min_value: c.read().c_min, max_value: c.read().c_max, on_min: move |v| c.write().c_min = v, on_max: move |v| c.write().c_max = v }
-                        NumPair { label: "H", min_value: c.read().h_min, max_value: c.read().h_max, on_min: move |v| c.write().h_min = v, on_max: move |v| c.write().h_max = v }
-                        NumPair { label: "N", min_value: c.read().n_min, max_value: c.read().n_max, on_min: move |v| c.write().n_min = v, on_max: move |v| c.write().n_max = v }
+                        NumPair {
+                            label: "C",
+                            min_value: c.read().c_min,
+                            max_value: c.read().c_max,
+                            on_min: move |v| c.write().c_min = v,
+                            on_max: move |v| c.write().c_max = v,
+                        }
+                        NumPair {
+                            label: "H",
+                            min_value: c.read().h_min,
+                            max_value: c.read().h_max,
+                            on_min: move |v| c.write().h_min = v,
+                            on_max: move |v| c.write().h_max = v,
+                        }
+                        NumPair {
+                            label: "N",
+                            min_value: c.read().n_min,
+                            max_value: c.read().n_max,
+                            on_min: move |v| c.write().n_min = v,
+                            on_max: move |v| c.write().n_max = v,
+                        }
                     }
                     div { class: "range-inputs",
-                        NumPair { label: "O", min_value: c.read().o_min, max_value: c.read().o_max, on_min: move |v| c.write().o_min = v, on_max: move |v| c.write().o_max = v }
-                        NumPair { label: "P", min_value: c.read().p_min, max_value: c.read().p_max, on_min: move |v| c.write().p_min = v, on_max: move |v| c.write().p_max = v }
-                        NumPair { label: "S", min_value: c.read().s_min, max_value: c.read().s_max, on_min: move |v| c.write().s_min = v, on_max: move |v| c.write().s_max = v }
+                        NumPair {
+                            label: "O",
+                            min_value: c.read().o_min,
+                            max_value: c.read().o_max,
+                            on_min: move |v| c.write().o_min = v,
+                            on_max: move |v| c.write().o_max = v,
+                        }
+                        NumPair {
+                            label: "P",
+                            min_value: c.read().p_min,
+                            max_value: c.read().p_max,
+                            on_min: move |v| c.write().p_min = v,
+                            on_max: move |v| c.write().p_max = v,
+                        }
+                        NumPair {
+                            label: "S",
+                            min_value: c.read().s_min,
+                            max_value: c.read().s_max,
+                            on_min: move |v| c.write().s_min = v,
+                            on_max: move |v| c.write().s_max = v,
+                        }
                     }
                     div { class: "range-inputs",
-                        ElemStateSelect { label: "F",  value: c.read().f_state,  on_change: move |v| c.write().f_state  = v }
-                        ElemStateSelect { label: "Cl", value: c.read().cl_state, on_change: move |v| c.write().cl_state = v }
-                        ElemStateSelect { label: "Br", value: c.read().br_state, on_change: move |v| c.write().br_state = v }
-                        ElemStateSelect { label: "I",  value: c.read().i_state,  on_change: move |v| c.write().i_state  = v }
+                        ElemStateSelect {
+                            label: "F",
+                            value: c.read().f_state,
+                            on_change: move |v| c.write().f_state = v,
+                        }
+                        ElemStateSelect {
+                            label: "Cl",
+                            value: c.read().cl_state,
+                            on_change: move |v| c.write().cl_state = v,
+                        }
+                        ElemStateSelect {
+                            label: "Br",
+                            value: c.read().br_state,
+                            on_change: move |v| c.write().br_state = v,
+                        }
+                        ElemStateSelect {
+                            label: "I",
+                            value: c.read().i_state,
+                            on_change: move |v| c.write().i_state = v,
+                        }
                     }
                 }
             }
@@ -171,9 +245,7 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
 
     rsx! {
         div { class: "form-section",
-            label { class: "form-label", r#for: "smiles-input",
-                "Structure — SMILES or Molfile"
-            }
+            label { class: "form-label", r#for: "smiles-input", "Structure — SMILES or Molfile" }
             textarea {
                 id: "smiles-input",
                 class: "form-textarea mono",
@@ -185,11 +257,8 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
             }
             if kind != StructureKind::Empty {
                 p { class: "form-hint",
-                    span { class: "kind-pill", "data-kind": "{kind_class(kind)}",
-                        "{kind.label()}" }
-                    span { class: "kind-note",
-                        { kind_note(kind) }
-                    }
+                    span { class: "kind-pill", "data-kind": "{kind_class(kind)}", "{kind.label()}" }
+                    span { class: "kind-note", {kind_note(kind)} }
                 }
             } else {
                 p { class: "form-hint",
@@ -201,7 +270,8 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
                 legend { class: "sr-only", "Structure search mode" }
                 label { class: "radio-label",
                     input {
-                        r#type: "radio", name: "stype",
+                        r#type: "radio",
+                        name: "stype",
                         checked: c.read().smiles_search_type == SmilesSearchType::Substructure,
                         onchange: move |_| c.write().smiles_search_type = SmilesSearchType::Substructure,
                     }
@@ -209,7 +279,8 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
                 }
                 label { class: "radio-label",
                     input {
-                        r#type: "radio", name: "stype",
+                        r#type: "radio",
+                        name: "stype",
                         checked: c.read().smiles_search_type == SmilesSearchType::Similarity,
                         onchange: move |_| c.write().smiles_search_type = SmilesSearchType::Similarity,
                     }
@@ -223,8 +294,11 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
                     }
                     input {
                         id: "threshold-input",
-                        r#type: "range", class: "range-input",
-                        min: "0.0", max: "1.0", step: "0.01",
+                        r#type: "range",
+                        class: "range-input",
+                        min: "0.0",
+                        max: "1.0",
+                        step: "0.01",
                         value: "{c.read().smiles_threshold}",
                         aria_valuemin: "0",
                         aria_valuemax: "1",
@@ -233,7 +307,7 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
                             if let Ok(v) = e.value().parse::<f64>() {
                                 c.write().smiles_threshold = v;
                             }
-                        }
+                        },
                     }
                 }
             }
@@ -347,7 +421,7 @@ fn NumPair(
                     if let Ok(v) = e.value().parse::<i32>() {
                         on_min.call(v);
                     }
-                }
+                },
             }
             label { class: "form-label sm", "{label} max" }
             input {
@@ -361,7 +435,7 @@ fn NumPair(
                     if let Ok(v) = e.value().parse::<i32>() {
                         on_max.call(v);
                     }
-                }
+                },
             }
         }
     }
@@ -381,7 +455,7 @@ fn ElemStateSelect(
                 aria_label: "{label} requirement",
                 value: "{value.as_str()}",
                 onchange: move |e| on_change.call(ElementState::from_str(&e.value())),
-                option { value: "allowed",  "allowed" }
+                option { value: "allowed", "allowed" }
                 option { value: "required", "required" }
                 option { value: "excluded", "excluded" }
             }

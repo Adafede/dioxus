@@ -152,7 +152,7 @@ fn App() -> Element {
             main { class: "main-content",
                 div { class: "page-header",
                     h1 { class: "page-title", "LOTUS Wikidata Explorer" }
-                    p  { class: "page-sub",
+                    p { class: "page-sub",
                         "Natural product occurrences — compound, taxon, reference."
                     }
                     if let Some(qid) = resolved_qid.read().as_deref() {
@@ -162,7 +162,11 @@ fn App() -> Element {
                             span { class: "meta-val mono", "{qid}" }
                         }
                     }
-                    if let (Some(qh), Some(rh)) = (query_hash.read().as_deref(), result_hash.read().as_deref()) {
+                    if let (Some(qh), Some(rh)) = (
+                        query_hash.read().as_deref(),
+                        result_hash.read().as_deref(),
+                    )
+                    {
                         p { class: "page-meta",
                             span { class: "meta-key", "Query hash" }
                             span { class: "meta-sep", ":" }
@@ -217,12 +221,13 @@ fn App() -> Element {
                 }
 
                 if *loading.read() {
-                    div { class: "loading-state", role: "status", aria_live: "polite",
+                    div {
+                        class: "loading-state",
+                        role: "status",
+                        aria_live: "polite",
                         div { class: "spinner-lg", "aria-hidden": "true" }
                         p { "Querying Wikidata via QLever…" }
-                        p { class: "loading-hint",
-                            "Large result sets may take several seconds."
-                        }
+                        p { class: "loading-hint", "Large result sets may take several seconds." }
                     }
                 } else if entries.read().is_empty() && error.read().is_none() && !*searched_once.read() {
                     WelcomeScreen {}
@@ -256,11 +261,18 @@ fn Footer() -> Element {
         let mut out = Vec::with_capacity(items.len() * 2);
         for (i, (href, text)) in items.iter().enumerate() {
             if i > 0 {
-                out.push(rsx! { span { class: "footer-sep", "·" } });
+                out.push(rsx! {
+                    span { class: "footer-sep", "·" }
+                });
             }
             out.push(rsx! {
-                a { class: "{class}", href: "{href}", target: "_blank", rel: "noopener noreferrer",
-                    "{text}" }
+                a {
+                    class: "{class}",
+                    href: "{href}",
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    "{text}"
+                }
             });
         }
         out
@@ -270,37 +282,65 @@ fn Footer() -> Element {
         footer { class: "app-footer",
             div { class: "footer-row",
                 span { class: "footer-label", "Data" }
-                {links(&[
-                    ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
-                    ("https://www.wikidata.org/", "Wikidata"),
-                ], "footer-link data").into_iter()}
+                {
+                    links(
+                            &[
+                                ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
+                                ("https://www.wikidata.org/", "Wikidata"),
+                            ],
+                            "footer-link data",
+                        )
+                        .into_iter()
+                }
             }
             div { class: "footer-row",
                 span { class: "footer-label", "Code" }
-                {links(&[
-                    ("https://github.com/Adafede/marimo/blob/main/apps/lotus_wikidata_explorer.py",
-                     "lotus_wikidata_explorer.py"),
-                ], "footer-link code").into_iter()}
+                {
+                    links(
+                            &[
+                                (
+                                    "https://github.com/Adafede/marimo/blob/main/apps/lotus_wikidata_explorer.py",
+                                    "lotus_wikidata_explorer.py",
+                                ),
+                            ],
+                            "footer-link code",
+                        )
+                        .into_iter()
+                }
             }
             div { class: "footer-row",
                 span { class: "footer-label", "Tools" }
-                {links(&[
-                    ("https://github.com/cdk/depict", "CDK Depict"),
-                    ("https://idsm.elixir-czech.cz/", "IDSM"),
-                    ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
-                    ("https://qlever.dev/wikidata", "QLever"),
-                ], "footer-link tool").into_iter()}
+                {
+                    links(
+                            &[
+                                ("https://github.com/cdk/depict", "CDK Depict"),
+                                ("https://idsm.elixir-czech.cz/", "IDSM"),
+                                ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
+                                ("https://qlever.dev/wikidata", "QLever"),
+                            ],
+                            "footer-link tool",
+                        )
+                        .into_iter()
+                }
             }
             div { class: "footer-row",
                 span { class: "footer-label", "License" }
-                a { class: "footer-link muted",
+                a {
+                    class: "footer-link muted",
                     href: "https://creativecommons.org/publicdomain/zero/1.0/",
-                    target: "_blank", rel: "noopener noreferrer", "CC0 1.0" }
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    "CC0 1.0"
+                }
                 span { class: "footer-aside", " for data " }
                 span { class: "footer-sep", "·" }
-                a { class: "footer-link muted",
+                a {
+                    class: "footer-link muted",
                     href: "https://www.gnu.org/licenses/agpl-3.0.html",
-                    target: "_blank", rel: "noopener noreferrer", "AGPL-3.0" }
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    "AGPL-3.0"
+                }
                 span { class: "footer-aside", " for code" }
             }
         }
@@ -318,14 +358,26 @@ fn WelcomeScreen() -> Element {
                 p { class: "welcome-lead",
                     "Every row ties a compound to the organism it has been reported from, "
                     "together with the primary literature reference. Data comes from the "
-                    a { href: "https://www.wikidata.org/wiki/Q104225190",
-                        target: "_blank", rel: "noopener noreferrer", "LOTUS initiative" }
+                    a {
+                        href: "https://www.wikidata.org/wiki/Q104225190",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        "LOTUS initiative"
+                    }
                     ", stored on "
-                    a { href: "https://www.wikidata.org/",
-                        target: "_blank", rel: "noopener noreferrer", "Wikidata" }
+                    a {
+                        href: "https://www.wikidata.org/",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        "Wikidata"
+                    }
                     " and queried via "
-                    a { href: "https://qlever.dev/wikidata",
-                        target: "_blank", rel: "noopener noreferrer", "QLever" }
+                    a {
+                        href: "https://qlever.dev/wikidata",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        "QLever"
+                    }
                     "."
                 }
             }
@@ -333,11 +385,26 @@ fn WelcomeScreen() -> Element {
             div { class: "welcome-examples",
                 h3 { "Try" }
                 ul { class: "example-list",
-                    ExRow { value: "Gentiana lutea",  note: "Compounds from yellow gentian" }
-                    ExRow { value: "Cannabis sativa", note: "Compounds from Cannabis sativa and subtaxa" }
-                    ExRow { value: "Q134630",         note: "Citrus genus — enter a bare Wikidata QID" }
-                    ExRow { value: "*",               note: "All LOTUS compound–taxon–reference triples" }
-                    ExRow { value: "c1ccccc1",        note: "Paste a SMILES in the structure box — no taxon required" }
+                    ExRow {
+                        value: "Gentiana lutea",
+                        note: "Compounds from yellow gentian",
+                    }
+                    ExRow {
+                        value: "Cannabis sativa",
+                        note: "Compounds from Cannabis sativa and subtaxa",
+                    }
+                    ExRow {
+                        value: "Q134630",
+                        note: "Citrus genus — enter a bare Wikidata QID",
+                    }
+                    ExRow {
+                        value: "*",
+                        note: "All LOTUS compound–taxon–reference triples",
+                    }
+                    ExRow {
+                        value: "c1ccccc1",
+                        note: "Paste a SMILES in the structure box — no taxon required",
+                    }
                 }
             }
         }

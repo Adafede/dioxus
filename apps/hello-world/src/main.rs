@@ -21,7 +21,7 @@ fn App() -> Element {
     rsx! {
         div { class: "card",
             h1 { "👋 Hello, Dioxus!" }
-            p  { "A minimal template — copy this app to build your own." }
+            p { "A minimal template — copy this app to build your own." }
             div { class: "count", "{count}" }
             div { class: "row",
                 button {
@@ -29,16 +29,8 @@ fn App() -> Element {
                     onclick: move |_| *count.write() += 1,
                     "+ 1"
                 }
-                button {
-                    class: "btn",
-                    onclick: move |_| *count.write() -= 1,
-                    "− 1"
-                }
-                button {
-                    class: "btn",
-                    onclick: move |_| *count.write() = 0,
-                    "Reset"
-                }
+                button { class: "btn", onclick: move |_| *count.write() -= 1, "− 1" }
+                button { class: "btn", onclick: move |_| *count.write() = 0, "Reset" }
             }
         }
     }

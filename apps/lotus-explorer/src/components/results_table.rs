@@ -131,38 +131,56 @@ pub fn ResultsTable(
         div { class: "results-wrap",
             // ── Stats + toolbar ───────────────────────────────────────────
             div { class: "results-toolbar",
-                div { class: "stat-bar", role: "group", aria_label: "Dataset statistics",
-                    StatBadge { value: stats.n_compounds,  label: "Compounds"  }
-                    StatBadge { value: stats.n_taxa,       label: "Taxa"       }
+                div {
+                    class: "stat-bar",
+                    role: "group",
+                    aria_label: "Dataset statistics",
+                    StatBadge { value: stats.n_compounds, label: "Compounds" }
+                    StatBadge { value: stats.n_taxa, label: "Taxa" }
                     StatBadge { value: stats.n_references, label: "References" }
-                    StatBadge { value: stats.n_entries,    label: "Entries"    }
+                    StatBadge { value: stats.n_entries, label: "Entries" }
                 }
                 div { class: "toolbar-actions",
                     if export_available {
-                        div { class: "dl-group", role: "group", aria_label: "Download results",
+                        div {
+                            class: "dl-group",
+                            role: "group",
+                            aria_label: "Download results",
                             if let Some(url) = csv_url.as_deref() {
-                                a { class: "btn btn-sm", href: "{url}",
+                                a {
+                                    class: "btn btn-sm",
+                                    href: "{url}",
                                     download: "{csv_filename}",
                                     title: "Download the full result set ({export_rows.len()} rows) as CSV",
-                                    "CSV" }
+                                    "CSV"
+                                }
                             }
                             if let Some(url) = json_url.as_deref() {
-                                a { class: "btn btn-sm", href: "{url}",
+                                a {
+                                    class: "btn btn-sm",
+                                    href: "{url}",
                                     download: "{json_filename}",
                                     title: "Download the full result set as newline-delimited JSON",
-                                    "JSON" }
+                                    "JSON"
+                                }
                             }
                             if let Some(url) = ttl_url.as_deref() {
-                                a { class: "btn btn-sm", href: "{url}",
+                                a {
+                                    class: "btn btn-sm",
+                                    href: "{url}",
                                     download: "{ttl_filename}",
                                     title: "Download the full result set as RDF Turtle",
-                                    "TTL" }
+                                    "TTL"
+                                }
                             }
                             if let Some(url) = metadata_url.as_deref() {
-                                a { class: "btn btn-sm", href: "{url}",
+                                a {
+                                    class: "btn btn-sm",
+                                    href: "{url}",
                                     download: "{metadata_filename}",
                                     title: "Download Schema.org metadata (JSON-LD)",
-                                    "Metadata" }
+                                    "Metadata"
+                                }
                             }
                         }
                     }
@@ -191,59 +209,133 @@ pub fn ResultsTable(
                     p { "No results. Try broadening your search." }
                 }
             } else {
-                Pager { cur, total_pages, total,
-                    on_prev: move |_| { let mut p = page.write(); if *p > 0 { *p -= 1; } },
-                    on_next: move |_| { let mut p = page.write(); if *p + 1 < total_pages { *p += 1; } } }
+                Pager {
+                    cur,
+                    total_pages,
+                    total,
+                    on_prev: move |_| {
+                        let mut p = page.write();
+                        if *p > 0 {
+                            *p -= 1;
+                        }
+                    },
+                    on_next: move |_| {
+                        let mut p = page.write();
+                        if *p + 1 < total_pages {
+                            *p += 1;
+                        }
+                    },
+                }
 
                 div { class: "table-scroll",
-                    table { class: "results-table", aria_label: "Compound–taxon–reference triples",
+                    table {
+                        class: "results-table",
+                        aria_label: "Compound–taxon–reference triples",
                         thead {
                             tr {
                                 th { class: "th-static", scope: "col", "Structure" }
-                                th { class: "sort-th",   scope: "col",
+                                th {
+                                    class: "sort-th",
+                                    scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Name)}",
                                     onclick: toggle_sort(SortColumn::Name),
-                                    "Compound " span { class: "sort-icon", "aria-hidden": "true", {sort_icon(SortColumn::Name)} }
+                                    "Compound "
+                                    span {
+                                        class: "sort-icon",
+                                        "aria-hidden": "true",
+                                        {sort_icon(SortColumn::Name)}
+                                    }
                                 }
-                                th { class: "sort-th",   scope: "col",
+                                th {
+                                    class: "sort-th",
+                                    scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Mass)}",
                                     onclick: toggle_sort(SortColumn::Mass),
-                                    "Mass "     span { class: "sort-icon", "aria-hidden": "true", {sort_icon(SortColumn::Mass)} }
+                                    "Mass "
+                                    span {
+                                        class: "sort-icon",
+                                        "aria-hidden": "true",
+                                        {sort_icon(SortColumn::Mass)}
+                                    }
                                 }
-                                th { class: "sort-th",   scope: "col",
+                                th {
+                                    class: "sort-th",
+                                    scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Formula)}",
                                     onclick: toggle_sort(SortColumn::Formula),
-                                    "Formula "  span { class: "sort-icon", "aria-hidden": "true", {sort_icon(SortColumn::Formula)} }
+                                    "Formula "
+                                    span {
+                                        class: "sort-icon",
+                                        "aria-hidden": "true",
+                                        {sort_icon(SortColumn::Formula)}
+                                    }
                                 }
-                                th { class: "sort-th",   scope: "col",
+                                th {
+                                    class: "sort-th",
+                                    scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::TaxonName)}",
                                     onclick: toggle_sort(SortColumn::TaxonName),
-                                    "Taxon "    span { class: "sort-icon", "aria-hidden": "true", {sort_icon(SortColumn::TaxonName)} }
+                                    "Taxon "
+                                    span {
+                                        class: "sort-icon",
+                                        "aria-hidden": "true",
+                                        {sort_icon(SortColumn::TaxonName)}
+                                    }
                                 }
-                                th { class: "sort-th",   scope: "col",
+                                th {
+                                    class: "sort-th",
+                                    scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::RefTitle)}",
                                     onclick: toggle_sort(SortColumn::RefTitle),
-                                    "Reference " span { class: "sort-icon", "aria-hidden": "true", {sort_icon(SortColumn::RefTitle)} }
+                                    "Reference "
+                                    span {
+                                        class: "sort-icon",
+                                        "aria-hidden": "true",
+                                        {sort_icon(SortColumn::RefTitle)}
+                                    }
                                 }
-                                th { class: "sort-th",   scope: "col",
+                                th {
+                                    class: "sort-th",
+                                    scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::PubYear)}",
                                     onclick: toggle_sort(SortColumn::PubYear),
-                                    "Year "     span { class: "sort-icon", "aria-hidden": "true", {sort_icon(SortColumn::PubYear)} }
+                                    "Year "
+                                    span {
+                                        class: "sort-icon",
+                                        "aria-hidden": "true",
+                                        {sort_icon(SortColumn::PubYear)}
+                                    }
                                 }
                             }
                         }
                         tbody {
                             for entry in page_rows.iter() {
-                                Row { key: "{entry.compound_qid}-{entry.taxon_qid}-{entry.reference_qid}",
-                                      entry: entry.clone() }
+                                Row {
+                                    key: "{entry.compound_qid}-{entry.taxon_qid}-{entry.reference_qid}",
+                                    entry: entry.clone(),
+                                }
                             }
                         }
                     }
                 }
 
-                Pager { cur, total_pages, total,
-                    on_prev: move |_| { let mut p = page.write(); if *p > 0 { *p -= 1; } },
-                    on_next: move |_| { let mut p = page.write(); if *p + 1 < total_pages { *p += 1; } } }
+                Pager {
+                    cur,
+                    total_pages,
+                    total,
+                    on_prev: move |_| {
+                        let mut p = page.write();
+                        if *p > 0 {
+                            *p -= 1;
+                        }
+                    },
+                    on_next: move |_| {
+                        let mut p = page.write();
+                        if *p + 1 < total_pages {
+                            *p += 1;
+                        }
+                    },
+                }
             }
         }
     }
@@ -273,13 +365,19 @@ fn Pager(
     let end = ((cur + 1) * PAGE_SIZE).min(total);
     rsx! {
         div { class: "pagination-bar",
-            button { class: "btn btn-sm", disabled: cur == 0,
-                onclick: move |e| on_prev.call(e), "← Prev" }
-            span { class: "page-info",
-                "{start}–{end} of {total}  (page {cur+1} / {total_pages})"
+            button {
+                class: "btn btn-sm",
+                disabled: cur == 0,
+                onclick: move |e| on_prev.call(e),
+                "← Prev"
             }
-            button { class: "btn btn-sm", disabled: cur + 1 >= total_pages,
-                onclick: move |e| on_next.call(e), "Next →" }
+            span { class: "page-info", "{start}–{end} of {total}  (page {cur+1} / {total_pages})" }
+            button {
+                class: "btn btn-sm",
+                disabled: cur + 1 >= total_pages,
+                onclick: move |e| on_next.call(e),
+                "Next →"
+            }
         }
     }
 }
@@ -309,7 +407,10 @@ fn Row(entry: CompoundEntry) -> Element {
             // ── Structure depiction ─────────────────────────────────────────
             td { class: "td-depict",
                 if let Some(url) = depict {
-                    a { href: "{url}", target: "_blank", rel: "noopener noreferrer",
+                    a {
+                        href: "{url}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
                         title: "Open full-size depiction",
                         img {
                             class: "depict-img",
@@ -328,19 +429,39 @@ fn Row(entry: CompoundEntry) -> Element {
             // ── Compound: bold name link + QID / Scholia / InChIKey badges ──
             td { class: "td-compound",
                 div { class: "cell-primary",
-                    a { href: "{wu}", target: "_blank", rel: "noopener noreferrer",
-                        class: "primary-link", "{name}" }
+                    a {
+                        href: "{wu}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        class: "primary-link",
+                        "{name}"
+                    }
                 }
                 div { class: "badge-row",
-                    a { href: "{wu}", target: "_blank", rel: "noopener noreferrer",
-                        class: "id-badge wd", title: "Open in Wikidata",
+                    a {
+                        href: "{wu}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        class: "id-badge wd",
+                        title: "Open in Wikidata",
                         aria_label: "Wikidata {entry.compound_qid}",
-                        "{entry.compound_qid}" }
-                    a { href: "{su}", target: "_blank", rel: "noopener noreferrer",
-                        class: "id-badge sc", title: "Open in Scholia", "Scholia" }
+                        "{entry.compound_qid}"
+                    }
+                    a {
+                        href: "{su}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        class: "id-badge sc",
+                        title: "Open in Scholia",
+                        "Scholia"
+                    }
                     if let (Some(ik), Some(search_url)) = (&entry.inchikey, inchikey_search.as_deref()) {
-                        a { href: "{search_url}", target: "_blank", rel: "noopener noreferrer",
-                            class: "id-badge mono", title: "{ik}",
+                        a {
+                            href: "{search_url}",
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            class: "id-badge mono",
+                            title: "{ik}",
                             aria_label: "Search Wikidata for InChIKey {ik}",
                             "{short_inchikey(ik)}"
                         }
@@ -350,27 +471,42 @@ fn Row(entry: CompoundEntry) -> Element {
 
             // ── Mass ────────────────────────────────────────────────────────
             td { class: "td-num",
-                if let Some(m) = entry.mass { span { "{m:.4}" } }
-                else { span { class: "na", "—" } }
+                if let Some(m) = entry.mass {
+                    span { "{m:.4}" }
+                } else {
+                    span { class: "na", "—" }
+                }
             }
             // ── Formula ─────────────────────────────────────────────────────
             td { class: "td-formula",
-                if let Some(f) = &entry.formula { span { class: "formula", "{f}" } }
-                else { span { class: "na", "—" } }
+                if let Some(f) = &entry.formula {
+                    span { class: "formula", "{f}" }
+                } else {
+                    span { class: "na", "—" }
+                }
             }
 
             // ── Taxon: italic name link + QID badge ────────────────────────
             td { class: "td-taxon",
                 div { class: "cell-primary",
-                    a { href: "{tu}", target: "_blank", rel: "noopener noreferrer",
+                    a {
+                        href: "{tu}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
                         class: "primary-link taxon",
-                        "{entry.taxon_name}" }
+                        "{entry.taxon_name}"
+                    }
                 }
                 div { class: "badge-row",
-                    a { href: "{tu}", target: "_blank", rel: "noopener noreferrer",
-                        class: "id-badge wd", title: "Open in Wikidata",
+                    a {
+                        href: "{tu}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        class: "id-badge wd",
+                        title: "Open in Wikidata",
                         aria_label: "Wikidata {entry.taxon_qid}",
-                        "{entry.taxon_qid}" }
+                        "{entry.taxon_qid}"
+                    }
                 }
             }
 
@@ -378,34 +514,65 @@ fn Row(entry: CompoundEntry) -> Element {
             td { class: "td-ref",
                 div { class: "cell-primary",
                     if let Some(t) = &entry.ref_title {
-                        a { href: "{ru}", target: "_blank", rel: "noopener noreferrer",
-                            class: "primary-link", title: "{t}", "{truncate_title(t, 60)}" }
+                        a {
+                            href: "{ru}",
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            class: "primary-link",
+                            title: "{t}",
+                            "{truncate_title(t, 60)}"
+                        }
                     } else {
-                        a { href: "{ru}", target: "_blank", rel: "noopener noreferrer",
-                            class: "primary-link", "{entry.reference_qid}" }
+                        a {
+                            href: "{ru}",
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            class: "primary-link",
+                            "{entry.reference_qid}"
+                        }
                     }
                 }
                 div { class: "badge-row",
-                    a { href: "{ru}", target: "_blank", rel: "noopener noreferrer",
-                        class: "id-badge wd", title: "Open in Wikidata",
+                    a {
+                        href: "{ru}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        class: "id-badge wd",
+                        title: "Open in Wikidata",
                         aria_label: "Wikidata {entry.reference_qid}",
-                        "{entry.reference_qid}" }
+                        "{entry.reference_qid}"
+                    }
                     if let Some(url) = doi {
-                        a { href: "{url}", target: "_blank", rel: "noopener noreferrer",
-                            class: "id-badge doi", title: "Open DOI", "DOI" }
+                        a {
+                            href: "{url}",
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            class: "id-badge doi",
+                            title: "Open DOI",
+                            "DOI"
+                        }
                     }
                     if let (Some(url), Some(stmt)) = (statement_url.as_deref(), statement_id.as_deref()) {
-                        a { href: "{url}", target: "_blank", rel: "noopener noreferrer",
-                            class: "id-badge stmt mono", title: "{stmt}",
-                            aria_label: "Wikidata statement {stmt}", "stmt" }
+                        a {
+                            href: "{url}",
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            class: "id-badge stmt mono",
+                            title: "{stmt}",
+                            aria_label: "Wikidata statement {stmt}",
+                            "stmt"
+                        }
                     }
                 }
             }
 
             // ── Year ────────────────────────────────────────────────────────
             td { class: "td-year",
-                if let Some(y) = entry.pub_year { span { "{y}" } }
-                else { span { class: "na", "—" } }
+                if let Some(y) = entry.pub_year {
+                    span { "{y}" }
+                } else {
+                    span { class: "na", "—" }
+                }
             }
         }
     }
