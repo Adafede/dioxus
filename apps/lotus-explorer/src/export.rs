@@ -187,7 +187,9 @@ pub fn criteria_to_filters_value(criteria: &SearchCriteria) -> Value {
 pub struct MetadataInputs<'a> {
     pub criteria: &'a SearchCriteria,
     pub qid: Option<&'a str>,
+    #[allow(dead_code)]
     pub stats: &'a DatasetStats,
+    pub number_of_records_override: Option<usize>,
     pub query_hash: &'a str,
     pub result_hash: &'a str,
 }
@@ -334,10 +336,9 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
             { "@type": "DataDownload", "encodingFormat": "text/turtle",      "contentUrl": "data:text/turtle" },
         ]),
     );
-    meta.insert(
-        "numberOfRecords".into(),
-        Value::Number(inp.stats.n_entries.into()),
-    );
+    if let Some(n_records) = inp.number_of_records_override {
+        meta.insert("numberOfRecords".into(), Value::Number(n_records.into()));
+    }
     meta.insert(
         "variablesMeasured".into(),
         json!([
@@ -452,10 +453,12 @@ pub fn build_ttl(rows: &[CompoundEntry], meta: MetadataInputs<'_>) -> String {
         now_iso8601()
     ));
     out.push_str("    schema:license <https://creativecommons.org/publicdomain/zero/1.0/> ;\n");
-    out.push_str(&format!(
-        "    schema:numberOfRecords \"{}\"^^xsd:integer ;\n",
-        meta.stats.n_entries
-    ));
+    if let Some(n_records) = meta.number_of_records_override {
+        out.push_str(&format!(
+            "    schema:numberOfRecords \"{}\"^^xsd:integer ;\n",
+            n_records
+        ));
+    }
     out.push_str(&format!(
         "    dcterms:identifier \"sha256:{}\" .\n\n",
         meta.result_hash

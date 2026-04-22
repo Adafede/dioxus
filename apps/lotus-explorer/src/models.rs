@@ -7,7 +7,7 @@
 /// Mirrors the Python `CONFIG["table_row_limit"]` which caps at 100 in
 /// Pyodide/WASM (to preserve memory / keep the UI snappy) and 1000 otherwise.
 #[cfg(target_arch = "wasm32")]
-pub const TABLE_ROW_LIMIT: usize = 1_000_000;
+pub const TABLE_ROW_LIMIT: usize = 5_000;
 #[cfg(not(target_arch = "wasm32"))]
 pub const TABLE_ROW_LIMIT: usize = 1_000_000;
 

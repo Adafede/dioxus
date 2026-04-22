@@ -1,8 +1,10 @@
 use crate::export;
 use crate::models::*;
+use crate::sparql;
 use dioxus::prelude::*;
 
-const PAGE_SIZE: usize = 10;
+const VIRTUAL_INITIAL_ROWS: usize = 120;
+const VIRTUAL_STEP_ROWS: usize = 200;
 
 /// Human-facing QLever UI endpoint (for the "Open in QLever" deep-link).
 /// The JSON API lives at `https://qlever.dev/api/wikidata`; the interactive
@@ -16,6 +18,8 @@ pub fn ResultsTable(
     /// every row even when the on-screen table is display-capped.
     export_rows: Vec<CompoundEntry>,
     stats: DatasetStats,
+    total_stats: Option<DatasetStats>,
+    total_matches: Option<usize>,
     sort: Signal<SortState>,
     page: Signal<usize>,
     sparql_query: Option<String>,
@@ -26,9 +30,13 @@ pub fn ResultsTable(
     /// filenames (taxon slug + optional search-type suffix).
     criteria: SearchCriteria,
 ) -> Element {
+    let display_stats = total_stats.unwrap_or_else(|| stats.clone());
+    let stats_partial = total_matches
+        .map(|n| n > entries.len())
+        .unwrap_or(entries.len() >= TABLE_ROW_LIMIT);
+    let entries_value = total_matches.unwrap_or(display_stats.n_entries);
     let total = entries.len();
-    let total_pages = ((total + PAGE_SIZE - 1) / PAGE_SIZE).max(1);
-    let cur = (*page.read()).min(total_pages - 1);
+    let _ = page;
 
     // Sort
     let mut sorted = entries.clone();
@@ -54,12 +62,9 @@ pub fn ResultsTable(
         });
     }
 
-    let page_rows: Vec<CompoundEntry> = sorted
-        .iter()
-        .skip(cur * PAGE_SIZE)
-        .take(PAGE_SIZE)
-        .cloned()
-        .collect();
+    let mut visible_rows_limit = use_signal(|| VIRTUAL_INITIAL_ROWS);
+    let visible_count = (*visible_rows_limit.read()).min(sorted.len());
+    let visible_rows: Vec<CompoundEntry> = sorted.iter().take(visible_count).cloned().collect();
 
     let sort_icon = |col: SortColumn| -> &'static str {
         let s = sort.read();
@@ -88,7 +93,7 @@ pub fn ResultsTable(
     };
 
     // ── Export (runs over the *full* filtered set, not just the visible page) ──
-    let export_available = !export_rows.is_empty();
+    let export_available = sparql_query.is_some() || metadata_json.is_some();
     // Python-compatible filenames: {YYYYMMDD}_lotus_{safe_taxon}[_{search_type}].{ext}
     let search_type_suffix: Option<&str> = if criteria.smiles.trim().is_empty() {
         None
@@ -106,22 +111,16 @@ pub fn ResultsTable(
         (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
         _ => export::generate_filename(&criteria.taxon, "metadata.json", search_type_suffix),
     };
-    let csv_body = export_available.then(|| build_csv(&export_rows));
-    let json_body = export_available.then(|| export::build_ndjson(&export_rows));
-    let ttl_body = export_available.then(|| {
-        let meta = export::MetadataInputs {
-            criteria: &SearchCriteria::default(), // filled in for header-only fields
-            qid: None,
-            stats: &stats,
-            query_hash: query_hash.as_deref().unwrap_or(""),
-            result_hash: result_hash.as_deref().unwrap_or(""),
-        };
-        export::build_ttl(&export_rows, meta)
-    });
     let metadata_body = metadata_json.clone();
     let qlever_ui_url = sparql_query
         .as_deref()
         .map(|q| format!("{QLEVER_UI}?query={}", urlencoding::encode(q)));
+    let download_busy = use_signal(|| false);
+    let download_status: Signal<Option<String>> = use_signal(|| None);
+    let download_status_text = download_status
+        .read()
+        .clone()
+        .unwrap_or_else(|| "Preparing download...".to_string());
 
     rsx! {
         div { class: "results-wrap",
@@ -131,53 +130,145 @@ pub fn ResultsTable(
                     class: "stat-bar",
                     role: "group",
                     aria_label: "Dataset statistics",
-                    StatBadge { value: stats.n_compounds, label: "Compounds" }
-                    StatBadge { value: stats.n_taxa, label: "Taxa" }
-                    StatBadge { value: stats.n_references, label: "References" }
-                    StatBadge { value: stats.n_entries, label: "Entries" }
+                    StatBadge {
+                        value: display_stats.n_compounds,
+                        label: "Compounds",
+                        plus: stats_partial,
+                    }
+                    StatBadge {
+                        value: display_stats.n_taxa,
+                        label: "Taxa",
+                        plus: stats_partial,
+                    }
+                    StatBadge {
+                        value: display_stats.n_references,
+                        label: "References",
+                        plus: stats_partial,
+                    }
+                    StatBadge { value: entries_value, label: "Entries", plus: false }
                 }
                 div { class: "toolbar-actions",
+                    if *download_busy.read() {
+                        span {
+                            class: "btn btn-sm",
+                            role: "status",
+                            aria_live: "polite",
+                            span { class: "spinner-sm", "aria-hidden": "true" }
+                            {download_status_text}
+                        }
+                    }
                     if export_available {
                         div {
                             class: "dl-group",
                             role: "group",
                             aria_label: "Download results",
-                            if let Some(body) = csv_body.as_ref() {
+                            if let Some(query) = sparql_query.as_deref() {
                                 button {
                                     class: "btn btn-sm",
                                     r#type: "button",
+                                    disabled: *download_busy.read(),
                                     onclick: {
                                         let filename = csv_filename.clone();
-                                        let body = body.clone();
-                                        move |_| trigger_download(&filename, "text/csv", &body)
+                                        let q = query.to_string();
+                                        let mut busy = download_busy;
+                                        let mut status = download_status;
+                                        move |_| {
+                                            *busy.write() = true;
+                                            *status.write() = Some("Starting CSV download...".to_string());
+                                            trigger_query_csv_download(&q, &filename);
+                                            *busy.write() = false;
+                                            *status.write() = None;
+                                        }
                                     },
-                                    title: "Download the full result set ({export_rows.len()} rows) as CSV",
+                                    title: "Download all rows as CSV",
                                     "CSV"
                                 }
-                            }
-                            if let Some(body) = json_body.as_ref() {
                                 button {
                                     class: "btn btn-sm",
                                     r#type: "button",
+                                    disabled: *download_busy.read(),
                                     onclick: {
+                                        let q = query.to_string();
                                         let filename = json_filename.clone();
-                                        let body = body.clone();
-                                        move |_| trigger_download(&filename, "application/x-ndjson", &body)
+                                        let mut busy = download_busy;
+                                        let mut status = download_status;
+                                        move |_| {
+                                            *busy.write() = true;
+                                            *status.write() = Some("Preparing JSON download...".to_string());
+                                            spawn({
+                                                let q = q.clone();
+                                                let filename = filename.clone();
+                                                let mut busy = busy;
+                                                let mut status = status;
+                                                async move {
+                                                    if let Ok(csv) = sparql::execute_sparql(&q).await {
+                                                        if let Ok(rows) = sparql::parse_compounds_csv(&csv) {
+                                                            let body = export::build_ndjson(&rows);
+                                                            trigger_download(&filename, "application/x-ndjson", &body);
+                                                        }
+                                                    }
+                                                    *busy.write() = false;
+                                                    *status.write() = None;
+                                                }
+                                            });
+                                        }
                                     },
-                                    title: "Download the full result set as newline-delimited JSON",
+                                    title: "Download all rows as newline-delimited JSON (can take time)",
                                     "JSON"
                                 }
-                            }
-                            if let Some(body) = ttl_body.as_ref() {
                                 button {
                                     class: "btn btn-sm",
                                     r#type: "button",
+                                    disabled: *download_busy.read(),
                                     onclick: {
+                                        let q = query.to_string();
                                         let filename = ttl_filename.clone();
-                                        let body = body.clone();
-                                        move |_| trigger_download(&filename, "text/turtle", &body)
+                                        let query_hash_value = query_hash.clone();
+                                        let result_hash_value = result_hash.clone();
+                                        let criteria_value = criteria.clone();
+                                        let mut busy = download_busy;
+                                        let mut status = download_status;
+                                        move |_| {
+                                            *busy.write() = true;
+                                            *status.write() = Some("Preparing TTL download...".to_string());
+                                            spawn({
+                                                let q = q.clone();
+                                                let filename = filename.clone();
+                                                let query_hash_value = query_hash_value.clone();
+                                                let result_hash_value = result_hash_value.clone();
+                                                let criteria_value = criteria_value.clone();
+                                                let mut busy = busy;
+                                                let mut status = status;
+                                                async move {
+                                                    if let Ok(csv) = sparql::execute_sparql(&q).await {
+                                                        if let Ok(rows) = sparql::parse_compounds_csv(&csv) {
+                                                            let full_stats = DatasetStats::from_entries(&rows);
+                                                            let ttl = export::build_ttl(
+                                                                &rows,
+                                                                export::MetadataInputs {
+                                                                    criteria: &criteria_value,
+                                                                    qid: None,
+                                                                    stats: &full_stats,
+                                                                    number_of_records_override:
+                                                                        Some(full_stats.n_entries),
+                                                                    query_hash: query_hash_value
+                                                                        .as_deref()
+                                                                        .unwrap_or(""),
+                                                                    result_hash: result_hash_value
+                                                                        .as_deref()
+                                                                        .unwrap_or(""),
+                                                                },
+                                                            );
+                                                            trigger_download(&filename, "text/turtle", &ttl);
+                                                        }
+                                                    }
+                                                    *busy.write() = false;
+                                                    *status.write() = None;
+                                                }
+                                            });
+                                        }
                                     },
-                                    title: "Download the full result set as RDF Turtle",
+                                    title: "Download all rows as RDF Turtle (can take time)",
                                     "TTL"
                                 }
                             }
@@ -185,6 +276,7 @@ pub fn ResultsTable(
                                 button {
                                     class: "btn btn-sm",
                                     r#type: "button",
+                                    disabled: *download_busy.read(),
                                     onclick: {
                                         let filename = metadata_filename.clone();
                                         let body = body.clone();
@@ -221,22 +313,19 @@ pub fn ResultsTable(
                     p { "No results. Try broadening your search." }
                 }
             } else {
-                Pager {
-                    cur,
-                    total_pages,
-                    total,
-                    on_prev: move |_| {
-                        let mut p = page.write();
-                        if *p > 0 {
-                            *p -= 1;
+                div { class: "pagination-bar",
+                    span { class: "page-info", "Showing {visible_count} of {total} rows" }
+                    if visible_count < total {
+                        button {
+                            class: "btn btn-sm",
+                            r#type: "button",
+                            onclick: move |_| {
+                                let next = (*visible_rows_limit.read()).saturating_add(VIRTUAL_STEP_ROWS);
+                                *visible_rows_limit.write() = next;
+                            },
+                            "Load {VIRTUAL_STEP_ROWS} more"
                         }
-                    },
-                    on_next: move |_| {
-                        let mut p = page.write();
-                        if *p + 1 < total_pages {
-                            *p += 1;
-                        }
-                    },
+                    }
                 }
 
                 div { class: "table-scroll",
@@ -321,7 +410,7 @@ pub fn ResultsTable(
                             }
                         }
                         tbody {
-                            for entry in page_rows.iter() {
+                            for entry in visible_rows.iter() {
                                 Row {
                                     key: "{entry.compound_qid}-{entry.taxon_qid}-{entry.reference_qid}",
                                     entry: entry.clone(),
@@ -331,22 +420,18 @@ pub fn ResultsTable(
                     }
                 }
 
-                Pager {
-                    cur,
-                    total_pages,
-                    total,
-                    on_prev: move |_| {
-                        let mut p = page.write();
-                        if *p > 0 {
-                            *p -= 1;
+                if visible_count < total {
+                    div { class: "pagination-bar",
+                        button {
+                            class: "btn btn-sm",
+                            r#type: "button",
+                            onclick: move |_| {
+                                let next = (*visible_rows_limit.read()).saturating_add(VIRTUAL_STEP_ROWS);
+                                *visible_rows_limit.write() = next;
+                            },
+                            "Load more"
                         }
-                    },
-                    on_next: move |_| {
-                        let mut p = page.write();
-                        if *p + 1 < total_pages {
-                            *p += 1;
-                        }
-                    },
+                    }
                 }
             }
         }
@@ -356,43 +441,22 @@ pub fn ResultsTable(
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 #[component]
-fn StatBadge(value: usize, label: &'static str) -> Element {
+fn StatBadge(value: usize, label: &'static str, plus: bool) -> Element {
+    let display_value = if plus {
+        format!("{value}+")
+    } else {
+        value.to_string()
+    };
     rsx! {
         div { class: "stat-badge",
-            span { class: "stat-value", "{value}" }
+            span { class: "stat-value", "{display_value}" }
             span { class: "stat-label", "{label}" }
         }
     }
 }
 
-#[component]
-fn Pager(
-    cur: usize,
-    total_pages: usize,
-    total: usize,
-    on_prev: EventHandler<MouseEvent>,
-    on_next: EventHandler<MouseEvent>,
-) -> Element {
-    let start = cur * PAGE_SIZE + 1;
-    let end = ((cur + 1) * PAGE_SIZE).min(total);
-    rsx! {
-        div { class: "pagination-bar",
-            button {
-                class: "btn btn-sm",
-                disabled: cur == 0,
-                onclick: move |e| on_prev.call(e),
-                "← Prev"
-            }
-            span { class: "page-info", "{start}–{end} of {total}  (page {cur+1} / {total_pages})" }
-            button {
-                class: "btn btn-sm",
-                disabled: cur + 1 >= total_pages,
-                onclick: move |e| on_next.call(e),
-                "Next →"
-            }
-        }
-    }
-}
+// Pagination is intentionally replaced by chunked rendering to keep the DOM
+// small while still allowing users to progressively load large result sets.
 
 #[component]
 fn Row(entry: CompoundEntry) -> Element {
@@ -620,6 +684,7 @@ fn truncate_title(title: &str, max_chars: usize) -> String {
 
 /// Build a standalone CSV document for the full filtered dataset. Column
 /// order mirrors the Python `build_display_dataframe` export layout.
+#[allow(dead_code)]
 fn build_csv(rows: &[CompoundEntry]) -> String {
     let mut out = String::with_capacity(rows.len() * 256);
     out.push_str(
@@ -657,6 +722,7 @@ fn build_csv(rows: &[CompoundEntry]) -> String {
     out
 }
 
+#[allow(dead_code)]
 fn csv_escape(s: &str) -> String {
     if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
         let escaped = s.replace('"', "\"\"");
@@ -706,5 +772,55 @@ fn trigger_download(filename: &str, mime: &str, body: &str) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let _ = (filename, mime, body);
+    }
+}
+
+fn trigger_query_csv_download(sparql_query: &str, filename: &str) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let endpoint_json = serde_json::to_string("https://qlever.dev/api/wikidata")
+            .unwrap_or_else(|_| "\"https://qlever.dev/api/wikidata\"".to_string());
+        let query_json = serde_json::to_string(sparql_query).unwrap_or_else(|_| "\"\"".to_string());
+        let filename_json =
+            serde_json::to_string(filename).unwrap_or_else(|_| "\"download.csv\"".to_string());
+        // Fetch full CSV via POST and force the app's filename convention.
+        let script = format!(
+            r#"(() => {{
+  const endpoint = {endpoint_json};
+  const query = {query_json};
+  const filename = {filename_json};
+  const body = new URLSearchParams();
+  body.set("query", query);
+  body.set("action", "csv_export");
+
+  fetch(endpoint, {{
+    method: "POST",
+    headers: {{ "Accept": "text/csv" }},
+    body,
+  }})
+    .then((r) => {{ if (!r.ok) throw new Error(`HTTP ${{r.status}}`); return r.blob(); }})
+    .then((blob) => {{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }})
+    .catch(() => {{
+      // Fallback: at least open QLever UI with query if fetch/download fails.
+      const ui = "https://qlever.dev/wikidata?query=" + encodeURIComponent(query);
+      window.open(ui, "_blank", "noopener,noreferrer");
+    }});
+}})();"#
+        );
+        let _ = js_sys::eval(&script);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = (sparql_query, filename);
     }
 }

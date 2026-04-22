@@ -236,44 +236,28 @@ pub fn query_sachem(
     };
 
     let body = if let Some(qid) = taxon_qid {
-        if is_multiline_literal {
-            format!(
-                r#"
+        format!(
+            r#"
   {sachem_clause}
   {COMPOUND_IDENTIFIERS}
+
   ?c p:P703 ?statement .
-  ?statement wikibase:rank wikibase:NormalRank ;
-             ps:P703 ?t ;
+  ?statement ps:P703 ?t ;
              prov:wasDerivedFrom ?ref .
   ?ref pr:P248 ?r .
   ?t wdt:P225 ?taxon_name .
   ?t (wdt:P171*) wd:{qid} .
+
   {REFERENCE_METADATA_OPTIONAL}
   {PROPERTIES_OPTIONAL}
 "#
-            )
-        } else {
-            format!(
-                r#"
-  ?c p:P703 ?statement .
-  ?statement wikibase:rank wikibase:NormalRank ;
-             ps:P703 ?t ;
-             prov:wasDerivedFrom ?ref .
-  ?ref pr:P248 ?r .
-  ?t wdt:P225 ?taxon_name .
-  ?t (wdt:P171*) wd:{qid} .
-  {sachem_clause}
-  {COMPOUND_IDENTIFIERS}
-  {REFERENCE_METADATA_OPTIONAL}
-  {PROPERTIES_OPTIONAL}
-"#
-            )
-        }
+        )
     } else {
         format!(
             r#"
   {sachem_clause}
   {COMPOUND_IDENTIFIERS}
+
   OPTIONAL {{
     ?c p:P703 ?statement .
     ?statement ps:P703 ?t ;
@@ -282,6 +266,7 @@ pub fn query_sachem(
     ?t wdt:P225 ?taxon_name .
     {REFERENCE_METADATA_OPTIONAL}
   }}
+
   {PROPERTIES_OPTIONAL}
 "#
         )
@@ -375,3 +360,5 @@ pub fn escape_structure_literal(smiles: &str) -> String {
         format!("\"{escaped}\"")
     }
 }
+
+// ...no additional wrapper count query; totals are derived from the same CSV stream.

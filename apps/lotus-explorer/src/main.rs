@@ -35,6 +35,8 @@ fn App() -> Element {
     let mut sparql_query: Signal<Option<String>> = use_signal(|| None);
     let mut truncated: Signal<Option<(usize, usize)>> = use_signal(|| None);
     let mut metadata_json: Signal<Option<String>> = use_signal(|| None);
+    let mut total_matches: Signal<Option<usize>> = use_signal(|| None);
+    let mut total_stats: Signal<Option<DatasetStats>> = use_signal(|| None);
     let mut export_rows: Signal<Vec<CompoundEntry>> = use_signal(Vec::new);
     let sort: Signal<SortState> = use_signal(SortState::default);
     let mut page: Signal<usize> = use_signal(|| 0usize);
@@ -65,6 +67,8 @@ fn App() -> Element {
         *sparql_query.write() = None;
         *truncated.write() = None;
         *metadata_json.write() = None;
+        *total_matches.write() = None;
+        *total_stats.write() = None;
         *page.write() = 0;
         *mobile_filters_open.write() = false;
 
@@ -104,6 +108,7 @@ fn App() -> Element {
                         criteria: &crit,
                         qid: outcome.qid.as_deref(),
                         stats: &full_stats,
+                        number_of_records_override: outcome.total_matches,
                         query_hash: &q_hash,
                         result_hash: &r_hash,
                     });
@@ -122,6 +127,8 @@ fn App() -> Element {
                     *shareable_url.write() = share_url;
                     *sparql_query.write() = Some(outcome.query);
                     *metadata_json.write() = Some(meta_str);
+                    *total_matches.write() = outcome.total_matches;
+                    *total_stats.write() = outcome.total_stats.clone();
                     *truncated.write() = if was_truncated {
                         Some((cap, full_count))
                     } else {
@@ -163,12 +170,25 @@ fn App() -> Element {
                     }
                 }
                 SearchPanel { criteria, on_search, loading: *loading.read() }
+                div { class: "sidebar-logo-wrap",
+                    img {
+                        class: "sidebar-logo",
+                        src: "assets/lotus_ferris.svg",
+                        alt: "LOTUS Ferris logo",
+                        width: "180",
+                        height: "180",
+                        loading: "eager",
+                        decoding: "async",
+                    }
+                }
             }
 
             // ── Main panel ────────────────────────────────────────────────
             main { class: "main-content",
                 div { class: "page-header",
-                    h1 { class: "page-title", "LOTUS Wikidata Explorer" }
+                    div { class: "page-brand",
+                        h1 { class: "page-title", "LOTUS Wikidata Explorer" }
+                    }
                     p { class: "page-sub",
                         "Natural product occurrences — compound, taxon, reference."
                     }
@@ -192,6 +212,13 @@ fn App() -> Element {
                             span { class: "meta-key", "Result hash" }
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{&rh[..12]}" }
+                        }
+                    }
+                    if let Some(n) = *total_matches.read() {
+                        p { class: "page-meta",
+                            span { class: "meta-key", "Total matches" }
+                            span { class: "meta-sep", ":" }
+                            span { class: "meta-val mono", "{n}" }
                         }
                     }
                 }
@@ -218,7 +245,7 @@ fn App() -> Element {
                     div { class: "notice notice-warn", role: "status",
                         span { class: "notice-label", "Truncated" }
                         span { class: "notice-value",
-                            "Showing the first {cap} of {total} rows. Exports include the full filtered result set."
+                            "Showing the first {cap} of {total} rows in-browser. Downloads run on the full query."
                         }
                     }
                 }
@@ -253,6 +280,8 @@ fn App() -> Element {
                         entries: entries.read().clone(),
                         export_rows: export_rows.read().clone(),
                         stats,
+                        total_stats: total_stats.read().clone(),
+                        total_matches: *total_matches.read(),
                         sort,
                         page,
                         sparql_query: sparql_query.read().clone(),
@@ -445,6 +474,8 @@ struct SearchOutcome {
     qid: Option<String>,
     warning: Option<String>,
     query: String,
+    total_matches: Option<usize>,
+    total_stats: Option<DatasetStats>,
 }
 
 async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
@@ -538,7 +569,8 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
         )
     } else {
         match taxon_qid.as_deref() {
-            Some("*") | None => queries::query_all_compounds(),
+            Some("*") => queries::query_all_compounds(),
+            None => queries::query_all_compounds(),
             Some(qid) => queries::query_compounds_by_taxon(qid),
         }
     };
@@ -546,13 +578,38 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
     let csv = sparql::execute_sparql(&sparql_query)
         .await
         .map_err(|e| format!("Query failed: {e}"))?;
-    let rows = sparql::parse_compounds_csv(&csv).map_err(|e| format!("Parse error: {e}"))?;
+    #[cfg(target_arch = "wasm32")]
+    let (rows, full_stats, parse_capped) =
+        sparql::parse_compounds_csv_capped(&csv, TABLE_ROW_LIMIT)
+            .map_err(|e| format!("Parse error: {e}"))?;
+    #[cfg(not(target_arch = "wasm32"))]
+    let (rows, full_stats, parse_capped) = {
+        let parsed_rows =
+            sparql::parse_compounds_csv(&csv).map_err(|e| format!("Parse error: {e}"))?;
+        let stats = DatasetStats::from_entries(&parsed_rows);
+        (parsed_rows, stats, false)
+    };
+
+    let total_matches: Option<usize> = Some(full_stats.n_entries);
+
+    if parse_capped {
+        let mut msg = format!(
+            "Large result set detected. Rendering first {} rows in browser for stability; downloads still run on the full query.",
+            TABLE_ROW_LIMIT
+        );
+        if let Some(existing) = warning.take() {
+            msg = format!("{existing} {msg}");
+        }
+        warning = Some(msg);
+    }
 
     Ok(SearchOutcome {
         rows,
         qid: taxon_qid,
         warning,
         query: sparql_query,
+        total_matches,
+        total_stats: Some(full_stats),
     })
 }
 
@@ -808,7 +865,7 @@ const APP_CSS: &str = r#"
 .app-layout    { display:flex; height:100vh; overflow:hidden; }
 .sidebar       { width:320px; min-width:280px; height:100vh; overflow-y:auto;
                  background:var(--bg2); border-right:1px solid var(--border); flex-shrink:0;
-                 box-shadow:var(--shadow-sm); }
+                 box-shadow:var(--shadow-sm); display:flex; flex-direction:column; }
 .main-content  { flex:1; height:100vh; overflow-y:auto; display:flex; flex-direction:column; }
 
 /* ── Perceived performance ─────────────────────────────────────────────── */
@@ -824,7 +881,8 @@ const APP_CSS: &str = r#"
 /* ── Page header ─────────────────────────────────────────────────────────── */
 .page-header { padding:24px 28px 18px; border-bottom:1px solid var(--border); background:var(--bg2);
                box-shadow:var(--shadow-xs); }
-.page-title  { font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--wd-reference); }
+.page-brand  { display:flex; align-items:center; gap:12px; }
+.page-title  { font-size:22px; font-weight:800; letter-spacing:-.02em; line-height:1.08; color:var(--wd-reference); }
 .page-sub    { font-size:14px; color:var(--text2); margin-top:6px; }
 .page-meta   { font-size:11px; color:var(--text3); margin-top:6px; display:flex; gap:6px;
                flex-wrap:wrap; align-items:baseline; }
@@ -865,8 +923,11 @@ const APP_CSS: &str = r#"
 
 /* ── Search panel (sidebar) ──────────────────────────────────────────────── */
 .search-panel    { padding:22px 20px; display:flex; flex-direction:column; gap:18px;
-                   background:var(--bg2); }
+                   background:var(--bg2); flex:1; }
 .filters-toggle  { display:none; }
+.sidebar-logo-wrap { margin-top:auto; padding:14px 12px 18px; display:flex; justify-content:center;
+                    border-top:1px solid var(--border); }
+.sidebar-logo { display:block; width:180px; height:180px; }
 
 .form-section    { display:flex; flex-direction:column; gap:5px; }
 .form-section.nested { padding-left:10px; border-left:1px solid var(--border); margin-top:4px; }
@@ -1101,6 +1162,8 @@ const APP_CSS: &str = r#"
 
   .page-title { font-size:18px; }
   .page-sub { font-size:13px; }
+  .sidebar-logo-wrap { padding-top:10px; padding-bottom:12px; }
+  .sidebar-logo { width:120px; height:120px; }
   .search-panel { gap:12px; }
   .radio-group, .range-inputs, .toolbar-actions, .footer-row { flex-wrap:wrap; }
   .range-pair { min-width:120px; }
