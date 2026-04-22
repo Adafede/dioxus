@@ -1,8 +1,10 @@
 [application]
 name             = "lotus-explorer"
 default_platform = "web"
-out_dir          = "dist"
 asset_dir        = "assets"
+# Note: dx ≥ 0.7 writes the web bundle to
+#   target/dx/<package-name>/release/web/public/
+# and ignores any `out_dir` key set here.
 
 [web.app]
 title = "LOTUS Wikidata Explorer"
