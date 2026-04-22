@@ -1,5 +1,5 @@
 use crate::models::*;
-use crate::queries::{classify_structure, StructureKind};
+use crate::queries::{StructureKind, classify_structure};
 use dioxus::prelude::*;
 
 #[component]

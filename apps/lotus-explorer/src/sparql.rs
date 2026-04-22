@@ -3,8 +3,8 @@
 //! Delegates URL construction and low-level helpers to the `shared` crate.
 
 use shared::sparql::{
-    clean_doi, coalesce, col_idx, execute_sparql as shared_execute, extract_qid, field, non_empty,
-    parse_year, FetchError, QLEVER_WIKIDATA,
+    FetchError, QLEVER_WIKIDATA, clean_doi, coalesce, col_idx, execute_sparql as shared_execute,
+    extract_qid, field, non_empty, parse_year,
 };
 
 use crate::models::{CompoundEntry, TaxonMatch};

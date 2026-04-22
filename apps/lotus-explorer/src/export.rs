@@ -7,7 +7,7 @@
 //! the marimo notebook.
 
 use crate::models::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 // Wikidata colour palette (matches Python CONFIG).  Values are kept in Rust
 // for any code paths that need the colours programmatically (e.g. future

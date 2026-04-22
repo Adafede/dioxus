@@ -64,11 +64,7 @@ pub fn ResultsTable(
     let sort_icon = |col: SortColumn| -> &'static str {
         let s = sort.read();
         if s.col == col {
-            if s.dir == SortDir::Asc {
-                "↑"
-            } else {
-                "↓"
-            }
+            if s.dir == SortDir::Asc { "↑" } else { "↓" }
         } else {
             ""
         }

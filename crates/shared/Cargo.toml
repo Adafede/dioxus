@@ -1,7 +1,7 @@
 [package]
 name = "shared"
 version = "0.1.0"
-edition = "2026"
+edition = "2024"
 description = "Shared theme, components and SPARQL utilities for dioxus-apps"
 
 [dependencies]
