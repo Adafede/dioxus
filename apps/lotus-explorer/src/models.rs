@@ -247,6 +247,16 @@ impl SearchCriteria {
                 || self.br_state != ElementState::Allowed
                 || self.i_state != ElementState::Allowed)
     }
+
+    pub fn has_effective_filters(&self) -> bool {
+        let taxon = self.taxon.trim();
+        (!taxon.is_empty() && taxon != "*")
+            || !self.smiles.trim().is_empty()
+            || self.has_mass_filter()
+            || self.has_year_filter()
+            || self.has_formula_filter()
+    }
+
     pub fn is_valid(&self) -> bool {
         !self.taxon.trim().is_empty() || !self.smiles.trim().is_empty()
     }
@@ -311,7 +321,6 @@ impl SearchCriteria {
         params
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SmilesSearchType {
@@ -441,4 +450,3 @@ impl Default for SortState {
         }
     }
 }
-

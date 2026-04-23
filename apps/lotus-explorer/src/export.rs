@@ -8,6 +8,17 @@ pub const APP_NAME: &str = "LOTUS Wikidata Explorer (Dioxus port)";
 pub const APP_URL: &str = "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer";
 pub const QLEVER_ENDPOINT: &str = "https://qlever.dev/api/wikidata";
 
+fn export_search_type_suffix(criteria: &SearchCriteria) -> Option<&'static str> {
+    if criteria.smiles.trim().is_empty() {
+        None
+    } else {
+        Some(match criteria.smiles_search_type {
+            SmilesSearchType::Substructure => "substructure",
+            SmilesSearchType::Similarity => "similarity",
+        })
+    }
+}
+
 // ── Utility: ISO-8601 "now" ───────────────────────────────────────────────────
 
 pub fn now_iso8601() -> String {
@@ -376,7 +387,6 @@ fn title_case(s: &str) -> String {
     }
 }
 
-
 // ── Download filenames (mirrors Python `generate_filename`) ──────────────────
 
 /// Compact `YYYYMMDD` date string derived from [`now_iso8601`].
@@ -417,16 +427,53 @@ pub fn safe_taxon_slug(taxon: &str) -> String {
     out
 }
 
-/// Build a data-download filename matching the Python convention:
-/// `{YYYYMMDD}_lotus_{safe_taxon}[_{search_type}].{ext}`.
-///
-/// `search_type` should be `Some("substructure")` / `Some("similarity")`
-/// when a chemical-structure search is active, and `None` otherwise.
-pub fn generate_filename(taxon: &str, ext: &str, search_type: Option<&str>) -> String {
+/// Build a data-download filename matching the app convention:
+/// `{YYYYMMDD}_lotus_{safe_taxon}[_{search_type}][_filtered].{ext}`.
+pub fn generate_filename(criteria: &SearchCriteria, ext: &str) -> String {
     let date = today_yyyymmdd();
-    let safe = safe_taxon_slug(taxon);
-    match search_type {
-        Some(st) if !st.is_empty() => format!("{date}_lotus_{safe}_{st}.{ext}"),
-        _ => format!("{date}_lotus_{safe}.{ext}"),
+    let safe = safe_taxon_slug(&criteria.taxon);
+    let mut stem = format!("{date}_lotus_{safe}");
+    if let Some(st) = export_search_type_suffix(criteria) {
+        stem.push('_');
+        stem.push_str(st);
+    }
+    if criteria.has_effective_filters() {
+        stem.push_str("_filtered");
+    }
+    format!("{stem}.{ext}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn export_filename_marks_filtered_taxon_queries() {
+        let criteria = SearchCriteria::default();
+        let name = generate_filename(&criteria, "csv");
+        assert!(name.ends_with("_filtered.csv"));
+    }
+
+    #[test]
+    fn export_filename_for_full_dataset_has_no_filtered_suffix() {
+        let criteria = SearchCriteria {
+            taxon: "*".into(),
+            ..SearchCriteria::default()
+        };
+        let name = generate_filename(&criteria, "csv");
+        assert!(!name.contains("_filtered."));
+        assert!(name.ends_with("_all_taxa.csv"));
+    }
+
+    #[test]
+    fn export_filename_keeps_search_type_before_filtered_suffix() {
+        let mut criteria = SearchCriteria {
+            taxon: "*".into(),
+            ..SearchCriteria::default()
+        };
+        criteria.smiles = "c1ccccc1".into();
+        criteria.smiles_search_type = SmilesSearchType::Similarity;
+        let name = generate_filename(&criteria, "ttl");
+        assert!(name.ends_with("_similarity_filtered.ttl"));
     }
 }

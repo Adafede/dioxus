@@ -158,11 +158,10 @@ fn App() -> Element {
             }
             if let Some(query) = sparql_query.read().as_deref() {
                 let crit = criteria.peek().clone();
-                let suffix = download_search_type_suffix(&crit);
                 match fmt.as_str() {
                     "csv" => {
                         let q = query.to_string();
-                        let filename = export::generate_filename(&crit.taxon, "csv", suffix);
+                        let filename = export::generate_filename(&crit, "csv");
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(body) = sparql::execute_sparql(&q).await {
@@ -172,7 +171,7 @@ fn App() -> Element {
                     }
                     "json" | "ndjson" => {
                         let q = query.to_string();
-                        let filename = export::generate_filename(&crit.taxon, "json", suffix);
+                        let filename = export::generate_filename(&crit, "json");
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(body) =
@@ -189,7 +188,7 @@ fn App() -> Element {
                     }
                     "ttl" => {
                         let q = queries::query_construct_from_select(query);
-                        let filename = export::generate_filename(&crit.taxon, "ttl", suffix);
+                        let filename = export::generate_filename(&crit, "ttl");
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(body) =
@@ -206,7 +205,7 @@ fn App() -> Element {
                     }
                     "nt" | "ntriples" => {
                         let q = queries::query_construct_from_select(query);
-                        let filename = export::generate_filename(&crit.taxon, "nt", suffix);
+                        let filename = export::generate_filename(&crit, "nt");
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(body) =
@@ -1313,17 +1312,6 @@ fn trigger_download_main(filename: &str, mime: &str, body: &str) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let _ = (filename, mime, body);
-    }
-}
-
-fn download_search_type_suffix(criteria: &SearchCriteria) -> Option<&'static str> {
-    if criteria.smiles.trim().is_empty() {
-        None
-    } else {
-        Some(match criteria.smiles_search_type {
-            SmilesSearchType::Substructure => "substructure",
-            SmilesSearchType::Similarity => "similarity",
-        })
     }
 }
 

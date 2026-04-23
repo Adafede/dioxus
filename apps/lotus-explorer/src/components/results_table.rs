@@ -129,19 +129,19 @@ pub fn ResultsTable(
 
     let csv_filename = use_memo(move || {
         let c = criteria.read();
-        export::generate_filename(&c.taxon, "csv", search_type_suffix(&c))
+        export::generate_filename(&c, "csv")
     });
     let json_filename = use_memo(move || {
         let c = criteria.read();
-        export::generate_filename(&c.taxon, "json", search_type_suffix(&c))
+        export::generate_filename(&c, "json")
     });
     let ttl_filename = use_memo(move || {
         let c = criteria.read();
-        export::generate_filename(&c.taxon, "ttl", search_type_suffix(&c))
+        export::generate_filename(&c, "ttl")
     });
     let nt_filename = use_memo(move || {
         let c = criteria.read();
-        export::generate_filename(&c.taxon, "nt", search_type_suffix(&c))
+        export::generate_filename(&c, "nt")
     });
 
     // Metadata filename mirrors Python: `{query_hash}_{result_hash}_metadata.json`.
@@ -149,7 +149,7 @@ pub fn ResultsTable(
         (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
         _ => {
             let c = criteria.read();
-            export::generate_filename(&c.taxon, "metadata.json", search_type_suffix(&c))
+            export::generate_filename(&c, "metadata.json")
         }
     };
 
@@ -534,17 +534,6 @@ pub fn ResultsTable(
                 }
             }
         }
-    }
-}
-
-fn search_type_suffix(criteria: &SearchCriteria) -> Option<&'static str> {
-    if criteria.smiles.trim().is_empty() {
-        None
-    } else {
-        Some(match criteria.smiles_search_type {
-            SmilesSearchType::Substructure => "substructure",
-            SmilesSearchType::Similarity => "similarity",
-        })
     }
 }
 

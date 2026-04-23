@@ -588,9 +588,7 @@ fn de_t(key: TextKey) -> &'static str {
             "Alle Zeilen als SPARQL-Results-JSON herunterladen (kann dauern)"
         }
         TextKey::DownloadTtlTitle => "Alle Zeilen als RDF Turtle herunterladen (kann dauern)",
-        TextKey::DownloadNtTitle => {
-            "Alle Zeilen als RDF N-Triples herunterladen (kann dauern)"
-        }
+        TextKey::DownloadNtTitle => "Alle Zeilen als RDF N-Triples herunterladen (kann dauern)",
         TextKey::DownloadMetadataTitle => "Schema.org-Metadaten herunterladen (JSON-LD)",
         TextKey::Metadata => "Metadaten",
         TextKey::OpenInQlever => "In QLever öffnen",
@@ -735,7 +733,9 @@ fn it_t(key: TextKey) -> &'static str {
             "Scarica tutte le righe in JSON risultati SPARQL (può richiedere tempo)"
         }
         TextKey::DownloadTtlTitle => "Scarica tutte le righe in RDF Turtle (può richiedere tempo)",
-        TextKey::DownloadNtTitle => "Scarica tutte le righe in RDF N-Triples (può richiedere tempo)",
+        TextKey::DownloadNtTitle => {
+            "Scarica tutte le righe in RDF N-Triples (può richiedere tempo)"
+        }
         TextKey::DownloadMetadataTitle => "Scarica metadati Schema.org (JSON-LD)",
         TextKey::Metadata => "Metadati",
         TextKey::OpenInQlever => "Apri in QLever",
