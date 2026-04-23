@@ -448,7 +448,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::FooterForData => " pour les données ",
             TextKey::FooterForCode => " pour le code",
             TextKey::TableTriplesAria => "Triplets composé-taxon-référence",
-            TextKey::OpenFullSizeDepiction => "Ouvrir la dépiction en taille complète",
+            TextKey::OpenFullSizeDepiction => "Ouvrir la représentation en taille complète",
             TextKey::OpenInWikidata => "Ouvrir dans Wikidata",
             TextKey::OpenInScholia => "Ouvrir dans Scholia",
             TextKey::OpenDoi => "Ouvrir DOI",
@@ -466,7 +466,7 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::CopyToClipboard => "In die Zwischenablage kopieren",
         TextKey::Notice => "Hinweis",
         TextKey::Error => "Fehler",
-        TextKey::DismissError => "Fehler schliessen",
+        TextKey::DismissError => "Fehler schließen",
         TextKey::FiltersShow => "Filter anzeigen",
         TextKey::FiltersHide => "Filter ausblenden",
         TextKey::Search => "Suchen",
@@ -475,7 +475,7 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::NoResults => "Keine Ergebnisse. Bitte erweitern Sie die Suche.",
         TextKey::CliDownload => "Download per Kommandozeile",
         TextKey::CliDownloadHint => {
-            "Verwenden Sie diese Befehle, um die vollstandigen CSV-Ergebnisse im Terminal zu laden."
+            "Verwenden Sie diese Befehle, um die vollständigen CSV-Ergebnisse im Terminal zu laden."
         }
         TextKey::CopyCurl => "curl-Befehl kopieren",
         TextKey::CopyWget => "wget-Befehl kopieren",
@@ -575,10 +575,10 @@ pub fn err_wasm_large_query_fallback(locale: Locale, err_msg: &str) -> String {
             "Large-query fallback disabled on wasm to avoid memory exhaustion ({err_msg}). Try adding filters or use a desktop browser for large result exports."
         ),
         Locale::Fr => format!(
-            "Le repli sur grande requete est désactivé sur wasm pour éviter la saturation de la mémoire ({err_msg}). Essayez d'ajouter des filtres ou utilisez un navigateur desktop pour les grands exports."
+            "Le repli sur grande requête est désactivé sur wasm pour éviter la saturation de la mémoire ({err_msg}). Essayez d'ajouter des filtres ou utilisez un navigateur desktop pour les grands exports."
         ),
         Locale::De => format!(
-            "Große-Query-Fallback auf wasm deaktiviert, um Speicherprobleme zu vermeiden ({err_msg}). Bitte Filter verfeinern oder fur sehr große Exporte einen Desktop-Browser nutzen."
+            "Große-Query-Fallback auf wasm deaktiviert, um Speicherprobleme zu vermeiden ({err_msg}). Bitte Filter verfeinern oder für sehr große Exporte einen Desktop-Browser nutzen."
         ),
         Locale::It => format!(
             "Fallback per query grandi disabilitato su wasm per evitare esaurimento memoria ({err_msg}). Aggiungi filtri o usa un browser desktop per export molto grandi."
@@ -715,7 +715,7 @@ pub fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static st
                 if count == 1 {
                     "Eintrag"
                 } else {
-                    "Eintrage"
+                    "Einträge"
                 }
             }
             CountNoun::Row => {
@@ -777,11 +777,11 @@ pub fn showing_rows_text(locale: Locale, visible: usize, total: usize) -> String
             count_label(locale, CountNoun::Row, total)
         ),
         Locale::De => format!(
-            "Zeige {visible} von {total} {}",
+            "Anzeige {visible} von {total} {}",
             count_label(locale, CountNoun::Row, total)
         ),
         Locale::It => format!(
-            "Visualizzo {visible} di {total} {}",
+            "Visualizzazione {visible} di {total} {}",
             count_label(locale, CountNoun::Row, total)
         ),
     }
