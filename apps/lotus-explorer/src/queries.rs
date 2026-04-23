@@ -14,7 +14,10 @@
 //!   CSV extremely fast; the display cap (see `models::TABLE_ROW_LIMIT`) is applied
 //!   client-side after parsing so users can export the full result set.
 
-use crate::models::SmilesSearchType;
+use crate::models::{
+    DEFAULT_C_MAX, DEFAULT_H_MAX, DEFAULT_N_MAX, DEFAULT_O_MAX, DEFAULT_P_MAX, DEFAULT_S_MAX,
+    ElementState, SearchCriteria, SmilesSearchType,
+};
 
 // ── Common SPARQL prefixes ────────────────────────────────────────────────────
 
@@ -387,24 +390,75 @@ pub fn query_with_limit(base_query: &str, limit: usize) -> String {
     format!("{trimmed}\nLIMIT {limit}")
 }
 
-pub fn query_with_client_prefilters(
-    base_query: &str,
-    mass_filter: Option<(f64, f64)>,
-    year_filter: Option<(i32, i32)>,
-    formula_exact: Option<&str>,
-) -> String {
+pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) -> String {
     let mut filters = Vec::new();
-    if let Some((min, max)) = mass_filter {
+    let mut prelude = Vec::new();
+
+    if criteria.has_mass_filter() {
+        let min = criteria.mass_min;
+        let max = criteria.mass_max;
         filters.push(format!(
             "FILTER(BOUND(?compound_mass) && ?compound_mass >= {min:.6} && ?compound_mass <= {max:.6})"
         ));
     }
-    if let Some((start, end)) = year_filter {
+
+    if criteria.has_year_filter() {
+        let start = criteria.year_min;
+        let end = criteria.year_max;
         filters.push(format!(
             "FILTER(BOUND(?ref_date) && YEAR(?ref_date) >= {start} && YEAR(?ref_date) <= {end})"
         ));
     }
-    if let Some(exact) = formula_exact.map(str::trim).filter(|s| !s.is_empty()) {
+
+    if criteria.has_formula_filter() {
+        prelude.push("FILTER(BOUND(?compound_formula))".to_string());
+        prelude.push("BIND(STR(?compound_formula) AS ?_formula_raw)".to_string());
+        prelude.push(r#"BIND(REPLACE(?_formula_raw, " ", "") AS ?_formula_nospace)"#.to_string());
+        prelude.push(format!(
+            "BIND({} AS ?_formula_norm)",
+            normalize_digits_expr("?_formula_nospace")
+        ));
+        prelude.push("BIND(REPLACE(?_formula_norm, \"([A-Z])\", \"|$1\") AS ?_formula_tokens)".to_string());
+
+        for (symbol, min, max, default_max) in [
+            ("C", criteria.c_min, criteria.c_max, DEFAULT_C_MAX),
+            ("H", criteria.h_min, criteria.h_max, DEFAULT_H_MAX),
+            ("N", criteria.n_min, criteria.n_max, DEFAULT_N_MAX),
+            ("O", criteria.o_min, criteria.o_max, DEFAULT_O_MAX),
+            ("P", criteria.p_min, criteria.p_max, DEFAULT_P_MAX),
+            ("S", criteria.s_min, criteria.s_max, DEFAULT_S_MAX),
+        ] {
+            if min > 0 || max < default_max {
+                let var = format!("?_count_{}", symbol.to_ascii_lowercase());
+                prelude.push(element_count_bind(symbol, &var));
+                filters.push(format!("FILTER({var} >= {min} && {var} <= {max})"));
+            }
+        }
+
+        for (symbol, state) in [
+            ("F", criteria.f_state),
+            ("Cl", criteria.cl_state),
+            ("Br", criteria.br_state),
+            ("I", criteria.i_state),
+        ] {
+            if state != ElementState::Allowed {
+                let var = format!("?_count_{}", symbol.to_ascii_lowercase());
+                prelude.push(element_count_bind(symbol, &var));
+                match state {
+                    ElementState::Allowed => {}
+                    ElementState::Required => filters.push(format!("FILTER({var} > 0)")),
+                    ElementState::Excluded => filters.push(format!("FILTER({var} = 0)")),
+                }
+            }
+        }
+    }
+
+    if let Some(exact) = criteria
+        .formula_enabled
+        .then_some(criteria.formula_exact.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         let exact_ascii = normalize_formula_digits(exact);
         let exact_escaped = exact_ascii.replace('\\', r"\\").replace('"', r#"\""#);
         let exact_subscript = digits_to_subscripts(&exact_ascii);
@@ -419,7 +473,8 @@ pub fn query_with_client_prefilters(
             ));
         }
     }
-    if filters.is_empty() {
+
+    if prelude.is_empty() && filters.is_empty() {
         return base_query.to_string();
     }
 
@@ -428,13 +483,78 @@ pub fn query_with_client_prefilters(
         return format!("{trimmed}\n{}", filters.join("\n"));
     };
 
-    let mut out = String::with_capacity(trimmed.len() + filters.len() * 90);
+    let mut out = String::with_capacity(trimmed.len() + (filters.len() + prelude.len()) * 100);
     out.push_str(&trimmed[..last_close]);
     out.push('\n');
+    if !prelude.is_empty() {
+        out.push_str(&prelude.join("\n"));
+        out.push('\n');
+    }
     out.push_str(&filters.join("\n"));
     out.push('\n');
     out.push_str(&trimmed[last_close..]);
     out
+}
+
+pub fn query_construct_from_select(select_query: &str) -> String {
+    let Some(select_pos) = select_query.find("SELECT") else {
+        return select_query.to_string();
+    };
+    let Some(where_pos) = select_query[select_pos..].find("WHERE") else {
+        return select_query.to_string();
+    };
+    let where_abs = select_pos + where_pos;
+    let prefixes = &select_query[..select_pos];
+    let where_block = select_query[where_abs..].trim();
+
+    format!(
+        r#"{prefixes}
+CONSTRUCT {{
+  ?c wdt:P235 ?compound_inchikey .
+  ?c wdt:P233 ?compound_smiles_conn .
+  ?c wdt:P2017 ?compound_smiles_iso .
+  ?c wdt:P2067 ?compound_mass .
+  ?c wdt:P274 ?compound_formula .
+  ?c rdfs:label ?compoundLabel .
+  ?c p:P703 ?statement .
+  ?statement ps:P703 ?t ;
+             prov:wasDerivedFrom ?ref .
+  ?ref pr:P248 ?r .
+  ?t wdt:P225 ?taxon_name .
+  ?r wdt:P1476 ?ref_title .
+  ?r wdt:P356 ?ref_doi .
+  ?r wdt:P577 ?ref_date .
+}}
+{where_block}"#
+    )
+}
+
+fn normalize_digits_expr(var: &str) -> String {
+    [
+        ('₀', '0'),
+        ('₁', '1'),
+        ('₂', '2'),
+        ('₃', '3'),
+        ('₄', '4'),
+        ('₅', '5'),
+        ('₆', '6'),
+        ('₇', '7'),
+        ('₈', '8'),
+        ('₉', '9'),
+    ]
+    .into_iter()
+    .fold(var.to_string(), |acc, (from, to)| {
+        format!(r#"REPLACE({acc}, "{from}", "{to}")"#)
+    })
+}
+
+fn element_count_bind(symbol: &str, out_var: &str) -> String {
+    let escaped = symbol.replace('"', "\\\"");
+    let pattern = format!(r#"\\|{escaped}([0-9]*)(\\||$)"#);
+    let capture_expr = format!(r#"REPLACE(?_formula_tokens, ".*{pattern}.*", "$1")"#);
+    format!(
+        "BIND(IF(REGEX(?_formula_tokens, \"{pattern}\"), IF(STRLEN({capture_expr}) = 0, 1, xsd:integer({capture_expr})), 0) AS {out_var})"
+    )
 }
 
 fn normalize_formula_digits(s: &str) -> String {
@@ -472,3 +592,34 @@ fn digits_to_subscripts(s: &str) -> String {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn server_filter_query_includes_formula_and_halogen_clauses() {
+        let mut crit = SearchCriteria {
+            taxon: "*".into(),
+            ..SearchCriteria::default()
+        };
+        crit.formula_enabled = true;
+        crit.c_min = 1;
+        crit.c_max = 10;
+        crit.f_state = ElementState::Required;
+
+        let q = query_with_server_filters(&query_all_compounds(), &crit);
+        assert!(q.contains("?_formula_tokens"));
+        assert!(q.contains("?_count_c >= 1 && ?_count_c <= 10"));
+        assert!(q.contains("?_count_f > 0"));
+    }
+
+    #[test]
+    fn construct_query_switches_select_to_construct() {
+        let q = query_construct_from_select(&query_compounds_by_taxon("Q2382443"));
+        assert!(q.contains("CONSTRUCT"));
+        assert!(q.contains("?c p:P703 ?statement"));
+        assert!(!q.contains("SELECT\n  (xsd:integer"));
+    }
+}
+

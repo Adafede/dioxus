@@ -252,6 +252,7 @@ impl SearchCriteria {
         !self.taxon.trim().is_empty() || !self.smiles.trim().is_empty()
     }
 
+    #[allow(dead_code)]
     pub fn has_client_post_filters(&self) -> bool {
         self.has_mass_filter() || self.has_year_filter() || self.has_formula_filter()
     }

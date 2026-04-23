@@ -4,8 +4,10 @@ use crate::i18n::{
     aria_wikidata_statement, count_label, t,
 };
 use crate::models::*;
+use crate::queries;
 use crate::sparql;
 use dioxus::prelude::*;
+use shared::sparql::SparqlResponseFormat;
 use std::sync::Arc;
 
 const TABLE_SCROLL_ID: &str = "results-table-scroll";
@@ -131,7 +133,7 @@ pub fn ResultsTable(
     });
     let json_filename = use_memo(move || {
         let c = criteria.read();
-        export::generate_filename(&c.taxon, "ndjson", search_type_suffix(&c))
+        export::generate_filename(&c.taxon, "json", search_type_suffix(&c))
     });
     let ttl_filename = use_memo(move || {
         let c = criteria.read();
@@ -228,24 +230,13 @@ pub fn ResultsTable(
                                         let q = query.to_string();
                                         move |_| {
                                             let filename = csv_filename.read().clone();
-                                            let crit = criteria.peek().clone();
                                             *download_busy.write() = true;
                                             *download_status.write() = Some(
                                                 t(locale, TextKey::StartingCsvDownload).to_string(),
                                             );
                                             let q = q.clone();
                                             spawn(async move {
-                                                if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                                    let body = if crit.has_client_post_filters() {
-                                                        let filtered: Vec<CompoundEntry> = rows
-                                                            .iter()
-                                                            .filter(|e| matches_client_filters(e, &crit))
-                                                            .cloned()
-                                                            .collect();
-                                                        export::build_csv(&filtered)
-                                                    } else {
-                                                        export::build_csv(rows.as_ref())
-                                                    };
+                                                if let Ok(body) = sparql::execute_sparql(&q).await {
                                                     trigger_download(&filename, "text/csv;charset=utf-8", &body);
                                                 }
                                                 *download_busy.write() = false;
@@ -265,24 +256,22 @@ pub fn ResultsTable(
                                         move |_| {
                                             let q = q.clone();
                                             let filename = json_filename.read().clone();
-                                            let crit = criteria.peek().clone();
                                             *download_busy.write() = true;
                                             *download_status.write() = Some(
                                                 t(locale, TextKey::PreparingJsonDownload).to_string(),
                                             );
                                             spawn(async move {
-                                                if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                                    let body = if crit.has_client_post_filters() {
-                                                        let filtered: Vec<CompoundEntry> = rows
-                                                            .iter()
-                                                            .filter(|e| matches_client_filters(e, &crit))
-                                                            .cloned()
-                                                            .collect();
-                                                        export::build_ndjson(&filtered)
-                                                    } else {
-                                                        export::build_ndjson(rows.as_ref())
-                                                    };
-                                                    trigger_download(&filename, "application/x-ndjson", &body);
+                                                if let Ok(body) = sparql::execute_sparql_format(
+                                                    &q,
+                                                    SparqlResponseFormat::SparqlJson,
+                                                )
+                                                .await
+                                                {
+                                                    trigger_download(
+                                                        &filename,
+                                                        "application/sparql-results+json;charset=utf-8",
+                                                        &body,
+                                                    );
                                                 }
                                                 *download_busy.write() = false;
                                                 *download_status.write() = None;
@@ -298,53 +287,25 @@ pub fn ResultsTable(
                                     disabled: *download_busy.read(),
                                     onclick: {
                                         let q = query.to_string();
-                                        let query_hash_value = query_hash.clone();
-                                        let result_hash_value = result_hash.clone();
                                         move |_| {
-                                            let q = q.clone();
+                                            let q = queries::query_construct_from_select(&q);
                                             let filename = ttl_filename.read().clone();
-                                            let qh = query_hash_value.clone();
-                                            let rh = result_hash_value.clone();
-                                            let crit = criteria.peek().clone();
                                             *download_busy.write() = true;
                                             *download_status.write() = Some(
                                                 t(locale, TextKey::PreparingTtlDownload).to_string(),
                                             );
                                             spawn(async move {
-                                                if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                                    let ttl = if crit.has_client_post_filters() {
-                                                        let filtered: Vec<CompoundEntry> = rows
-                                                            .iter()
-                                                            .filter(|e| matches_client_filters(e, &crit))
-                                                            .cloned()
-                                                            .collect();
-                                                        let filtered_stats = DatasetStats::from_entries(&filtered);
-                                                        export::build_ttl(
-                                                            &filtered,
-                                                            export::MetadataInputs {
-                                                                criteria: &crit,
-                                                                qid: None,
-                                                                stats: &filtered_stats,
-                                                                number_of_records_override: Some(filtered_stats.n_entries),
-                                                                query_hash: qh.as_deref().unwrap_or(""),
-                                                                result_hash: rh.as_deref().unwrap_or(""),
-                                                            },
-                                                        )
-                                                    } else {
-                                                        let stats = DatasetStats::from_entries(rows.as_ref());
-                                                        export::build_ttl(
-                                                            rows.as_ref(),
-                                                            export::MetadataInputs {
-                                                                criteria: &crit,
-                                                                qid: None,
-                                                                stats: &stats,
-                                                                number_of_records_override: Some(stats.n_entries),
-                                                                query_hash: qh.as_deref().unwrap_or(""),
-                                                                result_hash: rh.as_deref().unwrap_or(""),
-                                                            },
-                                                        )
-                                                    };
-                                                    trigger_download(&filename, "text/turtle", &ttl);
+                                                if let Ok(body) = sparql::execute_sparql_format(
+                                                    &q,
+                                                    SparqlResponseFormat::Turtle,
+                                                )
+                                                .await
+                                                {
+                                                    trigger_download(
+                                                        &filename,
+                                                        "text/turtle;charset=utf-8",
+                                                        &body,
+                                                    );
                                                 }
                                                 *download_busy.write() = false;
                                                 *download_status.write() = None;

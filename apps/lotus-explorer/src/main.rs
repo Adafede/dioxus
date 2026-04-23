@@ -17,6 +17,7 @@ use i18n::{
     err_unsupported_format, t, warn_ambiguous_taxon, warn_input_standardized,
 };
 use models::*;
+use shared::sparql::SparqlResponseFormat;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -164,84 +165,37 @@ fn App() -> Element {
                         let filename = export::generate_filename(&crit.taxon, "csv", suffix);
                         *pending_download_format.write() = None;
                         spawn(async move {
-                            if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                let body = if crit.has_client_post_filters() {
-                                    let filtered: Vec<CompoundEntry> = rows
-                                        .iter()
-                                        .filter(|e| matches_client_filters(e, &crit))
-                                        .cloned()
-                                        .collect();
-                                    export::build_csv(&filtered)
-                                } else {
-                                    export::build_csv(rows.as_ref())
-                                };
+                            if let Ok(body) = sparql::execute_sparql(&q).await {
                                 trigger_download_main(&filename, "text/csv;charset=utf-8", &body);
                             }
                         });
                     }
                     "json" | "ndjson" => {
                         let q = query.to_string();
-                        let filename = export::generate_filename(&crit.taxon, "ndjson", suffix);
+                        let filename = export::generate_filename(&crit.taxon, "json", suffix);
                         *pending_download_format.write() = None;
                         spawn(async move {
-                            if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                let body = if crit.has_client_post_filters() {
-                                    let filtered: Vec<CompoundEntry> = rows
-                                        .iter()
-                                        .filter(|e| matches_client_filters(e, &crit))
-                                        .cloned()
-                                        .collect();
-                                    export::build_ndjson(&filtered)
-                                } else {
-                                    export::build_ndjson(rows.as_ref())
-                                };
-                                trigger_download_main(&filename, "application/x-ndjson", &body);
+                            if let Ok(body) =
+                                sparql::execute_sparql_format(&q, SparqlResponseFormat::SparqlJson)
+                                    .await
+                            {
+                                trigger_download_main(
+                                    &filename,
+                                    "application/sparql-results+json;charset=utf-8",
+                                    &body,
+                                );
                             }
                         });
                     }
                     "ttl" => {
-                        let q = query.to_string();
+                        let q = queries::query_construct_from_select(query);
                         let filename = export::generate_filename(&crit.taxon, "ttl", suffix);
-                        let qh = query_hash.read().clone().unwrap_or_default();
-                        let rh = result_hash.read().clone().unwrap_or_default();
                         *pending_download_format.write() = None;
                         spawn(async move {
-                            if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                let ttl = if crit.has_client_post_filters() {
-                                    let filtered: Vec<CompoundEntry> = rows
-                                        .iter()
-                                        .filter(|e| matches_client_filters(e, &crit))
-                                        .cloned()
-                                        .collect();
-                                    let filtered_stats = DatasetStats::from_entries(&filtered);
-                                    export::build_ttl(
-                                        &filtered,
-                                        export::MetadataInputs {
-                                            criteria: &crit,
-                                            qid: None,
-                                            stats: &filtered_stats,
-                                            number_of_records_override: Some(
-                                                filtered_stats.n_entries,
-                                            ),
-                                            query_hash: &qh,
-                                            result_hash: &rh,
-                                        },
-                                    )
-                                } else {
-                                    let stats = DatasetStats::from_entries(rows.as_ref());
-                                    export::build_ttl(
-                                        rows.as_ref(),
-                                        export::MetadataInputs {
-                                            criteria: &crit,
-                                            qid: None,
-                                            stats: &stats,
-                                            number_of_records_override: Some(stats.n_entries),
-                                            query_hash: &qh,
-                                            result_hash: &rh,
-                                        },
-                                    )
-                                };
-                                trigger_download_main(&filename, "text/turtle", &ttl);
+                            if let Ok(body) =
+                                sparql::execute_sparql_format(&q, SparqlResponseFormat::Turtle).await
+                            {
+                                trigger_download_main(&filename, "text/turtle;charset=utf-8", &body);
                             }
                         });
                     }
@@ -735,18 +689,12 @@ fn start_search(
 
     spawn(async move {
         match do_search(crit.clone(), *locale.peek(), query_phase).await {
-            Ok(mut outcome) => {
-                // `do_search` already applies post-filters in its dedicated
-                // filtered path; avoid re-filtering/counted-row drift.
-                if !crit.has_client_post_filters() {
-                    apply_client_filters_in_place(&mut outcome.rows, &crit);
-                }
+            Ok(outcome) => {
                 let filtered_stats = outcome
                     .total_stats
                     .clone()
                     .unwrap_or_else(|| DatasetStats::from_entries(&outcome.rows));
                 let filtered_matches = outcome.total_matches.unwrap_or(outcome.rows.len());
-                let showing_filtered_totals = crit.has_client_post_filters();
 
                 let (q_hash, r_hash) =
                     compute_hashes(outcome.qid.as_deref().unwrap_or(""), &crit, &outcome.rows);
@@ -768,13 +716,8 @@ fn start_search(
                 *sparql_query.write() = Some(outcome.query);
                 *metadata_json.write() = Some(meta_str);
                 *display_capped_rows.write() = outcome.display_capped_rows;
-                if showing_filtered_totals {
-                    *total_matches.write() = Some(filtered_matches);
-                    *total_stats.write() = Some(filtered_stats);
-                } else {
-                    *total_matches.write() = outcome.total_matches;
-                    *total_stats.write() = outcome.total_stats;
-                }
+                *total_matches.write() = Some(filtered_matches);
+                *total_stats.write() = Some(filtered_stats);
                 *entries.write() = display_slice;
                 *loading.write() = false;
                 *query_phase.write() = QueryPhase::Idle;
@@ -895,117 +838,78 @@ async fn do_search(
         }
     };
 
-    let execution_query = if crit.has_client_post_filters() {
-        queries::query_with_client_prefilters(
-            &sparql_query,
-            crit.has_mass_filter()
-                .then_some((crit.mass_min, crit.mass_max)),
-            crit.has_year_filter()
-                .then_some((crit.year_min, crit.year_max)),
-            crit.formula_enabled.then_some(crit.formula_exact.as_str()),
-        )
-    } else {
-        sparql_query.clone()
-    };
+    let execution_query = queries::query_with_server_filters(&sparql_query, &crit);
 
     let display_limit = runtime_table_row_limit();
-    let (rows, total_stats_out, total_matches, display_capped_rows) = if crit
-        .has_client_post_filters()
-    {
-        *query_phase.write() = QueryPhase::FetchingPreview;
-        let csv = sparql::execute_sparql(&execution_query)
+    // Fast path: fetch exact aggregate counts with a tiny response, then fetch
+    // only the display window. This keeps metadata totals exact while cutting
+    // transfer size for large result sets.
+    *query_phase.write() = QueryPhase::Counting;
+    let count_query = queries::query_counts_from_base(&execution_query);
+    let display_query = queries::query_with_limit(&execution_query, display_limit);
+
+    let (rows, total_stats_out, total_matches, display_capped_rows) = match async {
+        let counts_csv = sparql::execute_sparql(&count_query)
             .await
             .map_err(|e| AppError {
                 kind: ErrorKind::Network,
-                message: err_query_stage_failed(locale, "query", &e.to_string()),
+                message: err_query_stage_failed(locale, "count query", &e.to_string()),
             })?;
-        let (rows, filtered_stats, capped) =
-            sparql::parse_compounds_csv_filtered_capped(&csv, display_limit, &crit).map_err(
-                |e| AppError {
-                    kind: ErrorKind::Parse,
-                    message: err_query_stage_failed(locale, "parse", &e.to_string()),
-                },
-            )?;
-        let filtered_matches = filtered_stats.n_entries;
-        (rows, Some(filtered_stats), Some(filtered_matches), capped)
-    } else {
-        // Fast path: fetch exact aggregate counts with a tiny response, then fetch
-        // only the display window. This keeps metadata totals exact while cutting
-        // transfer size for large result sets.
-        *query_phase.write() = QueryPhase::Counting;
-        let count_query = queries::query_counts_from_base(&execution_query);
-        let display_query = queries::query_with_limit(&execution_query, display_limit);
+        let full_stats = sparql::parse_counts_csv(&counts_csv).map_err(|e| AppError {
+            kind: ErrorKind::Parse,
+            message: err_query_stage_failed(locale, "count parse", &e.to_string()),
+        })?;
 
-        match async {
-            let counts_csv = sparql::execute_sparql(&count_query)
-                .await
-                .map_err(|e| AppError {
-                    kind: ErrorKind::Network,
-                    message: err_query_stage_failed(locale, "count query", &e.to_string()),
-                })?;
-            let full_stats = sparql::parse_counts_csv(&counts_csv).map_err(|e| AppError {
+        *query_phase.write() = QueryPhase::FetchingPreview;
+        let display_csv = sparql::execute_sparql(&display_query)
+            .await
+            .map_err(|e| AppError {
+                kind: ErrorKind::Network,
+                message: err_query_stage_failed(locale, "display query", &e.to_string()),
+            })?;
+        let rows = sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
+            AppError {
                 kind: ErrorKind::Parse,
-                message: err_query_stage_failed(locale, "count parse", &e.to_string()),
-            })?;
+                message: err_query_stage_failed(locale, "display parse", &e.to_string()),
+            }
+        })?;
 
-            *query_phase.write() = QueryPhase::FetchingPreview;
-            let display_csv =
-                sparql::execute_sparql(&display_query)
+        Ok::<_, AppError>((
+            rows,
+            Some(full_stats.clone()),
+            Some(full_stats.n_entries),
+            false,
+        ))
+    }
+    .await
+    {
+        Ok(v) => v,
+        Err(err_msg) => {
+            #[cfg(target_arch = "wasm32")]
+            {
+                return Err(AppError {
+                    kind: ErrorKind::Memory,
+                    message: i18n::err_wasm_large_query_fallback(locale, &err_msg.message),
+                });
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let _ = err_msg;
+                let csv = sparql::execute_sparql(&execution_query)
                     .await
                     .map_err(|e| AppError {
                         kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "display query", &e.to_string()),
+                        message: err_query_stage_failed(locale, "query", &e.to_string()),
                     })?;
-            let rows =
-                sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
-                    AppError {
-                        kind: ErrorKind::Parse,
-                        message: err_query_stage_failed(locale, "display parse", &e.to_string()),
-                    }
-                })?;
-
-            Ok::<_, AppError>((
-                rows,
-                Some(full_stats.clone()),
-                Some(full_stats.n_entries),
-                false,
-            ))
-        }
-        .await
-        {
-            Ok(v) => v,
-            Err(err_msg) => {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    return Err(AppError {
-                        kind: ErrorKind::Memory,
-                        message: i18n::err_wasm_large_query_fallback(locale, &err_msg.message),
-                    });
-                }
-
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    let _ = err_msg;
-                    let csv = sparql::execute_sparql(&execution_query)
-                        .await
-                        .map_err(|e| AppError {
-                            kind: ErrorKind::Network,
-                            message: err_query_stage_failed(locale, "query", &e.to_string()),
-                        })?;
-                    let (rows, full_stats, _parse_capped) =
-                        sparql::parse_compounds_csv_capped(&csv, display_limit).map_err(|e| {
-                            AppError {
-                                kind: ErrorKind::Parse,
-                                message: err_query_stage_failed(locale, "parse", &e.to_string()),
-                            }
-                        })?;
-                    (
-                        rows,
-                        Some(full_stats.clone()),
-                        Some(full_stats.n_entries),
-                        false,
-                    )
-                }
+                let (rows, full_stats, _parse_capped) =
+                    sparql::parse_compounds_csv_capped(&csv, display_limit).map_err(|e| {
+                        AppError {
+                            kind: ErrorKind::Parse,
+                            message: err_query_stage_failed(locale, "parse", &e.to_string()),
+                        }
+                    })?;
+                (rows, Some(full_stats.clone()), Some(full_stats.n_entries), false)
             }
         }
     };

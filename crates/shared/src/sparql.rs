@@ -6,6 +6,31 @@
 /// Default QLever endpoint for Wikidata (used by lotus-explorer).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SparqlResponseFormat {
+    Csv,
+    SparqlJson,
+    Turtle,
+}
+
+impl SparqlResponseFormat {
+    fn accept(self) -> &'static str {
+        match self {
+            Self::Csv => "text/csv",
+            Self::SparqlJson => "application/sparql-results+json",
+            Self::Turtle => "text/turtle",
+        }
+    }
+
+    fn action(self) -> Option<&'static str> {
+        match self {
+            Self::Csv => Some("csv_export"),
+            Self::SparqlJson => Some("sparql_json_export"),
+            Self::Turtle => Some("turtle_export"),
+        }
+    }
+}
+
 // ── Error type ────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
@@ -36,6 +61,14 @@ impl std::fmt::Display for FetchError {
 /// even when the `action=csv_export` form parameter is ignored. Retries
 /// transient network / 5xx errors; 4xx errors fail fast.
 pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, FetchError> {
+    execute_sparql_with_format(sparql, endpoint, SparqlResponseFormat::Csv).await
+}
+
+pub async fn execute_sparql_with_format(
+    sparql: &str,
+    endpoint: &str,
+    format: SparqlResponseFormat,
+) -> Result<String, FetchError> {
     log::debug!("SPARQL POST endpoint: {endpoint}");
 
     const MAX_ATTEMPTS: u32 = 2;
@@ -43,7 +76,11 @@ pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, Fetc
     let mut last_err: Option<FetchError> = None;
 
     for attempt in 0..MAX_ATTEMPTS {
-        let body = format!("query={}&action=csv_export", urlencoding::encode(sparql));
+        let mut body = format!("query={}", urlencoding::encode(sparql));
+        if let Some(action) = format.action() {
+            body.push_str("&action=");
+            body.push_str(action);
+        }
         let result = client
             .post(endpoint)
             // `Accept` and `Content-Type: application/x-www-form-urlencoded`
@@ -53,7 +90,7 @@ pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, Fetc
             // refuse to let WASM set them and the resulting preflight is
             // rejected by QLever with an opaque "CORS request did not
             // succeed" error.
-            .header("Accept", "text/csv")
+            .header("Accept", format.accept())
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body)
             .send()

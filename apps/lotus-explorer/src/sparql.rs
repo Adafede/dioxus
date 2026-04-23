@@ -3,7 +3,8 @@
 //! Delegates URL construction and low-level helpers to the `shared` crate.
 
 use shared::sparql::{
-    FetchError, QLEVER_WIKIDATA, clean_doi, coalesce, col_idx, execute_sparql as shared_execute,
+    FetchError, QLEVER_WIKIDATA, SparqlResponseFormat, clean_doi, coalesce, col_idx,
+    execute_sparql as shared_execute, execute_sparql_with_format as shared_execute_with_format,
     extract_qid, field, non_empty, parse_year,
 };
 
@@ -89,6 +90,13 @@ pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
     shared_execute(sparql, QLEVER_WIKIDATA).await
 }
 
+pub async fn execute_sparql_format(
+    sparql: &str,
+    format: SparqlResponseFormat,
+) -> Result<String, FetchError> {
+    shared_execute_with_format(sparql, QLEVER_WIKIDATA, format).await
+}
+
 // Single-entry "most recent query" CSV cache. Clicking CSV → JSON → TTL on the
 // same result set would otherwise re-fetch the full dataset three times. The
 // cache is cleared implicitly on the next distinct query.
@@ -102,6 +110,7 @@ thread_local! {
 
 /// Execute a SPARQL query, reusing the CSV body from the previous call when
 /// the query text is identical (same FNV-1a fingerprint).
+#[allow(dead_code)]
 pub async fn execute_sparql_cached(sparql: &str) -> Result<std::rc::Rc<String>, FetchError> {
     #[cfg(target_arch = "wasm32")]
     {
@@ -128,6 +137,7 @@ pub async fn execute_sparql_cached(sparql: &str) -> Result<std::rc::Rc<String>, 
 /// Parse full compound rows for a query, reusing a parsed-cache entry on wasm.
 ///
 /// This makes JSON then TTL exports fast without reparsing the same large CSV.
+#[allow(dead_code)]
 pub async fn parse_compounds_cached(
     sparql: &str,
 ) -> Result<std::rc::Rc<Vec<CompoundEntry>>, FetchError> {
@@ -157,6 +167,7 @@ pub async fn parse_compounds_cached(
 // ── Compound CSV parser ───────────────────────────────────────────────────────
 
 /// Parse a full QLever CSV response into `CompoundEntry` rows.
+#[allow(dead_code)]
 pub fn parse_compounds_csv(csv_text: &str) -> Result<Vec<CompoundEntry>, FetchError> {
     let (rows, _stats, _capped) = parse_compounds_csv_capped(csv_text, usize::MAX)?;
     Ok(rows)
@@ -460,6 +471,7 @@ pub fn parse_compounds_csv_capped(
 /// Parse full CSV stream with client-side filters, but only materialize up to
 /// `max_rows` matched rows. Filtered stats stay exact because the scan still
 /// evaluates every distinct triple.
+#[allow(dead_code)]
 pub fn parse_compounds_csv_filtered_capped(
     csv_text: &str,
     max_rows: usize,

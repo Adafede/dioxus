@@ -385,6 +385,7 @@ fn title_case(s: &str) -> String {
 
 // ── NDJSON export ─────────────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 pub fn build_ndjson(rows: &[CompoundEntry]) -> String {
     let mut out = String::with_capacity(rows.len() * 256);
     for e in rows {
@@ -409,6 +410,7 @@ pub fn build_ndjson(rows: &[CompoundEntry]) -> String {
     out
 }
 
+#[allow(dead_code)]
 pub fn build_csv(rows: &[CompoundEntry]) -> String {
     fn esc(value: &str) -> String {
         let needs_quotes = value.contains(',')
@@ -458,6 +460,7 @@ pub fn build_csv(rows: &[CompoundEntry]) -> String {
 /// * one block of `wdt:`-qualified triples per compound / taxon / reference,
 /// * `wd:Qlll p:P703 wds:Qmmm ; ps:P703 wd:Qnnn ; prov:wasDerivedFrom wd:Qrrr`
 ///   statements linking the three entities.
+#[allow(dead_code)]
 pub fn build_ttl(rows: &[CompoundEntry], meta: MetadataInputs<'_>) -> String {
     let mut out = String::with_capacity(rows.len() * 512 + 2048);
     out.push_str(concat!(
@@ -563,6 +566,7 @@ pub fn build_ttl(rows: &[CompoundEntry], meta: MetadataInputs<'_>) -> String {
     out
 }
 
+#[allow(dead_code)]
 fn ttl_literal(s: &str) -> String {
     let escaped = s
         .replace('\\', r"\\")
