@@ -186,9 +186,9 @@ fn App() -> Element {
                             }
                         });
                     }
-                    "ttl" => {
+                    "rdf" => {
                         let q = queries::query_construct_from_select(query);
-                        let filename = export::generate_filename(&crit, "ttl");
+                        let filename = export::generate_filename(&crit, "rdf");
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(body) =
@@ -198,23 +198,6 @@ fn App() -> Element {
                                 trigger_download_main(
                                     &filename,
                                     "text/turtle;charset=utf-8",
-                                    &body,
-                                );
-                            }
-                        });
-                    }
-                    "nt" | "ntriples" => {
-                        let q = queries::query_construct_from_select(query);
-                        let filename = export::generate_filename(&crit, "nt");
-                        *pending_download_format.write() = None;
-                        spawn(async move {
-                            if let Ok(body) =
-                                sparql::execute_sparql_format(&q, SparqlResponseFormat::NTriples)
-                                    .await
-                            {
-                                trigger_download_main(
-                                    &filename,
-                                    "application/n-triples;charset=utf-8",
                                     &body,
                                 );
                             }
@@ -615,7 +598,7 @@ fn WelcomeScreen(locale: Locale) -> Element {
                     DownloadExampleRow {
                         locale,
                         format: t(locale, TextKey::ExampleQueryAdvanced),
-                        query: "?taxon=Fungi&mass_filter=true&mass_min=0&mass_max=300&year_filter=true&year_start=2000&year_end=2026&formula_filter=true&c_min=1&c_max=10&cl_state=required&br_state=excluded&download=true&format=ttl",
+                        query: "?taxon=Fungi&mass_filter=true&mass_min=0&mass_max=300&year_filter=true&year_start=2000&year_end=2026&formula_filter=true&c_min=1&c_max=10&cl_state=required&br_state=excluded&download=true&format=rdf",
                     }
                 }
             }

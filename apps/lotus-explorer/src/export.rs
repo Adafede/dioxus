@@ -325,7 +325,6 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
             { "@type": "DataDownload", "encodingFormat": "text/csv",         "contentUrl": "data:text/csv" },
             { "@type": "DataDownload", "encodingFormat": "application/sparql-results+json", "contentUrl": "data:application/sparql-results+json" },
             { "@type": "DataDownload", "encodingFormat": "text/turtle",      "contentUrl": "data:text/turtle" },
-            { "@type": "DataDownload", "encodingFormat": "application/n-triples", "contentUrl": "data:application/n-triples" },
         ]),
     );
     if let Some(n_records) = inp.number_of_records_override {
@@ -473,7 +472,7 @@ mod tests {
         };
         criteria.smiles = "c1ccccc1".into();
         criteria.smiles_search_type = SmilesSearchType::Similarity;
-        let name = generate_filename(&criteria, "ttl");
-        assert!(name.ends_with("_similarity_filtered.ttl"));
+        let name = generate_filename(&criteria, "rdf");
+        assert!(name.ends_with("_similarity_filtered.rdf"));
     }
 }
