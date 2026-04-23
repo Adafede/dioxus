@@ -28,8 +28,15 @@ impl Locale {
                         js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("language"))
                     {
                         if let Some(code) = lang.as_string() {
-                            if code.to_ascii_lowercase().starts_with("fr") {
+                            let code = code.to_ascii_lowercase();
+                            if code.starts_with("fr") {
                                 return Self::Fr;
+                            }
+                            if code.starts_with("de") {
+                                return Self::De;
+                            }
+                            if code.starts_with("it") {
+                                return Self::It;
                             }
                         }
                     }
@@ -438,6 +445,58 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::OpenInScholia => "Ouvrir dans Scholia",
             TextKey::OpenDoi => "Ouvrir DOI",
         },
+        Locale::De => de_t(key),
+        Locale::It => it_t(key),
+    }
+}
+
+fn de_t(key: TextKey) -> &'static str {
+    match key {
+        TextKey::Share => "Teilen",
+        TextKey::Copy => "Kopieren",
+        TextKey::Copied => "Kopiert!",
+        TextKey::CopyToClipboard => "In die Zwischenablage kopieren",
+        TextKey::Notice => "Hinweis",
+        TextKey::Error => "Fehler",
+        TextKey::DismissError => "Fehler schliessen",
+        TextKey::FiltersShow => "Filter anzeigen",
+        TextKey::FiltersHide => "Filter ausblenden",
+        TextKey::Search => "Suchen",
+        TextKey::Searching => "Suche...",
+        TextKey::LoadMore => "Mehr laden",
+        TextKey::NoResults => "Keine Ergebnisse. Bitte erweitern Sie die Suche.",
+        TextKey::CliDownload => "Download per Kommandozeile",
+        TextKey::CliDownloadHint => {
+            "Verwenden Sie diese Befehle, um die vollstandigen CSV-Ergebnisse im Terminal zu laden."
+        }
+        TextKey::CopyCurl => "curl-Befehl kopieren",
+        TextKey::CopyWget => "wget-Befehl kopieren",
+        _ => t(Locale::En, key),
+    }
+}
+
+fn it_t(key: TextKey) -> &'static str {
+    match key {
+        TextKey::Share => "Condividi",
+        TextKey::Copy => "Copia",
+        TextKey::Copied => "Copiato!",
+        TextKey::CopyToClipboard => "Copia negli appunti",
+        TextKey::Notice => "Nota",
+        TextKey::Error => "Errore",
+        TextKey::DismissError => "Chiudi errore",
+        TextKey::FiltersShow => "Mostra filtri",
+        TextKey::FiltersHide => "Nascondi filtri",
+        TextKey::Search => "Cerca",
+        TextKey::Searching => "Ricerca...",
+        TextKey::LoadMore => "Carica altro",
+        TextKey::NoResults => "Nessun risultato. Prova ad ampliare la ricerca.",
+        TextKey::CliDownload => "Download da riga di comando",
+        TextKey::CliDownloadHint => {
+            "Usa questi comandi per scaricare il CSV completo dal terminale."
+        }
+        TextKey::CopyCurl => "Copia comando curl",
+        TextKey::CopyWget => "Copia comando wget",
+        _ => t(Locale::En, key),
     }
 }
 
@@ -445,6 +504,8 @@ pub fn threshold_label(locale: Locale, value: f64) -> String {
     match locale {
         Locale::En => format!("Threshold: {value:.2}"),
         Locale::Fr => format!("Seuil: {value:.2}"),
+        Locale::De => format!("Grenzwert: {value:.2}"),
+        Locale::It => format!("Soglia: {value:.2}"),
     }
 }
 
@@ -452,6 +513,12 @@ pub fn err_invalid_search_input(locale: Locale) -> String {
     match locale {
         Locale::En => "Please enter a taxon name / QID, or a SMILES structure.".to_string(),
         Locale::Fr => "Veuillez saisir un nom de taxon / QID, ou une structure SMILES.".to_string(),
+        Locale::De => {
+            "Bitte geben Sie einen Taxonnamen / eine QID oder eine SMILES-Struktur ein.".to_string()
+        }
+        Locale::It => {
+            "Inserisci un nome di taxon / QID oppure una struttura SMILES.".to_string()
+        }
     }
 }
 
@@ -459,13 +526,17 @@ pub fn err_taxon_not_found(locale: Locale, taxon: &str) -> String {
     match locale {
         Locale::En => format!("Taxon '{taxon}' not found in Wikidata."),
         Locale::Fr => format!("Taxon '{taxon}' introuvable dans Wikidata."),
+        Locale::De => format!("Taxon '{taxon}' wurde in Wikidata nicht gefunden."),
+        Locale::It => format!("Taxon '{taxon}' non trovato in Wikidata."),
     }
 }
 
 pub fn warn_input_standardized(locale: Locale, original: &str, normalized: &str) -> String {
     match locale {
         Locale::En => format!("Input standardized from '{original}' to '{normalized}'."),
-        Locale::Fr => format!("Entreé standardiseé de '{original}' à '{normalized}'."),
+        Locale::Fr => format!("Entrée standardisée de '{original}' à '{normalized}'."),
+        Locale::De => format!("Eingabe von '{original}' zu '{normalized}' standardisiert."),
+        Locale::It => format!("Input standardizzato da '{original}' a '{normalized}'."),
     }
 }
 
@@ -482,6 +553,12 @@ pub fn warn_ambiguous_taxon(
         Locale::Fr => format!(
             "Nom de taxon ambigu; utilisation de {best_name} ({best_qid}). Candidats : {names}"
         ),
+        Locale::De => format!(
+            "Mehrdeutiger Taxonname; verwende {best_name} ({best_qid}). Kandidaten: {names}"
+        ),
+        Locale::It => {
+            format!("Nome taxon ambiguo; uso {best_name} ({best_qid}). Candidati: {names}")
+        }
     }
 }
 
@@ -494,6 +571,12 @@ pub fn err_wasm_large_query_fallback(locale: Locale, err_msg: &str) -> String {
         Locale::Fr => format!(
             "Le repli sur grande requete est désactivé sur wasm pour éviter la saturation de la mémoire ({err_msg}). Essayez d'ajouter des filtres ou utilisez un navigateur desktop pour les grands exports."
         ),
+        Locale::De => format!(
+            "Große-Query-Fallback auf wasm deaktiviert, um Speicherprobleme zu vermeiden ({err_msg}). Bitte Filter verfeinern oder fur sehr große Exporte einen Desktop-Browser nutzen."
+        ),
+        Locale::It => format!(
+            "Fallback per query grandi disabilitato su wasm per evitare esaurimento memoria ({err_msg}). Aggiungi filtri o usa un browser desktop per export molto grandi."
+        ),
     }
 }
 
@@ -501,6 +584,8 @@ pub fn aria_wikidata_entity(locale: Locale, qid: &str) -> String {
     match locale {
         Locale::En => format!("Wikidata {qid}"),
         Locale::Fr => format!("Wikidata {qid}"),
+        Locale::De => format!("Wikidata {qid}"),
+        Locale::It => format!("Wikidata {qid}"),
     }
 }
 
@@ -508,13 +593,17 @@ pub fn aria_search_inchikey(locale: Locale, ik: &str) -> String {
     match locale {
         Locale::En => format!("Search Wikidata for InChIKey {ik}"),
         Locale::Fr => format!("Rechercher dans Wikidata la cle InChIKey {ik}"),
+        Locale::De => format!("InChIKey {ik} in Wikidata suchen"),
+        Locale::It => format!("Cerca InChIKey {ik} in Wikidata"),
     }
 }
 
 pub fn aria_wikidata_statement(locale: Locale, stmt: &str) -> String {
     match locale {
         Locale::En => format!("Wikidata statement {stmt}"),
-        Locale::Fr => format!("Declaration Wikidata {stmt}"),
+        Locale::Fr => format!("Déclaration Wikidata {stmt}"),
+        Locale::De => format!("Wikidata-Aussage {stmt}"),
+        Locale::It => format!("Dichiarazione Wikidata {stmt}"),
     }
 }
 
@@ -594,6 +683,80 @@ pub fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static st
                 }
             }
         },
+        Locale::De => match noun {
+            CountNoun::Compound => {
+                if count == 1 {
+                    "Verbindung"
+                } else {
+                    "Verbindungen"
+                }
+            }
+            CountNoun::Taxon => {
+                if count == 1 {
+                    "Taxon"
+                } else {
+                    "Taxa"
+                }
+            }
+            CountNoun::Reference => {
+                if count == 1 {
+                    "Referenz"
+                } else {
+                    "Referenzen"
+                }
+            }
+            CountNoun::Entry => {
+                if count == 1 {
+                    "Eintrag"
+                } else {
+                    "Eintrage"
+                }
+            }
+            CountNoun::Row => {
+                if count == 1 {
+                    "Zeile"
+                } else {
+                    "Zeilen"
+                }
+            }
+        },
+        Locale::It => match noun {
+            CountNoun::Compound => {
+                if count == 1 {
+                    "Composto"
+                } else {
+                    "Composti"
+                }
+            }
+            CountNoun::Taxon => {
+                if count == 1 {
+                    "Taxon"
+                } else {
+                    "Taxa"
+                }
+            }
+            CountNoun::Reference => {
+                if count == 1 {
+                    "Riferimento"
+                } else {
+                    "Riferimenti"
+                }
+            }
+            CountNoun::Entry => {
+                if count == 1 {
+                    "Voce"
+                } else {
+                    "Voci"
+                }
+            }
+            CountNoun::Row => {
+                if count == 1 {
+                    "riga"
+                } else {
+                    "righe"
+                }
+            }
+        },
     }
 }
 
@@ -605,6 +768,14 @@ pub fn showing_rows_text(locale: Locale, visible: usize, total: usize) -> String
         ),
         Locale::Fr => format!(
             "Affichage de {visible} sur {total} {}",
+            count_label(locale, CountNoun::Row, total)
+        ),
+        Locale::De => format!(
+            "Zeige {visible} von {total} {}",
+            count_label(locale, CountNoun::Row, total)
+        ),
+        Locale::It => format!(
+            "Visualizzo {visible} di {total} {}",
             count_label(locale, CountNoun::Row, total)
         ),
     }
