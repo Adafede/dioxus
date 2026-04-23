@@ -12,8 +12,9 @@ use components::results_table::ResultsTable;
 use components::search_panel::{KetcherPanel, SearchPanel};
 use dioxus::prelude::*;
 use i18n::{
-    Locale, TextKey, err_invalid_search_input, err_taxon_not_found, t, warn_ambiguous_taxon,
-    warn_input_standardized,
+    Locale, TextKey, err_invalid_search_input, err_query_stage_failed, err_taxon_not_found,
+    err_taxon_parse_failed, err_taxon_resolution_failed, err_taxon_search_failed,
+    err_unsupported_format, t, warn_ambiguous_taxon, warn_input_standardized,
 };
 use models::*;
 use sha2::{Digest, Sha256};
@@ -39,8 +40,11 @@ enum ErrorKind {
     Unknown,
 }
 
-#[cfg(target_arch = "wasm32")]
-const WASM_MAX_CLIENT_FILTER_CANDIDATES: usize = 200_000;
+#[derive(Clone)]
+struct AppError {
+    kind: ErrorKind,
+    message: String,
+}
 
 fn main() {
     console_log::init_with_level(log::Level::Debug).ok();
@@ -58,7 +62,7 @@ fn App() -> Element {
     let entries: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
     let loading: Signal<bool> = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
-    let error_kind: Signal<ErrorKind> = use_signal(|| ErrorKind::Unknown);
+    let mut error_kind: Signal<ErrorKind> = use_signal(|| ErrorKind::Unknown);
     let query_phase: Signal<QueryPhase> = use_signal(|| QueryPhase::Idle);
     let searched_once: Signal<bool> = use_signal(|| false);
     let taxon_notice: Signal<Option<String>> = use_signal(|| None);
@@ -225,9 +229,8 @@ fn App() -> Element {
                         });
                     }
                     _ => {
-                        *error.write() = Some(format!(
-                            "Unsupported programmatic format '{fmt}'. Use csv, json, or ttl."
-                        ));
+                        *error_kind.write() = ErrorKind::Validation;
+                        *error.write() = Some(err_unsupported_format(*locale.peek(), &fmt));
                         *pending_download_format.write() = None;
                     }
                 }
@@ -746,8 +749,8 @@ fn start_search(
                 *query_phase.write() = QueryPhase::Idle;
             }
             Err(e) => {
-                *error_kind.write() = classify_error_kind(&e);
-                *error.write() = Some(e);
+                *error_kind.write() = e.kind;
+                *error.write() = Some(e.message);
                 *loading.write() = false;
                 *query_phase.write() = QueryPhase::Idle;
             }
@@ -759,7 +762,7 @@ async fn do_search(
     crit: SearchCriteria,
     locale: Locale,
     mut query_phase: Signal<QueryPhase>,
-) -> Result<SearchOutcome, String> {
+) -> Result<SearchOutcome, AppError> {
     let taxon = crit.taxon.trim().to_string();
     // Preserve Molfile blocks verbatim — leading blank lines and whitespace
     // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
@@ -792,13 +795,19 @@ async fn do_search(
         *query_phase.write() = QueryPhase::ResolvingTaxon;
         let sanitized = sanitize_taxon_input(&taxon);
         let query = queries::query_taxon_search(&sanitized);
-        let csv = sparql::execute_sparql(&query)
-            .await
-            .map_err(|e| format!("Taxon search failed: {e}"))?;
-        let matches =
-            sparql::parse_taxon_csv(&csv).map_err(|e| format!("Taxon parse failed: {e}"))?;
+        let csv = sparql::execute_sparql(&query).await.map_err(|e| AppError {
+            kind: ErrorKind::Network,
+            message: err_taxon_search_failed(locale, &e.to_string()),
+        })?;
+        let matches = sparql::parse_taxon_csv(&csv).map_err(|e| AppError {
+            kind: ErrorKind::Parse,
+            message: err_taxon_parse_failed(locale, &e.to_string()),
+        })?;
         if matches.is_empty() {
-            return Err(err_taxon_not_found(locale, &taxon));
+            return Err(AppError {
+                kind: ErrorKind::Validation,
+                message: err_taxon_not_found(locale, &taxon),
+            });
         }
         let lower = sanitized.to_lowercase();
         let exact: Vec<&TaxonMatch> = matches
@@ -809,7 +818,10 @@ async fn do_search(
             .first()
             .copied()
             .or_else(|| matches.first())
-            .ok_or_else(|| "Taxon resolution failed".to_string())?;
+            .ok_or_else(|| AppError {
+                kind: ErrorKind::Parse,
+                message: err_taxon_resolution_failed(locale),
+            })?;
         if sanitized != taxon {
             warning = Some(warn_input_standardized(locale, &taxon, &sanitized));
         }
@@ -854,30 +866,17 @@ async fn do_search(
 
     let display_limit = runtime_table_row_limit();
     let (rows, total_stats_out, total_matches) = if crit.has_client_post_filters() {
-        #[cfg(target_arch = "wasm32")]
-        {
-            *query_phase.write() = QueryPhase::Counting;
-            let count_query = queries::query_counts_from_base(&sparql_query);
-            let counts_csv = sparql::execute_sparql(&count_query)
-                .await
-                .map_err(|e| format!("Count query failed: {e}"))?;
-            let full_stats = sparql::parse_counts_csv(&counts_csv)
-                .map_err(|e| format!("Count parse failed: {e}"))?;
-            if full_stats.n_entries > WASM_MAX_CLIENT_FILTER_CANDIDATES {
-                return Err(i18n::err_wasm_large_query_fallback(
-                    locale,
-                    &format!(
-                        "Client-side filters would require scanning {} rows; please narrow the query.",
-                        full_stats.n_entries
-                    ),
-                ));
-            }
-        }
         *query_phase.write() = QueryPhase::FetchingPreview;
         let csv = sparql::execute_sparql(&sparql_query)
             .await
-            .map_err(|e| format!("Query failed: {e}"))?;
-        let rows = sparql::parse_compounds_csv(&csv).map_err(|e| format!("Parse error: {e}"))?;
+            .map_err(|e| AppError {
+                kind: ErrorKind::Network,
+                message: err_query_stage_failed(locale, "query", &e.to_string()),
+            })?;
+        let rows = sparql::parse_compounds_csv(&csv).map_err(|e| AppError {
+            kind: ErrorKind::Parse,
+            message: err_query_stage_failed(locale, "parse", &e.to_string()),
+        })?;
         (rows, None, None)
     } else {
         // Fast path: fetch exact aggregate counts with a tiny response, then fetch
@@ -890,18 +889,32 @@ async fn do_search(
         match async {
             let counts_csv = sparql::execute_sparql(&count_query)
                 .await
-                .map_err(|e| format!("Count query failed: {e}"))?;
-            let full_stats = sparql::parse_counts_csv(&counts_csv)
-                .map_err(|e| format!("Count parse failed: {e}"))?;
+                .map_err(|e| AppError {
+                    kind: ErrorKind::Network,
+                    message: err_query_stage_failed(locale, "count query", &e.to_string()),
+                })?;
+            let full_stats = sparql::parse_counts_csv(&counts_csv).map_err(|e| AppError {
+                kind: ErrorKind::Parse,
+                message: err_query_stage_failed(locale, "count parse", &e.to_string()),
+            })?;
 
             *query_phase.write() = QueryPhase::FetchingPreview;
-            let display_csv = sparql::execute_sparql(&display_query)
-                .await
-                .map_err(|e| format!("Display query failed: {e}"))?;
-            let rows = sparql::parse_compounds_csv_display(&display_csv, display_limit)
-                .map_err(|e| format!("Display parse failed: {e}"))?;
+            let display_csv =
+                sparql::execute_sparql(&display_query)
+                    .await
+                    .map_err(|e| AppError {
+                        kind: ErrorKind::Network,
+                        message: err_query_stage_failed(locale, "display query", &e.to_string()),
+                    })?;
+            let rows =
+                sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
+                    AppError {
+                        kind: ErrorKind::Parse,
+                        message: err_query_stage_failed(locale, "display parse", &e.to_string()),
+                    }
+                })?;
 
-            Ok::<_, String>((rows, Some(full_stats.clone()), Some(full_stats.n_entries)))
+            Ok::<_, AppError>((rows, Some(full_stats.clone()), Some(full_stats.n_entries)))
         }
         .await
         {
@@ -909,18 +922,29 @@ async fn do_search(
             Err(err_msg) => {
                 #[cfg(target_arch = "wasm32")]
                 {
-                    return Err(i18n::err_wasm_large_query_fallback(locale, &err_msg));
+                    return Err(AppError {
+                        kind: ErrorKind::Memory,
+                        message: i18n::err_wasm_large_query_fallback(locale, &err_msg.message),
+                    });
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     let _ = err_msg;
-                    let csv = sparql::execute_sparql(&sparql_query)
-                        .await
-                        .map_err(|e| format!("Query failed: {e}"))?;
+                    let csv =
+                        sparql::execute_sparql(&sparql_query)
+                            .await
+                            .map_err(|e| AppError {
+                                kind: ErrorKind::Network,
+                                message: err_query_stage_failed(locale, "query", &e.to_string()),
+                            })?;
                     let (rows, full_stats, _parse_capped) =
-                        sparql::parse_compounds_csv_capped(&csv, display_limit)
-                            .map_err(|e| format!("Parse error: {e}"))?;
+                        sparql::parse_compounds_csv_capped(&csv, display_limit).map_err(|e| {
+                            AppError {
+                                kind: ErrorKind::Parse,
+                                message: err_query_stage_failed(locale, "parse", &e.to_string()),
+                            }
+                        })?;
                     (rows, Some(full_stats.clone()), Some(full_stats.n_entries))
                 }
             }
@@ -1319,23 +1343,6 @@ fn query_phase_text(locale: Locale, phase: QueryPhase) -> &'static str {
         QueryPhase::Counting => t(locale, TextKey::LoadingCounting),
         QueryPhase::FetchingPreview => t(locale, TextKey::LoadingFetchingPreview),
         QueryPhase::Rendering => t(locale, TextKey::LoadingRendering),
-    }
-}
-
-fn classify_error_kind(msg: &str) -> ErrorKind {
-    let m = msg.to_ascii_lowercase();
-    if m.contains("please enter") || m.contains("veuillez") || m.contains("not found") {
-        ErrorKind::Validation
-    } else if m.contains("network") || m.contains("cors") || m.contains("timeout") {
-        ErrorKind::Network
-    } else if m.contains("http") || m.contains("gateway") || m.contains("server") {
-        ErrorKind::Server
-    } else if m.contains("parse") {
-        ErrorKind::Parse
-    } else if m.contains("memory") || m.contains("wasm") {
-        ErrorKind::Memory
-    } else {
-        ErrorKind::Unknown
     }
 }
 

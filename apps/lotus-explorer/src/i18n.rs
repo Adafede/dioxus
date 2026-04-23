@@ -739,6 +739,55 @@ pub fn err_invalid_search_input(locale: Locale) -> String {
     }
 }
 
+pub fn err_unsupported_format(locale: Locale, fmt: &str) -> String {
+    match locale {
+        Locale::En => format!("Unsupported format '{fmt}'. Use csv, json, or ttl."),
+        Locale::Fr => format!("Format '{fmt}' non pris en charge. Utilisez csv, json ou ttl."),
+        Locale::De => {
+            format!("Nicht unterstütztes Format '{fmt}'. Verwenden Sie csv, json oder ttl.")
+        }
+        Locale::It => {
+            format!("Formato '{fmt}' non supportato. Usa csv, json o ttl.")
+        }
+    }
+}
+
+pub fn err_taxon_search_failed(locale: Locale, detail: &str) -> String {
+    match locale {
+        Locale::En => format!("Taxon search failed: {detail}"),
+        Locale::Fr => format!("Échec de la recherche de taxon : {detail}"),
+        Locale::De => format!("Taxon-Suche fehlgeschlagen: {detail}"),
+        Locale::It => format!("Ricerca del taxon non riuscita: {detail}"),
+    }
+}
+
+pub fn err_taxon_parse_failed(locale: Locale, detail: &str) -> String {
+    match locale {
+        Locale::En => format!("Taxon parse failed: {detail}"),
+        Locale::Fr => format!("Échec de l'analyse du taxon : {detail}"),
+        Locale::De => format!("Taxon-Parsing fehlgeschlagen: {detail}"),
+        Locale::It => format!("Parsing del taxon non riuscito: {detail}"),
+    }
+}
+
+pub fn err_taxon_resolution_failed(locale: Locale) -> String {
+    match locale {
+        Locale::En => "Taxon resolution failed.".to_string(),
+        Locale::Fr => "Échec de la résolution du taxon.".to_string(),
+        Locale::De => "Taxon-Auflösung fehlgeschlagen.".to_string(),
+        Locale::It => "Risoluzione del taxon non riuscita.".to_string(),
+    }
+}
+
+pub fn err_query_stage_failed(locale: Locale, stage: &str, detail: &str) -> String {
+    match locale {
+        Locale::En => format!("{stage} failed: {detail}"),
+        Locale::Fr => format!("Échec de l'étape {stage} : {detail}"),
+        Locale::De => format!("Schritt {stage} fehlgeschlagen: {detail}"),
+        Locale::It => format!("Fase {stage} non riuscita: {detail}"),
+    }
+}
+
 pub fn err_taxon_not_found(locale: Locale, taxon: &str) -> String {
     match locale {
         Locale::En => format!("Taxon '{taxon}' not found in Wikidata."),
