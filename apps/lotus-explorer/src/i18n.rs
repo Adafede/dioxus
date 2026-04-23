@@ -116,6 +116,7 @@ pub enum TextKey {
     ExampleGentiana,
     ExampleAllTriples,
     ExampleSmilesOnly,
+    ExampleQueryExecute,
     ExampleQueryTaxon,
     ExampleQueryStructure,
     ExampleQueryAdvanced,
@@ -243,10 +244,13 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::ExampleGentiana => "Enter a taxon name or a Wikidata QID",
             TextKey::ExampleAllTriples => "All LOTUS compound-taxon-reference triples",
             TextKey::ExampleSmilesOnly => "Paste a SMILES or Molfile in the structure box",
+            TextKey::ExampleQueryExecute => "Execute",
             TextKey::ExampleQueryTaxon => "Taxon",
             TextKey::ExampleQueryStructure => "Structure",
             TextKey::ExampleQueryAdvanced => "Advanced",
-            TextKey::WelcomeProgrammaticDownload => "Programmatic download URL patterns:",
+            TextKey::WelcomeProgrammaticDownload => {
+                "Programmatic URL patterns (execute query or download results):"
+            }
             TextKey::LabelLanguagePolicy => {
                 "Labels are resolved with 'mul' first, then 'en' fallback for reproducible and comparable results across UI languages."
             }
@@ -381,11 +385,12 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::ExampleGentiana => "Saisir un nom de taxon ou un QID Wikidata",
             TextKey::ExampleAllTriples => "Tous les triplets composé-taxon-reference LOTUS",
             TextKey::ExampleSmilesOnly => "Collez un SMILES ou un Molfile dans la zone structure",
+            TextKey::ExampleQueryExecute => "Exécuter",
             TextKey::ExampleQueryTaxon => "Taxon",
             TextKey::ExampleQueryStructure => "Structure",
             TextKey::ExampleQueryAdvanced => "Avancé",
             TextKey::WelcomeProgrammaticDownload => {
-                "Modèles d'URL pour téléchargement programmatique :"
+                "Modèles d'URL programmatiques (exécuter la requête ou télécharger les résultats) :"
             }
             TextKey::LabelLanguagePolicy => {
                 "Les libellés utilisent d'abord 'mul', puis un repli 'en' pour garantir des résultats reproductibles et comparables entre langues d'interface."
@@ -523,11 +528,12 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::ExampleGentiana => "Taxonname oder Wikidata-QID eingeben",
         TextKey::ExampleAllTriples => "Alle LOTUS Verbindung-Taxon-Referenz-Tripel",
         TextKey::ExampleSmilesOnly => "SMILES oder Molfile in das Strukturfeld einfügen",
+        TextKey::ExampleQueryExecute => "Ausführen",
         TextKey::ExampleQueryTaxon => "Taxon",
         TextKey::ExampleQueryStructure => "Struktur",
         TextKey::ExampleQueryAdvanced => "Erweitert",
         TextKey::WelcomeProgrammaticDownload => {
-            "Programmgesteuerte Downloads per URL-Parameter (Beispiele):"
+            "Programmgesteuerte URL-Parameter (Abfrage ausführen oder Ergebnisse herunterladen):"
         }
         TextKey::LabelLanguagePolicy => {
             "Beschriftungen werden zuerst aus 'mul' und danach per 'en'-Fallback aufgelöst, damit Ergebnisse über UI-Sprachen hinweg reproduzierbar und vergleichbar bleiben."
@@ -666,11 +672,12 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::ExampleGentiana => "Inserisci un nome di taxon o un QID Wikidata",
         TextKey::ExampleAllTriples => "Tutte le triple LOTUS composto-taxon-riferimento",
         TextKey::ExampleSmilesOnly => "Incolla uno SMILES o un Molfile nel campo struttura",
+        TextKey::ExampleQueryExecute => "Esegui",
         TextKey::ExampleQueryTaxon => "Taxon",
         TextKey::ExampleQueryStructure => "Struttura",
         TextKey::ExampleQueryAdvanced => "Avanzato",
         TextKey::WelcomeProgrammaticDownload => {
-            "Download programmatico con parametri URL (esempi):"
+            "Parametri URL programmatici (eseguire la query o scaricare risultati):"
         }
         TextKey::LabelLanguagePolicy => {
             "Le etichette usano prima 'mul' e poi fallback 'en' per mantenere risultati riproducibili e confrontabili tra lingue dell'interfaccia."

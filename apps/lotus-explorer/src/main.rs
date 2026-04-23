@@ -81,6 +81,7 @@ fn App() -> Element {
     let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
     let mut pending_download_format: Signal<Option<String>> =
         use_signal(initial_download_format_from_url);
+    let pending_execute: Signal<bool> = use_signal(initial_execute_from_url);
 
     // Memoised derived state — recomputed only when their inputs change.
     // If we have precise totals from the parser, use them directly. Otherwise,
@@ -125,7 +126,7 @@ fn App() -> Element {
     // search automatically and trigger download once query materializes.
     use_effect(move || {
         let pending = pending_download_format.read().clone();
-        if pending.is_some() && !*searched_once.read() && !*loading.read() {
+        if (pending.is_some() || *pending_execute.read()) && !*searched_once.read() && !*loading.read() {
             start_search(
                 criteria,
                 locale,
@@ -585,6 +586,11 @@ fn WelcomeScreen(locale: Locale) -> Element {
                 }
                 p { class: "form-hint", "{t(locale, TextKey::LabelLanguagePolicy)}" }
                 div { class: "welcome-cli-list",
+                    DownloadExampleRow {
+                        locale,
+                        format: t(locale, TextKey::ExampleQueryExecute),
+                        query: "?taxon=Gentiana%20lutea&execute=true",
+                    }
                     DownloadExampleRow {
                         locale,
                         format: t(locale, TextKey::ExampleQueryTaxon),
@@ -1233,19 +1239,35 @@ fn initial_locale_from_url() -> Locale {
 
 fn initial_download_format_from_url() -> Option<String> {
     let params = read_url_query_params();
-    let wants_download = params
-        .get("download")
-        .map(|v| matches!(v.as_str(), "1" | "true" | "yes"))
-        .unwrap_or(false);
+    let (download, _execute) = parse_startup_action_from_params(&params);
+    download
+}
+
+fn initial_execute_from_url() -> bool {
+    let params = read_url_query_params();
+    let (_download, execute) = parse_startup_action_from_params(&params);
+    execute
+}
+
+fn parse_startup_action_from_params(params: &BTreeMap<String, String>) -> (Option<String>, bool) {
+    let wants_download = params.get("download").map(|v| is_true_flag(v)).unwrap_or(false);
     if !wants_download {
-        return None;
+        let wants_execute = params.get("execute").map(|v| is_true_flag(v)).unwrap_or(false);
+        return (None, wants_execute);
     }
-    Some(
-        params
-            .get("format")
-            .map(|v| v.to_ascii_lowercase())
-            .unwrap_or_else(|| "csv".to_string()),
+    (
+        Some(
+            params
+                .get("format")
+                .map(|v| v.to_ascii_lowercase())
+                .unwrap_or_else(|| "csv".to_string()),
+        ),
+        false,
     )
+}
+
+fn is_true_flag(v: &str) -> bool {
+    matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on")
 }
 
 fn trigger_download_main(filename: &str, mime: &str, body: &str) {
@@ -1417,5 +1439,25 @@ mod tests {
         assert_eq!(reparsed.cl_state, crit.cl_state);
         assert_eq!(reparsed.br_state, crit.br_state);
         assert_eq!(reparsed.i_state, crit.i_state);
+    }
+
+    #[test]
+    fn startup_action_execute_only() {
+        let mut params = BTreeMap::new();
+        params.insert("execute".into(), "true".into());
+        let (download, execute) = parse_startup_action_from_params(&params);
+        assert!(download.is_none());
+        assert!(execute);
+    }
+
+    #[test]
+    fn startup_action_download_has_priority_over_execute() {
+        let mut params = BTreeMap::new();
+        params.insert("download".into(), "yes".into());
+        params.insert("execute".into(), "true".into());
+        params.insert("format".into(), "rdf".into());
+        let (download, execute) = parse_startup_action_from_params(&params);
+        assert_eq!(download.as_deref(), Some("rdf"));
+        assert!(!execute);
     }
 }

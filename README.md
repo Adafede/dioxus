@@ -64,3 +64,17 @@ Deploy any of them to:
 |-----|-------------|
 | `lotus-explorer` | LOTUS Wikidata natural-product occurrence explorer (compound × taxon × reference) |
 | `hello-world` | Minimal template — copy to start a new app |
+
+## LOTUS URL Automation
+
+`lotus-explorer` supports URL-driven execution and exports:
+
+- `?execute=true` runs the query on page load (no file download)
+- `?download=true&format=csv` runs the query and downloads CSV
+- `?download=true&format=json` runs the query and downloads SPARQL JSON
+- `?download=true&format=rdf` runs the query and downloads RDF
+
+Accepted truthy values for `execute` / `download`: `true`, `1`, `yes`, `on`.
+
+When both are present, `download=true` takes priority over `execute=true`.
+
