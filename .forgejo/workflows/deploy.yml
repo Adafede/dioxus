@@ -2,15 +2,16 @@ name: Deploy to Codeberg Pages
 
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
   workflow_dispatch:
 
 concurrency:
-  group: pages
+  group: "pages"
   cancel-in-progress: true
 
 jobs:
   build-and-deploy:
+    name: "build and deploy"
     runs-on: codeberg-small
     steps:
       - uses: actions/checkout@v4
