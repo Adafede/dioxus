@@ -77,6 +77,18 @@ pub enum TextKey {
     // Loading/welcome
     LoadingTitle,
     LoadingHint,
+    LoadingResolvingTaxon,
+    LoadingCounting,
+    LoadingFetchingPreview,
+    LoadingRendering,
+    Retry,
+    ErrorHintValidation,
+    ErrorHintNetwork,
+    ErrorHintServer,
+    ErrorHintParse,
+    ErrorHintMemory,
+    ErrorHintUnknown,
+    SkipToResults,
     WelcomeTitle,
     WelcomeTry,
     WelcomeLeadA,
@@ -138,6 +150,8 @@ pub enum TextKey {
     SparqlQuery,
     NoResults,
     LoadMore,
+    DensityCompact,
+    DensityComfortable,
     // Columns
     Structure,
     Compound,
@@ -185,6 +199,18 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::CopySparqlQuery => "Copy SPARQL query",
             TextKey::LoadingTitle => "Querying Wikidata via QLever...",
             TextKey::LoadingHint => "Large result sets may take several seconds.",
+            TextKey::LoadingResolvingTaxon => "Resolving taxon...",
+            TextKey::LoadingCounting => "Counting matches...",
+            TextKey::LoadingFetchingPreview => "Fetching preview rows...",
+            TextKey::LoadingRendering => "Rendering table...",
+            TextKey::Retry => "Retry",
+            TextKey::ErrorHintValidation => "Please adjust your query input and try again.",
+            TextKey::ErrorHintNetwork => "Network issue detected. Retry may succeed.",
+            TextKey::ErrorHintServer => "Remote endpoint error. Retry in a few seconds.",
+            TextKey::ErrorHintParse => "Response parsing failed. Retry or refine query.",
+            TextKey::ErrorHintMemory => "Result too large for current device memory.",
+            TextKey::ErrorHintUnknown => "Unexpected error. Retry may help.",
+            TextKey::SkipToResults => "Skip to results",
             TextKey::WelcomeTitle => "Browse natural product occurrences",
             TextKey::WelcomeTry => "Try",
             TextKey::WelcomeLeadA => {
@@ -258,6 +284,8 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::SparqlQuery => "SPARQL query",
             TextKey::NoResults => "No results. Try broadening your search.",
             TextKey::LoadMore => "Load more",
+            TextKey::DensityCompact => "Compact",
+            TextKey::DensityComfortable => "Comfortable",
             TextKey::Structure => "Structure",
             TextKey::Compound => "Compound",
             TextKey::Mass => "Mass",
@@ -302,6 +330,18 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::CopySparqlQuery => "Copier la requête SPARQL",
             TextKey::LoadingTitle => "Interrogation de Wikidata via QLever...",
             TextKey::LoadingHint => "Les grands jeux de résultats peuvent prendre du temps.",
+            TextKey::LoadingResolvingTaxon => "Résolution du taxon...",
+            TextKey::LoadingCounting => "Comptage des correspondances...",
+            TextKey::LoadingFetchingPreview => "Récupération de l'aperçu...",
+            TextKey::LoadingRendering => "Rendu du tableau...",
+            TextKey::Retry => "Réessayer",
+            TextKey::ErrorHintValidation => "Veuillez ajuster la saisie puis réessayer.",
+            TextKey::ErrorHintNetwork => "Problème réseau détecté. Réessayer peut aider.",
+            TextKey::ErrorHintServer => "Erreur du service distant. Réessayez dans quelques secondes.",
+            TextKey::ErrorHintParse => "Echec de lecture de la réponse. Réessayez ou affinez la requête.",
+            TextKey::ErrorHintMemory => "Résultat trop volumineux pour la mémoire de l'appareil.",
+            TextKey::ErrorHintUnknown => "Erreur inattendue. Réessayer peut aider.",
+            TextKey::SkipToResults => "Aller aux résultats",
             TextKey::WelcomeTitle => "Explorer les occurrences de produits naturels",
             TextKey::WelcomeTry => "Essayer",
             TextKey::WelcomeLeadA => {
@@ -373,6 +413,8 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::SparqlQuery => "Requête SPARQL",
             TextKey::NoResults => "Aucun résultat. Essayez une recherche plus large.",
             TextKey::LoadMore => "Charger plus",
+            TextKey::DensityCompact => "Compact",
+            TextKey::DensityComfortable => "Confortable",
             TextKey::Structure => "Structure",
             TextKey::Compound => "Composé",
             TextKey::Mass => "Masse",
@@ -563,3 +605,25 @@ pub fn showing_rows_text(locale: Locale, visible: usize, total: usize) -> String
         ),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn core_labels_exist() {
+        assert!(!t(Locale::En, TextKey::Search).is_empty());
+        assert!(!t(Locale::Fr, TextKey::Search).is_empty());
+        assert!(!t(Locale::En, TextKey::SkipToResults).is_empty());
+        assert!(!t(Locale::Fr, TextKey::SkipToResults).is_empty());
+    }
+
+    #[test]
+    fn pluralization_smoke() {
+        assert_eq!(count_label(Locale::En, CountNoun::Taxon, 1), "Taxon");
+        assert_eq!(count_label(Locale::En, CountNoun::Taxon, 2), "Taxa");
+        assert_eq!(count_label(Locale::Fr, CountNoun::Entry, 1), "Entrée");
+        assert_eq!(count_label(Locale::Fr, CountNoun::Entry, 2), "Entrées");
+    }
+}
+

@@ -20,6 +20,25 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum QueryPhase {
+    Idle,
+    ResolvingTaxon,
+    Counting,
+    FetchingPreview,
+    Rendering,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ErrorKind {
+    Validation,
+    Network,
+    Server,
+    Parse,
+    Memory,
+    Unknown,
+}
+
 fn main() {
     console_log::init_with_level(log::Level::Debug).ok();
     launch(App);
@@ -33,20 +52,22 @@ fn App() -> Element {
     let locale: Signal<Locale> = use_signal(initial_locale_from_url);
     // Entries live behind an `Arc<[…]>` so prop/signal clones are a single
     // refcount bump instead of duplicating the whole result buffer.
-    let mut entries: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
-    let mut loading: Signal<bool> = use_signal(|| false);
+    let entries: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
+    let loading: Signal<bool> = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
-    let mut searched_once: Signal<bool> = use_signal(|| false);
-    let mut taxon_notice: Signal<Option<String>> = use_signal(|| None);
-    let mut resolved_qid: Signal<Option<String>> = use_signal(|| None);
-    let mut query_hash: Signal<Option<String>> = use_signal(|| None);
-    let mut result_hash: Signal<Option<String>> = use_signal(|| None);
-    let mut sparql_query: Signal<Option<String>> = use_signal(|| None);
-    let mut metadata_json: Signal<Option<String>> = use_signal(|| None);
-    let mut total_matches: Signal<Option<usize>> = use_signal(|| None);
-    let mut total_stats: Signal<Option<DatasetStats>> = use_signal(|| None);
+    let error_kind: Signal<ErrorKind> = use_signal(|| ErrorKind::Unknown);
+    let query_phase: Signal<QueryPhase> = use_signal(|| QueryPhase::Idle);
+    let searched_once: Signal<bool> = use_signal(|| false);
+    let taxon_notice: Signal<Option<String>> = use_signal(|| None);
+    let resolved_qid: Signal<Option<String>> = use_signal(|| None);
+    let query_hash: Signal<Option<String>> = use_signal(|| None);
+    let result_hash: Signal<Option<String>> = use_signal(|| None);
+    let sparql_query: Signal<Option<String>> = use_signal(|| None);
+    let metadata_json: Signal<Option<String>> = use_signal(|| None);
+    let total_matches: Signal<Option<usize>> = use_signal(|| None);
+    let total_stats: Signal<Option<DatasetStats>> = use_signal(|| None);
     let sort: Signal<SortState> = use_signal(SortState::default);
-    let mut page: Signal<usize> = use_signal(|| 0usize);
+    let page: Signal<usize> = use_signal(|| 0usize);
     let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
 
     // Memoised derived state — recomputed only when their inputs change.
@@ -61,102 +82,31 @@ fn App() -> Element {
 
     // ── Search handler ────────────────────────────────────────────────────────
     let on_search = move |_| {
-        if *loading.peek() {
-            return;
-        }
-        let crit = criteria.peek().clone();
-
-        if !crit.is_valid() {
-            *error.write() = Some(err_invalid_search_input(*locale.peek()));
-            return;
-        }
-
-        *error.write() = None;
-        *searched_once.write() = true;
-        *loading.write() = true;
-        *entries.write() = Arc::<[CompoundEntry]>::from([]);
-        *taxon_notice.write() = None;
-        *resolved_qid.write() = None;
-        *query_hash.write() = None;
-        *result_hash.write() = None;
-        *sparql_query.write() = None;
-        *metadata_json.write() = None;
-        *total_matches.write() = None;
-        *total_stats.write() = None;
-        *page.write() = 0;
-        *mobile_filters_open.write() = false;
-
-        spawn(async move {
-            match do_search(crit.clone(), *locale.peek()).await {
-                Ok(mut outcome) => {
-                    // Client-side post-filters (mass, year, formula).
-                    if crit.has_mass_filter() {
-                        outcome.rows.retain(|e| {
-                            e.mass
-                                .map_or(false, |m| m >= crit.mass_min && m <= crit.mass_max)
-                        });
-                    }
-                    if crit.has_year_filter() {
-                        outcome.rows.retain(|e| {
-                            e.pub_year
-                                .map_or(true, |y| y >= crit.year_min && y <= crit.year_max)
-                        });
-                    }
-                    if crit.has_formula_filter() {
-                        outcome
-                            .rows
-                            .retain(|e| formula_matches(e.formula.as_deref(), &crit));
-                    }
-
-                    // `parse_compounds_csv_capped` bounds `outcome.rows` to at
-                    // most `TABLE_ROW_LIMIT`; `outcome.total_matches` carries
-                    // the true distinct-triple count. The "Showing X of Y rows"
-                    // pagination line and the `Entries` stat badge already
-                    // communicate truncation — no separate notice needed.
-
-                    let (q_hash, r_hash) =
-                        compute_hashes(outcome.qid.as_deref().unwrap_or(""), &crit, &outcome.rows);
-                    // Reuse the exact stats the parser already computed if we
-                    // have them; otherwise derive from the kept rows. Never
-                    // walk the full row set twice.
-                    let full_stats = outcome
-                        .total_stats
-                        .clone()
-                        .unwrap_or_else(|| DatasetStats::from_entries(&outcome.rows));
-                    let meta_str = export::build_metadata_json(export::MetadataInputs {
-                        criteria: &crit,
-                        qid: outcome.qid.as_deref(),
-                        stats: &full_stats,
-                        number_of_records_override: outcome.total_matches,
-                        query_hash: &q_hash,
-                        result_hash: &r_hash,
-                    });
-
-                    // Move (not clone) the Vec straight into the refcounted
-                    // slice. No per-row String allocations happen here.
-                    let display_slice: Rows = Arc::from(outcome.rows.into_boxed_slice());
-
-                    *resolved_qid.write() = outcome.qid;
-                    *taxon_notice.write() = outcome.warning;
-                    *query_hash.write() = Some(q_hash);
-                    *result_hash.write() = Some(r_hash);
-                    *sparql_query.write() = Some(outcome.query);
-                    *metadata_json.write() = Some(meta_str);
-                    *total_matches.write() = outcome.total_matches;
-                    *total_stats.write() = outcome.total_stats;
-                    *entries.write() = display_slice;
-                    *loading.write() = false;
-                }
-                Err(e) => {
-                    *error.write() = Some(e);
-                    *loading.write() = false;
-                }
-            }
-        });
+        start_search(
+            criteria,
+            locale,
+            loading,
+            error,
+            error_kind,
+            query_phase,
+            searched_once,
+            entries,
+            taxon_notice,
+            resolved_qid,
+            query_hash,
+            result_hash,
+            sparql_query,
+            metadata_json,
+            total_matches,
+            total_stats,
+            page,
+            mobile_filters_open,
+        )
     };
 
     rsx! {
 
+        a { class: "skip-link", href: "#results-section", "{t(*locale.read(), TextKey::SkipToResults)}" }
         div { class: "app-layout",
             // ── Left sidebar ──────────────────────────────────────────────
             aside { class: if *mobile_filters_open.read() { "sidebar mobile-open" } else { "sidebar mobile-closed" },
@@ -277,6 +227,36 @@ fn App() -> Element {
                     div { class: "notice notice-error", role: "alert",
                         span { class: "notice-label", "{t(*locale.read(), TextKey::Error)}" }
                         span { class: "notice-value", "{msg}" }
+                        span { class: "notice-value", "{error_hint_text(*locale.read(), *error_kind.read())}" }
+                        if is_retryable(*error_kind.read()) && !*loading.read() {
+                            button {
+                                class: "btn btn-sm",
+                                r#type: "button",
+                                onclick: move |_| {
+                                    start_search(
+                                        criteria,
+                                        locale,
+                                        loading,
+                                        error,
+                                        error_kind,
+                                        query_phase,
+                                        searched_once,
+                                        entries,
+                                        taxon_notice,
+                                        resolved_qid,
+                                        query_hash,
+                                        result_hash,
+                                        sparql_query,
+                                        metadata_json,
+                                        total_matches,
+                                        total_stats,
+                                        page,
+                                        mobile_filters_open,
+                                    )
+                                },
+                                "{t(*locale.read(), TextKey::Retry)}"
+                            }
+                        }
                         button {
                             class: "notice-dismiss",
                             r#type: "button",
@@ -292,8 +272,9 @@ fn App() -> Element {
                         class: "loading-state",
                         role: "status",
                         aria_live: "polite",
+                        aria_busy: "true",
                         div { class: "spinner-lg", "aria-hidden": "true" }
-                        p { "{t(*locale.read(), TextKey::LoadingTitle)}" }
+                        p { "{query_phase_text(*locale.read(), *query_phase.read())}" }
                         p { class: "loading-hint", "{t(*locale.read(), TextKey::LoadingHint)}" }
                     }
                 } else if entries.read().is_empty() && error.read().is_none() && !*searched_once.read() {
@@ -489,7 +470,121 @@ struct SearchOutcome {
     total_stats: Option<DatasetStats>,
 }
 
-async fn do_search(crit: SearchCriteria, locale: Locale) -> Result<SearchOutcome, String> {
+#[allow(clippy::too_many_arguments)]
+fn start_search(
+    criteria: Signal<SearchCriteria>,
+    locale: Signal<Locale>,
+    mut loading: Signal<bool>,
+    mut error: Signal<Option<String>>,
+    mut error_kind: Signal<ErrorKind>,
+    mut query_phase: Signal<QueryPhase>,
+    mut searched_once: Signal<bool>,
+    mut entries: Signal<Rows>,
+    mut taxon_notice: Signal<Option<String>>,
+    mut resolved_qid: Signal<Option<String>>,
+    mut query_hash: Signal<Option<String>>,
+    mut result_hash: Signal<Option<String>>,
+    mut sparql_query: Signal<Option<String>>,
+    mut metadata_json: Signal<Option<String>>,
+    mut total_matches: Signal<Option<usize>>,
+    mut total_stats: Signal<Option<DatasetStats>>,
+    mut page: Signal<usize>,
+    mut mobile_filters_open: Signal<bool>,
+) {
+    if *loading.peek() {
+        return;
+    }
+    let crit = criteria.peek().clone();
+
+    if !crit.is_valid() {
+        *error.write() = Some(err_invalid_search_input(*locale.peek()));
+        *error_kind.write() = ErrorKind::Validation;
+        return;
+    }
+
+    *error.write() = None;
+    *error_kind.write() = ErrorKind::Unknown;
+    *searched_once.write() = true;
+    *loading.write() = true;
+    *query_phase.write() = QueryPhase::ResolvingTaxon;
+    *entries.write() = Arc::<[CompoundEntry]>::from([]);
+    *taxon_notice.write() = None;
+    *resolved_qid.write() = None;
+    *query_hash.write() = None;
+    *result_hash.write() = None;
+    *sparql_query.write() = None;
+    *metadata_json.write() = None;
+    *total_matches.write() = None;
+    *total_stats.write() = None;
+    *page.write() = 0;
+    *mobile_filters_open.write() = false;
+
+    spawn(async move {
+        match do_search(crit.clone(), *locale.peek(), query_phase).await {
+            Ok(mut outcome) => {
+                // Client-side post-filters (mass, year, formula).
+                if crit.has_mass_filter() {
+                    outcome.rows.retain(|e| {
+                        e.mass
+                            .map_or(false, |m| m >= crit.mass_min && m <= crit.mass_max)
+                    });
+                }
+                if crit.has_year_filter() {
+                    outcome.rows.retain(|e| {
+                        e.pub_year
+                            .map_or(true, |y| y >= crit.year_min && y <= crit.year_max)
+                    });
+                }
+                if crit.has_formula_filter() {
+                    outcome
+                        .rows
+                        .retain(|e| formula_matches(e.formula.as_deref(), &crit));
+                }
+
+                let (q_hash, r_hash) =
+                    compute_hashes(outcome.qid.as_deref().unwrap_or(""), &crit, &outcome.rows);
+                let full_stats = outcome
+                    .total_stats
+                    .clone()
+                    .unwrap_or_else(|| DatasetStats::from_entries(&outcome.rows));
+                let meta_str = export::build_metadata_json(export::MetadataInputs {
+                    criteria: &crit,
+                    qid: outcome.qid.as_deref(),
+                    stats: &full_stats,
+                    number_of_records_override: outcome.total_matches,
+                    query_hash: &q_hash,
+                    result_hash: &r_hash,
+                });
+
+                let display_slice: Rows = Arc::from(outcome.rows.into_boxed_slice());
+                *query_phase.write() = QueryPhase::Rendering;
+                *resolved_qid.write() = outcome.qid;
+                *taxon_notice.write() = outcome.warning;
+                *query_hash.write() = Some(q_hash);
+                *result_hash.write() = Some(r_hash);
+                *sparql_query.write() = Some(outcome.query);
+                *metadata_json.write() = Some(meta_str);
+                *total_matches.write() = outcome.total_matches;
+                *total_stats.write() = outcome.total_stats;
+                *entries.write() = display_slice;
+                *loading.write() = false;
+                *query_phase.write() = QueryPhase::Idle;
+            }
+            Err(e) => {
+                *error_kind.write() = classify_error_kind(&e);
+                *error.write() = Some(e);
+                *loading.write() = false;
+                *query_phase.write() = QueryPhase::Idle;
+            }
+        }
+    });
+}
+
+async fn do_search(
+    crit: SearchCriteria,
+    locale: Locale,
+    mut query_phase: Signal<QueryPhase>,
+) -> Result<SearchOutcome, String> {
     let taxon = crit.taxon.trim().to_string();
     // Preserve Molfile blocks verbatim — leading blank lines and whitespace
     // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
@@ -519,6 +614,7 @@ async fn do_search(crit: SearchCriteria, locale: Locale) -> Result<SearchOutcome
     {
         Some(taxon.to_uppercase())
     } else {
+        *query_phase.write() = QueryPhase::ResolvingTaxon;
         let sanitized = sanitize_taxon_input(&taxon);
         let query = queries::query_taxon_search(&sanitized);
         let csv = sparql::execute_sparql(&query)
@@ -584,6 +680,7 @@ async fn do_search(crit: SearchCriteria, locale: Locale) -> Result<SearchOutcome
     // Fast path: fetch exact aggregate counts with a tiny response, then fetch
     // only the display window. This keeps metadata totals exact while cutting
     // transfer size for large result sets.
+    *query_phase.write() = QueryPhase::Counting;
     let display_limit = runtime_table_row_limit();
     let count_query = queries::query_counts_from_base(&sparql_query);
     let display_query = queries::query_with_limit(&sparql_query, display_limit);
@@ -595,6 +692,7 @@ async fn do_search(crit: SearchCriteria, locale: Locale) -> Result<SearchOutcome
         let full_stats = sparql::parse_counts_csv(&counts_csv)
             .map_err(|e| format!("Count parse failed: {e}"))?;
 
+        *query_phase.write() = QueryPhase::FetchingPreview;
         let display_csv = sparql::execute_sparql(&display_query)
             .await
             .map_err(|e| format!("Display query failed: {e}"))?;
@@ -869,6 +967,51 @@ fn initial_locale_from_url() -> Locale {
     let params = read_url_query_params();
     let lang = params.get("lang").map(|v| v.as_str()).unwrap_or("");
     Locale::detect(lang)
+}
+
+fn query_phase_text(locale: Locale, phase: QueryPhase) -> &'static str {
+    match phase {
+        QueryPhase::Idle => t(locale, TextKey::LoadingTitle),
+        QueryPhase::ResolvingTaxon => t(locale, TextKey::LoadingResolvingTaxon),
+        QueryPhase::Counting => t(locale, TextKey::LoadingCounting),
+        QueryPhase::FetchingPreview => t(locale, TextKey::LoadingFetchingPreview),
+        QueryPhase::Rendering => t(locale, TextKey::LoadingRendering),
+    }
+}
+
+fn classify_error_kind(msg: &str) -> ErrorKind {
+    let m = msg.to_ascii_lowercase();
+    if m.contains("please enter") || m.contains("veuillez") || m.contains("not found") {
+        ErrorKind::Validation
+    } else if m.contains("network") || m.contains("cors") || m.contains("timeout") {
+        ErrorKind::Network
+    } else if m.contains("http") || m.contains("gateway") || m.contains("server") {
+        ErrorKind::Server
+    } else if m.contains("parse") {
+        ErrorKind::Parse
+    } else if m.contains("memory") || m.contains("wasm") {
+        ErrorKind::Memory
+    } else {
+        ErrorKind::Unknown
+    }
+}
+
+fn is_retryable(kind: ErrorKind) -> bool {
+    matches!(
+        kind,
+        ErrorKind::Network | ErrorKind::Server | ErrorKind::Parse | ErrorKind::Unknown
+    )
+}
+
+fn error_hint_text(locale: Locale, kind: ErrorKind) -> &'static str {
+    match kind {
+        ErrorKind::Validation => t(locale, TextKey::ErrorHintValidation),
+        ErrorKind::Network => t(locale, TextKey::ErrorHintNetwork),
+        ErrorKind::Server => t(locale, TextKey::ErrorHintServer),
+        ErrorKind::Parse => t(locale, TextKey::ErrorHintParse),
+        ErrorKind::Memory => t(locale, TextKey::ErrorHintMemory),
+        ErrorKind::Unknown => t(locale, TextKey::ErrorHintUnknown),
+    }
 }
 
 fn read_url_query_params() -> BTreeMap<String, String> {

@@ -143,9 +143,12 @@ pub fn ResultsTable(
         .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
     let heavy_exports_allowed = wasm_heavy_exports_allowed(total_matches);
     let heavy_export_hint = t(locale, TextKey::HeavyExportHint);
+    let mut compact_rows = use_signal(|| false);
 
     rsx! {
-        div { class: "results-wrap",
+        div {
+            id: "results-section",
+            class: if *compact_rows.read() { "results-wrap compact" } else { "results-wrap" },
             // ── Stats + toolbar ───────────────────────────────────────────
             div { class: "results-toolbar",
                 div {
@@ -178,6 +181,19 @@ pub fn ResultsTable(
                     }
                 }
                 div { class: "toolbar-actions",
+                    button {
+                        class: "btn btn-sm",
+                        r#type: "button",
+                        onclick: move |_| {
+                            let next = !*compact_rows.peek();
+                            *compact_rows.write() = next;
+                        },
+                        if *compact_rows.read() {
+                            "{t(locale, TextKey::DensityComfortable)}"
+                        } else {
+                            "{t(locale, TextKey::DensityCompact)}"
+                        }
+                    }
                     if *download_busy.read() {
                         span {
                             class: "btn btn-sm",
