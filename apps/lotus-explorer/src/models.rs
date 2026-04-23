@@ -329,7 +329,7 @@ pub fn apply_client_filters_in_place(rows: &mut Vec<CompoundEntry>, crit: &Searc
     if crit.has_year_filter() {
         rows.retain(|e| {
             e.pub_year
-                .is_none_or(|y| y >= crit.year_min && y <= crit.year_max)
+                .is_some_and(|y| y >= crit.year_min && y <= crit.year_max)
         });
     }
     if crit.has_formula_filter() {
@@ -338,10 +338,11 @@ pub fn apply_client_filters_in_place(rows: &mut Vec<CompoundEntry>, crit: &Searc
 }
 
 fn formula_matches(formula: Option<&str>, crit: &SearchCriteria) -> bool {
-    // Python semantics: rows with no formula are not filtered out.
+    // With active formula constraints, rows missing a formula cannot be
+    // validated against element/halogen requirements and must be rejected.
     let raw_formula = match formula {
         Some(f) if !f.trim().is_empty() => f,
-        _ => return true,
+        _ => return false,
     };
     let normalized = normalize_formula(raw_formula);
     let exact = crit.formula_exact.trim();
@@ -549,5 +550,81 @@ impl Default for SortState {
             col: SortColumn::Name,
             dir: SortDir::Asc,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mk_entry(formula: Option<&str>, mass: Option<f64>, pub_year: Option<i32>) -> CompoundEntry {
+        CompoundEntry {
+            formula: formula.map(|s| s.to_string()),
+            mass,
+            pub_year,
+            ..CompoundEntry::default()
+        }
+    }
+
+    #[test]
+    fn formula_filter_rejects_missing_and_non_matching_elements() {
+        let mut rows = vec![
+            mk_entry(None, None, None),
+            mk_entry(Some("H2O"), None, None),
+            mk_entry(Some("C6H6"), None, None),
+        ];
+        let mut crit = SearchCriteria::default();
+        crit.formula_enabled = true;
+        crit.c_min = 1;
+
+        apply_client_filters_in_place(&mut rows, &crit);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].formula.as_deref(), Some("C6H6"));
+    }
+
+    #[test]
+    fn formula_filter_disabled_keeps_rows_with_missing_formula() {
+        let mut rows = vec![
+            mk_entry(None, None, None),
+            mk_entry(Some("H2O"), None, None),
+        ];
+        let crit = SearchCriteria::default();
+
+        apply_client_filters_in_place(&mut rows, &crit);
+        assert_eq!(rows.len(), 2);
+    }
+
+    #[test]
+    fn mass_filter_keeps_only_rows_in_range_with_mass_value() {
+        let mut rows = vec![
+            mk_entry(None, None, None),
+            mk_entry(None, Some(12.5), None),
+            mk_entry(None, Some(55.0), None),
+            mk_entry(None, Some(101.0), None),
+        ];
+        let mut crit = SearchCriteria::default();
+        crit.mass_min = 50.0;
+        crit.mass_max = 100.0;
+
+        apply_client_filters_in_place(&mut rows, &crit);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].mass, Some(55.0));
+    }
+
+    #[test]
+    fn publication_year_filter_keeps_only_rows_in_range_with_year_value() {
+        let mut rows = vec![
+            mk_entry(None, None, None),
+            mk_entry(None, None, Some(1999)),
+            mk_entry(None, None, Some(2010)),
+            mk_entry(None, None, Some(2024)),
+        ];
+        let mut crit = SearchCriteria::default();
+        crit.year_min = 2000;
+        crit.year_max = 2020;
+
+        apply_client_filters_in_place(&mut rows, &crit);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].pub_year, Some(2010));
     }
 }

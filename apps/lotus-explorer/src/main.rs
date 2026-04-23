@@ -582,18 +582,18 @@ fn WelcomeScreen(locale: Locale) -> Element {
                 div { class: "welcome-cli-list",
                     DownloadExampleRow {
                         locale,
-                        format: "CSV",
-                        query: "?taxon=*&download=true&format=csv",
+                        format: "Taxon",
+                        query: "?taxon=*",
                     }
                     DownloadExampleRow {
                         locale,
-                        format: "JSON",
-                        query: "?taxon=*&structure=c1ccccc1&structure_search_type=similarity&smiles_threshold=0.85&download=true&format=json",
+                        format: "Structures",
+                        query: "?structure=c1ccccc1&structure_search_type=similarity&smiles_threshold=0.85",
                     }
                     DownloadExampleRow {
                         locale,
-                        format: "TTL",
-                        query: "?taxon=*&formula_filter=true&c_min=15&c_max=25&o_min=2&o_max=8&f_state=required&cl_state=required&br_state=excluded&i_state=excluded&download=true&format=ttl",
+                        format: "Advanced",
+                        query: "?taxon=Fungi&mass_filter=true&mass_min=0&mass_max=300&year_filter=true&year_start=2000&year_end=2026&formula_filter=true&c_min=1&c_max=10&cl_state=required&br_state=excluded&download=true&format=ttl",
                     }
                 }
             }
