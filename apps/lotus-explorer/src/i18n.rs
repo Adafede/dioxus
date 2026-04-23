@@ -133,8 +133,18 @@ pub enum TextKey {
     Substructure,
     Similarity,
     StructureSearchMode,
+    EditCopyDaylightSmiles,
+    CopyExtendedSmilesMol,
     FormulaFilter,
     ExactFormula,
+    MinCount,
+    MaxCount,
+    MinCountAria,
+    MaxCountAria,
+    ElementRequirement,
+    ElementStateAllowed,
+    ElementStateRequired,
+    ElementStateExcluded,
     Search,
     Searching,
     MolecularMass,
@@ -161,10 +171,13 @@ pub enum TextKey {
     PreparingJsonDownload,
     PreparingRdfDownload,
     DownloadCsvTitle,
+    DownloadCsvLabel,
     DownloadJsonTitle,
+    DownloadJsonLabel,
     DownloadRdfTitle,
+    DownloadRdfLabel,
     DownloadMetadataTitle,
-    Metadata,
+    DownloadMetadataLabel,
     OpenInQlever,
     OpenInQleverTitle,
     SparqlQuery,
@@ -190,6 +203,7 @@ pub enum TextKey {
     OpenInWikidata,
     OpenInScholia,
     OpenDoi,
+    Statement,
 }
 
 pub fn t(locale: Locale, key: TextKey) -> &'static str {
@@ -245,11 +259,11 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::ExampleAllTriples => "All LOTUS compound-taxon-reference triples",
             TextKey::ExampleSmilesOnly => "Paste a SMILES or Molfile in the structure box",
             TextKey::ExampleQueryExecute => "Execute",
-            TextKey::ExampleQueryTaxon => "Taxon",
-            TextKey::ExampleQueryStructure => "Structure",
-            TextKey::ExampleQueryAdvanced => "Advanced",
+            TextKey::ExampleQueryTaxon => "Download CSV",
+            TextKey::ExampleQueryStructure => "Download JSON",
+            TextKey::ExampleQueryAdvanced => "Download RDF",
             TextKey::WelcomeProgrammaticDownload => {
-                "Programmatic URL patterns (execute query or download results):"
+                "Programmatic URL patterns (execute query, or download CSV / JSON / RDF):"
             }
             TextKey::LabelLanguagePolicy => {
                 "Labels are resolved with 'mul' first, then 'en' fallback for reproducible and comparable results across UI languages."
@@ -268,8 +282,18 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::Substructure => "Substructure",
             TextKey::Similarity => "Similarity",
             TextKey::StructureSearchMode => "Structure search mode",
+            TextKey::EditCopyDaylightSmiles => "Edit -> Copy as Daylight SMILES",
+            TextKey::CopyExtendedSmilesMol => "Copy as Extended SMILES / MOL V3000",
             TextKey::FormulaFilter => "Formula filter",
             TextKey::ExactFormula => "Exact formula",
+            TextKey::MinCount => "min",
+            TextKey::MaxCount => "max",
+            TextKey::MinCountAria => "minimum count",
+            TextKey::MaxCountAria => "maximum count",
+            TextKey::ElementRequirement => "requirement",
+            TextKey::ElementStateAllowed => "allowed",
+            TextKey::ElementStateRequired => "required",
+            TextKey::ElementStateExcluded => "excluded",
             TextKey::Search => "Search",
             TextKey::Searching => "Searching...",
             TextKey::MolecularMass => "Molecular Mass (Da)",
@@ -297,12 +321,13 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::PreparingJsonDownload => "Preparing JSON download...",
             TextKey::PreparingRdfDownload => "Preparing RDF download...",
             TextKey::DownloadCsvTitle => "Download all rows as CSV",
-            TextKey::DownloadJsonTitle => {
-                "Download all rows as SPARQL Results JSON (can take time)"
-            }
-            TextKey::DownloadRdfTitle => "Download all rows as RDF (can take time)",
+            TextKey::DownloadCsvLabel => "Download CSV",
+            TextKey::DownloadJsonTitle => "Download all rows as SPARQL Results JSON",
+            TextKey::DownloadJsonLabel => "Download JSON",
+            TextKey::DownloadRdfTitle => "Download all rows as RDF (Turtle)",
+            TextKey::DownloadRdfLabel => "Download RDF",
             TextKey::DownloadMetadataTitle => "Download Schema.org metadata (JSON-LD)",
-            TextKey::Metadata => "Metadata",
+            TextKey::DownloadMetadataLabel => "Download metadata",
             TextKey::OpenInQlever => "Open in QLever",
             TextKey::OpenInQleverTitle => "Open this query in the QLever web interface",
             TextKey::SparqlQuery => "SPARQL query",
@@ -328,6 +353,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::OpenInWikidata => "Open in Wikidata",
             TextKey::OpenInScholia => "Open in Scholia",
             TextKey::OpenDoi => "Open DOI",
+            TextKey::Statement => "Statement",
         },
         Locale::Fr => match key {
             TextKey::Share => "Partager",
@@ -386,11 +412,11 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::ExampleAllTriples => "Tous les triplets composé-taxon-reference LOTUS",
             TextKey::ExampleSmilesOnly => "Collez un SMILES ou un Molfile dans la zone structure",
             TextKey::ExampleQueryExecute => "Exécuter",
-            TextKey::ExampleQueryTaxon => "Taxon",
-            TextKey::ExampleQueryStructure => "Structure",
-            TextKey::ExampleQueryAdvanced => "Avancé",
+            TextKey::ExampleQueryTaxon => "Télécharger CSV",
+            TextKey::ExampleQueryStructure => "Télécharger JSON",
+            TextKey::ExampleQueryAdvanced => "Télécharger RDF",
             TextKey::WelcomeProgrammaticDownload => {
-                "Modèles d'URL programmatiques (exécuter la requête ou télécharger les résultats) :"
+                "Modèles d'URL programmatiques (exécuter la requête, ou télécharger CSV / JSON / RDF) :"
             }
             TextKey::LabelLanguagePolicy => {
                 "Les libellés utilisent d'abord 'mul', puis un repli 'en' pour garantir des résultats reproductibles et comparables entre langues d'interface."
@@ -407,8 +433,18 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::Substructure => "Sous-structure",
             TextKey::Similarity => "Similarité",
             TextKey::StructureSearchMode => "Mode de recherche structure",
+            TextKey::EditCopyDaylightSmiles => "Edit -> Copy as Daylight SMILES",
+            TextKey::CopyExtendedSmilesMol => "Copy as Extended SMILES / MOL V3000",
             TextKey::FormulaFilter => "Filtre formule",
             TextKey::ExactFormula => "Formule brute",
+            TextKey::MinCount => "min",
+            TextKey::MaxCount => "max",
+            TextKey::MinCountAria => "compte minimum",
+            TextKey::MaxCountAria => "compte maximum",
+            TextKey::ElementRequirement => "contrainte",
+            TextKey::ElementStateAllowed => "autorisé",
+            TextKey::ElementStateRequired => "requis",
+            TextKey::ElementStateExcluded => "exclu",
             TextKey::Search => "Rechercher",
             TextKey::Searching => "Recherche...",
             TextKey::MolecularMass => "Masse moleculaire (Da)",
@@ -436,12 +472,15 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::PreparingJsonDownload => "Préparation téléchargement JSON...",
             TextKey::PreparingRdfDownload => "Préparation téléchargement RDF...",
             TextKey::DownloadCsvTitle => "Télécharger toutes les lignes en CSV",
+            TextKey::DownloadCsvLabel => "Télécharger CSV",
             TextKey::DownloadJsonTitle => {
                 "Télécharger toutes les lignes en JSON de résultats SPARQL"
             }
-            TextKey::DownloadRdfTitle => "Télécharger toutes les lignes en RDF",
+            TextKey::DownloadJsonLabel => "Télécharger JSON",
+            TextKey::DownloadRdfTitle => "Télécharger toutes les lignes en RDF (Turtle)",
+            TextKey::DownloadRdfLabel => "Télécharger RDF",
             TextKey::DownloadMetadataTitle => "Télécharger les metadonnées",
-            TextKey::Metadata => "Metadonnées",
+            TextKey::DownloadMetadataLabel => "Télécharger métadonnées",
             TextKey::OpenInQlever => "Ouvrir dans QLever",
             TextKey::OpenInQleverTitle => "Ouvrir cette requête dans QLever",
             TextKey::SparqlQuery => "Requête SPARQL",
@@ -467,6 +506,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::OpenInWikidata => "Ouvrir dans Wikidata",
             TextKey::OpenInScholia => "Ouvrir dans Scholia",
             TextKey::OpenDoi => "Ouvrir DOI",
+            TextKey::Statement => "Déclaration",
         },
         Locale::De => de_t(key),
         Locale::It => it_t(key),
@@ -529,11 +569,11 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::ExampleAllTriples => "Alle LOTUS Verbindung-Taxon-Referenz-Tripel",
         TextKey::ExampleSmilesOnly => "SMILES oder Molfile in das Strukturfeld einfügen",
         TextKey::ExampleQueryExecute => "Ausführen",
-        TextKey::ExampleQueryTaxon => "Taxon",
-        TextKey::ExampleQueryStructure => "Struktur",
-        TextKey::ExampleQueryAdvanced => "Erweitert",
+        TextKey::ExampleQueryTaxon => "CSV herunterladen",
+        TextKey::ExampleQueryStructure => "JSON herunterladen",
+        TextKey::ExampleQueryAdvanced => "RDF herunterladen",
         TextKey::WelcomeProgrammaticDownload => {
-            "Programmgesteuerte URL-Parameter (Abfrage ausführen oder Ergebnisse herunterladen):"
+            "Programmgesteuerte URL-Parameter (Abfrage ausführen oder CSV / JSON / RDF herunterladen):"
         }
         TextKey::LabelLanguagePolicy => {
             "Beschriftungen werden zuerst aus 'mul' und danach per 'en'-Fallback aufgelöst, damit Ergebnisse über UI-Sprachen hinweg reproduzierbar und vergleichbar bleiben."
@@ -552,8 +592,18 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::Substructure => "Substruktur",
         TextKey::Similarity => "Ähnlichkeit",
         TextKey::StructureSearchMode => "Struktursuchmodus",
+        TextKey::EditCopyDaylightSmiles => "Edit -> Copy as Daylight SMILES",
+        TextKey::CopyExtendedSmilesMol => "Copy as Extended SMILES / MOL V3000",
         TextKey::FormulaFilter => "Formelfilter",
         TextKey::ExactFormula => "Summenformel",
+        TextKey::MinCount => "min",
+        TextKey::MaxCount => "max",
+        TextKey::MinCountAria => "Mindestanzahl",
+        TextKey::MaxCountAria => "Maximalanzahl",
+        TextKey::ElementRequirement => "Anforderung",
+        TextKey::ElementStateAllowed => "erlaubt",
+        TextKey::ElementStateRequired => "erforderlich",
+        TextKey::ElementStateExcluded => "ausgeschlossen",
         TextKey::Search => "Suchen",
         TextKey::Searching => "Suche...",
         TextKey::MolecularMass => "Molekulare Masse (Da)",
@@ -583,12 +633,13 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::PreparingJsonDownload => "JSON-Download wird vorbereitet...",
         TextKey::PreparingRdfDownload => "RDF-Download wird vorbereitet...",
         TextKey::DownloadCsvTitle => "Alle Zeilen als CSV herunterladen",
-        TextKey::DownloadJsonTitle => {
-            "Alle Zeilen als SPARQL-Results-JSON herunterladen (kann dauern)"
-        }
-        TextKey::DownloadRdfTitle => "Alle Zeilen als RDF herunterladen (kann dauern)",
+        TextKey::DownloadCsvLabel => "CSV herunterladen",
+        TextKey::DownloadJsonTitle => "Alle Zeilen als SPARQL-Results-JSON herunterladen",
+        TextKey::DownloadJsonLabel => "JSON herunterladen",
+        TextKey::DownloadRdfTitle => "Alle Zeilen als RDF (Turtle) herunterladen",
+        TextKey::DownloadRdfLabel => "RDF herunterladen",
         TextKey::DownloadMetadataTitle => "Schema.org-Metadaten herunterladen (JSON-LD)",
-        TextKey::Metadata => "Metadaten",
+        TextKey::DownloadMetadataLabel => "Metadaten herunterladen",
         TextKey::OpenInQlever => "In QLever öffnen",
         TextKey::OpenInQleverTitle => "Diese Abfrage in der QLever-Weboberfläche öffnen",
         TextKey::SparqlQuery => "SPARQL-Abfrage",
@@ -614,6 +665,7 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::OpenInWikidata => "In Wikidata öffnen",
         TextKey::OpenInScholia => "In Scholia öffnen",
         TextKey::OpenDoi => "DOI öffnen",
+        TextKey::Statement => "Aussage",
     }
 }
 
@@ -673,11 +725,11 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::ExampleAllTriples => "Tutte le triple LOTUS composto-taxon-riferimento",
         TextKey::ExampleSmilesOnly => "Incolla uno SMILES o un Molfile nel campo struttura",
         TextKey::ExampleQueryExecute => "Esegui",
-        TextKey::ExampleQueryTaxon => "Taxon",
-        TextKey::ExampleQueryStructure => "Struttura",
-        TextKey::ExampleQueryAdvanced => "Avanzato",
+        TextKey::ExampleQueryTaxon => "Scarica CSV",
+        TextKey::ExampleQueryStructure => "Scarica JSON",
+        TextKey::ExampleQueryAdvanced => "Scarica RDF",
         TextKey::WelcomeProgrammaticDownload => {
-            "Parametri URL programmatici (eseguire la query o scaricare risultati):"
+            "Parametri URL programmatici (eseguire la query o scaricare CSV / JSON / RDF):"
         }
         TextKey::LabelLanguagePolicy => {
             "Le etichette usano prima 'mul' e poi fallback 'en' per mantenere risultati riproducibili e confrontabili tra lingue dell'interfaccia."
@@ -696,8 +748,18 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::Substructure => "Sottostruttura",
         TextKey::Similarity => "Somiglianza",
         TextKey::StructureSearchMode => "Modalità di ricerca struttura",
+        TextKey::EditCopyDaylightSmiles => "Edit -> Copy as Daylight SMILES",
+        TextKey::CopyExtendedSmilesMol => "Copy as Extended SMILES / MOL V3000",
         TextKey::FormulaFilter => "Filtro formula",
         TextKey::ExactFormula => "Formula bruta",
+        TextKey::MinCount => "min",
+        TextKey::MaxCount => "max",
+        TextKey::MinCountAria => "conteggio minimo",
+        TextKey::MaxCountAria => "conteggio massimo",
+        TextKey::ElementRequirement => "vincolo",
+        TextKey::ElementStateAllowed => "consentito",
+        TextKey::ElementStateRequired => "richiesto",
+        TextKey::ElementStateExcluded => "escluso",
         TextKey::Search => "Cerca",
         TextKey::Searching => "Ricerca...",
         TextKey::MolecularMass => "Massa molecolare (Da)",
@@ -727,12 +789,13 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::PreparingJsonDownload => "Preparazione download JSON...",
         TextKey::PreparingRdfDownload => "Preparazione download RDF...",
         TextKey::DownloadCsvTitle => "Scarica tutte le righe in CSV",
-        TextKey::DownloadJsonTitle => {
-            "Scarica tutte le righe in JSON risultati SPARQL (può richiedere tempo)"
-        }
-        TextKey::DownloadRdfTitle => "Scarica tutte le righe in RDF (può richiedere tempo)",
+        TextKey::DownloadCsvLabel => "Scarica CSV",
+        TextKey::DownloadJsonTitle => "Scarica tutte le righe in JSON risultati SPARQL",
+        TextKey::DownloadJsonLabel => "Scarica JSON",
+        TextKey::DownloadRdfTitle => "Scarica tutte le righe in RDF (Turtle)",
+        TextKey::DownloadRdfLabel => "Scarica RDF",
         TextKey::DownloadMetadataTitle => "Scarica metadati Schema.org (JSON-LD)",
-        TextKey::Metadata => "Metadati",
+        TextKey::DownloadMetadataLabel => "Scarica metadati",
         TextKey::OpenInQlever => "Apri in QLever",
         TextKey::OpenInQleverTitle => "Apri questa query nell'interfaccia web di QLever",
         TextKey::SparqlQuery => "Query SPARQL",
@@ -758,6 +821,7 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::OpenInWikidata => "Apri in Wikidata",
         TextKey::OpenInScholia => "Apri in Scholia",
         TextKey::OpenDoi => "Apri DOI",
+        TextKey::Statement => "Dichiarazione",
     }
 }
 
@@ -905,6 +969,15 @@ pub fn aria_search_inchikey(locale: Locale, ik: &str) -> String {
         Locale::Fr => format!("Rechercher dans Wikidata la cle InChIKey {ik}"),
         Locale::De => format!("InChIKey {ik} in Wikidata suchen"),
         Locale::It => format!("Cerca InChIKey {ik} in Wikidata"),
+    }
+}
+
+pub fn aria_chemical_structure(locale: Locale, compound_name: &str) -> String {
+    match locale {
+        Locale::En => format!("Chemical structure of {compound_name}"),
+        Locale::Fr => format!("Structure chimique de {compound_name}"),
+        Locale::De => format!("Chemische Struktur von {compound_name}"),
+        Locale::It => format!("Struttura chimica di {compound_name}"),
     }
 }
 

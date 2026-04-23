@@ -126,7 +126,18 @@ fn App() -> Element {
     // search automatically and trigger download once query materializes.
     use_effect(move || {
         let pending = pending_download_format.read().clone();
-        if (pending.is_some() || *pending_execute.read()) && !*searched_once.read() && !*loading.read() {
+        if let Some(fmt) = pending.as_deref() {
+            if !is_supported_download_format(fmt) {
+                *error_kind.write() = ErrorKind::Validation;
+                *error.write() = Some(err_unsupported_format(*locale.peek(), fmt));
+                *pending_download_format.write() = None;
+                return;
+            }
+        }
+        if (pending.is_some() || *pending_execute.read())
+            && !*searched_once.read()
+            && !*loading.read()
+        {
             start_search(
                 criteria,
                 locale,
@@ -594,12 +605,12 @@ fn WelcomeScreen(locale: Locale) -> Element {
                     DownloadExampleRow {
                         locale,
                         format: t(locale, TextKey::ExampleQueryTaxon),
-                        query: "?taxon=*",
+                        query: "?taxon=*&download=true&format=csv",
                     }
                     DownloadExampleRow {
                         locale,
                         format: t(locale, TextKey::ExampleQueryStructure),
-                        query: "?structure=c1ccccc1&structure_search_type=similarity&smiles_threshold=0.85",
+                        query: "?structure=c1ccccc1&structure_search_type=similarity&smiles_threshold=0.85&download=true&format=json",
                     }
                     DownloadExampleRow {
                         locale,
@@ -1250,9 +1261,15 @@ fn initial_execute_from_url() -> bool {
 }
 
 fn parse_startup_action_from_params(params: &BTreeMap<String, String>) -> (Option<String>, bool) {
-    let wants_download = params.get("download").map(|v| is_true_flag(v)).unwrap_or(false);
+    let wants_download = params
+        .get("download")
+        .map(|v| is_true_flag(v))
+        .unwrap_or(false);
     if !wants_download {
-        let wants_execute = params.get("execute").map(|v| is_true_flag(v)).unwrap_or(false);
+        let wants_execute = params
+            .get("execute")
+            .map(|v| is_true_flag(v))
+            .unwrap_or(false);
         return (None, wants_execute);
     }
     (
@@ -1267,7 +1284,14 @@ fn parse_startup_action_from_params(params: &BTreeMap<String, String>) -> (Optio
 }
 
 fn is_true_flag(v: &str) -> bool {
-    matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on")
+    matches!(
+        v.trim().to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes" | "on"
+    )
+}
+
+fn is_supported_download_format(fmt: &str) -> bool {
+    matches!(fmt, "csv" | "json" | "rdf" | "ndjson")
 }
 
 fn trigger_download_main(filename: &str, mime: &str, body: &str) {
@@ -1459,5 +1483,13 @@ mod tests {
         let (download, execute) = parse_startup_action_from_params(&params);
         assert_eq!(download.as_deref(), Some("rdf"));
         assert!(!execute);
+    }
+
+    #[test]
+    fn supported_download_formats_include_documented_values() {
+        assert!(is_supported_download_format("csv"));
+        assert!(is_supported_download_format("json"));
+        assert!(is_supported_download_format("rdf"));
+        assert!(!is_supported_download_format("ttl"));
     }
 }

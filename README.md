@@ -71,8 +71,8 @@ Deploy any of them to:
 
 - `?execute=true` runs the query on page load (no file download)
 - `?download=true&format=csv` runs the query and downloads CSV
-- `?download=true&format=json` runs the query and downloads SPARQL JSON
-- `?download=true&format=rdf` runs the query and downloads RDF
+- `?download=true&format=json` runs the query and downloads SPARQL Results JSON
+- `?download=true&format=rdf` runs the query and downloads RDF (Turtle)
 
 Accepted truthy values for `execute` / `download`: `true`, `1`, `yes`, `on`.
 

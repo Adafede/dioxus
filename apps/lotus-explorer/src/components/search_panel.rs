@@ -172,6 +172,7 @@ pub fn SearchPanel(
                         div { class: "range-inputs",
                             NumPair {
                                 label: "C",
+                                locale,
                                 min_value: c.read().c_min,
                                 max_value: c.read().c_max,
                                 on_min: move |v| c.write().c_min = v,
@@ -179,6 +180,7 @@ pub fn SearchPanel(
                             }
                             NumPair {
                                 label: "H",
+                                locale,
                                 min_value: c.read().h_min,
                                 max_value: c.read().h_max,
                                 on_min: move |v| c.write().h_min = v,
@@ -186,6 +188,7 @@ pub fn SearchPanel(
                             }
                             NumPair {
                                 label: "N",
+                                locale,
                                 min_value: c.read().n_min,
                                 max_value: c.read().n_max,
                                 on_min: move |v| c.write().n_min = v,
@@ -195,6 +198,7 @@ pub fn SearchPanel(
                         div { class: "range-inputs",
                             NumPair {
                                 label: "O",
+                                locale,
                                 min_value: c.read().o_min,
                                 max_value: c.read().o_max,
                                 on_min: move |v| c.write().o_min = v,
@@ -202,6 +206,7 @@ pub fn SearchPanel(
                             }
                             NumPair {
                                 label: "P",
+                                locale,
                                 min_value: c.read().p_min,
                                 max_value: c.read().p_max,
                                 on_min: move |v| c.write().p_min = v,
@@ -209,6 +214,7 @@ pub fn SearchPanel(
                             }
                             NumPair {
                                 label: "S",
+                                locale,
                                 min_value: c.read().s_min,
                                 max_value: c.read().s_max,
                                 on_min: move |v| c.write().s_min = v,
@@ -218,21 +224,25 @@ pub fn SearchPanel(
                         div { class: "range-inputs",
                             ElemStateSelect {
                                 label: "F",
+                                locale,
                                 value: c.read().f_state,
                                 on_change: move |v| c.write().f_state = v,
                             }
                             ElemStateSelect {
                                 label: "Cl",
+                                locale,
                                 value: c.read().cl_state,
                                 on_change: move |v| c.write().cl_state = v,
                             }
                             ElemStateSelect {
                                 label: "Br",
+                                locale,
                                 value: c.read().br_state,
                                 on_change: move |v| c.write().br_state = v,
                             }
                             ElemStateSelect {
                                 label: "I",
+                                locale,
                                 value: c.read().i_state,
                                 on_change: move |v| c.write().i_state = v,
                             }
@@ -350,9 +360,9 @@ fn StructureSection(criteria: Signal<SearchCriteria>, locale: Locale) -> Element
                 "{t(locale, TextKey::KetcherHintA)}"
                 strong { "{t(locale, TextKey::KetcherSummary)}" }
                 "{t(locale, TextKey::KetcherHintB)}"
-                em { "Edit → Copy as Daylight SMILES" }
+                em { "{t(locale, TextKey::EditCopyDaylightSmiles)}" }
                 "{t(locale, TextKey::KetcherHintC)}"
-                em { "Copy as Extended SMILES / MOL V3000" }
+                em { "{t(locale, TextKey::CopyExtendedSmilesMol)}" }
                 "{t(locale, TextKey::KetcherHintD)}"
             }
         }
@@ -383,10 +393,10 @@ pub fn KetcherPanel(locale: Locale) -> Element {
                 }
                 p { class: "form-hint ketcher-hint",
                     "{t(locale, TextKey::KetcherHintA)}"
-                    em { "Edit → Copy as Daylight SMILES" }
+                    em { "{t(locale, TextKey::EditCopyDaylightSmiles)}" }
                     "{t(locale, TextKey::KetcherHintC)}"
-                    em { "Copy as Extended SMILES / MOL V3000" }
-                    ") and paste above."
+                    em { "{t(locale, TextKey::CopyExtendedSmilesMol)}" }
+                    "{t(locale, TextKey::KetcherHintD)}"
                 }
                 // The "Editor not loading? Download Ketcher standalone…"
                 // install hint is intentionally hidden from end-users: the
@@ -430,6 +440,7 @@ fn kind_note(k: StructureKind, locale: Locale) -> &'static str {
 #[component]
 fn NumPair(
     label: &'static str,
+    locale: Locale,
     min_value: i32,
     max_value: i32,
     on_min: EventHandler<i32>,
@@ -437,13 +448,13 @@ fn NumPair(
 ) -> Element {
     rsx! {
         div { class: "range-pair",
-            label { class: "form-label sm", "{label} min" }
+            label { class: "form-label sm", "{label} {t(locale, TextKey::MinCount)}" }
             input {
                 r#type: "number",
                 class: "form-input sm",
                 min: "0",
                 max: "500",
-                aria_label: "{label} minimum count",
+                aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
                 value: "{min_value}",
                 oninput: move |e| {
                     if let Ok(v) = e.value().parse::<i32>() {
@@ -451,13 +462,13 @@ fn NumPair(
                     }
                 },
             }
-            label { class: "form-label sm", "{label} max" }
+            label { class: "form-label sm", "{label} {t(locale, TextKey::MaxCount)}" }
             input {
                 r#type: "number",
                 class: "form-input sm",
                 min: "0",
                 max: "500",
-                aria_label: "{label} maximum count",
+                aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",
                 value: "{max_value}",
                 oninput: move |e| {
                     if let Ok(v) = e.value().parse::<i32>() {
@@ -472,6 +483,7 @@ fn NumPair(
 #[component]
 fn ElemStateSelect(
     label: &'static str,
+    locale: Locale,
     value: ElementState,
     on_change: EventHandler<ElementState>,
 ) -> Element {
@@ -480,12 +492,12 @@ fn ElemStateSelect(
             label { class: "form-label sm", "{label}" }
             select {
                 class: "form-input sm",
-                aria_label: "{label} requirement",
+                aria_label: "{label} {t(locale, TextKey::ElementRequirement)}",
                 value: "{value.as_str()}",
                 onchange: move |e| on_change.call(ElementState::from_str(&e.value())),
-                option { value: "allowed", "allowed" }
-                option { value: "required", "required" }
-                option { value: "excluded", "excluded" }
+                option { value: "allowed", "{t(locale, TextKey::ElementStateAllowed)}" }
+                option { value: "required", "{t(locale, TextKey::ElementStateRequired)}" }
+                option { value: "excluded", "{t(locale, TextKey::ElementStateExcluded)}" }
             }
         }
     }

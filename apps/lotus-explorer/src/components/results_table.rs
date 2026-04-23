@@ -1,6 +1,6 @@
 use crate::export;
 use crate::i18n::{
-    CountNoun, Locale, TextKey, aria_search_inchikey, aria_wikidata_entity,
+    CountNoun, Locale, TextKey, aria_chemical_structure, aria_search_inchikey, aria_wikidata_entity,
     aria_wikidata_statement, count_label, t,
 };
 use crate::models::*;
@@ -245,7 +245,8 @@ pub fn ResultsTable(
                                         }
                                     },
                                     title: "{t(locale, TextKey::DownloadCsvTitle)}",
-                                    "CSV"
+                                    aria_label: "{t(locale, TextKey::DownloadCsvTitle)}",
+                                    "{t(locale, TextKey::DownloadCsvLabel)}"
                                 }
                                 button {
                                     class: "btn btn-sm",
@@ -279,7 +280,8 @@ pub fn ResultsTable(
                                         }
                                     },
                                     title: "{t(locale, TextKey::DownloadJsonTitle)}",
-                                    "JSON"
+                                    aria_label: "{t(locale, TextKey::DownloadJsonTitle)}",
+                                    "{t(locale, TextKey::DownloadJsonLabel)}"
                                 }
                                 button {
                                     class: "btn btn-sm",
@@ -309,7 +311,8 @@ pub fn ResultsTable(
                                         }
                                     },
                                     title: "{t(locale, TextKey::DownloadRdfTitle)}",
-                                    "RDF"
+                                    aria_label: "{t(locale, TextKey::DownloadRdfTitle)}",
+                                    "{t(locale, TextKey::DownloadRdfLabel)}"
                                 }
                             }
                             if let Some(body) = metadata_json.as_ref() {
@@ -323,7 +326,8 @@ pub fn ResultsTable(
                                         move |_| trigger_download(&filename, "application/ld+json", &body)
                                     },
                                     title: "{t(locale, TextKey::DownloadMetadataTitle)}",
-                                    "{t(locale, TextKey::Metadata)}"
+                                    aria_label: "{t(locale, TextKey::DownloadMetadataTitle)}",
+                                    "{t(locale, TextKey::DownloadMetadataLabel)}"
                                 }
                             }
                         }
@@ -552,7 +556,7 @@ fn Row(locale: Locale, entry: CompoundEntry) -> Element {
                         img {
                             class: "depict-img",
                             src: "{url}",
-                            alt: "Chemical structure of {name}",
+                            alt: "{aria_chemical_structure(locale, name)}",
                             loading: "lazy",
                             width: "120",
                             height: "72",
@@ -701,7 +705,7 @@ fn Row(locale: Locale, entry: CompoundEntry) -> Element {
                             class: "id-badge stmt mono",
                             title: "{stmt}",
                             aria_label: "{aria_wikidata_statement(locale, stmt)}",
-                            "statement"
+                            "{t(locale, TextKey::Statement)}"
                         }
                     }
                 }
