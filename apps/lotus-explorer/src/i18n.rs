@@ -8,6 +8,8 @@
 pub enum Locale {
     En,
     Fr,
+    De,
+    It,
 }
 
 impl Locale {
@@ -15,6 +17,12 @@ impl Locale {
         let normalized = lang_hint.trim().to_ascii_lowercase();
         if normalized.starts_with("fr") {
             return Self::Fr;
+        }
+        if normalized.starts_with("de") {
+            return Self::De;
+        }
+        if normalized.starts_with("it") {
+            return Self::It;
         }
 
         #[cfg(target_arch = "wasm32")]
