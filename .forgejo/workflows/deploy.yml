@@ -32,11 +32,11 @@ jobs:
 
       - name: Build lotus-explorer
         working-directory: apps/lotus-explorer
-        run: dx build --release --platform web --debug-symbols false --base-path "/${{ gitea.event.repository.name }}/lotus-explorer/"
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lotus-explorer/"
 
       - name: Build hello-world
         working-directory: apps/hello-world
-        run: dx build --release --platform web --debug-symbols false --base-path "/${{ gitea.event.repository.name }}/hello-world/"
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/hello-world/"
 
       - name: Assemble site
         run: |
