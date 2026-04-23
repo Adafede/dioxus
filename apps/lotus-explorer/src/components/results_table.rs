@@ -238,9 +238,16 @@ pub fn ResultsTable(
                                             let q = q.clone();
                                             spawn(async move {
                                                 if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                                    let mut filtered = rows.as_ref().clone();
-                                                    apply_client_filters_in_place(&mut filtered, &crit);
-                                                    let body = export::build_csv(&filtered);
+                                                    let body = if crit.has_client_post_filters() {
+                                                        let filtered: Vec<CompoundEntry> = rows
+                                                            .iter()
+                                                            .filter(|e| matches_client_filters(e, &crit))
+                                                            .cloned()
+                                                            .collect();
+                                                        export::build_csv(&filtered)
+                                                    } else {
+                                                        export::build_csv(rows.as_ref())
+                                                    };
                                                     trigger_download(&filename, "text/csv;charset=utf-8", &body);
                                                 }
                                                 *download_busy.write() = false;
@@ -268,9 +275,16 @@ pub fn ResultsTable(
                                                 );
                                                 spawn(async move {
                                                     if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                                        let mut filtered = rows.as_ref().clone();
-                                                        apply_client_filters_in_place(&mut filtered, &crit);
-                                                        let body = export::build_ndjson(&filtered);
+                                                        let body = if crit.has_client_post_filters() {
+                                                            let filtered: Vec<CompoundEntry> = rows
+                                                                .iter()
+                                                                .filter(|e| matches_client_filters(e, &crit))
+                                                                .cloned()
+                                                                .collect();
+                                                            export::build_ndjson(&filtered)
+                                                        } else {
+                                                            export::build_ndjson(rows.as_ref())
+                                                        };
                                                         trigger_download(&filename, "application/x-ndjson", &body);
                                                     }
                                                     *download_busy.write() = false;
@@ -301,8 +315,16 @@ pub fn ResultsTable(
                                                 );
                                                 spawn(async move {
                                                     if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                                        let mut filtered = rows.as_ref().clone();
-                                                        apply_client_filters_in_place(&mut filtered, &crit);
+                                                        let filtered: Vec<CompoundEntry> = if crit
+                                                            .has_client_post_filters()
+                                                        {
+                                                            rows.iter()
+                                                                .filter(|e| matches_client_filters(e, &crit))
+                                                                .cloned()
+                                                                .collect()
+                                                        } else {
+                                                            rows.as_ref().to_vec()
+                                                        };
                                                         let filtered_stats = DatasetStats::from_entries(&filtered);
                                                         let ttl = export::build_ttl(
                                                             &filtered,

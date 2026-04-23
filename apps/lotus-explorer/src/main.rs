@@ -39,6 +39,9 @@ enum ErrorKind {
     Unknown,
 }
 
+#[cfg(target_arch = "wasm32")]
+const WASM_MAX_CLIENT_FILTER_CANDIDATES: usize = 200_000;
+
 fn main() {
     console_log::init_with_level(log::Level::Debug).ok();
     launch(App);
@@ -154,9 +157,16 @@ fn App() -> Element {
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                let mut filtered = rows.as_ref().clone();
-                                apply_client_filters_in_place(&mut filtered, &crit);
-                                let body = export::build_csv(&filtered);
+                                let body = if crit.has_client_post_filters() {
+                                    let filtered: Vec<CompoundEntry> = rows
+                                        .iter()
+                                        .filter(|e| matches_client_filters(e, &crit))
+                                        .cloned()
+                                        .collect();
+                                    export::build_csv(&filtered)
+                                } else {
+                                    export::build_csv(rows.as_ref())
+                                };
                                 trigger_download_main(&filename, "text/csv;charset=utf-8", &body);
                             }
                         });
@@ -167,9 +177,16 @@ fn App() -> Element {
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                let mut filtered = rows.as_ref().clone();
-                                apply_client_filters_in_place(&mut filtered, &crit);
-                                let body = export::build_ndjson(&filtered);
+                                let body = if crit.has_client_post_filters() {
+                                    let filtered: Vec<CompoundEntry> = rows
+                                        .iter()
+                                        .filter(|e| matches_client_filters(e, &crit))
+                                        .cloned()
+                                        .collect();
+                                    export::build_ndjson(&filtered)
+                                } else {
+                                    export::build_ndjson(rows.as_ref())
+                                };
                                 trigger_download_main(&filename, "application/x-ndjson", &body);
                             }
                         });
@@ -182,8 +199,15 @@ fn App() -> Element {
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                let mut filtered = rows.as_ref().clone();
-                                apply_client_filters_in_place(&mut filtered, &crit);
+                                let filtered: Vec<CompoundEntry> = if crit.has_client_post_filters()
+                                {
+                                    rows.iter()
+                                        .filter(|e| matches_client_filters(e, &crit))
+                                        .cloned()
+                                        .collect()
+                                } else {
+                                    rows.as_ref().to_vec()
+                                };
                                 let filtered_stats = DatasetStats::from_entries(&filtered);
                                 let ttl = export::build_ttl(
                                     &filtered,
@@ -830,6 +854,25 @@ async fn do_search(
 
     let display_limit = runtime_table_row_limit();
     let (rows, total_stats_out, total_matches) = if crit.has_client_post_filters() {
+        #[cfg(target_arch = "wasm32")]
+        {
+            *query_phase.write() = QueryPhase::Counting;
+            let count_query = queries::query_counts_from_base(&sparql_query);
+            let counts_csv = sparql::execute_sparql(&count_query)
+                .await
+                .map_err(|e| format!("Count query failed: {e}"))?;
+            let full_stats = sparql::parse_counts_csv(&counts_csv)
+                .map_err(|e| format!("Count parse failed: {e}"))?;
+            if full_stats.n_entries > WASM_MAX_CLIENT_FILTER_CANDIDATES {
+                return Err(i18n::err_wasm_large_query_fallback(
+                    locale,
+                    &format!(
+                        "Client-side filters would require scanning {} rows; please narrow the query.",
+                        full_stats.n_entries
+                    ),
+                ));
+            }
+        }
         *query_phase.write() = QueryPhase::FetchingPreview;
         let csv = sparql::execute_sparql(&sparql_query)
             .await

@@ -320,21 +320,28 @@ impl SearchCriteria {
 /// Apply client-side filters that are not encoded directly into the SPARQL query.
 /// This keeps table rows and downloads consistent.
 pub fn apply_client_filters_in_place(rows: &mut Vec<CompoundEntry>, crit: &SearchCriteria) {
-    if crit.has_mass_filter() {
-        rows.retain(|e| {
-            e.mass
-                .is_some_and(|m| m >= crit.mass_min && m <= crit.mass_max)
-        });
+    rows.retain(|e| matches_client_filters(e, crit));
+}
+
+pub fn matches_client_filters(entry: &CompoundEntry, crit: &SearchCriteria) -> bool {
+    if crit.has_mass_filter()
+        && !entry
+            .mass
+            .is_some_and(|m| m >= crit.mass_min && m <= crit.mass_max)
+    {
+        return false;
     }
-    if crit.has_year_filter() {
-        rows.retain(|e| {
-            e.pub_year
-                .is_some_and(|y| y >= crit.year_min && y <= crit.year_max)
-        });
+    if crit.has_year_filter()
+        && !entry
+            .pub_year
+            .is_some_and(|y| y >= crit.year_min && y <= crit.year_max)
+    {
+        return false;
     }
-    if crit.has_formula_filter() {
-        rows.retain(|e| formula_matches(e.formula.as_deref(), crit));
+    if crit.has_formula_filter() && !formula_matches(entry.formula.as_deref(), crit) {
+        return false;
     }
+    true
 }
 
 fn formula_matches(formula: Option<&str>, crit: &SearchCriteria) -> bool {
