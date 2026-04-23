@@ -4,6 +4,7 @@ mod components;
 mod export;
 mod i18n;
 mod models;
+mod perf;
 mod queries;
 mod sparql;
 
@@ -20,7 +21,7 @@ use models::*;
 use sha2::{Digest, Sha256};
 use shared::sparql::SparqlResponseFormat;
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum QueryPhase {
@@ -46,6 +47,73 @@ enum ErrorKind {
 struct AppError {
     kind: ErrorKind,
     message: String,
+}
+
+type TaxonCache = BTreeMap<String, String>;
+
+fn taxon_cache() -> &'static Mutex<TaxonCache> {
+    static CACHE: OnceLock<Mutex<TaxonCache>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(BTreeMap::new()))
+}
+
+fn cache_lookup_taxon_qid(name: &str) -> Option<String> {
+    let key = name.trim().to_lowercase();
+    if key.is_empty() {
+        return None;
+    }
+    let guard = taxon_cache().lock().ok()?;
+    guard.get(&key).cloned()
+}
+
+fn cache_store_taxon_qid(name: &str, qid: &str) {
+    let key = name.trim().to_lowercase();
+    if key.is_empty() || qid.trim().is_empty() {
+        return;
+    }
+    if let Ok(mut guard) = taxon_cache().lock() {
+        guard.insert(key, qid.to_string());
+    }
+}
+
+fn log_info_evt(event: &str, phase: &str, state: &str, details: Option<&str>) {
+    let msg = match details {
+        Some(d) if !d.is_empty() => format!("event={event} phase={phase} state={state} {d}"),
+        _ => format!("event={event} phase={phase} state={state}"),
+    };
+    perf::log_info(&msg);
+}
+
+fn log_debug_evt(event: &str, phase: &str, state: &str, details: Option<&str>) {
+    let msg = match details {
+        Some(d) if !d.is_empty() => format!("event={event} phase={phase} state={state} {d}"),
+        _ => format!("event={event} phase={phase} state={state}"),
+    };
+    perf::log_debug(&msg);
+}
+
+fn log_warn_evt(event: &str, phase: &str, state: &str, details: Option<&str>) {
+    let msg = match details {
+        Some(d) if !d.is_empty() => format!("event={event} phase={phase} state={state} {d}"),
+        _ => format!("event={event} phase={phase} state={state}"),
+    };
+    perf::log_warn(&msg);
+}
+
+fn log_timing_evt(
+    event: &str,
+    phase: &str,
+    state: &str,
+    duration: std::time::Duration,
+    details: Option<&str>,
+) {
+    let elapsed_ms = duration.as_secs_f64() * 1000.0;
+    let msg = match details {
+        Some(d) if !d.is_empty() => {
+            format!("event={event} phase={phase} state={state} elapsed_ms={elapsed_ms:.1} {d}")
+        }
+        _ => format!("event={event} phase={phase} state={state} elapsed_ms={elapsed_ms:.1}"),
+    };
+    perf::log_info(&msg);
 }
 
 fn main() {
@@ -128,6 +196,12 @@ fn App() -> Element {
         let pending = pending_download_format.read().clone();
         if let Some(fmt) = pending.as_deref() {
             if !is_supported_download_format(fmt) {
+                log_warn_evt(
+                    "download",
+                    "startup",
+                    "unsupported_format",
+                    Some(&format!("format={fmt}")),
+                );
                 *error_kind.write() = ErrorKind::Validation;
                 *error.write() = Some(err_unsupported_format(*locale.peek(), fmt));
                 *pending_download_format.write() = None;
@@ -138,6 +212,21 @@ fn App() -> Element {
             && !*searched_once.read()
             && !*loading.read()
         {
+            if let Some(fmt) = pending.as_deref() {
+                log_info_evt(
+                    "download",
+                    "startup",
+                    "auto_search_triggered",
+                    Some(&format!("format={fmt}")),
+                );
+            } else {
+                log_info_evt(
+                    "search",
+                    "startup",
+                    "auto_search_triggered",
+                    Some("execute=true"),
+                );
+            }
             start_search(
                 criteria,
                 locale,
@@ -166,6 +255,12 @@ fn App() -> Element {
         let pending = pending_download_format.read().clone();
         if let Some(fmt) = pending {
             if *loading.read() {
+                log_debug_evt(
+                    "download",
+                    "dispatch",
+                    "waiting_loading",
+                    Some(&format!("format={fmt}")),
+                );
                 return;
             }
             if let Some(query) = sparql_query.read().as_deref() {
@@ -176,8 +271,37 @@ fn App() -> Element {
                         let filename = export::generate_filename(&crit, "csv");
                         *pending_download_format.write() = None;
                         spawn(async move {
+                            let dl_timer = perf::start_timer("LOTUS:download_csv");
+                            log_info_evt("download", "dispatch", "started", Some("format=csv"));
                             if let Ok(body) = sparql::execute_sparql(&q).await {
+                                let fetch_elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "fetch",
+                                    "success",
+                                    fetch_elapsed,
+                                    Some(&format!("format=csv body_bytes={}", body.len())),
+                                );
+                                let trigger_timer = perf::start_timer("LOTUS:download_csv_trigger");
                                 trigger_download_main(&filename, "text/csv;charset=utf-8", &body);
+                                let trigger_elapsed =
+                                    perf::end_timer("LOTUS:download_csv_trigger", trigger_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "trigger",
+                                    "success",
+                                    trigger_elapsed,
+                                    Some("format=csv"),
+                                );
+                            } else {
+                                let elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "fetch",
+                                    "error",
+                                    elapsed,
+                                    Some("format=csv"),
+                                );
                             }
                         });
                     }
@@ -186,14 +310,45 @@ fn App() -> Element {
                         let filename = export::generate_filename(&crit, "json");
                         *pending_download_format.write() = None;
                         spawn(async move {
+                            let dl_timer = perf::start_timer("LOTUS:download_json");
+                            log_info_evt("download", "dispatch", "started", Some("format=json"));
                             if let Ok(body) =
                                 sparql::execute_sparql_format(&q, SparqlResponseFormat::SparqlJson)
                                     .await
                             {
+                                let fetch_elapsed =
+                                    perf::end_timer("LOTUS:download_json", dl_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "fetch",
+                                    "success",
+                                    fetch_elapsed,
+                                    Some(&format!("format=json body_bytes={}", body.len())),
+                                );
+                                let trigger_timer =
+                                    perf::start_timer("LOTUS:download_json_trigger");
                                 trigger_download_main(
                                     &filename,
                                     "application/sparql-results+json;charset=utf-8",
                                     &body,
+                                );
+                                let trigger_elapsed =
+                                    perf::end_timer("LOTUS:download_json_trigger", trigger_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "trigger",
+                                    "success",
+                                    trigger_elapsed,
+                                    Some("format=json"),
+                                );
+                            } else {
+                                let elapsed = perf::end_timer("LOTUS:download_json", dl_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "fetch",
+                                    "error",
+                                    elapsed,
+                                    Some("format=json"),
                                 );
                             }
                         });
@@ -203,24 +358,66 @@ fn App() -> Element {
                         let filename = export::generate_filename(&crit, "rdf");
                         *pending_download_format.write() = None;
                         spawn(async move {
+                            let dl_timer = perf::start_timer("LOTUS:download_rdf");
+                            log_info_evt("download", "dispatch", "started", Some("format=rdf"));
                             if let Ok(body) =
                                 sparql::execute_sparql_format(&q, SparqlResponseFormat::Turtle)
                                     .await
                             {
+                                let fetch_elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "fetch",
+                                    "success",
+                                    fetch_elapsed,
+                                    Some(&format!("format=rdf body_bytes={}", body.len())),
+                                );
+                                let trigger_timer = perf::start_timer("LOTUS:download_rdf_trigger");
                                 trigger_download_main(
                                     &filename,
                                     "text/turtle;charset=utf-8",
                                     &body,
                                 );
+                                let trigger_elapsed =
+                                    perf::end_timer("LOTUS:download_rdf_trigger", trigger_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "trigger",
+                                    "success",
+                                    trigger_elapsed,
+                                    Some("format=rdf"),
+                                );
+                            } else {
+                                let elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "fetch",
+                                    "error",
+                                    elapsed,
+                                    Some("format=rdf"),
+                                );
                             }
                         });
                     }
                     _ => {
+                        log_warn_evt(
+                            "download",
+                            "dispatch",
+                            "unsupported_format",
+                            Some(&format!("format={fmt}")),
+                        );
                         *error_kind.write() = ErrorKind::Validation;
                         *error.write() = Some(err_unsupported_format(*locale.peek(), &fmt));
                         *pending_download_format.write() = None;
                     }
                 }
+            } else {
+                log_debug_evt(
+                    "download",
+                    "dispatch",
+                    "waiting_query",
+                    Some(&format!("format={fmt}")),
+                );
             }
         }
     });
@@ -693,11 +890,18 @@ fn start_search(
     mut mobile_filters_open: Signal<bool>,
 ) {
     if *loading.peek() {
+        log_debug_evt("search", "start", "skipped_already_loading", None);
         return;
     }
     let crit = criteria.peek().clone();
 
     if !crit.is_valid() {
+        log_warn_evt(
+            "search",
+            "start",
+            "validation_failed",
+            Some("reason=missing_taxon_and_structure"),
+        );
         *error.write() = Some(err_invalid_search_input(*locale.peek()));
         *error_kind.write() = ErrorKind::Validation;
         return;
@@ -706,7 +910,9 @@ fn start_search(
     *error.write() = None;
     *error_kind.write() = ErrorKind::Unknown;
     *searched_once.write() = true;
+    log_info_evt("search", "start", "loading_true", None);
     *loading.write() = true;
+    log_debug_evt("search", "ResolvingTaxon", "entered", None);
     *query_phase.write() = QueryPhase::ResolvingTaxon;
     *entries.write() = Arc::<[CompoundEntry]>::from([]);
     *taxon_notice.write() = None;
@@ -741,6 +947,7 @@ fn start_search(
                 });
 
                 let display_slice: Rows = Arc::from(outcome.rows.into_boxed_slice());
+                log_debug_evt("search", "Rendering", "entered", None);
                 *query_phase.write() = QueryPhase::Rendering;
                 *resolved_qid.write() = outcome.qid;
                 *taxon_notice.write() = outcome.warning;
@@ -752,13 +959,17 @@ fn start_search(
                 *total_matches.write() = Some(filtered_matches);
                 *total_stats.write() = Some(filtered_stats);
                 *entries.write() = display_slice;
+                log_info_evt("search", "finish", "loading_false", Some("result=success"));
                 *loading.write() = false;
+                log_debug_evt("search", "Idle", "entered", None);
                 *query_phase.write() = QueryPhase::Idle;
             }
             Err(e) => {
                 *error_kind.write() = e.kind;
                 *error.write() = Some(e.message);
+                log_info_evt("search", "finish", "loading_false", Some("result=error"));
                 *loading.write() = false;
+                log_debug_evt("search", "Idle", "entered", None);
                 *query_phase.write() = QueryPhase::Idle;
             }
         }
@@ -770,6 +981,8 @@ async fn do_search(
     locale: Locale,
     mut query_phase: Signal<QueryPhase>,
 ) -> Result<SearchOutcome, AppError> {
+    let search_timer = perf::start_timer("LOTUS:search_total");
+    log_info_evt("search", "start", "begin", None);
     let taxon = crit.taxon.trim().to_string();
     // Preserve Molfile blocks verbatim — leading blank lines and whitespace
     // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
@@ -799,49 +1012,77 @@ async fn do_search(
     {
         Some(taxon.to_uppercase())
     } else {
+        log_debug_evt("search", "ResolvingTaxon", "entered", None);
         *query_phase.write() = QueryPhase::ResolvingTaxon;
+        let taxon_timer = perf::start_timer("LOTUS:taxon_resolution");
+        log_debug_evt(
+            "search",
+            "ResolvingTaxon",
+            "querying",
+            Some(&format!("taxon_input={taxon}")),
+        );
         let sanitized = sanitize_taxon_input(&taxon);
-        let query = queries::query_taxon_search(&sanitized);
-        let csv = sparql::execute_sparql(&query).await.map_err(|e| AppError {
-            kind: ErrorKind::Network,
-            message: err_taxon_search_failed(locale, &e.to_string()),
-        })?;
-        let matches = sparql::parse_taxon_csv(&csv).map_err(|e| AppError {
-            kind: ErrorKind::Parse,
-            message: err_taxon_parse_failed(locale, &e.to_string()),
-        })?;
-        if matches.is_empty() {
-            return Err(AppError {
-                kind: ErrorKind::Validation,
-                message: err_taxon_not_found(locale, &taxon),
-            });
-        }
-        let lower = sanitized.to_lowercase();
-        let exact: Vec<&TaxonMatch> = matches
-            .iter()
-            .filter(|m| m.name.to_lowercase() == lower)
-            .collect();
-        let best = exact
-            .first()
-            .copied()
-            .or_else(|| matches.first())
-            .ok_or_else(|| AppError {
-                kind: ErrorKind::Parse,
-                message: err_taxon_resolution_failed(locale),
-            })?;
         if sanitized != taxon {
             warning = Some(warn_input_standardized(locale, &taxon, &sanitized));
         }
-        if exact.len() > 1 || (exact.is_empty() && matches.len() > 1) {
-            let names = matches
+
+        if let Some(cached_qid) = cache_lookup_taxon_qid(&sanitized) {
+            let taxon_elapsed = perf::end_timer("LOTUS:taxon_resolution", taxon_timer);
+            log_timing_evt(
+                "search",
+                "ResolvingTaxon",
+                "cache_hit",
+                taxon_elapsed,
+                Some(&format!("taxon_input={} qid={}", sanitized, cached_qid)),
+            );
+            Some(cached_qid)
+        } else {
+            let query = queries::query_taxon_search(&sanitized);
+            let csv = sparql::execute_sparql(&query).await.map_err(|e| AppError {
+                kind: ErrorKind::Network,
+                message: err_taxon_search_failed(locale, &e.to_string()),
+            })?;
+            let taxon_elapsed = perf::end_timer("LOTUS:taxon_resolution", taxon_timer);
+            perf::log_timing(
+                "ResolvingTaxon",
+                "Taxon query completed",
+                Some(taxon_elapsed),
+            );
+            let matches = sparql::parse_taxon_csv(&csv).map_err(|e| AppError {
+                kind: ErrorKind::Parse,
+                message: err_taxon_parse_failed(locale, &e.to_string()),
+            })?;
+            if matches.is_empty() {
+                return Err(AppError {
+                    kind: ErrorKind::Validation,
+                    message: err_taxon_not_found(locale, &taxon),
+                });
+            }
+            let lower = sanitized.to_lowercase();
+            let exact: Vec<&TaxonMatch> = matches
                 .iter()
-                .take(4)
-                .map(|m| format!("{} ({})", m.name, m.qid))
-                .collect::<Vec<_>>()
-                .join(", ");
-            warning = Some(warn_ambiguous_taxon(locale, &best.name, &best.qid, &names));
+                .filter(|m| m.name.to_lowercase() == lower)
+                .collect();
+            let best = exact
+                .first()
+                .copied()
+                .or_else(|| matches.first())
+                .ok_or_else(|| AppError {
+                    kind: ErrorKind::Parse,
+                    message: err_taxon_resolution_failed(locale),
+                })?;
+            if exact.len() > 1 || (exact.is_empty() && matches.len() > 1) {
+                let names = matches
+                    .iter()
+                    .take(4)
+                    .map(|m| format!("{} ({})", m.name, m.qid))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                warning = Some(warn_ambiguous_taxon(locale, &best.name, &best.qid, &names));
+            }
+            cache_store_taxon_qid(&sanitized, &best.qid);
+            Some(best.qid.clone())
         }
-        Some(best.qid.clone())
     };
 
     let sparql_query = if !smiles.is_empty() {
@@ -872,34 +1113,68 @@ async fn do_search(
     };
 
     let execution_query = queries::query_with_server_filters(&sparql_query, &crit);
+    log_debug_evt(
+        "search",
+        "build_query",
+        "ready",
+        Some(&format!("query_bytes={}", execution_query.len())),
+    );
 
     let display_limit = runtime_table_row_limit();
     // Fast path: fetch exact aggregate counts with a tiny response, then fetch
     // only the display window. This keeps metadata totals exact while cutting
     // transfer size for large result sets.
+    log_debug_evt("search", "Counting", "entered", None);
     *query_phase.write() = QueryPhase::Counting;
     let count_query = queries::query_counts_from_base(&execution_query);
     let display_query = queries::query_with_limit(&execution_query, display_limit);
 
     let (rows, total_stats_out, total_matches, display_capped_rows) = match async {
+        let count_timer = perf::start_timer("LOTUS:count_query");
         let counts_csv = sparql::execute_sparql(&count_query)
             .await
             .map_err(|e| AppError {
                 kind: ErrorKind::Network,
                 message: err_query_stage_failed(locale, "count query", &e.to_string()),
             })?;
+        let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
+        perf::log_timing("Counting", "Count query completed", Some(count_elapsed));
+
+        let count_parse_timer = perf::start_timer("LOTUS:count_parse");
         let full_stats = sparql::parse_counts_csv(&counts_csv).map_err(|e| AppError {
             kind: ErrorKind::Parse,
             message: err_query_stage_failed(locale, "count parse", &e.to_string()),
         })?;
+        let count_parse_elapsed = perf::end_timer("LOTUS:count_parse", count_parse_timer);
+        perf::log_timing(
+            "Counting",
+            &format!(
+                "Count parse completed (entries={}, compounds={}, taxa={}, refs={})",
+                full_stats.n_entries,
+                full_stats.n_compounds,
+                full_stats.n_taxa,
+                full_stats.n_references
+            ),
+            Some(count_parse_elapsed),
+        );
 
+        log_debug_evt("search", "FetchingPreview", "entered", None);
         *query_phase.write() = QueryPhase::FetchingPreview;
+        let display_timer = perf::start_timer("LOTUS:display_query");
         let display_csv = sparql::execute_sparql(&display_query)
             .await
             .map_err(|e| AppError {
                 kind: ErrorKind::Network,
                 message: err_query_stage_failed(locale, "display query", &e.to_string()),
             })?;
+        let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
+        perf::log_timing(
+            "FetchingPreview",
+            "Display query completed",
+            Some(display_elapsed),
+        );
+
+        let display_parse_timer = perf::start_timer("LOTUS:display_parse");
         let rows =
             sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
                 AppError {
@@ -907,6 +1182,12 @@ async fn do_search(
                     message: err_query_stage_failed(locale, "display parse", &e.to_string()),
                 }
             })?;
+        let display_parse_elapsed = perf::end_timer("LOTUS:display_parse", display_parse_timer);
+        perf::log_timing(
+            "FetchingPreview",
+            &format!("Display parse completed (rows={})", rows.len()),
+            Some(display_parse_elapsed),
+        );
 
         Ok::<_, AppError>((
             rows,
@@ -929,13 +1210,29 @@ async fn do_search(
 
             #[cfg(not(target_arch = "wasm32"))]
             {
+                log_warn_evt(
+                    "search",
+                    "Fallback",
+                    "entered",
+                    Some("reason=two_phase_failed"),
+                );
                 let _ = err_msg;
+                let fallback_query_timer = perf::start_timer("LOTUS:fallback_query");
                 let csv = sparql::execute_sparql(&execution_query)
                     .await
                     .map_err(|e| AppError {
                         kind: ErrorKind::Network,
                         message: err_query_stage_failed(locale, "query", &e.to_string()),
                     })?;
+                let fallback_query_elapsed =
+                    perf::end_timer("LOTUS:fallback_query", fallback_query_timer);
+                perf::log_timing(
+                    "Fallback",
+                    "Fallback query completed",
+                    Some(fallback_query_elapsed),
+                );
+
+                let fallback_parse_timer = perf::start_timer("LOTUS:fallback_parse");
                 let (rows, full_stats, _parse_capped) =
                     sparql::parse_compounds_csv_capped(&csv, display_limit).map_err(|e| {
                         AppError {
@@ -943,6 +1240,13 @@ async fn do_search(
                             message: err_query_stage_failed(locale, "parse", &e.to_string()),
                         }
                     })?;
+                let fallback_parse_elapsed =
+                    perf::end_timer("LOTUS:fallback_parse", fallback_parse_timer);
+                perf::log_timing(
+                    "Fallback",
+                    &format!("Fallback parse completed (rows={})", rows.len()),
+                    Some(fallback_parse_elapsed),
+                );
                 (
                     rows,
                     Some(full_stats.clone()),
@@ -953,7 +1257,7 @@ async fn do_search(
         }
     };
 
-    Ok(SearchOutcome {
+    let outcome = SearchOutcome {
         rows,
         qid: taxon_qid,
         warning,
@@ -961,7 +1265,18 @@ async fn do_search(
         total_matches,
         total_stats: total_stats_out,
         display_capped_rows,
-    })
+    };
+    let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
+    perf::log_timing(
+        "SearchComplete",
+        &format!(
+            "Search completed (display_rows={}, total_matches={})",
+            outcome.rows.len(),
+            outcome.total_matches.unwrap_or(outcome.rows.len())
+        ),
+        Some(total_elapsed),
+    );
+    Ok(outcome)
 }
 
 fn sanitize_taxon_input(taxon: &str) -> String {

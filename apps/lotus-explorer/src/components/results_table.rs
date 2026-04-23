@@ -4,6 +4,7 @@ use crate::i18n::{
     aria_wikidata_entity, aria_wikidata_statement, count_label, t,
 };
 use crate::models::*;
+use crate::perf;
 use crate::queries;
 use crate::sparql;
 use dioxus::prelude::*;
@@ -17,6 +18,25 @@ const TABLE_VIEWPORT_FALLBACK_PX: usize = 640;
 
 /// Human-facing QLever UI endpoint (for the "Open in QLever" deep-link).
 const QLEVER_UI: &str = "https://qlever.dev/wikidata";
+
+fn log_download_evt(phase: &str, state: &str, details: Option<&str>) {
+    let msg = match details {
+        Some(d) if !d.is_empty() => format!("event=download phase={phase} state={state} {d}"),
+        _ => format!("event=download phase={phase} state={state}"),
+    };
+    perf::log_info(&msg);
+}
+
+fn log_download_timing(phase: &str, state: &str, elapsed: std::time::Duration, details: Option<&str>) {
+    let ms = elapsed.as_secs_f64() * 1000.0;
+    let msg = match details {
+        Some(d) if !d.is_empty() => {
+            format!("event=download phase={phase} state={state} elapsed_ms={ms:.1} {d}")
+        }
+        _ => format!("event=download phase={phase} state={state} elapsed_ms={ms:.1}"),
+    };
+    perf::log_info(&msg);
+}
 
 #[component]
 pub fn ResultsTable(
@@ -236,8 +256,33 @@ pub fn ResultsTable(
                                             );
                                             let q = q.clone();
                                             spawn(async move {
+                                                log_download_evt("table_dispatch", "started", Some("format=csv"));
+                                                let fetch_timer = perf::start_timer("LOTUS:table_download_csv_fetch");
                                                 if let Ok(body) = sparql::execute_sparql(&q).await {
+                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_csv_fetch", fetch_timer);
+                                                    log_download_timing(
+                                                        "table_fetch",
+                                                        "success",
+                                                        fetch_elapsed,
+                                                        Some(&format!("format=csv body_bytes={}", body.len())),
+                                                    );
+                                                    let trigger_timer = perf::start_timer("LOTUS:table_download_csv_trigger");
                                                     trigger_download(&filename, "text/csv;charset=utf-8", &body);
+                                                    let trigger_elapsed = perf::end_timer("LOTUS:table_download_csv_trigger", trigger_timer);
+                                                    log_download_timing(
+                                                        "table_trigger",
+                                                        "success",
+                                                        trigger_elapsed,
+                                                        Some("format=csv"),
+                                                    );
+                                                } else {
+                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_csv_fetch", fetch_timer);
+                                                    log_download_timing(
+                                                        "table_fetch",
+                                                        "error",
+                                                        fetch_elapsed,
+                                                        Some("format=csv"),
+                                                    );
                                                 }
                                                 *download_busy.write() = false;
                                                 *download_status.write() = None;
@@ -262,16 +307,41 @@ pub fn ResultsTable(
                                                 t(locale, TextKey::PreparingJsonDownload).to_string(),
                                             );
                                             spawn(async move {
+                                                log_download_evt("table_dispatch", "started", Some("format=json"));
+                                                let fetch_timer = perf::start_timer("LOTUS:table_download_json_fetch");
                                                 if let Ok(body) = sparql::execute_sparql_format(
                                                         &q,
                                                         SparqlResponseFormat::SparqlJson,
                                                     )
                                                     .await
                                                 {
+                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_json_fetch", fetch_timer);
+                                                    log_download_timing(
+                                                        "table_fetch",
+                                                        "success",
+                                                        fetch_elapsed,
+                                                        Some(&format!("format=json body_bytes={}", body.len())),
+                                                    );
+                                                    let trigger_timer = perf::start_timer("LOTUS:table_download_json_trigger");
                                                     trigger_download(
                                                         &filename,
                                                         "application/sparql-results+json;charset=utf-8",
                                                         &body,
+                                                    );
+                                                    let trigger_elapsed = perf::end_timer("LOTUS:table_download_json_trigger", trigger_timer);
+                                                    log_download_timing(
+                                                        "table_trigger",
+                                                        "success",
+                                                        trigger_elapsed,
+                                                        Some("format=json"),
+                                                    );
+                                                } else {
+                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_json_fetch", fetch_timer);
+                                                    log_download_timing(
+                                                        "table_fetch",
+                                                        "error",
+                                                        fetch_elapsed,
+                                                        Some("format=json"),
                                                     );
                                                 }
                                                 *download_busy.write() = false;
@@ -297,13 +367,38 @@ pub fn ResultsTable(
                                                 t(locale, TextKey::PreparingRdfDownload).to_string(),
                                             );
                                             spawn(async move {
+                                                log_download_evt("table_dispatch", "started", Some("format=rdf"));
+                                                let fetch_timer = perf::start_timer("LOTUS:table_download_rdf_fetch");
                                                 if let Ok(body) = sparql::execute_sparql_format(
                                                         &q,
                                                         SparqlResponseFormat::Turtle,
                                                     )
                                                     .await
                                                 {
+                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_rdf_fetch", fetch_timer);
+                                                    log_download_timing(
+                                                        "table_fetch",
+                                                        "success",
+                                                        fetch_elapsed,
+                                                        Some(&format!("format=rdf body_bytes={}", body.len())),
+                                                    );
+                                                    let trigger_timer = perf::start_timer("LOTUS:table_download_rdf_trigger");
                                                     trigger_download(&filename, "text/turtle;charset=utf-8", &body);
+                                                    let trigger_elapsed = perf::end_timer("LOTUS:table_download_rdf_trigger", trigger_timer);
+                                                    log_download_timing(
+                                                        "table_trigger",
+                                                        "success",
+                                                        trigger_elapsed,
+                                                        Some("format=rdf"),
+                                                    );
+                                                } else {
+                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_rdf_fetch", fetch_timer);
+                                                    log_download_timing(
+                                                        "table_fetch",
+                                                        "error",
+                                                        fetch_elapsed,
+                                                        Some("format=rdf"),
+                                                    );
                                                 }
                                                 *download_busy.write() = false;
                                                 *download_status.write() = None;
@@ -323,7 +418,19 @@ pub fn ResultsTable(
                                     onclick: {
                                         let body = body.clone();
                                         let filename = metadata_filename.clone();
-                                        move |_| trigger_download(&filename, "application/ld+json", &body)
+                                        move |_| {
+                                            log_download_evt("table_dispatch", "started", Some("format=metadata"));
+                                            let trigger_timer = perf::start_timer("LOTUS:table_download_meta_trigger");
+                                            trigger_download(&filename, "application/ld+json", &body);
+                                            let trigger_elapsed =
+                                                perf::end_timer("LOTUS:table_download_meta_trigger", trigger_timer);
+                                            log_download_timing(
+                                                "table_trigger",
+                                                "success",
+                                                trigger_elapsed,
+                                                Some("format=metadata"),
+                                            );
+                                        }
                                     },
                                     title: "{t(locale, TextKey::DownloadMetadataTitle)}",
                                     aria_label: "{t(locale, TextKey::DownloadMetadataTitle)}",
