@@ -722,37 +722,49 @@ fn truncate_title(title: &str, max_chars: usize) -> String {
 fn trigger_download(filename: &str, mime: &str, body: &str) {
     #[cfg(target_arch = "wasm32")]
     {
-        let filename_json =
-            serde_json::to_string(filename).unwrap_or_else(|_| "\"download.txt\"".to_string());
-        let mime_json = serde_json::to_string(mime)
-            .unwrap_or_else(|_| "\"application/octet-stream\"".to_string());
-        let body_json = serde_json::to_string(body).unwrap_or_else(|_| "\"\"".to_string());
-        let script = format!(
-            r#"(() => {{
-  const filename = {filename_json};
-  const mime = {mime_json};
-  const content = {body_json};
-  const blob = new Blob([content], {{ type: mime }});
-  const url = URL.createObjectURL(blob);
-  const nav = window.navigator;
-  const ua = nav.userAgent || "";
-  const isIOS = /iPad|iPhone|iPod/.test(ua) || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
-  if (isIOS) {{
-    window.open(url, "_blank", "noopener,noreferrer");
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    return;
-  }}
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.rel = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-}})();"#
-        );
-        let _ = js_sys::eval(&script);
+        use wasm_bindgen::JsCast;
+
+        let Some(window) = web_sys::window() else {
+            return;
+        };
+        let Some(document) = window.document() else {
+            return;
+        };
+
+        let parts = js_sys::Array::new();
+        parts.push(&wasm_bindgen::JsValue::from_str(body));
+
+        let blob = {
+            let options = web_sys::BlobPropertyBag::new();
+            options.set_type(mime);
+            web_sys::Blob::new_with_str_sequence_and_options(&parts, &options)
+                .or_else(|_| web_sys::Blob::new_with_str_sequence(&parts))
+        };
+        let Ok(blob) = blob else {
+            return;
+        };
+
+        let Ok(url) = web_sys::Url::create_object_url_with_blob(&blob) else {
+            return;
+        };
+
+        let anchor = document
+            .create_element("a")
+            .ok()
+            .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok());
+
+        if let (Some(a), Some(body_el)) = (anchor, document.body()) {
+            a.set_href(&url);
+            a.set_download(filename);
+            a.set_rel("noopener noreferrer");
+            let _ = body_el.append_child(&a);
+            a.click();
+            let _ = body_el.remove_child(&a);
+        } else {
+            let _ = window.open_with_url(&url);
+        }
+
+        let _ = web_sys::Url::revoke_object_url(&url);
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
