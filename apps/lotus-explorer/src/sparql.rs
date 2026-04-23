@@ -320,7 +320,7 @@ pub fn parse_compounds_csv_capped(
 /// Decode a byte field as a trimmed UTF-8 string slice. QLever always emits
 /// UTF-8; on malformed input we fall back to `""`.
 #[inline]
-fn byte_field_str<'a>(rec: &'a csv::ByteRecord, idx: Option<usize>) -> &'a str {
+fn byte_field_str(rec: &csv::ByteRecord, idx: Option<usize>) -> &str {
     match idx.and_then(|i| rec.get(i)) {
         Some(bytes) => std::str::from_utf8(bytes).unwrap_or("").trim(),
         None => "",

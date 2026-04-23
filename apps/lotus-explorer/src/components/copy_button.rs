@@ -48,6 +48,7 @@ pub fn CopyButton(
     }
 }
 
+//noinspection ALL
 /// Portable sleep helper — uses `setTimeout` on wasm and `thread::sleep`
 async fn gloo_timer_sleep_ms(ms: u32) {
     #[cfg(target_arch = "wasm32")]

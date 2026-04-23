@@ -11,7 +11,7 @@ use dioxus::prelude::*;
 
 fn main() {
     console_log::init_with_level(log::Level::Info).ok();
-    dioxus::launch(App);
+    launch(App);
 }
 
 #[component]

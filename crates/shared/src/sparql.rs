@@ -31,8 +31,8 @@ impl std::fmt::Display for FetchError {
 
 /// Execute a SPARQL query against `endpoint` and return the raw CSV body.
 ///
-/// Mirrors the Python `execute_with_retry` behaviour: up to two attempts,
-/// with `Accept: text/csv` so the endpoint can honour content negotiation
+/// Mirrors the Python `execute_with_retry` behavior: up to two attempts,
+/// with `Accept: text/csv` so the endpoint can honor content negotiation
 /// even when the `action=csv_export` form parameter is ignored. Retries
 /// transient network / 5xx errors; 4xx errors fail fast.
 pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, FetchError> {
@@ -62,8 +62,8 @@ pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, Fetc
                 let status = resp.status();
                 let code = status.as_u16();
                 if status.is_success() {
-                    match resp.text().await {
-                        Ok(text) if text.trim().is_empty() => return Err(FetchError::Empty),
+                    return match resp.text().await {
+                        Ok(text) if text.trim().is_empty() => Err(FetchError::Empty),
                         Ok(text) => {
                             // QLever sometimes returns an HTML gateway-error page with
                             // 200 OK when the upstream SPARQL server is flaky. Detect.
@@ -77,16 +77,16 @@ pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, Fetc
                                 }
                                 return Err(last_err.unwrap());
                             }
-                            return Ok(text);
+                            Ok(text)
                         }
                         Err(e) => {
                             last_err = Some(FetchError::Network(e.to_string()));
                             if attempt + 1 < MAX_ATTEMPTS {
                                 continue;
                             }
-                            return Err(last_err.unwrap());
+                            Err(last_err.unwrap())
                         }
-                    }
+                    };
                 }
 
                 let body = resp.text().await.unwrap_or_default();
@@ -159,7 +159,7 @@ pub fn col_idx(headers: &csv::StringRecord, name: &str) -> Option<usize> {
 }
 
 /// Get a trimmed field value by optional column index.
-pub fn field<'a>(record: &'a csv::StringRecord, idx: Option<usize>) -> &'a str {
+pub fn field(record: &csv::StringRecord, idx: Option<usize>) -> &str {
     idx.and_then(|i| record.get(i)).unwrap_or("").trim()
 }
 
