@@ -775,7 +775,7 @@ fn compute_hashes(
                 .join("&"),
         );
     }
-    let query_hash = format!("{:x}", Sha256::digest(query_source.as_bytes()));
+    let query_hash = to_hex_lower(&Sha256::digest(query_source.as_bytes()));
 
     let mut compounds = rows
         .iter()
@@ -784,9 +784,19 @@ fn compute_hashes(
     compounds.sort_unstable();
     compounds.dedup();
     let result_source = compounds.join("|");
-    let result_hash = format!("{:x}", Sha256::digest(result_source.as_bytes()));
+    let result_hash = to_hex_lower(&Sha256::digest(result_source.as_bytes()));
 
     (query_hash, result_hash)
+}
+
+fn to_hex_lower(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        out.push(HEX[(b >> 4) as usize] as char);
+        out.push(HEX[(b & 0x0f) as usize] as char);
+    }
+    out
 }
 
 fn build_shareable_url(criteria: &SearchCriteria) -> Option<String> {

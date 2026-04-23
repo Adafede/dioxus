@@ -43,6 +43,7 @@ pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, Fetc
     let mut last_err: Option<FetchError> = None;
 
     for attempt in 0..MAX_ATTEMPTS {
+        let body = format!("query={}&action=csv_export", urlencoding::encode(sparql));
         let result = client
             .post(endpoint)
             // `Accept` and `Content-Type: application/x-www-form-urlencoded`
@@ -53,7 +54,8 @@ pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, Fetc
             // rejected by QLever with an opaque "CORS request did not
             // succeed" error.
             .header("Accept", "text/csv")
-            .form(&[("query", sparql), ("action", "csv_export")])
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
             .send()
             .await;
 
