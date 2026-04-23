@@ -49,7 +49,7 @@ fn main() {
 #[component]
 fn App() -> Element {
     let criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
-    let locale: Signal<Locale> = use_signal(initial_locale_from_url);
+    let mut locale: Signal<Locale> = use_signal(initial_locale_from_url);
     // Entries live behind an `Arc<[…]>` so prop/signal clones are a single
     // refcount bump instead of duplicating the whole result buffer.
     let entries: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
@@ -69,6 +69,8 @@ fn App() -> Element {
     let sort: Signal<SortState> = use_signal(SortState::default);
     let page: Signal<usize> = use_signal(|| 0usize);
     let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
+    let mut pending_download_format: Signal<Option<String>> =
+        use_signal(initial_download_format_from_url);
 
     // Memoised derived state — recomputed only when their inputs change.
     // If we have precise totals from the parser, use them directly. Otherwise,
@@ -103,6 +105,100 @@ fn App() -> Element {
             mobile_filters_open,
         )
     };
+
+    // Programmatic flow: when URL contains `download=true&format=...`, run the
+    // search automatically and trigger download once query materializes.
+    use_effect(move || {
+        let pending = pending_download_format.read().clone();
+        if pending.is_some() && !*searched_once.read() && !*loading.read() {
+            start_search(
+                criteria,
+                locale,
+                loading,
+                error,
+                error_kind,
+                query_phase,
+                searched_once,
+                entries,
+                taxon_notice,
+                resolved_qid,
+                query_hash,
+                result_hash,
+                sparql_query,
+                metadata_json,
+                total_matches,
+                total_stats,
+                page,
+                mobile_filters_open,
+            );
+        }
+    });
+
+    use_effect(move || {
+        let pending = pending_download_format.read().clone();
+        if let Some(fmt) = pending {
+            if *loading.read() {
+                return;
+            }
+            if let Some(query) = sparql_query.read().as_deref() {
+                let crit = criteria.peek().clone();
+                let suffix = download_search_type_suffix(&crit);
+                match fmt.as_str() {
+                    "csv" => {
+                        let filename = export::generate_filename(&crit.taxon, "csv", suffix);
+                        trigger_query_csv_download_main(query, &filename);
+                        *pending_download_format.write() = None;
+                    }
+                    "json" | "ndjson" => {
+                        let q = query.to_string();
+                        let filename = export::generate_filename(&crit.taxon, "ndjson", suffix);
+                        *pending_download_format.write() = None;
+                        spawn(async move {
+                            if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
+                                let body = export::build_ndjson(rows.as_ref());
+                                trigger_download_main(&filename, "application/x-ndjson", &body);
+                            }
+                        });
+                    }
+                    "ttl" => {
+                        let q = query.to_string();
+                        let filename = export::generate_filename(&crit.taxon, "ttl", suffix);
+                        let qh = query_hash.read().clone().unwrap_or_default();
+                        let rh = result_hash.read().clone().unwrap_or_default();
+                        let stats_for_export = total_stats
+                            .read()
+                            .clone()
+                            .unwrap_or_else(|| DatasetStats::from_entries(&entries.read()));
+                        *pending_download_format.write() = None;
+                        spawn(async move {
+                            if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
+                                let ttl = export::build_ttl(
+                                    rows.as_ref(),
+                                    export::MetadataInputs {
+                                        criteria: &crit,
+                                        qid: None,
+                                        stats: &stats_for_export,
+                                        number_of_records_override: Some(
+                                            stats_for_export.n_entries,
+                                        ),
+                                        query_hash: &qh,
+                                        result_hash: &rh,
+                                    },
+                                );
+                                trigger_download_main(&filename, "text/turtle", &ttl);
+                            }
+                        });
+                    }
+                    _ => {
+                        *error.write() = Some(format!(
+                            "Unsupported programmatic format '{fmt}'. Use csv, json, or ttl."
+                        ));
+                        *pending_download_format.write() = None;
+                    }
+                }
+            }
+        }
+    });
 
     rsx! {
 
@@ -151,6 +247,32 @@ fn App() -> Element {
                 div { class: "page-header",
                     div { class: "page-brand",
                         h1 { class: "page-title", "{t(*locale.read(), TextKey::PageTitle)}" }
+                        div { class: "lang-switch", role: "group", aria_label: "Language",
+                            button {
+                                class: if *locale.read() == Locale::En { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                r#type: "button",
+                                onclick: move |_| *locale.write() = Locale::En,
+                                "EN"
+                            }
+                            button {
+                                class: if *locale.read() == Locale::Fr { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                r#type: "button",
+                                onclick: move |_| *locale.write() = Locale::Fr,
+                                "FR"
+                            }
+                            button {
+                                class: if *locale.read() == Locale::De { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                r#type: "button",
+                                onclick: move |_| *locale.write() = Locale::De,
+                                "DE"
+                            }
+                            button {
+                                class: if *locale.read() == Locale::It { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                r#type: "button",
+                                onclick: move |_| *locale.write() = Locale::It,
+                                "IT"
+                            }
+                        }
                     }
                     p { class: "page-sub", "{t(*locale.read(), TextKey::PageSubtitle)}" }
                     if let Some(qid) = resolved_qid.read().as_deref() {
@@ -428,26 +550,52 @@ fn WelcomeScreen(locale: Locale) -> Element {
                 h3 { "{t(locale, TextKey::WelcomeTry)}" }
                 ul { class: "example-list",
                     ExRow {
-                        value: "Gentiana lutea",
+                        value: "taxon=<name|QID>",
                         note: t(locale, TextKey::ExampleGentiana),
-                    }
-                    ExRow {
-                        value: "Cannabis sativa",
-                        note: t(locale, TextKey::ExampleCannabis),
-                    }
-                    ExRow {
-                        value: "Q134630",
-                        note: t(locale, TextKey::ExampleCitrusQid),
                     }
                     ExRow {
                         value: "*",
                         note: t(locale, TextKey::ExampleAllTriples),
                     }
                     ExRow {
-                        value: "c1ccccc1",
+                        value: "structure=<SMILES|Molfile>",
                         note: t(locale, TextKey::ExampleSmilesOnly),
                     }
                 }
+                p { class: "form-hint welcome-cli-hint",
+                    "{t(locale, TextKey::WelcomeProgrammaticDownload)}"
+                }
+                div { class: "welcome-cli-list",
+                    DownloadExampleRow {
+                        locale,
+                        format: "CSV",
+                        query: "?taxon=*&download=true&format=csv",
+                    }
+                    DownloadExampleRow {
+                        locale,
+                        format: "JSON",
+                        query: "?taxon=*&structure=c1ccccc1&structure_search_type=similarity&smiles_threshold=0.85&download=true&format=json",
+                    }
+                    DownloadExampleRow {
+                        locale,
+                        format: "TTL",
+                        query: "?taxon=*&formula_filter=true&c_min=15&c_max=25&o_min=2&o_max=8&f_state=required&cl_state=required&br_state=excluded&i_state=excluded&download=true&format=ttl",
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn DownloadExampleRow(locale: Locale, format: &'static str, query: &'static str) -> Element {
+    rsx! {
+        div { class: "welcome-cli-row",
+            span { class: "welcome-cli-format mono", "{format}" }
+            code { class: "mono welcome-cli-query", "{query}" }
+            CopyButton {
+                text: query.to_string(),
+                locale,
             }
         }
     }
@@ -936,6 +1084,9 @@ fn absolute_share_url(share: &str) -> String {
 fn initial_criteria_from_url() -> SearchCriteria {
     let mut criteria = SearchCriteria::default();
     let params = read_url_query_params();
+    let is_true = |v: &str| matches!(v, "1" | "true" | "yes" | "on");
+    let parse_f64 = |name: &str| params.get(name).and_then(|v| v.parse::<f64>().ok());
+    let parse_i32 = |name: &str| params.get(name).and_then(|v| v.parse::<i32>().ok());
     let has_explicit_taxon = params.get("taxon").is_some();
     let mut has_structure = false;
 
@@ -967,6 +1118,91 @@ fn initial_criteria_from_url() -> SearchCriteria {
         }
     }
 
+    if params
+        .get("mass_filter")
+        .map(|v| is_true(v))
+        .unwrap_or(false)
+    {
+        if let Some(v) = parse_f64("mass_min") {
+            criteria.mass_min = v;
+        }
+        if let Some(v) = parse_f64("mass_max") {
+            criteria.mass_max = v;
+        }
+    }
+
+    if params
+        .get("year_filter")
+        .map(|v| is_true(v))
+        .unwrap_or(false)
+    {
+        if let Some(v) = parse_i32("year_start") {
+            criteria.year_min = v;
+        }
+        if let Some(v) = parse_i32("year_end") {
+            criteria.year_max = v;
+        }
+    }
+
+    if params
+        .get("formula_filter")
+        .map(|v| is_true(v))
+        .unwrap_or(false)
+    {
+        criteria.formula_enabled = true;
+        if let Some(v) = params.get("formula_exact") {
+            criteria.formula_exact = v.clone();
+        }
+        if let Some(v) = parse_i32("c_min") {
+            criteria.c_min = v;
+        }
+        if let Some(v) = parse_i32("c_max") {
+            criteria.c_max = v;
+        }
+        if let Some(v) = parse_i32("h_min") {
+            criteria.h_min = v;
+        }
+        if let Some(v) = parse_i32("h_max") {
+            criteria.h_max = v;
+        }
+        if let Some(v) = parse_i32("n_min") {
+            criteria.n_min = v;
+        }
+        if let Some(v) = parse_i32("n_max") {
+            criteria.n_max = v;
+        }
+        if let Some(v) = parse_i32("o_min") {
+            criteria.o_min = v;
+        }
+        if let Some(v) = parse_i32("o_max") {
+            criteria.o_max = v;
+        }
+        if let Some(v) = parse_i32("p_min") {
+            criteria.p_min = v;
+        }
+        if let Some(v) = parse_i32("p_max") {
+            criteria.p_max = v;
+        }
+        if let Some(v) = parse_i32("s_min") {
+            criteria.s_min = v;
+        }
+        if let Some(v) = parse_i32("s_max") {
+            criteria.s_max = v;
+        }
+        if let Some(v) = params.get("f_state") {
+            criteria.f_state = ElementState::from_str(v);
+        }
+        if let Some(v) = params.get("cl_state") {
+            criteria.cl_state = ElementState::from_str(v);
+        }
+        if let Some(v) = params.get("br_state") {
+            criteria.br_state = ElementState::from_str(v);
+        }
+        if let Some(v) = params.get("i_state") {
+            criteria.i_state = ElementState::from_str(v);
+        }
+    }
+
     // Share links with only `?structure=...` should not inherit the default
     // taxon from `SearchCriteria::default()` (Gentiana lutea), otherwise the
     // pasted URL does not reproduce the sender's result set.
@@ -981,6 +1217,122 @@ fn initial_locale_from_url() -> Locale {
     let params = read_url_query_params();
     let lang = params.get("lang").map(|v| v.as_str()).unwrap_or("");
     Locale::detect(lang)
+}
+
+fn initial_download_format_from_url() -> Option<String> {
+    let params = read_url_query_params();
+    let wants_download = params
+        .get("download")
+        .map(|v| matches!(v.as_str(), "1" | "true" | "yes"))
+        .unwrap_or(false);
+    if !wants_download {
+        return None;
+    }
+    Some(
+        params
+            .get("format")
+            .map(|v| v.to_ascii_lowercase())
+            .unwrap_or_else(|| "csv".to_string()),
+    )
+}
+
+fn trigger_query_csv_download_main(sparql_query: &str, filename: &str) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+
+        let href = format!(
+            "https://qlever.dev/api/wikidata?query={}&action=csv_export",
+            urlencoding::encode(sparql_query)
+        );
+        let Some(window) = web_sys::window() else {
+            return;
+        };
+        let Some(document) = window.document() else {
+            return;
+        };
+
+        let anchor = document
+            .create_element("a")
+            .ok()
+            .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok());
+
+        if let (Some(a), Some(body_el)) = (anchor, document.body()) {
+            a.set_href(&href);
+            a.set_download(filename);
+            a.set_rel("noopener noreferrer");
+            let _ = body_el.append_child(&a);
+            a.click();
+            let _ = body_el.remove_child(&a);
+        } else {
+            let _ = window.open_with_url(&href);
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = (sparql_query, filename);
+    }
+}
+
+fn trigger_download_main(filename: &str, mime: &str, body: &str) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+
+        let Some(window) = web_sys::window() else {
+            return;
+        };
+        let Some(document) = window.document() else {
+            return;
+        };
+
+        let parts = js_sys::Array::new();
+        parts.push(&wasm_bindgen::JsValue::from_str(body));
+        let blob = {
+            let options = web_sys::BlobPropertyBag::new();
+            options.set_type(mime);
+            web_sys::Blob::new_with_str_sequence_and_options(&parts, &options)
+                .or_else(|_| web_sys::Blob::new_with_str_sequence(&parts))
+        };
+        let Ok(blob) = blob else {
+            return;
+        };
+        let Ok(url) = web_sys::Url::create_object_url_with_blob(&blob) else {
+            return;
+        };
+
+        let anchor = document
+            .create_element("a")
+            .ok()
+            .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok());
+
+        if let (Some(a), Some(body_el)) = (anchor, document.body()) {
+            a.set_href(&url);
+            a.set_download(filename);
+            a.set_rel("noopener noreferrer");
+            let _ = body_el.append_child(&a);
+            a.click();
+            let _ = body_el.remove_child(&a);
+        } else {
+            let _ = window.open_with_url(&url);
+        }
+        let _ = web_sys::Url::revoke_object_url(&url);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = (filename, mime, body);
+    }
+}
+
+fn download_search_type_suffix(criteria: &SearchCriteria) -> Option<&'static str> {
+    if criteria.smiles.trim().is_empty() {
+        None
+    } else {
+        Some(match criteria.smiles_search_type {
+            SmilesSearchType::Substructure => "substructure",
+            SmilesSearchType::Similarity => "similarity",
+        })
+    }
 }
 
 fn query_phase_text(locale: Locale, phase: QueryPhase) -> &'static str {
