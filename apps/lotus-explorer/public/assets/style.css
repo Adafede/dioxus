@@ -37,6 +37,7 @@ html, body { height: 100%; }
   --wd-compound:  #990000;
   --wd-taxon:     #339966;
   --wd-reference: #006699;
+  --wd-entries:   #484848;
   --wd-hyperlink: #3377c4;
 }
 
@@ -369,7 +370,7 @@ a:hover { text-decoration: underline; }
 .stat-badge:nth-child(1) .stat-value { color:var(--wd-compound); }
 .stat-badge:nth-child(2) .stat-value { color:var(--wd-taxon); }
 .stat-badge:nth-child(3) .stat-value { color:var(--wd-reference); }
-.stat-badge:nth-child(4) .stat-value { color:var(--wd-hyperlink); }
+.stat-badge:nth-child(4) .stat-value { color:var(--wd-entries); }
 
 /* Cell types */
 .td-depict       { width:130px; padding:6px 10px !important; }
