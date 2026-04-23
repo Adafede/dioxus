@@ -418,7 +418,9 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
             "BIND({} AS ?_formula_norm)",
             normalize_digits_expr("?_formula_nospace")
         ));
-        prelude.push("BIND(REPLACE(?_formula_norm, \"([A-Z])\", \"|$1\") AS ?_formula_tokens)".to_string());
+        prelude.push(
+            "BIND(REPLACE(?_formula_norm, \"([A-Z])\", \"|$1\") AS ?_formula_tokens)".to_string(),
+        );
 
         for (symbol, min, max, default_max) in [
             ("C", criteria.c_min, criteria.c_max, DEFAULT_C_MAX),
@@ -622,4 +624,3 @@ mod tests {
         assert!(!q.contains("SELECT\n  (xsd:integer"));
     }
 }
-

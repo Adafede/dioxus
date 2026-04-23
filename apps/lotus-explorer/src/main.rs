@@ -17,8 +17,8 @@ use i18n::{
     err_unsupported_format, t, warn_ambiguous_taxon, warn_input_standardized,
 };
 use models::*;
-use shared::sparql::SparqlResponseFormat;
 use sha2::{Digest, Sha256};
+use shared::sparql::SparqlResponseFormat;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -193,9 +193,14 @@ fn App() -> Element {
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(body) =
-                                sparql::execute_sparql_format(&q, SparqlResponseFormat::Turtle).await
+                                sparql::execute_sparql_format(&q, SparqlResponseFormat::Turtle)
+                                    .await
                             {
-                                trigger_download_main(&filename, "text/turtle;charset=utf-8", &body);
+                                trigger_download_main(
+                                    &filename,
+                                    "text/turtle;charset=utf-8",
+                                    &body,
+                                );
                             }
                         });
                     }
@@ -867,12 +872,13 @@ async fn do_search(
                 kind: ErrorKind::Network,
                 message: err_query_stage_failed(locale, "display query", &e.to_string()),
             })?;
-        let rows = sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
-            AppError {
-                kind: ErrorKind::Parse,
-                message: err_query_stage_failed(locale, "display parse", &e.to_string()),
-            }
-        })?;
+        let rows =
+            sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
+                AppError {
+                    kind: ErrorKind::Parse,
+                    message: err_query_stage_failed(locale, "display parse", &e.to_string()),
+                }
+            })?;
 
         Ok::<_, AppError>((
             rows,
@@ -909,7 +915,12 @@ async fn do_search(
                             message: err_query_stage_failed(locale, "parse", &e.to_string()),
                         }
                     })?;
-                (rows, Some(full_stats.clone()), Some(full_stats.n_entries), false)
+                (
+                    rows,
+                    Some(full_stats.clone()),
+                    Some(full_stats.n_entries),
+                    false,
+                )
             }
         }
     };

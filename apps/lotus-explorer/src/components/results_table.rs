@@ -262,10 +262,10 @@ pub fn ResultsTable(
                                             );
                                             spawn(async move {
                                                 if let Ok(body) = sparql::execute_sparql_format(
-                                                    &q,
-                                                    SparqlResponseFormat::SparqlJson,
-                                                )
-                                                .await
+                                                        &q,
+                                                        SparqlResponseFormat::SparqlJson,
+                                                    )
+                                                    .await
                                                 {
                                                     trigger_download(
                                                         &filename,
@@ -296,16 +296,12 @@ pub fn ResultsTable(
                                             );
                                             spawn(async move {
                                                 if let Ok(body) = sparql::execute_sparql_format(
-                                                    &q,
-                                                    SparqlResponseFormat::Turtle,
-                                                )
-                                                .await
+                                                        &q,
+                                                        SparqlResponseFormat::Turtle,
+                                                    )
+                                                    .await
                                                 {
-                                                    trigger_download(
-                                                        &filename,
-                                                        "text/turtle;charset=utf-8",
-                                                        &body,
-                                                    );
+                                                    trigger_download(&filename, "text/turtle;charset=utf-8", &body);
                                                 }
                                                 *download_busy.write() = false;
                                                 *download_status.write() = None;
