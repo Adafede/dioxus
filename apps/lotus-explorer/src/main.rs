@@ -247,7 +247,10 @@ fn App() -> Element {
                 div { class: "page-header",
                     div { class: "page-brand",
                         h1 { class: "page-title", "{t(*locale.read(), TextKey::PageTitle)}" }
-                        div { class: "lang-switch", role: "group", aria_label: "Language",
+                        div {
+                            class: "lang-switch",
+                            role: "group",
+                            aria_label: "Language",
                             button {
                                 class: if *locale.read() == Locale::En { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
@@ -593,10 +596,7 @@ fn DownloadExampleRow(locale: Locale, format: &'static str, query: &'static str)
         div { class: "welcome-cli-row",
             span { class: "welcome-cli-format mono", "{format}" }
             code { class: "mono welcome-cli-query", "{query}" }
-            CopyButton {
-                text: query.to_string(),
-                locale,
-            }
+            CopyButton { text: query.to_string(), locale }
         }
     }
 }

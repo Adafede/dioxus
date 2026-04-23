@@ -159,9 +159,7 @@ pub fn ResultsTable(
     let heavy_export_hint = t(locale, TextKey::HeavyExportHint);
 
     rsx! {
-        div {
-            id: "results-section",
-            class: "results-wrap",
+        div { id: "results-section", class: "results-wrap",
             if let Some(q) = sparql_query.as_deref() {
                 details { class: "query-panel",
                     summary { "{t(locale, TextKey::SparqlQuery)}" }
@@ -356,14 +354,15 @@ pub fn ResultsTable(
                 }
             }
 
-
             if total == 0 {
                 div { class: "empty-state",
                     p { "{t(locale, TextKey::NoResults)}" }
                 }
             } else {
                 div { class: "pagination-bar",
-                    span { class: "page-info", "{showing_rows_text(locale, end_row.saturating_sub(start_row), total)}" }
+                    span { class: "page-info",
+                        "{showing_rows_text(locale, end_row.saturating_sub(start_row), total)}"
+                    }
                 }
 
                 div {
@@ -473,11 +472,13 @@ pub fn ResultsTable(
                         }
                         tbody {
                             if top_spacer_px > 0 {
-                                tr { class: "virtual-spacer-row", aria_hidden: "true",
+                                tr {
+                                    class: "virtual-spacer-row",
+                                    aria_hidden: "true",
                                     td {
                                         class: "virtual-spacer-cell",
                                         colspan: "7",
-                                        style: "height: {top_spacer_px}px;"
+                                        style: "height: {top_spacer_px}px;",
                                     }
                                 }
                             }
@@ -491,18 +492,19 @@ pub fn ResultsTable(
                                 }
                             }
                             if bottom_spacer_px > 0 {
-                                tr { class: "virtual-spacer-row", aria_hidden: "true",
+                                tr {
+                                    class: "virtual-spacer-row",
+                                    aria_hidden: "true",
                                     td {
                                         class: "virtual-spacer-cell",
                                         colspan: "7",
-                                        style: "height: {bottom_spacer_px}px;"
+                                        style: "height: {bottom_spacer_px}px;",
                                     }
                                 }
                             }
                         }
                     }
                 }
-
             }
         }
     }
