@@ -28,7 +28,7 @@ jobs:
     runs-on: codeberg-small
     steps:
       - uses: actions/checkout@v4
-      - uses: https://github.com/dtolnay/dtolnay/rust-toolchain@stable
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
