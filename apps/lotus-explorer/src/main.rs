@@ -106,7 +106,9 @@ fn App() -> Element {
 
     rsx! {
 
-        a { class: "skip-link", href: "#results-section", "{t(*locale.read(), TextKey::SkipToResults)}" }
+        a { class: "skip-link", href: "#results-section",
+            "{t(*locale.read(), TextKey::SkipToResults)}"
+        }
         div { class: "app-layout",
             // ── Left sidebar ──────────────────────────────────────────────
             aside { class: if *mobile_filters_open.read() { "sidebar mobile-open" } else { "sidebar mobile-closed" },
@@ -227,7 +229,9 @@ fn App() -> Element {
                     div { class: "notice notice-error", role: "alert",
                         span { class: "notice-label", "{t(*locale.read(), TextKey::Error)}" }
                         span { class: "notice-value", "{msg}" }
-                        span { class: "notice-value", "{error_hint_text(*locale.read(), *error_kind.read())}" }
+                        span { class: "notice-value",
+                            "{error_hint_text(*locale.read(), *error_kind.read())}"
+                        }
                         if is_retryable(*error_kind.read()) && !*loading.read() {
                             button {
                                 class: "btn btn-sm",
