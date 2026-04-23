@@ -1,68 +1,48 @@
-name: Deploy to GitHub Pages
+name: Deploy to Codeberg Pages
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-deploy:
+    runs-on: codeberg-small
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
       - name: Cache
-        uses: Swatinem/rust-cache@v2
+        uses: https://github.com/Swatinem/rust-cache@v2
 
       - name: Install dioxus-cli
-        # dx enforces patch-level compatibility with the dioxus crate.
-        # Keep this pinned to the same patch as workspace dioxus.
         run: cargo install dioxus-cli --version 0.7.6 --locked
 
       - name: Verify dx version
         run: dx --version | grep -E "\b0\.7\.6\b"
 
-      # ── Build each app ──────────────────────────────────────────────────
-      # `--platform web` is specified explicitly so the build does not
-      # depend on dioxus-cli's auto-detection (which requires the `web`
-      # feature to be enabled on the `dioxus` crate dependency). The
-      # `default_platform` key in `Dioxus.toml` is ignored by dx ≥ 0.7.
       - name: Build lotus-explorer
         working-directory: apps/lotus-explorer
-        run: dx build --release --platform web --debug-symbols false --base-path "/${{ github.event.repository.name }}/lotus-explorer/"
+        run: dx build --release --platform web --debug-symbols false --base-path "/${{ gitea.event.repository.name }}/lotus-explorer/"
 
       - name: Build hello-world
         working-directory: apps/hello-world
-        run: dx build --release --platform web --debug-symbols false --base-path "/${{ github.event.repository.name }}/hello-world/"
+        run: dx build --release --platform web --debug-symbols false --base-path "/${{ gitea.event.repository.name }}/hello-world/"
 
-      # ── Assemble a combined site ────────────────────────────────────────
-      # Each app is served under /<app-name>/.
-      #
-      # dx 0.7 writes the web bundle to
-      #   target/dx/<package-name>/release/web/public/
-      # regardless of `out_dir` in `Dioxus.toml` (that key is ignored by
-      # dioxus-cli ≥ 0.7).
       - name: Assemble site
         run: |
           mkdir -p _site
           cp -r target/dx/lotus-explorer/release/web/public _site/lotus-explorer
           cp -r target/dx/hello-world/release/web/public    _site/hello-world
 
-          # Root index listing
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="en">
@@ -96,18 +76,8 @@ jobs:
           </html>
           EOF
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/git-pages@v2
         with:
-          path: _site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          site: https://adafede.codeberg.page/dioxus/
+          token: ${{ forge.token }}
+          source: _site/
