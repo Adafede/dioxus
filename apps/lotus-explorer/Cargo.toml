@@ -18,7 +18,7 @@ csv = { workspace = true }
 dioxus = { workspace = true }
 log = { workspace = true }
 serde_json = { workspace = true }
-sha2 = { version = "0.10", default-features = false }
+sha2 = { version = "0.11", default-features = false }
 shared = { path = "../../crates/shared" }
 urlencoding = { workspace = true }
 

@@ -9,14 +9,14 @@ members = [
 
 # ── Shared dependency versions ────────────────────────────────────────────────
 [workspace.dependencies]
-console_log = "0.2"
+console_log = "1.0"
 csv = "1"
 # Keep patch-level versions aligned with the pinned `dioxus-cli` in
 # `.github/workflows/deploy.yml`.
 dioxus = { version = "=0.7.6", features = ["web"] }
 js-sys = "0.3"
 log = "0.4"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+reqwest = { version = "0.13" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 urlencoding = "2"
