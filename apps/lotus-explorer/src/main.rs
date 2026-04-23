@@ -593,7 +593,7 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
         let display_csv = sparql::execute_sparql(&display_query)
             .await
             .map_err(|e| format!("Display query failed: {e}"))?;
-        let rows = sparql::parse_compounds_csv(&display_csv)
+        let rows = sparql::parse_compounds_csv_display(&display_csv, display_limit)
             .map_err(|e| format!("Display parse failed: {e}"))?;
 
         Ok::<_, String>((rows, Some(full_stats.clone()), Some(full_stats.n_entries)))

@@ -95,6 +95,8 @@ pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
 thread_local! {
     static CSV_CACHE: std::cell::RefCell<Option<(u64, std::rc::Rc<String>)>>
         = const { std::cell::RefCell::new(None) };
+    static PARSED_ROWS_CACHE: std::cell::RefCell<Option<(u64, std::rc::Rc<Vec<CompoundEntry>>)>>
+        = const { std::cell::RefCell::new(None) };
 }
 
 /// Execute a SPARQL query, reusing the CSV body from the previous call when
@@ -122,12 +124,149 @@ pub async fn execute_sparql_cached(sparql: &str) -> Result<std::rc::Rc<String>, 
     }
 }
 
+/// Parse full compound rows for a query, reusing a parsed-cache entry on wasm.
+///
+/// This makes JSON then TTL exports fast without reparsing the same large CSV.
+pub async fn parse_compounds_cached(
+    sparql: &str,
+) -> Result<std::rc::Rc<Vec<CompoundEntry>>, FetchError> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let key = fnv1a_one(sparql.as_bytes());
+        if let Some(hit) = PARSED_ROWS_CACHE.with(|c| {
+            c.borrow()
+                .as_ref()
+                .and_then(|(k, v)| (*k == key).then(|| v.clone()))
+        }) {
+            return Ok(hit);
+        }
+        let csv = execute_sparql_cached(sparql).await?;
+        let rows = parse_compounds_csv(csv.as_str())?;
+        let rc = std::rc::Rc::new(rows);
+        PARSED_ROWS_CACHE.with(|c| *c.borrow_mut() = Some((key, rc.clone())));
+        Ok(rc)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let csv = execute_sparql_cached(sparql).await?;
+        Ok(std::rc::Rc::new(parse_compounds_csv(csv.as_str())?))
+    }
+}
+
 // ── Compound CSV parser ───────────────────────────────────────────────────────
 
 /// Parse a full QLever CSV response into `CompoundEntry` rows.
 pub fn parse_compounds_csv(csv_text: &str) -> Result<Vec<CompoundEntry>, FetchError> {
     let (rows, _stats, _capped) = parse_compounds_csv_capped(csv_text, usize::MAX)?;
     Ok(rows)
+}
+
+/// Parse rows for table display only: deduplicate triples and materialize up to
+/// `max_rows`, then stop early. Used with separate exact count queries.
+pub fn parse_compounds_csv_display(
+    csv_text: &str,
+    max_rows: usize,
+) -> Result<Vec<CompoundEntry>, FetchError> {
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .flexible(true)
+        .from_reader(csv_text.as_bytes());
+
+    let headers = rdr
+        .byte_headers()
+        .map_err(|e| FetchError::Parse(e.to_string()))?
+        .clone();
+    let find = |name: &str| -> Option<usize> { headers.iter().position(|h| h == name.as_bytes()) };
+
+    let c_compound = find("compound");
+    let c_label = find("compoundLabel");
+    let c_inchikey = find("compound_inchikey");
+    let c_smiles_iso = find("compound_smiles_iso");
+    let c_smiles_con = find("compound_smiles_conn");
+    let c_mass = find("compound_mass");
+    let c_formula = find("compound_formula");
+    let c_taxon = find("taxon");
+    let c_taxon_name = find("taxon_name");
+    let c_ref_qid = find("ref_qid");
+    let c_ref_title = find("ref_title");
+    let c_ref_doi = find("ref_doi");
+    let c_ref_date = find("ref_date");
+    let c_statement = find("statement");
+
+    let initial_cap = max_rows.min(1024);
+    let mut entries: Vec<CompoundEntry> = Vec::with_capacity(initial_cap);
+    let mut seen: HashSet<u64> = HashSet::with_capacity(initial_cap.saturating_mul(2));
+    let mut compound_qid = String::new();
+    let mut taxon_qid = String::new();
+    let mut reference_qid = String::new();
+
+    let mut rec = csv::ByteRecord::new();
+    while entries.len() < max_rows
+        && rdr
+            .read_byte_record(&mut rec)
+            .map_err(|e| FetchError::Parse(e.to_string()))?
+    {
+        compound_qid.clear();
+        if let Some(i) = c_compound {
+            if let Some(b) = rec.get(i) {
+                fill_qid(&mut compound_qid, b);
+            }
+        }
+        if compound_qid.is_empty() {
+            continue;
+        }
+        taxon_qid.clear();
+        if let Some(i) = c_taxon {
+            if let Some(b) = rec.get(i) {
+                fill_qid(&mut taxon_qid, b);
+            }
+        }
+        reference_qid.clear();
+        if let Some(i) = c_ref_qid {
+            if let Some(b) = rec.get(i) {
+                fill_qid(&mut reference_qid, b);
+            }
+        }
+
+        let key = entry_key_fingerprint(
+            compound_qid.as_bytes(),
+            taxon_qid.as_bytes(),
+            reference_qid.as_bytes(),
+        );
+        if !seen.insert(key) {
+            continue;
+        }
+
+        let label = byte_field_str(&rec, c_label);
+        let inchikey = byte_field_str(&rec, c_inchikey);
+        let smiles_iso = byte_field_str(&rec, c_smiles_iso);
+        let smiles_con = byte_field_str(&rec, c_smiles_con);
+        let mass = byte_field_str(&rec, c_mass);
+        let formula = byte_field_str(&rec, c_formula);
+        let taxon_name = byte_field_str(&rec, c_taxon_name);
+        let ref_title = byte_field_str(&rec, c_ref_title);
+        let ref_doi = byte_field_str(&rec, c_ref_doi);
+        let ref_date = byte_field_str(&rec, c_ref_date);
+        let statement = byte_field_str(&rec, c_statement);
+
+        entries.push(CompoundEntry {
+            compound_qid: compound_qid.clone(),
+            name: owned_or_empty(label),
+            inchikey: non_empty(inchikey),
+            smiles: coalesce(smiles_iso, smiles_con),
+            mass: mass.parse::<f64>().ok(),
+            formula: non_empty(formula),
+            taxon_qid: taxon_qid.clone(),
+            taxon_name: owned_or_empty(taxon_name),
+            reference_qid: reference_qid.clone(),
+            ref_title: non_empty(ref_title),
+            ref_doi: clean_doi(ref_doi),
+            pub_year: parse_year(ref_date),
+            statement: non_empty(statement),
+        });
+    }
+
+    Ok(entries)
 }
 
 /// Parse aggregate count CSV with columns:

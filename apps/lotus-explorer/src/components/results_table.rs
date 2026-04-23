@@ -7,6 +7,8 @@ use std::sync::Arc;
 
 const VIRTUAL_INITIAL_ROWS: usize = 120;
 const VIRTUAL_STEP_ROWS: usize = 200;
+#[cfg(target_arch = "wasm32")]
+const WASM_HEAVY_EXPORT_MAX_ROWS: usize = 50_000;
 
 /// Human-facing QLever UI endpoint (for the "Open in QLever" deep-link).
 const QLEVER_UI: &str = "https://qlever.dev/wikidata";
@@ -136,6 +138,8 @@ pub fn ResultsTable(
         .read()
         .clone()
         .unwrap_or_else(|| "Preparing download...".to_string());
+    let heavy_exports_allowed = wasm_heavy_exports_allowed(total_matches);
+    let heavy_export_hint = "JSON/TTL disabled on wasm for very large result sets to avoid memory exhaustion. Use CSV export.";
 
     rsx! {
         div { class: "results-wrap",
@@ -204,73 +208,85 @@ pub fn ResultsTable(
                                     title: "Download all rows as CSV",
                                     "CSV"
                                 }
-                                button {
-                                    class: "btn btn-sm",
-                                    r#type: "button",
-                                    disabled: *download_busy.read(),
-                                    onclick: {
-                                        let q = query.to_string();
-                                        move |_| {
-                                            let q = q.clone();
-                                            let filename = json_filename.read().clone();
-                                            *download_busy.write() = true;
-                                            *download_status.write() = Some("Preparing JSON download...".to_string());
-                                            spawn(async move {
-                                                if let Ok(csv) = sparql::execute_sparql_cached(&q).await {
-                                                    if let Ok(rows) = sparql::parse_compounds_csv(csv.as_str()) {
-                                                        let body = export::build_ndjson(&rows);
+                                if heavy_exports_allowed {
+                                    button {
+                                        class: "btn btn-sm",
+                                        r#type: "button",
+                                        disabled: *download_busy.read(),
+                                        onclick: {
+                                            let q = query.to_string();
+                                            move |_| {
+                                                let q = q.clone();
+                                                let filename = json_filename.read().clone();
+                                                *download_busy.write() = true;
+                                                *download_status.write() = Some("Preparing JSON download...".to_string());
+                                                spawn(async move {
+                                                    if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
+                                                        let body = export::build_ndjson(rows.as_ref());
                                                         trigger_download(&filename, "application/x-ndjson", &body);
                                                     }
-                                                }
-                                                *download_busy.write() = false;
-                                                *download_status.write() = None;
-                                            });
-                                        }
-                                    },
-                                    title: "Download all rows as newline-delimited JSON (can take time)",
-                                    "JSON"
-                                }
-                                button {
-                                    class: "btn btn-sm",
-                                    r#type: "button",
-                                    disabled: *download_busy.read(),
-                                    onclick: {
-                                        let q = query.to_string();
-                                        let query_hash_value = query_hash.clone();
-                                        let result_hash_value = result_hash.clone();
-                                        move |_| {
-                                            let q = q.clone();
-                                            let filename = ttl_filename.read().clone();
-                                            let qh = query_hash_value.clone();
-                                            let rh = result_hash_value.clone();
-                                            let crit = criteria.peek().clone();
-                                            *download_busy.write() = true;
-                                            *download_status.write() = Some("Preparing TTL download...".to_string());
-                                            spawn(async move {
-                                                if let Ok(csv) = sparql::execute_sparql_cached(&q).await {
-                                                    if let Ok(rows) = sparql::parse_compounds_csv(csv.as_str()) {
-                                                        let full_stats = DatasetStats::from_entries(&rows);
+                                                    *download_busy.write() = false;
+                                                    *download_status.write() = None;
+                                                });
+                                            }
+                                        },
+                                        title: "Download all rows as newline-delimited JSON (can take time)",
+                                        "JSON"
+                                    }
+                                    button {
+                                        class: "btn btn-sm",
+                                        r#type: "button",
+                                        disabled: *download_busy.read(),
+                                        onclick: {
+                                            let q = query.to_string();
+                                            let query_hash_value = query_hash.clone();
+                                            let result_hash_value = result_hash.clone();
+                                            let stats_for_export = display_stats.clone();
+                                            move |_| {
+                                                let q = q.clone();
+                                                let filename = ttl_filename.read().clone();
+                                                let qh = query_hash_value.clone();
+                                                let rh = result_hash_value.clone();
+                                                let crit = criteria.peek().clone();
+                                                let stats_for_export = stats_for_export.clone();
+                                                *download_busy.write() = true;
+                                                *download_status.write() = Some("Preparing TTL download...".to_string());
+                                                spawn(async move {
+                                                    if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
                                                         let ttl = export::build_ttl(
-                                                            &rows,
+                                                            rows.as_ref(),
                                                             export::MetadataInputs {
                                                                 criteria: &crit,
                                                                 qid: None,
-                                                                stats: &full_stats,
-                                                                number_of_records_override: Some(full_stats.n_entries),
+                                                                stats: &stats_for_export,
+                                                                number_of_records_override: Some(stats_for_export.n_entries),
                                                                 query_hash: qh.as_deref().unwrap_or(""),
                                                                 result_hash: rh.as_deref().unwrap_or(""),
                                                             },
                                                         );
                                                         trigger_download(&filename, "text/turtle", &ttl);
                                                     }
-                                                }
-                                                *download_busy.write() = false;
-                                                *download_status.write() = None;
-                                            });
-                                        }
-                                    },
-                                    title: "Download all rows as RDF Turtle (can take time)",
-                                    "TTL"
+                                                    *download_busy.write() = false;
+                                                    *download_status.write() = None;
+                                                });
+                                            }
+                                        },
+                                        title: "Download all rows as RDF Turtle (can take time)",
+                                        "TTL"
+                                    }
+                                } else {
+                                    span {
+                                        class: "btn btn-sm",
+                                        role: "status",
+                                        title: "{heavy_export_hint}",
+                                        "JSON"
+                                    }
+                                    span {
+                                        class: "btn btn-sm",
+                                        role: "status",
+                                        title: "{heavy_export_hint}",
+                                        "TTL"
+                                    }
                                 }
                             }
                             if let Some(body) = metadata_json.as_ref() {
@@ -789,5 +805,19 @@ fn trigger_query_csv_download(sparql_query: &str, filename: &str) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let _ = (sparql_query, filename);
+    }
+}
+
+fn wasm_heavy_exports_allowed(total_matches: Option<usize>) -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        total_matches
+            .map(|n| n <= WASM_HEAVY_EXPORT_MAX_ROWS)
+            .unwrap_or(true)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = total_matches;
+        true
     }
 }
