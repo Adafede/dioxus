@@ -932,6 +932,8 @@ fn absolute_share_url(share: &str) -> String {
 fn initial_criteria_from_url() -> SearchCriteria {
     let mut criteria = SearchCriteria::default();
     let params = read_url_query_params();
+    let has_explicit_taxon = params.get("taxon").is_some();
+    let mut has_structure = false;
 
     if let Some(taxon) = params.get("taxon") {
         criteria.taxon = taxon.clone();
@@ -942,6 +944,7 @@ fn initial_criteria_from_url() -> SearchCriteria {
         .or_else(|| params.get("smiles").cloned())
     {
         criteria.smiles = structure;
+        has_structure = true;
     }
     if let Some(search_type) = params
         .get("structure_search_type")
@@ -958,6 +961,13 @@ fn initial_criteria_from_url() -> SearchCriteria {
         if let Ok(v) = threshold.parse::<f64>() {
             criteria.smiles_threshold = v.clamp(0.05, 1.0);
         }
+    }
+
+    // Share links with only `?structure=...` should not inherit the default
+    // taxon from `SearchCriteria::default()` (Gentiana lutea), otherwise the
+    // pasted URL does not reproduce the sender's result set.
+    if has_structure && !has_explicit_taxon {
+        criteria.taxon.clear();
     }
 
     criteria
