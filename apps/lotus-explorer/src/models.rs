@@ -286,6 +286,28 @@ impl SearchCriteria {
             params.push(("year_start".to_string(), format!("{}", self.year_min)));
             params.push(("year_end".to_string(), format!("{}", self.year_max)));
         }
+        if self.formula_enabled {
+            params.push(("formula_filter".to_string(), "true".to_string()));
+            if !self.formula_exact.trim().is_empty() {
+                params.push(("formula_exact".to_string(), self.formula_exact.clone()));
+            }
+            params.push(("c_min".to_string(), self.c_min.to_string()));
+            params.push(("c_max".to_string(), self.c_max.to_string()));
+            params.push(("h_min".to_string(), self.h_min.to_string()));
+            params.push(("h_max".to_string(), self.h_max.to_string()));
+            params.push(("n_min".to_string(), self.n_min.to_string()));
+            params.push(("n_max".to_string(), self.n_max.to_string()));
+            params.push(("o_min".to_string(), self.o_min.to_string()));
+            params.push(("o_max".to_string(), self.o_max.to_string()));
+            params.push(("p_min".to_string(), self.p_min.to_string()));
+            params.push(("p_max".to_string(), self.p_max.to_string()));
+            params.push(("s_min".to_string(), self.s_min.to_string()));
+            params.push(("s_max".to_string(), self.s_max.to_string()));
+            params.push(("f_state".to_string(), self.f_state.as_str().to_string()));
+            params.push(("cl_state".to_string(), self.cl_state.as_str().to_string()));
+            params.push(("br_state".to_string(), self.br_state.as_str().to_string()));
+            params.push(("i_state".to_string(), self.i_state.as_str().to_string()));
+        }
         params
     }
 }
