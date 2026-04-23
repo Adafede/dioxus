@@ -337,8 +337,12 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::Retry => "Réessayer",
             TextKey::ErrorHintValidation => "Veuillez ajuster la saisie puis réessayer.",
             TextKey::ErrorHintNetwork => "Problème réseau détecté. Réessayer peut aider.",
-            TextKey::ErrorHintServer => "Erreur du service distant. Réessayez dans quelques secondes.",
-            TextKey::ErrorHintParse => "Echec de lecture de la réponse. Réessayez ou affinez la requête.",
+            TextKey::ErrorHintServer => {
+                "Erreur du service distant. Réessayez dans quelques secondes."
+            }
+            TextKey::ErrorHintParse => {
+                "Echec de lecture de la réponse. Réessayez ou affinez la requête."
+            }
             TextKey::ErrorHintMemory => "Résultat trop volumineux pour la mémoire de l'appareil.",
             TextKey::ErrorHintUnknown => "Erreur inattendue. Réessayer peut aider.",
             TextKey::SkipToResults => "Aller aux résultats",
@@ -626,4 +630,3 @@ mod tests {
         assert_eq!(count_label(Locale::Fr, CountNoun::Entry, 2), "Entrées");
     }
 }
-
