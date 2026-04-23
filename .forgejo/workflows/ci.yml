@@ -8,7 +8,7 @@ on:
 jobs:
   check:
     name: Type-check (wasm32)
-    runs-on: ubuntu-latest
+    runs-on: codeberg-small
     steps:
       - uses: actions/checkout@v4
 
