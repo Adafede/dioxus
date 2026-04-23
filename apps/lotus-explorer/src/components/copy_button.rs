@@ -88,36 +88,58 @@ async fn gloo_timer_sleep_ms(ms: u32) {
 pub fn copy_to_clipboard(text: &str) {
     #[cfg(target_arch = "wasm32")]
     {
-        // JSON-encode so arbitrary text (including quotes, newlines, Unicode)
-        // embeds safely in the eval'd snippet.
-        let payload = serde_json::to_string(text).unwrap_or_else(|_| "\"\"".to_string());
-        let script = format!(
-            r#"(() => {{
-  const text = {payload};
-  const nav = window.navigator;
-  if (nav && nav.clipboard && nav.clipboard.writeText) {{
-    nav.clipboard.writeText(text).catch(() => fallback());
-    return;
-  }}
-  fallback();
-  function fallback() {{
-    try {{
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.setAttribute("readonly", "");
-      ta.style.position = "fixed";
-      ta.style.top = "0";
-      ta.style.left = "0";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      ta.remove();
-    }} catch (e) {{ /* give up silently */ }}
-  }}
-}})();"#
-        );
-        let _ = js_sys::eval(&script);
+        use wasm_bindgen::JsCast;
+
+        let Some(window) = web_sys::window() else {
+            return;
+        };
+        let Some(document) = window.document() else {
+            return;
+        };
+
+        // Try modern clipboard API via reflection without requiring extra
+        // `web-sys` features.
+        let window_js = wasm_bindgen::JsValue::from(window.clone());
+        let nav = js_sys::Reflect::get(&window_js, &wasm_bindgen::JsValue::from_str("navigator"));
+        if let Ok(nav) = nav {
+            if let Ok(clipboard) =
+                js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("clipboard"))
+            {
+                if let Ok(write_text) =
+                    js_sys::Reflect::get(&clipboard, &wasm_bindgen::JsValue::from_str("writeText"))
+                {
+                    if let Some(func) = write_text.dyn_ref::<js_sys::Function>() {
+                        let _ = func.call1(&clipboard, &wasm_bindgen::JsValue::from_str(text));
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Fallback: hidden textarea + execCommand('copy').
+        let area = document
+            .create_element("textarea")
+            .ok()
+            .and_then(|el| el.dyn_into::<web_sys::HtmlTextAreaElement>().ok());
+        if let (Some(ta), Some(body)) = (area, document.body()) {
+            ta.set_value(text);
+            let _ = ta.set_attribute("readonly", "");
+            let _ = ta.set_attribute(
+                "style",
+                "position:fixed;top:0;left:0;opacity:0;pointer-events:none;",
+            );
+            let _ = body.append_child(&ta);
+            ta.select();
+            let doc_js = wasm_bindgen::JsValue::from(document.clone());
+            if let Ok(exec_cmd) =
+                js_sys::Reflect::get(&doc_js, &wasm_bindgen::JsValue::from_str("execCommand"))
+            {
+                if let Some(func) = exec_cmd.dyn_ref::<js_sys::Function>() {
+                    let _ = func.call1(&doc_js, &wasm_bindgen::JsValue::from_str("copy"));
+                }
+            }
+            let _ = body.remove_child(&ta);
+        }
     }
     #[cfg(not(target_arch = "wasm32"))]
     {

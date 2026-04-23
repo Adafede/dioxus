@@ -790,44 +790,40 @@ fn trigger_download(filename: &str, mime: &str, body: &str) {
 fn trigger_query_csv_download(sparql_query: &str, filename: &str) {
     #[cfg(target_arch = "wasm32")]
     {
-        let endpoint_json = serde_json::to_string("https://qlever.dev/api/wikidata")
-            .unwrap_or_else(|_| "\"https://qlever.dev/api/wikidata\"".to_string());
-        let query_json = serde_json::to_string(sparql_query).unwrap_or_else(|_| "\"\"".to_string());
-        let filename_json =
-            serde_json::to_string(filename).unwrap_or_else(|_| "\"download.csv\"".to_string());
-        let script = format!(
-            r#"(() => {{
-  const endpoint = {endpoint_json};
-  const query = {query_json};
-  const filename = {filename_json};
-  const body = new URLSearchParams();
-  body.set("query", query);
-  body.set("action", "csv_export");
+        use wasm_bindgen::JsCast;
 
-  fetch(endpoint, {{
-    method: "POST",
-    headers: {{ "Accept": "text/csv" }},
-    body,
-  }})
-    .then((r) => {{ if (!r.ok) throw new Error(`HTTP ${{r.status}}`); return r.blob(); }})
-    .then((blob) => {{
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.rel = "noopener noreferrer";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    }})
-    .catch(() => {{
-      const ui = "https://qlever.dev/wikidata?query=" + encodeURIComponent(query);
-      window.open(ui, "_blank", "noopener,noreferrer");
-    }});
-}})();"#
+        let endpoint = "https://qlever.dev/api/wikidata";
+        let href = format!(
+            "{endpoint}?query={}&action=csv_export",
+            urlencoding::encode(sparql_query)
         );
-        let _ = js_sys::eval(&script);
+
+        let Some(window) = web_sys::window() else {
+            return;
+        };
+        let Some(document) = window.document() else {
+            return;
+        };
+
+        let anchor = document
+            .create_element("a")
+            .ok()
+            .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok());
+
+        if let (Some(a), Some(body_el)) = (anchor, document.body()) {
+            a.set_href(&href);
+            a.set_download(filename);
+            a.set_rel("noopener noreferrer");
+            let _ = body_el.append_child(&a);
+            a.click();
+            let _ = body_el.remove_child(&a);
+        } else {
+            let ui = format!(
+                "https://qlever.dev/wikidata?query={}",
+                urlencoding::encode(sparql_query)
+            );
+            let _ = window.open_with_url(&ui);
+        }
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
