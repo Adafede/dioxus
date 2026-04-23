@@ -387,3 +387,37 @@ pub fn query_with_limit(base_query: &str, limit: usize) -> String {
     let trimmed = base_query.trim_end();
     format!("{trimmed}\nLIMIT {limit}")
 }
+
+pub fn query_with_client_prefilters(
+    base_query: &str,
+    mass_filter: Option<(f64, f64)>,
+    year_filter: Option<(i32, i32)>,
+) -> String {
+    let mut filters = Vec::new();
+    if let Some((min, max)) = mass_filter {
+        filters.push(format!(
+            "FILTER(BOUND(?compound_mass) && ?compound_mass >= {min:.6} && ?compound_mass <= {max:.6})"
+        ));
+    }
+    if let Some((start, end)) = year_filter {
+        filters.push(format!(
+            "FILTER(BOUND(?ref_date) && YEAR(?ref_date) >= {start} && YEAR(?ref_date) <= {end})"
+        ));
+    }
+    if filters.is_empty() {
+        return base_query.to_string();
+    }
+
+    let trimmed = base_query.trim_end();
+    let Some(last_close) = trimmed.rfind('}') else {
+        return format!("{trimmed}\n{}", filters.join("\n"));
+    };
+
+    let mut out = String::with_capacity(trimmed.len() + filters.len() * 90);
+    out.push_str(&trimmed[..last_close]);
+    out.push('\n');
+    out.push_str(&filters.join("\n"));
+    out.push('\n');
+    out.push_str(&trimmed[last_close..]);
+    out
+}

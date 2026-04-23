@@ -315,28 +315,38 @@ pub fn ResultsTable(
                                                 );
                                                 spawn(async move {
                                                     if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                                        let filtered: Vec<CompoundEntry> = if crit
-                                                            .has_client_post_filters()
-                                                        {
-                                                            rows.iter()
+                                                        let ttl = if crit.has_client_post_filters() {
+                                                            let filtered: Vec<CompoundEntry> = rows
+                                                                .iter()
                                                                 .filter(|e| matches_client_filters(e, &crit))
                                                                 .cloned()
-                                                                .collect()
+                                                                .collect();
+                                                            let filtered_stats = DatasetStats::from_entries(&filtered);
+                                                            export::build_ttl(
+                                                                &filtered,
+                                                                export::MetadataInputs {
+                                                                    criteria: &crit,
+                                                                    qid: None,
+                                                                    stats: &filtered_stats,
+                                                                    number_of_records_override: Some(filtered_stats.n_entries),
+                                                                    query_hash: qh.as_deref().unwrap_or(""),
+                                                                    result_hash: rh.as_deref().unwrap_or(""),
+                                                                },
+                                                            )
                                                         } else {
-                                                            rows.as_ref().to_vec()
+                                                            let stats = DatasetStats::from_entries(rows.as_ref());
+                                                            export::build_ttl(
+                                                                rows.as_ref(),
+                                                                export::MetadataInputs {
+                                                                    criteria: &crit,
+                                                                    qid: None,
+                                                                    stats: &stats,
+                                                                    number_of_records_override: Some(stats.n_entries),
+                                                                    query_hash: qh.as_deref().unwrap_or(""),
+                                                                    result_hash: rh.as_deref().unwrap_or(""),
+                                                                },
+                                                            )
                                                         };
-                                                        let filtered_stats = DatasetStats::from_entries(&filtered);
-                                                        let ttl = export::build_ttl(
-                                                            &filtered,
-                                                            export::MetadataInputs {
-                                                                criteria: &crit,
-                                                                qid: None,
-                                                                stats: &filtered_stats,
-                                                                number_of_records_override: Some(filtered_stats.n_entries),
-                                                                query_hash: qh.as_deref().unwrap_or(""),
-                                                                result_hash: rh.as_deref().unwrap_or(""),
-                                                            },
-                                                        );
                                                         trigger_download(&filename, "text/turtle", &ttl);
                                                     }
                                                     *download_busy.write() = false;

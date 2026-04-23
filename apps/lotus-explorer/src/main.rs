@@ -203,27 +203,40 @@ fn App() -> Element {
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                let filtered: Vec<CompoundEntry> = if crit.has_client_post_filters()
-                                {
-                                    rows.iter()
+                                let ttl = if crit.has_client_post_filters() {
+                                    let filtered: Vec<CompoundEntry> = rows
+                                        .iter()
                                         .filter(|e| matches_client_filters(e, &crit))
                                         .cloned()
-                                        .collect()
+                                        .collect();
+                                    let filtered_stats = DatasetStats::from_entries(&filtered);
+                                    export::build_ttl(
+                                        &filtered,
+                                        export::MetadataInputs {
+                                            criteria: &crit,
+                                            qid: None,
+                                            stats: &filtered_stats,
+                                            number_of_records_override: Some(
+                                                filtered_stats.n_entries,
+                                            ),
+                                            query_hash: &qh,
+                                            result_hash: &rh,
+                                        },
+                                    )
                                 } else {
-                                    rows.as_ref().to_vec()
+                                    let stats = DatasetStats::from_entries(rows.as_ref());
+                                    export::build_ttl(
+                                        rows.as_ref(),
+                                        export::MetadataInputs {
+                                            criteria: &crit,
+                                            qid: None,
+                                            stats: &stats,
+                                            number_of_records_override: Some(stats.n_entries),
+                                            query_hash: &qh,
+                                            result_hash: &rh,
+                                        },
+                                    )
                                 };
-                                let filtered_stats = DatasetStats::from_entries(&filtered);
-                                let ttl = export::build_ttl(
-                                    &filtered,
-                                    export::MetadataInputs {
-                                        criteria: &crit,
-                                        qid: None,
-                                        stats: &filtered_stats,
-                                        number_of_records_override: Some(filtered_stats.n_entries),
-                                        query_hash: &qh,
-                                        result_hash: &rh,
-                                    },
-                                );
                                 trigger_download_main(&filename, "text/turtle", &ttl);
                             }
                         });
@@ -868,10 +881,22 @@ async fn do_search(
         }
     };
 
+    let execution_query = if crit.has_client_post_filters() {
+        queries::query_with_client_prefilters(
+            &sparql_query,
+            crit.has_mass_filter()
+                .then_some((crit.mass_min, crit.mass_max)),
+            crit.has_year_filter()
+                .then_some((crit.year_min, crit.year_max)),
+        )
+    } else {
+        sparql_query.clone()
+    };
+
     let display_limit = runtime_table_row_limit();
     let (rows, total_stats_out, total_matches) = if crit.has_client_post_filters() {
         *query_phase.write() = QueryPhase::FetchingPreview;
-        let csv = sparql::execute_sparql(&sparql_query)
+        let csv = sparql::execute_sparql(&execution_query)
             .await
             .map_err(|e| AppError {
                 kind: ErrorKind::Network,
@@ -887,8 +912,8 @@ async fn do_search(
         // only the display window. This keeps metadata totals exact while cutting
         // transfer size for large result sets.
         *query_phase.write() = QueryPhase::Counting;
-        let count_query = queries::query_counts_from_base(&sparql_query);
-        let display_query = queries::query_with_limit(&sparql_query, display_limit);
+        let count_query = queries::query_counts_from_base(&execution_query);
+        let display_query = queries::query_with_limit(&execution_query, display_limit);
 
         match async {
             let counts_csv = sparql::execute_sparql(&count_query)
@@ -935,13 +960,12 @@ async fn do_search(
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     let _ = err_msg;
-                    let csv =
-                        sparql::execute_sparql(&sparql_query)
-                            .await
-                            .map_err(|e| AppError {
-                                kind: ErrorKind::Network,
-                                message: err_query_stage_failed(locale, "query", &e.to_string()),
-                            })?;
+                    let csv = sparql::execute_sparql(&execution_query)
+                        .await
+                        .map_err(|e| AppError {
+                            kind: ErrorKind::Network,
+                            message: err_query_stage_failed(locale, "query", &e.to_string()),
+                        })?;
                     let (rows, full_stats, _parse_capped) =
                         sparql::parse_compounds_csv_capped(&csv, display_limit).map_err(|e| {
                             AppError {
@@ -959,7 +983,7 @@ async fn do_search(
         rows,
         qid: taxon_qid,
         warning,
-        query: sparql_query,
+        query: execution_query,
         total_matches,
         total_stats: total_stats_out,
     })
