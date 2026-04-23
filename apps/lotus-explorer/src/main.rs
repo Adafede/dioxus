@@ -607,15 +607,19 @@ fn WelcomeScreen(locale: Locale) -> Element {
                     "{t(locale, TextKey::WelcomeProgrammaticDownload)}"
                 }
                 div { class: "welcome-cli-list",
-                    DownloadExampleRow { locale, format: "Taxon", query: "?taxon=*" }
                     DownloadExampleRow {
                         locale,
-                        format: "Structures",
+                        format: t(locale, TextKey::ExampleQueryTaxon),
+                        query: "?taxon=*",
+                    }
+                    DownloadExampleRow {
+                        locale,
+                        format: t(locale, TextKey::ExampleQueryStructure),
                         query: "?structure=c1ccccc1&structure_search_type=similarity&smiles_threshold=0.85",
                     }
                     DownloadExampleRow {
                         locale,
-                        format: "Advanced",
+                        format: t(locale, TextKey::ExampleQueryAdvanced),
                         query: "?taxon=Fungi&mass_filter=true&mass_min=0&mass_max=300&year_filter=true&year_start=2000&year_end=2026&formula_filter=true&c_min=1&c_max=10&cl_state=required&br_state=excluded&download=true&format=ttl",
                     }
                 }

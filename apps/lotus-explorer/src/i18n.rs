@@ -115,6 +115,9 @@ pub enum TextKey {
     ExampleGentiana,
     ExampleAllTriples,
     ExampleSmilesOnly,
+    ExampleQueryTaxon,
+    ExampleQueryStructure,
+    ExampleQueryAdvanced,
     WelcomeProgrammaticDownload,
     // Search panel
     SearchFilters,
@@ -238,6 +241,9 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::ExampleGentiana => "Enter a taxon name or a Wikidata QID",
             TextKey::ExampleAllTriples => "All LOTUS compound-taxon-reference triples",
             TextKey::ExampleSmilesOnly => "Paste a SMILES or Molfile in the structure box",
+            TextKey::ExampleQueryTaxon => "Taxon",
+            TextKey::ExampleQueryStructure => "Structure",
+            TextKey::ExampleQueryAdvanced => "Advanced",
             TextKey::WelcomeProgrammaticDownload => "Programmatic download URL patterns:",
             TextKey::SearchFilters => "Search filters",
             TextKey::Taxon => "Taxon",
@@ -370,6 +376,9 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::ExampleGentiana => "Saisir un nom de taxon ou un QID Wikidata",
             TextKey::ExampleAllTriples => "Tous les triplets composé-taxon-reference LOTUS",
             TextKey::ExampleSmilesOnly => "Collez un SMILES ou un Molfile dans la zone structure",
+            TextKey::ExampleQueryTaxon => "Taxon",
+            TextKey::ExampleQueryStructure => "Structure",
+            TextKey::ExampleQueryAdvanced => "Avancé",
             TextKey::WelcomeProgrammaticDownload => {
                 "Modèles d'URL pour téléchargement programmatique :"
             }
@@ -504,6 +513,9 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::ExampleGentiana => "Taxonname oder Wikidata-QID eingeben",
         TextKey::ExampleAllTriples => "Alle LOTUS Verbindung-Taxon-Referenz-Tripel",
         TextKey::ExampleSmilesOnly => "SMILES oder Molfile in das Strukturfeld einfügen",
+        TextKey::ExampleQueryTaxon => "Taxon",
+        TextKey::ExampleQueryStructure => "Struktur",
+        TextKey::ExampleQueryAdvanced => "Erweitert",
         TextKey::WelcomeProgrammaticDownload => {
             "Programmgesteuerte Downloads per URL-Parameter (Beispiele):"
         }
@@ -639,6 +651,9 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::ExampleGentiana => "Inserisci un nome di taxon o un QID Wikidata",
         TextKey::ExampleAllTriples => "Tutte le triple LOTUS composto-taxon-riferimento",
         TextKey::ExampleSmilesOnly => "Incolla uno SMILES o un Molfile nel campo struttura",
+        TextKey::ExampleQueryTaxon => "Taxon",
+        TextKey::ExampleQueryStructure => "Struttura",
+        TextKey::ExampleQueryAdvanced => "Avanzato",
         TextKey::WelcomeProgrammaticDownload => {
             "Download programmatico con parametri URL (esempi):"
         }
