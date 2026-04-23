@@ -1,3 +1,4 @@
+use crate::i18n::{Locale, TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::{StructureKind, classify_structure};
 use dioxus::prelude::*;
@@ -5,24 +6,27 @@ use dioxus::prelude::*;
 #[component]
 pub fn SearchPanel(
     criteria: Signal<SearchCriteria>,
+    locale: Locale,
     on_search: EventHandler<()>,
     loading: bool,
 ) -> Element {
     let mut c = criteria;
 
     rsx! {
-        section { class: "search-panel", aria_label: "Search filters",
+        section {
+            class: "search-panel",
+            aria_label: "{t(locale, TextKey::SearchFilters)}",
 
             // ── Taxon ────────────────────────────────────────────────────
             div { class: "form-section",
-                label { class: "form-label", r#for: "taxon-input", "Taxon" }
+                label { class: "form-label", r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
                 input {
                     id: "taxon-input",
                     r#type: "text",
                     class: "form-input",
                     autocomplete: "off",
                     spellcheck: "false",
-                    placeholder: "Gentiana lutea · Q34317 · *",
+                    placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
                     value: "{c.read().taxon}",
                     oninput: move |e| c.write().taxon = e.value(),
                     onkeydown: move |e| {
@@ -31,18 +35,18 @@ pub fn SearchPanel(
                         }
                     },
                 }
-                p { class: "form-hint", "Name, Wikidata QID or * for the full dataset." }
+                p { class: "form-hint", "{t(locale, TextKey::TaxonHint)}" }
             }
 
             // ── Structure (SMILES or Molfile V2000/V3000) ────────────────
-            StructureSection { criteria }
+            StructureSection { criteria, locale }
 
             // ── Mass range ───────────────────────────────────────────────
             fieldset { class: "form-section", style: "border:0;padding:0;margin:0;",
-                legend { class: "form-label", "Molecular Mass (Da)" }
+                legend { class: "form-label", "{t(locale, TextKey::MolecularMass)}" }
                 div { class: "range-inputs",
                     div { class: "range-pair",
-                        label { class: "form-label sm", r#for: "mass-min", "Min" }
+                        label { class: "form-label sm", r#for: "mass-min", "{t(locale, TextKey::Min)}" }
                         input {
                             id: "mass-min",
                             r#type: "number",
@@ -60,7 +64,7 @@ pub fn SearchPanel(
                     }
                     span { class: "range-sep", "–" }
                     div { class: "range-pair",
-                        label { class: "form-label sm", r#for: "mass-max", "Max" }
+                        label { class: "form-label sm", r#for: "mass-max", "{t(locale, TextKey::Max)}" }
                         input {
                             id: "mass-max",
                             r#type: "number",
@@ -81,10 +85,12 @@ pub fn SearchPanel(
 
             // ── Year range ───────────────────────────────────────────────
             fieldset { class: "form-section", style: "border:0;padding:0;margin:0;",
-                legend { class: "form-label", "Publication Year" }
+                legend { class: "form-label", "{t(locale, TextKey::PublicationYear)}" }
                 div { class: "range-inputs",
                     div { class: "range-pair",
-                        label { class: "form-label sm", r#for: "year-min", "From" }
+                        label { class: "form-label sm", r#for: "year-min",
+                            "{t(locale, TextKey::YearFrom)}"
+                        }
                         input {
                             id: "year-min",
                             r#type: "number",
@@ -102,7 +108,9 @@ pub fn SearchPanel(
                     }
                     span { class: "range-sep", "–" }
                     div { class: "range-pair",
-                        label { class: "form-label sm", r#for: "year-max", "To" }
+                        label { class: "form-label sm", r#for: "year-max",
+                            "{t(locale, TextKey::YearTo)}"
+                        }
                         input {
                             id: "year-max",
                             r#type: "number",
@@ -129,12 +137,14 @@ pub fn SearchPanel(
                         checked: c.read().formula_enabled,
                         onchange: move |e| c.write().formula_enabled = e.checked(),
                     }
-                    "Formula filter"
+                    "{t(locale, TextKey::FormulaFilter)}"
                 }
 
                 if c.read().formula_enabled {
                     div { class: "form-section nested",
-                        label { class: "form-label sm", r#for: "formula-exact", "Exact formula" }
+                        label { class: "form-label sm", r#for: "formula-exact",
+                            "{t(locale, TextKey::ExactFormula)}"
+                        }
                         input {
                             id: "formula-exact",
                             r#type: "text",
@@ -223,13 +233,13 @@ pub fn SearchPanel(
                 class: "search-btn",
                 r#type: "submit",
                 disabled: loading,
-                aria_label: "Run search",
+                aria_label: "{t(locale, TextKey::RunSearch)}",
                 onclick: move |_| on_search.call(()),
                 if loading {
                     span { class: "spinner-sm", "aria-hidden": "true" }
-                    "Searching…"
+                    "{t(locale, TextKey::Searching)}"
                 } else {
-                    "Search"
+                    "{t(locale, TextKey::Search)}"
                 }
             }
         }
@@ -239,7 +249,7 @@ pub fn SearchPanel(
 // ── Structure section: SMILES + Molfile V2000/V3000 + Ketcher ────────────────
 
 #[component]
-fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
+fn StructureSection(criteria: Signal<SearchCriteria>, locale: Locale) -> Element {
     let mut c = criteria;
     // Memoise the classifier: `classify_structure` uppercases the whole
     // Molfile on every call. Recompute only when the SMILES text changes,
@@ -249,12 +259,14 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
 
     rsx! {
         div { class: "form-section",
-            label { class: "form-label", r#for: "smiles-input", "Structure — SMILES or Molfile" }
+            label { class: "form-label", r#for: "smiles-input",
+                "{t(locale, TextKey::StructureSmilesOrMol)}"
+            }
             textarea {
                 id: "smiles-input",
                 class: "form-textarea mono",
                 spellcheck: "false",
-                placeholder: "c1ccccc1   — or paste a Molfile (V2000 / V3000) block",
+                placeholder: "{t(locale, TextKey::StructurePlaceholder)}",
                 value: "{c.read().smiles}",
                 oninput: move |e| c.write().smiles = e.value(),
                 rows: "4",
@@ -266,16 +278,14 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
                         "data-kind": "{kind_class(kind_value)}",
                         "{kind_value.label()}"
                     }
-                    span { class: "kind-note", {kind_note(kind_value)} }
+                    span { class: "kind-note", {kind_note(kind_value, locale)} }
                 }
             } else {
-                p { class: "form-hint",
-                    "Optional. One-line SMILES or a full Molfile — paste with trailing “M  END”."
-                }
+                p { class: "form-hint", "{t(locale, TextKey::StructureHintEmpty)}" }
             }
 
             fieldset { class: "radio-group", style: "border:0;padding:0;margin:0;",
-                legend { class: "sr-only", "Structure search mode" }
+                legend { class: "sr-only", "{t(locale, TextKey::StructureSearchMode)}" }
                 label { class: "radio-label",
                     input {
                         r#type: "radio",
@@ -283,7 +293,7 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
                         checked: c.read().smiles_search_type == SmilesSearchType::Substructure,
                         onchange: move |_| c.write().smiles_search_type = SmilesSearchType::Substructure,
                     }
-                    "Substructure"
+                    "{t(locale, TextKey::Substructure)}"
                 }
                 label { class: "radio-label",
                     input {
@@ -292,13 +302,13 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
                         checked: c.read().smiles_search_type == SmilesSearchType::Similarity,
                         onchange: move |_| c.write().smiles_search_type = SmilesSearchType::Similarity,
                     }
-                    "Similarity"
+                    "{t(locale, TextKey::Similarity)}"
                 }
             }
             if c.read().smiles_search_type == SmilesSearchType::Similarity {
                 div { class: "form-section nested",
                     label { class: "form-label sm", r#for: "threshold-input",
-                        "Threshold: {c.read().smiles_threshold:.2}"
+                        "{threshold_label(locale, c.read().smiles_threshold)}"
                     }
                     input {
                         id: "threshold-input",
@@ -324,13 +334,13 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
             // Note: the Ketcher editor lives in the main content area so it
             // can use the full viewport width. See `KetcherPanel` below.
             p { class: "form-hint ketcher-hint",
-                "Need to draw or look up a structure? Use the "
-                strong { "Structure editor (Ketcher)" }
-                " panel in the main view, then "
+                "{t(locale, TextKey::KetcherHintA)}"
+                strong { "{t(locale, TextKey::KetcherSummary)}" }
+                "{t(locale, TextKey::KetcherHintB)}"
                 em { "Edit → Copy as Daylight SMILES" }
-                " (or "
+                "{t(locale, TextKey::KetcherHintC)}"
                 em { "Copy as Extended SMILES / MOL V3000" }
-                ") and paste above."
+                "{t(locale, TextKey::KetcherHintD)}"
             }
         }
     }
@@ -346,26 +356,24 @@ fn StructureSection(criteria: Signal<SearchCriteria>) -> Element {
 const KETCHER_URL: &str = "ketcher/index.html";
 
 #[component]
-pub fn KetcherPanel() -> Element {
+pub fn KetcherPanel(locale: Locale) -> Element {
     rsx! {
         details { class: "ketcher-panel",
-            summary { "Structure editor (Ketcher)" }
+            summary { "{t(locale, TextKey::KetcherSummary)}" }
             div { class: "ketcher-wrap",
                 iframe {
                     src: "{KETCHER_URL}",
                     class: "ketcher-iframe",
-                    title: "Ketcher structure editor",
+                    title: "{t(locale, TextKey::KetcherIframeTitle)}",
                     "loading": "lazy",
                     "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
                 }
                 p { class: "form-hint ketcher-hint",
-                    "Draw or look up a structure, then "
+                    "{t(locale, TextKey::KetcherHintA)}"
                     em { "Edit → Copy as Daylight SMILES" }
-                    " (or "
+                    "{t(locale, TextKey::KetcherHintC)}"
                     em { "Copy as Extended SMILES / MOL V3000" }
-                    ") and paste it into the "
-                    strong { "Structure" }
-                    " field of the search panel."
+                    ") and paste above."
                 }
                 // The "Editor not loading? Download Ketcher standalone…"
                 // install hint is intentionally hidden from end-users: the
@@ -397,14 +405,12 @@ fn kind_class(k: StructureKind) -> &'static str {
     }
 }
 
-fn kind_note(k: StructureKind) -> &'static str {
+fn kind_note(k: StructureKind, locale: Locale) -> &'static str {
     match k {
         StructureKind::Empty => "",
-        StructureKind::Smiles => "  Sent as a single-line SPARQL literal.",
-        StructureKind::MolfileV2000 => "  Forwarded verbatim to SACHEM scoredSubstructureSearch.",
-        StructureKind::MolfileV3000 => {
-            "  Forwarded verbatim to SACHEM scoredSubstructureSearch (CTAB v3000)."
-        }
+        StructureKind::Smiles => t(locale, TextKey::KindNoteSmiles),
+        StructureKind::MolfileV2000 => t(locale, TextKey::KindNoteMol2000),
+        StructureKind::MolfileV3000 => t(locale, TextKey::KindNoteMol3000),
     }
 }
 

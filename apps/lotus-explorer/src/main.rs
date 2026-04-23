@@ -11,7 +11,10 @@ use components::copy_button::CopyButton;
 use components::results_table::ResultsTable;
 use components::search_panel::{KetcherPanel, SearchPanel};
 use dioxus::prelude::*;
-use i18n::Locale;
+use i18n::{
+    Locale, TextKey, err_invalid_search_input, err_taxon_not_found, t, warn_ambiguous_taxon,
+    warn_input_standardized,
+};
 use models::*;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -64,7 +67,7 @@ fn App() -> Element {
         let crit = criteria.peek().clone();
 
         if !crit.is_valid() {
-            *error.write() = Some("Please enter a taxon name / QID, or a SMILES structure.".into());
+            *error.write() = Some(err_invalid_search_input(*locale.peek()));
             return;
         }
 
@@ -84,7 +87,7 @@ fn App() -> Element {
         *mobile_filters_open.write() = false;
 
         spawn(async move {
-            match do_search(crit.clone()).await {
+            match do_search(crit.clone(), *locale.peek()).await {
                 Ok(mut outcome) => {
                     // Client-side post-filters (mass, year, formula).
                     if crit.has_mass_filter() {
@@ -160,19 +163,24 @@ fn App() -> Element {
                 button {
                     class: "filters-toggle",
                     r#type: "button",
-                    aria_label: if *mobile_filters_open.read() { "Hide filters" } else { "Show filters" },
+                    aria_label: if *mobile_filters_open.read() { t(*locale.read(), TextKey::FiltersHide) } else { t(*locale.read(), TextKey::FiltersShow) },
                     aria_expanded: if *mobile_filters_open.read() { "true" } else { "false" },
                     onclick: move |_| {
                         let next = !*mobile_filters_open.peek();
                         *mobile_filters_open.write() = next;
                     },
                     if *mobile_filters_open.read() {
-                        "Hide filters"
+                        "{t(*locale.read(), TextKey::FiltersHide)}"
                     } else {
-                        "Show filters"
+                        "{t(*locale.read(), TextKey::FiltersShow)}"
                     }
                 }
-                SearchPanel { criteria, on_search, loading: *loading.read() }
+                SearchPanel {
+                    criteria,
+                    locale: *locale.read(),
+                    on_search,
+                    loading: *loading.read(),
+                }
                 div { class: "sidebar-logo-wrap",
                     img {
                         class: "sidebar-logo",
@@ -190,19 +198,18 @@ fn App() -> Element {
             main { class: "main-content",
                 div { class: "page-header",
                     div { class: "page-brand",
-                        h1 { class: "page-title", "LOTUS Wikidata Explorer" }
+                        h1 { class: "page-title", "{t(*locale.read(), TextKey::PageTitle)}" }
                     }
-                    p { class: "page-sub",
-                        "Natural product occurrences — compound, taxon, reference."
-                    }
+                    p { class: "page-sub", "{t(*locale.read(), TextKey::PageSubtitle)}" }
                     if let Some(qid) = resolved_qid.read().as_deref() {
                         p { class: "page-meta",
-                            span { class: "meta-key", "Resolved taxon" }
+                            span { class: "meta-key", "{t(*locale.read(), TextKey::ResolvedTaxon)}" }
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{qid}" }
                             CopyButton {
                                 text: qid.to_string(),
-                                title: "Copy taxon QID",
+                                title: t(*locale.read(), TextKey::CopyTaxonQid),
+                                locale: *locale.read(),
                             }
                         }
                     }
@@ -212,37 +219,39 @@ fn App() -> Element {
                     )
                     {
                         p { class: "page-meta",
-                            span { class: "meta-key", "Query hash" }
+                            span { class: "meta-key", "{t(*locale.read(), TextKey::QueryHash)}" }
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{&qh[..12]}" }
                             CopyButton {
                                 text: qh.to_string(),
-                                title: "Copy full query hash (SHA-256)",
+                                title: t(*locale.read(), TextKey::CopyFullQueryHash),
+                                locale: *locale.read(),
                             }
                             span { class: "meta-sep", "·" }
-                            span { class: "meta-key", "Result hash" }
+                            span { class: "meta-key", "{t(*locale.read(), TextKey::ResultHash)}" }
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{&rh[..12]}" }
                             CopyButton {
                                 text: rh.to_string(),
-                                title: "Copy full result hash (SHA-256)",
+                                title: t(*locale.read(), TextKey::CopyFullResultHash),
+                                locale: *locale.read(),
                             }
                         }
                     }
                     if let Some(n) = *total_matches.read() {
                         p { class: "page-meta",
-                            span { class: "meta-key", "Total matches" }
+                            span { class: "meta-key", "{t(*locale.read(), TextKey::TotalMatches)}" }
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{n}" }
                         }
                     }
                 }
 
-                KetcherPanel {}
+                KetcherPanel { locale: *locale.read() }
 
                 if let Some(share) = shareable_url.read().as_deref() {
                     div { class: "notice notice-info", role: "status",
-                        span { class: "notice-label", "Share" }
+                        span { class: "notice-label", "{t(*locale.read(), TextKey::Share)}" }
                         input {
                             class: "notice-value notice-copy-field mono",
                             r#type: "text",
@@ -251,26 +260,27 @@ fn App() -> Element {
                         }
                         CopyButton {
                             text: absolute_share_url(share),
-                            title: "Copy shareable link",
+                            title: t(*locale.read(), TextKey::CopyShareableLink),
+                            locale: *locale.read(),
                         }
                     }
                 }
 
                 if let Some(warning) = taxon_notice.read().as_deref() {
                     div { class: "notice notice-warn", role: "status",
-                        span { class: "notice-label", "Notice" }
+                        span { class: "notice-label", "{t(*locale.read(), TextKey::Notice)}" }
                         span { class: "notice-value", "{warning}" }
                     }
                 }
 
                 if let Some(msg) = error.read().as_deref() {
                     div { class: "notice notice-error", role: "alert",
-                        span { class: "notice-label", "Error" }
+                        span { class: "notice-label", "{t(*locale.read(), TextKey::Error)}" }
                         span { class: "notice-value", "{msg}" }
                         button {
                             class: "notice-dismiss",
                             r#type: "button",
-                            aria_label: "Dismiss error",
+                            aria_label: "{t(*locale.read(), TextKey::DismissError)}",
                             onclick: move |_| *error.write() = None,
                             "×"
                         }
@@ -283,11 +293,11 @@ fn App() -> Element {
                         role: "status",
                         aria_live: "polite",
                         div { class: "spinner-lg", "aria-hidden": "true" }
-                        p { "Querying Wikidata via QLever…" }
-                        p { class: "loading-hint", "Large result sets may take several seconds." }
+                        p { "{t(*locale.read(), TextKey::LoadingTitle)}" }
+                        p { class: "loading-hint", "{t(*locale.read(), TextKey::LoadingHint)}" }
                     }
                 } else if entries.read().is_empty() && error.read().is_none() && !*searched_once.read() {
-                    WelcomeScreen {}
+                    WelcomeScreen { locale: *locale.read() }
                 } else {
                     ResultsTable {
                         entries,
@@ -305,7 +315,7 @@ fn App() -> Element {
                     }
                 }
 
-                Footer {}
+                Footer { locale: *locale.read() }
             }
         }
     }
@@ -314,11 +324,11 @@ fn App() -> Element {
 // ── Footer (same links as the Python notebook, cleaner markup) ───────────────
 
 #[component]
-fn Footer() -> Element {
+fn Footer(locale: Locale) -> Element {
     rsx! {
         footer { class: "app-footer",
             FooterRow {
-                label: "Data",
+                label: t(locale, TextKey::FooterData),
                 class: "footer-link data",
                 links: &[
                     ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
@@ -326,7 +336,7 @@ fn Footer() -> Element {
                 ],
             }
             FooterRow {
-                label: "Code",
+                label: t(locale, TextKey::FooterCode),
                 class: "footer-link code",
                 links: &[
                     (
@@ -336,7 +346,7 @@ fn Footer() -> Element {
                 ],
             }
             FooterRow {
-                label: "Tools",
+                label: t(locale, TextKey::FooterTools),
                 class: "footer-link tool",
                 links: &[
                     ("https://github.com/cdk/depict", "CDK Depict"),
@@ -346,7 +356,7 @@ fn Footer() -> Element {
                 ],
             }
             div { class: "footer-row",
-                span { class: "footer-label", "License" }
+                span { class: "footer-label", "{t(locale, TextKey::FooterLicense)}" }
                 a {
                     class: "footer-link muted",
                     href: "https://creativecommons.org/publicdomain/zero/1.0/",
@@ -354,7 +364,7 @@ fn Footer() -> Element {
                     rel: "noopener noreferrer",
                     "CC0 1.0"
                 }
-                span { class: "footer-aside", " for data " }
+                span { class: "footer-aside", "{t(locale, TextKey::FooterForData)}" }
                 span { class: "footer-sep", "·" }
                 a {
                     class: "footer-link muted",
@@ -363,7 +373,7 @@ fn Footer() -> Element {
                     rel: "noopener noreferrer",
                     "AGPL-3.0"
                 }
-                span { class: "footer-aside", " for code" }
+                span { class: "footer-aside", "{t(locale, TextKey::FooterForCode)}" }
             }
         }
     }
@@ -397,60 +407,60 @@ fn FooterRow(
 // ── Welcome screen ────────────────────────────────────────────────────────────
 
 #[component]
-fn WelcomeScreen() -> Element {
+fn WelcomeScreen(locale: Locale) -> Element {
     rsx! {
         section { class: "welcome",
             div { class: "welcome-hero",
-                h2 { "Browse natural product occurrences" }
+                h2 { "{t(locale, TextKey::WelcomeTitle)}" }
                 p { class: "welcome-lead",
-                    "Every row ties a compound to the organism it has been reported from, "
-                    "together with the primary literature reference. Data comes from the "
+                    "{t(locale, TextKey::WelcomeLeadA)}"
+                    "{t(locale, TextKey::WelcomeLeadB)}"
                     a {
                         href: "https://www.wikidata.org/wiki/Q104225190",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         "LOTUS initiative"
                     }
-                    ", stored on "
+                    "{t(locale, TextKey::WelcomeLeadC)}"
                     a {
                         href: "https://www.wikidata.org/",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         "Wikidata"
                     }
-                    " and queried via "
+                    "{t(locale, TextKey::WelcomeLeadD)}"
                     a {
                         href: "https://qlever.dev/wikidata",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         "QLever"
                     }
-                    "."
+                    "{t(locale, TextKey::WelcomeLeadE)}"
                 }
             }
 
             div { class: "welcome-examples",
-                h3 { "Try" }
+                h3 { "{t(locale, TextKey::WelcomeTry)}" }
                 ul { class: "example-list",
                     ExRow {
                         value: "Gentiana lutea",
-                        note: "Compounds from yellow gentian",
+                        note: t(locale, TextKey::ExampleGentiana),
                     }
                     ExRow {
                         value: "Cannabis sativa",
-                        note: "Compounds from Cannabis sativa and subtaxa",
+                        note: t(locale, TextKey::ExampleCannabis),
                     }
                     ExRow {
                         value: "Q134630",
-                        note: "Citrus genus — enter a bare Wikidata QID",
+                        note: t(locale, TextKey::ExampleCitrusQid),
                     }
                     ExRow {
                         value: "*",
-                        note: "All LOTUS compound–taxon–reference triples",
+                        note: t(locale, TextKey::ExampleAllTriples),
                     }
                     ExRow {
                         value: "c1ccccc1",
-                        note: "Paste a SMILES in the structure box — no taxon required",
+                        note: t(locale, TextKey::ExampleSmilesOnly),
                     }
                 }
             }
@@ -479,7 +489,7 @@ struct SearchOutcome {
     total_stats: Option<DatasetStats>,
 }
 
-async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
+async fn do_search(crit: SearchCriteria, locale: Locale) -> Result<SearchOutcome, String> {
     let taxon = crit.taxon.trim().to_string();
     // Preserve Molfile blocks verbatim — leading blank lines and whitespace
     // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
@@ -517,7 +527,7 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
         let matches =
             sparql::parse_taxon_csv(&csv).map_err(|e| format!("Taxon parse failed: {e}"))?;
         if matches.is_empty() {
-            return Err(format!("Taxon '{taxon}' not found in Wikidata."));
+            return Err(err_taxon_not_found(locale, &taxon));
         }
         let lower = sanitized.to_lowercase();
         let exact: Vec<&TaxonMatch> = matches
@@ -530,9 +540,7 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
             .or_else(|| matches.first())
             .ok_or_else(|| "Taxon resolution failed".to_string())?;
         if sanitized != taxon {
-            warning = Some(format!(
-                "Input standardized from '{taxon}' to '{sanitized}'."
-            ));
+            warning = Some(warn_input_standardized(locale, &taxon, &sanitized));
         }
         if exact.len() > 1 || (exact.is_empty() && matches.len() > 1) {
             let names = matches
@@ -541,10 +549,7 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
                 .map(|m| format!("{} ({})", m.name, m.qid))
                 .collect::<Vec<_>>()
                 .join(", ");
-            warning = Some(format!(
-                "Ambiguous taxon name; using {} ({}). Candidates: {}",
-                best.name, best.qid, names
-            ));
+            warning = Some(warn_ambiguous_taxon(locale, &best.name, &best.qid, &names));
         }
         Some(best.qid.clone())
     };
@@ -604,9 +609,7 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
         Err(err_msg) => {
             #[cfg(target_arch = "wasm32")]
             {
-                return Err(format!(
-                    "Large-query fallback disabled on wasm to avoid memory exhaustion ({err_msg}). Try adding filters or use a desktop browser for very large result exports."
-                ));
+                return Err(i18n::err_wasm_large_query_fallback(locale, &err_msg));
             }
 
             #[cfg(not(target_arch = "wasm32"))]

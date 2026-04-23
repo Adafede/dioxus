@@ -4,6 +4,7 @@
 //! `document.execCommand('copy')` fallback for older browsers / non-secure
 //! contexts. Shows a brief "Copied!" state for user feedback.
 
+use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
 
 /// A compact button that copies `text` to the system clipboard on click.
@@ -13,13 +14,19 @@ use dioxus::prelude::*;
 #[component]
 pub fn CopyButton(
     text: String,
-    #[props(default = "Copy")] label: &'static str,
+    #[props(default = "")] label: &'static str,
     #[props(default = "")] title: &'static str,
     #[props(default = "btn btn-xs copy-btn")] class: &'static str,
+    #[props(default = Locale::En)] locale: Locale,
 ) -> Element {
     let mut copied = use_signal(|| false);
+    let label_attr = if label.is_empty() {
+        t(locale, TextKey::Copy)
+    } else {
+        label
+    };
     let title_attr = if title.is_empty() {
-        "Copy to clipboard".to_string()
+        t(locale, TextKey::CopyToClipboard).to_string()
     } else {
         title.to_string()
     };
@@ -40,9 +47,9 @@ pub fn CopyButton(
                 });
             },
             if *copied.read() {
-                "Copied!"
+                "{t(locale, TextKey::Copied)}"
             } else {
-                {label}
+                {label_attr}
             }
         }
     }

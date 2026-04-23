@@ -1,5 +1,8 @@
 use crate::export;
-use crate::i18n::{CountNoun, Locale, count_label, showing_rows_text};
+use crate::i18n::{
+    CountNoun, Locale, TextKey, aria_search_inchikey, aria_wikidata_entity,
+    aria_wikidata_statement, count_label, showing_rows_text, t,
+};
 use crate::models::*;
 use crate::sparql;
 use dioxus::prelude::*;
@@ -137,9 +140,9 @@ pub fn ResultsTable(
     let download_status_text = download_status
         .read()
         .clone()
-        .unwrap_or_else(|| "Preparing download...".to_string());
+        .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
     let heavy_exports_allowed = wasm_heavy_exports_allowed(total_matches);
-    let heavy_export_hint = "JSON/TTL disabled on wasm for very large result sets to avoid memory exhaustion. Use CSV export.";
+    let heavy_export_hint = t(locale, TextKey::HeavyExportHint);
 
     rsx! {
         div { class: "results-wrap",
@@ -148,7 +151,7 @@ pub fn ResultsTable(
                 div {
                     class: "stat-bar",
                     role: "group",
-                    aria_label: "Dataset statistics",
+                    aria_label: "{t(locale, TextKey::DatasetStatistics)}",
                     StatBadge {
                         locale,
                         value: display_stats.n_compounds,
@@ -188,7 +191,7 @@ pub fn ResultsTable(
                         div {
                             class: "dl-group",
                             role: "group",
-                            aria_label: "Download results",
+                            aria_label: "{t(locale, TextKey::DownloadResults)}",
                             if let Some(query) = sparql_query.as_deref() {
                                 button {
                                     class: "btn btn-sm",
@@ -199,13 +202,15 @@ pub fn ResultsTable(
                                         move |_| {
                                             let filename = csv_filename.read().clone();
                                             *download_busy.write() = true;
-                                            *download_status.write() = Some("Starting CSV download...".to_string());
+                                            *download_status.write() = Some(
+                                                t(locale, TextKey::StartingCsvDownload).to_string(),
+                                            );
                                             trigger_query_csv_download(&q, &filename);
                                             *download_busy.write() = false;
                                             *download_status.write() = None;
                                         }
                                     },
-                                    title: "Download all rows as CSV",
+                                    title: "{t(locale, TextKey::DownloadCsvTitle)}",
                                     "CSV"
                                 }
                                 if heavy_exports_allowed {
@@ -219,7 +224,9 @@ pub fn ResultsTable(
                                                 let q = q.clone();
                                                 let filename = json_filename.read().clone();
                                                 *download_busy.write() = true;
-                                                *download_status.write() = Some("Preparing JSON download...".to_string());
+                                                *download_status.write() = Some(
+                                                    t(locale, TextKey::PreparingJsonDownload).to_string(),
+                                                );
                                                 spawn(async move {
                                                     if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
                                                         let body = export::build_ndjson(rows.as_ref());
@@ -230,7 +237,7 @@ pub fn ResultsTable(
                                                 });
                                             }
                                         },
-                                        title: "Download all rows as newline-delimited JSON (can take time)",
+                                        title: "{t(locale, TextKey::DownloadJsonTitle)}",
                                         "JSON"
                                     }
                                     button {
@@ -250,7 +257,9 @@ pub fn ResultsTable(
                                                 let crit = criteria.peek().clone();
                                                 let stats_for_export = stats_for_export.clone();
                                                 *download_busy.write() = true;
-                                                *download_status.write() = Some("Preparing TTL download...".to_string());
+                                                *download_status.write() = Some(
+                                                    t(locale, TextKey::PreparingTtlDownload).to_string(),
+                                                );
                                                 spawn(async move {
                                                     if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
                                                         let ttl = export::build_ttl(
@@ -271,7 +280,7 @@ pub fn ResultsTable(
                                                 });
                                             }
                                         },
-                                        title: "Download all rows as RDF Turtle (can take time)",
+                                        title: "{t(locale, TextKey::DownloadTtlTitle)}",
                                         "TTL"
                                     }
                                 } else {
@@ -299,8 +308,8 @@ pub fn ResultsTable(
                                         let filename = metadata_filename.clone();
                                         move |_| trigger_download(&filename, "application/ld+json", &body)
                                     },
-                                    title: "Download Schema.org metadata (JSON-LD)",
-                                    "Metadata"
+                                    title: "{t(locale, TextKey::DownloadMetadataTitle)}",
+                                    "{t(locale, TextKey::Metadata)}"
                                 }
                             }
                         }
@@ -311,8 +320,8 @@ pub fn ResultsTable(
                             href: "{url}",
                             target: "_blank",
                             rel: "noopener noreferrer",
-                            title: "Open this query in the QLever web interface",
-                            "Open in QLever"
+                            title: "{t(locale, TextKey::OpenInQleverTitle)}",
+                            "{t(locale, TextKey::OpenInQlever)}"
                         }
                     }
                 }
@@ -320,9 +329,13 @@ pub fn ResultsTable(
 
             if let Some(q) = sparql_query.as_deref() {
                 details { class: "query-panel",
-                    summary { "SPARQL query" }
+                    summary { "{t(locale, TextKey::SparqlQuery)}" }
                     div { class: "query-panel-actions",
-                        crate::components::copy_button::CopyButton { text: q.to_string(), title: "Copy SPARQL query" }
+                        crate::components::copy_button::CopyButton {
+                            text: q.to_string(),
+                            title: t(locale, TextKey::CopySparqlQuery),
+                            locale,
+                        }
                     }
                     pre { class: "query-text", "{q}" }
                 }
@@ -330,7 +343,7 @@ pub fn ResultsTable(
 
             if total == 0 {
                 div { class: "empty-state",
-                    p { "No results. Try broadening your search." }
+                    p { "{t(locale, TextKey::NoResults)}" }
                 }
             } else {
                 div { class: "pagination-bar",
@@ -343,7 +356,7 @@ pub fn ResultsTable(
                                 let next = (*visible_rows_limit.peek()).saturating_add(VIRTUAL_STEP_ROWS);
                                 *visible_rows_limit.write() = next;
                             },
-                            "Load {VIRTUAL_STEP_ROWS} more"
+                            "{t(locale, TextKey::LoadMore)} {VIRTUAL_STEP_ROWS}"
                         }
                     }
                 }
@@ -351,16 +364,18 @@ pub fn ResultsTable(
                 div { class: "table-scroll",
                     table {
                         class: "results-table",
-                        aria_label: "Compound–taxon–reference triples",
+                        aria_label: "{t(locale, TextKey::TableTriplesAria)}",
                         thead {
                             tr {
-                                th { class: "th-static", scope: "col", "Structure" }
+                                th { class: "th-static", scope: "col",
+                                    "{t(locale, TextKey::Structure)}"
+                                }
                                 th {
                                     class: "sort-th",
                                     scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Name)}",
                                     onclick: toggle_sort(SortColumn::Name),
-                                    "Compound "
+                                    "{t(locale, TextKey::Compound)} "
                                     span {
                                         class: "sort-icon",
                                         "aria-hidden": "true",
@@ -372,7 +387,7 @@ pub fn ResultsTable(
                                     scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Mass)}",
                                     onclick: toggle_sort(SortColumn::Mass),
-                                    "Mass "
+                                    "{t(locale, TextKey::Mass)} "
                                     span {
                                         class: "sort-icon",
                                         "aria-hidden": "true",
@@ -384,7 +399,7 @@ pub fn ResultsTable(
                                     scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Formula)}",
                                     onclick: toggle_sort(SortColumn::Formula),
-                                    "Formula "
+                                    "{t(locale, TextKey::Formula)} "
                                     span {
                                         class: "sort-icon",
                                         "aria-hidden": "true",
@@ -396,7 +411,7 @@ pub fn ResultsTable(
                                     scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::TaxonName)}",
                                     onclick: toggle_sort(SortColumn::TaxonName),
-                                    "Taxon "
+                                    "{t(locale, TextKey::TaxonCol)} "
                                     span {
                                         class: "sort-icon",
                                         "aria-hidden": "true",
@@ -408,7 +423,7 @@ pub fn ResultsTable(
                                     scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::RefTitle)}",
                                     onclick: toggle_sort(SortColumn::RefTitle),
-                                    "Reference "
+                                    "{t(locale, TextKey::Reference)} "
                                     span {
                                         class: "sort-icon",
                                         "aria-hidden": "true",
@@ -420,7 +435,7 @@ pub fn ResultsTable(
                                     scope: "col",
                                     aria_sort: "{aria_sort_for(&sort.read(), SortColumn::PubYear)}",
                                     onclick: toggle_sort(SortColumn::PubYear),
-                                    "Year "
+                                    "{t(locale, TextKey::Year)} "
                                     span {
                                         class: "sort-icon",
                                         "aria-hidden": "true",
@@ -435,7 +450,7 @@ pub fn ResultsTable(
                                 let order = sorted_indices.read();
                                 rsx! {
                                     for i in order.iter().take(visible_count).copied() {
-                                        Row { key: "{i}", entry: rows[i as usize].clone() }
+                                        Row { key: "{i}", locale, entry: rows[i as usize].clone() }
                                     }
                                 }
                             }
@@ -452,7 +467,7 @@ pub fn ResultsTable(
                                 let next = (*visible_rows_limit.peek()).saturating_add(VIRTUAL_STEP_ROWS);
                                 *visible_rows_limit.write() = next;
                             },
-                            "Load more"
+                            "{t(locale, TextKey::LoadMore)}"
                         }
                     }
                 }
@@ -492,7 +507,7 @@ fn StatBadge(locale: Locale, value: usize, noun: CountNoun, plus: bool) -> Eleme
 }
 
 #[component]
-fn Row(entry: CompoundEntry) -> Element {
+fn Row(locale: Locale, entry: CompoundEntry) -> Element {
     // URLs can be interpolated inline in RSX — no need for intermediate
     // `String` allocations. Only DOI / depict / statement / inchikey search
     // require conditional work, so those are the only helpers we still call.
@@ -521,7 +536,7 @@ fn Row(entry: CompoundEntry) -> Element {
                         href: "{url}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        title: "Open full-size depiction",
+                        title: "{t(locale, TextKey::OpenFullSizeDepiction)}",
                         img {
                             class: "depict-img",
                             src: "{url}",
@@ -553,8 +568,8 @@ fn Row(entry: CompoundEntry) -> Element {
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge wd",
-                        title: "Open in Wikidata",
-                        aria_label: "Wikidata {compound_qid}",
+                        title: "{t(locale, TextKey::OpenInWikidata)}",
+                        aria_label: "{aria_wikidata_entity(locale, &compound_qid)}",
                         "{compound_qid}"
                     }
                     a {
@@ -562,7 +577,7 @@ fn Row(entry: CompoundEntry) -> Element {
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge sc",
-                        title: "Open in Scholia",
+                        title: "{t(locale, TextKey::OpenInScholia)}",
                         "Scholia"
                     }
                     if let (Some(ik), Some(search_url)) = (
@@ -576,7 +591,7 @@ fn Row(entry: CompoundEntry) -> Element {
                             rel: "noopener noreferrer",
                             class: "id-badge mono inchikey",
                             title: "{ik}",
-                            aria_label: "Search Wikidata for InChIKey {ik}",
+                            aria_label: "{aria_search_inchikey(locale, ik)}",
                             "{short_inchikey(ik)}"
                         }
                     }
@@ -617,8 +632,8 @@ fn Row(entry: CompoundEntry) -> Element {
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge wd",
-                        title: "Open in Wikidata",
-                        aria_label: "Wikidata {taxon_qid}",
+                        title: "{t(locale, TextKey::OpenInWikidata)}",
+                        aria_label: "{aria_wikidata_entity(locale, &taxon_qid)}",
                         "{taxon_qid}"
                     }
                 }
@@ -652,8 +667,8 @@ fn Row(entry: CompoundEntry) -> Element {
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge wd",
-                        title: "Open in Wikidata",
-                        aria_label: "Wikidata {reference_qid}",
+                        title: "{t(locale, TextKey::OpenInWikidata)}",
+                        aria_label: "{aria_wikidata_entity(locale, &reference_qid)}",
                         "{reference_qid}"
                     }
                     if let Some(url) = doi_url {
@@ -662,7 +677,7 @@ fn Row(entry: CompoundEntry) -> Element {
                             target: "_blank",
                             rel: "noopener noreferrer",
                             class: "id-badge doi",
-                            title: "Open DOI",
+                            title: "{t(locale, TextKey::OpenDoi)}",
                             "DOI"
                         }
                     }
@@ -673,7 +688,7 @@ fn Row(entry: CompoundEntry) -> Element {
                             rel: "noopener noreferrer",
                             class: "id-badge stmt mono",
                             title: "{stmt}",
-                            aria_label: "Wikidata statement {stmt}",
+                            aria_label: "{aria_wikidata_statement(locale, stmt)}",
                             "statement"
                         }
                     }
