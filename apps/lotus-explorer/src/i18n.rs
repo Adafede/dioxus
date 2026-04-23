@@ -112,10 +112,9 @@ pub enum TextKey {
     WelcomeLeadD,
     WelcomeLeadE,
     ExampleGentiana,
-    ExampleCannabis,
-    ExampleCitrusQid,
     ExampleAllTriples,
     ExampleSmilesOnly,
+    WelcomeProgrammaticDownload,
     // Search panel
     SearchFilters,
     Taxon,
@@ -164,9 +163,6 @@ pub enum TextKey {
     OpenInQleverTitle,
     SparqlQuery,
     NoResults,
-    LoadMore,
-    DensityCompact,
-    DensityComfortable,
     // Columns
     Structure,
     Compound,
@@ -237,11 +233,10 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::WelcomeLeadC => ", stored on ",
             TextKey::WelcomeLeadD => " and queried via ",
             TextKey::WelcomeLeadE => ".",
-            TextKey::ExampleGentiana => "Compounds from yellow gentian",
-            TextKey::ExampleCannabis => "Compounds from Cannabis sativa and subtaxa",
-            TextKey::ExampleCitrusQid => "Citrus genus - enter a bare Wikidata QID",
+            TextKey::ExampleGentiana => "Enter a taxon name or a Wikidata QID",
             TextKey::ExampleAllTriples => "All LOTUS compound-taxon-reference triples",
-            TextKey::ExampleSmilesOnly => "Paste a SMILES in the structure box - no taxon required",
+            TextKey::ExampleSmilesOnly => "Paste a SMILES or Molfile in the structure box",
+            TextKey::WelcomeProgrammaticDownload => "Programmatic download URL patterns:",
             TextKey::SearchFilters => "Search filters",
             TextKey::Taxon => "Taxon",
             TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
@@ -298,9 +293,6 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::OpenInQleverTitle => "Open this query in the QLever web interface",
             TextKey::SparqlQuery => "SPARQL query",
             TextKey::NoResults => "No results. Try broadening your search.",
-            TextKey::LoadMore => "Load more",
-            TextKey::DensityCompact => "Compact",
-            TextKey::DensityComfortable => "Comfortable",
             TextKey::Structure => "Structure",
             TextKey::Compound => "Compound",
             TextKey::Mass => "Mass",
@@ -372,12 +364,11 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::WelcomeLeadC => ", stockées sur ",
             TextKey::WelcomeLeadD => " et interrogées via ",
             TextKey::WelcomeLeadE => ".",
-            TextKey::ExampleGentiana => "Composés de la gentiane jaune",
-            TextKey::ExampleCannabis => "Composés de Cannabis sativa et sous-taxa",
-            TextKey::ExampleCitrusQid => "Genre Citrus - saisir un QID Wikidata brut",
+            TextKey::ExampleGentiana => "Saisir un nom de taxon ou un QID Wikidata",
             TextKey::ExampleAllTriples => "Tous les triplets composé-taxon-reference LOTUS",
-            TextKey::ExampleSmilesOnly => {
-                "Collez un SMILES dans la zone structure - pas de taxon requis"
+            TextKey::ExampleSmilesOnly => "Collez un SMILES ou un Molfile dans la zone structure",
+            TextKey::WelcomeProgrammaticDownload => {
+                "Modèles d'URL pour téléchargement programmatique :"
             }
             TextKey::SearchFilters => "Filtres de recherche",
             TextKey::Taxon => "Taxon",
@@ -431,9 +422,6 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::OpenInQleverTitle => "Ouvrir cette requête dans QLever",
             TextKey::SparqlQuery => "Requête SPARQL",
             TextKey::NoResults => "Aucun résultat. Essayez une recherche plus large.",
-            TextKey::LoadMore => "Charger plus",
-            TextKey::DensityCompact => "Compact",
-            TextKey::DensityComfortable => "Confortable",
             TextKey::Structure => "Structure",
             TextKey::Compound => "Composé",
             TextKey::Mass => "Masse",
@@ -469,17 +457,126 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::DismissError => "Fehler schließen",
         TextKey::FiltersShow => "Filter anzeigen",
         TextKey::FiltersHide => "Filter ausblenden",
+        TextKey::PageTitle => "LOTUS Wikidata Explorer",
+        TextKey::PageSubtitle => "Naturstoff-Vorkommen - Verbindung, Taxon, Referenz.",
+        TextKey::ResolvedTaxon => "Aufgelöstes Taxon",
+        TextKey::QueryHash => "Abfrage-Hash",
+        TextKey::ResultHash => "Ergebnis-Hash",
+        TextKey::TotalMatches => "Treffer gesamt",
+        TextKey::CopyTaxonQid => "Taxon-QID kopieren",
+        TextKey::CopyFullQueryHash => "Vollständigen Abfrage-Hash kopieren (SHA-256)",
+        TextKey::CopyFullResultHash => "Vollständigen Ergebnis-Hash kopieren (SHA-256)",
+        TextKey::CopyShareableLink => "Freigabelink kopieren",
+        TextKey::CopySparqlQuery => "SPARQL-Abfrage kopieren",
+        TextKey::LoadingTitle => "Wikidata wird über QLever abgefragt...",
+        TextKey::LoadingHint => "Große Ergebnismengen können einige Sekunden dauern.",
+        TextKey::LoadingResolvingTaxon => "Taxon wird aufgelöst...",
+        TextKey::LoadingCounting => "Treffer werden gezählt...",
+        TextKey::LoadingFetchingPreview => "Vorschauzeilen werden geladen...",
+        TextKey::LoadingRendering => "Tabelle wird gerendert...",
+        TextKey::Retry => "Erneut versuchen",
+        TextKey::ErrorHintValidation => "Bitte Eingaben prüfen, dann erneut versuchen.",
+        TextKey::ErrorHintNetwork => "Netzwerkproblem erkannt. Ein erneuter Versuch kann helfen.",
+        TextKey::ErrorHintServer => {
+            "Fehler am entfernten Dienst. Versuchen Sie es in einigen Sekunden erneut."
+        }
+        TextKey::ErrorHintParse => {
+            "Antwort konnte nicht verarbeitet werden. Erneut versuchen oder Abfrage verfeinern."
+        }
+        TextKey::ErrorHintMemory => "Ergebnis ist zu groß für den verfügbaren Gerätespeicher.",
+        TextKey::ErrorHintUnknown => "Unerwarteter Fehler. Ein erneuter Versuch kann helfen.",
+        TextKey::SkipToResults => "Zu den Ergebnissen springen",
+        TextKey::WelcomeTitle => "Naturstoff-Vorkommen durchsuchen",
+        TextKey::WelcomeTry => "Beispiele",
+        TextKey::WelcomeLeadA => {
+            "Jede Zeile verknüpft eine Verbindung mit dem Organismus, aus dem sie berichtet wurde, "
+        }
+        TextKey::WelcomeLeadB => {
+            "zusammen mit der zugehörigen Primärliteratur. Die Daten stammen aus der "
+        }
+        TextKey::WelcomeLeadC => ", gespeichert in ",
+        TextKey::WelcomeLeadD => " und abgefragt über ",
+        TextKey::WelcomeLeadE => ".",
+        TextKey::ExampleGentiana => "Taxonname oder Wikidata-QID eingeben",
+        TextKey::ExampleAllTriples => "Alle LOTUS Verbindung-Taxon-Referenz-Tripel",
+        TextKey::ExampleSmilesOnly => "SMILES oder Molfile in das Strukturfeld einfügen",
+        TextKey::WelcomeProgrammaticDownload => {
+            "Programmgesteuerte Downloads per URL-Parameter (Beispiele):"
+        }
+        TextKey::SearchFilters => "Suchfilter",
+        TextKey::Taxon => "Taxon",
+        TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
+        TextKey::TaxonHint => "Name, Wikidata-QID oder * für den gesamten Datensatz.",
+        TextKey::StructureSmilesOrMol => "Struktur - SMILES oder Molfile",
+        TextKey::StructurePlaceholder => {
+            "c1ccccc1   - oder einen Molfile-Block (V2000 / V3000) einfügen"
+        }
+        TextKey::StructureHintEmpty => {
+            "Optional. Einzeiliges SMILES oder vollständiges Molfile - mit \"M  END\" abschließen."
+        }
+        TextKey::Substructure => "Substruktur",
+        TextKey::Similarity => "Ähnlichkeit",
+        TextKey::StructureSearchMode => "Struktursuchmodus",
+        TextKey::FormulaFilter => "Formelfilter",
+        TextKey::ExactFormula => "Summenformel",
         TextKey::Search => "Suchen",
         TextKey::Searching => "Suche...",
-        TextKey::LoadMore => "Mehr laden",
-        TextKey::NoResults => "Keine Ergebnisse. Bitte erweitern Sie die Suche.",
-        TextKey::CliDownload => "Download per Kommandozeile",
-        TextKey::CliDownloadHint => {
-            "Verwenden Sie diese Befehle, um die vollständigen CSV-Ergebnisse im Terminal zu laden."
+        TextKey::MolecularMass => "Molekulare Masse (Da)",
+        TextKey::Min => "Min",
+        TextKey::Max => "Max",
+        TextKey::PublicationYear => "Publikationsjahr",
+        TextKey::YearFrom => "Von",
+        TextKey::YearTo => "Bis",
+        TextKey::RunSearch => "Suche starten",
+        TextKey::KetcherSummary => "Struktureditor (Ketcher)",
+        TextKey::KetcherHintA => "Sie möchten eine Struktur zeichnen oder suchen? Nutzen Sie das ",
+        TextKey::KetcherHintB => "-Panel in der Hauptansicht und dann ",
+        TextKey::KetcherHintC => " (oder ",
+        TextKey::KetcherHintD => ") und fügen Sie den Inhalt oben ein.",
+        TextKey::KetcherIframeTitle => "Ketcher-Struktureditor",
+        TextKey::KindNoteSmiles => "  Wird als einzeiliges SPARQL-Literal gesendet.",
+        TextKey::KindNoteMol2000 => {
+            "  Wird unverändert an SACHEM scoredSubstructureSearch weitergegeben."
         }
-        TextKey::CopyCurl => "curl-Befehl kopieren",
-        TextKey::CopyWget => "wget-Befehl kopieren",
-        _ => t(Locale::En, key),
+        TextKey::KindNoteMol3000 => {
+            "  Wird unverändert an SACHEM scoredSubstructureSearch weitergegeben (CTAB v3000)."
+        }
+        TextKey::HeavyExportHint => {
+            "JSON/TTL ist in wasm bei sehr großen Ergebnissen deaktiviert, um Speicherprobleme zu vermeiden. Bitte CSV verwenden."
+        }
+        TextKey::DatasetStatistics => "Datensatz-Statistiken",
+        TextKey::DownloadResults => "Ergebnisse herunterladen",
+        TextKey::PreparingDownload => "Download wird vorbereitet...",
+        TextKey::StartingCsvDownload => "CSV-Download wird gestartet...",
+        TextKey::PreparingJsonDownload => "JSON-Download wird vorbereitet...",
+        TextKey::PreparingTtlDownload => "TTL-Download wird vorbereitet...",
+        TextKey::DownloadCsvTitle => "Alle Zeilen als CSV herunterladen",
+        TextKey::DownloadJsonTitle => "Alle Zeilen als NDJSON herunterladen (kann dauern)",
+        TextKey::DownloadTtlTitle => "Alle Zeilen als RDF Turtle herunterladen (kann dauern)",
+        TextKey::DownloadMetadataTitle => "Schema.org-Metadaten herunterladen (JSON-LD)",
+        TextKey::Metadata => "Metadaten",
+        TextKey::OpenInQlever => "In QLever öffnen",
+        TextKey::OpenInQleverTitle => "Diese Abfrage in der QLever-Weboberfläche öffnen",
+        TextKey::SparqlQuery => "SPARQL-Abfrage",
+        TextKey::NoResults => "Keine Ergebnisse. Bitte erweitern Sie die Suche.",
+        TextKey::Structure => "Struktur",
+        TextKey::Compound => "Verbindung",
+        TextKey::Mass => "Masse",
+        TextKey::Formula => "Formel",
+        TextKey::TaxonCol => "Taxon",
+        TextKey::Reference => "Referenz",
+        TextKey::Year => "Jahr",
+        TextKey::FooterData => "Daten",
+        TextKey::FooterCode => "Code",
+        TextKey::FooterTools => "Werkzeuge",
+        TextKey::FooterLicense => "Lizenz",
+        TextKey::FooterForData => " für Daten ",
+        TextKey::FooterForCode => " für Code",
+        TextKey::TableTriplesAria => "Verbindung-Taxon-Referenz-Tripel",
+        TextKey::OpenFullSizeDepiction => "Darstellung in voller Größe öffnen",
+        TextKey::OpenInWikidata => "In Wikidata öffnen",
+        TextKey::OpenInScholia => "In Scholia öffnen",
+        TextKey::OpenDoi => "DOI öffnen",
     }
 }
 
@@ -494,17 +591,126 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::DismissError => "Chiudi errore",
         TextKey::FiltersShow => "Mostra filtri",
         TextKey::FiltersHide => "Nascondi filtri",
+        TextKey::PageTitle => "Esploratore LOTUS Wikidata",
+        TextKey::PageSubtitle => "Occorrenze di prodotti naturali - composto, taxon, riferimento.",
+        TextKey::ResolvedTaxon => "Taxon risolto",
+        TextKey::QueryHash => "Hash della query",
+        TextKey::ResultHash => "Hash del risultato",
+        TextKey::TotalMatches => "Totale corrispondenze",
+        TextKey::CopyTaxonQid => "Copia QID del taxon",
+        TextKey::CopyFullQueryHash => "Copia hash completo della query (SHA-256)",
+        TextKey::CopyFullResultHash => "Copia hash completo del risultato (SHA-256)",
+        TextKey::CopyShareableLink => "Copia link condivisibile",
+        TextKey::CopySparqlQuery => "Copia query SPARQL",
+        TextKey::LoadingTitle => "Interrogazione di Wikidata tramite QLever...",
+        TextKey::LoadingHint => "I set di risultati grandi possono richiedere alcuni secondi.",
+        TextKey::LoadingResolvingTaxon => "Risoluzione del taxon...",
+        TextKey::LoadingCounting => "Conteggio delle corrispondenze...",
+        TextKey::LoadingFetchingPreview => "Recupero righe di anteprima...",
+        TextKey::LoadingRendering => "Rendering della tabella...",
+        TextKey::Retry => "Riprova",
+        TextKey::ErrorHintValidation => "Controlla l'input e riprova.",
+        TextKey::ErrorHintNetwork => "Problema di rete rilevato. Riprova.",
+        TextKey::ErrorHintServer => "Errore del servizio remoto. Riprova tra qualche secondo.",
+        TextKey::ErrorHintParse => {
+            "Impossibile interpretare la risposta. Riprova o affina la query."
+        }
+        TextKey::ErrorHintMemory => {
+            "Risultato troppo grande per la memoria disponibile sul dispositivo."
+        }
+        TextKey::ErrorHintUnknown => "Errore inatteso. Riprova.",
+        TextKey::SkipToResults => "Vai ai risultati",
+        TextKey::WelcomeTitle => "Esplora le occorrenze di prodotti naturali",
+        TextKey::WelcomeTry => "Esempi",
+        TextKey::WelcomeLeadA => {
+            "Ogni riga collega un composto all'organismo da cui è stato riportato, "
+        }
+        TextKey::WelcomeLeadB => {
+            "insieme al riferimento bibliografico primario. I dati provengono dalla "
+        }
+        TextKey::WelcomeLeadC => ", archiviati su ",
+        TextKey::WelcomeLeadD => " e interrogati tramite ",
+        TextKey::WelcomeLeadE => ".",
+        TextKey::ExampleGentiana => "Inserisci un nome di taxon o un QID Wikidata",
+        TextKey::ExampleAllTriples => "Tutte le triple LOTUS composto-taxon-riferimento",
+        TextKey::ExampleSmilesOnly => "Incolla uno SMILES o un Molfile nel campo struttura",
+        TextKey::WelcomeProgrammaticDownload => {
+            "Download programmatico con parametri URL (esempi):"
+        }
+        TextKey::SearchFilters => "Filtri di ricerca",
+        TextKey::Taxon => "Taxon",
+        TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
+        TextKey::TaxonHint => "Nome, QID Wikidata oppure * per l'intero dataset.",
+        TextKey::StructureSmilesOrMol => "Struttura - SMILES o Molfile",
+        TextKey::StructurePlaceholder => {
+            "c1ccccc1   - oppure incolla un blocco Molfile (V2000 / V3000)"
+        }
+        TextKey::StructureHintEmpty => {
+            "Opzionale. SMILES su una riga oppure Molfile completo - termina con \"M  END\"."
+        }
+        TextKey::Substructure => "Sottostruttura",
+        TextKey::Similarity => "Somiglianza",
+        TextKey::StructureSearchMode => "Modalità di ricerca struttura",
+        TextKey::FormulaFilter => "Filtro formula",
+        TextKey::ExactFormula => "Formula bruta",
         TextKey::Search => "Cerca",
         TextKey::Searching => "Ricerca...",
-        TextKey::LoadMore => "Carica altro",
-        TextKey::NoResults => "Nessun risultato. Prova ad ampliare la ricerca.",
-        TextKey::CliDownload => "Download da riga di comando",
-        TextKey::CliDownloadHint => {
-            "Usa questi comandi per scaricare il CSV completo dal terminale."
+        TextKey::MolecularMass => "Massa molecolare (Da)",
+        TextKey::Min => "Min",
+        TextKey::Max => "Max",
+        TextKey::PublicationYear => "Anno di pubblicazione",
+        TextKey::YearFrom => "Da",
+        TextKey::YearTo => "A",
+        TextKey::RunSearch => "Avvia ricerca",
+        TextKey::KetcherSummary => "Editor di strutture (Ketcher)",
+        TextKey::KetcherHintA => "Devi disegnare o cercare una struttura? Usa il pannello ",
+        TextKey::KetcherHintB => " nella vista principale, poi ",
+        TextKey::KetcherHintC => " (oppure ",
+        TextKey::KetcherHintD => ") e incolla sopra.",
+        TextKey::KetcherIframeTitle => "Editor strutture Ketcher",
+        TextKey::KindNoteSmiles => "  Inviato come letterale SPARQL su una singola riga.",
+        TextKey::KindNoteMol2000 => {
+            "  Inoltrato senza modifiche a SACHEM scoredSubstructureSearch."
         }
-        TextKey::CopyCurl => "Copia comando curl",
-        TextKey::CopyWget => "Copia comando wget",
-        _ => t(Locale::En, key),
+        TextKey::KindNoteMol3000 => {
+            "  Inoltrato senza modifiche a SACHEM scoredSubstructureSearch (CTAB v3000)."
+        }
+        TextKey::HeavyExportHint => {
+            "JSON/TTL disabilitato su wasm per risultati molto grandi, per evitare esaurimento memoria. Usa CSV."
+        }
+        TextKey::DatasetStatistics => "Statistiche del dataset",
+        TextKey::DownloadResults => "Scarica risultati",
+        TextKey::PreparingDownload => "Preparazione download...",
+        TextKey::StartingCsvDownload => "Avvio download CSV...",
+        TextKey::PreparingJsonDownload => "Preparazione download JSON...",
+        TextKey::PreparingTtlDownload => "Preparazione download TTL...",
+        TextKey::DownloadCsvTitle => "Scarica tutte le righe in CSV",
+        TextKey::DownloadJsonTitle => "Scarica tutte le righe in NDJSON (può richiedere tempo)",
+        TextKey::DownloadTtlTitle => "Scarica tutte le righe in RDF Turtle (può richiedere tempo)",
+        TextKey::DownloadMetadataTitle => "Scarica metadati Schema.org (JSON-LD)",
+        TextKey::Metadata => "Metadati",
+        TextKey::OpenInQlever => "Apri in QLever",
+        TextKey::OpenInQleverTitle => "Apri questa query nell'interfaccia web di QLever",
+        TextKey::SparqlQuery => "Query SPARQL",
+        TextKey::NoResults => "Nessun risultato. Prova ad ampliare la ricerca.",
+        TextKey::Structure => "Struttura",
+        TextKey::Compound => "Composto",
+        TextKey::Mass => "Massa",
+        TextKey::Formula => "Formula",
+        TextKey::TaxonCol => "Taxon",
+        TextKey::Reference => "Riferimento",
+        TextKey::Year => "Anno",
+        TextKey::FooterData => "Dati",
+        TextKey::FooterCode => "Codice",
+        TextKey::FooterTools => "Strumenti",
+        TextKey::FooterLicense => "Licenza",
+        TextKey::FooterForData => " per i dati ",
+        TextKey::FooterForCode => " per il codice",
+        TextKey::TableTriplesAria => "Triple composto-taxon-riferimento",
+        TextKey::OpenFullSizeDepiction => "Apri rappresentazione a dimensione piena",
+        TextKey::OpenInWikidata => "Apri in Wikidata",
+        TextKey::OpenInScholia => "Apri in Scholia",
+        TextKey::OpenDoi => "Apri DOI",
     }
 }
 
