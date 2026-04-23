@@ -524,9 +524,7 @@ pub fn err_invalid_search_input(locale: Locale) -> String {
         Locale::De => {
             "Bitte geben Sie einen Taxonnamen / eine QID oder eine SMILES-Struktur ein.".to_string()
         }
-        Locale::It => {
-            "Inserisci un nome di taxon / QID oppure una struttura SMILES.".to_string()
-        }
+        Locale::It => "Inserisci un nome di taxon / QID oppure una struttura SMILES.".to_string(),
     }
 }
 
