@@ -31,7 +31,7 @@ jobs:
       - name: Install dioxus-cli
         # dx enforces patch-level compatibility with the dioxus crate.
         # Keep this pinned to the same patch as workspace dioxus.
-        run: cargo binstall dioxus-cli --version 0.7.6 --locked
+        run: cargo install dioxus-cli --version 0.7.6 --locked
 
       - name: Verify dx version
         run: dx --version | grep -E "\b0\.7\.6\b"
