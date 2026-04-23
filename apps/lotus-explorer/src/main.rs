@@ -625,9 +625,7 @@ fn WelcomeScreen(locale: Locale) -> Element {
                 p { class: "form-hint welcome-cli-hint",
                     "{t(locale, TextKey::WelcomeProgrammaticDownload)}"
                 }
-                p { class: "form-hint",
-                    "{t(locale, TextKey::LabelLanguagePolicy)}"
-                }
+                p { class: "form-hint", "{t(locale, TextKey::LabelLanguagePolicy)}" }
                 div { class: "welcome-cli-list",
                     DownloadExampleRow {
                         locale,
@@ -904,6 +902,7 @@ async fn do_search(
                 .then_some((crit.mass_min, crit.mass_max)),
             crit.has_year_filter()
                 .then_some((crit.year_min, crit.year_max)),
+            crit.formula_enabled.then_some(crit.formula_exact.as_str()),
         )
     } else {
         sparql_query.clone()

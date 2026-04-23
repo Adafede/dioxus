@@ -391,6 +391,7 @@ pub fn query_with_client_prefilters(
     base_query: &str,
     mass_filter: Option<(f64, f64)>,
     year_filter: Option<(i32, i32)>,
+    formula_exact: Option<&str>,
 ) -> String {
     let mut filters = Vec::new();
     if let Some((min, max)) = mass_filter {
@@ -402,6 +403,21 @@ pub fn query_with_client_prefilters(
         filters.push(format!(
             "FILTER(BOUND(?ref_date) && YEAR(?ref_date) >= {start} && YEAR(?ref_date) <= {end})"
         ));
+    }
+    if let Some(exact) = formula_exact.map(str::trim).filter(|s| !s.is_empty()) {
+        let exact_ascii = normalize_formula_digits(exact);
+        let exact_escaped = exact_ascii.replace('\\', r"\\").replace('"', r#"\""#);
+        let exact_subscript = digits_to_subscripts(&exact_ascii);
+        let exact_subscript_escaped = exact_subscript.replace('\\', r"\\").replace('"', r#"\""#);
+        if exact_subscript_escaped == exact_escaped {
+            filters.push(format!(
+                "FILTER(BOUND(?compound_formula) && STR(?compound_formula) = \"{exact_escaped}\")"
+            ));
+        } else {
+            filters.push(format!(
+                "FILTER(BOUND(?compound_formula) && (STR(?compound_formula) = \"{exact_escaped}\" || STR(?compound_formula) = \"{exact_subscript_escaped}\"))"
+            ));
+        }
     }
     if filters.is_empty() {
         return base_query.to_string();
@@ -419,4 +435,40 @@ pub fn query_with_client_prefilters(
     out.push('\n');
     out.push_str(&trimmed[last_close..]);
     out
+}
+
+fn normalize_formula_digits(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            '₀' => '0',
+            '₁' => '1',
+            '₂' => '2',
+            '₃' => '3',
+            '₄' => '4',
+            '₅' => '5',
+            '₆' => '6',
+            '₇' => '7',
+            '₈' => '8',
+            '₉' => '9',
+            _ => c,
+        })
+        .collect()
+}
+
+fn digits_to_subscripts(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            '0' => '₀',
+            '1' => '₁',
+            '2' => '₂',
+            '3' => '₃',
+            '4' => '₄',
+            '5' => '₅',
+            '6' => '₆',
+            '7' => '₇',
+            '8' => '₈',
+            '9' => '₉',
+            _ => c,
+        })
+        .collect()
 }

@@ -152,7 +152,6 @@ pub enum TextKey {
     KindNoteSmiles,
     KindNoteMol2000,
     KindNoteMol3000,
-    HeavyExportHint,
     // Table/export
     DatasetStatistics,
     DownloadResults,
@@ -286,9 +285,6 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::KindNoteMol2000 => "  Forwarded verbatim to SACHEM scoredSubstructureSearch.",
             TextKey::KindNoteMol3000 => {
                 "  Forwarded verbatim to SACHEM scoredSubstructureSearch (CTAB v3000)."
-            }
-            TextKey::HeavyExportHint => {
-                "JSON/TTL disabled on wasm for very large result sets to avoid memory exhaustion. Use CSV export."
             }
             TextKey::DatasetStatistics => "Dataset statistics",
             TextKey::DownloadResults => "Download results",
@@ -427,9 +423,6 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::KindNoteMol2000 => "  Transmis tel quel à SACHEM scoredSubstructureSearch.",
             TextKey::KindNoteMol3000 => {
                 "  Transmis tel quel $ SACHEM scoredSubstructureSearch (CTAB v3000)."
-            }
-            TextKey::HeavyExportHint => {
-                "JSON/TTL désactivé sur wasm pour les très grands résultats afin d'éviter la saturation de la memoire. Utilisez CSV."
             }
             TextKey::DatasetStatistics => "Statistiques du jeu de donnees",
             TextKey::DownloadResults => "Télécharger résultats",
@@ -575,9 +568,6 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::KindNoteMol3000 => {
             "  Wird unverändert an SACHEM scoredSubstructureSearch weitergegeben (CTAB v3000)."
         }
-        TextKey::HeavyExportHint => {
-            "JSON/TTL ist in wasm bei sehr großen Ergebnissen deaktiviert, um Speicherprobleme zu vermeiden. Bitte CSV verwenden."
-        }
         TextKey::DatasetStatistics => "Datensatz-Statistiken",
         TextKey::DownloadResults => "Ergebnisse herunterladen",
         TextKey::PreparingDownload => "Download wird vorbereitet...",
@@ -718,9 +708,6 @@ fn it_t(key: TextKey) -> &'static str {
         }
         TextKey::KindNoteMol3000 => {
             "  Inoltrato senza modifiche a SACHEM scoredSubstructureSearch (CTAB v3000)."
-        }
-        TextKey::HeavyExportHint => {
-            "JSON/TTL disabilitato su wasm per risultati molto grandi, per evitare esaurimento memoria. Usa CSV."
         }
         TextKey::DatasetStatistics => "Statistiche del dataset",
         TextKey::DownloadResults => "Scarica risultati",
