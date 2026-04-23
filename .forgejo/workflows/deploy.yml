@@ -13,6 +13,8 @@ jobs:
   build-and-deploy:
     name: "build and deploy"
     runs-on: codeberg-medium
+    container:
+      image: ghcr.io/lewimbes/dioxus-docker
     env:
       # CI speed-up: keep release mode but avoid ultra-slow workspace release settings
       CARGO_PROFILE_RELEASE_LTO: "off"
@@ -28,17 +30,6 @@ jobs:
 
       - name: Cache
         uses: https://github.com/Swatinem/rust-cache@v2
-
-      - name: Cache dx binary
-        id: cache-dx
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin/dx
-          key: dx-0.7.6-${{ runner.os }}-${{ runner.arch }}
-
-      - name: Install dioxus-cli
-        if: steps.cache-dx.outputs.cache-hit != 'true'
-        run: cargo binstall dioxus-cli --version 0.7.6 --locked
 
       - name: Verify dx version
         run: dx --version | grep -E "\b0\.7\.6\b"
