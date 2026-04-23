@@ -8,6 +8,7 @@ use shared::sparql::{
 };
 
 use crate::models::{CompoundEntry, DatasetStats, TaxonMatch};
+use crate::models::{SearchCriteria, matches_client_filters};
 use std::collections::HashSet;
 use std::num::Wrapping;
 
@@ -453,6 +454,161 @@ pub fn parse_compounds_csv_capped(
         n_entries: total_distinct,
     };
     let was_capped = total_distinct > entries.len();
+    Ok((entries, stats, was_capped))
+}
+
+/// Parse full CSV stream with client-side filters, but only materialize up to
+/// `max_rows` matched rows. Filtered stats stay exact because the scan still
+/// evaluates every distinct triple.
+pub fn parse_compounds_csv_filtered_capped(
+    csv_text: &str,
+    max_rows: usize,
+    crit: &SearchCriteria,
+) -> Result<(Vec<CompoundEntry>, DatasetStats, bool), FetchError> {
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .flexible(true)
+        .from_reader(csv_text.as_bytes());
+
+    let headers = rdr
+        .byte_headers()
+        .map_err(|e| FetchError::Parse(e.to_string()))?
+        .clone();
+
+    let find = |name: &str| -> Option<usize> { headers.iter().position(|h| h == name.as_bytes()) };
+
+    let c_compound = find("compound");
+    let c_label = find("compoundLabel");
+    let c_inchikey = find("compound_inchikey");
+    let c_smiles_iso = find("compound_smiles_iso");
+    let c_smiles_con = find("compound_smiles_conn");
+    let c_mass = find("compound_mass");
+    let c_formula = find("compound_formula");
+    let c_taxon = find("taxon");
+    let c_taxon_name = find("taxon_name");
+    let c_ref_qid = find("ref_qid");
+    let c_ref_title = find("ref_title");
+    let c_ref_doi = find("ref_doi");
+    let c_ref_date = find("ref_date");
+    let c_statement = find("statement");
+
+    let initial_cap = max_rows.min(2048);
+    let mut entries: Vec<CompoundEntry> = Vec::with_capacity(initial_cap);
+    let mut seen: HashSet<u64> = HashSet::with_capacity(initial_cap.saturating_mul(2));
+    let mut compound_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
+    let mut taxon_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
+    let mut ref_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
+    let mut total_distinct_filtered = 0usize;
+
+    let mut compound_qid = String::new();
+    let mut taxon_qid = String::new();
+    let mut reference_qid = String::new();
+
+    let mut rec = csv::ByteRecord::new();
+    while rdr
+        .read_byte_record(&mut rec)
+        .map_err(|e| FetchError::Parse(e.to_string()))?
+    {
+        compound_qid.clear();
+        if let Some(i) = c_compound {
+            if let Some(b) = rec.get(i) {
+                fill_qid(&mut compound_qid, b);
+            }
+        }
+        if compound_qid.is_empty() {
+            continue;
+        }
+        taxon_qid.clear();
+        if let Some(i) = c_taxon {
+            if let Some(b) = rec.get(i) {
+                fill_qid(&mut taxon_qid, b);
+            }
+        }
+        reference_qid.clear();
+        if let Some(i) = c_ref_qid {
+            if let Some(b) = rec.get(i) {
+                fill_qid(&mut reference_qid, b);
+            }
+        }
+
+        let key = entry_key_fingerprint(
+            compound_qid.as_bytes(),
+            taxon_qid.as_bytes(),
+            reference_qid.as_bytes(),
+        );
+        if !seen.insert(key) {
+            continue;
+        }
+
+        // Build a minimal entry with fields required by client-side filters.
+        let mass = byte_field_str(&rec, c_mass).parse::<f64>().ok();
+        let formula = non_empty(byte_field_str(&rec, c_formula));
+        let pub_year = parse_year(byte_field_str(&rec, c_ref_date));
+        let probe = CompoundEntry {
+            compound_qid: String::new(),
+            name: String::new(),
+            inchikey: None,
+            smiles: None,
+            mass,
+            formula,
+            taxon_qid: String::new(),
+            taxon_name: String::new(),
+            reference_qid: String::new(),
+            ref_title: None,
+            ref_doi: None,
+            pub_year,
+            statement: None,
+        };
+        if !matches_client_filters(&probe, crit) {
+            continue;
+        }
+
+        total_distinct_filtered += 1;
+        compound_fps.insert(fnv1a_one(compound_qid.as_bytes()));
+        if !taxon_qid.is_empty() {
+            taxon_fps.insert(fnv1a_one(taxon_qid.as_bytes()));
+        }
+        if !reference_qid.is_empty() {
+            ref_fps.insert(fnv1a_one(reference_qid.as_bytes()));
+        }
+
+        if entries.len() >= max_rows {
+            continue;
+        }
+
+        let label = byte_field_str(&rec, c_label);
+        let inchikey = byte_field_str(&rec, c_inchikey);
+        let smiles_iso = byte_field_str(&rec, c_smiles_iso);
+        let smiles_con = byte_field_str(&rec, c_smiles_con);
+        let taxon_name = byte_field_str(&rec, c_taxon_name);
+        let ref_title = byte_field_str(&rec, c_ref_title);
+        let ref_doi = byte_field_str(&rec, c_ref_doi);
+        let statement = byte_field_str(&rec, c_statement);
+
+        entries.push(CompoundEntry {
+            compound_qid: compound_qid.clone(),
+            name: owned_or_empty(label),
+            inchikey: non_empty(inchikey),
+            smiles: coalesce(smiles_iso, smiles_con),
+            mass,
+            formula: probe.formula.clone(),
+            taxon_qid: taxon_qid.clone(),
+            taxon_name: owned_or_empty(taxon_name),
+            reference_qid: reference_qid.clone(),
+            ref_title: non_empty(ref_title),
+            ref_doi: clean_doi(ref_doi),
+            pub_year,
+            statement: non_empty(statement),
+        });
+    }
+
+    let stats = DatasetStats {
+        n_compounds: compound_fps.len(),
+        n_taxa: taxon_fps.len(),
+        n_references: ref_fps.len(),
+        n_entries: total_distinct_filtered,
+    };
+    let was_capped = total_distinct_filtered > entries.len();
     Ok((entries, stats, was_capped))
 }
 

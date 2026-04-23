@@ -1,7 +1,7 @@
 use crate::export;
 use crate::i18n::{
     CountNoun, Locale, TextKey, aria_search_inchikey, aria_wikidata_entity,
-    aria_wikidata_statement, count_label, showing_rows_text, t,
+    aria_wikidata_statement, count_label, t,
 };
 use crate::models::*;
 use crate::sparql;
@@ -29,6 +29,7 @@ pub fn ResultsTable(
     stats: DatasetStats,
     total_stats: Option<DatasetStats>,
     total_matches: Option<usize>,
+    display_capped_rows: bool,
     sort: Signal<SortState>,
     page: Signal<usize>,
     sparql_query: Option<String>,
@@ -401,16 +402,18 @@ pub fn ResultsTable(
                 }
             }
 
+            if display_capped_rows {
+                div { class: "notice notice-warn", role: "status",
+                    span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
+                    span { class: "notice-value", "{t(locale, TextKey::DisplayCappedHint)}" }
+                }
+            }
+
             if total == 0 {
                 div { class: "empty-state",
                     p { "{t(locale, TextKey::NoResults)}" }
                 }
             } else {
-                div { class: "pagination-bar",
-                    span { class: "page-info",
-                        "{showing_rows_text(locale, end_row.saturating_sub(start_row), total)}"
-                    }
-                }
 
                 div {
                     id: TABLE_SCROLL_ID,

@@ -56,6 +56,7 @@ impl Locale {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CountNoun {
     Compound,
@@ -119,6 +120,7 @@ pub enum TextKey {
     ExampleQueryStructure,
     ExampleQueryAdvanced,
     WelcomeProgrammaticDownload,
+    LabelLanguagePolicy,
     // Search panel
     SearchFilters,
     Taxon,
@@ -167,6 +169,7 @@ pub enum TextKey {
     OpenInQleverTitle,
     SparqlQuery,
     NoResults,
+    DisplayCappedHint,
     // Columns
     Structure,
     Compound,
@@ -178,7 +181,7 @@ pub enum TextKey {
     // Footer
     FooterData,
     FooterCode,
-    FooterTools,
+    FooterPrograms,
     FooterLicense,
     FooterForData,
     FooterForCode,
@@ -245,6 +248,9 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::ExampleQueryStructure => "Structure",
             TextKey::ExampleQueryAdvanced => "Advanced",
             TextKey::WelcomeProgrammaticDownload => "Programmatic download URL patterns:",
+            TextKey::LabelLanguagePolicy => {
+                "Labels are resolved with 'mul' first, then 'en' fallback for reproducible and comparable results across UI languages."
+            }
             TextKey::SearchFilters => "Search filters",
             TextKey::Taxon => "Taxon",
             TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
@@ -301,6 +307,9 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::OpenInQleverTitle => "Open this query in the QLever web interface",
             TextKey::SparqlQuery => "SPARQL query",
             TextKey::NoResults => "No results. Try broadening your search.",
+            TextKey::DisplayCappedHint => {
+                "Displaying the first rows only for memory safety on this device. Counts remain exact."
+            }
             TextKey::Structure => "Structure",
             TextKey::Compound => "Compound",
             TextKey::Mass => "Mass",
@@ -310,7 +319,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::Year => "Year",
             TextKey::FooterData => "Data",
             TextKey::FooterCode => "Code",
-            TextKey::FooterTools => "Tools",
+            TextKey::FooterPrograms => "Programs",
             TextKey::FooterLicense => "License",
             TextKey::FooterForData => " for data ",
             TextKey::FooterForCode => " for code",
@@ -382,6 +391,9 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::WelcomeProgrammaticDownload => {
                 "Modèles d'URL pour téléchargement programmatique :"
             }
+            TextKey::LabelLanguagePolicy => {
+                "Les libellés utilisent d'abord 'mul', puis un repli 'en' pour garantir des résultats reproductibles et comparables entre langues d'interface."
+            }
             TextKey::SearchFilters => "Filtres de recherche",
             TextKey::Taxon => "Taxon",
             TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
@@ -434,6 +446,9 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::OpenInQleverTitle => "Ouvrir cette requête dans QLever",
             TextKey::SparqlQuery => "Requête SPARQL",
             TextKey::NoResults => "Aucun résultat. Essayez une recherche plus large.",
+            TextKey::DisplayCappedHint => {
+                "Affichage des premières lignes uniquement pour préserver la mémoire de l'appareil. Les totaux restent exacts."
+            }
             TextKey::Structure => "Structure",
             TextKey::Compound => "Composé",
             TextKey::Mass => "Masse",
@@ -443,7 +458,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::Year => "Année",
             TextKey::FooterData => "Données",
             TextKey::FooterCode => "Code",
-            TextKey::FooterTools => "Outils",
+            TextKey::FooterPrograms => "Programmes",
             TextKey::FooterLicense => "Licence",
             TextKey::FooterForData => " pour les données ",
             TextKey::FooterForCode => " pour le code",
@@ -519,6 +534,9 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::WelcomeProgrammaticDownload => {
             "Programmgesteuerte Downloads per URL-Parameter (Beispiele):"
         }
+        TextKey::LabelLanguagePolicy => {
+            "Beschriftungen werden zuerst aus 'mul' und danach per 'en'-Fallback aufgelöst, damit Ergebnisse über UI-Sprachen hinweg reproduzierbar und vergleichbar bleiben."
+        }
         TextKey::SearchFilters => "Suchfilter",
         TextKey::Taxon => "Taxon",
         TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
@@ -575,6 +593,9 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::OpenInQleverTitle => "Diese Abfrage in der QLever-Weboberfläche öffnen",
         TextKey::SparqlQuery => "SPARQL-Abfrage",
         TextKey::NoResults => "Keine Ergebnisse. Bitte erweitern Sie die Suche.",
+        TextKey::DisplayCappedHint => {
+            "Aus Speichergründen werden auf diesem Gerät nur die ersten Zeilen angezeigt. Die Gesamtzahlen bleiben exakt."
+        }
         TextKey::Structure => "Struktur",
         TextKey::Compound => "Verbindung",
         TextKey::Mass => "Masse",
@@ -584,7 +605,7 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::Year => "Jahr",
         TextKey::FooterData => "Daten",
         TextKey::FooterCode => "Code",
-        TextKey::FooterTools => "Werkzeuge",
+        TextKey::FooterPrograms => "Programme",
         TextKey::FooterLicense => "Lizenz",
         TextKey::FooterForData => " für Daten ",
         TextKey::FooterForCode => " für Code",
@@ -657,6 +678,9 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::WelcomeProgrammaticDownload => {
             "Download programmatico con parametri URL (esempi):"
         }
+        TextKey::LabelLanguagePolicy => {
+            "Le etichette usano prima 'mul' e poi fallback 'en' per mantenere risultati riproducibili e confrontabili tra lingue dell'interfaccia."
+        }
         TextKey::SearchFilters => "Filtri di ricerca",
         TextKey::Taxon => "Taxon",
         TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
@@ -713,6 +737,9 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::OpenInQleverTitle => "Apri questa query nell'interfaccia web di QLever",
         TextKey::SparqlQuery => "Query SPARQL",
         TextKey::NoResults => "Nessun risultato. Prova ad ampliare la ricerca.",
+        TextKey::DisplayCappedHint => {
+            "Per sicurezza di memoria su questo dispositivo vengono mostrate solo le prime righe. I conteggi restano esatti."
+        }
         TextKey::Structure => "Struttura",
         TextKey::Compound => "Composto",
         TextKey::Mass => "Massa",
@@ -722,7 +749,7 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::Year => "Anno",
         TextKey::FooterData => "Dati",
         TextKey::FooterCode => "Codice",
-        TextKey::FooterTools => "Strumenti",
+        TextKey::FooterPrograms => "Programmi",
         TextKey::FooterLicense => "Licenza",
         TextKey::FooterForData => " per i dati ",
         TextKey::FooterForCode => " per il codice",
@@ -1041,6 +1068,7 @@ pub fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static st
     }
 }
 
+#[allow(dead_code)]
 pub fn showing_rows_text(locale: Locale, visible: usize, total: usize) -> String {
     match locale {
         Locale::En => format!(

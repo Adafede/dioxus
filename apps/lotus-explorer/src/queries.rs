@@ -79,13 +79,14 @@ const PROPERTIES_OPTIONAL: &str = r#"
   OPTIONAL { ?c wdt:P2067 ?compound_mass. }
   OPTIONAL { ?c wdt:P274 ?compound_formula. }
   OPTIONAL {
-    ?c rdfs:label ?compoundLabel.
-    FILTER(LANG(?compoundLabel) = "en")
+    ?c rdfs:label ?compoundLabelMul.
+    FILTER(LANG(?compoundLabelMul) = "mul")
   }
   OPTIONAL {
-    ?c rdfs:label ?compoundLabel.
-    FILTER(LANG(?compoundLabel) = "mul")
+    ?c rdfs:label ?compoundLabelEn.
+    FILTER(LANG(?compoundLabelEn) = "en")
   }
+  BIND(COALESCE(?compoundLabelMul, ?compoundLabelEn) AS ?compoundLabel)
 "#;
 
 // ── query_taxon_search ────────────────────────────────────────────────────────
@@ -129,7 +130,6 @@ WHERE {{
   {{
     SELECT
       ?c
-      ?compoundLabel
       ?compound_inchikey
       ?compound_smiles_conn
       ?t
@@ -162,7 +162,6 @@ WHERE {{
   {{
     SELECT
       ?c
-      ?compoundLabel
       ?compound_inchikey
       ?compound_smiles_conn
       ?t

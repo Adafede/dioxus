@@ -30,6 +30,7 @@ enum QueryPhase {
     Rendering,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ErrorKind {
     Validation,
@@ -73,6 +74,7 @@ fn App() -> Element {
     let metadata_json: Signal<Option<String>> = use_signal(|| None);
     let total_matches: Signal<Option<usize>> = use_signal(|| None);
     let total_stats: Signal<Option<DatasetStats>> = use_signal(|| None);
+    let display_capped_rows: Signal<bool> = use_signal(|| false);
     let sort: Signal<SortState> = use_signal(SortState::default);
     let page: Signal<usize> = use_signal(|| 0usize);
     let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
@@ -112,6 +114,7 @@ fn App() -> Element {
             metadata_json,
             total_matches,
             total_stats,
+            display_capped_rows,
             page,
             mobile_filters_open,
         )
@@ -139,6 +142,7 @@ fn App() -> Element {
                 metadata_json,
                 total_matches,
                 total_stats,
+                display_capped_rows,
                 page,
                 mobile_filters_open,
             );
@@ -430,6 +434,7 @@ fn App() -> Element {
                                         metadata_json,
                                         total_matches,
                                         total_stats,
+                                        display_capped_rows,
                                         page,
                                         mobile_filters_open,
                                     )
@@ -466,6 +471,7 @@ fn App() -> Element {
                         stats: stats.read().clone(),
                         total_stats: total_stats.read().clone(),
                         total_matches: *total_matches.read(),
+                        display_capped_rows: *display_capped_rows.read(),
                         sort,
                         page,
                         sparql_query: sparql_query.read().clone(),
@@ -507,7 +513,7 @@ fn Footer(locale: Locale) -> Element {
                 ],
             }
             FooterRow {
-                label: t(locale, TextKey::FooterTools),
+                label: t(locale, TextKey::FooterPrograms),
                 class: "footer-link tool",
                 links: &[
                     ("https://github.com/cdk/depict", "CDK Depict"),
@@ -619,6 +625,9 @@ fn WelcomeScreen(locale: Locale) -> Element {
                 p { class: "form-hint welcome-cli-hint",
                     "{t(locale, TextKey::WelcomeProgrammaticDownload)}"
                 }
+                p { class: "form-hint",
+                    "{t(locale, TextKey::LabelLanguagePolicy)}"
+                }
                 div { class: "welcome-cli-list",
                     DownloadExampleRow {
                         locale,
@@ -672,6 +681,7 @@ struct SearchOutcome {
     query: String,
     total_matches: Option<usize>,
     total_stats: Option<DatasetStats>,
+    display_capped_rows: bool,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -692,6 +702,7 @@ fn start_search(
     mut metadata_json: Signal<Option<String>>,
     mut total_matches: Signal<Option<usize>>,
     mut total_stats: Signal<Option<DatasetStats>>,
+    mut display_capped_rows: Signal<bool>,
     mut page: Signal<usize>,
     mut mobile_filters_open: Signal<bool>,
 ) {
@@ -720,27 +731,31 @@ fn start_search(
     *metadata_json.write() = None;
     *total_matches.write() = None;
     *total_stats.write() = None;
+    *display_capped_rows.write() = false;
     *page.write() = 0;
     *mobile_filters_open.write() = false;
 
     spawn(async move {
         match do_search(crit.clone(), *locale.peek(), query_phase).await {
             Ok(mut outcome) => {
-                apply_client_filters_in_place(&mut outcome.rows, &crit);
-                let filtered_stats = DatasetStats::from_entries(&outcome.rows);
-                let filtered_matches = outcome.rows.len();
+                // `do_search` already applies post-filters in its dedicated
+                // filtered path; avoid re-filtering/counted-row drift.
+                if !crit.has_client_post_filters() {
+                    apply_client_filters_in_place(&mut outcome.rows, &crit);
+                }
+                let filtered_stats = outcome
+                    .total_stats
+                    .clone()
+                    .unwrap_or_else(|| DatasetStats::from_entries(&outcome.rows));
+                let filtered_matches = outcome.total_matches.unwrap_or(outcome.rows.len());
                 let showing_filtered_totals = crit.has_client_post_filters();
 
                 let (q_hash, r_hash) =
                     compute_hashes(outcome.qid.as_deref().unwrap_or(""), &crit, &outcome.rows);
-                let full_stats = outcome
-                    .total_stats
-                    .clone()
-                    .unwrap_or_else(|| filtered_stats.clone());
                 let meta_str = export::build_metadata_json(export::MetadataInputs {
                     criteria: &crit,
                     qid: outcome.qid.as_deref(),
-                    stats: &full_stats,
+                    stats: &filtered_stats,
                     number_of_records_override: Some(filtered_matches),
                     query_hash: &q_hash,
                     result_hash: &r_hash,
@@ -754,6 +769,7 @@ fn start_search(
                 *result_hash.write() = Some(r_hash);
                 *sparql_query.write() = Some(outcome.query);
                 *metadata_json.write() = Some(meta_str);
+                *display_capped_rows.write() = outcome.display_capped_rows;
                 if showing_filtered_totals {
                     *total_matches.write() = Some(filtered_matches);
                     *total_stats.write() = Some(filtered_stats);
@@ -894,7 +910,9 @@ async fn do_search(
     };
 
     let display_limit = runtime_table_row_limit();
-    let (rows, total_stats_out, total_matches) = if crit.has_client_post_filters() {
+    let (rows, total_stats_out, total_matches, display_capped_rows) = if crit
+        .has_client_post_filters()
+    {
         *query_phase.write() = QueryPhase::FetchingPreview;
         let csv = sparql::execute_sparql(&execution_query)
             .await
@@ -902,11 +920,15 @@ async fn do_search(
                 kind: ErrorKind::Network,
                 message: err_query_stage_failed(locale, "query", &e.to_string()),
             })?;
-        let rows = sparql::parse_compounds_csv(&csv).map_err(|e| AppError {
-            kind: ErrorKind::Parse,
-            message: err_query_stage_failed(locale, "parse", &e.to_string()),
-        })?;
-        (rows, None, None)
+        let (rows, filtered_stats, capped) =
+            sparql::parse_compounds_csv_filtered_capped(&csv, display_limit, &crit).map_err(
+                |e| AppError {
+                    kind: ErrorKind::Parse,
+                    message: err_query_stage_failed(locale, "parse", &e.to_string()),
+                },
+            )?;
+        let filtered_matches = filtered_stats.n_entries;
+        (rows, Some(filtered_stats), Some(filtered_matches), capped)
     } else {
         // Fast path: fetch exact aggregate counts with a tiny response, then fetch
         // only the display window. This keeps metadata totals exact while cutting
@@ -943,7 +965,12 @@ async fn do_search(
                     }
                 })?;
 
-            Ok::<_, AppError>((rows, Some(full_stats.clone()), Some(full_stats.n_entries)))
+            Ok::<_, AppError>((
+                rows,
+                Some(full_stats.clone()),
+                Some(full_stats.n_entries),
+                false,
+            ))
         }
         .await
         {
@@ -973,7 +1000,12 @@ async fn do_search(
                                 message: err_query_stage_failed(locale, "parse", &e.to_string()),
                             }
                         })?;
-                    (rows, Some(full_stats.clone()), Some(full_stats.n_entries))
+                    (
+                        rows,
+                        Some(full_stats.clone()),
+                        Some(full_stats.n_entries),
+                        false,
+                    )
                 }
             }
         }
@@ -986,6 +1018,7 @@ async fn do_search(
         query: execution_query,
         total_matches,
         total_stats: total_stats_out,
+        display_capped_rows,
     })
 }
 
