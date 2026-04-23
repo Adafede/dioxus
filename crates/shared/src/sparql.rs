@@ -11,6 +11,7 @@ pub enum SparqlResponseFormat {
     Csv,
     SparqlJson,
     Turtle,
+    NTriples,
 }
 
 impl SparqlResponseFormat {
@@ -19,6 +20,7 @@ impl SparqlResponseFormat {
             Self::Csv => "text/csv",
             Self::SparqlJson => "application/sparql-results+json",
             Self::Turtle => "text/turtle",
+            Self::NTriples => "application/n-triples",
         }
     }
 
@@ -27,6 +29,7 @@ impl SparqlResponseFormat {
             Self::Csv => Some("csv_export"),
             Self::SparqlJson => Some("sparql_json_export"),
             Self::Turtle => Some("turtle_export"),
+            Self::NTriples => None,
         }
     }
 }

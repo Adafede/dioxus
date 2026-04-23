@@ -40,8 +40,8 @@ pub fn ResultsTable(
     /// filenames (taxon slug + optional search-type suffix).
     criteria: ReadSignal<SearchCriteria>,
 ) -> Element {
-    // JSON/TTL exports re-fetch via `execute_sparql_cached`, which returns
-    // the last CSV body instantly — no need to keep a full in-memory row set.
+    // Exports are served from fresh endpoint requests (CSV/JSON/TTL/NT), so
+    // the table only keeps the preview rows needed for rendering.
     let display_stats = total_stats
         .as_ref()
         .cloned()
@@ -138,6 +138,10 @@ pub fn ResultsTable(
     let ttl_filename = use_memo(move || {
         let c = criteria.read();
         export::generate_filename(&c.taxon, "ttl", search_type_suffix(&c))
+    });
+    let nt_filename = use_memo(move || {
+        let c = criteria.read();
+        export::generate_filename(&c.taxon, "nt", search_type_suffix(&c))
     });
 
     // Metadata filename mirrors Python: `{query_hash}_{result_hash}_metadata.json`.
@@ -310,6 +314,40 @@ pub fn ResultsTable(
                                     },
                                     title: "{t(locale, TextKey::DownloadTtlTitle)}",
                                     "TTL"
+                                }
+                                button {
+                                    class: "btn btn-sm",
+                                    r#type: "button",
+                                    disabled: *download_busy.read(),
+                                    onclick: {
+                                        let q = query.to_string();
+                                        move |_| {
+                                            let q = queries::query_construct_from_select(&q);
+                                            let filename = nt_filename.read().clone();
+                                            *download_busy.write() = true;
+                                            *download_status.write() = Some(
+                                                t(locale, TextKey::PreparingNtDownload).to_string(),
+                                            );
+                                            spawn(async move {
+                                                if let Ok(body) = sparql::execute_sparql_format(
+                                                        &q,
+                                                        SparqlResponseFormat::NTriples,
+                                                    )
+                                                    .await
+                                                {
+                                                    trigger_download(
+                                                        &filename,
+                                                        "application/n-triples;charset=utf-8",
+                                                        &body,
+                                                    );
+                                                }
+                                                *download_busy.write() = false;
+                                                *download_status.write() = None;
+                                            });
+                                        }
+                                    },
+                                    title: "{t(locale, TextKey::DownloadNtTitle)}",
+                                    "NT"
                                 }
                             }
                             if let Some(body) = metadata_json.as_ref() {

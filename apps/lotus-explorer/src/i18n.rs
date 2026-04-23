@@ -159,9 +159,11 @@ pub enum TextKey {
     StartingCsvDownload,
     PreparingJsonDownload,
     PreparingTtlDownload,
+    PreparingNtDownload,
     DownloadCsvTitle,
     DownloadJsonTitle,
     DownloadTtlTitle,
+    DownloadNtTitle,
     DownloadMetadataTitle,
     Metadata,
     OpenInQlever,
@@ -292,11 +294,13 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::StartingCsvDownload => "Starting CSV download...",
             TextKey::PreparingJsonDownload => "Preparing JSON download...",
             TextKey::PreparingTtlDownload => "Preparing TTL download...",
+            TextKey::PreparingNtDownload => "Preparing N-Triples download...",
             TextKey::DownloadCsvTitle => "Download all rows as CSV",
             TextKey::DownloadJsonTitle => {
-                "Download all rows as newline-delimited JSON (can take time)"
+                "Download all rows as SPARQL Results JSON (can take time)"
             }
             TextKey::DownloadTtlTitle => "Download all rows as RDF Turtle (can take time)",
+            TextKey::DownloadNtTitle => "Download all rows as RDF N-Triples (can take time)",
             TextKey::DownloadMetadataTitle => "Download Schema.org metadata (JSON-LD)",
             TextKey::Metadata => "Metadata",
             TextKey::OpenInQlever => "Open in QLever",
@@ -430,9 +434,13 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::StartingCsvDownload => "Démarrage téléchargement CSV...",
             TextKey::PreparingJsonDownload => "Préparation téléchargement JSON...",
             TextKey::PreparingTtlDownload => "Préparation téléchargement TTL...",
+            TextKey::PreparingNtDownload => "Préparation téléchargement N-Triples...",
             TextKey::DownloadCsvTitle => "Télécharger toutes les lignes en CSV",
-            TextKey::DownloadJsonTitle => "Télécharger toutes les lignes en JSON (peut être long)",
+            TextKey::DownloadJsonTitle => {
+                "Télécharger toutes les lignes en JSON de résultats SPARQL"
+            }
             TextKey::DownloadTtlTitle => "Télécharger toutes les lignes en Turtle RDF",
+            TextKey::DownloadNtTitle => "Télécharger toutes les lignes en RDF N-Triples",
             TextKey::DownloadMetadataTitle => "Télécharger les metadonnées",
             TextKey::Metadata => "Metadonnées",
             TextKey::OpenInQlever => "Ouvrir dans QLever",
@@ -574,9 +582,15 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::StartingCsvDownload => "CSV-Download wird gestartet...",
         TextKey::PreparingJsonDownload => "JSON-Download wird vorbereitet...",
         TextKey::PreparingTtlDownload => "TTL-Download wird vorbereitet...",
+        TextKey::PreparingNtDownload => "N-Triples-Download wird vorbereitet...",
         TextKey::DownloadCsvTitle => "Alle Zeilen als CSV herunterladen",
-        TextKey::DownloadJsonTitle => "Alle Zeilen als NDJSON herunterladen (kann dauern)",
+        TextKey::DownloadJsonTitle => {
+            "Alle Zeilen als SPARQL-Results-JSON herunterladen (kann dauern)"
+        }
         TextKey::DownloadTtlTitle => "Alle Zeilen als RDF Turtle herunterladen (kann dauern)",
+        TextKey::DownloadNtTitle => {
+            "Alle Zeilen als RDF N-Triples herunterladen (kann dauern)"
+        }
         TextKey::DownloadMetadataTitle => "Schema.org-Metadaten herunterladen (JSON-LD)",
         TextKey::Metadata => "Metadaten",
         TextKey::OpenInQlever => "In QLever öffnen",
@@ -715,9 +729,13 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::StartingCsvDownload => "Avvio download CSV...",
         TextKey::PreparingJsonDownload => "Preparazione download JSON...",
         TextKey::PreparingTtlDownload => "Preparazione download TTL...",
+        TextKey::PreparingNtDownload => "Preparazione download N-Triples...",
         TextKey::DownloadCsvTitle => "Scarica tutte le righe in CSV",
-        TextKey::DownloadJsonTitle => "Scarica tutte le righe in NDJSON (può richiedere tempo)",
+        TextKey::DownloadJsonTitle => {
+            "Scarica tutte le righe in JSON risultati SPARQL (può richiedere tempo)"
+        }
         TextKey::DownloadTtlTitle => "Scarica tutte le righe in RDF Turtle (può richiedere tempo)",
+        TextKey::DownloadNtTitle => "Scarica tutte le righe in RDF N-Triples (può richiedere tempo)",
         TextKey::DownloadMetadataTitle => "Scarica metadati Schema.org (JSON-LD)",
         TextKey::Metadata => "Metadati",
         TextKey::OpenInQlever => "Apri in QLever",
@@ -770,13 +788,15 @@ pub fn err_invalid_search_input(locale: Locale) -> String {
 
 pub fn err_unsupported_format(locale: Locale, fmt: &str) -> String {
     match locale {
-        Locale::En => format!("Unsupported format '{fmt}'. Use csv, json, or ttl."),
-        Locale::Fr => format!("Format '{fmt}' non pris en charge. Utilisez csv, json ou ttl."),
+        Locale::En => format!("Unsupported format '{fmt}'. Use csv, json, ttl, or nt."),
+        Locale::Fr => {
+            format!("Format '{fmt}' non pris en charge. Utilisez csv, json, ttl ou nt.")
+        }
         Locale::De => {
-            format!("Nicht unterstütztes Format '{fmt}'. Verwenden Sie csv, json oder ttl.")
+            format!("Nicht unterstütztes Format '{fmt}'. Verwenden Sie csv, json, ttl oder nt.")
         }
         Locale::It => {
-            format!("Formato '{fmt}' non supportato. Usa csv, json o ttl.")
+            format!("Formato '{fmt}' non supportato. Usa csv, json, ttl o nt.")
         }
     }
 }

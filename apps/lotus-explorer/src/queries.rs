@@ -461,19 +461,12 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
         .map(str::trim)
         .filter(|s| !s.is_empty())
     {
-        let exact_ascii = normalize_formula_digits(exact);
-        let exact_escaped = exact_ascii.replace('\\', r"\\").replace('"', r#"\""#);
-        let exact_subscript = digits_to_subscripts(&exact_ascii);
-        let exact_subscript_escaped = exact_subscript.replace('\\', r"\\").replace('"', r#"\""#);
-        if exact_subscript_escaped == exact_escaped {
-            filters.push(format!(
-                "FILTER(BOUND(?compound_formula) && STR(?compound_formula) = \"{exact_escaped}\")"
-            ));
-        } else {
-            filters.push(format!(
-                "FILTER(BOUND(?compound_formula) && (STR(?compound_formula) = \"{exact_escaped}\" || STR(?compound_formula) = \"{exact_subscript_escaped}\"))"
-            ));
-        }
+        let exact_norm: String = normalize_formula_digits(exact)
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
+        let exact_escaped = exact_norm.replace('\\', r"\\").replace('"', r#"\""#);
+        filters.push(format!("FILTER(?_formula_norm = \"{exact_escaped}\")"));
     }
 
     if prelude.is_empty() && filters.is_empty() {
@@ -572,24 +565,6 @@ fn normalize_formula_digits(s: &str) -> String {
             '₇' => '7',
             '₈' => '8',
             '₉' => '9',
-            _ => c,
-        })
-        .collect()
-}
-
-fn digits_to_subscripts(s: &str) -> String {
-    s.chars()
-        .map(|c| match c {
-            '0' => '₀',
-            '1' => '₁',
-            '2' => '₂',
-            '3' => '₃',
-            '4' => '₄',
-            '5' => '₅',
-            '6' => '₆',
-            '7' => '₇',
-            '8' => '₈',
-            '9' => '₉',
             _ => c,
         })
         .collect()

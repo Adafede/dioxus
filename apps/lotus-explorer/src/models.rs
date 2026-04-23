@@ -1,6 +1,5 @@
 //! Domain models for the LOTUS explorer.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -252,11 +251,6 @@ impl SearchCriteria {
         !self.taxon.trim().is_empty() || !self.smiles.trim().is_empty()
     }
 
-    #[allow(dead_code)]
-    pub fn has_client_post_filters(&self) -> bool {
-        self.has_mass_filter() || self.has_year_filter() || self.has_formula_filter()
-    }
-
     pub fn shareable_query_params(&self) -> Vec<(String, String)> {
         let mut params = Vec::new();
         if !self.taxon.trim().is_empty() {
@@ -318,119 +312,6 @@ impl SearchCriteria {
     }
 }
 
-/// Apply client-side filters that are not encoded directly into the SPARQL query.
-/// This keeps table rows and downloads consistent.
-pub fn apply_client_filters_in_place(rows: &mut Vec<CompoundEntry>, crit: &SearchCriteria) {
-    rows.retain(|e| matches_client_filters(e, crit));
-}
-
-pub fn matches_client_filters(entry: &CompoundEntry, crit: &SearchCriteria) -> bool {
-    if crit.has_mass_filter()
-        && !entry
-            .mass
-            .is_some_and(|m| m >= crit.mass_min && m <= crit.mass_max)
-    {
-        return false;
-    }
-    if crit.has_year_filter()
-        && !entry
-            .pub_year
-            .is_some_and(|y| y >= crit.year_min && y <= crit.year_max)
-    {
-        return false;
-    }
-    if crit.has_formula_filter() && !formula_matches(entry.formula.as_deref(), crit) {
-        return false;
-    }
-    true
-}
-
-fn formula_matches(formula: Option<&str>, crit: &SearchCriteria) -> bool {
-    // With active formula constraints, rows missing a formula cannot be
-    // validated against element/halogen requirements and must be rejected.
-    let raw_formula = match formula {
-        Some(f) if !f.trim().is_empty() => f,
-        _ => return false,
-    };
-    let normalized = normalize_formula(raw_formula);
-    let exact = crit.formula_exact.trim();
-    if !exact.is_empty() {
-        return normalized == normalize_formula(exact);
-    }
-
-    let parsed = parse_formula_counts(&normalized);
-    for (elem, min, max, default_max) in crit.element_ranges() {
-        if min == 0 && max >= default_max {
-            continue;
-        }
-        let n = *parsed.get(elem).unwrap_or(&0);
-        if n < min || n > max {
-            return false;
-        }
-    }
-
-    element_state_matches(parsed.get("F").copied().unwrap_or(0), crit.f_state)
-        && element_state_matches(parsed.get("Cl").copied().unwrap_or(0), crit.cl_state)
-        && element_state_matches(parsed.get("Br").copied().unwrap_or(0), crit.br_state)
-        && element_state_matches(parsed.get("I").copied().unwrap_or(0), crit.i_state)
-}
-
-fn normalize_formula(formula: &str) -> String {
-    formula
-        .chars()
-        .map(|c| match c {
-            '₀' => '0',
-            '₁' => '1',
-            '₂' => '2',
-            '₃' => '3',
-            '₄' => '4',
-            '₅' => '5',
-            '₆' => '6',
-            '₇' => '7',
-            '₈' => '8',
-            '₉' => '9',
-            _ => c,
-        })
-        .collect()
-}
-
-fn element_state_matches(count: i32, state: ElementState) -> bool {
-    match state {
-        ElementState::Allowed => true,
-        ElementState::Required => count > 0,
-        ElementState::Excluded => count == 0,
-    }
-}
-
-fn parse_formula_counts(formula: &str) -> BTreeMap<String, i32> {
-    let mut out = BTreeMap::new();
-    let chars: Vec<char> = formula.chars().collect();
-    let mut i = 0usize;
-    while i < chars.len() {
-        if !chars[i].is_ascii_uppercase() {
-            i += 1;
-            continue;
-        }
-        let mut symbol = String::new();
-        symbol.push(chars[i]);
-        i += 1;
-        if i < chars.len() && chars[i].is_ascii_lowercase() {
-            symbol.push(chars[i]);
-            i += 1;
-        }
-        let start = i;
-        while i < chars.len() && chars[i].is_ascii_digit() {
-            i += 1;
-        }
-        let count = if start < i {
-            formula[start..i].parse::<i32>().unwrap_or(1)
-        } else {
-            1
-        };
-        *out.entry(symbol).or_insert(0) += count;
-    }
-    out
-}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SmilesSearchType {
@@ -561,78 +442,3 @@ impl Default for SortState {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn mk_entry(formula: Option<&str>, mass: Option<f64>, pub_year: Option<i32>) -> CompoundEntry {
-        CompoundEntry {
-            formula: formula.map(|s| s.to_string()),
-            mass,
-            pub_year,
-            ..CompoundEntry::default()
-        }
-    }
-
-    #[test]
-    fn formula_filter_rejects_missing_and_non_matching_elements() {
-        let mut rows = vec![
-            mk_entry(None, None, None),
-            mk_entry(Some("H2O"), None, None),
-            mk_entry(Some("C6H6"), None, None),
-        ];
-        let mut crit = SearchCriteria::default();
-        crit.formula_enabled = true;
-        crit.c_min = 1;
-
-        apply_client_filters_in_place(&mut rows, &crit);
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].formula.as_deref(), Some("C6H6"));
-    }
-
-    #[test]
-    fn formula_filter_disabled_keeps_rows_with_missing_formula() {
-        let mut rows = vec![
-            mk_entry(None, None, None),
-            mk_entry(Some("H2O"), None, None),
-        ];
-        let crit = SearchCriteria::default();
-
-        apply_client_filters_in_place(&mut rows, &crit);
-        assert_eq!(rows.len(), 2);
-    }
-
-    #[test]
-    fn mass_filter_keeps_only_rows_in_range_with_mass_value() {
-        let mut rows = vec![
-            mk_entry(None, None, None),
-            mk_entry(None, Some(12.5), None),
-            mk_entry(None, Some(55.0), None),
-            mk_entry(None, Some(101.0), None),
-        ];
-        let mut crit = SearchCriteria::default();
-        crit.mass_min = 50.0;
-        crit.mass_max = 100.0;
-
-        apply_client_filters_in_place(&mut rows, &crit);
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].mass, Some(55.0));
-    }
-
-    #[test]
-    fn publication_year_filter_keeps_only_rows_in_range_with_year_value() {
-        let mut rows = vec![
-            mk_entry(None, None, None),
-            mk_entry(None, None, Some(1999)),
-            mk_entry(None, None, Some(2010)),
-            mk_entry(None, None, Some(2024)),
-        ];
-        let mut crit = SearchCriteria::default();
-        crit.year_min = 2000;
-        crit.year_max = 2020;
-
-        apply_client_filters_in_place(&mut rows, &crit);
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].pub_year, Some(2010));
-    }
-}

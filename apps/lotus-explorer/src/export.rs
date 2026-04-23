@@ -1,12 +1,6 @@
-//! Export formats for LOTUS results — CSV, NDJSON, Turtle (TTL), and a
-//! Schema.org compliant metadata JSON-LD document.
-//!
-//! Mirrors the Python `CSVExportStrategy`, `JSONExportStrategy`,
-//! `TTLExportStrategy`, and `LOTUSExplorer.create_metadata` so that files
-//! produced by the Rust/Dioxus port are drop-in compatible with those from
-//! the marimo notebook.
+//! Export metadata helpers for LOTUS results.
 
-use crate::models::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType};
+use crate::models::{ElementState, SearchCriteria, SmilesSearchType};
 use serde_json::{Map, Value, json};
 
 pub const APP_VERSION: &str = "0.1.0";
@@ -175,8 +169,6 @@ pub fn criteria_to_filters_value(criteria: &SearchCriteria) -> Value {
 pub struct MetadataInputs<'a> {
     pub criteria: &'a SearchCriteria,
     pub qid: Option<&'a str>,
-    #[allow(dead_code)]
-    pub stats: &'a DatasetStats,
     pub number_of_records_override: Option<usize>,
     pub query_hash: &'a str,
     pub result_hash: &'a str,
@@ -320,8 +312,9 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
         "distribution".into(),
         json!([
             { "@type": "DataDownload", "encodingFormat": "text/csv",         "contentUrl": "data:text/csv" },
-            { "@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "data:application/json" },
+            { "@type": "DataDownload", "encodingFormat": "application/sparql-results+json", "contentUrl": "data:application/sparql-results+json" },
             { "@type": "DataDownload", "encodingFormat": "text/turtle",      "contentUrl": "data:text/turtle" },
+            { "@type": "DataDownload", "encodingFormat": "application/n-triples", "contentUrl": "data:application/n-triples" },
         ]),
     );
     if let Some(n_records) = inp.number_of_records_override {
@@ -383,199 +376,6 @@ fn title_case(s: &str) -> String {
     }
 }
 
-// ── NDJSON export ─────────────────────────────────────────────────────────────
-
-#[allow(dead_code)]
-pub fn build_ndjson(rows: &[CompoundEntry]) -> String {
-    let mut out = String::with_capacity(rows.len() * 256);
-    for e in rows {
-        let v = json!({
-            "compound_qid":     e.compound_qid,
-            "compound_name":    e.name,
-            "compound_inchikey":e.inchikey,
-            "compound_smiles":  e.smiles,
-            "compound_mass":    e.mass,
-            "molecular_formula":e.formula,
-            "taxon_qid":        e.taxon_qid,
-            "taxon_name":       e.taxon_name,
-            "reference_qid":    e.reference_qid,
-            "reference_title":  e.ref_title,
-            "reference_doi":    e.ref_doi,
-            "reference_year":   e.pub_year,
-            "statement_id":     e.statement_id(),
-        });
-        out.push_str(&serde_json::to_string(&v).unwrap_or_default());
-        out.push('\n');
-    }
-    out
-}
-
-#[allow(dead_code)]
-pub fn build_csv(rows: &[CompoundEntry]) -> String {
-    fn esc(value: &str) -> String {
-        let needs_quotes = value.contains(',')
-            || value.contains('"')
-            || value.contains('\n')
-            || value.contains('\r');
-        if needs_quotes {
-            format!("\"{}\"", value.replace('"', "\"\""))
-        } else {
-            value.to_string()
-        }
-    }
-
-    let mut out = String::with_capacity(rows.len().saturating_mul(220));
-    out.push_str(
-        "compound_qid,compound_name,compound_inchikey,compound_smiles,compound_mass,molecular_formula,taxon_qid,taxon_name,reference_qid,reference_title,reference_doi,reference_year,statement_id\n",
-    );
-    for e in rows {
-        let mass = e.mass.map(|m| format!("{m:.6}")).unwrap_or_default();
-        let year = e.pub_year.map(|y| y.to_string()).unwrap_or_default();
-        let statement = e.statement_id().unwrap_or_default();
-        let fields = [
-            esc(&e.compound_qid),
-            esc(&e.name),
-            esc(e.inchikey.as_deref().unwrap_or("")),
-            esc(e.smiles.as_deref().unwrap_or("")),
-            esc(&mass),
-            esc(e.formula.as_deref().unwrap_or("")),
-            esc(&e.taxon_qid),
-            esc(&e.taxon_name),
-            esc(&e.reference_qid),
-            esc(e.ref_title.as_deref().unwrap_or("")),
-            esc(e.ref_doi.as_deref().unwrap_or("")),
-            esc(&year),
-            esc(&statement),
-        ];
-        out.push_str(&fields.join(","));
-        out.push('\n');
-    }
-    out
-}
-
-// ── Turtle (TTL) export ───────────────────────────────────────────────────────
-
-/// Emit a compact, self-contained Turtle document with:
-/// * a Schema.org `Dataset` header describing the result set and query,
-/// * one block of `wdt:`-qualified triples per compound / taxon / reference,
-/// * `wd:Qlll p:P703 wds:Qmmm ; ps:P703 wd:Qnnn ; prov:wasDerivedFrom wd:Qrrr`
-///   statements linking the three entities.
-#[allow(dead_code)]
-pub fn build_ttl(rows: &[CompoundEntry], meta: MetadataInputs<'_>) -> String {
-    let mut out = String::with_capacity(rows.len() * 512 + 2048);
-    out.push_str(concat!(
-        "@prefix wd:      <http://www.wikidata.org/entity/> .\n",
-        "@prefix wds:     <http://www.wikidata.org/entity/statement/> .\n",
-        "@prefix wdt:     <http://www.wikidata.org/prop/direct/> .\n",
-        "@prefix p:       <http://www.wikidata.org/prop/> .\n",
-        "@prefix ps:      <http://www.wikidata.org/prop/statement/> .\n",
-        "@prefix prov:    <http://www.w3.org/ns/prov#> .\n",
-        "@prefix schema:  <http://schema.org/> .\n",
-        "@prefix dcterms: <http://purl.org/dc/terms/> .\n",
-        "@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .\n\n",
-    ));
-
-    let dataset_uri = format!("urn:hash:sha256:{}", meta.result_hash);
-    out.push_str(&format!("<{dataset_uri}> a schema:Dataset ;\n"));
-    out.push_str(&"    schema:name \"LOTUS Wikidata Explorer query result\" ;\n".to_string());
-    out.push_str(&format!("    schema:version \"{APP_VERSION}\" ;\n"));
-    out.push_str(&format!(
-        "    schema:dateCreated \"{}\"^^xsd:dateTime ;\n",
-        now_iso8601()
-    ));
-    out.push_str("    schema:license <https://creativecommons.org/publicdomain/zero/1.0/> ;\n");
-    if let Some(n_records) = meta.number_of_records_override {
-        out.push_str(&format!(
-            "    schema:numberOfRecords \"{}\"^^xsd:integer ;\n",
-            n_records
-        ));
-    }
-    out.push_str(&format!(
-        "    dcterms:identifier \"sha256:{}\" .\n\n",
-        meta.result_hash
-    ));
-
-    // Dedup metadata triples per entity to keep the file compact.
-    use std::collections::HashSet;
-    let mut seen_c: HashSet<&str> = HashSet::new();
-    let mut seen_t: HashSet<&str> = HashSet::new();
-    let mut seen_r: HashSet<&str> = HashSet::new();
-
-    for e in rows {
-        if seen_c.insert(e.compound_qid.as_str()) {
-            out.push_str(&format!("wd:{} ", e.compound_qid));
-            let mut props: Vec<String> = Vec::new();
-            if !e.name.trim().is_empty() {
-                props.push(format!("    schema:name {}", ttl_literal(&e.name)));
-            }
-            if let Some(ik) = &e.inchikey {
-                props.push(format!("    wdt:P235 {}", ttl_literal(ik)));
-            }
-            if let Some(sm) = &e.smiles {
-                props.push(format!("    wdt:P233 {}", ttl_literal(sm)));
-            }
-            if let Some(m) = e.mass {
-                props.push(format!("    wdt:P2067 \"{m}\"^^xsd:decimal"));
-            }
-            if let Some(f) = &e.formula {
-                props.push(format!("    wdt:P274 {}", ttl_literal(f)));
-            }
-            if props.is_empty() {
-                out.push_str("a schema:ChemicalSubstance .\n");
-            } else {
-                out.push_str("a schema:ChemicalSubstance ;\n");
-                out.push_str(&props.join(" ;\n"));
-                out.push_str(" .\n");
-            }
-        }
-
-        if seen_t.insert(e.taxon_qid.as_str()) && !e.taxon_qid.is_empty() {
-            out.push_str(&format!(
-                "wd:{} a schema:Taxon ; wdt:P225 {} .\n",
-                e.taxon_qid,
-                ttl_literal(&e.taxon_name)
-            ));
-        }
-
-        if seen_r.insert(e.reference_qid.as_str()) && !e.reference_qid.is_empty() {
-            out.push_str(&format!("wd:{} a schema:ScholarlyArticle", e.reference_qid));
-            if let Some(t) = &e.ref_title {
-                out.push_str(&format!(" ; wdt:P1476 {}", ttl_literal(t)));
-            }
-            if let Some(d) = &e.ref_doi {
-                out.push_str(&format!(" ; wdt:P356 {}", ttl_literal(d)));
-            }
-            if let Some(y) = e.pub_year {
-                out.push_str(&format!(" ; wdt:P577 \"{y:04}-01-01\"^^xsd:date"));
-            }
-            out.push_str(" .\n");
-        }
-
-        // Statement link (p:/ps:/prov:).
-        if let Some(stmt) = e.statement_id() {
-            out.push_str(&format!(
-                "wd:{c} p:P703 wds:{s} .\nwds:{s} ps:P703 wd:{t} ; prov:wasDerivedFrom wd:{r} .\n",
-                c = e.compound_qid,
-                s = stmt,
-                t = e.taxon_qid,
-                r = e.reference_qid,
-            ));
-        }
-    }
-
-    out
-}
-
-#[allow(dead_code)]
-fn ttl_literal(s: &str) -> String {
-    let escaped = s
-        .replace('\\', r"\\")
-        .replace('"', r#"\""#)
-        .replace('\n', r"\n")
-        .replace('\r', r"\r")
-        .replace('\t', r"\t");
-    format!("\"{escaped}\"")
-}
 
 // ── Download filenames (mirrors Python `generate_filename`) ──────────────────
 

@@ -204,6 +204,23 @@ fn App() -> Element {
                             }
                         });
                     }
+                    "nt" | "ntriples" => {
+                        let q = queries::query_construct_from_select(query);
+                        let filename = export::generate_filename(&crit.taxon, "nt", suffix);
+                        *pending_download_format.write() = None;
+                        spawn(async move {
+                            if let Ok(body) =
+                                sparql::execute_sparql_format(&q, SparqlResponseFormat::NTriples)
+                                    .await
+                            {
+                                trigger_download_main(
+                                    &filename,
+                                    "application/n-triples;charset=utf-8",
+                                    &body,
+                                );
+                            }
+                        });
+                    }
                     _ => {
                         *error_kind.write() = ErrorKind::Validation;
                         *error.write() = Some(err_unsupported_format(*locale.peek(), &fmt));
@@ -706,7 +723,6 @@ fn start_search(
                 let meta_str = export::build_metadata_json(export::MetadataInputs {
                     criteria: &crit,
                     qid: outcome.qid.as_deref(),
-                    stats: &filtered_stats,
                     number_of_records_override: Some(filtered_matches),
                     query_hash: &q_hash,
                     result_hash: &r_hash,
