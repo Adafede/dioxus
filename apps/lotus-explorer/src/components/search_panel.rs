@@ -17,212 +17,225 @@ pub fn SearchPanel(
             class: "search-panel",
             aria_label: "{t(locale, TextKey::SearchFilters)}",
 
-            // ── Taxon ────────────────────────────────────────────────────
-            div { class: "form-section",
-                label { class: "form-label", r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
-                input {
-                    id: "taxon-input",
-                    r#type: "text",
-                    class: "form-input",
-                    autocomplete: "off",
-                    spellcheck: "false",
-                    placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
-                    value: "{c.read().taxon}",
-                    oninput: move |e| c.write().taxon = e.value(),
-                    onkeydown: move |e| {
-                        if e.key() == Key::Enter {
-                            on_search.call(());
-                        }
-                    },
-                }
-                p { class: "form-hint", "{t(locale, TextKey::TaxonHint)}" }
-            }
+            div { class: "search-panel-body",
 
-            // ── Structure (SMILES or Molfile V2000/V3000) ────────────────
-            StructureSection { criteria, locale }
-
-            // ── Mass range ───────────────────────────────────────────────
-            fieldset { class: "form-section", style: "border:0;padding:0;margin:0;",
-                legend { class: "form-label", "{t(locale, TextKey::MolecularMass)}" }
-                div { class: "range-inputs",
-                    div { class: "range-pair",
-                        label { class: "form-label sm", r#for: "mass-min", "{t(locale, TextKey::Min)}" }
-                        input {
-                            id: "mass-min",
-                            r#type: "number",
-                            class: "form-input sm",
-                            min: "0",
-                            max: "2000",
-                            step: "1",
-                            value: "{c.read().mass_min}",
-                            oninput: move |e| {
-                                if let Ok(v) = e.value().parse::<f64>() {
-                                    c.write().mass_min = v;
-                                }
-                            },
-                        }
-                    }
-                    span { class: "range-sep", "–" }
-                    div { class: "range-pair",
-                        label { class: "form-label sm", r#for: "mass-max", "{t(locale, TextKey::Max)}" }
-                        input {
-                            id: "mass-max",
-                            r#type: "number",
-                            class: "form-input sm",
-                            min: "0",
-                            max: "2000",
-                            step: "1",
-                            value: "{c.read().mass_max}",
-                            oninput: move |e| {
-                                if let Ok(v) = e.value().parse::<f64>() {
-                                    c.write().mass_max = v;
-                                }
-                            },
-                        }
-                    }
-                }
-            }
-
-            // ── Year range ───────────────────────────────────────────────
-            fieldset { class: "form-section", style: "border:0;padding:0;margin:0;",
-                legend { class: "form-label", "{t(locale, TextKey::PublicationYear)}" }
-                div { class: "range-inputs",
-                    div { class: "range-pair",
-                        label { class: "form-label sm", r#for: "year-min",
-                            "{t(locale, TextKey::YearFrom)}"
-                        }
-                        input {
-                            id: "year-min",
-                            r#type: "number",
-                            class: "form-input sm",
-                            min: "{DEFAULT_YEAR_MIN}",
-                            max: "{current_year()}",
-                            step: "1",
-                            value: "{c.read().year_min}",
-                            oninput: move |e| {
-                                if let Ok(v) = e.value().parse::<i32>() {
-                                    c.write().year_min = v;
-                                }
-                            },
-                        }
-                    }
-                    span { class: "range-sep", "–" }
-                    div { class: "range-pair",
-                        label { class: "form-label sm", r#for: "year-max",
-                            "{t(locale, TextKey::YearTo)}"
-                        }
-                        input {
-                            id: "year-max",
-                            r#type: "number",
-                            class: "form-input sm",
-                            min: "{DEFAULT_YEAR_MIN}",
-                            max: "{current_year()}",
-                            step: "1",
-                            value: "{c.read().year_max}",
-                            oninput: move |e| {
-                                if let Ok(v) = e.value().parse::<i32>() {
-                                    c.write().year_max = v;
-                                }
-                            },
-                        }
-                    }
-                }
-            }
-
-            // ── Formula filter ───────────────────────────────────────────
-            div { class: "form-section",
-                label { class: "radio-label",
+                // ── Taxon ────────────────────────────────────────────────────
+                div { class: "form-section",
+                    label { class: "form-label", r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
                     input {
-                        r#type: "checkbox",
-                        checked: c.read().formula_enabled,
-                        onchange: move |e| c.write().formula_enabled = e.checked(),
+                        id: "taxon-input",
+                        r#type: "text",
+                        class: "form-input",
+                        autocomplete: "off",
+                        spellcheck: "false",
+                        placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
+                        value: "{c.read().taxon}",
+                        oninput: move |e| c.write().taxon = e.value(),
+                        onkeydown: move |e| {
+                            if e.key() == Key::Enter {
+                                on_search.call(());
+                            }
+                        },
                     }
-                    "{t(locale, TextKey::FormulaFilter)}"
+                    p { class: "form-hint", "{t(locale, TextKey::TaxonHint)}" }
                 }
 
-                if c.read().formula_enabled {
-                    div { class: "form-section nested",
-                        label { class: "form-label sm", r#for: "formula-exact",
-                            "{t(locale, TextKey::ExactFormula)}"
+                // ── Structure (SMILES or Molfile V2000/V3000) ────────────────
+                StructureSection { criteria, locale }
+
+                // ── Mass range ───────────────────────────────────────────────
+                fieldset {
+                    class: "form-section",
+                    style: "border:0;padding:0;margin:0;",
+                    legend { class: "form-label", "{t(locale, TextKey::MolecularMass)}" }
+                    div { class: "range-inputs",
+                        div { class: "range-pair",
+                            label { class: "form-label sm", r#for: "mass-min",
+                                "{t(locale, TextKey::Min)}"
+                            }
+                            input {
+                                id: "mass-min",
+                                r#type: "number",
+                                class: "form-input sm",
+                                min: "0",
+                                max: "2000",
+                                step: "1",
+                                value: "{c.read().mass_min}",
+                                oninput: move |e| {
+                                    if let Ok(v) = e.value().parse::<f64>() {
+                                        c.write().mass_min = v;
+                                    }
+                                },
+                            }
                         }
+                        span { class: "range-sep", "–" }
+                        div { class: "range-pair",
+                            label { class: "form-label sm", r#for: "mass-max",
+                                "{t(locale, TextKey::Max)}"
+                            }
+                            input {
+                                id: "mass-max",
+                                r#type: "number",
+                                class: "form-input sm",
+                                min: "0",
+                                max: "2000",
+                                step: "1",
+                                value: "{c.read().mass_max}",
+                                oninput: move |e| {
+                                    if let Ok(v) = e.value().parse::<f64>() {
+                                        c.write().mass_max = v;
+                                    }
+                                },
+                            }
+                        }
+                    }
+                }
+
+                // ── Year range ───────────────────────────────────────────────
+                fieldset {
+                    class: "form-section",
+                    style: "border:0;padding:0;margin:0;",
+                    legend { class: "form-label", "{t(locale, TextKey::PublicationYear)}" }
+                    div { class: "range-inputs",
+                        div { class: "range-pair",
+                            label { class: "form-label sm", r#for: "year-min",
+                                "{t(locale, TextKey::YearFrom)}"
+                            }
+                            input {
+                                id: "year-min",
+                                r#type: "number",
+                                class: "form-input sm",
+                                min: "{DEFAULT_YEAR_MIN}",
+                                max: "{current_year()}",
+                                step: "1",
+                                value: "{c.read().year_min}",
+                                oninput: move |e| {
+                                    if let Ok(v) = e.value().parse::<i32>() {
+                                        c.write().year_min = v;
+                                    }
+                                },
+                            }
+                        }
+                        span { class: "range-sep", "–" }
+                        div { class: "range-pair",
+                            label { class: "form-label sm", r#for: "year-max",
+                                "{t(locale, TextKey::YearTo)}"
+                            }
+                            input {
+                                id: "year-max",
+                                r#type: "number",
+                                class: "form-input sm",
+                                min: "{DEFAULT_YEAR_MIN}",
+                                max: "{current_year()}",
+                                step: "1",
+                                value: "{c.read().year_max}",
+                                oninput: move |e| {
+                                    if let Ok(v) = e.value().parse::<i32>() {
+                                        c.write().year_max = v;
+                                    }
+                                },
+                            }
+                        }
+                    }
+                }
+
+                // ── Formula filter ───────────────────────────────────────────
+                div { class: "form-section",
+                    label { class: "radio-label",
                         input {
-                            id: "formula-exact",
-                            r#type: "text",
-                            class: "form-input sm",
-                            autocomplete: "off",
-                            spellcheck: "false",
-                            placeholder: "C15H10O5",
-                            value: "{c.read().formula_exact}",
-                            oninput: move |e| c.write().formula_exact = e.value(),
+                            r#type: "checkbox",
+                            checked: c.read().formula_enabled,
+                            onchange: move |e| c.write().formula_enabled = e.checked(),
                         }
+                        "{t(locale, TextKey::FormulaFilter)}"
                     }
 
-                    div { class: "range-inputs",
-                        NumPair {
-                            label: "C",
-                            min_value: c.read().c_min,
-                            max_value: c.read().c_max,
-                            on_min: move |v| c.write().c_min = v,
-                            on_max: move |v| c.write().c_max = v,
+                    if c.read().formula_enabled {
+                        div { class: "form-section nested",
+                            label {
+                                class: "form-label sm",
+                                r#for: "formula-exact",
+                                "{t(locale, TextKey::ExactFormula)}"
+                            }
+                            input {
+                                id: "formula-exact",
+                                r#type: "text",
+                                class: "form-input sm",
+                                autocomplete: "off",
+                                spellcheck: "false",
+                                placeholder: "C15H10O5",
+                                value: "{c.read().formula_exact}",
+                                oninput: move |e| c.write().formula_exact = e.value(),
+                            }
                         }
-                        NumPair {
-                            label: "H",
-                            min_value: c.read().h_min,
-                            max_value: c.read().h_max,
-                            on_min: move |v| c.write().h_min = v,
-                            on_max: move |v| c.write().h_max = v,
+
+                        div { class: "range-inputs",
+                            NumPair {
+                                label: "C",
+                                min_value: c.read().c_min,
+                                max_value: c.read().c_max,
+                                on_min: move |v| c.write().c_min = v,
+                                on_max: move |v| c.write().c_max = v,
+                            }
+                            NumPair {
+                                label: "H",
+                                min_value: c.read().h_min,
+                                max_value: c.read().h_max,
+                                on_min: move |v| c.write().h_min = v,
+                                on_max: move |v| c.write().h_max = v,
+                            }
+                            NumPair {
+                                label: "N",
+                                min_value: c.read().n_min,
+                                max_value: c.read().n_max,
+                                on_min: move |v| c.write().n_min = v,
+                                on_max: move |v| c.write().n_max = v,
+                            }
                         }
-                        NumPair {
-                            label: "N",
-                            min_value: c.read().n_min,
-                            max_value: c.read().n_max,
-                            on_min: move |v| c.write().n_min = v,
-                            on_max: move |v| c.write().n_max = v,
+                        div { class: "range-inputs",
+                            NumPair {
+                                label: "O",
+                                min_value: c.read().o_min,
+                                max_value: c.read().o_max,
+                                on_min: move |v| c.write().o_min = v,
+                                on_max: move |v| c.write().o_max = v,
+                            }
+                            NumPair {
+                                label: "P",
+                                min_value: c.read().p_min,
+                                max_value: c.read().p_max,
+                                on_min: move |v| c.write().p_min = v,
+                                on_max: move |v| c.write().p_max = v,
+                            }
+                            NumPair {
+                                label: "S",
+                                min_value: c.read().s_min,
+                                max_value: c.read().s_max,
+                                on_min: move |v| c.write().s_min = v,
+                                on_max: move |v| c.write().s_max = v,
+                            }
                         }
-                    }
-                    div { class: "range-inputs",
-                        NumPair {
-                            label: "O",
-                            min_value: c.read().o_min,
-                            max_value: c.read().o_max,
-                            on_min: move |v| c.write().o_min = v,
-                            on_max: move |v| c.write().o_max = v,
-                        }
-                        NumPair {
-                            label: "P",
-                            min_value: c.read().p_min,
-                            max_value: c.read().p_max,
-                            on_min: move |v| c.write().p_min = v,
-                            on_max: move |v| c.write().p_max = v,
-                        }
-                        NumPair {
-                            label: "S",
-                            min_value: c.read().s_min,
-                            max_value: c.read().s_max,
-                            on_min: move |v| c.write().s_min = v,
-                            on_max: move |v| c.write().s_max = v,
-                        }
-                    }
-                    div { class: "range-inputs",
-                        ElemStateSelect {
-                            label: "F",
-                            value: c.read().f_state,
-                            on_change: move |v| c.write().f_state = v,
-                        }
-                        ElemStateSelect {
-                            label: "Cl",
-                            value: c.read().cl_state,
-                            on_change: move |v| c.write().cl_state = v,
-                        }
-                        ElemStateSelect {
-                            label: "Br",
-                            value: c.read().br_state,
-                            on_change: move |v| c.write().br_state = v,
-                        }
-                        ElemStateSelect {
-                            label: "I",
-                            value: c.read().i_state,
-                            on_change: move |v| c.write().i_state = v,
+                        div { class: "range-inputs",
+                            ElemStateSelect {
+                                label: "F",
+                                value: c.read().f_state,
+                                on_change: move |v| c.write().f_state = v,
+                            }
+                            ElemStateSelect {
+                                label: "Cl",
+                                value: c.read().cl_state,
+                                on_change: move |v| c.write().cl_state = v,
+                            }
+                            ElemStateSelect {
+                                label: "Br",
+                                value: c.read().br_state,
+                                on_change: move |v| c.write().br_state = v,
+                            }
+                            ElemStateSelect {
+                                label: "I",
+                                value: c.read().i_state,
+                                on_change: move |v| c.write().i_state = v,
+                            }
                         }
                     }
                 }
