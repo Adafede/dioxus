@@ -255,14 +255,19 @@ fn App() -> Element {
                     loading: *loading.read(),
                 }
                 div { class: "sidebar-logo-wrap",
-                    img {
-                        class: "sidebar-logo",
-                        src: "assets/lotus_ferris.svg",
-                        alt: "LOTUS Ferris logo",
-                        width: "180",
-                        height: "180",
-                        loading: "lazy",
-                        decoding: "async",
+                    a {
+                        href: "?",
+                        title: "{t(*locale.read(), TextKey::PageTitle)}",
+                        aria_label: "{t(*locale.read(), TextKey::PageTitle)}",
+                        img {
+                            class: "sidebar-logo",
+                            src: "assets/lotus_ferris.svg",
+                            alt: "LOTUS Ferris logo",
+                            width: "180",
+                            height: "180",
+                            loading: "lazy",
+                            decoding: "async",
+                        }
                     }
                 }
             }
@@ -271,7 +276,15 @@ fn App() -> Element {
             main { class: "main-content",
                 div { class: "page-header",
                     div { class: "page-brand",
-                        h1 { class: "page-title", "{t(*locale.read(), TextKey::PageTitle)}" }
+                        h1 { class: "page-title",
+                            a {
+                                class: "page-title-link",
+                                href: "?",
+                                title: "{t(*locale.read(), TextKey::PageTitle)}",
+                                aria_label: "{t(*locale.read(), TextKey::PageTitle)}",
+                                "{t(*locale.read(), TextKey::PageTitle)}"
+                            }
+                        }
                         div {
                             class: "lang-switch",
                             role: "group",

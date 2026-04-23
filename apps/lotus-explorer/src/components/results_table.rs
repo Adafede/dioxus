@@ -1,7 +1,7 @@
 use crate::export;
 use crate::i18n::{
-    CountNoun, Locale, TextKey, aria_chemical_structure, aria_search_inchikey, aria_wikidata_entity,
-    aria_wikidata_statement, count_label, t,
+    CountNoun, Locale, TextKey, aria_chemical_structure, aria_search_inchikey,
+    aria_wikidata_entity, aria_wikidata_statement, count_label, t,
 };
 use crate::models::*;
 use crate::queries;
