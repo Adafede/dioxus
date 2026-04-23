@@ -13,24 +13,24 @@ jobs:
   build-and-deploy:
     name: "build and deploy"
     runs-on: codeberg-medium
-    container:
-      image: ghcr.io/lewimbes/dioxus-docker
     env:
       # CI speed-up: keep release mode but avoid ultra-slow workspace release settings
       CARGO_PROFILE_RELEASE_LTO: "off"
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
       CARGO_PROFILE_RELEASE_DEBUG: "0"
     steps:
-      - uses: actions/setup-node@v4
       - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: https://github.com/dtolnay/rust-toolchain@stable
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
-      - name: Cache
-        uses: https://github.com/Swatinem/rust-cache@v2
+      - uses: https://github.com/Swatinem/rust-cache@v2
+
+      - uses: cargo-bins/cargo-binstall@v1.18.1
+
+      - name: Install dioxus-cli
+        run: cargo binstall dioxus-cli --version 0.7.6 --locked
 
       - name: Verify dx version
         run: dx --version | grep -E "\b0\.7\.6\b"
