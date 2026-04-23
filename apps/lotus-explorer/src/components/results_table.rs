@@ -1,4 +1,5 @@
 use crate::export;
+use crate::i18n::{CountNoun, Locale, count_label, showing_rows_text};
 use crate::models::*;
 use crate::sparql;
 use dioxus::prelude::*;
@@ -17,6 +18,7 @@ pub fn ResultsTable(
     /// rather than content-based — we never scan the whole Vec just to decide
     /// whether the table needs to re-render.
     entries: ReadSignal<Rows>,
+    locale: Locale,
     stats: DatasetStats,
     total_stats: Option<DatasetStats>,
     total_matches: Option<usize>,
@@ -37,14 +39,7 @@ pub fn ResultsTable(
         .cloned()
         .unwrap_or_else(|| stats.clone());
     let total = entries.read().len();
-    let has_full_stats = total_stats.is_some();
-    let stats_partial = if has_full_stats {
-        false
-    } else {
-        total_matches
-            .map(|n| n > total)
-            .unwrap_or(total >= TABLE_ROW_LIMIT)
-    };
+    let stats_partial = false;
     let entries_value = total_matches.unwrap_or(display_stats.n_entries);
     let _ = page;
 
@@ -151,21 +146,29 @@ pub fn ResultsTable(
                     role: "group",
                     aria_label: "Dataset statistics",
                     StatBadge {
+                        locale,
                         value: display_stats.n_compounds,
-                        label: "Compounds",
+                        noun: CountNoun::Compound,
                         plus: stats_partial,
                     }
                     StatBadge {
+                        locale,
                         value: display_stats.n_taxa,
-                        label: "Taxa",
+                        noun: CountNoun::Taxon,
                         plus: stats_partial,
                     }
                     StatBadge {
+                        locale,
                         value: display_stats.n_references,
-                        label: "References",
+                        noun: CountNoun::Reference,
                         plus: stats_partial,
                     }
-                    StatBadge { value: entries_value, label: "Entries", plus: false }
+                    StatBadge {
+                        locale,
+                        value: entries_value,
+                        noun: CountNoun::Entry,
+                        plus: false,
+                    }
                 }
                 div { class: "toolbar-actions",
                     if *download_busy.read() {
@@ -315,7 +318,7 @@ pub fn ResultsTable(
                 }
             } else {
                 div { class: "pagination-bar",
-                    span { class: "page-info", "Showing {visible_count} of {total} rows" }
+                    span { class: "page-info", "{showing_rows_text(locale, visible_count, total)}" }
                     if visible_count < total {
                         button {
                             class: "btn btn-sm",
@@ -414,17 +417,9 @@ pub fn ResultsTable(
                             {
                                 let rows = entries.read();
                                 let order = sorted_indices.read();
-                                let visible: Vec<CompoundEntry> = order
-                                    .iter()
-                                    .take(visible_count)
-                                    .map(|&i| rows[i as usize].clone())
-                                    .collect();
                                 rsx! {
-                                    for entry in visible {
-                                        Row {
-                                            key: "{entry.compound_qid}-{entry.taxon_qid}-{entry.reference_qid}",
-                                            entry,
-                                        }
+                                    for i in order.iter().take(visible_count).copied() {
+                                        Row { key: "{i}", entry: rows[i as usize].clone() }
                                     }
                                 }
                             }
@@ -464,15 +459,17 @@ fn search_type_suffix(criteria: &SearchCriteria) -> Option<&'static str> {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 #[component]
-fn StatBadge(value: usize, label: &'static str, plus: bool) -> Element {
+fn StatBadge(locale: Locale, value: usize, noun: CountNoun, plus: bool) -> Element {
     let display_value = if plus {
         format!("{value}+")
     } else {
         value.to_string()
     };
+    let label = count_label(locale, noun, value);
     rsx! {
         div { class: "stat-badge",
             span { class: "stat-value", "{display_value}" }
+            " "
             span { class: "stat-label", "{label}" }
         }
     }

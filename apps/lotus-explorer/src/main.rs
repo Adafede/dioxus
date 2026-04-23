@@ -2,6 +2,7 @@
 
 mod components;
 mod export;
+mod i18n;
 mod models;
 mod queries;
 mod sparql;
@@ -10,6 +11,7 @@ use components::copy_button::CopyButton;
 use components::results_table::ResultsTable;
 use components::search_panel::{KetcherPanel, SearchPanel};
 use dioxus::prelude::*;
+use i18n::Locale;
 use models::*;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -17,7 +19,7 @@ use std::sync::Arc;
 
 fn main() {
     console_log::init_with_level(log::Level::Debug).ok();
-    dioxus::launch(App);
+    launch(App);
 }
 
 // ── Root component ────────────────────────────────────────────────────────────
@@ -25,6 +27,7 @@ fn main() {
 #[component]
 fn App() -> Element {
     let criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
+    let locale: Signal<Locale> = use_signal(initial_locale_from_url);
     // Entries live behind an `Arc<[…]>` so prop/signal clones are a single
     // refcount bump instead of duplicating the whole result buffer.
     let mut entries: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
@@ -44,7 +47,7 @@ fn App() -> Element {
     let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
 
     // Memoised derived state — recomputed only when their inputs change.
-    // If we have precise totals from the parser, use them directly. Otherwise
+    // If we have precise totals from the parser, use them directly. Otherwise,
     // fall back to counting over the display slice.
     let stats = use_memo(move || match total_stats.read().as_ref() {
         Some(s) => s.clone(),
@@ -240,7 +243,12 @@ fn App() -> Element {
                 if let Some(share) = shareable_url.read().as_deref() {
                     div { class: "notice notice-info", role: "status",
                         span { class: "notice-label", "Share" }
-                        code { class: "notice-value", "{share}" }
+                        input {
+                            class: "notice-value notice-copy-field mono",
+                            r#type: "text",
+                            readonly: true,
+                            value: "{share}",
+                        }
                         CopyButton {
                             text: absolute_share_url(share),
                             title: "Copy shareable link",
@@ -283,6 +291,7 @@ fn App() -> Element {
                 } else {
                     ResultsTable {
                         entries,
+                        locale: *locale.read(),
                         stats: stats.read().clone(),
                         total_stats: total_stats.read().clone(),
                         total_matches: *total_matches.read(),
@@ -476,7 +485,7 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
     // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
     // must reach SACHEM untouched, otherwise the query silently returns
     // no matches. Only trim single-line SMILES inputs. Mirrors the Python
-    // `validate_and_escape` behaviour.
+    // `validate_and_escape` behavior.
     let smiles = {
         let normalized = crit.smiles.replace("\r\n", "\n").replace('\r', "\n");
         let kind = queries::classify_structure(&normalized);
@@ -567,31 +576,52 @@ async fn do_search(crit: SearchCriteria) -> Result<SearchOutcome, String> {
         }
     };
 
-    // Single unlimited fetch — QLever honours `Accept-Encoding: gzip` (browsers
-    // add it automatically for wasm fetch), so the CSV body comes back
-    // transparently gzip-compressed and ungzipped by the browser: network
-    // transfer is ~5–10× smaller than the raw CSV. The parser below visits
-    // every row for exact stats but only materializes full `CompoundEntry`
-    // structs for the first `TABLE_ROW_LIMIT` (display cap). Overflow rows
-    // only touch the three QID columns needed for counting.
-    let csv = sparql::execute_sparql(&sparql_query)
-        .await
-        .map_err(|e| format!("Query failed: {e}"))?;
+    // Fast path: fetch exact aggregate counts with a tiny response, then fetch
+    // only the display window. This keeps metadata totals exact while cutting
+    // transfer size for large result sets.
+    let display_limit = runtime_table_row_limit();
+    let count_query = queries::query_counts_from_base(&sparql_query);
+    let display_query = queries::query_with_limit(&sparql_query, display_limit);
 
-    let (rows, full_stats, parse_capped) =
-        sparql::parse_compounds_csv_capped(&csv, TABLE_ROW_LIMIT)
-            .map_err(|e| format!("Parse error: {e}"))?;
+    let (rows, total_stats_out, total_matches) = match async {
+        let counts_csv = sparql::execute_sparql(&count_query)
+            .await
+            .map_err(|e| format!("Count query failed: {e}"))?;
+        let full_stats = sparql::parse_counts_csv(&counts_csv)
+            .map_err(|e| format!("Count parse failed: {e}"))?;
 
-    // We always know exact totals (the parser walked every row); the display
-    // may still be capped to `TABLE_ROW_LIMIT`, which just means we render
-    // fewer rows — stats and metadata stay accurate.
-    let total_matches: Option<usize> = Some(full_stats.n_entries);
-    let total_stats_out: Option<DatasetStats> = Some(full_stats.clone());
+        let display_csv = sparql::execute_sparql(&display_query)
+            .await
+            .map_err(|e| format!("Display query failed: {e}"))?;
+        let rows = sparql::parse_compounds_csv(&display_csv)
+            .map_err(|e| format!("Display parse failed: {e}"))?;
 
-    // Truncation is self-evident from the "Showing X of Y rows" line and the
-    // `Entries` stat badge — no textual notice needed. We deliberately keep
-    // `warning` reserved for taxon-resolution messages only.
-    let _ = parse_capped;
+        Ok::<_, String>((rows, Some(full_stats.clone()), Some(full_stats.n_entries)))
+    }
+    .await
+    {
+        Ok(v) => v,
+        Err(err_msg) => {
+            #[cfg(target_arch = "wasm32")]
+            {
+                return Err(format!(
+                    "Large-query fallback disabled on wasm to avoid memory exhaustion ({err_msg}). Try adding filters or use a desktop browser for very large result exports."
+                ));
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let _ = err_msg;
+                let csv = sparql::execute_sparql(&sparql_query)
+                    .await
+                    .map_err(|e| format!("Query failed: {e}"))?;
+                let (rows, full_stats, _parse_capped) =
+                    sparql::parse_compounds_csv_capped(&csv, display_limit)
+                        .map_err(|e| format!("Parse error: {e}"))?;
+                (rows, Some(full_stats.clone()), Some(full_stats.n_entries))
+            }
+        }
+    };
 
     Ok(SearchOutcome {
         rows,
@@ -820,6 +850,12 @@ fn initial_criteria_from_url() -> SearchCriteria {
     }
 
     criteria
+}
+
+fn initial_locale_from_url() -> Locale {
+    let params = read_url_query_params();
+    let lang = params.get("lang").map(|v| v.as_str()).unwrap_or("");
+    Locale::detect(lang)
 }
 
 fn read_url_query_params() -> BTreeMap<String, String> {

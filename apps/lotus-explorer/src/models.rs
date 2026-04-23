@@ -31,6 +31,56 @@ pub const DEFAULT_YEAR_MIN: i32 = 1900;
 /// the whole result set on every re-render.
 pub type Rows = Arc<[CompoundEntry]>;
 
+/// Runtime display cap used by the query `LIMIT` for rendered rows.
+///
+/// On wasm we keep a smaller cap for low-memory/mobile devices to avoid OOM
+/// crashes while preserving exact aggregate counts via the separate count
+/// query. Desktop/native keeps the compile-time limit unchanged.
+pub fn runtime_table_row_limit() -> usize {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let mut limit = TABLE_ROW_LIMIT;
+        if let Some(win) = web_sys::window() {
+            let win_js = wasm_bindgen::JsValue::from(win);
+            if let Ok(nav) =
+                js_sys::Reflect::get(&win_js, &wasm_bindgen::JsValue::from_str("navigator"))
+            {
+                if let Ok(mem) =
+                    js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("deviceMemory"))
+                {
+                    if let Some(gb) = mem.as_f64() {
+                        if gb <= 2.0 {
+                            limit = limit.min(300);
+                        } else if gb <= 4.0 {
+                            limit = limit.min(600);
+                        }
+                    }
+                }
+
+                if let Ok(ua) =
+                    js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("userAgent"))
+                {
+                    if let Some(ua) = ua.as_string() {
+                        let ua = ua.to_ascii_lowercase();
+                        let mobile = ua.contains("iphone")
+                            || ua.contains("ipad")
+                            || ua.contains("android")
+                            || ua.contains("mobile");
+                        if mobile {
+                            limit = limit.min(400);
+                        }
+                    }
+                }
+            }
+        }
+        limit.clamp(150, TABLE_ROW_LIMIT)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        TABLE_ROW_LIMIT
+    }
+}
+
 /// Current calendar year, computed once and cached.
 pub fn current_year() -> i32 {
     use std::sync::OnceLock;

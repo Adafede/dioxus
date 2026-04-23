@@ -19,7 +19,7 @@ pub fn CopyButton(
 ) -> Element {
     let mut copied = use_signal(|| false);
     let title_attr = if title.is_empty() {
-        format!("Copy to clipboard")
+        "Copy to clipboard".to_string()
     } else {
         title.to_string()
     };
@@ -49,7 +49,6 @@ pub fn CopyButton(
 }
 
 /// Portable sleep helper — uses `setTimeout` on wasm and `thread::sleep`
-/// on native so the same `spawn(async move { … })` body works everywhere.
 async fn gloo_timer_sleep_ms(ms: u32) {
     #[cfg(target_arch = "wasm32")]
     {
@@ -81,7 +80,7 @@ async fn gloo_timer_sleep_ms(ms: u32) {
 pub fn copy_to_clipboard(text: &str) {
     #[cfg(target_arch = "wasm32")]
     {
-        // JSON-encode so arbitrary text (including quotes, newlines, unicode)
+        // JSON-encode so arbitrary text (including quotes, newlines, Unicode)
         // embeds safely in the eval'd snippet.
         let payload = serde_json::to_string(text).unwrap_or_else(|_| "\"\"".to_string());
         let script = format!(

@@ -79,7 +79,7 @@ fn parse_entity_id(value: &str) -> String {
 
 /// Execute a SPARQL query against the QLever Wikidata endpoint.
 ///
-/// QLever honours `Accept-Encoding: gzip`; browsers add that header
+/// QLever honors `Accept-Encoding: gzip`; browsers add that header
 /// automatically for `fetch`, so on wasm the CSV body is transparently
 /// gzip-compressed over the wire (typically 5–10× smaller than the
 /// uncompressed payload) and transparently decompressed before it reaches
@@ -130,12 +130,47 @@ pub fn parse_compounds_csv(csv_text: &str) -> Result<Vec<CompoundEntry>, FetchEr
     Ok(rows)
 }
 
+/// Parse aggregate count CSV with columns:
+/// `n_entries`, `n_compounds`, `n_taxa`, `n_references`.
+pub fn parse_counts_csv(csv_text: &str) -> Result<DatasetStats, FetchError> {
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .flexible(true)
+        .from_reader(csv_text.as_bytes());
+
+    let headers = rdr
+        .headers()
+        .map_err(|e| FetchError::Parse(e.to_string()))?
+        .clone();
+    let c_entries = col_idx(&headers, "n_entries");
+    let c_compounds = col_idx(&headers, "n_compounds");
+    let c_taxa = col_idx(&headers, "n_taxa");
+    let c_refs = col_idx(&headers, "n_references");
+
+    let mut records = rdr.records();
+    let rec = match records.next() {
+        Some(Ok(r)) => r,
+        Some(Err(e)) => return Err(FetchError::Parse(e.to_string())),
+        None => return Err(FetchError::Parse("Missing count row".to_string())),
+    };
+
+    let parse_num =
+        |idx: Option<usize>| -> usize { field(&rec, idx).parse::<usize>().unwrap_or(0) };
+
+    Ok(DatasetStats {
+        n_entries: parse_num(c_entries),
+        n_compounds: parse_num(c_compounds),
+        n_taxa: parse_num(c_taxa),
+        n_references: parse_num(c_refs),
+    })
+}
+
 /// Fast single-pass parser over the QLever CSV stream.
 ///
 /// * **Every** data row contributes to `DatasetStats` and to the exact
 ///   `n_entries` count, so metadata / download totals are always accurate.
 /// * Only the first `max_rows` *distinct* `(compound, taxon, reference)`
-///   triples are materialised into full `CompoundEntry` structs. Rows past
+///   triples are materialized into full `CompoundEntry` structs. Rows past
 ///   that cap only touch their three QID columns (for dedup + stat
 ///   fingerprinting) — no allocation for names, SMILES, titles, DOIs or
 ///   dates, which is where the old parser was spending its time on very
@@ -241,7 +276,7 @@ pub fn parse_compounds_csv_capped(
             continue;
         }
 
-        // Materialise the full entry — only touches the remaining fields for
+        // Materialize the full entry — only touches the remaining fields for
         // rows that will actually be rendered.
         let label = byte_field_str(&rec, c_label);
         let inchikey = byte_field_str(&rec, c_inchikey);

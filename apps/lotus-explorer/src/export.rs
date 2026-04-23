@@ -414,7 +414,7 @@ pub fn build_ndjson(rows: &[CompoundEntry]) -> String {
 /// Emit a compact, self-contained Turtle document with:
 /// * a Schema.org `Dataset` header describing the result set and query,
 /// * one block of `wdt:`-qualified triples per compound / taxon / reference,
-/// * `wd:Qnnn p:P703 wds:… ; ps:P703 wd:Qmmm ; prov:wasDerivedFrom wd:Qrrr`
+/// * `wd:Qlll p:P703 wds:Qmmm ; ps:P703 wd:Qnnn ; prov:wasDerivedFrom wd:Qrrr`
 ///   statements linking the three entities.
 pub fn build_ttl(rows: &[CompoundEntry], meta: MetadataInputs<'_>) -> String {
     let mut out = String::with_capacity(rows.len() * 512 + 2048);
@@ -432,9 +432,7 @@ pub fn build_ttl(rows: &[CompoundEntry], meta: MetadataInputs<'_>) -> String {
 
     let dataset_uri = format!("urn:hash:sha256:{}", meta.result_hash);
     out.push_str(&format!("<{dataset_uri}> a schema:Dataset ;\n"));
-    out.push_str(&format!(
-        "    schema:name \"LOTUS Wikidata Explorer query result\" ;\n"
-    ));
+    out.push_str(&"    schema:name \"LOTUS Wikidata Explorer query result\" ;\n".to_string());
     out.push_str(&format!("    schema:version \"{APP_VERSION}\" ;\n"));
     out.push_str(&format!(
         "    schema:dateCreated \"{}\"^^xsd:dateTime ;\n",
@@ -546,7 +544,7 @@ pub fn today_yyyymmdd() -> String {
         .collect()
 }
 
-/// Normalise a taxon string into a filesystem-safe slug, matching the
+/// Normalize a taxon string into a filesystem-safe slug, matching the
 /// Python notebook's `generate_filename` logic:
 ///
 /// * empty / whitespace → `any_taxon`

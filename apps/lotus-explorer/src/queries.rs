@@ -193,7 +193,7 @@ pub fn query_sachem(
     threshold: f64,
     taxon_qid: Option<&str>,
 ) -> String {
-    // Python validate_and_escape: wrap multiline / Molfile blocks in ''' … ''' (only
+    // Python validate_and_escape: wrap multiline / Molfile blocks (only
     // backslashes need escaping there). Single-line SMILES are wrapped in "…" with
     // backslashes and double-quotes escaped. The emitted string includes the quotes.
     let structure_literal = escape_structure_literal(smiles);
@@ -340,7 +340,7 @@ fn looks_like_molfile(text: &str) -> bool {
 
 /// Build a SPARQL string literal (including surrounding quotes) for a SMILES
 /// or Molfile block. Multiline inputs and Molfile blocks are wrapped in
-/// triple single-quotes (`'''…'''`) so embedded newlines and double-quotes
+/// triple single-quotes so embedded newlines and double-quotes
 /// are preserved as-is. Single-line SMILES use double-quote form with
 /// backslash/quote escaping. Matches `validate_and_escape` in Python.
 pub fn escape_structure_literal(smiles: &str) -> String {
@@ -361,4 +361,29 @@ pub fn escape_structure_literal(smiles: &str) -> String {
     }
 }
 
-// ...no additional wrapper count query; totals are derived from the same CSV stream.
+pub fn query_counts_from_base(base_query: &str) -> String {
+    let Some(select_pos) = base_query.find("SELECT") else {
+        return base_query.to_string();
+    };
+    let prefixes = &base_query[..select_pos];
+    let inner_select = base_query[select_pos..].trim();
+
+    format!(
+        r#"{prefixes}
+SELECT
+  (COUNT(*) AS ?n_entries)
+  (COUNT(DISTINCT ?compound) AS ?n_compounds)
+  (COUNT(DISTINCT ?taxon) AS ?n_taxa)
+  (COUNT(DISTINCT ?ref_qid) AS ?n_references)
+WHERE {{
+  {{
+    {inner_select}
+  }}
+}}"#
+    )
+}
+
+pub fn query_with_limit(base_query: &str, limit: usize) -> String {
+    let trimmed = base_query.trim_end();
+    format!("{trimmed}\nLIMIT {limit}")
+}
