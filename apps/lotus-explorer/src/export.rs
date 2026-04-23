@@ -409,6 +409,48 @@ pub fn build_ndjson(rows: &[CompoundEntry]) -> String {
     out
 }
 
+pub fn build_csv(rows: &[CompoundEntry]) -> String {
+    fn esc(value: &str) -> String {
+        let needs_quotes = value.contains(',')
+            || value.contains('"')
+            || value.contains('\n')
+            || value.contains('\r');
+        if needs_quotes {
+            format!("\"{}\"", value.replace('"', "\"\""))
+        } else {
+            value.to_string()
+        }
+    }
+
+    let mut out = String::with_capacity(rows.len().saturating_mul(220));
+    out.push_str(
+        "compound_qid,compound_name,compound_inchikey,compound_smiles,compound_mass,molecular_formula,taxon_qid,taxon_name,reference_qid,reference_title,reference_doi,reference_year,statement_id\n",
+    );
+    for e in rows {
+        let mass = e.mass.map(|m| format!("{m:.6}")).unwrap_or_default();
+        let year = e.pub_year.map(|y| y.to_string()).unwrap_or_default();
+        let statement = e.statement_id().unwrap_or_default();
+        let fields = [
+            esc(&e.compound_qid),
+            esc(&e.name),
+            esc(e.inchikey.as_deref().unwrap_or("")),
+            esc(e.smiles.as_deref().unwrap_or("")),
+            esc(&mass),
+            esc(e.formula.as_deref().unwrap_or("")),
+            esc(&e.taxon_qid),
+            esc(&e.taxon_name),
+            esc(&e.reference_qid),
+            esc(e.ref_title.as_deref().unwrap_or("")),
+            esc(e.ref_doi.as_deref().unwrap_or("")),
+            esc(&year),
+            esc(&statement),
+        ];
+        out.push_str(&fields.join(","));
+        out.push('\n');
+    }
+    out
+}
+
 // ── Turtle (TTL) export ───────────────────────────────────────────────────────
 
 /// Emit a compact, self-contained Turtle document with:

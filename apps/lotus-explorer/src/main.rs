@@ -82,6 +82,10 @@ fn App() -> Element {
     let shareable_url =
         use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));
 
+    use_effect(move || {
+        persist_locale_query_param(*locale.read());
+    });
+
     // ── Search handler ────────────────────────────────────────────────────────
     let on_search = move |_| {
         start_search(
@@ -145,9 +149,17 @@ fn App() -> Element {
                 let suffix = download_search_type_suffix(&crit);
                 match fmt.as_str() {
                     "csv" => {
+                        let q = query.to_string();
                         let filename = export::generate_filename(&crit.taxon, "csv", suffix);
-                        trigger_query_csv_download_main(query, &filename);
                         *pending_download_format.write() = None;
+                        spawn(async move {
+                            if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
+                                let mut filtered = rows.as_ref().clone();
+                                apply_client_filters_in_place(&mut filtered, &crit);
+                                let body = export::build_csv(&filtered);
+                                trigger_download_main(&filename, "text/csv;charset=utf-8", &body);
+                            }
+                        });
                     }
                     "json" | "ndjson" => {
                         let q = query.to_string();
@@ -155,7 +167,9 @@ fn App() -> Element {
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                let body = export::build_ndjson(rows.as_ref());
+                                let mut filtered = rows.as_ref().clone();
+                                apply_client_filters_in_place(&mut filtered, &crit);
+                                let body = export::build_ndjson(&filtered);
                                 trigger_download_main(&filename, "application/x-ndjson", &body);
                             }
                         });
@@ -165,22 +179,19 @@ fn App() -> Element {
                         let filename = export::generate_filename(&crit.taxon, "ttl", suffix);
                         let qh = query_hash.read().clone().unwrap_or_default();
                         let rh = result_hash.read().clone().unwrap_or_default();
-                        let stats_for_export = total_stats
-                            .read()
-                            .clone()
-                            .unwrap_or_else(|| DatasetStats::from_entries(&entries.read()));
                         *pending_download_format.write() = None;
                         spawn(async move {
                             if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
+                                let mut filtered = rows.as_ref().clone();
+                                apply_client_filters_in_place(&mut filtered, &crit);
+                                let filtered_stats = DatasetStats::from_entries(&filtered);
                                 let ttl = export::build_ttl(
-                                    rows.as_ref(),
+                                    &filtered,
                                     export::MetadataInputs {
                                         criteria: &crit,
                                         qid: None,
-                                        stats: &stats_for_export,
-                                        number_of_records_override: Some(
-                                            stats_for_export.n_entries,
-                                        ),
+                                        stats: &filtered_stats,
+                                        number_of_records_override: Some(filtered_stats.n_entries),
                                         query_hash: &qh,
                                         result_hash: &rh,
                                     },
@@ -250,7 +261,7 @@ fn App() -> Element {
                         div {
                             class: "lang-switch",
                             role: "group",
-                            aria_label: "Language",
+                            aria_label: "{t(*locale.read(), TextKey::Language)}",
                             button {
                                 class: if *locale.read() == Locale::En { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
@@ -592,11 +603,12 @@ fn WelcomeScreen(locale: Locale) -> Element {
 
 #[component]
 fn DownloadExampleRow(locale: Locale, format: &'static str, query: &'static str) -> Element {
+    let absolute = absolute_current_url_with_query(query.trim_start_matches('?'));
     rsx! {
         div { class: "welcome-cli-row",
             span { class: "welcome-cli-format mono", "{format}" }
             code { class: "mono welcome-cli-query", "{query}" }
-            CopyButton { text: query.to_string(), locale }
+            CopyButton { text: absolute, locale }
         }
     }
 }
@@ -674,36 +686,22 @@ fn start_search(
     spawn(async move {
         match do_search(crit.clone(), *locale.peek(), query_phase).await {
             Ok(mut outcome) => {
-                // Client-side post-filters (mass, year, formula).
-                if crit.has_mass_filter() {
-                    outcome.rows.retain(|e| {
-                        e.mass
-                            .map_or(false, |m| m >= crit.mass_min && m <= crit.mass_max)
-                    });
-                }
-                if crit.has_year_filter() {
-                    outcome.rows.retain(|e| {
-                        e.pub_year
-                            .map_or(true, |y| y >= crit.year_min && y <= crit.year_max)
-                    });
-                }
-                if crit.has_formula_filter() {
-                    outcome
-                        .rows
-                        .retain(|e| formula_matches(e.formula.as_deref(), &crit));
-                }
+                apply_client_filters_in_place(&mut outcome.rows, &crit);
+                let filtered_stats = DatasetStats::from_entries(&outcome.rows);
+                let filtered_matches = outcome.rows.len();
+                let showing_filtered_totals = crit.has_client_post_filters();
 
                 let (q_hash, r_hash) =
                     compute_hashes(outcome.qid.as_deref().unwrap_or(""), &crit, &outcome.rows);
                 let full_stats = outcome
                     .total_stats
                     .clone()
-                    .unwrap_or_else(|| DatasetStats::from_entries(&outcome.rows));
+                    .unwrap_or_else(|| filtered_stats.clone());
                 let meta_str = export::build_metadata_json(export::MetadataInputs {
                     criteria: &crit,
                     qid: outcome.qid.as_deref(),
                     stats: &full_stats,
-                    number_of_records_override: outcome.total_matches,
+                    number_of_records_override: Some(filtered_matches),
                     query_hash: &q_hash,
                     result_hash: &r_hash,
                 });
@@ -716,8 +714,13 @@ fn start_search(
                 *result_hash.write() = Some(r_hash);
                 *sparql_query.write() = Some(outcome.query);
                 *metadata_json.write() = Some(meta_str);
-                *total_matches.write() = outcome.total_matches;
-                *total_stats.write() = outcome.total_stats;
+                if showing_filtered_totals {
+                    *total_matches.write() = Some(filtered_matches);
+                    *total_stats.write() = Some(filtered_stats);
+                } else {
+                    *total_matches.write() = outcome.total_matches;
+                    *total_stats.write() = outcome.total_stats;
+                }
                 *entries.write() = display_slice;
                 *loading.write() = false;
                 *query_phase.write() = QueryPhase::Idle;
@@ -829,49 +832,58 @@ async fn do_search(
         }
     };
 
-    // Fast path: fetch exact aggregate counts with a tiny response, then fetch
-    // only the display window. This keeps metadata totals exact while cutting
-    // transfer size for large result sets.
-    *query_phase.write() = QueryPhase::Counting;
     let display_limit = runtime_table_row_limit();
-    let count_query = queries::query_counts_from_base(&sparql_query);
-    let display_query = queries::query_with_limit(&sparql_query, display_limit);
-
-    let (rows, total_stats_out, total_matches) = match async {
-        let counts_csv = sparql::execute_sparql(&count_query)
-            .await
-            .map_err(|e| format!("Count query failed: {e}"))?;
-        let full_stats = sparql::parse_counts_csv(&counts_csv)
-            .map_err(|e| format!("Count parse failed: {e}"))?;
-
+    let (rows, total_stats_out, total_matches) = if crit.has_client_post_filters() {
         *query_phase.write() = QueryPhase::FetchingPreview;
-        let display_csv = sparql::execute_sparql(&display_query)
+        let csv = sparql::execute_sparql(&sparql_query)
             .await
-            .map_err(|e| format!("Display query failed: {e}"))?;
-        let rows = sparql::parse_compounds_csv_display(&display_csv, display_limit)
-            .map_err(|e| format!("Display parse failed: {e}"))?;
+            .map_err(|e| format!("Query failed: {e}"))?;
+        let rows = sparql::parse_compounds_csv(&csv).map_err(|e| format!("Parse error: {e}"))?;
+        (rows, None, None)
+    } else {
+        // Fast path: fetch exact aggregate counts with a tiny response, then fetch
+        // only the display window. This keeps metadata totals exact while cutting
+        // transfer size for large result sets.
+        *query_phase.write() = QueryPhase::Counting;
+        let count_query = queries::query_counts_from_base(&sparql_query);
+        let display_query = queries::query_with_limit(&sparql_query, display_limit);
 
-        Ok::<_, String>((rows, Some(full_stats.clone()), Some(full_stats.n_entries)))
-    }
-    .await
-    {
-        Ok(v) => v,
-        Err(err_msg) => {
-            #[cfg(target_arch = "wasm32")]
-            {
-                return Err(i18n::err_wasm_large_query_fallback(locale, &err_msg));
-            }
+        match async {
+            let counts_csv = sparql::execute_sparql(&count_query)
+                .await
+                .map_err(|e| format!("Count query failed: {e}"))?;
+            let full_stats = sparql::parse_counts_csv(&counts_csv)
+                .map_err(|e| format!("Count parse failed: {e}"))?;
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                let _ = err_msg;
-                let csv = sparql::execute_sparql(&sparql_query)
-                    .await
-                    .map_err(|e| format!("Query failed: {e}"))?;
-                let (rows, full_stats, _parse_capped) =
-                    sparql::parse_compounds_csv_capped(&csv, display_limit)
-                        .map_err(|e| format!("Parse error: {e}"))?;
-                (rows, Some(full_stats.clone()), Some(full_stats.n_entries))
+            *query_phase.write() = QueryPhase::FetchingPreview;
+            let display_csv = sparql::execute_sparql(&display_query)
+                .await
+                .map_err(|e| format!("Display query failed: {e}"))?;
+            let rows = sparql::parse_compounds_csv_display(&display_csv, display_limit)
+                .map_err(|e| format!("Display parse failed: {e}"))?;
+
+            Ok::<_, String>((rows, Some(full_stats.clone()), Some(full_stats.n_entries)))
+        }
+        .await
+        {
+            Ok(v) => v,
+            Err(err_msg) => {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    return Err(i18n::err_wasm_large_query_fallback(locale, &err_msg));
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let _ = err_msg;
+                    let csv = sparql::execute_sparql(&sparql_query)
+                        .await
+                        .map_err(|e| format!("Query failed: {e}"))?;
+                    let (rows, full_stats, _parse_capped) =
+                        sparql::parse_compounds_csv_capped(&csv, display_limit)
+                            .map_err(|e| format!("Parse error: {e}"))?;
+                    (rows, Some(full_stats.clone()), Some(full_stats.n_entries))
+                }
             }
         }
     };
@@ -916,97 +928,6 @@ fn sanitize_taxon_input(taxon: &str) -> String {
     } else {
         replaced
     }
-}
-
-fn formula_matches(formula: Option<&str>, crit: &SearchCriteria) -> bool {
-    // Python semantics: rows with no formula are *not* filtered out
-    // (match_filters returns True when formula is empty). Only active
-    // sub-filters reject a row.
-    let raw_formula = match formula {
-        Some(f) if !f.trim().is_empty() => f,
-        _ => return true,
-    };
-    let normalized = normalize_formula(raw_formula);
-    let exact = crit.formula_exact.trim();
-    if !exact.is_empty() {
-        return normalized == normalize_formula(exact);
-    }
-
-    let parsed = parse_formula_counts(&normalized);
-    for (elem, min, max, default_max) in crit.element_ranges() {
-        // Skip inactive ranges — matches Python `ElementRange.is_active`.
-        if min == 0 && max >= default_max {
-            continue;
-        }
-        let n = *parsed.get(elem).unwrap_or(&0);
-        if n < min || n > max {
-            return false;
-        }
-    }
-
-    element_state_matches(parsed.get("F").copied().unwrap_or(0), crit.f_state)
-        && element_state_matches(parsed.get("Cl").copied().unwrap_or(0), crit.cl_state)
-        && element_state_matches(parsed.get("Br").copied().unwrap_or(0), crit.br_state)
-        && element_state_matches(parsed.get("I").copied().unwrap_or(0), crit.i_state)
-}
-
-/// Translate Unicode subscripts (`₀…₉`) to ASCII digits so the formula
-/// parser matches Wikidata strings such as `C₁₅H₁₀O₅`.
-fn normalize_formula(formula: &str) -> String {
-    formula
-        .chars()
-        .map(|c| match c {
-            '₀' => '0',
-            '₁' => '1',
-            '₂' => '2',
-            '₃' => '3',
-            '₄' => '4',
-            '₅' => '5',
-            '₆' => '6',
-            '₇' => '7',
-            '₈' => '8',
-            '₉' => '9',
-            _ => c,
-        })
-        .collect()
-}
-
-fn element_state_matches(count: i32, state: ElementState) -> bool {
-    match state {
-        ElementState::Allowed => true,
-        ElementState::Required => count > 0,
-        ElementState::Excluded => count == 0,
-    }
-}
-
-fn parse_formula_counts(formula: &str) -> BTreeMap<String, i32> {
-    let mut out = BTreeMap::new();
-    let chars: Vec<char> = formula.chars().collect();
-    let mut i = 0usize;
-    while i < chars.len() {
-        if !chars[i].is_ascii_uppercase() {
-            i += 1;
-            continue;
-        }
-        let mut symbol = String::new();
-        symbol.push(chars[i]);
-        i += 1;
-        if i < chars.len() && chars[i].is_ascii_lowercase() {
-            symbol.push(chars[i]);
-            i += 1;
-        }
-        let start = i;
-        while i < chars.len() && chars[i].is_ascii_digit() {
-            i += 1;
-        }
-        let count = if start < i {
-            formula[start..i].parse::<i32>().unwrap_or(1)
-        } else {
-            1
-        };
-        *out.entry(symbol).or_insert(0) += count;
-    }
-    out
 }
 
 fn compute_hashes(
@@ -1082,8 +1003,12 @@ fn absolute_share_url(share: &str) -> String {
 }
 
 fn initial_criteria_from_url() -> SearchCriteria {
-    let mut criteria = SearchCriteria::default();
     let params = read_url_query_params();
+    parse_criteria_from_params(&params)
+}
+
+fn parse_criteria_from_params(params: &BTreeMap<String, String>) -> SearchCriteria {
+    let mut criteria = SearchCriteria::default();
     let is_true = |v: &str| matches!(v, "1" | "true" | "yes" | "on");
     let parse_f64 = |name: &str| params.get(name).and_then(|v| v.parse::<f64>().ok());
     let parse_i32 = |name: &str| params.get(name).and_then(|v| v.parse::<i32>().ok());
@@ -1213,6 +1138,57 @@ fn initial_criteria_from_url() -> SearchCriteria {
     criteria
 }
 
+#[cfg(target_arch = "wasm32")]
+fn build_query_string(params: &BTreeMap<String, String>) -> String {
+    params
+        .iter()
+        .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+        .collect::<Vec<_>>()
+        .join("&")
+}
+
+fn absolute_current_url_with_query(query: &str) -> String {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(win) = web_sys::window() {
+            let loc = win.location();
+            if let (Ok(origin), Ok(pathname)) = (loc.origin(), loc.pathname()) {
+                return format!("{origin}{pathname}?{query}");
+            }
+        }
+    }
+    format!("?{query}")
+}
+
+fn persist_locale_query_param(locale: Locale) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let mut params = read_url_query_params();
+        params.insert(
+            "lang".to_string(),
+            match locale {
+                Locale::En => "en",
+                Locale::Fr => "fr",
+                Locale::De => "de",
+                Locale::It => "it",
+            }
+            .to_string(),
+        );
+        let query = build_query_string(&params);
+        let url = absolute_current_url_with_query(&query);
+        if let Some(win) = web_sys::window() {
+            if let Ok(history) = win.history() {
+                let _ =
+                    history.replace_state_with_url(&wasm_bindgen::JsValue::NULL, "", Some(&url));
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = locale;
+    }
+}
+
 fn initial_locale_from_url() -> Locale {
     let params = read_url_query_params();
     let lang = params.get("lang").map(|v| v.as_str()).unwrap_or("");
@@ -1234,44 +1210,6 @@ fn initial_download_format_from_url() -> Option<String> {
             .map(|v| v.to_ascii_lowercase())
             .unwrap_or_else(|| "csv".to_string()),
     )
-}
-
-fn trigger_query_csv_download_main(sparql_query: &str, filename: &str) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        use wasm_bindgen::JsCast;
-
-        let href = format!(
-            "https://qlever.dev/api/wikidata?query={}&action=csv_export",
-            urlencoding::encode(sparql_query)
-        );
-        let Some(window) = web_sys::window() else {
-            return;
-        };
-        let Some(document) = window.document() else {
-            return;
-        };
-
-        let anchor = document
-            .create_element("a")
-            .ok()
-            .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok());
-
-        if let (Some(a), Some(body_el)) = (anchor, document.body()) {
-            a.set_href(&href);
-            a.set_download(filename);
-            a.set_rel("noopener noreferrer");
-            let _ = body_el.append_child(&a);
-            a.click();
-            let _ = body_el.remove_child(&a);
-        } else {
-            let _ = window.open_with_url(&href);
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let _ = (sparql_query, filename);
-    }
 }
 
 fn trigger_download_main(filename: &str, mime: &str, body: &str) {
@@ -1411,5 +1349,65 @@ fn read_url_query_params() -> BTreeMap<String, String> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         BTreeMap::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_criteria_supports_formula_and_halogens() {
+        let mut params = BTreeMap::new();
+        params.insert("taxon".into(), "*".into());
+        params.insert("formula_filter".into(), "true".into());
+        params.insert("c_min".into(), "15".into());
+        params.insert("c_max".into(), "25".into());
+        params.insert("o_min".into(), "2".into());
+        params.insert("o_max".into(), "8".into());
+        params.insert("f_state".into(), "required".into());
+        params.insert("cl_state".into(), "required".into());
+        params.insert("br_state".into(), "excluded".into());
+        params.insert("i_state".into(), "excluded".into());
+
+        let crit = parse_criteria_from_params(&params);
+        assert!(crit.formula_enabled);
+        assert_eq!(crit.c_min, 15);
+        assert_eq!(crit.c_max, 25);
+        assert_eq!(crit.o_min, 2);
+        assert_eq!(crit.o_max, 8);
+        assert_eq!(crit.f_state, ElementState::Required);
+        assert_eq!(crit.cl_state, ElementState::Required);
+        assert_eq!(crit.br_state, ElementState::Excluded);
+        assert_eq!(crit.i_state, ElementState::Excluded);
+    }
+
+    #[test]
+    fn share_params_roundtrip_for_advanced_filters() {
+        let mut crit = SearchCriteria {
+            taxon: "*".into(),
+            ..SearchCriteria::default()
+        };
+        crit.formula_enabled = true;
+        crit.c_min = 15;
+        crit.c_max = 25;
+        crit.o_min = 2;
+        crit.o_max = 8;
+        crit.f_state = ElementState::Required;
+        crit.cl_state = ElementState::Required;
+        crit.br_state = ElementState::Excluded;
+        crit.i_state = ElementState::Excluded;
+
+        let params: BTreeMap<String, String> = crit.shareable_query_params().into_iter().collect();
+        let reparsed = parse_criteria_from_params(&params);
+        assert_eq!(reparsed.taxon, crit.taxon);
+        assert_eq!(reparsed.c_min, crit.c_min);
+        assert_eq!(reparsed.c_max, crit.c_max);
+        assert_eq!(reparsed.o_min, crit.o_min);
+        assert_eq!(reparsed.o_max, crit.o_max);
+        assert_eq!(reparsed.f_state, crit.f_state);
+        assert_eq!(reparsed.cl_state, crit.cl_state);
+        assert_eq!(reparsed.br_state, crit.br_state);
+        assert_eq!(reparsed.i_state, crit.i_state);
     }
 }

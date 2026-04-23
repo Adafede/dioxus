@@ -77,6 +77,7 @@ pub enum TextKey {
     DismissError,
     FiltersShow,
     FiltersHide,
+    Language,
     // Header
     PageTitle,
     PageSubtitle,
@@ -197,6 +198,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::DismissError => "Dismiss error",
             TextKey::FiltersShow => "Show filters",
             TextKey::FiltersHide => "Hide filters",
+            TextKey::Language => "Language",
             TextKey::PageTitle => "LOTUS Wikidata Explorer",
             TextKey::PageSubtitle => "Natural product occurrences - compound, taxon, reference.",
             TextKey::ResolvedTaxon => "Resolved taxon",
@@ -322,6 +324,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::DismissError => "Fermer l'erreur",
             TextKey::FiltersShow => "Afficher les filtres",
             TextKey::FiltersHide => "Masquer les filtres",
+            TextKey::Language => "Langue",
             TextKey::PageTitle => "Explorateur LOTUS Wikidata",
             TextKey::PageSubtitle => {
                 "Occurrences de produits naturels - composé, taxon, référence."
@@ -457,6 +460,7 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::DismissError => "Fehler schließen",
         TextKey::FiltersShow => "Filter anzeigen",
         TextKey::FiltersHide => "Filter ausblenden",
+        TextKey::Language => "Sprache",
         TextKey::PageTitle => "LOTUS Wikidata Explorer",
         TextKey::PageSubtitle => "Naturstoff-Vorkommen - Verbindung, Taxon, Referenz.",
         TextKey::ResolvedTaxon => "Aufgelöstes Taxon",
@@ -591,6 +595,7 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::DismissError => "Chiudi errore",
         TextKey::FiltersShow => "Mostra filtri",
         TextKey::FiltersHide => "Nascondi filtri",
+        TextKey::Language => "Lingua",
         TextKey::PageTitle => "Esploratore LOTUS Wikidata",
         TextKey::PageSubtitle => "Occorrenze di prodotti naturali - composto, taxon, riferimento.",
         TextKey::ResolvedTaxon => "Taxon risolto",

@@ -1,5 +1,6 @@
 //! Domain models for the LOTUS explorer.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -251,6 +252,10 @@ impl SearchCriteria {
         !self.taxon.trim().is_empty() || !self.smiles.trim().is_empty()
     }
 
+    pub fn has_client_post_filters(&self) -> bool {
+        self.has_mass_filter() || self.has_year_filter() || self.has_formula_filter()
+    }
+
     pub fn shareable_query_params(&self) -> Vec<(String, String)> {
         let mut params = Vec::new();
         if !self.taxon.trim().is_empty() {
@@ -310,6 +315,112 @@ impl SearchCriteria {
         }
         params
     }
+}
+
+/// Apply client-side filters that are not encoded directly into the SPARQL query.
+/// This keeps table rows and downloads consistent.
+pub fn apply_client_filters_in_place(rows: &mut Vec<CompoundEntry>, crit: &SearchCriteria) {
+    if crit.has_mass_filter() {
+        rows.retain(|e| {
+            e.mass
+                .is_some_and(|m| m >= crit.mass_min && m <= crit.mass_max)
+        });
+    }
+    if crit.has_year_filter() {
+        rows.retain(|e| {
+            e.pub_year
+                .is_none_or(|y| y >= crit.year_min && y <= crit.year_max)
+        });
+    }
+    if crit.has_formula_filter() {
+        rows.retain(|e| formula_matches(e.formula.as_deref(), crit));
+    }
+}
+
+fn formula_matches(formula: Option<&str>, crit: &SearchCriteria) -> bool {
+    // Python semantics: rows with no formula are not filtered out.
+    let raw_formula = match formula {
+        Some(f) if !f.trim().is_empty() => f,
+        _ => return true,
+    };
+    let normalized = normalize_formula(raw_formula);
+    let exact = crit.formula_exact.trim();
+    if !exact.is_empty() {
+        return normalized == normalize_formula(exact);
+    }
+
+    let parsed = parse_formula_counts(&normalized);
+    for (elem, min, max, default_max) in crit.element_ranges() {
+        if min == 0 && max >= default_max {
+            continue;
+        }
+        let n = *parsed.get(elem).unwrap_or(&0);
+        if n < min || n > max {
+            return false;
+        }
+    }
+
+    element_state_matches(parsed.get("F").copied().unwrap_or(0), crit.f_state)
+        && element_state_matches(parsed.get("Cl").copied().unwrap_or(0), crit.cl_state)
+        && element_state_matches(parsed.get("Br").copied().unwrap_or(0), crit.br_state)
+        && element_state_matches(parsed.get("I").copied().unwrap_or(0), crit.i_state)
+}
+
+fn normalize_formula(formula: &str) -> String {
+    formula
+        .chars()
+        .map(|c| match c {
+            '₀' => '0',
+            '₁' => '1',
+            '₂' => '2',
+            '₃' => '3',
+            '₄' => '4',
+            '₅' => '5',
+            '₆' => '6',
+            '₇' => '7',
+            '₈' => '8',
+            '₉' => '9',
+            _ => c,
+        })
+        .collect()
+}
+
+fn element_state_matches(count: i32, state: ElementState) -> bool {
+    match state {
+        ElementState::Allowed => true,
+        ElementState::Required => count > 0,
+        ElementState::Excluded => count == 0,
+    }
+}
+
+fn parse_formula_counts(formula: &str) -> BTreeMap<String, i32> {
+    let mut out = BTreeMap::new();
+    let chars: Vec<char> = formula.chars().collect();
+    let mut i = 0usize;
+    while i < chars.len() {
+        if !chars[i].is_ascii_uppercase() {
+            i += 1;
+            continue;
+        }
+        let mut symbol = String::new();
+        symbol.push(chars[i]);
+        i += 1;
+        if i < chars.len() && chars[i].is_ascii_lowercase() {
+            symbol.push(chars[i]);
+            i += 1;
+        }
+        let start = i;
+        while i < chars.len() && chars[i].is_ascii_digit() {
+            i += 1;
+        }
+        let count = if start < i {
+            formula[start..i].parse::<i32>().unwrap_or(1)
+        } else {
+            1
+        };
+        *out.entry(symbol).or_insert(0) += count;
+    }
+    out
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

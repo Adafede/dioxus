@@ -80,7 +80,9 @@ pub fn ResultsTable(
         Arc::from(idx.into_boxed_slice())
     });
 
+    #[allow(unused_mut)]
     let mut scroll_top_px = use_signal(|| 0usize);
+    #[allow(unused_mut)]
     let mut viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
 
     let row_height_px = ROW_HEIGHT_PX_COMFORTABLE;
@@ -228,13 +230,22 @@ pub fn ResultsTable(
                                         let q = query.to_string();
                                         move |_| {
                                             let filename = csv_filename.read().clone();
+                                            let crit = criteria.peek().clone();
                                             *download_busy.write() = true;
                                             *download_status.write() = Some(
                                                 t(locale, TextKey::StartingCsvDownload).to_string(),
                                             );
-                                            trigger_query_csv_download(&q, &filename);
-                                            *download_busy.write() = false;
-                                            *download_status.write() = None;
+                                            let q = q.clone();
+                                            spawn(async move {
+                                                if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
+                                                    let mut filtered = rows.as_ref().clone();
+                                                    apply_client_filters_in_place(&mut filtered, &crit);
+                                                    let body = export::build_csv(&filtered);
+                                                    trigger_download(&filename, "text/csv;charset=utf-8", &body);
+                                                }
+                                                *download_busy.write() = false;
+                                                *download_status.write() = None;
+                                            });
                                         }
                                     },
                                     title: "{t(locale, TextKey::DownloadCsvTitle)}",
@@ -250,13 +261,16 @@ pub fn ResultsTable(
                                             move |_| {
                                                 let q = q.clone();
                                                 let filename = json_filename.read().clone();
+                                                let crit = criteria.peek().clone();
                                                 *download_busy.write() = true;
                                                 *download_status.write() = Some(
                                                     t(locale, TextKey::PreparingJsonDownload).to_string(),
                                                 );
                                                 spawn(async move {
                                                     if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
-                                                        let body = export::build_ndjson(rows.as_ref());
+                                                        let mut filtered = rows.as_ref().clone();
+                                                        apply_client_filters_in_place(&mut filtered, &crit);
+                                                        let body = export::build_ndjson(&filtered);
                                                         trigger_download(&filename, "application/x-ndjson", &body);
                                                     }
                                                     *download_busy.write() = false;
@@ -275,27 +289,28 @@ pub fn ResultsTable(
                                             let q = query.to_string();
                                             let query_hash_value = query_hash.clone();
                                             let result_hash_value = result_hash.clone();
-                                            let stats_for_export = display_stats.clone();
                                             move |_| {
                                                 let q = q.clone();
                                                 let filename = ttl_filename.read().clone();
                                                 let qh = query_hash_value.clone();
                                                 let rh = result_hash_value.clone();
                                                 let crit = criteria.peek().clone();
-                                                let stats_for_export = stats_for_export.clone();
                                                 *download_busy.write() = true;
                                                 *download_status.write() = Some(
                                                     t(locale, TextKey::PreparingTtlDownload).to_string(),
                                                 );
                                                 spawn(async move {
                                                     if let Ok(rows) = sparql::parse_compounds_cached(&q).await {
+                                                        let mut filtered = rows.as_ref().clone();
+                                                        apply_client_filters_in_place(&mut filtered, &crit);
+                                                        let filtered_stats = DatasetStats::from_entries(&filtered);
                                                         let ttl = export::build_ttl(
-                                                            rows.as_ref(),
+                                                            &filtered,
                                                             export::MetadataInputs {
                                                                 criteria: &crit,
                                                                 qid: None,
-                                                                stats: &stats_for_export,
-                                                                number_of_records_override: Some(stats_for_export.n_entries),
+                                                                stats: &filtered_stats,
+                                                                number_of_records_override: Some(filtered_stats.n_entries),
                                                                 query_hash: qh.as_deref().unwrap_or(""),
                                                                 result_hash: rh.as_deref().unwrap_or(""),
                                                             },
@@ -818,50 +833,6 @@ fn trigger_download(filename: &str, mime: &str, body: &str) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let _ = (filename, mime, body);
-    }
-}
-
-fn trigger_query_csv_download(sparql_query: &str, filename: &str) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        use wasm_bindgen::JsCast;
-
-        let endpoint = "https://qlever.dev/api/wikidata";
-        let href = format!(
-            "{endpoint}?query={}&action=csv_export",
-            urlencoding::encode(sparql_query)
-        );
-
-        let Some(window) = web_sys::window() else {
-            return;
-        };
-        let Some(document) = window.document() else {
-            return;
-        };
-
-        let anchor = document
-            .create_element("a")
-            .ok()
-            .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok());
-
-        if let (Some(a), Some(body_el)) = (anchor, document.body()) {
-            a.set_href(&href);
-            a.set_download(filename);
-            a.set_rel("noopener noreferrer");
-            let _ = body_el.append_child(&a);
-            a.click();
-            let _ = body_el.remove_child(&a);
-        } else {
-            let ui = format!(
-                "https://qlever.dev/wikidata?query={}",
-                urlencoding::encode(sparql_query)
-            );
-            let _ = window.open_with_url(&ui);
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let _ = (sparql_query, filename);
     }
 }
 
