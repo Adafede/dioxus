@@ -29,8 +29,8 @@ opt-level = 1
 # ── Release profile — tiny WASM ───────────────────────────────────────────────
 [profile.release]
 opt-level = "z"
+debug = false
+strip = "symbols"
 lto = "fat"
 panic = "abort"
 codegen-units = 1
-strip = "symbols"
-debug = false
