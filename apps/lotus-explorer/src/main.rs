@@ -580,11 +580,7 @@ fn WelcomeScreen(locale: Locale) -> Element {
                     "{t(locale, TextKey::WelcomeProgrammaticDownload)}"
                 }
                 div { class: "welcome-cli-list",
-                    DownloadExampleRow {
-                        locale,
-                        format: "Taxon",
-                        query: "?taxon=*",
-                    }
+                    DownloadExampleRow { locale, format: "Taxon", query: "?taxon=*" }
                     DownloadExampleRow {
                         locale,
                         format: "Structures",
