@@ -8,10 +8,12 @@ use crate::sparql;
 use dioxus::prelude::*;
 use std::sync::Arc;
 
-const VIRTUAL_INITIAL_ROWS: usize = 120;
-const VIRTUAL_STEP_ROWS: usize = 200;
 #[cfg(target_arch = "wasm32")]
 const WASM_HEAVY_EXPORT_MAX_ROWS: usize = 50_000;
+const TABLE_SCROLL_ID: &str = "results-table-scroll";
+const VIRTUAL_OVERSCAN_ROWS: usize = 12;
+const ROW_HEIGHT_PX_COMFORTABLE: usize = 114;
+const TABLE_VIEWPORT_FALLBACK_PX: usize = 640;
 
 /// Human-facing QLever UI endpoint (for the "Open in QLever" deep-link).
 const QLEVER_UI: &str = "https://qlever.dev/wikidata";
@@ -78,8 +80,20 @@ pub fn ResultsTable(
         Arc::from(idx.into_boxed_slice())
     });
 
-    let mut visible_rows_limit = use_signal(|| VIRTUAL_INITIAL_ROWS);
-    let visible_count = (*visible_rows_limit.read()).min(total);
+    let mut scroll_top_px = use_signal(|| 0usize);
+    let mut viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
+
+    let row_height_px = ROW_HEIGHT_PX_COMFORTABLE;
+    let window_rows = (((*viewport_height_px.read()).saturating_add(row_height_px - 1))
+        / row_height_px)
+        .max(1)
+        .saturating_add(VIRTUAL_OVERSCAN_ROWS * 2);
+    let first_visible_row = ((*scroll_top_px.read()) / row_height_px).min(total);
+    let start_row = first_visible_row.saturating_sub(VIRTUAL_OVERSCAN_ROWS);
+    let end_row = start_row.saturating_add(window_rows).min(total);
+    let top_spacer_px = start_row.saturating_mul(row_height_px);
+    let bottom_spacer_px = total.saturating_sub(end_row).saturating_mul(row_height_px);
+    let visible_count = end_row.saturating_sub(start_row);
 
     let sort_icon = move |col: SortColumn| -> &'static str {
         let s = *sort.read();
@@ -143,12 +157,24 @@ pub fn ResultsTable(
         .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
     let heavy_exports_allowed = wasm_heavy_exports_allowed(total_matches);
     let heavy_export_hint = t(locale, TextKey::HeavyExportHint);
-    let mut compact_rows = use_signal(|| false);
 
     rsx! {
         div {
             id: "results-section",
-            class: if *compact_rows.read() { "results-wrap compact" } else { "results-wrap" },
+            class: "results-wrap",
+            if let Some(q) = sparql_query.as_deref() {
+                details { class: "query-panel",
+                    summary { "{t(locale, TextKey::SparqlQuery)}" }
+                    div { class: "query-panel-actions",
+                        crate::components::copy_button::CopyButton {
+                            text: q.to_string(),
+                            title: t(locale, TextKey::CopySparqlQuery),
+                            locale,
+                        }
+                    }
+                    pre { class: "query-text", "{q}" }
+                }
+            }
             // ── Stats + toolbar ───────────────────────────────────────────
             div { class: "results-toolbar",
                 div {
@@ -181,19 +207,6 @@ pub fn ResultsTable(
                     }
                 }
                 div { class: "toolbar-actions",
-                    button {
-                        class: "btn btn-sm",
-                        r#type: "button",
-                        onclick: move |_| {
-                            let next = !*compact_rows.peek();
-                            *compact_rows.write() = next;
-                        },
-                        if *compact_rows.read() {
-                            "{t(locale, TextKey::DensityComfortable)}"
-                        } else {
-                            "{t(locale, TextKey::DensityCompact)}"
-                        }
-                    }
                     if *download_busy.read() {
                         span {
                             class: "btn btn-sm",
@@ -343,19 +356,6 @@ pub fn ResultsTable(
                 }
             }
 
-            if let Some(q) = sparql_query.as_deref() {
-                details { class: "query-panel",
-                    summary { "{t(locale, TextKey::SparqlQuery)}" }
-                    div { class: "query-panel-actions",
-                        crate::components::copy_button::CopyButton {
-                            text: q.to_string(),
-                            title: t(locale, TextKey::CopySparqlQuery),
-                            locale,
-                        }
-                    }
-                    pre { class: "query-text", "{q}" }
-                }
-            }
 
             if total == 0 {
                 div { class: "empty-state",
@@ -363,21 +363,32 @@ pub fn ResultsTable(
                 }
             } else {
                 div { class: "pagination-bar",
-                    span { class: "page-info", "{showing_rows_text(locale, visible_count, total)}" }
-                    if visible_count < total {
-                        button {
-                            class: "btn btn-sm",
-                            r#type: "button",
-                            onclick: move |_| {
-                                let next = (*visible_rows_limit.peek()).saturating_add(VIRTUAL_STEP_ROWS);
-                                *visible_rows_limit.write() = next;
-                            },
-                            "{t(locale, TextKey::LoadMore)} {VIRTUAL_STEP_ROWS}"
-                        }
-                    }
+                    span { class: "page-info", "{showing_rows_text(locale, end_row.saturating_sub(start_row), total)}" }
                 }
 
-                div { class: "table-scroll",
+                div {
+                    id: TABLE_SCROLL_ID,
+                    class: "table-scroll",
+                    onscroll: move |_| {
+                        #[cfg(target_arch = "wasm32")]
+                        {
+                            use wasm_bindgen::JsCast;
+                            if let Some(win) = web_sys::window() {
+                                if let Some(document) = win.document() {
+                                    if let Some(node) = document.get_element_by_id(TABLE_SCROLL_ID) {
+                                        if let Ok(div) = node.dyn_into::<web_sys::HtmlElement>() {
+                                            let top = div.scroll_top().max(0) as usize;
+                                            let height = div.client_height().max(0) as usize;
+                                            *scroll_top_px.write() = top;
+                                            if height > 0 {
+                                                *viewport_height_px.write() = height;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     table {
                         class: "results-table",
                         aria_label: "{t(locale, TextKey::TableTriplesAria)}",
@@ -461,12 +472,30 @@ pub fn ResultsTable(
                             }
                         }
                         tbody {
+                            if top_spacer_px > 0 {
+                                tr { class: "virtual-spacer-row", aria_hidden: "true",
+                                    td {
+                                        class: "virtual-spacer-cell",
+                                        colspan: "7",
+                                        style: "height: {top_spacer_px}px;"
+                                    }
+                                }
+                            }
                             {
                                 let rows = entries.read();
                                 let order = sorted_indices.read();
                                 rsx! {
-                                    for i in order.iter().take(visible_count).copied() {
+                                    for i in order.iter().skip(start_row).take(visible_count).copied() {
                                         Row { key: "{i}", locale, entry: rows[i as usize].clone() }
+                                    }
+                                }
+                            }
+                            if bottom_spacer_px > 0 {
+                                tr { class: "virtual-spacer-row", aria_hidden: "true",
+                                    td {
+                                        class: "virtual-spacer-cell",
+                                        colspan: "7",
+                                        style: "height: {bottom_spacer_px}px;"
                                     }
                                 }
                             }
@@ -474,19 +503,6 @@ pub fn ResultsTable(
                     }
                 }
 
-                if visible_count < total {
-                    div { class: "pagination-bar",
-                        button {
-                            class: "btn btn-sm",
-                            r#type: "button",
-                            onclick: move |_| {
-                                let next = (*visible_rows_limit.peek()).saturating_add(VIRTUAL_STEP_ROWS);
-                                *visible_rows_limit.write() = next;
-                            },
-                            "{t(locale, TextKey::LoadMore)}"
-                        }
-                    }
-                }
             }
         }
     }
