@@ -66,7 +66,7 @@ fn epoch_to_ymdhms(secs: i64) -> (i32, u32, u32, u32, u32, u32) {
     (y as i32, m, d, hh, mm, ss)
 }
 
-// ── Filters → JSON (mirrors Python `SearchCriteria.to_filters_dict`) ──────────
+// ── Filters → JSON ──────────
 
 pub fn criteria_to_filters_value(criteria: &SearchCriteria) -> Value {
     let mut filters = Map::new();
@@ -386,7 +386,7 @@ fn title_case(s: &str) -> String {
     }
 }
 
-// ── Download filenames (mirrors Python `generate_filename`) ──────────────────
+// ── Download filenames ──────────────────
 
 /// Compact `YYYYMMDD` date string derived from [`now_iso8601`].
 pub fn today_yyyymmdd() -> String {
@@ -400,7 +400,7 @@ pub fn today_yyyymmdd() -> String {
 }
 
 /// Normalize a taxon string into a filesystem-safe slug, matching the
-/// Python notebook's `generate_filename` logic:
+/// logic:
 ///
 /// * empty / whitespace → `any_taxon`
 /// * `"*"`              → `all_taxa`

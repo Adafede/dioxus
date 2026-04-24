@@ -59,7 +59,7 @@ impl std::fmt::Display for FetchError {
 
 /// Execute a SPARQL query against `endpoint` and return the raw CSV body.
 ///
-/// Mirrors the Python `execute_with_retry` behavior: up to two attempts,
+/// Up to two attempts,
 /// with `Accept: text/csv` so the endpoint can honor content negotiation
 /// even when the `action=csv_export` form parameter is ignored. Retries
 /// transient network / 5xx errors; 4xx errors fail fast.
@@ -67,11 +67,28 @@ pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, Fetc
     execute_sparql_with_format(sparql, endpoint, SparqlResponseFormat::Csv).await
 }
 
+/// Execute a SPARQL query and return raw response bytes.
+///
+/// Useful for memory-sensitive paths where callers parse CSV directly from bytes
+/// without first materializing an intermediate UTF-8 `String`.
+pub async fn execute_sparql_bytes(sparql: &str, endpoint: &str) -> Result<Vec<u8>, FetchError> {
+    execute_sparql_with_format_bytes(sparql, endpoint, SparqlResponseFormat::Csv).await
+}
+
 pub async fn execute_sparql_with_format(
     sparql: &str,
     endpoint: &str,
     format: SparqlResponseFormat,
 ) -> Result<String, FetchError> {
+    let bytes = execute_sparql_with_format_bytes(sparql, endpoint, format).await?;
+    String::from_utf8(bytes).map_err(|e| FetchError::Parse(e.to_string()))
+}
+
+pub async fn execute_sparql_with_format_bytes(
+    sparql: &str,
+    endpoint: &str,
+    format: SparqlResponseFormat,
+) -> Result<Vec<u8>, FetchError> {
     log::debug!("SPARQL POST endpoint: {endpoint}");
 
     const MAX_ATTEMPTS: u32 = 2;
@@ -104,12 +121,12 @@ pub async fn execute_sparql_with_format(
                 let status = resp.status();
                 let code = status.as_u16();
                 if status.is_success() {
-                    return match resp.text().await {
-                        Ok(text) if text.trim().is_empty() => Err(FetchError::Empty),
-                        Ok(text) => {
-                            // QLever sometimes returns an HTML gateway-error page with
-                            // 200 OK when the upstream SPARQL server is flaky. Detect.
-                            if looks_like_gateway_error(&text) {
+                    return match resp.bytes().await {
+                        Ok(bytes) if bytes.is_empty() => Err(FetchError::Empty),
+                        Ok(bytes) => {
+                            // HTML gateway pages are text, so inspect a lossy preview.
+                            let preview = String::from_utf8_lossy(&bytes);
+                            if looks_like_gateway_error(&preview) {
                                 last_err = Some(FetchError::Http(
                                     502,
                                     "upstream gateway error (HTML payload)".into(),
@@ -119,7 +136,7 @@ pub async fn execute_sparql_with_format(
                                 }
                                 return Err(last_err.unwrap());
                             }
-                            Ok(text)
+                            Ok(bytes.to_vec())
                         }
                         Err(e) => {
                             last_err = Some(FetchError::Network(e.to_string()));

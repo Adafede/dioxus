@@ -58,7 +58,7 @@ pub fn SearchPanel(
                                 r#type: "number",
                                 class: "form-input sm",
                                 min: "0",
-                                max: "2000",
+                                max: "10000",
                                 step: "1",
                                 value: "{c.read().mass_min}",
                                 oninput: move |e| {
@@ -78,7 +78,7 @@ pub fn SearchPanel(
                                 r#type: "number",
                                 class: "form-input sm",
                                 min: "0",
-                                max: "2000",
+                                max: "10000",
                                 step: "1",
                                 value: "{c.read().mass_max}",
                                 oninput: move |e| {
@@ -110,7 +110,7 @@ pub fn SearchPanel(
                                 step: "1",
                                 value: "{c.read().year_min}",
                                 oninput: move |e| {
-                                    if let Ok(v) = e.value().parse::<i32>() {
+                                    if let Ok(v) = e.value().parse::<u16>() {
                                         c.write().year_min = v;
                                     }
                                 },
@@ -130,7 +130,7 @@ pub fn SearchPanel(
                                 step: "1",
                                 value: "{c.read().year_max}",
                                 oninput: move |e| {
-                                    if let Ok(v) = e.value().parse::<i32>() {
+                                    if let Ok(v) = e.value().parse::<u16>() {
                                         c.write().year_max = v;
                                     }
                                 },
@@ -373,9 +373,7 @@ fn StructureSection(criteria: Signal<SearchCriteria>, locale: Locale) -> Element
 
 /// Relative URL at which the Ketcher standalone build is served.
 /// Place the contents of Ketcher's `standalone/` folder at this path
-/// (e.g. `assets/ketcher/` or `public/ketcher/` in the Dioxus project) —
-/// this matches the Python notebook's `public/standalone/index.html`
-/// convention.
+/// (e.g. `assets/ketcher/` or `public/ketcher/` in the Dioxus project).
 const KETCHER_URL: &str = "ketcher/index.html";
 
 #[component]
@@ -441,10 +439,10 @@ fn kind_note(k: StructureKind, locale: Locale) -> &'static str {
 fn NumPair(
     label: &'static str,
     locale: Locale,
-    min_value: i32,
-    max_value: i32,
-    on_min: EventHandler<i32>,
-    on_max: EventHandler<i32>,
+    min_value: u16,
+    max_value: u16,
+    on_min: EventHandler<u16>,
+    on_max: EventHandler<u16>,
 ) -> Element {
     rsx! {
         div { class: "range-pair",
@@ -453,11 +451,11 @@ fn NumPair(
                 r#type: "number",
                 class: "form-input sm",
                 min: "0",
-                max: "500",
+                max: "10000",
                 aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
                 value: "{min_value}",
                 oninput: move |e| {
-                    if let Ok(v) = e.value().parse::<i32>() {
+                    if let Ok(v) = e.value().parse::<u16>() {
                         on_min.call(v);
                     }
                 },
@@ -467,11 +465,11 @@ fn NumPair(
                 r#type: "number",
                 class: "form-input sm",
                 min: "0",
-                max: "500",
+                max: "10000",
                 aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",
                 value: "{max_value}",
                 oninput: move |e| {
-                    if let Ok(v) = e.value().parse::<i32>() {
+                    if let Ok(v) = e.value().parse::<u16>() {
                         on_max.call(v);
                     }
                 },

@@ -4,19 +4,67 @@
 
 use shared::sparql::{
     FetchError, QLEVER_WIKIDATA, SparqlResponseFormat, clean_doi, coalesce, col_idx,
-    execute_sparql as shared_execute, execute_sparql_with_format as shared_execute_with_format,
-    extract_qid, field, non_empty, parse_year,
+    execute_sparql as shared_execute, execute_sparql_bytes as shared_execute_bytes,
+    execute_sparql_with_format as shared_execute_with_format, extract_qid, field, non_empty,
+    parse_year,
 };
 
 use crate::models::{CompoundEntry, DatasetStats, TaxonMatch};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::num::Wrapping;
+use std::sync::Arc;
 
-fn owned_or_empty(s: &str) -> String {
+#[inline]
+fn arc_or_empty(s: &str) -> Arc<str> {
     if s.is_empty() {
-        String::new()
+        Arc::<str>::from("")
     } else {
-        s.to_owned()
+        Arc::<str>::from(s)
+    }
+}
+
+#[inline]
+fn arc_non_empty(s: &str) -> Option<Arc<str>> {
+    let t = s.trim();
+    if t.is_empty() {
+        None
+    } else {
+        Some(Arc::<str>::from(t))
+    }
+}
+
+#[derive(Default)]
+struct StrInterner {
+    map: HashMap<Box<str>, Arc<str>>,
+}
+
+impl StrInterner {
+    fn with_capacity(capacity: usize) -> Self {
+        Self {
+            map: HashMap::with_capacity(capacity),
+        }
+    }
+
+    fn intern_or_empty(&mut self, value: &str) -> Arc<str> {
+        let v = value.trim();
+        if v.is_empty() {
+            return Arc::<str>::from("");
+        }
+        if let Some(existing) = self.map.get(v) {
+            return existing.clone();
+        }
+        let arc = Arc::<str>::from(v);
+        self.map.insert(v.to_owned().into_boxed_str(), arc.clone());
+        arc
+    }
+
+    fn intern_optional(&mut self, value: &str) -> Option<Arc<str>> {
+        let v = value.trim();
+        if v.is_empty() {
+            None
+        } else {
+            Some(self.intern_or_empty(v))
+        }
     }
 }
 
@@ -89,6 +137,10 @@ pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
     shared_execute(sparql, QLEVER_WIKIDATA).await
 }
 
+pub async fn execute_sparql_bytes(sparql: &str) -> Result<Vec<u8>, FetchError> {
+    shared_execute_bytes(sparql, QLEVER_WIKIDATA).await
+}
+
 pub async fn execute_sparql_format(
     sparql: &str,
     format: SparqlResponseFormat,
@@ -98,16 +150,14 @@ pub async fn execute_sparql_format(
 
 // ── Compound CSV parser ───────────────────────────────────────────────────────
 
-/// Parse rows for table display only: deduplicate triples and materialize up to
-/// `max_rows`, then stop early. Used with separate exact count queries.
-pub fn parse_compounds_csv_display(
-    csv_text: &str,
+pub fn parse_compounds_csv_display_bytes(
+    csv_bytes: &[u8],
     max_rows: usize,
 ) -> Result<Vec<CompoundEntry>, FetchError> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
         .flexible(true)
-        .from_reader(csv_text.as_bytes());
+        .from_reader(csv_bytes);
 
     let headers = rdr
         .byte_headers()
@@ -133,6 +183,8 @@ pub fn parse_compounds_csv_display(
     let initial_cap = max_rows.min(1024);
     let mut entries: Vec<CompoundEntry> = Vec::with_capacity(initial_cap);
     let mut seen: HashSet<u64> = HashSet::with_capacity(initial_cap.saturating_mul(2));
+    let mut taxon_name_intern = StrInterner::with_capacity(64);
+    let mut ref_title_intern = StrInterner::with_capacity(128);
     let mut compound_qid = String::new();
     let mut taxon_qid = String::new();
     let mut reference_qid = String::new();
@@ -188,17 +240,17 @@ pub fn parse_compounds_csv_display(
 
         entries.push(CompoundEntry {
             compound_qid: compound_qid.clone(),
-            name: owned_or_empty(label),
+            name: arc_or_empty(label),
             inchikey: non_empty(inchikey),
             smiles: coalesce(smiles_iso, smiles_con),
             mass: mass.parse::<f64>().ok(),
-            formula: non_empty(formula),
+            formula: arc_non_empty(formula),
             taxon_qid: taxon_qid.clone(),
-            taxon_name: owned_or_empty(taxon_name),
+            taxon_name: taxon_name_intern.intern_or_empty(taxon_name),
             reference_qid: reference_qid.clone(),
-            ref_title: non_empty(ref_title),
+            ref_title: ref_title_intern.intern_optional(ref_title),
             ref_doi: clean_doi(ref_doi),
-            pub_year: parse_year(ref_date),
+            pub_year: parse_year(ref_date).and_then(|y| i16::try_from(y).ok()),
             statement: non_empty(statement),
         });
     }
@@ -206,13 +258,11 @@ pub fn parse_compounds_csv_display(
     Ok(entries)
 }
 
-/// Parse aggregate count CSV with columns:
-/// `n_entries`, `n_compounds`, `n_taxa`, `n_references`.
-pub fn parse_counts_csv(csv_text: &str) -> Result<DatasetStats, FetchError> {
+pub fn parse_counts_csv_bytes(csv_bytes: &[u8]) -> Result<DatasetStats, FetchError> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
         .flexible(true)
-        .from_reader(csv_text.as_bytes());
+        .from_reader(csv_bytes);
 
     let headers = rdr
         .headers()
@@ -241,26 +291,14 @@ pub fn parse_counts_csv(csv_text: &str) -> Result<DatasetStats, FetchError> {
     })
 }
 
-/// Fast single-pass parser over the QLever CSV stream.
-///
-/// * **Every** data row contributes to `DatasetStats` and to the exact
-///   `n_entries` count, so metadata / download totals are always accurate.
-/// * Only the first `max_rows` *distinct* `(compound, taxon, reference)`
-///   triples are materialized into full `CompoundEntry` structs. Rows past
-///   that cap only touch their three QID columns (for dedup + stat
-///   fingerprinting) — no allocation for names, SMILES, titles, DOIs or
-///   dates, which is where the old parser was spending its time on very
-///   large result sets.
-///
-/// Returns `(display_rows, full_stats, was_capped)`.
-pub fn parse_compounds_csv_capped(
-    csv_text: &str,
+pub fn parse_compounds_csv_capped_bytes(
+    csv_bytes: &[u8],
     max_rows: usize,
 ) -> Result<(Vec<CompoundEntry>, DatasetStats, bool), FetchError> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
         .flexible(true)
-        .from_reader(csv_text.as_bytes());
+        .from_reader(csv_bytes);
 
     let headers = rdr
         .byte_headers()
@@ -293,6 +331,8 @@ pub fn parse_compounds_csv_capped(
     let mut taxon_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
     let mut ref_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
     let mut total_distinct = 0usize;
+    let mut taxon_name_intern = StrInterner::with_capacity(64);
+    let mut ref_title_intern = StrInterner::with_capacity(128);
 
     // Scratch buffers reused every row — avoids three `String` allocations per
     // overflow row (the hot path for huge taxa).
@@ -368,17 +408,17 @@ pub fn parse_compounds_csv_capped(
 
         entries.push(CompoundEntry {
             compound_qid: compound_qid.clone(),
-            name: owned_or_empty(label),
+            name: arc_or_empty(label),
             inchikey: non_empty(inchikey),
             smiles: coalesce(smiles_iso, smiles_con),
             mass: mass.parse::<f64>().ok(),
-            formula: non_empty(formula),
+            formula: arc_non_empty(formula),
             taxon_qid: taxon_qid.clone(),
-            taxon_name: owned_or_empty(taxon_name),
+            taxon_name: taxon_name_intern.intern_or_empty(taxon_name),
             reference_qid: reference_qid.clone(),
-            ref_title: non_empty(ref_title),
+            ref_title: ref_title_intern.intern_optional(ref_title),
             ref_doi: clean_doi(ref_doi),
-            pub_year: parse_year(ref_date),
+            pub_year: parse_year(ref_date).and_then(|y| i16::try_from(y).ok()),
             statement: non_empty(statement),
         });
     }
@@ -452,13 +492,11 @@ fn fill_qid(out: &mut String, bytes: &[u8]) {
 
 // ── Taxon CSV parser ──────────────────────────────────────────────────────────
 
-/// Parse taxon search CSV into `TaxonMatch` rows.
-/// Columns: `taxon` (full URI or bare QID), `taxon_name`.
-pub fn parse_taxon_csv(csv_text: &str) -> Result<Vec<TaxonMatch>, FetchError> {
+pub fn parse_taxon_csv_bytes(csv_bytes: &[u8]) -> Result<Vec<TaxonMatch>, FetchError> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
         .flexible(true)
-        .from_reader(csv_text.as_bytes());
+        .from_reader(csv_bytes);
 
     let headers = rdr
         .headers()

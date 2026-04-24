@@ -762,7 +762,7 @@ fn App() -> Element {
     }
 }
 
-// ── Footer (same links as the Python notebook, cleaner markup) ───────────────
+// ── Footer ───────────────
 
 #[component]
 fn Footer(locale: Locale) -> Element {
@@ -949,7 +949,7 @@ fn ExRow(value: &'static str, note: &'static str) -> Element {
     }
 }
 
-// ── Async search — mirrors Python LOTUSExplorer.search() ─────────────────────
+// ── Async search ─────────────────────
 
 struct SearchOutcome {
     rows: Vec<CompoundEntry>,
@@ -1091,8 +1091,7 @@ async fn do_search(
     // Preserve Molfile blocks verbatim — leading blank lines and whitespace
     // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
     // must reach SACHEM untouched, otherwise the query silently returns
-    // no matches. Only trim single-line SMILES inputs. Mirrors the Python
-    // `validate_and_escape` behavior.
+    // no matches. Only trim single-line SMILES inputs.
     let smiles = {
         let normalized = crit.smiles.replace("\r\n", "\n").replace('\r', "\n");
         let kind = queries::classify_structure(&normalized);
@@ -1142,10 +1141,12 @@ async fn do_search(
             Some(cached_qid)
         } else {
             let query = queries::query_taxon_search(&sanitized);
-            let csv = sparql::execute_sparql(&query).await.map_err(|e| AppError {
-                kind: ErrorKind::Network,
-                message: err_taxon_search_failed(locale, &e.to_string()),
-            })?;
+            let csv = sparql::execute_sparql_bytes(&query)
+                .await
+                .map_err(|e| AppError {
+                    kind: ErrorKind::Network,
+                    message: err_taxon_search_failed(locale, &e.to_string()),
+                })?;
             let taxon_elapsed = perf::end_timer("LOTUS:taxon_resolution", taxon_timer);
             metrics.add_network(taxon_elapsed);
             perf::log_timing(
@@ -1153,7 +1154,7 @@ async fn do_search(
                 "Taxon query completed",
                 Some(taxon_elapsed),
             );
-            let matches = sparql::parse_taxon_csv(&csv).map_err(|e| AppError {
+            let matches = sparql::parse_taxon_csv_bytes(&csv).map_err(|e| AppError {
                 kind: ErrorKind::Parse,
                 message: err_taxon_parse_failed(locale, &e.to_string()),
             })?;
@@ -1261,7 +1262,7 @@ async fn do_search(
         *query_phase.write() = QueryPhase::FetchingPreview;
 
         let display_timer = perf::start_timer("LOTUS:display_query");
-        let display_csv = sparql::execute_sparql(&display_query)
+        let display_csv = sparql::execute_sparql_bytes(&display_query)
             .await
             .map_err(|e| AppError {
                 kind: ErrorKind::Network,
@@ -1276,13 +1277,12 @@ async fn do_search(
         );
 
         let display_parse_timer = perf::start_timer("LOTUS:display_parse");
-        let rows =
-            sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
-                AppError {
-                    kind: ErrorKind::Parse,
-                    message: err_query_stage_failed(locale, "display parse", &e.to_string()),
-                }
-            })?;
+        let rows = sparql::parse_compounds_csv_display_bytes(&display_csv, display_limit).map_err(
+            |e| AppError {
+                kind: ErrorKind::Parse,
+                message: err_query_stage_failed(locale, "display parse", &e.to_string()),
+            },
+        )?;
         let display_parse_elapsed = perf::end_timer("LOTUS:display_parse", display_parse_timer);
         metrics.add_parse(display_parse_elapsed);
         perf::log_timing(
@@ -1330,7 +1330,7 @@ async fn do_search(
             log_debug_evt("search", "Counting", "sequential_fetch_wasm", None);
 
             let count_timer = perf::start_timer("LOTUS:count_query");
-            let counts_csv = sparql::execute_sparql(&count_query)
+            let counts_csv = sparql::execute_sparql_bytes(&count_query)
                 .await
                 .map_err(|e| AppError {
                     kind: ErrorKind::Network,
@@ -1341,7 +1341,7 @@ async fn do_search(
             perf::log_timing("Counting", "Count query completed", Some(count_elapsed));
 
             let count_parse_timer = perf::start_timer("LOTUS:count_parse");
-            let full_stats = sparql::parse_counts_csv(&counts_csv).map_err(|e| AppError {
+            let full_stats = sparql::parse_counts_csv_bytes(&counts_csv).map_err(|e| AppError {
                 kind: ErrorKind::Parse,
                 message: err_query_stage_failed(locale, "count parse", &e.to_string()),
             })?;
@@ -1363,13 +1363,12 @@ async fn do_search(
             *query_phase.write() = QueryPhase::FetchingPreview;
 
             let display_timer = perf::start_timer("LOTUS:display_query");
-            let display_csv =
-                sparql::execute_sparql(&display_query)
-                    .await
-                    .map_err(|e| AppError {
-                        kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "display query", &e.to_string()),
-                    })?;
+            let display_csv = sparql::execute_sparql_bytes(&display_query)
+                .await
+                .map_err(|e| AppError {
+                    kind: ErrorKind::Network,
+                    message: err_query_stage_failed(locale, "display query", &e.to_string()),
+                })?;
             let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
             metrics.add_network(display_elapsed);
             perf::log_timing(
@@ -1379,12 +1378,10 @@ async fn do_search(
             );
 
             let display_parse_timer = perf::start_timer("LOTUS:display_parse");
-            let rows =
-                sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
-                    AppError {
-                        kind: ErrorKind::Parse,
-                        message: err_query_stage_failed(locale, "display parse", &e.to_string()),
-                    }
+            let rows = sparql::parse_compounds_csv_display_bytes(&display_csv, display_limit)
+                .map_err(|e| AppError {
+                    kind: ErrorKind::Parse,
+                    message: err_query_stage_failed(locale, "display parse", &e.to_string()),
                 })?;
             let display_parse_elapsed = perf::end_timer("LOTUS:display_parse", display_parse_timer);
             metrics.add_parse(display_parse_elapsed);
@@ -1407,13 +1404,12 @@ async fn do_search(
             log_debug_evt("search", "Counting", "parallel_fetch_started", None);
             let count_fetch = async {
                 let count_timer = perf::start_timer("LOTUS:count_query");
-                let counts_csv =
-                    sparql::execute_sparql(&count_query)
-                        .await
-                        .map_err(|e| AppError {
-                            kind: ErrorKind::Network,
-                            message: err_query_stage_failed(locale, "count query", &e.to_string()),
-                        })?;
+                let counts_csv = sparql::execute_sparql_bytes(&count_query)
+                    .await
+                    .map_err(|e| AppError {
+                        kind: ErrorKind::Network,
+                        message: err_query_stage_failed(locale, "count query", &e.to_string()),
+                    })?;
                 let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
                 Ok::<_, AppError>((counts_csv, count_elapsed))
             };
@@ -1421,7 +1417,7 @@ async fn do_search(
             let display_fetch = async {
                 let display_timer = perf::start_timer("LOTUS:display_query");
                 let display_csv =
-                    sparql::execute_sparql(&display_query)
+                    sparql::execute_sparql_bytes(&display_query)
                         .await
                         .map_err(|e| AppError {
                             kind: ErrorKind::Network,
@@ -1449,7 +1445,7 @@ async fn do_search(
             );
 
             let count_parse_timer = perf::start_timer("LOTUS:count_parse");
-            let full_stats = sparql::parse_counts_csv(&counts_csv).map_err(|e| AppError {
+            let full_stats = sparql::parse_counts_csv_bytes(&counts_csv).map_err(|e| AppError {
                 kind: ErrorKind::Parse,
                 message: err_query_stage_failed(locale, "count parse", &e.to_string()),
             })?;
@@ -1471,12 +1467,10 @@ async fn do_search(
             *query_phase.write() = QueryPhase::FetchingPreview;
 
             let display_parse_timer = perf::start_timer("LOTUS:display_parse");
-            let rows =
-                sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
-                    AppError {
-                        kind: ErrorKind::Parse,
-                        message: err_query_stage_failed(locale, "display parse", &e.to_string()),
-                    }
+            let rows = sparql::parse_compounds_csv_display_bytes(&display_csv, display_limit)
+                .map_err(|e| AppError {
+                    kind: ErrorKind::Parse,
+                    message: err_query_stage_failed(locale, "display parse", &e.to_string()),
                 })?;
             let display_parse_elapsed = perf::end_timer("LOTUS:display_parse", display_parse_timer);
             metrics.add_parse(display_parse_elapsed);
@@ -1516,7 +1510,7 @@ async fn do_search(
                 );
                 let _ = err_msg;
                 let fallback_query_timer = perf::start_timer("LOTUS:fallback_query");
-                let csv = sparql::execute_sparql(&execution_query)
+                let csv = sparql::execute_sparql_bytes(&execution_query)
                     .await
                     .map_err(|e| AppError {
                         kind: ErrorKind::Network,
@@ -1533,7 +1527,7 @@ async fn do_search(
 
                 let fallback_parse_timer = perf::start_timer("LOTUS:fallback_parse");
                 let (rows, full_stats, _parse_capped) =
-                    sparql::parse_compounds_csv_capped(&csv, display_limit).map_err(|e| {
+                    sparql::parse_compounds_csv_capped_bytes(&csv, display_limit).map_err(|e| {
                         AppError {
                             kind: ErrorKind::Parse,
                             message: err_query_stage_failed(locale, "parse", &e.to_string()),
@@ -1581,7 +1575,7 @@ async fn do_search(
 }
 
 fn sanitize_taxon_input(taxon: &str) -> String {
-    // Mirrors Python `str.capitalize()` on the genus: upper-case the first
+    // On the genus: upper-case the first
     // character, lower-case the rest of that first word. Leaves subsequent
     // words (species epithets, authors, etc.) untouched.
     let replaced = taxon.replace('_', " ");
@@ -1693,7 +1687,7 @@ fn parse_criteria_from_params(params: &BTreeMap<String, String>) -> SearchCriter
     let mut criteria = SearchCriteria::default();
     let is_true = |v: &str| matches!(v, "1" | "true" | "yes" | "on");
     let parse_f64 = |name: &str| params.get(name).and_then(|v| v.parse::<f64>().ok());
-    let parse_i32 = |name: &str| params.get(name).and_then(|v| v.parse::<i32>().ok());
+    let parse_u16 = |name: &str| params.get(name).and_then(|v| v.parse::<u16>().ok());
     let has_explicit_taxon = params.get("taxon").is_some();
     let mut has_structure = false;
 
@@ -1743,10 +1737,10 @@ fn parse_criteria_from_params(params: &BTreeMap<String, String>) -> SearchCriter
         .map(|v| is_true(v))
         .unwrap_or(false)
     {
-        if let Some(v) = parse_i32("year_start") {
+        if let Some(v) = parse_u16("year_start") {
             criteria.year_min = v;
         }
-        if let Some(v) = parse_i32("year_end") {
+        if let Some(v) = parse_u16("year_end") {
             criteria.year_max = v;
         }
     }
@@ -1760,40 +1754,40 @@ fn parse_criteria_from_params(params: &BTreeMap<String, String>) -> SearchCriter
         if let Some(v) = params.get("formula_exact") {
             criteria.formula_exact = v.clone();
         }
-        if let Some(v) = parse_i32("c_min") {
+        if let Some(v) = parse_u16("c_min") {
             criteria.c_min = v;
         }
-        if let Some(v) = parse_i32("c_max") {
+        if let Some(v) = parse_u16("c_max") {
             criteria.c_max = v;
         }
-        if let Some(v) = parse_i32("h_min") {
+        if let Some(v) = parse_u16("h_min") {
             criteria.h_min = v;
         }
-        if let Some(v) = parse_i32("h_max") {
+        if let Some(v) = parse_u16("h_max") {
             criteria.h_max = v;
         }
-        if let Some(v) = parse_i32("n_min") {
+        if let Some(v) = parse_u16("n_min") {
             criteria.n_min = v;
         }
-        if let Some(v) = parse_i32("n_max") {
+        if let Some(v) = parse_u16("n_max") {
             criteria.n_max = v;
         }
-        if let Some(v) = parse_i32("o_min") {
+        if let Some(v) = parse_u16("o_min") {
             criteria.o_min = v;
         }
-        if let Some(v) = parse_i32("o_max") {
+        if let Some(v) = parse_u16("o_max") {
             criteria.o_max = v;
         }
-        if let Some(v) = parse_i32("p_min") {
+        if let Some(v) = parse_u16("p_min") {
             criteria.p_min = v;
         }
-        if let Some(v) = parse_i32("p_max") {
+        if let Some(v) = parse_u16("p_max") {
             criteria.p_max = v;
         }
-        if let Some(v) = parse_i32("s_min") {
+        if let Some(v) = parse_u16("s_min") {
             criteria.s_min = v;
         }
-        if let Some(v) = parse_i32("s_max") {
+        if let Some(v) = parse_u16("s_max") {
             criteria.s_max = v;
         }
         if let Some(v) = params.get("f_state") {

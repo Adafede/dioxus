@@ -64,7 +64,7 @@ pub fn ResultsTable(
     metadata_json: Option<String>,
     query_hash: Option<String>,
     result_hash: Option<String>,
-    /// Active search criteria — used to build Python-compatible download
+    /// Active search criteria — used to build compatible download
     /// filenames (taxon slug + optional search-type suffix).
     criteria: ReadSignal<SearchCriteria>,
 ) -> Element {
@@ -168,7 +168,7 @@ pub fn ResultsTable(
         export::generate_filename(&c, "rdf")
     });
 
-    // Metadata filename mirrors Python: `{query_hash}_{result_hash}_metadata.json`.
+    // Metadata filename mirrors: `{query_hash}_{result_hash}_metadata.json`.
     let metadata_filename = match (query_hash.as_deref(), result_hash.as_deref()) {
         (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
         _ => {
@@ -743,7 +743,7 @@ fn Row(locale: Locale, entry: CompoundEntry) -> Element {
     let name: &str = if entry.name.trim().is_empty() {
         entry.compound_qid.as_str()
     } else {
-        entry.name.as_str()
+        &entry.name
     };
     let inchikey_search = entry
         .inchikey

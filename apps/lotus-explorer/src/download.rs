@@ -66,42 +66,42 @@ pub fn trigger_download_url(filename: &str, url: &str) {
     if !click_download_anchor(&document, url, filename, true) {
         let _ = window.open_with_url(url);
     }
+}
 
-    #[cfg(target_arch = "wasm32")]
-    fn window_and_document() -> Option<(web_sys::Window, web_sys::Document)> {
-        let window = web_sys::window()?;
-        let document = window.document()?;
-        Some((window, document))
+#[cfg(target_arch = "wasm32")]
+fn window_and_document() -> Option<(web_sys::Window, web_sys::Document)> {
+    let window = web_sys::window()?;
+    let document = window.document()?;
+    Some((window, document))
+}
+
+#[cfg(target_arch = "wasm32")]
+fn click_download_anchor(
+    document: &web_sys::Document,
+    href: &str,
+    filename: &str,
+    new_tab: bool,
+) -> bool {
+    let Some(anchor) = document
+        .create_element("a")
+        .ok()
+        .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok())
+    else {
+        return false;
+    };
+    let Some(body_el) = document.body() else {
+        return false;
+    };
+
+    anchor.set_href(href);
+    anchor.set_download(filename);
+    anchor.set_rel("noopener noreferrer");
+    if new_tab {
+        anchor.set_target("_blank");
     }
 
-    #[cfg(target_arch = "wasm32")]
-    fn click_download_anchor(
-        document: &web_sys::Document,
-        href: &str,
-        filename: &str,
-        new_tab: bool,
-    ) -> bool {
-        let Some(anchor) = document
-            .create_element("a")
-            .ok()
-            .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok())
-        else {
-            return false;
-        };
-        let Some(body_el) = document.body() else {
-            return false;
-        };
-
-        anchor.set_href(href);
-        anchor.set_download(filename);
-        anchor.set_rel("noopener noreferrer");
-        if new_tab {
-            anchor.set_target("_blank");
-        }
-
-        let _ = body_el.append_child(&anchor);
-        anchor.click();
-        let _ = body_el.remove_child(&anchor);
-        true
-    }
+    let _ = body_el.append_child(&anchor);
+    anchor.click();
+    let _ = body_el.remove_child(&anchor);
+    true
 }

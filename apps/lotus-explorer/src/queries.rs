@@ -1,6 +1,4 @@
-//! SPARQL query builders mirroring the Python `modules/knowledge/wikidata/sparql/` module.
-//!
-//! Key design choices (from the Python source):
+//! Key design choices:
 //!
 //! * All queries use `STRAFTER(STR(?entity), "http://www.wikidata.org/entity/")` to
 //!   return bare QIDs (e.g. `Q12345`) rather than full URIs.
@@ -10,7 +8,7 @@
 //! * QLever does **not** support `SERVICE wikibase:label`, so labels are fetched
 //!   with an explicit `rdfs:label` triple filtered to `LANG = "en"`.
 //! * Taxon hierarchy is traversed with `wdt:P171*` (parent taxon, transitive).
-//! * **No `LIMIT` clause** — Python does not limit the query either. QLever streams
+//! * **No `LIMIT` clause**. QLever streams
 //!   CSV extremely fast; the display cap (see `models::TABLE_ROW_LIMIT`) is applied
 //!   client-side after parsing so users can export the full result set.
 
@@ -56,7 +54,7 @@ SELECT
   ?statement
 "#;
 
-// ── Query fragments aligned with Python patterns_compound.py ─────────────────
+// ── Query fragments ─────────────────
 
 const COMPOUND_IDENTIFIERS: &str = r#"
   ?c wdt:P235 ?compound_inchikey;
@@ -96,8 +94,6 @@ const PROPERTIES_OPTIONAL: &str = r#"
 
 /// Search for taxa by name label (case-insensitive, English).
 /// Returns columns: `taxon` (full URI), `taxon_name`.
-///
-/// Mirrors Python `query_taxon_search`.
 pub fn query_taxon_search(name: &str) -> String {
     let e = name.replace('\\', r"\\").replace('"', r#"\""#);
 
@@ -119,8 +115,7 @@ SELECT
 /// Fetch all compound–taxon–reference triples for a given taxon QID,
 /// including all descendant taxa via `wdt:P171*`.
 ///
-/// Mirrors Python `query_compounds_by_taxon` **byte-for-byte on the join
-/// structure**. Do not rearrange: on QLever, placing the full compound /
+/// Do not rearrange: on QLever, placing the full compound /
 /// statement / reference join inside the inner subquery and filtering by
 /// the taxon hierarchy in the outer block is *dramatically* faster
 /// (seconds vs. tens of seconds) than the reverse — the planner picks an
@@ -155,8 +150,6 @@ WHERE {{
 // ── query_all_compounds ───────────────────────────────────────────────────────
 
 /// Fetch compound–taxon–reference triples for ALL taxa (the full LOTUS dataset).
-///
-/// Mirrors Python `query_all_compounds`.
 pub fn query_all_compounds() -> String {
     format!(
         r#"{PREFIXES}
@@ -187,16 +180,13 @@ WHERE {{
 
 /// Fetch compounds matching a SMILES query via the SACHEM/IDSM service,
 /// optionally restricted to a given taxon and its descendants.
-///
-/// Mirrors Python `query_sachem`.
 pub fn query_sachem(
     smiles: &str,
     search_type: SmilesSearchType,
     threshold: f64,
     taxon_qid: Option<&str>,
 ) -> String {
-    // Python validate_and_escape: wrap multiline / Molfile blocks (only
-    // backslashes need escaping there). Single-line SMILES are wrapped in "…" with
+    // Single-line SMILES are wrapped in "…" with
     // backslashes and double-quotes escaped. The emitted string includes the quotes.
     let structure_literal = escape_structure_literal(smiles);
     let is_multiline_literal =
@@ -294,7 +284,7 @@ WHERE {{
     )
 }
 
-// ── Structure-literal escaping (mirrors Python validate_and_escape) ──────────
+// ── Structure-literal escaping ──────────
 
 /// Detected input format for the structure textarea.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -321,8 +311,7 @@ impl StructureKind {
     }
 }
 
-/// Classify the raw contents of the structure input. Mirrors the Python
-/// `_looks_like_molfile` heuristic (matches both V2000 and V3000 CTAB
+/// Classify the raw contents of the structure input. Matches both V2000 and V3000 CTAB
 /// blocks) but additionally distinguishes the two versions so the UI can
 /// show which one the user just pasted.
 pub fn classify_structure(text: &str) -> StructureKind {
@@ -353,7 +342,7 @@ fn looks_like_molfile(text: &str) -> bool {
 /// or Molfile block. Multiline inputs and Molfile blocks are wrapped in
 /// triple single-quotes so embedded newlines and double-quotes
 /// are preserved as-is. Single-line SMILES use double-quote form with
-/// backslash/quote escaping. Matches `validate_and_escape` in Python.
+/// backslash/quote escaping.
 pub fn escape_structure_literal(smiles: &str) -> String {
     let normalized = smiles.replace("\r\n", "\n").replace('\r', "\n");
     let is_molfile = looks_like_molfile(&normalized);

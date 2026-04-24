@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 /// Maximum rows returned by a single SPARQL query.
 ///
-/// Mirrors the Python `CONFIG["table_row_limit"]` which caps at 100 in
+/// Caps at 100 in
 /// Pyodide/WASM (to preserve memory / keep the UI snappy) and 1000 otherwise.
 #[cfg(target_arch = "wasm32")]
 pub const TABLE_ROW_LIMIT: usize = 1_000;
@@ -14,17 +14,16 @@ pub const TABLE_ROW_LIMIT: usize = 1_000;
 pub const TABLE_ROW_LIMIT: usize = 2_000_000;
 
 // Default element-range ceilings. Values at or within
-// `[0, DEFAULT_*_MAX]` are considered "inactive" (Python: `min_val == 0 &&
-// max_val is None`).
-pub const DEFAULT_C_MAX: i32 = 100;
-pub const DEFAULT_H_MAX: i32 = 200;
-pub const DEFAULT_N_MAX: i32 = 50;
-pub const DEFAULT_O_MAX: i32 = 50;
-pub const DEFAULT_P_MAX: i32 = 20;
-pub const DEFAULT_S_MAX: i32 = 20;
+// `[0, DEFAULT_*_MAX]` are considered "inactive".
+pub const DEFAULT_C_MAX: u16 = 512;
+pub const DEFAULT_H_MAX: u16 = 1_024;
+pub const DEFAULT_N_MAX: u16 = 256;
+pub const DEFAULT_O_MAX: u16 = 256;
+pub const DEFAULT_P_MAX: u16 = 128;
+pub const DEFAULT_S_MAX: u16 = 64;
 
-/// Earliest supported publication year (matches Python).
-pub const DEFAULT_YEAR_MIN: i32 = 1900;
+/// Earliest supported publication year
+pub const DEFAULT_YEAR_MIN: u16 = 1800;
 
 /// Shared, immutable row buffer. Cloning is a pointer-sized refcount bump,
 /// so it is cheap to pass into signals / component props without duplicating
@@ -85,13 +84,13 @@ pub fn runtime_table_row_limit() -> usize {
 }
 
 /// Current calendar year, computed once and cached.
-pub fn current_year() -> i32 {
+pub fn current_year() -> u16 {
     use std::sync::OnceLock;
-    static CACHE: OnceLock<i32> = OnceLock::new();
+    static CACHE: OnceLock<u16> = OnceLock::new();
     *CACHE.get_or_init(|| {
         #[cfg(target_arch = "wasm32")]
         {
-            js_sys::Date::new_0().get_full_year() as i32
+            js_sys::Date::new_0().get_full_year().min(u16::MAX as u32) as u16
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -100,7 +99,7 @@ pub fn current_year() -> i32 {
                 .duration_since(UNIX_EPOCH)
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0);
-            (1970 + secs / 31_556_952) as i32
+            (1970 + secs / 31_556_952).clamp(0, u16::MAX as i64) as u16
         }
     })
 }
@@ -110,17 +109,17 @@ pub fn current_year() -> i32 {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CompoundEntry {
     pub compound_qid: String,
-    pub name: String,
+    pub name: Arc<str>,
     pub inchikey: Option<String>,
     pub smiles: Option<String>,
     pub mass: Option<f64>,
-    pub formula: Option<String>,
+    pub formula: Option<Arc<str>>,
     pub taxon_qid: String,
-    pub taxon_name: String,
+    pub taxon_name: Arc<str>,
     pub reference_qid: String,
-    pub ref_title: Option<String>,
+    pub ref_title: Option<Arc<str>>,
     pub ref_doi: Option<String>,
-    pub pub_year: Option<i32>,
+    pub pub_year: Option<i16>,
     pub statement: Option<String>,
 }
 
@@ -131,7 +130,7 @@ impl CompoundEntry {
             .map(|d| format!("https://doi.org/{d}"))
     }
 
-    /// CDK Depict SVG URL for the compound's SMILES. Matches Python
+    /// CDK Depict SVG URL for the compound's SMILES.
     /// `svg_from_smiles` (layout = `cow`, format = `svg`, annotate = `cip`).
     pub fn depict_url(&self) -> Option<String> {
         let smiles = self.smiles.as_ref()?.trim();
@@ -162,22 +161,22 @@ pub struct SearchCriteria {
     pub smiles_threshold: f64,
     pub mass_min: f64,
     pub mass_max: f64,
-    pub year_min: i32,
-    pub year_max: i32,
+    pub year_min: u16,
+    pub year_max: u16,
     pub formula_enabled: bool,
     pub formula_exact: String,
-    pub c_min: i32,
-    pub c_max: i32,
-    pub h_min: i32,
-    pub h_max: i32,
-    pub n_min: i32,
-    pub n_max: i32,
-    pub o_min: i32,
-    pub o_max: i32,
-    pub p_min: i32,
-    pub p_max: i32,
-    pub s_min: i32,
-    pub s_max: i32,
+    pub c_min: u16,
+    pub c_max: u16,
+    pub h_min: u16,
+    pub h_max: u16,
+    pub n_min: u16,
+    pub n_max: u16,
+    pub o_min: u16,
+    pub o_max: u16,
+    pub p_min: u16,
+    pub p_max: u16,
+    pub s_min: u16,
+    pub s_max: u16,
     pub f_state: ElementState,
     pub cl_state: ElementState,
     pub br_state: ElementState,
@@ -192,7 +191,7 @@ impl Default for SearchCriteria {
             smiles_search_type: SmilesSearchType::Substructure,
             smiles_threshold: 0.8,
             mass_min: 0.0,
-            mass_max: 2000.0,
+            mass_max: 10000.0,
             year_min: DEFAULT_YEAR_MIN,
             year_max: current_year(),
             formula_enabled: false,
@@ -219,15 +218,15 @@ impl Default for SearchCriteria {
 
 impl SearchCriteria {
     pub fn has_mass_filter(&self) -> bool {
-        self.mass_min > 0.0 || self.mass_max < 2000.0
+        self.mass_min > 0.0 || self.mass_max < 10000.0
     }
     pub fn has_year_filter(&self) -> bool {
         self.year_min > DEFAULT_YEAR_MIN || self.year_max < current_year()
     }
 
     /// A per-element range is "active" only when the user has moved it off
-    /// its default span (Python: `ElementRange.is_active`).
-    pub fn element_ranges(&self) -> [(&'static str, i32, i32, i32); 6] {
+    /// its default span.
+    pub fn element_ranges(&self) -> [(&'static str, u16, u16, u16); 6] {
         [
             ("C", self.c_min, self.c_max, DEFAULT_C_MAX),
             ("H", self.h_min, self.h_max, DEFAULT_H_MAX),
