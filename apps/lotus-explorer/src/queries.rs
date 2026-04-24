@@ -236,31 +236,28 @@ pub fn query_sachem(
   }}"#
         ),
     };
+    let sachem_subquery = format!(
+        r#"{{
+    SELECT ?c
+    WHERE {{
+      {sachem_clause}
+    }}
+  }}"#
+    );
 
     let body = if let Some(qid) = taxon_qid {
         format!(
             r#"
-  {{
-    SELECT DISTINCT
-      ?c
-      ?compound_inchikey
-      ?compound_smiles_conn
-      ?statement
-      ?t
-      ?taxon_name
-      ?ref
-      ?r
-    WHERE {{
-      ?t (wdt:P171*) wd:{qid} .
-      ?t wdt:P225 ?taxon_name .
-      ?c p:P703 ?statement .
-      ?statement ps:P703 ?t ;
-                 prov:wasDerivedFrom ?ref .
-      ?ref pr:P248 ?r .
-      {COMPOUND_IDENTIFIERS}
-    }}
-  }}
-  {sachem_clause}
+  {sachem_subquery}
+
+  {COMPOUND_IDENTIFIERS}
+
+  ?c p:P703 ?statement .
+  ?statement ps:P703 ?t ;
+             prov:wasDerivedFrom ?ref .
+  ?ref pr:P248 ?r .
+  ?t wdt:P225 ?taxon_name .
+  ?t (wdt:P171*) wd:{qid} .
 
   {REFERENCE_METADATA_OPTIONAL}
   {PROPERTIES_OPTIONAL}
@@ -626,9 +623,9 @@ mod tests {
             .find("SERVICE idsm:wikidata")
             .expect("SACHEM service clause should exist");
         assert!(
-            taxon_pos < service_pos,
-            "taxon prefilter should appear before federated service"
+            service_pos < taxon_pos,
+            "SACHEM service should be isolated in inner subquery before outer taxon joins"
         );
-        assert!(q.contains("SELECT DISTINCT"));
+        assert!(q.contains("SELECT ?c"));
     }
 }
