@@ -170,6 +170,7 @@ fn App() -> Element {
         start_search(
             criteria,
             locale,
+            false,
             loading,
             error,
             error_kind,
@@ -230,6 +231,7 @@ fn App() -> Element {
             start_search(
                 criteria,
                 locale,
+                pending.is_some(),
                 loading,
                 error,
                 error_kind,
@@ -600,6 +602,7 @@ fn App() -> Element {
                                     start_search(
                                         criteria,
                                         locale,
+                                        false,
                                         loading,
                                         error,
                                         error_kind,
@@ -871,6 +874,7 @@ struct SearchOutcome {
 fn start_search(
     criteria: Signal<SearchCriteria>,
     locale: Signal<Locale>,
+    direct_download_mode: bool,
     mut loading: Signal<bool>,
     mut error: Signal<Option<String>>,
     mut error_kind: Signal<ErrorKind>,
@@ -928,7 +932,14 @@ fn start_search(
     *mobile_filters_open.write() = false;
 
     spawn(async move {
-        match do_search(crit.clone(), *locale.peek(), query_phase).await {
+        match do_search(
+            crit.clone(),
+            *locale.peek(),
+            query_phase,
+            direct_download_mode,
+        )
+        .await
+        {
             Ok(outcome) => {
                 let filtered_stats = outcome
                     .total_stats
@@ -980,6 +991,7 @@ async fn do_search(
     crit: SearchCriteria,
     locale: Locale,
     mut query_phase: Signal<QueryPhase>,
+    direct_download_mode: bool,
 ) -> Result<SearchOutcome, AppError> {
     let search_timer = perf::start_timer("LOTUS:search_total");
     log_info_evt("search", "start", "begin", None);
@@ -1119,6 +1131,26 @@ async fn do_search(
         "ready",
         Some(&format!("query_bytes={}", execution_query.len())),
     );
+
+    if direct_download_mode {
+        let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
+        log_timing_evt(
+            "search",
+            "direct_download",
+            "ready",
+            total_elapsed,
+            Some("skipped=count_and_preview"),
+        );
+        return Ok(SearchOutcome {
+            rows: Vec::new(),
+            qid: taxon_qid,
+            warning,
+            query: execution_query,
+            total_matches: None,
+            total_stats: None,
+            display_capped_rows: false,
+        });
+    }
 
     let display_limit = runtime_table_row_limit();
     // Fast path: fetch exact aggregate counts with a tiny response, then fetch
