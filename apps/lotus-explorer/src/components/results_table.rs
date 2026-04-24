@@ -266,9 +266,15 @@ pub fn ResultsTable(
                                                 t(locale, TextKey::StartingCsvDownload).to_string(),
                                             );
                                             let q = q.clone();
-                                            spawn(async move {
-                                                log_download_evt("table_dispatch", "started", Some("format=csv"));
-                                                let fetch_timer = perf::start_timer("LOTUS:table_download_csv_fetch");
+                                             spawn(async move {
+                                                 log_download_evt("table_dispatch", "started", Some("format=csv"));
+                                                 log_download_evt(
+                                                     "table_csv",
+                                                     "query_check",
+                                                     Some(&format!("has_SERVICE={} query_bytes={}",
+                                                         q.contains("SERVICE"), q.len())),
+                                                 );
+                                                 let fetch_timer = perf::start_timer("LOTUS:table_download_csv_fetch");
                                                 if let Ok(body) = sparql::execute_sparql(&q).await {
                                                     let fetch_elapsed = perf::end_timer(
                                                         "LOTUS:table_download_csv_fetch",
