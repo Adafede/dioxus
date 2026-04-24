@@ -1,18 +1,7 @@
 //! Shared download helpers for browser/native targets.
 
 #[cfg(target_arch = "wasm32")]
-use shared::sparql::QLEVER_WIKIDATA;
-
-#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
-
-#[cfg(target_arch = "wasm32")]
-pub fn qlever_export_url(query: &str, action: &str) -> String {
-    format!(
-        "{QLEVER_WIKIDATA}?query={}&action={action}",
-        urlencoding::encode(query)
-    )
-}
 
 pub fn trigger_download(filename: &str, mime: &str, content_or_url: &str) {
     #[cfg(target_arch = "wasm32")]

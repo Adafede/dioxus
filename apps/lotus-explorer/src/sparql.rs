@@ -6,7 +6,6 @@ use shared::sparql::{
     FetchError, QLEVER_WIKIDATA, clean_doi, coalesce, col_idx,
     execute_sparql_bytes as shared_execute_bytes, extract_qid, field, non_empty, parse_year,
 };
-#[cfg(not(target_arch = "wasm32"))]
 use shared::sparql::{
     SparqlResponseFormat, execute_sparql as shared_execute,
     execute_sparql_with_format as shared_execute_with_format,
@@ -138,7 +137,6 @@ fn parse_entity_id(value: &str) -> String {
 /// gzip-compressed over the wire (typically 5–10× smaller than the
 /// uncompressed payload) and transparently decompressed before it reaches
 /// this code. No extra work required on our side.
-#[cfg(not(target_arch = "wasm32"))]
 pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
     shared_execute(sparql, QLEVER_WIKIDATA).await
 }
@@ -147,7 +145,6 @@ pub async fn execute_sparql_bytes(sparql: &str) -> Result<Vec<u8>, FetchError> {
     shared_execute_bytes(sparql, QLEVER_WIKIDATA).await
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 pub async fn execute_sparql_format(
     sparql: &str,
     format: SparqlResponseFormat,
@@ -276,6 +273,7 @@ pub fn parse_counts_csv_bytes(csv_bytes: &[u8]) -> Result<DatasetStats, FetchErr
         .map_err(|e| FetchError::Parse(e.to_string()))?
         .clone();
     let c_entries = col_idx(&headers, "n_entries");
+    let c_entries_unique = col_idx(&headers, "n_entries_unique");
     let c_compounds = col_idx(&headers, "n_compounds");
     let c_taxa = col_idx(&headers, "n_taxa");
     let c_refs = col_idx(&headers, "n_references");
@@ -290,8 +288,16 @@ pub fn parse_counts_csv_bytes(csv_bytes: &[u8]) -> Result<DatasetStats, FetchErr
     let parse_num =
         |idx: Option<usize>| -> usize { field(&rec, idx).parse::<usize>().unwrap_or(0) };
 
+    let n_entries = parse_num(c_entries);
+    let n_entries_unique = parse_num(c_entries_unique);
+
     Ok(DatasetStats {
-        n_entries: parse_num(c_entries),
+        n_entries,
+        n_entries_unique: if n_entries_unique == 0 {
+            n_entries
+        } else {
+            n_entries_unique
+        },
         n_compounds: parse_num(c_compounds),
         n_taxa: parse_num(c_taxa),
         n_references: parse_num(c_refs),
@@ -338,6 +344,7 @@ pub fn parse_compounds_csv_capped_bytes(
     let mut compound_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
     let mut taxon_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
     let mut ref_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
+    let mut total_raw = 0usize;
     let mut total_distinct = 0usize;
     let mut taxon_name_intern = StrInterner::with_capacity(64);
     let mut ref_title_intern = StrInterner::with_capacity(128);
@@ -362,6 +369,7 @@ pub fn parse_compounds_csv_capped_bytes(
         if compound_qid.is_empty() {
             continue;
         }
+        total_raw += 1;
         taxon_qid.clear();
         if let Some(i) = c_taxon
             && let Some(b) = rec.get(i)
@@ -435,7 +443,8 @@ pub fn parse_compounds_csv_capped_bytes(
         n_compounds: compound_fps.len(),
         n_taxa: taxon_fps.len(),
         n_references: ref_fps.len(),
-        n_entries: total_distinct,
+        n_entries: total_raw,
+        n_entries_unique: total_distinct,
     };
     let was_capped = total_distinct > entries.len();
     Ok((entries, stats, was_capped))

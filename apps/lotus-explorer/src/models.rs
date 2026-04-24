@@ -369,7 +369,10 @@ pub struct DatasetStats {
     pub n_compounds: usize,
     pub n_taxa: usize,
     pub n_references: usize,
+    /// Raw rows returned by SPARQL (may include duplicate compound-taxon-ref triples).
     pub n_entries: usize,
+    /// Unique entries after dedup by (compound, taxon, reference).
+    pub n_entries_unique: usize,
 }
 
 impl DatasetStats {
@@ -396,6 +399,7 @@ impl DatasetStats {
             n_taxa: t.len(),
             n_references: r.len(),
             n_entries: entries.len(),
+            n_entries_unique: entries.len(),
         }
     }
 }

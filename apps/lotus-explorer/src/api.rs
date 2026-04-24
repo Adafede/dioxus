@@ -143,6 +143,8 @@ pub struct SearchStats {
     pub n_taxa: usize,
     pub n_references: usize,
     pub n_entries: usize,
+    #[serde(default)]
+    pub n_entries_unique: usize,
 }
 
 impl From<SearchStats> for DatasetStats {
@@ -152,6 +154,11 @@ impl From<SearchStats> for DatasetStats {
             n_taxa: value.n_taxa,
             n_references: value.n_references,
             n_entries: value.n_entries,
+            n_entries_unique: if value.n_entries_unique == 0 {
+                value.n_entries
+            } else {
+                value.n_entries_unique
+            },
         }
     }
 }
@@ -193,14 +200,6 @@ impl From<RowDto> for CompoundEntry {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-#[derive(Debug, Deserialize)]
-pub struct ExportUrlResponse {
-    pub csv_url: String,
-    pub json_url: String,
-    pub rdf_url: String,
-}
-
 pub async fn search(
     criteria: &SearchCriteria,
     limit: usize,
@@ -209,13 +208,6 @@ pub async fn search(
     let base = api_base_url().ok_or(ApiClientError::NotConfigured)?;
     let request = SearchRequest::from_criteria(criteria, limit, include_counts);
     post_json(&base, "/v1/search", &request).await
-}
-
-#[cfg(target_arch = "wasm32")]
-pub async fn export_urls(criteria: &SearchCriteria) -> Result<ExportUrlResponse, ApiClientError> {
-    let base = api_base_url().ok_or(ApiClientError::NotConfigured)?;
-    let request = SearchRequest::from_criteria(criteria, 1, false);
-    post_json(&base, "/v1/export-url", &request).await
 }
 
 pub fn api_base_url() -> Option<String> {

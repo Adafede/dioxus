@@ -372,6 +372,9 @@ pub fn query_counts_from_base(base_query: &str) -> String {
         r#"{prefixes}
 SELECT
   (COUNT(*) AS ?n_entries)
+  (COUNT(DISTINCT CONCAT(
+    STR(?compound), "\u001F", COALESCE(STR(?taxon), ""), "\u001F", COALESCE(STR(?ref_qid), "")
+  )) AS ?n_entries_unique)
   (COUNT(DISTINCT ?compound) AS ?n_compounds)
   (COUNT(DISTINCT ?taxon) AS ?n_taxa)
   (COUNT(DISTINCT ?ref_qid) AS ?n_references)
@@ -616,5 +619,21 @@ mod tests {
             "SACHEM service should be isolated in inner subquery before outer taxon joins"
         );
         assert!(q.contains("SELECT DISTINCT ?c"));
+    }
+
+    #[test]
+    fn count_query_uses_distinct_entry_triples_not_raw_rows() {
+        let q = query_counts_from_base(&query_sachem(
+            "CCO",
+            SmilesSearchType::Substructure,
+            0.8,
+            Some("Q158572"),
+        ));
+        assert!(q.contains("COUNT(*) AS ?n_entries"));
+        assert!(q.contains("COUNT(DISTINCT CONCAT("));
+        assert!(q.contains("AS ?n_entries_unique"));
+        assert!(q.contains("STR(?compound)"));
+        assert!(q.contains("COALESCE(STR(?taxon), \"\")"));
+        assert!(q.contains("COALESCE(STR(?ref_qid), \"\")"));
     }
 }

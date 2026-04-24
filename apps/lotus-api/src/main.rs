@@ -135,6 +135,7 @@ struct SearchStats {
     n_taxa: usize,
     n_references: usize,
     n_entries: usize,
+    n_entries_unique: usize,
 }
 
 impl From<DatasetStats> for SearchStats {
@@ -144,6 +145,7 @@ impl From<DatasetStats> for SearchStats {
             n_taxa: value.n_taxa,
             n_references: value.n_references,
             n_entries: value.n_entries,
+            n_entries_unique: value.n_entries_unique,
         }
     }
 }
