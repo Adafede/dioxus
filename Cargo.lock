@@ -1848,6 +1848,7 @@ dependencies = [
  "console_log",
  "csv",
  "dioxus",
+ "futures",
  "js-sys",
  "log",
  "serde_json",

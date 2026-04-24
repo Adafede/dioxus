@@ -1162,15 +1162,40 @@ async fn do_search(
     let display_query = queries::query_with_limit(&execution_query, display_limit);
 
     let (rows, total_stats_out, total_matches, display_capped_rows) = match async {
-        let count_timer = perf::start_timer("LOTUS:count_query");
-        let counts_csv = sparql::execute_sparql(&count_query)
-            .await
-            .map_err(|e| AppError {
-                kind: ErrorKind::Network,
-                message: err_query_stage_failed(locale, "count query", &e.to_string()),
-            })?;
-        let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
+        log_debug_evt("search", "Counting", "parallel_fetch_started", None);
+        let count_fetch = async {
+            let count_timer = perf::start_timer("LOTUS:count_query");
+            let counts_csv = sparql::execute_sparql(&count_query)
+                .await
+                .map_err(|e| AppError {
+                    kind: ErrorKind::Network,
+                    message: err_query_stage_failed(locale, "count query", &e.to_string()),
+                })?;
+            let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
+            Ok::<_, AppError>((counts_csv, count_elapsed))
+        };
+
+        let display_fetch = async {
+            let display_timer = perf::start_timer("LOTUS:display_query");
+            let display_csv = sparql::execute_sparql(&display_query)
+                .await
+                .map_err(|e| AppError {
+                    kind: ErrorKind::Network,
+                    message: err_query_stage_failed(locale, "display query", &e.to_string()),
+                })?;
+            let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
+            Ok::<_, AppError>((display_csv, display_elapsed))
+        };
+
+        let ((counts_csv, count_elapsed), (display_csv, display_elapsed)) =
+            futures::try_join!(count_fetch, display_fetch)?;
+
         perf::log_timing("Counting", "Count query completed", Some(count_elapsed));
+        perf::log_timing(
+            "FetchingPreview",
+            "Display query completed",
+            Some(display_elapsed),
+        );
 
         let count_parse_timer = perf::start_timer("LOTUS:count_parse");
         let full_stats = sparql::parse_counts_csv(&counts_csv).map_err(|e| AppError {
@@ -1192,19 +1217,6 @@ async fn do_search(
 
         log_debug_evt("search", "FetchingPreview", "entered", None);
         *query_phase.write() = QueryPhase::FetchingPreview;
-        let display_timer = perf::start_timer("LOTUS:display_query");
-        let display_csv = sparql::execute_sparql(&display_query)
-            .await
-            .map_err(|e| AppError {
-                kind: ErrorKind::Network,
-                message: err_query_stage_failed(locale, "display query", &e.to_string()),
-            })?;
-        let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
-        perf::log_timing(
-            "FetchingPreview",
-            "Display query completed",
-            Some(display_elapsed),
-        );
 
         let display_parse_timer = perf::start_timer("LOTUS:display_parse");
         let rows =
