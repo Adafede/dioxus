@@ -447,10 +447,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn export_filename_marks_filtered_taxon_queries() {
+    fn export_filename_taxon_only_has_no_filtered_suffix() {
         let criteria = SearchCriteria::default();
         let name = generate_filename(&criteria, "csv");
-        assert!(name.ends_with("_filtered.csv"));
+        assert!(!name.contains("_filtered."));
+        assert!(name.ends_with("_Gentiana_lutea.csv"));
     }
 
     #[test]
