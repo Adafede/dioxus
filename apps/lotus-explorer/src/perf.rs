@@ -24,7 +24,6 @@ fn wasm_now_ms() -> f64 {
         .unwrap_or(0.0)
 }
 
-
 /// Log a message with timing context. Works cross-platform (WASM console vs. native stdout).
 pub fn log_timing(phase: &str, message: &str, duration: Option<Duration>) {
     let msg = if let Some(d) = duration {

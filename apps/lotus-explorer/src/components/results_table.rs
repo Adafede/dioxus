@@ -27,7 +27,12 @@ fn log_download_evt(phase: &str, state: &str, details: Option<&str>) {
     perf::log_info(&msg);
 }
 
-fn log_download_timing(phase: &str, state: &str, elapsed: std::time::Duration, details: Option<&str>) {
+fn log_download_timing(
+    phase: &str,
+    state: &str,
+    elapsed: std::time::Duration,
+    details: Option<&str>,
+) {
     let ms = elapsed.as_secs_f64() * 1000.0;
     let msg = match details {
         Some(d) if !d.is_empty() => {
@@ -259,16 +264,24 @@ pub fn ResultsTable(
                                                 log_download_evt("table_dispatch", "started", Some("format=csv"));
                                                 let fetch_timer = perf::start_timer("LOTUS:table_download_csv_fetch");
                                                 if let Ok(body) = sparql::execute_sparql(&q).await {
-                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_csv_fetch", fetch_timer);
+                                                    let fetch_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_csv_fetch",
+                                                        fetch_timer,
+                                                    );
                                                     log_download_timing(
                                                         "table_fetch",
                                                         "success",
                                                         fetch_elapsed,
                                                         Some(&format!("format=csv body_bytes={}", body.len())),
                                                     );
-                                                    let trigger_timer = perf::start_timer("LOTUS:table_download_csv_trigger");
+                                                    let trigger_timer = perf::start_timer(
+                                                        "LOTUS:table_download_csv_trigger",
+                                                    );
                                                     trigger_download(&filename, "text/csv;charset=utf-8", &body);
-                                                    let trigger_elapsed = perf::end_timer("LOTUS:table_download_csv_trigger", trigger_timer);
+                                                    let trigger_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_csv_trigger",
+                                                        trigger_timer,
+                                                    );
                                                     log_download_timing(
                                                         "table_trigger",
                                                         "success",
@@ -276,7 +289,10 @@ pub fn ResultsTable(
                                                         Some("format=csv"),
                                                     );
                                                 } else {
-                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_csv_fetch", fetch_timer);
+                                                    let fetch_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_csv_fetch",
+                                                        fetch_timer,
+                                                    );
                                                     log_download_timing(
                                                         "table_fetch",
                                                         "error",
@@ -315,20 +331,28 @@ pub fn ResultsTable(
                                                     )
                                                     .await
                                                 {
-                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_json_fetch", fetch_timer);
+                                                    let fetch_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_json_fetch",
+                                                        fetch_timer,
+                                                    );
                                                     log_download_timing(
                                                         "table_fetch",
                                                         "success",
                                                         fetch_elapsed,
                                                         Some(&format!("format=json body_bytes={}", body.len())),
                                                     );
-                                                    let trigger_timer = perf::start_timer("LOTUS:table_download_json_trigger");
+                                                    let trigger_timer = perf::start_timer(
+                                                        "LOTUS:table_download_json_trigger",
+                                                    );
                                                     trigger_download(
                                                         &filename,
                                                         "application/sparql-results+json;charset=utf-8",
                                                         &body,
                                                     );
-                                                    let trigger_elapsed = perf::end_timer("LOTUS:table_download_json_trigger", trigger_timer);
+                                                    let trigger_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_json_trigger",
+                                                        trigger_timer,
+                                                    );
                                                     log_download_timing(
                                                         "table_trigger",
                                                         "success",
@@ -336,7 +360,10 @@ pub fn ResultsTable(
                                                         Some("format=json"),
                                                     );
                                                 } else {
-                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_json_fetch", fetch_timer);
+                                                    let fetch_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_json_fetch",
+                                                        fetch_timer,
+                                                    );
                                                     log_download_timing(
                                                         "table_fetch",
                                                         "error",
@@ -375,16 +402,24 @@ pub fn ResultsTable(
                                                     )
                                                     .await
                                                 {
-                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_rdf_fetch", fetch_timer);
+                                                    let fetch_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_rdf_fetch",
+                                                        fetch_timer,
+                                                    );
                                                     log_download_timing(
                                                         "table_fetch",
                                                         "success",
                                                         fetch_elapsed,
                                                         Some(&format!("format=rdf body_bytes={}", body.len())),
                                                     );
-                                                    let trigger_timer = perf::start_timer("LOTUS:table_download_rdf_trigger");
+                                                    let trigger_timer = perf::start_timer(
+                                                        "LOTUS:table_download_rdf_trigger",
+                                                    );
                                                     trigger_download(&filename, "text/turtle;charset=utf-8", &body);
-                                                    let trigger_elapsed = perf::end_timer("LOTUS:table_download_rdf_trigger", trigger_timer);
+                                                    let trigger_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_rdf_trigger",
+                                                        trigger_timer,
+                                                    );
                                                     log_download_timing(
                                                         "table_trigger",
                                                         "success",
@@ -392,7 +427,10 @@ pub fn ResultsTable(
                                                         Some("format=rdf"),
                                                     );
                                                 } else {
-                                                    let fetch_elapsed = perf::end_timer("LOTUS:table_download_rdf_fetch", fetch_timer);
+                                                    let fetch_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_rdf_fetch",
+                                                        fetch_timer,
+                                                    );
                                                     log_download_timing(
                                                         "table_fetch",
                                                         "error",

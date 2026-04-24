@@ -249,9 +249,7 @@ impl SearchCriteria {
     }
 
     pub fn has_effective_filters(&self) -> bool {
-        let taxon = self.taxon.trim();
-        (!taxon.is_empty() && taxon != "*")
-            || !self.smiles.trim().is_empty()
+        !self.smiles.trim().is_empty()
             || self.has_mass_filter()
             || self.has_year_filter()
             || self.has_formula_filter()

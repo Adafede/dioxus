@@ -1152,6 +1152,71 @@ async fn do_search(
         });
     }
 
+    // Structure/SACHEM searches are typically dominated by the federated search
+    // itself; skip the separate count query to cut one network round-trip.
+    if !smiles.is_empty() {
+        let display_limit = runtime_table_row_limit();
+        let display_query = queries::query_with_limit(&execution_query, display_limit);
+        log_info_evt(
+            "search",
+            "Counting",
+            "skipped",
+            Some("reason=structure_search"),
+        );
+        log_debug_evt("search", "FetchingPreview", "entered", None);
+        *query_phase.write() = QueryPhase::FetchingPreview;
+
+        let display_timer = perf::start_timer("LOTUS:display_query");
+        let display_csv = sparql::execute_sparql(&display_query)
+            .await
+            .map_err(|e| AppError {
+                kind: ErrorKind::Network,
+                message: err_query_stage_failed(locale, "display query", &e.to_string()),
+            })?;
+        let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
+        perf::log_timing(
+            "FetchingPreview",
+            "Display query completed",
+            Some(display_elapsed),
+        );
+
+        let display_parse_timer = perf::start_timer("LOTUS:display_parse");
+        let rows =
+            sparql::parse_compounds_csv_display(&display_csv, display_limit).map_err(|e| {
+                AppError {
+                    kind: ErrorKind::Parse,
+                    message: err_query_stage_failed(locale, "display parse", &e.to_string()),
+                }
+            })?;
+        let display_parse_elapsed = perf::end_timer("LOTUS:display_parse", display_parse_timer);
+        perf::log_timing(
+            "FetchingPreview",
+            &format!("Display parse completed (rows={})", rows.len()),
+            Some(display_parse_elapsed),
+        );
+
+        let outcome = SearchOutcome {
+            display_capped_rows: rows.len() >= display_limit,
+            rows,
+            qid: taxon_qid,
+            warning,
+            query: execution_query,
+            total_matches: None,
+            total_stats: None,
+        };
+        let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
+        perf::log_timing(
+            "SearchComplete",
+            &format!(
+                "Search completed (display_rows={}, total_matches={})",
+                outcome.rows.len(),
+                outcome.total_matches.unwrap_or(outcome.rows.len())
+            ),
+            Some(total_elapsed),
+        );
+        return Ok(outcome);
+    }
+
     let display_limit = runtime_table_row_limit();
     // Fast path: fetch exact aggregate counts with a tiny response, then fetch
     // only the display window. This keeps metadata totals exact while cutting
@@ -1177,12 +1242,13 @@ async fn do_search(
 
         let display_fetch = async {
             let display_timer = perf::start_timer("LOTUS:display_query");
-            let display_csv = sparql::execute_sparql(&display_query)
-                .await
-                .map_err(|e| AppError {
-                    kind: ErrorKind::Network,
-                    message: err_query_stage_failed(locale, "display query", &e.to_string()),
-                })?;
+            let display_csv =
+                sparql::execute_sparql(&display_query)
+                    .await
+                    .map_err(|e| AppError {
+                        kind: ErrorKind::Network,
+                        message: err_query_stage_failed(locale, "display query", &e.to_string()),
+                    })?;
             let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
             Ok::<_, AppError>((display_csv, display_elapsed))
         };

@@ -240,15 +240,27 @@ pub fn query_sachem(
     let body = if let Some(qid) = taxon_qid {
         format!(
             r#"
+  {{
+    SELECT DISTINCT
+      ?c
+      ?compound_inchikey
+      ?compound_smiles_conn
+      ?statement
+      ?t
+      ?taxon_name
+      ?ref
+      ?r
+    WHERE {{
+      ?t (wdt:P171*) wd:{qid} .
+      ?t wdt:P225 ?taxon_name .
+      ?c p:P703 ?statement .
+      ?statement ps:P703 ?t ;
+                 prov:wasDerivedFrom ?ref .
+      ?ref pr:P248 ?r .
+      {COMPOUND_IDENTIFIERS}
+    }}
+  }}
   {sachem_clause}
-  {COMPOUND_IDENTIFIERS}
-
-  ?c p:P703 ?statement .
-  ?statement ps:P703 ?t ;
-             prov:wasDerivedFrom ?ref .
-  ?ref pr:P248 ?r .
-  ?t wdt:P225 ?taxon_name .
-  ?t (wdt:P171*) wd:{qid} .
 
   {REFERENCE_METADATA_OPTIONAL}
   {PROPERTIES_OPTIONAL}
@@ -597,5 +609,26 @@ mod tests {
         assert!(q.contains("CONSTRUCT"));
         assert!(q.contains("?c p:P703 ?statement"));
         assert!(!q.contains("SELECT\n  (xsd:integer"));
+    }
+
+    #[test]
+    fn sachem_taxon_query_prefilters_before_service() {
+        let q = query_sachem(
+            "c1ccccc1",
+            SmilesSearchType::Substructure,
+            0.8,
+            Some("Q158572"),
+        );
+        let taxon_pos = q
+            .find("?t (wdt:P171*) wd:Q158572")
+            .expect("taxon restriction should exist");
+        let service_pos = q
+            .find("SERVICE idsm:wikidata")
+            .expect("SACHEM service clause should exist");
+        assert!(
+            taxon_pos < service_pos,
+            "taxon prefilter should appear before federated service"
+        );
+        assert!(q.contains("SELECT DISTINCT"));
     }
 }
