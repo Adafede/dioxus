@@ -3,10 +3,13 @@
 //! Delegates URL construction and low-level helpers to the `shared` crate.
 
 use shared::sparql::{
-    FetchError, QLEVER_WIKIDATA, SparqlResponseFormat, clean_doi, coalesce, col_idx,
-    execute_sparql as shared_execute, execute_sparql_bytes as shared_execute_bytes,
-    execute_sparql_with_format as shared_execute_with_format, extract_qid, field, non_empty,
-    parse_year,
+    FetchError, QLEVER_WIKIDATA, clean_doi, coalesce, col_idx,
+    execute_sparql_bytes as shared_execute_bytes, extract_qid, field, non_empty, parse_year,
+};
+#[cfg(not(target_arch = "wasm32"))]
+use shared::sparql::{
+    SparqlResponseFormat, execute_sparql as shared_execute,
+    execute_sparql_with_format as shared_execute_with_format,
 };
 
 use crate::models::{CompoundEntry, DatasetStats, TaxonMatch};
@@ -78,6 +81,7 @@ fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
     h
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[inline]
 fn fnv1a_one(bytes: &[u8]) -> u64 {
     fnv1a_extend(Wrapping(14695981039346656037u64), bytes).0
@@ -111,10 +115,11 @@ fn parse_entity_id(value: &str) -> String {
         .trim()
         .trim_matches('"');
 
-    if let Some(rest) = lexical.strip_prefix('Q') {
-        if !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()) {
-            return lexical.to_string();
-        }
+    if let Some(rest) = lexical.strip_prefix('Q')
+        && !rest.is_empty()
+        && rest.bytes().all(|b| b.is_ascii_digit())
+    {
+        return lexical.to_string();
     }
 
     if !lexical.is_empty() && lexical.bytes().all(|b| b.is_ascii_digit()) {
@@ -133,6 +138,7 @@ fn parse_entity_id(value: &str) -> String {
 /// gzip-compressed over the wire (typically 5–10× smaller than the
 /// uncompressed payload) and transparently decompressed before it reaches
 /// this code. No extra work required on our side.
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
     shared_execute(sparql, QLEVER_WIKIDATA).await
 }
@@ -141,6 +147,7 @@ pub async fn execute_sparql_bytes(sparql: &str) -> Result<Vec<u8>, FetchError> {
     shared_execute_bytes(sparql, QLEVER_WIKIDATA).await
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn execute_sparql_format(
     sparql: &str,
     format: SparqlResponseFormat,
@@ -196,25 +203,25 @@ pub fn parse_compounds_csv_display_bytes(
             .map_err(|e| FetchError::Parse(e.to_string()))?
     {
         compound_qid.clear();
-        if let Some(i) = c_compound {
-            if let Some(b) = rec.get(i) {
-                fill_qid(&mut compound_qid, b);
-            }
+        if let Some(i) = c_compound
+            && let Some(b) = rec.get(i)
+        {
+            fill_qid(&mut compound_qid, b);
         }
         if compound_qid.is_empty() {
             continue;
         }
         taxon_qid.clear();
-        if let Some(i) = c_taxon {
-            if let Some(b) = rec.get(i) {
-                fill_qid(&mut taxon_qid, b);
-            }
+        if let Some(i) = c_taxon
+            && let Some(b) = rec.get(i)
+        {
+            fill_qid(&mut taxon_qid, b);
         }
         reference_qid.clear();
-        if let Some(i) = c_ref_qid {
-            if let Some(b) = rec.get(i) {
-                fill_qid(&mut reference_qid, b);
-            }
+        if let Some(i) = c_ref_qid
+            && let Some(b) = rec.get(i)
+        {
+            fill_qid(&mut reference_qid, b);
         }
 
         let key = entry_key_fingerprint(
@@ -291,6 +298,7 @@ pub fn parse_counts_csv_bytes(csv_bytes: &[u8]) -> Result<DatasetStats, FetchErr
     })
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn parse_compounds_csv_capped_bytes(
     csv_bytes: &[u8],
     max_rows: usize,
@@ -346,25 +354,25 @@ pub fn parse_compounds_csv_capped_bytes(
         .map_err(|e| FetchError::Parse(e.to_string()))?
     {
         compound_qid.clear();
-        if let Some(i) = c_compound {
-            if let Some(b) = rec.get(i) {
-                fill_qid(&mut compound_qid, b);
-            }
+        if let Some(i) = c_compound
+            && let Some(b) = rec.get(i)
+        {
+            fill_qid(&mut compound_qid, b);
         }
         if compound_qid.is_empty() {
             continue;
         }
         taxon_qid.clear();
-        if let Some(i) = c_taxon {
-            if let Some(b) = rec.get(i) {
-                fill_qid(&mut taxon_qid, b);
-            }
+        if let Some(i) = c_taxon
+            && let Some(b) = rec.get(i)
+        {
+            fill_qid(&mut taxon_qid, b);
         }
         reference_qid.clear();
-        if let Some(i) = c_ref_qid {
-            if let Some(b) = rec.get(i) {
-                fill_qid(&mut reference_qid, b);
-            }
+        if let Some(i) = c_ref_qid
+            && let Some(b) = rec.get(i)
+        {
+            fill_qid(&mut reference_qid, b);
         }
 
         // Dedup by (compound, taxon, ref) triple.

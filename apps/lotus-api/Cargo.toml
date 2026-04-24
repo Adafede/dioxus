@@ -1,0 +1,24 @@
+[package]
+name = "lotus-api"
+version = "0.1.0"
+edition = "2024"
+description = "OpenAPI service for LOTUS explorer search and export workflows"
+
+[[bin]]
+name = "lotus-api"
+path = "src/main.rs"
+
+[dependencies]
+axum = "0.8"
+csv = { workspace = true }
+env_logger = "0.11"
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+shared = { path = "../../crates/shared" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+urlencoding = { workspace = true }
+utoipa = { version = "5", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+

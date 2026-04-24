@@ -1,3 +1,5 @@
+#[cfg(target_arch = "wasm32")]
+use crate::api;
 use crate::download::trigger_download;
 #[cfg(target_arch = "wasm32")]
 use crate::download::{qlever_export_url, trigger_download_url};
@@ -9,8 +11,10 @@ use crate::i18n::{
 use crate::models::*;
 use crate::perf;
 use crate::queries;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::sparql;
 use dioxus::prelude::*;
+#[cfg(not(target_arch = "wasm32"))]
 use shared::sparql::SparqlResponseFormat;
 use std::sync::Arc;
 
@@ -255,7 +259,10 @@ pub fn ResultsTable(
                                     disabled: *download_busy.read(),
                                     onclick: {
                                         let q = query.to_string();
+                                        let _export_crit = criteria.read().clone();
                                         move |_| {
+                                            #[cfg(target_arch = "wasm32")]
+                                            let export_crit = _export_crit.clone();
                                             let filename = csv_filename.read().clone();
                                             *download_busy.write() = true;
                                             *download_status.write() = Some(
@@ -268,7 +275,17 @@ pub fn ResultsTable(
                                                 {
                                                     let trigger_timer =
                                                         perf::start_timer("LOTUS:table_download_csv_redirect");
-                                                    let url = qlever_export_url(&q, "csv_export");
+                                                    let url = match api::export_urls(&export_crit).await {
+                                                        Ok(urls) => urls.csv_url,
+                                                        Err(err) => {
+                                                            log_download_evt(
+                                                                "table_api_export_url",
+                                                                "fallback_qlever",
+                                                                Some(&format!("format=csv reason={err}")),
+                                                            );
+                                                            qlever_export_url(&q, "csv_export")
+                                                        }
+                                                    };
                                                     trigger_download_url(&filename, &url);
                                                     let trigger_elapsed = perf::end_timer(
                                                         "LOTUS:table_download_csv_redirect",
@@ -284,46 +301,49 @@ pub fn ResultsTable(
                                                     *download_status.write() = None;
                                                     return;
                                                 }
-                                                let fetch_timer = perf::start_timer("LOTUS:table_download_csv_fetch");
-                                                if let Ok(body) = sparql::execute_sparql(&q).await {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_csv_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "success",
-                                                        fetch_elapsed,
-                                                        Some(&format!("format=csv body_bytes={}", body.len())),
-                                                    );
-                                                    let trigger_timer = perf::start_timer(
-                                                        "LOTUS:table_download_csv_trigger",
-                                                    );
-                                                    trigger_download(&filename, "text/csv;charset=utf-8", &body);
-                                                    let trigger_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_csv_trigger",
-                                                        trigger_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_trigger",
-                                                        "success",
-                                                        trigger_elapsed,
-                                                        Some("format=csv"),
-                                                    );
-                                                } else {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_csv_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "error",
-                                                        fetch_elapsed,
-                                                        Some("format=csv"),
-                                                    );
+                                                #[cfg(not(target_arch = "wasm32"))]
+                                                {
+                                                    let fetch_timer = perf::start_timer("LOTUS:table_download_csv_fetch");
+                                                    if let Ok(body) = sparql::execute_sparql(&q).await {
+                                                        let fetch_elapsed = perf::end_timer(
+                                                            "LOTUS:table_download_csv_fetch",
+                                                            fetch_timer,
+                                                        );
+                                                        log_download_timing(
+                                                            "table_fetch",
+                                                            "success",
+                                                            fetch_elapsed,
+                                                            Some(&format!("format=csv body_bytes={}", body.len())),
+                                                        );
+                                                        let trigger_timer = perf::start_timer(
+                                                            "LOTUS:table_download_csv_trigger",
+                                                        );
+                                                        trigger_download(&filename, "text/csv;charset=utf-8", &body);
+                                                        let trigger_elapsed = perf::end_timer(
+                                                            "LOTUS:table_download_csv_trigger",
+                                                            trigger_timer,
+                                                        );
+                                                        log_download_timing(
+                                                            "table_trigger",
+                                                            "success",
+                                                            trigger_elapsed,
+                                                            Some("format=csv"),
+                                                        );
+                                                    } else {
+                                                        let fetch_elapsed = perf::end_timer(
+                                                            "LOTUS:table_download_csv_fetch",
+                                                            fetch_timer,
+                                                        );
+                                                        log_download_timing(
+                                                            "table_fetch",
+                                                            "error",
+                                                            fetch_elapsed,
+                                                            Some("format=csv"),
+                                                        );
+                                                    }
+                                                    *download_busy.write() = false;
+                                                    *download_status.write() = None;
                                                 }
-                                                *download_busy.write() = false;
-                                                *download_status.write() = None;
                                             });
                                         }
                                     },
@@ -337,7 +357,10 @@ pub fn ResultsTable(
                                     disabled: *download_busy.read(),
                                     onclick: {
                                         let q = query.to_string();
+                                        let _export_crit = criteria.read().clone();
                                         move |_| {
+                                            #[cfg(target_arch = "wasm32")]
+                                            let export_crit = _export_crit.clone();
                                             let q = q.clone();
                                             let filename = json_filename.read().clone();
                                             *download_busy.write() = true;
@@ -350,7 +373,17 @@ pub fn ResultsTable(
                                                 {
                                                     let trigger_timer =
                                                         perf::start_timer("LOTUS:table_download_json_redirect");
-                                                    let url = qlever_export_url(&q, "sparql_json_export");
+                                                    let url = match api::export_urls(&export_crit).await {
+                                                        Ok(urls) => urls.json_url,
+                                                        Err(err) => {
+                                                            log_download_evt(
+                                                                "table_api_export_url",
+                                                                "fallback_qlever",
+                                                                Some(&format!("format=json reason={err}")),
+                                                            );
+                                                            qlever_export_url(&q, "sparql_json_export")
+                                                        }
+                                                    };
                                                     trigger_download_url(&filename, &url);
                                                     let trigger_elapsed = perf::end_timer(
                                                         "LOTUS:table_download_json_redirect",
@@ -366,55 +399,58 @@ pub fn ResultsTable(
                                                     *download_status.write() = None;
                                                     return;
                                                 }
-                                                let fetch_timer = perf::start_timer("LOTUS:table_download_json_fetch");
-                                                if let Ok(body) = sparql::execute_sparql_format(
-                                                        &q,
-                                                        SparqlResponseFormat::SparqlJson,
-                                                    )
-                                                    .await
+                                                #[cfg(not(target_arch = "wasm32"))]
                                                 {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_json_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "success",
-                                                        fetch_elapsed,
-                                                        Some(&format!("format=json body_bytes={}", body.len())),
-                                                    );
-                                                    let trigger_timer = perf::start_timer(
-                                                        "LOTUS:table_download_json_trigger",
-                                                    );
-                                                    trigger_download(
-                                                        &filename,
-                                                        "application/sparql-results+json;charset=utf-8",
-                                                        &body,
-                                                    );
-                                                    let trigger_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_json_trigger",
-                                                        trigger_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_trigger",
-                                                        "success",
-                                                        trigger_elapsed,
-                                                        Some("format=json"),
-                                                    );
-                                                } else {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_json_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "error",
-                                                        fetch_elapsed,
-                                                        Some("format=json"),
-                                                    );
+                                                    let fetch_timer = perf::start_timer("LOTUS:table_download_json_fetch");
+                                                    if let Ok(body) = sparql::execute_sparql_format(
+                                                            &q,
+                                                            SparqlResponseFormat::SparqlJson,
+                                                        )
+                                                        .await
+                                                    {
+                                                        let fetch_elapsed = perf::end_timer(
+                                                            "LOTUS:table_download_json_fetch",
+                                                            fetch_timer,
+                                                        );
+                                                        log_download_timing(
+                                                            "table_fetch",
+                                                            "success",
+                                                            fetch_elapsed,
+                                                            Some(&format!("format=json body_bytes={}", body.len())),
+                                                        );
+                                                        let trigger_timer = perf::start_timer(
+                                                            "LOTUS:table_download_json_trigger",
+                                                        );
+                                                        trigger_download(
+                                                            &filename,
+                                                            "application/sparql-results+json;charset=utf-8",
+                                                            &body,
+                                                        );
+                                                        let trigger_elapsed = perf::end_timer(
+                                                            "LOTUS:table_download_json_trigger",
+                                                            trigger_timer,
+                                                        );
+                                                        log_download_timing(
+                                                            "table_trigger",
+                                                            "success",
+                                                            trigger_elapsed,
+                                                            Some("format=json"),
+                                                        );
+                                                    } else {
+                                                        let fetch_elapsed = perf::end_timer(
+                                                            "LOTUS:table_download_json_fetch",
+                                                            fetch_timer,
+                                                        );
+                                                        log_download_timing(
+                                                            "table_fetch",
+                                                            "error",
+                                                            fetch_elapsed,
+                                                            Some("format=json"),
+                                                        );
+                                                    }
+                                                    *download_busy.write() = false;
+                                                    *download_status.write() = None;
                                                 }
-                                                *download_busy.write() = false;
-                                                *download_status.write() = None;
                                             });
                                         }
                                     },
@@ -428,7 +464,10 @@ pub fn ResultsTable(
                                     disabled: *download_busy.read(),
                                     onclick: {
                                         let q = query.to_string();
+                                        let _export_crit = criteria.read().clone();
                                         move |_| {
+                                            #[cfg(target_arch = "wasm32")]
+                                            let export_crit = _export_crit.clone();
                                             let q = queries::query_construct_from_select(&q);
                                             let filename = rdf_filename.read().clone();
                                             *download_busy.write() = true;
@@ -441,7 +480,17 @@ pub fn ResultsTable(
                                                 {
                                                     let trigger_timer =
                                                         perf::start_timer("LOTUS:table_download_rdf_redirect");
-                                                    let url = qlever_export_url(&q, "turtle_export");
+                                                    let url = match api::export_urls(&export_crit).await {
+                                                        Ok(urls) => urls.rdf_url,
+                                                        Err(err) => {
+                                                            log_download_evt(
+                                                                "table_api_export_url",
+                                                                "fallback_qlever",
+                                                                Some(&format!("format=rdf reason={err}")),
+                                                            );
+                                                            qlever_export_url(&q, "turtle_export")
+                                                        }
+                                                    };
                                                     trigger_download_url(&filename, &url);
                                                     let trigger_elapsed = perf::end_timer(
                                                         "LOTUS:table_download_rdf_redirect",
@@ -457,51 +506,54 @@ pub fn ResultsTable(
                                                     *download_status.write() = None;
                                                     return;
                                                 }
-                                                let fetch_timer = perf::start_timer("LOTUS:table_download_rdf_fetch");
-                                                if let Ok(body) = sparql::execute_sparql_format(
-                                                        &q,
-                                                        SparqlResponseFormat::Turtle,
-                                                    )
-                                                    .await
+                                                #[cfg(not(target_arch = "wasm32"))]
                                                 {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_rdf_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "success",
-                                                        fetch_elapsed,
-                                                        Some(&format!("format=rdf body_bytes={}", body.len())),
-                                                    );
-                                                    let trigger_timer = perf::start_timer(
-                                                        "LOTUS:table_download_rdf_trigger",
-                                                    );
-                                                    trigger_download(&filename, "text/turtle;charset=utf-8", &body);
-                                                    let trigger_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_rdf_trigger",
-                                                        trigger_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_trigger",
-                                                        "success",
-                                                        trigger_elapsed,
-                                                        Some("format=rdf"),
-                                                    );
-                                                } else {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_rdf_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "error",
-                                                        fetch_elapsed,
-                                                        Some("format=rdf"),
-                                                    );
+                                                    let fetch_timer = perf::start_timer("LOTUS:table_download_rdf_fetch");
+                                                    if let Ok(body) = sparql::execute_sparql_format(
+                                                            &q,
+                                                            SparqlResponseFormat::Turtle,
+                                                        )
+                                                        .await
+                                                    {
+                                                        let fetch_elapsed = perf::end_timer(
+                                                            "LOTUS:table_download_rdf_fetch",
+                                                            fetch_timer,
+                                                        );
+                                                        log_download_timing(
+                                                            "table_fetch",
+                                                            "success",
+                                                            fetch_elapsed,
+                                                            Some(&format!("format=rdf body_bytes={}", body.len())),
+                                                        );
+                                                        let trigger_timer = perf::start_timer(
+                                                            "LOTUS:table_download_rdf_trigger",
+                                                        );
+                                                        trigger_download(&filename, "text/turtle;charset=utf-8", &body);
+                                                        let trigger_elapsed = perf::end_timer(
+                                                            "LOTUS:table_download_rdf_trigger",
+                                                            trigger_timer,
+                                                        );
+                                                        log_download_timing(
+                                                            "table_trigger",
+                                                            "success",
+                                                            trigger_elapsed,
+                                                            Some("format=rdf"),
+                                                        );
+                                                    } else {
+                                                        let fetch_elapsed = perf::end_timer(
+                                                            "LOTUS:table_download_rdf_fetch",
+                                                            fetch_timer,
+                                                        );
+                                                        log_download_timing(
+                                                            "table_fetch",
+                                                            "error",
+                                                            fetch_elapsed,
+                                                            Some("format=rdf"),
+                                                        );
+                                                    }
+                                                    *download_busy.write() = false;
+                                                    *download_status.write() = None;
                                                 }
-                                                *download_busy.write() = false;
-                                                *download_status.write() = None;
                                             });
                                         }
                                     },

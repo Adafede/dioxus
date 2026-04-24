@@ -168,17 +168,18 @@ pub async fn execute_sparql_with_format_bytes(
 fn looks_like_gateway_error(body: &str) -> bool {
     // Inspect at most ~2 KiB; work on borrowed bytes to avoid allocation.
     let end = body.len().min(2048);
-    let sample = &body[..body
-        .is_char_boundary(end)
-        .then_some(end)
-        .unwrap_or_else(|| {
+    let sample = &body[..if body.is_char_boundary(end) {
+        end
+    } else {
+        {
             // back up to the previous char boundary
             let mut i = end;
             while i > 0 && !body.is_char_boundary(i) {
                 i -= 1;
             }
             i
-        })];
+        }
+    }];
     // Case-insensitive `contains` without allocating a lowercase copy.
     fn contains_ci(h: &str, needle: &str) -> bool {
         if needle.len() > h.len() {

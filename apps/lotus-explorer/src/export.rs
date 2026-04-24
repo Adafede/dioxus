@@ -281,10 +281,10 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
         }
         search_params.insert("structure_query".into(), Value::Object(sq));
     }
-    if let Some(obj) = filters.as_object() {
-        if !obj.is_empty() {
-            search_params.insert("filters".into(), filters.clone());
-        }
+    if let Some(obj) = filters.as_object()
+        && !obj.is_empty()
+    {
+        search_params.insert("filters".into(), filters.clone());
     }
 
     let mut meta = Map::new();

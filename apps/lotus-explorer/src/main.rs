@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+mod api;
 mod components;
 mod download;
 mod export;
@@ -23,6 +24,7 @@ use i18n::{
 };
 use models::*;
 use sha2::{Digest, Sha256};
+#[cfg(not(target_arch = "wasm32"))]
 use shared::sparql::SparqlResponseFormat;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -232,19 +234,19 @@ fn App() -> Element {
     // search automatically and trigger download once query materializes.
     use_effect(move || {
         let pending = pending_download_format.read().clone();
-        if let Some(fmt) = pending.as_deref() {
-            if !is_supported_download_format(fmt) {
-                log_warn_evt(
-                    "download",
-                    "startup",
-                    "unsupported_format",
-                    Some(&format!("format={fmt}")),
-                );
-                *error_kind.write() = ErrorKind::Validation;
-                *error.write() = Some(err_unsupported_format(*locale.peek(), fmt));
-                *pending_download_format.write() = None;
-                return;
-            }
+        if let Some(fmt) = pending.as_deref()
+            && !is_supported_download_format(fmt)
+        {
+            log_warn_evt(
+                "download",
+                "startup",
+                "unsupported_format",
+                Some(&format!("format={fmt}")),
+            );
+            *error_kind.write() = ErrorKind::Validation;
+            *error.write() = Some(err_unsupported_format(*locale.peek(), fmt));
+            *pending_download_format.write() = None;
+            return;
         }
         if (pending.is_some() || *pending_execute.read())
             && !*searched_once.read()
@@ -313,6 +315,7 @@ fn App() -> Element {
                 match fmt.as_str() {
                     "csv" => {
                         let q = query.to_string();
+                        let _export_crit = crit.clone();
                         let filename = export::generate_filename(&crit, "csv");
                         *pending_download_format.write() = None;
                         spawn(async move {
@@ -320,7 +323,18 @@ fn App() -> Element {
                             log_info_evt("download", "dispatch", "started", Some("format=csv"));
                             #[cfg(target_arch = "wasm32")]
                             {
-                                let url = qlever_export_url(&q, "csv_export");
+                                let url = match api::export_urls(&_export_crit).await {
+                                    Ok(urls) => urls.csv_url,
+                                    Err(err) => {
+                                        log_warn_evt(
+                                            "download",
+                                            "api_export_url",
+                                            "fallback_qlever",
+                                            Some(&format!("format=csv reason={err}")),
+                                        );
+                                        qlever_export_url(&q, "csv_export")
+                                    }
+                                };
                                 trigger_download(&filename, "text/csv;charset=utf-8", &url);
                                 let elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
                                 log_timing_evt(
@@ -332,40 +346,48 @@ fn App() -> Element {
                                 );
                                 return;
                             }
-                            if let Ok(body) = sparql::execute_sparql(&q).await {
-                                let fetch_elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "success",
-                                    fetch_elapsed,
-                                    Some(&format!("format=csv body_bytes={}", body.len())),
-                                );
-                                let trigger_timer = perf::start_timer("LOTUS:download_csv_trigger");
-                                trigger_download(&filename, "text/csv;charset=utf-8", &body);
-                                let trigger_elapsed =
-                                    perf::end_timer("LOTUS:download_csv_trigger", trigger_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "trigger",
-                                    "success",
-                                    trigger_elapsed,
-                                    Some("format=csv"),
-                                );
-                            } else {
-                                let elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "error",
-                                    elapsed,
-                                    Some("format=csv"),
-                                );
+                            #[cfg(not(target_arch = "wasm32"))]
+                            {
+                                if let Ok(body) = sparql::execute_sparql(&q).await {
+                                    let fetch_elapsed =
+                                        perf::end_timer("LOTUS:download_csv", dl_timer);
+                                    log_timing_evt(
+                                        "download",
+                                        "fetch",
+                                        "success",
+                                        fetch_elapsed,
+                                        Some(&format!("format=csv body_bytes={}", body.len())),
+                                    );
+                                    let trigger_timer =
+                                        perf::start_timer("LOTUS:download_csv_trigger");
+                                    trigger_download(&filename, "text/csv;charset=utf-8", &body);
+                                    let trigger_elapsed = perf::end_timer(
+                                        "LOTUS:download_csv_trigger",
+                                        trigger_timer,
+                                    );
+                                    log_timing_evt(
+                                        "download",
+                                        "trigger",
+                                        "success",
+                                        trigger_elapsed,
+                                        Some("format=csv"),
+                                    );
+                                } else {
+                                    let elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
+                                    log_timing_evt(
+                                        "download",
+                                        "fetch",
+                                        "error",
+                                        elapsed,
+                                        Some("format=csv"),
+                                    );
+                                }
                             }
                         });
                     }
                     "json" | "ndjson" => {
                         let q = query.to_string();
+                        let _export_crit = crit.clone();
                         let filename = export::generate_filename(&crit, "json");
                         *pending_download_format.write() = None;
                         spawn(async move {
@@ -373,7 +395,18 @@ fn App() -> Element {
                             log_info_evt("download", "dispatch", "started", Some("format=json"));
                             #[cfg(target_arch = "wasm32")]
                             {
-                                let url = qlever_export_url(&q, "sparql_json_export");
+                                let url = match api::export_urls(&_export_crit).await {
+                                    Ok(urls) => urls.json_url,
+                                    Err(err) => {
+                                        log_warn_evt(
+                                            "download",
+                                            "api_export_url",
+                                            "fallback_qlever",
+                                            Some(&format!("format=json reason={err}")),
+                                        );
+                                        qlever_export_url(&q, "sparql_json_export")
+                                    }
+                                };
                                 trigger_download(
                                     &filename,
                                     "application/sparql-results+json;charset=utf-8",
@@ -389,49 +422,57 @@ fn App() -> Element {
                                 );
                                 return;
                             }
-                            if let Ok(body) =
-                                sparql::execute_sparql_format(&q, SparqlResponseFormat::SparqlJson)
-                                    .await
+                            #[cfg(not(target_arch = "wasm32"))]
                             {
-                                let fetch_elapsed =
-                                    perf::end_timer("LOTUS:download_json", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "success",
-                                    fetch_elapsed,
-                                    Some(&format!("format=json body_bytes={}", body.len())),
-                                );
-                                let trigger_timer =
-                                    perf::start_timer("LOTUS:download_json_trigger");
-                                trigger_download(
-                                    &filename,
-                                    "application/sparql-results+json;charset=utf-8",
-                                    &body,
-                                );
-                                let trigger_elapsed =
-                                    perf::end_timer("LOTUS:download_json_trigger", trigger_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "trigger",
-                                    "success",
-                                    trigger_elapsed,
-                                    Some("format=json"),
-                                );
-                            } else {
-                                let elapsed = perf::end_timer("LOTUS:download_json", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "error",
-                                    elapsed,
-                                    Some("format=json"),
-                                );
+                                if let Ok(body) = sparql::execute_sparql_format(
+                                    &q,
+                                    SparqlResponseFormat::SparqlJson,
+                                )
+                                .await
+                                {
+                                    let fetch_elapsed =
+                                        perf::end_timer("LOTUS:download_json", dl_timer);
+                                    log_timing_evt(
+                                        "download",
+                                        "fetch",
+                                        "success",
+                                        fetch_elapsed,
+                                        Some(&format!("format=json body_bytes={}", body.len())),
+                                    );
+                                    let trigger_timer =
+                                        perf::start_timer("LOTUS:download_json_trigger");
+                                    trigger_download(
+                                        &filename,
+                                        "application/sparql-results+json;charset=utf-8",
+                                        &body,
+                                    );
+                                    let trigger_elapsed = perf::end_timer(
+                                        "LOTUS:download_json_trigger",
+                                        trigger_timer,
+                                    );
+                                    log_timing_evt(
+                                        "download",
+                                        "trigger",
+                                        "success",
+                                        trigger_elapsed,
+                                        Some("format=json"),
+                                    );
+                                } else {
+                                    let elapsed = perf::end_timer("LOTUS:download_json", dl_timer);
+                                    log_timing_evt(
+                                        "download",
+                                        "fetch",
+                                        "error",
+                                        elapsed,
+                                        Some("format=json"),
+                                    );
+                                }
                             }
                         });
                     }
                     "rdf" => {
                         let q = queries::query_construct_from_select(query);
+                        let _export_crit = crit.clone();
                         let filename = export::generate_filename(&crit, "rdf");
                         *pending_download_format.write() = None;
                         spawn(async move {
@@ -439,7 +480,18 @@ fn App() -> Element {
                             log_info_evt("download", "dispatch", "started", Some("format=rdf"));
                             #[cfg(target_arch = "wasm32")]
                             {
-                                let url = qlever_export_url(&q, "turtle_export");
+                                let url = match api::export_urls(&_export_crit).await {
+                                    Ok(urls) => urls.rdf_url,
+                                    Err(err) => {
+                                        log_warn_evt(
+                                            "download",
+                                            "api_export_url",
+                                            "fallback_qlever",
+                                            Some(&format!("format=rdf reason={err}")),
+                                        );
+                                        qlever_export_url(&q, "turtle_export")
+                                    }
+                                };
                                 trigger_download(&filename, "text/turtle;charset=utf-8", &url);
                                 let elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
                                 log_timing_evt(
@@ -451,38 +503,45 @@ fn App() -> Element {
                                 );
                                 return;
                             }
-                            if let Ok(body) =
-                                sparql::execute_sparql_format(&q, SparqlResponseFormat::Turtle)
-                                    .await
+                            #[cfg(not(target_arch = "wasm32"))]
                             {
-                                let fetch_elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "success",
-                                    fetch_elapsed,
-                                    Some(&format!("format=rdf body_bytes={}", body.len())),
-                                );
-                                let trigger_timer = perf::start_timer("LOTUS:download_rdf_trigger");
-                                trigger_download(&filename, "text/turtle;charset=utf-8", &body);
-                                let trigger_elapsed =
-                                    perf::end_timer("LOTUS:download_rdf_trigger", trigger_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "trigger",
-                                    "success",
-                                    trigger_elapsed,
-                                    Some("format=rdf"),
-                                );
-                            } else {
-                                let elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "error",
-                                    elapsed,
-                                    Some("format=rdf"),
-                                );
+                                if let Ok(body) =
+                                    sparql::execute_sparql_format(&q, SparqlResponseFormat::Turtle)
+                                        .await
+                                {
+                                    let fetch_elapsed =
+                                        perf::end_timer("LOTUS:download_rdf", dl_timer);
+                                    log_timing_evt(
+                                        "download",
+                                        "fetch",
+                                        "success",
+                                        fetch_elapsed,
+                                        Some(&format!("format=rdf body_bytes={}", body.len())),
+                                    );
+                                    let trigger_timer =
+                                        perf::start_timer("LOTUS:download_rdf_trigger");
+                                    trigger_download(&filename, "text/turtle;charset=utf-8", &body);
+                                    let trigger_elapsed = perf::end_timer(
+                                        "LOTUS:download_rdf_trigger",
+                                        trigger_timer,
+                                    );
+                                    log_timing_evt(
+                                        "download",
+                                        "trigger",
+                                        "success",
+                                        trigger_elapsed,
+                                        Some("format=rdf"),
+                                    );
+                                } else {
+                                    let elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
+                                    log_timing_evt(
+                                        "download",
+                                        "fetch",
+                                        "error",
+                                        elapsed,
+                                        Some("format=rdf"),
+                                    );
+                                }
                             }
                         });
                     }
@@ -670,6 +729,7 @@ fn App() -> Element {
                         }
                     }
                 }
+
 
                 if let Some(warning) = taxon_notice.read().as_deref() {
                     div { class: "notice notice-warn", role: "status",
@@ -1104,6 +1164,69 @@ async fn do_search(
             normalized.trim().to_string()
         }
     };
+
+    if !direct_download_mode && let Some(api_base) = api::api_base_url() {
+        let mut api_crit = crit.clone();
+        api_crit.smiles = smiles.clone();
+        let display_limit = runtime_table_row_limit();
+        let include_counts = smiles.is_empty();
+        log_info_evt(
+            "search",
+            "api",
+            "attempt",
+            Some(&format!(
+                "base={} limit={} include_counts={}",
+                api_base, display_limit, include_counts
+            )),
+        );
+        let api_timer = perf::start_timer("LOTUS:api_search");
+        match api::search(&api_crit, display_limit, include_counts).await {
+            Ok(response) => {
+                let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
+                metrics.add_network(api_elapsed);
+                log_timing_evt(
+                    "search",
+                    "api",
+                    "success",
+                    api_elapsed,
+                    Some(&format!(
+                        "rows={} total_matches={}",
+                        response.rows.len(),
+                        response.total_matches
+                    )),
+                );
+                let display_capped_rows = if include_counts {
+                    response.total_matches > response.rows.len()
+                } else {
+                    response.rows.len() >= display_limit
+                };
+                let rows = response
+                    .rows
+                    .into_iter()
+                    .map(CompoundEntry::from)
+                    .collect::<Vec<_>>();
+                return Ok(SearchOutcome {
+                    rows,
+                    qid: response.resolved_taxon_qid,
+                    warning: response.warning,
+                    query: response.query,
+                    total_matches: Some(response.total_matches),
+                    total_stats: Some(response.stats.into()),
+                    display_capped_rows,
+                });
+            }
+            Err(err) => {
+                let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
+                log_timing_evt(
+                    "search",
+                    "api",
+                    "fallback_direct",
+                    api_elapsed,
+                    Some(&format!("reason={err}")),
+                );
+            }
+        }
+    }
 
     let mut warning: Option<String> = None;
     let taxon_qid: Option<String> = if taxon.is_empty() {
@@ -1713,10 +1836,10 @@ fn parse_criteria_from_params(params: &BTreeMap<String, String>) -> SearchCriter
             SmilesSearchType::Substructure
         };
     }
-    if let Some(threshold) = params.get("smiles_threshold") {
-        if let Ok(v) = threshold.parse::<f64>() {
-            criteria.smiles_threshold = v.clamp(0.05, 1.0);
-        }
+    if let Some(threshold) = params.get("smiles_threshold")
+        && let Ok(v) = threshold.parse::<f64>()
+    {
+        criteria.smiles_threshold = v.clamp(0.05, 1.0);
     }
 
     if params

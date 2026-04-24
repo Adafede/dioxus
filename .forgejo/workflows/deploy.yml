@@ -45,9 +45,11 @@ jobs:
 
       - name: Assemble site
         run: |
+          DX_OUT="target/dx"
+          DX_WEB="release/web/public"
           mkdir -p _site
-          cp -r target/dx/lotus-explorer/release/web/public _site/lotus-explorer
-          cp -r target/dx/hello-world/release/web/public    _site/hello-world
+          cp -r "$DX_OUT/lotus-explorer/$DX_WEB" _site/lotus-explorer
+          cp -r "$DX_OUT/hello-world/$DX_WEB"    _site/hello-world
 
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
