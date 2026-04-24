@@ -238,7 +238,7 @@ pub fn query_sachem(
     };
     let sachem_subquery = format!(
         r#"{{
-    SELECT ?c
+    SELECT DISTINCT ?c
     WHERE {{
       {sachem_clause}
     }}
@@ -626,6 +626,6 @@ mod tests {
             service_pos < taxon_pos,
             "SACHEM service should be isolated in inner subquery before outer taxon joins"
         );
-        assert!(q.contains("SELECT ?c"));
+        assert!(q.contains("SELECT DISTINCT ?c"));
     }
 }

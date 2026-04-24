@@ -1,3 +1,6 @@
+use crate::download::trigger_download;
+#[cfg(target_arch = "wasm32")]
+use crate::download::{qlever_export_url, trigger_download_url};
 use crate::export;
 use crate::i18n::{
     CountNoun, Locale, TextKey, aria_chemical_structure, aria_search_inchikey,
@@ -183,7 +186,6 @@ pub fn ResultsTable(
         .read()
         .clone()
         .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
-    let _ = total_matches;
 
     rsx! {
         div { id: "results-section", class: "results-wrap",
@@ -262,6 +264,26 @@ pub fn ResultsTable(
                                             let q = q.clone();
                                             spawn(async move {
                                                 log_download_evt("table_dispatch", "started", Some("format=csv"));
+                                                #[cfg(target_arch = "wasm32")]
+                                                {
+                                                    let trigger_timer =
+                                                        perf::start_timer("LOTUS:table_download_csv_redirect");
+                                                    let url = qlever_export_url(&q, "csv_export");
+                                                    trigger_download_url(&filename, &url);
+                                                    let trigger_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_csv_redirect",
+                                                        trigger_timer,
+                                                    );
+                                                    log_download_timing(
+                                                        "table_redirect",
+                                                        "success",
+                                                        trigger_elapsed,
+                                                        Some("format=csv mode=direct_url"),
+                                                    );
+                                                    *download_busy.write() = false;
+                                                    *download_status.write() = None;
+                                                    return;
+                                                }
                                                 let fetch_timer = perf::start_timer("LOTUS:table_download_csv_fetch");
                                                 if let Ok(body) = sparql::execute_sparql(&q).await {
                                                     let fetch_elapsed = perf::end_timer(
@@ -324,6 +346,26 @@ pub fn ResultsTable(
                                             );
                                             spawn(async move {
                                                 log_download_evt("table_dispatch", "started", Some("format=json"));
+                                                #[cfg(target_arch = "wasm32")]
+                                                {
+                                                    let trigger_timer =
+                                                        perf::start_timer("LOTUS:table_download_json_redirect");
+                                                    let url = qlever_export_url(&q, "sparql_json_export");
+                                                    trigger_download_url(&filename, &url);
+                                                    let trigger_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_json_redirect",
+                                                        trigger_timer,
+                                                    );
+                                                    log_download_timing(
+                                                        "table_redirect",
+                                                        "success",
+                                                        trigger_elapsed,
+                                                        Some("format=json mode=direct_url"),
+                                                    );
+                                                    *download_busy.write() = false;
+                                                    *download_status.write() = None;
+                                                    return;
+                                                }
                                                 let fetch_timer = perf::start_timer("LOTUS:table_download_json_fetch");
                                                 if let Ok(body) = sparql::execute_sparql_format(
                                                         &q,
@@ -395,6 +437,26 @@ pub fn ResultsTable(
                                             );
                                             spawn(async move {
                                                 log_download_evt("table_dispatch", "started", Some("format=rdf"));
+                                                #[cfg(target_arch = "wasm32")]
+                                                {
+                                                    let trigger_timer =
+                                                        perf::start_timer("LOTUS:table_download_rdf_redirect");
+                                                    let url = qlever_export_url(&q, "turtle_export");
+                                                    trigger_download_url(&filename, &url);
+                                                    let trigger_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_rdf_redirect",
+                                                        trigger_timer,
+                                                    );
+                                                    log_download_timing(
+                                                        "table_redirect",
+                                                        "success",
+                                                        trigger_elapsed,
+                                                        Some("format=rdf mode=direct_url"),
+                                                    );
+                                                    *download_busy.write() = false;
+                                                    *download_status.write() = None;
+                                                    return;
+                                                }
                                                 let fetch_timer = perf::start_timer("LOTUS:table_download_rdf_fetch");
                                                 if let Ok(body) = sparql::execute_sparql_format(
                                                         &q,
@@ -895,55 +957,4 @@ fn truncate_title(title: &str, max_chars: usize) -> String {
 
 // ── Download helpers ──────────────────────────────────────────────────────────
 
-fn trigger_download(filename: &str, mime: &str, body: &str) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        use wasm_bindgen::JsCast;
-
-        let Some(window) = web_sys::window() else {
-            return;
-        };
-        let Some(document) = window.document() else {
-            return;
-        };
-
-        let parts = js_sys::Array::new();
-        parts.push(&wasm_bindgen::JsValue::from_str(body));
-
-        let blob = {
-            let options = web_sys::BlobPropertyBag::new();
-            options.set_type(mime);
-            web_sys::Blob::new_with_str_sequence_and_options(&parts, &options)
-                .or_else(|_| web_sys::Blob::new_with_str_sequence(&parts))
-        };
-        let Ok(blob) = blob else {
-            return;
-        };
-
-        let Ok(url) = web_sys::Url::create_object_url_with_blob(&blob) else {
-            return;
-        };
-
-        let anchor = document
-            .create_element("a")
-            .ok()
-            .and_then(|el| el.dyn_into::<web_sys::HtmlAnchorElement>().ok());
-
-        if let (Some(a), Some(body_el)) = (anchor, document.body()) {
-            a.set_href(&url);
-            a.set_download(filename);
-            a.set_rel("noopener noreferrer");
-            let _ = body_el.append_child(&a);
-            a.click();
-            let _ = body_el.remove_child(&a);
-        } else {
-            let _ = window.open_with_url(&url);
-        }
-
-        let _ = web_sys::Url::revoke_object_url(&url);
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let _ = (filename, mime, body);
-    }
-}
+// Shared in `download.rs`.

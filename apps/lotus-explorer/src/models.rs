@@ -9,7 +9,7 @@ use std::sync::Arc;
 /// Mirrors the Python `CONFIG["table_row_limit"]` which caps at 100 in
 /// Pyodide/WASM (to preserve memory / keep the UI snappy) and 1000 otherwise.
 #[cfg(target_arch = "wasm32")]
-pub const TABLE_ROW_LIMIT: usize = 2_000;
+pub const TABLE_ROW_LIMIT: usize = 1_000;
 #[cfg(not(target_arch = "wasm32"))]
 pub const TABLE_ROW_LIMIT: usize = 2_000_000;
 
@@ -39,7 +39,8 @@ pub type Rows = Arc<[CompoundEntry]>;
 pub fn runtime_table_row_limit() -> usize {
     #[cfg(target_arch = "wasm32")]
     {
-        let mut limit = TABLE_ROW_LIMIT;
+        // Start conservatively on wasm and scale up only on capable devices.
+        let mut limit = 600usize;
         if let Some(win) = web_sys::window() {
             let win_js = wasm_bindgen::JsValue::from(win);
             if let Ok(nav) =
@@ -50,9 +51,11 @@ pub fn runtime_table_row_limit() -> usize {
                 {
                     if let Some(gb) = mem.as_f64() {
                         if gb <= 2.0 {
-                            limit = limit.min(300);
+                            limit = 220;
                         } else if gb <= 4.0 {
-                            limit = limit.min(600);
+                            limit = 360;
+                        } else if gb >= 8.0 {
+                            limit = 800;
                         }
                     }
                 }
@@ -67,13 +70,13 @@ pub fn runtime_table_row_limit() -> usize {
                             || ua.contains("android")
                             || ua.contains("mobile");
                         if mobile {
-                            limit = limit.min(400);
+                            limit = limit.min(280);
                         }
                     }
                 }
             }
         }
-        limit.clamp(150, TABLE_ROW_LIMIT)
+        limit.clamp(180, TABLE_ROW_LIMIT)
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
