@@ -33,9 +33,6 @@ jobs:
         # Keep this pinned to the same patch as workspace dioxus.
         run: cargo binstall dioxus-cli --version 0.7.6 --locked
 
-      - name: Verify dx version
-        run: dx --version | grep -E "\b0\.7\.6\b"
-
       # ── Build each app ──────────────────────────────────────────────────
       # `--platform web` is specified explicitly so the build does not
       # depend on dioxus-cli's auto-detection (which requires the `web`

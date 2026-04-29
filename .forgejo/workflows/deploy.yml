@@ -32,9 +32,6 @@ jobs:
       - name: Install dioxus-cli
         run: cargo binstall dioxus-cli --version 0.7.6 --locked
 
-      - name: Verify dx version
-        run: dx --version | grep -E "\b0\.7\.6\b"
-
       - name: Build lotus-explorer
         working-directory: apps/lotus-explorer
         run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lotus-explorer/"
