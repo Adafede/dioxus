@@ -1519,12 +1519,13 @@ async fn do_search(
                 &format!("Display parse completed (rows={})", rows.len()),
                 Some(display_parse_elapsed),
             );
+            let display_capped_rows = full_stats.n_entries > rows.len();
 
             Ok::<_, AppError>((
                 rows,
                 Some(full_stats.clone()),
                 Some(full_stats.n_entries),
-                false,
+                display_capped_rows,
             ))
         }
 
@@ -1608,12 +1609,13 @@ async fn do_search(
                 &format!("Display parse completed (rows={})", rows.len()),
                 Some(display_parse_elapsed),
             );
+            let display_capped_rows = full_stats.n_entries > rows.len();
 
             Ok::<_, AppError>((
                 rows,
                 Some(full_stats.clone()),
                 Some(full_stats.n_entries),
-                false,
+                display_capped_rows,
             ))
         }
     }
@@ -1655,7 +1657,7 @@ async fn do_search(
                 );
 
                 let fallback_parse_timer = perf::start_timer("LOTUS:fallback_parse");
-                let (rows, full_stats, _parse_capped) =
+                let (rows, full_stats, parse_capped) =
                     sparql::parse_compounds_csv_capped_bytes(&csv, display_limit).map_err(|e| {
                         AppError {
                             kind: ErrorKind::Parse,
@@ -1670,11 +1672,12 @@ async fn do_search(
                     &format!("Fallback parse completed (rows={})", rows.len()),
                     Some(fallback_parse_elapsed),
                 );
+                let display_capped_rows = parse_capped || full_stats.n_entries > rows.len();
                 (
                     rows,
                     Some(full_stats.clone()),
                     Some(full_stats.n_entries),
-                    false,
+                    display_capped_rows,
                 )
             }
         }
