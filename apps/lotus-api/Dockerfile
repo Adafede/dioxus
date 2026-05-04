@@ -30,7 +30,7 @@ LABEL org.opencontainers.image.title="lotus-api" \
       org.opencontainers.image.description="OpenAPI service for LOTUS Wikidata natural-product search and export" \
       org.opencontainers.image.url="https://github.com/adafede/dioxus" \
       org.opencontainers.image.source="https://github.com/adafede/dioxus" \
-      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
       org.opencontainers.image.vendor="adafede"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
