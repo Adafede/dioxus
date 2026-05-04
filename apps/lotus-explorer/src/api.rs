@@ -106,7 +106,7 @@ impl SearchRequest {
             smiles_search_type: has_smiles.then_some(criteria.smiles_search_type.into()),
             smiles_threshold: (criteria.smiles_search_type == SmilesSearchType::Similarity
                 && has_smiles)
-            .then_some(criteria.smiles_threshold),
+                .then_some(criteria.smiles_threshold),
             mass_min: criteria.has_mass_filter().then_some(criteria.mass_min),
             mass_max: criteria.has_mass_filter().then_some(criteria.mass_max),
             year_min: criteria.has_year_filter().then_some(criteria.year_min),

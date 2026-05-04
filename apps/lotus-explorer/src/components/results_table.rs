@@ -215,6 +215,7 @@ pub fn ResultsTable(
                         locale,
                         value: display_stats.n_compounds,
                         secondary_value: None,
+                        secondary_label: None,
                         noun: CountNoun::Compound,
                         plus: stats_partial,
                     }
@@ -222,6 +223,7 @@ pub fn ResultsTable(
                         locale,
                         value: display_stats.n_taxa,
                         secondary_value: None,
+                        secondary_label: None,
                         noun: CountNoun::Taxon,
                         plus: stats_partial,
                     }
@@ -229,6 +231,7 @@ pub fn ResultsTable(
                         locale,
                         value: display_stats.n_references,
                         secondary_value: None,
+                        secondary_label: None,
                         noun: CountNoun::Reference,
                         plus: stats_partial,
                     }
@@ -237,6 +240,7 @@ pub fn ResultsTable(
                         value: entries_value,
                         secondary_value: (entries_unique_value != entries_value)
                             .then_some(entries_unique_value),
+                        secondary_label: Some(t(locale, TextKey::Unique)),
                         noun: CountNoun::Entry,
                         plus: false,
                     }
@@ -755,6 +759,7 @@ fn StatBadge(
     locale: Locale,
     value: usize,
     secondary_value: Option<usize>,
+    secondary_label: Option<&'static str>,
     noun: CountNoun,
     plus: bool,
 ) -> Element {
@@ -766,11 +771,17 @@ fn StatBadge(
     let label = count_label(locale, noun, value);
     rsx! {
         div { class: "stat-badge",
-            span { class: "stat-value", "{display_value}" }
-            if let Some(secondary) = secondary_value {
-                span { class: "stat-value-secondary mono", " ({secondary})" }
+            div { class: "stat-value-row",
+                span { class: "stat-value", "{display_value}" }
+                if let Some(secondary) = secondary_value {
+                    div { class: "stat-secondary-row",
+                        span { class: "stat-value-secondary mono", "{secondary}" }
+                        if let Some(label) = secondary_label {
+                            span { class: "stat-secondary-label", "{label}" }
+                        }
+                    }
+                }
             }
-            " "
             span { class: "stat-label", "{label}" }
         }
     }

@@ -345,7 +345,11 @@ fn App() -> Element {
                                     Some("format=csv source=api_url"),
                                 );
                                 let trigger_timer = perf::start_timer("LOTUS:download_csv_trigger");
-                                trigger_download(&filename, "text/csv;charset=utf-8", &urls.csv_url);
+                                trigger_download(
+                                    &filename,
+                                    "text/csv;charset=utf-8",
+                                    &urls.csv_url,
+                                );
                                 let trigger_elapsed =
                                     perf::end_timer("LOTUS:download_csv_trigger", trigger_timer);
                                 log_timing_evt(
@@ -480,7 +484,11 @@ fn App() -> Element {
                                     Some("format=rdf source=api_url"),
                                 );
                                 let trigger_timer = perf::start_timer("LOTUS:download_rdf_trigger");
-                                trigger_download(&filename, "text/turtle;charset=utf-8", &urls.rdf_url);
+                                trigger_download(
+                                    &filename,
+                                    "text/turtle;charset=utf-8",
+                                    &urls.rdf_url,
+                                );
                                 let trigger_elapsed =
                                     perf::end_timer("LOTUS:download_rdf_trigger", trigger_timer);
                                 log_timing_evt(
@@ -645,6 +653,16 @@ fn App() -> Element {
                         }
                     }
                     p { class: "page-sub", "{t(*locale.read(), TextKey::PageSubtitle)}" }
+                    p { class: "page-archive-note",
+                        span { class: "page-archive-label", "{t(*locale.read(), TextKey::ArchiveNotice)}" }
+                        a {
+                            class: "page-archive-link mono",
+                            href: "https://doi.org/10.5281/zenodo.5794106",
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            "10.5281/zenodo.5794106"
+                        }
+                    }
                     if let Some(qid) = resolved_qid.read().as_deref() {
                         p { class: "page-meta",
                             span { class: "meta-key", "{t(*locale.read(), TextKey::ResolvedTaxon)}" }
@@ -1183,9 +1201,7 @@ async fn do_search(
         }
     };
 
-    if !direct_download_mode
-        && let Some(api_base) = api::api_base_url()
-    {
+    if !direct_download_mode && let Some(api_base) = api::api_base_url() {
         log_info_evt(
             "search",
             "api",
