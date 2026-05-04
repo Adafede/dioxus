@@ -108,7 +108,7 @@ jobs:
       - name: Install cargo-deny
         run: cargo install cargo-deny --version 0.19.4 --locked
       - name: Install cargo-audit
-        run: cargo install cargo-audit --version 0.22.0 --locked
+        run: cargo install cargo-audit --version 0.22.1 --locked
       - name: Show supply-chain tool versions
         run: |
           cargo deny --version
