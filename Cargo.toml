@@ -12,7 +12,7 @@ members = [
 edition = "2024"
 version = "0.1.0"
 rust-version = "1.95"
-license = "AGPL-3.0"
+license = "AGPL-3.0-only"
 repository = "https://github.com/adafede/dioxus"
 
 # ── Shared dependency versions ────────────────────────────────────────────────
