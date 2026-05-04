@@ -20,6 +20,19 @@ use crate::models::{
     ElementState, SearchCriteria, SmilesSearchType,
 };
 
+const SUBSCRIPT_DIGIT_MAPPINGS: [(char, char); 10] = [
+    ('₀', '0'),
+    ('₁', '1'),
+    ('₂', '2'),
+    ('₃', '3'),
+    ('₄', '4'),
+    ('₅', '5'),
+    ('₆', '6'),
+    ('₇', '7'),
+    ('₈', '8'),
+    ('₉', '9'),
+];
+
 // ── Common SPARQL prefixes ────────────────────────────────────────────────────
 
 const PREFIXES: &str = r#"
@@ -529,20 +542,9 @@ CONSTRUCT {{
 }
 
 fn normalize_digits_expr(var: &str) -> String {
-    [
-        ('₀', '0'),
-        ('₁', '1'),
-        ('₂', '2'),
-        ('₃', '3'),
-        ('₄', '4'),
-        ('₅', '5'),
-        ('₆', '6'),
-        ('₇', '7'),
-        ('₈', '8'),
-        ('₉', '9'),
-    ]
-    .into_iter()
-    .fold(var.to_string(), |acc, (from, to)| {
+    SUBSCRIPT_DIGIT_MAPPINGS
+        .into_iter()
+        .fold(var.to_string(), |acc, (from, to)| {
         format!(r#"REPLACE({acc}, "{from}", "{to}")"#)
     })
 }
@@ -558,20 +560,15 @@ fn element_count_bind(symbol: &str, out_var: &str) -> String {
 
 fn normalize_formula_digits(s: &str) -> String {
     s.chars()
-        .map(|c| match c {
-            '₀' => '0',
-            '₁' => '1',
-            '₂' => '2',
-            '₃' => '3',
-            '₄' => '4',
-            '₅' => '5',
-            '₆' => '6',
-            '₇' => '7',
-            '₈' => '8',
-            '₉' => '9',
-            _ => c,
-        })
+        .map(normalize_formula_digit)
         .collect()
+}
+
+fn normalize_formula_digit(c: char) -> char {
+    SUBSCRIPT_DIGIT_MAPPINGS
+        .iter()
+        .find_map(|(from, to)| (*from == c).then_some(*to))
+        .unwrap_or(c)
 }
 
 #[cfg(test)]
@@ -638,5 +635,16 @@ mod tests {
         assert!(q.contains("STR(?compound)"));
         assert!(q.contains("COALESCE(STR(?taxon), \"\")"));
         assert!(q.contains("COALESCE(STR(?ref_qid), \"\")"));
+    }
+
+    #[test]
+    fn subscript_digit_normalizers_stay_in_sync() {
+        assert_eq!(normalize_formula_digits("C₆H₁₂O₆"), "C6H12O6");
+
+        let expr = normalize_digits_expr("?_formula_nospace");
+        for (from, to) in SUBSCRIPT_DIGIT_MAPPINGS {
+            assert!(expr.contains(&format!("\"{from}\"")));
+            assert!(expr.contains(&format!("\"{to}\"")));
+        }
     }
 }
