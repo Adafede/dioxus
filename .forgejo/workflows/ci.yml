@@ -106,9 +106,13 @@ jobs:
           fetch-depth: 1
       - uses: https://github.com/dtolnay/rust-toolchain@stable
       - name: Install cargo-deny
-        run: cargo install cargo-deny --locked
+        run: cargo install cargo-deny --version 0.19.4 --locked
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+        run: cargo install cargo-audit --version 0.22.0 --locked
+      - name: Show supply-chain tool versions
+        run: |
+          cargo deny --version
+          cargo audit --version
       - name: Cargo deny
         run: cargo deny check advisories bans licenses sources
       - name: Cargo audit
