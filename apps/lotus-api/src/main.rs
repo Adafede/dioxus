@@ -184,14 +184,11 @@ impl AppConfig {
         let port = parse_u16_env(get("PORT"), "PORT", 8787)?;
         let default_limit = parse_usize_env(get("DEFAULT_LIMIT"), "DEFAULT_LIMIT", 500)?
             .clamp(1, models::TABLE_ROW_LIMIT);
-        let request_timeout_ms = parse_usize_env(
-            get("REQUEST_TIMEOUT_MS"),
-            "REQUEST_TIMEOUT_MS",
-            45_000,
-        )?
-        .clamp(1_000, 300_000);
-        let max_concurrency = parse_usize_env(get("MAX_CONCURRENCY"), "MAX_CONCURRENCY", 256)?
-            .clamp(8, 4_096);
+        let request_timeout_ms =
+            parse_usize_env(get("REQUEST_TIMEOUT_MS"), "REQUEST_TIMEOUT_MS", 45_000)?
+                .clamp(1_000, 300_000);
+        let max_concurrency =
+            parse_usize_env(get("MAX_CONCURRENCY"), "MAX_CONCURRENCY", 256)?.clamp(8, 4_096);
         let max_body_bytes = parse_usize_env(get("MAX_BODY_BYTES"), "MAX_BODY_BYTES", 1_048_576)?
             .clamp(4 * 1024, 16 * 1024 * 1024);
 
@@ -650,7 +647,9 @@ async fn search(
         log::warn!("event=search state=timeout phase=taxon");
         ApiError::upstream("taxon resolution timed out")
     })??;
-    if let Some(qid) = resolved_taxon_qid.as_deref() && qid != "*" {
+    if let Some(qid) = resolved_taxon_qid.as_deref()
+        && qid != "*"
+    {
         criteria.taxon = qid.to_string();
     }
     let execution_query = build_execution_query(&criteria, resolved_taxon_qid.as_deref());
@@ -667,7 +666,10 @@ async fn search(
     );
     let cache_key = build_search_cache_key(&execution_query, limit, include_counts);
     if let Some(cached) = search_cache_get(&state, &cache_key) {
-        state.metrics.search_cache_hits.fetch_add(1, Ordering::Relaxed);
+        state
+            .metrics
+            .search_cache_hits
+            .fetch_add(1, Ordering::Relaxed);
         log::debug!("event=search state=cache_hit");
         return Ok(Json(cached));
     }
@@ -844,7 +846,9 @@ async fn export_urls(
         log::warn!("event=export state=timeout phase=taxon");
         ApiError::upstream("taxon resolution timed out")
     })??;
-    if let Some(qid) = resolved_taxon_qid.as_deref() && qid != "*" {
+    if let Some(qid) = resolved_taxon_qid.as_deref()
+        && qid != "*"
+    {
         criteria.taxon = qid.to_string();
     }
     let query = build_execution_query(&criteria, resolved_taxon_qid.as_deref());
@@ -852,7 +856,10 @@ async fn export_urls(
     log::info!("event=export state=start");
 
     if let Some(cached) = export_cache_get(&state, &cache_key) {
-        state.metrics.export_cache_hits.fetch_add(1, Ordering::Relaxed);
+        state
+            .metrics
+            .export_cache_hits
+            .fetch_add(1, Ordering::Relaxed);
         log::debug!("event=export state=cache_hit");
         return Ok(Json(cached));
     }
@@ -1261,7 +1268,9 @@ fn search_inflight_remove(state: &AppState, key: &str, cell: &InFlightSearch, is
         return;
     }
     if let Ok(mut inflight) = state.search_inflight.lock()
-        && inflight.get(key).is_some_and(|current| Arc::ptr_eq(current, cell))
+        && inflight
+            .get(key)
+            .is_some_and(|current| Arc::ptr_eq(current, cell))
     {
         inflight.remove(key);
     }
@@ -1282,7 +1291,9 @@ fn export_inflight_remove(state: &AppState, key: &str, cell: &InFlightExport, is
         return;
     }
     if let Ok(mut inflight) = state.export_inflight.lock()
-        && inflight.get(key).is_some_and(|current| Arc::ptr_eq(current, cell))
+        && inflight
+            .get(key)
+            .is_some_and(|current| Arc::ptr_eq(current, cell))
     {
         inflight.remove(key);
     }
