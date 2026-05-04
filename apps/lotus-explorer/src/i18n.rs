@@ -957,10 +957,10 @@ pub fn err_wasm_large_query_fallback(locale: Locale, err_msg: &str) -> String {
 
 pub fn aria_wikidata_entity(locale: Locale, qid: &str) -> String {
     match locale {
-        Locale::En => format!("Wikidata {qid}"),
-        Locale::Fr => format!("Wikidata {qid}"),
-        Locale::De => format!("Wikidata {qid}"),
-        Locale::It => format!("Wikidata {qid}"),
+        Locale::En => format!("Open Wikidata entity {qid}"),
+        Locale::Fr => format!("Ouvrir l'entité Wikidata {qid}"),
+        Locale::De => format!("Wikidata-Entität {qid} öffnen"),
+        Locale::It => format!("Apri l'entità Wikidata {qid}"),
     }
 }
 
@@ -1184,5 +1184,13 @@ mod tests {
         assert_eq!(count_label(Locale::En, CountNoun::Taxon, 2), "Taxa");
         assert_eq!(count_label(Locale::Fr, CountNoun::Entry, 1), "Entrée");
         assert_eq!(count_label(Locale::Fr, CountNoun::Entry, 2), "Entrées");
+    }
+
+    #[test]
+    fn wikidata_entity_aria_labels_include_an_action() {
+        assert_eq!(aria_wikidata_entity(Locale::En, "Q42"), "Open Wikidata entity Q42");
+        assert!(aria_wikidata_entity(Locale::Fr, "Q42").contains("Ouvrir"));
+        assert!(aria_wikidata_entity(Locale::De, "Q42").contains("öffnen"));
+        assert!(aria_wikidata_entity(Locale::It, "Q42").contains("Apri"));
     }
 }
