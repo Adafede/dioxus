@@ -1188,7 +1188,10 @@ mod tests {
 
     #[test]
     fn wikidata_entity_aria_labels_include_an_action() {
-        assert_eq!(aria_wikidata_entity(Locale::En, "Q42"), "Open Wikidata entity Q42");
+        assert_eq!(
+            aria_wikidata_entity(Locale::En, "Q42"),
+            "Open Wikidata entity Q42"
+        );
         assert!(aria_wikidata_entity(Locale::Fr, "Q42").contains("Ouvrir"));
         assert!(aria_wikidata_entity(Locale::De, "Q42").contains("öffnen"));
         assert!(aria_wikidata_entity(Locale::It, "Q42").contains("Apri"));

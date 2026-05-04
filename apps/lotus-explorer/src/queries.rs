@@ -545,8 +545,8 @@ fn normalize_digits_expr(var: &str) -> String {
     SUBSCRIPT_DIGIT_MAPPINGS
         .into_iter()
         .fold(var.to_string(), |acc, (from, to)| {
-        format!(r#"REPLACE({acc}, "{from}", "{to}")"#)
-    })
+            format!(r#"REPLACE({acc}, "{from}", "{to}")"#)
+        })
 }
 
 fn element_count_bind(symbol: &str, out_var: &str) -> String {
@@ -559,9 +559,7 @@ fn element_count_bind(symbol: &str, out_var: &str) -> String {
 }
 
 fn normalize_formula_digits(s: &str) -> String {
-    s.chars()
-        .map(normalize_formula_digit)
-        .collect()
+    s.chars().map(normalize_formula_digit).collect()
 }
 
 fn normalize_formula_digit(c: char) -> char {
