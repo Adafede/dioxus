@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 use crate::models::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -243,7 +246,13 @@ pub fn api_base_url() -> Option<String> {
 
 fn normalize_api_base(value: &str) -> Option<String> {
     let trimmed = value.trim().trim_end_matches('/');
-    (!trimmed.is_empty()).then(|| trimmed.to_string())
+    if trimmed.is_empty() {
+        return None;
+    }
+    if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
+        return None;
+    }
+    Some(trimmed.to_string())
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -319,5 +328,11 @@ mod tests {
             normalize_api_base("https://api.example.org/"),
             Some("https://api.example.org".to_string())
         );
+    }
+
+    #[test]
+    fn normalize_base_rejects_non_http_scheme() {
+        assert_eq!(normalize_api_base("ftp://api.example.org"), None);
+        assert_eq!(normalize_api_base("api.example.org"), None);
     }
 }

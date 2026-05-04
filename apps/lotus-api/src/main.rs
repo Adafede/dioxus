@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 use axum::{
     Json, Router,
     extract::State,
@@ -26,6 +29,121 @@ use models::{CompoundEntry, DatasetStats, SearchCriteria, SmilesSearchType, Taxo
 #[derive(Clone)]
 struct AppState {
     default_limit: usize,
+}
+
+#[derive(Debug, Clone)]
+struct AppConfig {
+    host: String,
+    port: u16,
+    default_limit: usize,
+    cors_allowed_origins: Option<Vec<axum::http::HeaderValue>>,
+}
+
+impl AppConfig {
+    fn from_env() -> Result<Self, String> {
+        Self::from_provider(|name| std::env::var(name).ok())
+    }
+
+    fn from_provider<F>(mut get: F) -> Result<Self, String>
+    where
+        F: FnMut(&str) -> Option<String>,
+    {
+        let host = get("HOST")
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "127.0.0.1".to_string());
+
+        let port = parse_u16_env(get("PORT"), "PORT", 8787)?;
+        let default_limit = parse_usize_env(get("DEFAULT_LIMIT"), "DEFAULT_LIMIT", 500)?
+            .clamp(1, models::TABLE_ROW_LIMIT);
+
+        let app_env = get("APP_ENV")
+            .map(|value| value.trim().to_ascii_lowercase())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "development".to_string());
+
+        let cors_allowed_origins = parse_allowed_origins(get("CORS_ALLOWED_ORIGINS"))?;
+        if app_env == "production" && cors_allowed_origins.is_none() {
+            return Err(
+                "APP_ENV=production requires CORS_ALLOWED_ORIGINS to be configured".to_string(),
+            );
+        }
+
+        Ok(Self {
+            host,
+            port,
+            default_limit,
+            cors_allowed_origins,
+        })
+    }
+
+    fn bind_addr(&self) -> Result<SocketAddr, String> {
+        format!("{}:{}", self.host, self.port)
+            .parse::<SocketAddr>()
+            .map_err(|e| format!("invalid bind address '{}:{}': {e}", self.host, self.port))
+    }
+}
+
+fn parse_u16_env(value: Option<String>, name: &str, default_value: u16) -> Result<u16, String> {
+    match value {
+        Some(raw) => raw
+            .trim()
+            .parse::<u16>()
+            .map_err(|e| format!("{name} must be a valid u16: {e}")),
+        None => Ok(default_value),
+    }
+}
+
+fn parse_usize_env(
+    value: Option<String>,
+    name: &str,
+    default_value: usize,
+) -> Result<usize, String> {
+    match value {
+        Some(raw) => raw
+            .trim()
+            .parse::<usize>()
+            .map_err(|e| format!("{name} must be a valid non-negative integer: {e}")),
+        None => Ok(default_value),
+    }
+}
+
+fn parse_allowed_origins(
+    value: Option<String>,
+) -> Result<Option<Vec<axum::http::HeaderValue>>, String> {
+    let Some(raw) = value else {
+        return Ok(None);
+    };
+
+    let mut origins = Vec::new();
+    for origin in raw
+        .split(',')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+    {
+        if !origin.starts_with("http://") && !origin.starts_with("https://") {
+            return Err(format!(
+                "CORS_ALLOWED_ORIGINS entry '{origin}' must start with http:// or https://"
+            ));
+        }
+        let header = axum::http::HeaderValue::from_str(origin)
+            .map_err(|_| format!("CORS_ALLOWED_ORIGINS contains invalid origin '{origin}'"))?;
+        origins.push(header);
+    }
+
+    if origins.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(origins))
+    }
+}
+
+fn build_cors_layer(config: &AppConfig) -> CorsLayer {
+    let layer = CorsLayer::new().allow_methods(Any).allow_headers(Any);
+    match &config.cors_allowed_origins {
+        Some(origins) => layer.allow_origin(origins.clone()),
+        None => layer.allow_origin(Any),
+    }
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -225,10 +343,14 @@ struct ExportUrlResponse {
 struct ApiDoc;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    let state = AppState { default_limit: 500 };
+    let config = AppConfig::from_env().map_err(std::io::Error::other)?;
+
+    let state = AppState {
+        default_limit: config.default_limit,
+    };
 
     let app = Router::new()
         .route("/health", get(health))
@@ -236,27 +358,14 @@ async fn main() {
         .route("/v1/export-url", post(export_urls))
         .merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()))
         .with_state(state)
-        .layer(
-            CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods(Any)
-                .allow_headers(Any),
-        );
+        .layer(build_cors_layer(&config));
 
-    let port: u16 = std::env::var("PORT")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(8787);
-    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let addr: SocketAddr = format!("{host}:{port}")
-        .parse()
-        .expect("valid bind address");
+    let addr = config.bind_addr().map_err(std::io::Error::other)?;
     log::info!("lotus-api listening on http://{addr}");
 
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .expect("bind listener");
-    axum::serve(listener, app).await.expect("serve api");
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
 }
 
 #[utoipa::path(get, path = "/health", responses((status = 200, description = "Service health")))]
@@ -415,7 +524,7 @@ fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiError> {
 
     c.formula_enabled = has_formula_input;
     if let Some(v) = req.formula_exact.as_deref() {
-        c.formula_exact = v.to_string();
+        c.formula_exact = v.trim().to_string();
     }
 
     c.c_min = req.c_min.unwrap_or(c.c_min);
@@ -587,6 +696,14 @@ fn qlever_export_url(query: &str, action: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+
+    fn map_provider(values: &[(&str, &str)]) -> HashMap<String, String> {
+        values
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
+    }
 
     #[test]
     fn supports_u16_formula_ranges() {
@@ -622,5 +739,41 @@ mod tests {
 
         let c = apply_request(&req).expect("valid criteria");
         assert_eq!(c.c_max, 300);
+    }
+
+    #[test]
+    fn config_uses_safe_defaults() {
+        let env = HashMap::<String, String>::new();
+        let cfg = AppConfig::from_provider(|name| env.get(name).cloned()).expect("valid config");
+        assert_eq!(cfg.host, "127.0.0.1");
+        assert_eq!(cfg.port, 8787);
+        assert_eq!(cfg.default_limit, 500);
+        assert!(cfg.cors_allowed_origins.is_none());
+    }
+
+    #[test]
+    fn config_rejects_invalid_port() {
+        let env = map_provider(&[("PORT", "abc")]);
+        let err = AppConfig::from_provider(|name| env.get(name).cloned())
+            .expect_err("invalid PORT should fail");
+        assert!(err.contains("PORT"));
+    }
+
+    #[test]
+    fn production_requires_explicit_cors_allowlist() {
+        let env = map_provider(&[("APP_ENV", "production")]);
+        let err = AppConfig::from_provider(|name| env.get(name).cloned())
+            .expect_err("production without CORS origins should fail");
+        assert!(err.contains("CORS_ALLOWED_ORIGINS"));
+    }
+
+    #[test]
+    fn parses_comma_separated_cors_origins() {
+        let env = map_provider(&[(
+            "CORS_ALLOWED_ORIGINS",
+            "https://api.example.org, http://localhost:5173",
+        )]);
+        let cfg = AppConfig::from_provider(|name| env.get(name).cloned()).expect("valid config");
+        assert_eq!(cfg.cors_allowed_origins.as_ref().map(Vec::len), Some(2));
     }
 }

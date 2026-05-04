@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Key design choices:
 //!
 //! * All queries use `STRAFTER(STR(?entity), "http://www.wikidata.org/entity/")` to

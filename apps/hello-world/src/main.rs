@@ -5,6 +5,9 @@
 //! Then edit Cargo.toml and Dioxus.toml (change `name`), and add
 //! `"apps/my-new-app"` to the workspace members in the root Cargo.toml.
 
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 #![allow(non_snake_case)]
 
 use dioxus::prelude::*;

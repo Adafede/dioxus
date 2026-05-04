@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Minimal i18n helpers for user-facing count labels and status text.
 //!
 //! Keep this intentionally small: one locale switch and a couple of

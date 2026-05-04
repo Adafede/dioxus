@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Performance monitoring and logging infrastructure for SPARQL query execution.
 //!
 //! Provides cross-platform logging (WASM console vs. native stdout) and fine-grained

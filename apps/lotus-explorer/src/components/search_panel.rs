@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 use crate::i18n::{Locale, TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::{StructureKind, classify_structure};

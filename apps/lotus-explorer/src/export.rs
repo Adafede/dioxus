@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Export metadata helpers for LOTUS results.
 
 use crate::models::{ElementState, SearchCriteria, SmilesSearchType};

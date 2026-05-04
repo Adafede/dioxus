@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! SPARQL execution and CSV parsing for the LOTUS explorer.
 //!
 //! Delegates URL construction and low-level helpers to the `shared` crate.
