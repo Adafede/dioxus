@@ -24,13 +24,13 @@ allow = [
   "Unicode-3.0",
   "CDLA-Permissive-2.0",
 ]
-exceptions = [
-  # First-party workspace crates are intentionally AGPL-3.0-only.
-  { crate = "hello-world", allow = ["AGPL-3.0-only"] },
-  { crate = "lotus-api", allow = ["AGPL-3.0-only"] },
-  { crate = "lotus-explorer", allow = ["AGPL-3.0-only"] },
-  { crate = "shared", allow = ["AGPL-3.0-only"] },
-]
+
+[licenses.private]
+# All workspace crates are unpublished first-party applications/libraries
+# (`publish = false`) and use AGPL-3.0-only intentionally. Keep third-party
+# dependency licensing strict while excluding these private crates from the
+# dependency-license gate.
+ignore = true
 
 # ── Dependency bans ───────────────────────────────────────────────────────────
 [bans]
