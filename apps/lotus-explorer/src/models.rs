@@ -42,7 +42,7 @@ pub fn runtime_table_row_limit() -> usize {
     #[cfg(target_arch = "wasm32")]
     {
         // Start conservatively on wasm and scale up only on capable devices.
-        let mut limit = 600usize;
+        let mut limit = 500usize;
         if let Some(win) = web_sys::window() {
             let win_js = wasm_bindgen::JsValue::from(win);
             if let Ok(nav) =
