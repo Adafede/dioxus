@@ -26,7 +26,7 @@ allow = [
   # Weak copyleft — file-level, compatible with AGPL-3.0
   "MPL-2.0",
   # Strong copyleft — only allowed when the dep IS us (our own crates)
-  "AGPL-3.0-only",
+  "AGPL-3.0",
 ]
 
 # ── Dependency bans ───────────────────────────────────────────────────────────
