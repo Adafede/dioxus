@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Generic SPARQL/QLever HTTP utilities shared by all apps.
 //!
 //! QLever CSV export URL format:
@@ -273,4 +276,40 @@ pub fn clean_doi(s: &str) -> Option<String> {
         }
     }
     Some(t.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_html_gateway_payloads() {
+        let html = "<html><head><title>502 Bad Gateway</title></head><body>nginx</body></html>";
+        assert!(looks_like_gateway_error(html));
+    }
+
+    #[test]
+    fn does_not_flag_regular_csv_as_gateway_error() {
+        let csv = "compound,taxon\nQ1,Q2\n";
+        assert!(!looks_like_gateway_error(csv));
+    }
+
+    #[test]
+    fn extract_qid_handles_uri_and_plain_qid() {
+        assert_eq!(
+            extract_qid("http://www.wikidata.org/entity/Q12345"),
+            "Q12345".to_string()
+        );
+        assert_eq!(extract_qid("Q999"), "Q999".to_string());
+        assert_eq!(extract_qid("not-a-qid"), "".to_string());
+    }
+
+    #[test]
+    fn clean_doi_normalizes_prefixed_urls() {
+        assert_eq!(
+            clean_doi("https://doi.org/10.1000/xyz"),
+            Some("10.1000/xyz".to_string())
+        );
+        assert_eq!(clean_doi("  "), None);
+    }
 }
