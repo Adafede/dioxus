@@ -97,7 +97,7 @@ jobs:
 
   supply-chain:
     name: Supply-chain checks
-    runs-on: codeberg-small
+    runs-on: codeberg-medium
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
