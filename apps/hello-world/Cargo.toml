@@ -2,7 +2,11 @@
 name = "hello-world"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.95"
+license = "AGPL-3.0-only"
 description = "Minimal Dioxus web-app template — copy this to start a new app"
+keywords = ["dioxus", "wasm", "template"]
+categories = ["wasm", "web-programming"]
 
 [[bin]]
 name = "hello-world"
@@ -12,4 +16,8 @@ path = "src/main.rs"
 console_log = { workspace = true }
 dioxus = { workspace = true }
 log = { workspace = true }
-shared = { path = "../../crates/shared" }
+shared = { path = "../../crates/shared", version = "0.1.0" }
+
+[lints]
+workspace = true
+

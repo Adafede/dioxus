@@ -2,7 +2,11 @@
 name = "lotus-explorer"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.95"
+license = "AGPL-3.0-only"
 description = "LOTUS Wikidata natural-product occurrence explorer"
+keywords = ["lotus", "wikidata", "dioxus", "wasm", "natural-products"]
+categories = ["wasm", "web-programming", "science"]
 
 [[bin]]
 name = "lotus-explorer"
@@ -22,7 +26,7 @@ reqwest = { workspace = true, features = ["json"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { version = "0.11", default-features = false }
-shared = { path = "../../crates/shared" }
+shared = { path = "../../crates/shared", version = "0.1.0" }
 urlencoding = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -41,3 +45,7 @@ web-sys = { workspace = true, features = [
   "Url",
   "Window",
 ] }
+
+[lints]
+workspace = true
+

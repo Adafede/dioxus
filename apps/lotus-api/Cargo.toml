@@ -2,7 +2,11 @@
 name = "lotus-api"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.95"
+license = "AGPL-3.0-only"
 description = "OpenAPI service for LOTUS explorer search and export workflows"
+keywords = ["lotus", "wikidata", "sparql", "api", "natural-products"]
+categories = ["web-programming::http-server", "science"]
 
 [[bin]]
 name = "lotus-api"
@@ -15,10 +19,13 @@ env_logger = "0.11"
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-shared = { path = "../../crates/shared" }
+shared = { path = "../../crates/shared", version = "0.1.0" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
 tower-http = { version = "0.6", features = ["cors", "trace"] }
 urlencoding = { workspace = true }
 utoipa = { version = "5", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+[lints]
+workspace = true
 
