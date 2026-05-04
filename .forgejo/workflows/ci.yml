@@ -5,12 +5,30 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   native:
-    name: Native checks + tests
+    name: Native workspace checks
     runs-on: codeberg-medium
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
 
       - name: Install Rust
         uses: https://github.com/dtolnay/rust-toolchain@stable
@@ -18,23 +36,24 @@ jobs:
       - name: Cache
         uses: https://github.com/Swatinem/rust-cache@v2
 
-      - name: Check lotus-api
-        run: cargo check -p lotus-api
+      - name: Check workspace (all targets)
+        run: cargo check --workspace --all-targets --locked
 
-      - name: Test lotus-api
-        run: cargo test -p lotus-api --quiet
+      - name: Test workspace (all targets)
+        run: cargo test --workspace --all-targets --locked --quiet
 
-      - name: Check lotus-explorer
-        run: cargo check -p lotus-explorer
-
-      - name: Test lotus-explorer
-        run: cargo test -p lotus-explorer --quiet
+      - name: Build docs
+        run: cargo doc --workspace --no-deps --locked
 
   wasm:
     name: Type-check explorer (wasm32)
     runs-on: codeberg-small
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
 
       - name: Install Rust
         uses: https://github.com/dtolnay/rust-toolchain@stable
@@ -45,25 +64,53 @@ jobs:
         uses: https://github.com/Swatinem/rust-cache@v2
 
       - name: Check lotus-explorer for wasm32
-        run: cargo check -p lotus-explorer --target wasm32-unknown-unknown
+        run: cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked
 
   clippy:
     name: Clippy
     runs-on: codeberg-small
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
       - uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: https://github.com/Swatinem/rust-cache@v2
-      - run: cargo clippy -- -D warnings
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   fmt:
     name: Rustfmt
     runs-on: codeberg-small
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
       - uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
+
+  supply-chain:
+    name: Supply-chain checks
+    runs-on: codeberg-small
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Cargo deny
+        run: cargo deny check advisories bans licenses sources
+      - name: Cargo audit
+        run: cargo audit
+
