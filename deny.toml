@@ -1,0 +1,76 @@
+[graph]
+all-features = true
+
+# ── Advisories ────────────────────────────────────────────────────────────────
+[advisories]
+db-path = "$CARGO_HOME/advisory-dbs"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+ignore = []
+
+# ── Licenses ──────────────────────────────────────────────────────────────────
+# All project crates are AGPL-3.0-only. Dependencies must carry a license
+# compatible with the GNU Affero General Public License v3 or later.
+[licenses]
+confidence-threshold = 0.8
+allow = [
+  # Permissive — fully compatible with AGPL-3.0
+  "MIT",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "CC0-1.0",
+  "Unicode-3.0",
+  "CDLA-Permissive-2.0",
+  # Weak copyleft — file-level, compatible with AGPL-3.0
+  "MPL-2.0",
+  # Strong copyleft — only allowed when the dep IS us (our own crates)
+  "AGPL-3.0-only",
+]
+
+# ── Dependency bans ───────────────────────────────────────────────────────────
+[bans]
+# Deny wildcard version requirements — they are unpinnable and unsafe.
+wildcards = "deny"
+# Highlight all transitive duplication in output.
+highlight = "all"
+
+# Duplicates: deny by default; carve out intentional exceptions below.
+multiple-versions = "deny"
+
+# Intentional version-duplicate exceptions.
+# These arise from the Dioxus ecosystem pulling in different patch versions
+# of shared foundational crates. Each entry is re-audited on every dependency
+# update cycle; remove them as soon as the dep graph converges.
+skip = [
+  # dioxus-* and axum pull different minor versions of syn / proc-macro2
+  { name = "syn" },
+  { name = "proc-macro2" },
+  { name = "quote" },
+  # hyper 0.x → 1.x transition (axum 0.8 uses hyper 1, some transitives use 0.x)
+  { name = "hyper" },
+  { name = "http" },
+  { name = "http-body" },
+  { name = "rustls" },
+  { name = "rustls-pki-types" },
+  { name = "tokio-rustls" },
+  # wasm-bindgen / web-sys minor skew between workspace and transitive deps
+  { name = "wasm-bindgen" },
+  { name = "wasm-bindgen-backend" },
+  { name = "wasm-bindgen-macro" },
+  { name = "wasm-bindgen-macro-support" },
+  { name = "wasm-bindgen-shared" },
+  # hashbrown minor skew
+  { name = "hashbrown" },
+  # indexmap minor skew
+  { name = "indexmap" },
+]
+
+# ── Source policy ─────────────────────────────────────────────────────────────
+# Only allow crates from crates.io. Deny all unknown registries and git deps.
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

@@ -1,0 +1,12 @@
+# .cargo/config.toml — workspace-wide Cargo configuration
+# https://doc.rust-lang.org/cargo/reference/config.html
+
+[build]
+# NOTE: Do NOT put `-D warnings` here — it applies to every dependency crate,
+# not just workspace members, and breaks builds when upstream crates have
+# allowed deprecations. Use `cargo clippy -- -D warnings` (as done in CI/make)
+# to deny warnings scoped to workspace code only.
+
+[profile.test]
+# Keep test binaries debuggable without full dev-optimisation overhead.
+opt-level = 1
