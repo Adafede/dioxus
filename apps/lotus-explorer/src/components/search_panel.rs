@@ -381,16 +381,30 @@ const KETCHER_URL: &str = "ketcher/index.html";
 
 #[component]
 pub fn KetcherPanel(locale: Locale) -> Element {
+    let mut mount_iframe = use_signal(|| false);
+
     rsx! {
         details { class: "ketcher-panel",
-            summary { "{t(locale, TextKey::KetcherSummary)}" }
+            summary {
+                onclick: move |_| *mount_iframe.write() = true,
+                "{t(locale, TextKey::KetcherSummary)}"
+            }
             div { class: "ketcher-wrap",
-                iframe {
-                    src: "{KETCHER_URL}",
-                    class: "ketcher-iframe",
-                    title: "{t(locale, TextKey::KetcherIframeTitle)}",
-                    "loading": "lazy",
-                    "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
+                if *mount_iframe.read() {
+                    iframe {
+                        src: "{KETCHER_URL}",
+                        class: "ketcher-iframe",
+                        title: "{t(locale, TextKey::KetcherIframeTitle)}",
+                        "loading": "lazy",
+                        "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
+                    }
+                } else {
+                    div {
+                        class: "ketcher-iframe",
+                        role: "status",
+                        aria_live: "polite",
+                        "{t(locale, TextKey::KetcherSummary)}"
+                    }
                 }
                 p { class: "form-hint ketcher-hint",
                     "{t(locale, TextKey::KetcherHintA)}"
