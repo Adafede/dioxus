@@ -18,6 +18,26 @@ This service reuses query and parser logic from `apps/lotus-explorer` and is int
 cargo run -p lotus-api
 ```
 
+### Runtime configuration
+
+`lotus-api` reads runtime settings from environment variables:
+
+- `HOST` (default: `127.0.0.1`)
+- `PORT` (default: `8787`)
+- `DEFAULT_LIMIT` (default: `500`, clamped to service max)
+- `APP_ENV` (`development` by default; set to `production` in deployments)
+- `CORS_ALLOWED_ORIGINS` (comma-separated list, required when `APP_ENV=production`)
+
+Example production-like run:
+
+```bash
+APP_ENV=production \
+CORS_ALLOWED_ORIGINS="https://explorer.example.org" \
+HOST=0.0.0.0 \
+PORT=8787 \
+cargo run -p lotus-api
+```
+
 Then open:
 
 - `http://127.0.0.1:8787/docs`
@@ -39,6 +59,7 @@ curl -sS http://127.0.0.1:8787/v1/search \
 
 ## Notes
 
-- CORS is enabled for all origins by default (easy frontend integration).
-- For production, restrict CORS and place this service behind your existing reverse proxy.
+- In development, CORS allows all origins for easy local integration.
+- In production (`APP_ENV=production`), startup fails unless `CORS_ALLOWED_ORIGINS` is explicitly configured.
+- Keep this service behind your reverse proxy and TLS termination layer.
 

@@ -27,6 +27,13 @@ rustup target add wasm32-unknown-unknown
 cargo install dioxus-cli --version 0.7.6 --locked
 ```
 
+Optional security tooling for full local parity with CI supply-chain checks:
+
+```bash
+cargo install cargo-deny --locked
+cargo install cargo-audit --locked
+```
+
 ## Running an app locally
 
 ```bash
@@ -148,6 +155,18 @@ make build APP=lotus-explorer
 # output → target/dx/lotus-explorer/release/web/public/
 ```
 
+Run the same quality gate used by CI before release:
+
+```bash
+make qa
+```
+
+Run supply-chain checks (advisories, licenses, source policy):
+
+```bash
+make supply-chain
+```
+
 ## Adding a new app
 
 1. `cp -r apps/hello-world apps/my-new-app`
@@ -189,9 +208,27 @@ When both are present, `download=true` takes priority over `execute=true`.
 
 GitHub Actions / Forgejo Actions validate and publish on every push to `main`:
 
-- native `cargo check` / `cargo test` for `lotus-api`
-- native `cargo check` / `cargo test` for `lotus-explorer`
+- workspace `cargo check --workspace --all-targets`
+- workspace `cargo test --workspace --all-targets`
 - `wasm32-unknown-unknown` compile check for `lotus-explorer`
-- `cargo clippy -- -D warnings` across the whole workspace
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo doc --workspace --no-deps`
+- `cargo deny check advisories bans licenses sources`
+- `cargo audit`
 - build and push `lotus-api` Docker image to `codeberg.org` / `ghcr.io`
+
+## Production checklist
+
+- Run `make qa` on a clean branch.
+- Build release web artifacts with `make build APP=<app>`.
+- For API deployments, set `APP_ENV=production` and a strict `CORS_ALLOWED_ORIGINS` allowlist.
+- Keep `Cargo.lock` committed and deploy from tagged revisions.
+
+## Governance
+
+- Contribution guide: `CONTRIBUTING.md`
+- Security policy: `SECURITY.md`
+- Release process: `.github/RELEASE_CHECKLIST.md`
+- Change history: `CHANGELOG.md`
+- License: `LICENSE` (GNU AGPL v3.0)
 
