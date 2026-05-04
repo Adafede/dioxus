@@ -107,9 +107,11 @@ struct RuntimeMetrics {
     search_cache_hits: AtomicU64,
     search_cache_misses: AtomicU64,
     search_inflight_waits: AtomicU64,
+    search_upstream_hits: AtomicU64,
     export_cache_hits: AtomicU64,
     export_cache_misses: AtomicU64,
     export_inflight_waits: AtomicU64,
+    export_upstream_hits: AtomicU64,
     overload_rejections: AtomicU64,
     request_timeouts: AtomicU64,
 }
@@ -121,9 +123,11 @@ struct HealthResponse {
     search_cache_hits: u64,
     search_cache_misses: u64,
     search_inflight_waits: u64,
+    search_upstream_hits: u64,
     export_cache_hits: u64,
     export_cache_misses: u64,
     export_inflight_waits: u64,
+    export_upstream_hits: u64,
     overload_rejections: u64,
     request_timeouts: u64,
 }
@@ -135,9 +139,11 @@ impl RuntimeMetrics {
             search_cache_hits: AtomicU64::new(0),
             search_cache_misses: AtomicU64::new(0),
             search_inflight_waits: AtomicU64::new(0),
+            search_upstream_hits: AtomicU64::new(0),
             export_cache_hits: AtomicU64::new(0),
             export_cache_misses: AtomicU64::new(0),
             export_inflight_waits: AtomicU64::new(0),
+            export_upstream_hits: AtomicU64::new(0),
             overload_rejections: AtomicU64::new(0),
             request_timeouts: AtomicU64::new(0),
         }
@@ -150,9 +156,11 @@ impl RuntimeMetrics {
             search_cache_hits: self.search_cache_hits.load(Ordering::Relaxed),
             search_cache_misses: self.search_cache_misses.load(Ordering::Relaxed),
             search_inflight_waits: self.search_inflight_waits.load(Ordering::Relaxed),
+            search_upstream_hits: self.search_upstream_hits.load(Ordering::Relaxed),
             export_cache_hits: self.export_cache_hits.load(Ordering::Relaxed),
             export_cache_misses: self.export_cache_misses.load(Ordering::Relaxed),
             export_inflight_waits: self.export_inflight_waits.load(Ordering::Relaxed),
+            export_upstream_hits: self.export_upstream_hits.load(Ordering::Relaxed),
             overload_rejections: self.overload_rejections.load(Ordering::Relaxed),
             request_timeouts: self.request_timeouts.load(Ordering::Relaxed),
         }
@@ -676,6 +684,12 @@ async fn search(
             .search_inflight_waits
             .fetch_add(1, Ordering::Relaxed);
         log::debug!("event=search state=coalesced_wait");
+    } else {
+        state
+            .metrics
+            .search_upstream_hits
+            .fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=search state=upstream_hit");
     }
     let metrics = state.metrics.clone();
     let request_timeout = state.request_timeout;
@@ -855,6 +869,12 @@ async fn export_urls(
             .export_inflight_waits
             .fetch_add(1, Ordering::Relaxed);
         log::debug!("event=export state=coalesced_wait");
+    } else {
+        state
+            .metrics
+            .export_upstream_hits
+            .fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=export state=upstream_hit");
     }
     let response = cell
         .get_or_init(|| async {

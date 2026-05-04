@@ -785,38 +785,85 @@ fn App() -> Element {
                     }
                 }
 
-                if *loading.read() {
-                    div {
-                        class: "loading-state",
-                        role: "status",
-                        aria_live: "polite",
-                        aria_busy: "true",
-                        div { class: "spinner-lg", "aria-hidden": "true" }
-                        p { "{query_phase_text(*locale.read(), *query_phase.read())}" }
-                        p { class: "loading-hint", "{t(*locale.read(), TextKey::LoadingHint)}" }
-                    }
-                } else if entries.read().is_empty() && error.read().is_none() && !*searched_once.read() {
-                    WelcomeScreen { locale: *locale.read() }
-                } else {
-                    ResultsTable {
-                        entries,
-                        locale: *locale.read(),
-                        stats: stats.read().clone(),
-                        total_stats: total_stats.read().clone(),
-                        total_matches: *total_matches.read(),
-                        display_capped_rows: *display_capped_rows.read(),
-                        sort,
-                        page,
-                        sparql_query: sparql_query.read().clone(),
-                        metadata_json: metadata_json.read().clone(),
-                        query_hash: query_hash.read().clone(),
-                        result_hash: result_hash.read().clone(),
-                        criteria,
-                    }
+                ResultsViewport {
+                    locale: *locale.read(),
+                    loading: *loading.read(),
+                    query_phase: *query_phase.read(),
+                    has_error: error.read().is_some(),
+                    searched_once: *searched_once.read(),
+                    entries,
+                    stats: stats.read().clone(),
+                    total_stats: total_stats.read().clone(),
+                    total_matches: *total_matches.read(),
+                    display_capped_rows: *display_capped_rows.read(),
+                    sort,
+                    page,
+                    sparql_query: sparql_query.read().clone(),
+                    metadata_json: metadata_json.read().clone(),
+                    query_hash: query_hash.read().clone(),
+                    result_hash: result_hash.read().clone(),
+                    criteria,
                 }
 
                 Footer { locale: *locale.read() }
             }
+        }
+    }
+}
+
+#[component]
+fn ResultsViewport(
+    locale: Locale,
+    loading: bool,
+    query_phase: QueryPhase,
+    has_error: bool,
+    searched_once: bool,
+    entries: ReadSignal<Rows>,
+    stats: DatasetStats,
+    total_stats: Option<DatasetStats>,
+    total_matches: Option<usize>,
+    display_capped_rows: bool,
+    sort: Signal<SortState>,
+    page: Signal<usize>,
+    sparql_query: Option<String>,
+    metadata_json: Option<String>,
+    query_hash: Option<String>,
+    result_hash: Option<String>,
+    criteria: ReadSignal<SearchCriteria>,
+) -> Element {
+    if loading {
+        return rsx! {
+            div {
+                class: "loading-state",
+                role: "status",
+                aria_live: "polite",
+                aria_busy: "true",
+                div { class: "spinner-lg", "aria-hidden": "true" }
+                p { "{query_phase_text(locale, query_phase)}" }
+                p { class: "loading-hint", "{t(locale, TextKey::LoadingHint)}" }
+            }
+        };
+    }
+
+    if entries.read().is_empty() && !has_error && !searched_once {
+        return rsx! { WelcomeScreen { locale } };
+    }
+
+    rsx! {
+        ResultsTable {
+            entries,
+            locale,
+            stats,
+            total_stats,
+            total_matches,
+            display_capped_rows,
+            sort,
+            page,
+            sparql_query,
+            metadata_json,
+            query_hash,
+            result_hash,
+            criteria,
         }
     }
 }
