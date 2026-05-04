@@ -9,11 +9,11 @@ members = [
 ]
 
 [workspace.package]
-edition = "2024"
 version = "0.1.0"
+edition = "2024"
 rust-version = "1.95"
-license = "AGPL-3.0-only"
 repository = "https://github.com/adafede/dioxus"
+license = "AGPL-3.0-only"
 
 # ── Shared dependency versions ────────────────────────────────────────────────
 [workspace.dependencies]
@@ -32,12 +32,12 @@ urlencoding = "2"
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = ["Window"] }
 
+[workspace.lints.clippy]
+dbg_macro = "deny"
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 unused_must_use = "deny"
-
-[workspace.lints.clippy]
-dbg_macro = "deny"
 
 [profile.dev]
 opt-level = 1

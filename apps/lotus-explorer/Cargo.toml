@@ -3,11 +3,11 @@ name = "lotus-explorer"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
-license = "AGPL-3.0-only"
-publish = false
 description = "LOTUS Wikidata natural-product occurrence explorer"
-keywords = ["lotus", "wikidata", "dioxus", "wasm", "natural-products"]
-categories = ["wasm", "web-programming", "science"]
+license = "AGPL-3.0-only"
+keywords = ["dioxus", "lotus", "natural-products", "wasm", "wikidata"]
+categories = ["science", "wasm", "web-programming"]
+publish = false
 
 [[bin]]
 name = "lotus-explorer"
@@ -49,4 +49,3 @@ web-sys = { workspace = true, features = [
 
 [lints]
 workspace = true
-

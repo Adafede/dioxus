@@ -3,11 +3,11 @@ name = "shared"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
-license = "AGPL-3.0-only"
-publish = false
 description = "Shared SPARQL utilities for dioxus-apps"
-keywords = ["sparql", "wikidata", "csv", "wasm"]
-categories = ["web-programming", "science"]
+license = "AGPL-3.0-only"
+keywords = ["csv", "sparql", "wasm", "wikidata"]
+categories = ["science", "web-programming"]
+publish = false
 
 [dependencies]
 csv = { workspace = true }
@@ -22,4 +22,3 @@ web-sys = { workspace = true, features = ["Window"] }
 
 [lints]
 workspace = true
-

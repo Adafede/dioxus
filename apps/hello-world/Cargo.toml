@@ -3,11 +3,11 @@ name = "hello-world"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
-license = "AGPL-3.0-only"
-publish = false
 description = "Minimal Dioxus web-app template — copy this to start a new app"
-keywords = ["dioxus", "wasm", "template"]
+license = "AGPL-3.0-only"
+keywords = ["dioxus", "template", "wasm"]
 categories = ["wasm", "web-programming"]
+publish = false
 
 [[bin]]
 name = "hello-world"
@@ -21,4 +21,3 @@ shared = { path = "../../crates/shared", version = "0.1.0" }
 
 [lints]
 workspace = true
-
