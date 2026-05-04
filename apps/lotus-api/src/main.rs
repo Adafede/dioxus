@@ -3,7 +3,7 @@
 
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{DefaultBodyLimit, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -13,11 +13,18 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
     net::SocketAddr,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
     time::{Duration, Instant},
 };
-use tokio::sync::OnceCell;
-use tower_http::{compression::CompressionLayer, cors::{Any, CorsLayer}, trace::TraceLayer};
+use tokio::{sync::{OnceCell, Semaphore}, time::timeout};
+use tower_http::{
+    compression::CompressionLayer,
+    cors::{Any, CorsLayer},
+    trace::TraceLayer,
+};
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -36,11 +43,14 @@ use models::{CompoundEntry, DatasetStats, SearchCriteria, SmilesSearchType, Taxo
 #[derive(Clone)]
 struct AppState {
     default_limit: usize,
+    request_timeout: Duration,
+    request_permits: Arc<Semaphore>,
     taxon_cache: Arc<Mutex<HashMap<String, CachedTaxonResolution>>>,
     search_cache: Arc<Mutex<HashMap<String, CachedSearchResponse>>>,
     export_cache: Arc<Mutex<HashMap<String, CachedExportResponse>>>,
     search_inflight: Arc<Mutex<HashMap<String, InFlightSearch>>>,
     export_inflight: Arc<Mutex<HashMap<String, InFlightExport>>>,
+    metrics: Arc<RuntimeMetrics>,
 }
 
 const TAXON_CACHE_TTL: Duration = Duration::from_secs(60 * 60 * 24);
@@ -76,7 +86,67 @@ struct AppConfig {
     host: String,
     port: u16,
     default_limit: usize,
+    request_timeout: Duration,
+    max_concurrency: usize,
+    max_body_bytes: usize,
     cors_allowed_origins: Option<Vec<axum::http::HeaderValue>>,
+}
+
+struct RuntimeMetrics {
+    started_at: Instant,
+    search_cache_hits: AtomicU64,
+    search_cache_misses: AtomicU64,
+    search_inflight_waits: AtomicU64,
+    export_cache_hits: AtomicU64,
+    export_cache_misses: AtomicU64,
+    export_inflight_waits: AtomicU64,
+    overload_rejections: AtomicU64,
+    request_timeouts: AtomicU64,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+struct HealthResponse {
+    status: &'static str,
+    uptime_secs: u64,
+    search_cache_hits: u64,
+    search_cache_misses: u64,
+    search_inflight_waits: u64,
+    export_cache_hits: u64,
+    export_cache_misses: u64,
+    export_inflight_waits: u64,
+    overload_rejections: u64,
+    request_timeouts: u64,
+}
+
+impl RuntimeMetrics {
+    fn new() -> Self {
+        Self {
+            started_at: Instant::now(),
+            search_cache_hits: AtomicU64::new(0),
+            search_cache_misses: AtomicU64::new(0),
+            search_inflight_waits: AtomicU64::new(0),
+            export_cache_hits: AtomicU64::new(0),
+            export_cache_misses: AtomicU64::new(0),
+            export_inflight_waits: AtomicU64::new(0),
+            overload_rejections: AtomicU64::new(0),
+            request_timeouts: AtomicU64::new(0),
+        }
+    }
+
+    fn snapshot(&self) -> HealthResponse {
+        HealthResponse {
+            status: "ok",
+            uptime_secs: self.started_at.elapsed().as_secs(),
+            search_cache_hits: self.search_cache_hits.load(Ordering::Relaxed),
+            search_cache_misses: self.search_cache_misses.load(Ordering::Relaxed),
+            search_inflight_waits: self.search_inflight_waits.load(Ordering::Relaxed),
+            export_cache_hits: self.export_cache_hits.load(Ordering::Relaxed),
+            export_cache_misses: self.export_cache_misses.load(Ordering::Relaxed),
+            export_inflight_waits: self.export_inflight_waits.load(Ordering::Relaxed),
+            overload_rejections: self.overload_rejections.load(Ordering::Relaxed),
+            request_timeouts: self.request_timeouts.load(Ordering::Relaxed),
+        }
+    }
 }
 
 impl AppConfig {
@@ -96,6 +166,16 @@ impl AppConfig {
         let port = parse_u16_env(get("PORT"), "PORT", 8787)?;
         let default_limit = parse_usize_env(get("DEFAULT_LIMIT"), "DEFAULT_LIMIT", 500)?
             .clamp(1, models::TABLE_ROW_LIMIT);
+        let request_timeout_ms = parse_usize_env(
+            get("REQUEST_TIMEOUT_MS"),
+            "REQUEST_TIMEOUT_MS",
+            45_000,
+        )?
+        .clamp(1_000, 300_000);
+        let max_concurrency = parse_usize_env(get("MAX_CONCURRENCY"), "MAX_CONCURRENCY", 256)?
+            .clamp(8, 4_096);
+        let max_body_bytes = parse_usize_env(get("MAX_BODY_BYTES"), "MAX_BODY_BYTES", 1_048_576)?
+            .clamp(4 * 1024, 16 * 1024 * 1024);
 
         let app_env = get("APP_ENV")
             .map(|value| value.trim().to_ascii_lowercase())
@@ -113,6 +193,9 @@ impl AppConfig {
             host,
             port,
             default_limit,
+            request_timeout: Duration::from_millis(request_timeout_ms as u64),
+            max_concurrency,
+            max_body_bytes,
             cors_allowed_origins,
         })
     }
@@ -392,6 +475,7 @@ struct ExportUrlResponse {
     paths(health, search, export_urls),
     components(
         schemas(
+            HealthResponse,
             SearchRequest,
             SearchResponse,
             SearchStats,
@@ -414,11 +498,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state = AppState {
         default_limit: config.default_limit,
+        request_timeout: config.request_timeout,
+        request_permits: Arc::new(Semaphore::new(config.max_concurrency)),
         taxon_cache: Arc::new(Mutex::new(HashMap::new())),
         search_cache: Arc::new(Mutex::new(HashMap::new())),
         export_cache: Arc::new(Mutex::new(HashMap::new())),
         search_inflight: Arc::new(Mutex::new(HashMap::new())),
         export_inflight: Arc::new(Mutex::new(HashMap::new())),
+        metrics: Arc::new(RuntimeMetrics::new()),
     };
 
     let app = Router::new()
@@ -427,21 +514,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/v1/export-url", post(export_urls))
         .merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()))
         .with_state(state)
+        .layer(DefaultBodyLimit::max(config.max_body_bytes))
         .layer(TraceLayer::new_for_http())
         .layer(CompressionLayer::new())
         .layer(build_cors_layer(&config));
 
     let addr = config.bind_addr().map_err(std::io::Error::other)?;
-    log::info!("lotus-api listening on http://{addr}");
+    log::info!(
+        "lotus-api listening on http://{addr} timeout_ms={} max_concurrency={} max_body_bytes={}",
+        config.request_timeout.as_millis(),
+        config.max_concurrency,
+        config.max_body_bytes,
+    );
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
     Ok(())
 }
 
-#[utoipa::path(get, path = "/health", responses((status = 200, description = "Service health")))]
-async fn health() -> &'static str {
-    "ok"
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        if let Ok(mut signal) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            let _ = signal.recv().await;
+        }
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses((status = 200, description = "Service health", body = HealthResponse))
+)]
+async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
+    Json(state.metrics.snapshot())
 }
 
 #[utoipa::path(
@@ -458,6 +578,20 @@ async fn search(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,
 ) -> Result<Json<SearchResponse>, ApiError> {
+    let _permit = state
+        .request_permits
+        .try_acquire()
+        .map_err(|_| {
+            state
+                .metrics
+                .overload_rejections
+                .fetch_add(1, Ordering::Relaxed);
+            ApiError {
+                status: StatusCode::SERVICE_UNAVAILABLE,
+                message: "Server is busy, retry shortly".to_string(),
+            }
+        })?;
+
     let mut criteria = apply_request(&req)?;
     if !criteria.is_valid() {
         return Err(ApiError::bad_request(
@@ -465,8 +599,18 @@ async fn search(
         ));
     }
 
-    let (resolved_taxon_qid, warning) =
-        resolve_taxon_qid_cached(&state, criteria.taxon.clone()).await?;
+    let (resolved_taxon_qid, warning) = timeout(
+        state.request_timeout,
+        resolve_taxon_qid_cached(&state, criteria.taxon.clone()),
+    )
+    .await
+    .map_err(|_| {
+        state
+            .metrics
+            .request_timeouts
+            .fetch_add(1, Ordering::Relaxed);
+        ApiError::upstream("taxon resolution timed out")
+    })??;
     if let Some(qid) = resolved_taxon_qid.as_deref()
         && qid != "*"
     {
@@ -480,20 +624,43 @@ async fn search(
     let include_counts = req.include_counts.unwrap_or(true);
     let cache_key = build_search_cache_key(&execution_query, limit, include_counts);
     if let Some(cached) = search_cache_get(&state, &cache_key) {
+        state.metrics.search_cache_hits.fetch_add(1, Ordering::Relaxed);
         return Ok(Json(cached));
     }
+    state
+        .metrics
+        .search_cache_misses
+        .fetch_add(1, Ordering::Relaxed);
 
     let (cell, is_leader) = search_inflight_cell(&state, &cache_key);
+    if !is_leader {
+        state
+            .metrics
+            .search_inflight_waits
+            .fetch_add(1, Ordering::Relaxed);
+    }
+    let metrics = state.metrics.clone();
+    let request_timeout = state.request_timeout;
     let response = cell
         .get_or_init(|| async {
-            build_search_response(
-                &execution_query,
-                limit,
-                include_counts,
-                resolved_taxon_qid.clone(),
-                warning.clone(),
+            timeout(
+                request_timeout,
+                build_search_response(
+                    &execution_query,
+                    limit,
+                    include_counts,
+                    resolved_taxon_qid.clone(),
+                    warning.clone(),
+                ),
             )
             .await
+            .map_err(|_| {
+                metrics.request_timeouts.fetch_add(1, Ordering::Relaxed);
+                SharedApiError {
+                    status: StatusCode::BAD_GATEWAY,
+                    message: "search execution timed out".to_string(),
+                }
+            })?
             .map_err(SharedApiError::from)
         })
         .await
@@ -578,6 +745,20 @@ async fn export_urls(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,
 ) -> Result<Json<ExportUrlResponse>, ApiError> {
+    let _permit = state
+        .request_permits
+        .try_acquire()
+        .map_err(|_| {
+            state
+                .metrics
+                .overload_rejections
+                .fetch_add(1, Ordering::Relaxed);
+            ApiError {
+                status: StatusCode::SERVICE_UNAVAILABLE,
+                message: "Server is busy, retry shortly".to_string(),
+            }
+        })?;
+
     let mut criteria = apply_request(&req)?;
     if !criteria.is_valid() {
         return Err(ApiError::bad_request(
@@ -585,8 +766,18 @@ async fn export_urls(
         ));
     }
 
-    let (resolved_taxon_qid, _warning) =
-        resolve_taxon_qid_cached(&state, criteria.taxon.clone()).await?;
+    let (resolved_taxon_qid, _warning) = timeout(
+        state.request_timeout,
+        resolve_taxon_qid_cached(&state, criteria.taxon.clone()),
+    )
+    .await
+    .map_err(|_| {
+        state
+            .metrics
+            .request_timeouts
+            .fetch_add(1, Ordering::Relaxed);
+        ApiError::upstream("taxon resolution timed out")
+    })??;
     if let Some(qid) = resolved_taxon_qid.as_deref()
         && qid != "*"
     {
@@ -596,10 +787,21 @@ async fn export_urls(
     let cache_key = build_export_cache_key(&query);
 
     if let Some(cached) = export_cache_get(&state, &cache_key) {
+        state.metrics.export_cache_hits.fetch_add(1, Ordering::Relaxed);
         return Ok(Json(cached));
     }
+    state
+        .metrics
+        .export_cache_misses
+        .fetch_add(1, Ordering::Relaxed);
 
     let (cell, is_leader) = export_inflight_cell(&state, &cache_key);
+    if !is_leader {
+        state
+            .metrics
+            .export_inflight_waits
+            .fetch_add(1, Ordering::Relaxed);
+    }
     let response = cell
         .get_or_init(|| async {
             Ok::<_, SharedApiError>(ExportUrlResponse {
@@ -1102,7 +1304,23 @@ mod tests {
         assert_eq!(cfg.host, "127.0.0.1");
         assert_eq!(cfg.port, 8787);
         assert_eq!(cfg.default_limit, 500);
+        assert_eq!(cfg.request_timeout, Duration::from_millis(45_000));
+        assert_eq!(cfg.max_concurrency, 256);
+        assert_eq!(cfg.max_body_bytes, 1_048_576);
         assert!(cfg.cors_allowed_origins.is_none());
+    }
+
+    #[test]
+    fn config_reads_performance_tunables() {
+        let env = map_provider(&[
+            ("REQUEST_TIMEOUT_MS", "120000"),
+            ("MAX_CONCURRENCY", "512"),
+            ("MAX_BODY_BYTES", "2097152"),
+        ]);
+        let cfg = AppConfig::from_provider(|name| env.get(name).cloned()).expect("valid config");
+        assert_eq!(cfg.request_timeout, Duration::from_millis(120_000));
+        assert_eq!(cfg.max_concurrency, 512);
+        assert_eq!(cfg.max_body_bytes, 2_097_152);
     }
 
     #[test]
