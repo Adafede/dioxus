@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::models::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType};
+use crate::{
+    models::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType},
+    queries,
+};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::{Arc, OnceLock};
@@ -93,15 +96,16 @@ struct SearchRequest {
 impl SearchRequest {
     fn from_criteria(criteria: &SearchCriteria, limit: usize, include_counts: bool) -> Self {
         let taxon = criteria.taxon.trim();
-        let smiles = criteria.smiles.trim();
+        let smiles = normalize_structure_for_api(&criteria.smiles);
+        let has_smiles = !smiles.is_empty();
         let formula_exact = criteria.formula_exact.trim();
 
         Self {
             taxon: (!taxon.is_empty()).then(|| taxon.to_string()),
-            smiles: (!smiles.is_empty()).then(|| smiles.to_string()),
-            smiles_search_type: (!smiles.is_empty()).then_some(criteria.smiles_search_type.into()),
+            smiles: has_smiles.then_some(smiles),
+            smiles_search_type: has_smiles.then_some(criteria.smiles_search_type.into()),
             smiles_threshold: (criteria.smiles_search_type == SmilesSearchType::Similarity
-                && !smiles.is_empty())
+                && has_smiles)
             .then_some(criteria.smiles_threshold),
             mass_min: criteria.has_mass_filter().then_some(criteria.mass_min),
             mass_max: criteria.has_mass_filter().then_some(criteria.mass_max),
@@ -130,6 +134,14 @@ impl SearchRequest {
     }
 }
 
+fn normalize_structure_for_api(value: &str) -> String {
+    let normalized = value.replace("\r\n", "\n").replace('\r', "\n");
+    match queries::classify_structure(&normalized) {
+        queries::StructureKind::MolfileV2000 | queries::StructureKind::MolfileV3000 => normalized,
+        _ => normalized.trim().to_string(),
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct SearchResponse {
     pub resolved_taxon_qid: Option<String>,
@@ -138,6 +150,15 @@ pub struct SearchResponse {
     pub rows: Vec<RowDto>,
     pub total_matches: usize,
     pub stats: SearchStats,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExportUrlResponse {
+    #[allow(dead_code)]
+    pub query: String,
+    pub csv_url: String,
+    pub json_url: String,
+    pub rdf_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -211,6 +232,12 @@ pub async fn search(
     let base = api_base_url().ok_or(ApiClientError::NotConfigured)?;
     let request = SearchRequest::from_criteria(criteria, limit, include_counts);
     post_json(&base, "/v1/search", &request).await
+}
+
+pub async fn export_urls(criteria: &SearchCriteria) -> Result<ExportUrlResponse, ApiClientError> {
+    let base = api_base_url().ok_or(ApiClientError::NotConfigured)?;
+    let request = SearchRequest::from_criteria(criteria, 1, false);
+    post_json(&base, "/v1/export-url", &request).await
 }
 
 pub fn api_base_url() -> Option<String> {
@@ -338,5 +365,19 @@ mod tests {
     fn normalize_base_rejects_non_http_scheme() {
         assert_eq!(normalize_api_base("ftp://api.example.org"), None);
         assert_eq!(normalize_api_base("api.example.org"), None);
+    }
+
+    #[test]
+    fn request_builder_preserves_multiline_molfile_whitespace() {
+        let criteria = SearchCriteria {
+            taxon: "*".into(),
+            smiles: "\n  Mrv\n\n  0  0  0  0  0  0            999 V3000\nM  END\n".into(),
+            ..SearchCriteria::default()
+        };
+
+        let request = SearchRequest::from_criteria(&criteria, 10, false);
+        let smiles = request.smiles.expect("smiles payload");
+        assert!(smiles.starts_with('\n'));
+        assert!(smiles.contains("V3000"));
     }
 }

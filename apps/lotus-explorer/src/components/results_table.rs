@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+use crate::api;
 use crate::download::trigger_download;
 use crate::export;
 use crate::i18n::{
@@ -263,6 +264,7 @@ pub fn ResultsTable(
                                     onclick: {
                                         let q = query.to_string();
                                         move |_| {
+                                            let criteria_snapshot = criteria.read().clone();
                                             let filename = csv_filename.read().clone();
                                             *download_busy.write() = true;
                                             *download_status.write() = Some(
@@ -278,7 +280,31 @@ pub fn ResultsTable(
                                                          q.contains("SERVICE"), q.len())),
                                                  );
                                                  let fetch_timer = perf::start_timer("LOTUS:table_download_csv_fetch");
-                                                if let Ok(body) = sparql::execute_sparql(&q).await {
+                                                 if let Ok(urls) = api::export_urls(&criteria_snapshot).await {
+                                                     let fetch_elapsed = perf::end_timer(
+                                                         "LOTUS:table_download_csv_fetch",
+                                                         fetch_timer,
+                                                     );
+                                                     log_download_timing(
+                                                         "table_fetch",
+                                                         "success",
+                                                         fetch_elapsed,
+                                                         Some("format=csv source=api_url"),
+                                                     );
+                                                     let trigger_timer =
+                                                         perf::start_timer("LOTUS:table_download_csv_trigger");
+                                                     trigger_download(&filename, "text/csv;charset=utf-8", &urls.csv_url);
+                                                     let trigger_elapsed = perf::end_timer(
+                                                         "LOTUS:table_download_csv_trigger",
+                                                         trigger_timer,
+                                                     );
+                                                     log_download_timing(
+                                                         "table_trigger",
+                                                         "success",
+                                                         trigger_elapsed,
+                                                         Some("format=csv source=api_url"),
+                                                     );
+                                                 } else if let Ok(body) = sparql::execute_sparql(&q).await {
                                                     let fetch_elapsed = perf::end_timer(
                                                         "LOTUS:table_download_csv_fetch",
                                                         fetch_timer,
@@ -331,6 +357,7 @@ pub fn ResultsTable(
                                         let q = query.to_string();
                                         move |_| {
                                             let q = q.clone();
+                                            let criteria_snapshot = criteria.read().clone();
                                             let filename = json_filename.read().clone();
                                             *download_busy.write() = true;
                                             *download_status.write() = Some(
@@ -339,7 +366,36 @@ pub fn ResultsTable(
                                             spawn(async move {
                                                 log_download_evt("table_dispatch", "started", Some("format=json"));
                                                 let fetch_timer = perf::start_timer("LOTUS:table_download_json_fetch");
-                                                if let Ok(body) = sparql::execute_sparql_format(
+                                                if let Ok(urls) = api::export_urls(&criteria_snapshot).await {
+                                                    let fetch_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_json_fetch",
+                                                        fetch_timer,
+                                                    );
+                                                    log_download_timing(
+                                                        "table_fetch",
+                                                        "success",
+                                                        fetch_elapsed,
+                                                        Some("format=json source=api_url"),
+                                                    );
+                                                    let trigger_timer = perf::start_timer(
+                                                        "LOTUS:table_download_json_trigger",
+                                                    );
+                                                    trigger_download(
+                                                        &filename,
+                                                        "application/sparql-results+json;charset=utf-8",
+                                                        &urls.json_url,
+                                                    );
+                                                    let trigger_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_json_trigger",
+                                                        trigger_timer,
+                                                    );
+                                                    log_download_timing(
+                                                        "table_trigger",
+                                                        "success",
+                                                        trigger_elapsed,
+                                                        Some("format=json source=api_url"),
+                                                    );
+                                                } else if let Ok(body) = sparql::execute_sparql_format(
                                                         &q,
                                                         SparqlResponseFormat::SparqlJson,
                                                     )
@@ -402,6 +458,7 @@ pub fn ResultsTable(
                                         let q = query.to_string();
                                         move |_| {
                                             let q = queries::query_construct_from_select(&q);
+                                            let criteria_snapshot = criteria.read().clone();
                                             let filename = rdf_filename.read().clone();
                                             *download_busy.write() = true;
                                             *download_status.write() = Some(
@@ -410,7 +467,36 @@ pub fn ResultsTable(
                                             spawn(async move {
                                                 log_download_evt("table_dispatch", "started", Some("format=rdf"));
                                                 let fetch_timer = perf::start_timer("LOTUS:table_download_rdf_fetch");
-                                                if let Ok(body) = sparql::execute_sparql_format(
+                                                if let Ok(urls) = api::export_urls(&criteria_snapshot).await {
+                                                    let fetch_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_rdf_fetch",
+                                                        fetch_timer,
+                                                    );
+                                                    log_download_timing(
+                                                        "table_fetch",
+                                                        "success",
+                                                        fetch_elapsed,
+                                                        Some("format=rdf source=api_url"),
+                                                    );
+                                                    let trigger_timer = perf::start_timer(
+                                                        "LOTUS:table_download_rdf_trigger",
+                                                    );
+                                                    trigger_download(
+                                                        &filename,
+                                                        "text/turtle;charset=utf-8",
+                                                        &urls.rdf_url,
+                                                    );
+                                                    let trigger_elapsed = perf::end_timer(
+                                                        "LOTUS:table_download_rdf_trigger",
+                                                        trigger_timer,
+                                                    );
+                                                    log_download_timing(
+                                                        "table_trigger",
+                                                        "success",
+                                                        trigger_elapsed,
+                                                        Some("format=rdf source=api_url"),
+                                                    );
+                                                } else if let Ok(body) = sparql::execute_sparql_format(
                                                         &q,
                                                         SparqlResponseFormat::Turtle,
                                                     )

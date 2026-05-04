@@ -9,7 +9,12 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 use tower_http::cors::{Any, CorsLayer};
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
@@ -29,6 +34,34 @@ use models::{CompoundEntry, DatasetStats, SearchCriteria, SmilesSearchType, Taxo
 #[derive(Clone)]
 struct AppState {
     default_limit: usize,
+    taxon_cache: Arc<Mutex<HashMap<String, CachedTaxonResolution>>>,
+    search_cache: Arc<Mutex<HashMap<String, CachedSearchResponse>>>,
+    export_cache: Arc<Mutex<HashMap<String, CachedExportResponse>>>,
+}
+
+const TAXON_CACHE_TTL: Duration = Duration::from_secs(60 * 60 * 24);
+const SEARCH_CACHE_TTL: Duration = Duration::from_secs(60 * 3);
+const EXPORT_CACHE_TTL: Duration = Duration::from_secs(60 * 10);
+const MAX_TAXON_CACHE_ENTRIES: usize = 512;
+const MAX_SEARCH_CACHE_ENTRIES: usize = 128;
+const MAX_EXPORT_CACHE_ENTRIES: usize = 256;
+
+#[derive(Clone)]
+struct CachedTaxonResolution {
+    inserted_at: Instant,
+    value: (Option<String>, Option<String>),
+}
+
+#[derive(Clone)]
+struct CachedSearchResponse {
+    inserted_at: Instant,
+    value: SearchResponse,
+}
+
+#[derive(Clone)]
+struct CachedExportResponse {
+    inserted_at: Instant,
+    value: ExportUrlResponse,
 }
 
 #[derive(Debug, Clone)]
@@ -247,7 +280,7 @@ struct SearchRequest {
     include_counts: Option<bool>,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 struct SearchStats {
     n_compounds: usize,
     n_taxa: usize,
@@ -268,7 +301,7 @@ impl From<DatasetStats> for SearchStats {
     }
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 struct RowDto {
     compound_qid: String,
     name: String,
@@ -305,7 +338,7 @@ impl From<CompoundEntry> for RowDto {
     }
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 struct SearchResponse {
     resolved_taxon_qid: Option<String>,
     warning: Option<String>,
@@ -315,7 +348,7 @@ struct SearchResponse {
     stats: SearchStats,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 struct ExportUrlResponse {
     query: String,
     csv_url: String,
@@ -350,6 +383,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state = AppState {
         default_limit: config.default_limit,
+        taxon_cache: Arc::new(Mutex::new(HashMap::new())),
+        search_cache: Arc::new(Mutex::new(HashMap::new())),
+        export_cache: Arc::new(Mutex::new(HashMap::new())),
     };
 
     let app = Router::new()
@@ -394,7 +430,7 @@ async fn search(
         ));
     }
 
-    let (resolved_taxon_qid, warning) = resolve_taxon_qid(criteria.taxon.clone()).await?;
+    let (resolved_taxon_qid, warning) = resolve_taxon_qid_cached(&state, criteria.taxon.clone()).await?;
     if let Some(qid) = resolved_taxon_qid.as_deref()
         && qid != "*"
     {
@@ -405,37 +441,71 @@ async fn search(
         .limit
         .unwrap_or(state.default_limit)
         .clamp(1, models::TABLE_ROW_LIMIT);
-    let display_query = queries::query_with_limit(&execution_query, limit);
-
-    let rows_bytes = sparql::execute_sparql_bytes(&display_query)
-        .await
-        .map_err(|e| ApiError::upstream(format!("display query failed: {e}")))?;
-    let rows = sparql::parse_compounds_csv_display_bytes(&rows_bytes, limit)
-        .map_err(|e| ApiError::upstream(format!("display parse failed: {e}")))?;
-
     let include_counts = req.include_counts.unwrap_or(true);
-    let stats = if include_counts {
-        let count_query = queries::query_counts_from_base(&execution_query);
-        let count_bytes = sparql::execute_sparql_bytes(&count_query)
-            .await
-            .map_err(|e| ApiError::upstream(format!("count query failed: {e}")))?;
-        sparql::parse_counts_csv_bytes(&count_bytes)
-            .map_err(|e| ApiError::upstream(format!("count parse failed: {e}")))?
+    let cache_key = build_search_cache_key(&execution_query, limit, include_counts);
+    if let Some(cached) = search_cache_get(&state, &cache_key) {
+        return Ok(Json(cached));
+    }
+
+    let response = build_search_response(&execution_query, limit, include_counts, resolved_taxon_qid.clone(), warning.clone()).await?;
+    search_cache_put(&state, cache_key, response.clone());
+
+    Ok(Json(response))
+}
+
+async fn build_search_response(
+    execution_query: &str,
+    limit: usize,
+    include_counts: bool,
+    resolved_taxon_qid: Option<String>,
+    warning: Option<String>,
+) -> Result<SearchResponse, ApiError> {
+    let display_query = queries::query_with_limit(execution_query, limit);
+    let count_query = queries::query_counts_from_base(execution_query);
+
+    let rows = if include_counts {
+        let rows_future = async {
+            let rows_bytes = sparql::execute_sparql_bytes(&display_query)
+                .await
+                .map_err(|e| ApiError::upstream(format!("display query failed: {e}")))?;
+            sparql::parse_compounds_csv_display_bytes(&rows_bytes, limit)
+                .map_err(|e| ApiError::upstream(format!("display parse failed: {e}")))
+        };
+        let stats_future = async {
+            let count_bytes = sparql::execute_sparql_bytes(&count_query)
+                .await
+                .map_err(|e| ApiError::upstream(format!("count query failed: {e}")))?;
+            sparql::parse_counts_csv_bytes(&count_bytes)
+                .map_err(|e| ApiError::upstream(format!("count parse failed: {e}")))
+        };
+
+        let (rows, stats) = tokio::try_join!(rows_future, stats_future)?;
+        return Ok(SearchResponse {
+            resolved_taxon_qid,
+            warning,
+            query: execution_query.to_string(),
+            total_matches: stats.n_entries,
+            stats: SearchStats::from(stats),
+            rows: rows.into_iter().map(RowDto::from).collect(),
+        });
     } else {
-        DatasetStats::from_entries(&rows)
+        let rows_bytes = sparql::execute_sparql_bytes(&display_query)
+            .await
+            .map_err(|e| ApiError::upstream(format!("display query failed: {e}")))?;
+        sparql::parse_compounds_csv_display_bytes(&rows_bytes, limit)
+            .map_err(|e| ApiError::upstream(format!("display parse failed: {e}")))?
     };
 
-    let total_matches = stats.n_entries;
-    let rows = rows.into_iter().map(RowDto::from).collect();
+    let stats = DatasetStats::from_entries(&rows);
 
-    Ok(Json(SearchResponse {
+    Ok(SearchResponse {
         resolved_taxon_qid,
         warning,
-        query: execution_query,
-        rows,
-        total_matches,
+        query: execution_query.to_string(),
+        rows: rows.into_iter().map(RowDto::from).collect(),
+        total_matches: stats.n_entries,
         stats: stats.into(),
-    }))
+    })
 }
 
 #[utoipa::path(
@@ -448,7 +518,10 @@ async fn search(
         (status = 502, description = "Upstream SPARQL failure", body = ErrorResponse)
     )
 )]
-async fn export_urls(Json(req): Json<SearchRequest>) -> Result<Json<ExportUrlResponse>, ApiError> {
+async fn export_urls(
+    State(state): State<AppState>,
+    Json(req): Json<SearchRequest>,
+) -> Result<Json<ExportUrlResponse>, ApiError> {
     let mut criteria = apply_request(&req)?;
     if !criteria.is_valid() {
         return Err(ApiError::bad_request(
@@ -456,7 +529,7 @@ async fn export_urls(Json(req): Json<SearchRequest>) -> Result<Json<ExportUrlRes
         ));
     }
 
-    let (resolved_taxon_qid, _warning) = resolve_taxon_qid(criteria.taxon.clone()).await?;
+    let (resolved_taxon_qid, _warning) = resolve_taxon_qid_cached(&state, criteria.taxon.clone()).await?;
     if let Some(qid) = resolved_taxon_qid.as_deref()
         && qid != "*"
     {
@@ -464,7 +537,11 @@ async fn export_urls(Json(req): Json<SearchRequest>) -> Result<Json<ExportUrlRes
     }
     let query = build_execution_query(&criteria, resolved_taxon_qid.as_deref());
 
-    Ok(Json(ExportUrlResponse {
+    if let Some(cached) = export_cache_get(&state, &query) {
+        return Ok(Json(cached));
+    }
+
+    let response = ExportUrlResponse {
         csv_url: qlever_export_url(&query, "csv_export"),
         json_url: qlever_export_url(&query, "sparql_json_export"),
         rdf_url: qlever_export_url(
@@ -472,7 +549,10 @@ async fn export_urls(Json(req): Json<SearchRequest>) -> Result<Json<ExportUrlRes
             "turtle_export",
         ),
         query,
-    }))
+    };
+    export_cache_put(&state, response.query.clone(), response.clone());
+
+    Ok(Json(response))
 }
 
 fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiError> {
@@ -567,7 +647,7 @@ fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiError> {
 }
 
 fn build_execution_query(criteria: &SearchCriteria, resolved_taxon_qid: Option<&str>) -> String {
-    let smiles = criteria.smiles.trim();
+    let smiles = normalized_structure_input(&criteria.smiles);
     let base_query = if !smiles.is_empty() {
         let taxon_for_sachem = match resolved_taxon_qid {
             Some("*") => Some("Q2382443"),
@@ -575,7 +655,7 @@ fn build_execution_query(criteria: &SearchCriteria, resolved_taxon_qid: Option<&
             None => None,
         };
         queries::query_sachem(
-            smiles,
+            &smiles,
             criteria.smiles_search_type,
             criteria.smiles_threshold,
             taxon_for_sachem,
@@ -588,6 +668,32 @@ fn build_execution_query(criteria: &SearchCriteria, resolved_taxon_qid: Option<&
     };
 
     queries::query_with_server_filters(&base_query, criteria)
+}
+
+fn normalized_structure_input(value: &str) -> String {
+    let normalized = value.replace("\r\n", "\n").replace('\r', "\n");
+    match queries::classify_structure(&normalized) {
+        queries::StructureKind::MolfileV2000 | queries::StructureKind::MolfileV3000 => normalized,
+        _ => normalized.trim().to_string(),
+    }
+}
+
+async fn resolve_taxon_qid_cached(
+    state: &AppState,
+    taxon_input: String,
+) -> Result<(Option<String>, Option<String>), ApiError> {
+    let key = taxon_input.trim().to_lowercase();
+    if !key.is_empty()
+        && let Some(cached) = taxon_cache_get(state, &key)
+    {
+        return Ok(cached);
+    }
+
+    let resolved = resolve_taxon_qid(taxon_input).await?;
+    if !key.is_empty() {
+        taxon_cache_put(state, key, resolved.clone());
+    }
+    Ok(resolved)
 }
 
 async fn resolve_taxon_qid(
@@ -693,6 +799,85 @@ fn qlever_export_url(query: &str, action: &str) -> String {
     )
 }
 
+fn build_search_cache_key(query: &str, limit: usize, include_counts: bool) -> String {
+    format!("limit={limit}|include_counts={include_counts}|query={query}")
+}
+
+fn search_cache_get(state: &AppState, key: &str) -> Option<SearchResponse> {
+    let mut cache = state.search_cache.lock().ok()?;
+    prune_cache(&mut cache, SEARCH_CACHE_TTL, MAX_SEARCH_CACHE_ENTRIES, |entry| entry.inserted_at);
+    cache.get(key).map(|entry| entry.value.clone())
+}
+
+fn search_cache_put(state: &AppState, key: String, value: SearchResponse) {
+    if let Ok(mut cache) = state.search_cache.lock() {
+        prune_cache(&mut cache, SEARCH_CACHE_TTL, MAX_SEARCH_CACHE_ENTRIES, |entry| entry.inserted_at);
+        cache.insert(
+            key,
+            CachedSearchResponse {
+                inserted_at: Instant::now(),
+                value,
+            },
+        );
+    }
+}
+
+fn export_cache_get(state: &AppState, key: &str) -> Option<ExportUrlResponse> {
+    let mut cache = state.export_cache.lock().ok()?;
+    prune_cache(&mut cache, EXPORT_CACHE_TTL, MAX_EXPORT_CACHE_ENTRIES, |entry| entry.inserted_at);
+    cache.get(key).map(|entry| entry.value.clone())
+}
+
+fn export_cache_put(state: &AppState, key: String, value: ExportUrlResponse) {
+    if let Ok(mut cache) = state.export_cache.lock() {
+        prune_cache(&mut cache, EXPORT_CACHE_TTL, MAX_EXPORT_CACHE_ENTRIES, |entry| entry.inserted_at);
+        cache.insert(
+            key,
+            CachedExportResponse {
+                inserted_at: Instant::now(),
+                value,
+            },
+        );
+    }
+}
+
+fn taxon_cache_get(state: &AppState, key: &str) -> Option<(Option<String>, Option<String>)> {
+    let mut cache = state.taxon_cache.lock().ok()?;
+    prune_cache(&mut cache, TAXON_CACHE_TTL, MAX_TAXON_CACHE_ENTRIES, |entry| entry.inserted_at);
+    cache.get(key).map(|entry| entry.value.clone())
+}
+
+fn taxon_cache_put(state: &AppState, key: String, value: (Option<String>, Option<String>)) {
+    if let Ok(mut cache) = state.taxon_cache.lock() {
+        prune_cache(&mut cache, TAXON_CACHE_TTL, MAX_TAXON_CACHE_ENTRIES, |entry| entry.inserted_at);
+        cache.insert(
+            key,
+            CachedTaxonResolution {
+                inserted_at: Instant::now(),
+                value,
+            },
+        );
+    }
+}
+
+fn prune_cache<V, F>(cache: &mut HashMap<String, V>, ttl: Duration, max_entries: usize, inserted_at: F)
+where
+    F: Fn(&V) -> Instant,
+{
+    let now = Instant::now();
+    cache.retain(|_, value| now.duration_since(inserted_at(value)) <= ttl);
+    while cache.len() > max_entries {
+        let Some(oldest_key) = cache
+            .iter()
+            .min_by_key(|(_, value)| inserted_at(value))
+            .map(|(key, _)| key.clone())
+        else {
+            break;
+        };
+        cache.remove(&oldest_key);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -775,5 +960,47 @@ mod tests {
         )]);
         let cfg = AppConfig::from_provider(|name| env.get(name).cloned()).expect("valid config");
         assert_eq!(cfg.cors_allowed_origins.as_ref().map(Vec::len), Some(2));
+    }
+
+    #[test]
+    fn normalized_structure_preserves_multiline_molfile() {
+        let molfile = "\n  Mrv\n\n  0  0  0  0  0  0            999 V3000\nM  END\n";
+        let normalized = normalized_structure_input(molfile);
+        assert!(normalized.starts_with('\n'));
+        assert!(normalized.contains("V3000"));
+    }
+
+    #[test]
+    fn prune_cache_removes_oldest_when_over_capacity() {
+        let mut cache = HashMap::from([
+            (
+                "a".to_string(),
+                CachedExportResponse {
+                    inserted_at: Instant::now() - Duration::from_secs(30),
+                    value: ExportUrlResponse {
+                        query: "a".into(),
+                        csv_url: "a".into(),
+                        json_url: "a".into(),
+                        rdf_url: "a".into(),
+                    },
+                },
+            ),
+            (
+                "b".to_string(),
+                CachedExportResponse {
+                    inserted_at: Instant::now(),
+                    value: ExportUrlResponse {
+                        query: "b".into(),
+                        csv_url: "b".into(),
+                        json_url: "b".into(),
+                        rdf_url: "b".into(),
+                    },
+                },
+            ),
+        ]);
+
+        prune_cache(&mut cache, Duration::from_secs(60), 1, |entry| entry.inserted_at);
+        assert!(cache.contains_key("b"));
+        assert!(!cache.contains_key("a"));
     }
 }

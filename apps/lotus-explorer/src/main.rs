@@ -189,6 +189,7 @@ fn App() -> Element {
     let pending_execute: Signal<bool> = use_signal(initial_execute_from_url);
     let mut waiting_loading_logged: Signal<bool> = use_signal(|| false);
     let mut waiting_query_logged: Signal<bool> = use_signal(|| false);
+    let search_request_token: Signal<u64> = use_signal(|| 0);
 
     // Memoised derived state — recomputed only when their inputs change.
     // If we have precise totals from the parser, use them directly. Otherwise,
@@ -227,6 +228,7 @@ fn App() -> Element {
             display_capped_rows,
             page,
             mobile_filters_open,
+            search_request_token,
         )
     };
 
@@ -288,6 +290,7 @@ fn App() -> Element {
                 display_capped_rows,
                 page,
                 mobile_filters_open,
+                search_request_token,
             );
         }
     });
@@ -315,6 +318,7 @@ fn App() -> Element {
                 match fmt.as_str() {
                     "csv" => {
                         let q = query.to_string();
+                        let api_crit = crit.clone();
                         let filename = export::generate_filename(&crit, "csv");
                         *pending_download_format.write() = None;
                         log_debug_evt(
@@ -331,7 +335,27 @@ fn App() -> Element {
                         spawn(async move {
                             let dl_timer = perf::start_timer("LOTUS:download_csv");
                             log_info_evt("download", "dispatch", "started", Some("format=csv"));
-                            if let Ok(body) = sparql::execute_sparql(&q).await {
+                            if let Ok(urls) = api::export_urls(&api_crit).await {
+                                let fetch_elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "fetch",
+                                    "success",
+                                    fetch_elapsed,
+                                    Some("format=csv source=api_url"),
+                                );
+                                let trigger_timer = perf::start_timer("LOTUS:download_csv_trigger");
+                                trigger_download(&filename, "text/csv;charset=utf-8", &urls.csv_url);
+                                let trigger_elapsed =
+                                    perf::end_timer("LOTUS:download_csv_trigger", trigger_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "trigger",
+                                    "success",
+                                    trigger_elapsed,
+                                    Some("format=csv source=api_url"),
+                                );
+                            } else if let Ok(body) = sparql::execute_sparql(&q).await {
                                 let fetch_elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
                                 log_timing_evt(
                                     "download",
@@ -365,12 +389,39 @@ fn App() -> Element {
                     }
                     "json" | "ndjson" => {
                         let q = query.to_string();
+                        let api_crit = crit.clone();
                         let filename = export::generate_filename(&crit, "json");
                         *pending_download_format.write() = None;
                         spawn(async move {
                             let dl_timer = perf::start_timer("LOTUS:download_json");
                             log_info_evt("download", "dispatch", "started", Some("format=json"));
-                            if let Ok(body) =
+                            if let Ok(urls) = api::export_urls(&api_crit).await {
+                                let fetch_elapsed =
+                                    perf::end_timer("LOTUS:download_json", dl_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "fetch",
+                                    "success",
+                                    fetch_elapsed,
+                                    Some("format=json source=api_url"),
+                                );
+                                let trigger_timer =
+                                    perf::start_timer("LOTUS:download_json_trigger");
+                                trigger_download(
+                                    &filename,
+                                    "application/sparql-results+json;charset=utf-8",
+                                    &urls.json_url,
+                                );
+                                let trigger_elapsed =
+                                    perf::end_timer("LOTUS:download_json_trigger", trigger_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "trigger",
+                                    "success",
+                                    trigger_elapsed,
+                                    Some("format=json source=api_url"),
+                                );
+                            } else if let Ok(body) =
                                 sparql::execute_sparql_format(&q, SparqlResponseFormat::SparqlJson)
                                     .await
                             {
@@ -413,12 +464,33 @@ fn App() -> Element {
                     }
                     "rdf" => {
                         let q = queries::query_construct_from_select(query);
+                        let api_crit = crit.clone();
                         let filename = export::generate_filename(&crit, "rdf");
                         *pending_download_format.write() = None;
                         spawn(async move {
                             let dl_timer = perf::start_timer("LOTUS:download_rdf");
                             log_info_evt("download", "dispatch", "started", Some("format=rdf"));
-                            if let Ok(body) =
+                            if let Ok(urls) = api::export_urls(&api_crit).await {
+                                let fetch_elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "fetch",
+                                    "success",
+                                    fetch_elapsed,
+                                    Some("format=rdf source=api_url"),
+                                );
+                                let trigger_timer = perf::start_timer("LOTUS:download_rdf_trigger");
+                                trigger_download(&filename, "text/turtle;charset=utf-8", &urls.rdf_url);
+                                let trigger_elapsed =
+                                    perf::end_timer("LOTUS:download_rdf_trigger", trigger_timer);
+                                log_timing_evt(
+                                    "download",
+                                    "trigger",
+                                    "success",
+                                    trigger_elapsed,
+                                    Some("format=rdf source=api_url"),
+                                );
+                            } else if let Ok(body) =
                                 sparql::execute_sparql_format(&q, SparqlResponseFormat::Turtle)
                                     .await
                             {
@@ -679,6 +751,7 @@ fn App() -> Element {
                                         display_capped_rows,
                                         page,
                                         mobile_filters_open,
+                                        search_request_token,
                                     )
                                 },
                                 "{t(*locale.read(), TextKey::Retry)}"
@@ -959,12 +1032,23 @@ fn start_search(
     mut display_capped_rows: Signal<bool>,
     mut page: Signal<usize>,
     mut mobile_filters_open: Signal<bool>,
+    mut search_request_token: Signal<u64>,
 ) {
-    if *loading.peek() {
-        log_debug_evt("search", "start", "skipped_already_loading", None);
-        return;
-    }
     let crit = criteria.peek().clone();
+
+    let request_token = {
+        let mut next = search_request_token.write();
+        *next += 1;
+        *next
+    };
+    if *loading.peek() {
+        log_info_evt(
+            "search",
+            "start",
+            "superseding_inflight",
+            Some(&format!("request_token={request_token}")),
+        );
+    }
 
     if !crit.is_valid() {
         log_warn_evt(
@@ -1008,6 +1092,15 @@ fn start_search(
         .await
         {
             Ok(outcome) => {
+                if request_token != *search_request_token.peek() {
+                    log_debug_evt(
+                        "search",
+                        "finish",
+                        "stale_result_ignored",
+                        Some(&format!("request_token={request_token}")),
+                    );
+                    return;
+                }
                 let filtered_stats = outcome
                     .total_stats
                     .clone()
@@ -1043,6 +1136,15 @@ fn start_search(
                 *query_phase.write() = QueryPhase::Idle;
             }
             Err(e) => {
+                if request_token != *search_request_token.peek() {
+                    log_debug_evt(
+                        "search",
+                        "finish",
+                        "stale_error_ignored",
+                        Some(&format!("request_token={request_token}")),
+                    );
+                    return;
+                }
                 *error_kind.write() = e.kind;
                 *error.write() = Some(e.message);
                 log_info_evt("search", "finish", "loading_false", Some("result=error"));
@@ -1082,7 +1184,6 @@ async fn do_search(
     };
 
     if !direct_download_mode
-        && smiles.is_empty()
         && let Some(api_base) = api::api_base_url()
     {
         log_info_evt(
@@ -1158,8 +1259,6 @@ async fn do_search(
     } else {
         let reason = if direct_download_mode {
             "reason=direct_download_mode"
-        } else if !smiles.is_empty() {
-            "reason=structure_search"
         } else {
             "reason=api_not_configured"
         };
