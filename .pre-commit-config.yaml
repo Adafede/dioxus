@@ -35,13 +35,27 @@ repos:
       - id: cargo-check-workspace
         name: cargo-check-workspace
         language: system
-        entry: cargo check --workspace
+        entry: cargo check --workspace --all-targets --locked
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: cargo-test-workspace
+        name: cargo-test-workspace
+        language: system
+        entry: cargo test --workspace --all-targets --locked --quiet
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: cargo-clippy-workspace
+        name: cargo-clippy-workspace
+        language: system
+        entry: cargo clippy --workspace --all-targets --locked -- -D warnings
         pass_filenames: false
         stages: [pre-push]
 
       - id: cargo-check-wasm-lotus
         name: cargo-check-wasm-lotus
         language: system
-        entry: cargo check -p lotus-explorer --target wasm32-unknown-unknown
+        entry: cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked
         pass_filenames: false
         stages: [pre-push]
