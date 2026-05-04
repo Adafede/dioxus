@@ -52,12 +52,17 @@ skip = [
   { name = "cpufeatures" },
   { name = "crypto-common" },
   { name = "digest" },
+  { name = "getrandom" },
+  { name = "jni" },
+  { name = "jni-sys" },
+  { name = "r-efi" },
   { name = "rustc-hash" },
   { name = "sha2" },
   { name = "thiserror" },
   { name = "thiserror-impl" },
   { name = "windows-sys" },
   { name = "winnow" },
+  { name = "wit-bindgen" },
 ]
 
 # ── Source policy ─────────────────────────────────────────────────────────────
