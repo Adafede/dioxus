@@ -6,8 +6,12 @@ use crate::{
     queries,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fmt;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Duration;
+
+const MAX_EXPORT_URL_CACHE_ENTRIES: usize = 64;
 
 #[derive(Debug)]
 pub enum ApiClientError {
@@ -152,7 +156,7 @@ pub struct SearchResponse {
     pub stats: SearchStats,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ExportUrlResponse {
     #[allow(dead_code)]
     pub query: String,
@@ -237,7 +241,14 @@ pub async fn search(
 pub async fn export_urls(criteria: &SearchCriteria) -> Result<ExportUrlResponse, ApiClientError> {
     let base = api_base_url().ok_or(ApiClientError::NotConfigured)?;
     let request = SearchRequest::from_criteria(criteria, 1, false);
-    post_json(&base, "/v1/export-url", &request).await
+    let cache_key = serde_json::to_string(&request).unwrap_or_else(|_| format!("base={base}"));
+    if let Some(cached) = export_url_cache_get(&cache_key) {
+        return Ok(cached);
+    }
+
+    let response: ExportUrlResponse = post_json(&base, "/v1/export-url", &request).await?;
+    export_url_cache_put(cache_key, response.clone());
+    Ok(response)
 }
 
 pub fn api_base_url() -> Option<String> {
@@ -273,7 +284,47 @@ pub fn api_base_url() -> Option<String> {
 
 fn http_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    CLIENT.get_or_init(reqwest::Client::new)
+    CLIENT.get_or_init(build_http_client)
+}
+
+fn build_http_client() -> reqwest::Client {
+    #[cfg(target_arch = "wasm32")]
+    {
+        reqwest::Client::builder()
+            .build()
+            .expect("LOTUS explorer API client")
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(30))
+            .pool_idle_timeout(Duration::from_secs(60))
+            .pool_max_idle_per_host(8)
+            .tcp_keepalive(Duration::from_secs(30))
+            .build()
+            .expect("LOTUS explorer API client")
+    }
+}
+
+fn export_url_cache() -> &'static Mutex<BTreeMap<String, ExportUrlResponse>> {
+    static CACHE: OnceLock<Mutex<BTreeMap<String, ExportUrlResponse>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(BTreeMap::new()))
+}
+
+fn export_url_cache_get(key: &str) -> Option<ExportUrlResponse> {
+    let cache = export_url_cache().lock().ok()?;
+    cache.get(key).cloned()
+}
+
+fn export_url_cache_put(key: String, value: ExportUrlResponse) {
+    if let Ok(mut cache) = export_url_cache().lock() {
+        if cache.len() >= MAX_EXPORT_URL_CACHE_ENTRIES && !cache.contains_key(&key) {
+            cache.clear();
+        }
+        cache.insert(key, value);
+    }
 }
 
 fn normalize_api_base(value: &str) -> Option<String> {

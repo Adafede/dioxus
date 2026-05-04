@@ -9,13 +9,15 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
     net::SocketAddr,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use tower_http::cors::{Any, CorsLayer};
+use tokio::sync::OnceCell;
+use tower_http::{compression::CompressionLayer, cors::{Any, CorsLayer}, trace::TraceLayer};
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -37,6 +39,8 @@ struct AppState {
     taxon_cache: Arc<Mutex<HashMap<String, CachedTaxonResolution>>>,
     search_cache: Arc<Mutex<HashMap<String, CachedSearchResponse>>>,
     export_cache: Arc<Mutex<HashMap<String, CachedExportResponse>>>,
+    search_inflight: Arc<Mutex<HashMap<String, InFlightSearch>>>,
+    export_inflight: Arc<Mutex<HashMap<String, InFlightExport>>>,
 }
 
 const TAXON_CACHE_TTL: Duration = Duration::from_secs(60 * 60 * 24);
@@ -45,6 +49,9 @@ const EXPORT_CACHE_TTL: Duration = Duration::from_secs(60 * 10);
 const MAX_TAXON_CACHE_ENTRIES: usize = 512;
 const MAX_SEARCH_CACHE_ENTRIES: usize = 128;
 const MAX_EXPORT_CACHE_ENTRIES: usize = 256;
+
+type InFlightSearch = Arc<OnceCell<Result<SearchResponse, SharedApiError>>>;
+type InFlightExport = Arc<OnceCell<Result<ExportUrlResponse, SharedApiError>>>;
 
 #[derive(Clone)]
 struct CachedTaxonResolution {
@@ -190,6 +197,12 @@ struct ApiError {
     message: String,
 }
 
+#[derive(Debug, Clone)]
+struct SharedApiError {
+    status: StatusCode,
+    message: String,
+}
+
 impl ApiError {
     fn bad_request(message: impl Into<String>) -> Self {
         Self {
@@ -202,6 +215,24 @@ impl ApiError {
         Self {
             status: StatusCode::BAD_GATEWAY,
             message: message.into(),
+        }
+    }
+}
+
+impl From<ApiError> for SharedApiError {
+    fn from(value: ApiError) -> Self {
+        Self {
+            status: value.status,
+            message: value.message,
+        }
+    }
+}
+
+impl From<SharedApiError> for ApiError {
+    fn from(value: SharedApiError) -> Self {
+        Self {
+            status: value.status,
+            message: value.message,
         }
     }
 }
@@ -386,6 +417,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         taxon_cache: Arc::new(Mutex::new(HashMap::new())),
         search_cache: Arc::new(Mutex::new(HashMap::new())),
         export_cache: Arc::new(Mutex::new(HashMap::new())),
+        search_inflight: Arc::new(Mutex::new(HashMap::new())),
+        export_inflight: Arc::new(Mutex::new(HashMap::new())),
     };
 
     let app = Router::new()
@@ -394,6 +427,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/v1/export-url", post(export_urls))
         .merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()))
         .with_state(state)
+        .layer(TraceLayer::new_for_http())
+        .layer(CompressionLayer::new())
         .layer(build_cors_layer(&config));
 
     let addr = config.bind_addr().map_err(std::io::Error::other)?;
@@ -448,17 +483,30 @@ async fn search(
         return Ok(Json(cached));
     }
 
-    let response = build_search_response(
-        &execution_query,
-        limit,
-        include_counts,
-        resolved_taxon_qid.clone(),
-        warning.clone(),
-    )
-    .await?;
-    search_cache_put(&state, cache_key, response.clone());
+    let (cell, is_leader) = search_inflight_cell(&state, &cache_key);
+    let response = cell
+        .get_or_init(|| async {
+            build_search_response(
+                &execution_query,
+                limit,
+                include_counts,
+                resolved_taxon_qid.clone(),
+                warning.clone(),
+            )
+            .await
+            .map_err(SharedApiError::from)
+        })
+        .await
+        .clone();
+    search_inflight_remove(&state, &cache_key, &cell, is_leader);
 
-    Ok(Json(response))
+    match response {
+        Ok(response) => {
+            search_cache_put(&state, cache_key, response.clone());
+            Ok(Json(response))
+        }
+        Err(err) => Err(err.into()),
+    }
 }
 
 async fn build_search_response(
@@ -545,23 +593,36 @@ async fn export_urls(
         criteria.taxon = qid.to_string();
     }
     let query = build_execution_query(&criteria, resolved_taxon_qid.as_deref());
+    let cache_key = build_export_cache_key(&query);
 
-    if let Some(cached) = export_cache_get(&state, &query) {
+    if let Some(cached) = export_cache_get(&state, &cache_key) {
         return Ok(Json(cached));
     }
 
-    let response = ExportUrlResponse {
-        csv_url: qlever_export_url(&query, "csv_export"),
-        json_url: qlever_export_url(&query, "sparql_json_export"),
-        rdf_url: qlever_export_url(
-            &queries::query_construct_from_select(&query),
-            "turtle_export",
-        ),
-        query,
-    };
-    export_cache_put(&state, response.query.clone(), response.clone());
+    let (cell, is_leader) = export_inflight_cell(&state, &cache_key);
+    let response = cell
+        .get_or_init(|| async {
+            Ok::<_, SharedApiError>(ExportUrlResponse {
+                csv_url: qlever_export_url(&query, "csv_export"),
+                json_url: qlever_export_url(&query, "sparql_json_export"),
+                rdf_url: qlever_export_url(
+                    &queries::query_construct_from_select(&query),
+                    "turtle_export",
+                ),
+                query,
+            })
+        })
+        .await
+        .clone();
+    export_inflight_remove(&state, &cache_key, &cell, is_leader);
 
-    Ok(Json(response))
+    match response {
+        Ok(response) => {
+            export_cache_put(&state, cache_key, response.clone());
+            Ok(Json(response))
+        }
+        Err(err) => Err(err.into()),
+    }
 }
 
 fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiError> {
@@ -809,7 +870,30 @@ fn qlever_export_url(query: &str, action: &str) -> String {
 }
 
 fn build_search_cache_key(query: &str, limit: usize, include_counts: bool) -> String {
-    format!("limit={limit}|include_counts={include_counts}|query={query}")
+    let mut hasher = Sha256::new();
+    hasher.update(b"search");
+    hasher.update(limit.to_le_bytes());
+    hasher.update([include_counts as u8]);
+    hasher.update(query.as_bytes());
+    format!("search:{}", sha256_hex(hasher.finalize()))
+}
+
+fn build_export_cache_key(query: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"export");
+    hasher.update(query.as_bytes());
+    format!("export:{}", sha256_hex(hasher.finalize()))
+}
+
+fn sha256_hex(bytes: impl AsRef<[u8]>) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let bytes = bytes.as_ref();
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        out.push(HEX[(b >> 4) as usize] as char);
+        out.push(HEX[(b & 0x0f) as usize] as char);
+    }
+    out
 }
 
 fn search_cache_get(state: &AppState, key: &str) -> Option<SearchResponse> {
@@ -867,6 +951,48 @@ fn export_cache_put(state: &AppState, key: String, value: ExportUrlResponse) {
                 value,
             },
         );
+    }
+}
+
+fn search_inflight_cell(state: &AppState, key: &str) -> (InFlightSearch, bool) {
+    let mut inflight = state.search_inflight.lock().expect("search inflight mutex");
+    if let Some(existing) = inflight.get(key) {
+        return (existing.clone(), false);
+    }
+    let cell = Arc::new(OnceCell::new());
+    inflight.insert(key.to_string(), cell.clone());
+    (cell, true)
+}
+
+fn search_inflight_remove(state: &AppState, key: &str, cell: &InFlightSearch, is_leader: bool) {
+    if !is_leader {
+        return;
+    }
+    if let Ok(mut inflight) = state.search_inflight.lock()
+        && inflight.get(key).is_some_and(|current| Arc::ptr_eq(current, cell))
+    {
+        inflight.remove(key);
+    }
+}
+
+fn export_inflight_cell(state: &AppState, key: &str) -> (InFlightExport, bool) {
+    let mut inflight = state.export_inflight.lock().expect("export inflight mutex");
+    if let Some(existing) = inflight.get(key) {
+        return (existing.clone(), false);
+    }
+    let cell = Arc::new(OnceCell::new());
+    inflight.insert(key.to_string(), cell.clone());
+    (cell, true)
+}
+
+fn export_inflight_remove(state: &AppState, key: &str, cell: &InFlightExport, is_leader: bool) {
+    if !is_leader {
+        return;
+    }
+    if let Ok(mut inflight) = state.export_inflight.lock()
+        && inflight.get(key).is_some_and(|current| Arc::ptr_eq(current, cell))
+    {
+        inflight.remove(key);
     }
 }
 

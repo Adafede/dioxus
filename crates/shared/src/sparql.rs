@@ -6,7 +6,7 @@
 //! QLever CSV export URL format:
 //!   `https://qlever.dev/api/wikidata?query=<encoded>&action=csv_export`
 
-use std::sync::OnceLock;
+use std::{sync::OnceLock, time::Duration};
 
 /// Default QLever endpoint for Wikidata (used by lotus-explorer).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
@@ -172,7 +172,28 @@ pub async fn execute_sparql_with_format_bytes(
 
 fn http_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    CLIENT.get_or_init(reqwest::Client::new)
+    CLIENT.get_or_init(build_http_client)
+}
+
+fn build_http_client() -> reqwest::Client {
+    #[cfg(target_arch = "wasm32")]
+    {
+        reqwest::Client::builder()
+            .build()
+            .expect("shared SPARQL HTTP client")
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(8))
+            .timeout(Duration::from_secs(120))
+            .pool_idle_timeout(Duration::from_secs(90))
+            .pool_max_idle_per_host(32)
+            .tcp_keepalive(Duration::from_secs(30))
+            .build()
+            .expect("shared SPARQL HTTP client")
+    }
 }
 
 fn looks_like_gateway_error(body: &str) -> bool {
