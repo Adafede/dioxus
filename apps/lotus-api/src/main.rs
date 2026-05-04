@@ -10,6 +10,10 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use shared::lotus::models::{
+    CompoundEntry, DatasetStats, SearchCriteria, SmilesSearchType, TaxonMatch,
+};
+use shared::lotus::{models, queries, sparql};
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -32,18 +36,6 @@ use tower_http::{
 use tracing::Level;
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
-
-#[allow(dead_code)]
-#[path = "../../lotus-explorer/src/models.rs"]
-mod models;
-#[allow(dead_code)]
-#[path = "../../lotus-explorer/src/queries.rs"]
-mod queries;
-#[allow(dead_code)]
-#[path = "../../lotus-explorer/src/sparql.rs"]
-mod sparql;
-
-use models::{CompoundEntry, DatasetStats, SearchCriteria, SmilesSearchType, TaxonMatch};
 
 #[derive(Clone)]
 struct AppState {

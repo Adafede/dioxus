@@ -3170,9 +3170,12 @@ name = "shared"
 version = "0.1.0"
 dependencies = [
  "csv",
+ "js-sys",
  "log",
  "reqwest 0.13.2",
  "urlencoding",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

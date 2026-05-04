@@ -6,7 +6,9 @@
 //! QLever CSV export URL format:
 //!   `https://qlever.dev/api/wikidata?query=<encoded>&action=csv_export`
 
-use std::{sync::OnceLock, time::Duration};
+use std::sync::OnceLock;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Duration;
 
 /// Default QLever endpoint for Wikidata (used by lotus-explorer).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";

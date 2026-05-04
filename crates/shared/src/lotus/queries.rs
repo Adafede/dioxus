@@ -1,0 +1,588 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+use super::models::{
+    DEFAULT_C_MAX, DEFAULT_H_MAX, DEFAULT_N_MAX, DEFAULT_O_MAX, DEFAULT_P_MAX, DEFAULT_S_MAX,
+    ElementState, SearchCriteria, SmilesSearchType,
+};
+
+const SUBSCRIPT_DIGIT_MAPPINGS: [(char, char); 10] = [
+    ('₀', '0'),
+    ('₁', '1'),
+    ('₂', '2'),
+    ('₃', '3'),
+    ('₄', '4'),
+    ('₅', '5'),
+    ('₆', '6'),
+    ('₇', '7'),
+    ('₈', '8'),
+    ('₉', '9'),
+];
+
+const PREFIXES: &str = r#"
+PREFIX wd:     <http://www.wikidata.org/entity/>
+PREFIX wdt:    <http://www.wikidata.org/prop/direct/>
+PREFIX p:      <http://www.wikidata.org/prop/>
+PREFIX ps:     <http://www.wikidata.org/prop/statement/>
+PREFIX pq:     <http://www.wikidata.org/prop/qualifier/>
+PREFIX pr:     <http://www.wikidata.org/prop/reference/>
+PREFIX prov:   <http://www.w3.org/ns/prov#>
+PREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX wikibase: <http://wikiba.se/ontology#>
+PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+PREFIX schema: <http://schema.org/>
+"#;
+
+const COMPOUND_SELECT: &str = r#"
+SELECT
+  (xsd:integer(STRAFTER(STR(?c), "Q")) AS ?compound)
+  ?compoundLabel
+  ?compound_inchikey
+  ?compound_smiles_conn
+  ?compound_smiles_iso
+  ?compound_mass
+  ?compound_formula
+  (xsd:integer(STRAFTER(STR(?t), "Q")) AS ?taxon)
+  ?taxon_name
+  (xsd:integer(STRAFTER(STR(?r), "Q")) AS ?ref_qid)
+  ?ref
+  ?ref_title
+  ?ref_doi
+  ?ref_date
+  ?statement
+"#;
+
+const COMPOUND_IDENTIFIERS: &str = r#"
+  ?c wdt:P235 ?compound_inchikey;
+     wdt:P233 ?compound_smiles_conn.
+"#;
+
+const TAXON_REFERENCE_ASSOCIATION: &str = r#"
+  ?c p:P703 ?statement.
+  ?statement ps:P703 ?t;
+             prov:wasDerivedFrom ?ref.
+  ?ref pr:P248 ?r.
+  ?t wdt:P225 ?taxon_name.
+"#;
+
+const REFERENCE_METADATA_OPTIONAL: &str = r#"
+  OPTIONAL { ?r wdt:P1476 ?ref_title. }
+  OPTIONAL { ?r wdt:P356 ?ref_doi. }
+  OPTIONAL { ?r wdt:P577 ?ref_date. }
+"#;
+
+const PROPERTIES_OPTIONAL: &str = r#"
+  OPTIONAL { ?c wdt:P2017 ?compound_smiles_iso. }
+  OPTIONAL { ?c wdt:P2067 ?compound_mass. }
+  OPTIONAL { ?c wdt:P274 ?compound_formula. }
+  OPTIONAL {
+    ?c rdfs:label ?compoundLabelMul.
+    FILTER(LANG(?compoundLabelMul) = "mul")
+  }
+  OPTIONAL {
+    ?c rdfs:label ?compoundLabelEn.
+    FILTER(LANG(?compoundLabelEn) = "en")
+  }
+  BIND(COALESCE(?compoundLabelMul, ?compoundLabelEn) AS ?compoundLabel)
+"#;
+
+pub fn query_taxon_search(name: &str) -> String {
+    let e = name.replace('\\', r"\\").replace('"', r#"\""#);
+    format!(
+        r#"
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+SELECT
+?taxon
+?taxon_name WHERE {{
+    VALUES ?taxon_name {{ "{e}" }}
+    ?taxon wdt:P225 ?taxon_name .
+}}
+"#
+    )
+}
+
+pub fn query_compounds_by_taxon(taxon_qid: &str) -> String {
+    format!(
+        r#"{PREFIXES}
+{COMPOUND_SELECT}
+WHERE {{
+  {{
+    SELECT
+      ?c
+      ?compound_inchikey
+      ?compound_smiles_conn
+      ?t
+      ?taxon_name
+      ?r
+      ?ref
+      ?statement
+    WHERE {{
+      {COMPOUND_IDENTIFIERS}
+      {TAXON_REFERENCE_ASSOCIATION}
+    }}
+  }}
+  ?t (wdt:P171*) wd:{taxon_qid}.
+  {REFERENCE_METADATA_OPTIONAL}
+  {PROPERTIES_OPTIONAL}
+}}"#
+    )
+}
+
+pub fn query_all_compounds() -> String {
+    format!(
+        r#"{PREFIXES}
+{COMPOUND_SELECT}
+WHERE {{
+  {{
+    SELECT
+      ?c
+      ?compound_inchikey
+      ?compound_smiles_conn
+      ?t
+      ?taxon_name
+      ?r
+      ?ref
+      ?statement
+    WHERE {{
+      {COMPOUND_IDENTIFIERS}
+      {TAXON_REFERENCE_ASSOCIATION}
+    }}
+  }}
+  {REFERENCE_METADATA_OPTIONAL}
+  {PROPERTIES_OPTIONAL}
+}}"#
+    )
+}
+
+pub fn query_sachem(
+    smiles: &str,
+    search_type: SmilesSearchType,
+    threshold: f64,
+    taxon_qid: Option<&str>,
+) -> String {
+    let structure_literal = escape_structure_literal(smiles);
+    let is_multiline_literal =
+        structure_literal.starts_with("'''") || structure_literal.starts_with(r#"\"\"\""#);
+
+    let sachem_clause = match search_type {
+        SmilesSearchType::Similarity => format!(
+            r#"SERVICE idsm:wikidata {{
+    ?c sachem:similarCompoundSearch [
+      sachem:query {structure_literal};
+      sachem:cutoff "{threshold}"^^xsd:double
+    ].
+  }}"#
+        ),
+        SmilesSearchType::Substructure if is_multiline_literal => format!(
+            r#"SERVICE idsm:wikidata {{
+    [ sachem:compound ?c; sachem:score ?_sachem_score ]
+      sachem:scoredSubstructureSearch [
+        sachem:query {structure_literal};
+        sachem:searchMode sachem:substructureSearch;
+        sachem:chargeMode sachem:defaultChargeAsAny;
+        sachem:isotopeMode sachem:ignoreIsotopes;
+        sachem:aromaticityMode sachem:aromaticityDetectIfMissing;
+        sachem:stereoMode sachem:ignoreStereo;
+        sachem:tautomerMode sachem:ignoreTautomers;
+        sachem:radicalMode sachem:ignoreSpinMultiplicity;
+        sachem:topn "-1"^^xsd:integer;
+        sachem:internalMatchingLimit "1000000"^^xsd:integer
+      ].
+  }}"#
+        ),
+        SmilesSearchType::Substructure => format!(
+            r#"SERVICE idsm:wikidata {{
+    ?c sachem:substructureSearch [
+      sachem:query {structure_literal}
+    ].
+  }}"#
+        ),
+    };
+
+    let sachem_subquery = format!(
+        r#"{{
+    SELECT DISTINCT ?c
+    WHERE {{
+      {sachem_clause}
+    }}
+  }}"#
+    );
+
+    let body = if let Some(qid) = taxon_qid {
+        format!(
+            r#"
+  {sachem_subquery}
+
+  {COMPOUND_IDENTIFIERS}
+
+  ?c p:P703 ?statement .
+  ?statement ps:P703 ?t ;
+             prov:wasDerivedFrom ?ref .
+  ?ref pr:P248 ?r .
+  ?t wdt:P225 ?taxon_name .
+  ?t (wdt:P171*) wd:{qid} .
+
+  {REFERENCE_METADATA_OPTIONAL}
+  {PROPERTIES_OPTIONAL}
+"#
+        )
+    } else {
+        format!(
+            r#"
+  {sachem_clause}
+  {COMPOUND_IDENTIFIERS}
+
+  OPTIONAL {{
+    ?c p:P703 ?statement .
+    ?statement ps:P703 ?t ;
+               prov:wasDerivedFrom ?ref .
+    ?ref pr:P248 ?r .
+    ?t wdt:P225 ?taxon_name .
+    {REFERENCE_METADATA_OPTIONAL}
+  }}
+
+  {PROPERTIES_OPTIONAL}
+"#
+        )
+    };
+
+    format!(
+        r#"{PREFIXES}
+PREFIX sachem: <http://bioinfo.uochb.cas.cz/rdf/v1.0/sachem#>
+PREFIX idsm:   <https://idsm.elixir-czech.cz/sparql/endpoint/>
+{COMPOUND_SELECT}
+WHERE {{
+{body}
+}}"#
+    )
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructureKind {
+    Empty,
+    Smiles,
+    MolfileV2000,
+    MolfileV3000,
+}
+
+impl StructureKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Empty => "—",
+            Self::Smiles => "SMILES",
+            Self::MolfileV2000 => "Molfile V2000",
+            Self::MolfileV3000 => "Molfile V3000",
+        }
+    }
+}
+
+pub fn classify_structure(text: &str) -> StructureKind {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return StructureKind::Empty;
+    }
+    let upper = text.to_ascii_uppercase();
+    let has_end = upper.contains("M  END");
+    if has_end && (upper.contains("V3000") || upper.contains("BEGIN CTAB")) {
+        return StructureKind::MolfileV3000;
+    }
+    if has_end && upper.contains("V2000") {
+        return StructureKind::MolfileV2000;
+    }
+    StructureKind::Smiles
+}
+
+fn looks_like_molfile(text: &str) -> bool {
+    matches!(
+        classify_structure(text),
+        StructureKind::MolfileV2000 | StructureKind::MolfileV3000
+    )
+}
+
+pub fn escape_structure_literal(smiles: &str) -> String {
+    let normalized = smiles.replace("\r\n", "\n").replace('\r', "\n");
+    let is_molfile = looks_like_molfile(&normalized);
+    let candidate = if is_molfile {
+        normalized
+    } else {
+        normalized.trim().to_string()
+    };
+
+    let escaped_bs = candidate.replace('\\', r"\\");
+    if is_molfile || candidate.contains('\n') {
+        format!("'''{escaped_bs}'''")
+    } else {
+        let escaped = escaped_bs.replace('"', r#"\""#);
+        format!("\"{escaped}\"")
+    }
+}
+
+pub fn query_counts_from_base(base_query: &str) -> String {
+    let Some(select_pos) = base_query.find("SELECT") else {
+        return base_query.to_string();
+    };
+    let prefixes = &base_query[..select_pos];
+    let inner_select = base_query[select_pos..].trim();
+
+    format!(
+        r#"{prefixes}
+SELECT
+  (COUNT(*) AS ?n_entries)
+  (COUNT(DISTINCT CONCAT(
+    STR(?compound), "\u001F", COALESCE(STR(?taxon), ""), "\u001F", COALESCE(STR(?ref_qid), "")
+  )) AS ?n_entries_unique)
+  (COUNT(DISTINCT ?compound) AS ?n_compounds)
+  (COUNT(DISTINCT ?taxon) AS ?n_taxa)
+  (COUNT(DISTINCT ?ref_qid) AS ?n_references)
+WHERE {{
+  {{
+    {inner_select}
+  }}
+}}"#
+    )
+}
+
+pub fn query_with_limit(base_query: &str, limit: usize) -> String {
+    let trimmed = base_query.trim_end();
+    format!("{trimmed}\nLIMIT {limit}")
+}
+
+pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) -> String {
+    let mut filters = Vec::new();
+    let mut prelude = Vec::new();
+
+    if criteria.has_mass_filter() {
+        let min = criteria.mass_min;
+        let max = criteria.mass_max;
+        filters.push(format!(
+            "FILTER(BOUND(?compound_mass) && ?compound_mass >= {min:.6} && ?compound_mass <= {max:.6})"
+        ));
+    }
+
+    if criteria.has_year_filter() {
+        let start = criteria.year_min;
+        let end = criteria.year_max;
+        filters.push(format!(
+            "FILTER(BOUND(?ref_date) && YEAR(?ref_date) >= {start} && YEAR(?ref_date) <= {end})"
+        ));
+    }
+
+    if criteria.has_formula_filter() {
+        prelude.push("FILTER(BOUND(?compound_formula))".to_string());
+        prelude.push("BIND(STR(?compound_formula) AS ?_formula_raw)".to_string());
+        prelude.push(r#"BIND(REPLACE(?_formula_raw, " ", "") AS ?_formula_nospace)"#.to_string());
+        prelude.push(format!(
+            "BIND({} AS ?_formula_norm)",
+            normalize_digits_expr("?_formula_nospace")
+        ));
+        prelude.push(
+            "BIND(REPLACE(?_formula_norm, \"([A-Z])\", \"|$1\") AS ?_formula_tokens)".to_string(),
+        );
+
+        for (symbol, min, max, default_max) in [
+            ("C", criteria.c_min, criteria.c_max, DEFAULT_C_MAX),
+            ("H", criteria.h_min, criteria.h_max, DEFAULT_H_MAX),
+            ("N", criteria.n_min, criteria.n_max, DEFAULT_N_MAX),
+            ("O", criteria.o_min, criteria.o_max, DEFAULT_O_MAX),
+            ("P", criteria.p_min, criteria.p_max, DEFAULT_P_MAX),
+            ("S", criteria.s_min, criteria.s_max, DEFAULT_S_MAX),
+        ] {
+            if min > 0 || max < default_max {
+                let var = format!("?_count_{}", symbol.to_ascii_lowercase());
+                prelude.push(element_count_bind(symbol, &var));
+                filters.push(format!("FILTER({var} >= {min} && {var} <= {max})"));
+            }
+        }
+
+        for (symbol, state) in [
+            ("F", criteria.f_state),
+            ("Cl", criteria.cl_state),
+            ("Br", criteria.br_state),
+            ("I", criteria.i_state),
+        ] {
+            if state != ElementState::Allowed {
+                let var = format!("?_count_{}", symbol.to_ascii_lowercase());
+                prelude.push(element_count_bind(symbol, &var));
+                match state {
+                    ElementState::Allowed => {}
+                    ElementState::Required => filters.push(format!("FILTER({var} > 0)")),
+                    ElementState::Excluded => filters.push(format!("FILTER({var} = 0)")),
+                }
+            }
+        }
+    }
+
+    if let Some(exact) = criteria
+        .formula_enabled
+        .then_some(criteria.formula_exact.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        let exact_norm: String = normalize_formula_digits(exact)
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
+        let exact_escaped = exact_norm.replace('\\', r"\\").replace('"', r#"\""#);
+        filters.push(format!("FILTER(?_formula_norm = \"{exact_escaped}\")"));
+    }
+
+    if prelude.is_empty() && filters.is_empty() {
+        return base_query.to_string();
+    }
+
+    let trimmed = base_query.trim_end();
+    let Some(last_close) = trimmed.rfind('}') else {
+        return format!("{trimmed}\n{}", filters.join("\n"));
+    };
+
+    let mut out = String::with_capacity(trimmed.len() + (filters.len() + prelude.len()) * 100);
+    out.push_str(&trimmed[..last_close]);
+    out.push('\n');
+    if !prelude.is_empty() {
+        out.push_str(&prelude.join("\n"));
+        out.push('\n');
+    }
+    out.push_str(&filters.join("\n"));
+    out.push('\n');
+    out.push_str(&trimmed[last_close..]);
+    out
+}
+
+pub fn query_construct_from_select(select_query: &str) -> String {
+    let Some(select_pos) = select_query.find("SELECT") else {
+        return select_query.to_string();
+    };
+    let Some(where_pos) = select_query[select_pos..].find("WHERE") else {
+        return select_query.to_string();
+    };
+    let where_abs = select_pos + where_pos;
+    let prefixes = &select_query[..select_pos];
+    let where_block = select_query[where_abs..].trim();
+
+    format!(
+        r#"{prefixes}
+CONSTRUCT {{
+  ?c wdt:P235 ?compound_inchikey .
+  ?c wdt:P233 ?compound_smiles_conn .
+  ?c wdt:P2017 ?compound_smiles_iso .
+  ?c wdt:P2067 ?compound_mass .
+  ?c wdt:P274 ?compound_formula .
+  ?c rdfs:label ?compoundLabel .
+  ?c p:P703 ?statement .
+  ?statement ps:P703 ?t ;
+             prov:wasDerivedFrom ?ref .
+  ?ref pr:P248 ?r .
+  ?t wdt:P225 ?taxon_name .
+  ?r wdt:P1476 ?ref_title .
+  ?r wdt:P356 ?ref_doi .
+  ?r wdt:P577 ?ref_date .
+}}
+{where_block}"#
+    )
+}
+
+fn normalize_digits_expr(var: &str) -> String {
+    SUBSCRIPT_DIGIT_MAPPINGS
+        .into_iter()
+        .fold(var.to_string(), |acc, (from, to)| {
+            format!(r#"REPLACE({acc}, "{from}", "{to}")"#)
+        })
+}
+
+fn element_count_bind(symbol: &str, out_var: &str) -> String {
+    let escaped = symbol.replace('"', "\\\"");
+    let pattern = format!(r#"\\|{escaped}([0-9]*)(\\||$)"#);
+    let capture_expr = format!(r#"REPLACE(?_formula_tokens, ".*{pattern}.*", "$1")"#);
+    format!(
+        "BIND(IF(REGEX(?_formula_tokens, \"{pattern}\"), IF(STRLEN({capture_expr}) = 0, 1, xsd:integer({capture_expr})), 0) AS {out_var})"
+    )
+}
+
+fn normalize_formula_digits(s: &str) -> String {
+    s.chars().map(normalize_formula_digit).collect()
+}
+
+fn normalize_formula_digit(c: char) -> char {
+    SUBSCRIPT_DIGIT_MAPPINGS
+        .iter()
+        .find_map(|(from, to)| (*from == c).then_some(*to))
+        .unwrap_or(c)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn server_filter_query_includes_formula_and_halogen_clauses() {
+        let mut crit = SearchCriteria {
+            taxon: "*".into(),
+            ..SearchCriteria::default()
+        };
+        crit.formula_enabled = true;
+        crit.c_min = 1;
+        crit.c_max = 10;
+        crit.f_state = ElementState::Required;
+
+        let q = query_with_server_filters(&query_all_compounds(), &crit);
+        assert!(q.contains("?_formula_tokens"));
+        assert!(q.contains("?_count_c >= 1 && ?_count_c <= 10"));
+        assert!(q.contains("?_count_f > 0"));
+    }
+
+    #[test]
+    fn construct_query_switches_select_to_construct() {
+        let q = query_construct_from_select(&query_compounds_by_taxon("Q2382443"));
+        assert!(q.contains("CONSTRUCT"));
+        assert!(q.contains("?c p:P703 ?statement"));
+        assert!(!q.contains("SELECT\n  (xsd:integer"));
+    }
+
+    #[test]
+    fn sachem_taxon_query_prefilters_before_service() {
+        let q = query_sachem(
+            "c1ccccc1",
+            SmilesSearchType::Substructure,
+            0.8,
+            Some("Q158572"),
+        );
+        let taxon_pos = q
+            .find("?t (wdt:P171*) wd:Q158572")
+            .expect("taxon restriction should exist");
+        let service_pos = q
+            .find("SERVICE idsm:wikidata")
+            .expect("SACHEM service clause should exist");
+        assert!(
+            service_pos < taxon_pos,
+            "SACHEM service should be isolated in inner subquery before outer taxon joins"
+        );
+        assert!(q.contains("SELECT DISTINCT ?c"));
+    }
+
+    #[test]
+    fn count_query_uses_distinct_entry_triples_not_raw_rows() {
+        let q = query_counts_from_base(&query_sachem(
+            "CCO",
+            SmilesSearchType::Substructure,
+            0.8,
+            Some("Q158572"),
+        ));
+        assert!(q.contains("COUNT(*) AS ?n_entries"));
+        assert!(q.contains("COUNT(DISTINCT CONCAT("));
+        assert!(q.contains("AS ?n_entries_unique"));
+        assert!(q.contains("STR(?compound)"));
+        assert!(q.contains("COALESCE(STR(?taxon), \"\")"));
+        assert!(q.contains("COALESCE(STR(?ref_qid), \"\")"));
+    }
+
+    #[test]
+    fn subscript_digit_normalizers_stay_in_sync() {
+        assert_eq!(normalize_formula_digits("C₆H₁₂O₆"), "C6H12O6");
+
+        let expr = normalize_digits_expr("?_formula_nospace");
+        for (from, to) in SUBSCRIPT_DIGIT_MAPPINGS {
+            assert!(expr.contains(&format!("\"{from}\"")));
+            assert!(expr.contains(&format!("\"{to}\"")));
+        }
+    }
+}
