@@ -224,6 +224,10 @@ GitHub Actions / Forgejo Actions validate and publish on every push to `main`:
 - For API deployments, set `APP_ENV=production` and a strict `CORS_ALLOWED_ORIGINS` allowlist.
 - Keep `Cargo.lock` committed and deploy from tagged revisions.
 
+## Archive
+
+A frozen version is archived on Zenodo: https://doi.org/10.5281/zenodo.5794106
+
 ## Governance
 
 - Contribution guide: `CONTRIBUTING.md`

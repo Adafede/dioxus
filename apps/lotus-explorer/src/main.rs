@@ -737,12 +737,12 @@ fn Footer(locale: Locale) -> Element {
     rsx! {
         footer { class: "app-footer",
             FooterRow {
-                label: t(locale, TextKey::FooterData),
-                class: "footer-link data",
-                links: &[
-                    ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
-                    ("https://www.wikidata.org/", "Wikidata"),
-                ],
+                label: t(locale, TextKey::FooterArchive),
+                class: "footer-link muted",
+                links: &[(
+                    "https://doi.org/10.5281/zenodo.5794106",
+                    "Frozen version (Zenodo)",
+                )],
             }
             FooterRow {
                 label: t(locale, TextKey::FooterCode),
@@ -752,6 +752,14 @@ fn Footer(locale: Locale) -> Element {
                         "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer",
                         "lotus-explorer",
                     ),
+                ],
+            }
+            FooterRow {
+                label: t(locale, TextKey::FooterData),
+                class: "footer-link data",
+                links: &[
+                    ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
+                    ("https://www.wikidata.org/", "Wikidata"),
                 ],
             }
             FooterRow {

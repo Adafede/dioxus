@@ -440,8 +440,8 @@ a:hover { text-decoration: underline; }
 .footer-aside    { color:var(--text3); font-size:11px; }
 .footer-link           { color:var(--text);  text-decoration:none; }
 .footer-link:hover     { text-decoration:underline; }
-.footer-link.data      { color:var(--wd-compound); }
-.footer-link.code      { color:var(--wd-taxon); }
+.footer-link.code      { color:var(--wd-compound); }
+.footer-link.data      { color:var(--wd-taxon); }
 .footer-link.tool      { color:var(--wd-reference); }
 .footer-link.muted     { color:var(--text2); }
 
