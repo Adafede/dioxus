@@ -23,7 +23,8 @@ serde_json = { workspace = true }
 sha2 = { version = "0.11", default-features = false }
 shared = { path = "../../crates/shared", version = "0.1.0" }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal", "sync"] }
-tower-http = { version = "0.6", features = ["compression-full", "cors", "trace"] }
+tower-http = { version = "0.6", features = ["compression-full", "cors", "request-id", "trace"] }
+tracing = "0.1"
 urlencoding = { workspace = true }
 utoipa = { version = "5", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }

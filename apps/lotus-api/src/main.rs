@@ -4,7 +4,7 @@
 use axum::{
     Json, Router,
     extract::{DefaultBodyLimit, State},
-    http::StatusCode,
+    http::{StatusCode, header::HeaderName},
     response::{IntoResponse, Response},
     routing::{get, post},
 };
@@ -19,12 +19,17 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tokio::{sync::{OnceCell, Semaphore}, time::timeout};
+use tokio::{
+    sync::{OnceCell, Semaphore},
+    time::timeout,
+};
 use tower_http::{
     compression::CompressionLayer,
     cors::{Any, CorsLayer},
-    trace::TraceLayer,
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
+use tracing::Level;
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -50,15 +55,20 @@ struct AppState {
     export_cache: Arc<Mutex<HashMap<String, CachedExportResponse>>>,
     search_inflight: Arc<Mutex<HashMap<String, InFlightSearch>>>,
     export_inflight: Arc<Mutex<HashMap<String, InFlightExport>>>,
+    taxon_cache_prune_after: Arc<Mutex<Instant>>,
+    search_cache_prune_after: Arc<Mutex<Instant>>,
+    export_cache_prune_after: Arc<Mutex<Instant>>,
     metrics: Arc<RuntimeMetrics>,
 }
 
 const TAXON_CACHE_TTL: Duration = Duration::from_secs(60 * 60 * 24);
 const SEARCH_CACHE_TTL: Duration = Duration::from_secs(60 * 3);
 const EXPORT_CACHE_TTL: Duration = Duration::from_secs(60 * 10);
+const CACHE_PRUNE_INTERVAL: Duration = Duration::from_secs(20);
 const MAX_TAXON_CACHE_ENTRIES: usize = 512;
 const MAX_SEARCH_CACHE_ENTRIES: usize = 128;
 const MAX_EXPORT_CACHE_ENTRIES: usize = 256;
+const X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 
 type InFlightSearch = Arc<OnceCell<Result<SearchResponse, SharedApiError>>>;
 type InFlightExport = Arc<OnceCell<Result<ExportUrlResponse, SharedApiError>>>;
@@ -300,6 +310,13 @@ impl ApiError {
             message: message.into(),
         }
     }
+
+    fn overloaded(message: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            message: message.into(),
+        }
+    }
 }
 
 impl From<ApiError> for SharedApiError {
@@ -492,7 +509,9 @@ struct ApiDoc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format_timestamp_millis()
+        .init();
 
     let config = AppConfig::from_env().map_err(std::io::Error::other)?;
 
@@ -505,6 +524,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         export_cache: Arc::new(Mutex::new(HashMap::new())),
         search_inflight: Arc::new(Mutex::new(HashMap::new())),
         export_inflight: Arc::new(Mutex::new(HashMap::new())),
+        taxon_cache_prune_after: Arc::new(Mutex::new(Instant::now() + CACHE_PRUNE_INTERVAL)),
+        search_cache_prune_after: Arc::new(Mutex::new(Instant::now() + CACHE_PRUNE_INTERVAL)),
+        export_cache_prune_after: Arc::new(Mutex::new(Instant::now() + CACHE_PRUNE_INTERVAL)),
         metrics: Arc::new(RuntimeMetrics::new()),
     };
 
@@ -515,7 +537,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()))
         .with_state(state)
         .layer(DefaultBodyLimit::max(config.max_body_bytes))
-        .layer(TraceLayer::new_for_http())
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+                .on_request(DefaultOnRequest::new().level(Level::DEBUG))
+                .on_response(DefaultOnResponse::new().level(Level::INFO))
+                .on_failure(DefaultOnFailure::new().level(Level::WARN)),
+        )
+        .layer(PropagateRequestIdLayer::new(X_REQUEST_ID))
+        .layer(SetRequestIdLayer::new(X_REQUEST_ID, MakeRequestUuid))
         .layer(CompressionLayer::new())
         .layer(build_cors_layer(&config));
 
@@ -541,7 +571,9 @@ async fn shutdown_signal() {
 
     #[cfg(unix)]
     let terminate = async {
-        if let Ok(mut signal) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+        if let Ok(mut signal) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
             let _ = signal.recv().await;
         }
     };
@@ -550,8 +582,8 @@ async fn shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
+        _ = ctrl_c => { log::info!("event=shutdown signal=ctrl_c"); },
+        _ = terminate => { log::info!("event=shutdown signal=terminate"); },
     }
 }
 
@@ -571,26 +603,24 @@ async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     responses(
         (status = 200, description = "Search results", body = SearchResponse),
         (status = 400, description = "Invalid request", body = ErrorResponse),
-        (status = 502, description = "Upstream SPARQL failure", body = ErrorResponse)
+        (status = 502, description = "Upstream SPARQL failure", body = ErrorResponse),
+        (status = 503, description = "Server overloaded", body = ErrorResponse),
+        (status = 504, description = "Search timeout", body = ErrorResponse)
     )
 )]
 async fn search(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,
 ) -> Result<Json<SearchResponse>, ApiError> {
-    let _permit = state
-        .request_permits
-        .try_acquire()
-        .map_err(|_| {
-            state
-                .metrics
-                .overload_rejections
-                .fetch_add(1, Ordering::Relaxed);
-            ApiError {
-                status: StatusCode::SERVICE_UNAVAILABLE,
-                message: "Server is busy, retry shortly".to_string(),
-            }
-        })?;
+    let req_started = Instant::now();
+    let _permit = state.request_permits.try_acquire().map_err(|_| {
+        state
+            .metrics
+            .overload_rejections
+            .fetch_add(1, Ordering::Relaxed);
+        log::warn!("event=search state=rejected reason=overloaded");
+        ApiError::overloaded("Server is busy, retry shortly")
+    })?;
 
     let mut criteria = apply_request(&req)?;
     if !criteria.is_valid() {
@@ -609,11 +639,10 @@ async fn search(
             .metrics
             .request_timeouts
             .fetch_add(1, Ordering::Relaxed);
+        log::warn!("event=search state=timeout phase=taxon");
         ApiError::upstream("taxon resolution timed out")
     })??;
-    if let Some(qid) = resolved_taxon_qid.as_deref()
-        && qid != "*"
-    {
+    if let Some(qid) = resolved_taxon_qid.as_deref() && qid != "*" {
         criteria.taxon = qid.to_string();
     }
     let execution_query = build_execution_query(&criteria, resolved_taxon_qid.as_deref());
@@ -622,15 +651,23 @@ async fn search(
         .unwrap_or(state.default_limit)
         .clamp(1, models::TABLE_ROW_LIMIT);
     let include_counts = req.include_counts.unwrap_or(true);
+    log::info!(
+        "event=search state=start include_counts={} limit={} has_smiles={}",
+        include_counts,
+        limit,
+        !criteria.smiles.trim().is_empty(),
+    );
     let cache_key = build_search_cache_key(&execution_query, limit, include_counts);
     if let Some(cached) = search_cache_get(&state, &cache_key) {
         state.metrics.search_cache_hits.fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=search state=cache_hit");
         return Ok(Json(cached));
     }
     state
         .metrics
         .search_cache_misses
         .fetch_add(1, Ordering::Relaxed);
+    log::debug!("event=search state=cache_miss");
 
     let (cell, is_leader) = search_inflight_cell(&state, &cache_key);
     if !is_leader {
@@ -638,6 +675,7 @@ async fn search(
             .metrics
             .search_inflight_waits
             .fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=search state=coalesced_wait");
     }
     let metrics = state.metrics.clone();
     let request_timeout = state.request_timeout;
@@ -656,8 +694,9 @@ async fn search(
             .await
             .map_err(|_| {
                 metrics.request_timeouts.fetch_add(1, Ordering::Relaxed);
+                log::warn!("event=search state=timeout phase=execution");
                 SharedApiError {
-                    status: StatusCode::BAD_GATEWAY,
+                    status: StatusCode::GATEWAY_TIMEOUT,
                     message: "search execution timed out".to_string(),
                 }
             })?
@@ -670,9 +709,23 @@ async fn search(
     match response {
         Ok(response) => {
             search_cache_put(&state, cache_key, response.clone());
+            log::info!(
+                "event=search state=success elapsed_ms={:.1} rows={} total_matches={}",
+                req_started.elapsed().as_secs_f64() * 1000.0,
+                response.rows.len(),
+                response.total_matches,
+            );
             Ok(Json(response))
         }
-        Err(err) => Err(err.into()),
+        Err(err) => {
+            log::warn!(
+                "event=search state=error elapsed_ms={:.1} status={} message={}",
+                req_started.elapsed().as_secs_f64() * 1000.0,
+                err.status,
+                err.message,
+            );
+            Err(err.into())
+        }
     }
 }
 
@@ -738,26 +791,24 @@ async fn build_search_response(
     responses(
         (status = 200, description = "Direct export URLs", body = ExportUrlResponse),
         (status = 400, description = "Invalid request", body = ErrorResponse),
-        (status = 502, description = "Upstream SPARQL failure", body = ErrorResponse)
+        (status = 502, description = "Upstream SPARQL failure", body = ErrorResponse),
+        (status = 503, description = "Server overloaded", body = ErrorResponse),
+        (status = 504, description = "Taxon-resolution timeout", body = ErrorResponse)
     )
 )]
 async fn export_urls(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,
 ) -> Result<Json<ExportUrlResponse>, ApiError> {
-    let _permit = state
-        .request_permits
-        .try_acquire()
-        .map_err(|_| {
-            state
-                .metrics
-                .overload_rejections
-                .fetch_add(1, Ordering::Relaxed);
-            ApiError {
-                status: StatusCode::SERVICE_UNAVAILABLE,
-                message: "Server is busy, retry shortly".to_string(),
-            }
-        })?;
+    let req_started = Instant::now();
+    let _permit = state.request_permits.try_acquire().map_err(|_| {
+        state
+            .metrics
+            .overload_rejections
+            .fetch_add(1, Ordering::Relaxed);
+        log::warn!("event=export state=rejected reason=overloaded");
+        ApiError::overloaded("Server is busy, retry shortly")
+    })?;
 
     let mut criteria = apply_request(&req)?;
     if !criteria.is_valid() {
@@ -776,24 +827,26 @@ async fn export_urls(
             .metrics
             .request_timeouts
             .fetch_add(1, Ordering::Relaxed);
+        log::warn!("event=export state=timeout phase=taxon");
         ApiError::upstream("taxon resolution timed out")
     })??;
-    if let Some(qid) = resolved_taxon_qid.as_deref()
-        && qid != "*"
-    {
+    if let Some(qid) = resolved_taxon_qid.as_deref() && qid != "*" {
         criteria.taxon = qid.to_string();
     }
     let query = build_execution_query(&criteria, resolved_taxon_qid.as_deref());
     let cache_key = build_export_cache_key(&query);
+    log::info!("event=export state=start");
 
     if let Some(cached) = export_cache_get(&state, &cache_key) {
         state.metrics.export_cache_hits.fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=export state=cache_hit");
         return Ok(Json(cached));
     }
     state
         .metrics
         .export_cache_misses
         .fetch_add(1, Ordering::Relaxed);
+    log::debug!("event=export state=cache_miss");
 
     let (cell, is_leader) = export_inflight_cell(&state, &cache_key);
     if !is_leader {
@@ -801,6 +854,7 @@ async fn export_urls(
             .metrics
             .export_inflight_waits
             .fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=export state=coalesced_wait");
     }
     let response = cell
         .get_or_init(|| async {
@@ -821,9 +875,21 @@ async fn export_urls(
     match response {
         Ok(response) => {
             export_cache_put(&state, cache_key, response.clone());
+            log::info!(
+                "event=export state=success elapsed_ms={:.1}",
+                req_started.elapsed().as_secs_f64() * 1000.0,
+            );
             Ok(Json(response))
         }
-        Err(err) => Err(err.into()),
+        Err(err) => {
+            log::warn!(
+                "event=export state=error elapsed_ms={:.1} status={} message={}",
+                req_started.elapsed().as_secs_f64() * 1000.0,
+                err.status,
+                err.message,
+            );
+            Err(err.into())
+        }
     }
 }
 
@@ -1100,8 +1166,9 @@ fn sha256_hex(bytes: impl AsRef<[u8]>) -> String {
 
 fn search_cache_get(state: &AppState, key: &str) -> Option<SearchResponse> {
     let mut cache = state.search_cache.lock().ok()?;
-    prune_cache(
+    maybe_prune_cache(
         &mut cache,
+        &state.search_cache_prune_after,
         SEARCH_CACHE_TTL,
         MAX_SEARCH_CACHE_ENTRIES,
         |entry| entry.inserted_at,
@@ -1111,8 +1178,9 @@ fn search_cache_get(state: &AppState, key: &str) -> Option<SearchResponse> {
 
 fn search_cache_put(state: &AppState, key: String, value: SearchResponse) {
     if let Ok(mut cache) = state.search_cache.lock() {
-        prune_cache(
+        maybe_prune_cache(
             &mut cache,
+            &state.search_cache_prune_after,
             SEARCH_CACHE_TTL,
             MAX_SEARCH_CACHE_ENTRIES,
             |entry| entry.inserted_at,
@@ -1129,8 +1197,9 @@ fn search_cache_put(state: &AppState, key: String, value: SearchResponse) {
 
 fn export_cache_get(state: &AppState, key: &str) -> Option<ExportUrlResponse> {
     let mut cache = state.export_cache.lock().ok()?;
-    prune_cache(
+    maybe_prune_cache(
         &mut cache,
+        &state.export_cache_prune_after,
         EXPORT_CACHE_TTL,
         MAX_EXPORT_CACHE_ENTRIES,
         |entry| entry.inserted_at,
@@ -1140,8 +1209,9 @@ fn export_cache_get(state: &AppState, key: &str) -> Option<ExportUrlResponse> {
 
 fn export_cache_put(state: &AppState, key: String, value: ExportUrlResponse) {
     if let Ok(mut cache) = state.export_cache.lock() {
-        prune_cache(
+        maybe_prune_cache(
             &mut cache,
+            &state.export_cache_prune_after,
             EXPORT_CACHE_TTL,
             MAX_EXPORT_CACHE_ENTRIES,
             |entry| entry.inserted_at,
@@ -1200,8 +1270,9 @@ fn export_inflight_remove(state: &AppState, key: &str, cell: &InFlightExport, is
 
 fn taxon_cache_get(state: &AppState, key: &str) -> Option<(Option<String>, Option<String>)> {
     let mut cache = state.taxon_cache.lock().ok()?;
-    prune_cache(
+    maybe_prune_cache(
         &mut cache,
+        &state.taxon_cache_prune_after,
         TAXON_CACHE_TTL,
         MAX_TAXON_CACHE_ENTRIES,
         |entry| entry.inserted_at,
@@ -1211,8 +1282,9 @@ fn taxon_cache_get(state: &AppState, key: &str) -> Option<(Option<String>, Optio
 
 fn taxon_cache_put(state: &AppState, key: String, value: (Option<String>, Option<String>)) {
     if let Ok(mut cache) = state.taxon_cache.lock() {
-        prune_cache(
+        maybe_prune_cache(
             &mut cache,
+            &state.taxon_cache_prune_after,
             TAXON_CACHE_TTL,
             MAX_TAXON_CACHE_ENTRIES,
             |entry| entry.inserted_at,
@@ -1224,6 +1296,32 @@ fn taxon_cache_put(state: &AppState, key: String, value: (Option<String>, Option
                 value,
             },
         );
+    }
+}
+
+fn maybe_prune_cache<V, F>(
+    cache: &mut HashMap<String, V>,
+    prune_after: &Arc<Mutex<Instant>>,
+    ttl: Duration,
+    max_entries: usize,
+    inserted_at: F,
+) where
+    F: Fn(&V) -> Instant,
+{
+    let now = Instant::now();
+    let should_prune = if let Ok(mut next_prune) = prune_after.lock() {
+        if now < *next_prune {
+            false
+        } else {
+            *next_prune = now + CACHE_PRUNE_INTERVAL;
+            true
+        }
+    } else {
+        true
+    };
+
+    if should_prune {
+        prune_cache(cache, ttl, max_entries, inserted_at);
     }
 }
 
