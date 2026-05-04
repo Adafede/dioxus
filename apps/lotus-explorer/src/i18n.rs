@@ -457,7 +457,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::YearFrom => "De",
             TextKey::YearTo => "À",
             TextKey::RunSearch => "Lancer la recherche",
-            TextKey::KetcherSummary => "Editeur de structure (Ketcher)",
+            TextKey::KetcherSummary => "Éditeur de structure (Ketcher)",
             TextKey::KetcherHintA => "Besoin de dessiner ou trouver une structure ? Utilisez le ",
             TextKey::KetcherHintB => " dans la vue principale, puis ",
             TextKey::KetcherHintC => " (ou ",
@@ -466,9 +466,9 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::KindNoteSmiles => "  Envoyé comme littéral SPARQL sur une seule ligne.",
             TextKey::KindNoteMol2000 => "  Transmis tel quel à SACHEM scoredSubstructureSearch.",
             TextKey::KindNoteMol3000 => {
-                "  Transmis tel quel $ SACHEM scoredSubstructureSearch (CTAB v3000)."
+                "  Transmis tel quel à SACHEM scoredSubstructureSearch (CTAB v3000)."
             }
-            TextKey::DatasetStatistics => "Statistiques du jeu de donnees",
+            TextKey::DatasetStatistics => "Statistiques du jeu de données",
             TextKey::DownloadResults => "Télécharger résultats",
             TextKey::PreparingDownload => "Préparation du téléchargement...",
             TextKey::StartingCsvDownload => "Démarrage téléchargement CSV...",
