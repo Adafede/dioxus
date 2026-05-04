@@ -6,6 +6,8 @@
 //! QLever CSV export URL format:
 //!   `https://qlever.dev/api/wikidata?query=<encoded>&action=csv_export`
 
+use std::sync::OnceLock;
+
 /// Default QLever endpoint for Wikidata (used by lotus-explorer).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
 
@@ -95,7 +97,7 @@ pub async fn execute_sparql_with_format_bytes(
     log::debug!("SPARQL POST endpoint: {endpoint}");
 
     const MAX_ATTEMPTS: u32 = 2;
-    let client = reqwest::Client::new();
+    let client = http_client();
     let mut last_err: Option<FetchError> = None;
 
     for attempt in 0..MAX_ATTEMPTS {
@@ -166,6 +168,11 @@ pub async fn execute_sparql_with_format_bytes(
     }
 
     Err(last_err.unwrap_or_else(|| FetchError::Network("unknown error".into())))
+}
+
+fn http_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(reqwest::Client::new)
 }
 
 fn looks_like_gateway_error(body: &str) -> bool {

@@ -4,7 +4,7 @@
 use crate::models::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 #[derive(Debug)]
 pub enum ApiClientError {
@@ -244,6 +244,11 @@ pub fn api_base_url() -> Option<String> {
     None
 }
 
+fn http_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(reqwest::Client::new)
+}
+
 fn normalize_api_base(value: &str) -> Option<String> {
     let trimmed = value.trim().trim_end_matches('/');
     if trimmed.is_empty() {
@@ -281,8 +286,7 @@ where
     Res: for<'de> Deserialize<'de>,
 {
     let url = format!("{}{}", base.trim_end_matches('/'), path);
-    let client = reqwest::Client::new();
-    let response = client
+    let response = http_client()
         .post(url)
         .json(body)
         .send()
