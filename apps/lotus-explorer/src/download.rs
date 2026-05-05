@@ -9,6 +9,8 @@ use wasm_bindgen::JsCast;
 use crate::models::SearchCriteria;
 use crate::{api, perf, queries, sparql};
 use shared::sparql::SparqlResponseFormat;
+#[cfg(target_arch = "wasm32")]
+use shared::sparql::QLEVER_WIKIDATA;
 use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -72,6 +74,24 @@ impl DownloadFormat {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn export_url_from_query(&self, query: &str) -> String {
+        let q = match self {
+            Self::Rdf => queries::query_construct_from_select(query),
+            _ => query.to_string(),
+        };
+        let action = match self {
+            Self::Csv => "csv_export",
+            Self::Json => "sparql_json_export",
+            Self::Rdf => "turtle_export",
+        };
+        format!(
+            "{}?query={}&action={action}",
+            QLEVER_WIKIDATA,
+            urlencoding::encode(&q)
+        )
+    }
+
     fn response_format(&self) -> SparqlResponseFormat {
         match self {
             Self::Csv => SparqlResponseFormat::Csv,
@@ -120,6 +140,34 @@ pub async fn execute_download(
     // Try API first
     if let Ok(urls) = api::export_urls(&criteria).await {
         let url = format.extract_url(&urls);
+        #[cfg(target_arch = "wasm32")]
+        {
+            let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
+            perf::log_timing(
+                "download",
+                &format!(
+                    "event=download format={} phase=fetch state=success source=api_url",
+                    format.log_name()
+                ),
+                Some(fetch_elapsed),
+            );
+
+            let trigger_timer = perf::start_timer(&format.trigger_timer_label());
+            trigger_download_url(&filename, &url);
+            let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
+            perf::log_timing(
+                "download",
+                &format!(
+                    "event=download format={} phase=trigger state=success source=api_url",
+                    format.log_name()
+                ),
+                Some(trigger_elapsed),
+            );
+            return Ok(());
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
         match format.fetch_from_export_url(&url).await {
             Ok(body) => {
                 let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
@@ -198,7 +246,35 @@ pub async fn execute_download(
                 }
             }
         }
+        }
     } else {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let url = format.export_url_from_query(&query);
+            let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
+            perf::log_timing(
+                "download",
+                &format!(
+                    "event=download format={} phase=fetch state=success source=direct_url",
+                    format.log_name()
+                ),
+                Some(fetch_elapsed),
+            );
+
+            let trigger_timer = perf::start_timer(&format.trigger_timer_label());
+            trigger_download_url(&filename, &url);
+            let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
+            perf::log_timing(
+                "download",
+                &format!(
+                    "event=download format={} phase=trigger state=success source=direct_url",
+                    format.log_name()
+                ),
+                Some(trigger_elapsed),
+            );
+            return Ok(());
+        }
+
         // Fallback to direct query execution
         match format.fetch_fallback(&query).await {
             Ok(body) => {
