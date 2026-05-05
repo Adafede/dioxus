@@ -89,19 +89,19 @@ pub fn current_year() -> u16 {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CompoundEntry {
-    pub compound_qid: String,
+    pub compound_qid: Arc<str>,
     pub name: Arc<str>,
-    pub inchikey: Option<String>,
-    pub smiles: Option<String>,
+    pub inchikey: Option<Arc<str>>,
+    pub smiles: Option<Arc<str>>,
     pub mass: Option<f64>,
     pub formula: Option<Arc<str>>,
-    pub taxon_qid: String,
+    pub taxon_qid: Arc<str>,
     pub taxon_name: Arc<str>,
-    pub reference_qid: String,
+    pub reference_qid: Arc<str>,
     pub ref_title: Option<Arc<str>>,
-    pub ref_doi: Option<String>,
+    pub ref_doi: Option<Arc<str>>,
     pub pub_year: Option<i16>,
-    pub statement: Option<String>,
+    pub statement: Option<Arc<str>>,
 }
 
 impl CompoundEntry {
@@ -117,7 +117,7 @@ impl CompoundEntry {
     }
 
     pub fn depict_url(&self) -> Option<String> {
-        let smiles = self.smiles.as_ref()?.trim();
+        let smiles = self.smiles.as_deref()?.trim();
         if smiles.is_empty() || smiles.contains('\n') {
             return None;
         }
@@ -366,12 +366,12 @@ impl DatasetStats {
         let mut t: HashSet<u64> = HashSet::with_capacity(entries.len());
         let mut r: HashSet<u64> = HashSet::with_capacity(entries.len());
         for e in entries {
-            c.insert(fnv1a64(e.compound_qid.as_bytes()));
+            c.insert(fnv1a64(e.compound_qid.as_ref().as_bytes()));
             if !e.taxon_qid.is_empty() {
-                t.insert(fnv1a64(e.taxon_qid.as_bytes()));
+                t.insert(fnv1a64(e.taxon_qid.as_ref().as_bytes()));
             }
             if !e.reference_qid.is_empty() {
-                r.insert(fnv1a64(e.reference_qid.as_bytes()));
+                r.insert(fnv1a64(e.reference_qid.as_ref().as_bytes()));
             }
         }
         Self {

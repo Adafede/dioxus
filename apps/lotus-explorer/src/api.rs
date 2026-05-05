@@ -6,13 +6,11 @@ use crate::{
     queries,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::fmt;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, OnceLock};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
-
-const MAX_EXPORT_URL_CACHE_ENTRIES: usize = 64;
+const WIKIDATA_STATEMENT_PREFIX: &str = "http://www.wikidata.org/entity/statement/";
 
 #[derive(Debug)]
 pub enum ApiClientError {
@@ -147,6 +145,20 @@ fn normalize_structure_for_api(value: &str) -> String {
     }
 }
 
+fn normalize_statement(value: Option<String>) -> Option<String> {
+    let value = value?;
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(
+        trimmed
+            .strip_prefix(WIKIDATA_STATEMENT_PREFIX)
+            .unwrap_or(trimmed)
+            .to_string(),
+    )
+}
+
 #[derive(Debug, Deserialize)]
 pub struct SearchResponse {
     pub resolved_taxon_qid: Option<String>,
@@ -157,11 +169,18 @@ pub struct SearchResponse {
     pub stats: SearchStats,
 }
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone, Deserialize)]
 pub struct ExportUrlResponse {
     pub csv_url: String,
     pub json_url: String,
     pub rdf_url: String,
+    #[serde(default)]
+    pub csv_gz_url: Option<String>,
+    #[serde(default)]
+    pub json_gz_url: Option<String>,
+    #[serde(default)]
+    pub rdf_gz_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -210,19 +229,19 @@ pub struct RowDto {
 impl From<RowDto> for CompoundEntry {
     fn from(value: RowDto) -> Self {
         Self {
-            compound_qid: value.compound_qid,
+            compound_qid: Arc::<str>::from(value.compound_qid),
             name: Arc::<str>::from(value.name),
-            inchikey: value.inchikey,
-            smiles: value.smiles,
+            inchikey: value.inchikey.map(Arc::<str>::from),
+            smiles: value.smiles.map(Arc::<str>::from),
             mass: value.mass,
             formula: value.formula.map(Arc::<str>::from),
-            taxon_qid: value.taxon_qid,
+            taxon_qid: Arc::<str>::from(value.taxon_qid),
             taxon_name: Arc::<str>::from(value.taxon_name),
-            reference_qid: value.reference_qid,
+            reference_qid: Arc::<str>::from(value.reference_qid),
             ref_title: value.ref_title.map(Arc::<str>::from),
-            ref_doi: value.ref_doi,
+            ref_doi: value.ref_doi.map(Arc::<str>::from),
             pub_year: value.pub_year,
-            statement: value.statement,
+            statement: normalize_statement(value.statement).map(Arc::<str>::from),
         }
     }
 }
@@ -237,17 +256,12 @@ pub async fn search(
     post_json(&base, "/v1/search", &request).await
 }
 
+#[cfg(target_arch = "wasm32")]
 pub async fn export_urls(criteria: &SearchCriteria) -> Result<ExportUrlResponse, ApiClientError> {
     let base = api_base_url().ok_or(ApiClientError::NotConfigured)?;
     let request = SearchRequest::from_criteria(criteria, 1, false);
-    let cache_key = serde_json::to_string(&request).unwrap_or_else(|_| format!("base={base}"));
-    if let Some(cached) = export_url_cache_get(&cache_key) {
-        return Ok(cached);
-    }
-
     let response: ExportUrlResponse = post_json(&base, "/v1/export-url", &request).await?;
-    export_url_cache_put(cache_key, response.clone());
-    Ok(response)
+    Ok(normalize_export_urls(&base, response))
 }
 
 pub fn api_base_url() -> Option<String> {
@@ -307,25 +321,6 @@ fn build_http_client() -> reqwest::Client {
     }
 }
 
-fn export_url_cache() -> &'static Mutex<BTreeMap<String, ExportUrlResponse>> {
-    static CACHE: OnceLock<Mutex<BTreeMap<String, ExportUrlResponse>>> = OnceLock::new();
-    CACHE.get_or_init(|| Mutex::new(BTreeMap::new()))
-}
-
-fn export_url_cache_get(key: &str) -> Option<ExportUrlResponse> {
-    let cache = export_url_cache().lock().ok()?;
-    cache.get(key).cloned()
-}
-
-fn export_url_cache_put(key: String, value: ExportUrlResponse) {
-    if let Ok(mut cache) = export_url_cache().lock() {
-        if cache.len() >= MAX_EXPORT_URL_CACHE_ENTRIES && !cache.contains_key(&key) {
-            cache.clear();
-        }
-        cache.insert(key, value);
-    }
-}
-
 fn normalize_api_base(value: &str) -> Option<String> {
     let trimmed = value.trim().trim_end_matches('/');
     if trimmed.is_empty() {
@@ -335,6 +330,31 @@ fn normalize_api_base(value: &str) -> Option<String> {
         return None;
     }
     Some(trimmed.to_string())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn normalize_export_urls(base: &str, mut response: ExportUrlResponse) -> ExportUrlResponse {
+    response.csv_url = resolve_api_url(base, &response.csv_url);
+    response.json_url = resolve_api_url(base, &response.json_url);
+    response.rdf_url = resolve_api_url(base, &response.rdf_url);
+    response.csv_gz_url = response.csv_gz_url.map(|url| resolve_api_url(base, &url));
+    response.json_gz_url = response.json_gz_url.map(|url| resolve_api_url(base, &url));
+    response.rdf_gz_url = response.rdf_gz_url.map(|url| resolve_api_url(base, &url));
+    response
+}
+
+#[cfg(target_arch = "wasm32")]
+fn resolve_api_url(base: &str, url: &str) -> String {
+    let trimmed = url.trim();
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        return trimmed.to_string();
+    }
+    let base = base.trim_end_matches('/');
+    if trimmed.starts_with('/') {
+        format!("{base}{trimmed}")
+    } else {
+        format!("{base}/{trimmed}")
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -429,5 +449,33 @@ mod tests {
         let smiles = request.smiles.expect("smiles payload");
         assert!(smiles.starts_with('\n'));
         assert!(smiles.contains("V3000"));
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[test]
+    fn resolve_api_url_joins_relative_paths() {
+        assert_eq!(
+            resolve_api_url("https://api.example.org", "/v1/export-file/abc/csv"),
+            "https://api.example.org/v1/export-file/abc/csv"
+        );
+        assert_eq!(
+            resolve_api_url("https://api.example.org/", "v1/export-file/abc/csv"),
+            "https://api.example.org/v1/export-file/abc/csv"
+        );
+    }
+
+    #[test]
+    fn normalize_statement_strips_wikidata_prefix() {
+        assert_eq!(
+            normalize_statement(Some(
+                "http://www.wikidata.org/entity/statement/S123".to_string()
+            )),
+            Some("S123".to_string())
+        );
+        assert_eq!(
+            normalize_statement(Some("S124".to_string())),
+            Some("S124".to_string())
+        );
+        assert_eq!(normalize_statement(Some("   ".to_string())), None);
     }
 }

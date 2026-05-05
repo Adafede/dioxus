@@ -91,9 +91,9 @@ fn log_download_timing(
 fn spawn_query_download(
     format: DownloadFormat,
     status_message: String,
-    criteria_snapshot: SearchCriteria,
+    _criteria_snapshot: SearchCriteria,
     filename: String,
-    query: String,
+    query: Arc<str>,
     mut download_busy: Signal<bool>,
     mut download_status: Signal<Option<String>>,
 ) {
@@ -115,8 +115,14 @@ fn spawn_query_download(
                 query.len()
             )),
         );
-        if let Err(err) =
-            execute_download(format, Arc::new(criteria_snapshot), query, filename).await
+        if let Err(err) = execute_download(
+            format,
+            #[cfg(target_arch = "wasm32")]
+            Arc::new(_criteria_snapshot),
+            query.to_string(),
+            filename,
+        )
+        .await
         {
             log_download_evt(
                 "table_fetch",
@@ -134,7 +140,7 @@ fn dispatch_query_download_spec(
     locale: Locale,
     criteria_snapshot: SearchCriteria,
     filename: String,
-    query: String,
+    query: Arc<str>,
     download_busy: Signal<bool>,
     download_status: Signal<Option<String>>,
 ) {
@@ -245,17 +251,17 @@ pub fn ResultsTable() -> Element {
 
     rsx! {
         div { id: "results-section", class: "results-wrap",
-            if let Some(q) = sparql_query.as_deref() {
+            if let Some(q) = sparql_query.as_ref() {
                 details { class: "query-panel",
                     summary { "{t(locale, TextKey::SparqlQuery)}" }
                     div { class: "query-panel-actions",
                         crate::components::copy_button::CopyButton {
-                            text: q.to_string(),
+                            text: q.clone(),
                             title: t(locale, TextKey::CopySparqlQuery),
                             locale,
                         }
                     }
-                    pre { class: "query-text", "{q}" }
+                    pre { class: "query-text", "{q.as_ref()}" }
                 }
             }
             // ── Stats + toolbar ───────────────────────────────────────────
@@ -336,8 +342,8 @@ pub fn ResultsTable() -> Element {
 fn ResultsDownloadActions(
     locale: Locale,
     criteria: Signal<SearchCriteria>,
-    sparql_query: Option<String>,
-    metadata_json: Option<String>,
+    sparql_query: Option<Arc<str>>,
+    metadata_json: Option<Arc<str>>,
     query_hash: Option<String>,
     result_hash: Option<String>,
 ) -> Element {
@@ -362,8 +368,8 @@ fn ResultsDownloadActions(
         }
     };
     let qlever_ui_url = sparql_query
-        .as_deref()
-        .map(|q| format!("{QLEVER_UI}?query={}", urlencoding::encode(q)));
+        .as_ref()
+        .map(|q| format!("{QLEVER_UI}?query={}", urlencoding::encode(q.as_ref())));
     let download_busy = use_signal(|| false);
     let download_status: Signal<Option<String>> = use_signal(|| None);
     let download_status_text = download_status
@@ -387,13 +393,13 @@ fn ResultsDownloadActions(
                     class: "dl-group",
                     role: "group",
                     aria_label: "{t(locale, TextKey::DownloadResults)}",
-                    if let Some(query) = sparql_query.as_deref() {
+                    if let Some(query) = sparql_query.as_ref() {
                         button {
                             class: "btn btn-sm",
                             r#type: "button",
                             disabled: *download_busy.read(),
                             onclick: {
-                                let q = query.to_string();
+                                let q = query.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_CSV_SPEC,
@@ -415,7 +421,7 @@ fn ResultsDownloadActions(
                             r#type: "button",
                             disabled: *download_busy.read(),
                             onclick: {
-                                let q = query.to_string();
+                                let q = query.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_JSON_SPEC,
@@ -437,7 +443,7 @@ fn ResultsDownloadActions(
                             r#type: "button",
                             disabled: *download_busy.read(),
                             onclick: {
-                                let q = query.to_string();
+                                let q = query.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_RDF_SPEC,
@@ -464,7 +470,7 @@ fn ResultsDownloadActions(
                                 let body = body.clone();
                                 let filename = metadata_filename.clone();
                                 move |_| {
-                                    dispatch_metadata_download_blob(&filename, &body);
+                                    dispatch_metadata_download_blob(&filename, body.as_ref());
                                 }
                             },
                             title: "{t(locale, DOWNLOAD_METADATA_SPEC.title_key)}",
@@ -721,9 +727,9 @@ fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) 
     // URLs can be interpolated inline in RSX — no need for intermediate
     // `String` allocations. Only DOI / depict / statement / inchikey search
     // require conditional work, so those are the only helpers we still call.
-    let compound_qid = entry.compound_qid.as_str();
-    let taxon_qid = entry.taxon_qid.as_str();
-    let reference_qid = entry.reference_qid.as_str();
+    let compound_qid = entry.compound_qid.as_ref();
+    let taxon_qid = entry.taxon_qid.as_ref();
+    let reference_qid = entry.reference_qid.as_ref();
     let doi = entry.doi();
     let depict_url = entry.depict_url();
     let statement_id = entry.statement_id_str();
@@ -732,7 +738,7 @@ fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) 
         .as_deref()
         .map(|title| truncate_title(title, 60));
     let name: &str = if entry.name.trim().is_empty() {
-        entry.compound_qid.as_str()
+        entry.compound_qid.as_ref()
     } else {
         &entry.name
     };
@@ -1004,7 +1010,8 @@ fn sort_icon_for(state: &SortState, col: SortColumn) -> &'static str {
             "↓"
         }
     } else {
-        ""
+        // Neutral indicator communicates that the column is sortable.
+        "↕"
     }
 }
 

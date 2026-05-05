@@ -3,34 +3,16 @@
 
 use super::models::{CompoundEntry, DatasetStats, TaxonMatch};
 use crate::sparql::{
-    FetchError, QLEVER_WIKIDATA, SparqlResponseFormat, clean_doi, coalesce, col_idx,
-    execute_sparql as shared_execute, execute_sparql_bytes as shared_execute_bytes,
-    fetch_export_url_bytes as shared_fetch_export_url_bytes,
-    execute_sparql_with_format as shared_execute_with_format, extract_qid, field, non_empty,
-    parse_year,
+    FetchError, QLEVER_WIKIDATA, SparqlResponseFormat, col_idx, execute_sparql as shared_execute,
+    execute_sparql_bytes as shared_execute_bytes,
+    execute_sparql_with_format as shared_execute_with_format, extract_qid,
+    fetch_export_url_bytes as shared_fetch_export_url_bytes, field, parse_year,
 };
 use std::collections::{HashMap, HashSet};
 use std::num::Wrapping;
 use std::sync::Arc;
 
-#[inline]
-fn arc_or_empty(s: &str) -> Arc<str> {
-    if s.is_empty() {
-        Arc::<str>::from("")
-    } else {
-        Arc::<str>::from(s)
-    }
-}
-
-#[inline]
-fn arc_non_empty(s: &str) -> Option<Arc<str>> {
-    let t = s.trim();
-    if t.is_empty() {
-        None
-    } else {
-        Some(Arc::<str>::from(t))
-    }
-}
+const WIKIDATA_STATEMENT_PREFIX: &str = "http://www.wikidata.org/entity/statement/";
 
 #[derive(Default)]
 struct StrInterner {
@@ -125,6 +107,33 @@ fn parse_entity_id(value: &str) -> String {
     String::new()
 }
 
+#[inline]
+fn normalize_statement_value(value: &str) -> Option<&str> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(
+        trimmed
+            .strip_prefix(WIKIDATA_STATEMENT_PREFIX)
+            .unwrap_or(trimmed),
+    )
+}
+
+#[inline]
+fn normalize_doi_value(value: &str) -> Option<&str> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let normalized = trimmed.split("doi.org/").last().unwrap_or(trimmed).trim();
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized)
+    }
+}
+
 pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
     shared_execute(sparql, QLEVER_WIKIDATA).await
 }
@@ -183,6 +192,13 @@ pub fn parse_compounds_csv_display_bytes(
     let mut seen: HashSet<u64> = HashSet::with_capacity(initial_cap.saturating_mul(2));
     let mut taxon_name_intern = StrInterner::with_capacity(64);
     let mut ref_title_intern = StrInterner::with_capacity(128);
+    let mut qid_intern = StrInterner::with_capacity(512);
+    let mut doi_intern = StrInterner::with_capacity(256);
+    let mut label_intern = StrInterner::with_capacity(512);
+    let mut inchikey_intern = StrInterner::with_capacity(512);
+    let mut smiles_intern = StrInterner::with_capacity(1024);
+    let mut formula_intern = StrInterner::with_capacity(512);
+    let mut statement_intern = StrInterner::with_capacity(512);
     let mut compound_qid = String::new();
     let mut taxon_qid = String::new();
     let mut reference_qid = String::new();
@@ -237,19 +253,24 @@ pub fn parse_compounds_csv_display_bytes(
         let statement = byte_field_str(&rec, c_statement);
 
         entries.push(CompoundEntry {
-            compound_qid: compound_qid.clone(),
-            name: arc_or_empty(label),
-            inchikey: non_empty(inchikey),
-            smiles: coalesce(smiles_iso, smiles_con),
+            compound_qid: qid_intern.intern_or_empty(&compound_qid),
+            name: label_intern.intern_or_empty(label),
+            inchikey: inchikey_intern.intern_optional(inchikey),
+            smiles: smiles_intern.intern_optional(if smiles_iso.is_empty() {
+                smiles_con
+            } else {
+                smiles_iso
+            }),
             mass: mass.parse::<f64>().ok(),
-            formula: arc_non_empty(formula),
-            taxon_qid: taxon_qid.clone(),
+            formula: formula_intern.intern_optional(formula),
+            taxon_qid: qid_intern.intern_or_empty(&taxon_qid),
             taxon_name: taxon_name_intern.intern_or_empty(taxon_name),
-            reference_qid: reference_qid.clone(),
+            reference_qid: qid_intern.intern_or_empty(&reference_qid),
             ref_title: ref_title_intern.intern_optional(ref_title),
-            ref_doi: clean_doi(ref_doi),
+            ref_doi: normalize_doi_value(ref_doi).and_then(|d| doi_intern.intern_optional(d)),
             pub_year: parse_year(ref_date).and_then(|y| i16::try_from(y).ok()),
-            statement: non_empty(statement),
+            statement: normalize_statement_value(statement)
+                .and_then(|s| statement_intern.intern_optional(s)),
         });
     }
 
@@ -340,6 +361,13 @@ pub fn parse_compounds_csv_capped_bytes(
     let mut total_distinct = 0usize;
     let mut taxon_name_intern = StrInterner::with_capacity(64);
     let mut ref_title_intern = StrInterner::with_capacity(128);
+    let mut qid_intern = StrInterner::with_capacity(1024);
+    let mut doi_intern = StrInterner::with_capacity(512);
+    let mut label_intern = StrInterner::with_capacity(1024);
+    let mut inchikey_intern = StrInterner::with_capacity(1024);
+    let mut smiles_intern = StrInterner::with_capacity(2048);
+    let mut formula_intern = StrInterner::with_capacity(1024);
+    let mut statement_intern = StrInterner::with_capacity(1024);
 
     let mut compound_qid = String::new();
     let mut taxon_qid = String::new();
@@ -408,19 +436,24 @@ pub fn parse_compounds_csv_capped_bytes(
         let statement = byte_field_str(&rec, c_statement);
 
         entries.push(CompoundEntry {
-            compound_qid: compound_qid.clone(),
-            name: arc_or_empty(label),
-            inchikey: non_empty(inchikey),
-            smiles: coalesce(smiles_iso, smiles_con),
+            compound_qid: qid_intern.intern_or_empty(&compound_qid),
+            name: label_intern.intern_or_empty(label),
+            inchikey: inchikey_intern.intern_optional(inchikey),
+            smiles: smiles_intern.intern_optional(if smiles_iso.is_empty() {
+                smiles_con
+            } else {
+                smiles_iso
+            }),
             mass: mass.parse::<f64>().ok(),
-            formula: arc_non_empty(formula),
-            taxon_qid: taxon_qid.clone(),
+            formula: formula_intern.intern_optional(formula),
+            taxon_qid: qid_intern.intern_or_empty(&taxon_qid),
             taxon_name: taxon_name_intern.intern_or_empty(taxon_name),
-            reference_qid: reference_qid.clone(),
+            reference_qid: qid_intern.intern_or_empty(&reference_qid),
             ref_title: ref_title_intern.intern_optional(ref_title),
-            ref_doi: clean_doi(ref_doi),
+            ref_doi: normalize_doi_value(ref_doi).and_then(|d| doi_intern.intern_optional(d)),
             pub_year: parse_year(ref_date).and_then(|y| i16::try_from(y).ok()),
-            statement: non_empty(statement),
+            statement: normalize_statement_value(statement)
+                .and_then(|s| statement_intern.intern_optional(s)),
         });
     }
 
@@ -540,9 +573,11 @@ mod tests {
         let csv = b"compound,compoundLabel,compound_inchikey,compound_smiles_conn,compound_mass,compound_formula,taxon,taxon_name,ref_qid,ref_title,ref_doi,ref_date,statement\nQ1,cmpd,IK1,C,123.4,C1H2,Q10,TaxonA,Q100,TitleA,10.1/a,2022-01-01,http://www.wikidata.org/entity/statement/S1\nQ1,cmpd,IK1,C,123.4,C1H2,Q10,TaxonA,Q100,TitleA,10.1/a,2022-01-01,http://www.wikidata.org/entity/statement/S1\nQ2,cmpd2,IK2,CC,111.1,C2H4,Q11,TaxonB,Q101,TitleB,10.1/b,2021-01-01,http://www.wikidata.org/entity/statement/S2\n";
         let rows = parse_compounds_csv_display_bytes(csv, 50).expect("display parse");
         assert_eq!(rows.len(), 2);
-        assert_eq!(rows[0].compound_qid, "Q1");
-        assert_eq!(rows[0].taxon_qid, "Q10");
-        assert_eq!(rows[1].compound_qid, "Q2");
+        assert_eq!(rows[0].compound_qid.as_ref(), "Q1");
+        assert_eq!(rows[0].taxon_qid.as_ref(), "Q10");
+        assert_eq!(rows[0].statement.as_deref(), Some("S1"));
+        assert_eq!(rows[1].compound_qid.as_ref(), "Q2");
+        assert_eq!(rows[1].statement.as_deref(), Some("S2"));
     }
 
     #[cfg(not(target_arch = "wasm32"))]

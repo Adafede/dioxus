@@ -3,11 +3,15 @@
 
 use axum::{
     Json, Router,
-    extract::{DefaultBodyLimit, State},
-    http::{StatusCode, header::HeaderName},
+    extract::{DefaultBodyLimit, Path, Query, State},
+    http::{
+        StatusCode,
+        header::{self, HeaderName},
+    },
     response::{IntoResponse, Response},
     routing::{get, post},
 };
+use flate2::{Compression, write::GzEncoder};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use shared::lotus::models::{
@@ -449,19 +453,19 @@ struct RowDto {
 impl From<CompoundEntry> for RowDto {
     fn from(value: CompoundEntry) -> Self {
         Self {
-            compound_qid: value.compound_qid,
+            compound_qid: value.compound_qid.as_ref().to_string(),
             name: value.name.as_ref().to_string(),
-            inchikey: value.inchikey,
-            smiles: value.smiles,
+            inchikey: value.inchikey.map(|v| v.as_ref().to_string()),
+            smiles: value.smiles.map(|v| v.as_ref().to_string()),
             mass: value.mass,
             formula: value.formula.map(|v| v.as_ref().to_string()),
-            taxon_qid: value.taxon_qid,
+            taxon_qid: value.taxon_qid.as_ref().to_string(),
             taxon_name: value.taxon_name.as_ref().to_string(),
-            reference_qid: value.reference_qid,
+            reference_qid: value.reference_qid.as_ref().to_string(),
             ref_title: value.ref_title.map(|v| v.as_ref().to_string()),
-            ref_doi: value.ref_doi,
+            ref_doi: value.ref_doi.map(|v| v.as_ref().to_string()),
             pub_year: value.pub_year,
-            statement: value.statement,
+            statement: value.statement.map(|v| v.as_ref().to_string()),
         }
     }
 }
@@ -482,6 +486,48 @@ struct ExportUrlResponse {
     csv_url: String,
     json_url: String,
     rdf_url: String,
+    csv_gz_url: String,
+    json_gz_url: String,
+    rdf_gz_url: String,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct ExportFileQuery {
+    filename: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ExportArchiveFormat {
+    Csv,
+    Json,
+    Rdf,
+}
+
+impl ExportArchiveFormat {
+    fn parse(raw: &str) -> Option<Self> {
+        match raw {
+            "csv" => Some(Self::Csv),
+            "json" => Some(Self::Json),
+            "rdf" => Some(Self::Rdf),
+            _ => None,
+        }
+    }
+
+    fn extension(self) -> &'static str {
+        match self {
+            Self::Csv => "csv",
+            Self::Json => "json",
+            Self::Rdf => "rdf",
+        }
+    }
+
+    fn content_type(self) -> &'static str {
+        match self {
+            Self::Csv => "text/csv; charset=utf-8",
+            Self::Json => "application/sparql-results+json; charset=utf-8",
+            Self::Rdf => "text/turtle; charset=utf-8",
+        }
+    }
 }
 
 #[derive(OpenApi)]
@@ -531,6 +577,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/health", get(health))
         .route("/v1/search", post(search))
         .route("/v1/export-url", post(export_urls))
+        .route("/v1/export-file/{cache_key}/{format}", get(export_file))
         .merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()))
         .with_state(state)
         .layer(DefaultBodyLimit::max(config.max_body_bytes))
@@ -879,11 +926,14 @@ async fn export_urls(
         .get_or_init(|| async {
             Ok::<_, SharedApiError>(ExportUrlResponse {
                 csv_url: qlever_export_url(&query, "csv_export"),
-                json_url: qlever_export_url(&query, "sparql_json_export"),
+                json_url: qlever_export_url(&query, "qlever_json_export"),
                 rdf_url: qlever_export_url(
                     &queries::query_construct_from_select(&query),
                     "turtle_export",
                 ),
+                csv_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Csv),
+                json_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Json),
+                rdf_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Rdf),
                 query,
             })
         })
@@ -910,6 +960,96 @@ async fn export_urls(
             Err(err.into())
         }
     }
+}
+
+async fn export_file(
+    State(state): State<AppState>,
+    Path((cache_key, format_raw)): Path<(String, String)>,
+    Query(params): Query<ExportFileQuery>,
+) -> Result<Response, ApiError> {
+    let req_started = Instant::now();
+    let _permit = state.request_permits.try_acquire().map_err(|_| {
+        state
+            .metrics
+            .overload_rejections
+            .fetch_add(1, Ordering::Relaxed);
+        log::warn!("event=export_file state=rejected reason=overloaded");
+        ApiError::overloaded("Server is busy, retry shortly")
+    })?;
+
+    let format = ExportArchiveFormat::parse(&format_raw)
+        .ok_or_else(|| ApiError::bad_request("Unsupported export format"))?;
+    let cached = export_cache_get(&state, &cache_key).ok_or_else(|| {
+        ApiError::bad_request("Export link expired or is unknown. Regenerate the export URL.")
+    })?;
+
+    let upstream_url = build_upstream_export_url(&cached.query, format);
+    let raw_bytes = timeout(
+        state.request_timeout,
+        shared::sparql::fetch_url_bytes(&upstream_url),
+    )
+    .await
+    .map_err(|_| {
+        state
+            .metrics
+            .request_timeouts
+            .fetch_add(1, Ordering::Relaxed);
+        log::warn!("event=export_file state=timeout phase=fetch format={format_raw}");
+        ApiError::upstream("export fetch timed out")
+    })?
+    .map_err(|e| ApiError::upstream(format!("export fetch failed: {e}")))?;
+    let raw_len = raw_bytes.len();
+
+    let requested_filename = params
+        .filename
+        .as_deref()
+        .map(sanitize_download_filename)
+        .filter(|name| !name.is_empty());
+
+    let (body_bytes, content_type, attachment_name) = if let Some(filename) = requested_filename {
+        (raw_bytes, format.content_type(), filename)
+    } else {
+        let gz_bytes = gzip_bytes(&raw_bytes)
+            .map_err(|e| ApiError::upstream(format!("gzip encoding failed: {e}")))?;
+        (
+            gz_bytes,
+            "application/gzip",
+            format!("{cache_key}.{}.gz", format.extension()),
+        )
+    };
+    log::info!(
+        "event=export_file state=success elapsed_ms={:.1} format={} raw_bytes={} out_bytes={} named={}",
+        req_started.elapsed().as_secs_f64() * 1000.0,
+        format.extension(),
+        raw_len,
+        body_bytes.len(),
+        params.filename.is_some(),
+    );
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{attachment_name}\""),
+        )
+        .header(header::CACHE_CONTROL, "private, max-age=600")
+        .body(axum::body::Body::from(body_bytes))
+        .map_err(|e| ApiError::upstream(format!("response build failed: {e}")))
+}
+
+fn sanitize_download_filename(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    for c in input.trim().chars() {
+        if c.is_control() {
+            continue;
+        }
+        match c {
+            '/' | '\\' | '"' | '\'' | '\n' | '\r' => out.push('_'),
+            _ => out.push(c),
+        }
+    }
+    out.trim_matches('.').trim().to_string()
 }
 
 fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiError> {
@@ -1154,6 +1294,29 @@ fn qlever_export_url(query: &str, action: &str) -> String {
         shared::sparql::QLEVER_WIKIDATA,
         urlencoding::encode(query)
     )
+}
+
+fn api_export_file_url(cache_key: &str, format: ExportArchiveFormat) -> String {
+    format!("/v1/export-file/{cache_key}/{}", format.extension())
+}
+
+fn build_upstream_export_url(query: &str, format: ExportArchiveFormat) -> String {
+    match format {
+        ExportArchiveFormat::Csv => qlever_export_url(query, "csv_export"),
+        ExportArchiveFormat::Json => qlever_export_url(query, "qlever_json_export"),
+        ExportArchiveFormat::Rdf => qlever_export_url(
+            &queries::query_construct_from_select(query),
+            "turtle_export",
+        ),
+    }
+}
+
+fn gzip_bytes(input: &[u8]) -> std::io::Result<Vec<u8>> {
+    use std::io::Write;
+
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(input)?;
+    encoder.finish()
 }
 
 fn build_search_cache_key(query: &str, limit: usize, include_counts: bool) -> String {
@@ -1490,6 +1653,9 @@ mod tests {
                         csv_url: "a".into(),
                         json_url: "a".into(),
                         rdf_url: "a".into(),
+                        csv_gz_url: "a".into(),
+                        json_gz_url: "a".into(),
+                        rdf_gz_url: "a".into(),
                     },
                 },
             ),
@@ -1502,6 +1668,9 @@ mod tests {
                         csv_url: "b".into(),
                         json_url: "b".into(),
                         rdf_url: "b".into(),
+                        csv_gz_url: "b".into(),
+                        json_gz_url: "b".into(),
+                        rdf_gz_url: "b".into(),
                     },
                 },
             ),

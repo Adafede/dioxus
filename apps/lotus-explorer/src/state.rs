@@ -5,6 +5,7 @@ use crate::QueryPhase;
 use crate::i18n::Locale;
 use crate::models::*;
 use dioxus::prelude::*;
+use std::sync::Arc;
 
 /// Context for the search form and controls.
 #[derive(Clone, Copy)]
@@ -40,8 +41,8 @@ pub struct ResultsContext {
     pub searched_once: Signal<bool>,
     pub query_hash: Signal<Option<String>>,
     pub result_hash: Signal<Option<String>>,
-    pub sparql_query: Signal<Option<String>>,
-    pub metadata_json: Signal<Option<String>>,
+    pub sparql_query: Signal<Option<Arc<str>>>,
+    pub metadata_json: Signal<Option<Arc<str>>>,
     pub total_matches: Signal<Option<usize>>,
     pub total_stats: Signal<Option<DatasetStats>>,
     pub display_capped_rows: Signal<bool>,
@@ -61,8 +62,8 @@ impl ResultsContext {
         searched_once: Signal<bool>,
         query_hash: Signal<Option<String>>,
         result_hash: Signal<Option<String>>,
-        sparql_query: Signal<Option<String>>,
-        metadata_json: Signal<Option<String>>,
+        sparql_query: Signal<Option<Arc<str>>>,
+        metadata_json: Signal<Option<Arc<str>>>,
         total_matches: Signal<Option<usize>>,
         total_stats: Signal<Option<DatasetStats>>,
         display_capped_rows: Signal<bool>,

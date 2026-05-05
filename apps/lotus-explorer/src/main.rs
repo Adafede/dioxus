@@ -70,61 +70,14 @@ struct SearchRuntime {
     resolved_qid: Signal<Option<String>>,
     query_hash: Signal<Option<String>>,
     result_hash: Signal<Option<String>>,
-    sparql_query: Signal<Option<String>>,
-    metadata_json: Signal<Option<String>>,
+    sparql_query: Signal<Option<Arc<str>>>,
+    metadata_json: Signal<Option<Arc<str>>>,
     total_matches: Signal<Option<usize>>,
     total_stats: Signal<Option<DatasetStats>>,
     display_capped_rows: Signal<bool>,
     page: Signal<usize>,
     mobile_filters_open: Signal<bool>,
     search_request_token: Signal<u64>,
-}
-
-impl SearchRuntime {
-    #[allow(clippy::too_many_arguments)]
-    fn new(
-        executed_criteria: Signal<SearchCriteria>,
-        loading: Signal<bool>,
-        error: Signal<Option<String>>,
-        error_kind: Signal<ErrorKind>,
-        query_phase: Signal<QueryPhase>,
-        searched_once: Signal<bool>,
-        entries: Signal<Rows>,
-        taxon_notice: Signal<Option<String>>,
-        resolved_qid: Signal<Option<String>>,
-        query_hash: Signal<Option<String>>,
-        result_hash: Signal<Option<String>>,
-        sparql_query: Signal<Option<String>>,
-        metadata_json: Signal<Option<String>>,
-        total_matches: Signal<Option<usize>>,
-        total_stats: Signal<Option<DatasetStats>>,
-        display_capped_rows: Signal<bool>,
-        page: Signal<usize>,
-        mobile_filters_open: Signal<bool>,
-        search_request_token: Signal<u64>,
-    ) -> Self {
-        Self {
-            executed_criteria,
-            loading,
-            error,
-            error_kind,
-            query_phase,
-            searched_once,
-            entries,
-            taxon_notice,
-            resolved_qid,
-            query_hash,
-            result_hash,
-            sparql_query,
-            metadata_json,
-            total_matches,
-            total_stats,
-            display_capped_rows,
-            page,
-            mobile_filters_open,
-            search_request_token,
-        }
-    }
 }
 
 #[derive(Default, Clone, Copy)]
@@ -249,8 +202,8 @@ fn App() -> Element {
     let resolved_qid: Signal<Option<String>> = use_signal(|| None);
     let query_hash: Signal<Option<String>> = use_signal(|| None);
     let result_hash: Signal<Option<String>> = use_signal(|| None);
-    let sparql_query: Signal<Option<String>> = use_signal(|| None);
-    let metadata_json: Signal<Option<String>> = use_signal(|| None);
+    let sparql_query: Signal<Option<Arc<str>>> = use_signal(|| None);
+    let metadata_json: Signal<Option<Arc<str>>> = use_signal(|| None);
     let total_matches: Signal<Option<usize>> = use_signal(|| None);
     let total_stats: Signal<Option<DatasetStats>> = use_signal(|| None);
     let display_capped_rows: Signal<bool> = use_signal(|| false);
@@ -260,10 +213,13 @@ fn App() -> Element {
     let mut pending_download_format: Signal<Option<String>> =
         use_signal(initial_download_format_from_url);
     let pending_execute: Signal<bool> = use_signal(initial_execute_from_url);
+    // These guard whether a particular waiting-state debug message has already
+    // been emitted this cycle. They are never read in RSX; `.peek()` is used
+    // for reads so they never subscribe effects/components to themselves.
     let mut waiting_loading_logged: Signal<bool> = use_signal(|| false);
     let mut waiting_query_logged: Signal<bool> = use_signal(|| false);
     let search_request_token: Signal<u64> = use_signal(|| 0);
-    let search_runtime = SearchRuntime::new(
+    let search_runtime = SearchRuntime {
         executed_criteria,
         loading,
         error,
@@ -283,7 +239,7 @@ fn App() -> Element {
         page,
         mobile_filters_open,
         search_request_token,
-    );
+    };
     let _search_ui_ctx =
         use_context_provider(move || SearchUiContext::from_signals(criteria, locale, loading));
     let _results_ctx = use_context_provider(move || {
@@ -384,7 +340,6 @@ fn App() -> Element {
                 match DownloadFormat::from_str(&fmt) {
                     Some(format) => {
                         let q = query.to_string();
-                        let criteria_arc = Arc::new(crit.clone());
                         let filename = export::generate_filename(&crit, format.extension());
                         *pending_download_format.write() = None;
                         log_debug_evt(
@@ -406,8 +361,14 @@ fn App() -> Element {
                                 "started",
                                 Some(&format!("format={}", format.log_name())),
                             );
-                            if let Err(err) =
-                                execute_download(format, criteria_arc, q, filename).await
+                            if let Err(err) = execute_download(
+                                format,
+                                #[cfg(target_arch = "wasm32")]
+                                Arc::new(crit.clone()),
+                                q,
+                                filename,
+                            )
+                            .await
                             {
                                 log_warn_evt(
                                     "download",
@@ -551,7 +512,7 @@ fn App() -> Element {
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{qid}" }
                             CopyButton {
-                                text: qid.to_string(),
+                                text: Arc::<str>::from(qid),
                                 title: t(*locale.read(), TextKey::CopyTaxonQid),
                                 locale: *locale.read(),
                             }
@@ -567,7 +528,7 @@ fn App() -> Element {
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{&qh[..12]}" }
                             CopyButton {
-                                text: qh.to_string(),
+                                text: Arc::<str>::from(qh),
                                 title: t(*locale.read(), TextKey::CopyFullQueryHash),
                                 locale: *locale.read(),
                             }
@@ -576,7 +537,7 @@ fn App() -> Element {
                             span { class: "meta-sep", ":" }
                             span { class: "meta-val mono", "{&rh[..12]}" }
                             CopyButton {
-                                text: rh.to_string(),
+                                text: Arc::<str>::from(rh),
                                 title: t(*locale.read(), TextKey::CopyFullResultHash),
                                 locale: *locale.read(),
                             }
@@ -603,7 +564,7 @@ fn App() -> Element {
                             value: "{share}",
                         }
                         CopyButton {
-                            text: absolute_share_url(share),
+                            text: Arc::<str>::from(absolute_share_url(share)),
                             title: t(*locale.read(), TextKey::CopyShareableLink),
                             locale: *locale.read(),
                         }
@@ -861,6 +822,7 @@ fn WelcomeScreen(locale: Locale) -> Element {
 #[component]
 fn DownloadExampleRow(locale: Locale, format: &'static str, query: &'static str) -> Element {
     let absolute = absolute_current_url_with_query(query.trim_start_matches('?'));
+    let absolute = Arc::<str>::from(absolute);
     rsx! {
         div { class: "welcome-cli-row",
             span { class: "welcome-cli-format mono", "{format}" }
@@ -1012,8 +974,8 @@ fn start_search(
                 *taxon_notice.write() = outcome.warning;
                 *query_hash.write() = Some(q_hash);
                 *result_hash.write() = Some(r_hash);
-                *sparql_query.write() = Some(outcome.query);
-                *metadata_json.write() = Some(meta_str);
+                *sparql_query.write() = Some(Arc::<str>::from(outcome.query));
+                *metadata_json.write() = Some(Arc::<str>::from(meta_str));
                 *display_capped_rows.write() = outcome.display_capped_rows;
                 *total_matches.write() = Some(filtered_matches);
                 *total_stats.write() = Some(filtered_stats);
@@ -1264,10 +1226,11 @@ async fn do_search(
         );
         q
     } else {
+        // Both None (no taxon) and Some("*") (wildcard) produce the all-compounds query;
+        // only a specific QID narrows the result set.
         match taxon_qid.as_deref() {
-            Some("*") => queries::query_all_compounds(),
-            None => queries::query_all_compounds(),
-            Some(qid) => queries::query_compounds_by_taxon(qid),
+            Some(qid) if qid != "*" => queries::query_compounds_by_taxon(qid),
+            _ => queries::query_all_compounds(),
         }
     };
 
@@ -1631,7 +1594,7 @@ fn compute_hashes(
 
     let mut compounds = rows
         .iter()
-        .map(|e| e.compound_qid.as_str())
+        .map(|e| e.compound_qid.as_ref())
         .collect::<Vec<_>>();
     compounds.sort_unstable();
     compounds.dedup();

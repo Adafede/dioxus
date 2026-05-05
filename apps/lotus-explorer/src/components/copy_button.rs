@@ -9,6 +9,7 @@
 
 use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
+use std::sync::Arc;
 
 /// A compact button that copies `text` to the system clipboard on click.
 ///
@@ -16,7 +17,7 @@ use dioxus::prelude::*;
 /// "Copied!" for ~1.2 seconds after a successful copy.
 #[component]
 pub fn CopyButton(
-    text: String,
+    text: Arc<str>,
     #[props(default = "")] label: &'static str,
     #[props(default = "")] title: &'static str,
     #[props(default = "btn btn-xs copy-btn")] class: &'static str,
@@ -41,8 +42,7 @@ pub fn CopyButton(
             title: "{title_attr}",
             aria_label: "{title_attr}",
             onclick: move |_| {
-                let t = text.clone();
-                copy_to_clipboard(&t);
+                copy_to_clipboard(text.as_ref());
                 *copied.write() = true;
                 spawn(async move {
                     gloo_timer_sleep_ms(1200).await;

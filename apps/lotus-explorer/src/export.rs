@@ -469,7 +469,7 @@ mod tests {
     }
 
     #[test]
-    fn export_filename_keeps_search_type_before_filtered_suffix() {
+    fn export_filename_with_structure_filter_keeps_search_type() {
         let mut criteria = SearchCriteria {
             taxon: "*".into(),
             ..SearchCriteria::default()
@@ -477,6 +477,6 @@ mod tests {
         criteria.smiles = "c1ccccc1".into();
         criteria.smiles_search_type = SmilesSearchType::Similarity;
         let name = generate_filename(&criteria, "rdf");
-        assert!(name.ends_with("_similarity_filtered.rdf"));
+        assert!(name.ends_with("_all_taxa_similarity_filtered.rdf"));
     }
 }

@@ -74,7 +74,44 @@ const REFERENCE_METADATA_OPTIONAL: &str = r#"
 const PROPERTIES_OPTIONAL: &str = r#"
   OPTIONAL { ?c wdt:P2017 ?compound_smiles_iso. }
   OPTIONAL { ?c wdt:P2067 ?compound_mass. }
-  OPTIONAL { ?c wdt:P274 ?compound_formula. }
+  OPTIONAL {
+    ?c wdt:P274 ?compound_formula_raw.
+    BIND(
+      REPLACE(
+        REPLACE(
+          REPLACE(
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(REPLACE(STR(?compound_formula_raw), "₀", "0"), "₁", "1"),
+                      "₂",
+                      "2"
+                    ),
+                    "₃",
+                    "3"
+                  ),
+                  "₄",
+                  "4"
+                ),
+                "₅",
+                "5"
+              ),
+              "₆",
+              "6"
+            ),
+            "₇",
+            "7"
+          ),
+          "₈",
+          "8"
+        ),
+        "₉",
+        "9"
+      ) AS ?compound_formula
+    )
+  }
   OPTIONAL {
     ?c rdfs:label ?compoundLabelMul.
     FILTER(LANG(?compoundLabelMul) = "mul")
@@ -584,5 +621,12 @@ mod tests {
             assert!(expr.contains(&format!("\"{from}\"")));
             assert!(expr.contains(&format!("\"{to}\"")));
         }
+    }
+
+    #[test]
+    fn compound_queries_keep_ref_uri_for_rdf_construct_compat() {
+        let q = query_all_compounds();
+        assert!(q.contains("\n  ?ref\n"));
+        assert!(q.contains("?ref_qid"));
     }
 }

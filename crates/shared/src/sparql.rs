@@ -181,16 +181,25 @@ pub async fn fetch_export_url_bytes(
     url: &str,
     format: SparqlResponseFormat,
 ) -> Result<Vec<u8>, FetchError> {
+    fetch_url_bytes_with_accept(url, format.accept()).await
+}
+
+/// Fetch an arbitrary URL and return raw response bytes.
+///
+/// Unlike [`fetch_export_url_bytes`], this does not constrain the `Accept`
+/// header to a specific SPARQL representation. It is used for API-managed
+/// download artifacts such as `application/gzip` attachments.
+pub async fn fetch_url_bytes(url: &str) -> Result<Vec<u8>, FetchError> {
+    fetch_url_bytes_with_accept(url, "*/*").await
+}
+
+async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>, FetchError> {
     const MAX_ATTEMPTS: u32 = 2;
     let client = http_client();
     let mut last_err: Option<FetchError> = None;
 
     for attempt in 0..MAX_ATTEMPTS {
-        let result = client
-            .get(url)
-            .header("Accept", format.accept())
-            .send()
-            .await;
+        let result = client.get(url).header("Accept", accept).send().await;
 
         match result {
             Ok(resp) => {
@@ -246,6 +255,9 @@ fn http_client() -> &'static reqwest::Client {
 fn build_http_client() -> reqwest::Client {
     #[cfg(target_arch = "wasm32")]
     {
+        // In the browser, fetch automatically sends `Accept-Encoding: gzip,
+        // deflate, br` and decompresses transparently — no extra configuration
+        // is required.
         reqwest::Client::builder()
             .build()
             .expect("shared SPARQL HTTP client")
@@ -253,12 +265,18 @@ fn build_http_client() -> reqwest::Client {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
+        // Enable automatic gzip decompression so QLever can return compressed
+        // CSV/JSON/Turtle payloads. This adds `Accept-Encoding: gzip` to every
+        // request and decodes the response body with flate2 before handing bytes
+        // to the caller — substantially reducing transfer size for large result
+        // sets without any changes to callers.
         reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(8))
             .timeout(Duration::from_secs(120))
             .pool_idle_timeout(Duration::from_secs(90))
             .pool_max_idle_per_host(32)
             .tcp_keepalive(Duration::from_secs(30))
+            .gzip(true)
             .build()
             .expect("shared SPARQL HTTP client")
     }

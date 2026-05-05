@@ -2153,6 +2153,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "env_logger",
+ "flate2",
  "log",
  "serde",
  "sha2 0.11.0",
@@ -3617,6 +3618,7 @@ dependencies = [
  "futures-util",
  "http",
  "http-body",
+ "http-body-util",
  "iri-string",
  "pin-project-lite",
  "tokio",
