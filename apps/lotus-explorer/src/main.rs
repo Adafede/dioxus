@@ -65,6 +65,8 @@ struct SearchRuntime {
     error_kind: Signal<ErrorKind>,
     query_phase: Signal<QueryPhase>,
     searched_once: Signal<bool>,
+    download_only_mode: Signal<bool>,
+    download_dispatching: Signal<bool>,
     entries: Signal<Rows>,
     taxon_notice: Signal<Option<String>>,
     resolved_qid: Signal<Option<String>>,
@@ -208,6 +210,8 @@ fn App() -> Element {
     let error_kind: Signal<ErrorKind> = use_signal(|| ErrorKind::Unknown);
     let query_phase: Signal<QueryPhase> = use_signal(|| QueryPhase::Idle);
     let searched_once: Signal<bool> = use_signal(|| false);
+    let download_only_mode: Signal<bool> = use_signal(|| false);
+    let download_dispatching: Signal<bool> = use_signal(|| false);
     let taxon_notice: Signal<Option<String>> = use_signal(|| None);
     let resolved_qid: Signal<Option<String>> = use_signal(|| None);
     let query_hash: Signal<Option<String>> = use_signal(|| None);
@@ -237,6 +241,8 @@ fn App() -> Element {
         error_kind,
         query_phase,
         searched_once,
+        download_only_mode,
+        download_dispatching,
         entries,
         taxon_notice,
         resolved_qid,
@@ -261,6 +267,8 @@ fn App() -> Element {
             error,
             query_phase,
             searched_once,
+            download_only_mode,
+            download_dispatching,
             query_hash,
             result_hash,
             sparql_query,
@@ -352,6 +360,7 @@ fn App() -> Element {
                         let q = query.to_string();
                         let filename = export::generate_filename(&crit, format.extension());
                         set_signal_if_changed(pending_download_format, None);
+                        set_signal_if_changed(download_dispatching, true);
                         log_debug_evt(
                             "download",
                             "startup_dispatch",
@@ -387,6 +396,7 @@ fn App() -> Element {
                                     Some(&format!("format={} reason={err}", format.log_name())),
                                 );
                             }
+                            set_signal_if_changed(download_dispatching, false);
                         });
                     }
                     None => {
@@ -402,6 +412,7 @@ fn App() -> Element {
                             Some(err_unsupported_format(*locale.peek(), &fmt)),
                         );
                         set_signal_if_changed(pending_download_format, None);
+                        set_signal_if_changed(download_dispatching, false);
                     }
                 }
             } else {
@@ -578,6 +589,8 @@ fn ResultsViewport() -> Element {
     let loading = *state.loading.read();
     let has_error = state.error.read().is_some();
     let searched_once = *state.searched_once.read();
+    let download_only_mode = *state.download_only_mode.read();
+    let download_dispatching = *state.download_dispatching.read();
     let entries = state.entries;
 
     if loading {
@@ -588,8 +601,41 @@ fn ResultsViewport() -> Element {
         return rsx! { WelcomeScreen { locale } };
     }
 
+    if entries.read().is_empty() && !has_error && download_only_mode && download_dispatching {
+        return rsx! { DownloadDispatchState { locale } };
+    }
+
+    if entries.read().is_empty() && !has_error && download_only_mode {
+        return rsx! { DownloadOnlyState { locale } };
+    }
+
     rsx! {
         ResultsTable {}
+    }
+}
+
+#[component]
+fn DownloadDispatchState(locale: Locale) -> Element {
+    rsx! {
+        div {
+            class: "loading-state",
+            role: "status",
+            aria_live: "polite",
+            aria_busy: "true",
+            div { class: "spinner-lg", "aria-hidden": "true" }
+            p { "{t(locale, TextKey::PreparingDownload)}" }
+            p { class: "loading-hint", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
+        }
+    }
+}
+
+#[component]
+fn DownloadOnlyState(locale: Locale) -> Element {
+    rsx! {
+        div { class: "notice notice-info", role: "status",
+            span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
+            span { class: "notice-value", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
+        }
     }
 }
 
@@ -981,6 +1027,8 @@ fn start_search(
         mut error_kind,
         query_phase,
         searched_once,
+        download_only_mode,
+        download_dispatching,
         mut entries,
         mut taxon_notice,
         mut resolved_qid,
@@ -1028,6 +1076,8 @@ fn start_search(
     set_signal_if_changed(error, None);
     set_signal_if_changed(error_kind, ErrorKind::Unknown);
     set_signal_if_changed(searched_once, true);
+    set_signal_if_changed(download_only_mode, direct_download_mode);
+    set_signal_if_changed(download_dispatching, false);
     log_info_evt("search", "start", "loading_true", None);
     set_signal_if_changed(loading, true);
     log_debug_evt("search", "ResolvingTaxon", "entered", None);
@@ -1063,18 +1113,28 @@ fn start_search(
                     );
                     return;
                 }
-                let filtered_stats = outcome
-                    .total_stats
-                    .clone()
-                    .unwrap_or_else(|| DatasetStats::from_entries(&outcome.rows));
-                let filtered_matches = outcome.total_matches.unwrap_or(outcome.rows.len());
+                let filtered_stats = if direct_download_mode {
+                    None
+                } else {
+                    Some(
+                        outcome
+                            .total_stats
+                            .clone()
+                            .unwrap_or_else(|| DatasetStats::from_entries(&outcome.rows)),
+                    )
+                };
+                let filtered_matches = if direct_download_mode {
+                    None
+                } else {
+                    Some(outcome.total_matches.unwrap_or(outcome.rows.len()))
+                };
 
                 let (q_hash, r_hash) =
                     compute_hashes(outcome.qid.as_deref().unwrap_or(""), &crit, &outcome.rows);
                 let meta_str = export::build_metadata_json(export::MetadataInputs {
                     criteria: &crit,
                     qid: outcome.qid.as_deref(),
-                    number_of_records_override: Some(filtered_matches),
+                    number_of_records_override: filtered_matches,
                     query_hash: &q_hash,
                     result_hash: &r_hash,
                 });
@@ -1089,8 +1149,8 @@ fn start_search(
                 *sparql_query.write() = Some(Arc::<str>::from(outcome.query));
                 *metadata_json.write() = Some(Arc::<str>::from(meta_str));
                 set_signal_if_changed(display_capped_rows, outcome.display_capped_rows);
-                *total_matches.write() = Some(filtered_matches);
-                *total_stats.write() = Some(filtered_stats);
+                *total_matches.write() = filtered_matches;
+                *total_stats.write() = filtered_stats;
                 *entries.write() = display_slice;
                 log_info_evt("search", "finish", "loading_false", Some("result=success"));
                 set_signal_if_changed(loading, false);

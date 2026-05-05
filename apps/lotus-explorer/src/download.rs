@@ -12,7 +12,7 @@ use crate::sparql;
 use crate::{api, models::SearchCriteria};
 use crate::{perf, queries};
 #[cfg(target_arch = "wasm32")]
-use shared::sparql::QLEVER_WIKIDATA;
+use shared::sparql::{QLEVER_WIKIDATA, SparqlResponseFormat};
 #[cfg(not(target_arch = "wasm32"))]
 use shared::sparql::SparqlResponseFormat;
 
@@ -141,27 +141,89 @@ async fn execute_download_wasm(
 ) -> Result<(), String> {
     // Prefer same-origin API file URLs when available so browsers honor the
     // requested LOTUS filename while still streaming outside wasm memory.
-    let url = match api::export_urls(&criteria).await {
-        Ok(urls) => append_filename_query(select_export_url(format, &urls), &filename),
-        Err(_) => format.export_url_from_query(&query),
+    match api::export_urls(&criteria).await {
+        Ok(urls) => {
+            let url = append_filename_query(select_export_url(format, &urls), &filename);
+            let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
+            perf::log_timing(
+                "download",
+                &format!(
+                    "event=download format={} phase=fetch state=success source=api_url",
+                    format.log_name()
+                ),
+                Some(fetch_elapsed),
+            );
+
+            let trigger_timer = perf::start_timer(&format.trigger_timer_label());
+            trigger_download_url(&filename, &url);
+            let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
+            perf::log_timing(
+                "download",
+                &format!(
+                    "event=download format={} phase=trigger state=success source=api_url",
+                    format.log_name()
+                ),
+                Some(trigger_elapsed),
+            );
+            Ok(())
+        }
+        Err(err) => {
+            perf::log_warn(&format!(
+                "event=download format={} phase=fetch state=fallback reason=api_export_urls_failed detail={err}",
+                format.log_name()
+            ));
+            execute_download_wasm_direct_post(format, query, filename, dl_timer).await
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn execute_download_wasm_direct_post(
+    format: DownloadFormat,
+    query: String,
+    filename: String,
+    dl_timer: perf::TimerHandle,
+) -> Result<(), String> {
+    let (query_for_fetch, response_format, mime) = match format {
+        DownloadFormat::Csv => (query, SparqlResponseFormat::Csv, "text/csv;charset=utf-8"),
+        DownloadFormat::Json => (
+            query,
+            SparqlResponseFormat::SparqlJson,
+            "application/sparql-results+json;charset=utf-8",
+        ),
+        DownloadFormat::Rdf => (
+            queries::query_construct_from_select(&query),
+            SparqlResponseFormat::Turtle,
+            "text/turtle;charset=utf-8",
+        ),
     };
+
+    let body = shared::sparql::execute_sparql_with_format(
+        &query_for_fetch,
+        QLEVER_WIKIDATA,
+        response_format,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
     let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
     perf::log_timing(
         "download",
         &format!(
-            "event=download format={} phase=fetch state=success source=direct_url",
-            format.log_name()
+            "event=download format={} phase=fetch state=success source=direct_post body_bytes={}",
+            format.log_name(),
+            body.len()
         ),
         Some(fetch_elapsed),
     );
 
     let trigger_timer = perf::start_timer(&format.trigger_timer_label());
-    trigger_download_url(&filename, &url);
+    trigger_download(&filename, mime, &body);
     let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
     perf::log_timing(
         "download",
         &format!(
-            "event=download format={} phase=trigger state=success source=direct_url",
+            "event=download format={} phase=trigger state=success source=direct_post",
             format.log_name()
         ),
         Some(trigger_elapsed),

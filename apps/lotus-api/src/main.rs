@@ -810,7 +810,18 @@ async fn build_search_response(
                 .map_err(|e| ApiError::upstream(format!("count parse failed: {e}")))
         };
 
-        let (rows, stats) = tokio::try_join!(rows_future, stats_future)?;
+        let (rows_result, stats_result) = tokio::join!(rows_future, stats_future);
+        let rows = rows_result?;
+        let stats = match stats_result {
+            Ok(stats) => stats,
+            Err(err) => {
+                log::warn!(
+                    "event=search state=count_fallback reason={} include_counts=true",
+                    err.message
+                );
+                DatasetStats::from_entries(&rows)
+            }
+        };
         return Ok(SearchResponse {
             resolved_taxon_qid,
             warning,

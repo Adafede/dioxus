@@ -253,7 +253,19 @@ pub async fn search(
 ) -> Result<SearchResponse, ApiClientError> {
     let base = api_base_url().ok_or(ApiClientError::NotConfigured)?;
     let request = SearchRequest::from_criteria(criteria, limit, include_counts);
-    post_json(&base, "/v1/search", &request).await
+    match post_json(&base, "/v1/search", &request).await {
+        Ok(response) => Ok(response),
+        Err(ApiClientError::Http(status, _))
+            if include_counts && (status == 502 || status == 504) =>
+        {
+            log::warn!(
+                "event=search phase=api state=retry_without_counts status={status}"
+            );
+            let retry_request = SearchRequest::from_criteria(criteria, limit, false);
+            post_json(&base, "/v1/search", &retry_request).await
+        }
+        Err(err) => Err(err),
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
