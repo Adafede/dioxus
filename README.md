@@ -4,20 +4,16 @@ A Cargo workspace that hosts multiple small Dioxus web applications, each compil
 
 It now also includes a small native HTTP API for the LOTUS explorer, documented with OpenAPI / Swagger UI.
 
-## Structure
+## Start here
 
-```
-dioxus-apps/
-├── Cargo.toml              ← workspace root (add new apps here)
-├── Makefile                ← convenience targets
-├── .github/workflows/      ← CI + per-app deploy actions
-├── crates/
-│   └── shared/             ← shared theme CSS, components, SPARQL client
-└── apps/
-    ├── lotus-api/          ← OpenAPI / Swagger service for LOTUS search + exports
-    ├── lotus-explorer/     ← LOTUS Wikidata natural-product explorer
-    └── hello-world/        ← minimal template for new apps
-```
+Follow this order for fastest onboarding:
+
+1. `Prerequisites`
+2. `Quick start (fast path)`
+3. `Running the LOTUS API locally` (optional)
+4. `Tight explorer ⇄ API integration`
+5. `API endpoints`
+6. `Deploying the LOTUS API` (only when publishing)
 
 ## Prerequisites
 
@@ -54,6 +50,21 @@ Then open `http://localhost:8080/?api_base=http://127.0.0.1:8787`.
 
 Without `lotus-api`, the explorer still works by falling back to direct QLever/SPARQL.
 
+## Structure
+
+```
+dioxus-apps/
+├── Cargo.toml              ← workspace root (add new apps here)
+├── Makefile                ← convenience targets
+├── .github/workflows/      ← CI + per-app deploy actions
+├── crates/
+│   └── shared/             ← shared theme CSS, components, SPARQL client
+└── apps/
+    ├── lotus-api/          ← OpenAPI / Swagger service for LOTUS search + exports
+    ├── lotus-explorer/     ← LOTUS Wikidata natural-product explorer
+    └── hello-world/        ← minimal template for new apps
+```
+
 ## Running an app locally
 
 ```bash
@@ -83,6 +94,36 @@ Then open:
 - `http://127.0.0.1:8787/openapi.json`
 
 Use this together with `?api_base=...` in the explorer as described in `Tight explorer ⇄ API integration`.
+
+## Tight explorer ⇄ API integration
+
+`lotus-explorer` can use `lotus-api` for search execution and export URL generation.
+The API is **optional** — without it (the default for the public Codeberg Pages build) the explorer always falls back to direct QLever / SPARQL queries.
+
+| Scenario | `api_base` resolution | API used? |
+|---|---|---|
+| Codeberg Pages (public) | none | ✗ direct SPARQL |
+| Local dev (`localhost`) | auto-detected `http://127.0.0.1:8787` | ✓ if server is running |
+| Custom build with `LOTUS_API_BASE` | compile-time env var | ✓ with self-hosted server |
+| Runtime override `?api_base=…` | URL query param | ✓ with self-hosted server |
+
+For local API wiring, run `lotus-api` via `Running the LOTUS API locally` and open:
+
+- `http://localhost:8080/?api_base=http://127.0.0.1:8787`
+
+For build-time API wiring, see the `Deploying the LOTUS API` section.
+
+## API endpoints
+
+`lotus-api` currently exposes:
+
+- `GET /health`
+- `POST /v1/search`
+- `POST /v1/export-url`
+- `GET /openapi.json`
+- `GET /docs`
+
+For full request/response examples, see `apps/lotus-api/README.md` or open `http://127.0.0.1:8787/docs` locally.
 
 ## Deploying the LOTUS API
 
@@ -121,35 +162,6 @@ docker build -f apps/lotus-api/Dockerfile -t lotus-api .
 docker run -p 8787:8787 lotus-api
 ```
 
-## Tight explorer ⇄ API integration
-
-`lotus-explorer` can use `lotus-api` for search execution and export URL generation.
-The API is **optional** — without it (the default for the public Codeberg Pages build) the explorer always falls back to direct QLever / SPARQL queries.
-
-| Scenario | `api_base` resolution | API used? |
-|---|---|---|
-| Codeberg Pages (public) | none | ✗ direct SPARQL |
-| Local dev (`localhost`) | auto-detected `http://127.0.0.1:8787` | ✓ if server is running |
-| Custom build with `LOTUS_API_BASE` | compile-time env var | ✓ with self-hosted server |
-| Runtime override `?api_base=…` | URL query param | ✓ with self-hosted server |
-
-For local API wiring, run `lotus-api` via `Running the LOTUS API locally` and open:
-
-- `http://localhost:8080/?api_base=http://127.0.0.1:8787`
-
-For build-time API wiring, see the `Deploying the LOTUS API` section.
-
-## API endpoints
-
-`lotus-api` currently exposes:
-
-- `GET /health`
-- `POST /v1/search`
-- `POST /v1/export-url`
-- `GET /openapi.json`
-- `GET /docs`
-
-For full request/response examples, see `apps/lotus-api/README.md` or open `http://127.0.0.1:8787/docs` locally.
 
 ## Building for production
 
