@@ -75,7 +75,6 @@ struct SearchRuntime {
     total_matches: Signal<Option<usize>>,
     total_stats: Signal<Option<DatasetStats>>,
     display_capped_rows: Signal<bool>,
-    page: Signal<usize>,
     mobile_filters_open: Signal<bool>,
     search_request_token: Signal<u64>,
 }
@@ -208,7 +207,6 @@ fn App() -> Element {
     let total_stats: Signal<Option<DatasetStats>> = use_signal(|| None);
     let display_capped_rows: Signal<bool> = use_signal(|| false);
     let sort: Signal<SortState> = use_signal(SortState::default);
-    let page: Signal<usize> = use_signal(|| 0usize);
     let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
     let mut pending_download_format: Signal<Option<String>> =
         use_signal(initial_download_format_from_url);
@@ -236,7 +234,6 @@ fn App() -> Element {
         total_matches,
         total_stats,
         display_capped_rows,
-        page,
         mobile_filters_open,
         search_request_token,
     };
@@ -259,7 +256,6 @@ fn App() -> Element {
             total_stats,
             display_capped_rows,
             sort,
-            page,
         )
     });
 
@@ -877,7 +873,6 @@ fn start_search(
         mut total_matches,
         mut total_stats,
         mut display_capped_rows,
-        mut page,
         mut mobile_filters_open,
         mut search_request_token,
     } = runtime;
@@ -929,7 +924,6 @@ fn start_search(
     *total_matches.write() = None;
     *total_stats.write() = None;
     *display_capped_rows.write() = false;
-    *page.write() = 0;
     *mobile_filters_open.write() = false;
 
     spawn(async move {

@@ -47,7 +47,6 @@ pub struct ResultsContext {
     pub total_stats: Signal<Option<DatasetStats>>,
     pub display_capped_rows: Signal<bool>,
     pub sort: Signal<SortState>,
-    pub page: Signal<usize>,
 }
 
 impl ResultsContext {
@@ -68,7 +67,6 @@ impl ResultsContext {
         total_stats: Signal<Option<DatasetStats>>,
         display_capped_rows: Signal<bool>,
         sort: Signal<SortState>,
-        page: Signal<usize>,
     ) -> Self {
         Self {
             executed_criteria,
@@ -86,7 +84,6 @@ impl ResultsContext {
             total_stats,
             display_capped_rows,
             sort,
-            page,
         }
     }
 }

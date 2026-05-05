@@ -197,7 +197,6 @@ pub fn ResultsTable() -> Element {
     let total_matches = *state.total_matches.read();
     let display_capped_rows = *state.display_capped_rows.read();
     let sort = state.sort;
-    let page = state.page;
     let sparql_query = state.sparql_query.read().clone();
     let metadata_json = state.metadata_json.read().clone();
     let criteria = state.executed_criteria;
@@ -330,7 +329,6 @@ pub fn ResultsTable() -> Element {
                     entries,
                     locale,
                     sort,
-                    page,
                     sorted_indices,
                 }
             }
@@ -499,7 +497,6 @@ fn VirtualizedResultsTable(
     entries: ReadSignal<Rows>,
     locale: Locale,
     sort: Signal<SortState>,
-    page: Signal<usize>,
     sorted_indices: Memo<Arc<[u32]>>,
 ) -> Element {
     #[cfg(target_arch = "wasm32")]
@@ -540,7 +537,6 @@ fn VirtualizedResultsTable(
                 s.col = col;
                 s.dir = SortDir::Asc;
             }
-            *page.write() = 0;
         }
     };
 
