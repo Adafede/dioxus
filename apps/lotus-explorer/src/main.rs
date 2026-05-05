@@ -502,104 +502,28 @@ fn App() -> Element {
                             "10.5281/zenodo.5794106"
                         }
                     }
-                    if let Some(qid) = resolved_qid.read().as_deref() {
-                        p { class: "page-meta",
-                            span { class: "meta-key", "{t(*locale.read(), TextKey::ResolvedTaxon)}" }
-                            span { class: "meta-sep", ":" }
-                            span { class: "meta-val mono", "{qid}" }
-                            CopyButton {
-                                text: Arc::<str>::from(qid),
-                                title: t(*locale.read(), TextKey::CopyTaxonQid),
-                                locale: *locale.read(),
-                            }
-                        }
-                    }
-                    if let (Some(qh), Some(rh)) = (
-                        query_hash.read().as_deref(),
-                        result_hash.read().as_deref(),
-                    )
-                    {
-                        p { class: "page-meta",
-                            span { class: "meta-key", "{t(*locale.read(), TextKey::QueryHash)}" }
-                            span { class: "meta-sep", ":" }
-                            span { class: "meta-val mono", "{&qh[..12]}" }
-                            CopyButton {
-                                text: Arc::<str>::from(qh),
-                                title: t(*locale.read(), TextKey::CopyFullQueryHash),
-                                locale: *locale.read(),
-                            }
-                            span { class: "meta-sep", "·" }
-                            span { class: "meta-key", "{t(*locale.read(), TextKey::ResultHash)}" }
-                            span { class: "meta-sep", ":" }
-                            span { class: "meta-val mono", "{&rh[..12]}" }
-                            CopyButton {
-                                text: Arc::<str>::from(rh),
-                                title: t(*locale.read(), TextKey::CopyFullResultHash),
-                                locale: *locale.read(),
-                            }
-                        }
-                    }
-                    if let Some(n) = *total_matches.read() {
-                        p { class: "page-meta",
-                            span { class: "meta-key", "{t(*locale.read(), TextKey::TotalMatches)}" }
-                            span { class: "meta-sep", ":" }
-                            span { class: "meta-val mono", "{n}" }
-                        }
+                    HeaderMetaSection {
+                        resolved_qid,
+                        query_hash,
+                        result_hash,
+                        total_matches,
+                        locale,
                     }
                 }
 
                 KetcherPanel { locale: *locale.read() }
 
-                if let Some(share) = shareable_url.read().as_deref() {
-                    div { class: "notice notice-info", role: "status",
-                        span { class: "notice-label", "{t(*locale.read(), TextKey::Share)}" }
-                        input {
-                            class: "notice-value notice-copy-field mono",
-                            r#type: "text",
-                            readonly: true,
-                            value: "{share}",
-                        }
-                        CopyButton {
-                            text: Arc::<str>::from(absolute_share_url(share)),
-                            title: t(*locale.read(), TextKey::CopyShareableLink),
-                            locale: *locale.read(),
-                        }
-                    }
-                }
+                ShareNotice { shareable_url, locale }
 
+                TaxonNotice { taxon_notice, locale }
 
-                if let Some(warning) = taxon_notice.read().as_deref() {
-                    div { class: "notice notice-warn", role: "status",
-                        span { class: "notice-label", "{t(*locale.read(), TextKey::Notice)}" }
-                        span { class: "notice-value", "{warning}" }
-                    }
-                }
-
-                if let Some(msg) = error.read().as_deref() {
-                    div { class: "notice notice-error", role: "alert",
-                        span { class: "notice-label", "{t(*locale.read(), TextKey::Error)}" }
-                        span { class: "notice-value", "{msg}" }
-                        span { class: "notice-value",
-                            "{error_hint_text(*locale.read(), *error_kind.read())}"
-                        }
-                        if is_retryable(*error_kind.read()) && !*loading.read() {
-                            button {
-                                class: "btn btn-sm",
-                                r#type: "button",
-                                onclick: move |_| {
-                                    start_search(criteria, locale, false, search_runtime)
-                                },
-                                "{t(*locale.read(), TextKey::Retry)}"
-                            }
-                        }
-                        button {
-                            class: "notice-dismiss",
-                            r#type: "button",
-                            aria_label: "{t(*locale.read(), TextKey::DismissError)}",
-                            onclick: move |_| *error.write() = None,
-                            "×"
-                        }
-                    }
+                ErrorNotice {
+                    error,
+                    error_kind,
+                    locale,
+                    loading,
+                    on_dismiss: move |_| *error.write() = None,
+                    on_retry: move |_| start_search(criteria, locale, false, search_runtime),
                 }
 
                 ResultsViewport {}
@@ -834,6 +758,152 @@ fn ExRow(value: &'static str, note: &'static str) -> Element {
         li { class: "example-item",
             code { class: "example-value", "{value}" }
             span { class: "example-note", "{note}" }
+        }
+    }
+}
+
+// ── Focused header-meta sub-component ────────────────────────────────────────
+// Subscribes only to resolved_qid / hashes / total_matches + locale.
+// App itself no longer re-renders when these change.
+
+#[component]
+fn HeaderMetaSection(
+    resolved_qid: Signal<Option<String>>,
+    query_hash: Signal<Option<String>>,
+    result_hash: Signal<Option<String>>,
+    total_matches: Signal<Option<usize>>,
+    locale: Signal<Locale>,
+) -> Element {
+    let locale = *locale.read();
+    rsx! {
+        if let Some(qid) = resolved_qid.read().as_deref() {
+            p { class: "page-meta",
+                span { class: "meta-key", "{t(locale, TextKey::ResolvedTaxon)}" }
+                span { class: "meta-sep", ":" }
+                span { class: "meta-val mono", "{qid}" }
+                CopyButton {
+                    text: Arc::<str>::from(qid),
+                    title: t(locale, TextKey::CopyTaxonQid),
+                    locale,
+                }
+            }
+        }
+        if let (Some(qh), Some(rh)) = (
+            query_hash.read().as_deref(),
+            result_hash.read().as_deref(),
+        ) {
+            p { class: "page-meta",
+                span { class: "meta-key", "{t(locale, TextKey::QueryHash)}" }
+                span { class: "meta-sep", ":" }
+                span { class: "meta-val mono", "{&qh[..12]}" }
+                CopyButton {
+                    text: Arc::<str>::from(qh),
+                    title: t(locale, TextKey::CopyFullQueryHash),
+                    locale,
+                }
+                span { class: "meta-sep", "·" }
+                span { class: "meta-key", "{t(locale, TextKey::ResultHash)}" }
+                span { class: "meta-sep", ":" }
+                span { class: "meta-val mono", "{&rh[..12]}" }
+                CopyButton {
+                    text: Arc::<str>::from(rh),
+                    title: t(locale, TextKey::CopyFullResultHash),
+                    locale,
+                }
+            }
+        }
+        if let Some(n) = *total_matches.read() {
+            p { class: "page-meta",
+                span { class: "meta-key", "{t(locale, TextKey::TotalMatches)}" }
+                span { class: "meta-sep", ":" }
+                span { class: "meta-val mono", "{n}" }
+            }
+        }
+    }
+}
+
+// ── Share-URL notice ──────────────────────────────────────────────────────────
+
+#[component]
+fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>, locale: Signal<Locale>) -> Element {
+    let locale = *locale.read();
+    let share = shareable_url.read();
+    let Some(share) = share.as_deref() else {
+        return rsx! {};
+    };
+    rsx! {
+        div { class: "notice notice-info", role: "status",
+            span { class: "notice-label", "{t(locale, TextKey::Share)}" }
+            input {
+                class: "notice-value notice-copy-field mono",
+                r#type: "text",
+                readonly: true,
+                value: "{share}",
+            }
+            CopyButton {
+                text: Arc::<str>::from(absolute_share_url(share)),
+                title: t(locale, TextKey::CopyShareableLink),
+                locale,
+            }
+        }
+    }
+}
+
+// ── Taxon notice ──────────────────────────────────────────────────────────────
+
+#[component]
+fn TaxonNotice(taxon_notice: Signal<Option<String>>, locale: Signal<Locale>) -> Element {
+    let locale = *locale.read();
+    let notice = taxon_notice.read();
+    let Some(warning) = notice.as_deref() else {
+        return rsx! {};
+    };
+    rsx! {
+        div { class: "notice notice-warn", role: "status",
+            span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
+            span { class: "notice-value", "{warning}" }
+        }
+    }
+}
+
+// ── Error notice ──────────────────────────────────────────────────────────────
+
+#[component]
+fn ErrorNotice(
+    error: Signal<Option<String>>,
+    error_kind: Signal<ErrorKind>,
+    locale: Signal<Locale>,
+    loading: Signal<bool>,
+    on_dismiss: EventHandler<()>,
+    on_retry: EventHandler<()>,
+) -> Element {
+    let locale = *locale.read();
+    let kind = *error_kind.read();
+    let is_loading = *loading.read();
+    let err_ref = error.read();
+    let Some(msg) = err_ref.as_deref() else {
+        return rsx! {};
+    };
+    rsx! {
+        div { class: "notice notice-error", role: "alert",
+            span { class: "notice-label", "{t(locale, TextKey::Error)}" }
+            span { class: "notice-value", "{msg}" }
+            span { class: "notice-value", "{error_hint_text(locale, kind)}" }
+            if is_retryable(kind) && !is_loading {
+                button {
+                    class: "btn btn-sm",
+                    r#type: "button",
+                    onclick: move |_| on_retry.call(()),
+                    "{t(locale, TextKey::Retry)}"
+                }
+            }
+            button {
+                class: "notice-dismiss",
+                r#type: "button",
+                aria_label: "{t(locale, TextKey::DismissError)}",
+                onclick: move |_| on_dismiss.call(()),
+                "×"
+            }
         }
     }
 }
