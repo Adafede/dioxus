@@ -222,6 +222,8 @@ fn App() -> Element {
     let mut waiting_loading_logged: Signal<bool> = use_signal(|| false);
     let mut waiting_query_logged: Signal<bool> = use_signal(|| false);
     let search_request_token: Signal<u64> = use_signal(|| 0);
+    let locale_value = *locale.read();
+    let mobile_open = *mobile_filters_open.read();
     let search_runtime = SearchRuntime {
         executed_criteria,
         loading,
@@ -412,24 +414,24 @@ fn App() -> Element {
     rsx! {
 
         a { class: "skip-link", href: "#results-section",
-            "{t(*locale.read(), TextKey::SkipToResults)}"
+            "{t(locale_value, TextKey::SkipToResults)}"
         }
         div { class: "app-layout",
             // ── Left sidebar ──────────────────────────────────────────────
-            aside { class: if *mobile_filters_open.read() { "sidebar mobile-open" } else { "sidebar mobile-closed" },
+            aside { class: if mobile_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
                 button {
                     class: "filters-toggle",
                     r#type: "button",
-                    aria_label: if *mobile_filters_open.read() { t(*locale.read(), TextKey::FiltersHide) } else { t(*locale.read(), TextKey::FiltersShow) },
-                    aria_expanded: if *mobile_filters_open.read() { "true" } else { "false" },
+                    aria_label: if mobile_open { t(locale_value, TextKey::FiltersHide) } else { t(locale_value, TextKey::FiltersShow) },
+                    aria_expanded: if mobile_open { "true" } else { "false" },
                     onclick: move |_| {
                         let next = !*mobile_filters_open.peek();
                         *mobile_filters_open.write() = next;
                     },
-                    if *mobile_filters_open.read() {
-                        "{t(*locale.read(), TextKey::FiltersHide)}"
+                    if mobile_open {
+                        "{t(locale_value, TextKey::FiltersHide)}"
                     } else {
-                        "{t(*locale.read(), TextKey::FiltersShow)}"
+                        "{t(locale_value, TextKey::FiltersShow)}"
                     }
                 }
                 SearchPanel {
@@ -438,8 +440,8 @@ fn App() -> Element {
                 div { class: "sidebar-logo-wrap",
                     a {
                         href: "?",
-                        title: "{t(*locale.read(), TextKey::PageTitle)}",
-                        aria_label: "{t(*locale.read(), TextKey::PageTitle)}",
+                        title: "{t(locale_value, TextKey::PageTitle)}",
+                        aria_label: "{t(locale_value, TextKey::PageTitle)}",
                         img {
                             class: "sidebar-logo",
                             src: "assets/lotus_ferris.svg",
@@ -461,44 +463,60 @@ fn App() -> Element {
                             a {
                                 class: "page-title-link",
                                 href: "?",
-                                title: "{t(*locale.read(), TextKey::PageTitle)}",
-                                aria_label: "{t(*locale.read(), TextKey::PageTitle)}",
-                                "{t(*locale.read(), TextKey::PageTitle)}"
+                                title: "{t(locale_value, TextKey::PageTitle)}",
+                                aria_label: "{t(locale_value, TextKey::PageTitle)}",
+                                "{t(locale_value, TextKey::PageTitle)}"
                             }
                         }
                         div {
                             class: "lang-switch",
                             role: "group",
-                            aria_label: "{t(*locale.read(), TextKey::Language)}",
+                            aria_label: "{t(locale_value, TextKey::Language)}",
                             button {
-                                class: if *locale.read() == Locale::En { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                class: if locale_value == Locale::En { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
-                                onclick: move |_| *locale.write() = Locale::En,
+                                onclick: move |_| {
+                                    if *locale.peek() != Locale::En {
+                                        *locale.write() = Locale::En;
+                                    }
+                                },
                                 "EN"
                             }
                             button {
-                                class: if *locale.read() == Locale::Fr { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                class: if locale_value == Locale::Fr { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
-                                onclick: move |_| *locale.write() = Locale::Fr,
+                                onclick: move |_| {
+                                    if *locale.peek() != Locale::Fr {
+                                        *locale.write() = Locale::Fr;
+                                    }
+                                },
                                 "FR"
                             }
                             button {
-                                class: if *locale.read() == Locale::De { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                class: if locale_value == Locale::De { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
-                                onclick: move |_| *locale.write() = Locale::De,
+                                onclick: move |_| {
+                                    if *locale.peek() != Locale::De {
+                                        *locale.write() = Locale::De;
+                                    }
+                                },
                                 "DE"
                             }
                             button {
-                                class: if *locale.read() == Locale::It { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                class: if locale_value == Locale::It { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
-                                onclick: move |_| *locale.write() = Locale::It,
+                                onclick: move |_| {
+                                    if *locale.peek() != Locale::It {
+                                        *locale.write() = Locale::It;
+                                    }
+                                },
                                 "IT"
                             }
                         }
                     }
-                    p { class: "page-sub", "{t(*locale.read(), TextKey::PageSubtitle)}" }
+                    p { class: "page-sub", "{t(locale_value, TextKey::PageSubtitle)}" }
                     p { class: "page-archive-note",
-                        span { class: "page-archive-label", "{t(*locale.read(), TextKey::ArchiveNotice)}" }
+                        span { class: "page-archive-label", "{t(locale_value, TextKey::ArchiveNotice)}" }
                         a {
                             class: "page-archive-link mono",
                             href: "https://doi.org/10.5281/zenodo.5794106",
@@ -516,7 +534,7 @@ fn App() -> Element {
                     }
                 }
 
-                KetcherPanel { locale: *locale.read() }
+                KetcherPanel { locale: locale_value }
 
                 ShareNotice { shareable_url, locale }
 
@@ -533,7 +551,7 @@ fn App() -> Element {
 
                 ResultsViewport {}
 
-                Footer { locale: *locale.read() }
+                Footer { locale: locale_value }
             }
         }
     }
