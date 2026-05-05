@@ -509,6 +509,9 @@ fn VirtualizedResultsTable(
     #[cfg(not(target_arch = "wasm32"))]
     let viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
 
+    #[cfg(target_arch = "wasm32")]
+    let mut scroll_host = use_signal(|| None::<web_sys::HtmlElement>);
+
     let total = entries.read().len();
     let row_height_px = ROW_HEIGHT_PX_COMFORTABLE;
     let current_sort = *sort.read();
@@ -548,22 +551,33 @@ fn VirtualizedResultsTable(
                 #[cfg(target_arch = "wasm32")]
                 {
                     use wasm_bindgen::JsCast;
-                    if let Some(win) = web_sys::window() {
-                        if let Some(document) = win.document() {
-                            if let Some(node) = document.get_element_by_id(TABLE_SCROLL_ID) {
-                                if let Ok(div) = node.dyn_into::<web_sys::HtmlElement>() {
-                                    let top = div.scroll_top().max(0) as usize;
-                                    let height = div.client_height().max(0) as usize;
-                                    let next_first = (top / row_height_px).min(total);
-                                    if next_first != *first_visible_row.read() {
-                                        *first_visible_row.write() = next_first;
-                                    }
-                                    if height > 0 && height != *viewport_height_px.read() {
-                                        *viewport_height_px.write() = height;
-                                    }
-                                }
-                            }
-                        }
+                    let div = if let Some(existing) = scroll_host.peek().as_ref() {
+                        existing.clone()
+                    } else {
+                        let Some(win) = web_sys::window() else {
+                            return;
+                        };
+                        let Some(document) = win.document() else {
+                            return;
+                        };
+                        let Some(node) = document.get_element_by_id(TABLE_SCROLL_ID) else {
+                            return;
+                        };
+                        let Ok(found) = node.dyn_into::<web_sys::HtmlElement>() else {
+                            return;
+                        };
+                        *scroll_host.write() = Some(found.clone());
+                        found
+                    };
+
+                    let top = div.scroll_top().max(0) as usize;
+                    let height = div.client_height().max(0) as usize;
+                    let next_first = (top / row_height_px).min(total);
+                    if next_first != *first_visible_row.peek() {
+                        *first_visible_row.write() = next_first;
+                    }
+                    if height > 0 && height != *viewport_height_px.peek() {
+                        *viewport_height_px.write() = height;
                     }
                 }
             },

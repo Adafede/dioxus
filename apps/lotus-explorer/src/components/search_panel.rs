@@ -13,6 +13,7 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
     let locale = *state.locale.read();
     let loading = *state.loading.read();
     let mut c = state.criteria;
+    let criteria = c.read().clone();
 
     rsx! {
         section {
@@ -31,7 +32,7 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                         autocomplete: "off",
                         spellcheck: "false",
                         placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
-                        value: "{c.read().taxon}",
+                        value: "{criteria.taxon}",
                         oninput: move |e| c.write().taxon = e.value(),
                         onkeydown: move |e| {
                             if e.key() == Key::Enter {
@@ -62,7 +63,7 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                                 min: "0",
                                 max: "10000",
                                 step: "1",
-                                value: "{c.read().mass_min}",
+                                value: "{criteria.mass_min}",
                                 oninput: move |e| {
                                     if let Ok(v) = e.value().parse::<f64>() {
                                         c.write().mass_min = v;
@@ -82,7 +83,7 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                                 min: "0",
                                 max: "10000",
                                 step: "1",
-                                value: "{c.read().mass_max}",
+                                value: "{criteria.mass_max}",
                                 oninput: move |e| {
                                     if let Ok(v) = e.value().parse::<f64>() {
                                         c.write().mass_max = v;
@@ -110,7 +111,7 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                                 min: "{DEFAULT_YEAR_MIN}",
                                 max: "{current_year()}",
                                 step: "1",
-                                value: "{c.read().year_min}",
+                                value: "{criteria.year_min}",
                                 oninput: move |e| {
                                     if let Ok(v) = e.value().parse::<u16>() {
                                         c.write().year_min = v;
@@ -130,7 +131,7 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                                 min: "{DEFAULT_YEAR_MIN}",
                                 max: "{current_year()}",
                                 step: "1",
-                                value: "{c.read().year_max}",
+                                value: "{criteria.year_max}",
                                 oninput: move |e| {
                                     if let Ok(v) = e.value().parse::<u16>() {
                                         c.write().year_max = v;
@@ -146,13 +147,13 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                     label { class: "radio-label",
                         input {
                             r#type: "checkbox",
-                            checked: c.read().formula_enabled,
+                            checked: criteria.formula_enabled,
                             onchange: move |e| c.write().formula_enabled = e.checked(),
                         }
                         "{t(locale, TextKey::FormulaFilter)}"
                     }
 
-                    if c.read().formula_enabled {
+                    if criteria.formula_enabled {
                         div { class: "form-section nested",
                             label {
                                 class: "form-label sm",
@@ -166,7 +167,7 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                                 autocomplete: "off",
                                 spellcheck: "false",
                                 placeholder: "C15H10O5",
-                                value: "{c.read().formula_exact}",
+                                value: "{criteria.formula_exact}",
                                 oninput: move |e| c.write().formula_exact = e.value(),
                             }
                         }
@@ -175,24 +176,24 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                             NumPair {
                                 label: "C",
                                 locale,
-                                min_value: c.read().c_min,
-                                max_value: c.read().c_max,
+                                min_value: criteria.c_min,
+                                max_value: criteria.c_max,
                                 on_min: move |v| c.write().c_min = v,
                                 on_max: move |v| c.write().c_max = v,
                             }
                             NumPair {
                                 label: "H",
                                 locale,
-                                min_value: c.read().h_min,
-                                max_value: c.read().h_max,
+                                min_value: criteria.h_min,
+                                max_value: criteria.h_max,
                                 on_min: move |v| c.write().h_min = v,
                                 on_max: move |v| c.write().h_max = v,
                             }
                             NumPair {
                                 label: "N",
                                 locale,
-                                min_value: c.read().n_min,
-                                max_value: c.read().n_max,
+                                min_value: criteria.n_min,
+                                max_value: criteria.n_max,
                                 on_min: move |v| c.write().n_min = v,
                                 on_max: move |v| c.write().n_max = v,
                             }
@@ -201,24 +202,24 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                             NumPair {
                                 label: "O",
                                 locale,
-                                min_value: c.read().o_min,
-                                max_value: c.read().o_max,
+                                min_value: criteria.o_min,
+                                max_value: criteria.o_max,
                                 on_min: move |v| c.write().o_min = v,
                                 on_max: move |v| c.write().o_max = v,
                             }
                             NumPair {
                                 label: "P",
                                 locale,
-                                min_value: c.read().p_min,
-                                max_value: c.read().p_max,
+                                min_value: criteria.p_min,
+                                max_value: criteria.p_max,
                                 on_min: move |v| c.write().p_min = v,
                                 on_max: move |v| c.write().p_max = v,
                             }
                             NumPair {
                                 label: "S",
                                 locale,
-                                min_value: c.read().s_min,
-                                max_value: c.read().s_max,
+                                min_value: criteria.s_min,
+                                max_value: criteria.s_max,
                                 on_min: move |v| c.write().s_min = v,
                                 on_max: move |v| c.write().s_max = v,
                             }
@@ -227,25 +228,25 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                             ElemStateSelect {
                                 label: "F",
                                 locale,
-                                value: c.read().f_state,
+                                value: criteria.f_state,
                                 on_change: move |v| c.write().f_state = v,
                             }
                             ElemStateSelect {
                                 label: "Cl",
                                 locale,
-                                value: c.read().cl_state,
+                                value: criteria.cl_state,
                                 on_change: move |v| c.write().cl_state = v,
                             }
                             ElemStateSelect {
                                 label: "Br",
                                 locale,
-                                value: c.read().br_state,
+                                value: criteria.br_state,
                                 on_change: move |v| c.write().br_state = v,
                             }
                             ElemStateSelect {
                                 label: "I",
                                 locale,
-                                value: c.read().i_state,
+                                value: criteria.i_state,
                                 on_change: move |v| c.write().i_state = v,
                             }
                         }
@@ -282,6 +283,7 @@ fn StructureSection(locale: Locale) -> Element {
     // not on every unrelated re-render of the search panel.
     let kind = use_memo(move || classify_structure(&c.read().smiles));
     let kind_value = *kind.read();
+    let criteria = c.read().clone();
 
     rsx! {
         div { class: "form-section",
@@ -293,7 +295,7 @@ fn StructureSection(locale: Locale) -> Element {
                 class: "form-textarea mono",
                 spellcheck: "false",
                 placeholder: "{t(locale, TextKey::StructurePlaceholder)}",
-                value: "{c.read().smiles}",
+                value: "{criteria.smiles}",
                 oninput: move |e| c.write().smiles = e.value(),
                 rows: "4",
             }
@@ -316,7 +318,7 @@ fn StructureSection(locale: Locale) -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        checked: c.read().smiles_search_type == SmilesSearchType::Substructure,
+                        checked: criteria.smiles_search_type == SmilesSearchType::Substructure,
                         onchange: move |_| c.write().smiles_search_type = SmilesSearchType::Substructure,
                     }
                     "{t(locale, TextKey::Substructure)}"
@@ -325,16 +327,16 @@ fn StructureSection(locale: Locale) -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        checked: c.read().smiles_search_type == SmilesSearchType::Similarity,
+                        checked: criteria.smiles_search_type == SmilesSearchType::Similarity,
                         onchange: move |_| c.write().smiles_search_type = SmilesSearchType::Similarity,
                     }
                     "{t(locale, TextKey::Similarity)}"
                 }
             }
-            if c.read().smiles_search_type == SmilesSearchType::Similarity {
+            if criteria.smiles_search_type == SmilesSearchType::Similarity {
                 div { class: "form-section nested",
                     label { class: "form-label sm", r#for: "threshold-input",
-                        "{threshold_label(locale, c.read().smiles_threshold)}"
+                        "{threshold_label(locale, criteria.smiles_threshold)}"
                     }
                     input {
                         id: "threshold-input",
@@ -343,10 +345,10 @@ fn StructureSection(locale: Locale) -> Element {
                         min: "0.0",
                         max: "1.0",
                         step: "0.01",
-                        value: "{c.read().smiles_threshold}",
+                        value: "{criteria.smiles_threshold}",
                         aria_valuemin: "0",
                         aria_valuemax: "1",
-                        aria_valuenow: "{c.read().smiles_threshold}",
+                        aria_valuenow: "{criteria.smiles_threshold}",
                         oninput: move |e| {
                             if let Ok(v) = e.value().parse::<f64>() {
                                 c.write().smiles_threshold = v;
