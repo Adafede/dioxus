@@ -292,6 +292,7 @@ fn App() -> Element {
 
     // ── Search handler ────────────────────────────────────────────────────────
     let on_search = move |_| start_search(criteria, locale, false, search_runtime);
+    let on_preview = move |_| start_search(criteria, locale, false, search_runtime);
 
     // Programmatic flow: when URL contains `download=true&format=...`, run the
     // search automatically and trigger download once query materializes.
@@ -570,7 +571,7 @@ fn App() -> Element {
                     on_retry: move |_| start_search(criteria, locale, false, search_runtime),
                 }
 
-                ResultsViewport {}
+                ResultsViewport { on_preview }
 
                 Footer { locale: locale_value }
             }
@@ -583,7 +584,7 @@ fn App() -> Element {
 /// show. `query_phase` is consumed inside `LoadingState` so phase
 /// transitions don't trigger a full viewport re-render.
 #[component]
-fn ResultsViewport() -> Element {
+fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     let state = use_results_context();
     let locale = *state.locale.read();
     let loading = *state.loading.read();
@@ -606,7 +607,7 @@ fn ResultsViewport() -> Element {
     }
 
     if entries.read().is_empty() && !has_error && download_only_mode {
-        return rsx! { DownloadOnlyState { locale } };
+        return rsx! { DownloadOnlyState { locale, on_preview } };
     }
 
     rsx! {
@@ -630,11 +631,17 @@ fn DownloadDispatchState(locale: Locale) -> Element {
 }
 
 #[component]
-fn DownloadOnlyState(locale: Locale) -> Element {
+fn DownloadOnlyState(locale: Locale, on_preview: EventHandler<()>) -> Element {
     rsx! {
         div { class: "notice notice-info", role: "status",
             span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
             span { class: "notice-value", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
+            button {
+                class: "btn btn-sm",
+                r#type: "button",
+                onclick: move |_| on_preview.call(()),
+                "{t(locale, TextKey::RunSearch)}"
+            }
         }
     }
 }
