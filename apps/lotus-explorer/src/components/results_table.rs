@@ -535,9 +535,7 @@ fn VirtualizedResultsTable(
     #[cfg(target_arch = "wasm32")]
     let mut scroll_raf_scheduled = use_signal(|| false);
     #[cfg(target_arch = "wasm32")]
-    let mut scroll_raf_cb = use_signal(|| {
-        None::<wasm_bindgen::closure::Closure<dyn FnMut(f64)>>
-    });
+    let mut scroll_raf_cb = use_signal(|| None::<wasm_bindgen::closure::Closure<dyn FnMut(f64)>>);
     #[cfg(target_arch = "wasm32")]
     let mut scroll_raf_id = use_signal(|| None::<i32>);
 

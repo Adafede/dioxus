@@ -11,10 +11,10 @@ use crate::sparql;
 #[cfg(target_arch = "wasm32")]
 use crate::{api, models::SearchCriteria};
 use crate::{perf, queries};
-#[cfg(target_arch = "wasm32")]
-use shared::sparql::{QLEVER_WIKIDATA, SparqlResponseFormat};
 #[cfg(not(target_arch = "wasm32"))]
 use shared::sparql::SparqlResponseFormat;
+#[cfg(target_arch = "wasm32")]
+use shared::sparql::{QLEVER_WIKIDATA, SparqlResponseFormat};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DownloadFormat {

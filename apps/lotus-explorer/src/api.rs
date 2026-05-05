@@ -258,9 +258,7 @@ pub async fn search(
         Err(ApiClientError::Http(status, _))
             if include_counts && (status == 502 || status == 504) =>
         {
-            log::warn!(
-                "event=search phase=api state=retry_without_counts status={status}"
-            );
+            log::warn!("event=search phase=api state=retry_without_counts status={status}");
             let retry_request = SearchRequest::from_criteria(criteria, limit, false);
             post_json(&base, "/v1/search", &retry_request).await
         }
