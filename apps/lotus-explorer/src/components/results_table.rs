@@ -532,6 +532,13 @@ fn VirtualizedResultsTable(
     #[cfg(target_arch = "wasm32")]
     let mut scroll_host = use_signal(|| None::<web_sys::HtmlElement>);
 
+    #[cfg(target_arch = "wasm32")]
+    let mut scroll_raf_scheduled = use_signal(|| false);
+    #[cfg(target_arch = "wasm32")]
+    let mut scroll_raf_cb = use_signal(|| {
+        None::<wasm_bindgen::closure::Closure<dyn FnMut(f64)>>
+    });
+
     let total = entries.read().len();
     let row_height_px = ROW_HEIGHT_PX_COMFORTABLE;
     let current_sort = *sort.read();
@@ -590,14 +597,46 @@ fn VirtualizedResultsTable(
                         found
                     };
 
-                    let top = div.scroll_top().max(0) as usize;
-                    let height = div.client_height().max(0) as usize;
-                    let next_first = (top / row_height_px).min(total);
-                    if next_first != *first_visible_row.peek() {
-                        *first_visible_row.write() = next_first;
+                    // Coalesce multiple native scroll events into one update per frame.
+                    if *scroll_raf_scheduled.peek() {
+                        return;
                     }
-                    if height > 0 && height != *viewport_height_px.peek() {
-                        *viewport_height_px.write() = height;
+                    *scroll_raf_scheduled.write() = true;
+
+                    let mut first_visible_row_sig = first_visible_row;
+                    let mut viewport_height_px_sig = viewport_height_px;
+                    let mut scroll_raf_scheduled_sig = scroll_raf_scheduled;
+                    let mut scroll_raf_cb_sig = scroll_raf_cb;
+                    let div_for_raf = div.clone();
+                    let raf_cb = wasm_bindgen::closure::Closure::wrap(Box::new(move |_ts: f64| {
+                        let top = div_for_raf.scroll_top().max(0) as usize;
+                        let height = div_for_raf.client_height().max(0) as usize;
+                        let next_first = (top / row_height_px).min(total);
+                        if next_first != *first_visible_row_sig.peek() {
+                            *first_visible_row_sig.write() = next_first;
+                        }
+                        if height > 0 && height != *viewport_height_px_sig.peek() {
+                            *viewport_height_px_sig.write() = height;
+                        }
+                        *scroll_raf_scheduled_sig.write() = false;
+                        *scroll_raf_cb_sig.write() = None;
+                    })
+                        as Box<dyn FnMut(f64)>);
+
+                    *scroll_raf_cb.write() = Some(raf_cb);
+                    let scheduled = if let Some(win) = web_sys::window() {
+                        if let Some(cb) = scroll_raf_cb.peek().as_ref() {
+                            win.request_animation_frame(cb.as_ref().unchecked_ref())
+                                .is_ok()
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    };
+                    if !scheduled {
+                        *scroll_raf_scheduled.write() = false;
+                        *scroll_raf_cb.write() = None;
                     }
                 }
             },
