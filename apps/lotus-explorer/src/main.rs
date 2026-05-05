@@ -1023,21 +1023,21 @@ fn start_search(
     let SearchRuntime {
         executed_criteria,
         loading,
-        mut error,
-        mut error_kind,
+        error,
+        error_kind,
         query_phase,
         searched_once,
         download_only_mode,
         download_dispatching,
         mut entries,
-        mut taxon_notice,
-        mut resolved_qid,
-        mut query_hash,
-        mut result_hash,
-        mut sparql_query,
-        mut metadata_json,
-        mut total_matches,
-        mut total_stats,
+        taxon_notice,
+        resolved_qid,
+        query_hash,
+        result_hash,
+        sparql_query,
+        metadata_json,
+        total_matches,
+        total_stats,
         display_capped_rows,
         mobile_filters_open,
         mut search_request_token,
@@ -1065,8 +1065,8 @@ fn start_search(
             "validation_failed",
             Some("reason=missing_taxon_and_structure"),
         );
-        *error.write() = Some(err_invalid_search_input(*locale.peek()));
-        *error_kind.write() = ErrorKind::Validation;
+        set_signal_if_changed(error, Some(err_invalid_search_input(*locale.peek())));
+        set_signal_if_changed(error_kind, ErrorKind::Validation);
         return;
     }
 
@@ -1142,15 +1142,15 @@ fn start_search(
                 let display_slice: Rows = Arc::from(outcome.rows.into_boxed_slice());
                 log_debug_evt("search", "Rendering", "entered", None);
                 set_signal_if_changed(query_phase, QueryPhase::Rendering);
-                *resolved_qid.write() = outcome.qid;
-                *taxon_notice.write() = outcome.warning;
-                *query_hash.write() = Some(q_hash);
-                *result_hash.write() = Some(r_hash);
-                *sparql_query.write() = Some(Arc::<str>::from(outcome.query));
-                *metadata_json.write() = Some(Arc::<str>::from(meta_str));
+                set_signal_if_changed(resolved_qid, outcome.qid);
+                set_signal_if_changed(taxon_notice, outcome.warning);
+                set_signal_if_changed(query_hash, Some(q_hash));
+                set_signal_if_changed(result_hash, Some(r_hash));
+                set_signal_if_changed(sparql_query, Some(Arc::<str>::from(outcome.query)));
+                set_signal_if_changed(metadata_json, Some(Arc::<str>::from(meta_str)));
                 set_signal_if_changed(display_capped_rows, outcome.display_capped_rows);
-                *total_matches.write() = filtered_matches;
-                *total_stats.write() = filtered_stats;
+                set_signal_if_changed(total_matches, filtered_matches);
+                set_signal_if_changed(total_stats, filtered_stats);
                 *entries.write() = display_slice;
                 log_info_evt("search", "finish", "loading_false", Some("result=success"));
                 set_signal_if_changed(loading, false);
@@ -1167,8 +1167,8 @@ fn start_search(
                     );
                     return;
                 }
-                *error_kind.write() = e.kind;
-                *error.write() = Some(e.message);
+                set_signal_if_changed(error_kind, e.kind);
+                set_signal_if_changed(error, Some(e.message));
                 log_info_evt("search", "finish", "loading_false", Some("result=error"));
                 set_signal_if_changed(loading, false);
                 log_debug_evt("search", "Idle", "entered", None);
