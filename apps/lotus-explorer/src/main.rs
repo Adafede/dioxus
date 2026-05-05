@@ -177,6 +177,12 @@ fn log_timing_evt(
     perf::log_info(&msg);
 }
 
+fn set_signal_if_changed<T: PartialEq + 'static>(mut signal: Signal<T>, next: T) {
+    if *signal.peek() != next {
+        *signal.write() = next;
+    }
+}
+
 fn main() {
     let level = if cfg!(debug_assertions) {
         log::Level::Debug
@@ -965,12 +971,12 @@ fn start_search(
     runtime: SearchRuntime,
 ) {
     let SearchRuntime {
-        mut executed_criteria,
-        mut loading,
+        executed_criteria,
+        loading,
         mut error,
         mut error_kind,
-        mut query_phase,
-        mut searched_once,
+        query_phase,
+        searched_once,
         mut entries,
         mut taxon_notice,
         mut resolved_qid,
@@ -980,8 +986,8 @@ fn start_search(
         mut metadata_json,
         mut total_matches,
         mut total_stats,
-        mut display_capped_rows,
-        mut mobile_filters_open,
+        display_capped_rows,
+        mobile_filters_open,
         mut search_request_token,
     } = runtime;
     let crit = criteria.peek().clone();
@@ -1013,26 +1019,26 @@ fn start_search(
     }
 
     // Freeze the criteria snapshot that produced the current result lifecycle.
-    *executed_criteria.write() = crit.clone();
+    set_signal_if_changed(executed_criteria, crit.clone());
 
-    *error.write() = None;
-    *error_kind.write() = ErrorKind::Unknown;
-    *searched_once.write() = true;
+    set_signal_if_changed(error, None);
+    set_signal_if_changed(error_kind, ErrorKind::Unknown);
+    set_signal_if_changed(searched_once, true);
     log_info_evt("search", "start", "loading_true", None);
-    *loading.write() = true;
+    set_signal_if_changed(loading, true);
     log_debug_evt("search", "ResolvingTaxon", "entered", None);
-    *query_phase.write() = QueryPhase::ResolvingTaxon;
+    set_signal_if_changed(query_phase, QueryPhase::ResolvingTaxon);
     *entries.write() = Arc::<[CompoundEntry]>::from([]);
-    *taxon_notice.write() = None;
-    *resolved_qid.write() = None;
-    *query_hash.write() = None;
-    *result_hash.write() = None;
-    *sparql_query.write() = None;
-    *metadata_json.write() = None;
-    *total_matches.write() = None;
-    *total_stats.write() = None;
-    *display_capped_rows.write() = false;
-    *mobile_filters_open.write() = false;
+    set_signal_if_changed(taxon_notice, None);
+    set_signal_if_changed(resolved_qid, None);
+    set_signal_if_changed(query_hash, None);
+    set_signal_if_changed(result_hash, None);
+    set_signal_if_changed(sparql_query, None);
+    set_signal_if_changed(metadata_json, None);
+    set_signal_if_changed(total_matches, None);
+    set_signal_if_changed(total_stats, None);
+    set_signal_if_changed(display_capped_rows, false);
+    set_signal_if_changed(mobile_filters_open, false);
 
     spawn(async move {
         match do_search(
@@ -1071,21 +1077,21 @@ fn start_search(
 
                 let display_slice: Rows = Arc::from(outcome.rows.into_boxed_slice());
                 log_debug_evt("search", "Rendering", "entered", None);
-                *query_phase.write() = QueryPhase::Rendering;
+                set_signal_if_changed(query_phase, QueryPhase::Rendering);
                 *resolved_qid.write() = outcome.qid;
                 *taxon_notice.write() = outcome.warning;
                 *query_hash.write() = Some(q_hash);
                 *result_hash.write() = Some(r_hash);
                 *sparql_query.write() = Some(Arc::<str>::from(outcome.query));
                 *metadata_json.write() = Some(Arc::<str>::from(meta_str));
-                *display_capped_rows.write() = outcome.display_capped_rows;
+                set_signal_if_changed(display_capped_rows, outcome.display_capped_rows);
                 *total_matches.write() = Some(filtered_matches);
                 *total_stats.write() = Some(filtered_stats);
                 *entries.write() = display_slice;
                 log_info_evt("search", "finish", "loading_false", Some("result=success"));
-                *loading.write() = false;
+                set_signal_if_changed(loading, false);
                 log_debug_evt("search", "Idle", "entered", None);
-                *query_phase.write() = QueryPhase::Idle;
+                set_signal_if_changed(query_phase, QueryPhase::Idle);
             }
             Err(e) => {
                 if request_token != *search_request_token.peek() {
@@ -1100,9 +1106,9 @@ fn start_search(
                 *error_kind.write() = e.kind;
                 *error.write() = Some(e.message);
                 log_info_evt("search", "finish", "loading_false", Some("result=error"));
-                *loading.write() = false;
+                set_signal_if_changed(loading, false);
                 log_debug_evt("search", "Idle", "entered", None);
-                *query_phase.write() = QueryPhase::Idle;
+                set_signal_if_changed(query_phase, QueryPhase::Idle);
             }
         }
     });
