@@ -174,8 +174,6 @@ pub fn ResultsTable() -> Element {
     let page = state.page;
     let sparql_query = state.sparql_query.read().clone();
     let metadata_json = state.metadata_json.read().clone();
-    let query_hash = state.query_hash.read().clone();
-    let result_hash = state.result_hash.read().clone();
     let criteria = state.executed_criteria;
     // Keep expensive fallback stats O(n) work memoized so UI-only signals
     // (like download spinner state) don't recompute from all rows.
@@ -222,40 +220,8 @@ pub fn ResultsTable() -> Element {
         Arc::from(idx.into_boxed_slice())
     });
 
-    // ── Export filenames & URLs (memoised; only rebuild when inputs change) ──
-    let export_available = sparql_query.is_some() || metadata_json.is_some();
-
-    let csv_filename = use_memo(move || {
-        let c = criteria.read();
-        export::generate_filename(&c, "csv")
-    });
-    let json_filename = use_memo(move || {
-        let c = criteria.read();
-        export::generate_filename(&c, "json")
-    });
-    let rdf_filename = use_memo(move || {
-        let c = criteria.read();
-        export::generate_filename(&c, "rdf")
-    });
-
-    // Metadata filename mirrors: `{query_hash}_{result_hash}_metadata.json`.
-    let metadata_filename = match (query_hash.as_deref(), result_hash.as_deref()) {
-        (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
-        _ => {
-            let c = criteria.read();
-            export::generate_filename(&c, "metadata.json")
-        }
-    };
-
-    let qlever_ui_url = sparql_query
-        .as_deref()
-        .map(|q| format!("{QLEVER_UI}?query={}", urlencoding::encode(q)));
-    let download_busy = use_signal(|| false);
-    let download_status: Signal<Option<String>> = use_signal(|| None);
-    let download_status_text = download_status
-        .read()
-        .clone()
-        .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
+    let query_hash = state.query_hash.read().clone();
+    let result_hash = state.result_hash.read().clone();
 
     rsx! {
         div { id: "results-section", class: "results-wrap",
@@ -312,118 +278,13 @@ pub fn ResultsTable() -> Element {
                         plus: false,
                     }
                 }
-                div { class: "toolbar-actions",
-                    if *download_busy.read() {
-                        span {
-                            class: "btn btn-sm",
-                            role: "status",
-                            aria_live: "polite",
-                            span { class: "spinner-sm", "aria-hidden": "true" }
-                            {download_status_text}
-                        }
-                    }
-                    if export_available {
-                        div {
-                            class: "dl-group",
-                            role: "group",
-                            aria_label: "{t(locale, TextKey::DownloadResults)}",
-                            if let Some(query) = sparql_query.as_deref() {
-                                button {
-                                    class: "btn btn-sm",
-                                    r#type: "button",
-                                    disabled: *download_busy.read(),
-                                    onclick: {
-                                        let q = query.to_string();
-                                        move |_| {
-                                            dispatch_query_download_spec(
-                                                DOWNLOAD_QUERY_CSV_SPEC,
-                                                locale,
-                                                criteria.read().clone(),
-                                                csv_filename.read().clone(),
-                                                q.clone(),
-                                                download_busy,
-                                                download_status,
-                                            );
-                                        }
-                                    },
-                                    title: "{t(locale, DOWNLOAD_QUERY_CSV_SPEC.title_key)}",
-                                    aria_label: "{t(locale, DOWNLOAD_QUERY_CSV_SPEC.title_key)}",
-                                    "{t(locale, DOWNLOAD_QUERY_CSV_SPEC.label_key)}"
-                                }
-                                button {
-                                    class: "btn btn-sm",
-                                    r#type: "button",
-                                    disabled: *download_busy.read(),
-                                    onclick: {
-                                        let q = query.to_string();
-                                        move |_| {
-                                            dispatch_query_download_spec(
-                                                DOWNLOAD_QUERY_JSON_SPEC,
-                                                locale,
-                                                criteria.read().clone(),
-                                                json_filename.read().clone(),
-                                                q.clone(),
-                                                download_busy,
-                                                download_status,
-                                            );
-                                        }
-                                    },
-                                    title: "{t(locale, DOWNLOAD_QUERY_JSON_SPEC.title_key)}",
-                                    aria_label: "{t(locale, DOWNLOAD_QUERY_JSON_SPEC.title_key)}",
-                                    "{t(locale, DOWNLOAD_QUERY_JSON_SPEC.label_key)}"
-                                }
-                                button {
-                                    class: "btn btn-sm",
-                                    r#type: "button",
-                                    disabled: *download_busy.read(),
-                                    onclick: {
-                                        let q = query.to_string();
-                                        move |_| {
-                                            dispatch_query_download_spec(
-                                                DOWNLOAD_QUERY_RDF_SPEC,
-                                                locale,
-                                                criteria.read().clone(),
-                                                rdf_filename.read().clone(),
-                                                q.clone(),
-                                                download_busy,
-                                                download_status,
-                                            );
-                                        }
-                                    },
-                                    title: "{t(locale, DOWNLOAD_QUERY_RDF_SPEC.title_key)}",
-                                    aria_label: "{t(locale, DOWNLOAD_QUERY_RDF_SPEC.title_key)}",
-                                    "{t(locale, DOWNLOAD_QUERY_RDF_SPEC.label_key)}"
-                                }
-                            }
-                            if let Some(body) = metadata_json.as_ref() {
-                                button {
-                                    class: "btn btn-sm",
-                                    r#type: "button",
-                                    disabled: *download_busy.read(),
-                                    onclick: {
-                                        let body = body.clone();
-                                        let filename = metadata_filename.clone();
-                                        move |_| {
-                                            dispatch_metadata_download_blob(&filename, &body);
-                                        }
-                                    },
-                                    title: "{t(locale, DOWNLOAD_METADATA_SPEC.title_key)}",
-                                    aria_label: "{t(locale, DOWNLOAD_METADATA_SPEC.title_key)}",
-                                    "{t(locale, DOWNLOAD_METADATA_SPEC.label_key)}"
-                                }
-                            }
-                        }
-                    }
-                    if let Some(url) = qlever_ui_url.as_deref() {
-                        a {
-                            class: "btn btn-sm",
-                            href: "{url}",
-                            target: "_blank",
-                            rel: "noopener noreferrer",
-                            title: "{t(locale, TextKey::OpenInQleverTitle)}",
-                            "{t(locale, TextKey::OpenInQlever)}"
-                        }
-                    }
+                ResultsDownloadActions {
+                    locale,
+                    criteria,
+                    sparql_query: sparql_query.clone(),
+                    metadata_json: metadata_json.clone(),
+                    query_hash,
+                    result_hash,
                 }
             }
 
@@ -445,6 +306,162 @@ pub fn ResultsTable() -> Element {
                     sort,
                     page,
                     sorted_indices,
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn ResultsDownloadActions(
+    locale: Locale,
+    criteria: Signal<SearchCriteria>,
+    sparql_query: Option<String>,
+    metadata_json: Option<String>,
+    query_hash: Option<String>,
+    result_hash: Option<String>,
+) -> Element {
+    let export_available = sparql_query.is_some() || metadata_json.is_some();
+    let csv_filename = use_memo(move || {
+        let c = criteria.read();
+        export::generate_filename(&c, "csv")
+    });
+    let json_filename = use_memo(move || {
+        let c = criteria.read();
+        export::generate_filename(&c, "json")
+    });
+    let rdf_filename = use_memo(move || {
+        let c = criteria.read();
+        export::generate_filename(&c, "rdf")
+    });
+    let metadata_filename = match (query_hash.as_deref(), result_hash.as_deref()) {
+        (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
+        _ => {
+            let c = criteria.read();
+            export::generate_filename(&c, "metadata.json")
+        }
+    };
+    let qlever_ui_url = sparql_query
+        .as_deref()
+        .map(|q| format!("{QLEVER_UI}?query={}", urlencoding::encode(q)));
+    let download_busy = use_signal(|| false);
+    let download_status: Signal<Option<String>> = use_signal(|| None);
+    let download_status_text = download_status
+        .read()
+        .clone()
+        .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
+
+    rsx! {
+        div { class: "toolbar-actions",
+            if *download_busy.read() {
+                span {
+                    class: "btn btn-sm",
+                    role: "status",
+                    aria_live: "polite",
+                    span { class: "spinner-sm", "aria-hidden": "true" }
+                    {download_status_text}
+                }
+            }
+            if export_available {
+                div {
+                    class: "dl-group",
+                    role: "group",
+                    aria_label: "{t(locale, TextKey::DownloadResults)}",
+                    if let Some(query) = sparql_query.as_deref() {
+                        button {
+                            class: "btn btn-sm",
+                            r#type: "button",
+                            disabled: *download_busy.read(),
+                            onclick: {
+                                let q = query.to_string();
+                                move |_| {
+                                    dispatch_query_download_spec(
+                                        DOWNLOAD_QUERY_CSV_SPEC,
+                                        locale,
+                                        criteria.read().clone(),
+                                        csv_filename.read().clone(),
+                                        q.clone(),
+                                        download_busy,
+                                        download_status,
+                                    );
+                                }
+                            },
+                            title: "{t(locale, DOWNLOAD_QUERY_CSV_SPEC.title_key)}",
+                            aria_label: "{t(locale, DOWNLOAD_QUERY_CSV_SPEC.title_key)}",
+                            "{t(locale, DOWNLOAD_QUERY_CSV_SPEC.label_key)}"
+                        }
+                        button {
+                            class: "btn btn-sm",
+                            r#type: "button",
+                            disabled: *download_busy.read(),
+                            onclick: {
+                                let q = query.to_string();
+                                move |_| {
+                                    dispatch_query_download_spec(
+                                        DOWNLOAD_QUERY_JSON_SPEC,
+                                        locale,
+                                        criteria.read().clone(),
+                                        json_filename.read().clone(),
+                                        q.clone(),
+                                        download_busy,
+                                        download_status,
+                                    );
+                                }
+                            },
+                            title: "{t(locale, DOWNLOAD_QUERY_JSON_SPEC.title_key)}",
+                            aria_label: "{t(locale, DOWNLOAD_QUERY_JSON_SPEC.title_key)}",
+                            "{t(locale, DOWNLOAD_QUERY_JSON_SPEC.label_key)}"
+                        }
+                        button {
+                            class: "btn btn-sm",
+                            r#type: "button",
+                            disabled: *download_busy.read(),
+                            onclick: {
+                                let q = query.to_string();
+                                move |_| {
+                                    dispatch_query_download_spec(
+                                        DOWNLOAD_QUERY_RDF_SPEC,
+                                        locale,
+                                        criteria.read().clone(),
+                                        rdf_filename.read().clone(),
+                                        q.clone(),
+                                        download_busy,
+                                        download_status,
+                                    );
+                                }
+                            },
+                            title: "{t(locale, DOWNLOAD_QUERY_RDF_SPEC.title_key)}",
+                            aria_label: "{t(locale, DOWNLOAD_QUERY_RDF_SPEC.title_key)}",
+                            "{t(locale, DOWNLOAD_QUERY_RDF_SPEC.label_key)}"
+                        }
+                    }
+                    if let Some(body) = metadata_json.as_ref() {
+                        button {
+                            class: "btn btn-sm",
+                            r#type: "button",
+                            disabled: *download_busy.read(),
+                            onclick: {
+                                let body = body.clone();
+                                let filename = metadata_filename.clone();
+                                move |_| {
+                                    dispatch_metadata_download_blob(&filename, &body);
+                                }
+                            },
+                            title: "{t(locale, DOWNLOAD_METADATA_SPEC.title_key)}",
+                            aria_label: "{t(locale, DOWNLOAD_METADATA_SPEC.title_key)}",
+                            "{t(locale, DOWNLOAD_METADATA_SPEC.label_key)}"
+                        }
+                    }
+                }
+            }
+            if let Some(url) = qlever_ui_url.as_deref() {
+                a {
+                    class: "btn btn-sm",
+                    href: "{url}",
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    title: "{t(locale, TextKey::OpenInQleverTitle)}",
+                    "{t(locale, TextKey::OpenInQlever)}"
                 }
             }
         }
