@@ -161,6 +161,25 @@ fn dispatch_metadata_download_blob(filename: &str, body: &str) {
     );
 }
 
+#[derive(Clone, Copy)]
+struct RowText {
+    open_full_size_depiction: &'static str,
+    open_in_wikidata: &'static str,
+    open_in_scholia: &'static str,
+    open_doi: &'static str,
+    statement: &'static str,
+}
+
+fn row_text(locale: Locale) -> RowText {
+    RowText {
+        open_full_size_depiction: t(locale, TextKey::OpenFullSizeDepiction),
+        open_in_wikidata: t(locale, TextKey::OpenInWikidata),
+        open_in_scholia: t(locale, TextKey::OpenInScholia),
+        open_doi: t(locale, TextKey::OpenDoi),
+        statement: t(locale, TextKey::Statement),
+    }
+}
+
 #[component]
 pub fn ResultsTable() -> Element {
     let state = use_results_context();
@@ -499,6 +518,7 @@ fn VirtualizedResultsTable(
     let top_spacer_px = start_row.saturating_mul(row_height_px);
     let bottom_spacer_px = total.saturating_sub(end_row).saturating_mul(row_height_px);
     let visible_count = end_row.saturating_sub(start_row);
+    let row_text = row_text(locale);
 
     let toggle_sort = move |col: SortColumn| {
         move |_: Event<MouseData>| {
@@ -642,7 +662,7 @@ fn VirtualizedResultsTable(
                         // Keep a single read for each reactive source per window render.
                         let rows = entries.read();
                         let order = sorted_indices.read();
-                        {visible_rows_view(locale, &rows, order.as_ref(), start_row, visible_count)}
+                        {visible_rows_view(locale, row_text, &rows, order.as_ref(), start_row, visible_count)}
                     }
                     if bottom_spacer_px > 0 {
                         tr {
@@ -696,7 +716,7 @@ fn StatBadge(
     }
 }
 
-fn row_view(locale: Locale, entry: &CompoundEntry, row_key: u32) -> Element {
+fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) -> Element {
     // URLs can be interpolated inline in RSX — no need for intermediate
     // `String` allocations. Only DOI / depict / statement / inchikey search
     // require conditional work, so those are the only helpers we still call.
@@ -722,13 +742,14 @@ fn row_view(locale: Locale, entry: &CompoundEntry, row_key: u32) -> Element {
 
     rsx! {
         tr { key: "{row_key}", class: "data-row",
-            {structure_cell(locale, depict_url.as_deref(), name)}
-            {compound_cell(locale, entry, name, compound_qid, inchikey_search.as_deref())}
+            {structure_cell(locale, text, depict_url.as_deref(), name)}
+            {compound_cell(locale, text, entry, name, compound_qid, inchikey_search.as_deref())}
             {mass_cell(entry.mass)}
             {formula_cell(entry.formula.as_deref())}
-            {taxon_cell(locale, entry, taxon_qid)}
+            {taxon_cell(locale, text, entry, taxon_qid)}
             {reference_cell(
                 locale,
+                text,
                 entry,
                 reference_qid,
                 doi_url.as_deref(),
@@ -742,6 +763,7 @@ fn row_view(locale: Locale, entry: &CompoundEntry, row_key: u32) -> Element {
 
 fn visible_rows_view(
     locale: Locale,
+    text: RowText,
     rows: &[CompoundEntry],
     order: &[u32],
     start_row: usize,
@@ -749,12 +771,12 @@ fn visible_rows_view(
 ) -> Element {
     rsx! {
         for i in order.iter().skip(start_row).take(visible_count).copied() {
-            {row_view(locale, &rows[i as usize], i)}
+            {row_view(locale, text, &rows[i as usize], i)}
         }
     }
 }
 
-fn structure_cell(locale: Locale, depict_url: Option<&str>, name: &str) -> Element {
+fn structure_cell(locale: Locale, text: RowText, depict_url: Option<&str>, name: &str) -> Element {
     rsx! {
         td { class: "td-depict",
             if let Some(url) = depict_url {
@@ -762,7 +784,7 @@ fn structure_cell(locale: Locale, depict_url: Option<&str>, name: &str) -> Eleme
                     href: "{url}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    title: "{t(locale, TextKey::OpenFullSizeDepiction)}",
+                    title: "{text.open_full_size_depiction}",
                     img {
                         class: "depict-img",
                         src: "{url}",
@@ -781,6 +803,7 @@ fn structure_cell(locale: Locale, depict_url: Option<&str>, name: &str) -> Eleme
 
 fn compound_cell(
     locale: Locale,
+    text: RowText,
     entry: &CompoundEntry,
     name: &str,
     compound_qid: &str,
@@ -803,7 +826,7 @@ fn compound_cell(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     class: "id-badge wd",
-                    title: "{t(locale, TextKey::OpenInWikidata)}",
+                    title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, compound_qid)}",
                     "{compound_qid}"
                 }
@@ -812,7 +835,7 @@ fn compound_cell(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     class: "id-badge sc",
-                    title: "{t(locale, TextKey::OpenInScholia)}",
+                    title: "{text.open_in_scholia}",
                     "Scholia"
                 }
                 if let (Some(ik), Some(search_url)) = (entry.inchikey.as_deref(), inchikey_search) {
@@ -855,7 +878,7 @@ fn formula_cell(formula: Option<&str>) -> Element {
     }
 }
 
-fn taxon_cell(locale: Locale, entry: &CompoundEntry, taxon_qid: &str) -> Element {
+fn taxon_cell(locale: Locale, text: RowText, entry: &CompoundEntry, taxon_qid: &str) -> Element {
     rsx! {
         td { class: "td-taxon",
             div { class: "cell-primary",
@@ -873,7 +896,7 @@ fn taxon_cell(locale: Locale, entry: &CompoundEntry, taxon_qid: &str) -> Element
                     target: "_blank",
                     rel: "noopener noreferrer",
                     class: "id-badge wd",
-                    title: "{t(locale, TextKey::OpenInWikidata)}",
+                    title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, taxon_qid)}",
                     "{taxon_qid}"
                 }
@@ -884,6 +907,7 @@ fn taxon_cell(locale: Locale, entry: &CompoundEntry, taxon_qid: &str) -> Element
 
 fn reference_cell(
     locale: Locale,
+    text: RowText,
     entry: &CompoundEntry,
     reference_qid: &str,
     doi_url: Option<&str>,
@@ -920,7 +944,7 @@ fn reference_cell(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     class: "id-badge wd",
-                    title: "{t(locale, TextKey::OpenInWikidata)}",
+                    title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, reference_qid)}",
                     "{reference_qid}"
                 }
@@ -930,7 +954,7 @@ fn reference_cell(
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge doi",
-                        title: "{t(locale, TextKey::OpenDoi)}",
+                        title: "{text.open_doi}",
                         "DOI"
                     }
                 }
@@ -942,7 +966,7 @@ fn reference_cell(
                         class: "id-badge stmt mono",
                         title: "{stmt}",
                         aria_label: "{aria_wikidata_statement(locale, stmt)}",
-                        "{t(locale, TextKey::Statement)}"
+                        "{text.statement}"
                     }
                 }
             }
