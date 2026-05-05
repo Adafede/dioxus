@@ -10,6 +10,7 @@ serve:
 build:
 	dx build --release --package $(APP)
 
+
 ## Type-check the whole workspace without building WASM
 check:
 	cargo check --workspace --all-targets --locked

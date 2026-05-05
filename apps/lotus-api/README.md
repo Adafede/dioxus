@@ -61,5 +61,6 @@ curl -sS http://127.0.0.1:8787/v1/search \
 
 - In development, CORS allows all origins for easy local integration.
 - In production (`APP_ENV=production`), startup fails unless `CORS_ALLOWED_ORIGINS` is explicitly configured.
+- Responses are content-negotiated and compressed (Brotli/Gzip) when clients send `Accept-Encoding`.
 - Keep this service behind your reverse proxy and TLS termination layer.
 

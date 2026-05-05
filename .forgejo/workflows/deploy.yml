@@ -48,6 +48,10 @@ jobs:
           cp -r "$DX_OUT/lotus-explorer/$DX_WEB" _site/lotus-explorer
           cp -r "$DX_OUT/hello-world/$DX_WEB"    _site/hello-world
 
+          # Note: we do not generate static .br/.gz sidecar assets here.
+          # Pages hosting handles transfer compression based on
+          # Accept-Encoding at response time.
+
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="en">

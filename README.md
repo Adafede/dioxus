@@ -170,6 +170,10 @@ make build APP=lotus-explorer
 # output → target/dx/lotus-explorer/release/web/public/
 ```
 
+In deployment, compression should happen at response time (via hosting/CDN/proxy
+content negotiation with `Accept-Encoding`) rather than shipping static `.br`/`.gz`
+sidecar files.
+
 Run the same quality gate used by CI before release:
 
 ```bash
