@@ -29,6 +29,10 @@ fn wasm_now_ms() -> f64 {
 
 /// Log a message with timing context. Works cross-platform (WASM console vs. native stdout).
 pub fn log_timing(phase: &str, message: &str, duration: Option<Duration>) {
+    if !log::log_enabled!(log::Level::Info) {
+        return;
+    }
+
     let msg = if let Some(d) = duration {
         format!(
             "[LOTUS:{}] {} ({:.1}ms)",
@@ -53,6 +57,10 @@ pub fn log_timing(phase: &str, message: &str, duration: Option<Duration>) {
 
 /// Log a message at info level. Works cross-platform.
 pub fn log_info(message: &str) {
+    if !log::log_enabled!(log::Level::Info) {
+        return;
+    }
+
     #[cfg(target_arch = "wasm32")]
     {
         web_sys::console::info_1(&message.into());
@@ -66,6 +74,10 @@ pub fn log_info(message: &str) {
 
 /// Log a message at debug level. Works cross-platform.
 pub fn log_debug(message: &str) {
+    if !log::log_enabled!(log::Level::Debug) {
+        return;
+    }
+
     #[cfg(target_arch = "wasm32")]
     {
         web_sys::console::debug_1(&message.into());
@@ -79,6 +91,10 @@ pub fn log_debug(message: &str) {
 
 /// Log a message at warn level. Works cross-platform.
 pub fn log_warn(message: &str) {
+    if !log::log_enabled!(log::Level::Warn) {
+        return;
+    }
+
     #[cfg(target_arch = "wasm32")]
     {
         web_sys::console::warn_1(&message.into());

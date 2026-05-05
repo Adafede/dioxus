@@ -178,7 +178,12 @@ fn log_timing_evt(
 }
 
 fn main() {
-    console_log::init_with_level(log::Level::Debug).ok();
+    let level = if cfg!(debug_assertions) {
+        log::Level::Debug
+    } else {
+        log::Level::Info
+    };
+    console_log::init_with_level(level).ok();
     launch(App);
 }
 
