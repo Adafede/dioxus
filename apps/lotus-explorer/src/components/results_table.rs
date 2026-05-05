@@ -11,6 +11,7 @@ use crate::models::*;
 use crate::perf;
 use crate::state::use_results_context;
 use dioxus::prelude::*;
+use std::borrow::Cow;
 use std::sync::Arc;
 
 const TABLE_SCROLL_ID: &str = "results-table-scroll";
@@ -723,9 +724,9 @@ fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) 
     let compound_qid = entry.compound_qid.as_str();
     let taxon_qid = entry.taxon_qid.as_str();
     let reference_qid = entry.reference_qid.as_str();
-    let doi_url = entry.doi_url();
+    let doi = entry.doi();
     let depict_url = entry.depict_url();
-    let statement_id = entry.statement_id();
+    let statement_id = entry.statement_id_str();
     let truncated_ref_title = entry
         .ref_title
         .as_deref()
@@ -735,15 +736,10 @@ fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) 
     } else {
         &entry.name
     };
-    let inchikey_search = entry
-        .inchikey
-        .as_deref()
-        .map(|ik| format!("https://www.wikidata.org/wiki/Special:Search?search={ik}"));
-
     rsx! {
         tr { key: "{row_key}", class: "data-row",
             {structure_cell(locale, text, depict_url.as_deref(), name)}
-            {compound_cell(locale, text, entry, name, compound_qid, inchikey_search.as_deref())}
+            {compound_cell(locale, text, entry, name, compound_qid)}
             {mass_cell(entry.mass)}
             {formula_cell(entry.formula.as_deref())}
             {taxon_cell(locale, text, entry, taxon_qid)}
@@ -752,9 +748,9 @@ fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) 
                 text,
                 entry,
                 reference_qid,
-                doi_url.as_deref(),
-                statement_id.as_deref(),
-                truncated_ref_title.as_deref(),
+                doi,
+                statement_id,
+                truncated_ref_title,
             )}
             {year_cell(entry.pub_year)}
         }
@@ -807,7 +803,6 @@ fn compound_cell(
     entry: &CompoundEntry,
     name: &str,
     compound_qid: &str,
-    inchikey_search: Option<&str>,
 ) -> Element {
     rsx! {
         td { class: "td-compound",
@@ -838,9 +833,9 @@ fn compound_cell(
                     title: "{text.open_in_scholia}",
                     "Scholia"
                 }
-                if let (Some(ik), Some(search_url)) = (entry.inchikey.as_deref(), inchikey_search) {
+                if let Some(ik) = entry.inchikey.as_deref() {
                     a {
-                        href: "{search_url}",
+                        href: "https://www.wikidata.org/wiki/Special:Search?search={ik}",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge mono inchikey",
@@ -910,15 +905,15 @@ fn reference_cell(
     text: RowText,
     entry: &CompoundEntry,
     reference_qid: &str,
-    doi_url: Option<&str>,
+    doi: Option<&str>,
     statement_id: Option<&str>,
-    truncated_ref_title: Option<&str>,
+    truncated_ref_title: Option<Cow<'_, str>>,
 ) -> Element {
     rsx! {
         td { class: "td-ref",
             div { class: "cell-primary",
                 if let (Some(full_title), Some(display_title)) =
-                    (entry.ref_title.as_deref(), truncated_ref_title)
+                    (entry.ref_title.as_deref(), truncated_ref_title.as_deref())
                 {
                     a {
                         href: "https://www.wikidata.org/entity/{reference_qid}",
@@ -948,9 +943,9 @@ fn reference_cell(
                     aria_label: "{aria_wikidata_entity(locale, reference_qid)}",
                     "{reference_qid}"
                 }
-                if let Some(url) = doi_url {
+                if let Some(d) = doi {
                     a {
-                        href: "{url}",
+                        href: "https://doi.org/{d}",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         class: "id-badge doi",
@@ -1013,12 +1008,12 @@ fn sort_icon_for(state: &SortState, col: SortColumn) -> &'static str {
     }
 }
 
-fn truncate_title(title: &str, max_chars: usize) -> String {
+fn truncate_title(title: &str, max_chars: usize) -> Cow<'_, str> {
     let trimmed = title.trim();
     if trimmed.chars().count() <= max_chars {
-        return trimmed.to_string();
+        return Cow::Borrowed(trimmed);
     }
     let mut out: String = trimmed.chars().take(max_chars).collect();
     out.push('…');
-    out
+    Cow::Owned(out)
 }

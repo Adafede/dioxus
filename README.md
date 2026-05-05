@@ -34,6 +34,26 @@ cargo install cargo-deny --locked
 cargo install cargo-audit --locked
 ```
 
+## Quick start (fast path)
+
+If you only want to run the explorer locally:
+
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install dioxus-cli --version 0.7.7 --locked
+dx serve --package lotus-explorer
+```
+
+If you also want the optional local API integration:
+
+```bash
+cargo run -p lotus-api
+```
+
+Then open `http://localhost:8080/?api_base=http://127.0.0.1:8787`.
+
+Without `lotus-api`, the explorer still works by falling back to direct QLever/SPARQL.
+
 ## Running an app locally
 
 ```bash
@@ -62,7 +82,11 @@ Then open:
 - `http://127.0.0.1:8787/docs`
 - `http://127.0.0.1:8787/openapi.json`
 
+Use this together with `?api_base=...` in the explorer as described in `Tight explorer ⇄ API integration`.
+
 ## Deploying the LOTUS API
+
+For full API runtime/deployment options, see `apps/lotus-api/README.md`.
 
 The API is a native HTTP server — it needs to run at a publicly reachable URL for the deployed WASM app to use it.
 Without a running server the explorer falls back automatically to direct QLever / SPARQL queries (which is the default for the Codeberg Pages deployment).
@@ -109,20 +133,11 @@ The API is **optional** — without it (the default for the public Codeberg Page
 | Custom build with `LOTUS_API_BASE` | compile-time env var | ✓ with self-hosted server |
 | Runtime override `?api_base=…` | URL query param | ✓ with self-hosted server |
 
-Example with an explicit runtime override:
+For local API wiring, run `lotus-api` via `Running the LOTUS API locally` and open:
 
-```bash
-dx serve --package lotus-explorer
-# then open:
-# http://localhost:8080/?api_base=http://127.0.0.1:8787
-```
+- `http://localhost:8080/?api_base=http://127.0.0.1:8787`
 
-To bake a deployed API URL into the WASM bundle at build time:
-
-```bash
-LOTUS_API_BASE=https://your-server.example.org \
-  dx build --release --platform web -p lotus-explorer
-```
+For build-time API wiring, see the `Deploying the LOTUS API` section.
 
 ## API endpoints
 
@@ -134,19 +149,7 @@ LOTUS_API_BASE=https://your-server.example.org \
 - `GET /openapi.json`
 - `GET /docs`
 
-Example search request:
-
-```bash
-curl -sS http://127.0.0.1:8787/v1/search \
-  -H 'content-type: application/json' \
-  -d '{
-    "taxon": "Gentiana lutea",
-    "formula_exact": "C20H28O2",
-    "c_min": 1,
-    "c_max": 300,
-    "limit": 100
-  }'
-```
+For full request/response examples, see `apps/lotus-api/README.md` or open `http://127.0.0.1:8787/docs` locally.
 
 ## Building for production
 
@@ -223,6 +226,13 @@ GitHub Actions / Forgejo Actions validate and publish on every push to `main`:
 - Build release web artifacts with `make build APP=<app>`.
 - For API deployments, set `APP_ENV=production` and a strict `CORS_ALLOWED_ORIGINS` allowlist.
 - Keep `Cargo.lock` committed and deploy from tagged revisions.
+
+## Common setup mistakes
+
+- Missing `wasm32-unknown-unknown` target leads to explorer build/serve failures.
+- Using a different `dioxus-cli` version than `0.7.7` can cause unexpected behavior.
+- Expecting API-backed behavior without a running API: explorer defaults to direct SPARQL.
+- For public API deployments, set strict `CORS_ALLOWED_ORIGINS` (do not use `*`).
 
 ## Archive
 

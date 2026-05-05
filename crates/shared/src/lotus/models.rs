@@ -105,10 +105,15 @@ pub struct CompoundEntry {
 }
 
 impl CompoundEntry {
-    pub fn doi_url(&self) -> Option<String> {
+    pub fn doi(&self) -> Option<&str> {
         self.ref_doi
-            .as_ref()
-            .map(|d| format!("https://doi.org/{d}"))
+            .as_deref()
+            .map(str::trim)
+            .filter(|d| !d.is_empty())
+    }
+
+    pub fn doi_url(&self) -> Option<String> {
+        self.doi().map(|d| format!("https://doi.org/{d}"))
     }
 
     pub fn depict_url(&self) -> Option<String> {
@@ -122,11 +127,17 @@ impl CompoundEntry {
         ))
     }
 
+    pub fn statement_id_str(&self) -> Option<&str> {
+        const STMT_PREFIX: &str = "http://www.wikidata.org/entity/statement/";
+        let raw = self.statement.as_deref().map(str::trim)?;
+        if raw.is_empty() {
+            return None;
+        }
+        Some(raw.strip_prefix(STMT_PREFIX).unwrap_or(raw))
+    }
+
     pub fn statement_id(&self) -> Option<String> {
-        self.statement
-            .as_ref()
-            .map(|s| s.replace("http://www.wikidata.org/entity/statement/", ""))
-            .filter(|s| !s.trim().is_empty())
+        self.statement_id_str().map(str::to_owned)
     }
 }
 
