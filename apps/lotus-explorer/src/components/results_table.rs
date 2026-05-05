@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::api;
-use crate::download::trigger_download;
+use crate::download::{DownloadFormat, execute_download, trigger_download};
 use crate::export;
 use crate::i18n::{
     CountNoun, Locale, TextKey, aria_chemical_structure, aria_search_inchikey,
@@ -10,10 +9,8 @@ use crate::i18n::{
 };
 use crate::models::*;
 use crate::perf;
-use crate::queries;
-use crate::sparql;
+use crate::state::use_results_context;
 use dioxus::prelude::*;
-use shared::sparql::SparqlResponseFormat;
 use std::sync::Arc;
 
 const TABLE_SCROLL_ID: &str = "results-table-scroll";
@@ -48,28 +45,68 @@ fn log_download_timing(
     perf::log_info(&msg);
 }
 
+fn spawn_table_download(
+    format: DownloadFormat,
+    status_message: String,
+    criteria_snapshot: SearchCriteria,
+    filename: String,
+    query: String,
+    mut download_busy: Signal<bool>,
+    mut download_status: Signal<Option<String>>,
+) {
+    *download_busy.write() = true;
+    *download_status.write() = Some(status_message);
+    spawn(async move {
+        log_download_evt(
+            "table_dispatch",
+            "started",
+            Some(&format!("format={}", format.log_name())),
+        );
+        log_download_evt(
+            "table_query",
+            "check",
+            Some(&format!(
+                "format={} has_SERVICE={} query_bytes={}",
+                format.log_name(),
+                query.contains("SERVICE"),
+                query.len()
+            )),
+        );
+        if let Err(err) =
+            execute_download(format, Arc::new(criteria_snapshot), query, filename).await
+        {
+            log_download_evt(
+                "table_fetch",
+                "error",
+                Some(&format!("format={} reason={err}", format.log_name())),
+            );
+        }
+        *download_busy.write() = false;
+        *download_status.write() = None;
+    });
+}
+
 #[component]
-pub fn ResultsTable(
-    /// Display rows (capped to `TABLE_ROW_LIMIT`). Passed as a `Signal` so the
-    /// prop diff is identity-based (pointer compare on the generational-box id)
-    /// rather than content-based — we never scan the whole Vec just to decide
-    /// whether the table needs to re-render.
-    entries: ReadSignal<Rows>,
-    locale: Locale,
-    stats: DatasetStats,
-    total_stats: Option<DatasetStats>,
-    total_matches: Option<usize>,
-    display_capped_rows: bool,
-    sort: Signal<SortState>,
-    page: Signal<usize>,
-    sparql_query: Option<String>,
-    metadata_json: Option<String>,
-    query_hash: Option<String>,
-    result_hash: Option<String>,
-    /// Active search criteria — used to build compatible download
-    /// filenames (taxon slug + optional search-type suffix).
-    criteria: ReadSignal<SearchCriteria>,
-) -> Element {
+pub fn ResultsTable() -> Element {
+    let state = use_results_context();
+    let entries = state.entries;
+    let locale = *state.locale.read();
+    let total_stats = state.total_stats.read().clone();
+    let total_matches = *state.total_matches.read();
+    let display_capped_rows = *state.display_capped_rows.read();
+    let sort = state.sort;
+    let page = state.page;
+    let sparql_query = state.sparql_query.read().clone();
+    let metadata_json = state.metadata_json.read().clone();
+    let query_hash = state.query_hash.read().clone();
+    let result_hash = state.result_hash.read().clone();
+    let criteria = state.executed_criteria;
+    // Display rows are now context-backed so consumers subscribe directly to
+    // the live signals instead of receiving the whole results surface as props.
+    let stats = total_stats
+        .clone()
+        .unwrap_or_else(|| DatasetStats::from_entries(&entries.read()));
+
     // Exports are served from fresh endpoint requests (CSV/JSON/RDF), so
     // the table only keeps the preview rows needed for rendering.
     let display_stats = total_stats
@@ -80,7 +117,6 @@ pub fn ResultsTable(
     let stats_partial = false;
     let entries_value = total_matches.unwrap_or(display_stats.n_entries);
     let entries_unique_value = display_stats.n_entries_unique;
-    let _ = page;
 
     // Memoised sort: compute a permutation of row indices instead of cloning
     // the whole Vec to sort it. Recomputes only when `entries` or `sort`
@@ -112,49 +148,6 @@ pub fn ResultsTable(
         Arc::from(idx.into_boxed_slice())
     });
 
-    #[allow(unused_mut)]
-    let mut scroll_top_px = use_signal(|| 0usize);
-    #[allow(unused_mut)]
-    let mut viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
-
-    let row_height_px = ROW_HEIGHT_PX_COMFORTABLE;
-    let window_rows = (((*viewport_height_px.read()).saturating_add(row_height_px - 1))
-        / row_height_px)
-        .max(1)
-        .saturating_add(VIRTUAL_OVERSCAN_ROWS * 2);
-    let first_visible_row = ((*scroll_top_px.read()) / row_height_px).min(total);
-    let start_row = first_visible_row.saturating_sub(VIRTUAL_OVERSCAN_ROWS);
-    let end_row = start_row.saturating_add(window_rows).min(total);
-    let top_spacer_px = start_row.saturating_mul(row_height_px);
-    let bottom_spacer_px = total.saturating_sub(end_row).saturating_mul(row_height_px);
-    let visible_count = end_row.saturating_sub(start_row);
-
-    let sort_icon = move |col: SortColumn| -> &'static str {
-        let s = *sort.read();
-        if s.col == col {
-            if s.dir == SortDir::Asc { "↑" } else { "↓" }
-        } else {
-            ""
-        }
-    };
-
-    let toggle_sort = move |col: SortColumn| {
-        move |_: Event<MouseData>| {
-            let mut s = sort.write();
-            if s.col == col {
-                s.dir = if s.dir == SortDir::Asc {
-                    SortDir::Desc
-                } else {
-                    SortDir::Asc
-                };
-            } else {
-                s.col = col;
-                s.dir = SortDir::Asc;
-            }
-            *page.write() = 0;
-        }
-    };
-
     // ── Export filenames & URLs (memoised; only rebuild when inputs change) ──
     let export_available = sparql_query.is_some() || metadata_json.is_some();
 
@@ -183,8 +176,8 @@ pub fn ResultsTable(
     let qlever_ui_url = sparql_query
         .as_deref()
         .map(|q| format!("{QLEVER_UI}?query={}", urlencoding::encode(q)));
-    let mut download_busy = use_signal(|| false);
-    let mut download_status: Signal<Option<String>> = use_signal(|| None);
+    let download_busy = use_signal(|| false);
+    let download_status: Signal<Option<String>> = use_signal(|| None);
     let download_status_text = download_status
         .read()
         .clone()
@@ -270,83 +263,15 @@ pub fn ResultsTable(
                                         move |_| {
                                             let criteria_snapshot = criteria.read().clone();
                                             let filename = csv_filename.read().clone();
-                                            *download_busy.write() = true;
-                                            *download_status.write() = Some(
+                                            spawn_table_download(
+                                                DownloadFormat::Csv,
                                                 t(locale, TextKey::StartingCsvDownload).to_string(),
+                                                criteria_snapshot,
+                                                filename,
+                                                q.clone(),
+                                                download_busy,
+                                                download_status,
                                             );
-                                            let q = q.clone();
-                                             spawn(async move {
-                                                 log_download_evt("table_dispatch", "started", Some("format=csv"));
-                                                 log_download_evt(
-                                                     "table_csv",
-                                                     "query_check",
-                                                     Some(&format!("has_SERVICE={} query_bytes={}",
-                                                         q.contains("SERVICE"), q.len())),
-                                                 );
-                                                 let fetch_timer = perf::start_timer("LOTUS:table_download_csv_fetch");
-                                                 if let Ok(urls) = api::export_urls(&criteria_snapshot).await {
-                                                     let fetch_elapsed = perf::end_timer(
-                                                         "LOTUS:table_download_csv_fetch",
-                                                         fetch_timer,
-                                                     );
-                                                     log_download_timing(
-                                                         "table_fetch",
-                                                         "success",
-                                                         fetch_elapsed,
-                                                         Some("format=csv source=api_url"),
-                                                     );
-                                                     let trigger_timer =
-                                                         perf::start_timer("LOTUS:table_download_csv_trigger");
-                                                     trigger_download(&filename, "text/csv;charset=utf-8", &urls.csv_url);
-                                                     let trigger_elapsed = perf::end_timer(
-                                                         "LOTUS:table_download_csv_trigger",
-                                                         trigger_timer,
-                                                     );
-                                                     log_download_timing(
-                                                         "table_trigger",
-                                                         "success",
-                                                         trigger_elapsed,
-                                                         Some("format=csv source=api_url"),
-                                                     );
-                                                 } else if let Ok(body) = sparql::execute_sparql(&q).await {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_csv_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "success",
-                                                        fetch_elapsed,
-                                                        Some(&format!("format=csv body_bytes={}", body.len())),
-                                                    );
-                                                    let trigger_timer =
-                                                        perf::start_timer("LOTUS:table_download_csv_trigger");
-                                                    trigger_download(&filename, "text/csv;charset=utf-8", &body);
-                                                    let trigger_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_csv_trigger",
-                                                        trigger_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_trigger",
-                                                        "success",
-                                                        trigger_elapsed,
-                                                        Some("format=csv"),
-                                                    );
-                                                } else {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_csv_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "error",
-                                                        fetch_elapsed,
-                                                        Some("format=csv"),
-                                                    );
-                                                }
-                                                *download_busy.write() = false;
-                                                *download_status.write() = None;
-                                            });
                                         }
                                     },
                                     title: "{t(locale, TextKey::DownloadCsvTitle)}",
@@ -360,94 +285,17 @@ pub fn ResultsTable(
                                     onclick: {
                                         let q = query.to_string();
                                         move |_| {
-                                            let q = q.clone();
                                             let criteria_snapshot = criteria.read().clone();
                                             let filename = json_filename.read().clone();
-                                            *download_busy.write() = true;
-                                            *download_status.write() = Some(
+                                            spawn_table_download(
+                                                DownloadFormat::Json,
                                                 t(locale, TextKey::PreparingJsonDownload).to_string(),
+                                                criteria_snapshot,
+                                                filename,
+                                                q.clone(),
+                                                download_busy,
+                                                download_status,
                                             );
-                                            spawn(async move {
-                                                log_download_evt("table_dispatch", "started", Some("format=json"));
-                                                let fetch_timer = perf::start_timer("LOTUS:table_download_json_fetch");
-                                                if let Ok(urls) = api::export_urls(&criteria_snapshot).await {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_json_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "success",
-                                                        fetch_elapsed,
-                                                        Some("format=json source=api_url"),
-                                                    );
-                                                    let trigger_timer = perf::start_timer(
-                                                        "LOTUS:table_download_json_trigger",
-                                                    );
-                                                    trigger_download(
-                                                        &filename,
-                                                        "application/sparql-results+json;charset=utf-8",
-                                                        &urls.json_url,
-                                                    );
-                                                    let trigger_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_json_trigger",
-                                                        trigger_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_trigger",
-                                                        "success",
-                                                        trigger_elapsed,
-                                                        Some("format=json source=api_url"),
-                                                    );
-                                                } else if let Ok(body) = sparql::execute_sparql_format(
-                                                        &q,
-                                                        SparqlResponseFormat::SparqlJson,
-                                                    )
-                                                    .await
-                                                {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_json_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "success",
-                                                        fetch_elapsed,
-                                                        Some(&format!("format=json body_bytes={}", body.len())),
-                                                    );
-                                                    let trigger_timer = perf::start_timer(
-                                                        "LOTUS:table_download_json_trigger",
-                                                    );
-                                                    trigger_download(
-                                                        &filename,
-                                                        "application/sparql-results+json;charset=utf-8",
-                                                        &body,
-                                                    );
-                                                    let trigger_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_json_trigger",
-                                                        trigger_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_trigger",
-                                                        "success",
-                                                        trigger_elapsed,
-                                                        Some("format=json"),
-                                                    );
-                                                } else {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_json_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "error",
-                                                        fetch_elapsed,
-                                                        Some("format=json"),
-                                                    );
-                                                }
-                                                *download_busy.write() = false;
-                                                *download_status.write() = None;
-                                            });
                                         }
                                     },
                                     title: "{t(locale, TextKey::DownloadJsonTitle)}",
@@ -461,90 +309,17 @@ pub fn ResultsTable(
                                     onclick: {
                                         let q = query.to_string();
                                         move |_| {
-                                            let q = queries::query_construct_from_select(&q);
                                             let criteria_snapshot = criteria.read().clone();
                                             let filename = rdf_filename.read().clone();
-                                            *download_busy.write() = true;
-                                            *download_status.write() = Some(
+                                            spawn_table_download(
+                                                DownloadFormat::Rdf,
                                                 t(locale, TextKey::PreparingRdfDownload).to_string(),
+                                                criteria_snapshot,
+                                                filename,
+                                                q.clone(),
+                                                download_busy,
+                                                download_status,
                                             );
-                                            spawn(async move {
-                                                log_download_evt("table_dispatch", "started", Some("format=rdf"));
-                                                let fetch_timer = perf::start_timer("LOTUS:table_download_rdf_fetch");
-                                                if let Ok(urls) = api::export_urls(&criteria_snapshot).await {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_rdf_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "success",
-                                                        fetch_elapsed,
-                                                        Some("format=rdf source=api_url"),
-                                                    );
-                                                    let trigger_timer = perf::start_timer(
-                                                        "LOTUS:table_download_rdf_trigger",
-                                                    );
-                                                    trigger_download(
-                                                        &filename,
-                                                        "text/turtle;charset=utf-8",
-                                                        &urls.rdf_url,
-                                                    );
-                                                    let trigger_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_rdf_trigger",
-                                                        trigger_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_trigger",
-                                                        "success",
-                                                        trigger_elapsed,
-                                                        Some("format=rdf source=api_url"),
-                                                    );
-                                                } else if let Ok(body) = sparql::execute_sparql_format(
-                                                        &q,
-                                                        SparqlResponseFormat::Turtle,
-                                                    )
-                                                    .await
-                                                {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_rdf_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "success",
-                                                        fetch_elapsed,
-                                                        Some(&format!("format=rdf body_bytes={}", body.len())),
-                                                    );
-                                                    let trigger_timer = perf::start_timer(
-                                                        "LOTUS:table_download_rdf_trigger",
-                                                    );
-                                                    trigger_download(&filename, "text/turtle;charset=utf-8", &body);
-                                                    let trigger_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_rdf_trigger",
-                                                        trigger_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_trigger",
-                                                        "success",
-                                                        trigger_elapsed,
-                                                        Some("format=rdf"),
-                                                    );
-                                                } else {
-                                                    let fetch_elapsed = perf::end_timer(
-                                                        "LOTUS:table_download_rdf_fetch",
-                                                        fetch_timer,
-                                                    );
-                                                    log_download_timing(
-                                                        "table_fetch",
-                                                        "error",
-                                                        fetch_elapsed,
-                                                        Some("format=rdf"),
-                                                    );
-                                                }
-                                                *download_busy.write() = false;
-                                                *download_status.write() = None;
-                                            });
                                         }
                                     },
                                     title: "{t(locale, TextKey::DownloadRdfTitle)}",
@@ -606,143 +381,210 @@ pub fn ResultsTable(
                     p { "{t(locale, TextKey::NoResults)}" }
                 }
             } else {
+                VirtualizedResultsTable {
+                    entries,
+                    locale,
+                    sort,
+                    page,
+                    sorted_indices,
+                }
+            }
+        }
+    }
+}
 
-                div {
-                    id: TABLE_SCROLL_ID,
-                    class: "table-scroll",
-                    onscroll: move |_| {
-                        #[cfg(target_arch = "wasm32")]
-                        {
-                            use wasm_bindgen::JsCast;
-                            if let Some(win) = web_sys::window() {
-                                if let Some(document) = win.document() {
-                                    if let Some(node) = document.get_element_by_id(TABLE_SCROLL_ID) {
-                                        if let Ok(div) = node.dyn_into::<web_sys::HtmlElement>() {
-                                            let top = div.scroll_top().max(0) as usize;
-                                            let height = div.client_height().max(0) as usize;
-                                            *scroll_top_px.write() = top;
-                                            if height > 0 {
-                                                *viewport_height_px.write() = height;
-                                            }
-                                        }
+#[component]
+fn VirtualizedResultsTable(
+    entries: ReadSignal<Rows>,
+    locale: Locale,
+    sort: Signal<SortState>,
+    page: Signal<usize>,
+    sorted_indices: Memo<Arc<[u32]>>,
+) -> Element {
+    #[cfg(target_arch = "wasm32")]
+    let mut scroll_top_px = use_signal(|| 0usize);
+    #[cfg(not(target_arch = "wasm32"))]
+    let scroll_top_px = use_signal(|| 0usize);
+
+    #[cfg(target_arch = "wasm32")]
+    let mut viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
+    #[cfg(not(target_arch = "wasm32"))]
+    let viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
+
+    let total = entries.read().len();
+    let row_height_px = ROW_HEIGHT_PX_COMFORTABLE;
+    let window_rows = (((*viewport_height_px.read()).saturating_add(row_height_px - 1))
+        / row_height_px)
+        .max(1)
+        .saturating_add(VIRTUAL_OVERSCAN_ROWS * 2);
+    let first_visible_row = ((*scroll_top_px.read()) / row_height_px).min(total);
+    let start_row = first_visible_row.saturating_sub(VIRTUAL_OVERSCAN_ROWS);
+    let end_row = start_row.saturating_add(window_rows).min(total);
+    let top_spacer_px = start_row.saturating_mul(row_height_px);
+    let bottom_spacer_px = total.saturating_sub(end_row).saturating_mul(row_height_px);
+    let visible_count = end_row.saturating_sub(start_row);
+
+    let sort_icon = move |col: SortColumn| -> &'static str {
+        let s = *sort.read();
+        if s.col == col {
+            if s.dir == SortDir::Asc { "↑" } else { "↓" }
+        } else {
+            ""
+        }
+    };
+
+    let toggle_sort = move |col: SortColumn| {
+        move |_: Event<MouseData>| {
+            let mut s = sort.write();
+            if s.col == col {
+                s.dir = if s.dir == SortDir::Asc {
+                    SortDir::Desc
+                } else {
+                    SortDir::Asc
+                };
+            } else {
+                s.col = col;
+                s.dir = SortDir::Asc;
+            }
+            *page.write() = 0;
+        }
+    };
+
+    rsx! {
+        div {
+            id: TABLE_SCROLL_ID,
+            class: "table-scroll",
+            onscroll: move |_| {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    use wasm_bindgen::JsCast;
+                    if let Some(win) = web_sys::window() {
+                        if let Some(document) = win.document() {
+                            if let Some(node) = document.get_element_by_id(TABLE_SCROLL_ID) {
+                                if let Ok(div) = node.dyn_into::<web_sys::HtmlElement>() {
+                                    let top = div.scroll_top().max(0) as usize;
+                                    let height = div.client_height().max(0) as usize;
+                                    *scroll_top_px.write() = top;
+                                    if height > 0 {
+                                        *viewport_height_px.write() = height;
                                     }
                                 }
                             }
                         }
-                    },
-                    table {
-                        class: "results-table",
-                        aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                        thead {
-                            tr {
-                                th { class: "th-static", scope: "col",
-                                    "{t(locale, TextKey::Structure)}"
-                                }
-                                th {
-                                    class: "sort-th",
-                                    scope: "col",
-                                    aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Name)}",
-                                    onclick: toggle_sort(SortColumn::Name),
-                                    "{t(locale, TextKey::Compound)} "
-                                    span {
-                                        class: "sort-icon",
-                                        "aria-hidden": "true",
-                                        {sort_icon(SortColumn::Name)}
-                                    }
-                                }
-                                th {
-                                    class: "sort-th",
-                                    scope: "col",
-                                    aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Mass)}",
-                                    onclick: toggle_sort(SortColumn::Mass),
-                                    "{t(locale, TextKey::Mass)} "
-                                    span {
-                                        class: "sort-icon",
-                                        "aria-hidden": "true",
-                                        {sort_icon(SortColumn::Mass)}
-                                    }
-                                }
-                                th {
-                                    class: "sort-th",
-                                    scope: "col",
-                                    aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Formula)}",
-                                    onclick: toggle_sort(SortColumn::Formula),
-                                    "{t(locale, TextKey::Formula)} "
-                                    span {
-                                        class: "sort-icon",
-                                        "aria-hidden": "true",
-                                        {sort_icon(SortColumn::Formula)}
-                                    }
-                                }
-                                th {
-                                    class: "sort-th",
-                                    scope: "col",
-                                    aria_sort: "{aria_sort_for(&sort.read(), SortColumn::TaxonName)}",
-                                    onclick: toggle_sort(SortColumn::TaxonName),
-                                    "{t(locale, TextKey::TaxonCol)} "
-                                    span {
-                                        class: "sort-icon",
-                                        "aria-hidden": "true",
-                                        {sort_icon(SortColumn::TaxonName)}
-                                    }
-                                }
-                                th {
-                                    class: "sort-th",
-                                    scope: "col",
-                                    aria_sort: "{aria_sort_for(&sort.read(), SortColumn::RefTitle)}",
-                                    onclick: toggle_sort(SortColumn::RefTitle),
-                                    "{t(locale, TextKey::Reference)} "
-                                    span {
-                                        class: "sort-icon",
-                                        "aria-hidden": "true",
-                                        {sort_icon(SortColumn::RefTitle)}
-                                    }
-                                }
-                                th {
-                                    class: "sort-th",
-                                    scope: "col",
-                                    aria_sort: "{aria_sort_for(&sort.read(), SortColumn::PubYear)}",
-                                    onclick: toggle_sort(SortColumn::PubYear),
-                                    "{t(locale, TextKey::Year)} "
-                                    span {
-                                        class: "sort-icon",
-                                        "aria-hidden": "true",
-                                        {sort_icon(SortColumn::PubYear)}
-                                    }
-                                }
+                    }
+                }
+            },
+            table {
+                class: "results-table",
+                aria_label: "{t(locale, TextKey::TableTriplesAria)}",
+                thead {
+                    tr {
+                        th { class: "th-static", scope: "col",
+                            "{t(locale, TextKey::Structure)}"
+                        }
+                        th {
+                            class: "sort-th",
+                            scope: "col",
+                            aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Name)}",
+                            onclick: toggle_sort(SortColumn::Name),
+                            "{t(locale, TextKey::Compound)} "
+                            span {
+                                class: "sort-icon",
+                                "aria-hidden": "true",
+                                {sort_icon(SortColumn::Name)}
                             }
                         }
-                        tbody {
-                            if top_spacer_px > 0 {
-                                tr {
-                                    class: "virtual-spacer-row",
-                                    aria_hidden: "true",
-                                    td {
-                                        class: "virtual-spacer-cell",
-                                        colspan: "7",
-                                        style: "height: {top_spacer_px}px;",
-                                    }
-                                }
+                        th {
+                            class: "sort-th",
+                            scope: "col",
+                            aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Mass)}",
+                            onclick: toggle_sort(SortColumn::Mass),
+                            "{t(locale, TextKey::Mass)} "
+                            span {
+                                class: "sort-icon",
+                                "aria-hidden": "true",
+                                {sort_icon(SortColumn::Mass)}
                             }
-                            {
-                                let rows = entries.read();
-                                let order = sorted_indices.read();
-                                rsx! {
-                                    for i in order.iter().skip(start_row).take(visible_count).copied() {
-                                        Row { key: "{i}", locale, entry: rows[i as usize].clone() }
-                                    }
-                                }
+                        }
+                        th {
+                            class: "sort-th",
+                            scope: "col",
+                            aria_sort: "{aria_sort_for(&sort.read(), SortColumn::Formula)}",
+                            onclick: toggle_sort(SortColumn::Formula),
+                            "{t(locale, TextKey::Formula)} "
+                            span {
+                                class: "sort-icon",
+                                "aria-hidden": "true",
+                                {sort_icon(SortColumn::Formula)}
                             }
-                            if bottom_spacer_px > 0 {
-                                tr {
-                                    class: "virtual-spacer-row",
-                                    aria_hidden: "true",
-                                    td {
-                                        class: "virtual-spacer-cell",
-                                        colspan: "7",
-                                        style: "height: {bottom_spacer_px}px;",
-                                    }
-                                }
+                        }
+                        th {
+                            class: "sort-th",
+                            scope: "col",
+                            aria_sort: "{aria_sort_for(&sort.read(), SortColumn::TaxonName)}",
+                            onclick: toggle_sort(SortColumn::TaxonName),
+                            "{t(locale, TextKey::TaxonCol)} "
+                            span {
+                                class: "sort-icon",
+                                "aria-hidden": "true",
+                                {sort_icon(SortColumn::TaxonName)}
+                            }
+                        }
+                        th {
+                            class: "sort-th",
+                            scope: "col",
+                            aria_sort: "{aria_sort_for(&sort.read(), SortColumn::RefTitle)}",
+                            onclick: toggle_sort(SortColumn::RefTitle),
+                            "{t(locale, TextKey::Reference)} "
+                            span {
+                                class: "sort-icon",
+                                "aria-hidden": "true",
+                                {sort_icon(SortColumn::RefTitle)}
+                            }
+                        }
+                        th {
+                            class: "sort-th",
+                            scope: "col",
+                            aria_sort: "{aria_sort_for(&sort.read(), SortColumn::PubYear)}",
+                            onclick: toggle_sort(SortColumn::PubYear),
+                            "{t(locale, TextKey::Year)} "
+                            span {
+                                class: "sort-icon",
+                                "aria-hidden": "true",
+                                {sort_icon(SortColumn::PubYear)}
+                            }
+                        }
+                    }
+                }
+                tbody {
+                    if top_spacer_px > 0 {
+                        tr {
+                            class: "virtual-spacer-row",
+                            aria_hidden: "true",
+                            td {
+                                class: "virtual-spacer-cell",
+                                colspan: "7",
+                                style: "height: {top_spacer_px}px;",
+                            }
+                        }
+                    }
+                    {
+                        let rows = entries.read();
+                        let order = sorted_indices.read();
+                        rsx! {
+                            for i in order.iter().skip(start_row).take(visible_count).copied() {
+                                Row { key: "{i}", locale, entry: rows[i as usize].clone() }
+                            }
+                        }
+                    }
+                    if bottom_spacer_px > 0 {
+                        tr {
+                            class: "virtual-spacer-row",
+                            aria_hidden: "true",
+                            td {
+                                class: "virtual-spacer-cell",
+                                colspan: "7",
+                                style: "height: {bottom_spacer_px}px;",
                             }
                         }
                     }
@@ -1012,7 +854,3 @@ fn truncate_title(title: &str, max_chars: usize) -> String {
     out.push('…');
     out
 }
-
-// ── Download helpers ──────────────────────────────────────────────────────────
-
-// Shared in `download.rs`.

@@ -1,10 +1,180 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Shared download helpers for browser/native targets.
+//! Shared download helpers for browser/native targets, including format handling & deduplication.
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
+
+use crate::models::SearchCriteria;
+use crate::{api, perf, queries, sparql};
+use shared::sparql::SparqlResponseFormat;
+use std::sync::Arc;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DownloadFormat {
+    Csv,
+    Json,
+    Rdf,
+}
+
+impl DownloadFormat {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "csv" => Some(Self::Csv),
+            "json" | "ndjson" => Some(Self::Json),
+            "rdf" => Some(Self::Rdf),
+            _ => None,
+        }
+    }
+
+    pub fn extension(&self) -> &'static str {
+        match self {
+            Self::Csv => "csv",
+            Self::Json => "json",
+            Self::Rdf => "rdf",
+        }
+    }
+
+    pub fn log_name(&self) -> &'static str {
+        match self {
+            Self::Csv => "csv",
+            Self::Json => "json",
+            Self::Rdf => "rdf",
+        }
+    }
+
+    pub fn content_type(&self) -> &'static str {
+        match self {
+            Self::Csv => "text/csv;charset=utf-8",
+            Self::Json => "application/sparql-results+json;charset=utf-8",
+            Self::Rdf => "text/turtle;charset=utf-8",
+        }
+    }
+
+    pub fn timer_label(&self) -> &'static str {
+        match self {
+            Self::Csv => "LOTUS:download_csv",
+            Self::Json => "LOTUS:download_json",
+            Self::Rdf => "LOTUS:download_rdf",
+        }
+    }
+
+    pub fn trigger_timer_label(&self) -> String {
+        format!("{}_trigger", self.timer_label())
+    }
+
+    pub fn extract_url(&self, urls: &api::ExportUrlResponse) -> String {
+        match self {
+            Self::Csv => urls.csv_url.clone(),
+            Self::Json => urls.json_url.clone(),
+            Self::Rdf => urls.rdf_url.clone(),
+        }
+    }
+
+    pub async fn fetch_fallback(&self, query: &str) -> Result<String, String> {
+        match self {
+            Self::Csv => sparql::execute_sparql(query)
+                .await
+                .map_err(|e| e.to_string()),
+            Self::Json => sparql::execute_sparql_format(query, SparqlResponseFormat::SparqlJson)
+                .await
+                .map_err(|e| e.to_string()),
+            Self::Rdf => {
+                let construct_query = queries::query_construct_from_select(query);
+                sparql::execute_sparql_format(&construct_query, SparqlResponseFormat::Turtle)
+                    .await
+                    .map_err(|e| e.to_string())
+            }
+        }
+    }
+}
+
+/// Execute a download in the given format. Tries API first, then falls back to direct query.
+pub async fn execute_download(
+    format: DownloadFormat,
+    criteria: Arc<SearchCriteria>,
+    query: String,
+    filename: String,
+) -> Result<(), String> {
+    let dl_timer = perf::start_timer(format.timer_label());
+    perf::log_info(&format!(
+        "event=download format={} state=started",
+        format.log_name()
+    ));
+
+    // Try API first
+    if let Ok(urls) = api::export_urls(&criteria).await {
+        let url = format.extract_url(&urls);
+        let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
+        perf::log_timing(
+            "download",
+            &format!(
+                "event=download format={} phase=fetch state=success source=api",
+                format.log_name()
+            ),
+            Some(fetch_elapsed),
+        );
+
+        let trigger_timer = perf::start_timer(&format.trigger_timer_label());
+        trigger_download(&filename, format.content_type(), &url);
+        let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
+        perf::log_timing(
+            "download",
+            &format!(
+                "event=download format={} phase=trigger state=success source=api_url",
+                format.log_name()
+            ),
+            Some(trigger_elapsed),
+        );
+        Ok(())
+    } else {
+        // Fallback to direct query execution
+        match format.fetch_fallback(&query).await {
+            Ok(body) => {
+                let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
+                perf::log_timing(
+                    "download",
+                    &format!(
+                        "event=download format={} phase=fetch state=success source=fallback body_bytes={}",
+                        format.log_name(),
+                        body.len()
+                    ),
+                    Some(fetch_elapsed),
+                );
+
+                let trigger_timer = perf::start_timer(&format.trigger_timer_label());
+                trigger_download(&filename, format.content_type(), &body);
+                let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
+                perf::log_timing(
+                    "download",
+                    &format!(
+                        "event=download format={} phase=trigger state=success source=fallback",
+                        format.log_name()
+                    ),
+                    Some(trigger_elapsed),
+                );
+                Ok(())
+            }
+            Err(e) => {
+                let elapsed = perf::end_timer(format.timer_label(), dl_timer);
+                perf::log_timing(
+                    "download",
+                    &format!(
+                        "event=download format={} phase=fetch state=error source=fallback reason={e}",
+                        format.log_name()
+                    ),
+                    Some(elapsed),
+                );
+                perf::log_warn(&format!(
+                    "event=download format={} phase=fetch state=error source=fallback reason={e}",
+                    format.log_name()
+                ));
+                Err(e)
+            }
+        }
+    }
+}
 
 pub fn trigger_download(filename: &str, mime: &str, content_or_url: &str) {
     #[cfg(target_arch = "wasm32")]
@@ -96,4 +266,21 @@ fn click_download_anchor(
     anchor.click();
     let _ = body_el.remove_child(&anchor);
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DownloadFormat;
+
+    #[test]
+    fn parse_download_format_supports_documented_aliases() {
+        assert_eq!(DownloadFormat::from_str("csv"), Some(DownloadFormat::Csv));
+        assert_eq!(DownloadFormat::from_str("json"), Some(DownloadFormat::Json));
+        assert_eq!(
+            DownloadFormat::from_str("ndjson"),
+            Some(DownloadFormat::Json)
+        );
+        assert_eq!(DownloadFormat::from_str("rdf"), Some(DownloadFormat::Rdf));
+        assert_eq!(DownloadFormat::from_str("ttl"), None);
+    }
 }

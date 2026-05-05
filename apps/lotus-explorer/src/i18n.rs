@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Minimal i18n helpers for user-facing count labels and status text.
+//! Minimal i18n helpers for user-facing labels and status text.
 //!
 //! Keep this intentionally small: one locale switch and a couple of
-//! count-aware labels. It is easy to extend without introducing a full
+//! localized labels. It is easy to extend without introducing a full
 //! translation framework.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,14 +59,12 @@ impl Locale {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CountNoun {
     Compound,
     Taxon,
     Reference,
     Entry,
-    Row,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,9 +104,7 @@ pub enum TextKey {
     Retry,
     ErrorHintValidation,
     ErrorHintNetwork,
-    ErrorHintServer,
     ErrorHintParse,
-    ErrorHintMemory,
     ErrorHintUnknown,
     SkipToResults,
     WelcomeTitle,
@@ -247,9 +243,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::Retry => "Retry",
             TextKey::ErrorHintValidation => "Please adjust your query input and try again.",
             TextKey::ErrorHintNetwork => "Network issue detected. Retry may succeed.",
-            TextKey::ErrorHintServer => "Remote endpoint error. Retry in a few seconds.",
             TextKey::ErrorHintParse => "Response parsing failed. Retry or refine query.",
-            TextKey::ErrorHintMemory => "Result too large for current device memory.",
             TextKey::ErrorHintUnknown => "Unexpected error. Retry may help.",
             TextKey::SkipToResults => "Skip to results",
             TextKey::WelcomeTitle => "Browse natural product occurrences",
@@ -399,13 +393,9 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::Retry => "Réessayer",
             TextKey::ErrorHintValidation => "Veuillez ajuster la saisie puis réessayer.",
             TextKey::ErrorHintNetwork => "Problème réseau détecté. Réessayer peut aider.",
-            TextKey::ErrorHintServer => {
-                "Erreur du service distant. Réessayez dans quelques secondes."
-            }
             TextKey::ErrorHintParse => {
                 "Echec de lecture de la réponse. Réessayez ou affinez la requête."
             }
-            TextKey::ErrorHintMemory => "Résultat trop volumineux pour la mémoire de l'appareil.",
             TextKey::ErrorHintUnknown => "Erreur inattendue. Réessayer peut aider.",
             TextKey::SkipToResults => "Aller aux résultats",
             TextKey::WelcomeTitle => "Explorer les occurrences de produits naturels",
@@ -557,13 +547,9 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::Retry => "Erneut versuchen",
         TextKey::ErrorHintValidation => "Bitte Eingaben prüfen, dann erneut versuchen.",
         TextKey::ErrorHintNetwork => "Netzwerkproblem erkannt. Ein erneuter Versuch kann helfen.",
-        TextKey::ErrorHintServer => {
-            "Fehler am entfernten Dienst. Versuchen Sie es in einigen Sekunden erneut."
-        }
         TextKey::ErrorHintParse => {
             "Antwort konnte nicht verarbeitet werden. Erneut versuchen oder Abfrage verfeinern."
         }
-        TextKey::ErrorHintMemory => "Ergebnis ist zu groß für den verfügbaren Gerätespeicher.",
         TextKey::ErrorHintUnknown => "Unerwarteter Fehler. Ein erneuter Versuch kann helfen.",
         TextKey::SkipToResults => "Zu den Ergebnissen springen",
         TextKey::WelcomeTitle => "Naturstoff-Vorkommen durchsuchen",
@@ -716,12 +702,8 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::Retry => "Riprova",
         TextKey::ErrorHintValidation => "Controlla l'input e riprova.",
         TextKey::ErrorHintNetwork => "Problema di rete rilevato. Riprova.",
-        TextKey::ErrorHintServer => "Errore del servizio remoto. Riprova tra qualche secondo.",
         TextKey::ErrorHintParse => {
             "Impossibile interpretare la risposta. Riprova o affina la query."
-        }
-        TextKey::ErrorHintMemory => {
-            "Risultato troppo grande per la memoria disponibile sul dispositivo."
         }
         TextKey::ErrorHintUnknown => "Errore inatteso. Riprova.",
         TextKey::SkipToResults => "Vai ai risultati",
@@ -970,6 +952,16 @@ pub fn err_wasm_large_query_fallback(locale: Locale, err_msg: &str) -> String {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+pub fn error_hint_memory(locale: Locale) -> &'static str {
+    match locale {
+        Locale::En => "Result too large for current device memory.",
+        Locale::Fr => "Résultat trop volumineux pour la mémoire de l'appareil.",
+        Locale::De => "Ergebnis ist zu groß für den verfügbaren Gerätespeicher.",
+        Locale::It => "Risultato troppo grande per la memoria disponibile sul dispositivo.",
+    }
+}
+
 pub fn aria_wikidata_entity(locale: Locale, qid: &str) -> String {
     match locale {
         Locale::En => format!("Open Wikidata entity {qid}"),
@@ -1007,177 +999,39 @@ pub fn aria_wikidata_statement(locale: Locale, stmt: &str) -> String {
 }
 
 pub fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static str {
-    match locale {
-        Locale::En => match noun {
-            CountNoun::Compound => {
-                if count == 1 {
-                    "Compound"
-                } else {
-                    "Compounds"
-                }
-            }
-            CountNoun::Taxon => {
-                if count == 1 {
-                    "Taxon"
-                } else {
-                    "Taxa"
-                }
-            }
-            CountNoun::Reference => {
-                if count == 1 {
-                    "Reference"
-                } else {
-                    "References"
-                }
-            }
-            CountNoun::Entry => {
-                if count == 1 {
-                    "Entry"
-                } else {
-                    "Entries"
-                }
-            }
-            CountNoun::Row => {
-                if count == 1 {
-                    "row"
-                } else {
-                    "rows"
-                }
-            }
-        },
-        Locale::Fr => match noun {
-            CountNoun::Compound => {
-                if count == 1 {
-                    "Composé"
-                } else {
-                    "Composés"
-                }
-            }
-            CountNoun::Taxon => {
-                if count == 1 {
-                    "Taxon"
-                } else {
-                    "Taxa"
-                }
-            }
-            CountNoun::Reference => {
-                if count == 1 {
-                    "Référence"
-                } else {
-                    "Références"
-                }
-            }
-            CountNoun::Entry => {
-                if count == 1 {
-                    "Entrée"
-                } else {
-                    "Entrées"
-                }
-            }
-            CountNoun::Row => {
-                if count == 1 {
-                    "ligne"
-                } else {
-                    "lignes"
-                }
-            }
-        },
-        Locale::De => match noun {
-            CountNoun::Compound => {
-                if count == 1 {
-                    "Verbindung"
-                } else {
-                    "Verbindungen"
-                }
-            }
-            CountNoun::Taxon => {
-                if count == 1 {
-                    "Taxon"
-                } else {
-                    "Taxa"
-                }
-            }
-            CountNoun::Reference => {
-                if count == 1 {
-                    "Referenz"
-                } else {
-                    "Referenzen"
-                }
-            }
-            CountNoun::Entry => {
-                if count == 1 {
-                    "Eintrag"
-                } else {
-                    "Einträge"
-                }
-            }
-            CountNoun::Row => {
-                if count == 1 {
-                    "Zeile"
-                } else {
-                    "Zeilen"
-                }
-            }
-        },
-        Locale::It => match noun {
-            CountNoun::Compound => {
-                if count == 1 {
-                    "Composto"
-                } else {
-                    "Composti"
-                }
-            }
-            CountNoun::Taxon => {
-                if count == 1 {
-                    "Taxon"
-                } else {
-                    "Taxa"
-                }
-            }
-            CountNoun::Reference => {
-                if count == 1 {
-                    "Riferimento"
-                } else {
-                    "Riferimenti"
-                }
-            }
-            CountNoun::Entry => {
-                if count == 1 {
-                    "Voce"
-                } else {
-                    "Voci"
-                }
-            }
-            CountNoun::Row => {
-                if count == 1 {
-                    "riga"
-                } else {
-                    "righe"
-                }
-            }
-        },
-    }
-}
-
-#[allow(dead_code)]
-pub fn showing_rows_text(locale: Locale, visible: usize, total: usize) -> String {
-    match locale {
-        Locale::En => format!(
-            "Showing {visible} of {total} {}",
-            count_label(locale, CountNoun::Row, total)
-        ),
-        Locale::Fr => format!(
-            "Affichage de {visible} sur {total} {}",
-            count_label(locale, CountNoun::Row, total)
-        ),
-        Locale::De => format!(
-            "Anzeige {visible} von {total} {}",
-            count_label(locale, CountNoun::Row, total)
-        ),
-        Locale::It => format!(
-            "Visualizzazione {visible} di {total} {}",
-            count_label(locale, CountNoun::Row, total)
-        ),
+    match (locale, noun, count == 1) {
+        (Locale::En, CountNoun::Compound, true) => "Compound",
+        (Locale::En, CountNoun::Compound, false) => "Compounds",
+        (Locale::En, CountNoun::Taxon, true) => "Taxon",
+        (Locale::En, CountNoun::Taxon, false) => "Taxa",
+        (Locale::En, CountNoun::Reference, true) => "Reference",
+        (Locale::En, CountNoun::Reference, false) => "References",
+        (Locale::En, CountNoun::Entry, true) => "Entry",
+        (Locale::En, CountNoun::Entry, false) => "Entries",
+        (Locale::Fr, CountNoun::Compound, true) => "Composé",
+        (Locale::Fr, CountNoun::Compound, false) => "Composés",
+        (Locale::Fr, CountNoun::Taxon, true) => "Taxon",
+        (Locale::Fr, CountNoun::Taxon, false) => "Taxa",
+        (Locale::Fr, CountNoun::Reference, true) => "Référence",
+        (Locale::Fr, CountNoun::Reference, false) => "Références",
+        (Locale::Fr, CountNoun::Entry, true) => "Entrée",
+        (Locale::Fr, CountNoun::Entry, false) => "Entrées",
+        (Locale::De, CountNoun::Compound, true) => "Verbindung",
+        (Locale::De, CountNoun::Compound, false) => "Verbindungen",
+        (Locale::De, CountNoun::Taxon, true) => "Taxon",
+        (Locale::De, CountNoun::Taxon, false) => "Taxa",
+        (Locale::De, CountNoun::Reference, true) => "Referenz",
+        (Locale::De, CountNoun::Reference, false) => "Referenzen",
+        (Locale::De, CountNoun::Entry, true) => "Eintrag",
+        (Locale::De, CountNoun::Entry, false) => "Einträge",
+        (Locale::It, CountNoun::Compound, true) => "Composto",
+        (Locale::It, CountNoun::Compound, false) => "Composti",
+        (Locale::It, CountNoun::Taxon, true) => "Taxon",
+        (Locale::It, CountNoun::Taxon, false) => "Taxa",
+        (Locale::It, CountNoun::Reference, true) => "Riferimento",
+        (Locale::It, CountNoun::Reference, false) => "Riferimenti",
+        (Locale::It, CountNoun::Entry, true) => "Voce",
+        (Locale::It, CountNoun::Entry, false) => "Voci",
     }
 }
 
@@ -1191,14 +1045,6 @@ mod tests {
         assert!(!t(Locale::Fr, TextKey::Search).is_empty());
         assert!(!t(Locale::En, TextKey::SkipToResults).is_empty());
         assert!(!t(Locale::Fr, TextKey::SkipToResults).is_empty());
-    }
-
-    #[test]
-    fn pluralization_smoke() {
-        assert_eq!(count_label(Locale::En, CountNoun::Taxon, 1), "Taxon");
-        assert_eq!(count_label(Locale::En, CountNoun::Taxon, 2), "Taxa");
-        assert_eq!(count_label(Locale::Fr, CountNoun::Entry, 1), "Entrée");
-        assert_eq!(count_label(Locale::Fr, CountNoun::Entry, 2), "Entrées");
     }
 
     #[test]

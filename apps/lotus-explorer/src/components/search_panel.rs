@@ -4,16 +4,15 @@
 use crate::i18n::{Locale, TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::{StructureKind, classify_structure};
+use crate::state::use_search_ui_context;
 use dioxus::prelude::*;
 
 #[component]
-pub fn SearchPanel(
-    criteria: Signal<SearchCriteria>,
-    locale: Locale,
-    on_search: EventHandler<()>,
-    loading: bool,
-) -> Element {
-    let mut c = criteria;
+pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
+    let state = use_search_ui_context();
+    let locale = *state.locale.read();
+    let loading = *state.loading.read();
+    let mut c = state.criteria;
 
     rsx! {
         section {
@@ -44,7 +43,7 @@ pub fn SearchPanel(
                 }
 
                 // ── Structure (SMILES or Molfile V2000/V3000) ────────────────
-                StructureSection { criteria, locale }
+                StructureSection { locale }
 
                 // ── Mass range ───────────────────────────────────────────────
                 fieldset {
@@ -275,8 +274,9 @@ pub fn SearchPanel(
 // ── Structure section: SMILES + Molfile V2000/V3000 + Ketcher ────────────────
 
 #[component]
-fn StructureSection(criteria: Signal<SearchCriteria>, locale: Locale) -> Element {
-    let mut c = criteria;
+fn StructureSection(locale: Locale) -> Element {
+    let state = use_search_ui_context();
+    let mut c = state.criteria;
     // Memoise the classifier: `classify_structure` uppercases the whole
     // Molfile on every call. Recompute only when the SMILES text changes,
     // not on every unrelated re-render of the search panel.

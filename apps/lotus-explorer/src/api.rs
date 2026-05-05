@@ -159,8 +159,6 @@ pub struct SearchResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ExportUrlResponse {
-    #[allow(dead_code)]
-    pub query: String,
     pub csv_url: String,
     pub json_url: String,
     pub rdf_url: String,

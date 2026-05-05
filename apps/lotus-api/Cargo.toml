@@ -15,11 +15,9 @@ path = "src/main.rs"
 
 [dependencies]
 axum = "0.8"
-csv = { workspace = true }
 env_logger = "0.11"
 log = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 sha2 = { version = "0.11", default-features = false }
 shared = { path = "../../crates/shared", version = "0.1.0" }
 tokio = { workspace = true, features = [

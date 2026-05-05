@@ -12,12 +12,15 @@ mod models;
 mod perf;
 mod queries;
 mod sparql;
+mod state;
 
 use components::copy_button::CopyButton;
 use components::results_table::ResultsTable;
 use components::search_panel::{KetcherPanel, SearchPanel};
 use dioxus::prelude::*;
-use download::trigger_download;
+use download::{DownloadFormat, execute_download};
+#[cfg(target_arch = "wasm32")]
+use i18n::error_hint_memory;
 use i18n::{
     Locale, TextKey, err_invalid_search_input, err_query_stage_failed, err_taxon_not_found,
     err_taxon_parse_failed, err_taxon_resolution_failed, err_taxon_search_failed,
@@ -25,7 +28,7 @@ use i18n::{
 };
 use models::*;
 use sha2::{Digest, Sha256};
-use shared::sparql::SparqlResponseFormat;
+use state::{ResultsContext, SearchUiContext, use_results_context};
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -38,13 +41,12 @@ enum QueryPhase {
     Rendering,
 }
 
-#[allow(dead_code)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum ErrorKind {
     Validation,
     Network,
-    Server,
     Parse,
+    #[cfg(target_arch = "wasm32")]
     Memory,
     Unknown,
 }
@@ -53,6 +55,76 @@ enum ErrorKind {
 struct AppError {
     kind: ErrorKind,
     message: String,
+}
+
+#[derive(Clone, Copy)]
+struct SearchRuntime {
+    executed_criteria: Signal<SearchCriteria>,
+    loading: Signal<bool>,
+    error: Signal<Option<String>>,
+    error_kind: Signal<ErrorKind>,
+    query_phase: Signal<QueryPhase>,
+    searched_once: Signal<bool>,
+    entries: Signal<Rows>,
+    taxon_notice: Signal<Option<String>>,
+    resolved_qid: Signal<Option<String>>,
+    query_hash: Signal<Option<String>>,
+    result_hash: Signal<Option<String>>,
+    sparql_query: Signal<Option<String>>,
+    metadata_json: Signal<Option<String>>,
+    total_matches: Signal<Option<usize>>,
+    total_stats: Signal<Option<DatasetStats>>,
+    display_capped_rows: Signal<bool>,
+    page: Signal<usize>,
+    mobile_filters_open: Signal<bool>,
+    search_request_token: Signal<u64>,
+}
+
+impl SearchRuntime {
+    #[allow(clippy::too_many_arguments)]
+    fn new(
+        executed_criteria: Signal<SearchCriteria>,
+        loading: Signal<bool>,
+        error: Signal<Option<String>>,
+        error_kind: Signal<ErrorKind>,
+        query_phase: Signal<QueryPhase>,
+        searched_once: Signal<bool>,
+        entries: Signal<Rows>,
+        taxon_notice: Signal<Option<String>>,
+        resolved_qid: Signal<Option<String>>,
+        query_hash: Signal<Option<String>>,
+        result_hash: Signal<Option<String>>,
+        sparql_query: Signal<Option<String>>,
+        metadata_json: Signal<Option<String>>,
+        total_matches: Signal<Option<usize>>,
+        total_stats: Signal<Option<DatasetStats>>,
+        display_capped_rows: Signal<bool>,
+        page: Signal<usize>,
+        mobile_filters_open: Signal<bool>,
+        search_request_token: Signal<u64>,
+    ) -> Self {
+        Self {
+            executed_criteria,
+            loading,
+            error,
+            error_kind,
+            query_phase,
+            searched_once,
+            entries,
+            taxon_notice,
+            resolved_qid,
+            query_hash,
+            result_hash,
+            sparql_query,
+            metadata_json,
+            total_matches,
+            total_stats,
+            display_capped_rows,
+            page,
+            mobile_filters_open,
+            search_request_token,
+        }
+    }
 }
 
 #[derive(Default, Clone, Copy)]
@@ -163,6 +235,7 @@ fn main() {
 #[component]
 fn App() -> Element {
     let criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
+    let executed_criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
     let mut locale: Signal<Locale> = use_signal(initial_locale_from_url);
     // Entries live behind an `Arc<[…]>` so prop/signal clones are a single
     // refcount bump instead of duplicating the whole result buffer.
@@ -190,14 +263,53 @@ fn App() -> Element {
     let mut waiting_loading_logged: Signal<bool> = use_signal(|| false);
     let mut waiting_query_logged: Signal<bool> = use_signal(|| false);
     let search_request_token: Signal<u64> = use_signal(|| 0);
+    let search_runtime = SearchRuntime::new(
+        executed_criteria,
+        loading,
+        error,
+        error_kind,
+        query_phase,
+        searched_once,
+        entries,
+        taxon_notice,
+        resolved_qid,
+        query_hash,
+        result_hash,
+        sparql_query,
+        metadata_json,
+        total_matches,
+        total_stats,
+        display_capped_rows,
+        page,
+        mobile_filters_open,
+        search_request_token,
+    );
+    let _search_ui_ctx =
+        use_context_provider(move || SearchUiContext::from_signals(criteria, locale, loading));
+    let _results_ctx = use_context_provider(move || {
+        ResultsContext::from_signals(
+            executed_criteria,
+            locale,
+            entries,
+            loading,
+            error,
+            query_phase,
+            searched_once,
+            query_hash,
+            result_hash,
+            sparql_query,
+            metadata_json,
+            total_matches,
+            total_stats,
+            display_capped_rows,
+            sort,
+            page,
+        )
+    });
 
     // Memoised derived state — recomputed only when their inputs change.
     // If we have precise totals from the parser, use them directly. Otherwise,
     // fall back to counting over the display slice.
-    let stats = use_memo(move || match total_stats.read().as_ref() {
-        Some(s) => s.clone(),
-        None => DatasetStats::from_entries(&entries.read()),
-    });
     let shareable_url =
         use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));
 
@@ -206,38 +318,14 @@ fn App() -> Element {
     });
 
     // ── Search handler ────────────────────────────────────────────────────────
-    let on_search = move |_| {
-        start_search(
-            criteria,
-            locale,
-            false,
-            loading,
-            error,
-            error_kind,
-            query_phase,
-            searched_once,
-            entries,
-            taxon_notice,
-            resolved_qid,
-            query_hash,
-            result_hash,
-            sparql_query,
-            metadata_json,
-            total_matches,
-            total_stats,
-            display_capped_rows,
-            page,
-            mobile_filters_open,
-            search_request_token,
-        )
-    };
+    let on_search = move |_| start_search(criteria, locale, false, search_runtime);
 
     // Programmatic flow: when URL contains `download=true&format=...`, run the
     // search automatically and trigger download once query materializes.
     use_effect(move || {
         let pending = pending_download_format.read().clone();
         if let Some(fmt) = pending.as_deref()
-            && !is_supported_download_format(fmt)
+            && DownloadFormat::from_str(fmt).is_none()
         {
             log_warn_evt(
                 "download",
@@ -269,29 +357,7 @@ fn App() -> Element {
                     Some("execute=true"),
                 );
             }
-            start_search(
-                criteria,
-                locale,
-                pending.is_some(),
-                loading,
-                error,
-                error_kind,
-                query_phase,
-                searched_once,
-                entries,
-                taxon_notice,
-                resolved_qid,
-                query_hash,
-                result_hash,
-                sparql_query,
-                metadata_json,
-                total_matches,
-                total_stats,
-                display_capped_rows,
-                page,
-                mobile_filters_open,
-                search_request_token,
-            );
+            start_search(criteria, locale, pending.is_some(), search_runtime);
         }
     });
 
@@ -315,225 +381,44 @@ fn App() -> Element {
             if let Some(query) = sparql_query.read().as_deref() {
                 *waiting_query_logged.write() = false;
                 let crit = criteria.peek().clone();
-                match fmt.as_str() {
-                    "csv" => {
+                match DownloadFormat::from_str(&fmt) {
+                    Some(format) => {
                         let q = query.to_string();
-                        let api_crit = crit.clone();
-                        let filename = export::generate_filename(&crit, "csv");
+                        let criteria_arc = Arc::new(crit.clone());
+                        let filename = export::generate_filename(&crit, format.extension());
                         *pending_download_format.write() = None;
                         log_debug_evt(
                             "download",
-                            "startup_csv",
+                            "startup_dispatch",
                             "query_check",
                             Some(&format!(
-                                "has_SERVICE={} has_SELECT={} query_bytes={}",
+                                "format={} has_SERVICE={} has_SELECT={} query_bytes={}",
+                                format.log_name(),
                                 q.contains("SERVICE"),
                                 q.contains("SELECT"),
                                 q.len()
                             )),
                         );
                         spawn(async move {
-                            let dl_timer = perf::start_timer("LOTUS:download_csv");
-                            log_info_evt("download", "dispatch", "started", Some("format=csv"));
-                            if let Ok(urls) = api::export_urls(&api_crit).await {
-                                let fetch_elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "success",
-                                    fetch_elapsed,
-                                    Some("format=csv source=api_url"),
-                                );
-                                let trigger_timer = perf::start_timer("LOTUS:download_csv_trigger");
-                                trigger_download(
-                                    &filename,
-                                    "text/csv;charset=utf-8",
-                                    &urls.csv_url,
-                                );
-                                let trigger_elapsed =
-                                    perf::end_timer("LOTUS:download_csv_trigger", trigger_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "trigger",
-                                    "success",
-                                    trigger_elapsed,
-                                    Some("format=csv source=api_url"),
-                                );
-                            } else if let Ok(body) = sparql::execute_sparql(&q).await {
-                                let fetch_elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "success",
-                                    fetch_elapsed,
-                                    Some(&format!("format=csv body_bytes={}", body.len())),
-                                );
-                                let trigger_timer = perf::start_timer("LOTUS:download_csv_trigger");
-                                trigger_download(&filename, "text/csv;charset=utf-8", &body);
-                                let trigger_elapsed =
-                                    perf::end_timer("LOTUS:download_csv_trigger", trigger_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "trigger",
-                                    "success",
-                                    trigger_elapsed,
-                                    Some("format=csv"),
-                                );
-                            } else {
-                                let elapsed = perf::end_timer("LOTUS:download_csv", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "error",
-                                    elapsed,
-                                    Some("format=csv"),
-                                );
-                            }
-                        });
-                    }
-                    "json" | "ndjson" => {
-                        let q = query.to_string();
-                        let api_crit = crit.clone();
-                        let filename = export::generate_filename(&crit, "json");
-                        *pending_download_format.write() = None;
-                        spawn(async move {
-                            let dl_timer = perf::start_timer("LOTUS:download_json");
-                            log_info_evt("download", "dispatch", "started", Some("format=json"));
-                            if let Ok(urls) = api::export_urls(&api_crit).await {
-                                let fetch_elapsed =
-                                    perf::end_timer("LOTUS:download_json", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "success",
-                                    fetch_elapsed,
-                                    Some("format=json source=api_url"),
-                                );
-                                let trigger_timer =
-                                    perf::start_timer("LOTUS:download_json_trigger");
-                                trigger_download(
-                                    &filename,
-                                    "application/sparql-results+json;charset=utf-8",
-                                    &urls.json_url,
-                                );
-                                let trigger_elapsed =
-                                    perf::end_timer("LOTUS:download_json_trigger", trigger_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "trigger",
-                                    "success",
-                                    trigger_elapsed,
-                                    Some("format=json source=api_url"),
-                                );
-                            } else if let Ok(body) =
-                                sparql::execute_sparql_format(&q, SparqlResponseFormat::SparqlJson)
-                                    .await
+                            log_info_evt(
+                                "download",
+                                "dispatch",
+                                "started",
+                                Some(&format!("format={}", format.log_name())),
+                            );
+                            if let Err(err) =
+                                execute_download(format, criteria_arc, q, filename).await
                             {
-                                let fetch_elapsed =
-                                    perf::end_timer("LOTUS:download_json", dl_timer);
-                                log_timing_evt(
+                                log_warn_evt(
                                     "download",
-                                    "fetch",
-                                    "success",
-                                    fetch_elapsed,
-                                    Some(&format!("format=json body_bytes={}", body.len())),
-                                );
-                                let trigger_timer =
-                                    perf::start_timer("LOTUS:download_json_trigger");
-                                trigger_download(
-                                    &filename,
-                                    "application/sparql-results+json;charset=utf-8",
-                                    &body,
-                                );
-                                let trigger_elapsed =
-                                    perf::end_timer("LOTUS:download_json_trigger", trigger_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "trigger",
-                                    "success",
-                                    trigger_elapsed,
-                                    Some("format=json"),
-                                );
-                            } else {
-                                let elapsed = perf::end_timer("LOTUS:download_json", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
+                                    "dispatch",
                                     "error",
-                                    elapsed,
-                                    Some("format=json"),
+                                    Some(&format!("format={} reason={err}", format.log_name())),
                                 );
                             }
                         });
                     }
-                    "rdf" => {
-                        let q = queries::query_construct_from_select(query);
-                        let api_crit = crit.clone();
-                        let filename = export::generate_filename(&crit, "rdf");
-                        *pending_download_format.write() = None;
-                        spawn(async move {
-                            let dl_timer = perf::start_timer("LOTUS:download_rdf");
-                            log_info_evt("download", "dispatch", "started", Some("format=rdf"));
-                            if let Ok(urls) = api::export_urls(&api_crit).await {
-                                let fetch_elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "success",
-                                    fetch_elapsed,
-                                    Some("format=rdf source=api_url"),
-                                );
-                                let trigger_timer = perf::start_timer("LOTUS:download_rdf_trigger");
-                                trigger_download(
-                                    &filename,
-                                    "text/turtle;charset=utf-8",
-                                    &urls.rdf_url,
-                                );
-                                let trigger_elapsed =
-                                    perf::end_timer("LOTUS:download_rdf_trigger", trigger_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "trigger",
-                                    "success",
-                                    trigger_elapsed,
-                                    Some("format=rdf source=api_url"),
-                                );
-                            } else if let Ok(body) =
-                                sparql::execute_sparql_format(&q, SparqlResponseFormat::Turtle)
-                                    .await
-                            {
-                                let fetch_elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "success",
-                                    fetch_elapsed,
-                                    Some(&format!("format=rdf body_bytes={}", body.len())),
-                                );
-                                let trigger_timer = perf::start_timer("LOTUS:download_rdf_trigger");
-                                trigger_download(&filename, "text/turtle;charset=utf-8", &body);
-                                let trigger_elapsed =
-                                    perf::end_timer("LOTUS:download_rdf_trigger", trigger_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "trigger",
-                                    "success",
-                                    trigger_elapsed,
-                                    Some("format=rdf"),
-                                );
-                            } else {
-                                let elapsed = perf::end_timer("LOTUS:download_rdf", dl_timer);
-                                log_timing_evt(
-                                    "download",
-                                    "fetch",
-                                    "error",
-                                    elapsed,
-                                    Some("format=rdf"),
-                                );
-                            }
-                        });
-                    }
-                    _ => {
+                    None => {
                         log_warn_evt(
                             "download",
                             "dispatch",
@@ -586,10 +471,7 @@ fn App() -> Element {
                     }
                 }
                 SearchPanel {
-                    criteria,
-                    locale: *locale.read(),
                     on_search,
-                    loading: *loading.read(),
                 }
                 div { class: "sidebar-logo-wrap",
                     a {
@@ -748,29 +630,7 @@ fn App() -> Element {
                                 class: "btn btn-sm",
                                 r#type: "button",
                                 onclick: move |_| {
-                                    start_search(
-                                        criteria,
-                                        locale,
-                                        false,
-                                        loading,
-                                        error,
-                                        error_kind,
-                                        query_phase,
-                                        searched_once,
-                                        entries,
-                                        taxon_notice,
-                                        resolved_qid,
-                                        query_hash,
-                                        result_hash,
-                                        sparql_query,
-                                        metadata_json,
-                                        total_matches,
-                                        total_stats,
-                                        display_capped_rows,
-                                        page,
-                                        mobile_filters_open,
-                                        search_request_token,
-                                    )
+                                    start_search(criteria, locale, false, search_runtime)
                                 },
                                 "{t(*locale.read(), TextKey::Retry)}"
                             }
@@ -785,25 +645,7 @@ fn App() -> Element {
                     }
                 }
 
-                ResultsViewport {
-                    locale: *locale.read(),
-                    loading: *loading.read(),
-                    query_phase: *query_phase.read(),
-                    has_error: error.read().is_some(),
-                    searched_once: *searched_once.read(),
-                    entries,
-                    stats: stats.read().clone(),
-                    total_stats: total_stats.read().clone(),
-                    total_matches: *total_matches.read(),
-                    display_capped_rows: *display_capped_rows.read(),
-                    sort,
-                    page,
-                    sparql_query: sparql_query.read().clone(),
-                    metadata_json: metadata_json.read().clone(),
-                    query_hash: query_hash.read().clone(),
-                    result_hash: result_hash.read().clone(),
-                    criteria,
-                }
+                ResultsViewport {}
 
                 Footer { locale: *locale.read() }
             }
@@ -812,25 +654,14 @@ fn App() -> Element {
 }
 
 #[component]
-fn ResultsViewport(
-    locale: Locale,
-    loading: bool,
-    query_phase: QueryPhase,
-    has_error: bool,
-    searched_once: bool,
-    entries: ReadSignal<Rows>,
-    stats: DatasetStats,
-    total_stats: Option<DatasetStats>,
-    total_matches: Option<usize>,
-    display_capped_rows: bool,
-    sort: Signal<SortState>,
-    page: Signal<usize>,
-    sparql_query: Option<String>,
-    metadata_json: Option<String>,
-    query_hash: Option<String>,
-    result_hash: Option<String>,
-    criteria: ReadSignal<SearchCriteria>,
-) -> Element {
+fn ResultsViewport() -> Element {
+    let state = use_results_context();
+    let locale = *state.locale.read();
+    let loading = *state.loading.read();
+    let query_phase = *state.query_phase.read();
+    let has_error = state.error.read().is_some();
+    let searched_once = *state.searched_once.read();
+    let entries = state.entries;
     if loading {
         return rsx! {
             div {
@@ -850,21 +681,7 @@ fn ResultsViewport(
     }
 
     rsx! {
-        ResultsTable {
-            entries,
-            locale,
-            stats,
-            total_stats,
-            total_matches,
-            display_capped_rows,
-            sort,
-            page,
-            sparql_query,
-            metadata_json,
-            query_hash,
-            result_hash,
-            criteria,
-        }
+        ResultsTable {}
     }
 }
 
@@ -1075,30 +892,33 @@ struct SearchOutcome {
     display_capped_rows: bool,
 }
 
-#[allow(clippy::too_many_arguments)]
 fn start_search(
     criteria: Signal<SearchCriteria>,
     locale: Signal<Locale>,
     direct_download_mode: bool,
-    mut loading: Signal<bool>,
-    mut error: Signal<Option<String>>,
-    mut error_kind: Signal<ErrorKind>,
-    mut query_phase: Signal<QueryPhase>,
-    mut searched_once: Signal<bool>,
-    mut entries: Signal<Rows>,
-    mut taxon_notice: Signal<Option<String>>,
-    mut resolved_qid: Signal<Option<String>>,
-    mut query_hash: Signal<Option<String>>,
-    mut result_hash: Signal<Option<String>>,
-    mut sparql_query: Signal<Option<String>>,
-    mut metadata_json: Signal<Option<String>>,
-    mut total_matches: Signal<Option<usize>>,
-    mut total_stats: Signal<Option<DatasetStats>>,
-    mut display_capped_rows: Signal<bool>,
-    mut page: Signal<usize>,
-    mut mobile_filters_open: Signal<bool>,
-    mut search_request_token: Signal<u64>,
+    runtime: SearchRuntime,
 ) {
+    let SearchRuntime {
+        mut executed_criteria,
+        mut loading,
+        mut error,
+        mut error_kind,
+        mut query_phase,
+        mut searched_once,
+        mut entries,
+        mut taxon_notice,
+        mut resolved_qid,
+        mut query_hash,
+        mut result_hash,
+        mut sparql_query,
+        mut metadata_json,
+        mut total_matches,
+        mut total_stats,
+        mut display_capped_rows,
+        mut page,
+        mut mobile_filters_open,
+        mut search_request_token,
+    } = runtime;
     let crit = criteria.peek().clone();
 
     let request_token = {
@@ -1126,6 +946,9 @@ fn start_search(
         *error_kind.write() = ErrorKind::Validation;
         return;
     }
+
+    // Freeze the criteria snapshot that produced the current result lifecycle.
+    *executed_criteria.write() = crit.clone();
 
     *error.write() = None;
     *error_kind.write() = ErrorKind::Unknown;
@@ -2092,8 +1915,9 @@ fn is_true_flag(v: &str) -> bool {
     )
 }
 
+#[cfg(test)]
 fn is_supported_download_format(fmt: &str) -> bool {
-    matches!(fmt, "csv" | "json" | "rdf" | "ndjson")
+    DownloadFormat::from_str(fmt).is_some()
 }
 
 fn query_phase_text(locale: Locale, phase: QueryPhase) -> &'static str {
@@ -2109,7 +1933,7 @@ fn query_phase_text(locale: Locale, phase: QueryPhase) -> &'static str {
 fn is_retryable(kind: ErrorKind) -> bool {
     matches!(
         kind,
-        ErrorKind::Network | ErrorKind::Server | ErrorKind::Parse | ErrorKind::Unknown
+        ErrorKind::Network | ErrorKind::Parse | ErrorKind::Unknown
     )
 }
 
@@ -2117,9 +1941,9 @@ fn error_hint_text(locale: Locale, kind: ErrorKind) -> &'static str {
     match kind {
         ErrorKind::Validation => t(locale, TextKey::ErrorHintValidation),
         ErrorKind::Network => t(locale, TextKey::ErrorHintNetwork),
-        ErrorKind::Server => t(locale, TextKey::ErrorHintServer),
         ErrorKind::Parse => t(locale, TextKey::ErrorHintParse),
-        ErrorKind::Memory => t(locale, TextKey::ErrorHintMemory),
+        #[cfg(target_arch = "wasm32")]
+        ErrorKind::Memory => error_hint_memory(locale),
         ErrorKind::Unknown => t(locale, TextKey::ErrorHintUnknown),
     }
 }
@@ -2241,6 +2065,7 @@ mod tests {
     fn supported_download_formats_include_documented_values() {
         assert!(is_supported_download_format("csv"));
         assert!(is_supported_download_format("json"));
+        assert!(is_supported_download_format("ndjson"));
         assert!(is_supported_download_format("rdf"));
         assert!(!is_supported_download_format("ttl"));
     }

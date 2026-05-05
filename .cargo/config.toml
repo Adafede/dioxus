@@ -8,5 +8,5 @@
 # to deny warnings scoped to workspace code only.
 
 [profile.test]
-# Keep test binaries debuggable without full dev-optimisation overhead.
+# Keep test binaries debuggable without full dev-optimization overhead.
 opt-level = 1

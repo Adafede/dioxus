@@ -114,5 +114,3 @@ pub fn end_timer(_label: &str, started: TimerHandle) -> Duration {
 pub fn end_timer(_label: &str, started: TimerHandle) -> Duration {
     started.elapsed()
 }
-
-// ...existing code...
