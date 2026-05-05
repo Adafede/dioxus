@@ -534,27 +534,21 @@ fn App() -> Element {
     }
 }
 
+/// Top-level results area. Subscribes only to `loading`, `entries`,
+/// `error` (presence check), and `searched_once` to decide which view to
+/// show. `query_phase` is consumed inside `LoadingState` so phase
+/// transitions don't trigger a full viewport re-render.
 #[component]
 fn ResultsViewport() -> Element {
     let state = use_results_context();
     let locale = *state.locale.read();
     let loading = *state.loading.read();
-    let query_phase = *state.query_phase.read();
     let has_error = state.error.read().is_some();
     let searched_once = *state.searched_once.read();
     let entries = state.entries;
+
     if loading {
-        return rsx! {
-            div {
-                class: "loading-state",
-                role: "status",
-                aria_live: "polite",
-                aria_busy: "true",
-                div { class: "spinner-lg", "aria-hidden": "true" }
-                p { "{query_phase_text(locale, query_phase)}" }
-                p { class: "loading-hint", "{t(locale, TextKey::LoadingHint)}" }
-            }
-        };
+        return rsx! { LoadingState { locale } };
     }
 
     if entries.read().is_empty() && !has_error && !searched_once {
@@ -563,6 +557,27 @@ fn ResultsViewport() -> Element {
 
     rsx! {
         ResultsTable {}
+    }
+}
+
+/// Spinner overlay shown while a query is in-flight.
+/// Subscribes to `query_phase` independently so phase-text updates
+/// (ResolvingTaxon → Counting → FetchingPreview) don't propagate to
+/// `ResultsViewport` or its siblings.
+#[component]
+fn LoadingState(locale: Locale) -> Element {
+    let state = use_results_context();
+    let query_phase = *state.query_phase.read();
+    rsx! {
+        div {
+            class: "loading-state",
+            role: "status",
+            aria_live: "polite",
+            aria_busy: "true",
+            div { class: "spinner-lg", "aria-hidden": "true" }
+            p { "{query_phase_text(locale, query_phase)}" }
+            p { class: "loading-hint", "{t(locale, TextKey::LoadingHint)}" }
+        }
     }
 }
 

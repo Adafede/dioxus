@@ -187,33 +187,19 @@ fn row_text(locale: Locale) -> RowText {
     }
 }
 
+/// Renders the full results section.
+///
+/// Reactive surface is deliberately narrow: this component subscribes only to
+/// `entries` (for the empty-state check and sort index) and `locale`.  All
+/// query-panel / stats / download signals are delegated to `ResultsToolbar`,
+/// which subscribes to them independently.  Sort interactions therefore only
+/// re-render `VirtualizedResultsTable`, not the toolbar or stats bar.
 #[component]
 pub fn ResultsTable() -> Element {
     let state = use_results_context();
     let entries = state.entries;
-    let total_stats_signal = state.total_stats;
     let locale = *state.locale.read();
-    let total_stats = total_stats_signal.read().clone();
-    let total_matches = *state.total_matches.read();
-    let display_capped_rows = *state.display_capped_rows.read();
     let sort = state.sort;
-    let sparql_query = state.sparql_query.read().clone();
-    let metadata_json = state.metadata_json.read().clone();
-    let criteria = state.executed_criteria;
-    // Keep expensive fallback stats O(n) work memoized so UI-only signals
-    // (like download spinner state) don't recompute from all rows.
-    let fallback_stats: Memo<DatasetStats> =
-        use_memo(move || DatasetStats::from_entries(&entries.read()));
-    // Exports are served from fresh endpoint requests (CSV/JSON/RDF), so
-    // the table only keeps the preview rows needed for rendering.
-    let display_stats = total_stats
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| fallback_stats.read().clone());
-    let total = entries.read().len();
-    let stats_partial = false;
-    let entries_value = total_matches.unwrap_or(display_stats.n_entries);
-    let entries_unique_value = display_stats.n_entries_unique;
 
     // Memoised sort: compute a permutation of row indices instead of cloning
     // the whole Vec to sort it. Recomputes only when `entries` or `sort`
@@ -245,80 +231,12 @@ pub fn ResultsTable() -> Element {
         Arc::from(idx.into_boxed_slice())
     });
 
-    let query_hash = state.query_hash.read().clone();
-    let result_hash = state.result_hash.read().clone();
+    let total = entries.read().len();
 
     rsx! {
         div { id: "results-section", class: "results-wrap",
-            if let Some(q) = sparql_query.as_ref() {
-                details { class: "query-panel",
-                    summary { "{t(locale, TextKey::SparqlQuery)}" }
-                    div { class: "query-panel-actions",
-                        crate::components::copy_button::CopyButton {
-                            text: q.clone(),
-                            title: t(locale, TextKey::CopySparqlQuery),
-                            locale,
-                        }
-                    }
-                    pre { class: "query-text", "{q.as_ref()}" }
-                }
-            }
-            // ── Stats + toolbar ───────────────────────────────────────────
-            div { class: "results-toolbar",
-                div {
-                    class: "stat-bar",
-                    role: "group",
-                    aria_label: "{t(locale, TextKey::DatasetStatistics)}",
-                    StatBadge {
-                        locale,
-                        value: display_stats.n_compounds,
-                        secondary_value: None,
-                        secondary_label: None,
-                        noun: CountNoun::Compound,
-                        plus: stats_partial,
-                    }
-                    StatBadge {
-                        locale,
-                        value: display_stats.n_taxa,
-                        secondary_value: None,
-                        secondary_label: None,
-                        noun: CountNoun::Taxon,
-                        plus: stats_partial,
-                    }
-                    StatBadge {
-                        locale,
-                        value: display_stats.n_references,
-                        secondary_value: None,
-                        secondary_label: None,
-                        noun: CountNoun::Reference,
-                        plus: stats_partial,
-                    }
-                    StatBadge {
-                        locale,
-                        value: entries_value,
-                        secondary_value: (entries_unique_value != entries_value)
-                            .then_some(entries_unique_value),
-                        secondary_label: Some(t(locale, TextKey::Unique)),
-                        noun: CountNoun::Entry,
-                        plus: false,
-                    }
-                }
-                ResultsDownloadActions {
-                    locale,
-                    criteria,
-                    sparql_query: sparql_query.clone(),
-                    metadata_json: metadata_json.clone(),
-                    query_hash,
-                    result_hash,
-                }
-            }
-
-            if display_capped_rows {
-                div { class: "notice notice-warn", role: "status",
-                    span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
-                    span { class: "notice-value", "{t(locale, TextKey::DisplayCappedHint)}" }
-                }
-            }
+            // Subscribes to query/stats/download signals; isolated from sort.
+            ResultsToolbar { locale }
 
             if total == 0 {
                 div { class: "empty-state",
@@ -331,6 +249,108 @@ pub fn ResultsTable() -> Element {
                     sort,
                     sorted_indices,
                 }
+            }
+        }
+    }
+}
+
+/// Toolbar: query panel + stats bar + download actions + capped-rows notice.
+///
+/// Reads sparql_query, metadata_json, query_hash, result_hash, executed_criteria,
+/// total_stats, total_matches, display_capped_rows, and entries (for fallback
+/// stats) from context.  Intentionally separate from `ResultsTable` so that
+/// sort changes never cause toolbar re-renders.
+#[component]
+fn ResultsToolbar(locale: Locale) -> Element {
+    let state = use_results_context();
+    let entries = state.entries;
+    let sparql_query = state.sparql_query.read().clone();
+    let metadata_json = state.metadata_json.read().clone();
+    let query_hash = state.query_hash.read().clone();
+    let result_hash = state.result_hash.read().clone();
+    let criteria = state.executed_criteria;
+    let total_stats = state.total_stats.read().clone();
+    let total_matches = *state.total_matches.read();
+    let display_capped_rows = *state.display_capped_rows.read();
+
+    // Fallback stats are memoised so they don't rerun on unrelated re-renders.
+    let fallback_stats: Memo<DatasetStats> =
+        use_memo(move || DatasetStats::from_entries(&entries.read()));
+    let display_stats = total_stats
+        .as_ref()
+        .cloned()
+        .unwrap_or_else(|| fallback_stats.read().clone());
+    let stats_partial = false;
+    let entries_value = total_matches.unwrap_or(display_stats.n_entries);
+    let entries_unique_value = display_stats.n_entries_unique;
+
+    rsx! {
+        if let Some(q) = sparql_query.as_ref() {
+            details { class: "query-panel",
+                summary { "{t(locale, TextKey::SparqlQuery)}" }
+                div { class: "query-panel-actions",
+                    crate::components::copy_button::CopyButton {
+                        text: q.clone(),
+                        title: t(locale, TextKey::CopySparqlQuery),
+                        locale,
+                    }
+                }
+                pre { class: "query-text", "{q.as_ref()}" }
+            }
+        }
+        // ── Stats + toolbar ───────────────────────────────────────────
+        div { class: "results-toolbar",
+            div {
+                class: "stat-bar",
+                role: "group",
+                aria_label: "{t(locale, TextKey::DatasetStatistics)}",
+                StatBadge {
+                    locale,
+                    value: display_stats.n_compounds,
+                    secondary_value: None,
+                    secondary_label: None,
+                    noun: CountNoun::Compound,
+                    plus: stats_partial,
+                }
+                StatBadge {
+                    locale,
+                    value: display_stats.n_taxa,
+                    secondary_value: None,
+                    secondary_label: None,
+                    noun: CountNoun::Taxon,
+                    plus: stats_partial,
+                }
+                StatBadge {
+                    locale,
+                    value: display_stats.n_references,
+                    secondary_value: None,
+                    secondary_label: None,
+                    noun: CountNoun::Reference,
+                    plus: stats_partial,
+                }
+                StatBadge {
+                    locale,
+                    value: entries_value,
+                    secondary_value: (entries_unique_value != entries_value)
+                        .then_some(entries_unique_value),
+                    secondary_label: Some(t(locale, TextKey::Unique)),
+                    noun: CountNoun::Entry,
+                    plus: false,
+                }
+            }
+            ResultsDownloadActions {
+                locale,
+                criteria,
+                sparql_query: sparql_query.clone(),
+                metadata_json: metadata_json.clone(),
+                query_hash,
+                result_hash,
+            }
+        }
+        if display_capped_rows {
+            div { class: "notice notice-warn", role: "status",
+                span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
+                span { class: "notice-value", "{t(locale, TextKey::DisplayCappedHint)}" }
             }
         }
     }
