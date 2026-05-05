@@ -538,6 +538,20 @@ fn VirtualizedResultsTable(
     let mut scroll_raf_cb = use_signal(|| {
         None::<wasm_bindgen::closure::Closure<dyn FnMut(f64)>>
     });
+    #[cfg(target_arch = "wasm32")]
+    let mut scroll_raf_id = use_signal(|| None::<i32>);
+
+    #[cfg(target_arch = "wasm32")]
+    use_drop(move || {
+        if let Some(id) = *scroll_raf_id.peek() {
+            if let Some(win) = web_sys::window() {
+                let _ = win.cancel_animation_frame(id);
+            }
+        }
+        *scroll_raf_id.write() = None;
+        *scroll_raf_scheduled.write() = false;
+        *scroll_raf_cb.write() = None;
+    });
 
     let total = entries.read().len();
     let row_height_px = ROW_HEIGHT_PX_COMFORTABLE;
@@ -607,6 +621,7 @@ fn VirtualizedResultsTable(
                     let mut viewport_height_px_sig = viewport_height_px;
                     let mut scroll_raf_scheduled_sig = scroll_raf_scheduled;
                     let mut scroll_raf_cb_sig = scroll_raf_cb;
+                    let mut scroll_raf_id_sig = scroll_raf_id;
                     let div_for_raf = div.clone();
                     let raf_cb = wasm_bindgen::closure::Closure::wrap(Box::new(move |_ts: f64| {
                         let top = div_for_raf.scroll_top().max(0) as usize;
@@ -618,23 +633,26 @@ fn VirtualizedResultsTable(
                         if height > 0 && height != *viewport_height_px_sig.peek() {
                             *viewport_height_px_sig.write() = height;
                         }
+                        *scroll_raf_id_sig.write() = None;
                         *scroll_raf_scheduled_sig.write() = false;
                         *scroll_raf_cb_sig.write() = None;
                     })
                         as Box<dyn FnMut(f64)>);
 
                     *scroll_raf_cb.write() = Some(raf_cb);
-                    let scheduled = if let Some(win) = web_sys::window() {
+                    let scheduled_id = if let Some(win) = web_sys::window() {
                         if let Some(cb) = scroll_raf_cb.peek().as_ref() {
-                            win.request_animation_frame(cb.as_ref().unchecked_ref())
-                                .is_ok()
+                            win.request_animation_frame(cb.as_ref().unchecked_ref()).ok()
                         } else {
-                            false
+                            None
                         }
                     } else {
-                        false
+                        None
                     };
-                    if !scheduled {
+                    if let Some(id) = scheduled_id {
+                        *scroll_raf_id.write() = Some(id);
+                    } else {
+                        *scroll_raf_id.write() = None;
                         *scroll_raf_scheduled.write() = false;
                         *scroll_raf_cb.write() = None;
                     }

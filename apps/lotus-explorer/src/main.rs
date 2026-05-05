@@ -205,7 +205,7 @@ fn App() -> Element {
     let entries: Signal<Rows> = use_signal(|| Arc::<[CompoundEntry]>::from([]));
     let loading: Signal<bool> = use_signal(|| false);
     let mut error: Signal<Option<String>> = use_signal(|| None);
-    let mut error_kind: Signal<ErrorKind> = use_signal(|| ErrorKind::Unknown);
+    let error_kind: Signal<ErrorKind> = use_signal(|| ErrorKind::Unknown);
     let query_phase: Signal<QueryPhase> = use_signal(|| QueryPhase::Idle);
     let searched_once: Signal<bool> = use_signal(|| false);
     let taxon_notice: Signal<Option<String>> = use_signal(|| None);
@@ -219,14 +219,14 @@ fn App() -> Element {
     let display_capped_rows: Signal<bool> = use_signal(|| false);
     let sort: Signal<SortState> = use_signal(SortState::default);
     let mut mobile_filters_open: Signal<bool> = use_signal(|| false);
-    let mut pending_download_format: Signal<Option<String>> =
+    let pending_download_format: Signal<Option<String>> =
         use_signal(initial_download_format_from_url);
     let pending_execute: Signal<bool> = use_signal(initial_execute_from_url);
     // These guard whether a particular waiting-state debug message has already
     // been emitted this cycle. They are never read in RSX; `.peek()` is used
     // for reads so they never subscribe effects/components to themselves.
-    let mut waiting_loading_logged: Signal<bool> = use_signal(|| false);
-    let mut waiting_query_logged: Signal<bool> = use_signal(|| false);
+    let waiting_loading_logged: Signal<bool> = use_signal(|| false);
+    let waiting_query_logged: Signal<bool> = use_signal(|| false);
     let search_request_token: Signal<u64> = use_signal(|| 0);
     let locale_value = *locale.read();
     let mobile_open = *mobile_filters_open.read();
@@ -298,9 +298,9 @@ fn App() -> Element {
                 "unsupported_format",
                 Some(&format!("format={fmt}")),
             );
-            *error_kind.write() = ErrorKind::Validation;
-            *error.write() = Some(err_unsupported_format(*locale.peek(), fmt));
-            *pending_download_format.write() = None;
+            set_signal_if_changed(error_kind, ErrorKind::Validation);
+            set_signal_if_changed(error, Some(err_unsupported_format(*locale.peek(), fmt)));
+            set_signal_if_changed(pending_download_format, None);
             return;
         }
         if (pending.is_some() || *pending_execute.read())
@@ -323,6 +323,7 @@ fn App() -> Element {
                 );
             }
             start_search(criteria, locale, pending.is_some(), search_runtime);
+            set_signal_if_changed(pending_execute, false);
         }
     });
 
@@ -337,20 +338,20 @@ fn App() -> Element {
                         "waiting_loading",
                         Some(&format!("format={fmt}")),
                     );
-                    *waiting_loading_logged.write() = true;
+                    set_signal_if_changed(waiting_loading_logged, true);
                 }
-                *waiting_query_logged.write() = false;
+                set_signal_if_changed(waiting_query_logged, false);
                 return;
             }
-            *waiting_loading_logged.write() = false;
+            set_signal_if_changed(waiting_loading_logged, false);
             if let Some(query) = sparql_query.read().as_deref() {
-                *waiting_query_logged.write() = false;
+                set_signal_if_changed(waiting_query_logged, false);
                 let crit = criteria.peek().clone();
                 match DownloadFormat::from_str(&fmt) {
                     Some(format) => {
                         let q = query.to_string();
                         let filename = export::generate_filename(&crit, format.extension());
-                        *pending_download_format.write() = None;
+                        set_signal_if_changed(pending_download_format, None);
                         log_debug_evt(
                             "download",
                             "startup_dispatch",
@@ -395,9 +396,12 @@ fn App() -> Element {
                             "unsupported_format",
                             Some(&format!("format={fmt}")),
                         );
-                        *error_kind.write() = ErrorKind::Validation;
-                        *error.write() = Some(err_unsupported_format(*locale.peek(), &fmt));
-                        *pending_download_format.write() = None;
+                        set_signal_if_changed(error_kind, ErrorKind::Validation);
+                        set_signal_if_changed(
+                            error,
+                            Some(err_unsupported_format(*locale.peek(), &fmt)),
+                        );
+                        set_signal_if_changed(pending_download_format, None);
                     }
                 }
             } else {
@@ -408,12 +412,12 @@ fn App() -> Element {
                         "waiting_query",
                         Some(&format!("format={fmt}")),
                     );
-                    *waiting_query_logged.write() = true;
+                    set_signal_if_changed(waiting_query_logged, true);
                 }
             }
         } else {
-            *waiting_loading_logged.write() = false;
-            *waiting_query_logged.write() = false;
+            set_signal_if_changed(waiting_loading_logged, false);
+            set_signal_if_changed(waiting_query_logged, false);
         }
     });
 
