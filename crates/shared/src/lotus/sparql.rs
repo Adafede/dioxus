@@ -5,6 +5,7 @@ use super::models::{CompoundEntry, DatasetStats, TaxonMatch};
 use crate::sparql::{
     FetchError, QLEVER_WIKIDATA, SparqlResponseFormat, clean_doi, coalesce, col_idx,
     execute_sparql as shared_execute, execute_sparql_bytes as shared_execute_bytes,
+    fetch_export_url_bytes as shared_fetch_export_url_bytes,
     execute_sparql_with_format as shared_execute_with_format, extract_qid, field, non_empty,
     parse_year,
 };
@@ -137,6 +138,14 @@ pub async fn execute_sparql_format(
     format: SparqlResponseFormat,
 ) -> Result<String, FetchError> {
     shared_execute_with_format(sparql, QLEVER_WIKIDATA, format).await
+}
+
+pub async fn fetch_export_url_format(
+    url: &str,
+    format: SparqlResponseFormat,
+) -> Result<String, FetchError> {
+    let bytes = shared_fetch_export_url_bytes(url, format).await?;
+    String::from_utf8(bytes).map_err(|e| FetchError::Parse(e.to_string()))
 }
 
 pub fn parse_compounds_csv_display_bytes(

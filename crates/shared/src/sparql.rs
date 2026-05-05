@@ -172,6 +172,72 @@ pub async fn execute_sparql_with_format_bytes(
     Err(last_err.unwrap_or_else(|| FetchError::Network("unknown error".into())))
 }
 
+/// Fetch a fully-formed export URL (for example with `action=csv_export`) and
+/// return raw response bytes.
+///
+/// This is useful for clients that want direct QLever export representations
+/// while still using HTTP content negotiation (`Accept` / `Accept-Encoding`).
+pub async fn fetch_export_url_bytes(
+    url: &str,
+    format: SparqlResponseFormat,
+) -> Result<Vec<u8>, FetchError> {
+    const MAX_ATTEMPTS: u32 = 2;
+    let client = http_client();
+    let mut last_err: Option<FetchError> = None;
+
+    for attempt in 0..MAX_ATTEMPTS {
+        let result = client
+            .get(url)
+            .header("Accept", format.accept())
+            .send()
+            .await;
+
+        match result {
+            Ok(resp) => {
+                let status = resp.status();
+                let code = status.as_u16();
+                if status.is_success() {
+                    return match resp.bytes().await {
+                        Ok(bytes) if bytes.is_empty() => Err(FetchError::Empty),
+                        Ok(bytes) => {
+                            let preview = String::from_utf8_lossy(&bytes);
+                            if looks_like_gateway_error(&preview) {
+                                last_err = Some(FetchError::Http(
+                                    502,
+                                    "upstream gateway error (HTML payload)".into(),
+                                ));
+                                if attempt + 1 < MAX_ATTEMPTS {
+                                    continue;
+                                }
+                                return Err(last_err.unwrap());
+                            }
+                            Ok(bytes.to_vec())
+                        }
+                        Err(e) => {
+                            last_err = Some(FetchError::Network(e.to_string()));
+                            if attempt + 1 < MAX_ATTEMPTS {
+                                continue;
+                            }
+                            Err(last_err.unwrap())
+                        }
+                    };
+                }
+
+                let body = resp.text().await.unwrap_or_default();
+                if (400..500).contains(&code) {
+                    return Err(FetchError::Http(code, body));
+                }
+                last_err = Some(FetchError::Http(code, body));
+            }
+            Err(e) => {
+                last_err = Some(FetchError::Network(e.to_string()));
+            }
+        }
+    }
+
+    Err(last_err.unwrap_or_else(|| FetchError::Network("unknown error".into())))
+}
+
 fn http_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT.get_or_init(build_http_client)

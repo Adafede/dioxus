@@ -72,6 +72,20 @@ impl DownloadFormat {
         }
     }
 
+    fn response_format(&self) -> SparqlResponseFormat {
+        match self {
+            Self::Csv => SparqlResponseFormat::Csv,
+            Self::Json => SparqlResponseFormat::SparqlJson,
+            Self::Rdf => SparqlResponseFormat::Turtle,
+        }
+    }
+
+    pub async fn fetch_from_export_url(&self, url: &str) -> Result<String, String> {
+        sparql::fetch_export_url_format(url, self.response_format())
+            .await
+            .map_err(|e| e.to_string())
+    }
+
     pub async fn fetch_fallback(&self, query: &str) -> Result<String, String> {
         match self {
             Self::Csv => sparql::execute_sparql(query)
@@ -106,28 +120,84 @@ pub async fn execute_download(
     // Try API first
     if let Ok(urls) = api::export_urls(&criteria).await {
         let url = format.extract_url(&urls);
-        let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
-        perf::log_timing(
-            "download",
-            &format!(
-                "event=download format={} phase=fetch state=success source=api",
-                format.log_name()
-            ),
-            Some(fetch_elapsed),
-        );
+        match format.fetch_from_export_url(&url).await {
+            Ok(body) => {
+                let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
+                perf::log_timing(
+                    "download",
+                    &format!(
+                        "event=download format={} phase=fetch state=success source=api_export body_bytes={}",
+                        format.log_name(),
+                        body.len()
+                    ),
+                    Some(fetch_elapsed),
+                );
 
-        let trigger_timer = perf::start_timer(&format.trigger_timer_label());
-        trigger_download(&filename, format.content_type(), &url);
-        let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
-        perf::log_timing(
-            "download",
-            &format!(
-                "event=download format={} phase=trigger state=success source=api_url",
-                format.log_name()
-            ),
-            Some(trigger_elapsed),
-        );
-        Ok(())
+                let trigger_timer = perf::start_timer(&format.trigger_timer_label());
+                trigger_download(&filename, format.content_type(), &body);
+                let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
+                perf::log_timing(
+                    "download",
+                    &format!(
+                        "event=download format={} phase=trigger state=success source=api_export",
+                        format.log_name()
+                    ),
+                    Some(trigger_elapsed),
+                );
+                Ok(())
+            }
+            Err(e) => {
+                perf::log_warn(&format!(
+                    "event=download format={} phase=fetch state=error source=api_export reason={e}",
+                    format.log_name()
+                ));
+                // Fallback to direct query execution
+                match format.fetch_fallback(&query).await {
+                    Ok(body) => {
+                        let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
+                        perf::log_timing(
+                            "download",
+                            &format!(
+                                "event=download format={} phase=fetch state=success source=fallback body_bytes={}",
+                                format.log_name(),
+                                body.len()
+                            ),
+                            Some(fetch_elapsed),
+                        );
+
+                        let trigger_timer = perf::start_timer(&format.trigger_timer_label());
+                        trigger_download(&filename, format.content_type(), &body);
+                        let trigger_elapsed =
+                            perf::end_timer(&format.trigger_timer_label(), trigger_timer);
+                        perf::log_timing(
+                            "download",
+                            &format!(
+                                "event=download format={} phase=trigger state=success source=fallback",
+                                format.log_name()
+                            ),
+                            Some(trigger_elapsed),
+                        );
+                        Ok(())
+                    }
+                    Err(e) => {
+                        let elapsed = perf::end_timer(format.timer_label(), dl_timer);
+                        perf::log_timing(
+                            "download",
+                            &format!(
+                                "event=download format={} phase=fetch state=error source=fallback reason={e}",
+                                format.log_name()
+                            ),
+                            Some(elapsed),
+                        );
+                        perf::log_warn(&format!(
+                            "event=download format={} phase=fetch state=error source=fallback reason={e}",
+                            format.log_name()
+                        ));
+                        Err(e)
+                    }
+                }
+            }
+        }
     } else {
         // Fallback to direct query execution
         match format.fetch_fallback(&query).await {
