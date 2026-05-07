@@ -387,8 +387,7 @@ pub fn KetcherPanel(locale: Locale) -> Element {
 
     rsx! {
         details { class: "ketcher-panel",
-            summary {
-                onclick: move |_| *mount_iframe.write() = true,
+            summary { onclick: move |_| *mount_iframe.write() = true,
                 "{t(locale, TextKey::KetcherSummary)}"
             }
             div { class: "ketcher-wrap",

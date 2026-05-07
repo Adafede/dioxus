@@ -456,9 +456,7 @@ fn App() -> Element {
                         "{t(locale_value, TextKey::FiltersShow)}"
                     }
                 }
-                SearchPanel {
-                    on_search,
-                }
+                SearchPanel { on_search }
                 div { class: "sidebar-logo-wrap",
                     a {
                         href: "?",
@@ -595,19 +593,27 @@ fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     let entries = state.entries;
 
     if loading {
-        return rsx! { LoadingState { locale } };
+        return rsx! {
+            LoadingState { locale }
+        };
     }
 
     if entries.read().is_empty() && !has_error && !searched_once {
-        return rsx! { WelcomeScreen { locale } };
+        return rsx! {
+            WelcomeScreen { locale }
+        };
     }
 
     if entries.read().is_empty() && !has_error && download_only_mode && download_dispatching {
-        return rsx! { DownloadDispatchState { locale } };
+        return rsx! {
+            DownloadDispatchState { locale }
+        };
     }
 
     if entries.read().is_empty() && !has_error && download_only_mode {
-        return rsx! { DownloadOnlyState { locale, on_preview } };
+        return rsx! {
+            DownloadOnlyState { locale, on_preview }
+        };
     }
 
     rsx! {
@@ -676,10 +682,7 @@ fn Footer(locale: Locale) -> Element {
             FooterRow {
                 label: t(locale, TextKey::FooterArchive),
                 class: "footer-link red",
-                links: &[(
-                    "https://doi.org/10.5281/zenodo.5794106",
-                    "Frozen version (Zenodo)",
-                )],
+                links: &[("https://doi.org/10.5281/zenodo.5794106", "Frozen version (Zenodo)")],
             }
             div { class: "footer-row",
                 span { class: "footer-label", "{t(locale, TextKey::FooterCitation)}" }
@@ -909,7 +912,8 @@ fn HeaderMetaSection(
         if let (Some(qh), Some(rh)) = (
             query_hash.read().as_deref(),
             result_hash.read().as_deref(),
-        ) {
+        )
+        {
             p { class: "page-meta",
                 span { class: "meta-key", "{t(locale, TextKey::QueryHash)}" }
                 span { class: "meta-sep", ":" }

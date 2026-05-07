@@ -332,7 +332,7 @@ fn ResultsToolbar(locale: Locale) -> Element {
                     locale,
                     value: entries_value,
                     secondary_value: (entries_unique_value != entries_value)
-                        .then_some(entries_unique_value),
+                                            .then_some(entries_unique_value),
                     secondary_label: Some(t(locale, TextKey::Unique)),
                     noun: CountNoun::Entry,
                     plus: false,
@@ -621,22 +621,22 @@ fn VirtualizedResultsTable(
                     let mut scroll_raf_cb_sig = scroll_raf_cb;
                     let mut scroll_raf_id_sig = scroll_raf_id;
                     let div_for_raf = div.clone();
-                    let raf_cb = wasm_bindgen::closure::Closure::wrap(Box::new(move |_ts: f64| {
-                        let top = div_for_raf.scroll_top().max(0) as usize;
-                        let height = div_for_raf.client_height().max(0) as usize;
-                        let next_first = (top / row_height_px).min(total);
-                        if next_first != *first_visible_row_sig.peek() {
-                            *first_visible_row_sig.write() = next_first;
-                        }
-                        if height > 0 && height != *viewport_height_px_sig.peek() {
-                            *viewport_height_px_sig.write() = height;
-                        }
-                        *scroll_raf_id_sig.write() = None;
-                        *scroll_raf_scheduled_sig.write() = false;
-                        *scroll_raf_cb_sig.write() = None;
-                    })
-                        as Box<dyn FnMut(f64)>);
-
+                    let raf_cb = wasm_bindgen::closure::Closure::wrap(
+                        Box::new(move |_ts: f64| {
+                            let top = div_for_raf.scroll_top().max(0) as usize;
+                            let height = div_for_raf.client_height().max(0) as usize;
+                            let next_first = (top / row_height_px).min(total);
+                            if next_first != *first_visible_row_sig.peek() {
+                                *first_visible_row_sig.write() = next_first;
+                            }
+                            if height > 0 && height != *viewport_height_px_sig.peek() {
+                                *viewport_height_px_sig.write() = height;
+                            }
+                            *scroll_raf_id_sig.write() = None;
+                            *scroll_raf_scheduled_sig.write() = false;
+                            *scroll_raf_cb_sig.write() = None;
+                        }) as Box<dyn FnMut(f64)>,
+                    );
                     *scroll_raf_cb.write() = Some(raf_cb);
                     let scheduled_id = if let Some(win) = web_sys::window() {
                         if let Some(cb) = scroll_raf_cb.peek().as_ref() {
@@ -661,18 +661,14 @@ fn VirtualizedResultsTable(
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",
                 thead {
                     tr {
-                        th { class: "th-static", scope: "col",
-                            "{t(locale, TextKey::Structure)}"
-                        }
+                        th { class: "th-static", scope: "col", "{t(locale, TextKey::Structure)}" }
                         th {
                             class: "sort-th",
                             scope: "col",
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::Name)}",
                             onclick: toggle_sort(SortColumn::Name),
                             "{t(locale, TextKey::Compound)} "
-                            span {
-                                class: "sort-icon",
-                                "aria-hidden": "true",
+                            span { class: "sort-icon", "aria-hidden": "true",
                                 {sort_icon_for(&current_sort, SortColumn::Name)}
                             }
                         }
@@ -682,9 +678,7 @@ fn VirtualizedResultsTable(
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::Mass)}",
                             onclick: toggle_sort(SortColumn::Mass),
                             "{t(locale, TextKey::Mass)} "
-                            span {
-                                class: "sort-icon",
-                                "aria-hidden": "true",
+                            span { class: "sort-icon", "aria-hidden": "true",
                                 {sort_icon_for(&current_sort, SortColumn::Mass)}
                             }
                         }
@@ -694,9 +688,7 @@ fn VirtualizedResultsTable(
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::Formula)}",
                             onclick: toggle_sort(SortColumn::Formula),
                             "{t(locale, TextKey::Formula)} "
-                            span {
-                                class: "sort-icon",
-                                "aria-hidden": "true",
+                            span { class: "sort-icon", "aria-hidden": "true",
                                 {sort_icon_for(&current_sort, SortColumn::Formula)}
                             }
                         }
@@ -706,9 +698,7 @@ fn VirtualizedResultsTable(
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::TaxonName)}",
                             onclick: toggle_sort(SortColumn::TaxonName),
                             "{t(locale, TextKey::TaxonCol)} "
-                            span {
-                                class: "sort-icon",
-                                "aria-hidden": "true",
+                            span { class: "sort-icon", "aria-hidden": "true",
                                 {sort_icon_for(&current_sort, SortColumn::TaxonName)}
                             }
                         }
@@ -718,9 +708,7 @@ fn VirtualizedResultsTable(
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::RefTitle)}",
                             onclick: toggle_sort(SortColumn::RefTitle),
                             "{t(locale, TextKey::Reference)} "
-                            span {
-                                class: "sort-icon",
-                                "aria-hidden": "true",
+                            span { class: "sort-icon", "aria-hidden": "true",
                                 {sort_icon_for(&current_sort, SortColumn::RefTitle)}
                             }
                         }
@@ -730,9 +718,7 @@ fn VirtualizedResultsTable(
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::PubYear)}",
                             onclick: toggle_sort(SortColumn::PubYear),
                             "{t(locale, TextKey::Year)} "
-                            span {
-                                class: "sort-icon",
-                                "aria-hidden": "true",
+                            span { class: "sort-icon", "aria-hidden": "true",
                                 {sort_icon_for(&current_sort, SortColumn::PubYear)}
                             }
                         }
@@ -740,9 +726,7 @@ fn VirtualizedResultsTable(
                 }
                 tbody {
                     if top_spacer_px > 0 {
-                        tr {
-                            class: "virtual-spacer-row",
-                            aria_hidden: "true",
+                        tr { class: "virtual-spacer-row", aria_hidden: "true",
                             td {
                                 class: "virtual-spacer-cell",
                                 colspan: "7",
@@ -754,12 +738,19 @@ fn VirtualizedResultsTable(
                         // Keep a single read for each reactive source per window render.
                         let rows = entries.read();
                         let order = sorted_indices.read();
-                        {visible_rows_view(locale, row_text, &rows, order.as_ref(), start_row, visible_count)}
+                        {
+                            visible_rows_view(
+                                locale,
+                                row_text,
+                                &rows,
+                                order.as_ref(),
+                                start_row,
+                                visible_count,
+                            )
+                        }
                     }
                     if bottom_spacer_px > 0 {
-                        tr {
-                            class: "virtual-spacer-row",
-                            aria_hidden: "true",
+                        tr { class: "virtual-spacer-row", aria_hidden: "true",
                             td {
                                 class: "virtual-spacer-cell",
                                 colspan: "7",
@@ -834,15 +825,17 @@ fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) 
             {mass_cell(entry.mass)}
             {formula_cell(entry.formula.as_deref())}
             {taxon_cell(locale, text, entry, taxon_qid)}
-            {reference_cell(
-                locale,
-                text,
-                entry,
-                reference_qid,
-                doi,
-                statement_id,
-                truncated_ref_title,
-            )}
+            {
+                reference_cell(
+                    locale,
+                    text,
+                    entry,
+                    reference_qid,
+                    doi,
+                    statement_id,
+                    truncated_ref_title,
+                )
+            }
             {year_cell(entry.pub_year)}
         }
     }
@@ -1003,8 +996,10 @@ fn reference_cell(
     rsx! {
         td { class: "td-ref",
             div { class: "cell-primary",
-                if let (Some(full_title), Some(display_title)) =
-                    (entry.ref_title.as_deref(), truncated_ref_title.as_deref())
+                if let (Some(full_title), Some(display_title)) = (
+                    entry.ref_title.as_deref(),
+                    truncated_ref_title.as_deref(),
+                )
                 {
                     a {
                         href: "https://www.wikidata.org/entity/{reference_qid}",
