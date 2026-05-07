@@ -675,15 +675,32 @@ fn Footer(locale: Locale) -> Element {
         footer { class: "app-footer",
             FooterRow {
                 label: t(locale, TextKey::FooterArchive),
-                class: "footer-link muted",
+                class: "footer-link red",
                 links: &[(
                     "https://doi.org/10.5281/zenodo.5794106",
                     "Frozen version (Zenodo)",
                 )],
             }
+            div { class: "footer-row",
+                span { class: "footer-label", "{t(locale, TextKey::FooterCitation)}" }
+                a {
+                    class: "footer-link red",
+                    href: "https://doi.org/10.7554/eLife.70780",
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    "LOTUS paper (eLife)"
+                }
+                span { class: "footer-sep", "·" }
+                a {
+                    class: "footer-link red",
+                    href: "/docs/references.bib",
+                    download: "references.bib",
+                    "BibTeX"
+                }
+            }
             FooterRow {
                 label: t(locale, TextKey::FooterCode),
-                class: "footer-link code",
+                class: "footer-link green",
                 links: &[
                     (
                         "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer",
@@ -693,7 +710,7 @@ fn Footer(locale: Locale) -> Element {
             }
             FooterRow {
                 label: t(locale, TextKey::FooterData),
-                class: "footer-link data",
+                class: "footer-link green",
                 links: &[
                     ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
                     ("https://www.wikidata.org/", "Wikidata"),
@@ -701,7 +718,7 @@ fn Footer(locale: Locale) -> Element {
             }
             FooterRow {
                 label: t(locale, TextKey::FooterPrograms),
-                class: "footer-link tool",
+                class: "footer-link blue",
                 links: &[
                     ("https://github.com/cdk/depict", "CDK Depict"),
                     ("https://idsm.elixir-czech.cz/", "IDSM"),
@@ -712,7 +729,7 @@ fn Footer(locale: Locale) -> Element {
             div { class: "footer-row",
                 span { class: "footer-label", "{t(locale, TextKey::FooterLicense)}" }
                 a {
-                    class: "footer-link muted",
+                    class: "footer-link blue",
                     href: "https://creativecommons.org/publicdomain/zero/1.0/",
                     target: "_blank",
                     rel: "noopener noreferrer",
@@ -721,7 +738,7 @@ fn Footer(locale: Locale) -> Element {
                 span { class: "footer-aside", "{t(locale, TextKey::FooterForData)}" }
                 span { class: "footer-sep", "·" }
                 a {
-                    class: "footer-link muted",
+                    class: "footer-link blue",
                     href: "https://www.gnu.org/licenses/agpl-3.0.html",
                     target: "_blank",
                     rel: "noopener noreferrer",

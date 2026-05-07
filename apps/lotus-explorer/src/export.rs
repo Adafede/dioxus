@@ -318,8 +318,9 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
         "citation".into(),
         json!([{
             "@type": "ScholarlyArticle",
-            "name": "LOTUS initiative",
+            "name": "The LOTUS initiative for open knowledge management in natural products research",
             "identifier": "https://doi.org/10.7554/eLife.70780",
+            "url": "https://doi.org/10.7554/eLife.70780",
         }]),
     );
     meta.insert(
