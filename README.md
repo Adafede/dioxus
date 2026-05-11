@@ -20,7 +20,7 @@ Follow this order for fastest onboarding:
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
-cargo install dioxus-cli --version 0.7.7 --locked
+cargo install dioxus-cli --version 0.7.9 --locked
 ```
 
 Optional security tooling for full local parity with CI supply-chain checks:
@@ -36,7 +36,7 @@ If you only want to run the explorer locally:
 
 ```bash
 rustup target add wasm32-unknown-unknown
-cargo install dioxus-cli --version 0.7.7 --locked
+cargo install dioxus-cli --version 0.7.9 --locked
 dx serve --package lotus-explorer
 ```
 
@@ -246,7 +246,7 @@ GitHub Actions / Forgejo Actions validate and publish on every push to `main`:
 ## Common setup mistakes
 
 - Missing `wasm32-unknown-unknown` target leads to explorer build/serve failures.
-- Using a different `dioxus-cli` version than `0.7.7` can cause unexpected behavior.
+- Using a different `dioxus-cli` version than `0.7.9` can cause unexpected behavior.
 - Expecting API-backed behavior without a running API: explorer defaults to direct SPARQL.
 - For public API deployments, set strict `CORS_ALLOWED_ORIGINS` (do not use `*`).
 

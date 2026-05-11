@@ -15,7 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 console_log = { workspace = true }
-# Use the workspace pin (`dioxus = "0.7.7"`, `features = ["web"]`) so dx can
+# Use the workspace pin (`dioxus = "0.7.9"`, `features = ["web"]`) so dx can
 # auto-detect the `wasm32-unknown-unknown` target. Without a platform
 # feature, dioxus-cli 0.7+ fails with "Could not automatically detect
 # target triple".
