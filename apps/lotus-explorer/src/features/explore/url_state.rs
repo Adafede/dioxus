@@ -402,6 +402,31 @@ mod tests {
     }
 
     #[test]
+    fn share_params_keep_formula_toggle_but_omit_default_formula_bounds() {
+        let crit = SearchCriteria {
+            taxon: "Fungi".into(),
+            formula_enabled: true,
+            ..SearchCriteria::default()
+        };
+
+        let params: BTreeMap<String, String> = crit.shareable_query_params().into_iter().collect();
+        let reparsed = parse_criteria_from_params(&params);
+
+        assert_eq!(params.get("taxon").map(String::as_str), Some("Fungi"));
+        assert_eq!(
+            params.get("formula_filter").map(String::as_str),
+            Some("true")
+        );
+        assert!(!params.contains_key("c_min"));
+        assert!(!params.contains_key("c_max"));
+        assert!(!params.contains_key("cl_state"));
+        assert!(reparsed.formula_enabled);
+        assert_eq!(reparsed.c_min, SearchCriteria::default().c_min);
+        assert_eq!(reparsed.c_max, SearchCriteria::default().c_max);
+        assert_eq!(reparsed.cl_state, SearchCriteria::default().cl_state);
+    }
+
+    #[test]
     fn startup_action_download_has_priority_over_execute() {
         let mut params = BTreeMap::new();
         params.insert("download".into(), "yes".into());

@@ -288,22 +288,25 @@ impl SearchCriteria {
             if !self.formula_exact.trim().is_empty() {
                 params.push(("formula_exact".to_string(), self.formula_exact.clone()));
             }
-            params.push(("c_min".to_string(), self.c_min.to_string()));
-            params.push(("c_max".to_string(), self.c_max.to_string()));
-            params.push(("h_min".to_string(), self.h_min.to_string()));
-            params.push(("h_max".to_string(), self.h_max.to_string()));
-            params.push(("n_min".to_string(), self.n_min.to_string()));
-            params.push(("n_max".to_string(), self.n_max.to_string()));
-            params.push(("o_min".to_string(), self.o_min.to_string()));
-            params.push(("o_max".to_string(), self.o_max.to_string()));
-            params.push(("p_min".to_string(), self.p_min.to_string()));
-            params.push(("p_max".to_string(), self.p_max.to_string()));
-            params.push(("s_min".to_string(), self.s_min.to_string()));
-            params.push(("s_max".to_string(), self.s_max.to_string()));
-            params.push(("f_state".to_string(), self.f_state.as_str().to_string()));
-            params.push(("cl_state".to_string(), self.cl_state.as_str().to_string()));
-            params.push(("br_state".to_string(), self.br_state.as_str().to_string()));
-            params.push(("i_state".to_string(), self.i_state.as_str().to_string()));
+            for (label, min, max, default_max) in self.element_ranges() {
+                let key = label.to_ascii_lowercase();
+                if min > 0 {
+                    params.push((format!("{key}_min"), min.to_string()));
+                }
+                if max < default_max {
+                    params.push((format!("{key}_max"), max.to_string()));
+                }
+            }
+            for (label, state) in [
+                ("f", self.f_state),
+                ("cl", self.cl_state),
+                ("br", self.br_state),
+                ("i", self.i_state),
+            ] {
+                if state != ElementState::Allowed {
+                    params.push((format!("{label}_state"), state.as_str().to_string()));
+                }
+            }
         }
         params
     }
@@ -428,5 +431,83 @@ impl Default for SortState {
             col: SortColumn::Name,
             dir: SortDir::Asc,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ElementState, SearchCriteria};
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn shareable_query_params_omit_default_formula_values_when_only_toggle_is_enabled() {
+        let criteria = SearchCriteria {
+            taxon: "Fungi".into(),
+            formula_enabled: true,
+            ..SearchCriteria::default()
+        };
+
+        let params: BTreeMap<String, String> =
+            criteria.shareable_query_params().into_iter().collect();
+
+        assert_eq!(params.get("taxon").map(String::as_str), Some("Fungi"));
+        assert_eq!(
+            params.get("formula_filter").map(String::as_str),
+            Some("true")
+        );
+        for key in [
+            "formula_exact",
+            "c_min",
+            "c_max",
+            "h_min",
+            "h_max",
+            "n_min",
+            "n_max",
+            "o_min",
+            "o_max",
+            "p_min",
+            "p_max",
+            "s_min",
+            "s_max",
+            "f_state",
+            "cl_state",
+            "br_state",
+            "i_state",
+        ] {
+            assert!(
+                !params.contains_key(key),
+                "unexpected default formula param: {key}"
+            );
+        }
+    }
+
+    #[test]
+    fn shareable_query_params_keep_only_non_default_formula_overrides() {
+        let criteria = SearchCriteria {
+            taxon: "Fungi".into(),
+            formula_enabled: true,
+            c_min: 1,
+            c_max: 10,
+            o_max: 32,
+            cl_state: ElementState::Required,
+            br_state: ElementState::Excluded,
+            ..SearchCriteria::default()
+        };
+
+        let params: BTreeMap<String, String> =
+            criteria.shareable_query_params().into_iter().collect();
+
+        assert_eq!(
+            params.get("formula_filter").map(String::as_str),
+            Some("true")
+        );
+        assert_eq!(params.get("c_min").map(String::as_str), Some("1"));
+        assert_eq!(params.get("c_max").map(String::as_str), Some("10"));
+        assert_eq!(params.get("o_max").map(String::as_str), Some("32"));
+        assert_eq!(params.get("cl_state").map(String::as_str), Some("required"));
+        assert_eq!(params.get("br_state").map(String::as_str), Some("excluded"));
+        assert!(!params.contains_key("o_min"));
+        assert!(!params.contains_key("f_state"));
+        assert!(!params.contains_key("i_state"));
     }
 }

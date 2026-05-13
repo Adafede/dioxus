@@ -85,7 +85,9 @@ fn build_metadata_filename(
     result_hash: Option<&str>,
 ) -> String {
     match (query_hash, result_hash) {
-        (Some(query_hash), Some(result_hash)) => format!("{query_hash}_{result_hash}_metadata.json"),
+        (Some(query_hash), Some(result_hash)) => {
+            format!("{query_hash}_{result_hash}_metadata.json")
+        }
         _ => export::generate_filename(criteria, "metadata.json"),
     }
 }
@@ -131,7 +133,8 @@ mod tests {
     fn toolbar_model_falls_back_to_generated_metadata_filename_without_both_hashes() {
         let criteria = SearchCriteria::default();
 
-        let model = build_download_toolbar_model(&criteria, None, Some("{}"), Some("query123"), None);
+        let model =
+            build_download_toolbar_model(&criteria, None, Some("{}"), Some("query123"), None);
 
         assert!(model.export_available);
         assert!(model.metadata_filename.ends_with("metadata.json"));
@@ -161,4 +164,3 @@ mod tests {
         assert!(url.contains(encoded.as_ref()));
     }
 }
-
