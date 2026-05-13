@@ -10,15 +10,20 @@ use crate::models::{ElementState, SearchCriteria, SmilesSearchType};
 
 /// Unified action type for all form field updates.
 ///
-/// This eliminates the need for individual event handlers (`on_c_min`, `on_h_max`, etc.)
-/// and provides a single dispatch point for form logic, validation, and side effects.
+/// Used by [`crate::state::FormCriteriaContext::update`] to atomically mutate
+/// `SearchCriteria` via a pure function.  Components dispatch actions instead
+/// of receiving individual callback props.
+///
+/// `FormulaSection` uses this for all element-bounds and halogen actions.
+/// The remaining variants (`Taxon`, `Smiles`, `SmilesSearchType`, etc.) are
+/// available for future context-dispatch wiring of the remaining form sections.
 ///
 /// ## Usage
 /// ```ignore
 /// ctx.update(FormAction::Taxon("Quercus".to_string()));
 /// ctx.update(FormAction::CMin(50));
 /// ```
-#[allow(dead_code)] // Will be used when SearchPanel is refactored to use context
+#[allow(dead_code)] // Not all variants are dispatched yet — available for Phase 5 completion
 #[derive(Clone, Debug, PartialEq)]
 pub enum FormAction {
     // Taxon + Structure
@@ -61,7 +66,7 @@ pub enum FormAction {
 /// Apply a FormAction to SearchCriteria, returning the mutated copy.
 ///
 /// This is a **pure function** — no side effects, fully testable.
-#[allow(dead_code)] // Will be used when SearchPanel is refactored to use context
+/// Called by [`crate::state::FormCriteriaContext::update`].
 #[must_use]
 pub fn apply_form_action(mut criteria: SearchCriteria, action: FormAction) -> SearchCriteria {
     match action {

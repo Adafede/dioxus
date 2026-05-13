@@ -23,7 +23,7 @@ mod utils;
 
 use app::draw_page::DrawPage;
 use app::view::AppView;
-use app_state::{AppState, DownloadState, SearchState, UiState};
+use app_state::{AppState, DownloadState};
 use components::layout::footer::Footer;
 use components::layout::header_meta::HeaderMetaSection;
 use components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
@@ -48,7 +48,10 @@ use i18n::{
 };
 use models::*;
 use repositories::HybridRepository;
-use state::{AppStateContext, FormCriteriaContext, ResultsContext, SearchUiContext};
+use state::{
+    AppStateContext, FormCriteriaContext, ResultsContext, SearchUiContext,
+    use_form_criteria_context,
+};
 use std::sync::Arc;
 
 fn main() {
@@ -63,75 +66,76 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    // ── Initialise from URL parameters ────────────────────────────────────────
     let initial_criteria = initial_criteria_from_url();
+
+    // ── Canonical signals ─────────────────────────────────────────────────────
+    // Each signal is the *sole* owner of its data.  There are no mirror copies
+    // and no sync-effect loops writing between them.
+    //
+    // * app_state — view routing, download orchestration, metrics guards.
+    // * criteria  — live search-form input.
+    // * locale    — active UI locale (also propagated via LocaleProvider ctx).
+    // * explore   — search lifecycle, result rows, sort state.
     let mut app_state: Signal<AppState> = use_signal(|| AppState {
         view: initial_view_from_url(),
-        search: SearchState {
-            criteria: initial_criteria.clone(),
-            ..SearchState::default()
-        },
-        ui: UiState {
-            locale: initial_locale_from_url(),
-            ..UiState::default()
-        },
         download: DownloadState {
             pending_format: initial_download_format_from_url(),
             direct_execute: initial_execute_from_url(),
         },
         ..AppState::default()
     });
+
+    let initial_criteria_for_baseline = initial_criteria.clone();
     let criteria: Signal<SearchCriteria> = use_signal(move || initial_criteria.clone());
+    // Baseline for dirty-tracking — initialised identically to criteria so the
+    // search button does not appear "dirty" before the user changes anything.
+    let criteria_baseline: Signal<SearchCriteria> =
+        use_signal(move || initial_criteria_for_baseline.clone());
+
     let mut locale: Signal<Locale> = use_signal(initial_locale_from_url);
     let explore: Signal<ExploreState> = use_signal(ExploreState::default);
 
+    // ── Derived / cached values (no subscriptions to unrelated signals) ───────
     let locale_value = *locale.read();
     let mobile_filters_open = explore.read().ui.mobile_filters_open;
     let repo = HybridRepository::new();
 
+    // ── Context providers ─────────────────────────────────────────────────────
     let _app_state_ctx = use_context_provider(move || AppStateContext::new(app_state));
-    let _search_ui_ctx =
-        use_context_provider(move || SearchUiContext::from_signals(app_state, criteria));
-    let _form_criteria_ctx = use_context_provider(move || FormCriteriaContext::new(criteria));
-    let _results_ctx =
-        use_context_provider(move || ResultsContext::from_signals(app_state, explore));
+    let _form_criteria_ctx =
+        use_context_provider(move || FormCriteriaContext::new(criteria, criteria_baseline));
+    let _search_ui_ctx = use_context_provider(move || SearchUiContext::new(criteria, explore));
+    let _results_ctx = use_context_provider(move || ResultsContext::new(explore));
 
+    // ── Shareable URL (recomputes only when criteria change) ──────────────────
     let shareable_url =
         use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));
 
+    // ── Side effects ──────────────────────────────────────────────────────────
+    // Persist locale to URL query string whenever it changes.
     use_effect(move || {
         persist_locale_query_param(*locale.read());
     });
-    use_effect(move || {
-        if app_state.read().ui.locale != *locale.read() {
-            app_state.with_mut(|state| state.ui.locale = *locale.read());
-        }
-    });
-    use_effect(move || {
-        let criteria_snapshot = criteria.read().clone();
-        if app_state.read().search.criteria != criteria_snapshot {
-            app_state.with_mut(|state| state.search.criteria = criteria_snapshot);
-        }
-    });
-    use_effect(move || {
-        let explore_snapshot = explore.read().clone();
-        let mobile_filters_open = explore_snapshot.ui.mobile_filters_open;
-        if app_state.read().search.explore != explore_snapshot {
-            app_state.with_mut(|state| state.search.explore = explore_snapshot);
-        }
-        if app_state.read().ui.mobile_filters_open != mobile_filters_open {
-            app_state.with_mut(|state| state.ui.mobile_filters_open = mobile_filters_open);
-        }
-    });
+    // Persist view to URL query string whenever it changes.
     use_effect(move || {
         persist_view_query_param(app_state.read().view);
     });
 
+    // ── Feature hooks ─────────────────────────────────────────────────────────
     use_startup_effect(app_state, explore, criteria, repo);
     use_download_dispatch_effect(app_state, explore);
 
-    let on_search = move |_: ()| start_search(criteria, false, explore, repo);
+    // ── Event handlers ────────────────────────────────────────────────────────
+    let form_ctx_for_search = use_form_criteria_context();
+    let on_search = move |_: ()| {
+        // Advance dirty baseline so the button immediately returns to clean style.
+        form_ctx_for_search.mark_searched();
+        start_search(criteria, false, explore, repo);
+    };
     let on_preview = move |_: ()| start_search(criteria, false, explore, repo);
 
+    // ── Layout helpers ────────────────────────────────────────────────────────
     let app_layout_class = if app_state.read().view == AppView::Explore {
         "app-layout"
     } else {

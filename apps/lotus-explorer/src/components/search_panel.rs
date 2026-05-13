@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! Search panel and its sub-section components.
+//!
+//! ## Architecture
+//!
+//! `SearchPanel` reads only what it needs:
+//! * `FormCriteriaContext` — live criteria signal + `is_dirty()` for the search
+//!   button affordance.
+//! * `SearchUiContext.explore` — lifecycle signal for the `loading` flag.
+//!
+//! Sub-sections (`FormulaSection`, `StructureSection`) consume `FormCriteriaContext`
+//! directly so they need **zero data props** — they bypass SearchPanel entirely.
+//! This eliminates 36 props that previously flowed through `SearchPanel` down to
+//! `FormulaSection`.
+
 pub use crate::components::form_sections::{
     FormulaSection, MassRangeInput, TaxonInput, YearRangeInput,
 };
@@ -11,14 +25,21 @@ mod structure_model;
 use crate::i18n::{TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::classify_structure;
-use crate::state::use_search_ui_context;
+use crate::state::{use_form_criteria_context, use_search_ui_context};
 use dioxus::prelude::*;
 
 #[component]
 pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
     let state = use_search_ui_context();
+    let form_ctx = use_form_criteria_context();
     let locale = crate::hooks::use_locale();
-    let loading = state.app_state.read().search.explore.lifecycle.loading;
+
+    // Read loading from the live explore signal — no stale copy in AppState.
+    let loading = state.explore.read().lifecycle.loading;
+    // Show a "dirty" indicator on the search button when the form has changed
+    // since the last search.
+    let is_dirty = form_ctx.is_dirty();
+
     let mut c = state.criteria;
     let criteria = c.read().clone();
 
@@ -55,50 +76,15 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                     on_max: move |v| c.write().year_max = v,
                 }
 
-                // ── Formula filter ───────────────────────────────────────────
-                FormulaSection {
-                    enabled: criteria.formula_enabled,
-                    formula_exact: criteria.formula_exact.clone(),
-                    c_min: criteria.c_min,
-                    c_max: criteria.c_max,
-                    h_min: criteria.h_min,
-                    h_max: criteria.h_max,
-                    n_min: criteria.n_min,
-                    n_max: criteria.n_max,
-                    o_min: criteria.o_min,
-                    o_max: criteria.o_max,
-                    p_min: criteria.p_min,
-                    p_max: criteria.p_max,
-                    s_min: criteria.s_min,
-                    s_max: criteria.s_max,
-                    f_state: criteria.f_state,
-                    cl_state: criteria.cl_state,
-                    br_state: criteria.br_state,
-                    i_state: criteria.i_state,
-                    on_enabled: move |v| c.write().formula_enabled = v,
-                    on_formula_exact: move |v| c.write().formula_exact = v,
-                    on_c_min: move |v| c.write().c_min = v,
-                    on_c_max: move |v| c.write().c_max = v,
-                    on_h_min: move |v| c.write().h_min = v,
-                    on_h_max: move |v| c.write().h_max = v,
-                    on_n_min: move |v| c.write().n_min = v,
-                    on_n_max: move |v| c.write().n_max = v,
-                    on_o_min: move |v| c.write().o_min = v,
-                    on_o_max: move |v| c.write().o_max = v,
-                    on_p_min: move |v| c.write().p_min = v,
-                    on_p_max: move |v| c.write().p_max = v,
-                    on_s_min: move |v| c.write().s_min = v,
-                    on_s_max: move |v| c.write().s_max = v,
-                    on_f_state: move |v| c.write().f_state = v,
-                    on_cl_state: move |v| c.write().cl_state = v,
-                    on_br_state: move |v| c.write().br_state = v,
-                    on_i_state: move |v| c.write().i_state = v,
-                }
+                // ── Formula filter (zero props — reads context internally) ───
+                FormulaSection {}
             }
 
-            // ── Search button ────────────────────────────────────────────
+            // ── Search button ───────────────────────────────────────────────
+            // Shows a spinner while searching and a dot when the form has
+            // changed since the last search (dirty state).
             button {
-                class: "search-btn",
+                class: if is_dirty && !loading { "search-btn search-btn--dirty" } else { "search-btn" },
                 r#type: "submit",
                 disabled: loading,
                 aria_label: "{t(locale, TextKey::RunSearch)}",
@@ -116,14 +102,14 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
 
 // ── Structure section: SMILES + Molfile V2000/V3000 + Ketcher ────────────────
 
+/// Structure input reads criteria from `FormCriteriaContext` — no props needed.
 #[component]
 fn StructureSection() -> Element {
     let locale = crate::hooks::use_locale();
-    let state = use_search_ui_context();
-    let mut c = state.criteria;
-    // Memoise the classifier: `classify_structure` uppercases the whole
-    // Molfile on every call. Recompute only when the SMILES text changes,
-    // not on every unrelated re-render of the search panel.
+    let ctx = use_form_criteria_context();
+    let mut c = ctx.criteria;
+    // Memoised classifier: `classify_structure` uppercases the entire Molfile
+    // on every call.  Recompute only when the SMILES text changes.
     let kind = use_memo(move || classify_structure(&c.read().smiles));
     let kind_value = *kind.read();
     let criteria = c.read().clone();
@@ -209,8 +195,6 @@ fn StructureSection() -> Element {
 // ── Ketcher editor panel (full-width, rendered in the main content area) ─────
 
 /// Relative URL at which the Ketcher standalone build is served.
-/// Place the contents of Ketcher's `standalone/` folder at this path
-/// (e.g. `assets/ketcher/` or `public/ketcher/` in the Dioxus project).
 const KETCHER_URL: &str = "ketcher/index.html";
 
 #[component]

@@ -2,9 +2,16 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Focused sub-components for SearchPanel form sections.
+//!
+//! Most sections are "context-aware" — they consume [`FormCriteriaContext`]
+//! directly rather than receiving data and callbacks as props.  This keeps
+//! `SearchPanel` thin and eliminates the 36-prop `FormulaSection` API that
+//! existed previously.
 
+use crate::features::explore::form_actions::FormAction;
 use crate::i18n::{TextKey, t};
 use crate::models::*;
+use crate::state::use_form_criteria_context;
 use dioxus::prelude::*;
 
 fn parse_f64_input(raw: &str) -> Option<f64> {
@@ -263,47 +270,23 @@ fn ElemStateSelect(
     }
 }
 
-/// Formula filter controls section (checkbox + elemental composition).
+/// Formula filter controls section — reads and writes `FormCriteriaContext`.
+///
+/// ## Why zero props?
+///
+/// The previous version had **36 props** (18 values + 18 callbacks) that all
+/// had to pass through `SearchPanel`.  Because `FormulaSection` is always
+/// rendered inside the `FormCriteriaContext` provider, it can read the live
+/// criteria signal and dispatch `FormAction`s directly — no intermediary
+/// callbacks, no prop drilling, zero allocation overhead from cloning
+/// handler closures at every parent render.
 #[component]
-pub fn FormulaSection(
-    enabled: bool,
-    formula_exact: String,
-    c_min: u16,
-    c_max: u16,
-    h_min: u16,
-    h_max: u16,
-    n_min: u16,
-    n_max: u16,
-    o_min: u16,
-    o_max: u16,
-    p_min: u16,
-    p_max: u16,
-    s_min: u16,
-    s_max: u16,
-    f_state: ElementState,
-    cl_state: ElementState,
-    br_state: ElementState,
-    i_state: ElementState,
-    on_enabled: EventHandler<bool>,
-    on_formula_exact: EventHandler<String>,
-    on_c_min: EventHandler<u16>,
-    on_c_max: EventHandler<u16>,
-    on_h_min: EventHandler<u16>,
-    on_h_max: EventHandler<u16>,
-    on_n_min: EventHandler<u16>,
-    on_n_max: EventHandler<u16>,
-    on_o_min: EventHandler<u16>,
-    on_o_max: EventHandler<u16>,
-    on_p_min: EventHandler<u16>,
-    on_p_max: EventHandler<u16>,
-    on_s_min: EventHandler<u16>,
-    on_s_max: EventHandler<u16>,
-    on_f_state: EventHandler<ElementState>,
-    on_cl_state: EventHandler<ElementState>,
-    on_br_state: EventHandler<ElementState>,
-    on_i_state: EventHandler<ElementState>,
-) -> Element {
+pub fn FormulaSection() -> Element {
     let locale = crate::hooks::use_locale();
+    let ctx = use_form_criteria_context();
+    let mut c = ctx.criteria;
+    let criteria = c.read().clone();
+    let enabled = criteria.formula_enabled;
 
     rsx! {
         div { class: "form-section",
@@ -311,7 +294,7 @@ pub fn FormulaSection(
                 input {
                     r#type: "checkbox",
                     checked: enabled,
-                    onchange: move |e| on_enabled.call(e.checked()),
+                    onchange: move |e| c.write().formula_enabled = e.checked(),
                 }
                 "{t(locale, TextKey::FormulaFilter)}"
             }
@@ -328,77 +311,77 @@ pub fn FormulaSection(
                         autocomplete: "off",
                         spellcheck: "false",
                         placeholder: "C15H10O5",
-                        value: "{formula_exact}",
-                        oninput: move |e| on_formula_exact.call(e.value()),
+                        value: "{criteria.formula_exact}",
+                        oninput: move |e| c.write().formula_exact = e.value(),
                     }
                 }
 
                 div { class: "range-inputs",
                     NumPair {
                         label: "C",
-                        min_value: c_min,
-                        max_value: c_max,
-                        on_min: move |v| on_c_min.call(v),
-                        on_max: move |v| on_c_max.call(v),
+                        min_value: criteria.c_min,
+                        max_value: criteria.c_max,
+                        on_min: move |v| ctx.update(FormAction::CMin(v)),
+                        on_max: move |v| ctx.update(FormAction::CMax(v)),
                     }
                     NumPair {
                         label: "H",
-                        min_value: h_min,
-                        max_value: h_max,
-                        on_min: move |v| on_h_min.call(v),
-                        on_max: move |v| on_h_max.call(v),
+                        min_value: criteria.h_min,
+                        max_value: criteria.h_max,
+                        on_min: move |v| ctx.update(FormAction::HMin(v)),
+                        on_max: move |v| ctx.update(FormAction::HMax(v)),
                     }
                     NumPair {
                         label: "N",
-                        min_value: n_min,
-                        max_value: n_max,
-                        on_min: move |v| on_n_min.call(v),
-                        on_max: move |v| on_n_max.call(v),
+                        min_value: criteria.n_min,
+                        max_value: criteria.n_max,
+                        on_min: move |v| ctx.update(FormAction::NMin(v)),
+                        on_max: move |v| ctx.update(FormAction::NMax(v)),
                     }
                 }
                 div { class: "range-inputs",
                     NumPair {
                         label: "O",
-                        min_value: o_min,
-                        max_value: o_max,
-                        on_min: move |v| on_o_min.call(v),
-                        on_max: move |v| on_o_max.call(v),
+                        min_value: criteria.o_min,
+                        max_value: criteria.o_max,
+                        on_min: move |v| ctx.update(FormAction::OMin(v)),
+                        on_max: move |v| ctx.update(FormAction::OMax(v)),
                     }
                     NumPair {
                         label: "P",
-                        min_value: p_min,
-                        max_value: p_max,
-                        on_min: move |v| on_p_min.call(v),
-                        on_max: move |v| on_p_max.call(v),
+                        min_value: criteria.p_min,
+                        max_value: criteria.p_max,
+                        on_min: move |v| ctx.update(FormAction::PMin(v)),
+                        on_max: move |v| ctx.update(FormAction::PMax(v)),
                     }
                     NumPair {
                         label: "S",
-                        min_value: s_min,
-                        max_value: s_max,
-                        on_min: move |v| on_s_min.call(v),
-                        on_max: move |v| on_s_max.call(v),
+                        min_value: criteria.s_min,
+                        max_value: criteria.s_max,
+                        on_min: move |v| ctx.update(FormAction::SMin(v)),
+                        on_max: move |v| ctx.update(FormAction::SMax(v)),
                     }
                 }
                 div { class: "range-inputs",
                     ElemStateSelect {
                         label: "F",
-                        value: f_state,
-                        on_change: move |v| on_f_state.call(v),
+                        value: criteria.f_state,
+                        on_change: move |v| ctx.update(FormAction::FState(v)),
                     }
                     ElemStateSelect {
                         label: "Cl",
-                        value: cl_state,
-                        on_change: move |v| on_cl_state.call(v),
+                        value: criteria.cl_state,
+                        on_change: move |v| ctx.update(FormAction::ClState(v)),
                     }
                     ElemStateSelect {
                         label: "Br",
-                        value: br_state,
-                        on_change: move |v| on_br_state.call(v),
+                        value: criteria.br_state,
+                        on_change: move |v| ctx.update(FormAction::BrState(v)),
                     }
                     ElemStateSelect {
                         label: "I",
-                        value: i_state,
-                        on_change: move |v| on_i_state.call(v),
+                        value: criteria.i_state,
+                        on_change: move |v| ctx.update(FormAction::IState(v)),
                     }
                 }
             }

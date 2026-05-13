@@ -15,20 +15,30 @@ use dioxus::prelude::*;
 
 /// Selects which result view to show.
 ///
-/// Subscribes to: `loading`, `entries` (is_empty), `error` (is_some),
-/// `searched_once`, `download_only_mode`, `download_dispatching`.
-/// Phase-specific text lives inside `LoadingState` so only that component
-/// re-renders on phase transitions.
+/// Subscribes narrowly via fine-grained selectors — phase-specific text lives
+/// inside `LoadingState` so phase transitions do not cascade here.
 #[component]
 pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
+    use crate::features::explore::selectors::{use_lifecycle_selector, use_result_selector};
+
     let state = use_results_context();
-    let explore = state.app_state.read().search.explore.clone();
-    let loading = explore.lifecycle.loading;
-    let has_error = explore.lifecycle.error.is_some();
-    let searched_once = explore.lifecycle.searched_once;
-    let download_only_mode = explore.lifecycle.download_only_mode;
-    let download_dispatching = explore.lifecycle.download_dispatching;
-    let entries = explore.result.entries.clone();
+    let explore = state.explore;
+
+    // Fine-grained selectors: only re-render this component when these specific
+    // fields change, not on every ExploreState mutation.
+    let loading = use_lifecycle_selector(explore, |lc| lc.loading);
+    let has_error = use_lifecycle_selector(explore, |lc| lc.error.is_some());
+    let searched_once = use_lifecycle_selector(explore, |lc| lc.searched_once);
+    let download_only_mode = use_lifecycle_selector(explore, |lc| lc.download_only_mode);
+    let download_dispatching = use_lifecycle_selector(explore, |lc| lc.download_dispatching);
+    let entries_empty = use_result_selector(explore, |r| r.entries.is_empty());
+
+    let loading = *loading.read();
+    let has_error = *has_error.read();
+    let searched_once = *searched_once.read();
+    let download_only_mode = *download_only_mode.read();
+    let download_dispatching = *download_dispatching.read();
+    let entries_is_empty = *entries_empty.read();
 
     if loading {
         return rsx! {
@@ -36,19 +46,19 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
         };
     }
 
-    if entries.is_empty() && !has_error && !searched_once {
+    if entries_is_empty && !has_error && !searched_once {
         return rsx! {
             WelcomeScreen {}
         };
     }
 
-    if entries.is_empty() && !has_error && download_only_mode && download_dispatching {
+    if entries_is_empty && !has_error && download_only_mode && download_dispatching {
         return rsx! {
             DownloadDispatchState {}
         };
     }
 
-    if entries.is_empty() && !has_error && download_only_mode {
+    if entries_is_empty && !has_error && download_only_mode {
         return rsx! {
             DownloadOnlyState { on_preview }
         };
