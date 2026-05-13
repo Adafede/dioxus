@@ -10,8 +10,6 @@ use dioxus::prelude::*;
 #[component]
 pub fn DrawPage(locale: Locale) -> Element {
     rsx! {
-        section { class: "draw-wrap", aria_label: "{view_label_draw(locale)}",
-            KetcherPanel { locale }
-        }
+        section { class: "draw-wrap", aria_label: "{view_label_draw(locale)}", KetcherPanel {} }
     }
 }

@@ -10,6 +10,7 @@ mod curation;
 mod download;
 mod export;
 mod features;
+mod hooks;
 mod i18n;
 mod models;
 mod perf;
@@ -38,6 +39,7 @@ use features::explore::url_state::{
     initial_execute_from_url, initial_locale_from_url, initial_view_from_url,
     persist_locale_query_param, persist_view_query_param,
 };
+use hooks::LocaleProvider;
 use i18n::{
     Locale, TextKey, t, view_label_curation_explorer, view_label_draw, view_label_explorer,
     view_switch_aria,
@@ -70,11 +72,10 @@ fn App() -> Element {
     let waiting_query_logged: Signal<bool> = use_signal(|| false);
 
     let locale_value = *locale.read();
-    let mobile_open = explore.read().ui.mobile_filters_open;
+    let mobile_filters_open = explore.read().ui.mobile_filters_open;
     let repo = HybridRepository::new();
 
-    let _search_ui_ctx =
-        use_context_provider(move || SearchUiContext::from_signals(criteria, locale, explore));
+    let _search_ui_ctx = use_context_provider(move || SearchUiContext::from_signals(criteria, explore));
     let _results_ctx = use_context_provider(move || ResultsContext::from_signals(explore, locale));
 
     let shareable_url =
@@ -102,54 +103,52 @@ fn App() -> Element {
         waiting_query_logged,
     );
 
-    let on_search = move |_| start_search(criteria, false, explore, repo);
-    let on_preview = move |_| start_search(criteria, false, explore, repo);
+    let on_search = move |_: ()| start_search(criteria, false, explore, repo);
+    let on_preview = move |_: ()| start_search(criteria, false, explore, repo);
+
+    let app_layout_class = if *app_view.read() == AppView::Explore {
+        "app-layout"
+    } else {
+        "app-layout no-sidebar"
+    };
+
+    let main_class = if *app_view.read() == AppView::Explore {
+        "main-content"
+    } else {
+        "main-content single-pane"
+    };
 
     rsx! {
-        a { class: "skip-link", href: "#main-panel", "{t(locale_value, TextKey::SkipToResults)}" }
-        div { class: if *app_view.read() == AppView::Explore { "app-layout" } else { "app-layout no-sidebar" },
-            if *app_view.read() == AppView::Explore {
-                aside {
-                    class: if mobile_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
-                    aria_label: "{t(locale_value, TextKey::SearchFilters)}",
-                    button {
-                        class: "filters-toggle",
-                        r#type: "button",
-                        aria_label: if mobile_open { t(locale_value, TextKey::FiltersHide) } else { t(locale_value, TextKey::FiltersShow) },
-                        aria_expanded: if mobile_open { "true" } else { "false" },
-                        onclick: move |_| {
-                            dispatch_explore_action(explore, ExploreAction::MobileFiltersToggled);
-                        },
-                        if mobile_open {
-                            "{t(locale_value, TextKey::FiltersHide)}"
-                        } else {
-                            "{t(locale_value, TextKey::FiltersShow)}"
+        LocaleProvider { locale,
+            a { class: "skip-link", href: "#main-panel", "{t(locale_value, TextKey::SkipToResults)}" }
+            div { class: "{app_layout_class}",
+
+                if *app_view.read() == AppView::Explore {
+                    aside {
+                        class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
+                        button {
+                            class: "filters-toggle",
+                            r#type: "button",
+                            aria_pressed: if mobile_filters_open { "true" } else { "false" },
+                            onclick: move |_| dispatch_explore_action(explore, ExploreAction::MobileFiltersToggled),
+                            if mobile_filters_open {
+                                "{t(locale_value, TextKey::FiltersHide)}"
+                            } else {
+                                "{t(locale_value, TextKey::FiltersShow)}"
+                            }
                         }
-                    }
-                    SearchPanel { on_search }
-                    div { class: "sidebar-logo-wrap",
-                        a {
-                            href: "?",
-                            title: "{t(locale_value, TextKey::PageTitle)}",
-                            aria_label: "{t(locale_value, TextKey::PageTitle)}",
+                        SearchPanel { on_search }
+                        div { class: "sidebar-logo-wrap",
                             img {
                                 class: "sidebar-logo",
                                 src: "assets/lotus_ferris.svg",
-                                alt: "LOTUS Ferris logo",
-                                width: "180",
-                                height: "180",
-                                loading: "lazy",
-                                decoding: "async",
+                                alt: "{t(locale_value, TextKey::PageTitle)}",
                             }
                         }
                     }
                 }
-            }
 
-            main {
-                id: "main-panel",
-                class: if *app_view.read() == AppView::Explore { "main-content" } else { "main-content single-pane" },
-                tabindex: "-1",
+                main { id: "main-panel", class: "{main_class}", tabindex: "-1",
 
                 div { class: "page-header",
                     div { class: "page-brand",
@@ -267,7 +266,8 @@ fn App() -> Element {
                     DrawPage { locale: locale_value }
                 }
 
-                Footer { locale: locale_value }
+                    Footer { locale: locale_value }
+                }
             }
         }
     }

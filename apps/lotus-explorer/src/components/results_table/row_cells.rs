@@ -8,8 +8,9 @@ use crate::i18n::{
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
 use std::borrow::Cow;
+use std::sync::Arc;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub(super) struct RowText {
     pub(super) open_full_size_depiction: &'static str,
     pub(super) open_in_wikidata: &'static str,
@@ -28,19 +29,30 @@ pub(super) fn row_text(locale: Locale) -> RowText {
     }
 }
 
-pub(super) fn visible_rows_view(
+#[component]
+pub(super) fn ResultsRowsWindow(
     locale: Locale,
     text: RowText,
-    rows: &[CompoundEntry],
-    order: &[u32],
+    rows: Arc<[CompoundEntry]>,
+    order: Arc<[u32]>,
     start_row: usize,
     visible_count: usize,
 ) -> Element {
     rsx! {
         for i in order.iter().skip(start_row).take(visible_count).copied() {
-            {row_view(locale, text, &rows[i as usize], i)}
+            ResultRow {
+                locale,
+                text,
+                entry: rows[i as usize].clone(),
+                row_key: i,
+            }
         }
     }
+}
+
+#[component]
+fn ResultRow(locale: Locale, text: RowText, entry: CompoundEntry, row_key: u32) -> Element {
+    row_view(locale, text, &entry, row_key)
 }
 
 fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) -> Element {

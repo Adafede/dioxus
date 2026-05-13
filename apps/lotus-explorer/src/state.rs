@@ -10,21 +10,12 @@ use dioxus::prelude::*;
 #[derive(Clone, Copy)]
 pub struct SearchUiContext {
     pub criteria: Signal<SearchCriteria>,
-    pub locale: Signal<Locale>,
     pub explore: Signal<ExploreState>,
 }
 
 impl SearchUiContext {
-    pub fn from_signals(
-        criteria: Signal<SearchCriteria>,
-        locale: Signal<Locale>,
-        explore: Signal<ExploreState>,
-    ) -> Self {
-        Self {
-            criteria,
-            locale,
-            explore,
-        }
+    pub fn from_signals(criteria: Signal<SearchCriteria>, explore: Signal<ExploreState>) -> Self {
+        Self { criteria, explore }
     }
 }
 

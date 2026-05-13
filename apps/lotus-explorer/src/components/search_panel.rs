@@ -1,16 +1,42 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+pub use crate::components::form_sections::{
+    FormulaSection, MassRangeInput, TaxonInput, YearRangeInput,
+};
+
 use crate::i18n::{Locale, TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::{StructureKind, classify_structure};
 use crate::state::use_search_ui_context;
 use dioxus::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use web_time::SystemTime;
+
+pub const DEFAULT_YEAR_MIN: u16 = 1975;
+
+pub fn current_year() -> u16 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+            Ok(duration) => {
+                let secs_per_year = 365.25 * 24.0 * 60.0 * 60.0;
+                let years_since_epoch = duration.as_secs_f64() / secs_per_year;
+                (1970.0 + years_since_epoch) as u16
+            }
+            Err(_) => 2025,
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        2025
+    }
+}
 
 #[component]
 pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
     let state = use_search_ui_context();
-    let locale = *state.locale.read();
+    let locale = crate::hooks::use_locale();
     let loading = state.explore.read().lifecycle.loading;
     let mut c = state.criteria;
     let criteria = c.read().clone();
@@ -23,234 +49,69 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
             div { class: "search-panel-body",
 
                 // ── Taxon ────────────────────────────────────────────────────
-                div { class: "form-section",
-                    label { class: "form-label", r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
-                    input {
-                        id: "taxon-input",
-                        r#type: "text",
-                        class: "form-input",
-                        autocomplete: "off",
-                        spellcheck: "false",
-                        placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
-                        value: "{criteria.taxon}",
-                        oninput: move |e| c.write().taxon = e.value(),
-                        onkeydown: move |e| {
-                            if e.key() == Key::Enter {
-                                on_search.call(());
-                            }
-                        },
-                    }
-                    p { class: "form-hint", "{t(locale, TextKey::TaxonHint)}" }
+                TaxonInput {
+                    value: criteria.taxon.clone(),
+                    on_input: move |v| c.write().taxon = v,
+                    on_search,
                 }
 
                 // ── Structure (SMILES or Molfile V2000/V3000) ────────────────
-                StructureSection { locale }
+                StructureSection {}
 
                 // ── Mass range ───────────────────────────────────────────────
-                fieldset {
-                    class: "form-section",
-                    style: "border:0;padding:0;margin:0;",
-                    legend { class: "form-label", "{t(locale, TextKey::MolecularMass)}" }
-                    div { class: "range-inputs",
-                        div { class: "range-pair",
-                            label { class: "form-label sm", r#for: "mass-min",
-                                "{t(locale, TextKey::Min)}"
-                            }
-                            input {
-                                id: "mass-min",
-                                r#type: "number",
-                                class: "form-input sm",
-                                min: "0",
-                                max: "10000",
-                                step: "1",
-                                value: "{criteria.mass_min}",
-                                oninput: move |e| {
-                                    if let Ok(v) = e.value().parse::<f64>() {
-                                        c.write().mass_min = v;
-                                    }
-                                },
-                            }
-                        }
-                        span { class: "range-sep", "–" }
-                        div { class: "range-pair",
-                            label { class: "form-label sm", r#for: "mass-max",
-                                "{t(locale, TextKey::Max)}"
-                            }
-                            input {
-                                id: "mass-max",
-                                r#type: "number",
-                                class: "form-input sm",
-                                min: "0",
-                                max: "10000",
-                                step: "1",
-                                value: "{criteria.mass_max}",
-                                oninput: move |e| {
-                                    if let Ok(v) = e.value().parse::<f64>() {
-                                        c.write().mass_max = v;
-                                    }
-                                },
-                            }
-                        }
-                    }
+                MassRangeInput {
+                    min_value: criteria.mass_min,
+                    max_value: criteria.mass_max,
+                    on_min: move |v| c.write().mass_min = v,
+                    on_max: move |v| c.write().mass_max = v,
                 }
 
                 // ── Year range ───────────────────────────────────────────────
-                fieldset {
-                    class: "form-section",
-                    style: "border:0;padding:0;margin:0;",
-                    legend { class: "form-label", "{t(locale, TextKey::PublicationYear)}" }
-                    div { class: "range-inputs",
-                        div { class: "range-pair",
-                            label { class: "form-label sm", r#for: "year-min",
-                                "{t(locale, TextKey::YearFrom)}"
-                            }
-                            input {
-                                id: "year-min",
-                                r#type: "number",
-                                class: "form-input sm",
-                                min: "{DEFAULT_YEAR_MIN}",
-                                max: "{current_year()}",
-                                step: "1",
-                                value: "{criteria.year_min}",
-                                oninput: move |e| {
-                                    if let Ok(v) = e.value().parse::<u16>() {
-                                        c.write().year_min = v;
-                                    }
-                                },
-                            }
-                        }
-                        span { class: "range-sep", "–" }
-                        div { class: "range-pair",
-                            label { class: "form-label sm", r#for: "year-max",
-                                "{t(locale, TextKey::YearTo)}"
-                            }
-                            input {
-                                id: "year-max",
-                                r#type: "number",
-                                class: "form-input sm",
-                                min: "{DEFAULT_YEAR_MIN}",
-                                max: "{current_year()}",
-                                step: "1",
-                                value: "{criteria.year_max}",
-                                oninput: move |e| {
-                                    if let Ok(v) = e.value().parse::<u16>() {
-                                        c.write().year_max = v;
-                                    }
-                                },
-                            }
-                        }
-                    }
+                YearRangeInput {
+                    min_value: criteria.year_min,
+                    max_value: criteria.year_max,
+                    on_min: move |v| c.write().year_min = v,
+                    on_max: move |v| c.write().year_max = v,
                 }
 
                 // ── Formula filter ───────────────────────────────────────────
-                div { class: "form-section",
-                    label { class: "radio-label",
-                        input {
-                            r#type: "checkbox",
-                            checked: criteria.formula_enabled,
-                            onchange: move |e| c.write().formula_enabled = e.checked(),
-                        }
-                        "{t(locale, TextKey::FormulaFilter)}"
-                    }
-
-                    if criteria.formula_enabled {
-                        div { class: "form-section nested",
-                            label {
-                                class: "form-label sm",
-                                r#for: "formula-exact",
-                                "{t(locale, TextKey::ExactFormula)}"
-                            }
-                            input {
-                                id: "formula-exact",
-                                r#type: "text",
-                                class: "form-input sm",
-                                autocomplete: "off",
-                                spellcheck: "false",
-                                placeholder: "C15H10O5",
-                                value: "{criteria.formula_exact}",
-                                oninput: move |e| c.write().formula_exact = e.value(),
-                            }
-                        }
-
-                        div { class: "range-inputs",
-                            NumPair {
-                                label: "C",
-                                locale,
-                                min_value: criteria.c_min,
-                                max_value: criteria.c_max,
-                                on_min: move |v| c.write().c_min = v,
-                                on_max: move |v| c.write().c_max = v,
-                            }
-                            NumPair {
-                                label: "H",
-                                locale,
-                                min_value: criteria.h_min,
-                                max_value: criteria.h_max,
-                                on_min: move |v| c.write().h_min = v,
-                                on_max: move |v| c.write().h_max = v,
-                            }
-                            NumPair {
-                                label: "N",
-                                locale,
-                                min_value: criteria.n_min,
-                                max_value: criteria.n_max,
-                                on_min: move |v| c.write().n_min = v,
-                                on_max: move |v| c.write().n_max = v,
-                            }
-                        }
-                        div { class: "range-inputs",
-                            NumPair {
-                                label: "O",
-                                locale,
-                                min_value: criteria.o_min,
-                                max_value: criteria.o_max,
-                                on_min: move |v| c.write().o_min = v,
-                                on_max: move |v| c.write().o_max = v,
-                            }
-                            NumPair {
-                                label: "P",
-                                locale,
-                                min_value: criteria.p_min,
-                                max_value: criteria.p_max,
-                                on_min: move |v| c.write().p_min = v,
-                                on_max: move |v| c.write().p_max = v,
-                            }
-                            NumPair {
-                                label: "S",
-                                locale,
-                                min_value: criteria.s_min,
-                                max_value: criteria.s_max,
-                                on_min: move |v| c.write().s_min = v,
-                                on_max: move |v| c.write().s_max = v,
-                            }
-                        }
-                        div { class: "range-inputs",
-                            ElemStateSelect {
-                                label: "F",
-                                locale,
-                                value: criteria.f_state,
-                                on_change: move |v| c.write().f_state = v,
-                            }
-                            ElemStateSelect {
-                                label: "Cl",
-                                locale,
-                                value: criteria.cl_state,
-                                on_change: move |v| c.write().cl_state = v,
-                            }
-                            ElemStateSelect {
-                                label: "Br",
-                                locale,
-                                value: criteria.br_state,
-                                on_change: move |v| c.write().br_state = v,
-                            }
-                            ElemStateSelect {
-                                label: "I",
-                                locale,
-                                value: criteria.i_state,
-                                on_change: move |v| c.write().i_state = v,
-                            }
-                        }
-                    }
+                FormulaSection {
+                    enabled: criteria.formula_enabled,
+                    formula_exact: criteria.formula_exact.clone(),
+                    c_min: criteria.c_min,
+                    c_max: criteria.c_max,
+                    h_min: criteria.h_min,
+                    h_max: criteria.h_max,
+                    n_min: criteria.n_min,
+                    n_max: criteria.n_max,
+                    o_min: criteria.o_min,
+                    o_max: criteria.o_max,
+                    p_min: criteria.p_min,
+                    p_max: criteria.p_max,
+                    s_min: criteria.s_min,
+                    s_max: criteria.s_max,
+                    f_state: criteria.f_state,
+                    cl_state: criteria.cl_state,
+                    br_state: criteria.br_state,
+                    i_state: criteria.i_state,
+                    on_enabled: move |v| c.write().formula_enabled = v,
+                    on_formula_exact: move |v| c.write().formula_exact = v,
+                    on_c_min: move |v| c.write().c_min = v,
+                    on_c_max: move |v| c.write().c_max = v,
+                    on_h_min: move |v| c.write().h_min = v,
+                    on_h_max: move |v| c.write().h_max = v,
+                    on_n_min: move |v| c.write().n_min = v,
+                    on_n_max: move |v| c.write().n_max = v,
+                    on_o_min: move |v| c.write().o_min = v,
+                    on_o_max: move |v| c.write().o_max = v,
+                    on_p_min: move |v| c.write().p_min = v,
+                    on_p_max: move |v| c.write().p_max = v,
+                    on_s_min: move |v| c.write().s_min = v,
+                    on_s_max: move |v| c.write().s_max = v,
+                    on_f_state: move |v| c.write().f_state = v,
+                    on_cl_state: move |v| c.write().cl_state = v,
+                    on_br_state: move |v| c.write().br_state = v,
+                    on_i_state: move |v| c.write().i_state = v,
                 }
             }
 
@@ -275,7 +136,8 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
 // ── Structure section: SMILES + Molfile V2000/V3000 + Ketcher ────────────────
 
 #[component]
-fn StructureSection(locale: Locale) -> Element {
+fn StructureSection() -> Element {
+    let locale = crate::hooks::use_locale();
     let state = use_search_ui_context();
     let mut c = state.criteria;
     // Memoise the classifier: `classify_structure` uppercases the whole
@@ -369,7 +231,8 @@ fn StructureSection(locale: Locale) -> Element {
 const KETCHER_URL: &str = "ketcher/index.html";
 
 #[component]
-pub fn KetcherPanel(locale: Locale) -> Element {
+pub fn KetcherPanel() -> Element {
+    let locale = crate::hooks::use_locale();
     rsx! {
         section {
             class: "ketcher-panel",
@@ -412,71 +275,5 @@ fn kind_note(k: StructureKind, locale: Locale) -> &'static str {
         StructureKind::Smiles => t(locale, TextKey::KindNoteSmiles),
         StructureKind::MolfileV2000 => t(locale, TextKey::KindNoteMol2000),
         StructureKind::MolfileV3000 => t(locale, TextKey::KindNoteMol3000),
-    }
-}
-
-#[component]
-fn NumPair(
-    label: &'static str,
-    locale: Locale,
-    min_value: u16,
-    max_value: u16,
-    on_min: EventHandler<u16>,
-    on_max: EventHandler<u16>,
-) -> Element {
-    rsx! {
-        div { class: "range-pair",
-            label { class: "form-label sm", "{label} {t(locale, TextKey::MinCount)}" }
-            input {
-                r#type: "number",
-                class: "form-input sm",
-                min: "0",
-                max: "10000",
-                aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
-                value: "{min_value}",
-                oninput: move |e| {
-                    if let Ok(v) = e.value().parse::<u16>() {
-                        on_min.call(v);
-                    }
-                },
-            }
-            label { class: "form-label sm", "{label} {t(locale, TextKey::MaxCount)}" }
-            input {
-                r#type: "number",
-                class: "form-input sm",
-                min: "0",
-                max: "10000",
-                aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",
-                value: "{max_value}",
-                oninput: move |e| {
-                    if let Ok(v) = e.value().parse::<u16>() {
-                        on_max.call(v);
-                    }
-                },
-            }
-        }
-    }
-}
-
-#[component]
-fn ElemStateSelect(
-    label: &'static str,
-    locale: Locale,
-    value: ElementState,
-    on_change: EventHandler<ElementState>,
-) -> Element {
-    rsx! {
-        div { class: "range-pair",
-            label { class: "form-label sm", "{label}" }
-            select {
-                class: "form-input sm",
-                aria_label: "{label} {t(locale, TextKey::ElementRequirement)}",
-                value: "{value.as_str()}",
-                onchange: move |e| on_change.call(ElementState::from_str(&e.value())),
-                option { value: "allowed", "{t(locale, TextKey::ElementStateAllowed)}" }
-                option { value: "required", "{t(locale, TextKey::ElementStateRequired)}" }
-                option { value: "excluded", "{t(locale, TextKey::ElementStateExcluded)}" }
-            }
-        }
     }
 }
