@@ -11,6 +11,7 @@ use crate::download::{DownloadFormat, execute_download, trigger_download};
 use crate::i18n::{CountNoun, TextKey, count_label, t};
 use crate::models::*;
 use crate::perf;
+use crate::state::use_results_context;
 use dioxus::prelude::*;
 use std::sync::Arc;
 const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
@@ -122,10 +123,15 @@ fn dispatch_metadata_download_blob(filename: &str, body: &str) {
 }
 
 #[component]
-pub fn QueryPanel(sparql_query: Option<Arc<str>>) -> Element {
+pub fn QueryPanel() -> Element {
     let locale = crate::hooks::use_locale();
+    let explore = use_results_context().explore;
+    let sparql_query =
+        crate::features::explore::selectors::use_result_selector(explore, |result| {
+            result.sparql_query.clone()
+        });
     rsx! {
-        if let Some(q) = sparql_query.as_ref() {
+        if let Some(q) = sparql_query.read().as_ref() {
             details { class: "query-panel",
                 summary { "{t(locale, TextKey::SparqlQuery)}" }
                 div { class: "query-panel-actions",
@@ -175,9 +181,28 @@ fn StatBadge(
 }
 
 #[component]
-pub fn StatBar(stats: DatasetStats, total_matches: Option<usize>, stats_partial: bool) -> Element {
+pub fn StatBar() -> Element {
     let locale = crate::hooks::use_locale();
-    let entries_value = total_matches.unwrap_or(stats.n_entries);
+    let explore = use_results_context().explore;
+    let entries = crate::features::explore::selectors::use_result_selector(explore, |result| {
+        result.entries.clone()
+    });
+    let total_stats = crate::features::explore::selectors::use_result_selector(explore, |result| {
+        result.total_stats.clone()
+    });
+    let total_matches =
+        crate::features::explore::selectors::use_result_selector(explore, |result| {
+            result.total_matches
+        });
+
+    let fallback_stats: Memo<DatasetStats> =
+        use_memo(move || DatasetStats::from_entries(entries.read().as_ref()));
+    let stats = total_stats
+        .read()
+        .as_ref()
+        .cloned()
+        .unwrap_or_else(|| fallback_stats.read().clone());
+    let entries_value = total_matches.read().unwrap_or(stats.n_entries);
     let entries_unique_value = stats.n_entries_unique;
 
     rsx! {
@@ -190,21 +215,21 @@ pub fn StatBar(stats: DatasetStats, total_matches: Option<usize>, stats_partial:
                 secondary_value: None,
                 secondary_label: None,
                 noun: CountNoun::Compound,
-                plus: stats_partial,
+                plus: false,
             }
             StatBadge {
                 value: stats.n_taxa,
                 secondary_value: None,
                 secondary_label: None,
                 noun: CountNoun::Taxon,
-                plus: stats_partial,
+                plus: false,
             }
             StatBadge {
                 value: stats.n_references,
                 secondary_value: None,
                 secondary_label: None,
                 noun: CountNoun::Reference,
-                plus: stats_partial,
+                plus: false,
             }
             StatBadge {
                 value: entries_value,
@@ -220,36 +245,74 @@ pub fn StatBar(stats: DatasetStats, total_matches: Option<usize>, stats_partial:
 #[component]
 pub fn CappedRowsNotice() -> Element {
     let locale = crate::hooks::use_locale();
+    let explore = use_results_context().explore;
+    let display_capped_rows =
+        crate::features::explore::selectors::use_result_selector(explore, |result| {
+            result.display_capped_rows
+        });
+
     rsx! {
-        div { class: "notice notice-warn", role: "status",
-            span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
-            span { class: "notice-value", "{t(locale, TextKey::DisplayCappedHint)}" }
+        if *display_capped_rows.read() {
+            div { class: "notice notice-warn", role: "status",
+                span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
+                span { class: "notice-value", "{t(locale, TextKey::DisplayCappedHint)}" }
+            }
         }
     }
 }
 
 #[component]
-pub fn DownloadActionsGroup(
-    criteria: SearchCriteria,
-    sparql_query: Option<Arc<str>>,
-    metadata_json: Option<Arc<str>>,
-    query_hash: Option<String>,
-    result_hash: Option<String>,
-) -> Element {
+pub fn DownloadActionsGroup() -> Element {
     let locale = crate::hooks::use_locale();
+    let explore = use_results_context().explore;
+    let criteria = crate::features::explore::selectors::use_ui_selector(explore, |ui| {
+        ui.executed_criteria.clone()
+    });
+    let sparql_query =
+        crate::features::explore::selectors::use_result_selector(explore, |result| {
+            result.sparql_query.clone()
+        });
+    let metadata_json =
+        crate::features::explore::selectors::use_result_selector(explore, |result| {
+            result.metadata_json.clone()
+        });
+    let query_hash = crate::features::explore::selectors::use_result_selector(explore, |result| {
+        result.query_hash.clone()
+    });
+    let result_hash = crate::features::explore::selectors::use_result_selector(explore, |result| {
+        result.result_hash.clone()
+    });
+
     let toolbar_model = build_download_toolbar_model(
-        &criteria,
-        sparql_query.as_deref(),
-        metadata_json.as_deref(),
-        query_hash.as_deref(),
-        result_hash.as_deref(),
+        &criteria.read(),
+        sparql_query.read().as_deref(),
+        metadata_json.read().as_deref(),
+        query_hash.read().as_deref(),
+        result_hash.read().as_deref(),
     );
+
+    let download_results_label = t(locale, TextKey::DownloadResults);
+    let csv_title = t(locale, DOWNLOAD_QUERY_CSV_SPEC.title_key);
+    let csv_label = t(locale, DOWNLOAD_QUERY_CSV_SPEC.label_key);
+    let json_title = t(locale, DOWNLOAD_QUERY_JSON_SPEC.title_key);
+    let json_label = t(locale, DOWNLOAD_QUERY_JSON_SPEC.label_key);
+    let rdf_title = t(locale, DOWNLOAD_QUERY_RDF_SPEC.title_key);
+    let rdf_label = t(locale, DOWNLOAD_QUERY_RDF_SPEC.label_key);
+    let metadata_title = t(locale, DOWNLOAD_METADATA_SPEC.title_key);
+    let metadata_label = t(locale, DOWNLOAD_METADATA_SPEC.label_key);
+    let qlever_title = t(locale, TextKey::OpenInQleverTitle);
+    let qlever_label = t(locale, TextKey::OpenInQlever);
+
     let download_busy = use_signal(|| false);
     let download_status: Signal<Option<String>> = use_signal(|| None);
     let download_status_text = download_status
         .read()
         .clone()
         .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
+
+    let criteria_value = criteria.read().clone();
+    let sparql_query_value = sparql_query.read().clone();
+    let metadata_json_value = metadata_json.read().clone();
 
     rsx! {
         div { class: "toolbar-actions",
@@ -266,15 +329,15 @@ pub fn DownloadActionsGroup(
                 div {
                     class: "dl-group",
                     role: "group",
-                    aria_label: "{t(locale, TextKey::DownloadResults)}",
-                    if let Some(query) = sparql_query.as_ref() {
+                    aria_label: "{download_results_label}",
+                    if let Some(query) = sparql_query_value.as_ref() {
                         button {
                             class: "btn btn-sm",
                             r#type: "button",
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
-                                let criteria_snapshot = criteria.clone();
+                                let criteria_snapshot = criteria_value.clone();
                                 let filename = toolbar_model.csv_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
@@ -288,9 +351,9 @@ pub fn DownloadActionsGroup(
                                     );
                                 }
                             },
-                            title: "{t(locale, DOWNLOAD_QUERY_CSV_SPEC.title_key)}",
-                            aria_label: "{t(locale, DOWNLOAD_QUERY_CSV_SPEC.title_key)}",
-                            "{t(locale, DOWNLOAD_QUERY_CSV_SPEC.label_key)}"
+                            aria_label: "{csv_title}",
+                            title: "{csv_title}",
+                            "{csv_label}"
                         }
                         button {
                             class: "btn btn-sm",
@@ -298,7 +361,7 @@ pub fn DownloadActionsGroup(
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
-                                let criteria_snapshot = criteria.clone();
+                                let criteria_snapshot = criteria_value.clone();
                                 let filename = toolbar_model.json_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
@@ -312,9 +375,9 @@ pub fn DownloadActionsGroup(
                                     );
                                 }
                             },
-                            title: "{t(locale, DOWNLOAD_QUERY_JSON_SPEC.title_key)}",
-                            aria_label: "{t(locale, DOWNLOAD_QUERY_JSON_SPEC.title_key)}",
-                            "{t(locale, DOWNLOAD_QUERY_JSON_SPEC.label_key)}"
+                            aria_label: "{json_title}",
+                            title: "{json_title}",
+                            "{json_label}"
                         }
                         button {
                             class: "btn btn-sm",
@@ -322,7 +385,7 @@ pub fn DownloadActionsGroup(
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
-                                let criteria_snapshot = criteria.clone();
+                                let criteria_snapshot = criteria_value.clone();
                                 let filename = toolbar_model.rdf_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
@@ -336,12 +399,12 @@ pub fn DownloadActionsGroup(
                                     );
                                 }
                             },
-                            title: "{t(locale, DOWNLOAD_QUERY_RDF_SPEC.title_key)}",
-                            aria_label: "{t(locale, DOWNLOAD_QUERY_RDF_SPEC.title_key)}",
-                            "{t(locale, DOWNLOAD_QUERY_RDF_SPEC.label_key)}"
+                            aria_label: "{rdf_title}",
+                            title: "{rdf_title}",
+                            "{rdf_label}"
                         }
                     }
-                    if let Some(body) = metadata_json.as_ref() {
+                    if let Some(body) = metadata_json_value.as_ref() {
                         button {
                             class: "btn btn-sm",
                             r#type: "button",
@@ -353,9 +416,9 @@ pub fn DownloadActionsGroup(
                                     dispatch_metadata_download_blob(&filename, body.as_ref());
                                 }
                             },
-                            title: "{t(locale, DOWNLOAD_METADATA_SPEC.title_key)}",
-                            aria_label: "{t(locale, DOWNLOAD_METADATA_SPEC.title_key)}",
-                            "{t(locale, DOWNLOAD_METADATA_SPEC.label_key)}"
+                            title: "{metadata_title}",
+                            aria_label: "{metadata_title}",
+                            "{metadata_label}"
                         }
                     }
                 }
@@ -366,9 +429,9 @@ pub fn DownloadActionsGroup(
                     href: "{url}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    title: "{t(locale, TextKey::OpenInQleverTitle)}",
-                    aria_label: "{t(locale, TextKey::OpenInQleverTitle)}",
-                    "{t(locale, TextKey::OpenInQlever)}"
+                    title: "{qlever_title}",
+                    aria_label: "{qlever_title}",
+                    "{qlever_label}"
                 }
             }
         }
