@@ -30,9 +30,9 @@ pub fn CopyButton(
         label
     };
     let title_attr = if title.is_empty() {
-        t(locale, TextKey::CopyToClipboard).to_string()
+        t(locale, TextKey::CopyToClipboard)
     } else {
-        title.to_string()
+        title
     };
 
     rsx! {

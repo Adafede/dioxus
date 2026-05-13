@@ -10,14 +10,15 @@ use crate::i18n::{
 };
 use dioxus::prelude::*;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[component]
-pub fn CurationResultsTable(locale: Locale, rows: Vec<CurationResultRow>) -> Element {
+pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> Element {
     rsx! {
         div { class: "curation-card",
             h3 { "{crate::i18n::heading_results(locale)}" }
             div { class: "curation-badges",
-                for (status, count) in status_counts(rows.as_slice()) {
+                for (status, count) in status_counts(rows.as_ref()) {
                     span { class: "curation-status curation-status-badge {status_class(&status)}",
                         "{status_label(locale, &status)} ({count})"
                     }

@@ -37,7 +37,7 @@ pub fn DataCurationPage() -> Element {
     let mut rows = use_signal(initial_curation_rows_from_url);
     let mut processing = use_signal(|| false);
     let mut status_message = use_signal(|| Option::<String>::None);
-    let mut result_rows = use_signal(Vec::<CurationResultRow>::new);
+    let mut result_rows = use_signal(|| Arc::<[CurationResultRow]>::from([]));
     let mut quickstatements = use_signal(QuickStatementsBundle::default);
     let mut awaiting_second_pass = use_signal(|| false);
     let mut autorun_pending = use_signal(initial_curation_autorun_from_url);
@@ -149,7 +149,8 @@ pub fn DataCurationPage() -> Element {
                     }
 
                     let merged_rows = previous_rows
-                        .into_iter()
+                        .iter()
+                        .cloned()
                         .map(|row| {
                             let key = row_uniqueness_key(&row.input);
                             by_key.remove(&key).unwrap_or(row)
@@ -162,7 +163,7 @@ pub fn DataCurationPage() -> Element {
                         .iter()
                         .filter(|row| !row.dependency_blocks.is_empty())
                         .count();
-                    result_rows.set(merged_rows);
+                    result_rows.set(Arc::from(merged_rows.into_boxed_slice()));
                     quickstatements.set(bundle);
                     awaiting_second_pass.set(still_pending);
                     processing.set(false);
@@ -495,7 +496,7 @@ fn start_curation_run(
     snapshot: Vec<CurationInputRow>,
     mut processing: Signal<bool>,
     mut status_message: Signal<Option<String>>,
-    mut result_rows: Signal<Vec<CurationResultRow>>,
+    mut result_rows: Signal<Arc<[CurationResultRow]>>,
     mut quickstatements: Signal<QuickStatementsBundle>,
     mut awaiting_second_pass: Signal<bool>,
 ) {
@@ -509,7 +510,7 @@ fn start_curation_run(
                     .filter(|row| matches!(row.status, CurationStatus::PendingDependencies))
                     .count();
                 awaiting_second_pass.set(!qs.dependencies.is_empty());
-                result_rows.set(curated_rows);
+                result_rows.set(Arc::from(curated_rows.into_boxed_slice()));
                 quickstatements.set(qs);
                 processing.set(false);
                 status_message.set(Some(if pending_count > 0 {
