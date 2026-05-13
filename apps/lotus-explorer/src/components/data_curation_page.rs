@@ -7,6 +7,7 @@ use crate::curation::{
     initial_curation_autorun_from_url, initial_curation_rows_from_url, parse_tsv_rows,
     row_uniqueness_key,
 };
+use crate::features::explore::url_state::absolute_share_url;
 use crate::i18n::{
     Locale, TextKey, button_add_row, button_append_tsv_rows, button_generate_quickstatements,
     button_generating, button_load_example_rows, button_remove, button_second_pass, col_action,
@@ -42,9 +43,16 @@ pub fn DataCurationPage() -> Element {
     let mut quickstatements = use_signal(QuickStatementsBundle::default);
     let mut awaiting_second_pass = use_signal(|| false);
     let mut autorun_pending = use_signal(initial_curation_autorun_from_url);
+    let rows_view =
+        use_memo(move || Arc::<[CurationInputRow]>::from(rows.read().clone().into_boxed_slice()));
     let shareable_url = use_memo(move || {
-        build_curation_share_url(rows.read().as_slice(), locale, true).map(Arc::<str>::from)
+        build_curation_share_url(rows_view.read().as_ref(), locale, true).map(Arc::<str>::from)
     });
+    let status_message_value = status_message.read().clone();
+    let processing_value = *processing.read();
+    let awaiting_second_pass_value = *awaiting_second_pass.read();
+    let result_rows_value = result_rows.read().clone();
+    let quickstatements_value = quickstatements.read().clone();
 
     let on_add_row = move |_| {
         let name = name_input.read().trim().to_string();
@@ -109,7 +117,7 @@ pub fn DataCurationPage() -> Element {
 
     use_effect(move || {
         let should_autorun = *autorun_pending.read();
-        let snapshot = rows.read().clone();
+        let snapshot = rows_view.read().as_ref().to_vec();
         let already_has_results = !result_rows.read().is_empty();
         if should_autorun && !snapshot.is_empty() && !*processing.read() && !already_has_results {
             autorun_pending.set(false);
@@ -158,7 +166,7 @@ pub fn DataCurationPage() -> Element {
                         })
                         .collect::<Vec<_>>();
 
-                                    let bundle = build_quickstatements_bundle(&merged_rows);
+                    let bundle = build_quickstatements_bundle(&merged_rows);
                     let still_pending = !bundle.dependencies.is_empty();
                     let pending_count = merged_rows
                         .iter()
@@ -318,7 +326,7 @@ pub fn DataCurationPage() -> Element {
                 }
             }
 
-            if let Some(msg) = status_message.read().as_deref() {
+            if let Some(msg) = status_message_value.as_deref() {
                 div { class: "notice notice-info", role: "status",
                     span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
                     span { class: "notice-value", "{msg}" }
@@ -331,9 +339,9 @@ pub fn DataCurationPage() -> Element {
                     button {
                         class: "btn btn-sm btn-primary",
                         r#type: "button",
-                        disabled: *processing.read(),
+                        disabled: processing_value,
                         onclick: on_process,
-                        if *processing.read() {
+                        if processing_value {
                             "{button_generating(locale)}"
                         } else {
                             "{button_generate_quickstatements(locale)}"
@@ -354,7 +362,7 @@ pub fn DataCurationPage() -> Element {
                         }
                     }
                     tbody {
-                        for (idx, row) in rows.read().iter().enumerate() {
+                        for (idx, row) in rows_view.read().iter().enumerate() {
                             tr {
                                 td { "{idx + 1}" }
                                 td { "{row.name}" }
@@ -366,7 +374,7 @@ pub fn DataCurationPage() -> Element {
                                         class: "btn btn-xs",
                                         r#type: "button",
                                         onclick: move |_| {
-                                            if idx < rows.read().len() {
+                                            if idx < rows_view.read().len() {
                                                 rows.write().remove(idx);
                                             }
                                         },
@@ -379,15 +387,13 @@ pub fn DataCurationPage() -> Element {
                 }
             }
 
-            if !result_rows.read().is_empty() {
-                CurationResultsTable { locale, rows: result_rows.read().clone() }
+            if !result_rows_value.is_empty() {
+                CurationResultsTable { locale, rows: result_rows_value.clone() }
             }
 
-            if !quickstatements.read().dependencies.is_empty()
-                || !quickstatements.read().main.is_empty()
-            {
+            if !quickstatements_value.dependencies.is_empty() || !quickstatements_value.main.is_empty() {
                 div { class: "curation-card",
-                    if !quickstatements.read().dependencies.is_empty() {
+                    if !quickstatements_value.dependencies.is_empty() {
                         p { class: "curation-hint", "{msg_two_step_hint(locale)}" }
                         p { class: "curation-hint", "{msg_delay_advice(locale)}" }
                         p { class: "curation-hint",
@@ -402,7 +408,7 @@ pub fn DataCurationPage() -> Element {
                         div { class: "curation-actions curation-space-between",
                             h3 { "{heading_quickstatements_dependencies(locale)}" }
                             CopyButton {
-                                text: quickstatements.read().dependencies.clone(),
+                                text: quickstatements_value.dependencies.clone(),
                                 locale,
                             }
                         }
@@ -410,18 +416,18 @@ pub fn DataCurationPage() -> Element {
                             class: "form-textarea curation-qs",
                             aria_label: "{heading_quickstatements_dependencies(locale)}",
                             readonly: true,
-                            value: "{quickstatements.read().dependencies}",
+                            value: "{quickstatements_value.dependencies}",
                         }
                         button {
                             class: "btn btn-sm btn-primary",
                             r#type: "button",
-                            disabled: *processing.read(),
+                            disabled: processing_value,
                             onclick: on_second_pass,
                             "{button_second_pass(locale)}"
                         }
                     }
 
-                    if !*awaiting_second_pass.read() && !quickstatements.read().main.is_empty() {
+                    if !awaiting_second_pass_value && !quickstatements_value.main.is_empty() {
                         p { class: "curation-hint",
                             a {
                                 href: "https://qs-dev.toolforge.org/",
@@ -434,7 +440,7 @@ pub fn DataCurationPage() -> Element {
                         div { class: "curation-actions curation-space-between",
                             h3 { "{heading_quickstatements(locale)}" }
                             CopyButton {
-                                text: quickstatements.read().main.clone(),
+                                text: quickstatements_value.main.clone(),
                                 locale,
                             }
                         }
@@ -442,7 +448,7 @@ pub fn DataCurationPage() -> Element {
                             class: "form-textarea curation-qs",
                             aria_label: "{heading_quickstatements(locale)}",
                             readonly: true,
-                            value: "{quickstatements.read().main}",
+                            value: "{quickstatements_value.main}",
                         }
                     }
                 }
@@ -527,17 +533,3 @@ fn start_curation_run(
         }
     });
 }
-
-fn absolute_share_url(share: &str) -> String {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(win) = web_sys::window() {
-            let loc = win.location();
-            if let (Ok(origin), Ok(pathname)) = (loc.origin(), loc.pathname()) {
-                return format!("{origin}{pathname}{share}");
-            }
-        }
-    }
-    share.to_string()
-}
-
