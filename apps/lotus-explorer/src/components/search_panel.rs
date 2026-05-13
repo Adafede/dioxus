@@ -13,28 +13,6 @@ use crate::models::*;
 use crate::queries::classify_structure;
 use crate::state::use_search_ui_context;
 use dioxus::prelude::*;
-#[cfg(target_arch = "wasm32")]
-use web_time::SystemTime;
-
-pub const DEFAULT_YEAR_MIN: u16 = 1975;
-
-pub fn current_year() -> u16 {
-    #[cfg(target_arch = "wasm32")]
-    {
-        match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-            Ok(duration) => {
-                let secs_per_year = 365.25 * 24.0 * 60.0 * 60.0;
-                let years_since_epoch = duration.as_secs_f64() / secs_per_year;
-                (1970.0 + years_since_epoch) as u16
-            }
-            Err(_) => 2025,
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        2025
-    }
-}
 
 #[component]
 pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
@@ -149,10 +127,8 @@ fn StructureSection() -> Element {
     let kind = use_memo(move || classify_structure(&c.read().smiles));
     let kind_value = *kind.read();
     let criteria = c.read().clone();
-    let view_model = structure_model::build_structure_section_model(
-        kind_value,
-        criteria.smiles_search_type,
-    );
+    let view_model =
+        structure_model::build_structure_section_model(kind_value, criteria.smiles_search_type);
 
     rsx! {
         div { class: "form-section",
@@ -266,4 +242,3 @@ pub fn KetcherPanel() -> Element {
         }
     }
 }
-

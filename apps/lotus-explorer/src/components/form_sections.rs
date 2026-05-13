@@ -17,7 +17,7 @@ fn parse_u16_input(raw: &str) -> Option<u16> {
 
 #[must_use]
 fn normalized_year_input_max(current_year: u16) -> u16 {
-    current_year.max(crate::components::search_panel::DEFAULT_YEAR_MIN)
+    current_year.max(crate::models::DEFAULT_YEAR_MIN)
 }
 
 /// Taxon input section with label and hint.
@@ -112,9 +112,9 @@ pub fn YearRangeInput(
     on_min: EventHandler<u16>,
     on_max: EventHandler<u16>,
 ) -> Element {
-    use crate::components::search_panel::DEFAULT_YEAR_MIN;
+    use crate::models::DEFAULT_YEAR_MIN;
     let locale = crate::hooks::use_locale();
-    let current = normalized_year_input_max(crate::components::search_panel::current_year());
+    let current = normalized_year_input_max(crate::models::current_year());
 
     rsx! {
         fieldset { class: "form-section", style: "border:0;padding:0;margin:0;",
@@ -227,8 +227,14 @@ mod tests {
     #[test]
     fn normalized_year_input_max_never_drops_below_default_floor() {
         assert_eq!(normalized_year_input_max(2030), 2030);
-        assert_eq!(normalized_year_input_max(1975), 1975);
-        assert_eq!(normalized_year_input_max(1900), 1975);
+        assert_eq!(
+            normalized_year_input_max(crate::models::DEFAULT_YEAR_MIN),
+            crate::models::DEFAULT_YEAR_MIN
+        );
+        assert_eq!(
+            normalized_year_input_max(1700),
+            crate::models::DEFAULT_YEAR_MIN
+        );
     }
 }
 

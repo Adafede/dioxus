@@ -20,8 +20,10 @@ pub(super) fn VirtualizedResultsTable(
     sorted_indices: Memo<Arc<[u32]>>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
+    let row_height_px = use_signal(|| ROW_HEIGHT_PX_COMFORTABLE);
+    let measured_row_height_px = *row_height_px.read();
     let virtualization_config = VirtualizationConfig {
-        row_height_px: ROW_HEIGHT_PX_COMFORTABLE,
+        row_height_px: measured_row_height_px,
         overscan_rows: VIRTUAL_OVERSCAN_ROWS,
         viewport_fallback_px: TABLE_VIEWPORT_FALLBACK_PX,
         scroll_id: TABLE_SCROLL_ID,
@@ -51,6 +53,25 @@ pub(super) fn VirtualizedResultsTable(
     });
 
     let total = explore.read().result.entries.len();
+
+    #[cfg(target_arch = "wasm32")]
+    use_effect(move || {
+        if total > 0 {
+            super::scroll_runtime::schedule_virtual_scroll_frame(
+                scroll_host,
+                scroll_raf_scheduled,
+                scroll_raf_cb,
+                scroll_raf_id,
+                TABLE_SCROLL_ID,
+                row_height_px,
+                ROW_HEIGHT_PX_COMFORTABLE,
+                total,
+                first_visible_row,
+                viewport_height_px,
+            );
+        }
+    });
+
     let virtualization = use_virtualization::use_virtualization(
         virtualization_config,
         total,
@@ -72,7 +93,8 @@ pub(super) fn VirtualizedResultsTable(
                         scroll_raf_cb,
                         scroll_raf_id,
                         virtualization_config.scroll_id,
-                        virtualization_config.row_height_px,
+                        row_height_px,
+                        ROW_HEIGHT_PX_COMFORTABLE,
                         total,
                         first_visible_row,
                         viewport_height_px,
