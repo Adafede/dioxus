@@ -24,7 +24,7 @@ use crate::i18n::{
 use crate::models::{CompoundEntry, DatasetStats, SearchCriteria, SmilesSearchType, TaxonMatch};
 use crate::perf;
 use crate::queries;
-use crate::repositories::LotusRepository;
+use crate::repositories::{LotusRepository, RepositoryError};
 use crate::sparql;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::utils::logging::log_warn_evt;
@@ -44,7 +44,7 @@ pub struct SearchOutcome {
     pub display_capped_rows: bool,
 }
 
-pub fn start_search<R: LotusRepository + Copy>(
+pub fn start_search<R: LotusRepository>(
     criteria: Signal<SearchCriteria>,
     locale: Signal<Locale>,
     direct_download_mode: bool,
@@ -78,7 +78,7 @@ pub fn start_search<R: LotusRepository + Copy>(
             *locale.peek(),
             explore,
             direct_download_mode,
-            repo,
+            repo.clone(),
         )
         .await
         {
@@ -161,7 +161,7 @@ pub fn start_search<R: LotusRepository + Copy>(
     });
 }
 
-pub async fn do_search<R: LotusRepository + Copy>(
+pub async fn do_search<R: LotusRepository>(
     crit: SearchCriteria,
     locale: Locale,
     explore: Signal<ExploreState>,
@@ -339,7 +339,7 @@ pub async fn do_search<R: LotusRepository + Copy>(
     Ok(outcome)
 }
 
-async fn resolve_taxon_qid<R: LotusRepository + Copy>(
+async fn resolve_taxon_qid<R: LotusRepository>(
     taxon: &str,
     locale: Locale,
     explore: Signal<ExploreState>,
@@ -383,7 +383,7 @@ async fn resolve_taxon_qid<R: LotusRepository + Copy>(
     let query = queries::query_taxon_search(&sanitized);
     let csv = repo.sparql_bytes(&query).await.map_err(|e| AppError {
         kind: ErrorKind::Network,
-        message: err_taxon_search_failed(locale, &e),
+        message: err_taxon_search_failed(locale, &e.to_string()),
     })?;
     let taxon_elapsed = perf::end_timer("LOTUS:taxon_resolution", taxon_timer);
     metrics.add_network(taxon_elapsed);
@@ -468,7 +468,7 @@ fn build_sparql_query(smiles: &str, crit: &SearchCriteria, taxon_qid: Option<&st
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn fetch_count_and_preview<R: LotusRepository + Copy>(
+async fn fetch_count_and_preview<R: LotusRepository>(
     count_query: &str,
     display_query: &str,
     #[cfg_attr(target_arch = "wasm32", allow(unused_variables))] execution_query: &str,
@@ -491,10 +491,10 @@ async fn fetch_count_and_preview<R: LotusRepository + Copy>(
         {
             log_debug_evt("search", "Counting", "sequential_fetch_wasm", None);
             let count_timer = perf::start_timer("LOTUS:count_query");
-            let counts_csv = repo.sparql_bytes(count_query).await.map_err(|e| AppError {
-                kind: ErrorKind::Network,
-                message: err_query_stage_failed(locale, "count query", &e),
-            })?;
+            let counts_csv = repo
+                .sparql_bytes(count_query)
+                .await
+                .map_err(|e| stage_error(locale, "count query", &e))?;
             let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
             metrics.add_network(count_elapsed);
             perf::log_timing("Counting", "Count query completed", Some(count_elapsed));
@@ -526,10 +526,7 @@ async fn fetch_count_and_preview<R: LotusRepository + Copy>(
             let display_csv = repo
                 .sparql_bytes(display_query)
                 .await
-                .map_err(|e| AppError {
-                    kind: ErrorKind::Network,
-                    message: err_query_stage_failed(locale, "display query", &e),
-                })?;
+                .map_err(|e| stage_error(locale, "display query", &e))?;
             let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
             metrics.add_network(display_elapsed);
             perf::log_timing(
@@ -569,16 +566,14 @@ async fn fetch_count_and_preview<R: LotusRepository + Copy>(
             let display_timer = perf::start_timer("LOTUS:display_query");
             let (counts_csv, display_csv) = futures::try_join!(
                 async {
-                    count_fut.await.map_err(|e| AppError {
-                        kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "count query", &e),
-                    })
+                    count_fut
+                        .await
+                        .map_err(|e| stage_error(locale, "count query", &e))
                 },
                 async {
-                    display_fut.await.map_err(|e| AppError {
-                        kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "display query", &e),
-                    })
+                    display_fut
+                        .await
+                        .map_err(|e| stage_error(locale, "display query", &e))
                 },
             )?;
             let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
@@ -661,10 +656,7 @@ async fn fetch_count_and_preview<R: LotusRepository + Copy>(
                 let csv = repo
                     .sparql_bytes(execution_query)
                     .await
-                    .map_err(|e| AppError {
-                        kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "query", &e),
-                    })?;
+                    .map_err(|e| stage_error(locale, "query", &e))?;
                 let fallback_query_elapsed =
                     perf::end_timer("LOTUS:fallback_query", fallback_query_timer);
                 metrics.add_network(fallback_query_elapsed);
@@ -698,5 +690,19 @@ async fn fetch_count_and_preview<R: LotusRepository + Copy>(
                 ))
             }
         }
+    }
+}
+
+fn stage_error(locale: Locale, stage: &'static str, err: &RepositoryError) -> AppError {
+    AppError {
+        kind: repository_error_kind(err),
+        message: err_query_stage_failed(locale, stage, &err.to_string()),
+    }
+}
+
+fn repository_error_kind(err: &RepositoryError) -> ErrorKind {
+    match err {
+        RepositoryError::Parse(_) => ErrorKind::Parse,
+        _ => ErrorKind::Network,
     }
 }

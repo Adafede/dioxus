@@ -12,7 +12,7 @@
 use crate::api;
 use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
-use crate::repositories::LotusRepository;
+use crate::repositories::{LotusRepository, RepositoryError};
 use crate::sparql;
 
 /// Zero-size, `Copy` production repository.
@@ -34,19 +34,19 @@ impl LotusRepository for HybridRepository {
         criteria: &SearchCriteria,
         limit: usize,
         include_counts: bool,
-    ) -> Option<Result<SearchResponse, String>> {
+    ) -> Option<Result<SearchResponse, RepositoryError>> {
         // No API base → caller skips the API path entirely.
         api::api_base_url()?;
         Some(
             api::search(criteria, limit, include_counts)
                 .await
-                .map_err(|e| e.to_string()),
+                .map_err(Into::into),
         )
     }
 
-    async fn sparql_bytes(&self, query: &str) -> Result<Vec<u8>, String> {
+    async fn sparql_bytes(&self, query: &str) -> Result<Vec<u8>, RepositoryError> {
         sparql::execute_sparql_bytes(query)
             .await
-            .map_err(|e| e.to_string())
+            .map_err(|e| RepositoryError::Network(e.to_string()))
     }
 }

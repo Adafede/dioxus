@@ -7,16 +7,16 @@
 
 use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
-use crate::repositories::LotusRepository;
+use crate::repositories::{LotusRepository, RepositoryError};
 
 /// Clone-only test stub that always returns "API not configured" and
 /// delegates every SPARQL call to a fixed response.
 ///
-/// Use with `do_search` directly (not `start_search`, which requires `Copy`).
+/// Use with orchestrator tests without network dependencies.
 #[derive(Clone)]
 pub struct MockRepository {
     /// Fixed CSV bytes returned for every `sparql_bytes` call.
-    pub sparql_response: Result<Vec<u8>, String>,
+    pub sparql_response: Result<Vec<u8>, RepositoryError>,
 }
 
 impl MockRepository {
@@ -30,7 +30,7 @@ impl MockRepository {
     /// Always returns a SPARQL network error.
     pub fn sparql_error(msg: impl Into<String>) -> Self {
         Self {
-            sparql_response: Err(msg.into()),
+            sparql_response: Err(RepositoryError::Network(msg.into())),
         }
     }
 }
@@ -41,11 +41,11 @@ impl LotusRepository for MockRepository {
         _criteria: &SearchCriteria,
         _limit: usize,
         _include_counts: bool,
-    ) -> Option<Result<SearchResponse, String>> {
+    ) -> Option<Result<SearchResponse, RepositoryError>> {
         None // Simulate "API not configured" — fall through to SPARQL.
     }
 
-    async fn sparql_bytes(&self, _query: &str) -> Result<Vec<u8>, String> {
+    async fn sparql_bytes(&self, _query: &str) -> Result<Vec<u8>, RepositoryError> {
         self.sparql_response.clone()
     }
 }

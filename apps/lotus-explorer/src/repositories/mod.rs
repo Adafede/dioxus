@@ -34,6 +34,39 @@ pub use hybrid::HybridRepository;
 
 use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
+use std::fmt;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RepositoryError {
+    Network(String),
+    Http { status: u16, body: String },
+    Parse(String),
+    Other(String),
+}
+
+impl fmt::Display for RepositoryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Network(msg) => write!(f, "network error: {msg}"),
+            Self::Http { status, body } => write!(f, "HTTP {status}: {body}"),
+            Self::Parse(msg) => write!(f, "parse error: {msg}"),
+            Self::Other(msg) => write!(f, "{msg}"),
+        }
+    }
+}
+
+impl From<crate::api::ApiClientError> for RepositoryError {
+    fn from(value: crate::api::ApiClientError) -> Self {
+        match value {
+            crate::api::ApiClientError::NotConfigured => {
+                Self::Other("LOTUS API not configured".to_string())
+            }
+            crate::api::ApiClientError::Network(msg) => Self::Network(msg),
+            crate::api::ApiClientError::Http(status, body) => Self::Http { status, body },
+            crate::api::ApiClientError::Parse(msg) => Self::Parse(msg),
+        }
+    }
+}
 
 /// Boundary trait for data-access operations used by the search orchestrator.
 ///
@@ -49,8 +82,8 @@ pub trait LotusRepository: Clone + 'static {
         criteria: &SearchCriteria,
         limit: usize,
         include_counts: bool,
-    ) -> Option<Result<SearchResponse, String>>;
+    ) -> Option<Result<SearchResponse, RepositoryError>>;
 
     /// Execute a SPARQL query and return raw CSV bytes.
-    async fn sparql_bytes(&self, query: &str) -> Result<Vec<u8>, String>;
+    async fn sparql_bytes(&self, query: &str) -> Result<Vec<u8>, RepositoryError>;
 }

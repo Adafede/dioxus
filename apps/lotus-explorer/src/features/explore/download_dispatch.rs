@@ -19,7 +19,7 @@ use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use std::sync::Arc;
 
-pub fn use_startup_effect<R: LotusRepository + Copy>(
+pub fn use_startup_effect<R: LotusRepository>(
     pending_download_format: Signal<Option<String>>,
     pending_execute: Signal<bool>,
     explore: Signal<ExploreState>,
@@ -27,7 +27,9 @@ pub fn use_startup_effect<R: LotusRepository + Copy>(
     locale: Signal<Locale>,
     repo: R,
 ) {
+    let repo_for_effect = repo.clone();
     use_effect(move || {
+        let repo = repo_for_effect.clone();
         let pending = pending_download_format.read().clone();
         if let Some(fmt) = pending.as_deref()
             && DownloadFormat::from_str(fmt).is_none()
