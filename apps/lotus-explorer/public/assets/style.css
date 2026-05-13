@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   LOTUS Wikidata Explorer — design tokens + base + app layout
+   LOTUS Knowledge Explorer — design tokens + base + app layout
    Previously injected at runtime via `dangerous_inner_html`. Now shipped as
    a static asset so the browser caches it and the wasm bundle is smaller.
    ───────────────────────────────────────────────────────────────────────── */
