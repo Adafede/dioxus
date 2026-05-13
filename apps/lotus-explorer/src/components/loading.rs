@@ -20,7 +20,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn LoadingState(locale: Locale) -> Element {
     let state = use_results_context();
-    let query_phase = *state.query_phase.read();
+    let query_phase = state.explore.read().query_phase;
     rsx! {
         div {
             class: "loading-state",

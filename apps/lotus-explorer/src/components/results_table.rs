@@ -3,6 +3,8 @@
 
 use crate::download::{DownloadFormat, execute_download, trigger_download};
 use crate::export;
+use crate::features::explore::actions::ExploreAction;
+use crate::features::explore::search_state::dispatch_explore_action;
 use crate::i18n::{CountNoun, Locale, TextKey, count_label, t};
 use crate::models::*;
 use crate::perf;
@@ -182,16 +184,17 @@ fn dispatch_metadata_download_blob(filename: &str, body: &str) {
 #[component]
 pub fn ResultsTable() -> Element {
     let state = use_results_context();
-    let entries = state.entries;
+    let explore = state.explore;
     let locale = *state.locale.read();
-    let sort = state.sort;
+    let entries_len = explore.read().entries.len();
 
     // Memoised sort: compute a permutation of row indices instead of cloning
     // the whole Vec to sort it. Recomputes only when `entries` or `sort`
     // actually change.
     let sorted_indices: Memo<Arc<[u32]>> = use_memo(move || {
-        let rows = entries.read();
-        let s = *sort.read();
+        let snapshot = explore.read();
+        let rows = snapshot.entries.clone();
+        let s = snapshot.sort;
         let mut idx: Vec<u32> = (0..rows.len() as u32).collect();
         idx.sort_by(|&a, &b| {
             let ea = &rows[a as usize];
@@ -216,7 +219,7 @@ pub fn ResultsTable() -> Element {
         Arc::from(idx.into_boxed_slice())
     });
 
-    let total = entries.read().len();
+    let total = entries_len;
 
     rsx! {
         div { id: "results-section", class: "results-wrap",
@@ -229,9 +232,8 @@ pub fn ResultsTable() -> Element {
                 }
             } else {
                 VirtualizedResultsTable {
-                    entries,
+                    explore,
                     locale,
-                    sort,
                     sorted_indices,
                 }
             }
@@ -248,19 +250,20 @@ pub fn ResultsTable() -> Element {
 #[component]
 fn ResultsToolbar(locale: Locale) -> Element {
     let state = use_results_context();
-    let entries = state.entries;
-    let sparql_query = state.sparql_query.read().clone();
-    let metadata_json = state.metadata_json.read().clone();
-    let query_hash = state.query_hash.read().clone();
-    let result_hash = state.result_hash.read().clone();
-    let criteria = state.executed_criteria;
-    let total_stats = state.total_stats.read().clone();
-    let total_matches = *state.total_matches.read();
-    let display_capped_rows = *state.display_capped_rows.read();
+    let explore = state.explore.read().clone();
+    let entries = explore.entries.clone();
+    let sparql_query = explore.sparql_query.clone();
+    let metadata_json = explore.metadata_json.clone();
+    let query_hash = explore.query_hash.clone();
+    let result_hash = explore.result_hash.clone();
+    let criteria = explore.executed_criteria.clone();
+    let total_stats = explore.total_stats.clone();
+    let total_matches = explore.total_matches;
+    let display_capped_rows = explore.display_capped_rows;
 
     // Fallback stats are memoised so they don't rerun on unrelated re-renders.
     let fallback_stats: Memo<DatasetStats> =
-        use_memo(move || DatasetStats::from_entries(&entries.read()));
+        use_memo(move || DatasetStats::from_entries(&entries));
     let display_stats = total_stats
         .as_ref()
         .cloned()
@@ -325,7 +328,7 @@ fn ResultsToolbar(locale: Locale) -> Element {
             }
             ResultsDownloadActions {
                 locale,
-                criteria,
+                criteria: criteria.clone(),
                 sparql_query: sparql_query.clone(),
                 metadata_json: metadata_json.clone(),
                 query_hash,
@@ -344,31 +347,19 @@ fn ResultsToolbar(locale: Locale) -> Element {
 #[component]
 fn ResultsDownloadActions(
     locale: Locale,
-    criteria: Signal<SearchCriteria>,
+    criteria: SearchCriteria,
     sparql_query: Option<Arc<str>>,
     metadata_json: Option<Arc<str>>,
     query_hash: Option<String>,
     result_hash: Option<String>,
 ) -> Element {
     let export_available = sparql_query.is_some() || metadata_json.is_some();
-    let csv_filename = use_memo(move || {
-        let c = criteria.read();
-        export::generate_filename(&c, "csv")
-    });
-    let json_filename = use_memo(move || {
-        let c = criteria.read();
-        export::generate_filename(&c, "json")
-    });
-    let rdf_filename = use_memo(move || {
-        let c = criteria.read();
-        export::generate_filename(&c, "rdf")
-    });
+    let csv_filename = export::generate_filename(&criteria, "csv");
+    let json_filename = export::generate_filename(&criteria, "json");
+    let rdf_filename = export::generate_filename(&criteria, "rdf");
     let metadata_filename = match (query_hash.as_deref(), result_hash.as_deref()) {
         (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
-        _ => {
-            let c = criteria.read();
-            export::generate_filename(&c, "metadata.json")
-        }
+        _ => export::generate_filename(&criteria, "metadata.json"),
     };
     let qlever_ui_url = sparql_query
         .as_ref()
@@ -403,12 +394,14 @@ fn ResultsDownloadActions(
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
+                                let criteria_snapshot = criteria.clone();
+                                let filename = csv_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_CSV_SPEC,
                                         locale,
-                                        criteria.read().clone(),
-                                        csv_filename.read().clone(),
+                                        criteria_snapshot.clone(),
+                                        filename.clone(),
                                         q.clone(),
                                         download_busy,
                                         download_status,
@@ -425,12 +418,14 @@ fn ResultsDownloadActions(
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
+                                let criteria_snapshot = criteria.clone();
+                                let filename = json_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_JSON_SPEC,
                                         locale,
-                                        criteria.read().clone(),
-                                        json_filename.read().clone(),
+                                        criteria_snapshot.clone(),
+                                        filename.clone(),
                                         q.clone(),
                                         download_busy,
                                         download_status,
@@ -447,12 +442,14 @@ fn ResultsDownloadActions(
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
+                                let criteria_snapshot = criteria.clone();
+                                let filename = rdf_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_RDF_SPEC,
                                         locale,
-                                        criteria.read().clone(),
-                                        rdf_filename.read().clone(),
+                                        criteria_snapshot.clone(),
+                                        filename.clone(),
                                         q.clone(),
                                         download_busy,
                                         download_status,
@@ -499,9 +496,8 @@ fn ResultsDownloadActions(
 
 #[component]
 fn VirtualizedResultsTable(
-    entries: ReadSignal<Rows>,
+    explore: Signal<crate::features::explore::search_state::ExploreState>,
     locale: Locale,
-    sort: Signal<SortState>,
     sorted_indices: Memo<Arc<[u32]>>,
 ) -> Element {
     #[cfg(target_arch = "wasm32")]
@@ -536,9 +532,9 @@ fn VirtualizedResultsTable(
         *scroll_raf_cb.write() = None;
     });
 
-    let total = entries.read().len();
+    let total = explore.read().entries.len();
     let row_height_px = ROW_HEIGHT_PX_COMFORTABLE;
-    let current_sort = *sort.read();
+    let current_sort = explore.read().sort;
     let window_rows = (((*viewport_height_px.read()).saturating_add(row_height_px - 1))
         / row_height_px)
         .max(1)
@@ -551,20 +547,11 @@ fn VirtualizedResultsTable(
     let visible_count = end_row.saturating_sub(start_row);
     let row_text = row_text(locale);
 
-    let toggle_sort = move |col: SortColumn| {
-        move |_: Event<MouseData>| {
-            let mut s = sort.write();
-            if s.col == col {
-                s.dir = if s.dir == SortDir::Asc {
-                    SortDir::Desc
-                } else {
-                    SortDir::Asc
-                };
-            } else {
-                s.col = col;
-                s.dir = SortDir::Asc;
-            }
-        }
+    let toggle_sort = move |col: SortColumn| move |_: Event<MouseData>| {
+        dispatch_explore_action(
+            explore,
+            ExploreAction::SortToggled(col),
+        );
     };
 
     rsx! {
@@ -752,7 +739,7 @@ fn VirtualizedResultsTable(
                     }
                     {
                         // Keep a single read for each reactive source per window render.
-                        let rows = entries.read();
+                        let rows = explore.read().entries.clone();
                         let order = sorted_indices.read();
                         {
                             visible_rows_view(

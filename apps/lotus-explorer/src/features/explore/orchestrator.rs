@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Search orchestration: the glue between the UI, the repository data layer,
-//! and the signal-based runtime state.
+//! Search orchestration for the reducer-backed Explore store.
 //!
-//! Both `start_search` and `do_search` are now generic over `R: LotusRepository`
-//! so that unit tests can inject a stub without any network I/O.
-//!
-//! `start_search` — synchronous.  Validates criteria, resets signals, increments
-//! the stale-token counter, and spawns an async task.
-//!
-//! `do_search` — async, **no signal writes**.  All I/O goes through the
-//! repository.  Returns `SearchOutcome` or a typed `AppError`.
+//! `start_search` dispatches a `SearchRequested` action, snapshots the request
+//! token, and spawns `do_search`.  `do_search` remains async and is responsible
+//! for the I/O-heavy search pipeline, but all user-visible state changes go
+//! through `dispatch_explore_action`.
 
+use crate::api;
 use crate::export;
+use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::search_state::{
-    SearchMetrics, SearchRuntime, emit_search_summary, set_signal_if_changed,
+    dispatch_explore_action, emit_search_summary, set_signal_if_changed, ExploreState,
+    SearchMetrics,
 };
-use crate::features::explore::search_utils::sanitize_taxon_input;
+use crate::features::explore::search_utils::{compute_hashes, sanitize_taxon_input};
 use crate::features::explore::taxon_cache;
 use crate::features::explore::types::{AppError, ErrorKind, QueryPhase};
 use crate::i18n::{
@@ -37,13 +35,7 @@ use dioxus::prelude::*;
 use shared::lotus::models::runtime_table_row_limit;
 use std::sync::Arc;
 
-// ── Public types ──────────────────────────────────────────────────────────────
-
 /// The result produced by a successful `do_search` call.
-///
-/// All heavy lifting (fetching, parsing) is done inside `do_search`; this
-/// struct carries the outcome back so `start_search` can commit it to signals
-/// in one coherent batch.
 pub struct SearchOutcome {
     pub rows: Vec<CompoundEntry>,
     pub qid: Option<String>,
@@ -54,111 +46,38 @@ pub struct SearchOutcome {
     pub display_capped_rows: bool,
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
-/// Validates `criteria`, resets runtime signals, and spawns the async search
-/// task.  Idempotent with respect to multiple rapid invocations: the stale-
-/// token check in the spawned task discards superseded results automatically.
 pub fn start_search<R: LotusRepository + Copy>(
     criteria: Signal<SearchCriteria>,
     locale: Signal<Locale>,
     direct_download_mode: bool,
-    runtime: SearchRuntime,
+    explore: Signal<ExploreState>,
     repo: R,
 ) {
-    let SearchRuntime {
-        executed_criteria,
-        loading,
-        error,
-        error_kind,
-        query_phase,
-        searched_once,
-        download_only_mode,
-        download_dispatching,
-        mut entries,
-        taxon_notice,
-        resolved_qid,
-        query_hash,
-        result_hash,
-        sparql_query,
-        metadata_json,
-        total_matches,
-        total_stats,
-        display_capped_rows,
-        mobile_filters_open,
-        mut search_request_token,
-    } = runtime;
-
     let crit = criteria.peek().clone();
-
-    // Increment token; capture it for the closure below so we can detect
-    // whether a newer search has superseded this one.
-    let request_token = {
-        let mut next = search_request_token.write();
-        *next += 1;
-        *next
-    };
-
-    if *loading.peek() {
-        log_info_evt(
-            "search",
-            "start",
-            "superseding_inflight",
-            Some(&format!("request_token={request_token}")),
-        );
-    }
-
-    // Validation: at least one of taxon / structure is required.
     if !crit.is_valid() {
-        log_warn_evt(
-            "search",
-            "start",
-            "validation_failed",
-            Some("reason=missing_taxon_and_structure"),
+        dispatch_explore_action(
+            explore,
+            ExploreAction::SearchFailed {
+                kind: ErrorKind::Validation,
+                message: err_invalid_search_input(*locale.peek()),
+            },
         );
-        set_signal_if_changed(error, Some(err_invalid_search_input(*locale.peek())));
-        set_signal_if_changed(error_kind, ErrorKind::Validation);
         return;
     }
 
-    // Freeze criteria snapshot for the current result lifecycle.
-    set_signal_if_changed(executed_criteria, crit.clone());
-
-    // Reset all result-related signals before triggering the async task.
-    set_signal_if_changed(error, None);
-    set_signal_if_changed(error_kind, ErrorKind::Unknown);
-    set_signal_if_changed(searched_once, true);
-    set_signal_if_changed(download_only_mode, direct_download_mode);
-    set_signal_if_changed(download_dispatching, false);
-    log_info_evt("search", "start", "loading_true", None);
-    set_signal_if_changed(loading, true);
-    log_debug_evt("search", "ResolvingTaxon", "entered", None);
-    set_signal_if_changed(query_phase, QueryPhase::ResolvingTaxon);
-    *entries.write() = Arc::<[CompoundEntry]>::from([]);
-    set_signal_if_changed(taxon_notice, None);
-    set_signal_if_changed(resolved_qid, None);
-    set_signal_if_changed(query_hash, None);
-    set_signal_if_changed(result_hash, None);
-    set_signal_if_changed(sparql_query, None);
-    set_signal_if_changed(metadata_json, None);
-    set_signal_if_changed(total_matches, None);
-    set_signal_if_changed(total_stats, None);
-    set_signal_if_changed(display_capped_rows, false);
-    set_signal_if_changed(mobile_filters_open, false);
+    dispatch_explore_action(
+        explore,
+        ExploreAction::SearchRequested {
+            criteria_snapshot: crit.clone(),
+            direct_download: direct_download_mode,
+        },
+    );
+    let request_token = explore.peek().search_request_token;
 
     spawn(async move {
-        match do_search(
-            crit.clone(),
-            *locale.peek(),
-            query_phase,
-            direct_download_mode,
-            repo,
-        )
-        .await
-        {
+        match do_search(crit.clone(), *locale.peek(), explore, direct_download_mode, repo).await {
             Ok(outcome) => {
-                // Discard stale results from superseded requests.
-                if request_token != *search_request_token.peek() {
+                if request_token != explore.peek().search_request_token {
                     log_debug_evt(
                         "search",
                         "finish",
@@ -184,7 +103,7 @@ pub fn start_search<R: LotusRepository + Copy>(
                     Some(outcome.total_matches.unwrap_or(outcome.rows.len()))
                 };
 
-                let (q_hash, r_hash) = crate::features::explore::search_utils::compute_hashes(
+                let (q_hash, r_hash) = compute_hashes(
                     outcome.qid.as_deref().unwrap_or(""),
                     &crit,
                     &outcome.rows,
@@ -197,26 +116,28 @@ pub fn start_search<R: LotusRepository + Copy>(
                     result_hash: &r_hash,
                 });
 
-                let display_slice: Rows = Arc::from(outcome.rows.into_boxed_slice());
-                log_debug_evt("search", "Rendering", "entered", None);
-                set_signal_if_changed(query_phase, QueryPhase::Rendering);
-                set_signal_if_changed(resolved_qid, outcome.qid);
-                set_signal_if_changed(taxon_notice, outcome.warning);
-                set_signal_if_changed(query_hash, Some(q_hash));
-                set_signal_if_changed(result_hash, Some(r_hash));
-                set_signal_if_changed(sparql_query, Some(Arc::<str>::from(outcome.query)));
-                set_signal_if_changed(metadata_json, Some(Arc::<str>::from(meta_str)));
-                set_signal_if_changed(display_capped_rows, outcome.display_capped_rows);
-                set_signal_if_changed(total_matches, filtered_matches);
-                set_signal_if_changed(total_stats, filtered_stats);
-                *entries.write() = display_slice;
-                log_info_evt("search", "finish", "loading_false", Some("result=success"));
-                set_signal_if_changed(loading, false);
-                log_debug_evt("search", "Idle", "entered", None);
-                set_signal_if_changed(query_phase, QueryPhase::Idle);
+                dispatch_explore_action(
+                    explore,
+                    ExploreAction::SearchPhaseChanged(QueryPhase::Rendering),
+                );
+                dispatch_explore_action(
+                    explore,
+                    ExploreAction::SearchSucceeded {
+                        rows: outcome.rows,
+                        qid: outcome.qid,
+                        warning: outcome.warning,
+                        query: outcome.query,
+                        total_matches: filtered_matches,
+                        total_stats: filtered_stats,
+                        display_capped_rows: outcome.display_capped_rows,
+                        query_hash: q_hash,
+                        result_hash: r_hash,
+                        metadata_json: Arc::<str>::from(meta_str),
+                    },
+                );
             }
             Err(e) => {
-                if request_token != *search_request_token.peek() {
+                if request_token != explore.peek().search_request_token {
                     log_debug_evt(
                         "search",
                         "finish",
@@ -225,26 +146,22 @@ pub fn start_search<R: LotusRepository + Copy>(
                     );
                     return;
                 }
-                set_signal_if_changed(error_kind, e.kind);
-                set_signal_if_changed(error, Some(e.message));
-                log_info_evt("search", "finish", "loading_false", Some("result=error"));
-                set_signal_if_changed(loading, false);
-                log_debug_evt("search", "Idle", "entered", None);
-                set_signal_if_changed(query_phase, QueryPhase::Idle);
+                dispatch_explore_action(
+                    explore,
+                    ExploreAction::SearchFailed {
+                        kind: e.kind,
+                        message: e.message,
+                    },
+                );
             }
         }
     });
 }
 
-// ── Core async search logic ───────────────────────────────────────────────────
-
-/// Performs the full search pipeline: taxon resolution → query build →
-/// count + preview fetch.  Does **not** write to any signal.  All I/O goes
-/// through `repo`, which may be a production `HybridRepository` or a test stub.
-pub async fn do_search<R: LotusRepository>(
+pub async fn do_search<R: LotusRepository + Copy>(
     crit: SearchCriteria,
     locale: Locale,
-    mut query_phase: Signal<QueryPhase>,
+    explore: Signal<ExploreState>,
     direct_download_mode: bool,
     repo: R,
 ) -> Result<SearchOutcome, AppError> {
@@ -253,9 +170,6 @@ pub async fn do_search<R: LotusRepository>(
     log_info_evt("search", "start", "begin", None);
 
     let taxon = crit.taxon.trim().to_string();
-    // Preserve Molfile blocks verbatim — leading blank lines and whitespace
-    // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
-    // must reach SACHEM untouched.  Only trim single-line SMILES inputs.
     let smiles = {
         let normalized = crit.smiles.replace("\r\n", "\n").replace('\r', "\n");
         let kind = queries::classify_structure(&normalized);
@@ -269,25 +183,15 @@ pub async fn do_search<R: LotusRepository>(
         }
     };
 
-    // ── Fast path: REST API (when configured) ─────────────────────────────
     if !direct_download_mode {
         let mut api_crit = crit.clone();
         api_crit.smiles = smiles.clone();
         let display_limit = runtime_table_row_limit();
         let include_counts = true;
-
         let api_timer = perf::start_timer("LOTUS:api_search");
-        match repo
-            .api_search(&api_crit, display_limit, include_counts)
-            .await
-        {
+        match repo.api_search(&api_crit, display_limit, include_counts).await {
             None => {
-                log_info_evt(
-                    "search",
-                    "api",
-                    "path_not_available",
-                    Some("reason=not_configured"),
-                );
+                log_info_evt("search", "api", "path_not_available", Some("reason=not_configured"));
             }
             Some(Ok(response)) => {
                 let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
@@ -297,22 +201,14 @@ pub async fn do_search<R: LotusRepository>(
                     "api",
                     "success",
                     api_elapsed,
-                    Some(&format!(
-                        "rows={} total_matches={}",
-                        response.rows.len(),
-                        response.total_matches
-                    )),
+                    Some(&format!("rows={} total_matches={}", response.rows.len(), response.total_matches)),
                 );
                 let display_capped_rows = if include_counts {
                     response.total_matches > response.rows.len()
                 } else {
                     response.rows.len() >= display_limit
                 };
-                let rows = response
-                    .rows
-                    .into_iter()
-                    .map(CompoundEntry::from)
-                    .collect::<Vec<_>>();
+                let rows = response.rows.into_iter().map(CompoundEntry::from).collect::<Vec<_>>();
                 return Ok(SearchOutcome {
                     rows,
                     qid: response.resolved_taxon_qid,
@@ -335,29 +231,13 @@ pub async fn do_search<R: LotusRepository>(
             }
         }
     } else {
-        log_info_evt(
-            "search",
-            "api",
-            "path_not_available",
-            Some("reason=direct_download_mode"),
-        );
+        log_info_evt("search", "api", "path_not_available", Some("reason=direct_download_mode"));
     }
 
-    // ── Slow path: direct SPARQL ───────────────────────────────────────────
-
     let mut warning: Option<String> = None;
-    let taxon_qid = resolve_taxon_qid(
-        &taxon,
-        locale,
-        &mut query_phase,
-        &mut metrics,
-        &mut warning,
-        &repo,
-    )
-    .await?;
+    let taxon_qid = resolve_taxon_qid(&taxon, locale, explore, &mut metrics, &mut warning, &repo).await?;
 
     let sparql_query = build_sparql_query(&smiles, &crit, taxon_qid.as_deref());
-
     let execution_query = queries::query_with_server_filters(&sparql_query, &crit);
     log_debug_evt(
         "search",
@@ -372,13 +252,7 @@ pub async fn do_search<R: LotusRepository>(
 
     if direct_download_mode {
         let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
-        log_timing_evt(
-            "search",
-            "direct_download",
-            "ready",
-            total_elapsed,
-            Some("skipped=count_and_preview"),
-        );
+        log_timing_evt("search", "direct_download", "ready", total_elapsed, Some("skipped=count_and_preview"));
         emit_search_summary(total_elapsed, metrics);
         return Ok(SearchOutcome {
             rows: Vec::new(),
@@ -392,8 +266,7 @@ pub async fn do_search<R: LotusRepository>(
     }
 
     let display_limit = runtime_table_row_limit();
-    log_debug_evt("search", "Counting", "entered", None);
-    *query_phase.write() = QueryPhase::Counting;
+    dispatch_explore_action(explore, ExploreAction::SearchPhaseChanged(QueryPhase::Counting));
     let count_query = queries::query_counts_from_base(&execution_query);
     let display_query = queries::query_with_limit(&execution_query, display_limit);
 
@@ -403,7 +276,7 @@ pub async fn do_search<R: LotusRepository>(
         &execution_query,
         display_limit,
         locale,
-        &mut query_phase,
+        explore,
         &mut metrics,
         &repo,
     )
@@ -432,12 +305,10 @@ pub async fn do_search<R: LotusRepository>(
     Ok(outcome)
 }
 
-// ── Private helpers ───────────────────────────────────────────────────────────
-
-async fn resolve_taxon_qid<R: LotusRepository>(
+async fn resolve_taxon_qid<R: LotusRepository + Copy>(
     taxon: &str,
     locale: Locale,
-    query_phase: &mut Signal<QueryPhase>,
+    explore: Signal<ExploreState>,
     metrics: &mut SearchMetrics,
     warning: &mut Option<String>,
     repo: &R,
@@ -452,8 +323,7 @@ async fn resolve_taxon_qid<R: LotusRepository>(
         return Ok(Some(taxon.to_uppercase()));
     }
 
-    log_debug_evt("search", "ResolvingTaxon", "entered", None);
-    *query_phase.write() = QueryPhase::ResolvingTaxon;
+    dispatch_explore_action(explore, ExploreAction::SearchPhaseChanged(QueryPhase::ResolvingTaxon));
     let taxon_timer = perf::start_timer("LOTUS:taxon_resolution");
 
     let sanitized = sanitize_taxon_input(taxon);
@@ -480,11 +350,7 @@ async fn resolve_taxon_qid<R: LotusRepository>(
     })?;
     let taxon_elapsed = perf::end_timer("LOTUS:taxon_resolution", taxon_timer);
     metrics.add_network(taxon_elapsed);
-    perf::log_timing(
-        "ResolvingTaxon",
-        "Taxon query completed",
-        Some(taxon_elapsed),
-    );
+    perf::log_timing("ResolvingTaxon", "Taxon query completed", Some(taxon_elapsed));
 
     let matches = sparql::parse_taxon_csv_bytes(&csv).map_err(|e| AppError {
         kind: ErrorKind::Parse,
@@ -498,10 +364,7 @@ async fn resolve_taxon_qid<R: LotusRepository>(
     }
 
     let lower = sanitized.to_lowercase();
-    let exact: Vec<&TaxonMatch> = matches
-        .iter()
-        .filter(|m| m.name.to_lowercase() == lower)
-        .collect();
+    let exact: Vec<&TaxonMatch> = matches.iter().filter(|m| m.name.to_lowercase() == lower).collect();
     let best = exact
         .first()
         .copied()
@@ -539,12 +402,7 @@ fn build_sparql_query(smiles: &str, crit: &SearchCriteria, taxon_qid: Option<&st
             Some(qid) => Some(qid),
             None => None,
         };
-        let q = queries::query_sachem(
-            smiles,
-            effective_type,
-            crit.smiles_threshold,
-            taxon_for_sachem,
-        );
+        let q = queries::query_sachem(smiles, effective_type, crit.smiles_threshold, taxon_for_sachem);
         log_debug_evt(
             "search",
             "query_build",
@@ -561,29 +419,20 @@ fn build_sparql_query(smiles: &str, crit: &SearchCriteria, taxon_qid: Option<&st
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn fetch_count_and_preview<R: LotusRepository>(
+async fn fetch_count_and_preview<R: LotusRepository + Copy>(
     count_query: &str,
     display_query: &str,
-    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))] execution_query: &str,
+    execution_query: &str,
     display_limit: usize,
     locale: Locale,
-    query_phase: &mut Signal<QueryPhase>,
+    explore: Signal<ExploreState>,
     metrics: &mut SearchMetrics,
     repo: &R,
-) -> Result<
-    (
-        Vec<CompoundEntry>,
-        Option<DatasetStats>,
-        Option<usize>,
-        bool,
-    ),
-    AppError,
-> {
+) -> Result<(Vec<CompoundEntry>, Option<DatasetStats>, Option<usize>, bool), AppError> {
     let result = async {
         #[cfg(target_arch = "wasm32")]
         {
             log_debug_evt("search", "Counting", "sequential_fetch_wasm", None);
-
             let count_timer = perf::start_timer("LOTUS:count_query");
             let counts_csv = repo.sparql_bytes(count_query).await.map_err(|e| AppError {
                 kind: ErrorKind::Network,
@@ -604,32 +453,20 @@ async fn fetch_count_and_preview<R: LotusRepository>(
                 "Counting",
                 &format!(
                     "Count parse completed (entries={}, compounds={}, taxa={}, refs={})",
-                    full_stats.n_entries,
-                    full_stats.n_compounds,
-                    full_stats.n_taxa,
-                    full_stats.n_references
+                    full_stats.n_entries, full_stats.n_compounds, full_stats.n_taxa, full_stats.n_references
                 ),
                 Some(count_parse_elapsed),
             );
 
-            log_debug_evt("search", "FetchingPreview", "entered", None);
-            *query_phase.write() = QueryPhase::FetchingPreview;
-
+            dispatch_explore_action(explore, ExploreAction::SearchPhaseChanged(QueryPhase::FetchingPreview));
             let display_timer = perf::start_timer("LOTUS:display_query");
-            let display_csv = repo
-                .sparql_bytes(display_query)
-                .await
-                .map_err(|e| AppError {
-                    kind: ErrorKind::Network,
-                    message: err_query_stage_failed(locale, "display query", &e),
-                })?;
+            let display_csv = repo.sparql_bytes(display_query).await.map_err(|e| AppError {
+                kind: ErrorKind::Network,
+                message: err_query_stage_failed(locale, "display query", &e),
+            })?;
             let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
             metrics.add_network(display_elapsed);
-            perf::log_timing(
-                "FetchingPreview",
-                "Display query completed",
-                Some(display_elapsed),
-            );
+            perf::log_timing("FetchingPreview", "Display query completed", Some(display_elapsed));
 
             let display_parse_timer = perf::start_timer("LOTUS:display_parse");
             let rows = sparql::parse_compounds_csv_display_bytes(&display_csv, display_limit)
@@ -645,51 +482,26 @@ async fn fetch_count_and_preview<R: LotusRepository>(
                 Some(display_parse_elapsed),
             );
             let display_capped_rows = full_stats.n_entries > rows.len();
-
-            Ok::<_, AppError>((
-                rows,
-                Some(full_stats.clone()),
-                Some(full_stats.n_entries),
-                display_capped_rows,
-            ))
+            Ok::<_, AppError>((rows, Some(full_stats.clone()), Some(full_stats.n_entries), display_capped_rows))
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         {
             log_debug_evt("search", "Counting", "parallel_fetch_started", None);
-
             let count_fut = repo.sparql_bytes(count_query);
             let display_fut = repo.sparql_bytes(display_query);
-
             let count_timer = perf::start_timer("LOTUS:count_query");
             let display_timer = perf::start_timer("LOTUS:display_query");
-
             let (counts_csv, display_csv) = futures::try_join!(
-                async {
-                    count_fut.await.map_err(|e| AppError {
-                        kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "count query", &e),
-                    })
-                },
-                async {
-                    display_fut.await.map_err(|e| AppError {
-                        kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "display query", &e),
-                    })
-                },
+                async { count_fut.await.map_err(|e| AppError { kind: ErrorKind::Network, message: err_query_stage_failed(locale, "count query", &e) }) },
+                async { display_fut.await.map_err(|e| AppError { kind: ErrorKind::Network, message: err_query_stage_failed(locale, "display query", &e) }) },
             )?;
-
             let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
             let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
             metrics.add_network(count_elapsed);
             metrics.add_network(display_elapsed);
             perf::log_timing("Counting", "Count query completed", Some(count_elapsed));
-            perf::log_timing(
-                "FetchingPreview",
-                "Display query completed",
-                Some(display_elapsed),
-            );
-
+            perf::log_timing("FetchingPreview", "Display query completed", Some(display_elapsed));
             let count_parse_timer = perf::start_timer("LOTUS:count_parse");
             let full_stats = sparql::parse_counts_csv_bytes(&counts_csv).map_err(|e| AppError {
                 kind: ErrorKind::Parse,
@@ -701,17 +513,11 @@ async fn fetch_count_and_preview<R: LotusRepository>(
                 "Counting",
                 &format!(
                     "Count parse completed (entries={}, compounds={}, taxa={}, refs={})",
-                    full_stats.n_entries,
-                    full_stats.n_compounds,
-                    full_stats.n_taxa,
-                    full_stats.n_references
+                    full_stats.n_entries, full_stats.n_compounds, full_stats.n_taxa, full_stats.n_references
                 ),
                 Some(count_parse_elapsed),
             );
-
-            log_debug_evt("search", "FetchingPreview", "entered", None);
-            *query_phase.write() = QueryPhase::FetchingPreview;
-
+            dispatch_explore_action(explore, ExploreAction::SearchPhaseChanged(QueryPhase::FetchingPreview));
             let display_parse_timer = perf::start_timer("LOTUS:display_parse");
             let rows = sparql::parse_compounds_csv_display_bytes(&display_csv, display_limit)
                 .map_err(|e| AppError {
@@ -726,13 +532,7 @@ async fn fetch_count_and_preview<R: LotusRepository>(
                 Some(display_parse_elapsed),
             );
             let display_capped_rows = full_stats.n_entries > rows.len();
-
-            Ok::<_, AppError>((
-                rows,
-                Some(full_stats.clone()),
-                Some(full_stats.n_entries),
-                display_capped_rows,
-            ))
+            Ok::<_, AppError>((rows, Some(full_stats.clone()), Some(full_stats.n_entries), display_capped_rows))
         }
     }
     .await;
@@ -750,40 +550,23 @@ async fn fetch_count_and_preview<R: LotusRepository>(
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                log_warn_evt(
-                    "search",
-                    "Fallback",
-                    "entered",
-                    Some("reason=two_phase_failed"),
-                );
+                log_warn_evt("search", "Fallback", "entered", Some("reason=two_phase_failed"));
                 let _ = err_msg;
                 let fallback_query_timer = perf::start_timer("LOTUS:fallback_query");
-                let csv = repo
-                    .sparql_bytes(execution_query)
-                    .await
-                    .map_err(|e| AppError {
-                        kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "query", &e),
-                    })?;
-                let fallback_query_elapsed =
-                    perf::end_timer("LOTUS:fallback_query", fallback_query_timer);
+                let csv = repo.sparql_bytes(execution_query).await.map_err(|e| AppError {
+                    kind: ErrorKind::Network,
+                    message: err_query_stage_failed(locale, "query", &e),
+                })?;
+                let fallback_query_elapsed = perf::end_timer("LOTUS:fallback_query", fallback_query_timer);
                 metrics.add_network(fallback_query_elapsed);
-                perf::log_timing(
-                    "Fallback",
-                    "Fallback query completed",
-                    Some(fallback_query_elapsed),
-                );
-
+                perf::log_timing("Fallback", "Fallback query completed", Some(fallback_query_elapsed));
                 let fallback_parse_timer = perf::start_timer("LOTUS:fallback_parse");
                 let (rows, full_stats, parse_capped) =
-                    sparql::parse_compounds_csv_capped_bytes(&csv, display_limit).map_err(|e| {
-                        AppError {
-                            kind: ErrorKind::Parse,
-                            message: err_query_stage_failed(locale, "parse", &e.to_string()),
-                        }
+                    sparql::parse_compounds_csv_capped_bytes(&csv, display_limit).map_err(|e| AppError {
+                        kind: ErrorKind::Parse,
+                        message: err_query_stage_failed(locale, "parse", &e.to_string()),
                     })?;
-                let fallback_parse_elapsed =
-                    perf::end_timer("LOTUS:fallback_parse", fallback_parse_timer);
+                let fallback_parse_elapsed = perf::end_timer("LOTUS:fallback_parse", fallback_parse_timer);
                 metrics.add_parse(fallback_parse_elapsed);
                 perf::log_timing(
                     "Fallback",
@@ -791,12 +574,7 @@ async fn fetch_count_and_preview<R: LotusRepository>(
                     Some(fallback_parse_elapsed),
                 );
                 let display_capped_rows = parse_capped || full_stats.n_entries > rows.len();
-                Ok((
-                    rows,
-                    Some(full_stats.clone()),
-                    Some(full_stats.n_entries),
-                    display_capped_rows,
-                ))
+                Ok((rows, Some(full_stats.clone()), Some(full_stats.n_entries), display_capped_rows))
             }
         }
     }

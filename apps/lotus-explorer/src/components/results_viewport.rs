@@ -23,12 +23,13 @@ use dioxus::prelude::*;
 pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     let state = use_results_context();
     let locale = *state.locale.read();
-    let loading = *state.loading.read();
-    let has_error = state.error.read().is_some();
-    let searched_once = *state.searched_once.read();
-    let download_only_mode = *state.download_only_mode.read();
-    let download_dispatching = *state.download_dispatching.read();
-    let entries = state.entries;
+    let explore = state.explore.read();
+    let loading = explore.loading;
+    let has_error = explore.error.is_some();
+    let searched_once = explore.searched_once;
+    let download_only_mode = explore.download_only_mode;
+    let download_dispatching = explore.download_dispatching;
+    let entries = explore.entries.clone();
 
     if loading {
         return rsx! {
@@ -36,19 +37,19 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
         };
     }
 
-    if entries.read().is_empty() && !has_error && !searched_once {
+    if entries.is_empty() && !has_error && !searched_once {
         return rsx! {
             WelcomeScreen { locale }
         };
     }
 
-    if entries.read().is_empty() && !has_error && download_only_mode && download_dispatching {
+    if entries.is_empty() && !has_error && download_only_mode && download_dispatching {
         return rsx! {
             DownloadDispatchState { locale }
         };
     }
 
-    if entries.read().is_empty() && !has_error && download_only_mode {
+    if entries.is_empty() && !has_error && download_only_mode {
         return rsx! {
             DownloadOnlyState { locale, on_preview }
         };

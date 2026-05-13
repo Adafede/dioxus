@@ -11,7 +11,11 @@ use dioxus::prelude::*;
 use std::sync::Arc;
 
 #[component]
-pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>, locale: Signal<Locale>) -> Element {
+pub fn ShareNotice(
+    _explore: Signal<crate::features::explore::search_state::ExploreState>,
+    shareable_url: Memo<Option<Arc<str>>>,
+    locale: Signal<Locale>,
+) -> Element {
     let locale = *locale.read();
     let share = shareable_url.read();
     let Some(share) = share.as_deref() else {
@@ -37,9 +41,12 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>, locale: Signal<Locale>
 }
 
 #[component]
-pub fn TaxonNotice(taxon_notice: Signal<Option<String>>, locale: Signal<Locale>) -> Element {
+pub fn TaxonNotice(
+    explore: Signal<crate::features::explore::search_state::ExploreState>,
+    locale: Signal<Locale>,
+) -> Element {
     let locale = *locale.read();
-    let notice = taxon_notice.read();
+    let notice = explore.read().taxon_notice.clone();
     let Some(warning) = notice.as_deref() else {
         return rsx! {};
     };
@@ -55,17 +62,16 @@ pub fn TaxonNotice(taxon_notice: Signal<Option<String>>, locale: Signal<Locale>)
 
 #[component]
 pub fn ErrorNotice(
-    error: Signal<Option<String>>,
-    error_kind: Signal<ErrorKind>,
+    explore: Signal<crate::features::explore::search_state::ExploreState>,
     locale: Signal<Locale>,
-    loading: Signal<bool>,
     on_dismiss: EventHandler<()>,
     on_retry: EventHandler<()>,
 ) -> Element {
     let locale = *locale.read();
-    let kind = *error_kind.read();
-    let is_loading = *loading.read();
-    let err_ref = error.read();
+    let explore = explore.read();
+    let kind = explore.error_kind;
+    let is_loading = explore.loading;
+    let err_ref = explore.error.as_ref();
     let Some(msg) = err_ref.as_deref() else {
         return rsx! {};
     };

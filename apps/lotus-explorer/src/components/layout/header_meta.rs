@@ -8,15 +8,13 @@ use std::sync::Arc;
 
 #[component]
 pub fn HeaderMetaSection(
-    resolved_qid: Signal<Option<String>>,
-    query_hash: Signal<Option<String>>,
-    result_hash: Signal<Option<String>>,
-    total_matches: Signal<Option<usize>>,
+    explore: Signal<crate::features::explore::search_state::ExploreState>,
     locale: Signal<Locale>,
 ) -> Element {
     let locale = *locale.read();
+    let explore = explore.read();
     rsx! {
-        if let Some(qid) = resolved_qid.read().as_deref() {
+        if let Some(qid) = explore.resolved_qid.as_deref() {
             p { class: "page-meta",
                 span { class: "meta-key", "{t(locale, TextKey::ResolvedTaxon)}" }
                 span { class: "meta-sep", ":" }
@@ -28,11 +26,7 @@ pub fn HeaderMetaSection(
                 }
             }
         }
-        if let (Some(qh), Some(rh)) = (
-            query_hash.read().as_deref(),
-            result_hash.read().as_deref(),
-        )
-        {
+        if let (Some(qh), Some(rh)) = (explore.query_hash.as_deref(), explore.result_hash.as_deref()) {
             p { class: "page-meta",
                 span { class: "meta-key", "{t(locale, TextKey::QueryHash)}" }
                 span { class: "meta-sep", ":" }
@@ -53,7 +47,7 @@ pub fn HeaderMetaSection(
                 }
             }
         }
-        if let Some(n) = *total_matches.read() {
+        if let Some(n) = explore.total_matches {
             p { class: "page-meta",
                 span { class: "meta-key", "{t(locale, TextKey::TotalMatches)}" }
                 span { class: "meta-sep", ":" }
