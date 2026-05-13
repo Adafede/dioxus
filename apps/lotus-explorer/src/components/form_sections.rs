@@ -7,6 +7,19 @@ use crate::i18n::{TextKey, t};
 use crate::models::*;
 use dioxus::prelude::*;
 
+fn parse_f64_input(raw: &str) -> Option<f64> {
+    raw.parse::<f64>().ok()
+}
+
+fn parse_u16_input(raw: &str) -> Option<u16> {
+    raw.parse::<u16>().ok()
+}
+
+#[must_use]
+fn normalized_year_input_max(current_year: u16) -> u16 {
+    current_year.max(crate::components::search_panel::DEFAULT_YEAR_MIN)
+}
+
 /// Taxon input section with label and hint.
 #[component]
 pub fn TaxonInput(
@@ -62,7 +75,7 @@ pub fn MassRangeInput(
                         step: "1",
                         value: "{min_value}",
                         oninput: move |e| {
-                            if let Ok(v) = e.value().parse::<f64>() {
+                            if let Some(v) = parse_f64_input(&e.value()) {
                                 on_min.call(v);
                             }
                         },
@@ -80,7 +93,7 @@ pub fn MassRangeInput(
                         step: "1",
                         value: "{max_value}",
                         oninput: move |e| {
-                            if let Ok(v) = e.value().parse::<f64>() {
+                            if let Some(v) = parse_f64_input(&e.value()) {
                                 on_max.call(v);
                             }
                         },
@@ -101,7 +114,7 @@ pub fn YearRangeInput(
 ) -> Element {
     use crate::components::search_panel::DEFAULT_YEAR_MIN;
     let locale = crate::hooks::use_locale();
-    let current = crate::components::search_panel::current_year();
+    let current = normalized_year_input_max(crate::components::search_panel::current_year());
 
     rsx! {
         fieldset { class: "form-section", style: "border:0;padding:0;margin:0;",
@@ -118,7 +131,7 @@ pub fn YearRangeInput(
                         step: "1",
                         value: "{min_value}",
                         oninput: move |e| {
-                            if let Ok(v) = e.value().parse::<u16>() {
+                            if let Some(v) = parse_u16_input(&e.value()) {
                                 on_min.call(v);
                             }
                         },
@@ -136,7 +149,7 @@ pub fn YearRangeInput(
                         step: "1",
                         value: "{max_value}",
                         oninput: move |e| {
-                            if let Ok(v) = e.value().parse::<u16>() {
+                            if let Some(v) = parse_u16_input(&e.value()) {
                                 on_max.call(v);
                             }
                         },
@@ -169,7 +182,7 @@ fn NumPair(
                 aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
                 value: "{min_value}",
                 oninput: move |e| {
-                    if let Ok(v) = e.value().parse::<u16>() {
+                    if let Some(v) = parse_u16_input(&e.value()) {
                         on_min.call(v);
                     }
                 },
@@ -183,12 +196,39 @@ fn NumPair(
                 aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",
                 value: "{max_value}",
                 oninput: move |e| {
-                    if let Ok(v) = e.value().parse::<u16>() {
+                    if let Some(v) = parse_u16_input(&e.value()) {
                         on_max.call(v);
                     }
                 },
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{normalized_year_input_max, parse_f64_input, parse_u16_input};
+
+    #[test]
+    fn parse_f64_input_accepts_valid_numbers_and_rejects_invalid_text() {
+        assert_eq!(parse_f64_input("42"), Some(42.0));
+        assert_eq!(parse_f64_input("2.5"), Some(2.5));
+        assert_eq!(parse_f64_input("abc"), None);
+    }
+
+    #[test]
+    fn parse_u16_input_accepts_positive_integers_only() {
+        assert_eq!(parse_u16_input("007"), Some(7));
+        assert_eq!(parse_u16_input("65535"), Some(u16::MAX));
+        assert_eq!(parse_u16_input("-1"), None);
+        assert_eq!(parse_u16_input("12.5"), None);
+    }
+
+    #[test]
+    fn normalized_year_input_max_never_drops_below_default_floor() {
+        assert_eq!(normalized_year_input_max(2030), 2030);
+        assert_eq!(normalized_year_input_max(1975), 1975);
+        assert_eq!(normalized_year_input_max(1900), 1975);
     }
 }
 

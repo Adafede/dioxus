@@ -12,6 +12,9 @@ mod sort_helpers;
 #[path = "results_table/sort_model.rs"]
 mod sort_model;
 
+#[path = "results_table/download_model.rs"]
+mod download_model;
+
 #[path = "results_table/table_toolbar_sections.rs"]
 mod table_toolbar_sections;
 

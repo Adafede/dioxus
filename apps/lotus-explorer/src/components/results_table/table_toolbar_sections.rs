@@ -3,55 +3,16 @@
 
 //! Sub-components for ResultsTable toolbar sections.
 
+use super::download_model::{
+    DOWNLOAD_METADATA_SPEC, DOWNLOAD_QUERY_CSV_SPEC, DOWNLOAD_QUERY_JSON_SPEC,
+    DOWNLOAD_QUERY_RDF_SPEC, DownloadQuerySpec, build_download_toolbar_model,
+};
 use crate::download::{DownloadFormat, execute_download, trigger_download};
-use crate::export;
 use crate::i18n::{CountNoun, TextKey, count_label, t};
 use crate::models::*;
 use crate::perf;
 use dioxus::prelude::*;
 use std::sync::Arc;
-
-#[derive(Clone, Copy)]
-struct DownloadQuerySpec {
-    format: DownloadFormat,
-    status_key: TextKey,
-    title_key: TextKey,
-    label_key: TextKey,
-}
-
-#[derive(Clone, Copy)]
-struct DownloadMetadataSpec {
-    title_key: TextKey,
-    label_key: TextKey,
-}
-
-const DOWNLOAD_QUERY_CSV_SPEC: DownloadQuerySpec = DownloadQuerySpec {
-    format: DownloadFormat::Csv,
-    status_key: TextKey::StartingCsvDownload,
-    title_key: TextKey::DownloadCsvTitle,
-    label_key: TextKey::DownloadCsvLabel,
-};
-
-const DOWNLOAD_QUERY_JSON_SPEC: DownloadQuerySpec = DownloadQuerySpec {
-    format: DownloadFormat::Json,
-    status_key: TextKey::PreparingJsonDownload,
-    title_key: TextKey::DownloadJsonTitle,
-    label_key: TextKey::DownloadJsonLabel,
-};
-
-const DOWNLOAD_QUERY_RDF_SPEC: DownloadQuerySpec = DownloadQuerySpec {
-    format: DownloadFormat::Rdf,
-    status_key: TextKey::PreparingRdfDownload,
-    title_key: TextKey::DownloadRdfTitle,
-    label_key: TextKey::DownloadRdfLabel,
-};
-
-const DOWNLOAD_METADATA_SPEC: DownloadMetadataSpec = DownloadMetadataSpec {
-    title_key: TextKey::DownloadMetadataTitle,
-    label_key: TextKey::DownloadMetadataLabel,
-};
-
-const QLEVER_UI: &str = "https://qlever.dev/wikidata";
 const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
 
 fn log_download_evt(phase: &str, state: &str, details: Option<&str>) {
@@ -276,17 +237,13 @@ pub fn DownloadActionsGroup(
     result_hash: Option<String>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
-    let export_available = sparql_query.is_some() || metadata_json.is_some();
-    let csv_filename = export::generate_filename(&criteria, "csv");
-    let json_filename = export::generate_filename(&criteria, "json");
-    let rdf_filename = export::generate_filename(&criteria, "rdf");
-    let metadata_filename = match (query_hash.as_deref(), result_hash.as_deref()) {
-        (Some(q), Some(r)) => format!("{q}_{r}_metadata.json"),
-        _ => export::generate_filename(&criteria, "metadata.json"),
-    };
-    let qlever_ui_url = sparql_query
-        .as_ref()
-        .map(|q| format!("{QLEVER_UI}?query={}", urlencoding::encode(q.as_ref())));
+    let toolbar_model = build_download_toolbar_model(
+        &criteria,
+        sparql_query.as_deref(),
+        metadata_json.as_deref(),
+        query_hash.as_deref(),
+        result_hash.as_deref(),
+    );
     let download_busy = use_signal(|| false);
     let download_status: Signal<Option<String>> = use_signal(|| None);
     let download_status_text = download_status
@@ -305,7 +262,7 @@ pub fn DownloadActionsGroup(
                     {download_status_text}
                 }
             }
-            if export_available {
+            if toolbar_model.export_available {
                 div {
                     class: "dl-group",
                     role: "group",
@@ -318,7 +275,7 @@ pub fn DownloadActionsGroup(
                             onclick: {
                                 let q = query.clone();
                                 let criteria_snapshot = criteria.clone();
-                                let filename = csv_filename.clone();
+                                let filename = toolbar_model.csv_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_CSV_SPEC,
@@ -342,7 +299,7 @@ pub fn DownloadActionsGroup(
                             onclick: {
                                 let q = query.clone();
                                 let criteria_snapshot = criteria.clone();
-                                let filename = json_filename.clone();
+                                let filename = toolbar_model.json_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_JSON_SPEC,
@@ -366,7 +323,7 @@ pub fn DownloadActionsGroup(
                             onclick: {
                                 let q = query.clone();
                                 let criteria_snapshot = criteria.clone();
-                                let filename = rdf_filename.clone();
+                                let filename = toolbar_model.rdf_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_RDF_SPEC,
@@ -391,7 +348,7 @@ pub fn DownloadActionsGroup(
                             disabled: *download_busy.read(),
                             onclick: {
                                 let body = body.clone();
-                                let filename = metadata_filename.clone();
+                                let filename = toolbar_model.metadata_filename.clone();
                                 move |_| {
                                     dispatch_metadata_download_blob(&filename, body.as_ref());
                                 }
@@ -403,7 +360,7 @@ pub fn DownloadActionsGroup(
                     }
                 }
             }
-            if let Some(url) = qlever_ui_url.as_deref() {
+            if let Some(url) = toolbar_model.qlever_ui_url.as_deref() {
                 a {
                     class: "btn btn-sm",
                     href: "{url}",
