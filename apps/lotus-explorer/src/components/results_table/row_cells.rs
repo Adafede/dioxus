@@ -40,19 +40,9 @@ pub(super) fn ResultsRowsWindow(
 ) -> Element {
     rsx! {
         for i in order.iter().skip(start_row).take(visible_count).copied() {
-            ResultRow {
-                locale,
-                text,
-                entry: rows[i as usize].clone(),
-                row_key: i,
-            }
+            { row_view(locale, text, &rows[i as usize], i) }
         }
     }
-}
-
-#[component]
-fn ResultRow(locale: Locale, text: RowText, entry: CompoundEntry, row_key: u32) -> Element {
-    row_view(locale, text, &entry, row_key)
 }
 
 fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) -> Element {
