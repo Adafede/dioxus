@@ -101,10 +101,19 @@ pub struct CurationResultRow {
     pub quickstatements: Vec<String>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QuickStatementsBundle {
-    pub dependencies: String,
-    pub main: String,
+    pub dependencies: std::sync::Arc<str>,
+    pub main: std::sync::Arc<str>,
+}
+
+impl Default for QuickStatementsBundle {
+    fn default() -> Self {
+        Self {
+            dependencies: std::sync::Arc::<str>::from(""),
+            main: std::sync::Arc::<str>::from(""),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -277,7 +286,13 @@ pub async fn curate_rows(
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    Ok((results, QuickStatementsBundle { dependencies, main }))
+    Ok((
+        results,
+        QuickStatementsBundle {
+            dependencies: std::sync::Arc::<str>::from(dependencies),
+            main: std::sync::Arc::<str>::from(main),
+        },
+    ))
 }
 
 pub fn row_uniqueness_key(row: &CurationInputRow) -> String {

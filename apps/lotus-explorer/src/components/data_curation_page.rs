@@ -401,7 +401,7 @@ pub fn DataCurationPage() -> Element {
                         div { class: "curation-actions curation-space-between",
                             h3 { "{heading_quickstatements_dependencies(locale)}" }
                             CopyButton {
-                                text: Arc::<str>::from(quickstatements.read().dependencies.clone()),
+                                text: quickstatements.read().dependencies.clone(),
                                 locale,
                             }
                         }
@@ -433,7 +433,7 @@ pub fn DataCurationPage() -> Element {
                         div { class: "curation-actions curation-space-between",
                             h3 { "{heading_quickstatements(locale)}" }
                             CopyButton {
-                                text: Arc::<str>::from(quickstatements.read().main.clone()),
+                                text: quickstatements.read().main.clone(),
                                 locale,
                             }
                         }
@@ -558,5 +558,8 @@ fn bundle_from_results(results: &[CurationResultRow]) -> QuickStatementsBundle {
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    QuickStatementsBundle { dependencies, main }
+    QuickStatementsBundle {
+        dependencies: Arc::<str>::from(dependencies),
+        main: Arc::<str>::from(main),
+    }
 }
