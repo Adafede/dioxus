@@ -88,4 +88,3 @@ pub fn use_results_context() -> ResultsContext {
 pub fn use_form_criteria_context() -> FormCriteriaContext {
     use_context::<FormCriteriaContext>()
 }
-

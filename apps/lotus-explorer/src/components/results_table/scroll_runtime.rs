@@ -100,7 +100,6 @@ pub(super) fn schedule_virtual_scroll_frame(
 mod tests {
     use super::*;
 
-
     #[test]
     fn scroll_top_maps_to_first_visible_row() {
         assert_eq!(next_first_visible_row(0, 100, 50), 0);

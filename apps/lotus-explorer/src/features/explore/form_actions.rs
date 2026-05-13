@@ -136,9 +136,3 @@ mod tests {
         assert_eq!(original.taxon, SearchCriteria::default().taxon);
     }
 }
-
-
-
-
-
-
