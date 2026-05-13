@@ -269,42 +269,26 @@ pub async fn curate_rows(
         .map(|(_, row)| row)
         .collect::<Vec<_>>();
 
-    let mut seen_dependency_blocks = HashSet::new();
-    let dependencies = results
-        .iter()
-        .flat_map(|r| r.dependency_blocks.iter())
-        .filter(|block| !block.trim().is_empty())
-        .filter(|block| seen_dependency_blocks.insert((*block).clone()))
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
-    let main = results
-        .iter()
-        .filter(|r| !r.quickstatements.is_empty())
-        .map(|r| r.quickstatements.join("\n"))
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
-    Ok((
-        results,
-        QuickStatementsBundle {
-            dependencies: std::sync::Arc::<str>::from(dependencies),
-            main: std::sync::Arc::<str>::from(main),
-        },
-    ))
+    let bundle = build_quickstatements_bundle(&results);
+    Ok((results, bundle))
 }
 
 pub fn build_quickstatements_bundle(results: &[CurationResultRow]) -> QuickStatementsBundle {
-    let mut seen_dependency_blocks = HashSet::new();
-    let dependencies = results
-        .iter()
-        .flat_map(|r| r.dependency_blocks.iter())
-        .filter(|block| !block.trim().is_empty())
-        .filter(|block| seen_dependency_blocks.insert((*block).clone()))
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n\n");
+    build_quickstatements_bundle_text(results)
+}
+
+fn build_quickstatements_bundle_text(results: &[CurationResultRow]) -> QuickStatementsBundle {
+    let mut seen_dependency_blocks = HashSet::<&str>::new();
+    let mut dependencies = Vec::new();
+    for block in results.iter().flat_map(|r| r.dependency_blocks.iter()) {
+        let block = block.as_str();
+        if block.trim().is_empty() {
+            continue;
+        }
+        if seen_dependency_blocks.insert(block) {
+            dependencies.push(block);
+        }
+    }
 
     let main = results
         .iter()
@@ -314,7 +298,7 @@ pub fn build_quickstatements_bundle(results: &[CurationResultRow]) -> QuickState
         .join("\n\n");
 
     QuickStatementsBundle {
-        dependencies: std::sync::Arc::<str>::from(dependencies),
+        dependencies: std::sync::Arc::<str>::from(dependencies.join("\n\n")),
         main: std::sync::Arc::<str>::from(main),
     }
 }
