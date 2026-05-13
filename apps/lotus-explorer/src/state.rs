@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::QueryPhase;
+use crate::features::explore::types::QueryPhase;
 use crate::i18n::Locale;
 use crate::models::*;
 use dioxus::prelude::*;

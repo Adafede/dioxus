@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum AppView {
+    Explore,
+    Curation,
+    Draw,
+}
+
+impl AppView {
+    pub fn from_query_value(value: Option<&str>) -> Self {
+        match value {
+            Some("curation") | Some("curation-explorer") => Self::Curation,
+            Some("draw") => Self::Draw,
+            _ => Self::Explore,
+        }
+    }
+
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    pub fn query_value(self) -> Option<&'static str> {
+        match self {
+            Self::Explore => None,
+            Self::Curation => Some("curation-explorer"),
+            Self::Draw => Some("draw"),
+        }
+    }
+}
