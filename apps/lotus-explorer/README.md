@@ -2,6 +2,10 @@
 
 Web interface for exploring LOTUS compound-taxon-reference statements from Wikidata.
 
+## Curation share links
+
+- URL schema and examples: [`docs/CURATION_SHARE_LINKS.md`](./docs/CURATION_SHARE_LINKS.md)
+
 ## Citation
 
 If this explorer contributes to your work, please cite the LOTUS initiative paper.

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
         <title>{app_title}</title>
         <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
@@ -9,6 +9,8 @@
         <link rel="preconnect" href="https://www.simolecule.com" crossorigin>
         <link rel="dns-prefetch" href="https://idsm.elixir-czech.cz">
         <link rel="stylesheet" href="assets/style.css">
+        <script src="assets/rdkit/RDKit_minimal.js"></script>
+        <script src="assets/citation-js/citation.js"></script>
         <style>
             /* Inter Font */
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap') layer;
@@ -103,6 +105,156 @@
             }
         </style>
         <script>
+            const rdkitReady = (async () => {
+                if (typeof initRDKitModule !== "function") {
+                    throw new Error("RDKit_minimal.js is not loaded");
+                }
+                const RDKit = await initRDKitModule();
+
+                function withMol(smiles, callback) {
+                    const trimmed = String(smiles || "").trim();
+                    if (!trimmed) {
+                        throw new Error("smiles is required");
+                    }
+                    const mol = RDKit.get_mol(trimmed);
+                    if (!mol) {
+                        throw new Error("rdkit.js could not parse the structure");
+                    }
+                    try {
+                        return callback(mol);
+                    } finally {
+                        if (typeof mol.delete === "function") {
+                            mol.delete();
+                        }
+                    }
+                }
+
+                function descriptorExactMass(descriptors) {
+                    const keys = [
+                        "exact_molecular_weight",
+                        "ExactMolWt",
+                        "exactmw",
+                        "exact_mw",
+                    ];
+                    for (const key of keys) {
+                        const value = descriptors?.[key];
+                        if (typeof value === "number" && Number.isFinite(value)) {
+                            return value;
+                        }
+                    }
+                    throw new Error("rdkit.js descriptors did not include exact mass");
+                }
+
+                function stripStereoFromSmiles(smiles) {
+                    // Remove @/@@ stereo centres and / \ double-bond stereo designators so
+                    // the result is suitable for Wikidata P233 (canonical, non-isomeric SMILES).
+                    // [C@H] → [CH], C/C=C/C → CC=CC, etc.
+                    return smiles.replace(/@{1,2}/g, "").replace(/[/\\]/g, "");
+                }
+
+                return {
+                    convert(smiles) {
+                        return withMol(smiles, (mol) => {
+                            const isomericsmiles = mol.get_smiles(
+                                JSON.stringify({ canonical: true, isomericSmiles: true })
+                            );
+                            // Non-isomeric canonical SMILES (P233 — without stereo).
+                            // RDKit.js minimal may ignore isomericSmiles:false in some builds,
+                            // so strip stereo marks explicitly as a safe fallback.
+                            let canonicalsmiles = mol.get_smiles(
+                                JSON.stringify({ canonical: true, isomericSmiles: false })
+                            );
+                            if (
+                                canonicalsmiles.includes("@") ||
+                                canonicalsmiles.includes("/") ||
+                                canonicalsmiles.includes("\\")
+                            ) {
+                                canonicalsmiles = stripStereoFromSmiles(canonicalsmiles);
+                            }
+                            const inchi = mol.get_inchi();
+                            if (!inchi) {
+                                throw new Error("rdkit.js could not generate InChI");
+                            }
+                            const inchikey = RDKit.get_inchikey_for_inchi(inchi);
+                            if (!inchikey) {
+                                throw new Error("rdkit.js could not generate InChIKey");
+                            }
+                            return { canonicalsmiles, isomericsmiles, inchi, inchikey };
+                        });
+                    },
+                    exactMass(smiles) {
+                        return withMol(smiles, (mol) => {
+                            const descriptors = JSON.parse(mol.get_descriptors());
+                            return descriptorExactMass(descriptors);
+                        });
+                    },
+                    hasUndefinedStereo(smiles) {
+                        return withMol(smiles, (mol) => {
+                            const tags = JSON.parse(mol.get_stereo_tags() || "[]");
+                            if (!Array.isArray(tags)) {
+                                return false;
+                            }
+                            return tags.some((tag) => {
+                                const text = String(tag || "").toLowerCase();
+                                return text.includes("unspecified") || text.includes("unknown");
+                            });
+                        });
+                    },
+                };
+            })();
+
+            window.__lotusRdkit = {
+                ready: rdkitReady,
+                async convert(smiles) {
+                    const bridge = await rdkitReady;
+                    return bridge.convert(smiles);
+                },
+                async exactMass(smiles) {
+                    const bridge = await rdkitReady;
+                    return bridge.exactMass(smiles);
+                },
+                async hasUndefinedStereo(smiles) {
+                    const bridge = await rdkitReady;
+                    return bridge.hasUndefinedStereo(smiles);
+                },
+            };
+
+            async function resolveCitationBridge() {
+                let CiteCtor = globalThis.Cite;
+                if (typeof CiteCtor !== "function" && typeof require === "function") {
+                    for (const moduleId of ["citation-js", "@citation-js/core"]) {
+                        try {
+                            const mod = require(moduleId);
+                            CiteCtor = mod?.default?.default || mod?.default || mod?.Cite || mod;
+                            if (typeof CiteCtor === "function") {
+                                break;
+                            }
+                        } catch (_error) {
+                            // Try the next module id.
+                        }
+                    }
+                }
+                if (typeof CiteCtor !== "function") {
+                    throw new Error("citation.js is not loaded or did not expose a Cite constructor");
+                }
+                return CiteCtor;
+            }
+
+            window.__lotusCitation = {
+                async quickStatements(doi) {
+                    const trimmed = String(doi || "").trim();
+                    if (!trimmed) {
+                        return "";
+                    }
+                    const CiteCtor = await resolveCitationBridge();
+                    const cite = await CiteCtor.async(`https://doi.org/${trimmed}`, {
+                        forceType: '@doi/api',
+                    });
+                    const output = cite.format('quickstatements');
+                    return typeof output === "string" ? output : "";
+                },
+            };
+
             const STORAGE_KEY = "SCHEDULED-DX-TOAST";
             let currentTimeout = null;
             let currentToastId = 0;
@@ -129,7 +281,7 @@
                     () => {
                         let ourToastId = currentToastId;
                         currentTimeout = setTimeout(() => {
-                            if (ourToastId == currentToastId) {
+                            if (ourToastId === currentToastId) {
                                 closeDXToast();
                             }
                         }, durationMs);

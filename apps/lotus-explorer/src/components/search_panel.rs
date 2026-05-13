@@ -357,19 +357,6 @@ fn StructureSection(locale: Locale) -> Element {
                     }
                 }
             }
-
-            // ── Ketcher editor ────────────────────────────────────────
-            // Note: the Ketcher editor lives in the main content area so it
-            // can use the full viewport width. See `KetcherPanel` below.
-            p { class: "form-hint ketcher-hint",
-                "{t(locale, TextKey::KetcherHintA)}"
-                strong { "{t(locale, TextKey::KetcherSummary)}" }
-                "{t(locale, TextKey::KetcherHintB)}"
-                em { "{t(locale, TextKey::EditCopyDaylightSmiles)}" }
-                "{t(locale, TextKey::KetcherHintC)}"
-                em { "{t(locale, TextKey::CopyExtendedSmilesMol)}" }
-                "{t(locale, TextKey::KetcherHintD)}"
-            }
         }
     }
 }
@@ -383,53 +370,28 @@ const KETCHER_URL: &str = "ketcher/index.html";
 
 #[component]
 pub fn KetcherPanel(locale: Locale) -> Element {
-    let mut mount_iframe = use_signal(|| false);
-
     rsx! {
-        details { class: "ketcher-panel",
-            summary { onclick: move |_| *mount_iframe.write() = true,
-                "{t(locale, TextKey::KetcherSummary)}"
-            }
+        section {
+            class: "ketcher-panel",
+            aria_label: "{t(locale, TextKey::KetcherSummary)}",
             div { class: "ketcher-wrap",
-                if *mount_iframe.read() {
-                    iframe {
-                        src: "{KETCHER_URL}",
-                        class: "ketcher-iframe",
-                        title: "{t(locale, TextKey::KetcherIframeTitle)}",
-                        "loading": "lazy",
-                        "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
-                    }
-                } else {
-                    div {
-                        class: "ketcher-iframe",
-                        role: "status",
-                        aria_live: "polite",
-                        "{t(locale, TextKey::KetcherSummary)}"
-                    }
-                }
-                p { class: "form-hint ketcher-hint",
+                h2 { class: "curation-title", "{t(locale, TextKey::KetcherSummary)}" }
+                p { class: "ketcher-hint",
                     "{t(locale, TextKey::KetcherHintA)}"
+                    strong { "{t(locale, TextKey::KetcherSummary)}" }
+                    "{t(locale, TextKey::KetcherHintB)}"
                     em { "{t(locale, TextKey::EditCopyDaylightSmiles)}" }
                     "{t(locale, TextKey::KetcherHintC)}"
                     em { "{t(locale, TextKey::CopyExtendedSmilesMol)}" }
                     "{t(locale, TextKey::KetcherHintD)}"
                 }
-                // The "Editor not loading? Download Ketcher standalone…"
-                // install hint is intentionally hidden from end-users: the
-                // standalone bundle is shipped with the app under
-                // `public/ketcher/`.
-                //
-                // p { class: "form-hint ketcher-install",
-                //     "Editor not loading? Download "
-                //     a { href: "https://github.com/epam/ketcher/releases",
-                //         target: "_blank", rel: "noopener noreferrer",
-                //         "Ketcher standalone" }
-                //     " and extract its "
-                //     code { class: "mono", "standalone/" }
-                //     " folder to "
-                //     code { class: "mono", "public/ketcher/" }
-                //     " in the app."
-                // }
+                iframe {
+                    src: "{KETCHER_URL}",
+                    class: "ketcher-iframe",
+                    title: "{t(locale, TextKey::KetcherIframeTitle)}",
+                    "loading": "lazy",
+                    "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
+                }
             }
         }
     }

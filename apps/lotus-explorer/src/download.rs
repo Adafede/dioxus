@@ -71,6 +71,7 @@ impl DownloadFormat {
     }
 
     #[cfg(target_arch = "wasm32")]
+    #[allow(dead_code)]
     pub fn export_url_from_query(&self, query: &str) -> String {
         let q = match self {
             Self::Rdf => queries::query_construct_from_select(query),

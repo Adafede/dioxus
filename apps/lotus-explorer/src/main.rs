@@ -5,6 +5,7 @@
 
 mod api;
 mod components;
+mod curation;
 mod download;
 mod export;
 mod i18n;
@@ -15,6 +16,7 @@ mod sparql;
 mod state;
 
 use components::copy_button::CopyButton;
+use components::data_curation_page::DataCurationPage;
 use components::results_table::ResultsTable;
 use components::search_panel::{KetcherPanel, SearchPanel};
 use dioxus::prelude::*;
@@ -24,7 +26,8 @@ use i18n::error_hint_memory;
 use i18n::{
     Locale, TextKey, err_invalid_search_input, err_query_stage_failed, err_taxon_not_found,
     err_taxon_parse_failed, err_taxon_resolution_failed, err_taxon_search_failed,
-    err_unsupported_format, t, warn_ambiguous_taxon, warn_input_standardized,
+    err_unsupported_format, t, view_label_curation_explorer, view_label_draw, view_label_explorer,
+    view_switch_aria, warn_ambiguous_taxon, warn_input_standardized,
 };
 use models::*;
 use sha2::{Digest, Sha256};
@@ -39,6 +42,13 @@ enum QueryPhase {
     Counting,
     FetchingPreview,
     Rendering,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AppView {
+    Explore,
+    Curation,
+    Draw,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -199,6 +209,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    let mut app_view: Signal<AppView> = use_signal(initial_view_from_url);
     let criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
     let executed_criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
     let mut locale: Signal<Locale> = use_signal(initial_locale_from_url);
@@ -288,6 +299,10 @@ fn App() -> Element {
 
     use_effect(move || {
         persist_locale_query_param(*locale.read());
+    });
+
+    use_effect(move || {
+        persist_view_query_param(*app_view.read());
     });
 
     // ── Search handler ────────────────────────────────────────────────────────
@@ -435,48 +450,53 @@ fn App() -> Element {
 
     rsx! {
 
-        a { class: "skip-link", href: "#results-section",
-            "{t(locale_value, TextKey::SkipToResults)}"
-        }
-        div { class: "app-layout",
+        a { class: "skip-link", href: "#main-panel", "{t(locale_value, TextKey::SkipToResults)}" }
+        div { class: if *app_view.read() == AppView::Explore { "app-layout" } else { "app-layout no-sidebar" },
             // ── Left sidebar ──────────────────────────────────────────────
-            aside { class: if mobile_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
-                button {
-                    class: "filters-toggle",
-                    r#type: "button",
-                    aria_label: if mobile_open { t(locale_value, TextKey::FiltersHide) } else { t(locale_value, TextKey::FiltersShow) },
-                    aria_expanded: if mobile_open { "true" } else { "false" },
-                    onclick: move |_| {
-                        let next = !*mobile_filters_open.peek();
-                        *mobile_filters_open.write() = next;
-                    },
-                    if mobile_open {
-                        "{t(locale_value, TextKey::FiltersHide)}"
-                    } else {
-                        "{t(locale_value, TextKey::FiltersShow)}"
+            if *app_view.read() == AppView::Explore {
+                aside {
+                    class: if mobile_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
+                    aria_label: "{t(locale_value, TextKey::SearchFilters)}",
+                    button {
+                        class: "filters-toggle",
+                        r#type: "button",
+                        aria_label: if mobile_open { t(locale_value, TextKey::FiltersHide) } else { t(locale_value, TextKey::FiltersShow) },
+                        aria_expanded: if mobile_open { "true" } else { "false" },
+                        onclick: move |_| {
+                            let next = !*mobile_filters_open.peek();
+                            *mobile_filters_open.write() = next;
+                        },
+                        if mobile_open {
+                            "{t(locale_value, TextKey::FiltersHide)}"
+                        } else {
+                            "{t(locale_value, TextKey::FiltersShow)}"
+                        }
                     }
-                }
-                SearchPanel { on_search }
-                div { class: "sidebar-logo-wrap",
-                    a {
-                        href: "?",
-                        title: "{t(locale_value, TextKey::PageTitle)}",
-                        aria_label: "{t(locale_value, TextKey::PageTitle)}",
-                        img {
-                            class: "sidebar-logo",
-                            src: "assets/lotus_ferris.svg",
-                            alt: "LOTUS Ferris logo",
-                            width: "180",
-                            height: "180",
-                            loading: "lazy",
-                            decoding: "async",
+                    SearchPanel { on_search }
+                    div { class: "sidebar-logo-wrap",
+                        a {
+                            href: "?",
+                            title: "{t(locale_value, TextKey::PageTitle)}",
+                            aria_label: "{t(locale_value, TextKey::PageTitle)}",
+                            img {
+                                class: "sidebar-logo",
+                                src: "assets/lotus_ferris.svg",
+                                alt: "LOTUS Ferris logo",
+                                width: "180",
+                                height: "180",
+                                loading: "lazy",
+                                decoding: "async",
+                            }
                         }
                     }
                 }
             }
 
             // ── Main panel ────────────────────────────────────────────────
-            main { class: "main-content",
+            main {
+                id: "main-panel",
+                class: if *app_view.read() == AppView::Explore { "main-content" } else { "main-content single-pane" },
+                tabindex: "-1",
                 div { class: "page-header",
                     div { class: "page-brand",
                         h1 { class: "page-title",
@@ -495,6 +515,7 @@ fn App() -> Element {
                             button {
                                 class: if locale_value == Locale::En { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
+                                aria_pressed: if locale_value == Locale::En { "true" } else { "false" },
                                 onclick: move |_| {
                                     if *locale.peek() != Locale::En {
                                         *locale.write() = Locale::En;
@@ -505,6 +526,7 @@ fn App() -> Element {
                             button {
                                 class: if locale_value == Locale::Fr { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
+                                aria_pressed: if locale_value == Locale::Fr { "true" } else { "false" },
                                 onclick: move |_| {
                                     if *locale.peek() != Locale::Fr {
                                         *locale.write() = Locale::Fr;
@@ -515,6 +537,7 @@ fn App() -> Element {
                             button {
                                 class: if locale_value == Locale::De { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
+                                aria_pressed: if locale_value == Locale::De { "true" } else { "false" },
                                 onclick: move |_| {
                                     if *locale.peek() != Locale::De {
                                         *locale.write() = Locale::De;
@@ -525,6 +548,7 @@ fn App() -> Element {
                             button {
                                 class: if locale_value == Locale::It { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                                 r#type: "button",
+                                aria_pressed: if locale_value == Locale::It { "true" } else { "false" },
                                 onclick: move |_| {
                                     if *locale.peek() != Locale::It {
                                         *locale.write() = Locale::It;
@@ -532,6 +556,32 @@ fn App() -> Element {
                                 },
                                 "IT"
                             }
+                        }
+                    }
+                    nav {
+                        class: "view-switch",
+                        role: "group",
+                        aria_label: "{view_switch_aria(locale_value)}",
+                        button {
+                            class: if *app_view.read() == AppView::Explore { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                            r#type: "button",
+                            aria_pressed: if *app_view.read() == AppView::Explore { "true" } else { "false" },
+                            onclick: move |_| app_view.set(AppView::Explore),
+                            "{view_label_explorer(locale_value)}"
+                        }
+                        button {
+                            class: if *app_view.read() == AppView::Curation { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                            r#type: "button",
+                            aria_pressed: if *app_view.read() == AppView::Curation { "true" } else { "false" },
+                            onclick: move |_| app_view.set(AppView::Curation),
+                            "{view_label_curation_explorer(locale_value)}"
+                        }
+                        button {
+                            class: if *app_view.read() == AppView::Draw { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                            r#type: "button",
+                            aria_pressed: if *app_view.read() == AppView::Draw { "true" } else { "false" },
+                            onclick: move |_| app_view.set(AppView::Draw),
+                            "{view_label_draw(locale_value)}"
                         }
                     }
                     p { class: "page-sub", "{t(locale_value, TextKey::PageSubtitle)}" }
@@ -545,34 +595,50 @@ fn App() -> Element {
                             "10.5281/zenodo.5794106"
                         }
                     }
-                    HeaderMetaSection {
-                        resolved_qid,
-                        query_hash,
-                        result_hash,
-                        total_matches,
-                        locale,
+                }
+
+                if *app_view.read() == AppView::Explore {
+                    div { class: "page-header-meta",
+                        HeaderMetaSection {
+                            resolved_qid,
+                            query_hash,
+                            result_hash,
+                            total_matches,
+                            locale,
+                        }
                     }
+
+                    ShareNotice { shareable_url, locale }
+
+                    TaxonNotice { taxon_notice, locale }
+
+                    ErrorNotice {
+                        error,
+                        error_kind,
+                        locale,
+                        loading,
+                        on_dismiss: move |_| *error.write() = None,
+                        on_retry: move |_| start_search(criteria, locale, false, search_runtime),
+                    }
+
+                    ResultsViewport { on_preview }
+                } else if *app_view.read() == AppView::Curation {
+                    DataCurationPage { locale: locale_value }
+                } else {
+                    DrawPage { locale: locale_value }
                 }
-
-                KetcherPanel { locale: locale_value }
-
-                ShareNotice { shareable_url, locale }
-
-                TaxonNotice { taxon_notice, locale }
-
-                ErrorNotice {
-                    error,
-                    error_kind,
-                    locale,
-                    loading,
-                    on_dismiss: move |_| *error.write() = None,
-                    on_retry: move |_| start_search(criteria, locale, false, search_runtime),
-                }
-
-                ResultsViewport { on_preview }
 
                 Footer { locale: locale_value }
             }
+        }
+    }
+}
+
+#[component]
+fn DrawPage(locale: Locale) -> Element {
+    rsx! {
+        section { class: "draw-wrap", aria_label: "{view_label_draw(locale)}",
+            KetcherPanel { locale }
         }
     }
 }
@@ -724,9 +790,12 @@ fn Footer(locale: Locale) -> Element {
                 class: "footer-link blue",
                 links: &[
                     ("https://github.com/cdk/depict", "CDK Depict"),
-                    ("https://idsm.elixir-czech.cz/", "IDSM"),
-                    ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
+                    ("https://citation.js.org", "citation.js"),
+                    ("https://idsm.elixir-czech.cz", "IDSM"),
+                    ("https://lifescience.opensource.epam.com/ketcher", "Ketcher"),
                     ("https://qlever.dev/wikidata", "QLever"),
+                    ("https://www.rdkitjs.com", "RDKit.js"),
+                    ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
                 ],
             }
             div { class: "footer-row",
@@ -2027,6 +2096,51 @@ fn persist_locale_query_param(locale: Locale) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let _ = locale;
+    }
+}
+
+fn persist_view_query_param(view: AppView) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let mut params = read_url_query_params();
+        match view {
+            AppView::Explore => {
+                params.remove("view");
+            }
+            AppView::Curation => {
+                params.insert("view".to_string(), "curation-explorer".to_string());
+            }
+            AppView::Draw => {
+                params.insert("view".to_string(), "draw".to_string());
+            }
+        }
+        let query = build_query_string(&params);
+        let url = if query.is_empty() {
+            absolute_current_url_with_query("")
+                .trim_end_matches('?')
+                .to_string()
+        } else {
+            absolute_current_url_with_query(&query)
+        };
+        if let Some(win) = web_sys::window() {
+            if let Ok(history) = win.history() {
+                let _ =
+                    history.replace_state_with_url(&wasm_bindgen::JsValue::NULL, "", Some(&url));
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = view;
+    }
+}
+
+fn initial_view_from_url() -> AppView {
+    let params = read_url_query_params();
+    match params.get("view").map(|v| v.as_str()) {
+        Some("curation") | Some("curation-explorer") => AppView::Curation,
+        Some("draw") => AppView::Draw,
+        _ => AppView::Explore,
     }
 }
 

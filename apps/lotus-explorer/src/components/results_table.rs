@@ -3,16 +3,20 @@
 
 use crate::download::{DownloadFormat, execute_download, trigger_download};
 use crate::export;
-use crate::i18n::{
-    CountNoun, Locale, TextKey, aria_chemical_structure, aria_search_inchikey,
-    aria_wikidata_entity, aria_wikidata_statement, count_label, t,
-};
+use crate::i18n::{CountNoun, Locale, TextKey, count_label, t};
 use crate::models::*;
 use crate::perf;
 use crate::state::use_results_context;
 use dioxus::prelude::*;
-use std::borrow::Cow;
 use std::sync::Arc;
+
+#[path = "results_table/row_cells.rs"]
+mod row_cells;
+use row_cells::{row_text, visible_rows_view};
+
+#[path = "results_table/sort_helpers.rs"]
+mod sort_helpers;
+use sort_helpers::{aria_sort_for, sort_icon_for};
 
 const TABLE_SCROLL_ID: &str = "results-table-scroll";
 const VIRTUAL_OVERSCAN_ROWS: usize = 12;
@@ -168,25 +172,6 @@ fn dispatch_metadata_download_blob(filename: &str, body: &str) {
     );
 }
 
-#[derive(Clone, Copy)]
-struct RowText {
-    open_full_size_depiction: &'static str,
-    open_in_wikidata: &'static str,
-    open_in_scholia: &'static str,
-    open_doi: &'static str,
-    statement: &'static str,
-}
-
-fn row_text(locale: Locale) -> RowText {
-    RowText {
-        open_full_size_depiction: t(locale, TextKey::OpenFullSizeDepiction),
-        open_in_wikidata: t(locale, TextKey::OpenInWikidata),
-        open_in_scholia: t(locale, TextKey::OpenInScholia),
-        open_doi: t(locale, TextKey::OpenDoi),
-        statement: t(locale, TextKey::Statement),
-    }
-}
-
 /// Renders the full results section.
 ///
 /// Reactive surface is deliberately narrow: this component subscribes only to
@@ -332,7 +317,7 @@ fn ResultsToolbar(locale: Locale) -> Element {
                     locale,
                     value: entries_value,
                     secondary_value: (entries_unique_value != entries_value)
-                                            .then_some(entries_unique_value),
+                                                                                                                                                .then_some(entries_unique_value),
                     secondary_label: Some(t(locale, TextKey::Unique)),
                     noun: CountNoun::Entry,
                     plus: false,
@@ -520,12 +505,12 @@ fn VirtualizedResultsTable(
     sorted_indices: Memo<Arc<[u32]>>,
 ) -> Element {
     #[cfg(target_arch = "wasm32")]
-    let mut first_visible_row = use_signal(|| 0usize);
+    let first_visible_row = use_signal(|| 0usize);
     #[cfg(not(target_arch = "wasm32"))]
     let first_visible_row = use_signal(|| 0usize);
 
     #[cfg(target_arch = "wasm32")]
-    let mut viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
+    let viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
     #[cfg(not(target_arch = "wasm32"))]
     let viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
 
@@ -659,6 +644,7 @@ fn VirtualizedResultsTable(
             table {
                 class: "results-table",
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",
+                caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                 thead {
                     tr {
                         th { class: "th-static", scope: "col", "{t(locale, TextKey::Structure)}" }
@@ -666,60 +652,90 @@ fn VirtualizedResultsTable(
                             class: "sort-th",
                             scope: "col",
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::Name)}",
-                            onclick: toggle_sort(SortColumn::Name),
-                            "{t(locale, TextKey::Compound)} "
-                            span { class: "sort-icon", "aria-hidden": "true",
-                                {sort_icon_for(&current_sort, SortColumn::Name)}
+                            button {
+                                class: "sort-btn",
+                                r#type: "button",
+                                aria_label: "{t(locale, TextKey::Compound)}",
+                                onclick: toggle_sort(SortColumn::Name),
+                                "{t(locale, TextKey::Compound)} "
+                                span { class: "sort-icon", "aria-hidden": "true",
+                                    {sort_icon_for(&current_sort, SortColumn::Name)}
+                                }
                             }
                         }
                         th {
                             class: "sort-th",
                             scope: "col",
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::Mass)}",
-                            onclick: toggle_sort(SortColumn::Mass),
-                            "{t(locale, TextKey::Mass)} "
-                            span { class: "sort-icon", "aria-hidden": "true",
-                                {sort_icon_for(&current_sort, SortColumn::Mass)}
+                            button {
+                                class: "sort-btn",
+                                r#type: "button",
+                                aria_label: "{t(locale, TextKey::Mass)}",
+                                onclick: toggle_sort(SortColumn::Mass),
+                                "{t(locale, TextKey::Mass)} "
+                                span { class: "sort-icon", "aria-hidden": "true",
+                                    {sort_icon_for(&current_sort, SortColumn::Mass)}
+                                }
                             }
                         }
                         th {
                             class: "sort-th",
                             scope: "col",
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::Formula)}",
-                            onclick: toggle_sort(SortColumn::Formula),
-                            "{t(locale, TextKey::Formula)} "
-                            span { class: "sort-icon", "aria-hidden": "true",
-                                {sort_icon_for(&current_sort, SortColumn::Formula)}
+                            button {
+                                class: "sort-btn",
+                                r#type: "button",
+                                aria_label: "{t(locale, TextKey::Formula)}",
+                                onclick: toggle_sort(SortColumn::Formula),
+                                "{t(locale, TextKey::Formula)} "
+                                span { class: "sort-icon", "aria-hidden": "true",
+                                    {sort_icon_for(&current_sort, SortColumn::Formula)}
+                                }
                             }
                         }
                         th {
                             class: "sort-th",
                             scope: "col",
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::TaxonName)}",
-                            onclick: toggle_sort(SortColumn::TaxonName),
-                            "{t(locale, TextKey::TaxonCol)} "
-                            span { class: "sort-icon", "aria-hidden": "true",
-                                {sort_icon_for(&current_sort, SortColumn::TaxonName)}
+                            button {
+                                class: "sort-btn",
+                                r#type: "button",
+                                aria_label: "{t(locale, TextKey::TaxonCol)}",
+                                onclick: toggle_sort(SortColumn::TaxonName),
+                                "{t(locale, TextKey::TaxonCol)} "
+                                span { class: "sort-icon", "aria-hidden": "true",
+                                    {sort_icon_for(&current_sort, SortColumn::TaxonName)}
+                                }
                             }
                         }
                         th {
                             class: "sort-th",
                             scope: "col",
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::RefTitle)}",
-                            onclick: toggle_sort(SortColumn::RefTitle),
-                            "{t(locale, TextKey::Reference)} "
-                            span { class: "sort-icon", "aria-hidden": "true",
-                                {sort_icon_for(&current_sort, SortColumn::RefTitle)}
+                            button {
+                                class: "sort-btn",
+                                r#type: "button",
+                                aria_label: "{t(locale, TextKey::Reference)}",
+                                onclick: toggle_sort(SortColumn::RefTitle),
+                                "{t(locale, TextKey::Reference)} "
+                                span { class: "sort-icon", "aria-hidden": "true",
+                                    {sort_icon_for(&current_sort, SortColumn::RefTitle)}
+                                }
                             }
                         }
                         th {
                             class: "sort-th",
                             scope: "col",
                             aria_sort: "{aria_sort_for(&current_sort, SortColumn::PubYear)}",
-                            onclick: toggle_sort(SortColumn::PubYear),
-                            "{t(locale, TextKey::Year)} "
-                            span { class: "sort-icon", "aria-hidden": "true",
-                                {sort_icon_for(&current_sort, SortColumn::PubYear)}
+                            button {
+                                class: "sort-btn",
+                                r#type: "button",
+                                aria_label: "{t(locale, TextKey::Year)}",
+                                onclick: toggle_sort(SortColumn::PubYear),
+                                "{t(locale, TextKey::Year)} "
+                                span { class: "sort-icon", "aria-hidden": "true",
+                                    {sort_icon_for(&current_sort, SortColumn::PubYear)}
+                                }
                             }
                         }
                     }
@@ -797,310 +813,4 @@ fn StatBadge(
             span { class: "stat-label", "{label}" }
         }
     }
-}
-
-fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) -> Element {
-    // URLs can be interpolated inline in RSX — no need for intermediate
-    // `String` allocations. Only DOI / depict / statement / inchikey search
-    // require conditional work, so those are the only helpers we still call.
-    let compound_qid = entry.compound_qid.as_ref();
-    let taxon_qid = entry.taxon_qid.as_ref();
-    let reference_qid = entry.reference_qid.as_ref();
-    let doi = entry.doi();
-    let depict_url = entry.depict_url();
-    let statement_id = entry.statement_id_str();
-    let truncated_ref_title = entry
-        .ref_title
-        .as_deref()
-        .map(|title| truncate_title(title, 60));
-    let name: &str = if entry.name.trim().is_empty() {
-        entry.compound_qid.as_ref()
-    } else {
-        &entry.name
-    };
-    rsx! {
-        tr { key: "{row_key}", class: "data-row",
-            {structure_cell(locale, text, depict_url.as_deref(), name)}
-            {compound_cell(locale, text, entry, name, compound_qid)}
-            {mass_cell(entry.mass)}
-            {formula_cell(entry.formula.as_deref())}
-            {taxon_cell(locale, text, entry, taxon_qid)}
-            {
-                reference_cell(
-                    locale,
-                    text,
-                    entry,
-                    reference_qid,
-                    doi,
-                    statement_id,
-                    truncated_ref_title,
-                )
-            }
-            {year_cell(entry.pub_year)}
-        }
-    }
-}
-
-fn visible_rows_view(
-    locale: Locale,
-    text: RowText,
-    rows: &[CompoundEntry],
-    order: &[u32],
-    start_row: usize,
-    visible_count: usize,
-) -> Element {
-    rsx! {
-        for i in order.iter().skip(start_row).take(visible_count).copied() {
-            {row_view(locale, text, &rows[i as usize], i)}
-        }
-    }
-}
-
-fn structure_cell(locale: Locale, text: RowText, depict_url: Option<&str>, name: &str) -> Element {
-    rsx! {
-        td { class: "td-depict",
-            if let Some(url) = depict_url {
-                a {
-                    href: "{url}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    title: "{text.open_full_size_depiction}",
-                    img {
-                        class: "depict-img",
-                        src: "{url}",
-                        alt: "{aria_chemical_structure(locale, name)}",
-                        loading: "lazy",
-                        width: "120",
-                        height: "72",
-                    }
-                }
-            } else {
-                span { class: "na", "—" }
-            }
-        }
-    }
-}
-
-fn compound_cell(
-    locale: Locale,
-    text: RowText,
-    entry: &CompoundEntry,
-    name: &str,
-    compound_qid: &str,
-) -> Element {
-    rsx! {
-        td { class: "td-compound",
-            div { class: "cell-primary",
-                a {
-                    href: "https://www.wikidata.org/entity/{compound_qid}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    class: "primary-link",
-                    "{name}"
-                }
-            }
-            div { class: "badge-row",
-                a {
-                    href: "https://www.wikidata.org/entity/{compound_qid}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    class: "id-badge wd",
-                    title: "{text.open_in_wikidata}",
-                    aria_label: "{aria_wikidata_entity(locale, compound_qid)}",
-                    "{compound_qid}"
-                }
-                a {
-                    href: "https://scholia.toolforge.org/chemical/{compound_qid}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    class: "id-badge sc",
-                    title: "{text.open_in_scholia}",
-                    "Scholia"
-                }
-                if let Some(ik) = entry.inchikey.as_deref() {
-                    a {
-                        href: "https://www.wikidata.org/wiki/Special:Search?search={ik}",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        class: "id-badge mono inchikey",
-                        title: "{ik}",
-                        aria_label: "{aria_search_inchikey(locale, ik)}",
-                        "{short_inchikey(ik)}"
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn mass_cell(mass: Option<f64>) -> Element {
-    rsx! {
-        td { class: "td-num",
-            if let Some(m) = mass {
-                span { "{m:.4}" }
-            } else {
-                span { class: "na", "—" }
-            }
-        }
-    }
-}
-
-fn formula_cell(formula: Option<&str>) -> Element {
-    rsx! {
-        td { class: "td-formula",
-            if let Some(f) = formula {
-                span { class: "formula", "{f}" }
-            } else {
-                span { class: "na", "—" }
-            }
-        }
-    }
-}
-
-fn taxon_cell(locale: Locale, text: RowText, entry: &CompoundEntry, taxon_qid: &str) -> Element {
-    rsx! {
-        td { class: "td-taxon",
-            div { class: "cell-primary",
-                a {
-                    href: "https://www.wikidata.org/entity/{taxon_qid}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    class: "primary-link taxon",
-                    "{entry.taxon_name}"
-                }
-            }
-            div { class: "badge-row",
-                a {
-                    href: "https://www.wikidata.org/entity/{taxon_qid}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    class: "id-badge wd",
-                    title: "{text.open_in_wikidata}",
-                    aria_label: "{aria_wikidata_entity(locale, taxon_qid)}",
-                    "{taxon_qid}"
-                }
-            }
-        }
-    }
-}
-
-fn reference_cell(
-    locale: Locale,
-    text: RowText,
-    entry: &CompoundEntry,
-    reference_qid: &str,
-    doi: Option<&str>,
-    statement_id: Option<&str>,
-    truncated_ref_title: Option<Cow<'_, str>>,
-) -> Element {
-    rsx! {
-        td { class: "td-ref",
-            div { class: "cell-primary",
-                if let (Some(full_title), Some(display_title)) = (
-                    entry.ref_title.as_deref(),
-                    truncated_ref_title.as_deref(),
-                )
-                {
-                    a {
-                        href: "https://www.wikidata.org/entity/{reference_qid}",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        class: "primary-link",
-                        title: "{full_title}",
-                        "{display_title}"
-                    }
-                } else {
-                    a {
-                        href: "https://www.wikidata.org/entity/{reference_qid}",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        class: "primary-link",
-                        "{reference_qid}"
-                    }
-                }
-            }
-            div { class: "badge-row",
-                a {
-                    href: "https://www.wikidata.org/entity/{reference_qid}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    class: "id-badge wd",
-                    title: "{text.open_in_wikidata}",
-                    aria_label: "{aria_wikidata_entity(locale, reference_qid)}",
-                    "{reference_qid}"
-                }
-                if let Some(d) = doi {
-                    a {
-                        href: "https://doi.org/{d}",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        class: "id-badge doi",
-                        title: "{text.open_doi}",
-                        "DOI"
-                    }
-                }
-                if let Some(stmt) = statement_id {
-                    a {
-                        href: "https://www.wikidata.org/entity/statement/{stmt}",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        class: "id-badge stmt mono",
-                        title: "{stmt}",
-                        aria_label: "{aria_wikidata_statement(locale, stmt)}",
-                        "{text.statement}"
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn year_cell(pub_year: Option<i16>) -> Element {
-    rsx! {
-        td { class: "td-year",
-            if let Some(y) = pub_year {
-                span { "{y}" }
-            } else {
-                span { class: "na", "—" }
-            }
-        }
-    }
-}
-
-fn short_inchikey(ik: &str) -> &str {
-    ik.split('-').next().unwrap_or(ik)
-}
-
-/// ARIA `aria-sort` value for a column header.
-fn aria_sort_for(state: &SortState, col: SortColumn) -> &'static str {
-    if state.col != col {
-        "none"
-    } else if state.dir == SortDir::Asc {
-        "ascending"
-    } else {
-        "descending"
-    }
-}
-
-fn sort_icon_for(state: &SortState, col: SortColumn) -> &'static str {
-    if state.col == col {
-        if state.dir == SortDir::Asc {
-            "↑"
-        } else {
-            "↓"
-        }
-    } else {
-        // Neutral indicator communicates that the column is sortable.
-        "↕"
-    }
-}
-
-fn truncate_title(title: &str, max_chars: usize) -> Cow<'_, str> {
-    let trimmed = title.trim();
-    if trimmed.chars().count() <= max_chars {
-        return Cow::Borrowed(trimmed);
-    }
-    let mut out: String = trimmed.chars().take(max_chars).collect();
-    out.push('…');
-    Cow::Owned(out)
 }

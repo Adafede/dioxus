@@ -7,6 +7,11 @@
 //! localized labels. It is easy to extend without introducing a full
 //! translation framework.
 
+#[path = "i18n/curation.rs"]
+mod curation;
+
+pub use curation::*;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Locale {
     En,
@@ -307,10 +312,10 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::YearTo => "To",
             TextKey::RunSearch => "Run search",
             TextKey::KetcherSummary => "Structure editor (Ketcher)",
-            TextKey::KetcherHintA => "Need to draw or look up a structure? Use the ",
-            TextKey::KetcherHintB => " panel in the main view, then ",
+            TextKey::KetcherHintA => "Need to draw or look up a structure? Open the ",
+            TextKey::KetcherHintB => " tab, then copy with ",
             TextKey::KetcherHintC => " (or ",
-            TextKey::KetcherHintD => ") and paste above.",
+            TextKey::KetcherHintD => ") and use it in the Explorer structure field.",
             TextKey::KetcherIframeTitle => "Ketcher structure editor",
             TextKey::KindNoteSmiles => "  Sent as a single-line SPARQL literal.",
             TextKey::KindNoteMol2000 => "  Forwarded verbatim to SACHEM scoredSubstructureSearch.",
@@ -458,10 +463,12 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::YearTo => "À",
             TextKey::RunSearch => "Lancer la recherche",
             TextKey::KetcherSummary => "Éditeur de structure (Ketcher)",
-            TextKey::KetcherHintA => "Besoin de dessiner ou trouver une structure ? Utilisez le ",
-            TextKey::KetcherHintB => " dans la vue principale, puis ",
+            TextKey::KetcherHintA => {
+                "Besoin de dessiner ou trouver une structure ? Ouvrez l'onglet "
+            }
+            TextKey::KetcherHintB => ", puis copiez avec ",
             TextKey::KetcherHintC => " (ou ",
-            TextKey::KetcherHintD => ") et collez ci-dessus.",
+            TextKey::KetcherHintD => ") et utilisez-la dans le champ structure de l'explorateur.",
             TextKey::KetcherIframeTitle => "Editeur de structure Ketcher",
             TextKey::KindNoteSmiles => "  Envoyé comme littéral SPARQL sur une seule ligne.",
             TextKey::KindNoteMol2000 => "  Transmis tel quel à SACHEM scoredSubstructureSearch.",
@@ -615,10 +622,12 @@ fn de_t(key: TextKey) -> &'static str {
         TextKey::YearTo => "Bis",
         TextKey::RunSearch => "Suche starten",
         TextKey::KetcherSummary => "Struktureditor (Ketcher)",
-        TextKey::KetcherHintA => "Sie möchten eine Struktur zeichnen oder suchen? Nutzen Sie das ",
-        TextKey::KetcherHintB => "-Panel in der Hauptansicht und dann ",
+        TextKey::KetcherHintA => {
+            "Sie möchten eine Struktur zeichnen oder suchen? Öffnen Sie den Tab "
+        }
+        TextKey::KetcherHintB => " und kopieren Sie dann mit ",
         TextKey::KetcherHintC => " (oder ",
-        TextKey::KetcherHintD => ") und fügen Sie den Inhalt oben ein.",
+        TextKey::KetcherHintD => ") und verwenden Sie den Inhalt im Strukturfeld des Explorers.",
         TextKey::KetcherIframeTitle => "Ketcher-Struktureditor",
         TextKey::KindNoteSmiles => "  Wird als einzeiliges SPARQL-Literal gesendet.",
         TextKey::KindNoteMol2000 => {
@@ -771,10 +780,10 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::YearTo => "A",
         TextKey::RunSearch => "Avvia ricerca",
         TextKey::KetcherSummary => "Editor di strutture (Ketcher)",
-        TextKey::KetcherHintA => "Devi disegnare o cercare una struttura? Usa il pannello ",
-        TextKey::KetcherHintB => " nella vista principale, poi ",
+        TextKey::KetcherHintA => "Devi disegnare o cercare una struttura? Apri la scheda ",
+        TextKey::KetcherHintB => " e poi copia con ",
         TextKey::KetcherHintC => " (oppure ",
-        TextKey::KetcherHintD => ") e incolla sopra.",
+        TextKey::KetcherHintD => ") e usalo nel campo struttura dell'esploratore.",
         TextKey::KetcherIframeTitle => "Editor strutture Ketcher",
         TextKey::KindNoteSmiles => "  Inviato come letterale SPARQL su una singola riga.",
         TextKey::KindNoteMol2000 => {
