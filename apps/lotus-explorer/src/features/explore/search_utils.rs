@@ -83,8 +83,14 @@ mod tests {
 
     #[test]
     fn sanitizes_taxon_prefix_case_only() {
-        assert_eq!(sanitize_taxon_input("voacanga africana"), "Voacanga africana");
-        assert_eq!(sanitize_taxon_input("VOACANGA africana"), "Voacanga africana");
+        assert_eq!(
+            sanitize_taxon_input("voacanga africana"),
+            "Voacanga africana"
+        );
+        assert_eq!(
+            sanitize_taxon_input("VOACANGA africana"),
+            "Voacanga africana"
+        );
         assert_eq!(sanitize_taxon_input("__gentiana_lutea__"), "Gentiana lutea");
     }
 
@@ -120,4 +126,3 @@ mod tests {
         assert_eq!(r1, r2);
     }
 }
-

@@ -33,7 +33,12 @@ pub fn Footer(locale: Locale) -> Element {
             FooterRow {
                 label: t(locale, TextKey::FooterCode),
                 class: "footer-link green",
-                links: &[("https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer", "lotus-explorer")],
+                links: &[
+                    (
+                        "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer",
+                        "lotus-explorer",
+                    ),
+                ],
             }
             FooterRow {
                 label: t(locale, TextKey::FooterData),

@@ -376,7 +376,7 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
             TextKey::FiltersShow => "Afficher les filtres",
             TextKey::FiltersHide => "Masquer les filtres",
             TextKey::Language => "Langue",
-            TextKey::PageTitle => "Explorateur LOTUS Wikidata",
+            TextKey::PageTitle => "LOTUS Knowledge Explorer",
             TextKey::PageSubtitle => {
                 "Occurrences de produits naturels - composé, taxon, référence."
             }
@@ -693,7 +693,7 @@ fn it_t(key: TextKey) -> &'static str {
         TextKey::FiltersShow => "Mostra filtri",
         TextKey::FiltersHide => "Nascondi filtri",
         TextKey::Language => "Lingua",
-        TextKey::PageTitle => "Esploratore LOTUS Wikidata",
+        TextKey::PageTitle => "LOTUS Knowledge Explorer",
         TextKey::PageSubtitle => "Occorrenze di prodotti naturali - composto, taxon, riferimento.",
         TextKey::ResolvedTaxon => "Taxon risolto",
         TextKey::QueryHash => "Hash della query",
