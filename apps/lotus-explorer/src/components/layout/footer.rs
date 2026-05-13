@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn Footer(locale: Locale) -> Element {
     rsx! {
-        footer { class: "app-footer", aria_label: "LOTUS footer",
+        footer { class: "app-footer",
             FooterRow {
                 label: t(locale, TextKey::FooterArchive),
                 class: "footer-link red",

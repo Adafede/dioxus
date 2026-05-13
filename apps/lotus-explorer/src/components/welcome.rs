@@ -19,6 +19,7 @@ pub fn WelcomeScreen(locale: Locale) -> Element {
                     "{t(locale, TextKey::WelcomeLeadA)}"
                     "{t(locale, TextKey::WelcomeLeadB)}"
                     a {
+                        class: "welcome-inline-link",
                         href: "https://www.wikidata.org/wiki/Q104225190",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -26,6 +27,7 @@ pub fn WelcomeScreen(locale: Locale) -> Element {
                     }
                     "{t(locale, TextKey::WelcomeLeadC)}"
                     a {
+                        class: "welcome-inline-link",
                         href: "https://www.wikidata.org/",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -33,6 +35,7 @@ pub fn WelcomeScreen(locale: Locale) -> Element {
                     }
                     "{t(locale, TextKey::WelcomeLeadD)}"
                     a {
+                        class: "welcome-inline-link",
                         href: "https://qlever.dev/wikidata",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -96,7 +99,7 @@ fn DownloadExampleRow(locale: Locale, format: &'static str, query: &'static str)
     rsx! {
         div { class: "welcome-cli-row",
             span { class: "welcome-cli-format mono", "{format}" }
-            code { class: "mono welcome-cli-query", "{query}" }
+            code { class: "mono welcome-cli-query", tabindex: "0", "{query}" }
             CopyButton { text: absolute, locale }
         }
     }

@@ -215,7 +215,6 @@ fn App() -> Element {
                     }
                     nav {
                         class: "view-switch",
-                        role: "group",
                         aria_label: "{view_switch_aria(locale_value)}",
                         button {
                             class: if *app_view.read() == AppView::Explore { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
