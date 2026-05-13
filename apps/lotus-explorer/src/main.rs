@@ -46,7 +46,7 @@ use i18n::{
 };
 use models::*;
 use repositories::HybridRepository;
-use state::{ResultsContext, SearchUiContext};
+use state::{FormCriteriaContext, ResultsContext, SearchUiContext};
 use std::sync::Arc;
 
 fn main() {
@@ -77,6 +77,8 @@ fn App() -> Element {
 
     let _search_ui_ctx =
         use_context_provider(move || SearchUiContext::from_signals(criteria, explore));
+    let _form_criteria_ctx =
+        use_context_provider(move || FormCriteriaContext::new(criteria));
     let _results_ctx = use_context_provider(move || ResultsContext::from_signals(explore));
 
     let shareable_url =
