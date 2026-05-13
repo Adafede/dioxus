@@ -1,10 +1,45 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+use crate::app_state::AppState;
 use crate::features::explore::form_actions::{FormAction, apply_form_action};
 use crate::features::explore::search_state::ExploreState;
 use crate::models::*;
 use dioxus::prelude::*;
+
+// ── App State Context ─────────────────────────────────────────────────────
+
+/// Root context providing access to the unified AppState.
+///
+/// This is the single source of truth for all app-level state and behavior.
+#[allow(dead_code)] // Will be integrated when main.rs is refactored
+#[derive(Clone, Copy)]
+pub struct AppStateContext {
+    pub state: Signal<AppState>,
+}
+
+impl AppStateContext {
+    #[allow(dead_code)] // Will be used when main.rs is refactored
+    pub fn new(state: Signal<AppState>) -> Self {
+        Self { state }
+    }
+
+    #[allow(dead_code)] // Will be used when components access AppState
+    /// Read current app state without subscribing
+    pub fn peek(&self) -> AppState {
+        self.state.peek().clone()
+    }
+
+    #[allow(dead_code)] // Will be used when components mutate AppState
+    /// Mutate app state through a closure
+    pub fn mut_state<F>(&self, f: F)
+    where
+        F: FnOnce(&mut AppState),
+    {
+        let mut state = self.state;
+        state.with_mut(f);
+    }
+}
 
 // ── Form Criteria Context ─────────────────────────────────────────────────
 
@@ -75,6 +110,11 @@ impl ResultsContext {
 }
 
 // ── Hook Helpers ──────────────────────────────────────────────────────────
+
+#[allow(dead_code)] // Will be used when main.rs is refactored to use AppState
+pub fn use_app_state_context() -> AppStateContext {
+    use_context::<AppStateContext>()
+}
 
 pub fn use_search_ui_context() -> SearchUiContext {
     use_context::<SearchUiContext>()

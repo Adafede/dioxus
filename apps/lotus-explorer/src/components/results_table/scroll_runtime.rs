@@ -19,6 +19,62 @@ pub(super) fn next_first_visible_row(
     (scroll_top_px / row_height_px).min(total_rows)
 }
 
+#[cfg_attr(not(any(target_arch = "wasm32", test)), allow(dead_code))]
+#[must_use]
+pub(super) fn resolve_sampled_row_height_px(
+    sampled_total_px: usize,
+    sampled_count: usize,
+    fallback_row_height_px: usize,
+) -> usize {
+    let fallback = fallback_row_height_px.max(1);
+    if sampled_count == 0 {
+        return fallback;
+    }
+    // Bias slightly upward to avoid under-estimation, which makes virtualization feel too fast.
+    let avg = sampled_total_px / sampled_count;
+    avg.saturating_add(8).max(fallback)
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(super) fn measure_row_height_px(
+    scroll_id: &'static str,
+    fallback_row_height_px: usize,
+) -> usize {
+    let Some(win) = web_sys::window() else {
+        return fallback_row_height_px.max(1);
+    };
+    let Some(document) = win.document() else {
+        return fallback_row_height_px.max(1);
+    };
+    let Some(node) = document.get_element_by_id(scroll_id) else {
+        return fallback_row_height_px.max(1);
+    };
+    let Ok(scroll_host) = node.dyn_into::<web_sys::HtmlElement>() else {
+        return fallback_row_height_px.max(1);
+    };
+
+    let rows = scroll_host.get_elements_by_class_name("data-row");
+    let len = rows.length() as usize;
+    let mut sampled_total_px = 0usize;
+    let mut sampled_count = 0usize;
+
+    for i in 0..len {
+        let Some(row) = rows.item(i as u32) else {
+            continue;
+        };
+        let Ok(row) = row.dyn_into::<web_sys::HtmlElement>() else {
+            continue;
+        };
+        let h = row.offset_height().max(0) as usize;
+        if h > 0 {
+            sampled_total_px = sampled_total_px.saturating_add(h);
+            sampled_count = sampled_count.saturating_add(1);
+        }
+    }
+
+    resolve_sampled_row_height_px(sampled_total_px, sampled_count, fallback_row_height_px)
+}
+
 #[cfg(target_arch = "wasm32")]
 pub(super) fn schedule_virtual_scroll_frame(
     mut scroll_host: Signal<Option<web_sys::HtmlElement>>,
@@ -115,5 +171,22 @@ mod tests {
     #[test]
     fn zero_row_height_is_safe() {
         assert_eq!(next_first_visible_row(50, 0, 7), 0);
+    }
+
+    #[test]
+    fn sampled_row_height_falls_back_when_no_rows_are_measured() {
+        assert_eq!(resolve_sampled_row_height_px(0, 0, 114), 114);
+        assert_eq!(resolve_sampled_row_height_px(0, 0, 0), 1);
+    }
+
+    #[test]
+    fn sampled_row_height_uses_upward_biased_average() {
+        // 4 rows averaging 130px -> 138px after +8 safety margin.
+        assert_eq!(resolve_sampled_row_height_px(520, 4, 114), 138);
+    }
+
+    #[test]
+    fn sampled_row_height_never_drops_below_fallback() {
+        assert_eq!(resolve_sampled_row_height_px(300, 4, 114), 114);
     }
 }

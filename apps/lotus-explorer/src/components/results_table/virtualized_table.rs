@@ -20,65 +20,28 @@ pub(super) fn VirtualizedResultsTable(
     sorted_indices: Memo<Arc<[u32]>>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
+    let total = explore.read().result.entries.len();
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
+    let mut row_height_px = use_signal(|| ROW_HEIGHT_PX_COMFORTABLE);
     let virtualization_config = VirtualizationConfig {
-        row_height_px: ROW_HEIGHT_PX_COMFORTABLE,
+        row_height_px: *row_height_px.read(),
         overscan_rows: VIRTUAL_OVERSCAN_ROWS,
         viewport_fallback_px: TABLE_VIEWPORT_FALLBACK_PX,
         scroll_id: TABLE_SCROLL_ID,
     };
-    let first_visible_row = use_signal(|| 0usize);
-    let viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
+    // Keep all rows visible (results are already capped upstream for wasm).
+    let full_viewport_px = total
+        .saturating_mul(*row_height_px.read())
+        .max(TABLE_VIEWPORT_FALLBACK_PX);
 
-    #[cfg(target_arch = "wasm32")]
-    let scroll_host = use_signal(|| None::<web_sys::HtmlElement>);
-    #[cfg(target_arch = "wasm32")]
-    let mut scroll_raf_scheduled = use_signal(|| false);
-    #[cfg(target_arch = "wasm32")]
-    let mut scroll_raf_cb = use_signal(|| None::<wasm_bindgen::closure::Closure<dyn FnMut(f64)>>);
-    #[cfg(target_arch = "wasm32")]
-    let mut scroll_raf_id = use_signal(|| None::<i32>);
-
-    #[cfg(target_arch = "wasm32")]
-    use_drop(move || {
-        if let Some(id) = *scroll_raf_id.peek() {
-            if let Some(win) = web_sys::window() {
-                let _ = win.cancel_animation_frame(id);
-            }
-        }
-        *scroll_raf_id.write() = None;
-        *scroll_raf_scheduled.write() = false;
-        *scroll_raf_cb.write() = None;
-    });
-
-    let total = explore.read().result.entries.len();
-    let virtualization = use_virtualization::use_virtualization(
-        virtualization_config,
-        total,
-        *first_visible_row.read(),
-        *viewport_height_px.read(),
-    );
+    let virtualization =
+        use_virtualization::use_virtualization(virtualization_config, total, 0, full_viewport_px);
     let text = row_text(locale);
 
     rsx! {
         div {
             id: virtualization_config.scroll_id,
             class: "table-scroll",
-            onscroll: move |_| {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    super::scroll_runtime::schedule_virtual_scroll_frame(
-                        scroll_host,
-                        scroll_raf_scheduled,
-                        scroll_raf_cb,
-                        scroll_raf_id,
-                        virtualization_config.scroll_id,
-                        virtualization_config.row_height_px,
-                        total,
-                        first_visible_row,
-                        viewport_height_px,
-                    );
-                }
-            },
             table {
                 class: "results-table",
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",

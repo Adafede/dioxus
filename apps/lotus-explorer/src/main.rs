@@ -5,6 +5,7 @@
 
 mod api;
 mod app;
+mod app_state;
 mod components;
 mod curation;
 mod download;

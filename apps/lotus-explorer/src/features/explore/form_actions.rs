@@ -101,8 +101,10 @@ mod tests {
 
     #[test]
     fn form_action_mutates_taxon_field() {
-        let mut crit = SearchCriteria::default();
-        crit.taxon = "original".to_string();
+        let crit = SearchCriteria {
+            taxon: "original".to_string(),
+            ..SearchCriteria::default()
+        };
         let result = apply_form_action(crit, FormAction::Taxon("updated".to_string()));
         assert_eq!(result.taxon, "updated");
     }
