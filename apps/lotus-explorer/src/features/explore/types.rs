@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! Core domain types for the Explore feature.
+//!
+//! ## Error hierarchy
+//!
+//! Internal business logic uses [`DomainError`] — a structured, i18n-free type so
+//! that formatting decisions remain at the UI boundary.  Components call
+//! [`crate::components::layout::notices::format_domain_error`] to produce the
+//! right locale string at render time.
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QueryPhase {
     Idle,
@@ -10,18 +19,92 @@ pub enum QueryPhase {
     Rendering,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ErrorKind {
     Validation,
     Network,
     Parse,
     #[cfg(target_arch = "wasm32")]
     Memory,
+    #[default]
     Unknown,
 }
 
-#[derive(Clone, Debug)]
-pub struct AppError {
-    pub kind: ErrorKind,
-    pub message: String,
+// ── Taxon warning (structured, formatted at UI boundary) ─────────────────────
+
+/// A structured warning about taxon resolution, formatted by the UI layer.
+#[derive(Clone, Debug, PartialEq)]
+pub enum TaxonWarning {
+    /// The raw input was normalised before lookup.
+    Standardized {
+        original: String,
+        standardized: String,
+    },
+    /// Multiple candidates found; `chosen_*` is the one we used.
+    Ambiguous {
+        chosen_name: String,
+        chosen_qid: String,
+        /// Top candidates as `"Name (QID)"` strings.
+        candidates: Vec<String>,
+    },
+    /// Raw warning string received from the REST API response.
+    ApiMessage(String),
+}
+
+// ── Domain error hierarchy (i18n-free) ───────────────────────────────────────
+
+/// Fine-grained validation fault.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ValidationFault {
+    EmptyInput,
+    TaxonNotFound {
+        input: String,
+    },
+    #[allow(dead_code)]
+    TaxonResolutionNoMatch,
+    UnsupportedFormat {
+        format: String,
+    },
+}
+
+/// Fine-grained CSV / data parse fault.
+// Some variants are only reachable on non-wasm targets (e.g. FallbackCsv).
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum ParseFault {
+    TaxonCsv { details: String },
+    TaxonPick { details: String },
+    CountCsv { details: String },
+    DisplayCsv { details: String },
+    FallbackCsv { details: String },
+}
+
+/// Top-level domain error used throughout the Explore feature.
+///
+/// Contains **no locale-dependent strings**; UI components call
+/// [`crate::components::layout::notices::format_domain_error`] at render time.
+#[derive(Clone, Debug, PartialEq)]
+pub enum DomainError {
+    Validation(ValidationFault),
+    Transport {
+        stage: &'static str,
+        source: crate::repositories::RepositoryError,
+    },
+    Parse(ParseFault),
+    #[cfg(target_arch = "wasm32")]
+    MemoryLimit {
+        stage: &'static str,
+    },
+}
+
+impl DomainError {
+    pub fn kind(&self) -> ErrorKind {
+        match self {
+            Self::Validation(_) => ErrorKind::Validation,
+            Self::Transport { .. } => ErrorKind::Network,
+            Self::Parse(_) => ErrorKind::Parse,
+            #[cfg(target_arch = "wasm32")]
+            Self::MemoryLimit { .. } => ErrorKind::Memory,
+        }
+    }
 }

@@ -872,6 +872,9 @@ pub fn err_unsupported_format(locale: Locale, fmt: &str) -> String {
     }
 }
 
+/// Retained as part of the public i18n API even if not currently called
+/// from compiled paths.
+#[allow(dead_code)]
 pub fn err_taxon_search_failed(locale: Locale, detail: &str) -> String {
     match locale {
         Locale::En => format!("Taxon search failed: {detail}"),

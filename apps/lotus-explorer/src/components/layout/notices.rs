@@ -2,13 +2,82 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::components::copy_button::CopyButton;
-use crate::features::explore::types::ErrorKind;
+use crate::features::explore::types::{
+    DomainError, ErrorKind, ParseFault, TaxonWarning, ValidationFault,
+};
 use crate::features::explore::url_state::absolute_share_url;
 #[cfg(target_arch = "wasm32")]
+use crate::i18n::err_wasm_large_query_fallback;
+#[cfg(target_arch = "wasm32")]
 use crate::i18n::error_hint_memory;
-use crate::i18n::{Locale, TextKey, t};
+use crate::i18n::{
+    Locale, TextKey, err_invalid_search_input, err_query_stage_failed, err_taxon_not_found,
+    err_taxon_parse_failed, err_taxon_resolution_failed, err_unsupported_format, t,
+    warn_ambiguous_taxon, warn_input_standardized,
+};
 use dioxus::prelude::*;
 use std::sync::Arc;
+
+// ── i18n formatters (UI boundary) ─────────────────────────────────────────────
+
+/// Format a [`DomainError`] into a locale-appropriate display string.
+///
+/// This is the **only** place in the codebase that converts structured domain
+/// errors into user-visible strings.
+pub fn format_domain_error(locale: Locale, err: &DomainError) -> String {
+    match err {
+        DomainError::Validation(v) => format_validation_fault(locale, v),
+        DomainError::Transport { stage, source } => {
+            err_query_stage_failed(locale, stage, &source.to_string())
+        }
+        DomainError::Parse(p) => format_parse_fault(locale, p),
+        #[cfg(target_arch = "wasm32")]
+        DomainError::MemoryLimit { .. } => err_wasm_large_query_fallback(locale, "large query"),
+    }
+}
+
+fn format_validation_fault(locale: Locale, fault: &ValidationFault) -> String {
+    match fault {
+        ValidationFault::EmptyInput => err_invalid_search_input(locale),
+        ValidationFault::TaxonNotFound { input } => err_taxon_not_found(locale, input),
+        ValidationFault::TaxonResolutionNoMatch => err_taxon_resolution_failed(locale),
+        ValidationFault::UnsupportedFormat { format } => err_unsupported_format(locale, format),
+    }
+}
+
+fn format_parse_fault(locale: Locale, fault: &ParseFault) -> String {
+    match fault {
+        ParseFault::TaxonCsv { details } => err_taxon_parse_failed(locale, details),
+        ParseFault::TaxonPick { details } => {
+            err_query_stage_failed(locale, "taxon resolution", details)
+        }
+        ParseFault::CountCsv { details } => err_query_stage_failed(locale, "count parse", details),
+        ParseFault::DisplayCsv { details } => {
+            err_query_stage_failed(locale, "display parse", details)
+        }
+        ParseFault::FallbackCsv { details } => {
+            err_query_stage_failed(locale, "fallback parse", details)
+        }
+    }
+}
+
+/// Format a [`TaxonWarning`] into a locale-appropriate display string.
+pub fn format_taxon_warning(locale: Locale, warning: &TaxonWarning) -> String {
+    match warning {
+        TaxonWarning::Standardized {
+            original,
+            standardized,
+        } => warn_input_standardized(locale, original, standardized),
+        TaxonWarning::Ambiguous {
+            chosen_name,
+            chosen_qid,
+            candidates,
+        } => warn_ambiguous_taxon(locale, chosen_name, chosen_qid, &candidates.join(", ")),
+        TaxonWarning::ApiMessage(msg) => msg.clone(),
+    }
+}
+
+// ── Components ─────────────────────────────────────────────────────────────────
 
 #[component]
 pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>, locale: Signal<Locale>) -> Element {
@@ -42,14 +111,15 @@ pub fn TaxonNotice(
     locale: Signal<Locale>,
 ) -> Element {
     let locale = *locale.read();
-    let notice = explore.read().taxon_notice.clone();
-    let Some(warning) = notice.as_deref() else {
+    let notice = explore.read().result.taxon_notice.clone();
+    let Some(warning) = notice.as_ref() else {
         return rsx! {};
     };
+    let text = format_taxon_warning(locale, warning);
     rsx! {
         div { class: "notice notice-warn", role: "status",
             span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
-            span { class: "notice-value", "{warning}" }
+            span { class: "notice-value", "{text}" }
         }
     }
 }
@@ -64,13 +134,13 @@ pub fn ErrorNotice(
     on_retry: EventHandler<()>,
 ) -> Element {
     let locale = *locale.read();
-    let explore = explore.read();
-    let kind = explore.error_kind;
-    let is_loading = explore.loading;
-    let err_ref = explore.error.as_ref();
-    let Some(msg) = err_ref.as_deref() else {
+    let lifecycle = explore.read().lifecycle.clone();
+    let Some(ref domain_err) = lifecycle.error else {
         return rsx! {};
     };
+    let kind = domain_err.kind();
+    let is_loading = lifecycle.loading;
+    let msg = format_domain_error(locale, domain_err);
     rsx! {
         div { class: "notice notice-error", role: "alert",
             span { class: "notice-label", "{t(locale, TextKey::Error)}" }

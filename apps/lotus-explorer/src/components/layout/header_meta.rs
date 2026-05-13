@@ -14,7 +14,7 @@ pub fn HeaderMetaSection(
     let locale = *locale.read();
     let explore = explore.read();
     rsx! {
-        if let Some(qid) = explore.resolved_qid.as_deref() {
+        if let Some(qid) = explore.result.resolved_qid.as_deref() {
             p { class: "page-meta",
                 span { class: "meta-key", "{t(locale, TextKey::ResolvedTaxon)}" }
                 span { class: "meta-sep", ":" }
@@ -27,8 +27,8 @@ pub fn HeaderMetaSection(
             }
         }
         if let (Some(qh), Some(rh)) = (
-            explore.query_hash.as_deref(),
-            explore.result_hash.as_deref(),
+            explore.result.query_hash.as_deref(),
+            explore.result.result_hash.as_deref(),
         )
         {
             p { class: "page-meta",
@@ -51,7 +51,7 @@ pub fn HeaderMetaSection(
                 }
             }
         }
-        if let Some(n) = explore.total_matches {
+        if let Some(n) = explore.result.total_matches {
             p { class: "page-meta",
                 span { class: "meta-key", "{t(locale, TextKey::TotalMatches)}" }
                 span { class: "meta-sep", ":" }

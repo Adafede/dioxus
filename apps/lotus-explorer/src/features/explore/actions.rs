@@ -3,7 +3,7 @@
 
 //! Action catalog for the Explore feature reducer.
 
-use crate::features::explore::types::{ErrorKind, QueryPhase};
+use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
 use crate::models::{CompoundEntry, DatasetStats, SearchCriteria, SortColumn};
 use std::sync::Arc;
 
@@ -23,7 +23,8 @@ pub enum ExploreAction {
     SearchSucceeded {
         rows: Vec<CompoundEntry>,
         qid: Option<String>,
-        warning: Option<String>,
+        /// Structured taxon resolution warning; formatted at render time.
+        warning: Option<TaxonWarning>,
         query: String,
         total_matches: Option<usize>,
         total_stats: Option<DatasetStats>,
@@ -33,10 +34,9 @@ pub enum ExploreAction {
         metadata_json: Arc<str>,
     },
 
-    /// Commit a typed search error.
+    /// Commit a typed search error (i18n-free; formatted at render time).
     SearchFailed {
-        kind: ErrorKind,
-        message: String,
+        error: DomainError,
     },
 
     /// Dismiss the current error notice.

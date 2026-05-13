@@ -10,8 +10,8 @@ use crate::features::explore::orchestrator::start_search;
 use crate::features::explore::search_state::{
     ExploreState, dispatch_explore_action, set_signal_if_changed,
 };
-use crate::features::explore::types::ErrorKind;
-use crate::i18n::{Locale, err_unsupported_format};
+use crate::features::explore::types::{DomainError, ValidationFault};
+use crate::i18n::Locale;
 use crate::models::SearchCriteria;
 use crate::repositories::LotusRepository;
 use crate::utils::logging::{log_debug_evt, log_info_evt, log_warn_evt};
@@ -24,7 +24,6 @@ pub fn use_startup_effect<R: LotusRepository>(
     pending_execute: Signal<bool>,
     explore: Signal<ExploreState>,
     criteria: Signal<SearchCriteria>,
-    locale: Signal<Locale>,
     repo: R,
 ) {
     let repo_for_effect = repo.clone();
@@ -43,8 +42,9 @@ pub fn use_startup_effect<R: LotusRepository>(
             dispatch_explore_action(
                 explore,
                 ExploreAction::SearchFailed {
-                    kind: ErrorKind::Validation,
-                    message: err_unsupported_format(*locale.peek(), fmt),
+                    error: DomainError::Validation(ValidationFault::UnsupportedFormat {
+                        format: fmt.to_string(),
+                    }),
                 },
             );
             set_signal_if_changed(pending_download_format, None);
@@ -52,8 +52,8 @@ pub fn use_startup_effect<R: LotusRepository>(
         }
 
         if (pending.is_some() || *pending_execute.read())
-            && !explore.peek().searched_once
-            && !explore.peek().loading
+            && !explore.peek().lifecycle.searched_once
+            && !explore.peek().lifecycle.loading
         {
             if let Some(fmt) = pending.as_deref() {
                 log_info_evt(
@@ -70,7 +70,7 @@ pub fn use_startup_effect<R: LotusRepository>(
                     Some("execute=true"),
                 );
             }
-            start_search(criteria, locale, pending.is_some(), explore, repo);
+            start_search(criteria, pending.is_some(), explore, repo);
             set_signal_if_changed(pending_execute, false);
         }
     });
@@ -91,7 +91,7 @@ pub fn use_download_dispatch_effect(
             return;
         };
 
-        if explore.read().loading {
+        if explore.read().lifecycle.loading {
             if !*waiting_loading_logged.peek() {
                 log_debug_evt(
                     "download",
@@ -106,7 +106,13 @@ pub fn use_download_dispatch_effect(
         }
         set_signal_if_changed(waiting_loading_logged, false);
 
-        let Some(query) = explore.read().sparql_query.as_deref().map(str::to_string) else {
+        let Some(query) = explore
+            .read()
+            .result
+            .sparql_query
+            .as_deref()
+            .map(str::to_string)
+        else {
             if !*waiting_query_logged.peek() {
                 log_debug_evt(
                     "download",
@@ -120,7 +126,7 @@ pub fn use_download_dispatch_effect(
         };
         set_signal_if_changed(waiting_query_logged, false);
 
-        let crit = explore.read().executed_criteria.clone();
+        let crit = explore.read().ui.executed_criteria.clone();
         match DownloadFormat::from_str(&fmt) {
             Some(format) => {
                 let filename = export::generate_filename(&crit, format.extension());
@@ -171,11 +177,15 @@ pub fn use_download_dispatch_effect(
                     "unsupported_format",
                     Some(&format!("format={fmt}")),
                 );
+                // locale is still available here in case future callers need it;
+                // the error is now structured and formatted at the UI boundary.
+                let _ = locale;
                 dispatch_explore_action(
                     explore,
                     ExploreAction::SearchFailed {
-                        kind: ErrorKind::Validation,
-                        message: err_unsupported_format(*locale.peek(), &fmt),
+                        error: DomainError::Validation(ValidationFault::UnsupportedFormat {
+                            format: fmt.clone(),
+                        }),
                     },
                 );
                 set_signal_if_changed(pending_download_format, None);

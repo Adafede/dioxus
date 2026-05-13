@@ -70,7 +70,7 @@ fn App() -> Element {
     let waiting_query_logged: Signal<bool> = use_signal(|| false);
 
     let locale_value = *locale.read();
-    let mobile_open = explore.read().mobile_filters_open;
+    let mobile_open = explore.read().ui.mobile_filters_open;
     let repo = HybridRepository::new();
 
     let _search_ui_ctx =
@@ -92,7 +92,6 @@ fn App() -> Element {
         pending_execute,
         explore,
         criteria,
-        locale,
         repo,
     );
     use_download_dispatch_effect(
@@ -103,8 +102,8 @@ fn App() -> Element {
         waiting_query_logged,
     );
 
-    let on_search = move |_| start_search(criteria, locale, false, explore, repo);
-    let on_preview = move |_| start_search(criteria, locale, false, explore, repo);
+    let on_search = move |_| start_search(criteria, false, explore, repo);
+    let on_preview = move |_| start_search(criteria, false, explore, repo);
 
     rsx! {
         a { class: "skip-link", href: "#main-panel", "{t(locale_value, TextKey::SkipToResults)}" }
@@ -259,7 +258,7 @@ fn App() -> Element {
                         explore,
                         locale,
                         on_dismiss: move |_| dispatch_explore_action(explore, ExploreAction::ErrorDismissed),
-                        on_retry: move |_| start_search(criteria, locale, false, explore, repo),
+                        on_retry: move |_| start_search(criteria, false, explore, repo),
                     }
                     ResultsViewport { on_preview }
                 } else if *app_view.read() == AppView::Curation {

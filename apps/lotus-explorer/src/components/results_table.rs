@@ -186,15 +186,15 @@ pub fn ResultsTable() -> Element {
     let state = use_results_context();
     let explore = state.explore;
     let locale = *state.locale.read();
-    let entries_len = explore.read().entries.len();
+    let entries_len = explore.read().result.entries.len();
 
     // Memoised sort: compute a permutation of row indices instead of cloning
     // the whole Vec to sort it. Recomputes only when `entries` or `sort`
     // actually change.
     let sorted_indices: Memo<Arc<[u32]>> = use_memo(move || {
         let snapshot = explore.read();
-        let rows = snapshot.entries.clone();
-        let s = snapshot.sort;
+        let rows = snapshot.result.entries.clone();
+        let s = snapshot.result.sort;
         let mut idx: Vec<u32> = (0..rows.len() as u32).collect();
         idx.sort_by(|&a, &b| {
             let ea = &rows[a as usize];
@@ -247,15 +247,15 @@ pub fn ResultsTable() -> Element {
 fn ResultsToolbar(locale: Locale) -> Element {
     let state = use_results_context();
     let explore = state.explore.read().clone();
-    let entries = explore.entries.clone();
-    let sparql_query = explore.sparql_query.clone();
-    let metadata_json = explore.metadata_json.clone();
-    let query_hash = explore.query_hash.clone();
-    let result_hash = explore.result_hash.clone();
-    let criteria = explore.executed_criteria.clone();
-    let total_stats = explore.total_stats.clone();
-    let total_matches = explore.total_matches;
-    let display_capped_rows = explore.display_capped_rows;
+    let entries = explore.result.entries.clone();
+    let sparql_query = explore.result.sparql_query.clone();
+    let metadata_json = explore.result.metadata_json.clone();
+    let query_hash = explore.result.query_hash.clone();
+    let result_hash = explore.result.result_hash.clone();
+    let criteria = explore.ui.executed_criteria.clone();
+    let total_stats = explore.result.total_stats.clone();
+    let total_matches = explore.result.total_matches;
+    let display_capped_rows = explore.result.display_capped_rows;
 
     // Fallback stats are memoised so they don't rerun on unrelated re-renders.
     let fallback_stats: Memo<DatasetStats> = use_memo(move || DatasetStats::from_entries(&entries));
@@ -315,7 +315,7 @@ fn ResultsToolbar(locale: Locale) -> Element {
                     locale,
                     value: entries_value,
                     secondary_value: (entries_unique_value != entries_value)
-                                                                                                        .then_some(entries_unique_value),
+                                                                                                                            .then_some(entries_unique_value),
                     secondary_label: Some(t(locale, TextKey::Unique)),
                     noun: CountNoun::Entry,
                     plus: false,
@@ -528,9 +528,9 @@ fn VirtualizedResultsTable(
         *scroll_raf_cb.write() = None;
     });
 
-    let total = explore.read().entries.len();
+    let total = explore.read().result.entries.len();
     let row_height_px = ROW_HEIGHT_PX_COMFORTABLE;
-    let current_sort = explore.read().sort;
+    let current_sort = explore.read().result.sort;
     let window_rows = (((*viewport_height_px.read()).saturating_add(row_height_px - 1))
         / row_height_px)
         .max(1)
@@ -734,7 +734,7 @@ fn VirtualizedResultsTable(
                     }
                     {
                         // Keep a single read for each reactive source per window render.
-                        let rows = explore.read().entries.clone();
+                        let rows = explore.read().result.entries.clone();
                         let order = sorted_indices.read();
                         {
                             visible_rows_view(

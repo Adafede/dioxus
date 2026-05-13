@@ -6,6 +6,8 @@ pub mod download_dispatch;
 pub mod orchestrator;
 pub mod search_state;
 pub mod search_utils;
+pub mod selectors;
+pub mod service;
 pub mod taxon_cache;
 pub mod types;
 pub mod url_state;

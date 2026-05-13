@@ -24,12 +24,12 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     let state = use_results_context();
     let locale = *state.locale.read();
     let explore = state.explore.read();
-    let loading = explore.loading;
-    let has_error = explore.error.is_some();
-    let searched_once = explore.searched_once;
-    let download_only_mode = explore.download_only_mode;
-    let download_dispatching = explore.download_dispatching;
-    let entries = explore.entries.clone();
+    let loading = explore.lifecycle.loading;
+    let has_error = explore.lifecycle.error.is_some();
+    let searched_once = explore.lifecycle.searched_once;
+    let download_only_mode = explore.lifecycle.download_only_mode;
+    let download_dispatching = explore.lifecycle.download_dispatching;
+    let entries = explore.result.entries.clone();
 
     if loading {
         return rsx! {
