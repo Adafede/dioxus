@@ -27,12 +27,10 @@ use components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
 use components::results_viewport::ResultsViewport;
 use components::search_panel::SearchPanel;
 use dioxus::prelude::*;
-use download::DownloadFormat;
-use features::explore::download_dispatch::{use_download_dispatch_effect, use_startup_effect};
 use features::explore::actions::ExploreAction;
+use features::explore::download_dispatch::{use_download_dispatch_effect, use_startup_effect};
 use features::explore::orchestrator::start_search;
-use features::explore::search_state::{dispatch_explore_action, ExploreState};
-use features::explore::types::ErrorKind;
+use features::explore::search_state::{ExploreState, dispatch_explore_action};
 use features::explore::url_state::{
     build_shareable_url, initial_criteria_from_url, initial_download_format_from_url,
     initial_execute_from_url, initial_locale_from_url, initial_view_from_url,
@@ -46,6 +44,8 @@ use models::*;
 use repositories::HybridRepository;
 use state::{ResultsContext, SearchUiContext};
 use std::sync::Arc;
+#[cfg(test)]
+use download::DownloadFormat;
 
 fn main() {
     let level = if cfg!(debug_assertions) {
@@ -63,7 +63,7 @@ fn App() -> Element {
     let criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
     let mut locale: Signal<Locale> = use_signal(initial_locale_from_url);
     let explore: Signal<ExploreState> = use_signal(ExploreState::default);
-    let mut pending_download_format: Signal<Option<String>> =
+    let pending_download_format: Signal<Option<String>> =
         use_signal(initial_download_format_from_url);
     let pending_execute: Signal<bool> = use_signal(initial_execute_from_url);
     let waiting_loading_logged: Signal<bool> = use_signal(|| false);
@@ -73,9 +73,8 @@ fn App() -> Element {
     let mobile_open = explore.read().mobile_filters_open;
     let repo = HybridRepository::new();
 
-    let _search_ui_ctx = use_context_provider(move || {
-        SearchUiContext::from_signals(criteria, locale, explore)
-    });
+    let _search_ui_ctx =
+        use_context_provider(move || SearchUiContext::from_signals(criteria, locale, explore));
     let _results_ctx = use_context_provider(move || ResultsContext::from_signals(explore, locale));
 
     let shareable_url =
@@ -109,8 +108,7 @@ fn App() -> Element {
 
     rsx! {
         a { class: "skip-link", href: "#main-panel", "{t(locale_value, TextKey::SkipToResults)}" }
-        div {
-            class: if *app_view.read() == AppView::Explore { "app-layout" } else { "app-layout no-sidebar" },
+        div { class: if *app_view.read() == AppView::Explore { "app-layout" } else { "app-layout no-sidebar" },
             if *app_view.read() == AppView::Explore {
                 aside {
                     class: if mobile_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
@@ -169,19 +167,77 @@ fn App() -> Element {
                             class: "lang-switch",
                             role: "group",
                             aria_label: "{t(locale_value, TextKey::Language)}",
-                            button { class: if locale_value == Locale::En { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" }, r#type: "button", aria_pressed: if locale_value == Locale::En { "true" } else { "false" }, onclick: move |_| { if *locale.peek() != Locale::En { *locale.write() = Locale::En; } }, "EN" }
-                            button { class: if locale_value == Locale::Fr { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" }, r#type: "button", aria_pressed: if locale_value == Locale::Fr { "true" } else { "false" }, onclick: move |_| { if *locale.peek() != Locale::Fr { *locale.write() = Locale::Fr; } }, "FR" }
-                            button { class: if locale_value == Locale::De { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" }, r#type: "button", aria_pressed: if locale_value == Locale::De { "true" } else { "false" }, onclick: move |_| { if *locale.peek() != Locale::De { *locale.write() = Locale::De; } }, "DE" }
-                            button { class: if locale_value == Locale::It { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" }, r#type: "button", aria_pressed: if locale_value == Locale::It { "true" } else { "false" }, onclick: move |_| { if *locale.peek() != Locale::It { *locale.write() = Locale::It; } }, "IT" }
+                            button {
+                                class: if locale_value == Locale::En { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                r#type: "button",
+                                aria_pressed: if locale_value == Locale::En { "true" } else { "false" },
+                                onclick: move |_| {
+                                    if *locale.peek() != Locale::En {
+                                        *locale.write() = Locale::En;
+                                    }
+                                },
+                                "EN"
+                            }
+                            button {
+                                class: if locale_value == Locale::Fr { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                r#type: "button",
+                                aria_pressed: if locale_value == Locale::Fr { "true" } else { "false" },
+                                onclick: move |_| {
+                                    if *locale.peek() != Locale::Fr {
+                                        *locale.write() = Locale::Fr;
+                                    }
+                                },
+                                "FR"
+                            }
+                            button {
+                                class: if locale_value == Locale::De { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                r#type: "button",
+                                aria_pressed: if locale_value == Locale::De { "true" } else { "false" },
+                                onclick: move |_| {
+                                    if *locale.peek() != Locale::De {
+                                        *locale.write() = Locale::De;
+                                    }
+                                },
+                                "DE"
+                            }
+                            button {
+                                class: if locale_value == Locale::It { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                                r#type: "button",
+                                aria_pressed: if locale_value == Locale::It { "true" } else { "false" },
+                                onclick: move |_| {
+                                    if *locale.peek() != Locale::It {
+                                        *locale.write() = Locale::It;
+                                    }
+                                },
+                                "IT"
+                            }
                         }
                     }
                     nav {
                         class: "view-switch",
                         role: "group",
                         aria_label: "{view_switch_aria(locale_value)}",
-                        button { class: if *app_view.read() == AppView::Explore { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" }, r#type: "button", aria_pressed: if *app_view.read() == AppView::Explore { "true" } else { "false" }, onclick: move |_| app_view.set(AppView::Explore), "{view_label_explorer(locale_value)}" }
-                        button { class: if *app_view.read() == AppView::Curation { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" }, r#type: "button", aria_pressed: if *app_view.read() == AppView::Curation { "true" } else { "false" }, onclick: move |_| app_view.set(AppView::Curation), "{view_label_curation_explorer(locale_value)}" }
-                        button { class: if *app_view.read() == AppView::Draw { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" }, r#type: "button", aria_pressed: if *app_view.read() == AppView::Draw { "true" } else { "false" }, onclick: move |_| app_view.set(AppView::Draw), "{view_label_draw(locale_value)}" }
+                        button {
+                            class: if *app_view.read() == AppView::Explore { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                            r#type: "button",
+                            aria_pressed: if *app_view.read() == AppView::Explore { "true" } else { "false" },
+                            onclick: move |_| app_view.set(AppView::Explore),
+                            "{view_label_explorer(locale_value)}"
+                        }
+                        button {
+                            class: if *app_view.read() == AppView::Curation { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                            r#type: "button",
+                            aria_pressed: if *app_view.read() == AppView::Curation { "true" } else { "false" },
+                            onclick: move |_| app_view.set(AppView::Curation),
+                            "{view_label_curation_explorer(locale_value)}"
+                        }
+                        button {
+                            class: if *app_view.read() == AppView::Draw { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                            r#type: "button",
+                            aria_pressed: if *app_view.read() == AppView::Draw { "true" } else { "false" },
+                            onclick: move |_| app_view.set(AppView::Draw),
+                            "{view_label_draw(locale_value)}"
+                        }
                     }
                     p { class: "page-sub", "{t(locale_value, TextKey::PageSubtitle)}" }
                     p { class: "page-archive-note",

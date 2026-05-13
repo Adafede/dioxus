@@ -231,11 +231,7 @@ pub fn ResultsTable() -> Element {
                     p { "{t(locale, TextKey::NoResults)}" }
                 }
             } else {
-                VirtualizedResultsTable {
-                    explore,
-                    locale,
-                    sorted_indices,
-                }
+                VirtualizedResultsTable { explore, locale, sorted_indices }
             }
         }
     }
@@ -262,8 +258,7 @@ fn ResultsToolbar(locale: Locale) -> Element {
     let display_capped_rows = explore.display_capped_rows;
 
     // Fallback stats are memoised so they don't rerun on unrelated re-renders.
-    let fallback_stats: Memo<DatasetStats> =
-        use_memo(move || DatasetStats::from_entries(&entries));
+    let fallback_stats: Memo<DatasetStats> = use_memo(move || DatasetStats::from_entries(&entries));
     let display_stats = total_stats
         .as_ref()
         .cloned()
@@ -320,7 +315,7 @@ fn ResultsToolbar(locale: Locale) -> Element {
                     locale,
                     value: entries_value,
                     secondary_value: (entries_unique_value != entries_value)
-                                                                                                                                                                                                                                .then_some(entries_unique_value),
+                                                                                                                                                                                                                                                    .then_some(entries_unique_value),
                     secondary_label: Some(t(locale, TextKey::Unique)),
                     noun: CountNoun::Entry,
                     plus: false,
@@ -547,11 +542,10 @@ fn VirtualizedResultsTable(
     let visible_count = end_row.saturating_sub(start_row);
     let row_text = row_text(locale);
 
-    let toggle_sort = move |col: SortColumn| move |_: Event<MouseData>| {
-        dispatch_explore_action(
-            explore,
-            ExploreAction::SortToggled(col),
-        );
+    let toggle_sort = move |col: SortColumn| {
+        move |_: Event<MouseData>| {
+            dispatch_explore_action(explore, ExploreAction::SortToggled(col));
+        }
     };
 
     rsx! {

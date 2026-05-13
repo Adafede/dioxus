@@ -7,13 +7,16 @@ use crate::download::{DownloadFormat, execute_download};
 use crate::export;
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::orchestrator::start_search;
-use crate::features::explore::search_state::{dispatch_explore_action, set_signal_if_changed, ExploreState};
+use crate::features::explore::search_state::{
+    ExploreState, dispatch_explore_action, set_signal_if_changed,
+};
 use crate::features::explore::types::ErrorKind;
 use crate::i18n::{Locale, err_unsupported_format};
 use crate::models::SearchCriteria;
 use crate::repositories::LotusRepository;
 use crate::utils::logging::{log_debug_evt, log_info_evt, log_warn_evt};
 use dioxus::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use std::sync::Arc;
 
 pub fn use_startup_effect<R: LotusRepository + Copy>(
@@ -29,7 +32,12 @@ pub fn use_startup_effect<R: LotusRepository + Copy>(
         if let Some(fmt) = pending.as_deref()
             && DownloadFormat::from_str(fmt).is_none()
         {
-            log_warn_evt("download", "startup", "unsupported_format", Some(&format!("format={fmt}")));
+            log_warn_evt(
+                "download",
+                "startup",
+                "unsupported_format",
+                Some(&format!("format={fmt}")),
+            );
             dispatch_explore_action(
                 explore,
                 ExploreAction::SearchFailed {
@@ -46,9 +54,19 @@ pub fn use_startup_effect<R: LotusRepository + Copy>(
             && !explore.peek().loading
         {
             if let Some(fmt) = pending.as_deref() {
-                log_info_evt("download", "startup", "auto_search_triggered", Some(&format!("format={fmt}")));
+                log_info_evt(
+                    "download",
+                    "startup",
+                    "auto_search_triggered",
+                    Some(&format!("format={fmt}")),
+                );
             } else {
-                log_info_evt("search", "startup", "auto_search_triggered", Some("execute=true"));
+                log_info_evt(
+                    "search",
+                    "startup",
+                    "auto_search_triggered",
+                    Some("execute=true"),
+                );
             }
             start_search(criteria, locale, pending.is_some(), explore, repo);
             set_signal_if_changed(pending_execute, false);
@@ -73,7 +91,12 @@ pub fn use_download_dispatch_effect(
 
         if explore.read().loading {
             if !*waiting_loading_logged.peek() {
-                log_debug_evt("download", "dispatch", "waiting_loading", Some(&format!("format={fmt}")));
+                log_debug_evt(
+                    "download",
+                    "dispatch",
+                    "waiting_loading",
+                    Some(&format!("format={fmt}")),
+                );
                 set_signal_if_changed(waiting_loading_logged, true);
             }
             set_signal_if_changed(waiting_query_logged, false);
@@ -83,7 +106,12 @@ pub fn use_download_dispatch_effect(
 
         let Some(query) = explore.read().sparql_query.as_deref().map(str::to_string) else {
             if !*waiting_query_logged.peek() {
-                log_debug_evt("download", "dispatch", "waiting_query", Some(&format!("format={fmt}")));
+                log_debug_evt(
+                    "download",
+                    "dispatch",
+                    "waiting_query",
+                    Some(&format!("format={fmt}")),
+                );
                 set_signal_if_changed(waiting_query_logged, true);
             }
             return;
@@ -109,7 +137,12 @@ pub fn use_download_dispatch_effect(
                     )),
                 );
                 spawn(async move {
-                    log_info_evt("download", "dispatch", "started", Some(&format!("format={}", format.log_name())));
+                    log_info_evt(
+                        "download",
+                        "dispatch",
+                        "started",
+                        Some(&format!("format={}", format.log_name())),
+                    );
                     if let Err(err) = execute_download(
                         format,
                         #[cfg(target_arch = "wasm32")]
@@ -130,7 +163,12 @@ pub fn use_download_dispatch_effect(
                 });
             }
             None => {
-                log_warn_evt("download", "dispatch", "unsupported_format", Some(&format!("format={fmt}")));
+                log_warn_evt(
+                    "download",
+                    "dispatch",
+                    "unsupported_format",
+                    Some(&format!("format={fmt}")),
+                );
                 dispatch_explore_action(
                     explore,
                     ExploreAction::SearchFailed {

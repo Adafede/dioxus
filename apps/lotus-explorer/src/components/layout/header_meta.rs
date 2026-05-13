@@ -26,7 +26,11 @@ pub fn HeaderMetaSection(
                 }
             }
         }
-        if let (Some(qh), Some(rh)) = (explore.query_hash.as_deref(), explore.result_hash.as_deref()) {
+        if let (Some(qh), Some(rh)) = (
+            explore.query_hash.as_deref(),
+            explore.result_hash.as_deref(),
+        )
+        {
             p { class: "page-meta",
                 span { class: "meta-key", "{t(locale, TextKey::QueryHash)}" }
                 span { class: "meta-sep", ":" }
