@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+use crate::hooks::use_locale;
 use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
 
 #[component]
-pub fn Footer(locale: Locale) -> Element {
+pub fn Footer() -> Element {
+    let locale = use_locale();
     rsx! {
         footer { class: "app-footer",
             FooterRow {

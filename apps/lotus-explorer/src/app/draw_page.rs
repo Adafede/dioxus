@@ -4,11 +4,12 @@
 //! The "Draw" tab: a full-pane Ketcher molecule editor.
 
 use crate::components::search_panel::KetcherPanel;
-use crate::i18n::{Locale, view_label_draw};
+use crate::i18n::view_label_draw;
 use dioxus::prelude::*;
 
 #[component]
-pub fn DrawPage(locale: Locale) -> Element {
+pub fn DrawPage() -> Element {
+    let locale = crate::hooks::use_locale();
     rsx! {
         section { class: "draw-wrap", aria_label: "{view_label_draw(locale)}", KetcherPanel {} }
     }

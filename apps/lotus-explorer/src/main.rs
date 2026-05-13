@@ -144,12 +144,12 @@ fn App() -> Element {
                         }
                         ResultsViewport { on_preview }
                     } else if current_view == AppView::Curation {
-                        components::data_curation_page::DataCurationPage { locale: locale_value }
+                        components::data_curation_page::DataCurationPage {}
                     } else {
-                        DrawPage { locale: locale_value }
+                        DrawPage {}
                     }
 
-                    Footer { locale: locale_value }
+                    Footer {}
                 }
             }
         }

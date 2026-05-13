@@ -27,7 +27,8 @@ use super::copy_button::CopyButton;
 use super::curation_results_table::CurationResultsTable;
 
 #[component]
-pub fn DataCurationPage(locale: Locale) -> Element {
+pub fn DataCurationPage() -> Element {
+    let locale = crate::hooks::use_locale();
     let mut name_input = use_signal(String::new);
     let mut smiles_input = use_signal(String::new);
     let mut taxon_input = use_signal(String::new);
