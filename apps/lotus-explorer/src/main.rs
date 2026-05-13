@@ -27,8 +27,9 @@ use app_state::{AppState, DownloadState};
 use components::layout::footer::Footer;
 use components::layout::header_meta::HeaderMetaSection;
 use components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
+use components::layout::page_header::PageHeader;
+use components::layout::sidebar::Sidebar;
 use components::results_viewport::ResultsViewport;
-use components::search_panel::SearchPanel;
 use dioxus::prelude::*;
 #[cfg(test)]
 use download::DownloadFormat;
@@ -42,10 +43,7 @@ use features::explore::url_state::{
     persist_locale_query_param, persist_view_query_param,
 };
 use hooks::LocaleProvider;
-use i18n::{
-    Locale, TextKey, t, view_label_curation_explorer, view_label_draw, view_label_explorer,
-    view_switch_aria,
-};
+use i18n::{Locale, TextKey, t};
 use models::*;
 use repositories::HybridRepository;
 use state::{
@@ -68,16 +66,10 @@ fn main() {
 fn App() -> Element {
     // ── Initialise from URL parameters ────────────────────────────────────────
     let initial_criteria = initial_criteria_from_url();
+    let initial_criteria_for_baseline = initial_criteria.clone();
 
-    // ── Canonical signals ─────────────────────────────────────────────────────
-    // Each signal is the *sole* owner of its data.  There are no mirror copies
-    // and no sync-effect loops writing between them.
-    //
-    // * app_state — view routing, download orchestration, metrics guards.
-    // * criteria  — live search-form input.
-    // * locale    — active UI locale (also propagated via LocaleProvider ctx).
-    // * explore   — search lifecycle, result rows, sort state.
-    let mut app_state: Signal<AppState> = use_signal(|| AppState {
+    // ── Canonical signals (each is sole owner of its data) ────────────────────
+    let app_state: Signal<AppState> = use_signal(|| AppState {
         view: initial_view_from_url(),
         download: DownloadState {
             pending_format: initial_download_format_from_url(),
@@ -85,20 +77,13 @@ fn App() -> Element {
         },
         ..AppState::default()
     });
-
-    let initial_criteria_for_baseline = initial_criteria.clone();
     let criteria: Signal<SearchCriteria> = use_signal(move || initial_criteria.clone());
-    // Baseline for dirty-tracking — initialised identically to criteria so the
-    // search button does not appear "dirty" before the user changes anything.
     let criteria_baseline: Signal<SearchCriteria> =
         use_signal(move || initial_criteria_for_baseline.clone());
-
-    let mut locale: Signal<Locale> = use_signal(initial_locale_from_url);
+    let locale: Signal<Locale> = use_signal(initial_locale_from_url);
     let explore: Signal<ExploreState> = use_signal(ExploreState::default);
 
-    // ── Derived / cached values (no subscriptions to unrelated signals) ───────
     let locale_value = *locale.read();
-    let mobile_filters_open = explore.read().ui.mobile_filters_open;
     let repo = HybridRepository::new();
 
     // ── Context providers ─────────────────────────────────────────────────────
@@ -108,41 +93,34 @@ fn App() -> Element {
     let _search_ui_ctx = use_context_provider(move || SearchUiContext::new(criteria, explore));
     let _results_ctx = use_context_provider(move || ResultsContext::new(explore));
 
-    // ── Shareable URL (recomputes only when criteria change) ──────────────────
+    // ── Shareable URL ─────────────────────────────────────────────────────────
     let shareable_url =
         use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));
 
-    // ── Side effects ──────────────────────────────────────────────────────────
-    // Persist locale to URL query string whenever it changes.
-    use_effect(move || {
-        persist_locale_query_param(*locale.read());
-    });
-    // Persist view to URL query string whenever it changes.
-    use_effect(move || {
-        persist_view_query_param(app_state.read().view);
-    });
+    // ── Persistent side-effects ───────────────────────────────────────────────
+    use_effect(move || persist_locale_query_param(*locale.read()));
+    use_effect(move || persist_view_query_param(app_state.read().view));
 
     // ── Feature hooks ─────────────────────────────────────────────────────────
     use_startup_effect(app_state, explore, criteria, repo);
     use_download_dispatch_effect(app_state, explore);
 
-    // ── Event handlers ────────────────────────────────────────────────────────
-    let form_ctx_for_search = use_form_criteria_context();
+    // ── Event handlers (capture App-scope values) ─────────────────────────────
+    let form_ctx = use_form_criteria_context();
     let on_search = move |_: ()| {
-        // Advance dirty baseline so the button immediately returns to clean style.
-        form_ctx_for_search.mark_searched();
+        form_ctx.mark_searched();
         start_search(criteria, false, explore, repo);
     };
     let on_preview = move |_: ()| start_search(criteria, false, explore, repo);
 
-    // ── Layout helpers ────────────────────────────────────────────────────────
-    let app_layout_class = if app_state.read().view == AppView::Explore {
+    // ── Layout ────────────────────────────────────────────────────────────────
+    let current_view = app_state.read().view;
+    let app_layout_class = if current_view == AppView::Explore {
         "app-layout"
     } else {
         "app-layout no-sidebar"
     };
-
-    let main_class = if app_state.read().view == AppView::Explore {
+    let main_class = if current_view == AppView::Explore {
         "main-content"
     } else {
         "main-content single-pane"
@@ -153,148 +131,27 @@ fn App() -> Element {
             a { class: "skip-link", href: "#main-panel", "{t(locale_value, TextKey::SkipToResults)}" }
             div { class: "{app_layout_class}",
 
-                if app_state.read().view == AppView::Explore {
-                    aside {
-                        class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
-                        button {
-                            class: "filters-toggle",
-                            r#type: "button",
-                            aria_pressed: if mobile_filters_open { "true" } else { "false" },
-                            onclick: move |_| dispatch_explore_action(explore, ExploreAction::MobileFiltersToggled),
-                            if mobile_filters_open {
-                                "{t(locale_value, TextKey::FiltersHide)}"
-                            } else {
-                                "{t(locale_value, TextKey::FiltersShow)}"
-                            }
-                        }
-                        SearchPanel { on_search }
-                        div { class: "sidebar-logo-wrap",
-                            img {
-                                class: "sidebar-logo",
-                                src: "assets/lotus_ferris.svg",
-                                alt: "{t(locale_value, TextKey::PageTitle)}",
-                            }
-                        }
-                    }
+                if current_view == AppView::Explore {
+                    Sidebar { on_search }
                 }
 
                 main { id: "main-panel", class: "{main_class}", tabindex: "-1",
+                    PageHeader {}
 
-                div { class: "page-header",
-                    div { class: "page-brand",
-                        h1 { class: "page-title",
-                            a {
-                                class: "page-title-link",
-                                href: "?",
-                                title: "{t(locale_value, TextKey::PageTitle)}",
-                                aria_label: "{t(locale_value, TextKey::PageTitle)}",
-                                "{t(locale_value, TextKey::PageTitle)}"
-                            }
+                    if current_view == AppView::Explore {
+                        HeaderMetaSection {}
+                        ShareNotice { shareable_url }
+                        TaxonNotice {}
+                        ErrorNotice {
+                            on_dismiss: move |_| dispatch_explore_action(explore, ExploreAction::ErrorDismissed),
+                            on_retry: move |_| start_search(criteria, false, explore, repo),
                         }
-                        div {
-                            class: "lang-switch",
-                            role: "group",
-                            aria_label: "{t(locale_value, TextKey::Language)}",
-                            button {
-                                class: if locale_value == Locale::En { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
-                                r#type: "button",
-                                aria_pressed: if locale_value == Locale::En { "true" } else { "false" },
-                                onclick: move |_| {
-                                    if *locale.peek() != Locale::En {
-                                        *locale.write() = Locale::En;
-                                    }
-                                },
-                                "EN"
-                            }
-                            button {
-                                class: if locale_value == Locale::Fr { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
-                                r#type: "button",
-                                aria_pressed: if locale_value == Locale::Fr { "true" } else { "false" },
-                                onclick: move |_| {
-                                    if *locale.peek() != Locale::Fr {
-                                        *locale.write() = Locale::Fr;
-                                    }
-                                },
-                                "FR"
-                            }
-                            button {
-                                class: if locale_value == Locale::De { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
-                                r#type: "button",
-                                aria_pressed: if locale_value == Locale::De { "true" } else { "false" },
-                                onclick: move |_| {
-                                    if *locale.peek() != Locale::De {
-                                        *locale.write() = Locale::De;
-                                    }
-                                },
-                                "DE"
-                            }
-                            button {
-                                class: if locale_value == Locale::It { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
-                                r#type: "button",
-                                aria_pressed: if locale_value == Locale::It { "true" } else { "false" },
-                                onclick: move |_| {
-                                    if *locale.peek() != Locale::It {
-                                        *locale.write() = Locale::It;
-                                    }
-                                },
-                                "IT"
-                            }
-                        }
+                        ResultsViewport { on_preview }
+                    } else if current_view == AppView::Curation {
+                        components::data_curation_page::DataCurationPage { locale: locale_value }
+                    } else {
+                        DrawPage { locale: locale_value }
                     }
-                    nav {
-                        class: "view-switch",
-                        aria_label: "{view_switch_aria(locale_value)}",
-                        button {
-                            class: if app_state.read().view == AppView::Explore { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
-                            r#type: "button",
-                            aria_pressed: if app_state.read().view == AppView::Explore { "true" } else { "false" },
-                            onclick: move |_| app_state.with_mut(|state| state.view = AppView::Explore),
-                            "{view_label_explorer(locale_value)}"
-                        }
-                        button {
-                            class: if app_state.read().view == AppView::Curation { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
-                            r#type: "button",
-                            aria_pressed: if app_state.read().view == AppView::Curation { "true" } else { "false" },
-                            onclick: move |_| app_state.with_mut(|state| state.view = AppView::Curation),
-                            "{view_label_curation_explorer(locale_value)}"
-                        }
-                        button {
-                            class: if app_state.read().view == AppView::Draw { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
-                            r#type: "button",
-                            aria_pressed: if app_state.read().view == AppView::Draw { "true" } else { "false" },
-                            onclick: move |_| app_state.with_mut(|state| state.view = AppView::Draw),
-                            "{view_label_draw(locale_value)}"
-                        }
-                    }
-                    p { class: "page-sub", "{t(locale_value, TextKey::PageSubtitle)}" }
-                    p { class: "page-archive-note",
-                        span { class: "page-archive-label", "{t(locale_value, TextKey::ArchiveNotice)}" }
-                        a {
-                            class: "page-archive-link mono",
-                            href: "https://doi.org/10.5281/zenodo.5794106",
-                            target: "_blank",
-                            rel: "noopener noreferrer",
-                            "10.5281/zenodo.5794106"
-                        }
-                    }
-                }
-
-                if app_state.read().view == AppView::Explore {
-                    HeaderMetaSection { explore, locale }
-                    ShareNotice { locale, shareable_url }
-                    TaxonNotice { explore, locale }
-                    ErrorNotice {
-                        explore,
-                        locale,
-                        on_dismiss: move |_| dispatch_explore_action(explore, ExploreAction::ErrorDismissed),
-                        on_retry: move |_| start_search(criteria, false, explore, repo),
-                    }
-                    ResultsViewport { on_preview }
-                } else if app_state.read().view == AppView::Curation {
-                    components::data_curation_page::DataCurationPage { locale: locale_value }
-                } else {
-                    DrawPage { locale: locale_value }
-                }
 
                     Footer { locale: locale_value }
                 }

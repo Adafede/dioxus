@@ -24,4 +24,3 @@ pub fn use_locale() -> Locale {
 pub fn use_locale_signal() -> Signal<Locale> {
     use_context::<Signal<Locale>>()
 }
-

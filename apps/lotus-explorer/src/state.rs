@@ -107,19 +107,19 @@ impl FormCriteriaContext {
 
 /// Context for the search panel.
 ///
-/// Provides mutable access to the live criteria signal and read access to the
-/// explore lifecycle signal (for the loading flag on the search button).
+/// Provides read access to the explore lifecycle signal for the search button
+/// (loading flag, etc.).  Criteria are now accessed exclusively through
+/// [`FormCriteriaContext`] — this context is intentionally narrowed to just
+/// the explore signal to keep `SearchPanel`'s dependencies minimal.
 #[derive(Clone, Copy)]
 pub struct SearchUiContext {
-    /// Live form criteria signal — direct write access.
-    pub criteria: Signal<SearchCriteria>,
     /// Explore lifecycle / results — read access for loading state, etc.
     pub explore: Signal<ExploreState>,
 }
 
 impl SearchUiContext {
-    pub fn new(criteria: Signal<SearchCriteria>, explore: Signal<ExploreState>) -> Self {
-        Self { criteria, explore }
+    pub fn new(_criteria: Signal<SearchCriteria>, explore: Signal<ExploreState>) -> Self {
+        Self { explore }
     }
 }
 
