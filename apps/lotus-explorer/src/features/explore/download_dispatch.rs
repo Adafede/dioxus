@@ -88,10 +88,13 @@ pub fn use_download_dispatch_effect(
     use_effect(move || {
         let pending = app_state.read().download.pending_format.clone();
         let Some(fmt) = pending else {
-            app_state.with_mut(|state| {
-                state.metrics.waiting_loading_logged = false;
-                state.metrics.waiting_query_logged = false;
-            });
+            let metrics = app_state.peek().metrics.clone();
+            if metrics.waiting_loading_logged || metrics.waiting_query_logged {
+                app_state.with_mut(|state| {
+                    state.metrics.waiting_loading_logged = false;
+                    state.metrics.waiting_query_logged = false;
+                });
+            }
             return;
         };
 
@@ -105,10 +108,14 @@ pub fn use_download_dispatch_effect(
                 );
                 app_state.with_mut(|state| state.metrics.waiting_loading_logged = true);
             }
-            app_state.with_mut(|state| state.metrics.waiting_query_logged = false);
+            if app_state.peek().metrics.waiting_query_logged {
+                app_state.with_mut(|state| state.metrics.waiting_query_logged = false);
+            }
             return;
         }
-        app_state.with_mut(|state| state.metrics.waiting_loading_logged = false);
+        if app_state.peek().metrics.waiting_loading_logged {
+            app_state.with_mut(|state| state.metrics.waiting_loading_logged = false);
+        }
 
         let Some(query) = explore
             .read()
@@ -128,15 +135,19 @@ pub fn use_download_dispatch_effect(
             }
             return;
         };
-        app_state.with_mut(|state| state.metrics.waiting_query_logged = false);
+        if app_state.peek().metrics.waiting_query_logged {
+            app_state.with_mut(|state| state.metrics.waiting_query_logged = false);
+        }
 
         let crit = explore.read().ui.executed_criteria.clone();
         match DownloadFormat::from_str(&fmt) {
             Some(format) => {
                 let filename = export::generate_filename(&crit, format.extension());
-                app_state.with_mut(|state| {
-                    state.download.pending_format = None;
-                });
+                if app_state.peek().download.pending_format.is_some() {
+                    app_state.with_mut(|state| {
+                        state.download.pending_format = None;
+                    });
+                }
                 dispatch_explore_action(explore, ExploreAction::DownloadDispatchStarted);
                 log_debug_evt(
                     "download",
@@ -191,9 +202,11 @@ pub fn use_download_dispatch_effect(
                         }),
                     },
                 );
-                app_state.with_mut(|state| {
-                    state.download.pending_format = None;
-                });
+                if app_state.peek().download.pending_format.is_some() {
+                    app_state.with_mut(|state| {
+                        state.download.pending_format = None;
+                    });
+                }
                 dispatch_explore_action(explore, ExploreAction::DownloadDispatchFinished);
             }
         }
