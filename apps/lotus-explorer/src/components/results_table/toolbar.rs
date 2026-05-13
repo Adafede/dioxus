@@ -4,9 +4,7 @@
 //! Toolbar assembly for the results table: query panel, stats bar, downloads,
 //! and the capped-rows notice.
 
-use super::table_toolbar_sections::{
-    CappedRowsNotice, DownloadActionsGroup, QueryPanel, StatBar,
-};
+use super::table_toolbar_sections::{CappedRowsNotice, DownloadActionsGroup, QueryPanel, StatBar};
 use crate::models::DatasetStats;
 use crate::state::use_results_context;
 use dioxus::prelude::*;
@@ -60,4 +58,3 @@ pub(super) fn ResultsToolbar() -> Element {
         }
     }
 }
-

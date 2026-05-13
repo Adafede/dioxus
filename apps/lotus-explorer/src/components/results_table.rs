@@ -72,4 +72,3 @@ pub fn ResultsTable() -> Element {
         }
     }
 }
-

@@ -5,7 +5,9 @@
 
 use super::row_cells::{ResultsRowsWindow, row_text};
 use super::table_header::TableHeader;
-use super::{ROW_HEIGHT_PX_COMFORTABLE, TABLE_SCROLL_ID, TABLE_VIEWPORT_FALLBACK_PX, VIRTUAL_OVERSCAN_ROWS};
+use super::{
+    ROW_HEIGHT_PX_COMFORTABLE, TABLE_SCROLL_ID, TABLE_VIEWPORT_FALLBACK_PX, VIRTUAL_OVERSCAN_ROWS,
+};
 use crate::features::explore::search_state::ExploreState;
 use crate::hooks::use_virtualization::{self, VirtualizationConfig};
 use crate::i18n::{TextKey, t};
@@ -124,5 +126,3 @@ pub(super) fn VirtualizedResultsTable(
         }
     }
 }
-
-
