@@ -34,6 +34,7 @@
 use crate::features::explore::search_state::{
     ExploreState, ResultDataState, SearchLifecycleState, UiChromeState,
 };
+use crate::models::SearchCriteria;
 use dioxus::prelude::*;
 
 /// Subscribe to a derived value from [`SearchLifecycleState`].
@@ -67,4 +68,15 @@ pub fn use_ui_selector<T: PartialEq + Clone + 'static>(
     f: impl Fn(&UiChromeState) -> T + 'static,
 ) -> Memo<T> {
     use_memo(move || f(&explore.read().ui))
+}
+
+/// Subscribe to a derived value from [`SearchCriteria`].
+///
+/// The component using this memo only re-renders when `f` returns a different
+/// value, isolating it from unrelated criteria-field mutations.
+pub fn use_criteria_selector<T: PartialEq + Clone + 'static>(
+    criteria: Signal<SearchCriteria>,
+    f: impl Fn(&SearchCriteria) -> T + 'static,
+) -> Memo<T> {
+    use_memo(move || f(&criteria.read()))
 }

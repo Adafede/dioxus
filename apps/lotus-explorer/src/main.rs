@@ -23,6 +23,7 @@ mod utils;
 
 use app::draw_page::DrawPage;
 use app::view::AppView;
+use app_state::{AppState, DownloadState, SearchState, UiState};
 use components::layout::footer::Footer;
 use components::layout::header_meta::HeaderMetaSection;
 use components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
@@ -47,7 +48,7 @@ use i18n::{
 };
 use models::*;
 use repositories::HybridRepository;
-use state::{FormCriteriaContext, ResultsContext, SearchUiContext};
+use state::{AppStateContext, FormCriteriaContext, ResultsContext, SearchUiContext};
 use std::sync::Arc;
 
 fn main() {
@@ -62,20 +63,28 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    let mut app_view: Signal<AppView> = use_signal(initial_view_from_url);
+    let mut app_state: Signal<AppState> = use_signal(|| AppState {
+        view: initial_view_from_url(),
+        search: SearchState::default(),
+        ui: UiState {
+            locale: initial_locale_from_url(),
+            ..UiState::default()
+        },
+        download: DownloadState {
+            pending_format: initial_download_format_from_url(),
+            direct_execute: initial_execute_from_url(),
+        },
+        ..AppState::default()
+    });
     let criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
     let mut locale: Signal<Locale> = use_signal(initial_locale_from_url);
     let explore: Signal<ExploreState> = use_signal(ExploreState::default);
-    let pending_download_format: Signal<Option<String>> =
-        use_signal(initial_download_format_from_url);
-    let pending_execute: Signal<bool> = use_signal(initial_execute_from_url);
-    let waiting_loading_logged: Signal<bool> = use_signal(|| false);
-    let waiting_query_logged: Signal<bool> = use_signal(|| false);
 
     let locale_value = *locale.read();
     let mobile_filters_open = explore.read().ui.mobile_filters_open;
     let repo = HybridRepository::new();
 
+    let _app_state_ctx = use_context_provider(move || AppStateContext::new(app_state));
     let _search_ui_ctx =
         use_context_provider(move || SearchUiContext::from_signals(criteria, explore));
     let _form_criteria_ctx = use_context_provider(move || FormCriteriaContext::new(criteria));
@@ -88,34 +97,27 @@ fn App() -> Element {
         persist_locale_query_param(*locale.read());
     });
     use_effect(move || {
-        persist_view_query_param(*app_view.read());
+        if app_state.read().ui.locale != *locale.read() {
+            app_state.with_mut(|state| state.ui.locale = *locale.read());
+        }
+    });
+    use_effect(move || {
+        persist_view_query_param(app_state.read().view);
     });
 
-    use_startup_effect(
-        pending_download_format,
-        pending_execute,
-        explore,
-        criteria,
-        repo,
-    );
-    use_download_dispatch_effect(
-        pending_download_format,
-        explore,
-        locale,
-        waiting_loading_logged,
-        waiting_query_logged,
-    );
+    use_startup_effect(app_state, explore, criteria, repo);
+    use_download_dispatch_effect(app_state, explore);
 
     let on_search = move |_: ()| start_search(criteria, false, explore, repo);
     let on_preview = move |_: ()| start_search(criteria, false, explore, repo);
 
-    let app_layout_class = if *app_view.read() == AppView::Explore {
+    let app_layout_class = if app_state.read().view == AppView::Explore {
         "app-layout"
     } else {
         "app-layout no-sidebar"
     };
 
-    let main_class = if *app_view.read() == AppView::Explore {
+    let main_class = if app_state.read().view == AppView::Explore {
         "main-content"
     } else {
         "main-content single-pane"
@@ -126,7 +128,7 @@ fn App() -> Element {
             a { class: "skip-link", href: "#main-panel", "{t(locale_value, TextKey::SkipToResults)}" }
             div { class: "{app_layout_class}",
 
-                if *app_view.read() == AppView::Explore {
+                if app_state.read().view == AppView::Explore {
                     aside {
                         class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
                         button {
@@ -218,24 +220,24 @@ fn App() -> Element {
                         class: "view-switch",
                         aria_label: "{view_switch_aria(locale_value)}",
                         button {
-                            class: if *app_view.read() == AppView::Explore { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                            class: if app_state.read().view == AppView::Explore { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                             r#type: "button",
-                            aria_pressed: if *app_view.read() == AppView::Explore { "true" } else { "false" },
-                            onclick: move |_| app_view.set(AppView::Explore),
+                            aria_pressed: if app_state.read().view == AppView::Explore { "true" } else { "false" },
+                            onclick: move |_| app_state.with_mut(|state| state.view = AppView::Explore),
                             "{view_label_explorer(locale_value)}"
                         }
                         button {
-                            class: if *app_view.read() == AppView::Curation { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                            class: if app_state.read().view == AppView::Curation { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                             r#type: "button",
-                            aria_pressed: if *app_view.read() == AppView::Curation { "true" } else { "false" },
-                            onclick: move |_| app_view.set(AppView::Curation),
+                            aria_pressed: if app_state.read().view == AppView::Curation { "true" } else { "false" },
+                            onclick: move |_| app_state.with_mut(|state| state.view = AppView::Curation),
                             "{view_label_curation_explorer(locale_value)}"
                         }
                         button {
-                            class: if *app_view.read() == AppView::Draw { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+                            class: if app_state.read().view == AppView::Draw { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
                             r#type: "button",
-                            aria_pressed: if *app_view.read() == AppView::Draw { "true" } else { "false" },
-                            onclick: move |_| app_view.set(AppView::Draw),
+                            aria_pressed: if app_state.read().view == AppView::Draw { "true" } else { "false" },
+                            onclick: move |_| app_state.with_mut(|state| state.view = AppView::Draw),
                             "{view_label_draw(locale_value)}"
                         }
                     }
@@ -252,7 +254,7 @@ fn App() -> Element {
                     }
                 }
 
-                if *app_view.read() == AppView::Explore {
+                if app_state.read().view == AppView::Explore {
                     HeaderMetaSection { explore, locale }
                     ShareNotice { locale, shareable_url }
                     TaxonNotice { explore, locale }
@@ -263,7 +265,7 @@ fn App() -> Element {
                         on_retry: move |_| start_search(criteria, false, explore, repo),
                     }
                     ResultsViewport { on_preview }
-                } else if *app_view.read() == AppView::Curation {
+                } else if app_state.read().view == AppView::Curation {
                     components::data_curation_page::DataCurationPage { locale: locale_value }
                 } else {
                     DrawPage { locale: locale_value }

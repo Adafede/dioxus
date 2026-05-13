@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+use crate::features::explore::selectors::use_result_selector;
 use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
 use dioxus::prelude::*;
@@ -52,11 +53,12 @@ pub fn ResultsTable() -> Element {
     let state = use_results_context();
     let explore = state.explore;
     let locale = crate::hooks::use_locale();
-    let entries_len = explore.read().result.entries.len();
+    let entries = use_result_selector(explore, |result| result.entries.clone());
+    let sort_state = use_result_selector(explore, |result| result.sort);
+    let entries_len = entries.read().len();
 
     let sorted_indices: Memo<Arc<[u32]>> = use_memo(move || {
-        let snapshot = explore.read();
-        sort_model::build_sorted_indices(&snapshot.result.entries, snapshot.result.sort)
+        sort_model::build_sorted_indices(entries.read().as_ref(), *sort_state.read())
     });
 
     let total = entries_len;

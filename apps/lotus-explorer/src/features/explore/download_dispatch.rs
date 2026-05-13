@@ -3,15 +3,13 @@
 
 //! Custom Dioxus hooks that encapsulate the download-related reactive effects.
 
+use crate::app_state::AppState;
 use crate::download::{DownloadFormat, execute_download};
 use crate::export;
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::orchestrator::start_search;
-use crate::features::explore::search_state::{
-    ExploreState, dispatch_explore_action, set_signal_if_changed,
-};
+use crate::features::explore::search_state::{ExploreState, dispatch_explore_action};
 use crate::features::explore::types::{DomainError, ValidationFault};
-use crate::i18n::Locale;
 use crate::models::SearchCriteria;
 use crate::repositories::LotusRepository;
 use crate::utils::logging::{log_debug_evt, log_info_evt, log_warn_evt};
@@ -20,8 +18,7 @@ use dioxus::prelude::*;
 use std::sync::Arc;
 
 pub fn use_startup_effect<R: LotusRepository>(
-    pending_download_format: Signal<Option<String>>,
-    pending_execute: Signal<bool>,
+    mut app_state: Signal<AppState>,
     explore: Signal<ExploreState>,
     criteria: Signal<SearchCriteria>,
     repo: R,
@@ -29,7 +26,7 @@ pub fn use_startup_effect<R: LotusRepository>(
     let repo_for_effect = repo.clone();
     use_effect(move || {
         let repo = repo_for_effect.clone();
-        let pending = pending_download_format.read().clone();
+        let pending = app_state.read().download.pending_format.clone();
         if let Some(fmt) = pending.as_deref()
             && DownloadFormat::from_str(fmt).is_none()
         {
@@ -47,11 +44,15 @@ pub fn use_startup_effect<R: LotusRepository>(
                     }),
                 },
             );
-            set_signal_if_changed(pending_download_format, None);
+            app_state.with_mut(|state| {
+                if state.download.pending_format.is_some() {
+                    state.download.pending_format = None;
+                }
+            });
             return;
         }
 
-        if (pending.is_some() || *pending_execute.read())
+        if (pending.is_some() || app_state.read().download.direct_execute)
             && !explore.peek().lifecycle.searched_once
             && !explore.peek().lifecycle.loading
         {
@@ -71,40 +72,43 @@ pub fn use_startup_effect<R: LotusRepository>(
                 );
             }
             start_search(criteria, pending.is_some(), explore, repo);
-            set_signal_if_changed(pending_execute, false);
+            app_state.with_mut(|state| {
+                if state.download.direct_execute {
+                    state.download.direct_execute = false;
+                }
+            });
         }
     });
 }
 
 pub fn use_download_dispatch_effect(
-    pending_download_format: Signal<Option<String>>,
+    mut app_state: Signal<AppState>,
     explore: Signal<ExploreState>,
-    locale: Signal<Locale>,
-    waiting_loading_logged: Signal<bool>,
-    waiting_query_logged: Signal<bool>,
 ) {
     use_effect(move || {
-        let pending = pending_download_format.read().clone();
+        let pending = app_state.read().download.pending_format.clone();
         let Some(fmt) = pending else {
-            set_signal_if_changed(waiting_loading_logged, false);
-            set_signal_if_changed(waiting_query_logged, false);
+            app_state.with_mut(|state| {
+                state.metrics.waiting_loading_logged = false;
+                state.metrics.waiting_query_logged = false;
+            });
             return;
         };
 
         if explore.read().lifecycle.loading {
-            if !*waiting_loading_logged.peek() {
+            if !app_state.peek().metrics.waiting_loading_logged {
                 log_debug_evt(
                     "download",
                     "dispatch",
                     "waiting_loading",
                     Some(&format!("format={fmt}")),
                 );
-                set_signal_if_changed(waiting_loading_logged, true);
+                app_state.with_mut(|state| state.metrics.waiting_loading_logged = true);
             }
-            set_signal_if_changed(waiting_query_logged, false);
+            app_state.with_mut(|state| state.metrics.waiting_query_logged = false);
             return;
         }
-        set_signal_if_changed(waiting_loading_logged, false);
+        app_state.with_mut(|state| state.metrics.waiting_loading_logged = false);
 
         let Some(query) = explore
             .read()
@@ -113,24 +117,26 @@ pub fn use_download_dispatch_effect(
             .as_deref()
             .map(str::to_string)
         else {
-            if !*waiting_query_logged.peek() {
+            if !app_state.peek().metrics.waiting_query_logged {
                 log_debug_evt(
                     "download",
                     "dispatch",
                     "waiting_query",
                     Some(&format!("format={fmt}")),
                 );
-                set_signal_if_changed(waiting_query_logged, true);
+                app_state.with_mut(|state| state.metrics.waiting_query_logged = true);
             }
             return;
         };
-        set_signal_if_changed(waiting_query_logged, false);
+        app_state.with_mut(|state| state.metrics.waiting_query_logged = false);
 
         let crit = explore.read().ui.executed_criteria.clone();
         match DownloadFormat::from_str(&fmt) {
             Some(format) => {
                 let filename = export::generate_filename(&crit, format.extension());
-                set_signal_if_changed(pending_download_format, None);
+                app_state.with_mut(|state| {
+                    state.download.pending_format = None;
+                });
                 dispatch_explore_action(explore, ExploreAction::DownloadDispatchStarted);
                 log_debug_evt(
                     "download",
@@ -177,9 +183,6 @@ pub fn use_download_dispatch_effect(
                     "unsupported_format",
                     Some(&format!("format={fmt}")),
                 );
-                // locale is still available here in case future callers need it;
-                // the error is now structured and formatted at the UI boundary.
-                let _ = locale;
                 dispatch_explore_action(
                     explore,
                     ExploreAction::SearchFailed {
@@ -188,7 +191,9 @@ pub fn use_download_dispatch_effect(
                         }),
                     },
                 );
-                set_signal_if_changed(pending_download_format, None);
+                app_state.with_mut(|state| {
+                    state.download.pending_format = None;
+                });
                 dispatch_explore_action(explore, ExploreAction::DownloadDispatchFinished);
             }
         }

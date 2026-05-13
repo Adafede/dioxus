@@ -223,12 +223,6 @@ pub fn emit_search_summary(total_elapsed: std::time::Duration, metrics: SearchMe
     }
 }
 
-pub fn set_signal_if_changed<T: PartialEq + 'static>(mut signal: Signal<T>, next: T) {
-    if *signal.peek() != next {
-        *signal.write() = next;
-    }
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]

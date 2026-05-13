@@ -5,6 +5,7 @@
 //! and the capped-rows notice.
 
 use super::table_toolbar_sections::{CappedRowsNotice, DownloadActionsGroup, QueryPanel, StatBar};
+use crate::features::explore::selectors::{use_result_selector, use_ui_selector};
 use crate::models::DatasetStats;
 use crate::state::use_results_context;
 use dioxus::prelude::*;
@@ -18,42 +19,44 @@ use dioxus::prelude::*;
 #[component]
 pub(super) fn ResultsToolbar() -> Element {
     let state = use_results_context();
-    let explore = state.explore.read().clone();
-    let entries = explore.result.entries.clone();
-    let sparql_query = explore.result.sparql_query.clone();
-    let metadata_json = explore.result.metadata_json.clone();
-    let query_hash = explore.result.query_hash.clone();
-    let result_hash = explore.result.result_hash.clone();
-    let criteria = explore.ui.executed_criteria.clone();
-    let total_stats = explore.result.total_stats.clone();
-    let total_matches = explore.result.total_matches;
-    let display_capped_rows = explore.result.display_capped_rows;
+    let explore = state.explore;
+    let entries = use_result_selector(explore, |result| result.entries.clone());
+    let sparql_query = use_result_selector(explore, |result| result.sparql_query.clone());
+    let metadata_json = use_result_selector(explore, |result| result.metadata_json.clone());
+    let query_hash = use_result_selector(explore, |result| result.query_hash.clone());
+    let result_hash = use_result_selector(explore, |result| result.result_hash.clone());
+    let total_stats = use_result_selector(explore, |result| result.total_stats.clone());
+    let total_matches = use_result_selector(explore, |result| result.total_matches);
+    let display_capped_rows = use_result_selector(explore, |result| result.display_capped_rows);
+    let criteria = use_ui_selector(explore, |ui| ui.executed_criteria.clone());
 
-    let fallback_stats: Memo<DatasetStats> = use_memo(move || DatasetStats::from_entries(&entries));
+    let fallback_stats: Memo<DatasetStats> =
+        use_memo(move || DatasetStats::from_entries(entries.read().as_ref()));
     let display_stats = total_stats
+        .read()
         .as_ref()
         .cloned()
         .unwrap_or_else(|| fallback_stats.read().clone());
     let stats_partial = false;
 
     rsx! {
-        QueryPanel { sparql_query: sparql_query.clone() }
+        QueryPanel { sparql_query: sparql_query.read().clone() }
 
         div { class: "results-toolbar",
             StatBar {
                 stats: display_stats,
-                total_matches,
+                total_matches: *total_matches.read(),
                 stats_partial,
             }
             DownloadActionsGroup {
-                criteria: criteria.clone(),
-                sparql_query: sparql_query.clone(),
-                metadata_json: metadata_json.clone(),
-                query_hash,
-                result_hash,
+                criteria: criteria.read().clone(),
+                sparql_query: sparql_query.read().clone(),
+                metadata_json: metadata_json.read().clone(),
+                query_hash: query_hash.read().clone(),
+                result_hash: result_hash.read().clone(),
             }
         }
-        if display_capped_rows {
+        if *display_capped_rows.read() {
             CappedRowsNotice {}
         }
     }
