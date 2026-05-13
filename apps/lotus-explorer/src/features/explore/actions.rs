@@ -46,7 +46,6 @@ use crate::models::{DatasetStats, SearchCriteria};
 #[allow(dead_code)]
 pub enum ExploreAction {
     // ── Search lifecycle ──────────────────────────────────────────────────
-
     /// User (or programmatic startup) triggered a new search.
     /// Carries the criteria snapshot and whether this is a silent download-only
     /// mode that suppresses preview rendering.
@@ -78,7 +77,6 @@ pub enum ExploreAction {
     StaleResultDiscarded { request_token: u64 },
 
     // ── Error handling ────────────────────────────────────────────────────
-
     /// The user dismissed the current error notice.
     ErrorDismissed,
 
@@ -86,7 +84,6 @@ pub enum ExploreAction {
     RetryRequested,
 
     // ── Download ──────────────────────────────────────────────────────────
-
     /// URL contained `download=true&format=…`; download was auto-triggered on startup.
     StartupDownloadTriggered { format: String },
 
@@ -100,7 +97,6 @@ pub enum ExploreAction {
     DownloadCompleted,
 
     // ── UI / navigation ───────────────────────────────────────────────────
-
     /// The user switched to a different view tab.
     ViewChanged(crate::app::view::AppView),
 

@@ -317,7 +317,7 @@ fn ResultsToolbar(locale: Locale) -> Element {
                     locale,
                     value: entries_value,
                     secondary_value: (entries_unique_value != entries_value)
-                                                                                                                                                                                                            .then_some(entries_unique_value),
+                                                                                                                                                                                                                                .then_some(entries_unique_value),
                     secondary_label: Some(t(locale, TextKey::Unique)),
                     noun: CountNoun::Entry,
                     plus: false,

@@ -22,12 +22,16 @@ pub struct MockRepository {
 impl MockRepository {
     /// Returns fixed CSV bytes for all SPARQL calls; simulates no API.
     pub fn sparql_only(csv: Vec<u8>) -> Self {
-        Self { sparql_response: Ok(csv) }
+        Self {
+            sparql_response: Ok(csv),
+        }
     }
 
     /// Always returns a SPARQL network error.
     pub fn sparql_error(msg: impl Into<String>) -> Self {
-        Self { sparql_response: Err(msg.into()) }
+        Self {
+            sparql_response: Err(msg.into()),
+        }
     }
 }
 
