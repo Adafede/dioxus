@@ -214,11 +214,7 @@ fn StatBadge(
 }
 
 #[component]
-pub fn StatBar(
-    stats: DatasetStats,
-    total_matches: Option<usize>,
-    stats_partial: bool,
-) -> Element {
+pub fn StatBar(stats: DatasetStats, total_matches: Option<usize>, stats_partial: bool) -> Element {
     let locale = crate::hooks::use_locale();
     let entries_value = total_matches.unwrap_or(stats.n_entries);
     let entries_unique_value = stats.n_entries_unique;
@@ -421,4 +417,3 @@ pub fn DownloadActionsGroup(
         }
     }
 }
-

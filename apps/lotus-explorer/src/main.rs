@@ -75,8 +75,9 @@ fn App() -> Element {
     let mobile_filters_open = explore.read().ui.mobile_filters_open;
     let repo = HybridRepository::new();
 
-    let _search_ui_ctx = use_context_provider(move || SearchUiContext::from_signals(criteria, explore));
-    let _results_ctx = use_context_provider(move || ResultsContext::from_signals(explore, locale));
+    let _search_ui_ctx =
+        use_context_provider(move || SearchUiContext::from_signals(criteria, explore));
+    let _results_ctx = use_context_provider(move || ResultsContext::from_signals(explore));
 
     let shareable_url =
         use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));

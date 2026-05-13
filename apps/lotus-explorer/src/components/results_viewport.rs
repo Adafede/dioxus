@@ -22,7 +22,6 @@ use dioxus::prelude::*;
 #[component]
 pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     let state = use_results_context();
-    let locale = *state.locale.read();
     let explore = state.explore.read();
     let loading = explore.lifecycle.loading;
     let has_error = explore.lifecycle.error.is_some();
@@ -33,25 +32,25 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
 
     if loading {
         return rsx! {
-            LoadingState { locale }
+            LoadingState {}
         };
     }
 
     if entries.is_empty() && !has_error && !searched_once {
         return rsx! {
-            WelcomeScreen { locale }
+            WelcomeScreen {}
         };
     }
 
     if entries.is_empty() && !has_error && download_only_mode && download_dispatching {
         return rsx! {
-            DownloadDispatchState { locale }
+            DownloadDispatchState {}
         };
     }
 
     if entries.is_empty() && !has_error && download_only_mode {
         return rsx! {
-            DownloadOnlyState { locale, on_preview }
+            DownloadOnlyState { on_preview }
         };
     }
 

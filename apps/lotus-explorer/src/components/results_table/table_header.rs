@@ -3,21 +3,19 @@
 
 //! Table header with sortable columns.
 
-use crate::i18n::TextKey;
-use crate::models::SortColumn;
-use dioxus::prelude::*;
-use crate::features::explore::actions::ExploreAction;
-use crate::features::explore::search_state::dispatch_explore_action;
-use crate::features::explore::search_state::ExploreState;
-use crate::i18n::t;
-use crate::models::SortState;
 use super::sort_helpers::{aria_sort_for, sort_icon_for};
+use crate::features::explore::actions::ExploreAction;
+use crate::features::explore::search_state::ExploreState;
+use crate::features::explore::search_state::dispatch_explore_action;
+use crate::i18n::TextKey;
+use crate::i18n::t;
+use crate::models::SortColumn;
+use crate::models::SortState;
+use dioxus::prelude::*;
 
 /// Table header row with sortable column headers.
 #[component]
-pub fn TableHeader(
-    explore: Signal<ExploreState>,
-) -> Element {
+pub fn TableHeader(explore: Signal<ExploreState>) -> Element {
     let locale = crate::hooks::use_locale();
     let current_sort = explore.read().result.sort;
 
@@ -99,8 +97,3 @@ fn SortableColumnHeader(
         }
     }
 }
-
-
-
-
-

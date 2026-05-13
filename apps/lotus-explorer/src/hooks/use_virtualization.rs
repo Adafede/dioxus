@@ -4,7 +4,7 @@
 //! Virtualization hook encapsulating scroll handling and visible row calculation.
 
 /// Configuration for virtual scrolling.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VirtualizationConfig {
     /// Height of each row in pixels.
     pub row_height_px: usize,
@@ -17,7 +17,7 @@ pub struct VirtualizationConfig {
 }
 
 /// Output state from virtualization hook.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VirtualizationState {
     /// Index of first visible row.
     pub start_row: usize,
@@ -29,11 +29,16 @@ pub struct VirtualizationState {
     pub bottom_spacer_px: usize,
 }
 
-/// Hook that manages virtual scrolling state and calculations.
-///
-/// Always returns consistent state for SSR compatibility.
+impl VirtualizationState {
+    #[must_use]
+    pub fn visible_count(self) -> usize {
+        self.end_row.saturating_sub(self.start_row)
+    }
+}
+
+/// Pure window calculation used by the hook and unit tests.
 #[must_use]
-pub fn use_virtualization(
+pub fn compute_virtualization_state(
     config: VirtualizationConfig,
     total_rows: usize,
     first_visible_row: usize,
@@ -51,10 +56,83 @@ pub fn use_virtualization(
     let bottom_spacer_px = total_rows
         .saturating_sub(end_row)
         .saturating_mul(config.row_height_px);
+
     VirtualizationState {
         start_row,
         end_row,
         top_spacer_px,
         bottom_spacer_px,
+    }
+}
+
+/// Hook that manages virtual scrolling state and calculations.
+///
+/// Always returns consistent state for SSR compatibility.
+#[must_use]
+pub fn use_virtualization(
+    config: VirtualizationConfig,
+    total_rows: usize,
+    first_visible_row: usize,
+    viewport_height_px: usize,
+) -> VirtualizationState {
+    compute_virtualization_state(config, total_rows, first_visible_row, viewport_height_px)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config() -> VirtualizationConfig {
+        VirtualizationConfig {
+            row_height_px: 100,
+            overscan_rows: 2,
+            viewport_fallback_px: 500,
+            scroll_id: "test-scroll",
+        }
+    }
+
+    #[test]
+    fn zero_rows_return_empty_window() {
+        let state = compute_virtualization_state(config(), 0, 0, 0);
+        assert_eq!(
+            state,
+            VirtualizationState {
+                start_row: 0,
+                end_row: 0,
+                top_spacer_px: 0,
+                bottom_spacer_px: 0,
+            }
+        );
+        assert_eq!(state.visible_count(), 0);
+    }
+
+    #[test]
+    fn fallback_viewport_is_used_when_measurement_is_zero() {
+        let state = compute_virtualization_state(config(), 100, 0, 0);
+        assert_eq!(state.start_row, 0);
+        assert_eq!(state.end_row, 9);
+        assert_eq!(state.top_spacer_px, 0);
+        assert_eq!(state.bottom_spacer_px, 9_100);
+        assert_eq!(state.visible_count(), 9);
+    }
+
+    #[test]
+    fn overscan_window_clamps_at_dataset_end() {
+        let state = compute_virtualization_state(config(), 10, 8, 200);
+        assert_eq!(state.start_row, 6);
+        assert_eq!(state.end_row, 10);
+        assert_eq!(state.top_spacer_px, 600);
+        assert_eq!(state.bottom_spacer_px, 0);
+        assert_eq!(state.visible_count(), 4);
+    }
+
+    #[test]
+    fn first_visible_row_is_clamped_to_total_rows() {
+        let state = compute_virtualization_state(config(), 3, 999, 200);
+        assert_eq!(state.start_row, 1);
+        assert_eq!(state.end_row, 3);
+        assert_eq!(state.top_spacer_px, 100);
+        assert_eq!(state.bottom_spacer_px, 0);
+        assert_eq!(state.visible_count(), 2);
     }
 }

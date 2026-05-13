@@ -320,3 +320,29 @@ fn truncate_title(title: &str, max_chars: usize) -> Cow<'_, str> {
     out.push('…');
     Cow::Owned(out)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn short_inchikey_returns_first_segment() {
+        assert_eq!(short_inchikey("AAAA-BBBB-CCCC"), "AAAA");
+        assert_eq!(short_inchikey("NOSPLIT"), "NOSPLIT");
+    }
+
+    #[test]
+    fn truncate_title_borrows_when_already_short() {
+        let title = "Short title";
+        let truncated = truncate_title(title, 60);
+        assert!(matches!(truncated, Cow::Borrowed(_)));
+        assert_eq!(truncated, "Short title");
+    }
+
+    #[test]
+    fn truncate_title_trims_and_appends_ellipsis() {
+        let truncated = truncate_title("  This title is definitely longer than ten chars  ", 10);
+        assert!(matches!(truncated, Cow::Owned(_)));
+        assert_eq!(truncated, "This title…");
+    }
+}

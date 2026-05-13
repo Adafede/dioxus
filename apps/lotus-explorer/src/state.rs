@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::features::explore::search_state::ExploreState;
-use crate::i18n::Locale;
 use crate::models::*;
 use dioxus::prelude::*;
 
@@ -23,12 +22,11 @@ impl SearchUiContext {
 #[derive(Clone, Copy)]
 pub struct ResultsContext {
     pub explore: Signal<ExploreState>,
-    pub locale: Signal<Locale>,
 }
 
 impl ResultsContext {
-    pub fn from_signals(explore: Signal<ExploreState>, locale: Signal<Locale>) -> Self {
-        Self { explore, locale }
+    pub fn from_signals(explore: Signal<ExploreState>) -> Self {
+        Self { explore }
     }
 }
 

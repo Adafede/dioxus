@@ -18,7 +18,8 @@ use dioxus::prelude::*;
 /// Subscribes to `query_phase` independently so phase-text updates do not
 /// propagate to `ResultsViewport` or its siblings.
 #[component]
-pub fn LoadingState(locale: Locale) -> Element {
+pub fn LoadingState() -> Element {
+    let locale = crate::hooks::use_locale();
     let state = use_results_context();
     let query_phase = state.explore.read().lifecycle.query_phase;
     rsx! {
@@ -36,7 +37,8 @@ pub fn LoadingState(locale: Locale) -> Element {
 
 /// Spinner shown while a download file is being assembled.
 #[component]
-pub fn DownloadDispatchState(locale: Locale) -> Element {
+pub fn DownloadDispatchState() -> Element {
+    let locale = crate::hooks::use_locale();
     rsx! {
         div {
             class: "loading-state",
@@ -53,7 +55,8 @@ pub fn DownloadDispatchState(locale: Locale) -> Element {
 /// Notice shown when the URL triggered a download-only mode but the SPARQL
 /// query has not materialised yet, offering the user a "Run search" escape.
 #[component]
-pub fn DownloadOnlyState(locale: Locale, on_preview: EventHandler<()>) -> Element {
+pub fn DownloadOnlyState(on_preview: EventHandler<()>) -> Element {
+    let locale = crate::hooks::use_locale();
     rsx! {
         div { class: "notice notice-info", role: "status",
             span { class: "notice-label", "{t(locale, TextKey::Notice)}" }

@@ -5,12 +5,13 @@
 
 use crate::components::copy_button::CopyButton;
 use crate::features::explore::url_state::absolute_current_url_with_query;
-use crate::i18n::{Locale, TextKey, t};
+use crate::i18n::{TextKey, t};
 use dioxus::prelude::*;
 use std::sync::Arc;
 
 #[component]
-pub fn WelcomeScreen(locale: Locale) -> Element {
+pub fn WelcomeScreen() -> Element {
+    let locale = crate::hooks::use_locale();
     rsx! {
         section { class: "welcome",
             div { class: "welcome-hero",
@@ -93,7 +94,11 @@ pub fn WelcomeScreen(locale: Locale) -> Element {
 }
 
 #[component]
-fn DownloadExampleRow(locale: Locale, format: &'static str, query: &'static str) -> Element {
+fn DownloadExampleRow(
+    locale: crate::i18n::Locale,
+    format: &'static str,
+    query: &'static str,
+) -> Element {
     let absolute = absolute_current_url_with_query(query.trim_start_matches('?'));
     let absolute = Arc::<str>::from(absolute);
     rsx! {

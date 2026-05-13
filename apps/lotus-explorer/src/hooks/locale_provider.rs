@@ -7,7 +7,6 @@
 use crate::i18n::Locale;
 use dioxus::prelude::*;
 
-
 /// Provider component that supplies `Locale` to descendants.
 /// Wrap your app or a subtree with this to enable `use_locale()` hook access.
 #[component]
