@@ -350,7 +350,7 @@ impl ElementState {
     }
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct DatasetStats {
     pub n_compounds: usize,
     pub n_taxa: usize,

@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Search orchestration: the glue between the UI, the SPARQL/API data layer,
+//! Search orchestration: the glue between the UI, the repository data layer,
 //! and the signal-based runtime state.
 //!
-//! `start_search` is the single entry-point called from UI event handlers.
-//! It validates the current criteria, resets relevant signals, and spawns
-//! an async task that drives `do_search`.  A monotonic `search_request_token`
-//! guards against stale results from superseded in-flight requests.
+//! Both `start_search` and `do_search` are now generic over `R: LotusRepository`
+//! so that unit tests can inject a stub without any network I/O.
 //!
-//! `do_search` is a pure async function (no signal writes) that resolves the
-//! taxon, builds the SPARQL query, and fetches count + preview rows.  It
-//! returns a `SearchOutcome` value that `start_search` commits to signals
-//! only if the token is still current.
+//! `start_search` — synchronous.  Validates criteria, resets signals, increments
+//! the stale-token counter, and spawns an async task.
+//!
+//! `do_search` — async, **no signal writes**.  All I/O goes through the
+//! repository.  Returns `SearchOutcome` or a typed `AppError`.
 
-use crate::api;
 use crate::export;
 use crate::features::explore::search_state::{
     SearchMetrics, SearchRuntime, emit_search_summary, set_signal_if_changed,
@@ -32,6 +30,7 @@ use crate::models::{
 };
 use crate::perf;
 use crate::queries;
+use crate::repositories::LotusRepository;
 use crate::sparql;
 use crate::utils::logging::{log_debug_evt, log_info_evt, log_timing_evt, log_warn_evt};
 use dioxus::prelude::*;
@@ -60,11 +59,12 @@ pub struct SearchOutcome {
 /// Validates `criteria`, resets runtime signals, and spawns the async search
 /// task.  Idempotent with respect to multiple rapid invocations: the stale-
 /// token check in the spawned task discards superseded results automatically.
-pub fn start_search(
+pub fn start_search<R: LotusRepository + Copy>(
     criteria: Signal<SearchCriteria>,
     locale: Signal<Locale>,
     direct_download_mode: bool,
     runtime: SearchRuntime,
+    repo: R,
 ) {
     let SearchRuntime {
         executed_criteria,
@@ -152,6 +152,7 @@ pub fn start_search(
             *locale.peek(),
             query_phase,
             direct_download_mode,
+            repo,
         )
         .await
         {
@@ -238,13 +239,14 @@ pub fn start_search(
 // ── Core async search logic ───────────────────────────────────────────────────
 
 /// Performs the full search pipeline: taxon resolution → query build →
-/// count + preview fetch.  Does **not** write to any signal; it is a pure
-/// async function that returns a typed outcome or a typed error.
-pub async fn do_search(
+/// count + preview fetch.  Does **not** write to any signal.  All I/O goes
+/// through `repo`, which may be a production `HybridRepository` or a test stub.
+pub async fn do_search<R: LotusRepository>(
     crit: SearchCriteria,
     locale: Locale,
     mut query_phase: Signal<QueryPhase>,
     direct_download_mode: bool,
+    repo: R,
 ) -> Result<SearchOutcome, AppError> {
     let search_timer = perf::start_timer("LOTUS:search_total");
     let mut metrics = SearchMetrics::default();
@@ -253,8 +255,7 @@ pub async fn do_search(
     let taxon = crit.taxon.trim().to_string();
     // Preserve Molfile blocks verbatim — leading blank lines and whitespace
     // on header rows (lines 1–3 of a V2000/V3000 CTAB) are significant and
-    // must reach SACHEM untouched, otherwise the query silently returns
-    // no matches.  Only trim single-line SMILES inputs.
+    // must reach SACHEM untouched.  Only trim single-line SMILES inputs.
     let smiles = {
         let normalized = crit.smiles.replace("\r\n", "\n").replace('\r', "\n");
         let kind = queries::classify_structure(&normalized);
@@ -270,81 +271,68 @@ pub async fn do_search(
 
     // ── Fast path: REST API (when configured) ─────────────────────────────
     if !direct_download_mode {
-        if let Some(api_base) = api::api_base_url() {
-            log_info_evt(
-                "search",
-                "api",
-                "path_selected",
-                Some(&format!("base={}", api_base)),
-            );
-            let mut api_crit = crit.clone();
-            api_crit.smiles = smiles.clone();
-            let display_limit = runtime_table_row_limit();
-            let include_counts = true;
-            log_info_evt(
-                "search",
-                "api",
-                "attempt",
-                Some(&format!(
-                    "base={} limit={} include_counts={}",
-                    api_base, display_limit, include_counts
-                )),
-            );
-            let api_timer = perf::start_timer("LOTUS:api_search");
-            match api::search(&api_crit, display_limit, include_counts).await {
-                Ok(response) => {
-                    let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
-                    metrics.add_network(api_elapsed);
-                    log_timing_evt(
-                        "search",
-                        "api",
-                        "success",
-                        api_elapsed,
-                        Some(&format!(
-                            "rows={} total_matches={}",
-                            response.rows.len(),
-                            response.total_matches
-                        )),
-                    );
-                    let display_capped_rows = if include_counts {
-                        response.total_matches > response.rows.len()
-                    } else {
-                        response.rows.len() >= display_limit
-                    };
-                    let rows = response
-                        .rows
-                        .into_iter()
-                        .map(CompoundEntry::from)
-                        .collect::<Vec<_>>();
+        let mut api_crit = crit.clone();
+        api_crit.smiles = smiles.clone();
+        let display_limit = runtime_table_row_limit();
+        let include_counts = true;
 
-                    return Ok(SearchOutcome {
-                        rows,
-                        qid: response.resolved_taxon_qid,
-                        warning: response.warning,
-                        query: response.query,
-                        total_matches: Some(response.total_matches),
-                        total_stats: Some(response.stats.into()),
-                        display_capped_rows,
-                    });
-                }
-                Err(err) => {
-                    let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
-                    log_timing_evt(
-                        "search",
-                        "api",
-                        "fallback_direct",
-                        api_elapsed,
-                        Some(&format!("reason={err}")),
-                    );
-                }
+        let api_timer = perf::start_timer("LOTUS:api_search");
+        match repo
+            .api_search(&api_crit, display_limit, include_counts)
+            .await
+        {
+            None => {
+                log_info_evt(
+                    "search",
+                    "api",
+                    "path_not_available",
+                    Some("reason=not_configured"),
+                );
             }
-        } else {
-            log_info_evt(
-                "search",
-                "api",
-                "path_not_available",
-                Some("reason=api_not_configured"),
-            );
+            Some(Ok(response)) => {
+                let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
+                metrics.add_network(api_elapsed);
+                log_timing_evt(
+                    "search",
+                    "api",
+                    "success",
+                    api_elapsed,
+                    Some(&format!(
+                        "rows={} total_matches={}",
+                        response.rows.len(),
+                        response.total_matches
+                    )),
+                );
+                let display_capped_rows = if include_counts {
+                    response.total_matches > response.rows.len()
+                } else {
+                    response.rows.len() >= display_limit
+                };
+                let rows = response
+                    .rows
+                    .into_iter()
+                    .map(CompoundEntry::from)
+                    .collect::<Vec<_>>();
+                return Ok(SearchOutcome {
+                    rows,
+                    qid: response.resolved_taxon_qid,
+                    warning: response.warning,
+                    query: response.query,
+                    total_matches: Some(response.total_matches),
+                    total_stats: Some(response.stats.into()),
+                    display_capped_rows,
+                });
+            }
+            Some(Err(err)) => {
+                let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
+                log_timing_evt(
+                    "search",
+                    "api",
+                    "fallback_direct",
+                    api_elapsed,
+                    Some(&format!("reason={err}")),
+                );
+            }
         }
     } else {
         log_info_evt(
@@ -358,8 +346,15 @@ pub async fn do_search(
     // ── Slow path: direct SPARQL ───────────────────────────────────────────
 
     let mut warning: Option<String> = None;
-    let taxon_qid: Option<String> =
-        resolve_taxon_qid(&taxon, locale, &mut query_phase, &mut metrics, &mut warning).await?;
+    let taxon_qid = resolve_taxon_qid(
+        &taxon,
+        locale,
+        &mut query_phase,
+        &mut metrics,
+        &mut warning,
+        &repo,
+    )
+    .await?;
 
     let sparql_query = build_sparql_query(&smiles, &crit, taxon_qid.as_deref());
 
@@ -373,12 +368,6 @@ pub async fn do_search(
             execution_query.contains("SERVICE"),
             execution_query.contains("FILTER")
         )),
-    );
-    log_debug_evt(
-        "search",
-        "build_query",
-        "ready",
-        Some(&format!("query_bytes={}", execution_query.len())),
     );
 
     if direct_download_mode {
@@ -416,6 +405,7 @@ pub async fn do_search(
         locale,
         &mut query_phase,
         &mut metrics,
+        &repo,
     )
     .await?;
 
@@ -444,15 +434,13 @@ pub async fn do_search(
 
 // ── Private helpers ───────────────────────────────────────────────────────────
 
-/// Resolves `taxon` text to a Wikidata QID.
-/// Returns `None` when no taxon was specified (wildcard or empty), and a
-/// `Some(qid)` string (including `"*"`) otherwise.
-async fn resolve_taxon_qid(
+async fn resolve_taxon_qid<R: LotusRepository>(
     taxon: &str,
     locale: Locale,
     query_phase: &mut Signal<QueryPhase>,
     metrics: &mut SearchMetrics,
     warning: &mut Option<String>,
+    repo: &R,
 ) -> Result<Option<String>, AppError> {
     if taxon.is_empty() {
         return Ok(None);
@@ -486,12 +474,10 @@ async fn resolve_taxon_qid(
     }
 
     let query = queries::query_taxon_search(&sanitized);
-    let csv = sparql::execute_sparql_bytes(&query)
-        .await
-        .map_err(|e| AppError {
-            kind: ErrorKind::Network,
-            message: err_taxon_search_failed(locale, &e.to_string()),
-        })?;
+    let csv = repo.sparql_bytes(&query).await.map_err(|e| AppError {
+        kind: ErrorKind::Network,
+        message: err_taxon_search_failed(locale, &e),
+    })?;
     let taxon_elapsed = perf::end_timer("LOTUS:taxon_resolution", taxon_timer);
     metrics.add_network(taxon_elapsed);
     perf::log_timing(
@@ -539,7 +525,6 @@ async fn resolve_taxon_qid(
     Ok(Some(best.qid.clone()))
 }
 
-/// Builds the base SPARQL query from structure and/or taxon inputs.
 fn build_sparql_query(smiles: &str, crit: &SearchCriteria, taxon_qid: Option<&str>) -> String {
     if !smiles.is_empty() {
         let effective_type = if (smiles.contains('\n') || smiles.contains('\r'))
@@ -575,18 +560,16 @@ fn build_sparql_query(smiles: &str, crit: &SearchCriteria, taxon_qid: Option<&st
     }
 }
 
-/// Fetches the count query and display-window query (sequentially on WASM,
-/// in parallel on native), parses the results, and returns
-/// `(rows, total_stats, total_matches, display_capped)`.
-async fn fetch_count_and_preview(
+#[allow(clippy::too_many_arguments)]
+async fn fetch_count_and_preview<R: LotusRepository>(
     count_query: &str,
     display_query: &str,
-    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
-    execution_query: &str,
+    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))] execution_query: &str,
     display_limit: usize,
     locale: Locale,
     query_phase: &mut Signal<QueryPhase>,
     metrics: &mut SearchMetrics,
+    repo: &R,
 ) -> Result<
     (
         Vec<CompoundEntry>,
@@ -600,13 +583,12 @@ async fn fetch_count_and_preview(
         #[cfg(target_arch = "wasm32")]
         {
             log_debug_evt("search", "Counting", "sequential_fetch_wasm", None);
+
             let count_timer = perf::start_timer("LOTUS:count_query");
-            let counts_csv = sparql::execute_sparql_bytes(count_query)
-                .await
-                .map_err(|e| AppError {
-                    kind: ErrorKind::Network,
-                    message: err_query_stage_failed(locale, "count query", &e.to_string()),
-                })?;
+            let counts_csv = repo.sparql_bytes(count_query).await.map_err(|e| AppError {
+                kind: ErrorKind::Network,
+                message: err_query_stage_failed(locale, "count query", &e),
+            })?;
             let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
             metrics.add_network(count_elapsed);
             perf::log_timing("Counting", "Count query completed", Some(count_elapsed));
@@ -634,11 +616,12 @@ async fn fetch_count_and_preview(
             *query_phase.write() = QueryPhase::FetchingPreview;
 
             let display_timer = perf::start_timer("LOTUS:display_query");
-            let display_csv = sparql::execute_sparql_bytes(display_query)
+            let display_csv = repo
+                .sparql_bytes(display_query)
                 .await
                 .map_err(|e| AppError {
                     kind: ErrorKind::Network,
-                    message: err_query_stage_failed(locale, "display query", &e.to_string()),
+                    message: err_query_stage_failed(locale, "display query", &e),
                 })?;
             let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
             metrics.add_network(display_elapsed);
@@ -674,37 +657,30 @@ async fn fetch_count_and_preview(
         #[cfg(not(target_arch = "wasm32"))]
         {
             log_debug_evt("search", "Counting", "parallel_fetch_started", None);
-            let count_fetch = async {
-                let count_timer = perf::start_timer("LOTUS:count_query");
-                let counts_csv = sparql::execute_sparql_bytes(count_query)
-                    .await
-                    .map_err(|e| AppError {
+
+            let count_fut = repo.sparql_bytes(count_query);
+            let display_fut = repo.sparql_bytes(display_query);
+
+            let count_timer = perf::start_timer("LOTUS:count_query");
+            let display_timer = perf::start_timer("LOTUS:display_query");
+
+            let (counts_csv, display_csv) = futures::try_join!(
+                async {
+                    count_fut.await.map_err(|e| AppError {
                         kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "count query", &e.to_string()),
-                    })?;
-                let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
-                Ok::<_, AppError>((counts_csv, count_elapsed))
-            };
-            let display_fetch = async {
-                let display_timer = perf::start_timer("LOTUS:display_query");
-                let display_csv =
-                    sparql::execute_sparql_bytes(display_query)
-                        .await
-                        .map_err(|e| AppError {
-                            kind: ErrorKind::Network,
-                            message: err_query_stage_failed(
-                                locale,
-                                "display query",
-                                &e.to_string(),
-                            ),
-                        })?;
-                let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
-                Ok::<_, AppError>((display_csv, display_elapsed))
-            };
+                        message: err_query_stage_failed(locale, "count query", &e),
+                    })
+                },
+                async {
+                    display_fut.await.map_err(|e| AppError {
+                        kind: ErrorKind::Network,
+                        message: err_query_stage_failed(locale, "display query", &e),
+                    })
+                },
+            )?;
 
-            let ((counts_csv, count_elapsed), (display_csv, display_elapsed)) =
-                futures::try_join!(count_fetch, display_fetch)?;
-
+            let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
+            let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
             metrics.add_network(count_elapsed);
             metrics.add_network(display_elapsed);
             perf::log_timing("Counting", "Count query completed", Some(count_elapsed));
@@ -782,11 +758,12 @@ async fn fetch_count_and_preview(
                 );
                 let _ = err_msg;
                 let fallback_query_timer = perf::start_timer("LOTUS:fallback_query");
-                let csv = sparql::execute_sparql_bytes(execution_query)
+                let csv = repo
+                    .sparql_bytes(execution_query)
                     .await
                     .map_err(|e| AppError {
                         kind: ErrorKind::Network,
-                        message: err_query_stage_failed(locale, "query", &e.to_string()),
+                        message: err_query_stage_failed(locale, "query", &e),
                     })?;
                 let fallback_query_elapsed =
                     perf::end_timer("LOTUS:fallback_query", fallback_query_timer);
@@ -824,4 +801,3 @@ async fn fetch_count_and_preview(
         }
     }
 }
-

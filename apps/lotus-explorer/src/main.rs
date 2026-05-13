@@ -14,6 +14,7 @@ mod i18n;
 mod models;
 mod perf;
 mod queries;
+mod repositories;
 mod sparql;
 mod state;
 mod utils;
@@ -26,9 +27,11 @@ use components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
 use components::results_viewport::ResultsViewport;
 use components::search_panel::SearchPanel;
 use dioxus::prelude::*;
-use download::{DownloadFormat, execute_download};
+#[cfg(test)]
+use download::DownloadFormat;
+use features::explore::download_dispatch::{use_download_dispatch_effect, use_startup_effect};
 use features::explore::orchestrator::start_search;
-use features::explore::search_state::{SearchRuntime, set_signal_if_changed};
+use features::explore::search_state::SearchRuntime;
 use features::explore::types::{ErrorKind, QueryPhase};
 use features::explore::url_state::{
     build_shareable_url, initial_criteria_from_url, initial_download_format_from_url,
@@ -36,13 +39,13 @@ use features::explore::url_state::{
     persist_locale_query_param, persist_view_query_param,
 };
 use i18n::{
-    Locale, TextKey, err_unsupported_format, t, view_label_curation_explorer, view_label_draw,
-    view_label_explorer, view_switch_aria,
+    Locale, TextKey, t, view_label_curation_explorer, view_label_draw, view_label_explorer,
+    view_switch_aria,
 };
 use models::*;
+use repositories::HybridRepository;
 use state::{ResultsContext, SearchUiContext};
 use std::sync::Arc;
-use utils::logging::{log_debug_evt, log_info_evt, log_warn_evt};
 
 fn main() {
     let level = if cfg!(debug_assertions) {
@@ -86,14 +89,16 @@ fn App() -> Element {
     let pending_download_format: Signal<Option<String>> =
         use_signal(initial_download_format_from_url);
     let pending_execute: Signal<bool> = use_signal(initial_execute_from_url);
-    // Guard flags: never read in RSX — `.peek()` only — so they never create
-    // reactive subscriptions for themselves.
+    // Guard flags: `.peek()` only — never subscribed to in RSX.
     let waiting_loading_logged: Signal<bool> = use_signal(|| false);
     let waiting_query_logged: Signal<bool> = use_signal(|| false);
     let search_request_token: Signal<u64> = use_signal(|| 0);
 
     let locale_value = *locale.read();
     let mobile_open = *mobile_filters_open.read();
+
+    // Production repository — zero-size; cheaply `Copy`-captured by closures.
+    let repo = HybridRepository::new();
 
     let search_runtime = SearchRuntime {
         executed_criteria,
@@ -152,145 +157,34 @@ fn App() -> Element {
         persist_view_query_param(*app_view.read());
     });
 
-    // ── Programmatic startup: auto-search / auto-download ─────────────────
-    use_effect(move || {
-        let pending = pending_download_format.read().clone();
-        if let Some(fmt) = pending.as_deref()
-            && DownloadFormat::from_str(fmt).is_none()
-        {
-            log_warn_evt(
-                "download",
-                "startup",
-                "unsupported_format",
-                Some(&format!("format={fmt}")),
-            );
-            set_signal_if_changed(error_kind, ErrorKind::Validation);
-            set_signal_if_changed(error, Some(err_unsupported_format(*locale.peek(), fmt)));
-            set_signal_if_changed(pending_download_format, None);
-            return;
-        }
-        if (pending.is_some() || *pending_execute.read())
-            && !*searched_once.read()
-            && !*loading.read()
-        {
-            if let Some(fmt) = pending.as_deref() {
-                log_info_evt(
-                    "download",
-                    "startup",
-                    "auto_search_triggered",
-                    Some(&format!("format={fmt}")),
-                );
-            } else {
-                log_info_evt(
-                    "search",
-                    "startup",
-                    "auto_search_triggered",
-                    Some("execute=true"),
-                );
-            }
-            start_search(criteria, locale, pending.is_some(), search_runtime);
-            set_signal_if_changed(pending_execute, false);
-        }
-    });
+    // ── Custom hooks: download startup and dispatch ───────────────────────
+    use_startup_effect(
+        pending_download_format,
+        pending_execute,
+        searched_once,
+        loading,
+        locale,
+        error,
+        error_kind,
+        criteria,
+        search_runtime,
+        repo,
+    );
+    use_download_dispatch_effect(
+        pending_download_format,
+        loading,
+        sparql_query,
+        criteria,
+        locale,
+        error,
+        error_kind,
+        download_dispatching,
+        waiting_loading_logged,
+        waiting_query_logged,
+    );
 
-    // ── Download dispatch: wait for SPARQL query, then stream the file ────
-    use_effect(move || {
-        let pending = pending_download_format.read().clone();
-        if let Some(fmt) = pending {
-            if *loading.read() {
-                if !*waiting_loading_logged.peek() {
-                    log_debug_evt(
-                        "download",
-                        "dispatch",
-                        "waiting_loading",
-                        Some(&format!("format={fmt}")),
-                    );
-                    set_signal_if_changed(waiting_loading_logged, true);
-                }
-                set_signal_if_changed(waiting_query_logged, false);
-                return;
-            }
-            set_signal_if_changed(waiting_loading_logged, false);
-            if let Some(query) = sparql_query.read().as_deref() {
-                set_signal_if_changed(waiting_query_logged, false);
-                let crit = criteria.peek().clone();
-                match DownloadFormat::from_str(&fmt) {
-                    Some(format) => {
-                        let q = query.to_string();
-                        let filename = export::generate_filename(&crit, format.extension());
-                        set_signal_if_changed(pending_download_format, None);
-                        set_signal_if_changed(download_dispatching, true);
-                        log_debug_evt(
-                            "download",
-                            "startup_dispatch",
-                            "query_check",
-                            Some(&format!(
-                                "format={} has_SERVICE={} has_SELECT={} query_bytes={}",
-                                format.log_name(),
-                                q.contains("SERVICE"),
-                                q.contains("SELECT"),
-                                q.len()
-                            )),
-                        );
-                        spawn(async move {
-                            log_info_evt(
-                                "download",
-                                "dispatch",
-                                "started",
-                                Some(&format!("format={}", format.log_name())),
-                            );
-                            if let Err(err) = execute_download(
-                                format,
-                                #[cfg(target_arch = "wasm32")]
-                                Arc::new(crit.clone()),
-                                q,
-                                filename,
-                            )
-                            .await
-                            {
-                                log_warn_evt(
-                                    "download",
-                                    "dispatch",
-                                    "error",
-                                    Some(&format!("format={} reason={err}", format.log_name())),
-                                );
-                            }
-                            set_signal_if_changed(download_dispatching, false);
-                        });
-                    }
-                    None => {
-                        log_warn_evt(
-                            "download",
-                            "dispatch",
-                            "unsupported_format",
-                            Some(&format!("format={fmt}")),
-                        );
-                        set_signal_if_changed(error_kind, ErrorKind::Validation);
-                        set_signal_if_changed(
-                            error,
-                            Some(err_unsupported_format(*locale.peek(), &fmt)),
-                        );
-                        set_signal_if_changed(pending_download_format, None);
-                        set_signal_if_changed(download_dispatching, false);
-                    }
-                }
-            } else if !*waiting_query_logged.peek() {
-                log_debug_evt(
-                    "download",
-                    "dispatch",
-                    "waiting_query",
-                    Some(&format!("format={fmt}")),
-                );
-                set_signal_if_changed(waiting_query_logged, true);
-            }
-        } else {
-            set_signal_if_changed(waiting_loading_logged, false);
-            set_signal_if_changed(waiting_query_logged, false);
-        }
-    });
-
-    let on_search = move |_| start_search(criteria, locale, false, search_runtime);
-    let on_preview = move |_| start_search(criteria, locale, false, search_runtime);
+    let on_search = move |_| start_search(criteria, locale, false, search_runtime, repo);
+    let on_preview = move |_| start_search(criteria, locale, false, search_runtime, repo);
 
     rsx! {
         a { class: "skip-link", href: "#main-panel", "{t(locale_value, TextKey::SkipToResults)}" }
@@ -353,7 +247,6 @@ fn App() -> Element {
                                 "{t(locale_value, TextKey::PageTitle)}"
                             }
                         }
-                        // Language switcher
                         div {
                             class: "lang-switch",
                             role: "group",
@@ -404,7 +297,6 @@ fn App() -> Element {
                             }
                         }
                     }
-                    // View-tab switcher
                     nav {
                         class: "view-switch",
                         role: "group",
@@ -444,7 +336,6 @@ fn App() -> Element {
                     }
                 }
 
-                // ── Tab content ───────────────────────────────────────────
                 if *app_view.read() == AppView::Explore {
                     div { class: "page-header-meta",
                         HeaderMetaSection {
@@ -463,7 +354,7 @@ fn App() -> Element {
                         locale,
                         loading,
                         on_dismiss: move |_| *error.write() = None,
-                        on_retry: move |_| start_search(criteria, locale, false, search_runtime),
+                        on_retry: move |_| start_search(criteria, locale, false, search_runtime, repo),
                     }
                     ResultsViewport { on_preview }
                 } else if *app_view.read() == AppView::Curation {
@@ -477,8 +368,6 @@ fn App() -> Element {
         }
     }
 }
-
-// ── Download format validation helper (used in tests only) ───────────────────
 
 #[cfg(test)]
 fn is_supported_download_format(fmt: &str) -> bool {

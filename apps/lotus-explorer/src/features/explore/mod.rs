@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+pub mod actions;
+pub mod download_dispatch;
 pub mod orchestrator;
 pub mod search_state;
 pub mod search_utils;
