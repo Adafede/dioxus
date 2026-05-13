@@ -27,6 +27,8 @@ use components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
 use components::results_viewport::ResultsViewport;
 use components::search_panel::SearchPanel;
 use dioxus::prelude::*;
+#[cfg(test)]
+use download::DownloadFormat;
 use features::explore::actions::ExploreAction;
 use features::explore::download_dispatch::{use_download_dispatch_effect, use_startup_effect};
 use features::explore::orchestrator::start_search;
@@ -44,8 +46,6 @@ use models::*;
 use repositories::HybridRepository;
 use state::{ResultsContext, SearchUiContext};
 use std::sync::Arc;
-#[cfg(test)]
-use download::DownloadFormat;
 
 fn main() {
     let level = if cfg!(debug_assertions) {
@@ -254,7 +254,7 @@ fn App() -> Element {
 
                 if *app_view.read() == AppView::Explore {
                     HeaderMetaSection { explore, locale }
-                    ShareNotice { _explore: explore, locale, shareable_url }
+                    ShareNotice { locale, shareable_url }
                     TaxonNotice { explore, locale }
                     ErrorNotice {
                         explore,

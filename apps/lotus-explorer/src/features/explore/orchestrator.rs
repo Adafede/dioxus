@@ -26,9 +26,9 @@ use crate::perf;
 use crate::queries;
 use crate::repositories::LotusRepository;
 use crate::sparql;
-use crate::utils::logging::{log_debug_evt, log_info_evt, log_timing_evt};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::utils::logging::log_warn_evt;
+use crate::utils::logging::{log_debug_evt, log_info_evt, log_timing_evt};
 use dioxus::prelude::*;
 use shared::lotus::models::runtime_table_row_limit;
 use std::sync::Arc;

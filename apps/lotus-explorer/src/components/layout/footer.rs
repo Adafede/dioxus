@@ -7,29 +7,13 @@ use dioxus::prelude::*;
 #[component]
 pub fn Footer(locale: Locale) -> Element {
     rsx! {
-        footer { class: "app-footer",
+        footer { class: "app-footer", aria_label: "LOTUS footer",
             FooterRow {
                 label: t(locale, TextKey::FooterArchive),
                 class: "footer-link red",
                 links: &[("https://doi.org/10.5281/zenodo.5794106", "Frozen version (Zenodo)")],
             }
-            div { class: "footer-row",
-                span { class: "footer-label", "{t(locale, TextKey::FooterCitation)}" }
-                a {
-                    class: "footer-link red",
-                    href: "https://doi.org/10.7554/eLife.70780",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    "LOTUS paper (eLife)"
-                }
-                span { class: "footer-sep", "·" }
-                a {
-                    class: "footer-link red",
-                    href: "/docs/references.bib",
-                    download: "references.bib",
-                    "BibTeX"
-                }
-            }
+            FooterCitationRow { locale }
             FooterRow {
                 label: t(locale, TextKey::FooterCode),
                 class: "footer-link green",
@@ -61,25 +45,65 @@ pub fn Footer(locale: Locale) -> Element {
                     ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
                 ],
             }
-            div { class: "footer-row",
-                span { class: "footer-label", "{t(locale, TextKey::FooterLicense)}" }
-                a {
-                    class: "footer-link blue",
-                    href: "https://creativecommons.org/publicdomain/zero/1.0/",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    "CC0 1.0"
+            FooterLicenseRow { locale }
+        }
+    }
+}
+
+#[component]
+fn FooterCitationRow(locale: Locale) -> Element {
+    rsx! {
+        div { class: "footer-row",
+            span { class: "footer-label", "{t(locale, TextKey::FooterCitation)}" }
+            ul { class: "footer-links", role: "list",
+                li {
+                    a {
+                        class: "footer-link red",
+                        href: "https://doi.org/10.7554/eLife.70780",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        "LOTUS paper (eLife)"
+                    }
                 }
-                span { class: "footer-aside", "{t(locale, TextKey::FooterForData)}" }
-                span { class: "footer-sep", "·" }
-                a {
-                    class: "footer-link blue",
-                    href: "https://www.gnu.org/licenses/agpl-3.0.html",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    "AGPL-3.0"
+                li {
+                    a {
+                        class: "footer-link red",
+                        href: "/docs/references.bib",
+                        download: "references.bib",
+                        "BibTeX"
+                    }
                 }
-                span { class: "footer-aside", "{t(locale, TextKey::FooterForCode)}" }
+            }
+        }
+    }
+}
+
+#[component]
+fn FooterLicenseRow(locale: Locale) -> Element {
+    rsx! {
+        div { class: "footer-row",
+            span { class: "footer-label", "{t(locale, TextKey::FooterLicense)}" }
+            ul { class: "footer-links", role: "list",
+                li {
+                    a {
+                        class: "footer-link blue",
+                        href: "https://creativecommons.org/publicdomain/zero/1.0/",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        "CC0 1.0"
+                    }
+                    span { class: "footer-aside", "{t(locale, TextKey::FooterForData)}" }
+                }
+                li {
+                    a {
+                        class: "footer-link blue",
+                        href: "https://www.gnu.org/licenses/agpl-3.0.html",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        "AGPL-3.0"
+                    }
+                    span { class: "footer-aside", "{t(locale, TextKey::FooterForCode)}" }
+                }
             }
         }
     }
@@ -94,16 +118,17 @@ fn FooterRow(
     rsx! {
         div { class: "footer-row",
             span { class: "footer-label", "{label}" }
-            for (i, (href, text)) in links.iter().enumerate() {
-                if i > 0 {
-                    span { class: "footer-sep", "·" }
-                }
-                a {
-                    class: "{class}",
-                    href: "{href}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    "{text}"
+            ul { class: "footer-links", role: "list",
+                for (href, text) in links.iter() {
+                    li {
+                        a {
+                            class: "{class}",
+                            href: "{href}",
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            "{text}"
+                        }
+                    }
                 }
             }
         }

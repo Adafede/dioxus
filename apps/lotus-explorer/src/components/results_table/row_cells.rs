@@ -141,6 +141,7 @@ fn compound_cell(
                     rel: "noopener noreferrer",
                     class: "id-badge sc",
                     title: "{text.open_in_scholia}",
+                    aria_label: "{text.open_in_scholia}",
                     "Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
@@ -262,6 +263,7 @@ fn reference_cell(
                         rel: "noopener noreferrer",
                         class: "id-badge doi",
                         title: "{text.open_doi}",
+                        aria_label: "{text.open_doi}",
                         "DOI"
                     }
                 }

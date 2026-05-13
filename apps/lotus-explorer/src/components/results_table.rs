@@ -315,7 +315,7 @@ fn ResultsToolbar(locale: Locale) -> Element {
                     locale,
                     value: entries_value,
                     secondary_value: (entries_unique_value != entries_value)
-                                                                                                                                                                                                                                                    .then_some(entries_unique_value),
+                                            .then_some(entries_unique_value),
                     secondary_label: Some(t(locale, TextKey::Unique)),
                     noun: CountNoun::Entry,
                     plus: false,
@@ -482,6 +482,7 @@ fn ResultsDownloadActions(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     title: "{t(locale, TextKey::OpenInQleverTitle)}",
+                    aria_label: "{t(locale, TextKey::OpenInQleverTitle)}",
                     "{t(locale, TextKey::OpenInQlever)}"
                 }
             }

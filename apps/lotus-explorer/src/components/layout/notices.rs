@@ -11,11 +11,7 @@ use dioxus::prelude::*;
 use std::sync::Arc;
 
 #[component]
-pub fn ShareNotice(
-    _explore: Signal<crate::features::explore::search_state::ExploreState>,
-    shareable_url: Memo<Option<Arc<str>>>,
-    locale: Signal<Locale>,
-) -> Element {
+pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>, locale: Signal<Locale>) -> Element {
     let locale = *locale.read();
     let share = shareable_url.read();
     let Some(share) = share.as_deref() else {
