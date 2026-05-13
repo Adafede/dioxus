@@ -85,13 +85,16 @@ impl FormCriteriaContext {
 /// Context for the search form and controls. (Will be refactored in later phase)
 #[derive(Clone, Copy)]
 pub struct SearchUiContext {
+    pub app_state: Signal<AppState>,
     pub criteria: Signal<SearchCriteria>,
-    pub explore: Signal<ExploreState>,
 }
 
 impl SearchUiContext {
-    pub fn from_signals(criteria: Signal<SearchCriteria>, explore: Signal<ExploreState>) -> Self {
-        Self { criteria, explore }
+    pub fn from_signals(app_state: Signal<AppState>, criteria: Signal<SearchCriteria>) -> Self {
+        Self {
+            app_state,
+            criteria,
+        }
     }
 }
 
@@ -100,12 +103,13 @@ impl SearchUiContext {
 /// Context for result rendering and result-driven actions.
 #[derive(Clone, Copy)]
 pub struct ResultsContext {
+    pub app_state: Signal<AppState>,
     pub explore: Signal<ExploreState>,
 }
 
 impl ResultsContext {
-    pub fn from_signals(explore: Signal<ExploreState>) -> Self {
-        Self { explore }
+    pub fn from_signals(app_state: Signal<AppState>, explore: Signal<ExploreState>) -> Self {
+        Self { app_state, explore }
     }
 }
 

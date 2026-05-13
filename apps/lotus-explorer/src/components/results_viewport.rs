@@ -22,7 +22,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     let state = use_results_context();
-    let explore = state.explore.read();
+    let explore = state.app_state.read().search.explore.clone();
     let loading = explore.lifecycle.loading;
     let has_error = explore.lifecycle.error.is_some();
     let searched_once = explore.lifecycle.searched_once;

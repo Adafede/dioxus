@@ -63,9 +63,13 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    let initial_criteria = initial_criteria_from_url();
     let mut app_state: Signal<AppState> = use_signal(|| AppState {
         view: initial_view_from_url(),
-        search: SearchState::default(),
+        search: SearchState {
+            criteria: initial_criteria.clone(),
+            ..SearchState::default()
+        },
         ui: UiState {
             locale: initial_locale_from_url(),
             ..UiState::default()
@@ -76,7 +80,7 @@ fn App() -> Element {
         },
         ..AppState::default()
     });
-    let criteria: Signal<SearchCriteria> = use_signal(initial_criteria_from_url);
+    let criteria: Signal<SearchCriteria> = use_signal(move || initial_criteria.clone());
     let mut locale: Signal<Locale> = use_signal(initial_locale_from_url);
     let explore: Signal<ExploreState> = use_signal(ExploreState::default);
 
@@ -86,9 +90,10 @@ fn App() -> Element {
 
     let _app_state_ctx = use_context_provider(move || AppStateContext::new(app_state));
     let _search_ui_ctx =
-        use_context_provider(move || SearchUiContext::from_signals(criteria, explore));
+        use_context_provider(move || SearchUiContext::from_signals(app_state, criteria));
     let _form_criteria_ctx = use_context_provider(move || FormCriteriaContext::new(criteria));
-    let _results_ctx = use_context_provider(move || ResultsContext::from_signals(explore));
+    let _results_ctx =
+        use_context_provider(move || ResultsContext::from_signals(app_state, explore));
 
     let shareable_url =
         use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));
@@ -99,6 +104,22 @@ fn App() -> Element {
     use_effect(move || {
         if app_state.read().ui.locale != *locale.read() {
             app_state.with_mut(|state| state.ui.locale = *locale.read());
+        }
+    });
+    use_effect(move || {
+        let criteria_snapshot = criteria.read().clone();
+        if app_state.read().search.criteria != criteria_snapshot {
+            app_state.with_mut(|state| state.search.criteria = criteria_snapshot);
+        }
+    });
+    use_effect(move || {
+        let explore_snapshot = explore.read().clone();
+        let mobile_filters_open = explore_snapshot.ui.mobile_filters_open;
+        if app_state.read().search.explore != explore_snapshot {
+            app_state.with_mut(|state| state.search.explore = explore_snapshot);
+        }
+        if app_state.read().ui.mobile_filters_open != mobile_filters_open {
+            app_state.with_mut(|state| state.ui.mobile_filters_open = mobile_filters_open);
         }
     });
     use_effect(move || {

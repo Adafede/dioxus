@@ -18,7 +18,7 @@ use dioxus::prelude::*;
 pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
     let state = use_search_ui_context();
     let locale = crate::hooks::use_locale();
-    let loading = state.explore.read().lifecycle.loading;
+    let loading = state.app_state.read().search.explore.lifecycle.loading;
     let mut c = state.criteria;
     let criteria = c.read().clone();
 
