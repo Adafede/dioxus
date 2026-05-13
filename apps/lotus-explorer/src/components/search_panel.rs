@@ -27,12 +27,12 @@ mod structure_model;
 use crate::i18n::{TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::classify_structure;
-use crate::state::{use_form_criteria_context, use_search_ui_context};
+use crate::state::{use_form_criteria_context, use_results_context};
 use dioxus::prelude::*;
 
 #[component]
 pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
-    let state = use_search_ui_context();
+    let state = use_results_context();
     let form_ctx = use_form_criteria_context();
     let locale = crate::hooks::use_locale();
 

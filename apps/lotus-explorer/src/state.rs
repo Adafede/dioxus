@@ -23,19 +23,6 @@ impl AppStateContext {
     pub fn new(state: Signal<AppState>) -> Self {
         Self { state }
     }
-
-    /// Mutate app state through a closure.
-    ///
-    /// Preferred over writing through `state` directly because it lets the
-    /// call-site express *intent* rather than raw field access.
-    #[allow(dead_code)] // Public extension API — not yet called from UI code
-    pub fn mut_state<F>(&self, f: F)
-    where
-        F: FnOnce(&mut AppState),
-    {
-        let mut state = self.state;
-        state.with_mut(f);
-    }
 }
 
 // ── Form Criteria Context ─────────────────────────────────────────────────────
@@ -95,32 +82,6 @@ impl FormCriteriaContext {
         let mut baseline = self.baseline;
         *baseline.write() = current;
     }
-
-    /// Peek at the current criteria without subscribing to reactivity.
-    #[allow(dead_code)] // Available for non-reactive inspection
-    pub fn peek(&self) -> SearchCriteria {
-        self.criteria.peek().clone()
-    }
-}
-
-// ── Search UI Context ─────────────────────────────────────────────────────────
-
-/// Context for the search panel.
-///
-/// Provides read access to the explore lifecycle signal for the search button
-/// (loading flag, etc.).  Criteria are now accessed exclusively through
-/// [`FormCriteriaContext`] — this context is intentionally narrowed to just
-/// the explore signal to keep `SearchPanel`'s dependencies minimal.
-#[derive(Clone, Copy)]
-pub struct SearchUiContext {
-    /// Explore lifecycle / results — read access for loading state, etc.
-    pub explore: Signal<ExploreState>,
-}
-
-impl SearchUiContext {
-    pub fn new(_criteria: Signal<SearchCriteria>, explore: Signal<ExploreState>) -> Self {
-        Self { explore }
-    }
 }
 
 // ── Results Context ───────────────────────────────────────────────────────────
@@ -151,10 +112,6 @@ pub fn use_app_state_context() -> AppStateContext {
     use_context::<AppStateContext>()
 }
 
-pub fn use_search_ui_context() -> SearchUiContext {
-    use_context::<SearchUiContext>()
-}
-
 pub fn use_results_context() -> ResultsContext {
     use_context::<ResultsContext>()
 }
@@ -183,9 +140,6 @@ mod tests {
         let updated = apply_form_action(base, FormAction::MassMin(50.0));
         assert_eq!(updated.mass_min, 50.0);
     }
-
-    // Dirty-tracking logic tests — exercised on the pure data model so no
-    // Dioxus runtime is needed.
 
     #[test]
     fn form_action_all_element_bounds_round_trip() {

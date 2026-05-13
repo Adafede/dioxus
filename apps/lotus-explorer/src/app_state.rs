@@ -35,7 +35,7 @@ use crate::app::view::AppView;
 /// * `SearchCriteria` — lives in its own `Signal<SearchCriteria>` and is
 ///   exposed through `FormCriteriaContext`.
 /// * `ExploreState` — lives in its own `Signal<ExploreState>` with its own
-///   reducer and is exposed through `ResultsContext` / `SearchUiContext`.
+///   reducer and is exposed through `ResultsContext`.
 /// * `Locale` — provided via `LocaleProvider` context and accessed with
 ///   `use_locale()`.
 #[derive(Clone, PartialEq, Debug)]

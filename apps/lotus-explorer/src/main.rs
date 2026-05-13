@@ -46,10 +46,7 @@ use hooks::LocaleProvider;
 use i18n::{Locale, TextKey, t};
 use models::*;
 use repositories::HybridRepository;
-use state::{
-    AppStateContext, FormCriteriaContext, ResultsContext, SearchUiContext,
-    use_form_criteria_context,
-};
+use state::{AppStateContext, FormCriteriaContext, ResultsContext, use_form_criteria_context};
 use std::sync::Arc;
 
 fn main() {
@@ -90,7 +87,6 @@ fn App() -> Element {
     let _app_state_ctx = use_context_provider(move || AppStateContext::new(app_state));
     let _form_criteria_ctx =
         use_context_provider(move || FormCriteriaContext::new(criteria, criteria_baseline));
-    let _search_ui_ctx = use_context_provider(move || SearchUiContext::new(criteria, explore));
     let _results_ctx = use_context_provider(move || ResultsContext::new(explore));
 
     // ── Shareable URL ─────────────────────────────────────────────────────────
