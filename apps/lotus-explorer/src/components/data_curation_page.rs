@@ -3,8 +3,9 @@
 
 use crate::curation::{
     CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
-    build_curation_share_url, curate_rows, example_rows, initial_curation_autorun_from_url,
-    initial_curation_rows_from_url, parse_tsv_rows, row_uniqueness_key,
+    build_curation_share_url, build_quickstatements_bundle, curate_rows, example_rows,
+    initial_curation_autorun_from_url, initial_curation_rows_from_url, parse_tsv_rows,
+    row_uniqueness_key,
 };
 use crate::i18n::{
     Locale, TextKey, button_add_row, button_append_tsv_rows, button_generate_quickstatements,
@@ -20,7 +21,7 @@ use crate::i18n::{
     placeholder_taxon_optional, subtitle_curation_explorer, t, title_curation_explorer,
 };
 use dioxus::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::copy_button::CopyButton;
@@ -157,7 +158,7 @@ pub fn DataCurationPage() -> Element {
                         })
                         .collect::<Vec<_>>();
 
-                    let bundle = bundle_from_results(&merged_rows);
+                                    let bundle = build_quickstatements_bundle(&merged_rows);
                     let still_pending = !bundle.dependencies.is_empty();
                     let pending_count = merged_rows
                         .iter()
@@ -540,26 +541,3 @@ fn absolute_share_url(share: &str) -> String {
     share.to_string()
 }
 
-fn bundle_from_results(results: &[CurationResultRow]) -> QuickStatementsBundle {
-    let mut seen_dependency_blocks = HashSet::new();
-    let dependencies = results
-        .iter()
-        .flat_map(|r| r.dependency_blocks.iter())
-        .filter(|block| !block.trim().is_empty())
-        .filter(|block| seen_dependency_blocks.insert((*block).clone()))
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
-    let main = results
-        .iter()
-        .filter(|r| !r.quickstatements.is_empty())
-        .map(|r| r.quickstatements.join("\n"))
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
-    QuickStatementsBundle {
-        dependencies: Arc::<str>::from(dependencies),
-        main: Arc::<str>::from(main),
-    }
-}
