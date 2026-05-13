@@ -5,15 +5,17 @@
 //!
 //! ## Architecture
 //!
-//! `SearchPanel` reads only what it needs:
-//! * `FormCriteriaContext` — live criteria signal + `is_dirty()` for the search
-//!   button affordance.
-//! * `SearchUiContext.explore` — lifecycle signal for the `loading` flag.
+//! `SearchPanel` is now extremely thin — it owns only two concerns:
+//! * Presenting the search button (loading state + dirty indicator).
+//! * Delegating form sections to context-aware sub-components.
 //!
-//! Sub-sections (`FormulaSection`, `StructureSection`) consume `FormCriteriaContext`
-//! directly so they need **zero data props** — they bypass SearchPanel entirely.
-//! This eliminates 36 props that previously flowed through `SearchPanel` down to
-//! `FormulaSection`.
+//! Every form section (`TaxonInput`, `StructureSection`, `MassRangeInput`,
+//! `YearRangeInput`, `FormulaSection`) reads and writes `FormCriteriaContext`
+//! directly.  `SearchPanel` passes only the `on_search` action through to
+//! `TaxonInput` (for Enter-key submission) and to the search button.
+//!
+//! **Props eliminated vs original:** 38 (18 values + 18 callbacks for formula,
+//! plus value + on_input for taxon, plus 4 for mass, plus 4 for year).
 
 pub use crate::components::form_sections::{
     FormulaSection, MassRangeInput, TaxonInput, YearRangeInput,
@@ -34,14 +36,10 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
     let form_ctx = use_form_criteria_context();
     let locale = crate::hooks::use_locale();
 
-    // Read loading from the live explore signal — no stale copy in AppState.
+    // Loading flag from the live explore signal — no stale copy.
     let loading = state.explore.read().lifecycle.loading;
-    // Show a "dirty" indicator on the search button when the form has changed
-    // since the last search.
+    // Dirty flag: show affordance when form changed since last search.
     let is_dirty = form_ctx.is_dirty();
-
-    let mut c = state.criteria;
-    let criteria = c.read().clone();
 
     rsx! {
         section {
@@ -49,40 +47,14 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
             aria_label: "{t(locale, TextKey::SearchFilters)}",
 
             div { class: "search-panel-body",
-
-                // ── Taxon ────────────────────────────────────────────────────
-                TaxonInput {
-                    value: criteria.taxon.clone(),
-                    on_input: move |v| c.write().taxon = v,
-                    on_search,
-                }
-
-                // ── Structure (SMILES or Molfile V2000/V3000) ────────────────
+                // All sections are zero-prop — they read FormCriteriaContext.
+                TaxonInput { on_search }
                 StructureSection {}
-
-                // ── Mass range ───────────────────────────────────────────────
-                MassRangeInput {
-                    min_value: criteria.mass_min,
-                    max_value: criteria.mass_max,
-                    on_min: move |v| c.write().mass_min = v,
-                    on_max: move |v| c.write().mass_max = v,
-                }
-
-                // ── Year range ───────────────────────────────────────────────
-                YearRangeInput {
-                    min_value: criteria.year_min,
-                    max_value: criteria.year_max,
-                    on_min: move |v| c.write().year_min = v,
-                    on_max: move |v| c.write().year_max = v,
-                }
-
-                // ── Formula filter (zero props — reads context internally) ───
+                MassRangeInput {}
+                YearRangeInput {}
                 FormulaSection {}
             }
 
-            // ── Search button ───────────────────────────────────────────────
-            // Shows a spinner while searching and a dot when the form has
-            // changed since the last search (dirty state).
             button {
                 class: if is_dirty && !loading { "search-btn search-btn--dirty" } else { "search-btn" },
                 r#type: "submit",

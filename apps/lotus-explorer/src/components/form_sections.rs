@@ -27,14 +27,17 @@ fn normalized_year_input_max(current_year: u16) -> u16 {
     current_year.max(crate::models::DEFAULT_YEAR_MIN)
 }
 
-/// Taxon input section with label and hint.
+/// Taxon input section — reads value from `FormCriteriaContext`.
+///
+/// Only prop: `on_search` to handle Enter-key submission.  The taxon value and
+/// its mutation are handled internally via context, eliminating the `value` and
+/// `on_input` props that previously had to flow through `SearchPanel`.
 #[component]
-pub fn TaxonInput(
-    value: String,
-    on_input: EventHandler<String>,
-    on_search: EventHandler<()>,
-) -> Element {
+pub fn TaxonInput(on_search: EventHandler<()>) -> Element {
     let locale = crate::hooks::use_locale();
+    let ctx = use_form_criteria_context();
+    let taxon = ctx.criteria.read().taxon.clone();
+
     rsx! {
         div { class: "form-section",
             label { class: "form-label", r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
@@ -45,8 +48,8 @@ pub fn TaxonInput(
                 autocomplete: "off",
                 spellcheck: "false",
                 placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
-                value: "{value}",
-                oninput: move |e| on_input.call(e.value()),
+                value: "{taxon}",
+                oninput: move |e| ctx.update(FormAction::Taxon(e.value())),
                 onkeydown: move |e| {
                     if e.key() == Key::Enter {
                         on_search.call(());
@@ -58,15 +61,16 @@ pub fn TaxonInput(
     }
 }
 
-/// Mass range input section with min/max controls.
+/// Mass range input section — reads values from `FormCriteriaContext`.
+///
+/// Zero props: both values and event handlers are covered by context dispatch.
 #[component]
-pub fn MassRangeInput(
-    min_value: f64,
-    max_value: f64,
-    on_min: EventHandler<f64>,
-    on_max: EventHandler<f64>,
-) -> Element {
+pub fn MassRangeInput() -> Element {
     let locale = crate::hooks::use_locale();
+    let ctx = use_form_criteria_context();
+    let min_value = ctx.criteria.read().mass_min;
+    let max_value = ctx.criteria.read().mass_max;
+
     rsx! {
         fieldset { class: "form-section", style: "border:0;padding:0;margin:0;",
             legend { class: "form-label", "{t(locale, TextKey::MolecularMass)}" }
@@ -83,7 +87,7 @@ pub fn MassRangeInput(
                         value: "{min_value}",
                         oninput: move |e| {
                             if let Some(v) = parse_f64_input(&e.value()) {
-                                on_min.call(v);
+                                ctx.update(FormAction::MassMin(v));
                             }
                         },
                     }
@@ -101,7 +105,7 @@ pub fn MassRangeInput(
                         value: "{max_value}",
                         oninput: move |e| {
                             if let Some(v) = parse_f64_input(&e.value()) {
-                                on_max.call(v);
+                                ctx.update(FormAction::MassMax(v));
                             }
                         },
                     }
@@ -111,16 +115,16 @@ pub fn MassRangeInput(
     }
 }
 
-/// Year range input section with from/to controls.
+/// Year range input section — reads values from `FormCriteriaContext`.
+///
+/// Zero props: both values and event handlers are covered by context dispatch.
 #[component]
-pub fn YearRangeInput(
-    min_value: u16,
-    max_value: u16,
-    on_min: EventHandler<u16>,
-    on_max: EventHandler<u16>,
-) -> Element {
+pub fn YearRangeInput() -> Element {
     use crate::models::DEFAULT_YEAR_MIN;
     let locale = crate::hooks::use_locale();
+    let ctx = use_form_criteria_context();
+    let min_value = ctx.criteria.read().year_min;
+    let max_value = ctx.criteria.read().year_max;
     let current = normalized_year_input_max(crate::models::current_year());
 
     rsx! {
@@ -139,7 +143,7 @@ pub fn YearRangeInput(
                         value: "{min_value}",
                         oninput: move |e| {
                             if let Some(v) = parse_u16_input(&e.value()) {
-                                on_min.call(v);
+                                ctx.update(FormAction::YearMin(v));
                             }
                         },
                     }
@@ -157,7 +161,7 @@ pub fn YearRangeInput(
                         value: "{max_value}",
                         oninput: move |e| {
                             if let Some(v) = parse_u16_input(&e.value()) {
-                                on_max.call(v);
+                                ctx.update(FormAction::YearMax(v));
                             }
                         },
                     }

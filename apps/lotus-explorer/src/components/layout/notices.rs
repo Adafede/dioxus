@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! Status, warning, and error notice components.
+//!
+//! All notice components read locale via `use_locale()` and explore state via
+//! `ResultsContext` — no `explore` or `locale` props are drilled from `App`.
+
 use crate::components::copy_button::CopyButton;
 use crate::features::explore::types::{
     DomainError, ErrorKind, ParseFault, TaxonWarning, ValidationFault,
@@ -15,6 +20,7 @@ use crate::i18n::{
     err_taxon_parse_failed, err_taxon_resolution_failed, err_unsupported_format, t,
     warn_ambiguous_taxon, warn_input_standardized,
 };
+use crate::state::use_results_context;
 use dioxus::prelude::*;
 use std::sync::Arc;
 
@@ -79,9 +85,13 @@ pub fn format_taxon_warning(locale: Locale, warning: &TaxonWarning) -> String {
 
 // ── Components ─────────────────────────────────────────────────────────────────
 
+/// Share URL notice — shows the current shareable URL with a copy button.
+///
+/// `shareable_url` must be passed in (it is computed in `App` from criteria).
+/// Locale is read via `use_locale()` — no locale prop needed.
 #[component]
-pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>, locale: Signal<Locale>) -> Element {
-    let locale = *locale.read();
+pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
+    let locale = crate::hooks::use_locale();
     let share = shareable_url.read();
     let Some(share) = share.as_deref() else {
         return rsx! {};
@@ -105,12 +115,14 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>, locale: Signal<Locale>
     }
 }
 
+/// Taxon-resolution warning notice.
+///
+/// Zero props — reads locale via `use_locale()` and taxon_notice via
+/// `ResultsContext`.
 #[component]
-pub fn TaxonNotice(
-    explore: Signal<crate::features::explore::search_state::ExploreState>,
-    locale: Signal<Locale>,
-) -> Element {
-    let locale = *locale.read();
+pub fn TaxonNotice() -> Element {
+    let locale = crate::hooks::use_locale();
+    let explore = use_results_context().explore;
     let notice = explore.read().result.taxon_notice.clone();
     let Some(warning) = notice.as_ref() else {
         return rsx! {};
@@ -126,14 +138,15 @@ pub fn TaxonNotice(
 
 // ── Error notice ──────────────────────────────────────────────────────────────
 
+/// Error notice with optional retry and dismiss buttons.
+///
+/// Reads locale via `use_locale()` and lifecycle state via `ResultsContext`.
+/// Only action handlers are props — they capture `criteria`, `explore`, `repo`
+/// from `App` scope and cannot be replaced by context.
 #[component]
-pub fn ErrorNotice(
-    explore: Signal<crate::features::explore::search_state::ExploreState>,
-    locale: Signal<Locale>,
-    on_dismiss: EventHandler<()>,
-    on_retry: EventHandler<()>,
-) -> Element {
-    let locale = *locale.read();
+pub fn ErrorNotice(on_dismiss: EventHandler<()>, on_retry: EventHandler<()>) -> Element {
+    let locale = crate::hooks::use_locale();
+    let explore = use_results_context().explore;
     let lifecycle = explore.read().lifecycle.clone();
     let Some(ref domain_err) = lifecycle.error else {
         return rsx! {};

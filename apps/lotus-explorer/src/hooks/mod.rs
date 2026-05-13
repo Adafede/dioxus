@@ -6,4 +6,4 @@ pub mod use_locale;
 pub mod use_virtualization;
 
 pub use locale_provider::LocaleProvider;
-pub use use_locale::use_locale;
+pub use use_locale::{use_locale, use_locale_signal};

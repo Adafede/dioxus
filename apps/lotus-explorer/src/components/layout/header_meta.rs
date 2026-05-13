@@ -1,17 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! Header metadata strip (resolved taxon QID, query/result hashes, total matches).
+//!
+//! Reads from [`crate::state::ResultsContext`] and `use_locale()` — zero props.
+
 use crate::components::copy_button::CopyButton;
-use crate::i18n::{Locale, TextKey, t};
+use crate::i18n::{TextKey, t};
+use crate::state::use_results_context;
 use dioxus::prelude::*;
 use std::sync::Arc;
 
+/// Displays resolved-taxon QID, query/result hashes, and total-match count.
+///
+/// Zero props — reads `ResultsContext.explore` for result data and
+/// `use_locale()` for the active locale.
 #[component]
-pub fn HeaderMetaSection(
-    explore: Signal<crate::features::explore::search_state::ExploreState>,
-    locale: Signal<Locale>,
-) -> Element {
-    let locale = *locale.read();
+pub fn HeaderMetaSection() -> Element {
+    let explore = use_results_context().explore;
+    let locale = crate::hooks::use_locale();
     let explore = explore.read();
     rsx! {
         if let Some(qid) = explore.result.resolved_qid.as_deref() {
@@ -40,7 +47,7 @@ pub fn HeaderMetaSection(
                     title: t(locale, TextKey::CopyFullQueryHash),
                     locale,
                 }
-                span { class: "meta-sep", "·" }
+                span { class: "meta-sep", "" }
                 span { class: "meta-key", "{t(locale, TextKey::ResultHash)}" }
                 span { class: "meta-sep", ":" }
                 span { class: "meta-val mono", "{&rh[..12]}" }
