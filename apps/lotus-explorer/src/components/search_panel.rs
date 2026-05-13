@@ -5,9 +5,12 @@ pub use crate::components::form_sections::{
     FormulaSection, MassRangeInput, TaxonInput, YearRangeInput,
 };
 
-use crate::i18n::{Locale, TextKey, t, threshold_label};
+#[path = "search_panel/structure_model.rs"]
+mod structure_model;
+
+use crate::i18n::{TextKey, t, threshold_label};
 use crate::models::*;
-use crate::queries::{StructureKind, classify_structure};
+use crate::queries::classify_structure;
 use crate::state::use_search_ui_context;
 use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
@@ -146,6 +149,10 @@ fn StructureSection() -> Element {
     let kind = use_memo(move || classify_structure(&c.read().smiles));
     let kind_value = *kind.read();
     let criteria = c.read().clone();
+    let view_model = structure_model::build_structure_section_model(
+        kind_value,
+        criteria.smiles_search_type,
+    );
 
     rsx! {
         div { class: "form-section",
@@ -161,14 +168,14 @@ fn StructureSection() -> Element {
                 oninput: move |e| c.write().smiles = e.value(),
                 rows: "4",
             }
-            if kind_value != StructureKind::Empty {
+            if let Some(note_key) = view_model.note_key {
                 p { class: "form-hint",
                     span {
                         class: "kind-pill",
-                        "data-kind": "{kind_class(kind_value)}",
+                        "data-kind": "{view_model.kind_class}",
                         "{kind_value.label()}"
                     }
-                    span { class: "kind-note", {kind_note(kind_value, locale)} }
+                    span { class: "kind-note", "{t(locale, note_key)}" }
                 }
             } else {
                 p { class: "form-hint", "{t(locale, TextKey::StructureHintEmpty)}" }
@@ -195,7 +202,7 @@ fn StructureSection() -> Element {
                     "{t(locale, TextKey::Similarity)}"
                 }
             }
-            if criteria.smiles_search_type == SmilesSearchType::Similarity {
+            if view_model.show_similarity_threshold {
                 div { class: "form-section nested",
                     label { class: "form-label sm", r#for: "threshold-input",
                         "{threshold_label(locale, criteria.smiles_threshold)}"
@@ -260,20 +267,3 @@ pub fn KetcherPanel() -> Element {
     }
 }
 
-fn kind_class(k: StructureKind) -> &'static str {
-    match k {
-        StructureKind::Empty => "empty",
-        StructureKind::Smiles => "smiles",
-        StructureKind::MolfileV2000 => "mol2000",
-        StructureKind::MolfileV3000 => "mol3000",
-    }
-}
-
-fn kind_note(k: StructureKind, locale: Locale) -> &'static str {
-    match k {
-        StructureKind::Empty => "",
-        StructureKind::Smiles => t(locale, TextKey::KindNoteSmiles),
-        StructureKind::MolfileV2000 => t(locale, TextKey::KindNoteMol2000),
-        StructureKind::MolfileV3000 => t(locale, TextKey::KindNoteMol3000),
-    }
-}
