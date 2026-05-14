@@ -102,10 +102,16 @@ fn DownloadExampleRow(
     let absolute = absolute_current_url_with_query(query.trim_start_matches('?'));
     let absolute = Arc::<str>::from(absolute);
     rsx! {
-        div { class: "welcome-cli-row",
-            span { class: "welcome-cli-format mono", "{format}" }
-            code { class: "mono welcome-cli-query", tabindex: "0", "{query}" }
-            CopyButton { text: absolute, locale }
+        div { class: "notice notice-info", role: "status",
+            span { class: "notice-label", "{format}" }
+            input {
+                class: "notice-value notice-copy-field mono",
+                r#type: "text",
+                readonly: true,
+                value: "{absolute}",
+                aria_label: "{format}",
+            }
+            CopyButton { text: absolute.clone(), locale }
         }
     }
 }
@@ -113,9 +119,9 @@ fn DownloadExampleRow(
 #[component]
 fn ExRow(value: &'static str, note: &'static str) -> Element {
     rsx! {
-        li { class: "example-item",
-            code { class: "example-value", "{value}" }
-            span { class: "example-note", "{note}" }
+        li { class: "notice notice-info", role: "status",
+            span { class: "notice-label mono", "{value}" }
+            span { class: "notice-value", "{note}" }
         }
     }
 }
