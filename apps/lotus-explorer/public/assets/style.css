@@ -326,26 +326,22 @@ a:hover { text-decoration: underline; }
 .lang-switch { margin-left:auto; display:flex; gap:4px; align-items:center; }
 .lang-btn { min-width:40px; padding:3px 8px; }
 .lang-btn.active { background:var(--accent2); color:#fff; border-color:var(--accent2); }
-.page-sub    { font-size:var(--fs-1); color:var(--critical-muted); margin-top:4px; max-width: 70ch; }
+.page-sub    { font-size:var(--fs-1); color:var(--critical-muted); margin-top:4px; }
 .page-archive-note {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 8px;
-  margin-left: 0.35em;
-  font-size: var(--fs-0);
-  color: var(--text2);
+  display: inline;
+  margin-left: 0.4em;
 }
 .page-archive-label {
   font-size: var(--fs-label);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text2);
+  color: var(--text3);
   font-weight: 700;
+  margin-right: 0.25em;
 }
 .page-archive-link {
-  color: var(--wd-reference);
-  font-size: var(--fs-0);
+  color: var(--accent);
+  font-weight: 500;
 }
 .page-meta   { display: contents; }
 .meta-item   { display:inline-flex; align-items:center; gap:4px; white-space: normal; overflow-wrap: anywhere; }

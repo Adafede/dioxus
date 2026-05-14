@@ -40,7 +40,7 @@ pub fn PageHeader() -> Element {
                     " "
                     span { class: "page-archive-label", "{t(locale, TextKey::ArchiveNotice)}" }
                     a {
-                        class: "page-archive-link mono",
+                        class: "page-archive-link",
                         href: "https://doi.org/10.5281/zenodo.5794106",
                         target: "_blank",
                         rel: "noopener noreferrer",
