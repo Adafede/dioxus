@@ -4,8 +4,8 @@
    a static asset so the browser caches it and the wasm bundle is smaller.
    ───────────────────────────────────────────────────────────────────────── */
 
-@import url("./styles/accessibility_pack.css");
-@import url("./styles/responsive_pack.css");
+/* Accessibility and responsive packs are linked from index.html so they can
+   be loaded after this base stylesheet and override it predictably. */
 
 /* ── Reset & base ────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -134,7 +134,7 @@ a:hover { text-decoration: underline; }
 
 @keyframes spin    { to { transform: rotate(360deg); } }
 @keyframes fadeIn  { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:none } }
-@keyframes accentSweep { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+o@keyframes accentSweep { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
 
 ::-webkit-scrollbar { width:6px; height:6px; }
 ::-webkit-scrollbar-track { background: transparent; }
