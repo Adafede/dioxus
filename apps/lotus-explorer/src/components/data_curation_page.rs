@@ -395,7 +395,7 @@ pub fn DataCurationPage() -> Element {
                             value: "{quickstatements_value.dependencies}",
                         }
                         button {
-                            class: "btn btn-sm btn-primary",
+                            class: "btn btn-sm btn-primary btn-block",
                             r#type: "button",
                             disabled: processing_value,
                             onclick: on_second_pass,

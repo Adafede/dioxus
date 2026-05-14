@@ -13,8 +13,8 @@
   .draw-wrap { padding-left:18px; padding-right:18px; }
   .ketcher-panel { margin-left:0; margin-right:0; }
   .ketcher-iframe { height:min(70vh, 560px); min-height:420px; }
-  .app-footer { gap:10px; }
-  .app-footer { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+  .app-footer { gap:0; }
+  .app-footer { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
   .footer-row { row-gap:4px; }
   .page-brand {
     flex-wrap: wrap;
@@ -82,11 +82,11 @@
   .toolbar-actions > .dl-group {
     width:100%;
   }
-  .footer-line { grid-template-columns:1fr; gap:4px 8px; }
-  .footer-row { grid-template-columns:1fr; align-items:flex-start; gap:4px 8px; }
-  .footer-label { min-width:0; width:100%; margin-bottom:1px; }
-  .footer-links { gap:4px 8px; }
-  .footer-links li { width:100%; }
+  .footer-line { grid-template-columns:1fr; }
+  .footer-row { grid-template-columns:72px minmax(0,1fr); align-items:flex-start; }
+  .footer-label { min-width:0; }
+  .footer-links { gap:4px 6px; }
+  .footer-links li { width:auto; }
   .footer-link, .footer-aside, .footer-sep { line-height:1.35; }
   .range-pair { min-width:120px; }
   .range-inputs--pair {
