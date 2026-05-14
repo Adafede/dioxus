@@ -68,6 +68,23 @@ impl From<crate::api::ApiClientError> for RepositoryError {
     }
 }
 
+impl From<crate::core::error::AppError> for RepositoryError {
+    fn from(value: crate::core::error::AppError) -> Self {
+        match value.kind {
+            crate::core::error::ErrorKind::Network(msg) => Self::Network(msg.to_string()),
+            crate::core::error::ErrorKind::Http { status, message } => Self::Http {
+                status,
+                body: message.to_string(),
+            },
+            crate::core::error::ErrorKind::Parse(msg) => Self::Parse(msg.to_string()),
+            crate::core::error::ErrorKind::Validation(err) => {
+                Self::Other(format!("validation error: {err}"))
+            }
+            crate::core::error::ErrorKind::Unknown(msg) => Self::Other(msg.to_string()),
+        }
+    }
+}
+
 /// Boundary trait for data-access operations used by the search orchestrator.
 ///
 /// Implementations may delegate to the REST API, SPARQL, or a test stub.

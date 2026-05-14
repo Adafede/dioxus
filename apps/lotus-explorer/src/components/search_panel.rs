@@ -27,6 +27,7 @@ mod structure_model;
 use crate::i18n::{TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::classify_structure;
+use crate::components::form_inputs::SearchButton;
 use crate::state::{use_form_criteria_context, use_results_context};
 use dioxus::prelude::*;
 
@@ -55,18 +56,17 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                 FormulaSection {}
             }
 
-            button {
-                class: if is_dirty && !loading { "search-btn search-btn--dirty" } else { "search-btn" },
-                r#type: "submit",
-                disabled: loading,
-                aria_label: "{t(locale, TextKey::RunSearch)}",
-                onclick: move |_| on_search.call(()),
-                if loading {
+            if loading {
+                button {
+                    class: if is_dirty { "search-btn search-btn--dirty" } else { "search-btn" },
+                    r#type: "submit",
+                    disabled: true,
+                    aria_label: "{t(locale, TextKey::RunSearch)}",
                     span { class: "spinner-sm", "aria-hidden": "true" }
                     "{t(locale, TextKey::Searching)}"
-                } else {
-                    "{t(locale, TextKey::Search)}"
                 }
+            } else {
+                SearchButton { on_click: move |_| on_search.call(()) }
             }
         }
     }

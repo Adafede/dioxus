@@ -7,6 +7,8 @@ mod api;
 mod app;
 mod app_state;
 mod components;
+mod core;
+mod data;
 mod curation;
 mod download;
 mod export;
@@ -19,6 +21,7 @@ mod queries;
 mod repositories;
 mod sparql;
 mod state;
+mod ui;
 mod utils;
 
 use app::draw_page::DrawPage;

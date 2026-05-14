@@ -35,6 +35,16 @@ pub struct SearchOutcome {
     pub display_capped_rows: bool,
 }
 
+fn validate_search_criteria(criteria: &SearchCriteria) -> Result<(), DomainError> {
+    if criteria.taxon.trim().is_empty()
+        && criteria.smiles.trim().is_empty()
+        && !criteria.formula_enabled
+    {
+        return Err(DomainError::Validation(ValidationFault::EmptyInput));
+    }
+    Ok(())
+}
+
 /// Validate input, dispatch `SearchRequested`, then spawn `do_search`.
 pub fn start_search<R: LotusRepository>(
     criteria: Signal<SearchCriteria>,
@@ -43,13 +53,8 @@ pub fn start_search<R: LotusRepository>(
     repo: R,
 ) {
     let crit = criteria.peek().clone();
-    if !crit.is_valid() {
-        dispatch_explore_action(
-            explore,
-            ExploreAction::SearchFailed {
-                error: DomainError::Validation(ValidationFault::EmptyInput),
-            },
-        );
+    if let Err(error) = validate_search_criteria(&crit) {
+        dispatch_explore_action(explore, ExploreAction::SearchFailed { error });
         return;
     }
 

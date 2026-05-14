@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+//! Core abstractions used by runtime code.
+//!
+//! This module establishes the foundational layer, independent of UI or
+//! async frameworks, enabling testability and clear separation of concerns.
+
+pub mod error;
+
+
+
+

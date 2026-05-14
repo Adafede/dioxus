@@ -1,22 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Top-level results area component.
-//!
-//! `ResultsViewport` decides which child to render based on the coarse
-//! loading/error/empty state, deliberately subscribing to as few signals as
-//! possible so that per-phase loading-text updates don't cascade here.
+//! Top-level results area component using phase-driven rendering.
 
 use crate::components::loading::{DownloadDispatchState, DownloadOnlyState, LoadingState};
 use crate::components::results_table::ResultsTable;
 use crate::components::welcome::WelcomeScreen;
 use crate::state::use_results_context;
+use crate::ui::ContentPhase;
 use dioxus::prelude::*;
 
-/// Selects which result view to show.
-///
-/// Subscribes narrowly via fine-grained selectors — phase-specific text lives
-/// inside `LoadingState` so phase transitions do not cascade here.
 #[component]
 pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     use crate::features::explore::selectors::{use_lifecycle_selector, use_result_selector};
@@ -24,8 +17,6 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     let state = use_results_context();
     let explore = state.explore;
 
-    // Fine-grained selectors: only re-render this component when these specific
-    // fields change, not on every ExploreState mutation.
     let loading = use_lifecycle_selector(explore, |lc| lc.loading);
     let has_error = use_lifecycle_selector(explore, |lc| lc.error.is_some());
     let searched_once = use_lifecycle_selector(explore, |lc| lc.searched_once);
@@ -33,38 +24,77 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     let download_dispatching = use_lifecycle_selector(explore, |lc| lc.download_dispatching);
     let entries_empty = use_result_selector(explore, |r| r.entries.is_empty());
 
-    let loading = *loading.read();
-    let has_error = *has_error.read();
-    let searched_once = *searched_once.read();
-    let download_only_mode = *download_only_mode.read();
-    let download_dispatching = *download_dispatching.read();
-    let entries_is_empty = *entries_empty.read();
+    let phase = use_memo(move || {
+        ContentPhase::from_lifecycle(
+            *loading.read(),
+            *has_error.read(),
+            *searched_once.read(),
+            *download_only_mode.read(),
+            !*entries_empty.read(),
+        )
+    });
 
-    if loading {
-        return rsx! {
-            LoadingState {}
-        };
+    match *phase.read() {
+        ContentPhase::Welcome => rsx! { WelcomeScreen {} },
+        ContentPhase::Loading => rsx! { LoadingState {} },
+        ContentPhase::Error => rsx! {
+            div { class: "empty-state",
+                p { class: "form-hint", "An error occurred during the search." }
+            }
+        },
+        ContentPhase::Empty => rsx! {
+            div { class: "empty-state",
+                p { class: "form-hint", "No results found. Try adjusting your search criteria." }
+            }
+        },
+        ContentPhase::Loaded => rsx! { ResultsTable {} },
+        ContentPhase::DownloadOnly => {
+            if *download_dispatching.read() {
+                rsx! { DownloadDispatchState {} }
+            } else {
+                rsx! { DownloadOnlyState { on_preview } }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ui::ContentPhase;
+
+    #[test]
+    fn phase_welcome_when_initial_state() {
+        let phase = ContentPhase::from_lifecycle(false, false, false, false, false);
+        assert_eq!(phase, ContentPhase::Welcome);
     }
 
-    if entries_is_empty && !has_error && !searched_once {
-        return rsx! {
-            WelcomeScreen {}
-        };
+    #[test]
+    fn phase_loading_takes_priority() {
+        let phase = ContentPhase::from_lifecycle(true, false, true, false, true);
+        assert_eq!(phase, ContentPhase::Loading);
     }
 
-    if entries_is_empty && !has_error && download_only_mode && download_dispatching {
-        return rsx! {
-            DownloadDispatchState {}
-        };
+    #[test]
+    fn phase_error_when_error_flag_set() {
+        let phase = ContentPhase::from_lifecycle(false, true, true, false, true);
+        assert_eq!(phase, ContentPhase::Error);
     }
 
-    if entries_is_empty && !has_error && download_only_mode {
-        return rsx! {
-            DownloadOnlyState { on_preview }
-        };
+    #[test]
+    fn phase_empty_when_no_results_after_search() {
+        let phase = ContentPhase::from_lifecycle(false, false, true, false, false);
+        assert_eq!(phase, ContentPhase::Empty);
     }
 
-    rsx! {
-        ResultsTable {}
+    #[test]
+    fn phase_loaded_when_results_exist() {
+        let phase = ContentPhase::from_lifecycle(false, false, true, false, true);
+        assert_eq!(phase, ContentPhase::Loaded);
+    }
+
+    #[test]
+    fn phase_download_only_in_download_mode() {
+        let phase = ContentPhase::from_lifecycle(false, false, true, true, false);
+        assert_eq!(phase, ContentPhase::DownloadOnly);
     }
 }

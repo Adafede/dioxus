@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+pub mod form_context;
+
 use crate::app_state::AppState;
-use crate::features::explore::form_actions::{FormAction, apply_form_action};
 use crate::features::explore::search_state::ExploreState;
-use crate::models::*;
 use dioxus::prelude::*;
+
+pub use form_context::{FormCriteriaContext, use_form_criteria_context};
 
 // ── App State Context ─────────────────────────────────────────────────────
 
@@ -22,65 +24,6 @@ pub struct AppStateContext {
 impl AppStateContext {
     pub fn new(state: Signal<AppState>) -> Self {
         Self { state }
-    }
-}
-
-// ── Form Criteria Context ─────────────────────────────────────────────────────
-
-/// Context provider for the search form.
-///
-/// Provides:
-/// * A single `update(FormAction)` dispatch point — all form mutations go
-///   through here, eliminating per-field callback props.
-/// * Dirty-state tracking via a `baseline` snapshot recorded each time the
-///   user triggers a search.  Call `is_dirty()` to check whether the form
-///   has been modified since the last search; call `mark_searched()` to
-///   advance the baseline to the current criteria.
-///
-/// ## Usage
-///
-/// ```rust,ignore
-/// let ctx = use_form_criteria_context();
-/// ctx.update(FormAction::Taxon("Quercus".to_string()));
-/// if ctx.is_dirty() { /* show unsaved-changes indicator */ }
-/// ```
-#[derive(Clone, Copy)]
-pub struct FormCriteriaContext {
-    /// Live search-form criteria — read/write.
-    pub criteria: Signal<SearchCriteria>,
-    /// Snapshot at the time of the last search — used for dirty detection.
-    baseline: Signal<SearchCriteria>,
-}
-
-impl FormCriteriaContext {
-    /// Create the context.  Both signals must be initialised to the same value
-    /// (typically `initial_criteria_from_url()`) so that `is_dirty()` returns
-    /// `false` before the user touches anything.
-    pub fn new(criteria: Signal<SearchCriteria>, baseline: Signal<SearchCriteria>) -> Self {
-        Self { criteria, baseline }
-    }
-
-    /// Dispatch a form action, atomically mutating the live criteria.
-    pub fn update(&self, action: FormAction) {
-        let mut criteria = self.criteria;
-        let current = criteria.peek().clone();
-        let updated = apply_form_action(current, action);
-        *criteria.write() = updated;
-    }
-
-    /// `true` if the live criteria differ from the last-searched baseline.
-    pub fn is_dirty(&self) -> bool {
-        *self.criteria.read() != *self.baseline.read()
-    }
-
-    /// Advance the dirty baseline to the current criteria.
-    ///
-    /// Call this immediately before (or at the same tick as) `start_search` so
-    /// that the search button returns to its non-dirty style.
-    pub fn mark_searched(&self) {
-        let current = self.criteria.peek().clone();
-        let mut baseline = self.baseline;
-        *baseline.write() = current;
     }
 }
 
@@ -116,16 +59,12 @@ pub fn use_results_context() -> ResultsContext {
     use_context::<ResultsContext>()
 }
 
-pub fn use_form_criteria_context() -> FormCriteriaContext {
-    use_context::<FormCriteriaContext>()
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::features::explore::form_actions::{FormAction, apply_form_action};
+    use crate::models::SearchCriteria;
 
     #[test]
     fn apply_form_action_taxon_round_trips() {

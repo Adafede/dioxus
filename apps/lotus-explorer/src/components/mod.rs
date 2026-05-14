@@ -11,3 +11,6 @@ pub mod results_table;
 pub mod results_viewport;
 pub mod search_panel;
 pub mod welcome;
+
+pub mod form_inputs;
+

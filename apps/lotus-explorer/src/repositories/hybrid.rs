@@ -10,6 +10,7 @@
 //!    so the caller falls back to direct SPARQL execution.
 
 use crate::api;
+use crate::data::api::ApiLayer;
 use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
 use crate::repositories::{LotusRepository, RepositoryError};
@@ -37,8 +38,10 @@ impl LotusRepository for HybridRepository {
     ) -> Option<Result<SearchResponse, RepositoryError>> {
         // No API base → caller skips the API path entirely.
         api::api_base_url()?;
+        let api_layer = ApiLayer::new();
         Some(
-            api::search(criteria, limit, include_counts)
+            api_layer
+                .search(criteria, limit, include_counts)
                 .await
                 .map_err(Into::into),
         )
