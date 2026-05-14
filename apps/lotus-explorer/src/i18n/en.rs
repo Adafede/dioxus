@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+//! English translation table.
+
+use crate::i18n::TextKey;
+
+pub fn en_t(key: TextKey) -> &'static str {
+    match key {
+        TextKey::Share => "Share",
+        TextKey::Copy => "Copy",
+        TextKey::Copied => "Copied!",
+        TextKey::CopyToClipboard => "Copy to clipboard",
+        TextKey::Notice => "Notice",
+        TextKey::Error => "Error",
+        TextKey::DismissError => "Dismiss error",
+        TextKey::FiltersShow => "Show filters",
+        TextKey::FiltersHide => "Hide filters",
+        TextKey::Language => "Language",
+        TextKey::PageTitle => "LOTUS Knowledge Explorer",
+        TextKey::PageSubtitle => "Natural product occurrences - compound, taxon, reference.",
+        TextKey::ResolvedTaxon => "Resolved taxon",
+        TextKey::QueryHash => "Query hash",
+        TextKey::ResultHash => "Result hash",
+        TextKey::TotalMatches => "Total matches",
+        TextKey::CopyTaxonQid => "Copy taxon QID",
+        TextKey::CopyFullQueryHash => "Copy full query hash (SHA-256)",
+        TextKey::CopyFullResultHash => "Copy full result hash (SHA-256)",
+        TextKey::CopyShareableLink => "Copy shareable link",
+        TextKey::CopySparqlQuery => "Copy SPARQL query",
+        TextKey::ArchiveNotice => "Frozen archive:",
+        TextKey::Unique => "Unique",
+        TextKey::LoadingTitle => "Querying Wikidata via QLever...",
+        TextKey::LoadingHint => "Large result sets may take several seconds.",
+        TextKey::LoadingResolvingTaxon => "Resolving taxon...",
+        TextKey::LoadingCounting => "Counting matches...",
+        TextKey::LoadingFetchingPreview => "Fetching preview rows...",
+        TextKey::LoadingRendering => "Rendering table...",
+        TextKey::Retry => "Retry",
+        TextKey::ErrorHintValidation => "Please adjust your query input and try again.",
+        TextKey::ErrorHintNetwork => "Network issue detected. Retry may succeed.",
+        TextKey::ErrorHintParse => "Response parsing failed. Retry or refine query.",
+        TextKey::ErrorHintUnknown => "Unexpected error. Retry may help.",
+        TextKey::SkipToResults => "Skip to results",
+        TextKey::WelcomeTitle => "Browse natural product occurrences",
+        TextKey::WelcomeTry => "Try",
+        TextKey::WelcomeLeadA => {
+            "Every row ties a compound to the organism it has been reported from, "
+        }
+        TextKey::WelcomeLeadB => {
+            "together with the primary literature reference. Data comes from the "
+        }
+        TextKey::WelcomeLeadC => ", stored on ",
+        TextKey::WelcomeLeadD => " and queried via ",
+        TextKey::WelcomeLeadE => ".",
+        TextKey::ExampleGentiana => "Enter a taxon name or a Wikidata QID",
+        TextKey::ExampleAllTriples => "All LOTUS compound-taxon-reference triples",
+        TextKey::ExampleSmilesOnly => "Paste a SMILES or Molfile in the structure box",
+        TextKey::ExampleQueryExecute => "Execute",
+        TextKey::ExampleQueryTaxon => "Download CSV",
+        TextKey::ExampleQueryStructure => "Download JSON",
+        TextKey::ExampleQueryAdvanced => "Download RDF",
+        TextKey::WelcomeProgrammaticDownload => {
+            "Programmatic URL patterns (execute query, or download CSV / JSON / RDF):"
+        }
+        TextKey::LabelLanguagePolicy => {
+            "Labels are resolved with 'mul' first, then 'en' fallback for reproducible and comparable results across UI languages."
+        }
+        TextKey::SearchFilters => "Search filters",
+        TextKey::Taxon => "Taxon",
+        TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
+        TextKey::TaxonHint => "Name, Wikidata QID or * for the full dataset.",
+        TextKey::StructureSmilesOrMol => "Structure - SMILES or Molfile",
+        TextKey::StructurePlaceholder => "c1ccccc1   - or paste a Molfile (V2000 / V3000) block",
+        TextKey::StructureHintEmpty => {
+            "Optional. One-line SMILES or a full Molfile - paste with trailing \"M  END\"."
+        }
+        TextKey::Substructure => "Substructure",
+        TextKey::Similarity => "Similarity",
+        TextKey::StructureSearchMode => "Structure search mode",
+        TextKey::EditCopyDaylightSmiles => "Edit -> Copy as Daylight SMILES",
+        TextKey::CopyExtendedSmilesMol => "Copy as Extended SMILES / MOL V3000",
+        TextKey::FormulaFilter => "Formula filter",
+        TextKey::ExactFormula => "Exact formula",
+        TextKey::MinCount => "min",
+        TextKey::MaxCount => "max",
+        TextKey::MinCountAria => "minimum count",
+        TextKey::MaxCountAria => "maximum count",
+        TextKey::ElementRequirement => "requirement",
+        TextKey::ElementStateAllowed => "allowed",
+        TextKey::ElementStateRequired => "required",
+        TextKey::ElementStateExcluded => "excluded",
+        TextKey::Search => "Search",
+        TextKey::Searching => "Searching...",
+        TextKey::MolecularMass => "Molecular Mass (Da)",
+        TextKey::Min => "Min",
+        TextKey::Max => "Max",
+        TextKey::PublicationYear => "Publication Year",
+        TextKey::YearFrom => "From",
+        TextKey::YearTo => "To",
+        TextKey::RunSearch => "Run search",
+        TextKey::KetcherSummary => "Structure editor (Ketcher)",
+        TextKey::KetcherHintA => "Need to draw or look up a structure? Open the ",
+        TextKey::KetcherHintB => " tab, then copy with ",
+        TextKey::KetcherHintC => " (or ",
+        TextKey::KetcherHintD => ") and use it in the Explorer structure field.",
+        TextKey::KetcherIframeTitle => "Ketcher structure editor",
+        TextKey::KindNoteSmiles => "  Sent as a single-line SPARQL literal.",
+        TextKey::KindNoteMol2000 => "  Forwarded verbatim to SACHEM scoredSubstructureSearch.",
+        TextKey::KindNoteMol3000 => {
+            "  Forwarded verbatim to SACHEM scoredSubstructureSearch (CTAB v3000)."
+        }
+        TextKey::DatasetStatistics => "Dataset statistics",
+        TextKey::DownloadResults => "Download results",
+        TextKey::PreparingDownload => "Preparing download...",
+        TextKey::StartingCsvDownload => "Starting CSV download...",
+        TextKey::PreparingJsonDownload => "Preparing JSON download...",
+        TextKey::PreparingRdfDownload => "Preparing RDF download...",
+        TextKey::DownloadCsvTitle => "Download results as CSV",
+        TextKey::DownloadCsvLabel => "Download CSV",
+        TextKey::DownloadJsonTitle => "Download results as JSON",
+        TextKey::DownloadJsonLabel => "Download JSON",
+        TextKey::DownloadRdfTitle => "Download results as RDF (Turtle)",
+        TextKey::DownloadRdfLabel => "Download RDF",
+        TextKey::DownloadMetadataTitle => "Download Schema.org metadata (JSON-LD)",
+        TextKey::DownloadMetadataLabel => "Download metadata",
+        TextKey::OpenInQlever => "Open in QLever",
+        TextKey::OpenInQleverTitle => "Open this query in the QLever web interface",
+        TextKey::SparqlQuery => "SPARQL query",
+        TextKey::NoResults => "No results. Try broadening your search.",
+        TextKey::DisplayCappedHint => {
+            "Displaying the first rows only for memory safety on this device. Counts remain exact."
+        }
+        TextKey::Structure => "Structure",
+        TextKey::Compound => "Compound",
+        TextKey::Mass => "Mass",
+        TextKey::Formula => "Formula",
+        TextKey::TaxonCol => "Taxon",
+        TextKey::Reference => "Reference",
+        TextKey::Year => "Year",
+        TextKey::FooterData => "Data",
+        TextKey::FooterCitation => "Citation",
+        TextKey::FooterCode => "Code",
+        TextKey::FooterArchive => "Archive",
+        TextKey::FooterPrograms => "Programs",
+        TextKey::FooterLicense => "License",
+        TextKey::FooterForData => " for data ",
+        TextKey::FooterForCode => " for code",
+        TextKey::TableTriplesAria => "Compound-taxon-reference triples",
+        TextKey::OpenFullSizeDepiction => "Open full-size depiction",
+        TextKey::OpenInWikidata => "Open in Wikidata",
+        TextKey::OpenInScholia => "Open in Scholia",
+        TextKey::OpenDoi => "Open DOI",
+        TextKey::Statement => "Statement",
+    }
+}
