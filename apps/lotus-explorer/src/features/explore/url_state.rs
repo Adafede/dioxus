@@ -2,13 +2,34 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::app::view::AppView;
+use crate::download::DownloadFormat;
 use crate::i18n::Locale;
 use crate::models::{ElementState, SearchCriteria, SmilesSearchType};
 use std::collections::BTreeMap;
 
-pub fn initial_criteria_from_url() -> SearchCriteria {
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct InitialDownloadState {
+    pub pending_format: Option<DownloadFormat>,
+    pub pending_invalid_format: Option<String>,
+    pub direct_execute: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct InitialUrlState {
+    pub criteria: SearchCriteria,
+    pub view: AppView,
+    pub locale: Locale,
+    pub download: InitialDownloadState,
+}
+
+pub fn initial_url_state() -> InitialUrlState {
     let params = read_url_query_params();
-    parse_criteria_from_params(&params)
+    InitialUrlState {
+        criteria: parse_criteria_from_params(&params),
+        view: AppView::from_query_value(params.get("view").map(String::as_str)),
+        locale: Locale::detect(params.get("lang").map(String::as_str).unwrap_or("")),
+        download: parse_startup_action_from_params(&params),
+    }
 }
 
 pub fn parse_criteria_from_params(params: &BTreeMap<String, String>) -> SearchCriteria {
@@ -178,29 +199,6 @@ pub fn absolute_current_url_with_query(query: &str) -> String {
     format!("?{query}")
 }
 
-pub fn initial_view_from_url() -> AppView {
-    let params = read_url_query_params();
-    AppView::from_query_value(params.get("view").map(String::as_str))
-}
-
-pub fn initial_locale_from_url() -> Locale {
-    let params = read_url_query_params();
-    let lang = params.get("lang").map(|v| v.as_str()).unwrap_or("");
-    Locale::detect(lang)
-}
-
-pub fn initial_download_format_from_url() -> Option<String> {
-    let params = read_url_query_params();
-    let (download, _execute) = parse_startup_action_from_params(&params);
-    download
-}
-
-pub fn initial_execute_from_url() -> bool {
-    let params = read_url_query_params();
-    let (_download, execute) = parse_startup_action_from_params(&params);
-    execute
-}
-
 pub fn persist_locale_query_param(locale: Locale) {
     #[cfg(target_arch = "wasm32")]
     {
@@ -258,9 +256,7 @@ pub fn persist_view_query_param(view: AppView) {
     }
 }
 
-pub fn parse_startup_action_from_params(
-    params: &BTreeMap<String, String>,
-) -> (Option<String>, bool) {
+pub fn parse_startup_action_from_params(params: &BTreeMap<String, String>) -> InitialDownloadState {
     let wants_download = params
         .get("download")
         .map(|v| is_true_flag(v))
@@ -270,17 +266,23 @@ pub fn parse_startup_action_from_params(
             .get("execute")
             .map(|v| is_true_flag(v))
             .unwrap_or(false);
-        return (None, wants_execute);
+        return InitialDownloadState {
+            direct_execute: wants_execute,
+            ..InitialDownloadState::default()
+        };
     }
-    (
-        Some(
-            params
-                .get("format")
-                .map(|v| v.to_ascii_lowercase())
-                .unwrap_or_else(|| "csv".to_string()),
-        ),
-        false,
-    )
+
+    let requested = params
+        .get("format")
+        .map(|v| v.to_ascii_lowercase())
+        .unwrap_or_else(|| "csv".to_string());
+    let pending_format = DownloadFormat::from_str(&requested);
+
+    InitialDownloadState {
+        pending_format,
+        pending_invalid_format: pending_format.is_none().then_some(requested),
+        direct_execute: false,
+    }
 }
 
 pub fn is_true_flag(v: &str) -> bool {
@@ -367,9 +369,10 @@ mod tests {
     fn startup_action_execute_only() {
         let mut params = BTreeMap::new();
         params.insert("execute".into(), "true".into());
-        let (download, execute) = parse_startup_action_from_params(&params);
-        assert!(download.is_none());
-        assert!(execute);
+        let startup = parse_startup_action_from_params(&params);
+        assert!(startup.pending_format.is_none());
+        assert!(startup.pending_invalid_format.is_none());
+        assert!(startup.direct_execute);
     }
 
     #[test]
@@ -432,8 +435,21 @@ mod tests {
         params.insert("download".into(), "yes".into());
         params.insert("execute".into(), "true".into());
         params.insert("format".into(), "rdf".into());
-        let (download, execute) = parse_startup_action_from_params(&params);
-        assert_eq!(download.as_deref(), Some("rdf"));
-        assert!(!execute);
+        let startup = parse_startup_action_from_params(&params);
+        assert_eq!(startup.pending_format, Some(DownloadFormat::Rdf));
+        assert!(startup.pending_invalid_format.is_none());
+        assert!(!startup.direct_execute);
+    }
+
+    #[test]
+    fn startup_action_invalid_download_format_is_preserved() {
+        let mut params = BTreeMap::new();
+        params.insert("download".into(), "1".into());
+        params.insert("format".into(), "ttl".into());
+
+        let startup = parse_startup_action_from_params(&params);
+        assert!(startup.pending_format.is_none());
+        assert_eq!(startup.pending_invalid_format.as_deref(), Some("ttl"));
+        assert!(!startup.direct_execute);
     }
 }

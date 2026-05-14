@@ -21,6 +21,7 @@
 //! that truly belong at the app root.
 
 use crate::app::view::AppView;
+use crate::download::DownloadFormat;
 
 /// App-level state.  One signal of this type lives at the root of `App`.
 ///
@@ -65,8 +66,12 @@ impl Default for AppState {
 /// Download action orchestration and pending-format queue.
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct DownloadState {
-    /// Format string for a pending programmatic download (e.g. `"csv"`).
-    pub pending_format: Option<String>,
+    /// Parsed pending programmatic download format.
+    pub pending_format: Option<DownloadFormat>,
+
+    /// Raw invalid format from URL (`?download=true&format=...`) preserved so
+    /// startup validation can report the exact unsupported value once.
+    pub pending_invalid_format: Option<String>,
 
     /// `true` when the URL included `?execute=true` (direct search + preview).
     pub direct_execute: bool,
@@ -99,6 +104,7 @@ mod tests {
     fn download_state_default_is_inactive() {
         let state = DownloadState::default();
         assert!(state.pending_format.is_none());
+        assert!(state.pending_invalid_format.is_none());
         assert!(!state.direct_execute);
     }
 
@@ -119,7 +125,8 @@ mod tests {
     #[test]
     fn download_state_with_pending_format_is_not_default() {
         let s = DownloadState {
-            pending_format: Some("csv".into()),
+            pending_format: Some(DownloadFormat::Csv),
+            pending_invalid_format: None,
             direct_execute: false,
         };
         assert_ne!(s, DownloadState::default());
@@ -156,9 +163,20 @@ mod tests {
     fn download_state_direct_execute_flag_round_trips() {
         let s = DownloadState {
             pending_format: None,
+            pending_invalid_format: None,
             direct_execute: true,
         };
         assert!(s.direct_execute);
         assert_ne!(s, DownloadState::default());
+    }
+
+    #[test]
+    fn download_state_can_hold_invalid_startup_format() {
+        let s = DownloadState {
+            pending_format: None,
+            pending_invalid_format: Some("ttl".into()),
+            direct_execute: false,
+        };
+        assert_eq!(s.pending_invalid_format.as_deref(), Some("ttl"));
     }
 }

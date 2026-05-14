@@ -165,15 +165,6 @@ pub fn download_dispatch_error(format: &str, reason: &str) {
     );
 }
 
-pub fn download_dispatch_unsupported_format(format: &str) {
-    log_warn_evt(
-        "download",
-        "dispatch",
-        "unsupported_format",
-        Some(&format!("format={format}")),
-    );
-}
-
 pub fn query_build_sachem_query_created(has_service: bool) {
     log_debug_evt(
         "search",

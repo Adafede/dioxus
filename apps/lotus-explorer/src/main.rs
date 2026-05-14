@@ -42,9 +42,7 @@ use features::explore::download_dispatch::{use_download_dispatch_effect, use_sta
 use features::explore::orchestrator::start_search;
 use features::explore::search_state::{ExploreState, dispatch_explore_action};
 use features::explore::url_state::{
-    build_shareable_url, initial_criteria_from_url, initial_download_format_from_url,
-    initial_execute_from_url, initial_locale_from_url, initial_view_from_url,
-    persist_locale_query_param, persist_view_query_param,
+    build_shareable_url, initial_url_state, persist_locale_query_param, persist_view_query_param,
 };
 use hooks::LocaleProvider;
 use i18n::{Locale, TextKey, t};
@@ -66,22 +64,27 @@ fn main() {
 #[component]
 fn App() -> Element {
     // ── Initialise from URL parameters ────────────────────────────────────────
-    let initial_criteria = initial_criteria_from_url();
+    let startup = initial_url_state();
+    let initial_view = startup.view;
+    let initial_locale = startup.locale;
+    let initial_download = startup.download;
+    let initial_criteria = startup.criteria;
     let initial_criteria_for_baseline = initial_criteria.clone();
 
     // ── Canonical signals (each is sole owner of its data) ────────────────────
     let app_state: Signal<AppState> = use_signal(|| AppState {
-        view: initial_view_from_url(),
+        view: initial_view,
         download: DownloadState {
-            pending_format: initial_download_format_from_url(),
-            direct_execute: initial_execute_from_url(),
+            pending_format: initial_download.pending_format,
+            pending_invalid_format: initial_download.pending_invalid_format,
+            direct_execute: initial_download.direct_execute,
         },
         ..AppState::default()
     });
     let criteria: Signal<SearchCriteria> = use_signal(move || initial_criteria.clone());
     let criteria_baseline: Signal<SearchCriteria> =
         use_signal(move || initial_criteria_for_baseline.clone());
-    let locale: Signal<Locale> = use_signal(initial_locale_from_url);
+    let locale: Signal<Locale> = use_signal(|| initial_locale);
     let explore: Signal<ExploreState> = use_signal(ExploreState::default);
 
     let locale_value = *locale.read();
