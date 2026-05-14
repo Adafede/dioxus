@@ -72,9 +72,12 @@ pub fn MassRangeInput() -> Element {
     let max_value = ctx.criteria.read().mass_max;
 
     rsx! {
-        fieldset { class: "form-section", style: "border:0;padding:0;margin:0;",
-            legend { class: "form-label", "{t(locale, TextKey::MolecularMass)}" }
-            div { class: "range-inputs",
+        div {
+            class: "form-section",
+            role: "group",
+            aria_labelledby: "mass-range-label",
+            p { id: "mass-range-label", class: "form-label", "{t(locale, TextKey::MolecularMass)}" }
+            div { class: "range-inputs range-inputs--pair",
                 div { class: "range-pair",
                     label { class: "form-label sm", r#for: "mass-min", "{t(locale, TextKey::Min)}" }
                     input {
@@ -92,7 +95,7 @@ pub fn MassRangeInput() -> Element {
                         },
                     }
                 }
-                span { class: "range-sep", "–" }
+                span { class: "range-sep range-sep--pair", "aria-hidden": "true", "–" }
                 div { class: "range-pair",
                     label { class: "form-label sm", r#for: "mass-max", "{t(locale, TextKey::Max)}" }
                     input {
@@ -128,9 +131,12 @@ pub fn YearRangeInput() -> Element {
     let current = normalized_year_input_max(crate::models::current_year());
 
     rsx! {
-        fieldset { class: "form-section", style: "border:0;padding:0;margin:0;",
-            legend { class: "form-label", "{t(locale, TextKey::PublicationYear)}" }
-            div { class: "range-inputs",
+        div {
+            class: "form-section",
+            role: "group",
+            aria_labelledby: "year-range-label",
+            p { id: "year-range-label", class: "form-label", "{t(locale, TextKey::PublicationYear)}" }
+            div { class: "range-inputs range-inputs--pair",
                 div { class: "range-pair",
                     label { class: "form-label sm", r#for: "year-min", "{t(locale, TextKey::YearFrom)}" }
                     input {
@@ -148,7 +154,7 @@ pub fn YearRangeInput() -> Element {
                         },
                     }
                 }
-                span { class: "range-sep", "–" }
+                span { class: "range-sep range-sep--pair", "aria-hidden": "true", "–" }
                 div { class: "range-pair",
                     label { class: "form-label sm", r#for: "year-max", "{t(locale, TextKey::YearTo)}" }
                     input {

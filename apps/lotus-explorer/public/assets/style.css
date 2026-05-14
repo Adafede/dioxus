@@ -10,7 +10,7 @@
 /* ── Reset & base ────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
-html, body, #main {
+chtml, body, #main {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
@@ -286,6 +286,27 @@ a:hover { text-decoration: underline; }
   transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 .page-brand  { display:flex; align-items:center; gap:12px; }
+.page-logo-link,
+.sidebar-logo-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  text-decoration: none;
+}
+.page-logo-link {
+  width: 42px;
+  height: 42px;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, var(--bg2));
+}
+.page-logo {
+  width: 28px;
+  height: 28px;
+}
+.sidebar-logo-link {
+  border-radius: 14px;
+}
 .page-title  { font-size:var(--fs-4); font-weight:800; letter-spacing:-.024em; line-height:1.06; color:var(--wd-reference); }
 .page-title-link,
 .page-title-link:visited {
@@ -481,6 +502,31 @@ a:hover { text-decoration: underline; }
 .range-inputs    { display:flex; align-items:flex-end; gap:8px; }
 .range-pair      { display:flex; flex-direction:column; gap:3px; }
 .range-sep       { color:var(--text3); padding-bottom:8px; }
+
+/* Make two-ended range filters responsive without affecting formula rows. */
+.range-inputs--pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 8px;
+}
+.range-inputs--pair .range-pair {
+  min-width: 0;
+}
+.range-inputs--pair .form-input {
+  width: 100%;
+}
+
+/* Normalize number input chrome for consistent borders on Safari/Firefox. */
+input[type="number"].form-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+input[type="number"].form-input::-webkit-outer-spin-button,
+input[type="number"].form-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 
 /* Structure section */
 .form-textarea.mono, .mono { font-family: var(--mono); }

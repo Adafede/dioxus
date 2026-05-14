@@ -1,7 +1,7 @@
 /* Responsive breakpoint pack extracted from style.css for maintainability. */
 
 @media (max-width:768px) {
-  .app-layout   { flex-direction:column; height:auto; min-height:100dvh; overflow:visible; padding:0; gap:0; }
+s  .app-layout   { flex-direction:column; height:auto; min-height:100dvh; overflow:visible; padding:0; gap:0; }
   .sidebar      { width:100%; height:auto; max-height:none; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }
   .main-content { height:auto; min-height:0; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }
   .page-header, .welcome, .results-wrap, .app-footer {
@@ -67,6 +67,13 @@
   .footer-links li { width:100%; }
   .footer-link, .footer-aside, .footer-sep { line-height:1.35; }
   .range-pair { min-width:120px; }
+  .range-inputs--pair {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .range-sep--pair {
+    display: none;
+  }
 
   .form-input, .form-textarea, .search-btn, select, input, textarea { font-size:16px; }
   .btn, .search-btn { min-height: 44px; }

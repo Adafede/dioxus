@@ -23,12 +23,23 @@ pub fn PageHeader() -> Element {
     rsx! {
         div { class: "page-header",
             div { class: "page-brand",
+                a {
+                    class: "page-logo-link",
+                    href: "?",
+                    aria_label: "{t(locale, TextKey::PageTitle)}",
+                    img {
+                        class: "page-logo",
+                        src: "assets/lotus_ferris.svg",
+                        alt: "",
+                        "aria-hidden": "true",
+                    }
+                    span { class: "sr-only", "{t(locale, TextKey::PageTitle)}" }
+                }
                 h1 { class: "page-title",
                     a {
                         id: PAGE_TITLE_ID,
                         class: "page-title-link",
                         href: "?",
-                        title: "{t(locale, TextKey::PageTitle)}",
                         aria_label: "{t(locale, TextKey::PageTitle)}",
                         "{t(locale, TextKey::PageTitle)}"
                     }
