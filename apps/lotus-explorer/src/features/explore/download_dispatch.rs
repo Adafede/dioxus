@@ -7,7 +7,7 @@ use crate::app_state::AppState;
 use crate::download::execute_download;
 use crate::export;
 use crate::features::explore::actions::ExploreAction;
-use crate::features::explore::orchestrator::start_search;
+use crate::features::explore::orchestrator::{SearchTaskController, start_search};
 use crate::features::explore::search_state::{ExploreState, dispatch_explore_action};
 use crate::features::explore::types::{DomainError, ValidationFault};
 use crate::models::SearchCriteria;
@@ -21,6 +21,7 @@ pub fn use_startup_effect<R: LotusRepository>(
     mut app_state: Signal<AppState>,
     explore: Signal<ExploreState>,
     criteria: Signal<SearchCriteria>,
+    search_tasks: SearchTaskController,
     repo: R,
 ) {
     let repo_for_effect = repo.clone();
@@ -55,7 +56,13 @@ pub fn use_startup_effect<R: LotusRepository>(
             } else {
                 telemetry::search_startup_auto_search_execute();
             }
-            start_search(criteria, pending.is_some(), explore, repo);
+            start_search(
+                criteria,
+                pending.is_some(),
+                explore,
+                search_tasks.clone(),
+                repo,
+            );
             app_state.with_mut(|state| {
                 if state.download.direct_execute {
                     state.download.direct_execute = false;

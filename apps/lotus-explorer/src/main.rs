@@ -39,7 +39,7 @@ use dioxus::prelude::*;
 use download::DownloadFormat;
 use features::explore::actions::ExploreAction;
 use features::explore::download_dispatch::{use_download_dispatch_effect, use_startup_effect};
-use features::explore::orchestrator::start_search;
+use features::explore::orchestrator::{SearchTaskController, start_search};
 use features::explore::search_state::{ExploreState, dispatch_explore_action};
 use features::explore::url_state::{
     build_shareable_url, initial_url_state, persist_locale_query_param, persist_view_query_param,
@@ -95,6 +95,7 @@ fn App() -> Element {
     let _form_criteria_ctx =
         use_context_provider(move || FormCriteriaContext::new(criteria, criteria_baseline));
     let _results_ctx = use_context_provider(move || ResultsContext::new(explore));
+    let search_task_controller = use_context_provider(SearchTaskController::new);
 
     // ── Shareable URL ─────────────────────────────────────────────────────────
     let shareable_url =
@@ -105,16 +106,39 @@ fn App() -> Element {
     use_effect(move || persist_view_query_param(app_state.read().view));
 
     // ── Feature hooks ─────────────────────────────────────────────────────────
-    use_startup_effect(app_state, explore, criteria, repo);
+    use_startup_effect(
+        app_state,
+        explore,
+        criteria,
+        search_task_controller.clone(),
+        repo,
+    );
     use_download_dispatch_effect(app_state, explore);
 
     // ── Event handlers (capture App-scope values) ─────────────────────────────
     let form_ctx = use_form_criteria_context();
+    let search_tasks_for_search = search_task_controller.clone();
+    let search_tasks_for_preview = search_task_controller.clone();
+    let search_tasks_for_retry = search_task_controller.clone();
     let on_search = move |_: ()| {
         form_ctx.mark_searched();
-        start_search(criteria, false, explore, repo);
+        start_search(
+            criteria,
+            false,
+            explore,
+            search_tasks_for_search.clone(),
+            repo,
+        );
     };
-    let on_preview = move |_: ()| start_search(criteria, false, explore, repo);
+    let on_preview = move |_: ()| {
+        start_search(
+            criteria,
+            false,
+            explore,
+            search_tasks_for_preview.clone(),
+            repo,
+        )
+    };
 
     // ── Layout ────────────────────────────────────────────────────────────────
     let current_view = app_state.read().view;
@@ -149,7 +173,7 @@ fn App() -> Element {
                         TaxonNotice {}
                         ErrorNotice {
                             on_dismiss: move |_| dispatch_explore_action(explore, ExploreAction::ErrorDismissed),
-                            on_retry: move |_| start_search(criteria, false, explore, repo),
+                            on_retry: move |_| start_search(criteria, false, explore, search_tasks_for_retry.clone(), repo),
                         }
                         ResultsViewport { on_preview }
                     } else if current_view == AppView::Curation {

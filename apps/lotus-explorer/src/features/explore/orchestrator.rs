@@ -25,18 +25,24 @@ use dioxus::core::Task;
 use dioxus::prelude::*;
 use shared::lotus::models::runtime_table_row_limit;
 use std::cell::RefCell;
+use std::rc::Rc;
 
-thread_local! {
-    static IN_FLIGHT_SEARCH_TASK: RefCell<Option<Task>> = const { RefCell::new(None) };
+#[derive(Clone, Default)]
+pub struct SearchTaskController {
+    in_flight: Rc<RefCell<Option<Task>>>,
 }
 
-fn replace_in_flight_search_task(next: Task) {
-    IN_FLIGHT_SEARCH_TASK.with(|slot| {
-        if let Some(prev) = slot.borrow_mut().replace(next) {
+impl SearchTaskController {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn replace_in_flight(&self, next: Task) {
+        if let Some(prev) = self.in_flight.borrow_mut().replace(next) {
             prev.cancel();
             telemetry::search_inflight_cancelled();
         }
-    });
+    }
 }
 
 /// The raw outcome from a completed `do_search`.
@@ -65,6 +71,7 @@ pub fn start_search<R: LotusRepository>(
     criteria: Signal<SearchCriteria>,
     direct_download_mode: bool,
     explore: Signal<ExploreState>,
+    task_controller: SearchTaskController,
     repo: R,
 ) {
     let crit = criteria.peek().clone();
@@ -128,7 +135,7 @@ pub fn start_search<R: LotusRepository>(
             }
         }
     });
-    replace_in_flight_search_task(task);
+    task_controller.replace_in_flight(task);
 }
 
 /// Execute the full search pipeline; returns a [`SearchOutcome`] or a
