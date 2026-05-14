@@ -297,14 +297,10 @@ a:hover { text-decoration: underline; }
   border-radius: 999px;
   text-decoration: none;
 }
-.page-logo {
-  width: 28px;
-  height: 28px;
-}
 .page-home-link {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
   min-width: 0;
 }
 .page-title-text {

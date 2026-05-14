@@ -74,7 +74,6 @@
 
   .page-title { font-size:clamp(1.1rem, 1.02rem + 0.45vw, 1.25rem); }
   .page-title-text { line-height:1.1; }
-  .page-logo { width:24px; height:24px; }
   .page-sub { font-size:0.875rem; }
   .sidebar-logo-wrap { padding-top:10px; padding-bottom:12px; }
   .sidebar-logo { width:120px; height:120px; }
@@ -206,6 +205,43 @@
   .view-switch .btn {
     width:100%;
     flex:1 1 100%;
+  }
+}
+
+@media (max-width:360px) {
+  .page-header,
+  .welcome,
+  .results-wrap,
+  .app-footer,
+  .draw-wrap {
+    padding-left:8px;
+    padding-right:8px;
+  }
+
+  .page-header-meta,
+  .notice,
+  .ketcher-panel {
+    margin-left:8px;
+    margin-right:8px;
+  }
+
+  .main-content > .notice {
+    padding-left:8px;
+    padding-right:8px;
+  }
+
+  .filters-toggle {
+    width:calc(100% - 16px);
+    margin:8px;
+  }
+
+  .lang-switch .btn,
+  .view-switch .btn {
+    flex:1 1 100%;
+  }
+
+  .page-title {
+    font-size:1.02rem;
   }
 }
 

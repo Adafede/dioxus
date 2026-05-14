@@ -28,12 +28,6 @@ pub fn PageHeader() -> Element {
                         class: "page-title-link page-home-link",
                         href: "?",
                         aria_label: "{t(locale, TextKey::GoToHomepage)}",
-                        img {
-                            class: "page-logo",
-                            src: "assets/lotus_ferris.svg",
-                            alt: "",
-                            "aria-hidden": "true",
-                        }
                         span { class: "page-title-text", "{t(locale, TextKey::PageTitle)}" }
                     }
                 }
