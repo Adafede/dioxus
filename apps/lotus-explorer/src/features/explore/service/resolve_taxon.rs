@@ -89,10 +89,7 @@ pub async fn resolve<R: LotusRepository>(
     let csv = repo
         .sparql_bytes(&query)
         .await
-        .map_err(|source| DomainError::Transport {
-            stage: QueryStage::TaxonSearch,
-            source,
-        })?;
+        .map_err(DomainError::transport_at(QueryStage::TaxonSearch))?;
 
     let taxon_elapsed = perf::end_timer("LOTUS:taxon_resolution", taxon_timer);
     metrics.add_network(taxon_elapsed);

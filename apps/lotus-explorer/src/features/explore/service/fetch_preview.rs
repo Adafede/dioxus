@@ -61,9 +61,7 @@ pub async fn fetch<R: LotusRepository>(
                 // On WASM the fallback is disabled to avoid OOM, but only map to
                 // MemoryLimit when the underlying error actually indicates memory pressure.
                 if is_probable_wasm_memory_limit(&err) {
-                    return Err(DomainError::MemoryLimit {
-                        stage: QueryStage::CountAndPreview,
-                    });
+                    return Err(DomainError::memory_limit(QueryStage::CountAndPreview));
                 }
                 return Err(err);
             }
@@ -113,13 +111,10 @@ async fn fetch_two_phase<R: LotusRepository>(
     {
         telemetry::counting_sequential_fetch_wasm();
         let count_timer = perf::start_timer("LOTUS:count_query");
-        let counts_csv =
-            repo.sparql_bytes(count_query)
-                .await
-                .map_err(|source| DomainError::Transport {
-                    stage: QueryStage::CountQuery,
-                    source,
-                })?;
+        let counts_csv = repo
+            .sparql_bytes(count_query)
+            .await
+            .map_err(DomainError::transport_at(QueryStage::CountQuery))?;
         let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
         metrics.add_network(count_elapsed);
 
@@ -142,13 +137,10 @@ async fn fetch_two_phase<R: LotusRepository>(
         on_fetching();
 
         let display_timer = perf::start_timer("LOTUS:display_query");
-        let display_csv =
-            repo.sparql_bytes(display_query)
-                .await
-                .map_err(|source| DomainError::Transport {
-                    stage: QueryStage::DisplayQuery,
-                    source,
-                })?;
+        let display_csv = repo
+            .sparql_bytes(display_query)
+            .await
+            .map_err(DomainError::transport_at(QueryStage::DisplayQuery))?;
         let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
         metrics.add_network(display_elapsed);
 
@@ -182,18 +174,12 @@ async fn fetch_two_phase<R: LotusRepository>(
             async {
                 repo.sparql_bytes(count_query)
                     .await
-                    .map_err(|source| DomainError::Transport {
-                        stage: QueryStage::CountQuery,
-                        source,
-                    })
+                    .map_err(DomainError::transport_at(QueryStage::CountQuery))
             },
             async {
                 repo.sparql_bytes(display_query)
                     .await
-                    .map_err(|source| DomainError::Transport {
-                        stage: QueryStage::DisplayQuery,
-                        source,
-                    })
+                    .map_err(DomainError::transport_at(QueryStage::DisplayQuery))
             },
         )?;
         let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
@@ -242,13 +228,10 @@ async fn fetch_fallback<R: LotusRepository>(
     metrics: &mut SearchMetrics,
 ) -> Result<FetchResult, DomainError> {
     let fallback_timer = perf::start_timer("LOTUS:fallback_query");
-    let csv =
-        repo.sparql_bytes(execution_query)
-            .await
-            .map_err(|source| DomainError::Transport {
-                stage: QueryStage::FallbackQuery,
-                source,
-            })?;
+    let csv = repo
+        .sparql_bytes(execution_query)
+        .await
+        .map_err(DomainError::transport_at(QueryStage::FallbackQuery))?;
     let fallback_elapsed = perf::end_timer("LOTUS:fallback_query", fallback_timer);
     metrics.add_network(fallback_elapsed);
 

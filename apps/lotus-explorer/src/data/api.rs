@@ -86,29 +86,29 @@ impl From<AppError> for crate::features::explore::types::DomainError {
             crate::core::error::ErrorKind::Validation(
                 crate::core::error::ValidationError::EmptyInput,
             ) => DomainError::Validation(ValidationFault::EmptyInput),
-            crate::core::error::ErrorKind::Network(msg) => DomainError::Transport {
-                stage: QueryStage::Network,
-                source: crate::repositories::RepositoryError::network(msg),
-            },
-            crate::core::error::ErrorKind::Http { status, message } => DomainError::Transport {
-                stage: QueryStage::Http,
-                source: crate::repositories::RepositoryError::Http {
+            crate::core::error::ErrorKind::Network(msg) => DomainError::transport(
+                QueryStage::Network,
+                crate::repositories::RepositoryError::network(msg),
+            ),
+            crate::core::error::ErrorKind::Http { status, message } => DomainError::transport(
+                QueryStage::Http,
+                crate::repositories::RepositoryError::Http {
                     status,
                     body: message.to_string(),
                 },
-            },
+            ),
             crate::core::error::ErrorKind::Parse(msg) => {
                 DomainError::Parse(crate::features::explore::types::ParseFault::DisplayCsv {
                     details: msg.to_string(),
                 })
             }
-            other => DomainError::Transport {
-                stage: QueryStage::Unknown,
-                source: crate::repositories::RepositoryError::Unknown {
+            other => DomainError::transport(
+                QueryStage::Unknown,
+                crate::repositories::RepositoryError::Unknown {
                     message: other.to_string(),
                     context: context.to_string(),
                 },
-            },
+            ),
         }
     }
 }

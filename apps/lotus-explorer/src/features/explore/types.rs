@@ -146,6 +146,23 @@ pub enum DomainError {
 }
 
 impl DomainError {
+    /// Construct a transport error for the given query stage and repository source.
+    pub fn transport(stage: QueryStage, source: crate::repositories::RepositoryError) -> Self {
+        Self::Transport { stage, source }
+    }
+
+    /// Map a repository error to a transport domain error via `.map_err`.
+    pub fn transport_at(
+        stage: QueryStage,
+    ) -> impl Fn(crate::repositories::RepositoryError) -> Self {
+        move |source| Self::Transport { stage, source }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn memory_limit(stage: QueryStage) -> Self {
+        Self::MemoryLimit { stage }
+    }
+
     pub fn kind(&self) -> ErrorKind {
         match self {
             Self::Validation(_) => ErrorKind::Validation,
@@ -164,12 +181,25 @@ mod tests {
 
     #[test]
     fn transport_domain_error_exposes_repository_source() {
-        let err = DomainError::Transport {
-            stage: QueryStage::DisplayQuery,
-            source: crate::repositories::RepositoryError::network("timeout"),
-        };
+        let err = DomainError::transport(
+            QueryStage::DisplayQuery,
+            crate::repositories::RepositoryError::network("timeout"),
+        );
 
         let source = err.source().expect("transport errors should expose source");
         assert_eq!(source.to_string(), "network error: timeout");
+    }
+
+    #[test]
+    fn transport_at_closure_maps_repository_error() {
+        let mapper = DomainError::transport_at(QueryStage::CountQuery);
+        let err = mapper(crate::repositories::RepositoryError::network("timed out"));
+        assert!(matches!(
+            err,
+            DomainError::Transport {
+                stage: QueryStage::CountQuery,
+                ..
+            }
+        ));
     }
 }
