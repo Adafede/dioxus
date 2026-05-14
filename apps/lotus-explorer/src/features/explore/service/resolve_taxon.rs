@@ -7,7 +7,9 @@
 //! locale strings**, making every function directly unit-testable.
 
 use crate::features::explore::search_state::SearchMetrics;
-use crate::features::explore::types::{DomainError, ParseFault, TaxonWarning, ValidationFault};
+use crate::features::explore::types::{
+    DomainError, ParseFault, QueryStage, TaxonWarning, ValidationFault,
+};
 use crate::features::explore::{search_utils::sanitize_taxon_input, taxon_cache};
 use crate::models::TaxonMatch;
 use crate::perf;
@@ -88,7 +90,7 @@ pub async fn resolve<R: LotusRepository>(
         .sparql_bytes(&query)
         .await
         .map_err(|source| DomainError::Transport {
-            stage: "taxon_search",
+            stage: QueryStage::TaxonSearch,
             source,
         })?;
 
@@ -231,7 +233,7 @@ mod tests {
             matches!(
                 result,
                 Err(DomainError::Transport {
-                    stage: "taxon_search",
+                    stage: QueryStage::TaxonSearch,
                     ..
                 })
             ),

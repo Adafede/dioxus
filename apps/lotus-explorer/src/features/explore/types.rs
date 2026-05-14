@@ -32,6 +32,41 @@ pub enum ErrorKind {
     Unknown,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QueryStage {
+    TaxonSearch,
+    CountQuery,
+    DisplayQuery,
+    FallbackQuery,
+    Network,
+    Http,
+    Unknown,
+    #[cfg(target_arch = "wasm32")]
+    CountAndPreview,
+}
+
+impl QueryStage {
+    pub const fn as_key(self) -> &'static str {
+        match self {
+            Self::TaxonSearch => "taxon_search",
+            Self::CountQuery => "count query",
+            Self::DisplayQuery => "display query",
+            Self::FallbackQuery => "fallback query",
+            Self::Network => "network",
+            Self::Http => "http",
+            Self::Unknown => "unknown",
+            #[cfg(target_arch = "wasm32")]
+            Self::CountAndPreview => "count_and_preview",
+        }
+    }
+}
+
+impl std::fmt::Display for QueryStage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_key())
+    }
+}
+
 // ── Taxon warning (structured, formatted at UI boundary) ─────────────────────
 
 /// A structured warning about taxon resolution, formatted by the UI layer.
@@ -97,7 +132,7 @@ pub enum DomainError {
 
     #[error("transport at {stage}: {source}")]
     Transport {
-        stage: &'static str,
+        stage: QueryStage,
         #[source]
         source: crate::repositories::RepositoryError,
     },
@@ -107,7 +142,7 @@ pub enum DomainError {
 
     #[cfg(target_arch = "wasm32")]
     #[error("memory limit reached during {stage}")]
-    MemoryLimit { stage: &'static str },
+    MemoryLimit { stage: QueryStage },
 }
 
 impl DomainError {
@@ -130,7 +165,7 @@ mod tests {
     #[test]
     fn transport_domain_error_exposes_repository_source() {
         let err = DomainError::Transport {
-            stage: "display query",
+            stage: QueryStage::DisplayQuery,
             source: crate::repositories::RepositoryError::network("timeout"),
         };
 

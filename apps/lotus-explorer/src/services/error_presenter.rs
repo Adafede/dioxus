@@ -4,7 +4,7 @@
 //! User-facing formatting for domain errors and warnings.
 
 use crate::features::explore::types::{
-    DomainError, ErrorKind, ParseFault, TaxonWarning, ValidationFault,
+    DomainError, ErrorKind, ParseFault, QueryStage, TaxonWarning, ValidationFault,
 };
 #[cfg(target_arch = "wasm32")]
 use crate::i18n::error_hint_memory;
@@ -18,7 +18,7 @@ use crate::repositories::RepositoryError;
 pub fn format_domain_error(locale: Locale, err: &DomainError) -> String {
     match err {
         DomainError::Validation(v) => format_validation_fault(locale, v),
-        DomainError::Transport { stage, source } => format_transport_fault(locale, stage, source),
+        DomainError::Transport { stage, source } => format_transport_fault(locale, *stage, source),
         DomainError::Parse(p) => format_parse_fault(locale, p),
         #[cfg(target_arch = "wasm32")]
         DomainError::MemoryLimit { .. } => error_hint_memory(locale).to_string(),
@@ -58,33 +58,33 @@ pub fn error_hint_text(locale: Locale, kind: ErrorKind) -> &'static str {
     }
 }
 
-fn format_transport_fault(locale: Locale, stage: &str, source: &RepositoryError) -> String {
+fn format_transport_fault(locale: Locale, stage: QueryStage, source: &RepositoryError) -> String {
     let detail = transport_error_summary(source);
     let stage_label = stage_display_label(locale, stage);
     err_query_stage_failed(locale, &stage_label, &detail)
 }
 
-fn stage_display_label(locale: Locale, stage: &str) -> String {
+fn stage_display_label(locale: Locale, stage: QueryStage) -> String {
     match (locale, stage) {
-        (Locale::En, "taxon_search") => "taxon lookup".to_string(),
-        (Locale::En, "count query") => "result counting".to_string(),
-        (Locale::En, "display query") => "preview fetch".to_string(),
-        (Locale::En, "fallback query") => "fallback fetch".to_string(),
+        (Locale::En, QueryStage::TaxonSearch) => "taxon lookup".to_string(),
+        (Locale::En, QueryStage::CountQuery) => "result counting".to_string(),
+        (Locale::En, QueryStage::DisplayQuery) => "preview fetch".to_string(),
+        (Locale::En, QueryStage::FallbackQuery) => "fallback fetch".to_string(),
 
-        (Locale::Fr, "taxon_search") => "resolution du taxon".to_string(),
-        (Locale::Fr, "count query") => "comptage des resultats".to_string(),
-        (Locale::Fr, "display query") => "recuperation de l'apercu".to_string(),
-        (Locale::Fr, "fallback query") => "recuperation de secours".to_string(),
+        (Locale::Fr, QueryStage::TaxonSearch) => "resolution du taxon".to_string(),
+        (Locale::Fr, QueryStage::CountQuery) => "comptage des resultats".to_string(),
+        (Locale::Fr, QueryStage::DisplayQuery) => "recuperation de l'apercu".to_string(),
+        (Locale::Fr, QueryStage::FallbackQuery) => "recuperation de secours".to_string(),
 
-        (Locale::De, "taxon_search") => "Taxon-Auflosung".to_string(),
-        (Locale::De, "count query") => "Ergebniszahlung".to_string(),
-        (Locale::De, "display query") => "Vorschauabruf".to_string(),
-        (Locale::De, "fallback query") => "Fallback-Abruf".to_string(),
+        (Locale::De, QueryStage::TaxonSearch) => "Taxon-Auflosung".to_string(),
+        (Locale::De, QueryStage::CountQuery) => "Ergebniszahlung".to_string(),
+        (Locale::De, QueryStage::DisplayQuery) => "Vorschauabruf".to_string(),
+        (Locale::De, QueryStage::FallbackQuery) => "Fallback-Abruf".to_string(),
 
-        (Locale::It, "taxon_search") => "risoluzione del taxon".to_string(),
-        (Locale::It, "count query") => "conteggio risultati".to_string(),
-        (Locale::It, "display query") => "recupero anteprima".to_string(),
-        (Locale::It, "fallback query") => "recupero di fallback".to_string(),
+        (Locale::It, QueryStage::TaxonSearch) => "risoluzione del taxon".to_string(),
+        (Locale::It, QueryStage::CountQuery) => "conteggio risultati".to_string(),
+        (Locale::It, QueryStage::DisplayQuery) => "recupero anteprima".to_string(),
+        (Locale::It, QueryStage::FallbackQuery) => "recupero di fallback".to_string(),
 
         _ => stage.to_string(),
     }
@@ -141,22 +141,22 @@ fn format_parse_fault(locale: Locale, fault: &ParseFault) -> String {
         }
         ParseFault::TaxonPick { details } => err_query_stage_failed(
             locale,
-            &stage_display_label(locale, "taxon_search"),
+            &stage_display_label(locale, QueryStage::TaxonSearch),
             &compact_error_text(details),
         ),
         ParseFault::CountCsv { details } => err_query_stage_failed(
             locale,
-            &stage_display_label(locale, "count query"),
+            &stage_display_label(locale, QueryStage::CountQuery),
             &compact_error_text(details),
         ),
         ParseFault::DisplayCsv { details } => err_query_stage_failed(
             locale,
-            &stage_display_label(locale, "display query"),
+            &stage_display_label(locale, QueryStage::DisplayQuery),
             &compact_error_text(details),
         ),
         ParseFault::FallbackCsv { details } => err_query_stage_failed(
             locale,
-            &stage_display_label(locale, "fallback query"),
+            &stage_display_label(locale, QueryStage::FallbackQuery),
             &compact_error_text(details),
         ),
     }

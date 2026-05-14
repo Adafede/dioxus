@@ -79,7 +79,7 @@ impl Default for ApiLayer {
 /// This allows gradual migration without breaking existing code.
 impl From<AppError> for crate::features::explore::types::DomainError {
     fn from(err: AppError) -> Self {
-        use crate::features::explore::types::{DomainError, ValidationFault};
+        use crate::features::explore::types::{DomainError, QueryStage, ValidationFault};
         let crate::core::error::AppError { kind, context } = err;
 
         match kind {
@@ -87,11 +87,11 @@ impl From<AppError> for crate::features::explore::types::DomainError {
                 crate::core::error::ValidationError::EmptyInput,
             ) => DomainError::Validation(ValidationFault::EmptyInput),
             crate::core::error::ErrorKind::Network(msg) => DomainError::Transport {
-                stage: "network",
+                stage: QueryStage::Network,
                 source: crate::repositories::RepositoryError::network(msg),
             },
             crate::core::error::ErrorKind::Http { status, message } => DomainError::Transport {
-                stage: "http",
+                stage: QueryStage::Http,
                 source: crate::repositories::RepositoryError::Http {
                     status,
                     body: message.to_string(),
@@ -103,7 +103,7 @@ impl From<AppError> for crate::features::explore::types::DomainError {
                 })
             }
             other => DomainError::Transport {
-                stage: "unknown",
+                stage: QueryStage::Unknown,
                 source: crate::repositories::RepositoryError::Unknown {
                     message: other.to_string(),
                     context: context.to_string(),

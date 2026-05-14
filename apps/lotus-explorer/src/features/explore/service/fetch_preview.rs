@@ -7,7 +7,7 @@
 //! is a plain `Fn()` closure so that tests can supply a no-op.
 
 use crate::features::explore::search_state::SearchMetrics;
-use crate::features::explore::types::{DomainError, ParseFault};
+use crate::features::explore::types::{DomainError, ParseFault, QueryStage};
 use crate::models::{CompoundEntry, DatasetStats};
 use crate::perf;
 use crate::queries;
@@ -62,7 +62,7 @@ pub async fn fetch<R: LotusRepository>(
                 // MemoryLimit when the underlying error actually indicates memory pressure.
                 if is_probable_wasm_memory_limit(&err) {
                     return Err(DomainError::MemoryLimit {
-                        stage: "count_and_preview",
+                        stage: QueryStage::CountAndPreview,
                     });
                 }
                 return Err(err);
@@ -117,7 +117,7 @@ async fn fetch_two_phase<R: LotusRepository>(
             repo.sparql_bytes(count_query)
                 .await
                 .map_err(|source| DomainError::Transport {
-                    stage: "count query",
+                    stage: QueryStage::CountQuery,
                     source,
                 })?;
         let count_elapsed = perf::end_timer("LOTUS:count_query", count_timer);
@@ -146,7 +146,7 @@ async fn fetch_two_phase<R: LotusRepository>(
             repo.sparql_bytes(display_query)
                 .await
                 .map_err(|source| DomainError::Transport {
-                    stage: "display query",
+                    stage: QueryStage::DisplayQuery,
                     source,
                 })?;
         let display_elapsed = perf::end_timer("LOTUS:display_query", display_timer);
@@ -183,7 +183,7 @@ async fn fetch_two_phase<R: LotusRepository>(
                 repo.sparql_bytes(count_query)
                     .await
                     .map_err(|source| DomainError::Transport {
-                        stage: "count query",
+                        stage: QueryStage::CountQuery,
                         source,
                     })
             },
@@ -191,7 +191,7 @@ async fn fetch_two_phase<R: LotusRepository>(
                 repo.sparql_bytes(display_query)
                     .await
                     .map_err(|source| DomainError::Transport {
-                        stage: "display query",
+                        stage: QueryStage::DisplayQuery,
                         source,
                     })
             },
@@ -246,7 +246,7 @@ async fn fetch_fallback<R: LotusRepository>(
         repo.sparql_bytes(execution_query)
             .await
             .map_err(|source| DomainError::Transport {
-                stage: "fallback query",
+                stage: QueryStage::FallbackQuery,
                 source,
             })?;
     let fallback_elapsed = perf::end_timer("LOTUS:fallback_query", fallback_timer);
