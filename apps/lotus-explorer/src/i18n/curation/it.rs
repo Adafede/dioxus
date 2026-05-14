@@ -3,13 +3,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 pub(super) fn title_curation_explorer() -> &'static str {
-    "Curation Explorer beta"
-}
-
-pub(super) fn subtitle_curation_explorer() -> &'static str {
-    {
-        "Crea QuickStatements copiabili per nuovi composti o metadati mancanti. Questa pagina viene eseguita nel browser con RDKit.js e query URL condivisibili."
-    }
+    "Curation Explorer"
 }
 
 pub(super) fn heading_add_one_row() -> &'static str {

@@ -17,15 +17,6 @@ pub fn title_curation_explorer(locale: Locale) -> &'static str {
     }
 }
 
-pub fn subtitle_curation_explorer(locale: Locale) -> &'static str {
-    match locale {
-        Locale::En => en::subtitle_curation_explorer(),
-        Locale::Fr => fr::subtitle_curation_explorer(),
-        Locale::De => de::subtitle_curation_explorer(),
-        Locale::It => it::subtitle_curation_explorer(),
-    }
-}
-
 pub fn heading_add_one_row(locale: Locale) -> &'static str {
     match locale {
         Locale::En => en::heading_add_one_row(),
