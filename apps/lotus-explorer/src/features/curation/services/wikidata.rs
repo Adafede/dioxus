@@ -3,8 +3,6 @@
 
 use super::*;
 
-// ── Compound lookup ──────────────────────────────────────────────────────────
-
 pub(super) async fn fetch_wikidata_compound_by_inchikey(
     inchikey: &str,
 ) -> Result<Option<WikidataCompound>, CurationError> {
@@ -52,8 +50,6 @@ pub(super) async fn fetch_wikidata_compound_by_inchikey(
     }))
 }
 
-// ── Taxon resolution ─────────────────────────────────────────────────────────
-
 /// Returns (Option<QID>, Vec<creation_QS_lines>).
 /// If the taxon exists, returns (Some(qid), []). Otherwise returns (None, <minimal CREATE QS>).
 pub(super) async fn resolve_or_create_taxon(
@@ -63,7 +59,7 @@ pub(super) async fn resolve_or_create_taxon(
         return Ok((Some(qid), Vec::new()));
     }
     let qs = vec![
-        "## ── Step: create missing taxon ──".to_string(),
+        "## -- Step: create missing taxon --".to_string(),
         "CREATE".to_string(),
         format!("LAST|Len|\"{}\"", escape_qs_string(name)),
         format!("LAST|P31|{WD_TAXON_QID}"),
@@ -87,8 +83,6 @@ pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, Cura
     extract_first_qid(&raw, "taxon")
 }
 
-// ── Reference resolution ─────────────────────────────────────────────────────
-
 pub(super) async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, CurationError> {
     let query = format!(
         "{CURATION_SPARQL_PREFIXES}\n\
@@ -101,9 +95,6 @@ pub(super) async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, C
     extract_first_qid(&raw, "ref")
 }
 
-// ── Taxon / reference presence checks ────────────────────────────────────────
-
-/// Checks whether the specific (compound → taxon) statement *with this exact reference* exists.
 pub(super) async fn compound_has_taxon_with_ref(
     compound_qid: &str,
     taxon_qid: &str,

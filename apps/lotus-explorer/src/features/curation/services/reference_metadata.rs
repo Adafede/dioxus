@@ -13,7 +13,6 @@ fn parse_quickstatements_text(text: &str) -> Option<Vec<String>> {
     (!lines.is_empty()).then_some(lines)
 }
 
-/// Fetch reference QuickStatements from the browser citation.js bridge.
 #[cfg(target_arch = "wasm32")]
 pub(super) async fn fetch_reference_quickstatements(doi: &str) -> Option<Vec<String>> {
     use js_sys::{Function, Promise, Reflect};
@@ -42,7 +41,6 @@ pub(super) async fn fetch_reference_quickstatements(doi: &str) -> Option<Vec<Str
     parse_quickstatements_text(&result.as_string()?)
 }
 
-/// Native builds do not have access to the browser citation.js bridge.
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) async fn fetch_reference_quickstatements(_doi: &str) -> Option<Vec<String>> {
     None

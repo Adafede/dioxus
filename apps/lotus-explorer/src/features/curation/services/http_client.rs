@@ -12,8 +12,6 @@ use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
 
-// ── HTTP client ──────────────────────────────────────────────────────────────
-
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn natprod_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
@@ -23,8 +21,6 @@ pub(super) fn natprod_client() -> &'static reqwest::Client {
             .expect("curation http client")
     })
 }
-
-// ── Batch-convert response types ─────────────────────────────────────────────
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Deserialize)]
@@ -39,8 +35,6 @@ pub(super) struct BatchConvertItem {
     pub(super) success: bool,
     pub(super) error: String,
 }
-
-// ── WebAssembly bridges ──────────────────────────────────────────────────────
 
 #[cfg(target_arch = "wasm32")]
 pub(super) async fn rdkit_bridge_call(

@@ -3,7 +3,7 @@
 
 use super::*;
 
-// ── SPARQL / QS helpers ──────────────────────────────────────────────────────
+// -- SPARQL / QS helpers -------------------------------------------------------
 
 pub(super) fn extract_first_qid(
     raw_json: &str,
@@ -47,12 +47,12 @@ pub(super) fn escape_qs_string(value: &str) -> String {
 }
 
 /// Format a Wikidata QuickStatements mass statement using the dalton unit (Q483261).
-/// Unit syntax is `U<QID>` – there is NO leading `Q` after the `U`.
-pub(super) fn qs_mass_statement(subject: &str, mass: f64) -> String {
+/// Unit syntax is `U<QID>` - there is NO leading `Q` after the `U`.
+pub(crate) fn qs_mass_statement(subject: &str, mass: f64) -> String {
     format!("{subject}|P2067|+{mass:.6}U483261")
 }
 
-// ── Text / chemistry normalisation ──────────────────────────────────────────
+// -- Text / chemistry normalization --------------------------------------------
 
 pub(super) fn normalize_doi(value: &str) -> Option<String> {
     let trimmed = value.trim();
@@ -79,7 +79,7 @@ pub(super) fn has_isomeric_smiles(smiles: &str) -> bool {
     has_stereo_marks(smiles)
 }
 
-pub(super) fn extract_formula_from_inchi(inchi: &str) -> Option<String> {
+pub(crate) fn extract_formula_from_inchi(inchi: &str) -> Option<String> {
     let cleaned = inchi.trim();
     if cleaned.is_empty() || !cleaned.starts_with("InChI=") {
         return None;
@@ -91,8 +91,7 @@ pub(super) fn extract_formula_from_inchi(inchi: &str) -> Option<String> {
     Some(right.to_string())
 }
 
-/// Convert plain InChI digits (0-9) to Unicode subscript digits (₀-₉) for Wikidata P274.
-pub(super) fn normalize_formula_for_wikidata(value: &str) -> String {
+pub(crate) fn normalize_formula_for_wikidata(value: &str) -> String {
     value
         .chars()
         .map(|ch| match ch {

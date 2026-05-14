@@ -2,49 +2,19 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::features::curation::domain;
-use crate::features::curation::services::{inputs, pipeline};
-use crate::i18n::{
-    Locale, curation_note_dependencies_pending, curation_note_existing_complete,
-    curation_note_existing_updates, curation_note_new_compound, curation_pending_reference,
-    curation_pending_taxon,
+use crate::features::curation::services::{curate_single_row, inputs, pipeline};
+#[cfg(test)]
+use crate::features::curation::services::{
+    extract_exact_mass_from_json, extract_formula_from_inchi, normalize_formula_for_wikidata,
+    qs_mass_statement,
 };
-use crate::sparql::execute_sparql_format;
-use serde::Deserialize;
-use serde_json::Value;
-use shared::sparql::SparqlResponseFormat;
+use crate::i18n::Locale;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) use domain::NATPROD_API_BASE;
-pub(crate) use domain::{
-    CURATION_SPARQL_PREFIXES, WD_CHEMICAL_COMPOUND_QID, WD_OCCURS_IN_TAXON_PROP,
-    WD_STEREOISOMER_GROUP_QID, WD_TAXON_QID, WD_TYPE_CHEMICAL_ENTITY_QID,
-};
 pub use domain::{
     CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
 };
-pub(crate) use domain::{DependencyResolution, MassResolution, WikidataCompound};
 
 // ── Sub-modules ───────────────────────────────────────────────────────────────
-
-#[path = "curation/helpers.rs"]
-mod helpers;
-use helpers::*;
-
-#[path = "curation/http_client.rs"]
-mod http_client;
-use http_client::*;
-
-#[path = "curation/chemical.rs"]
-mod chemical;
-use chemical::*;
-
-#[path = "curation/wikidata.rs"]
-mod wikidata;
-use wikidata::*;
-
-#[path = "curation/reference_metadata.rs"]
-mod reference_metadata;
-use reference_metadata::*;
 
 #[path = "curation/share_links.rs"]
 mod share_links;
@@ -53,10 +23,6 @@ use share_links::{CURATION_ROWS_PARAM, curation_rows_from_query_params};
 pub use share_links::{
     build_curation_share_url, initial_curation_autorun_from_url, initial_curation_rows_from_url,
 };
-
-#[path = "features/curation/services/enrichment.rs"]
-mod enrichment;
-use enrichment::curate_single_row;
 
 pub fn example_rows() -> Vec<CurationInputRow> {
     inputs::example_rows()

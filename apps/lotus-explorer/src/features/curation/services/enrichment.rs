@@ -3,7 +3,7 @@
 
 use super::*;
 
-pub(super) async fn curate_single_row(
+pub(crate) async fn curate_single_row(
     locale: Locale,
     input: CurationInputRow,
 ) -> CurationResultRow {

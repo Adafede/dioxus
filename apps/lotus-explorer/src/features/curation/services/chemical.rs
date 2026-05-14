@@ -3,8 +3,6 @@
 
 use super::*;
 
-// ── Response types ───────────────────────────────────────────────────────────
-
 #[derive(Debug, Deserialize)]
 pub(super) struct ConvertFormatsResponse {
     pub(super) canonical_smiles: String,
@@ -21,8 +19,6 @@ struct RdkitConvertResponse {
     inchi: String,
     inchikey: String,
 }
-
-// ── SMILES conversion ────────────────────────────────────────────────────────
 
 pub(super) async fn convert_smiles(smiles: &str) -> Result<ConvertFormatsResponse, CurationError> {
     let canonicalsmiles = convert_with_batch(smiles, "canonicalsmiles").await?;
@@ -111,8 +107,6 @@ fn extract_batch_convert_output(parsed: BatchConvertResponse) -> Result<String, 
     Ok(first.output.clone())
 }
 
-// ── Exact mass ───────────────────────────────────────────────────────────────
-
 pub(super) async fn descriptor_mass(smiles: &str) -> Result<f64, CurationError> {
     #[cfg(target_arch = "wasm32")]
     {
@@ -159,7 +153,7 @@ async fn descriptor_mass_direct(smiles: &str) -> Result<f64, CurationError> {
 }
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-pub(super) fn extract_exact_mass_from_json(value: &Value) -> Option<f64> {
+pub(crate) fn extract_exact_mass_from_json(value: &Value) -> Option<f64> {
     if let Some(v) = value
         .get("exact_molecular_weight")
         .and_then(parse_exact_mass_scalar)
@@ -201,8 +195,6 @@ fn parse_exact_mass_scalar(value: &Value) -> Option<f64> {
         .and_then(|s| s.replace(',', "").parse::<f64>().ok())
 }
 
-// ── Mass resolution ──────────────────────────────────────────────────────────
-
 pub(super) async fn resolve_exact_mass(
     input_smiles: &str,
     canonical_smiles: &str,
@@ -239,8 +231,6 @@ pub(super) async fn resolve_exact_mass(
         }
     }
 }
-
-// ── Stereo helpers ───────────────────────────────────────────────────────────
 
 pub(super) async fn has_undefined_stereo(smiles: &str) -> bool {
     if has_stereo_marks(smiles) {
