@@ -74,6 +74,14 @@ pub fn search_complete(elapsed: Duration, display_rows: usize, total_matches: us
     );
 }
 
+pub fn search_summary_done(details: &str) {
+    log_info_evt("search", "summary", "done", Some(details));
+}
+
+pub fn search_summary_slow_query(details: &str) {
+    log_warn_evt("search", "summary", "slow_query", Some(details));
+}
+
 pub fn download_startup_unsupported_format(format: &str) {
     log_warn_evt(
         "download",

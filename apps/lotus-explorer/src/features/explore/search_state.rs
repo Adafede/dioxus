@@ -11,6 +11,7 @@
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
 use crate::models::{CompoundEntry, DatasetStats, Rows, SearchCriteria, SortState};
+use crate::services::search_telemetry as telemetry;
 use dioxus::prelude::*;
 use std::sync::Arc;
 
@@ -217,9 +218,9 @@ pub fn emit_search_summary(total_elapsed: std::time::Duration, metrics: SearchMe
         "total_ms={total_ms:.1} network_ms={:.1} parse_ms={:.1} sparql_calls={}",
         metrics.network_ms, metrics.parse_ms, metrics.sparql_calls
     );
-    crate::utils::logging::log_info_evt("search", "summary", "done", Some(&details));
+    telemetry::search_summary_done(&details);
     if total_ms >= 5000.0 {
-        crate::utils::logging::log_warn_evt("search", "summary", "slow_query", Some(&details));
+        telemetry::search_summary_slow_query(&details);
     }
 }
 
