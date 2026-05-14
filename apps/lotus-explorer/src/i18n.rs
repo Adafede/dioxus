@@ -105,7 +105,6 @@ pub enum TextKey {
     ResolvedTaxon,
     QueryHash,
     ResultHash,
-    TotalMatches,
     CopyTaxonQid,
     CopyFullQueryHash,
     CopyFullResultHash,

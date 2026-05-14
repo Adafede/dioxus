@@ -22,7 +22,6 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::ResolvedTaxon => "Aufgelöstes Taxon",
         TextKey::QueryHash => "Abfrage-Hash",
         TextKey::ResultHash => "Ergebnis-Hash",
-        TextKey::TotalMatches => "Treffer gesamt",
         TextKey::CopyTaxonQid => "Taxon-QID kopieren",
         TextKey::CopyFullQueryHash => "Vollständigen Abfrage-Hash kopieren (SHA-256)",
         TextKey::CopyFullResultHash => "Vollständigen Ergebnis-Hash kopieren (SHA-256)",

@@ -263,10 +263,12 @@ a:hover { text-decoration: underline; }
                overflow: clip; }
 .page-header-meta {
   margin: 12px 28px 0;
-  padding: 10px 14px;
+  padding: 8px 14px;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 20px;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface) 88%, var(--bg2));
@@ -307,13 +309,12 @@ a:hover { text-decoration: underline; }
   color: var(--wd-reference);
   font-size: 12px;
 }
-.page-meta   { font-size:12px; color:var(--text2); display:flex;
-               flex-wrap:wrap; align-items:center; gap:8px 18px; }
-.meta-item   { display:inline-flex; align-items:center; gap:6px; min-width:min(100%, 340px); }
+.page-meta   { display: contents; }
+.meta-item   { display:inline-flex; align-items:center; gap:4px; white-space: nowrap; }
 .meta-key    { text-transform:uppercase; letter-spacing:0.08em; font-weight:700;
-               width:clamp(120px, 14vw, 172px); display:inline-block; }
+               font-size: 11px; color: var(--text3); }
 .meta-val.mono { font-family:var(--mono); color:var(--critical-text); font-variant-numeric: tabular-nums; }
-.meta-sep    { color:var(--text3); margin-right: 2px; }
+.meta-sep    { color:var(--text3); }
 
 /* Notices */
 .notice           { margin:12px 28px 0; padding:10px 14px; display:flex; align-items:center;
@@ -357,6 +358,13 @@ a:hover { text-decoration: underline; }
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+/* Notices inside curation-wrap must not add extra horizontal margin —
+   the wrapper already provides 28 px of horizontal padding. */
+.curation-wrap > .notice {
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0;
 }
 
 .curation-title { font-size: 20px; color: var(--wd-reference); }

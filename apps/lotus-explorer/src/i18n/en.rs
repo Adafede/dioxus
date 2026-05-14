@@ -22,7 +22,6 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::ResolvedTaxon => "Resolved taxon",
         TextKey::QueryHash => "Query hash",
         TextKey::ResultHash => "Result hash",
-        TextKey::TotalMatches => "Total matches",
         TextKey::CopyTaxonQid => "Copy taxon QID",
         TextKey::CopyFullQueryHash => "Copy full query hash (SHA-256)",
         TextKey::CopyFullResultHash => "Copy full result hash (SHA-256)",

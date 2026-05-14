@@ -6,9 +6,6 @@
   .main-content { height:auto; min-height:0; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }
   .page-header, .welcome, .results-wrap, .app-footer { padding-left:18px; padding-right:18px; }
   .page-header-meta { margin-left:18px; margin-right:18px; }
-  .page-meta { gap:6px 10px; }
-  .page-meta .meta-item { min-width:100%; }
-  .page-meta .meta-key { width:clamp(104px, 36vw, 150px); }
   .notice       { margin-left:18px; margin-right:18px; }
   .draw-wrap { padding-left:18px; padding-right:18px; }
   .ketcher-panel { margin-left:0; margin-right:0; }
@@ -100,32 +97,31 @@
     margin-right:10px;
   }
 
-  .page-meta {
-    gap:4px 6px;
-    align-items:flex-start;
+  /* Stack meta items vertically on very narrow screens */
+  .page-header-meta {
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
   }
 
-  .page-meta .meta-item {
-    width:100%;
-    min-width:0;
-    flex-wrap:wrap;
-    row-gap:3px;
+  .page-header-meta .meta-item {
+    white-space: normal;
+    flex-wrap: wrap;
+    min-width: 0;
   }
 
-  .page-meta .meta-key {
-    width:100%;
-    min-width:0;
-    font-size:10px;
+  .page-header-meta .meta-key {
+    font-size: 10px;
   }
 
-  .page-meta .meta-sep {
-    display:none;
+  .page-header-meta .meta-sep {
+    display: none;
   }
 
-  .page-meta .meta-val {
-    min-width:0;
-    max-width:100%;
-    overflow-wrap:anywhere;
+  .page-header-meta .meta-val {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .copy-btn {

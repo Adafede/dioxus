@@ -22,7 +22,6 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::ResolvedTaxon => "Taxon risolto",
         TextKey::QueryHash => "Hash della query",
         TextKey::ResultHash => "Hash del risultato",
-        TextKey::TotalMatches => "Totale corrispondenze",
         TextKey::CopyTaxonQid => "Copia QID del taxon",
         TextKey::CopyFullQueryHash => "Copia hash completo della query (SHA-256)",
         TextKey::CopyFullResultHash => "Copia hash completo del risultato (SHA-256)",
