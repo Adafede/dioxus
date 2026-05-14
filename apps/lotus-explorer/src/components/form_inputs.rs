@@ -94,7 +94,11 @@ pub fn SearchButton(on_click: EventHandler<()>) -> Element {
     let locale = use_locale();
 
     rsx! {
-        button { class: "btn btn-primary", onclick: move |_| on_click.call(()),
+        button {
+            class: "search-btn",
+            r#type: "button",
+            aria_label: "{t(locale, TextKey::RunSearch)}",
+            onclick: move |_| on_click.call(()),
             "{t(locale, TextKey::Search)}"
         }
     }

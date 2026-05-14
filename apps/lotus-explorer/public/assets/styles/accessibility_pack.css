@@ -17,6 +17,21 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  .sidebar,
+  .main-content,
+  .page-header {
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar,
+  .main-content,
+  .page-header {
+    backdrop-filter: none;
+    background: var(--bg2);
+  }
 }
 
 @media (prefers-contrast: more) {

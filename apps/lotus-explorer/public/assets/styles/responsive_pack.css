@@ -1,10 +1,13 @@
 /* Responsive breakpoint pack extracted from style.css for maintainability. */
 
 @media (max-width:768px) {
-  .app-layout   { flex-direction:column; height:auto; min-height:100vh; overflow:visible; padding:0; gap:0; }
+  .app-layout   { flex-direction:column; height:auto; min-height:100dvh; overflow:visible; padding:0; gap:0; }
   .sidebar      { width:100%; height:auto; max-height:none; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }
   .main-content { height:auto; min-height:0; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }
-  .page-header, .welcome, .results-wrap, .app-footer { padding-left:18px; padding-right:18px; }
+  .page-header, .welcome, .results-wrap, .app-footer {
+    padding-left:max(18px, env(safe-area-inset-left));
+    padding-right:max(18px, env(safe-area-inset-right));
+  }
   .page-header-meta { margin-left:18px; margin-right:18px; }
   .notice       { margin-left:18px; margin-right:18px; }
   .draw-wrap { padding-left:18px; padding-right:18px; }
@@ -14,6 +17,8 @@
   .app-footer { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
   .footer-row { row-gap:4px; }
   .stat-bar { grid-template-columns:repeat(2, minmax(130px, 1fr)); }
+  .view-switch { flex-wrap:wrap; }
+  .view-switch .btn { flex:1 1 180px; justify-content:center; }
 }
 
 @media (max-width:480px) {
@@ -52,6 +57,10 @@
   .sidebar-logo-wrap { padding-top:10px; padding-bottom:12px; }
   .sidebar-logo { width:120px; height:120px; }
   .radio-group, .range-inputs, .toolbar-actions { flex-wrap:wrap; }
+  .toolbar-actions > .btn,
+  .toolbar-actions > .dl-group {
+    width:100%;
+  }
   .footer-row { grid-template-columns:1fr; align-items:flex-start; gap:4px 8px; }
   .footer-label { min-width:0; width:100%; margin-bottom:1px; }
   .footer-links { gap:4px 8px; }
@@ -61,6 +70,7 @@
 
   .form-input, .form-textarea, .search-btn, select, input, textarea { font-size:16px; }
   .btn, .search-btn { min-height: 44px; }
+  .search-btn { justify-content:center; text-align:center; }
 
   .results-wrap { gap:10px; }
   .stat-bar { grid-template-columns:1fr; gap:8px; }
@@ -162,6 +172,11 @@
   .sort-btn {
     font-size:9px;
     letter-spacing:0.06em;
+  }
+
+  .view-switch .btn {
+    width:100%;
+    flex:1 1 100%;
   }
 }
 
