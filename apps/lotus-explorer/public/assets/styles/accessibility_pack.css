@@ -62,6 +62,7 @@
 
   .meta-val,
   .page-sub,
+  .welcome-lead,
   .form-hint {
     color: var(--text);
   }

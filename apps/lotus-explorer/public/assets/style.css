@@ -570,7 +570,7 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .welcome-hero,
 .welcome-examples { width:100%; min-width:0; }
 .welcome-hero h2 { font-size:clamp(1.6rem, 1.28rem + 1vw, 2.3rem); font-weight:800; letter-spacing:-.02em; line-height:1.08; }
-.welcome-lead    { font-size:var(--fs-1); color:var(--critical-muted); margin-top:10px; line-height:1.72; max-width:none; overflow-wrap:anywhere; }
+.welcome-lead    { font-size:var(--fs-1); color:var(--text2); margin-top:10px; line-height:1.72; max-width:none; overflow-wrap:anywhere; }
 .welcome-inline-link {
   text-decoration: underline;
   text-underline-offset: 2px;
