@@ -16,6 +16,7 @@ use shared::sparql::SparqlResponseFormat;
 pub use domain::{
     CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
 };
+pub(crate) use domain::{DependencyResolution, MassResolution, WikidataCompound};
 
 // ── Sub-modules ───────────────────────────────────────────────────────────────
 
@@ -71,34 +72,6 @@ const WD_STEREOISOMER_GROUP_QID: &str = "Q59199015";
 const WD_OCCURS_IN_TAXON_PROP: &str = "P703";
 const WD_TAXON_QID: &str = "Q16521";
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Internal types
-// ──────────────────────────────────────────────────────────────────────────────
-
-#[derive(Debug)]
-struct WikidataCompound {
-    qid: String,
-    canonical_smiles: Option<String>,
-    isomeric_smiles: Option<String>,
-    inchi: Option<String>,
-    formula: Option<String>,
-    mass: Option<f64>,
-}
-
-#[derive(Debug, Default)]
-struct DependencyResolution {
-    taxon_qid: Option<String>,
-    reference_qid: Option<String>,
-    dependency_blocks: Vec<String>,
-    pending_messages: Vec<String>,
-}
-
-#[derive(Debug, Default)]
-struct MassResolution {
-    exact_mass: Option<f64>,
-    warning: Option<String>,
-}
-
 pub fn example_rows() -> Vec<CurationInputRow> {
     inputs::example_rows()
 }
@@ -129,7 +102,6 @@ pub fn row_uniqueness_key(row: &CurationInputRow) -> String {
 // ──────────────────────────────────────────────────────────────────────────────
 // Core curation logic moved to `features/curation/services/enrichment.rs`
 // ──────────────────────────────────────────────────────────────────────────────
-
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tests

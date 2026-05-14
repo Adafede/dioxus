@@ -3,7 +3,10 @@
 
 use super::*;
 
-pub(super) async fn curate_single_row(locale: Locale, input: CurationInputRow) -> CurationResultRow {
+pub(super) async fn curate_single_row(
+    locale: Locale,
+    input: CurationInputRow,
+) -> CurationResultRow {
     match enrich_and_generate(locale, &input).await {
         Ok(result) => result,
         Err(err) => CurationResultRow {
@@ -73,7 +76,8 @@ async fn enrich_and_generate(
                 ));
                 changes += 1;
             }
-            if has_isomeric_smiles(&converted.isomeric_smiles) && existing.isomeric_smiles.is_none() {
+            if has_isomeric_smiles(&converted.isomeric_smiles) && existing.isomeric_smiles.is_none()
+            {
                 lines.push(format!(
                     "{}|P2017|\"{}\"",
                     existing.qid,
@@ -310,15 +314,18 @@ async fn resolve_row_dependencies(
 }
 
 /// Fetch pre-generated QuickStatements from Scholia (native) or citation.js (WASM)
-async fn resolve_or_create_reference(doi: &str) -> Result<(Option<String>, Vec<String>), CurationError> {
+async fn resolve_or_create_reference(
+    doi: &str,
+) -> Result<(Option<String>, Vec<String>), CurationError> {
     // Check if reference already exists in Wikidata
     if let Some(qid) = resolve_reference_qid(doi).await? {
         return Ok((Some(qid), Vec::new()));
     }
 
     // Try to fetch QuickStatements from Scholia or citation.js
-    let qs_lines = fetch_reference_quickstatements(doi).await.unwrap_or_default();
+    let qs_lines = fetch_reference_quickstatements(doi)
+        .await
+        .unwrap_or_default();
 
     Ok((None, qs_lines))
 }
-
