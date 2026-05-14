@@ -54,10 +54,6 @@ pub(super) fn qs_mass_statement(subject: &str, mass: f64) -> String {
 
 // ── Text / chemistry normalisation ──────────────────────────────────────────
 
-pub(super) fn normalize_header(value: &str) -> String {
-    value.trim().to_ascii_lowercase().replace(' ', "_")
-}
-
 pub(super) fn normalize_doi(value: &str) -> Option<String> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -75,14 +71,6 @@ pub(super) fn normalize_doi(value: &str) -> Option<String> {
     Some(canonical.to_ascii_uppercase())
 }
 
-pub(super) fn non_empty(value: &str) -> Option<&str> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed)
-    }
-}
 
 pub(super) fn has_stereo_marks(smiles: &str) -> bool {
     smiles.contains('@') || smiles.contains('/') || smiles.contains('\\')

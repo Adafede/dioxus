@@ -1,0 +1,154 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+use crate::features::curation::domain::{CurationError, CurationInputRow};
+
+pub fn example_rows() -> Vec<CurationInputRow> {
+    vec![
+        CurationInputRow {
+            name: "Voatriafricanine A".to_string(),
+            smiles: "OC12N3C4=C(O)C([C@H](C[C@H]/5[C@@H]6C(OC)=O)C(N([H])C7=C8C=CC=C7)=C8CC6N(C)CC5=C\\C)=CC=C4[C@@]19CCN%10C9[C@@]%11(C[C@H]2C[C@H]%12[C@H]%13[C@@]%14(CC(C(OC)=O)=C%15NC%16=CC=CC=C%16[C@@]%15%17CCN([C@@H]%123)C%14%17)CCO%13)CCO[C@H]%11CC%10".to_string(),
+            taxon: Some("Voacanga africana".to_string()),
+            doi: Some("10.1021/acs.jnatprod.1c00812".to_string()),
+        },
+        CurationInputRow {
+            name: "Voatriafricanine B (taxon and DOI wrong but new)".to_string(),
+            smiles: "OC12N3C4=C(O)C([C@H](C[C@H]/5[C@@H]6C(OC)=O)C(N([H])C7=C8C=CC=C7)=C8CC6N(C)CC5=C\\C)=CC=C4[C@@]19CCN%10C9[C@@]%11(C[C@H]2C[C@H]%12[C@H]%13[C@@]%14(CC(C(OC)=O)=C%15NC%16=C(OC)C=CC=C%16[C@@]%15%17CCN([C@@H]%123)C%14%17)CCO%13)CCO[C@H]%11CC%10".to_string(),
+            taxon: Some("Gentiana lutea".to_string()),
+            doi: Some("10.1068/P080363".to_string()),
+        },
+        CurationInputRow {
+            name: "[HYPOTHETICAL - non-real test case]".to_string(),
+            smiles: "CCN(CC)C(=O)N1C=NC2=C1N=CN2C(F)(F)F".to_string(),
+            taxon: Some("Ficticia imaginaria".to_string()),
+            doi: Some("10.59350/sk00y-3gh44".to_string()),
+        },
+    ]
+}
+
+pub fn parse_tsv_rows(tsv: &str) -> Result<Vec<CurationInputRow>, CurationError> {
+    let mut lines = tsv
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>();
+    if lines.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let header = lines.remove(0);
+    let columns = header.split('\t').map(normalize_header).collect::<Vec<_>>();
+    let name_idx = columns
+        .iter()
+        .position(|c| c == "name")
+        .ok_or_else(|| CurationError::InvalidInput("TSV is missing a 'name' column".to_string()))?;
+    let smiles_idx = columns.iter().position(|c| c == "smiles").ok_or_else(|| {
+        CurationError::InvalidInput("TSV is missing a 'smiles' column".to_string())
+    })?;
+    let taxon_idx = columns
+        .iter()
+        .position(|c| matches!(c.as_str(), "taxon" | "organism"));
+    let doi_idx = columns.iter().position(|c| c == "doi");
+
+    let mut out = Vec::new();
+    for line in lines {
+        let fields = line.split('\t').map(str::trim).collect::<Vec<_>>();
+        let Some(name) = fields.get(name_idx) else {
+            continue;
+        };
+        let Some(smiles) = fields.get(smiles_idx) else {
+            continue;
+        };
+        if name.is_empty() || smiles.is_empty() {
+            continue;
+        }
+        let taxon = taxon_idx
+            .and_then(|idx| fields.get(idx))
+            .and_then(|v| non_empty(v).map(ToOwned::to_owned));
+        let doi = doi_idx
+            .and_then(|idx| fields.get(idx))
+            .and_then(|value| normalize_doi(value));
+        out.push(CurationInputRow {
+            name: (*name).to_string(),
+            smiles: (*smiles).to_string(),
+            taxon,
+            doi,
+        });
+    }
+    Ok(out)
+}
+
+pub fn row_uniqueness_key(row: &CurationInputRow) -> String {
+    let smiles = row.smiles.trim();
+    let taxon = row
+        .taxon
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(|v| v.to_ascii_lowercase())
+        .unwrap_or_default();
+    let doi = row
+        .doi
+        .as_deref()
+        .and_then(normalize_doi)
+        .unwrap_or_default();
+    format!("{smiles}\t{taxon}\t{doi}")
+}
+
+fn normalize_header(value: &str) -> String {
+    value.trim().to_ascii_lowercase().replace(' ', "_")
+}
+
+fn normalize_doi(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let lowered = trimmed.to_ascii_lowercase();
+    let canonical = if let Some(idx) = lowered.find("doi.org/") {
+        &trimmed[(idx + 8)..]
+    } else {
+        trimmed
+    };
+    if canonical.is_empty() {
+        return None;
+    }
+    Some(canonical.to_ascii_uppercase())
+}
+
+fn non_empty(value: &str) -> Option<&str> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_tsv_supports_expected_headers() {
+        let tsv = "name\tsmiles\torganism\tdoi\nA\tCCO\tTaxon\thttps://doi.org/10.1/x\n";
+        let rows = parse_tsv_rows(tsv).expect("tsv parse");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].name, "A");
+        assert_eq!(rows[0].smiles, "CCO");
+        assert_eq!(rows[0].taxon.as_deref(), Some("Taxon"));
+        assert_eq!(rows[0].doi.as_deref(), Some("10.1/X"));
+    }
+
+    #[test]
+    fn row_key_normalizes_taxon_and_doi() {
+        let row = CurationInputRow {
+            name: "compound A".to_string(),
+            smiles: " CCO ".to_string(),
+            taxon: Some("  Voacanga africana ".to_string()),
+            doi: Some("https://doi.org/10.1000/abc".to_string()),
+        };
+        assert_eq!(row_uniqueness_key(&row), "CCO\tvoacanga africana\t10.1000/ABC");
+    }
+}
+
