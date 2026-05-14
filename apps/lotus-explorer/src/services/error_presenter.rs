@@ -41,7 +41,10 @@ pub fn format_taxon_warning(locale: Locale, warning: &TaxonWarning) -> String {
 }
 
 pub fn is_retryable(kind: ErrorKind) -> bool {
-    matches!(kind, ErrorKind::Network | ErrorKind::Parse | ErrorKind::Unknown)
+    matches!(
+        kind,
+        ErrorKind::Network | ErrorKind::Parse | ErrorKind::Unknown
+    )
 }
 
 pub fn error_hint_text(locale: Locale, kind: ErrorKind) -> &'static str {
@@ -89,9 +92,9 @@ fn stage_display_label(locale: Locale, stage: &str) -> String {
 
 fn transport_error_summary(source: &RepositoryError) -> String {
     let raw = match source {
-        RepositoryError::Network(msg) | RepositoryError::Parse(msg) | RepositoryError::Other(msg) => {
-            msg.as_str()
-        }
+        RepositoryError::Network(msg)
+        | RepositoryError::Parse(msg)
+        | RepositoryError::Other(msg) => msg.as_str(),
         RepositoryError::Http { status, body } => {
             return format!("HTTP {status}: {}", compact_error_text(body));
         }
@@ -131,7 +134,9 @@ fn format_validation_fault(locale: Locale, fault: &ValidationFault) -> String {
 
 fn format_parse_fault(locale: Locale, fault: &ParseFault) -> String {
     match fault {
-        ParseFault::TaxonCsv { details } => err_taxon_parse_failed(locale, &compact_error_text(details)),
+        ParseFault::TaxonCsv { details } => {
+            err_taxon_parse_failed(locale, &compact_error_text(details))
+        }
         ParseFault::TaxonPick { details } => err_query_stage_failed(
             locale,
             &stage_display_label(locale, "taxon_search"),
@@ -162,7 +167,10 @@ mod tests {
     #[test]
     fn compact_error_text_uses_exception_from_json() {
         let payload = r#"{"exception":"Upstream service returned HTTP 500","query":"SELECT ..."}"#;
-        assert_eq!(compact_error_text(payload), "Upstream service returned HTTP 500");
+        assert_eq!(
+            compact_error_text(payload),
+            "Upstream service returned HTTP 500"
+        );
     }
 
     #[test]
@@ -173,4 +181,3 @@ mod tests {
         assert!(summary.ends_with('…'));
     }
 }
-

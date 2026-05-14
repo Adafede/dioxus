@@ -20,7 +20,7 @@ use crate::features::explore::types::{DomainError, QueryPhase, ValidationFault};
 use crate::models::{CompoundEntry, DatasetStats, SearchCriteria};
 use crate::perf;
 use crate::repositories::LotusRepository;
-use crate::utils::logging::{log_debug_evt, log_info_evt, log_timing_evt};
+use crate::services::search_telemetry as telemetry;
 use dioxus::prelude::*;
 use shared::lotus::models::runtime_table_row_limit;
 
@@ -71,12 +71,7 @@ pub fn start_search<R: LotusRepository>(
         match do_search(crit.clone(), explore, direct_download_mode, repo.clone()).await {
             Ok(outcome) => {
                 if request_token != explore.peek().lifecycle.search_request_token {
-                    log_debug_evt(
-                        "search",
-                        "finish",
-                        "stale_result_ignored",
-                        Some(&format!("request_token={request_token}")),
-                    );
+                    telemetry::stale_result_ignored(request_token);
                     return;
                 }
 
@@ -111,12 +106,7 @@ pub fn start_search<R: LotusRepository>(
             }
             Err(e) => {
                 if request_token != explore.peek().lifecycle.search_request_token {
-                    log_debug_evt(
-                        "search",
-                        "finish",
-                        "stale_error_ignored",
-                        Some(&format!("request_token={request_token}")),
-                    );
+                    telemetry::stale_error_ignored(request_token);
                     return;
                 }
                 dispatch_explore_action(explore, ExploreAction::SearchFailed { error: e });
@@ -136,7 +126,7 @@ pub async fn do_search<R: LotusRepository>(
 ) -> Result<SearchOutcome, DomainError> {
     let search_timer = perf::start_timer("LOTUS:search_total");
     let mut metrics = SearchMetrics::default();
-    log_info_evt("search", "start", "begin", None);
+    telemetry::search_start();
 
     let strategy = ExecutionStrategy::resolve(direct_download_mode);
     let smiles = normalize_smiles(&crit.smiles);
@@ -153,27 +143,12 @@ pub async fn do_search<R: LotusRepository>(
             .await
         {
             None => {
-                log_info_evt(
-                    "search",
-                    "api",
-                    "path_not_available",
-                    Some("reason=not_configured"),
-                );
+                telemetry::api_path_not_available("reason=not_configured");
             }
             Some(Ok(response)) => {
                 let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
                 metrics.add_network(api_elapsed);
-                log_timing_evt(
-                    "search",
-                    "api",
-                    "success",
-                    api_elapsed,
-                    Some(&format!(
-                        "rows={} total_matches={}",
-                        response.rows.len(),
-                        response.total_matches
-                    )),
-                );
+                telemetry::api_success(api_elapsed, response.rows.len(), response.total_matches);
                 let display_capped_rows = if include_counts {
                     response.total_matches > response.rows.len()
                 } else {
@@ -201,22 +176,11 @@ pub async fn do_search<R: LotusRepository>(
             }
             Some(Err(err)) => {
                 let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
-                log_timing_evt(
-                    "search",
-                    "api",
-                    "fallback_direct",
-                    api_elapsed,
-                    Some(&format!("reason={err}")),
-                );
+                telemetry::api_fallback_direct(api_elapsed, &err.to_string());
             }
         }
     } else {
-        log_info_evt(
-            "search",
-            "api",
-            "path_not_available",
-            Some("reason=download_only_mode"),
-        );
+        telemetry::api_path_not_available("reason=download_only_mode");
     }
 
     // ── SPARQL pipeline ───────────────────────────────────────────────────────
@@ -228,13 +192,7 @@ pub async fn do_search<R: LotusRepository>(
 
     if strategy.is_download_only() {
         let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
-        log_timing_evt(
-            "search",
-            "direct_download",
-            "ready",
-            total_elapsed,
-            Some("skipped=count_and_preview"),
-        );
+        telemetry::direct_download_ready(total_elapsed);
         emit_search_summary(total_elapsed, metrics);
         return Ok(SearchOutcome {
             rows: Vec::new(),
@@ -273,15 +231,10 @@ pub async fn do_search<R: LotusRepository>(
     };
 
     let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
-    log_debug_evt(
-        "search",
-        "complete",
-        "done",
-        Some(&format!(
-            "display_rows={} total_matches={}",
-            outcome.rows.len(),
-            outcome.total_matches.unwrap_or(outcome.rows.len())
-        )),
+    telemetry::search_complete(
+        total_elapsed,
+        outcome.rows.len(),
+        outcome.total_matches.unwrap_or(outcome.rows.len()),
     );
     emit_search_summary(total_elapsed, metrics);
     Ok(outcome)

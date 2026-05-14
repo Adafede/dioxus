@@ -12,10 +12,8 @@ use crate::models::{CompoundEntry, DatasetStats};
 use crate::perf;
 use crate::queries;
 use crate::repositories::LotusRepository;
+use crate::services::search_telemetry as telemetry;
 use crate::sparql;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::utils::logging::log_warn_evt;
-use crate::utils::logging::{log_debug_evt, log_timing_evt};
 
 /// Result of a successful count + preview fetch.
 pub struct FetchResult {
@@ -72,12 +70,7 @@ pub async fn fetch<R: LotusRepository>(
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                log_warn_evt(
-                    "search",
-                    "Fallback",
-                    "entered",
-                    Some(&format!("reason=two_phase_failed original={err:?}")),
-                );
+                telemetry::fallback_entered(&format!("{err:?}"));
                 fetch_fallback(execution_query, display_limit, repo, metrics).await
             }
         }
@@ -118,7 +111,7 @@ async fn fetch_two_phase<R: LotusRepository>(
 ) -> Result<FetchResult, DomainError> {
     #[cfg(target_arch = "wasm32")]
     {
-        log_debug_evt("search", "Counting", "sequential_fetch_wasm", None);
+        telemetry::counting_sequential_fetch_wasm();
         let count_timer = perf::start_timer("LOTUS:count_query");
         let counts_csv =
             repo.sparql_bytes(count_query)
@@ -138,18 +131,12 @@ async fn fetch_two_phase<R: LotusRepository>(
         })?;
         let count_parse_elapsed = perf::end_timer("LOTUS:count_parse", count_parse_timer);
         metrics.add_parse(count_parse_elapsed);
-        log_timing_evt(
-            "search",
-            "Counting",
-            "done",
+        telemetry::counting_done(
             count_parse_elapsed,
-            Some(&format!(
-                "entries={} compounds={} taxa={} refs={}",
-                full_stats.n_entries,
-                full_stats.n_compounds,
-                full_stats.n_taxa,
-                full_stats.n_references
-            )),
+            full_stats.n_entries,
+            full_stats.n_compounds,
+            full_stats.n_taxa,
+            full_stats.n_references,
         );
 
         on_fetching();
@@ -175,13 +162,7 @@ async fn fetch_two_phase<R: LotusRepository>(
         )?;
         let display_parse_elapsed = perf::end_timer("LOTUS:display_parse", display_parse_timer);
         metrics.add_parse(display_parse_elapsed);
-        log_timing_evt(
-            "search",
-            "FetchingPreview",
-            "done",
-            display_parse_elapsed,
-            Some(&format!("rows={}", rows.len())),
-        );
+        telemetry::preview_done(display_parse_elapsed, rows.len());
 
         let display_capped_rows = full_stats.n_entries > rows.len();
         Ok(FetchResult {
@@ -194,7 +175,7 @@ async fn fetch_two_phase<R: LotusRepository>(
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        log_debug_evt("search", "Counting", "parallel_fetch_started", None);
+        telemetry::counting_parallel_fetch_started();
         let count_timer = perf::start_timer("LOTUS:count_query");
         let display_timer = perf::start_timer("LOTUS:display_query");
         let (counts_csv, display_csv) = futures::try_join!(
@@ -225,18 +206,12 @@ async fn fetch_two_phase<R: LotusRepository>(
                 details: e.to_string(),
             })
         })?;
-        log_timing_evt(
-            "search",
-            "Counting",
-            "done",
+        telemetry::counting_done(
             count_elapsed,
-            Some(&format!(
-                "entries={} compounds={} taxa={} refs={}",
-                full_stats.n_entries,
-                full_stats.n_compounds,
-                full_stats.n_taxa,
-                full_stats.n_references
-            )),
+            full_stats.n_entries,
+            full_stats.n_compounds,
+            full_stats.n_taxa,
+            full_stats.n_references,
         );
 
         on_fetching();
@@ -248,13 +223,7 @@ async fn fetch_two_phase<R: LotusRepository>(
                 })
             },
         )?;
-        log_timing_evt(
-            "search",
-            "FetchingPreview",
-            "done",
-            display_elapsed,
-            Some(&format!("rows={}", rows.len())),
-        );
+        telemetry::preview_done(display_elapsed, rows.len());
         let display_capped_rows = full_stats.n_entries > rows.len();
         Ok(FetchResult {
             rows,
@@ -292,13 +261,7 @@ async fn fetch_fallback<R: LotusRepository>(
         })?;
     let parse_elapsed = perf::end_timer("LOTUS:fallback_parse", parse_timer);
     metrics.add_parse(parse_elapsed);
-    log_timing_evt(
-        "search",
-        "Fallback",
-        "done",
-        parse_elapsed,
-        Some(&format!("rows={}", rows.len())),
-    );
+    telemetry::fallback_done(parse_elapsed, rows.len());
     let display_capped_rows = parse_capped || full_stats.n_entries > rows.len();
     Ok(FetchResult {
         rows,

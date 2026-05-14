@@ -7,7 +7,7 @@
 
 use crate::models::{SearchCriteria, SmilesSearchType};
 use crate::queries;
-use crate::utils::logging::log_debug_evt;
+use crate::services::search_telemetry as telemetry;
 
 /// Normalise a raw SMILES/Molfile string from the criteria.
 ///
@@ -51,12 +51,7 @@ pub fn build_sparql_query(smiles: &str, crit: &SearchCriteria, taxon_qid: Option
             crit.smiles_threshold,
             taxon_for_sachem,
         );
-        log_debug_evt(
-            "search",
-            "query_build",
-            "sachem_query_created",
-            Some(&format!("has_SERVICE={}", q.contains("SERVICE"))),
-        );
+        telemetry::query_build_sachem_query_created(q.contains("SERVICE"));
         q
     } else {
         match taxon_qid {
@@ -69,15 +64,9 @@ pub fn build_sparql_query(smiles: &str, crit: &SearchCriteria, taxon_qid: Option
 /// Apply server-side filters and log the outcome.
 pub fn apply_server_filters(base_query: &str, crit: &SearchCriteria) -> String {
     let execution_query = queries::query_with_server_filters(base_query, crit);
-    log_debug_evt(
-        "search",
-        "query_build",
-        "after_server_filters",
-        Some(&format!(
-            "has_SERVICE={} has_FILTER={}",
-            execution_query.contains("SERVICE"),
-            execution_query.contains("FILTER")
-        )),
+    telemetry::query_build_after_server_filters(
+        execution_query.contains("SERVICE"),
+        execution_query.contains("FILTER"),
     );
     execution_query
 }

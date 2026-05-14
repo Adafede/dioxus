@@ -13,8 +13,8 @@ use crate::models::TaxonMatch;
 use crate::perf;
 use crate::queries;
 use crate::repositories::LotusRepository;
+use crate::services::search_telemetry as telemetry;
 use crate::sparql;
-use crate::utils::logging::{log_info_evt, log_timing_evt};
 
 /// Output of a successful taxon resolution.
 #[derive(Debug, Clone)]
@@ -75,13 +75,7 @@ pub async fn resolve<R: LotusRepository>(
     // Fast path: cache hit.
     if let Some(cached_qid) = taxon_cache::lookup(&sanitized) {
         let taxon_elapsed = perf::end_timer("LOTUS:taxon_resolution", taxon_timer);
-        log_timing_evt(
-            "search",
-            "ResolvingTaxon",
-            "cache_hit",
-            taxon_elapsed,
-            Some(&format!("taxon_input={} qid={}", sanitized, cached_qid)),
-        );
+        telemetry::taxon_cache_hit(taxon_elapsed, &sanitized, &cached_qid);
         return Ok(TaxonResolution {
             qid: Some(cached_qid),
             warning: standardized_warning,
@@ -100,15 +94,7 @@ pub async fn resolve<R: LotusRepository>(
 
     let taxon_elapsed = perf::end_timer("LOTUS:taxon_resolution", taxon_timer);
     metrics.add_network(taxon_elapsed);
-    log_info_evt(
-        "search",
-        "ResolvingTaxon",
-        "sparql_done",
-        Some(&format!(
-            "elapsed_ms={:.1}",
-            taxon_elapsed.as_secs_f64() * 1000.0
-        )),
-    );
+    telemetry::taxon_sparql_done(taxon_elapsed);
 
     let matches = sparql::parse_taxon_csv_bytes(&csv).map_err(|e| {
         DomainError::Parse(ParseFault::TaxonCsv {

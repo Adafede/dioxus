@@ -2,4 +2,4 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 pub mod error_presenter;
-
+pub mod search_telemetry;

@@ -12,7 +12,7 @@ use crate::features::explore::search_state::{ExploreState, dispatch_explore_acti
 use crate::features::explore::types::{DomainError, ValidationFault};
 use crate::models::SearchCriteria;
 use crate::repositories::LotusRepository;
-use crate::utils::logging::{log_debug_evt, log_info_evt, log_warn_evt};
+use crate::services::search_telemetry as telemetry;
 use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use std::sync::Arc;
@@ -30,12 +30,7 @@ pub fn use_startup_effect<R: LotusRepository>(
         if let Some(fmt) = pending.as_deref()
             && DownloadFormat::from_str(fmt).is_none()
         {
-            log_warn_evt(
-                "download",
-                "startup",
-                "unsupported_format",
-                Some(&format!("format={fmt}")),
-            );
+            telemetry::download_startup_unsupported_format(fmt);
             dispatch_explore_action(
                 explore,
                 ExploreAction::SearchFailed {
@@ -57,19 +52,9 @@ pub fn use_startup_effect<R: LotusRepository>(
             && !explore.peek().lifecycle.loading
         {
             if let Some(fmt) = pending.as_deref() {
-                log_info_evt(
-                    "download",
-                    "startup",
-                    "auto_search_triggered",
-                    Some(&format!("format={fmt}")),
-                );
+                telemetry::download_startup_auto_search_triggered(fmt);
             } else {
-                log_info_evt(
-                    "search",
-                    "startup",
-                    "auto_search_triggered",
-                    Some("execute=true"),
-                );
+                telemetry::search_startup_auto_search_execute();
             }
             start_search(criteria, pending.is_some(), explore, repo);
             app_state.with_mut(|state| {
@@ -100,12 +85,7 @@ pub fn use_download_dispatch_effect(
 
         if explore.read().lifecycle.loading {
             if !app_state.peek().metrics.waiting_loading_logged {
-                log_debug_evt(
-                    "download",
-                    "dispatch",
-                    "waiting_loading",
-                    Some(&format!("format={fmt}")),
-                );
+                telemetry::download_dispatch_waiting_loading(&fmt);
                 app_state.with_mut(|state| state.metrics.waiting_loading_logged = true);
             }
             if app_state.peek().metrics.waiting_query_logged {
@@ -125,12 +105,7 @@ pub fn use_download_dispatch_effect(
             .map(str::to_string)
         else {
             if !app_state.peek().metrics.waiting_query_logged {
-                log_debug_evt(
-                    "download",
-                    "dispatch",
-                    "waiting_query",
-                    Some(&format!("format={fmt}")),
-                );
+                telemetry::download_dispatch_waiting_query(&fmt);
                 app_state.with_mut(|state| state.metrics.waiting_query_logged = true);
             }
             return;
@@ -149,25 +124,14 @@ pub fn use_download_dispatch_effect(
                     });
                 }
                 dispatch_explore_action(explore, ExploreAction::DownloadDispatchStarted);
-                log_debug_evt(
-                    "download",
-                    "startup_dispatch",
-                    "query_check",
-                    Some(&format!(
-                        "format={} has_SERVICE={} has_SELECT={} query_bytes={}",
-                        format.log_name(),
-                        query.contains("SERVICE"),
-                        query.contains("SELECT"),
-                        query.len()
-                    )),
+                telemetry::download_startup_dispatch_query_check(
+                    format.log_name(),
+                    query.contains("SERVICE"),
+                    query.contains("SELECT"),
+                    query.len(),
                 );
                 spawn(async move {
-                    log_info_evt(
-                        "download",
-                        "dispatch",
-                        "started",
-                        Some(&format!("format={}", format.log_name())),
-                    );
+                    telemetry::download_dispatch_started(format.log_name());
                     if let Err(err) = execute_download(
                         format,
                         #[cfg(target_arch = "wasm32")]
@@ -177,23 +141,13 @@ pub fn use_download_dispatch_effect(
                     )
                     .await
                     {
-                        log_warn_evt(
-                            "download",
-                            "dispatch",
-                            "error",
-                            Some(&format!("format={} reason={err}", format.log_name())),
-                        );
+                        telemetry::download_dispatch_error(format.log_name(), &err.to_string());
                     }
                     dispatch_explore_action(explore, ExploreAction::DownloadDispatchFinished);
                 });
             }
             None => {
-                log_warn_evt(
-                    "download",
-                    "dispatch",
-                    "unsupported_format",
-                    Some(&format!("format={fmt}")),
-                );
+                telemetry::download_dispatch_unsupported_format(&fmt);
                 dispatch_explore_action(
                     explore,
                     ExploreAction::SearchFailed {

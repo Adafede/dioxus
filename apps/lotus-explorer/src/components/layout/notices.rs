@@ -97,4 +97,3 @@ pub fn ErrorNotice(on_dismiss: EventHandler<()>, on_retry: EventHandler<()>) -> 
         }
     }
 }
-
