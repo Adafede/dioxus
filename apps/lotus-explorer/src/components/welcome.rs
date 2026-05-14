@@ -46,7 +46,6 @@ pub fn WelcomeScreen() -> Element {
             }
 
             div { class: "welcome-examples",
-                h3 { "{t(locale, TextKey::WelcomeTry)}" }
                 ul { class: "example-list",
                     ExRow {
                         value: "taxon=<name|QID>",

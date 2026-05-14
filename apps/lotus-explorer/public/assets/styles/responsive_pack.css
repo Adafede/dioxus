@@ -82,6 +82,7 @@
   .toolbar-actions > .dl-group {
     width:100%;
   }
+  .footer-line { grid-template-columns:1fr; gap:4px 8px; }
   .footer-row { grid-template-columns:1fr; align-items:flex-start; gap:4px 8px; }
   .footer-label { min-width:0; width:100%; margin-bottom:1px; }
   .footer-links { gap:4px 8px; }

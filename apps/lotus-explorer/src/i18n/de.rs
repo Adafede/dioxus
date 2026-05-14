@@ -44,14 +44,11 @@ pub fn de_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintUnknown => "Unerwarteter Fehler. Ein erneuter Versuch kann helfen.",
         TextKey::SkipToResults => "Zu den Ergebnissen springen",
-        TextKey::WelcomeTry => "Beispiele",
         TextKey::WelcomeLeadA => {
-            "Jede Zeile verknüpft eine Verbindung mit dem Organismus, aus dem sie berichtet wurde, "
+            "Jede Zeile verknüpft eine Verbindung mit dem Organismus, aus dem sie gemeldet wurde, "
         }
-        TextKey::WelcomeLeadB => {
-            "zusammen mit der zugehörigen Primärliteratur. Die Daten stammen aus der "
-        }
-        TextKey::WelcomeLeadC => ", gespeichert in ",
+        TextKey::WelcomeLeadB => "mit der Literaturreferenz. Die Daten stammen aus der ",
+        TextKey::WelcomeLeadC => ", gespeichert auf ",
         TextKey::WelcomeLeadD => " und abgefragt über ",
         TextKey::WelcomeLeadE => ".",
         TextKey::ExampleGentiana => "Taxonname oder Wikidata-QID eingeben",
@@ -62,10 +59,10 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryStructure => "JSON herunterladen",
         TextKey::ExampleQueryAdvanced => "RDF herunterladen",
         TextKey::WelcomeProgrammaticDownload => {
-            "Programmgesteuerte URL-Parameter (Abfrage ausführen oder CSV / JSON / RDF herunterladen):"
+            "Programmgesteuerte URL-Parameter (Abfrage ausführen oder CSV / JSON / RDF laden):"
         }
         TextKey::LabelLanguagePolicy => {
-            "Beschriftungen werden zuerst aus 'mul' und danach per 'en'-Fallback aufgelöst, damit Ergebnisse über UI-Sprachen hinweg reproduzierbar und vergleichbar bleiben."
+            "Beschriftungen werden zuerst aus 'mul' und dann 'en' aufgelöst, damit Ergebnisse vergleichbar bleiben."
         }
         TextKey::SearchFilters => "Suchfilter",
         TextKey::Taxon => "Taxon",

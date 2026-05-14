@@ -46,13 +46,10 @@ pub fn it_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintUnknown => "Errore inatteso. Riprova.",
         TextKey::SkipToResults => "Vai ai risultati",
-        TextKey::WelcomeTry => "Esempi",
         TextKey::WelcomeLeadA => {
-            "Ogni riga collega un composto all'organismo da cui è stato riportato, "
+            "Ogni riga collega un composto all'organismo da cui è stato segnalato, "
         }
-        TextKey::WelcomeLeadB => {
-            "insieme al riferimento bibliografico primario. I dati provengono dalla "
-        }
+        TextKey::WelcomeLeadB => "con il riferimento bibliografico. I dati provengono dalla ",
         TextKey::WelcomeLeadC => ", archiviati su ",
         TextKey::WelcomeLeadD => " e interrogati tramite ",
         TextKey::WelcomeLeadE => ".",
@@ -64,10 +61,10 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryStructure => "Scarica JSON",
         TextKey::ExampleQueryAdvanced => "Scarica RDF",
         TextKey::WelcomeProgrammaticDownload => {
-            "Parametri URL programmatici (eseguire la query o scaricare CSV / JSON / RDF):"
+            "Parametri URL programmatici (eseguire o scaricare CSV / JSON / RDF):"
         }
         TextKey::LabelLanguagePolicy => {
-            "Le etichette usano prima 'mul' e poi fallback 'en' per mantenere risultati riproducibili e confrontabili tra lingue dell'interfaccia."
+            "Le etichette usano prima 'mul' e poi 'en' per risultati confrontabili."
         }
         TextKey::SearchFilters => "Filtri di ricerca",
         TextKey::Taxon => "Taxon",

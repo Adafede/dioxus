@@ -2,10 +2,6 @@
 
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-pub(super) fn title_curation_explorer() -> &'static str {
-    "Curation Explorer"
-}
-
 pub(super) fn heading_add_one_row() -> &'static str {
     "Add one row"
 }

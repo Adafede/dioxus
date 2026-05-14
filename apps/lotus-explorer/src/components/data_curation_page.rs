@@ -19,7 +19,7 @@ use crate::i18n::{
     msg_add_row_before_generate, msg_delay_advice, msg_duplicate_row_skipped, msg_examples_loaded,
     msg_name_smiles_required, msg_no_valid_tsv_rows, msg_running_checks, msg_second_pass_running,
     msg_tsv_import_complete, msg_two_step_hint, placeholder_doi_optional,
-    placeholder_molecule_name, placeholder_taxon_optional, t, title_curation_explorer,
+    placeholder_molecule_name, placeholder_taxon_optional, t,
 };
 use dioxus::prelude::*;
 use std::sync::Arc;
@@ -164,7 +164,6 @@ pub fn DataCurationPage() -> Element {
 
     rsx! {
         section { class: "curation-wrap",
-            h2 { class: "curation-title", "{title_curation_explorer(locale)}" }
 
             div { class: "curation-grid",
                 div { class: "curation-card",

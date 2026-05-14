@@ -42,13 +42,8 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintParse => "Response parsing failed. Retry or refine query.",
         TextKey::ErrorHintUnknown => "Unexpected error. Retry may help.",
         TextKey::SkipToResults => "Skip to results",
-        TextKey::WelcomeTry => "Try",
-        TextKey::WelcomeLeadA => {
-            "Every row ties a compound to the organism it has been reported from, "
-        }
-        TextKey::WelcomeLeadB => {
-            "together with the primary literature reference. Data comes from the "
-        }
+        TextKey::WelcomeLeadA => "Each row ties a compound to the organism it was reported from, ",
+        TextKey::WelcomeLeadB => "plus the literature reference. Data comes from the ",
         TextKey::WelcomeLeadC => ", stored on ",
         TextKey::WelcomeLeadD => " and queried via ",
         TextKey::WelcomeLeadE => ".",
@@ -60,10 +55,10 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryStructure => "Download JSON",
         TextKey::ExampleQueryAdvanced => "Download RDF",
         TextKey::WelcomeProgrammaticDownload => {
-            "Programmatic URL patterns (execute query, or download CSV / JSON / RDF):"
+            "Programmatic URL patterns (run or download CSV / JSON / RDF):"
         }
         TextKey::LabelLanguagePolicy => {
-            "Labels are resolved with 'mul' first, then 'en' fallback for reproducible and comparable results across UI languages."
+            "Labels use 'mul' first, then 'en' fallback, for comparable results."
         }
         TextKey::SearchFilters => "Search filters",
         TextKey::Taxon => "Taxon",

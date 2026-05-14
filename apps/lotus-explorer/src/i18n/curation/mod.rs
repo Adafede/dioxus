@@ -8,15 +8,6 @@ mod en;
 mod fr;
 mod it;
 
-pub fn title_curation_explorer(locale: Locale) -> &'static str {
-    match locale {
-        Locale::En => en::title_curation_explorer(),
-        Locale::Fr => fr::title_curation_explorer(),
-        Locale::De => de::title_curation_explorer(),
-        Locale::It => it::title_curation_explorer(),
-    }
-}
-
 pub fn heading_add_one_row(locale: Locale) -> &'static str {
     match locale {
         Locale::En => en::heading_add_one_row(),

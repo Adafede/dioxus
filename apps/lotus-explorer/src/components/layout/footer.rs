@@ -10,44 +10,50 @@ pub fn Footer() -> Element {
     let locale = use_locale();
     rsx! {
         footer { class: "app-footer",
-            FooterRow {
-                label: t(locale, TextKey::FooterArchive),
-                class: "footer-link red",
-                links: &[("https://doi.org/10.5281/zenodo.5794106", "Frozen version (Zenodo)")],
+            div { class: "footer-line",
+                FooterRow {
+                    label: t(locale, TextKey::FooterArchive),
+                    class: "footer-link red",
+                    links: &[("https://doi.org/10.5281/zenodo.5794106", "Frozen version (Zenodo)"),],
+                }
+                FooterCitationRow { locale }
             }
-            FooterCitationRow { locale }
-            FooterRow {
-                label: t(locale, TextKey::FooterCode),
-                class: "footer-link green",
-                links: &[
-                    (
-                        "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer",
-                        "lotus-explorer",
-                    ),
-                ],
+            div { class: "footer-line",
+                FooterRow {
+                    label: t(locale, TextKey::FooterCode),
+                    class: "footer-link green",
+                    links: &[
+                        (
+                            "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer",
+                            "lotus-explorer",
+                        ),
+                    ],
+                }
+                FooterRow {
+                    label: t(locale, TextKey::FooterData),
+                    class: "footer-link green",
+                    links: &[
+                        ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
+                        ("https://www.wikidata.org/", "Wikidata"),
+                    ],
+                }
             }
-            FooterRow {
-                label: t(locale, TextKey::FooterData),
-                class: "footer-link green",
-                links: &[
-                    ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
-                    ("https://www.wikidata.org/", "Wikidata"),
-                ],
+            div { class: "footer-line",
+                FooterRow {
+                    label: t(locale, TextKey::FooterPrograms),
+                    class: "footer-link blue",
+                    links: &[
+                        ("https://github.com/cdk/depict", "CDK Depict"),
+                        ("https://citation.js.org", "citation.js"),
+                        ("https://idsm.elixir-czech.cz", "IDSM"),
+                        ("https://lifescience.opensource.epam.com/ketcher", "Ketcher"),
+                        ("https://qlever.dev/wikidata", "QLever"),
+                        ("https://www.rdkitjs.com", "RDKit.js"),
+                        ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
+                    ],
+                }
+                FooterLicenseRow { locale }
             }
-            FooterRow {
-                label: t(locale, TextKey::FooterPrograms),
-                class: "footer-link blue",
-                links: &[
-                    ("https://github.com/cdk/depict", "CDK Depict"),
-                    ("https://citation.js.org", "citation.js"),
-                    ("https://idsm.elixir-czech.cz", "IDSM"),
-                    ("https://lifescience.opensource.epam.com/ketcher", "Ketcher"),
-                    ("https://qlever.dev/wikidata", "QLever"),
-                    ("https://www.rdkitjs.com", "RDKit.js"),
-                    ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
-                ],
-            }
-            FooterLicenseRow { locale }
         }
     }
 }

@@ -44,13 +44,10 @@ pub fn fr_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintUnknown => "Erreur inattendue. Réessayer peut aider.",
         TextKey::SkipToResults => "Aller aux résultats",
-        TextKey::WelcomeTry => "Essayer",
         TextKey::WelcomeLeadA => {
-            "Chaque ligne relie un composé à l'organisme dans lequel il est rapporté, "
+            "Chaque ligne relie un composé à l'organisme où il a été rapporté, "
         }
-        TextKey::WelcomeLeadB => {
-            "avec la référence bibliographique associée. Les données viennent de "
-        }
+        TextKey::WelcomeLeadB => "avec la référence bibliographique. Les données proviennent de ",
         TextKey::WelcomeLeadC => ", stockées sur ",
         TextKey::WelcomeLeadD => " et interrogées via ",
         TextKey::WelcomeLeadE => ".",
@@ -62,10 +59,10 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryStructure => "Télécharger JSON",
         TextKey::ExampleQueryAdvanced => "Télécharger RDF",
         TextKey::WelcomeProgrammaticDownload => {
-            "Modèles d'URL programmatiques (exécuter la requête, ou télécharger CSV / JSON / RDF) :"
+            "Modèles d'URL programmatiques (lancer ou télécharger CSV / JSON / RDF) :"
         }
         TextKey::LabelLanguagePolicy => {
-            "Les libellés utilisent d'abord 'mul', puis un repli 'en' pour garantir des résultats reproductibles et comparables entre langues d'interface."
+            "Les libellés utilisent d'abord 'mul', puis 'en', pour des résultats comparables."
         }
         TextKey::SearchFilters => "Filtres de recherche",
         TextKey::Taxon => "Taxon",

@@ -34,15 +34,18 @@ pub fn PageHeader() -> Element {
                 LangSwitch {}
             }
             ViewSwitch {}
-            p { class: "page-sub", "{t(locale, TextKey::PageSubtitle)}" }
-            p { class: "page-archive-note",
-                span { class: "page-archive-label", "{t(locale, TextKey::ArchiveNotice)}" }
-                a {
-                    class: "page-archive-link mono",
-                    href: "https://doi.org/10.5281/zenodo.5794106",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    "10.5281/zenodo.5794106"
+            p { class: "page-sub",
+                "{t(locale, TextKey::PageSubtitle)}"
+                span { class: "page-archive-note",
+                    " "
+                    span { class: "page-archive-label", "{t(locale, TextKey::ArchiveNotice)}" }
+                    a {
+                        class: "page-archive-link mono",
+                        href: "https://doi.org/10.5281/zenodo.5794106",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        "10.5281/zenodo.5794106"
+                    }
                 }
             }
         }
