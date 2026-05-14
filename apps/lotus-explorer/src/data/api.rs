@@ -88,7 +88,7 @@ impl From<AppError> for crate::features::explore::types::DomainError {
             ) => DomainError::Validation(ValidationFault::EmptyInput),
             crate::core::error::ErrorKind::Network(msg) => DomainError::Transport {
                 stage: "network",
-                source: crate::repositories::RepositoryError::Network(msg.to_string()),
+                source: crate::repositories::RepositoryError::network(msg),
             },
             crate::core::error::ErrorKind::Http { status, message } => DomainError::Transport {
                 stage: "http",

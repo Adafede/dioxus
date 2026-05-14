@@ -50,6 +50,6 @@ impl LotusRepository for HybridRepository {
     async fn sparql_bytes(&self, query: &str) -> Result<Vec<u8>, RepositoryError> {
         sparql::execute_sparql_bytes(query)
             .await
-            .map_err(|e| RepositoryError::Network(e.to_string()))
+            .map_err(|e| RepositoryError::network(e.to_string()))
     }
 }

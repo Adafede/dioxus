@@ -93,9 +93,9 @@ fn stage_display_label(locale: Locale, stage: &str) -> String {
 fn transport_error_summary(source: &RepositoryError) -> String {
     let raw = match source {
         RepositoryError::NotConfigured => return "LOTUS API not configured".to_string(),
-        RepositoryError::Network(msg)
-        | RepositoryError::Parse(msg)
-        | RepositoryError::Validation(msg) => msg.as_str(),
+        RepositoryError::Network(detail) => detail.as_str(),
+        RepositoryError::Parse(detail) => detail.as_str(),
+        RepositoryError::Validation(detail) => detail.as_str(),
         RepositoryError::Unknown { message, .. } => message.as_str(),
         RepositoryError::Http { status, body } => {
             return format!("HTTP {status}: {}", compact_error_text(body));
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn transport_error_summary_truncates_long_network_message() {
         let long = "x".repeat(400);
-        let summary = transport_error_summary(&RepositoryError::Network(long));
+        let summary = transport_error_summary(&RepositoryError::network(long));
         assert!(summary.chars().count() <= 221);
         assert!(summary.ends_with('…'));
     }

@@ -131,7 +131,7 @@ mod tests {
     fn transport_domain_error_exposes_repository_source() {
         let err = DomainError::Transport {
             stage: "display query",
-            source: crate::repositories::RepositoryError::Network("timeout".to_string()),
+            source: crate::repositories::RepositoryError::network("timeout"),
         };
 
         let source = err.source().expect("transport errors should expose source");

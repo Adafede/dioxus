@@ -165,7 +165,7 @@ mod tests {
         }
         fn err_network(msg: &str) -> Self {
             Self {
-                response: Err(RepositoryError::Network(msg.to_string())),
+                response: Err(RepositoryError::network(msg.to_string())),
             }
         }
     }

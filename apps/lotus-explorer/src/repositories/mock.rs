@@ -30,7 +30,7 @@ impl MockRepository {
     /// Always returns a SPARQL network error.
     pub fn sparql_error(msg: impl Into<String>) -> Self {
         Self {
-            sparql_response: Err(RepositoryError::Network(msg.into())),
+            sparql_response: Err(RepositoryError::network(msg.into())),
         }
     }
 }
