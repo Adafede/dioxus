@@ -282,4 +282,3 @@ mod tests {
         assert_eq!(format_count(Locale::En, 42), "42");
     }
 }
-

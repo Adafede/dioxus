@@ -2,16 +2,14 @@
 
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-
-
 pub(super) fn title_curation_explorer() -> &'static str {
     "Explorateur de curation bêta"
 }
 
 pub(super) fn subtitle_curation_explorer() -> &'static str {
     {
-                "Créez des QuickStatements copiables pour de nouveaux composés ou des métadonnées manquantes. Cette page s'exécute dans le navigateur avec RDKit.js et des requêtes URL partageables."
-            }
+        "Créez des QuickStatements copiables pour de nouveaux composés ou des métadonnées manquantes. Cette page s'exécute dans le navigateur avec RDKit.js et des requêtes URL partageables."
+    }
 }
 
 pub(super) fn heading_add_one_row() -> &'static str {
@@ -120,32 +118,26 @@ pub(super) fn msg_no_valid_tsv_rows() -> String {
 
 pub(super) fn msg_tsv_import_complete(added: usize, skipped: usize) -> String {
     format!(
-                "Import TSV terminé : {added} ligne(s) unique(s) ajoutée(s), {skipped} doublon(s) ignoré(s)."
-            )
+        "Import TSV terminé : {added} ligne(s) unique(s) ajoutée(s), {skipped} doublon(s) ignoré(s)."
+    )
 }
 
 pub(super) fn msg_examples_loaded(added: usize, skipped: usize) -> String {
     format!(
-                "Exemples chargés : {added} ligne(s) unique(s) ajoutée(s), {skipped} doublon(s) ignoré(s)."
-            )
+        "Exemples chargés : {added} ligne(s) unique(s) ajoutée(s), {skipped} doublon(s) ignoré(s)."
+    )
 }
 
 pub(super) fn msg_add_row_before_generate() -> String {
-    {
-                "Ajoutez au moins une ligne avant de générer les QuickStatements.".to_string()
-            }
+    { "Ajoutez au moins une ligne avant de générer les QuickStatements.".to_string() }
 }
 
 pub(super) fn msg_running_checks() -> String {
-    {
-                "Exécution des vérifications de curation avec RDKit.js et Wikidata...".to_string()
-            }
+    { "Exécution des vérifications de curation avec RDKit.js et Wikidata...".to_string() }
 }
 
 pub(super) fn msg_done_review_copy() -> String {
-    {
-                "Terminé. Vérifiez les lignes générées et copiez le bloc QuickStatements.".to_string()
-            }
+    { "Terminé. Vérifiez les lignes générées et copiez le bloc QuickStatements.".to_string() }
 }
 
 pub(super) fn msg_curation_failed(detail: &str) -> String {
@@ -154,20 +146,20 @@ pub(super) fn msg_curation_failed(detail: &str) -> String {
 
 pub(super) fn msg_curation_rate_limited() -> &'static str {
     {
-                "Limite de débit atteinte sur un service de métadonnées amont (HTTP 429). Attendez environ 60 s puis réessayez."
-            }
+        "Limite de débit atteinte sur un service de métadonnées amont (HTTP 429). Attendez environ 60 s puis réessayez."
+    }
 }
 
 pub(super) fn msg_prerequisites_pending(count: usize) -> String {
     format!(
-                "{count} ligne(s) attend(ent) encore des entités préalables. Exécutez les prérequis, créez/fusionnez-les dans Wikidata, puis lancez la seconde passe."
-            )
+        "{count} ligne(s) attend(ent) encore des entités préalables. Exécutez les prérequis, créez/fusionnez-les dans Wikidata, puis lancez la seconde passe."
+    )
 }
 
 pub(super) fn msg_two_step_hint() -> &'static str {
     {
-                "Flux en deux étapes : exécutez d'abord les prérequis, créez/fusionnez ces éléments dans Wikidata, puis cliquez à nouveau sur Générer les QuickStatements pour que le bloc principal utilise directement les QID résolus."
-            }
+        "Flux en deux étapes : exécutez d'abord les prérequis, créez/fusionnez ces éléments dans Wikidata, puis cliquez à nouveau sur Générer les QuickStatements pour que le bloc principal utilise directement les QID résolus."
+    }
 }
 
 pub(super) fn button_second_pass() -> &'static str {
@@ -175,21 +167,19 @@ pub(super) fn button_second_pass() -> &'static str {
 }
 
 pub(super) fn msg_second_pass_running() -> &'static str {
-    {
-                "Exécution de la seconde passe sur les lignes qui dépendaient d'éléments manquants..."
-            }
+    { "Exécution de la seconde passe sur les lignes qui dépendaient d'éléments manquants..." }
 }
 
 pub(super) fn msg_second_pass_done() -> &'static str {
     {
-                "Seconde passe terminée. Les QuickStatements principaux sont rafraîchis avec les QID résolus lorsque disponibles."
-            }
+        "Seconde passe terminée. Les QuickStatements principaux sont rafraîchis avec les QID résolus lorsque disponibles."
+    }
 }
 
 pub(super) fn msg_second_pass_still_pending_count(count: usize) -> String {
     format!(
-                "{count} élément(s) prérequis sont encore introuvables. Créez/fusionnez-les puis réessayez après 30-120 secondes."
-            )
+        "{count} élément(s) prérequis sont encore introuvables. Créez/fusionnez-les puis réessayez après 30-120 secondes."
+    )
 }
 
 pub(super) fn curation_badge_prerequisite_pending() -> &'static str {
@@ -205,15 +195,13 @@ pub(super) fn curation_badge_second_pass_required() -> &'static str {
 }
 
 pub(super) fn curation_mass_warning_title() -> &'static str {
-    {
-                "La masse exacte n'a pas pu être résolue depuis les points de terminaison de descripteurs"
-            }
+    { "La masse exacte n'a pas pu être résolue depuis les points de terminaison de descripteurs" }
 }
 
 pub(super) fn msg_delay_advice() -> &'static str {
     {
-                "Conseil : Wikidata et les points d'accès de requête peuvent nécessiter 30 à 120 secondes pour exposer les nouveaux éléments."
-            }
+        "Conseil : Wikidata et les points d'accès de requête peuvent nécessiter 30 à 120 secondes pour exposer les nouveaux éléments."
+    }
 }
 
 pub(super) fn curation_qs_dev_label() -> &'static str {
@@ -222,14 +210,12 @@ pub(super) fn curation_qs_dev_label() -> &'static str {
 
 pub(super) fn curation_qs_dev_prereq_hint() -> &'static str {
     {
-                "Ouvrez QS-Dev, collez le bloc de prérequis, exécutez-le, créez ou fusionnez les nouveaux éléments dans Wikidata, attendez un instant, puis revenez ici pour la seconde passe."
-            }
+        "Ouvrez QS-Dev, collez le bloc de prérequis, exécutez-le, créez ou fusionnez les nouveaux éléments dans Wikidata, attendez un instant, puis revenez ici pour la seconde passe."
+    }
 }
 
 pub(super) fn curation_qs_dev_main_hint() -> &'static str {
-    {
-                "Ouvrez QS-Dev, collez le bloc principal, vérifiez les commandes, puis exécutez-les."
-            }
+    { "Ouvrez QS-Dev, collez le bloc principal, vérifiez les commandes, puis exécutez-les." }
 }
 
 pub(super) fn curation_note_existing_complete() -> &'static str {
@@ -241,9 +227,7 @@ pub(super) fn curation_note_existing_updates() -> &'static str {
 }
 
 pub(super) fn curation_note_new_compound() -> &'static str {
-    {
-                "Aucune entrée Wikidata trouvée via InChIKey : QuickStatements de création générés."
-            }
+    { "Aucune entrée Wikidata trouvée via InChIKey : QuickStatements de création générés." }
 }
 
 pub(super) fn curation_note_dependencies_pending() -> &'static str {
@@ -284,4 +268,3 @@ pub(super) fn curation_status_label(status_key: &str) -> &'static str {
         _ => "status",
     }
 }
-

@@ -2,16 +2,14 @@
 
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-
-
 pub(super) fn title_curation_explorer() -> &'static str {
     "Curation Explorer beta"
 }
 
 pub(super) fn subtitle_curation_explorer() -> &'static str {
     {
-                "Create copy-pastable QuickStatements for new compounds or missing metadata. This page runs in the browser with RDKit.js and shareable URL queries."
-            }
+        "Create copy-pastable QuickStatements for new compounds or missing metadata. This page runs in the browser with RDKit.js and shareable URL queries."
+    }
 }
 
 pub(super) fn heading_add_one_row() -> &'static str {
@@ -119,15 +117,11 @@ pub(super) fn msg_no_valid_tsv_rows() -> String {
 }
 
 pub(super) fn msg_tsv_import_complete(added: usize, skipped: usize) -> String {
-    format!(
-                "TSV import complete: added {added} unique row(s), skipped {skipped} duplicate(s)."
-            )
+    format!("TSV import complete: added {added} unique row(s), skipped {skipped} duplicate(s).")
 }
 
 pub(super) fn msg_examples_loaded(added: usize, skipped: usize) -> String {
-    {
-                format!("Examples loaded: added {added} unique row(s), skipped {skipped} duplicate(s).")
-            }
+    { format!("Examples loaded: added {added} unique row(s), skipped {skipped} duplicate(s).") }
 }
 
 pub(super) fn msg_add_row_before_generate() -> String {
@@ -147,21 +141,19 @@ pub(super) fn msg_curation_failed(detail: &str) -> String {
 }
 
 pub(super) fn msg_curation_rate_limited() -> &'static str {
-    {
-                "Rate limit reached on an upstream metadata service (HTTP 429). Wait about 60s and retry."
-            }
+    { "Rate limit reached on an upstream metadata service (HTTP 429). Wait about 60s and retry." }
 }
 
 pub(super) fn msg_prerequisites_pending(count: usize) -> String {
     format!(
-                "{count} row(s) still wait for prerequisite entities. Run prerequisites, create/merge them in Wikidata, then run second pass."
-            )
+        "{count} row(s) still wait for prerequisite entities. Run prerequisites, create/merge them in Wikidata, then run second pass."
+    )
 }
 
 pub(super) fn msg_two_step_hint() -> &'static str {
     {
-                "Two-step workflow: run prerequisites first, create/merge those items in Wikidata, then click Generate QuickStatements again so the main block uses resolved QIDs directly."
-            }
+        "Two-step workflow: run prerequisites first, create/merge those items in Wikidata, then click Generate QuickStatements again so the main block uses resolved QIDs directly."
+    }
 }
 
 pub(super) fn button_second_pass() -> &'static str {
@@ -174,14 +166,14 @@ pub(super) fn msg_second_pass_running() -> &'static str {
 
 pub(super) fn msg_second_pass_done() -> &'static str {
     {
-                "Second pass complete. Main QuickStatements are refreshed with resolved QIDs where available."
-            }
+        "Second pass complete. Main QuickStatements are refreshed with resolved QIDs where available."
+    }
 }
 
 pub(super) fn msg_second_pass_still_pending_count(count: usize) -> String {
     format!(
-                "{count} prerequisite item(s) are still not found. Create/merge them and retry after about 30-120 seconds."
-            )
+        "{count} prerequisite item(s) are still not found. Create/merge them and retry after about 30-120 seconds."
+    )
 }
 
 pub(super) fn curation_badge_prerequisite_pending() -> &'static str {
@@ -202,8 +194,8 @@ pub(super) fn curation_mass_warning_title() -> &'static str {
 
 pub(super) fn msg_delay_advice() -> &'static str {
     {
-                "Advice: Wikidata and query endpoints may need 30-120 seconds to expose newly created items."
-            }
+        "Advice: Wikidata and query endpoints may need 30-120 seconds to expose newly created items."
+    }
 }
 
 pub(super) fn curation_qs_dev_label() -> &'static str {
@@ -212,8 +204,8 @@ pub(super) fn curation_qs_dev_label() -> &'static str {
 
 pub(super) fn curation_qs_dev_prereq_hint() -> &'static str {
     {
-                "Open QS-Dev, paste the prerequisites block, run it, create or merge the new items in Wikidata, wait briefly, then return here for the second pass."
-            }
+        "Open QS-Dev, paste the prerequisites block, run it, create or merge the new items in Wikidata, wait briefly, then return here for the second pass."
+    }
 }
 
 pub(super) fn curation_qs_dev_main_hint() -> &'static str {
@@ -270,4 +262,3 @@ pub(super) fn curation_status_label(status_key: &str) -> &'static str {
         _ => "status",
     }
 }
-

@@ -85,4 +85,3 @@ pub fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static st
         (Locale::It, CountNoun::Entry, false) => "Voci",
     }
 }
-

@@ -2,16 +2,14 @@
 
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-
-
 pub(super) fn title_curation_explorer() -> &'static str {
     "Curation Explorer beta"
 }
 
 pub(super) fn subtitle_curation_explorer() -> &'static str {
     {
-                "Crea QuickStatements copiabili per nuovi composti o metadati mancanti. Questa pagina viene eseguita nel browser con RDKit.js e query URL condivisibili."
-            }
+        "Crea QuickStatements copiabili per nuovi composti o metadati mancanti. Questa pagina viene eseguita nel browser con RDKit.js e query URL condivisibili."
+    }
 }
 
 pub(super) fn heading_add_one_row() -> &'static str {
@@ -119,15 +117,11 @@ pub(super) fn msg_no_valid_tsv_rows() -> String {
 }
 
 pub(super) fn msg_tsv_import_complete(added: usize, skipped: usize) -> String {
-    format!(
-                "Import TSV completato: aggiunte {added} riga(e) uniche, saltati {skipped} duplicati."
-            )
+    format!("Import TSV completato: aggiunte {added} riga(e) uniche, saltati {skipped} duplicati.")
 }
 
 pub(super) fn msg_examples_loaded(added: usize, skipped: usize) -> String {
-    format!(
-                "Esempi caricati: aggiunte {added} riga(e) uniche, saltati {skipped} duplicati."
-            )
+    format!("Esempi caricati: aggiunte {added} riga(e) uniche, saltati {skipped} duplicati.")
 }
 
 pub(super) fn msg_add_row_before_generate() -> String {
@@ -139,9 +133,7 @@ pub(super) fn msg_running_checks() -> String {
 }
 
 pub(super) fn msg_done_review_copy() -> String {
-    {
-                "Fatto. Controlla le righe generate e copia il blocco QuickStatements.".to_string()
-            }
+    { "Fatto. Controlla le righe generate e copia il blocco QuickStatements.".to_string() }
 }
 
 pub(super) fn msg_curation_failed(detail: &str) -> String {
@@ -150,20 +142,20 @@ pub(super) fn msg_curation_failed(detail: &str) -> String {
 
 pub(super) fn msg_curation_rate_limited() -> &'static str {
     {
-                "Limite di richieste raggiunto su un servizio di metadati upstream (HTTP 429). Attendi circa 60 secondi e riprova."
-            }
+        "Limite di richieste raggiunto su un servizio di metadati upstream (HTTP 429). Attendi circa 60 secondi e riprova."
+    }
 }
 
 pub(super) fn msg_prerequisites_pending(count: usize) -> String {
     format!(
-                "{count} riga(e) sono ancora in attesa di entità prerequisito. Esegui i prerequisiti, crea/unisci in Wikidata, poi avvia il secondo passaggio."
-            )
+        "{count} riga(e) sono ancora in attesa di entità prerequisito. Esegui i prerequisiti, crea/unisci in Wikidata, poi avvia il secondo passaggio."
+    )
 }
 
 pub(super) fn msg_two_step_hint() -> &'static str {
     {
-                "Flusso in due fasi: esegui prima i prerequisiti, crea/unisci quegli elementi in Wikidata, poi fai di nuovo clic su Genera QuickStatements così il blocco principale usa direttamente i QID risolti."
-            }
+        "Flusso in due fasi: esegui prima i prerequisiti, crea/unisci quegli elementi in Wikidata, poi fai di nuovo clic su Genera QuickStatements così il blocco principale usa direttamente i QID risolti."
+    }
 }
 
 pub(super) fn button_second_pass() -> &'static str {
@@ -171,21 +163,19 @@ pub(super) fn button_second_pass() -> &'static str {
 }
 
 pub(super) fn msg_second_pass_running() -> &'static str {
-    {
-                "Esecuzione del secondo passaggio sulle righe che dipendevano da elementi mancanti..."
-            }
+    { "Esecuzione del secondo passaggio sulle righe che dipendevano da elementi mancanti..." }
 }
 
 pub(super) fn msg_second_pass_done() -> &'static str {
     {
-                "Secondo passaggio completato. I QuickStatements principali sono stati aggiornati con i QID risolti quando disponibili."
-            }
+        "Secondo passaggio completato. I QuickStatements principali sono stati aggiornati con i QID risolti quando disponibili."
+    }
 }
 
 pub(super) fn msg_second_pass_still_pending_count(count: usize) -> String {
     format!(
-                "{count} elemento/i prerequisito non è ancora stato trovato. Crea/unisci gli elementi e riprova dopo circa 30-120 secondi."
-            )
+        "{count} elemento/i prerequisito non è ancora stato trovato. Crea/unisci gli elementi e riprova dopo circa 30-120 secondi."
+    )
 }
 
 pub(super) fn curation_badge_prerequisite_pending() -> &'static str {
@@ -206,8 +196,8 @@ pub(super) fn curation_mass_warning_title() -> &'static str {
 
 pub(super) fn msg_delay_advice() -> &'static str {
     {
-                "Suggerimento: Wikidata e gli endpoint di query possono richiedere 30-120 secondi per rendere visibili i nuovi elementi."
-            }
+        "Suggerimento: Wikidata e gli endpoint di query possono richiedere 30-120 secondi per rendere visibili i nuovi elementi."
+    }
 }
 
 pub(super) fn curation_qs_dev_label() -> &'static str {
@@ -216,14 +206,12 @@ pub(super) fn curation_qs_dev_label() -> &'static str {
 
 pub(super) fn curation_qs_dev_prereq_hint() -> &'static str {
     {
-                "Apri QS-Dev, incolla il blocco dei prerequisiti, eseguilo, crea o unisci i nuovi elementi in Wikidata, attendi un momento e poi torna qui per il secondo passaggio."
-            }
+        "Apri QS-Dev, incolla il blocco dei prerequisiti, eseguilo, crea o unisci i nuovi elementi in Wikidata, attendi un momento e poi torna qui per il secondo passaggio."
+    }
 }
 
 pub(super) fn curation_qs_dev_main_hint() -> &'static str {
-    {
-                "Apri QS-Dev, incolla il blocco principale, controlla i comandi e poi eseguili."
-            }
+    { "Apri QS-Dev, incolla il blocco principale, controlla i comandi e poi eseguili." }
 }
 
 pub(super) fn curation_note_existing_complete() -> &'static str {
@@ -231,15 +219,11 @@ pub(super) fn curation_note_existing_complete() -> &'static str {
 }
 
 pub(super) fn curation_note_existing_updates() -> &'static str {
-    {
-                "Trovata una voce Wikidata esistente: generati QuickStatements di aggiornamento."
-            }
+    { "Trovata una voce Wikidata esistente: generati QuickStatements di aggiornamento." }
 }
 
 pub(super) fn curation_note_new_compound() -> &'static str {
-    {
-                "Nessuna voce Wikidata trovata tramite InChIKey: generati QuickStatements di creazione."
-            }
+    { "Nessuna voce Wikidata trovata tramite InChIKey: generati QuickStatements di creazione." }
 }
 
 pub(super) fn curation_note_dependencies_pending() -> &'static str {
@@ -280,4 +264,3 @@ pub(super) fn curation_status_label(status_key: &str) -> &'static str {
         _ => "status",
     }
 }
-
