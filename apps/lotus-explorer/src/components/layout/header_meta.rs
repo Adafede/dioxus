@@ -23,13 +23,15 @@ pub fn HeaderMetaSection() -> Element {
     rsx! {
         if let Some(qid) = explore.result.resolved_qid.as_deref() {
             p { class: "page-meta",
-                span { class: "meta-key", "{t(locale, TextKey::ResolvedTaxon)}" }
-                span { class: "meta-sep", ":" }
-                span { class: "meta-val mono", "{qid}" }
-                CopyButton {
-                    text: Arc::<str>::from(qid),
-                    title: t(locale, TextKey::CopyTaxonQid),
-                    locale,
+                span { class: "meta-item",
+                    span { class: "meta-key", "{t(locale, TextKey::ResolvedTaxon)}" }
+                    span { class: "meta-sep", ":" }
+                    span { class: "meta-val mono", "{qid}" }
+                    CopyButton {
+                        text: Arc::<str>::from(qid),
+                        title: t(locale, TextKey::CopyTaxonQid),
+                        locale,
+                    }
                 }
             }
         }
@@ -38,31 +40,36 @@ pub fn HeaderMetaSection() -> Element {
             explore.result.result_hash.as_deref(),
         )
         {
-            p { class: "page-meta",
-                span { class: "meta-key", "{t(locale, TextKey::QueryHash)}" }
-                span { class: "meta-sep", ":" }
-                span { class: "meta-val mono", "{&qh[..12]}" }
-                CopyButton {
-                    text: Arc::<str>::from(qh),
-                    title: t(locale, TextKey::CopyFullQueryHash),
-                    locale,
+            p { class: "page-meta page-meta-pairs",
+                span { class: "meta-item",
+                    span { class: "meta-key", "{t(locale, TextKey::QueryHash)}" }
+                    span { class: "meta-sep", ":" }
+                    span { class: "meta-val mono", "{&qh[..12]}" }
+                    CopyButton {
+                        text: Arc::<str>::from(qh),
+                        title: t(locale, TextKey::CopyFullQueryHash),
+                        locale,
+                    }
                 }
-                span { class: "meta-sep", "" }
-                span { class: "meta-key", "{t(locale, TextKey::ResultHash)}" }
-                span { class: "meta-sep", ":" }
-                span { class: "meta-val mono", "{&rh[..12]}" }
-                CopyButton {
-                    text: Arc::<str>::from(rh),
-                    title: t(locale, TextKey::CopyFullResultHash),
-                    locale,
+                span { class: "meta-item",
+                    span { class: "meta-key", "{t(locale, TextKey::ResultHash)}" }
+                    span { class: "meta-sep", ":" }
+                    span { class: "meta-val mono", "{&rh[..12]}" }
+                    CopyButton {
+                        text: Arc::<str>::from(rh),
+                        title: t(locale, TextKey::CopyFullResultHash),
+                        locale,
+                    }
                 }
             }
         }
         if let Some(n) = explore.result.total_matches {
             p { class: "page-meta",
-                span { class: "meta-key", "{t(locale, TextKey::TotalMatches)}" }
-                span { class: "meta-sep", ":" }
-                span { class: "meta-val mono", "{n}" }
+                span { class: "meta-item",
+                    span { class: "meta-key", "{t(locale, TextKey::TotalMatches)}" }
+                    span { class: "meta-sep", ":" }
+                    span { class: "meta-val mono", "{n}" }
+                }
             }
         }
     }

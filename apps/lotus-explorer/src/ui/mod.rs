@@ -4,6 +4,7 @@
 //! UI composition primitives used by live components.
 
 pub mod a11y_contract;
+mod a11y_smoke;
 
 /// A content-phase enumeration for better state-driven UI rendering.
 ///
