@@ -6,7 +6,7 @@
 //! Reads from [`crate::state::ResultsContext`] and `use_locale()` — zero props.
 
 use crate::components::copy_button::CopyButton;
-use crate::i18n::{TextKey, t};
+use crate::i18n::{TextKey, format_count, t};
 use crate::state::use_results_context;
 use dioxus::prelude::*;
 use std::sync::Arc;
@@ -68,7 +68,7 @@ pub fn HeaderMetaSection() -> Element {
                 span { class: "meta-item",
                     span { class: "meta-key", "{t(locale, TextKey::TotalMatches)}" }
                     span { class: "meta-sep", ":" }
-                    span { class: "meta-val mono", "{n}" }
+                    span { class: "meta-val mono", "{format_count(locale, n)}" }
                 }
             }
         }

@@ -1052,6 +1052,35 @@ pub fn aria_sort_toggle(locale: Locale, column: &str, next_descending: bool) -> 
     }
 }
 
+fn group_digits(mut value: usize, sep: char) -> String {
+    if value < 1000 {
+        return value.to_string();
+    }
+
+    let mut groups: Vec<usize> = Vec::new();
+    while value >= 1000 {
+        groups.push(value % 1000);
+        value /= 1000;
+    }
+
+    let mut out = value.to_string();
+    for group in groups.iter().rev() {
+        out.push(sep);
+        out.push_str(&format!("{group:03}"));
+    }
+    out
+}
+
+pub fn format_count(locale: Locale, value: usize) -> String {
+    let sep = match locale {
+        Locale::En => ',',
+        Locale::Fr => ' ',
+        Locale::De => '.',
+        Locale::It => '.',
+    };
+    group_digits(value, sep)
+}
+
 pub fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static str {
     match (locale, noun, count == 1) {
         (Locale::En, CountNoun::Compound, true) => "Compound",
@@ -1121,5 +1150,14 @@ mod tests {
         let de = aria_sort_toggle(Locale::De, "Jahr", false);
         assert!(de.contains("Jahr"));
         assert!(de.contains("aufsteigend"));
+    }
+
+    #[test]
+    fn format_count_uses_locale_separators() {
+        assert_eq!(format_count(Locale::En, 1_234_567), "1,234,567");
+        assert_eq!(format_count(Locale::Fr, 1_234_567), "1 234 567");
+        assert_eq!(format_count(Locale::De, 1_234_567), "1.234.567");
+        assert_eq!(format_count(Locale::It, 1_234_567), "1.234.567");
+        assert_eq!(format_count(Locale::En, 42), "42");
     }
 }

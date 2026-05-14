@@ -8,7 +8,7 @@ use super::download_model::{
     DOWNLOAD_QUERY_RDF_SPEC, DownloadQuerySpec, build_download_toolbar_model,
 };
 use crate::download::{DownloadFormat, execute_download, trigger_download};
-use crate::i18n::{CountNoun, TextKey, count_label, t};
+use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::*;
 use crate::perf;
 use crate::state::use_results_context;
@@ -157,9 +157,9 @@ fn StatBadge(
 ) -> Element {
     let locale = crate::hooks::use_locale();
     let display_value = if plus {
-        format!("{value}+")
+        format!("{}+", format_count(locale, value))
     } else {
-        value.to_string()
+        format_count(locale, value)
     };
     let label = count_label(locale, noun, value);
     rsx! {
@@ -168,7 +168,7 @@ fn StatBadge(
                 span { class: "stat-value", "{display_value}" }
                 if let Some(secondary) = secondary_value {
                     div { class: "stat-secondary-row",
-                        span { class: "stat-value-secondary mono", "{secondary}" }
+                        span { class: "stat-value-secondary mono", "{format_count(locale, secondary)}" }
                         if let Some(label) = secondary_label {
                             span { class: "stat-secondary-label", "{label}" }
                         }
