@@ -30,7 +30,9 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::ArchiveNotice => "Archivio congelato:",
         TextKey::Unique => "Uniche",
         TextKey::LoadingTitle => "Interrogazione di Wikidata tramite QLever...",
-        TextKey::LoadingHint => "I set di risultati di grandi dimensioni possono richiedere alcuni secondi.",
+        TextKey::LoadingHint => {
+            "I set di risultati di grandi dimensioni possono richiedere alcuni secondi."
+        }
         TextKey::LoadingResolvingTaxon => "Risoluzione del taxon...",
         TextKey::LoadingCounting => "Conteggio delle corrispondenze...",
         TextKey::LoadingFetchingPreview => "Recupero righe di anteprima...",
