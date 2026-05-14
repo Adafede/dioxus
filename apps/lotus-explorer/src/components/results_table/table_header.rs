@@ -54,7 +54,9 @@ pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortCol
 
     rsx! {
         tr {
-            th { class: "th-static", scope: "col", "{t(locale, TextKey::Structure)}" }
+            th { class: "th-static", scope: "col",
+                span { class: "th-label", "{t(locale, TextKey::Structure)}" }
+            }
             for header in SORTABLE_COLUMNS {
                 SortableColumnHeader {
                     col: header.col,
@@ -91,7 +93,7 @@ fn SortableColumnHeader(
                 aria_label: "{sort_aria}",
                 title: "{sort_aria}",
                 onclick: move |_| on_toggle.call(col),
-                "{label_text} "
+                span { class: "th-label", "{label_text}" }
                 span { class: "sort-icon", "aria-hidden": "true", {sort_icon_for(&sort, col)} }
             }
         }
