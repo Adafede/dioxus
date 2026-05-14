@@ -619,14 +619,14 @@ a:hover { text-decoration: underline; }
 }
 .stat-label      { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:1px;
                    font-weight:600; }
-.stat-badge:nth-child(1)::before,
-.stat-badge:nth-child(1) .stat-value { color:var(--wd-compound); background: var(--wd-compound); }
-.stat-badge:nth-child(2)::before,
-.stat-badge:nth-child(2) .stat-value { color:var(--wd-taxon); background: var(--wd-taxon); }
-.stat-badge:nth-child(3)::before,
-.stat-badge:nth-child(3) .stat-value { color:var(--wd-reference); background: var(--wd-reference); }
-.stat-badge:nth-child(4)::before,
-.stat-badge:nth-child(4) .stat-value { color:var(--wd-entries); background: var(--wd-entries); }
+.stat-badge:nth-child(1)::before { background: var(--wd-compound); }
+.stat-badge:nth-child(1) .stat-value { color: var(--wd-compound); }
+.stat-badge:nth-child(2)::before { background: var(--wd-taxon); }
+.stat-badge:nth-child(2) .stat-value { color: var(--wd-taxon); }
+.stat-badge:nth-child(3)::before { background: var(--wd-reference); }
+.stat-badge:nth-child(3) .stat-value { color: var(--wd-reference); }
+.stat-badge:nth-child(4)::before { background: var(--wd-entries); }
+.stat-badge:nth-child(4) .stat-value { color: var(--wd-entries); }
 
 /* Cell types */
 .td-depict       { width:130px; padding:6px 10px !important; }
