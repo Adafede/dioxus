@@ -669,7 +669,7 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .query-panel[open] > summary::before { content:"▾ "; }
 .query-panel > summary:hover { color:var(--text); }
 .query-text      { padding:12px 16px; margin:0; font-family:var(--mono); font-size:12px;
-                   color:var(--text); background:var(--bg); border-top:1px solid var(--border);
+                   color:var(--text); background:var(--panel-bg); border-top:1px solid var(--panel-border);
                    white-space:pre-wrap; word-break:break-word; max-height:320px; overflow:auto; }
 
 .table-scroll    { overflow-x:auto; overflow-y:auto; max-height:min(72vh, 980px); border:1px solid var(--panel-border); border-radius:14px;
@@ -920,12 +920,10 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .na              { color:var(--text3); }
 
 /* Footer */
-.app-footer      { margin-top:auto; padding:20px 28px; border-top:1px solid var(--border);
-                   background:linear-gradient(140deg,
-                     color-mix(in srgb, var(--bg2) 94%, var(--wd-reference) 6%),
-                     color-mix(in srgb, var(--bg2) 92%, var(--wd-taxon) 8%));
+.app-footer      { margin-top:auto; padding:20px 28px; border-top:1px solid var(--panel-border);
+                   background:var(--panel-bg-soft);
                    color:var(--text2);
-                   display:flex; flex-direction:column; gap:8px; font-size:var(--fs-0); box-shadow:var(--shadow-xs); }
+                   display:flex; flex-direction:column; gap:8px; font-size:var(--fs-0); box-shadow:var(--panel-shadow); }
 .footer-row      { display:grid; grid-template-columns:96px minmax(0, 1fr); column-gap:10px; row-gap:4px; align-items:start; }
 .footer-label    { color:var(--text2); font-weight:700; text-transform:uppercase;
                    font-size:11px; letter-spacing:1px; min-width:0; white-space:nowrap; padding-top:2px; }
@@ -933,8 +931,8 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .footer-links    { list-style:none; display:flex; flex-wrap:wrap; gap:6px 10px; margin:0; padding:0; min-width:0; }
 .footer-links li { display:inline-flex; align-items:baseline; gap:6px; min-width:0;
                    padding:2px 8px; border-radius:999px;
-                   background:color-mix(in srgb, var(--surface) 70%, transparent);
-                   border:1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+                   background:var(--panel-bg);
+                   border:1px solid var(--panel-border); }
 .footer-link           { color:var(--text);  text-decoration:none; }
 .footer-link:hover     { text-decoration:underline; }
 .footer-link.red      { color:var(--wd-compound);
