@@ -10,6 +10,10 @@ pub fn search_start() {
     log_info_evt("search", "start", "begin", None);
 }
 
+pub fn search_inflight_cancelled() {
+    log_debug_evt("search", "start", "inflight_cancelled", None);
+}
+
 pub fn stale_result_ignored(request_token: u64) {
     log_debug_evt(
         "search",

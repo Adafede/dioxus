@@ -71,7 +71,6 @@ pub(super) fn normalize_doi(value: &str) -> Option<String> {
     Some(canonical.to_ascii_uppercase())
 }
 
-
 pub(super) fn has_stereo_marks(smiles: &str) -> bool {
     smiles.contains('@') || smiles.contains('/') || smiles.contains('\\')
 }

@@ -148,7 +148,9 @@ mod tests {
             taxon: Some("  Voacanga africana ".to_string()),
             doi: Some("https://doi.org/10.1000/abc".to_string()),
         };
-        assert_eq!(row_uniqueness_key(&row), "CCO\tvoacanga africana\t10.1000/ABC");
+        assert_eq!(
+            row_uniqueness_key(&row),
+            "CCO\tvoacanga africana\t10.1000/ABC"
+        );
     }
 }
-

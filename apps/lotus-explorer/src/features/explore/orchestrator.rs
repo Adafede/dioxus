@@ -21,8 +21,23 @@ use crate::models::{CompoundEntry, DatasetStats, SearchCriteria};
 use crate::perf;
 use crate::repositories::LotusRepository;
 use crate::services::search_telemetry as telemetry;
+use dioxus::core::Task;
 use dioxus::prelude::*;
 use shared::lotus::models::runtime_table_row_limit;
+use std::cell::RefCell;
+
+thread_local! {
+    static IN_FLIGHT_SEARCH_TASK: RefCell<Option<Task>> = const { RefCell::new(None) };
+}
+
+fn replace_in_flight_search_task(next: Task) {
+    IN_FLIGHT_SEARCH_TASK.with(|slot| {
+        if let Some(prev) = slot.borrow_mut().replace(next) {
+            prev.cancel();
+            telemetry::search_inflight_cancelled();
+        }
+    });
+}
 
 /// The raw outcome from a completed `do_search`.
 pub struct SearchOutcome {
@@ -67,7 +82,7 @@ pub fn start_search<R: LotusRepository>(
     );
     let request_token = explore.peek().lifecycle.search_request_token;
 
-    spawn(async move {
+    let task = spawn(async move {
         match do_search(crit.clone(), explore, direct_download_mode, repo.clone()).await {
             Ok(outcome) => {
                 if request_token != explore.peek().lifecycle.search_request_token {
@@ -113,6 +128,7 @@ pub fn start_search<R: LotusRepository>(
             }
         }
     });
+    replace_in_flight_search_task(task);
 }
 
 /// Execute the full search pipeline; returns a [`SearchOutcome`] or a
