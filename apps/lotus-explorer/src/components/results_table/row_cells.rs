@@ -55,16 +55,17 @@ fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) 
     let truncated_ref_title = entry
         .ref_title
         .as_deref()
-        .map(|title| truncate_title(title, 60));
+        .map(|title| truncate_title(title, 55));
     let name: &str = if entry.name.trim().is_empty() {
         entry.compound_qid.as_ref()
     } else {
         &entry.name
     };
+    let truncated_compound_name = truncate_title(name, 55);
     rsx! {
         tr { key: "{row_key}", class: "data-row",
             {structure_cell(locale, text, depict_url.as_deref(), name)}
-            {compound_cell(locale, text, entry, name, compound_qid)}
+            {compound_cell(locale, text, entry, name, truncated_compound_name, compound_qid)}
             {mass_cell(entry.mass)}
             {formula_cell(entry.formula.as_deref())}
             {taxon_cell(locale, text, entry, taxon_qid)}
@@ -114,6 +115,7 @@ fn compound_cell(
     text: RowText,
     entry: &CompoundEntry,
     name: &str,
+    truncated_name: Cow<'_, str>,
     compound_qid: &str,
 ) -> Element {
     rsx! {
@@ -124,7 +126,8 @@ fn compound_cell(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     class: "primary-link",
-                    "{name}"
+                    title: "{name}",
+                    "{truncated_name}"
                 }
             }
             div { class: "badge-row",
@@ -324,7 +327,7 @@ mod tests {
     #[test]
     fn truncate_title_borrows_when_already_short() {
         let title = "Short title";
-        let truncated = truncate_title(title, 60);
+        let truncated = truncate_title(title, 55);
         assert!(matches!(truncated, Cow::Borrowed(_)));
         assert_eq!(truncated, "Short title");
     }
