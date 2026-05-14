@@ -1,0 +1,53 @@
+/* Accessibility-specific media queries extracted from style.css for maintainability. */
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar::before,
+  .page-header::before {
+    animation: none;
+  }
+
+  .data-row:hover,
+  .id-badge:hover {
+    transform: none;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border: #7a879a;
+    --text3: #334155;
+  }
+
+  .notice,
+  .query-panel,
+  .table-scroll,
+  .ketcher-panel,
+  .curation-card {
+    border-width: 2px;
+    box-shadow: none;
+  }
+
+  .sort-th,
+  .th-static,
+  .form-label,
+  .footer-label,
+  .notice-label,
+  .stat-label,
+  .meta-key {
+    color: var(--text);
+  }
+
+  .meta-val,
+  .page-sub,
+  .form-hint {
+    color: var(--text);
+  }
+}
+

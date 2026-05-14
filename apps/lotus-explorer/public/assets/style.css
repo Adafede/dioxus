@@ -4,6 +4,8 @@
    a static asset so the browser caches it and the wasm bundle is smaller.
    ───────────────────────────────────────────────────────────────────────── */
 
+@import url("styles/accessibility_pack.css");
+
 /* ── Reset & base ────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
@@ -831,17 +833,6 @@ a:hover { text-decoration: underline; }
   .ketcher-iframe { height:min(62vh, 420px); min-height:300px; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sidebar::before,
-  .page-header::before {
-    animation: none;
-  }
-
-  .data-row:hover,
-  .id-badge:hover {
-    transform: none;
-  }
-}
 
 @media (max-width:430px) {
   .page-header,
@@ -926,47 +917,6 @@ a:hover { text-decoration: underline; }
   .sort-btn {
     font-size:9px;
     letter-spacing:0.06em;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-@media (prefers-contrast: more) {
-  :root {
-    --border: #7a879a;
-    --text3: #334155;
-  }
-
-  .notice,
-  .query-panel,
-  .table-scroll,
-  .ketcher-panel,
-  .curation-card {
-    border-width: 2px;
-    box-shadow: none;
-  }
-
-  .sort-th,
-  .th-static,
-  .form-label,
-  .footer-label,
-  .notice-label,
-  .stat-label,
-  .meta-key {
-    color: var(--text);
-  }
-
-  .meta-val,
-  .page-sub,
-  .form-hint {
-    color: var(--text);
   }
 }
 
