@@ -112,12 +112,6 @@
   .td-compound, .td-taxon, .td-ref { min-width:0; width:auto; }
   .id-badge { font-size:var(--fs-micro); padding:1px 5px; }
 
-  .example-item {
-    grid-template-columns:1fr;
-    row-gap:6px;
-    align-items:flex-start;
-  }
-  .example-value { min-width:0; width:100%; white-space:normal; word-break:break-word; }
 
   .ketcher-iframe { height:min(62vh, 420px); min-height:300px; }
 }

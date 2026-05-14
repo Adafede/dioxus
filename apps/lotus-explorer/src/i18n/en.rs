@@ -42,7 +42,6 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintParse => "Response parsing failed. Retry or refine query.",
         TextKey::ErrorHintUnknown => "Unexpected error. Retry may help.",
         TextKey::SkipToResults => "Skip to results",
-        TextKey::WelcomeTitle => "Browse natural product occurrences",
         TextKey::WelcomeTry => "Try",
         TextKey::WelcomeLeadA => {
             "Every row ties a compound to the organism it has been reported from, "

@@ -44,7 +44,6 @@ pub fn de_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintUnknown => "Unerwarteter Fehler. Ein erneuter Versuch kann helfen.",
         TextKey::SkipToResults => "Zu den Ergebnissen springen",
-        TextKey::WelcomeTitle => "Naturstoff-Vorkommen durchsuchen",
         TextKey::WelcomeTry => "Beispiele",
         TextKey::WelcomeLeadA => {
             "Jede Zeile verknüpft eine Verbindung mit dem Organismus, aus dem sie berichtet wurde, "

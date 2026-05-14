@@ -44,7 +44,6 @@ pub fn fr_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintUnknown => "Erreur inattendue. Réessayer peut aider.",
         TextKey::SkipToResults => "Aller aux résultats",
-        TextKey::WelcomeTitle => "Explorer les occurrences de produits naturels",
         TextKey::WelcomeTry => "Essayer",
         TextKey::WelcomeLeadA => {
             "Chaque ligne relie un composé à l'organisme dans lequel il est rapporté, "

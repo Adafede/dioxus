@@ -121,7 +121,6 @@ pub enum TextKey {
     ErrorHintParse,
     ErrorHintUnknown,
     SkipToResults,
-    WelcomeTitle,
     WelcomeTry,
     WelcomeLeadA,
     WelcomeLeadB,

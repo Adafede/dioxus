@@ -46,7 +46,6 @@ pub fn it_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintUnknown => "Errore inatteso. Riprova.",
         TextKey::SkipToResults => "Vai ai risultati",
-        TextKey::WelcomeTitle => "Esplora le occorrenze di prodotti naturali",
         TextKey::WelcomeTry => "Esempi",
         TextKey::WelcomeLeadA => {
             "Ogni riga collega un composto all'organismo da cui è stato riportato, "

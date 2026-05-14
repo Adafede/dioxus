@@ -15,7 +15,6 @@ pub fn WelcomeScreen() -> Element {
     rsx! {
         section { class: "welcome",
             div { class: "welcome-hero",
-                h2 { "{t(locale, TextKey::WelcomeTitle)}" }
                 p { class: "welcome-lead",
                     "{t(locale, TextKey::WelcomeLeadA)}"
                     "{t(locale, TextKey::WelcomeLeadB)}"
