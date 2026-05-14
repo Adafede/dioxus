@@ -121,7 +121,7 @@ pub(super) fn msg_tsv_import_complete(added: usize, skipped: usize) -> String {
 }
 
 pub(super) fn msg_examples_loaded(added: usize, skipped: usize) -> String {
-    { format!("Examples loaded: added {added} unique row(s), skipped {skipped} duplicate(s).") }
+    format!("Examples loaded: added {added} unique row(s), skipped {skipped} duplicate(s).")
 }
 
 pub(super) fn msg_add_row_before_generate() -> String {
@@ -141,7 +141,7 @@ pub(super) fn msg_curation_failed(detail: &str) -> String {
 }
 
 pub(super) fn msg_curation_rate_limited() -> &'static str {
-    { "Rate limit reached on an upstream metadata service (HTTP 429). Wait about 60s and retry." }
+    "Rate limit reached on an upstream metadata service (HTTP 429). Wait about 60s and retry."
 }
 
 pub(super) fn msg_prerequisites_pending(count: usize) -> String {

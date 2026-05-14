@@ -133,7 +133,7 @@ pub(super) fn msg_running_checks() -> String {
 }
 
 pub(super) fn msg_done_review_copy() -> String {
-    { "Fatto. Controlla le righe generate e copia il blocco QuickStatements.".to_string() }
+    "Fatto. Controlla le righe generate e copia il blocco QuickStatements.".to_string()
 }
 
 pub(super) fn msg_curation_failed(detail: &str) -> String {
@@ -163,7 +163,7 @@ pub(super) fn button_second_pass() -> &'static str {
 }
 
 pub(super) fn msg_second_pass_running() -> &'static str {
-    { "Esecuzione del secondo passaggio sulle righe che dipendevano da elementi mancanti..." }
+    "Esecuzione del secondo passaggio sulle righe che dipendevano da elementi mancanti..."
 }
 
 pub(super) fn msg_second_pass_done() -> &'static str {
@@ -211,7 +211,7 @@ pub(super) fn curation_qs_dev_prereq_hint() -> &'static str {
 }
 
 pub(super) fn curation_qs_dev_main_hint() -> &'static str {
-    { "Apri QS-Dev, incolla il blocco principale, controlla i comandi e poi eseguili." }
+    "Apri QS-Dev, incolla il blocco principale, controlla i comandi e poi eseguili."
 }
 
 pub(super) fn curation_note_existing_complete() -> &'static str {
@@ -219,11 +219,11 @@ pub(super) fn curation_note_existing_complete() -> &'static str {
 }
 
 pub(super) fn curation_note_existing_updates() -> &'static str {
-    { "Trovata una voce Wikidata esistente: generati QuickStatements di aggiornamento." }
+    "Trovata una voce Wikidata esistente: generati QuickStatements di aggiornamento."
 }
 
 pub(super) fn curation_note_new_compound() -> &'static str {
-    { "Nessuna voce Wikidata trovata tramite InChIKey: generati QuickStatements di creazione." }
+    "Nessuna voce Wikidata trovata tramite InChIKey: generati QuickStatements di creazione."
 }
 
 pub(super) fn curation_note_dependencies_pending() -> &'static str {

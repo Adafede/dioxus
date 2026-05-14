@@ -129,11 +129,11 @@ pub(super) fn msg_examples_loaded(added: usize, skipped: usize) -> String {
 }
 
 pub(super) fn msg_add_row_before_generate() -> String {
-    { "Fügen Sie mindestens eine Zeile hinzu, bevor Sie QuickStatements erzeugen.".to_string() }
+    "Fügen Sie mindestens eine Zeile hinzu, bevor Sie QuickStatements erzeugen.".to_string()
 }
 
 pub(super) fn msg_running_checks() -> String {
-    { "Curation-Prüfungen mit RDKit.js und Wikidata werden ausgeführt...".to_string() }
+    "Curation-Prüfungen mit RDKit.js und Wikidata werden ausgeführt...".to_string()
 }
 
 pub(super) fn msg_done_review_copy() -> String {
@@ -170,7 +170,7 @@ pub(super) fn button_second_pass() -> &'static str {
 }
 
 pub(super) fn msg_second_pass_running() -> &'static str {
-    { "Zweiter Durchlauf für Zeilen mit fehlenden Abhängigkeiten wird ausgeführt..." }
+    "Zweiter Durchlauf für Zeilen mit fehlenden Abhängigkeiten wird ausgeführt..."
 }
 
 pub(super) fn msg_second_pass_done() -> &'static str {
@@ -198,7 +198,7 @@ pub(super) fn curation_badge_second_pass_required() -> &'static str {
 }
 
 pub(super) fn curation_mass_warning_title() -> &'static str {
-    { "Die exakte Masse konnte von den Descriptor-Endpunkten nicht aufgelöst werden" }
+    "Die exakte Masse konnte von den Descriptor-Endpunkten nicht aufgelöst werden"
 }
 
 pub(super) fn msg_delay_advice() -> &'static str {
@@ -224,15 +224,15 @@ pub(super) fn curation_qs_dev_main_hint() -> &'static str {
 }
 
 pub(super) fn curation_note_existing_complete() -> &'static str {
-    { "Der Eintrag existiert bereits in Wikidata und es wurden keine fehlenden Felder erkannt." }
+    "Der Eintrag existiert bereits in Wikidata und es wurden keine fehlenden Felder erkannt."
 }
 
 pub(super) fn curation_note_existing_updates() -> &'static str {
-    { "Vorhandener Wikidata-Eintrag gefunden: Update-QuickStatements wurden erstellt." }
+    "Vorhandener Wikidata-Eintrag gefunden: Update-QuickStatements wurden erstellt."
 }
 
 pub(super) fn curation_note_new_compound() -> &'static str {
-    { "Kein Wikidata-Eintrag über InChIKey gefunden: Erstellungs-QuickStatements wurden erzeugt." }
+    "Kein Wikidata-Eintrag über InChIKey gefunden: Erstellungs-QuickStatements wurden erzeugt."
 }
 
 pub(super) fn curation_note_dependencies_pending() -> &'static str {

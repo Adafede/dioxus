@@ -129,15 +129,15 @@ pub(super) fn msg_examples_loaded(added: usize, skipped: usize) -> String {
 }
 
 pub(super) fn msg_add_row_before_generate() -> String {
-    { "Ajoutez au moins une ligne avant de générer les QuickStatements.".to_string() }
+    "Ajoutez au moins une ligne avant de générer les QuickStatements.".to_string()
 }
 
 pub(super) fn msg_running_checks() -> String {
-    { "Exécution des vérifications de curation avec RDKit.js et Wikidata...".to_string() }
+    "Exécution des vérifications de curation avec RDKit.js et Wikidata...".to_string()
 }
 
 pub(super) fn msg_done_review_copy() -> String {
-    { "Terminé. Vérifiez les lignes générées et copiez le bloc QuickStatements.".to_string() }
+    "Terminé. Vérifiez les lignes générées et copiez le bloc QuickStatements.".to_string()
 }
 
 pub(super) fn msg_curation_failed(detail: &str) -> String {
@@ -167,7 +167,7 @@ pub(super) fn button_second_pass() -> &'static str {
 }
 
 pub(super) fn msg_second_pass_running() -> &'static str {
-    { "Exécution de la seconde passe sur les lignes qui dépendaient d'éléments manquants..." }
+    "Exécution de la seconde passe sur les lignes qui dépendaient d'éléments manquants..."
 }
 
 pub(super) fn msg_second_pass_done() -> &'static str {
@@ -195,7 +195,7 @@ pub(super) fn curation_badge_second_pass_required() -> &'static str {
 }
 
 pub(super) fn curation_mass_warning_title() -> &'static str {
-    { "La masse exacte n'a pas pu être résolue depuis les points de terminaison de descripteurs" }
+    "La masse exacte n'a pas pu être résolue depuis les points de terminaison de descripteurs"
 }
 
 pub(super) fn msg_delay_advice() -> &'static str {
@@ -215,7 +215,7 @@ pub(super) fn curation_qs_dev_prereq_hint() -> &'static str {
 }
 
 pub(super) fn curation_qs_dev_main_hint() -> &'static str {
-    { "Ouvrez QS-Dev, collez le bloc principal, vérifiez les commandes, puis exécutez-les." }
+    "Ouvrez QS-Dev, collez le bloc principal, vérifiez les commandes, puis exécutez-les."
 }
 
 pub(super) fn curation_note_existing_complete() -> &'static str {
@@ -227,7 +227,7 @@ pub(super) fn curation_note_existing_updates() -> &'static str {
 }
 
 pub(super) fn curation_note_new_compound() -> &'static str {
-    { "Aucune entrée Wikidata trouvée via InChIKey : QuickStatements de création générés." }
+    "Aucune entrée Wikidata trouvée via InChIKey : QuickStatements de création générés."
 }
 
 pub(super) fn curation_note_dependencies_pending() -> &'static str {
