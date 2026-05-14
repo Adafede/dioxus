@@ -10,6 +10,8 @@
 //! [`crate::components::layout::notices::format_domain_error`] to produce the
 //! right locale string at render time.
 
+use thiserror::Error;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QueryPhase {
     Idle,
@@ -54,28 +56,33 @@ pub enum TaxonWarning {
 // ── Domain error hierarchy (i18n-free) ───────────────────────────────────────
 
 /// Fine-grained validation fault.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Error)]
 pub enum ValidationFault {
+    #[error("empty input")]
     EmptyInput,
-    TaxonNotFound {
-        input: String,
-    },
+    #[error("taxon not found: {input}")]
+    TaxonNotFound { input: String },
     #[allow(dead_code)]
+    #[error("taxon resolution produced no candidates")]
     TaxonResolutionNoMatch,
-    UnsupportedFormat {
-        format: String,
-    },
+    #[error("unsupported download format: {format}")]
+    UnsupportedFormat { format: String },
 }
 
 /// Fine-grained CSV / data parse fault.
 // Some variants are only reachable on non-wasm targets (e.g. FallbackCsv).
 #[allow(dead_code)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Error)]
 pub enum ParseFault {
+    #[error("taxon csv parse failed: {details}")]
     TaxonCsv { details: String },
+    #[error("taxon candidate selection failed: {details}")]
     TaxonPick { details: String },
+    #[error("count csv parse failed: {details}")]
     CountCsv { details: String },
+    #[error("display csv parse failed: {details}")]
     DisplayCsv { details: String },
+    #[error("fallback csv parse failed: {details}")]
     FallbackCsv { details: String },
 }
 
@@ -83,18 +90,24 @@ pub enum ParseFault {
 ///
 /// Contains **no locale-dependent strings**; UI components call
 /// [`crate::components::layout::notices::format_domain_error`] at render time.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Error)]
 pub enum DomainError {
+    #[error("validation: {0}")]
     Validation(ValidationFault),
+
+    #[error("transport at {stage}: {source}")]
     Transport {
         stage: &'static str,
+        #[source]
         source: crate::repositories::RepositoryError,
     },
+
+    #[error("parse: {0}")]
     Parse(ParseFault),
+
     #[cfg(target_arch = "wasm32")]
-    MemoryLimit {
-        stage: &'static str,
-    },
+    #[error("memory limit reached during {stage}")]
+    MemoryLimit { stage: &'static str },
 }
 
 impl DomainError {
@@ -106,5 +119,22 @@ impl DomainError {
             #[cfg(target_arch = "wasm32")]
             Self::MemoryLimit { .. } => ErrorKind::Memory,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
+
+    #[test]
+    fn transport_domain_error_exposes_repository_source() {
+        let err = DomainError::Transport {
+            stage: "display query",
+            source: crate::repositories::RepositoryError::Network("timeout".to_string()),
+        };
+
+        let source = err.source().expect("transport errors should expose source");
+        assert_eq!(source.to_string(), "network error: timeout");
     }
 }

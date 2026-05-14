@@ -33,6 +33,7 @@ pub enum ValidationError {
 #[derive(Clone, Debug, Error)]
 #[error("{kind} [{context}]")]
 pub struct AppError {
+    #[source]
     pub kind: ErrorKind,
     pub context: Arc<str>,
 }
@@ -95,6 +96,7 @@ impl From<crate::api::ApiClientError> for AppError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::error::Error;
 
     #[test]
     fn network_error_has_context() {
@@ -116,5 +118,12 @@ mod tests {
             err.to_string(),
             "Validation error: input is empty [validating input]"
         );
+    }
+
+    #[test]
+    fn app_error_exposes_kind_as_source() {
+        let err = AppError::network("connection refused", "connecting to API");
+        let source = err.source().expect("source should be present");
+        assert_eq!(source.to_string(), "Network error: connection refused");
     }
 }

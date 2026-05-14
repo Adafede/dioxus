@@ -80,8 +80,9 @@ impl Default for ApiLayer {
 impl From<AppError> for crate::features::explore::types::DomainError {
     fn from(err: AppError) -> Self {
         use crate::features::explore::types::{DomainError, ValidationFault};
+        let crate::core::error::AppError { kind, context } = err;
 
-        match err.kind {
+        match kind {
             crate::core::error::ErrorKind::Validation(
                 crate::core::error::ValidationError::EmptyInput,
             ) => DomainError::Validation(ValidationFault::EmptyInput),
@@ -101,9 +102,12 @@ impl From<AppError> for crate::features::explore::types::DomainError {
                     details: msg.to_string(),
                 })
             }
-            _ => DomainError::Transport {
+            other => DomainError::Transport {
                 stage: "unknown",
-                source: crate::repositories::RepositoryError::Other(err.to_string()),
+                source: crate::repositories::RepositoryError::Unknown {
+                    message: other.to_string(),
+                    context: context.to_string(),
+                },
             },
         }
     }
