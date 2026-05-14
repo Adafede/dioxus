@@ -8,8 +8,8 @@
 //!
 //! Future: Can be enhanced to use EnhancedFormContext for context-aware version.
 
-use crate::i18n::{TextKey, t};
 use crate::hooks::use_locale;
+use crate::i18n::{TextKey, t};
 use dioxus::prelude::*;
 
 /// Generic reusable text input component
@@ -94,11 +94,8 @@ pub fn SearchButton(on_click: EventHandler<()>) -> Element {
     let locale = use_locale();
 
     rsx! {
-        button {
-            class: "btn btn-primary",
-            onclick: move |_| on_click.call(()),
+        button { class: "btn btn-primary", onclick: move |_| on_click.call(()),
             "{t(locale, TextKey::Search)}"
         }
     }
 }
-

@@ -95,7 +95,9 @@ impl From<crate::api::ApiClientError> for AppError {
                 Self::unknown("API not configured", "checking API availability")
             }
             crate::api::ApiClientError::Network(msg) => Self::network(msg, "calling API"),
-            crate::api::ApiClientError::Http(status, body) => Self::http(status, body, "calling API"),
+            crate::api::ApiClientError::Http(status, body) => {
+                Self::http(status, body, "calling API")
+            }
             crate::api::ApiClientError::Parse(msg) => Self::parse(msg, "parsing API response"),
         }
     }
@@ -121,8 +123,9 @@ mod tests {
     #[test]
     fn validation_error_round_trips() {
         let err = AppError::validation(ValidationError::EmptyInput, "validating input");
-        assert_eq!(err.to_string(), "Validation error: input is empty [validating input]");
+        assert_eq!(
+            err.to_string(),
+            "Validation error: input is empty [validating input]"
+        );
     }
 }
-
-

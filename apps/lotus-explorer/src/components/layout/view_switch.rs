@@ -25,9 +25,7 @@ pub fn ViewSwitch() -> Element {
     let current_view = app_state.read().view;
 
     rsx! {
-        nav {
-            class: "view-switch",
-            aria_label: "{view_switch_aria(locale)}",
+        nav { class: "view-switch", aria_label: "{view_switch_aria(locale)}",
             ViewBtn {
                 label: view_label_explorer(locale),
                 target: AppView::Explore,

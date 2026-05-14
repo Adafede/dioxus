@@ -40,7 +40,7 @@ pub(super) fn ResultsRowsWindow(
 ) -> Element {
     rsx! {
         for i in order.iter().skip(start_row).take(visible_count).copied() {
-            { row_view(locale, text, &rows[i as usize], i) }
+            {row_view(locale, text, &rows[i as usize], i)}
         }
     }
 }

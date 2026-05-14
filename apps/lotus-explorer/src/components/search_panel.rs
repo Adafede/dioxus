@@ -24,10 +24,10 @@ pub use crate::components::form_sections::{
 #[path = "search_panel/structure_model.rs"]
 mod structure_model;
 
+use crate::components::form_inputs::SearchButton;
 use crate::i18n::{TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::classify_structure;
-use crate::components::form_inputs::SearchButton;
 use crate::state::{use_form_criteria_context, use_results_context};
 use dioxus::prelude::*;
 

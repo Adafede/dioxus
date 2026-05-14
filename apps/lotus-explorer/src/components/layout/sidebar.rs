@@ -26,8 +26,7 @@ pub fn Sidebar(on_search: EventHandler<()>) -> Element {
     let mobile_filters_open = explore.read().ui.mobile_filters_open;
 
     rsx! {
-        aside {
-            class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
+        aside { class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
             button {
                 class: "filters-toggle",
                 r#type: "button",

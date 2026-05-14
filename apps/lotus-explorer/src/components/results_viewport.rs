@@ -35,8 +35,12 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
     });
 
     match *phase.read() {
-        ContentPhase::Welcome => rsx! { WelcomeScreen {} },
-        ContentPhase::Loading => rsx! { LoadingState {} },
+        ContentPhase::Welcome => rsx! {
+            WelcomeScreen {}
+        },
+        ContentPhase::Loading => rsx! {
+            LoadingState {}
+        },
         ContentPhase::Error => rsx! {
             div { class: "empty-state",
                 p { class: "form-hint", "An error occurred during the search." }
@@ -47,12 +51,18 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
                 p { class: "form-hint", "No results found. Try adjusting your search criteria." }
             }
         },
-        ContentPhase::Loaded => rsx! { ResultsTable {} },
+        ContentPhase::Loaded => rsx! {
+            ResultsTable {}
+        },
         ContentPhase::DownloadOnly => {
             if *download_dispatching.read() {
-                rsx! { DownloadDispatchState {} }
+                rsx! {
+                    DownloadDispatchState {}
+                }
             } else {
-                rsx! { DownloadOnlyState { on_preview } }
+                rsx! {
+                    DownloadOnlyState { on_preview }
+                }
             }
         }
     }

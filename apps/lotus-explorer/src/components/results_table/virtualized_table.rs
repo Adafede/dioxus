@@ -39,9 +39,7 @@ pub(super) fn VirtualizedResultsTable(
     let text = row_text(locale);
 
     rsx! {
-        div {
-            id: virtualization_config.scroll_id,
-            class: "table-scroll",
+        div { id: virtualization_config.scroll_id, class: "table-scroll",
             table {
                 class: "results-table",
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",

@@ -53,4 +53,3 @@ mod tests {
         assert!(!ctx.is_dirty());
     }
 }
-

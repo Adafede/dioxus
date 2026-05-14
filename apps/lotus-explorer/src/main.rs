@@ -8,8 +8,8 @@ mod app;
 mod app_state;
 mod components;
 mod core;
-mod data;
 mod curation;
+mod data;
 mod download;
 mod export;
 mod features;
@@ -127,7 +127,9 @@ fn App() -> Element {
 
     rsx! {
         LocaleProvider { locale,
-            a { class: "skip-link", href: "#main-panel", "{t(locale_value, TextKey::SkipToResults)}" }
+            a { class: "skip-link", href: "#main-panel",
+                "{t(locale_value, TextKey::SkipToResults)}"
+            }
             div { class: "{app_layout_class}",
 
                 if current_view == AppView::Explore {

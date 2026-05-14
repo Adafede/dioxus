@@ -90,9 +90,7 @@ fn SortableColumnHeader(
                 aria_label: "{t(locale, label)}",
                 onclick: move |e| on_toggle.call(e),
                 "{t(locale, label)} "
-                span { class: "sort-icon", "aria-hidden": "true",
-                    {sort_icon_for(&sort, col)}
-                }
+                span { class: "sort-icon", "aria-hidden": "true", {sort_icon_for(&sort, col)} }
             }
         }
     }

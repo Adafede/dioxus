@@ -391,7 +391,9 @@ pub fn DataCurationPage() -> Element {
                 CurationResultsTable { locale, rows: result_rows_value.clone() }
             }
 
-            if !quickstatements_value.dependencies.is_empty() || !quickstatements_value.main.is_empty() {
+            if !quickstatements_value.dependencies.is_empty()
+                || !quickstatements_value.main.is_empty()
+            {
                 div { class: "curation-card",
                     if !quickstatements_value.dependencies.is_empty() {
                         p { class: "curation-hint", "{msg_two_step_hint(locale)}" }

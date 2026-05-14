@@ -4,5 +4,3 @@
 //! Data access layer with clean boundaries between transport and domain.
 
 pub mod api;
-
-

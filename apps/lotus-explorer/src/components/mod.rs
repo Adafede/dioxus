@@ -13,4 +13,3 @@ pub mod search_panel;
 pub mod welcome;
 
 pub mod form_inputs;
-

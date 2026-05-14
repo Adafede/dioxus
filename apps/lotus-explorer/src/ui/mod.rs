@@ -82,5 +82,3 @@ mod tests {
         assert_eq!(phase, ContentPhase::Loaded);
     }
 }
-
-

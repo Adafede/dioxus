@@ -10,8 +10,8 @@
 //!    so the caller falls back to direct SPARQL execution.
 
 use crate::api;
-use crate::data::api::ApiLayer;
 use crate::api::SearchResponse;
+use crate::data::api::ApiLayer;
 use crate::models::SearchCriteria;
 use crate::repositories::{LotusRepository, RepositoryError};
 use crate::sparql;
