@@ -62,6 +62,7 @@ fn ViewBtn(
             class: if active { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
             r#type: "button",
             aria_pressed: if active { "true" } else { "false" },
+            aria_current: if active { "page" } else { "false" },
             onclick: move |_| on_select.call(target),
             "{label}"
         }

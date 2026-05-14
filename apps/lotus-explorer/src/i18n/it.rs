@@ -18,6 +18,7 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::FiltersHide => "Nascondi filtri",
         TextKey::Language => "Lingua",
         TextKey::PageTitle => "LOTUS Knowledge Explorer",
+        TextKey::GoToHomepage => "Vai alla home page",
         TextKey::PageSubtitle => "Occorrenze di prodotti naturali - composto, taxon, riferimento.",
         TextKey::ResolvedTaxon => "Taxon risolto",
         TextKey::QueryHash => "Hash della query",

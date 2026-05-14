@@ -18,6 +18,7 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::FiltersHide => "Filter ausblenden",
         TextKey::Language => "Sprache",
         TextKey::PageTitle => "LOTUS Knowledge Explorer",
+        TextKey::GoToHomepage => "Zur Startseite",
         TextKey::PageSubtitle => "Naturstoff-Vorkommen - Verbindung, Taxon, Referenz.",
         TextKey::ResolvedTaxon => "Aufgelöstes Taxon",
         TextKey::QueryHash => "Abfrage-Hash",

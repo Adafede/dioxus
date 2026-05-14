@@ -21,27 +21,20 @@ pub fn PageHeader() -> Element {
     let locale = use_locale();
 
     rsx! {
-        div { class: "page-header",
+        header { class: "page-header",
             div { class: "page-brand",
-                a {
-                    class: "page-logo-link",
-                    href: "?",
-                    aria_label: "{t(locale, TextKey::PageTitle)}",
-                    img {
-                        class: "page-logo",
-                        src: "assets/lotus_ferris.svg",
-                        alt: "",
-                        "aria-hidden": "true",
-                    }
-                    span { class: "sr-only", "{t(locale, TextKey::PageTitle)}" }
-                }
-                h1 { class: "page-title",
+                h1 { id: PAGE_TITLE_ID, class: "page-title",
                     a {
-                        id: PAGE_TITLE_ID,
-                        class: "page-title-link",
+                        class: "page-title-link page-home-link",
                         href: "?",
-                        aria_label: "{t(locale, TextKey::PageTitle)}",
-                        "{t(locale, TextKey::PageTitle)}"
+                        aria_label: "{t(locale, TextKey::GoToHomepage)}",
+                        img {
+                            class: "page-logo",
+                            src: "assets/lotus_ferris.svg",
+                            alt: "",
+                            "aria-hidden": "true",
+                        }
+                        span { class: "page-title-text", "{t(locale, TextKey::PageTitle)}" }
                     }
                 }
                 LangSwitch {}

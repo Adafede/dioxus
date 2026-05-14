@@ -30,4 +30,12 @@ mod tests {
         assert!(header_src.contains("aria_sort_toggle"));
         assert!(header_src.contains("aria_label: \"{sort_aria}\""));
     }
+
+    #[test]
+    fn page_header_exposes_single_home_link_and_heading_id() {
+        let header_src = include_str!("../components/layout/page_header.rs");
+        assert!(header_src.contains("h1 { id: PAGE_TITLE_ID"));
+        assert!(header_src.contains("class: \"page-title-link page-home-link\""));
+        assert!(header_src.contains("aria_label: \"{t(locale, TextKey::GoToHomepage)}\""));
+    }
 }

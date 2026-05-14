@@ -18,6 +18,7 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::FiltersHide => "Hide filters",
         TextKey::Language => "Language",
         TextKey::PageTitle => "LOTUS Knowledge Explorer",
+        TextKey::GoToHomepage => "Go to homepage",
         TextKey::PageSubtitle => "Natural product occurrences - compound, taxon, reference.",
         TextKey::ResolvedTaxon => "Resolved taxon",
         TextKey::QueryHash => "Query hash",

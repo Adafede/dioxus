@@ -96,6 +96,7 @@ pub enum TextKey {
     Language,
     // Header
     PageTitle,
+    GoToHomepage,
     PageSubtitle,
     ResolvedTaxon,
     QueryHash,
