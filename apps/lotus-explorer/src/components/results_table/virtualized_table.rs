@@ -50,6 +50,15 @@ pub(super) fn VirtualizedResultsTable(
                 class: "results-table",
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",
                 caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
+                colgroup {
+                    col { class: "col-structure" }
+                    col { class: "col-compound" }
+                    col { class: "col-mass" }
+                    col { class: "col-formula" }
+                    col { class: "col-taxon" }
+                    col { class: "col-reference" }
+                    col { class: "col-year" }
+                }
                 thead {
                     TableHeader {
                         current_sort,

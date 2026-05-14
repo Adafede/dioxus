@@ -55,13 +55,13 @@ fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) 
     let truncated_ref_title = entry
         .ref_title
         .as_deref()
-        .map(|title| truncate_title(title, 55));
+        .map(|title| truncate_title(title, 60));
     let name: &str = if entry.name.trim().is_empty() {
         entry.compound_qid.as_ref()
     } else {
         &entry.name
     };
-    let truncated_compound_name = truncate_title(name, 55);
+    let truncated_compound_name = truncate_title(name, 60);
     rsx! {
         tr { key: "{row_key}", class: "data-row",
             {structure_cell(locale, text, depict_url.as_deref(), name)}
@@ -327,7 +327,7 @@ mod tests {
     #[test]
     fn truncate_title_borrows_when_already_short() {
         let title = "Short title";
-        let truncated = truncate_title(title, 55);
+        let truncated = truncate_title(title, 60);
         assert!(matches!(truncated, Cow::Borrowed(_)));
         assert_eq!(truncated, "Short title");
     }
