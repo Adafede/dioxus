@@ -46,7 +46,7 @@ impl ApiLayer {
         // Call the underlying API with error bridging
         crate::api::search(criteria, limit, include_counts)
             .await
-            .map_err(|err| AppError::from(err))
+            .map_err(AppError::from)
     }
 
     /// Get the export URLs for a set of criteria.
@@ -65,7 +65,7 @@ impl ApiLayer {
 
         crate::api::export_urls(criteria)
             .await
-            .map_err(|err| AppError::from(err))
+            .map_err(AppError::from)
     }
 }
 
@@ -82,24 +82,20 @@ impl From<AppError> for crate::features::explore::types::DomainError {
         use crate::features::explore::types::{DomainError, ValidationFault};
 
         match err.kind {
-            crate::core::error::ErrorKind::Validation(crate::core::error::ValidationError::EmptyInput) => {
-                DomainError::Validation(ValidationFault::EmptyInput)
-            }
-            crate::core::error::ErrorKind::Network(msg) => {
-                DomainError::Transport {
-                    stage: "network",
-                    source: crate::repositories::RepositoryError::Network(msg.to_string()),
-                }
-            }
-            crate::core::error::ErrorKind::Http { status, message } => {
-                DomainError::Transport {
-                    stage: "http",
-                    source: crate::repositories::RepositoryError::Http {
-                        status,
-                        body: message.to_string()
-                    },
-                }
-            }
+            crate::core::error::ErrorKind::Validation(
+                crate::core::error::ValidationError::EmptyInput,
+            ) => DomainError::Validation(ValidationFault::EmptyInput),
+            crate::core::error::ErrorKind::Network(msg) => DomainError::Transport {
+                stage: "network",
+                source: crate::repositories::RepositoryError::Network(msg.to_string()),
+            },
+            crate::core::error::ErrorKind::Http { status, message } => DomainError::Transport {
+                stage: "http",
+                source: crate::repositories::RepositoryError::Http {
+                    status,
+                    body: message.to_string(),
+                },
+            },
             crate::core::error::ErrorKind::Parse(msg) => {
                 DomainError::Parse(crate::features::explore::types::ParseFault::DisplayCsv {
                     details: msg.to_string(),
@@ -108,7 +104,7 @@ impl From<AppError> for crate::features::explore::types::DomainError {
             _ => DomainError::Transport {
                 stage: "unknown",
                 source: crate::repositories::RepositoryError::Other(err.to_string()),
-            }
+            },
         }
     }
 }
@@ -134,6 +130,3 @@ mod tests {
         }
     }
 }
-
-
-

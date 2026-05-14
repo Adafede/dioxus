@@ -60,11 +60,14 @@ pub async fn fetch<R: LotusRepository>(
         Err(err) => {
             #[cfg(target_arch = "wasm32")]
             {
-                // On WASM the fallback is disabled to avoid OOM; surface error as MemoryLimit.
-                let _ = err;
-                return Err(DomainError::MemoryLimit {
-                    stage: "count_and_preview",
-                });
+                // On WASM the fallback is disabled to avoid OOM, but only map to
+                // MemoryLimit when the underlying error actually indicates memory pressure.
+                if is_probable_wasm_memory_limit(&err) {
+                    return Err(DomainError::MemoryLimit {
+                        stage: "count_and_preview",
+                    });
+                }
+                return Err(err);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -78,6 +81,28 @@ pub async fn fetch<R: LotusRepository>(
                 fetch_fallback(execution_query, display_limit, repo, metrics).await
             }
         }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn is_probable_wasm_memory_limit(err: &DomainError) -> bool {
+    fn has_memory_signature(msg: &str) -> bool {
+        let m = msg.to_ascii_lowercase();
+        m.contains("out of memory")
+            || m.contains("memory")
+            || m.contains("too large")
+            || m.contains("allocation")
+            || m.contains("capacity")
+    }
+
+    match err {
+        DomainError::Transport { source, .. } => {
+            let source_text = source.to_string();
+            has_memory_signature(&source_text)
+        }
+        DomainError::Parse(ParseFault::DisplayCsv { details })
+        | DomainError::Parse(ParseFault::FallbackCsv { details }) => has_memory_signature(details),
+        _ => false,
     }
 }
 
