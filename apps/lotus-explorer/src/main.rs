@@ -32,6 +32,7 @@ use components::layout::footer::Footer;
 use components::layout::header_meta::HeaderMetaSection;
 use components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
 use components::layout::page_header::PageHeader;
+use components::layout::page_header::PAGE_TITLE_ID;
 use components::layout::sidebar::Sidebar;
 use components::results_viewport::ResultsViewport;
 use dioxus::prelude::*;
@@ -189,7 +190,11 @@ fn App() -> Element {
                     Sidebar { on_search }
                 }
 
-                main { id: "main-panel", class: "{main_class}", tabindex: "-1",
+                main {
+                    id: "main-panel",
+                    class: "{main_class}",
+                    tabindex: "-1",
+                    aria_labelledby: PAGE_TITLE_ID,
                     PageHeader {}
 
                     if current_view == AppView::Explore {

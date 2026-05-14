@@ -4,9 +4,9 @@
 //! Table header with sortable columns.
 
 use super::sort_helpers::{aria_sort_for, sort_icon_for};
-use crate::i18n::TextKey;
-use crate::i18n::t;
+use crate::i18n::{TextKey, aria_sort_toggle, t};
 use crate::models::SortColumn;
+use crate::models::SortDir;
 use crate::models::SortState;
 use dioxus::prelude::*;
 
@@ -72,6 +72,9 @@ fn SortableColumnHeader(
     on_toggle: EventHandler<SortColumn>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
+    let label_text = t(locale, label);
+    let next_descending = sort.col == col && sort.dir == SortDir::Asc;
+    let sort_aria = aria_sort_toggle(locale, label_text, next_descending);
 
     rsx! {
         th {
@@ -81,9 +84,10 @@ fn SortableColumnHeader(
             button {
                 class: "sort-btn",
                 r#type: "button",
-                aria_label: "{t(locale, label)}",
+                aria_label: "{sort_aria}",
+                title: "{sort_aria}",
                 onclick: move |_| on_toggle.call(col),
-                "{t(locale, label)} "
+                "{label_text} "
                 span { class: "sort-icon", "aria-hidden": "true", {sort_icon_for(&sort, col)} }
             }
         }

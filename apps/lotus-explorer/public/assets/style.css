@@ -392,6 +392,18 @@ a:hover { text-decoration: underline; }
 .search-btn:active                  { transform: translateY(1px); }
 .search-btn:disabled                { opacity:.5; cursor:not-allowed; }
 
+.btn:focus-visible,
+.search-btn:focus-visible,
+.sort-btn:focus-visible,
+.notice-dismiss:focus-visible,
+.primary-link:focus-visible,
+.id-badge:focus-visible,
+.filters-toggle:focus-visible,
+.copy-btn:focus-visible {
+  outline: 3px solid var(--accent2);
+  outline-offset: 2px;
+}
+
 /* Welcome */
 .welcome         { padding:40px 28px; max-width:720px; display:flex; flex-direction:column; gap:32px; }
 .welcome-hero h2 { font-size:var(--fs-3); font-weight:700; letter-spacing:-.01em; }
@@ -677,6 +689,30 @@ a:hover { text-decoration: underline; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border: #7a879a;
+    --text3: #334155;
+  }
+
+  .notice,
+  .query-panel,
+  .table-scroll,
+  .ketcher-panel,
+  .curation-card {
+    border-width: 2px;
+    box-shadow: none;
+  }
+
+  .sort-th,
+  .th-static,
+  .form-label,
+  .footer-label,
+  .notice-label {
+    color: var(--text);
   }
 }
 

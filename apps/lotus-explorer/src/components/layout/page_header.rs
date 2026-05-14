@@ -11,6 +11,8 @@ use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use dioxus::prelude::*;
 
+pub const PAGE_TITLE_ID: &str = "page-title";
+
 /// Full page header section.
 ///
 /// Composes `LangSwitch` and `ViewSwitch` as context-aware children.
@@ -24,6 +26,7 @@ pub fn PageHeader() -> Element {
             div { class: "page-brand",
                 h1 { class: "page-title",
                     a {
+                        id: PAGE_TITLE_ID,
                         class: "page-title-link",
                         href: "?",
                         title: "{t(locale, TextKey::PageTitle)}",

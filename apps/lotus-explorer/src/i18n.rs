@@ -1015,6 +1015,43 @@ pub fn aria_wikidata_statement(locale: Locale, stmt: &str) -> String {
     }
 }
 
+pub fn aria_sort_toggle(locale: Locale, column: &str, next_descending: bool) -> String {
+    match locale {
+        Locale::En => {
+            let dir = if next_descending {
+                "descending"
+            } else {
+                "ascending"
+            };
+            format!("Sort by {column}, {dir}")
+        }
+        Locale::Fr => {
+            let dir = if next_descending {
+                "décroissant"
+            } else {
+                "croissant"
+            };
+            format!("Trier par {column}, ordre {dir}")
+        }
+        Locale::De => {
+            let dir = if next_descending {
+                "absteigend"
+            } else {
+                "aufsteigend"
+            };
+            format!("Nach {column} sortieren, {dir}")
+        }
+        Locale::It => {
+            let dir = if next_descending {
+                "decrescente"
+            } else {
+                "crescente"
+            };
+            format!("Ordina per {column}, ordine {dir}")
+        }
+    }
+}
+
 pub fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static str {
     match (locale, noun, count == 1) {
         (Locale::En, CountNoun::Compound, true) => "Compound",
@@ -1073,5 +1110,16 @@ mod tests {
         assert!(aria_wikidata_entity(Locale::Fr, "Q42").contains("Ouvrir"));
         assert!(aria_wikidata_entity(Locale::De, "Q42").contains("öffnen"));
         assert!(aria_wikidata_entity(Locale::It, "Q42").contains("Apri"));
+    }
+
+    #[test]
+    fn sort_toggle_aria_includes_column_and_direction() {
+        let en = aria_sort_toggle(Locale::En, "Mass", true);
+        assert!(en.contains("Mass"));
+        assert!(en.contains("descending"));
+
+        let de = aria_sort_toggle(Locale::De, "Jahr", false);
+        assert!(de.contains("Jahr"));
+        assert!(de.contains("aufsteigend"));
     }
 }

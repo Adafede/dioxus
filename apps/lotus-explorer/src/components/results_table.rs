@@ -40,6 +40,7 @@ const TABLE_SCROLL_ID: &str = "results-table-scroll";
 const VIRTUAL_OVERSCAN_ROWS: usize = 12;
 const ROW_HEIGHT_PX_COMFORTABLE: usize = 114;
 const TABLE_VIEWPORT_FALLBACK_PX: usize = 640;
+const RESULTS_HEADING_ID: &str = "results-section-heading";
 
 /// Renders the full results section.
 ///
@@ -64,8 +65,12 @@ pub fn ResultsTable() -> Element {
     let total = entries_len;
 
     rsx! {
-        section { id: "results-section", class: "results-wrap", aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-            h2 { class: "sr-only", "{t(locale, TextKey::DatasetStatistics)}" }
+        section {
+            id: "results-section",
+            class: "results-wrap",
+            aria_label: "{t(locale, TextKey::TableTriplesAria)}",
+            aria_labelledby: RESULTS_HEADING_ID,
+            h2 { id: RESULTS_HEADING_ID, class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
             ResultsToolbar {}
 
             if total == 0 {
