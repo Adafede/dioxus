@@ -30,7 +30,7 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::ArchiveNotice => "Archivio congelato:",
         TextKey::Unique => "Uniche",
         TextKey::LoadingTitle => "Interrogazione di Wikidata tramite QLever...",
-        TextKey::LoadingHint => "I set di risultati grandi possono richiedere alcuni secondi.",
+        TextKey::LoadingHint => "I set di risultati di grandi dimensioni possono richiedere alcuni secondi.",
         TextKey::LoadingResolvingTaxon => "Risoluzione del taxon...",
         TextKey::LoadingCounting => "Conteggio delle corrispondenze...",
         TextKey::LoadingFetchingPreview => "Recupero righe di anteprima...",
@@ -107,7 +107,7 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::KetcherHintB => " e poi copia con ",
         TextKey::KetcherHintC => " (oppure ",
         TextKey::KetcherHintD => ") e usalo nel campo struttura dell'esploratore.",
-        TextKey::KetcherIframeTitle => "Editor strutture Ketcher",
+        TextKey::KetcherIframeTitle => "Editor di strutture Ketcher",
         TextKey::KindNoteSmiles => "  Inviato come letterale SPARQL su una singola riga.",
         TextKey::KindNoteMol2000 => {
             "  Inoltrato senza modifiche a SACHEM scoredSubstructureSearch."
@@ -116,7 +116,7 @@ pub fn it_t(key: TextKey) -> &'static str {
             "  Inoltrato senza modifiche a SACHEM scoredSubstructureSearch (CTAB v3000)."
         }
         TextKey::DatasetStatistics => "Statistiche del dataset",
-        TextKey::DownloadResults => "Scarica risultati",
+        TextKey::DownloadResults => "Scarica i risultati",
         TextKey::PreparingDownload => "Preparazione download...",
         TextKey::StartingCsvDownload => "Avvio download CSV...",
         TextKey::PreparingJsonDownload => "Preparazione download JSON...",
@@ -152,7 +152,7 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::FooterForData => " per i dati ",
         TextKey::FooterForCode => " per il codice",
         TextKey::TableTriplesAria => "Triple composto-taxon-riferimento",
-        TextKey::OpenFullSizeDepiction => "Apri rappresentazione a dimensione piena",
+        TextKey::OpenFullSizeDepiction => "Apri la rappresentazione a dimensione piena",
         TextKey::OpenInWikidata => "Apri in Wikidata",
         TextKey::OpenInScholia => "Apri in Scholia",
         TextKey::OpenDoi => "Apri DOI",

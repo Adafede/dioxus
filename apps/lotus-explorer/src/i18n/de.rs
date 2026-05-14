@@ -55,7 +55,7 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::WelcomeLeadD => " und abgefragt über ",
         TextKey::WelcomeLeadE => ".",
         TextKey::ExampleGentiana => "Taxonname oder Wikidata-QID eingeben",
-        TextKey::ExampleAllTriples => "Alle LOTUS Verbindung-Taxon-Referenz-Tripel",
+        TextKey::ExampleAllTriples => "Alle LOTUS-Verbindung-Taxon-Referenz-Tripel",
         TextKey::ExampleSmilesOnly => "SMILES oder Molfile in das Strukturfeld einfügen",
         TextKey::ExampleQueryExecute => "Ausführen",
         TextKey::ExampleQueryTaxon => "CSV herunterladen",
