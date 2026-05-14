@@ -3,24 +3,35 @@
 
 //! Runtime error model shared across data and repository layers.
 
-use std::fmt;
 use std::sync::Arc;
+use thiserror::Error;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum ErrorKind {
+    #[error("Network error: {0}")]
     Network(Arc<str>),
+
+    #[error("HTTP {status}: {message}")]
     Http { status: u16, message: Arc<str> },
+
+    #[error("Parse error: {0}")]
     Parse(Arc<str>),
+
+    #[error("Validation error: {0}")]
     Validation(ValidationError),
+
+    #[error("Unknown error: {0}")]
     Unknown(Arc<str>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum ValidationError {
+    #[error("input is empty")]
     EmptyInput,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Error)]
+#[error("{kind} [{context}]")]
 pub struct AppError {
     pub kind: ErrorKind,
     pub context: Arc<str>,
@@ -62,28 +73,6 @@ impl AppError {
         Self {
             kind: ErrorKind::Unknown(msg.into()),
             context: context.into(),
-        }
-    }
-}
-
-impl fmt::Display for AppError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.kind {
-            ErrorKind::Network(msg) => write!(f, "Network error: {} [{}]", msg, self.context),
-            ErrorKind::Http { status, message } => {
-                write!(f, "HTTP {}: {} [{}]", status, message, self.context)
-            }
-            ErrorKind::Parse(msg) => write!(f, "Parse error: {} [{}]", msg, self.context),
-            ErrorKind::Validation(v) => write!(f, "Validation error: {} [{}]", v, self.context),
-            ErrorKind::Unknown(msg) => write!(f, "Unknown error: {} [{}]", msg, self.context),
-        }
-    }
-}
-
-impl fmt::Display for ValidationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::EmptyInput => write!(f, "input is empty"),
         }
     }
 }

@@ -34,25 +34,21 @@ pub use hybrid::HybridRepository;
 
 use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
-use std::fmt;
+use thiserror::Error;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum RepositoryError {
+    #[error("network error: {0}")]
     Network(String),
-    Http { status: u16, body: String },
-    Parse(String),
-    Other(String),
-}
 
-impl fmt::Display for RepositoryError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Network(msg) => write!(f, "network error: {msg}"),
-            Self::Http { status, body } => write!(f, "HTTP {status}: {body}"),
-            Self::Parse(msg) => write!(f, "parse error: {msg}"),
-            Self::Other(msg) => write!(f, "{msg}"),
-        }
-    }
+    #[error("HTTP {status}: {body}")]
+    Http { status: u16, body: String },
+
+    #[error("parse error: {0}")]
+    Parse(String),
+
+    #[error("{0}")]
+    Other(String),
 }
 
 impl From<crate::api::ApiClientError> for RepositoryError {
