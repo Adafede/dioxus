@@ -1,0 +1,168 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+use crate::curation::{
+    CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
+    build_quickstatements_bundle, curate_rows, row_uniqueness_key,
+};
+use crate::i18n::{
+    Locale, msg_curation_failed, msg_curation_rate_limited, msg_done_review_copy,
+    msg_prerequisites_pending, msg_second_pass_done, msg_second_pass_still_pending_count,
+};
+use std::collections::HashMap;
+use std::sync::Arc;
+
+pub struct RunCurationOutcome {
+    pub result_rows: Arc<[CurationResultRow]>,
+    pub quickstatements: QuickStatementsBundle,
+    pub awaiting_second_pass: bool,
+    pub status_message: String,
+}
+
+pub struct SecondPassOutcome {
+    pub result_rows: Arc<[CurationResultRow]>,
+    pub quickstatements: QuickStatementsBundle,
+    pub awaiting_second_pass: bool,
+    pub status_message: String,
+}
+
+pub fn format_curation_error(locale: Locale, detail: &str) -> String {
+    if detail.contains("HTTP 429")
+        || detail.contains("rate limited")
+        || detail.contains("10 per 1 minute")
+    {
+        return msg_curation_rate_limited(locale).to_string();
+    }
+
+    msg_curation_failed(locale, detail)
+}
+
+pub async fn run_curation(
+    locale: Locale,
+    snapshot: Vec<CurationInputRow>,
+) -> Result<RunCurationOutcome, CurationError> {
+    let (curated_rows, quickstatements) = curate_rows(locale, snapshot).await?;
+    let pending_count = curated_rows
+        .iter()
+        .filter(|row| matches!(row.status, CurationStatus::PendingDependencies))
+        .count();
+
+    let status_message = if pending_count > 0 {
+        msg_prerequisites_pending(locale, pending_count)
+    } else {
+        msg_done_review_copy(locale)
+    };
+
+    Ok(RunCurationOutcome {
+        awaiting_second_pass: !quickstatements.dependencies.is_empty(),
+        result_rows: Arc::from(curated_rows.into_boxed_slice()),
+        quickstatements,
+        status_message,
+    })
+}
+
+pub fn second_pass_inputs(rows: &[CurationResultRow]) -> Vec<CurationInputRow> {
+    rows.iter()
+        .filter(|row| !row.dependency_blocks.is_empty())
+        .map(|row| row.input.clone())
+        .collect()
+}
+
+pub fn apply_second_pass(
+    locale: Locale,
+    previous_rows: &[CurationResultRow],
+    updated_rows: Vec<CurationResultRow>,
+) -> SecondPassOutcome {
+    let mut by_key = updated_rows
+        .into_iter()
+        .map(|row| (row_uniqueness_key(&row.input), row))
+        .collect::<HashMap<_, _>>();
+
+    let merged_rows = previous_rows
+        .iter()
+        .cloned()
+        .map(|row| {
+            let key = row_uniqueness_key(&row.input);
+            by_key.remove(&key).unwrap_or(row)
+        })
+        .collect::<Vec<_>>();
+
+    let quickstatements = build_quickstatements_bundle(&merged_rows);
+    let pending_count = merged_rows
+        .iter()
+        .filter(|row| !row.dependency_blocks.is_empty())
+        .count();
+    let awaiting_second_pass = !quickstatements.dependencies.is_empty();
+
+    let status_message = if awaiting_second_pass {
+        msg_second_pass_still_pending_count(locale, pending_count)
+    } else {
+        msg_second_pass_done(locale).to_string()
+    };
+
+    SecondPassOutcome {
+        result_rows: Arc::from(merged_rows.into_boxed_slice()),
+        quickstatements,
+        awaiting_second_pass,
+        status_message,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_curation_error_maps_rate_limit_messages() {
+        let msg = format_curation_error(Locale::En, "HTTP 429 from service");
+        assert!(msg.to_ascii_lowercase().contains("rate"));
+    }
+
+    #[test]
+    fn second_pass_inputs_only_keeps_rows_with_dependencies() {
+        let rows = vec![
+            CurationResultRow {
+                input: CurationInputRow {
+                    name: "A".into(),
+                    smiles: "CCO".into(),
+                    taxon: None,
+                    doi: None,
+                },
+                canonical_smiles: None,
+                inchikey: None,
+                inchi: None,
+                formula: None,
+                exact_mass: None,
+                mass_warning: None,
+                wikidata_qid: None,
+                status: CurationStatus::NewCompound,
+                note: String::new(),
+                dependency_blocks: vec![],
+                quickstatements: vec![],
+            },
+            CurationResultRow {
+                input: CurationInputRow {
+                    name: "B".into(),
+                    smiles: "CCN".into(),
+                    taxon: None,
+                    doi: None,
+                },
+                canonical_smiles: None,
+                inchikey: None,
+                inchi: None,
+                formula: None,
+                exact_mass: None,
+                mass_warning: None,
+                wikidata_qid: None,
+                status: CurationStatus::PendingDependencies,
+                note: String::new(),
+                dependency_blocks: vec!["DEP".into()],
+                quickstatements: vec![],
+            },
+        ];
+
+        let inputs = second_pass_inputs(&rows);
+        assert_eq!(inputs.len(), 1);
+        assert_eq!(inputs[0].name, "B");
+    }
+}

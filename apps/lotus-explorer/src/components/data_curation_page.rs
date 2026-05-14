@@ -2,11 +2,12 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::curation::{
-    CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
-    build_curation_share_url, build_quickstatements_bundle, curate_rows, example_rows,
-    initial_curation_autorun_from_url, initial_curation_rows_from_url, parse_tsv_rows,
-    row_uniqueness_key,
+    CurationInputRow, CurationResultRow, QuickStatementsBundle, build_curation_share_url,
+    curate_rows, example_rows, initial_curation_autorun_from_url, initial_curation_rows_from_url,
+    parse_tsv_rows,
 };
+use crate::features::curation::queue::{append_unique_rows, non_empty_trimmed};
+use crate::features::curation::workflow;
 use crate::features::explore::url_state::absolute_share_url;
 use crate::i18n::{
     Locale, TextKey, button_add_row, button_append_tsv_rows, button_generate_quickstatements,
@@ -14,15 +15,13 @@ use crate::i18n::{
     col_name, curation_qs_dev_label, curation_qs_dev_main_hint, curation_qs_dev_prereq_hint,
     heading_add_one_row, heading_queued_rows, heading_quickstatements,
     heading_quickstatements_dependencies, heading_tsv_import, hint_expected_tsv_headers,
-    msg_add_row_before_generate, msg_curation_failed, msg_curation_rate_limited, msg_delay_advice,
-    msg_done_review_copy, msg_duplicate_row_skipped, msg_examples_loaded, msg_name_smiles_required,
-    msg_no_valid_tsv_rows, msg_prerequisites_pending, msg_running_checks, msg_second_pass_done,
-    msg_second_pass_running, msg_second_pass_still_pending_count, msg_tsv_import_complete,
-    msg_two_step_hint, placeholder_doi_optional, placeholder_molecule_name,
-    placeholder_taxon_optional, subtitle_curation_explorer, t, title_curation_explorer,
+    msg_add_row_before_generate, msg_delay_advice, msg_duplicate_row_skipped, msg_examples_loaded,
+    msg_name_smiles_required, msg_no_valid_tsv_rows, msg_running_checks, msg_second_pass_running,
+    msg_tsv_import_complete, msg_two_step_hint, placeholder_doi_optional,
+    placeholder_molecule_name, placeholder_taxon_optional, subtitle_curation_explorer, t,
+    title_curation_explorer,
 };
 use dioxus::prelude::*;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::copy_button::CopyButton;
@@ -43,10 +42,8 @@ pub fn DataCurationPage() -> Element {
     let mut quickstatements = use_signal(QuickStatementsBundle::default);
     let mut awaiting_second_pass = use_signal(|| false);
     let mut autorun_pending = use_signal(initial_curation_autorun_from_url);
-    let rows_view =
-        use_memo(move || Arc::<[CurationInputRow]>::from(rows.read().clone().into_boxed_slice()));
     let shareable_url = use_memo(move || {
-        build_curation_share_url(rows_view.read().as_ref(), locale, true).map(Arc::<str>::from)
+        build_curation_share_url(rows.read().as_slice(), locale, true).map(Arc::<str>::from)
     });
     let status_message_value = status_message.read().clone();
     let processing_value = *processing.read();
@@ -64,19 +61,13 @@ pub fn DataCurationPage() -> Element {
         let row = CurationInputRow {
             name,
             smiles,
-            taxon: non_empty_opt(&taxon_input.read()),
-            doi: non_empty_opt(&doi_input.read()),
+            taxon: non_empty_trimmed(&taxon_input.read()),
+            doi: non_empty_trimmed(&doi_input.read()),
         };
-        let key = row_uniqueness_key(&row);
-        if rows
-            .read()
-            .iter()
-            .any(|existing| row_uniqueness_key(existing) == key)
-        {
+        if append_unique_rows(&mut rows.write(), vec![row]).skipped > 0 {
             *status_message.write() = Some(msg_duplicate_row_skipped(locale));
             return;
         }
-        rows.write().push(row);
         *status_message.write() = None;
         name_input.set(String::new());
         smiles_input.set(String::new());
@@ -89,8 +80,12 @@ pub fn DataCurationPage() -> Element {
             if parsed.is_empty() {
                 *status_message.write() = Some(msg_no_valid_tsv_rows(locale));
             } else {
-                let (added, skipped) = append_unique_rows(&mut rows.write(), parsed);
-                *status_message.write() = Some(msg_tsv_import_complete(locale, added, skipped));
+                let outcome = append_unique_rows(&mut rows.write(), parsed);
+                *status_message.write() = Some(msg_tsv_import_complete(
+                    locale,
+                    outcome.added,
+                    outcome.skipped,
+                ));
             }
         }
         Err(err) => {
@@ -117,7 +112,7 @@ pub fn DataCurationPage() -> Element {
 
     use_effect(move || {
         let should_autorun = *autorun_pending.read();
-        let snapshot = rows_view.read().as_ref().to_vec();
+        let snapshot = rows.read().clone();
         let already_has_results = !result_rows.read().is_empty();
         if should_autorun && !snapshot.is_empty() && !*processing.read() && !already_has_results {
             autorun_pending.set(false);
@@ -134,12 +129,7 @@ pub fn DataCurationPage() -> Element {
     });
 
     let on_second_pass = move |_| {
-        let pending_inputs = result_rows
-            .read()
-            .iter()
-            .filter(|row| !row.dependency_blocks.is_empty())
-            .map(|row| row.input.clone())
-            .collect::<Vec<_>>();
+        let pending_inputs = workflow::second_pass_inputs(result_rows.read().as_ref());
         if pending_inputs.is_empty() {
             awaiting_second_pass.set(false);
             return;
@@ -152,39 +142,19 @@ pub fn DataCurationPage() -> Element {
         spawn(async move {
             match curate_rows(locale, pending_inputs).await {
                 Ok((updated_rows, _)) => {
-                    let mut by_key = HashMap::new();
-                    for row in updated_rows {
-                        by_key.insert(row_uniqueness_key(&row.input), row);
-                    }
-
-                    let merged_rows = previous_rows
-                        .iter()
-                        .cloned()
-                        .map(|row| {
-                            let key = row_uniqueness_key(&row.input);
-                            by_key.remove(&key).unwrap_or(row)
-                        })
-                        .collect::<Vec<_>>();
-
-                    let bundle = build_quickstatements_bundle(&merged_rows);
-                    let still_pending = !bundle.dependencies.is_empty();
-                    let pending_count = merged_rows
-                        .iter()
-                        .filter(|row| !row.dependency_blocks.is_empty())
-                        .count();
-                    result_rows.set(Arc::from(merged_rows.into_boxed_slice()));
-                    quickstatements.set(bundle);
-                    awaiting_second_pass.set(still_pending);
+                    let outcome = workflow::apply_second_pass(locale, &previous_rows, updated_rows);
+                    result_rows.set(outcome.result_rows);
+                    quickstatements.set(outcome.quickstatements);
+                    awaiting_second_pass.set(outcome.awaiting_second_pass);
                     processing.set(false);
-                    status_message.set(Some(if still_pending {
-                        msg_second_pass_still_pending_count(locale, pending_count)
-                    } else {
-                        msg_second_pass_done(locale).to_string()
-                    }));
+                    status_message.set(Some(outcome.status_message));
                 }
                 Err(err) => {
                     processing.set(false);
-                    status_message.set(Some(format_curation_error(locale, &err.to_string())));
+                    status_message.set(Some(workflow::format_curation_error(
+                        locale,
+                        &err.to_string(),
+                    )));
                 }
             }
         });
@@ -259,8 +229,12 @@ pub fn DataCurationPage() -> Element {
                             class: "btn btn-sm",
                             r#type: "button",
                             onclick: move |_| {
-                                let (added, skipped) = append_unique_rows(&mut rows.write(), example_rows());
-                                *status_message.write() = Some(msg_examples_loaded(locale, added, skipped));
+                                let outcome = append_unique_rows(&mut rows.write(), example_rows());
+                                *status_message.write() = Some(msg_examples_loaded(
+                                    locale,
+                                    outcome.added,
+                                    outcome.skipped,
+                                ));
                             },
                             "{button_load_example_rows(locale)}"
                         }
@@ -362,7 +336,7 @@ pub fn DataCurationPage() -> Element {
                         }
                     }
                     tbody {
-                        for (idx, row) in rows_view.read().iter().enumerate() {
+                        for (idx, row) in rows.read().iter().enumerate() {
                             tr {
                                 td { "{idx + 1}" }
                                 td { "{row.name}" }
@@ -374,7 +348,7 @@ pub fn DataCurationPage() -> Element {
                                         class: "btn btn-xs",
                                         r#type: "button",
                                         onclick: move |_| {
-                                            if idx < rows_view.read().len() {
+                                            if idx < rows.read().len() {
                                                 rows.write().remove(idx);
                                             }
                                         },
@@ -459,47 +433,6 @@ pub fn DataCurationPage() -> Element {
     }
 }
 
-fn non_empty_opt(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
-    }
-}
-
-fn append_unique_rows(
-    queue: &mut Vec<CurationInputRow>,
-    candidates: Vec<CurationInputRow>,
-) -> (usize, usize) {
-    let mut added = 0usize;
-    let mut skipped = 0usize;
-    for row in candidates {
-        let key = row_uniqueness_key(&row);
-        if queue
-            .iter()
-            .any(|existing| row_uniqueness_key(existing) == key)
-        {
-            skipped += 1;
-            continue;
-        }
-        queue.push(row);
-        added += 1;
-    }
-    (added, skipped)
-}
-
-fn format_curation_error(locale: Locale, detail: &str) -> String {
-    if detail.contains("HTTP 429")
-        || detail.contains("rate limited")
-        || detail.contains("10 per 1 minute")
-    {
-        return msg_curation_rate_limited(locale).to_string();
-    }
-
-    msg_curation_failed(locale, detail)
-}
-
 fn start_curation_run(
     locale: Locale,
     snapshot: Vec<CurationInputRow>,
@@ -512,25 +445,20 @@ fn start_curation_run(
     processing.set(true);
     status_message.set(Some(msg_running_checks(locale)));
     spawn(async move {
-        match curate_rows(locale, snapshot).await {
-            Ok((curated_rows, qs)) => {
-                let pending_count = curated_rows
-                    .iter()
-                    .filter(|row| matches!(row.status, CurationStatus::PendingDependencies))
-                    .count();
-                awaiting_second_pass.set(!qs.dependencies.is_empty());
-                result_rows.set(Arc::from(curated_rows.into_boxed_slice()));
-                quickstatements.set(qs);
+        match workflow::run_curation(locale, snapshot).await {
+            Ok(outcome) => {
+                awaiting_second_pass.set(outcome.awaiting_second_pass);
+                result_rows.set(outcome.result_rows);
+                quickstatements.set(outcome.quickstatements);
                 processing.set(false);
-                status_message.set(Some(if pending_count > 0 {
-                    msg_prerequisites_pending(locale, pending_count)
-                } else {
-                    msg_done_review_copy(locale)
-                }));
+                status_message.set(Some(outcome.status_message));
             }
             Err(err) => {
                 processing.set(false);
-                status_message.set(Some(format_curation_error(locale, &err.to_string())));
+                status_message.set(Some(workflow::format_curation_error(
+                    locale,
+                    &err.to_string(),
+                )));
             }
         }
     });
