@@ -2,4 +2,5 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 pub mod inputs;
+pub mod pipeline;
 pub mod quickstatements;

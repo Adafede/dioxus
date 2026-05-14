@@ -2,18 +2,16 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::features::curation::domain;
-use crate::features::curation::services::inputs;
+use crate::features::curation::services::{inputs, pipeline};
 use crate::i18n::{
     Locale, curation_note_dependencies_pending, curation_note_existing_complete,
     curation_note_existing_updates, curation_note_new_compound, curation_pending_reference,
     curation_pending_taxon,
 };
 use crate::sparql::execute_sparql_format;
-use futures::stream::{self, StreamExt};
 use serde::Deserialize;
 use serde_json::Value;
 use shared::sparql::SparqlResponseFormat;
-use std::collections::HashSet;
 
 pub use domain::{
     CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
@@ -97,8 +95,6 @@ struct MassResolution {
     warning: Option<String>,
 }
 
-const CURATION_CONCURRENCY: usize = 8;
-
 pub fn example_rows() -> Vec<CurationInputRow> {
     inputs::example_rows()
 }
@@ -115,27 +111,7 @@ pub async fn curate_rows(
     locale: Locale,
     rows: Vec<CurationInputRow>,
 ) -> Result<(Vec<CurationResultRow>, QuickStatementsBundle), CurationError> {
-    let mut seen_keys = HashSet::new();
-    let mut unique_rows = Vec::with_capacity(rows.len());
-    for row in rows {
-        if seen_keys.insert(row_uniqueness_key(&row)) {
-            unique_rows.push(row);
-        }
-    }
-
-    let mut indexed_results = stream::iter(unique_rows.into_iter().enumerate())
-        .map(|(idx, row)| async move { (idx, curate_single_row(locale, row).await) })
-        .buffer_unordered(CURATION_CONCURRENCY)
-        .collect::<Vec<_>>()
-        .await;
-    indexed_results.sort_by_key(|(idx, _)| *idx);
-    let results = indexed_results
-        .into_iter()
-        .map(|(_, row)| row)
-        .collect::<Vec<_>>();
-
-    let bundle = build_quickstatements_bundle(&results);
-    Ok((results, bundle))
+    pipeline::curate_rows(locale, rows, curate_single_row, row_uniqueness_key).await
 }
 
 pub fn build_quickstatements_bundle(results: &[CurationResultRow]) -> QuickStatementsBundle {
