@@ -32,7 +32,6 @@ use components::layout::footer::Footer;
 use components::layout::header_meta::HeaderMetaSection;
 use components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
 use components::layout::page_header::PageHeader;
-use components::layout::page_header::PAGE_TITLE_ID;
 use components::layout::sidebar::Sidebar;
 use components::results_viewport::ResultsViewport;
 use dioxus::prelude::*;
@@ -51,6 +50,7 @@ use models::*;
 use repositories::HybridRepository;
 use state::{AppStateContext, FormCriteriaContext, ResultsContext, use_form_criteria_context};
 use std::sync::Arc;
+use ui::a11y_contract::{MAIN_PANEL_ID, PAGE_TITLE_ID, SKIP_TO_RESULTS_HREF};
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn locale_lang_tag(locale: Locale) -> &'static str {
@@ -181,7 +181,7 @@ fn App() -> Element {
 
     rsx! {
         LocaleProvider { locale,
-            a { class: "skip-link", href: "#main-panel",
+            a { class: "skip-link", href: SKIP_TO_RESULTS_HREF,
                 "{t(locale_value, TextKey::SkipToResults)}"
             }
             div { class: "{app_layout_class}",
@@ -191,7 +191,7 @@ fn App() -> Element {
                 }
 
                 main {
-                    id: "main-panel",
+                    id: MAIN_PANEL_ID,
                     class: "{main_class}",
                     tabindex: "-1",
                     aria_labelledby: PAGE_TITLE_ID,

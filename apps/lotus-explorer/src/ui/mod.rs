@@ -3,6 +3,8 @@
 
 //! UI composition primitives used by live components.
 
+pub mod a11y_contract;
+
 /// A content-phase enumeration for better state-driven UI rendering.
 ///
 /// Replaces ad-hoc if-else chains in container components with explicit phase tracking.

@@ -43,6 +43,10 @@ const SORTABLE_COLUMNS: [HeaderColumn; 6] = [
     },
 ];
 
+fn next_sort_is_descending(sort: SortState, col: SortColumn) -> bool {
+    sort.col == col && sort.dir == SortDir::Asc
+}
+
 /// Table header row with sortable column headers.
 #[component]
 pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortColumn>) -> Element {
@@ -73,7 +77,7 @@ fn SortableColumnHeader(
 ) -> Element {
     let locale = crate::hooks::use_locale();
     let label_text = t(locale, label);
-    let next_descending = sort.col == col && sort.dir == SortDir::Asc;
+    let next_descending = next_sort_is_descending(sort, col);
     let sort_aria = aria_sort_toggle(locale, label_text, next_descending);
 
     rsx! {
@@ -91,5 +95,26 @@ fn SortableColumnHeader(
                 span { class: "sort-icon", "aria-hidden": "true", {sort_icon_for(&sort, col)} }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn next_sort_is_descending_only_for_active_ascending_column() {
+        let sort = SortState {
+            col: SortColumn::Mass,
+            dir: SortDir::Asc,
+        };
+        assert!(next_sort_is_descending(sort, SortColumn::Mass));
+        assert!(!next_sort_is_descending(sort, SortColumn::Name));
+
+        let sort_desc = SortState {
+            col: SortColumn::Mass,
+            dir: SortDir::Desc,
+        };
+        assert!(!next_sort_is_descending(sort_desc, SortColumn::Mass));
     }
 }

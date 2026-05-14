@@ -7,12 +7,12 @@
 //! `MobileFiltersToggled` directly — the only prop is `on_search`.
 
 use crate::components::search_panel::SearchPanel;
-use crate::components::search_panel::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::search_state::dispatch_explore_action;
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
+use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use dioxus::prelude::*;
 
 /// Sidebar: filter toggle + `SearchPanel` + logo.

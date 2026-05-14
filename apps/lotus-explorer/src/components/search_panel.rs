@@ -29,10 +29,8 @@ use crate::i18n::{TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::classify_structure;
 use crate::state::{use_form_criteria_context, use_results_context};
+use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use dioxus::prelude::*;
-
-pub const SEARCH_PANEL_HEADING_ID: &str = "search-panel-heading";
-pub const SEARCH_PANEL_BODY_ID: &str = "search-panel-body";
 
 #[component]
 pub fn SearchPanel(on_search: EventHandler<()>) -> Element {

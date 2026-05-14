@@ -624,6 +624,7 @@ a:hover { text-decoration: underline; }
   .ketcher-panel { margin-left:0; margin-right:0; }
   .ketcher-iframe { height:min(70vh, 560px); min-height:420px; }
   .app-footer { gap:10px; }
+  .app-footer { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
   .footer-row { row-gap:4px; }
 }
 
@@ -635,6 +636,7 @@ a:hover { text-decoration: underline; }
   .draw-wrap { padding-left:12px; padding-right:12px; }
   .notice, .ketcher-panel { margin-left:12px; margin-right:12px; }
   .notice { padding:8px 10px; gap:8px; flex-direction:column; align-items:flex-start; }
+  .notice-copy-field { width:100%; min-width:0; }
   .notice-dismiss { align-self:flex-end; margin-left:0; }
 
   .filters-toggle {
@@ -650,6 +652,7 @@ a:hover { text-decoration: underline; }
     color:var(--text);
     font-size:16px;
     font-weight:600;
+    min-height: 44px;
     cursor:pointer;
   }
   .sidebar.mobile-closed .search-panel .search-panel-body { display:none; }
@@ -666,6 +669,7 @@ a:hover { text-decoration: underline; }
   .range-pair { min-width:120px; }
 
   .form-input, .form-textarea, .search-btn, select, input, textarea { font-size:16px; }
+  .btn, .search-btn { min-height: 44px; }
 
   .results-wrap { gap:10px; }
   .results-table { font-size:0.8125rem; }

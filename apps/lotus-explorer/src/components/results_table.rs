@@ -4,6 +4,7 @@
 use crate::features::explore::selectors::use_result_selector;
 use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
+use crate::ui::a11y_contract::{RESULTS_SECTION_HEADING_ID, RESULTS_SECTION_ID};
 use dioxus::prelude::*;
 use std::sync::Arc;
 
@@ -40,7 +41,6 @@ const TABLE_SCROLL_ID: &str = "results-table-scroll";
 const VIRTUAL_OVERSCAN_ROWS: usize = 12;
 const ROW_HEIGHT_PX_COMFORTABLE: usize = 114;
 const TABLE_VIEWPORT_FALLBACK_PX: usize = 640;
-const RESULTS_HEADING_ID: &str = "results-section-heading";
 
 /// Renders the full results section.
 ///
@@ -66,11 +66,11 @@ pub fn ResultsTable() -> Element {
 
     rsx! {
         section {
-            id: "results-section",
+            id: RESULTS_SECTION_ID,
             class: "results-wrap",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-            aria_labelledby: RESULTS_HEADING_ID,
-            h2 { id: RESULTS_HEADING_ID, class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
+            aria_labelledby: RESULTS_SECTION_HEADING_ID,
+            h2 { id: RESULTS_SECTION_HEADING_ID, class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
             ResultsToolbar {}
 
             if total == 0 {
