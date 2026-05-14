@@ -7,6 +7,7 @@ use crate::curation::{
     parse_tsv_rows,
 };
 use crate::features::curation::queue::{append_unique_rows, non_empty_trimmed};
+use crate::features::curation::services::quickstatements::build_qs_dev_link;
 use crate::features::curation::workflow;
 use crate::features::explore::url_state::absolute_share_url;
 use crate::i18n::{
@@ -50,6 +51,8 @@ pub fn DataCurationPage() -> Element {
     let awaiting_second_pass_value = *awaiting_second_pass.read();
     let result_rows_value = result_rows.read().clone();
     let quickstatements_value = quickstatements.read().clone();
+    let qs_dependency_link = build_qs_dev_link(&quickstatements_value.dependencies);
+    let qs_main_link = build_qs_dev_link(&quickstatements_value.main);
 
     let on_add_row = move |_| {
         let name = name_input.read().trim().to_string();
@@ -374,7 +377,7 @@ pub fn DataCurationPage() -> Element {
                         p { class: "curation-hint", "{msg_delay_advice(locale)}" }
                         p { class: "curation-hint",
                             a {
-                                href: "https://qs-dev.toolforge.org/",
+                                href: "{qs_dependency_link}",
                                 target: "_blank",
                                 rel: "noopener noreferrer",
                                 "{curation_qs_dev_label(locale)}"
@@ -406,7 +409,7 @@ pub fn DataCurationPage() -> Element {
                     if !awaiting_second_pass_value && !quickstatements_value.main.is_empty() {
                         p { class: "curation-hint",
                             a {
-                                href: "https://qs-dev.toolforge.org/",
+                                href: "{qs_main_link}",
                                 target: "_blank",
                                 rel: "noopener noreferrer",
                                 "{curation_qs_dev_label(locale)}"

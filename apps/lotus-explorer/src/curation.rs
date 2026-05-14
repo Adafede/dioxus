@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+use crate::features::curation::domain;
 use crate::i18n::{
     Locale, curation_note_dependencies_pending, curation_note_existing_complete,
     curation_note_existing_updates, curation_note_new_compound, curation_pending_reference,
@@ -8,11 +9,14 @@ use crate::i18n::{
 };
 use crate::sparql::execute_sparql_format;
 use futures::stream::{self, StreamExt};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value;
 use shared::sparql::SparqlResponseFormat;
 use std::collections::HashSet;
-use std::fmt;
+
+pub use domain::{
+    CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
+};
 
 // ── Sub-modules ───────────────────────────────────────────────────────────────
 
@@ -63,75 +67,6 @@ const WD_TYPE_CHEMICAL_ENTITY_QID: &str = "Q113145171";
 const WD_STEREOISOMER_GROUP_QID: &str = "Q59199015";
 const WD_OCCURS_IN_TAXON_PROP: &str = "P703";
 const WD_TAXON_QID: &str = "Q16521";
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Public types
-// ──────────────────────────────────────────────────────────────────────────────
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CurationInputRow {
-    pub name: String,
-    pub smiles: String,
-    pub taxon: Option<String>,
-    pub doi: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum CurationStatus {
-    ExistingComplete,
-    ExistingNeedsUpdates,
-    NewCompound,
-    PendingDependencies,
-    Error,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct CurationResultRow {
-    pub input: CurationInputRow,
-    pub canonical_smiles: Option<String>,
-    pub inchikey: Option<String>,
-    pub inchi: Option<String>,
-    pub formula: Option<String>,
-    pub exact_mass: Option<f64>,
-    pub mass_warning: Option<String>,
-    pub wikidata_qid: Option<String>,
-    pub status: CurationStatus,
-    pub note: String,
-    pub dependency_blocks: Vec<String>,
-    pub quickstatements: Vec<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct QuickStatementsBundle {
-    pub dependencies: std::sync::Arc<str>,
-    pub main: std::sync::Arc<str>,
-}
-
-impl Default for QuickStatementsBundle {
-    fn default() -> Self {
-        Self {
-            dependencies: std::sync::Arc::<str>::from(""),
-            main: std::sync::Arc::<str>::from(""),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum CurationError {
-    InvalidInput(String),
-    Http(String),
-    Parse(String),
-}
-
-impl fmt::Display for CurationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidInput(msg) => write!(f, "{msg}"),
-            Self::Http(msg) => write!(f, "{msg}"),
-            Self::Parse(msg) => write!(f, "{msg}"),
-        }
-    }
-}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Internal types
@@ -274,33 +209,7 @@ pub async fn curate_rows(
 }
 
 pub fn build_quickstatements_bundle(results: &[CurationResultRow]) -> QuickStatementsBundle {
-    build_quickstatements_bundle_text(results)
-}
-
-fn build_quickstatements_bundle_text(results: &[CurationResultRow]) -> QuickStatementsBundle {
-    let mut seen_dependency_blocks = HashSet::<&str>::new();
-    let mut dependencies = Vec::new();
-    for block in results.iter().flat_map(|r| r.dependency_blocks.iter()) {
-        let block = block.as_str();
-        if block.trim().is_empty() {
-            continue;
-        }
-        if seen_dependency_blocks.insert(block) {
-            dependencies.push(block);
-        }
-    }
-
-    let main = results
-        .iter()
-        .filter(|r| !r.quickstatements.is_empty())
-        .map(|r| r.quickstatements.join("\n"))
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
-    QuickStatementsBundle {
-        dependencies: std::sync::Arc::<str>::from(dependencies.join("\n\n")),
-        main: std::sync::Arc::<str>::from(main),
-    }
+    domain::build_quickstatements_bundle(results)
 }
 
 pub fn row_uniqueness_key(row: &CurationInputRow) -> String {
