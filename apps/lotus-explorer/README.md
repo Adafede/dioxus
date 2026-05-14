@@ -6,6 +6,11 @@ Web interface for exploring LOTUS compound-taxon-reference statements from Wikid
 
 - URL schema and examples: [`docs/CURATION_SHARE_LINKS.md`](./docs/CURATION_SHARE_LINKS.md)
 
+## Development testing
+
+- Run only logging format tests during telemetry/event-shape work:
+  - `cargo test -p lotus-explorer utils::logging::tests`
+
 ## Citation
 
 If this explorer contributes to your work, please cite the LOTUS initiative paper.
