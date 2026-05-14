@@ -19,6 +19,7 @@ mod models;
 mod perf;
 mod queries;
 mod repositories;
+mod services;
 mod sparql;
 mod state;
 mod ui;
