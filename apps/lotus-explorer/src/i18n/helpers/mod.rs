@@ -5,14 +5,11 @@
 
 use super::{CountNoun, Locale};
 
-#[path = "helpers/helpers_errors.rs"]
-mod helpers_errors;
+mod aria;
+mod errors;
 
-#[path = "helpers/helpers_aria.rs"]
-mod helpers_aria;
-
-pub use helpers_aria::*;
-pub use helpers_errors::*;
+pub use aria::*;
+pub use errors::*;
 
 pub fn threshold_label(locale: Locale, value: f64) -> String {
     match locale {
@@ -88,3 +85,4 @@ pub fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static st
         (Locale::It, CountNoun::Entry, false) => "Voci",
     }
 }
+

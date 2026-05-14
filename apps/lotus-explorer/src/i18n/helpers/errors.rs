@@ -133,3 +133,4 @@ pub fn error_hint_memory(locale: Locale) -> &'static str {
         Locale::It => "Risultato troppo grande per la memoria disponibile sul dispositivo.",
     }
 }
+

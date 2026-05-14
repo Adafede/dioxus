@@ -75,3 +75,4 @@ pub fn aria_sort_toggle(locale: Locale, column: &str, next_descending: bool) -> 
         }
     }
 }
+

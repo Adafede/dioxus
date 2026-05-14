@@ -13,17 +13,12 @@
 //! - [`de`] — German
 //! - [`it`] — Italian
 
-#[path = "i18n/curation.rs"]
 mod curation;
 pub use curation::*;
 
-#[path = "i18n/de.rs"]
 mod de;
-#[path = "i18n/en.rs"]
 mod en;
-#[path = "i18n/fr.rs"]
 mod fr;
-#[path = "i18n/it.rs"]
 mod it;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -240,7 +235,6 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
     }
 }
 
-#[path = "i18n/helpers.rs"]
 mod helpers;
 
 pub use helpers::*;
@@ -288,3 +282,4 @@ mod tests {
         assert_eq!(format_count(Locale::En, 42), "42");
     }
 }
+
