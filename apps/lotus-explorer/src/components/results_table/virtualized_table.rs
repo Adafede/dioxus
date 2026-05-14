@@ -8,19 +8,24 @@ use super::table_header::TableHeader;
 use super::{
     ROW_HEIGHT_PX_COMFORTABLE, TABLE_SCROLL_ID, TABLE_VIEWPORT_FALLBACK_PX, VIRTUAL_OVERSCAN_ROWS,
 };
+use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::search_state::ExploreState;
+use crate::features::explore::search_state::dispatch_explore_action;
 use crate::hooks::use_virtualization::{self, VirtualizationConfig};
 use crate::i18n::{TextKey, t};
+use crate::models::{Rows, SortState};
 use dioxus::prelude::*;
 use std::sync::Arc;
 
 #[component]
 pub(super) fn VirtualizedResultsTable(
     explore: Signal<ExploreState>,
+    entries: Memo<Rows>,
+    sort_state: Memo<SortState>,
     sorted_indices: Memo<Arc<[u32]>>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
-    let total = explore.read().result.entries.len();
+    let total = entries.read().len();
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut row_height_px = use_signal(|| ROW_HEIGHT_PX_COMFORTABLE);
     let virtualization_config = VirtualizationConfig {
@@ -37,6 +42,7 @@ pub(super) fn VirtualizedResultsTable(
     let virtualization =
         use_virtualization::use_virtualization(virtualization_config, total, 0, full_viewport_px);
     let text = row_text(locale);
+    let current_sort = *sort_state.read();
 
     rsx! {
         div { id: virtualization_config.scroll_id, class: "table-scroll",
@@ -45,7 +51,12 @@ pub(super) fn VirtualizedResultsTable(
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",
                 caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                 thead {
-                    TableHeader { explore }
+                    TableHeader {
+                        current_sort,
+                        on_sort_toggle: move |col| {
+                            dispatch_explore_action(explore, ExploreAction::SortToggled(col));
+                        },
+                    }
                 }
                 tbody {
                     if virtualization.top_spacer_px > 0 {
@@ -58,7 +69,7 @@ pub(super) fn VirtualizedResultsTable(
                         }
                     }
                     {
-                        let rows = explore.read().result.entries.clone();
+                        let rows = entries.read().clone();
                         let order = sorted_indices.read().clone();
                         {
                             rsx! {

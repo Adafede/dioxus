@@ -7,6 +7,7 @@
 //! `MobileFiltersToggled` directly — the only prop is `on_search`.
 
 use crate::components::search_panel::SearchPanel;
+use crate::components::search_panel::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::search_state::dispatch_explore_action;
 use crate::hooks::use_locale;
@@ -26,10 +27,14 @@ pub fn Sidebar(on_search: EventHandler<()>) -> Element {
     let mobile_filters_open = explore.read().ui.mobile_filters_open;
 
     rsx! {
-        aside { class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
+        aside {
+            class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
+            aria_labelledby: SEARCH_PANEL_HEADING_ID,
             button {
                 class: "filters-toggle",
                 r#type: "button",
+                aria_controls: SEARCH_PANEL_BODY_ID,
+                aria_expanded: if mobile_filters_open { "true" } else { "false" },
                 aria_pressed: if mobile_filters_open { "true" } else { "false" },
                 onclick: move |_| dispatch_explore_action(explore, ExploreAction::MobileFiltersToggled),
                 if mobile_filters_open {

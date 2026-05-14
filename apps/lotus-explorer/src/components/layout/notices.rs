@@ -7,6 +7,7 @@
 //! `ResultsContext` — no `explore` or `locale` props are drilled from `App`.
 
 use crate::components::copy_button::CopyButton;
+use crate::features::explore::selectors::{use_lifecycle_selector, use_result_selector};
 use crate::features::explore::types::ErrorKind;
 use crate::features::explore::url_state::absolute_share_url;
 use crate::i18n::{TextKey, t};
@@ -21,6 +22,7 @@ use std::sync::Arc;
 #[component]
 pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
     let locale = crate::hooks::use_locale();
+    let share_input_id = "share-url-field";
     let share = shareable_url.read();
     let Some(share) = share.as_deref() else {
         return rsx! {};
@@ -29,6 +31,7 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
         div { class: "notice notice-info", role: "status",
             span { class: "notice-label", "{t(locale, TextKey::Share)}" }
             input {
+                id: share_input_id,
                 class: "notice-value notice-copy-field mono",
                 r#type: "text",
                 readonly: true,
@@ -49,7 +52,8 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
 pub fn TaxonNotice() -> Element {
     let locale = crate::hooks::use_locale();
     let explore = use_results_context().explore;
-    let notice = explore.read().result.taxon_notice.clone();
+    let notice = use_result_selector(explore, |result| result.taxon_notice.clone());
+    let notice = notice.read();
     let Some(warning) = notice.as_ref() else {
         return rsx! {};
     };
@@ -67,19 +71,20 @@ pub fn TaxonNotice() -> Element {
 pub fn ErrorNotice(on_dismiss: EventHandler<()>, on_retry: EventHandler<()>) -> Element {
     let locale = crate::hooks::use_locale();
     let explore = use_results_context().explore;
-    let lifecycle = explore.read().lifecycle.clone();
-    let Some(ref domain_err) = lifecycle.error else {
+    let domain_error = use_lifecycle_selector(explore, |lifecycle| lifecycle.error.clone());
+    let is_loading = use_lifecycle_selector(explore, |lifecycle| lifecycle.loading);
+    let domain_error = domain_error.read();
+    let Some(domain_err) = domain_error.as_ref() else {
         return rsx! {};
     };
     let kind: ErrorKind = domain_err.kind();
-    let is_loading = lifecycle.loading;
     let msg = format_domain_error(locale, domain_err);
     rsx! {
         div { class: "notice notice-error", role: "alert",
             span { class: "notice-label", "{t(locale, TextKey::Error)}" }
             span { class: "notice-value", "{msg}" }
             span { class: "notice-value", "{error_hint_text(locale, kind)}" }
-            if is_retryable(kind) && !is_loading {
+            if is_retryable(kind) && !*is_loading.read() {
                 button {
                     class: "btn btn-sm",
                     r#type: "button",

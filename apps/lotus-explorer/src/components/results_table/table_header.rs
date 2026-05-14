@@ -4,59 +4,60 @@
 //! Table header with sortable columns.
 
 use super::sort_helpers::{aria_sort_for, sort_icon_for};
-use crate::features::explore::actions::ExploreAction;
-use crate::features::explore::search_state::ExploreState;
-use crate::features::explore::search_state::dispatch_explore_action;
 use crate::i18n::TextKey;
 use crate::i18n::t;
 use crate::models::SortColumn;
 use crate::models::SortState;
 use dioxus::prelude::*;
 
+#[derive(Clone, Copy)]
+struct HeaderColumn {
+    col: SortColumn,
+    label: TextKey,
+}
+
+const SORTABLE_COLUMNS: [HeaderColumn; 6] = [
+    HeaderColumn {
+        col: SortColumn::Name,
+        label: TextKey::Compound,
+    },
+    HeaderColumn {
+        col: SortColumn::Mass,
+        label: TextKey::Mass,
+    },
+    HeaderColumn {
+        col: SortColumn::Formula,
+        label: TextKey::Formula,
+    },
+    HeaderColumn {
+        col: SortColumn::TaxonName,
+        label: TextKey::TaxonCol,
+    },
+    HeaderColumn {
+        col: SortColumn::RefTitle,
+        label: TextKey::Reference,
+    },
+    HeaderColumn {
+        col: SortColumn::PubYear,
+        label: TextKey::Year,
+    },
+];
+
 /// Table header row with sortable column headers.
 #[component]
-pub fn TableHeader(explore: Signal<ExploreState>) -> Element {
+pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortColumn>) -> Element {
     let locale = crate::hooks::use_locale();
-    let current_sort = explore.read().result.sort;
-
-    let toggle_sort = move |col: SortColumn| {
-        move |_: MouseEvent| {
-            dispatch_explore_action(explore, ExploreAction::SortToggled(col));
-        }
-    };
 
     rsx! {
         tr {
             th { class: "th-static", scope: "col", "{t(locale, TextKey::Structure)}" }
-            SortableColumnHeader {
-                col: SortColumn::Name,
-                sort: current_sort,
-                on_toggle: toggle_sort(SortColumn::Name),
-            }
-            SortableColumnHeader {
-                col: SortColumn::Mass,
-                sort: current_sort,
-                on_toggle: toggle_sort(SortColumn::Mass),
-            }
-            SortableColumnHeader {
-                col: SortColumn::Formula,
-                sort: current_sort,
-                on_toggle: toggle_sort(SortColumn::Formula),
-            }
-            SortableColumnHeader {
-                col: SortColumn::TaxonName,
-                sort: current_sort,
-                on_toggle: toggle_sort(SortColumn::TaxonName),
-            }
-            SortableColumnHeader {
-                col: SortColumn::RefTitle,
-                sort: current_sort,
-                on_toggle: toggle_sort(SortColumn::RefTitle),
-            }
-            SortableColumnHeader {
-                col: SortColumn::PubYear,
-                sort: current_sort,
-                on_toggle: toggle_sort(SortColumn::PubYear),
+            for header in SORTABLE_COLUMNS {
+                SortableColumnHeader {
+                    col: header.col,
+                    label: header.label,
+                    sort: current_sort,
+                    on_toggle: on_sort_toggle,
+                }
             }
         }
     }
@@ -66,18 +67,11 @@ pub fn TableHeader(explore: Signal<ExploreState>) -> Element {
 #[component]
 fn SortableColumnHeader(
     col: SortColumn,
+    label: TextKey,
     sort: SortState,
-    on_toggle: EventHandler<MouseEvent>,
+    on_toggle: EventHandler<SortColumn>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
-    let label = match col {
-        SortColumn::Name => TextKey::Compound,
-        SortColumn::Mass => TextKey::Mass,
-        SortColumn::Formula => TextKey::Formula,
-        SortColumn::TaxonName => TextKey::TaxonCol,
-        SortColumn::RefTitle => TextKey::Reference,
-        SortColumn::PubYear => TextKey::Year,
-    };
 
     rsx! {
         th {
@@ -88,7 +82,7 @@ fn SortableColumnHeader(
                 class: "sort-btn",
                 r#type: "button",
                 aria_label: "{t(locale, label)}",
-                onclick: move |e| on_toggle.call(e),
+                onclick: move |_| on_toggle.call(col),
                 "{t(locale, label)} "
                 span { class: "sort-icon", "aria-hidden": "true", {sort_icon_for(&sort, col)} }
             }

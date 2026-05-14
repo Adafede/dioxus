@@ -64,7 +64,8 @@ pub fn ResultsTable() -> Element {
     let total = entries_len;
 
     rsx! {
-        div { id: "results-section", class: "results-wrap",
+        section { id: "results-section", class: "results-wrap", aria_label: "{t(locale, TextKey::TableTriplesAria)}",
+            h2 { class: "sr-only", "{t(locale, TextKey::DatasetStatistics)}" }
             ResultsToolbar {}
 
             if total == 0 {
@@ -72,7 +73,12 @@ pub fn ResultsTable() -> Element {
                     p { "{t(locale, TextKey::NoResults)}" }
                 }
             } else {
-                VirtualizedResultsTable { explore, sorted_indices }
+                VirtualizedResultsTable {
+                    explore,
+                    entries,
+                    sort_state,
+                    sorted_indices,
+                }
             }
         }
     }

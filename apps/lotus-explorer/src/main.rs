@@ -51,6 +51,30 @@ use repositories::HybridRepository;
 use state::{AppStateContext, FormCriteriaContext, ResultsContext, use_form_criteria_context};
 use std::sync::Arc;
 
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+fn locale_lang_tag(locale: Locale) -> &'static str {
+    match locale {
+        Locale::En => "en",
+        Locale::Fr => "fr",
+        Locale::De => "de",
+        Locale::It => "it",
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn sync_document_lang(locale: Locale) {
+    if let Some(window) = web_sys::window() {
+        if let Some(document) = window.document() {
+            if let Some(root) = document.document_element() {
+                let _ = root.set_attribute("lang", locale_lang_tag(locale));
+            }
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn sync_document_lang(_: Locale) {}
+
 fn main() {
     let level = if cfg!(debug_assertions) {
         log::Level::Debug
@@ -104,6 +128,7 @@ fn App() -> Element {
     // ── Persistent side-effects ───────────────────────────────────────────────
     use_effect(move || persist_locale_query_param(*locale.read()));
     use_effect(move || persist_view_query_param(app_state.read().view));
+    use_effect(move || sync_document_lang(*locale.read()));
 
     // ── Feature hooks ─────────────────────────────────────────────────────────
     use_startup_effect(
