@@ -198,13 +198,13 @@ fn App() -> Element {
                     PageHeader {}
 
                     if current_view == AppView::Explore {
-                        HeaderMetaSection {}
                         ShareNotice { shareable_url }
                         TaxonNotice {}
                         ErrorNotice {
                             on_dismiss: move |_| dispatch_explore_action(explore, ExploreAction::ErrorDismissed),
                             on_retry: move |_| start_search(criteria, false, explore, search_tasks_for_retry.clone(), repo),
                         }
+                        HeaderMetaSection {}
                         ResultsViewport { on_preview }
                     } else if current_view == AppView::Curation {
                         components::data_curation_page::DataCurationPage {}
