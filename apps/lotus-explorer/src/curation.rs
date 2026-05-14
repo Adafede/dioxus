@@ -13,6 +13,12 @@ use serde::Deserialize;
 use serde_json::Value;
 use shared::sparql::SparqlResponseFormat;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use domain::NATPROD_API_BASE;
+pub(crate) use domain::{
+    CURATION_SPARQL_PREFIXES, WD_CHEMICAL_COMPOUND_QID, WD_OCCURS_IN_TAXON_PROP,
+    WD_STEREOISOMER_GROUP_QID, WD_TAXON_QID, WD_TYPE_CHEMICAL_ENTITY_QID,
+};
 pub use domain::{
     CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
 };
@@ -51,26 +57,6 @@ pub use share_links::{
 #[path = "features/curation/services/enrichment.rs"]
 mod enrichment;
 use enrichment::curate_single_row;
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-#[cfg(not(target_arch = "wasm32"))]
-const NATPROD_API_BASE: &str = "https://api.naturalproducts.net/latest";
-
-const CURATION_SPARQL_PREFIXES: &str = "\
-PREFIX wd: <http://www.wikidata.org/entity/>\n\
-PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n\
-PREFIX p: <http://www.wikidata.org/prop/>\n\
-PREFIX ps: <http://www.wikidata.org/prop/statement/>\n\
-PREFIX prov: <http://www.w3.org/ns/prov#>\n\
-PREFIX pr: <http://www.wikidata.org/prop/reference/>\n\
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>";
-
-const WD_CHEMICAL_COMPOUND_QID: &str = "Q11173";
-const WD_TYPE_CHEMICAL_ENTITY_QID: &str = "Q113145171";
-const WD_STEREOISOMER_GROUP_QID: &str = "Q59199015";
-const WD_OCCURS_IN_TAXON_PROP: &str = "P703";
-const WD_TAXON_QID: &str = "Q16521";
 
 pub fn example_rows() -> Vec<CurationInputRow> {
     inputs::example_rows()
