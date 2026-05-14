@@ -23,6 +23,7 @@
   :root {
     --border: #7a879a;
     --text3: #334155;
+    --critical-muted: #223247;
   }
 
   .notice,
@@ -48,6 +49,31 @@
   .page-sub,
   .form-hint {
     color: var(--text);
+  }
+}
+
+@media (forced-colors: active) {
+  .btn,
+  .search-btn,
+  .notice,
+  .results-toolbar,
+  .table-scroll,
+  .query-panel,
+  .stat-badge,
+  .id-badge {
+    border: 1px solid CanvasText;
+    box-shadow: none;
+    forced-color-adjust: auto;
+  }
+
+  .btn:focus-visible,
+  .search-btn:focus-visible,
+  .sort-btn:focus-visible,
+  .notice-dismiss:focus-visible,
+  .id-badge:focus-visible,
+  .copy-btn:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
   }
 }
 
