@@ -39,17 +39,17 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintValidation => "Veuillez ajuster la saisie puis réessayer.",
         TextKey::ErrorHintNetwork => "Problème réseau détecté. Réessayer peut aider.",
         TextKey::ErrorHintParse => {
-            "Echec de lecture de la réponse. Réessayez ou affinez la requête."
+            "Échec de lecture de la réponse. Réessayez ou affinez la requête."
         }
         TextKey::ErrorHintUnknown => "Erreur inattendue. Réessayer peut aider.",
         TextKey::SkipToResults => "Aller aux résultats",
         TextKey::WelcomeTitle => "Explorer les occurrences de produits naturels",
         TextKey::WelcomeTry => "Essayer",
         TextKey::WelcomeLeadA => {
-            "Chaque ligne relie un compose à l'organisme dans lequel il est rapporté, "
+            "Chaque ligne relie un composé à l'organisme dans lequel il est rapporté, "
         }
         TextKey::WelcomeLeadB => {
-            "avec la reference bibliographique reliée. Les données viennent de "
+            "avec la référence bibliographique associée. Les données viennent de "
         }
         TextKey::WelcomeLeadC => ", stockées sur ",
         TextKey::WelcomeLeadD => " et interrogées via ",
@@ -93,7 +93,7 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::ElementStateExcluded => "exclu",
         TextKey::Search => "Rechercher",
         TextKey::Searching => "Recherche...",
-        TextKey::MolecularMass => "Masse moleculaire (Da)",
+        TextKey::MolecularMass => "Masse moléculaire (Da)",
         TextKey::Min => "Min",
         TextKey::Max => "Max",
         TextKey::PublicationYear => "Année de publication",
@@ -105,7 +105,7 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::KetcherHintB => ", puis copiez avec ",
         TextKey::KetcherHintC => " (ou ",
         TextKey::KetcherHintD => ") et utilisez-la dans le champ structure de l'explorateur.",
-        TextKey::KetcherIframeTitle => "Editeur de structure Ketcher",
+        TextKey::KetcherIframeTitle => "Éditeur de structure Ketcher",
         TextKey::KindNoteSmiles => "  Envoyé comme littéral SPARQL sur une seule ligne.",
         TextKey::KindNoteMol2000 => "  Transmis tel quel à SACHEM scoredSubstructureSearch.",
         TextKey::KindNoteMol3000 => {
@@ -123,7 +123,7 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::DownloadJsonLabel => "Télécharger JSON",
         TextKey::DownloadRdfTitle => "Télécharger les résultats en RDF (Turtle)",
         TextKey::DownloadRdfLabel => "Télécharger RDF",
-        TextKey::DownloadMetadataTitle => "Télécharger les metadonnées",
+        TextKey::DownloadMetadataTitle => "Télécharger les métadonnées",
         TextKey::DownloadMetadataLabel => "Télécharger métadonnées",
         TextKey::OpenInQlever => "Ouvrir dans QLever",
         TextKey::OpenInQleverTitle => "Ouvrir cette requête dans QLever",

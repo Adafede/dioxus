@@ -25,7 +25,7 @@ pub(super) fn heading_queued_rows() -> &'static str {
 }
 
 pub(super) fn heading_results() -> &'static str {
-    "Risultati curation"
+    "Risultati della curation"
 }
 
 pub(super) fn heading_quickstatements() -> &'static str {
@@ -235,7 +235,7 @@ pub(super) fn curation_pending_taxon(taxon: &str) -> String {
 }
 
 pub(super) fn curation_pending_reference(doi: &str) -> String {
-    format!("La referenza per il DOI '{doi}' non è ancora disponibile.")
+    format!("Il riferimento per il DOI '{doi}' non è ancora disponibile.")
 }
 
 pub(super) fn view_switch_aria() -> &'static str {

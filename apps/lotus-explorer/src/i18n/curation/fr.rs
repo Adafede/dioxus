@@ -65,7 +65,7 @@ pub(super) fn button_generate_quickstatements() -> &'static str {
 }
 
 pub(super) fn button_generating() -> &'static str {
-    "Generation..."
+    "Génération..."
 }
 
 pub(super) fn button_remove() -> &'static str {
@@ -183,7 +183,7 @@ pub(super) fn msg_second_pass_still_pending_count(count: usize) -> String {
 }
 
 pub(super) fn curation_badge_prerequisite_pending() -> &'static str {
-    "Prerequis en attente"
+    "Prérequis en attente"
 }
 
 pub(super) fn curation_badge_mass_missing() -> &'static str {

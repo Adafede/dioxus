@@ -266,9 +266,9 @@ pub(super) fn view_label_draw() -> &'static str {
 pub(super) fn curation_status_label(status_key: &str) -> &'static str {
     match status_key {
         "existing_complete" => "bereits vollständig",
-        "existing_updates" => "vorhandener eintrag, updates erzeugt",
+        "existing_updates" => "vorhandener Eintrag, Updates erzeugt",
         "new_compound" => "neuer Eintrag, Erstellung erzeugt",
-        "pending_dependencies" => "wartet auf vorausgesetzte entitäten",
+        "pending_dependencies" => "wartet auf vorausgesetzte Entitäten",
         "error" => "fehler",
         _ => "status",
     }
