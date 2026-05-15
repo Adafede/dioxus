@@ -295,7 +295,7 @@ a:hover { text-decoration: underline; }
 .sidebar-logo-link {
   border-radius: 14px;
 }
-.page-title  { font-size:var(--fs-4); font-weight:800; letter-spacing:-.024em; line-height:1.06; color:var(--wd-reference); }
+.page-title  { font-size:var(--fs-4); font-weight:800; letter-spacing:-.024em; line-height:1.06; color:var(--text); }
 .page-title-link,
 .page-title-link:visited {
   color: inherit;

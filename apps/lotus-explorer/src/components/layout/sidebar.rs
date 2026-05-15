@@ -45,17 +45,14 @@ pub fn Sidebar(on_search: EventHandler<()>) -> Element {
             }
             SearchPanel { on_search }
             div { class: "sidebar-logo-wrap",
-                a {
+                div {
                     class: "sidebar-logo-link",
-                    href: "?",
-                    aria_label: "{t(locale, TextKey::GoToHomepage)}",
                     img {
                         class: "sidebar-logo",
                         src: "assets/lotus_ferris.svg",
                         alt: "",
                         "aria-hidden": "true",
                     }
-                    span { class: "sr-only", "{t(locale, TextKey::GoToHomepage)}" }
                 }
             }
         }
