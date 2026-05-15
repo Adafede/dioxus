@@ -102,6 +102,7 @@ pub fn apply_form_action_mut(criteria: &mut SearchCriteria, action: FormAction) 
 ///
 /// Kept as a pure helper for reducer-style tests and functional call sites.
 #[must_use]
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn apply_form_action(mut criteria: SearchCriteria, action: FormAction) -> SearchCriteria {
     apply_form_action_mut(&mut criteria, action);
     criteria

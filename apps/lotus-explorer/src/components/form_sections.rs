@@ -212,34 +212,41 @@ fn NumPair(
     let locale = crate::hooks::use_locale();
 
     rsx! {
-        div { class: "range-pair",
-            label { class: "form-label sm", "{label} {t(locale, TextKey::MinCount)}" }
-            input {
-                r#type: "number",
-                class: "form-input sm",
-                min: "0",
-                max: "10000",
-                aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
-                value: "{min_value}",
-                oninput: move |e| {
-                    if let Some(v) = parse_u16_input(&e.value()) {
-                        on_min.call(v);
+        div { class: "formula-num-pair",
+            p { class: "form-label sm formula-num-label", "{label}" }
+            div { class: "formula-minmax-grid",
+                div { class: "range-pair",
+                    label { class: "form-label sm", "{t(locale, TextKey::MinCount)}" }
+                    input {
+                        r#type: "number",
+                        class: "form-input sm",
+                        min: "0",
+                        max: "10000",
+                        aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
+                        value: "{min_value}",
+                        oninput: move |e| {
+                            if let Some(v) = parse_u16_input(&e.value()) {
+                                on_min.call(v);
+                            }
+                        },
                     }
-                },
-            }
-            label { class: "form-label sm", "{label} {t(locale, TextKey::MaxCount)}" }
-            input {
-                r#type: "number",
-                class: "form-input sm",
-                min: "0",
-                max: "10000",
-                aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",
-                value: "{max_value}",
-                oninput: move |e| {
-                    if let Some(v) = parse_u16_input(&e.value()) {
-                        on_max.call(v);
+                }
+                div { class: "range-pair",
+                    label { class: "form-label sm", "{t(locale, TextKey::MaxCount)}" }
+                    input {
+                        r#type: "number",
+                        class: "form-input sm",
+                        min: "0",
+                        max: "10000",
+                        aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",
+                        value: "{max_value}",
+                        oninput: move |e| {
+                            if let Some(v) = parse_u16_input(&e.value()) {
+                                on_max.call(v);
+                            }
+                        },
                     }
-                },
+                }
             }
         }
     }
@@ -352,14 +359,14 @@ pub fn FormulaSection() -> Element {
             }
 
             if enabled {
-                div { class: "form-section nested",
+                div { class: "form-section nested formula-exact-row",
                     label { class: "form-label sm", r#for: "formula-exact",
                         "{t(locale, TextKey::ExactFormula)}"
                     }
                     input {
                         id: "formula-exact",
                         r#type: "text",
-                        class: "form-input sm",
+                        class: "form-input formula-exact-input",
                         autocomplete: "off",
                         spellcheck: "false",
                         placeholder: "C15H10O5",
@@ -368,7 +375,7 @@ pub fn FormulaSection() -> Element {
                     }
                 }
 
-                div { class: "range-inputs",
+                div { class: "formula-grid formula-grid--pairs",
                     NumPair {
                         label: "C",
                         min_value: criteria.c_min,
@@ -390,8 +397,6 @@ pub fn FormulaSection() -> Element {
                         on_min: move |v| ctx.update(FormAction::NMin(v)),
                         on_max: move |v| ctx.update(FormAction::NMax(v)),
                     }
-                }
-                div { class: "range-inputs",
                     NumPair {
                         label: "O",
                         min_value: criteria.o_min,
@@ -414,7 +419,7 @@ pub fn FormulaSection() -> Element {
                         on_max: move |v| ctx.update(FormAction::SMax(v)),
                     }
                 }
-                div { class: "range-inputs",
+                div { class: "formula-grid formula-grid--halogens",
                     ElemStateSelect {
                         label: "F",
                         value: criteria.f_state,
