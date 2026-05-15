@@ -143,28 +143,18 @@ fn App() -> Element {
 
     // ── Event handlers (capture App-scope values) ─────────────────────────────
     let form_ctx = use_form_criteria_context();
-    let search_tasks_for_search = search_task_controller.clone();
-    let search_tasks_for_preview = search_task_controller.clone();
-    let search_tasks_for_retry = search_task_controller.clone();
-    let on_search = move |_: ()| {
-        form_ctx.mark_searched();
-        start_search(
-            criteria,
-            false,
-            explore,
-            search_tasks_for_search.clone(),
-            repo,
-        );
+    let on_search = {
+        let tc = search_task_controller.clone();
+        move |_: ()| {
+            form_ctx.mark_searched();
+            start_search(criteria, false, explore, tc.clone(), repo);
+        }
     };
-    let on_preview = move |_: ()| {
-        start_search(
-            criteria,
-            false,
-            explore,
-            search_tasks_for_preview.clone(),
-            repo,
-        )
+    let on_preview = {
+        let tc = search_task_controller.clone();
+        move |_: ()| start_search(criteria, false, explore, tc.clone(), repo)
     };
+    let tc_retry = search_task_controller.clone();
 
     // ── Layout ────────────────────────────────────────────────────────────────
     let current_view = app_state.read().view;
@@ -202,7 +192,7 @@ fn App() -> Element {
                         TaxonNotice {}
                         ErrorNotice {
                             on_dismiss: move |_| dispatch_explore_action(explore, ExploreAction::ErrorDismissed),
-                            on_retry: move |_| start_search(criteria, false, explore, search_tasks_for_retry.clone(), repo),
+                            on_retry: move |_| start_search(criteria, false, explore, tc_retry.clone(), repo),
                         }
                         HeaderMetaSection {}
                         ResultsViewport { on_preview }

@@ -8,32 +8,15 @@ use crate::ui::a11y_contract::{RESULTS_SECTION_HEADING_ID, RESULTS_SECTION_ID};
 use dioxus::prelude::*;
 use std::sync::Arc;
 
-#[path = "results_table/sort_helpers.rs"]
-mod sort_helpers;
-
-#[path = "results_table/sort_model.rs"]
-mod sort_model;
-
-#[path = "results_table/download_model.rs"]
 mod download_model;
-
-#[path = "results_table/table_toolbar_sections.rs"]
+mod sort_helpers;
+mod sort_model;
 mod table_toolbar_sections;
-
-#[path = "results_table/toolbar.rs"]
 mod toolbar;
 use toolbar::ResultsToolbar;
-
-#[path = "results_table/row_cells.rs"]
 mod row_cells;
-
-#[path = "results_table/scroll_runtime.rs"]
 mod scroll_runtime;
-
-#[path = "results_table/table_header.rs"]
 mod table_header;
-
-#[path = "results_table/virtualized_table.rs"]
 mod virtualized_table;
 use virtualized_table::VirtualizedResultsTable;
 

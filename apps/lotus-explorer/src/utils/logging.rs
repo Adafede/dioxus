@@ -25,18 +25,15 @@ fn format_timing_message(
 }
 
 pub fn log_info_evt(event: &str, phase: &str, state: &str, details: Option<&str>) {
-    let msg = format_event_message(event, phase, state, details);
-    crate::perf::log_info(&msg);
+    log::info!("{}", format_event_message(event, phase, state, details));
 }
 
 pub fn log_debug_evt(event: &str, phase: &str, state: &str, details: Option<&str>) {
-    let msg = format_event_message(event, phase, state, details);
-    crate::perf::log_debug(&msg);
+    log::debug!("{}", format_event_message(event, phase, state, details));
 }
 
 pub fn log_warn_evt(event: &str, phase: &str, state: &str, details: Option<&str>) {
-    let msg = format_event_message(event, phase, state, details);
-    crate::perf::log_warn(&msg);
+    log::warn!("{}", format_event_message(event, phase, state, details));
 }
 
 pub fn log_timing_evt(
@@ -46,8 +43,10 @@ pub fn log_timing_evt(
     duration: std::time::Duration,
     details: Option<&str>,
 ) {
-    let msg = format_timing_message(event, phase, state, duration, details);
-    crate::perf::log_info(&msg);
+    log::info!(
+        "{}",
+        format_timing_message(event, phase, state, duration, details)
+    );
 }
 
 #[cfg(test)]

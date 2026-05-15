@@ -16,30 +16,6 @@ use dioxus::prelude::*;
 use std::sync::Arc;
 const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
 
-fn log_download_evt(phase: &str, state: &str, details: Option<&str>) {
-    let msg = match details {
-        Some(d) if !d.is_empty() => format!("event=download phase={phase} state={state} {d}"),
-        _ => format!("event=download phase={phase} state={state}"),
-    };
-    perf::log_info(&msg);
-}
-
-fn log_download_timing(
-    phase: &str,
-    state: &str,
-    elapsed: std::time::Duration,
-    details: Option<&str>,
-) {
-    let ms = elapsed.as_secs_f64() * 1000.0;
-    let msg = match details {
-        Some(d) if !d.is_empty() => {
-            format!("event=download phase={phase} state={state} elapsed_ms={ms:.1} {d}")
-        }
-        _ => format!("event=download phase={phase} state={state} elapsed_ms={ms:.1}"),
-    };
-    perf::log_info(&msg);
-}
-
 fn spawn_query_download(
     format: DownloadFormat,
     status_message: String,
@@ -52,20 +28,15 @@ fn spawn_query_download(
     *download_busy.write() = true;
     *download_status.write() = Some(status_message);
     spawn(async move {
-        log_download_evt(
-            "table_dispatch",
-            "started",
-            Some(&format!("format={}", format.log_name())),
+        log::info!(
+            "event=download phase=table_dispatch state=started format={}",
+            format.log_name()
         );
-        log_download_evt(
-            "table_query",
-            "check",
-            Some(&format!(
-                "format={} has_SERVICE={} query_bytes={}",
-                format.log_name(),
-                query.contains("SERVICE"),
-                query.len()
-            )),
+        log::info!(
+            "event=download phase=table_query state=check format={} has_SERVICE={} query_bytes={}",
+            format.log_name(),
+            query.contains("SERVICE"),
+            query.len()
         );
         if let Err(err) = execute_download(
             format,
@@ -76,10 +47,9 @@ fn spawn_query_download(
         )
         .await
         {
-            log_download_evt(
-                "table_fetch",
-                "error",
-                Some(&format!("format={} reason={err}", format.log_name())),
+            log::warn!(
+                "event=download phase=table_fetch state=error format={} reason={err}",
+                format.log_name()
             );
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -110,15 +80,13 @@ fn dispatch_query_download_spec(
 }
 
 fn dispatch_metadata_download_blob(filename: &str, body: &str) {
-    log_download_evt("table_dispatch", "started", Some("format=metadata"));
+    log::info!("event=download phase=table_dispatch state=started format=metadata");
     let trigger_timer = perf::start_timer("LOTUS:table_download_meta_trigger");
     trigger_download(filename, DOWNLOAD_METADATA_MIME, body);
-    let trigger_elapsed = perf::end_timer("LOTUS:table_download_meta_trigger", trigger_timer);
-    log_download_timing(
-        "table_trigger",
-        "success",
-        trigger_elapsed,
-        Some("format=metadata"),
+    let elapsed_ms =
+        perf::end_timer("LOTUS:table_download_meta_trigger", trigger_timer).as_secs_f64() * 1000.0;
+    log::info!(
+        "event=download phase=table_trigger state=success format=metadata elapsed_ms={elapsed_ms:.1}"
     );
 }
 

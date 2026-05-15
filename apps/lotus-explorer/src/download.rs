@@ -116,10 +116,7 @@ pub async fn execute_download(
     filename: String,
 ) -> Result<(), String> {
     let dl_timer = perf::start_timer(format.timer_label());
-    perf::log_info(&format!(
-        "event=download format={} state=started",
-        format.log_name()
-    ));
+    log::info!("event=download format={} state=started", format.log_name());
 
     #[cfg(target_arch = "wasm32")]
     {
@@ -169,10 +166,10 @@ async fn execute_download_wasm(
             Ok(())
         }
         Err(err) => {
-            perf::log_warn(&format!(
+            log::warn!(
                 "event=download format={} phase=fetch state=fallback reason=api_export_urls_failed detail={err}",
                 format.log_name()
-            ));
+            );
             execute_download_wasm_direct_post(format, query, filename, dl_timer).await
         }
     }
@@ -300,10 +297,10 @@ async fn execute_download_direct(
                 ),
                 Some(elapsed),
             );
-            perf::log_warn(&format!(
+            log::warn!(
                 "event=download format={} phase=fetch state=error source=direct reason={e}",
                 format.log_name()
-            ));
+            );
             Err(e)
         }
     }

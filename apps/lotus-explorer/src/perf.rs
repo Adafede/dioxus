@@ -55,57 +55,6 @@ pub fn log_timing(phase: &str, message: &str, duration: Option<Duration>) {
     }
 }
 
-/// Log a message at info level. Works cross-platform.
-pub fn log_info(message: &str) {
-    if !log::log_enabled!(log::Level::Info) {
-        return;
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        web_sys::console::info_1(&message.into());
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        log::info!("{}", message);
-    }
-}
-
-/// Log a message at debug level. Works cross-platform.
-pub fn log_debug(message: &str) {
-    if !log::log_enabled!(log::Level::Debug) {
-        return;
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        web_sys::console::debug_1(&message.into());
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        log::debug!("{}", message);
-    }
-}
-
-/// Log a message at warn level. Works cross-platform.
-pub fn log_warn(message: &str) {
-    if !log::log_enabled!(log::Level::Warn) {
-        return;
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        web_sys::console::warn_1(&message.into());
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        log::warn!("{}", message);
-    }
-}
-
 /// Start a console.time() block on WASM, or return the current timestamp on native.
 #[cfg(target_arch = "wasm32")]
 pub fn start_timer(_label: &str) -> TimerHandle {
