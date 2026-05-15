@@ -17,12 +17,12 @@ pub(super) fn aria_sort_for(state: &SortState, col: SortColumn) -> &'static str 
 pub(super) fn sort_icon_for(state: &SortState, col: SortColumn) -> &'static str {
     if state.col == col {
         if state.dir == SortDir::Asc {
-            "↑"
+            "▴"
         } else {
-            "↓"
+            "▾"
         }
     } else {
         // Neutral indicator communicates that the column is sortable.
-        "↕"
+        "⇅"
     }
 }
