@@ -43,6 +43,9 @@ pub fn WelcomeScreen() -> Element {
                     }
                     "{t(locale, TextKey::WelcomeLeadE)}"
                 }
+                p { class: "form-hint welcome-support-text welcome-language-note",
+                    "{t(locale, TextKey::LabelLanguagePolicy)}"
+                }
             }
 
             div { class: "welcome-examples",
@@ -60,10 +63,9 @@ pub fn WelcomeScreen() -> Element {
                         note: t(locale, TextKey::ExampleSmilesOnly),
                     }
                 }
-                p { class: "form-hint welcome-cli-hint",
+                p { class: "form-hint welcome-support-text welcome-cli-hint",
                     "{t(locale, TextKey::WelcomeProgrammaticDownload)}"
                 }
-                p { class: "form-hint", "{t(locale, TextKey::LabelLanguagePolicy)}" }
                 div { class: "welcome-cli-list",
                     DownloadExampleRow {
                         locale,

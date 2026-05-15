@@ -735,6 +735,15 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .welcome-examples { width:100%; min-width:0; }
 .welcome-hero h2 { font-size:clamp(1.6rem, 1.28rem + 1vw, 2.3rem); font-weight:800; letter-spacing:-.02em; line-height:1.08; }
 .welcome-lead    { font-size:var(--fs-1); color:var(--text2); margin-top:6px; line-height:1.60; max-width:none; overflow-wrap:anywhere; }
+.welcome-support-text {
+  font-size: var(--fs-1);
+  line-height: 1.55;
+  color: var(--text2);
+}
+.welcome-language-note {
+  margin-top: 10px;
+  max-width: 72ch;
+}
 .welcome-inline-link {
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -747,7 +756,7 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .welcome-cli-list .notice {
   margin: 0;
 }
-.welcome-cli-hint { margin-top:6px; }
+.welcome-cli-hint { margin-top:16px; max-width:72ch; }
 .welcome-cli-list { margin-top:3px; display:flex; flex-direction:column; gap:8px; }
 
 /* Results */
