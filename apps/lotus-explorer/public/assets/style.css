@@ -880,7 +880,7 @@ input[type="number"].form-input::-webkit-inner-spin-button {
                    border-bottom:1px solid var(--panel-border); }
 .footer-line:last-child { border-bottom:none; padding-bottom:0; }
 .footer-line:first-child { padding-top:0; }
-.footer-row      { display:grid; grid-template-columns:88px minmax(0, 1fr); column-gap:10px; row-gap:4px; align-items:start; padding:4px 0; }
+.footer-row      { display:grid; grid-template-columns:max-content minmax(0, 1fr); column-gap:10px; row-gap:4px; align-items:start; padding:4px 0; }
 .footer-label    { color:var(--text3); font-weight:700; text-transform:uppercase;
                    font-size:var(--fs-label); letter-spacing:1px; min-width:0; white-space:nowrap; padding-top:4px; }
 .footer-aside    { color:var(--text2); font-size:var(--fs-0); }

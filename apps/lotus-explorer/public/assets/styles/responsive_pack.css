@@ -83,7 +83,7 @@
     width:100%;
   }
   .footer-line { grid-template-columns:1fr; }
-  .footer-row { grid-template-columns:72px minmax(0,1fr); align-items:flex-start; }
+  .footer-row { grid-template-columns:max-content minmax(0,1fr); align-items:flex-start; }
   .footer-label { min-width:0; }
   .footer-links { gap:4px 6px; }
   .footer-links li { width:auto; }
