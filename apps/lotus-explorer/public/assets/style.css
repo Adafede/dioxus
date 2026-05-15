@@ -285,7 +285,7 @@ a:hover { text-decoration: underline; }
 }
 
 .page-header { padding:14px 24px 10px; border-bottom:1px solid var(--panel-border);
-               background:var(--panel-bg-soft);
+               background:color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface));
                box-shadow:var(--shadow-xs);
                position: sticky;
                top: 0;
@@ -301,7 +301,7 @@ a:hover { text-decoration: underline; }
   gap: 4px 20px;
   border: 1px solid var(--panel-border);
   border-radius: 12px;
-  background: var(--panel-bg-soft);
+  background: color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface));
   box-shadow: var(--panel-shadow);
   transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
@@ -920,7 +920,7 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 
 /* Cell types */
 .td-depict       { width:auto; min-width:0; padding:6px 10px !important; }
-.depict-img      { display:block; background:#fff; border:1px solid var(--border);
+.depict-img      { display:block; background:var(--bg2); border:1px solid var(--border);
                    border-radius:6px; width:min(100%, 108px); max-width:108px; height:auto; object-fit:contain; box-shadow:var(--shadow-xs); }
 .td-compound     { min-width:0; }
 .td-taxon        { min-width:0; }
@@ -951,13 +951,13 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .td-ref      { box-shadow: inset 3px 0 0 rgba(0, 102, 153, 0.44), inset 0 0 0 1px var(--results-border); }
 
 .td-compound a:not(.primary-link) { color:var(--wd-compound); }
-.td-compound a:not(.primary-link):hover { color:#7f0000; text-decoration:none; }
+.td-compound a:not(.primary-link):hover { color:color-mix(in srgb, var(--wd-compound) 88%, var(--text)); text-decoration:none; }
 .td-taxon a { color:var(--wd-taxon); }
-.td-taxon a:hover { color:#2d8656; text-decoration:none; }
+.td-taxon a:hover { color:color-mix(in srgb, var(--wd-taxon) 88%, var(--text)); text-decoration:none; }
 .primary-link.taxon { color:var(--text); font-style:italic; }
 .primary-link.taxon:hover { color:var(--text); text-decoration:none; }
 .td-ref a:not(.primary-link) { color:var(--wd-reference); }
-.td-ref a:not(.primary-link):hover { color:#00507a; text-decoration:none; }
+.td-ref a:not(.primary-link):hover { color:color-mix(in srgb, var(--wd-reference) 88%, var(--text)); text-decoration:none; }
 .td-compound .primary-link, .td-ref .primary-link { color:var(--text); }
 .td-compound .primary-link:hover, .td-ref .primary-link:hover { color:var(--text); text-decoration:none; }
 
@@ -1024,21 +1024,21 @@ input[type="number"].form-input::-webkit-inner-spin-button {
     background-image: none;
   }
 }
-.td-compound .id-badge.wd { background:rgba(153,0,0,.12);  color:var(--wd-compound);
-                            border-color:rgba(153,0,0,.35); }
-.td-taxon    .id-badge.wd { background:rgba(51,153,102,.12); color:var(--wd-taxon);
-                            border-color:rgba(51,153,102,.35); }
-.td-ref      .id-badge.wd { background:rgba(0,102,153,.15); color:var(--wd-reference);
-                            border-color:rgba(0,102,153,.35); }
-.id-badge.sc     { background:rgba(153,0,0,.12); color:var(--wd-compound); border-color:rgba(153,0,0,.3); }
-.id-badge.doi    { background:rgba(0,102,153,.12); color:var(--wd-reference); border-color:rgba(0,102,153,.3); }
+.td-compound .id-badge.wd { background:color-mix(in srgb, var(--wd-compound) 12%, var(--surface));  color:var(--wd-compound);
+                            border-color:color-mix(in srgb, var(--wd-compound) 34%, var(--results-border)); }
+.td-taxon    .id-badge.wd { background:color-mix(in srgb, var(--wd-taxon) 12%, var(--surface)); color:var(--wd-taxon);
+                            border-color:color-mix(in srgb, var(--wd-taxon) 34%, var(--results-border)); }
+.td-ref      .id-badge.wd { background:color-mix(in srgb, var(--wd-reference) 14%, var(--surface)); color:var(--wd-reference);
+                            border-color:color-mix(in srgb, var(--wd-reference) 34%, var(--results-border)); }
+.id-badge.sc     { background:color-mix(in srgb, var(--wd-compound) 12%, var(--surface)); color:var(--wd-compound); border-color:color-mix(in srgb, var(--wd-compound) 30%, var(--results-border)); }
+.id-badge.doi    { background:color-mix(in srgb, var(--wd-reference) 12%, var(--surface)); color:var(--wd-reference); border-color:color-mix(in srgb, var(--wd-reference) 30%, var(--results-border)); }
 .id-badge.mono   { background:var(--surface); color:var(--text2); border-color:var(--border); }
 /* `.stmt` must out-specify `.mono` — the statement badge carries both
    classes (`id-badge stmt mono`) and, without this override, the later
    `.mono` rule would wipe its reference-blue palette. */
 .id-badge.stmt,
-.id-badge.stmt.mono { background:rgba(0,102,153,.12); color:var(--wd-reference); border-color:rgba(0,102,153,.3); }
-.id-badge.mono.inchikey { background:rgba(153,0,0,.12); color:var(--wd-compound); border-color:rgba(153,0,0,.3); }
+.id-badge.stmt.mono { background:color-mix(in srgb, var(--wd-reference) 12%, var(--surface)); color:var(--wd-reference); border-color:color-mix(in srgb, var(--wd-reference) 30%, var(--results-border)); }
+.id-badge.mono.inchikey { background:color-mix(in srgb, var(--wd-compound) 12%, var(--surface)); color:var(--wd-compound); border-color:color-mix(in srgb, var(--wd-compound) 30%, var(--results-border)); }
 
 .td-mono         { font-family:var(--mono); font-size:var(--fs-label); white-space:nowrap; }
 .td-num          { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
