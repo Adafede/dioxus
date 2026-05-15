@@ -181,7 +181,6 @@ pub fn KetcherPanel() -> Element {
             class: "ketcher-panel",
             aria_label: "{t(locale, TextKey::KetcherSummary)}",
             div { class: "ketcher-wrap",
-                h2 { class: "curation-title", "{t(locale, TextKey::KetcherSummary)}" }
                 p { class: "ketcher-hint",
                     "{t(locale, TextKey::KetcherHintA)}"
                     strong { "{t(locale, TextKey::KetcherSummary)}" }

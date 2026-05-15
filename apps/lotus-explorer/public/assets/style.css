@@ -239,29 +239,6 @@ a:hover { text-decoration: underline; }
                  backdrop-filter: blur(12px); }
 .main-content.single-pane { width:100%; }
 
-.sidebar::before,
-.page-header::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 3px;
-  background: linear-gradient(90deg,
-    var(--wd-compound),
-    var(--wd-taxon),
-    var(--wd-reference),
-    var(--wd-hyperlink),
-    var(--wd-compound));
-  background-size: 100% 100%;
-  animation: none;
-  opacity: 0.85;
-}
-
-.sidebar::before {
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-}
 
 /* Perceived perf: skip off-screen paint work */
 .welcome, .results-wrap, .query-panel, .ketcher-panel, .table-scroll {
@@ -332,11 +309,11 @@ a:hover { text-decoration: underline; }
   margin-left: 0.4em;
 }
 .page-archive-label {
-  font-size: var(--fs-label);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text3);
-  font-weight: 700;
+  font-size: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text2);
+  font-weight: 500;
   margin-right: 0.25em;
 }
 .page-archive-link {
@@ -432,7 +409,7 @@ a:hover { text-decoration: underline; }
 .curation-form-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .curation-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .curation-space-between { justify-content: space-between; }
-.curation-hint { font-size: var(--fs-0); color: var(--text3); }
+.curation-hint { font-size: var(--fs-0); color: var(--text2); }
 .draw-wrap {
   padding: 12px 22px 18px;
 }
@@ -901,7 +878,7 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .footer-row      { display:grid; grid-template-columns:88px minmax(0, 1fr); column-gap:10px; row-gap:4px; align-items:start; padding:4px 0; }
 .footer-label    { color:var(--text3); font-weight:700; text-transform:uppercase;
                    font-size:var(--fs-label); letter-spacing:1px; min-width:0; white-space:nowrap; padding-top:4px; }
-.footer-aside    { color:var(--text3); font-size:var(--fs-label); }
+.footer-aside    { color:var(--text2); font-size:var(--fs-0); }
 .footer-links    { list-style:none; display:flex; flex-wrap:wrap; gap:5px 8px; margin:0; padding:0; min-width:0; }
 .footer-links li { display:inline-flex; align-items:baseline; gap:5px; min-width:0;
                    padding:2px 9px; border-radius:999px;
