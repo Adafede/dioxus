@@ -99,8 +99,7 @@ fn StructureSection() -> Element {
     // on every call.  Recompute only when the SMILES text changes.
     let kind = use_memo(move || classify_structure(&smiles_for_kind));
     let kind_value = *kind.read();
-    let view_model =
-        structure_model::build_structure_section_model(kind_value, smiles_search_type);
+    let view_model = structure_model::build_structure_section_model(kind_value, smiles_search_type);
 
     rsx! {
         div { class: "form-section",

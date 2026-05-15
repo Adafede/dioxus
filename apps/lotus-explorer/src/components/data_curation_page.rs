@@ -50,6 +50,7 @@ pub fn DataCurationPage() -> Element {
     let awaiting_second_pass_value = *awaiting_second_pass.read();
     let result_rows_value = result_rows.read().clone();
     let quickstatements_value = quickstatements.read().clone();
+    let has_tsv_input = !tsv_input.read().trim().is_empty();
     let qs_dependency_link = build_qs_dev_link(&quickstatements_value.dependencies);
     let qs_main_link = build_qs_dev_link(&quickstatements_value.main);
 
@@ -77,22 +78,9 @@ pub fn DataCurationPage() -> Element {
         doi_input.set(String::new());
     };
 
-    let on_parse_tsv = move |_| match parse_tsv_rows(&tsv_input.read()) {
-        Ok(parsed) => {
-            if parsed.is_empty() {
-                *status_message.write() = Some(msg_no_valid_tsv_rows(locale));
-            } else {
-                let outcome = append_unique_rows(&mut rows.write(), parsed);
-                *status_message.write() = Some(msg_tsv_import_complete(
-                    locale,
-                    outcome.added,
-                    outcome.skipped,
-                ));
-            }
-        }
-        Err(err) => {
-            *status_message.write() = Some(err.to_string());
-        }
+    let on_parse_tsv = move |_| {
+        let content = tsv_input.read().clone();
+        import_tsv_rows(locale, &content, rows, status_message);
     };
 
     let on_process = move |_| {
@@ -228,8 +216,11 @@ pub fn DataCurationPage() -> Element {
                         button {
                             class: "btn btn-sm",
                             r#type: "button",
+                            disabled: processing_value,
                             onclick: move |_| {
-                                let outcome = append_unique_rows(&mut rows.write(), example_rows());
+                                let samples = example_rows();
+                                tsv_input.set(rows_to_tsv(&samples));
+                                let outcome = append_unique_rows(&mut rows.write(), samples);
                                 *status_message.write() = Some(msg_examples_loaded(
                                     locale,
                                     outcome.added,
@@ -259,6 +250,7 @@ pub fn DataCurationPage() -> Element {
                         button {
                             class: "btn btn-sm",
                             r#type: "button",
+                            disabled: processing_value || !has_tsv_input,
                             onclick: on_parse_tsv,
                             "{button_append_tsv_rows(locale)}"
                         }
@@ -266,14 +258,26 @@ pub fn DataCurationPage() -> Element {
                             aria_label: "TSV file upload",
                             r#type: "file",
                             accept: ".tsv,text/tab-separated-values,text/plain",
+                            disabled: processing_value,
                             onchange: move |evt| {
                                 let files = evt.files();
                                 let Some(file) = files.first().cloned() else {
                                     return;
                                 };
                                 spawn(async move {
-                                    if let Ok(content) = file.read_string().await {
-                                        tsv_input.set(content);
+                                    match file.read_string().await {
+                                        Ok(content) => {
+                                            tsv_input.set(content.clone());
+                                            import_tsv_rows(
+                                                locale,
+                                                &content,
+                                                rows,
+                                                status_message,
+                                            );
+                                        }
+                                        Err(err) => {
+                                            status_message.set(Some(err.to_string()));
+                                        }
                                     }
                                 });
                             },
@@ -462,4 +466,51 @@ fn start_curation_run(
             }
         }
     });
+}
+
+fn import_tsv_rows(
+    locale: Locale,
+    content: &str,
+    mut rows: Signal<Vec<CurationInputRow>>,
+    mut status_message: Signal<Option<String>>,
+) {
+    match parse_tsv_rows(content) {
+        Ok(parsed) => {
+            if parsed.is_empty() {
+                status_message.set(Some(msg_no_valid_tsv_rows(locale)));
+            } else {
+                let outcome = append_unique_rows(&mut rows.write(), parsed);
+                status_message.set(Some(msg_tsv_import_complete(
+                    locale,
+                    outcome.added,
+                    outcome.skipped,
+                )));
+            }
+        }
+        Err(err) => {
+            status_message.set(Some(err.to_string()));
+        }
+    }
+}
+
+fn rows_to_tsv(rows: &[CurationInputRow]) -> String {
+    let mut out = String::from("name\tsmiles\ttaxon\tdoi\n");
+    for row in rows {
+        out.push_str(&clean_tsv_cell(&row.name));
+        out.push('\t');
+        out.push_str(&clean_tsv_cell(&row.smiles));
+        out.push('\t');
+        out.push_str(&clean_tsv_cell(row.taxon.as_deref().unwrap_or("")));
+        out.push('\t');
+        out.push_str(&clean_tsv_cell(row.doi.as_deref().unwrap_or("")));
+        out.push('\n');
+    }
+    out
+}
+
+fn clean_tsv_cell(value: &str) -> String {
+    value
+        .replace(['\t', '\r', '\n'], " ")
+        .trim()
+        .to_string()
 }
