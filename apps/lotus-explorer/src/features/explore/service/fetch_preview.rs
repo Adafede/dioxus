@@ -156,11 +156,12 @@ async fn fetch_two_phase<R: LotusRepository>(
         metrics.add_parse(display_parse_elapsed);
         telemetry::preview_done(display_parse_elapsed, rows.len());
 
-        let display_capped_rows = full_stats.n_entries > rows.len();
+        let total_matches = full_stats.n_entries;
+        let display_capped_rows = total_matches > rows.len();
         Ok(FetchResult {
             rows,
-            total_stats: Some(full_stats.clone()),
-            total_matches: Some(full_stats.n_entries),
+            total_stats: Some(full_stats),
+            total_matches: Some(total_matches),
             display_capped_rows,
         })
     }
@@ -210,11 +211,12 @@ async fn fetch_two_phase<R: LotusRepository>(
             },
         )?;
         telemetry::preview_done(display_elapsed, rows.len());
-        let display_capped_rows = full_stats.n_entries > rows.len();
+        let total_matches = full_stats.n_entries;
+        let display_capped_rows = total_matches > rows.len();
         Ok(FetchResult {
             rows,
-            total_stats: Some(full_stats.clone()),
-            total_matches: Some(full_stats.n_entries),
+            total_stats: Some(full_stats),
+            total_matches: Some(total_matches),
             display_capped_rows,
         })
     }
@@ -245,11 +247,12 @@ async fn fetch_fallback<R: LotusRepository>(
     let parse_elapsed = perf::end_timer("LOTUS:fallback_parse", parse_timer);
     metrics.add_parse(parse_elapsed);
     telemetry::fallback_done(parse_elapsed, rows.len());
-    let display_capped_rows = parse_capped || full_stats.n_entries > rows.len();
+    let total_matches = full_stats.n_entries;
+    let display_capped_rows = parse_capped || total_matches > rows.len();
     Ok(FetchResult {
         rows,
-        total_stats: Some(full_stats.clone()),
-        total_matches: Some(full_stats.n_entries),
+        total_stats: Some(full_stats),
+        total_matches: Some(total_matches),
         display_capped_rows,
     })
 }

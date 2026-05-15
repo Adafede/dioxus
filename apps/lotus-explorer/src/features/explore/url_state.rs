@@ -242,16 +242,22 @@ pub fn parse_criteria_from_params(params: &BTreeMap<String, String>) -> SearchCr
     CriteriaQueryDto::parse(params).into_criteria()
 }
 
+/// URL-encode each key–value pair and join them with `&`.
+///
+/// Shared by [`build_shareable_url`] and the WASM-only [`build_query_string`]
+/// so that the encoding logic lives in exactly one place.
+fn encode_params<'a>(iter: impl Iterator<Item = (&'a str, &'a str)>) -> String {
+    iter.map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+        .collect::<Vec<_>>()
+        .join("&")
+}
+
 pub fn build_shareable_url(criteria: &SearchCriteria) -> Option<String> {
     let params = criteria.shareable_query_params();
     if params.is_empty() {
         return None;
     }
-    let query = params
-        .into_iter()
-        .map(|(k, v)| format!("{}={}", urlencoding::encode(&k), urlencoding::encode(&v)))
-        .collect::<Vec<_>>()
-        .join("&");
+    let query = encode_params(params.iter().map(|(k, v)| (k.as_str(), v.as_str())));
     Some(format!("?{query}"))
 }
 
@@ -404,11 +410,7 @@ pub fn read_url_query_params() -> BTreeMap<String, String> {
 
 #[cfg(target_arch = "wasm32")]
 fn build_query_string(params: &BTreeMap<String, String>) -> String {
-    params
-        .iter()
-        .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
-        .collect::<Vec<_>>()
-        .join("&")
+    encode_params(params.iter().map(|(k, v)| (k.as_str(), v.as_str())))
 }
 
 #[cfg(test)]
