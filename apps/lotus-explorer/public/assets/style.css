@@ -512,6 +512,29 @@ a:hover { text-decoration: underline; }
   vertical-align: top;
   padding: 6px;
 }
+.curation-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg-soft);
+}
+.curation-results-table {
+  min-width: 1140px;
+}
+.curation-results-table th:nth-child(2),
+.curation-results-table th:nth-child(3),
+.curation-results-table th:nth-child(5),
+.curation-results-table td:nth-child(2),
+.curation-results-table td:nth-child(3),
+.curation-results-table td:nth-child(5) {
+  min-width: 220px;
+}
+.curation-results-table th:last-child,
+.curation-results-table td:last-child {
+  min-width: 250px;
+}
 .curation-note { font-size: var(--fs-label); color: var(--text3); margin-top: 3px; }
 .curation-badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .curation-row-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }

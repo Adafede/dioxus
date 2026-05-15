@@ -12,6 +12,8 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+const NA_TEXT: &str = "n/a";
+
 #[component]
 pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> Element {
     rsx! {
@@ -24,70 +26,72 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     }
                 }
             }
-            table { class: "curation-table",
-                thead {
-                    tr {
-                        th { "{col_name(locale)}" }
-                        th { "{col_original_smiles(locale)}" }
-                        th { "{col_canonical_smiles(locale)}" }
-                        th { "InChIKey" }
-                        th { "InChI" }
-                        th { "{t(locale, TextKey::Formula)}" }
-                        th { "{col_exact_mass(locale)}" }
-                        th { "Wikidata" }
-                        th { "{col_status(locale)}" }
-                    }
-                }
-                tbody {
-                    for row in rows.iter() {
+            div { class: "curation-table-scroll",
+                table { class: "curation-table curation-results-table",
+                    thead {
                         tr {
-                            td { "{row.input.name}" }
-                            td { class: "mono curation-cell-wrap", "{row.input.smiles}" }
-                            td { class: "mono curation-cell-wrap",
-                                "{row.canonical_smiles.as_deref().unwrap_or(\"n/a\")}"
-                            }
-                            td { class: "mono", "{row.inchikey.as_deref().unwrap_or(\"n/a\")}" }
-                            td { class: "mono curation-cell-wrap",
-                                "{row.inchi.as_deref().unwrap_or(\"n/a\")}"
-                            }
-                            td { class: "mono", "{row.formula.as_deref().unwrap_or(\"n/a\")}" }
-                            td { class: "mono", "{format_mass(row.exact_mass)}" }
-                            td {
-                                if let Some(qid) = row.wikidata_qid.as_deref() {
-                                    a {
-                                        href: "https://www.wikidata.org/wiki/{qid}",
-                                        target: "_blank",
-                                        rel: "noopener noreferrer",
-                                        "{qid}"
-                                    }
-                                } else {
-                                    "{label_new_item(locale)}"
+                            th { "{col_name(locale)}" }
+                            th { "{col_original_smiles(locale)}" }
+                            th { "{col_canonical_smiles(locale)}" }
+                            th { "InChIKey" }
+                            th { "InChI" }
+                            th { "{t(locale, TextKey::Formula)}" }
+                            th { "{col_exact_mass(locale)}" }
+                            th { "Wikidata" }
+                            th { "{col_status(locale)}" }
+                        }
+                    }
+                    tbody {
+                        for row in rows.iter() {
+                            tr {
+                                td { "{row.input.name}" }
+                                td { class: "mono curation-cell-wrap", "{row.input.smiles}" }
+                                td { class: "mono curation-cell-wrap",
+                                    "{row.canonical_smiles.as_deref().unwrap_or(NA_TEXT)}"
                                 }
-                            }
-                            td {
-                                span { class: "curation-status {status_class(&row.status)}",
-                                    "{status_label(locale, &row.status)}"
+                                td { class: "mono", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
+                                td { class: "mono curation-cell-wrap",
+                                    "{row.inchi.as_deref().unwrap_or(NA_TEXT)}"
                                 }
-                                div { class: "curation-row-badges",
-                                    if !row.dependency_blocks.is_empty() {
-                                        span { class: "curation-status curation-status-badge is-pending",
-                                            "{curation_badge_prerequisite_pending(locale)}"
+                                td { class: "mono", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
+                                td { class: "mono", "{format_mass(row.exact_mass)}" }
+                                td {
+                                    if let Some(qid) = row.wikidata_qid.as_deref() {
+                                        a {
+                                            href: "https://www.wikidata.org/wiki/{qid}",
+                                            target: "_blank",
+                                            rel: "noopener noreferrer",
+                                            "{qid}"
                                         }
-                                    }
-                                    if matches!(row.status, CurationStatus::PendingDependencies) {
-                                        span { class: "curation-status curation-status-badge is-pending",
-                                            "{curation_badge_second_pass_required(locale)}"
-                                        }
-                                    }
-                                    if row.exact_mass.is_none() {
-                                        span {
-                                            class: "curation-status curation-status-badge is-warn",
-                                            title: "{row.mass_warning.as_deref().unwrap_or(curation_mass_warning_title(locale))}",
-                                            "{curation_badge_mass_missing(locale)}"
-                                        }
+                                    } else {
+                                        "{label_new_item(locale)}"
                                     }
                                 }
-                                div { class: "curation-note", "{row.note}" }
+                                td {
+                                    span { class: "curation-status {status_class(&row.status)}",
+                                        "{status_label(locale, &row.status)}"
+                                    }
+                                    div { class: "curation-row-badges",
+                                        if !row.dependency_blocks.is_empty() {
+                                            span { class: "curation-status curation-status-badge is-pending",
+                                                "{curation_badge_prerequisite_pending(locale)}"
+                                            }
+                                        }
+                                        if matches!(row.status, CurationStatus::PendingDependencies) {
+                                            span { class: "curation-status curation-status-badge is-pending",
+                                                "{curation_badge_second_pass_required(locale)}"
+                                            }
+                                        }
+                                        if row.exact_mass.is_none() {
+                                            span {
+                                                class: "curation-status curation-status-badge is-warn",
+                                                title: "{row.mass_warning.as_deref().unwrap_or(curation_mass_warning_title(locale))}",
+                                                "{curation_badge_mass_missing(locale)}"
+                                            }
+                                        }
+                                    }
+                                    div { class: "curation-note", "{row.note}" }
+                                }
                             }
                         }
                     }

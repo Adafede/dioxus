@@ -102,6 +102,10 @@
   .search-btn { justify-content:center; text-align:center; }
 
   .results-wrap { gap:10px; }
+  .curation-table-scroll { border-radius: 8px; }
+  .curation-results-table { min-width: 980px; }
+  .curation-results-table th,
+  .curation-results-table td { padding: 6px 7px; }
   .stat-bar { grid-template-columns:1fr; gap:8px; }
   .stat-badge { padding:9px 10px; }
   .results-table { font-size:var(--fs-0); }
@@ -192,6 +196,11 @@
 
   .results-table {
     font-size:var(--fs-label);
+  }
+
+  .curation-results-table {
+    min-width: 900px;
+    font-size: var(--fs-label);
   }
 
   .th-static,
