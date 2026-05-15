@@ -6,7 +6,7 @@ use crate::i18n::{
     Locale, TextKey, col_canonical_smiles, col_exact_mass, col_name, col_original_smiles,
     col_status, curation_badge_mass_missing, curation_badge_prerequisite_pending,
     curation_badge_second_pass_required, curation_mass_warning_title, curation_status_label,
-    label_new_item, t,
+    hint_scroll_curation_results, label_new_item, t,
 };
 use dioxus::prelude::*;
 use std::collections::HashMap;
@@ -26,6 +26,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     }
                 }
             }
+            p { class: "curation-scroll-hint", "{hint_scroll_curation_results(locale)}" }
             div { class: "curation-table-scroll",
                 table { class: "curation-table curation-results-table",
                     thead {

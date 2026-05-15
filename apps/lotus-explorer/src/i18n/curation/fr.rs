@@ -94,6 +94,10 @@ pub(super) fn hint_expected_tsv_headers() -> &'static str {
     "En-têtes attendus : name, smiles, organism/taxon, doi"
 }
 
+pub(super) fn hint_scroll_curation_results() -> &'static str {
+    "Astuce : faites glisser horizontalement pour voir toutes les colonnes."
+}
+
 pub(super) fn msg_name_smiles_required() -> String {
     "Le nom et le SMILES sont requis pour ajouter une ligne.".to_string()
 }

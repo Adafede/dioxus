@@ -94,6 +94,10 @@ pub(super) fn hint_expected_tsv_headers() -> &'static str {
     "Expected headers: name, smiles, organism/taxon, doi"
 }
 
+pub(super) fn hint_scroll_curation_results() -> &'static str {
+    "Tip: swipe sideways to review every results column."
+}
+
 pub(super) fn msg_name_smiles_required() -> String {
     "Name and SMILES are required to add a row.".to_string()
 }

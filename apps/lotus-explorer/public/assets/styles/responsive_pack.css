@@ -102,6 +102,7 @@
   .search-btn { justify-content:center; text-align:center; }
 
   .results-wrap { gap:10px; }
+  .curation-scroll-hint { display: inline-flex; }
   .curation-table-scroll { border-radius: 8px; }
   .curation-results-table { min-width: 980px; }
   .curation-results-table th,

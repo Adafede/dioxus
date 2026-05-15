@@ -215,6 +215,15 @@ pub fn hint_expected_tsv_headers(locale: Locale) -> &'static str {
     }
 }
 
+pub fn hint_scroll_curation_results(locale: Locale) -> &'static str {
+    match locale {
+        Locale::En => en::hint_scroll_curation_results(),
+        Locale::Fr => fr::hint_scroll_curation_results(),
+        Locale::De => de::hint_scroll_curation_results(),
+        Locale::It => it::hint_scroll_curation_results(),
+    }
+}
+
 pub fn msg_name_smiles_required(locale: Locale) -> String {
     match locale {
         Locale::En => en::msg_name_smiles_required(),

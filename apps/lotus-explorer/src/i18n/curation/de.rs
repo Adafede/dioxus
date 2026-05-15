@@ -94,6 +94,10 @@ pub(super) fn hint_expected_tsv_headers() -> &'static str {
     "Erwartete Header: name, smiles, organism/taxon, doi"
 }
 
+pub(super) fn hint_scroll_curation_results() -> &'static str {
+    "Tipp: Wischen Sie horizontal, um alle Ergebnisspalten zu sehen."
+}
+
 pub(super) fn msg_name_smiles_required() -> String {
     "Name und SMILES sind erforderlich, um eine Zeile hinzuzufügen.".to_string()
 }
