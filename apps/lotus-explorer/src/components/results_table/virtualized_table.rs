@@ -45,7 +45,12 @@ pub(super) fn VirtualizedResultsTable(
     let current_sort = *sort_state.read();
 
     rsx! {
-        div { id: virtualization_config.scroll_id, class: "table-scroll",
+        div {
+            id: virtualization_config.scroll_id,
+            class: "table-scroll",
+            role: "region",
+            tabindex: "0",
+            aria_label: "{t(locale, TextKey::TableTriplesAria)}",
             table {
                 class: "results-table",
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",

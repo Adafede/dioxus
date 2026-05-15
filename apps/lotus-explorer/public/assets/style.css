@@ -77,6 +77,18 @@ img, svg, canvas, video {
   --wd-taxon:     #339966;
   --wd-reference: #006699;
   --wd-entries:   #484848;
+  --wd-compound-stripe: color-mix(in srgb, var(--wd-compound) 78%, #fff);
+  --wd-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 78%, #fff);
+  --wd-reference-stripe: color-mix(in srgb, var(--wd-reference) 78%, #fff);
+  --wd-entries-stripe: color-mix(in srgb, var(--wd-entries) 74%, #fff);
+  --wd-compound-soft-bg: color-mix(in srgb, var(--wd-compound) 12%, var(--surface));
+  --wd-compound-soft-border: color-mix(in srgb, var(--wd-compound) 34%, var(--results-border));
+  --wd-compound-soft-border-weak: color-mix(in srgb, var(--wd-compound) 30%, var(--results-border));
+  --wd-taxon-soft-bg: color-mix(in srgb, var(--wd-taxon) 12%, var(--surface));
+  --wd-taxon-soft-border: color-mix(in srgb, var(--wd-taxon) 34%, var(--results-border));
+  --wd-reference-soft-bg: color-mix(in srgb, var(--wd-reference) 14%, var(--surface));
+  --wd-reference-soft-border: color-mix(in srgb, var(--wd-reference) 34%, var(--results-border));
+  --wd-reference-soft-border-weak: color-mix(in srgb, var(--wd-reference) 30%, var(--results-border));
 
   /* Stats palette tuned for readable contrast in light mode. */
   --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 10%, var(--surface));
@@ -821,6 +833,11 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .table-scroll    { overflow-x:auto; overflow-y:auto; max-height:min(72vh, 980px); border:1px solid var(--results-border); border-radius:14px;
                    background:var(--panel-bg-soft); box-shadow:var(--panel-shadow);
                    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.table-scroll:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--results-border));
+  box-shadow: var(--ring);
+}
 .results-table   { width:100%; border-collapse:collapse; font-size:var(--fs-ui); table-layout:fixed; }
 .results-table thead { position:sticky; top:0; z-index:2; background:var(--bg2); }
 .virtual-spacer-row { border:0 !important; }
@@ -938,10 +955,10 @@ input[type="number"].form-input::-webkit-inner-spin-button {
   background: var(--surface);
   border-color: var(--results-border);
 }
-.stat-badge:nth-child(1)::before { background: color-mix(in srgb, var(--wd-compound) 78%, #fff); }
-.stat-badge:nth-child(2)::before { background: color-mix(in srgb, var(--wd-taxon) 78%, #fff); }
-.stat-badge:nth-child(3)::before { background: color-mix(in srgb, var(--wd-reference) 78%, #fff); }
-.stat-badge:nth-child(4)::before { background: color-mix(in srgb, var(--wd-entries) 74%, #fff); }
+.stat-badge:nth-child(1)::before { background: var(--wd-compound-stripe); }
+.stat-badge:nth-child(2)::before { background: var(--wd-taxon-stripe); }
+.stat-badge:nth-child(3)::before { background: var(--wd-reference-stripe); }
+.stat-badge:nth-child(4)::before { background: var(--wd-entries-stripe); }
 .stat-badge:nth-child(1) .stat-value { color: var(--text); }
 .stat-badge:nth-child(2) .stat-value { color: var(--text); }
 .stat-badge:nth-child(3) .stat-value { color: var(--text); }
@@ -1053,21 +1070,21 @@ input[type="number"].form-input::-webkit-inner-spin-button {
     background-image: none;
   }
 }
-.td-compound .id-badge.wd { background:color-mix(in srgb, var(--wd-compound) 12%, var(--surface));  color:var(--wd-compound);
-                            border-color:color-mix(in srgb, var(--wd-compound) 34%, var(--results-border)); }
-.td-taxon    .id-badge.wd { background:color-mix(in srgb, var(--wd-taxon) 12%, var(--surface)); color:var(--wd-taxon);
-                            border-color:color-mix(in srgb, var(--wd-taxon) 34%, var(--results-border)); }
-.td-ref      .id-badge.wd { background:color-mix(in srgb, var(--wd-reference) 14%, var(--surface)); color:var(--wd-reference);
-                            border-color:color-mix(in srgb, var(--wd-reference) 34%, var(--results-border)); }
-.id-badge.sc     { background:color-mix(in srgb, var(--wd-compound) 12%, var(--surface)); color:var(--wd-compound); border-color:color-mix(in srgb, var(--wd-compound) 30%, var(--results-border)); }
-.id-badge.doi    { background:color-mix(in srgb, var(--wd-reference) 12%, var(--surface)); color:var(--wd-reference); border-color:color-mix(in srgb, var(--wd-reference) 30%, var(--results-border)); }
+.td-compound .id-badge.wd { background:var(--wd-compound-soft-bg);  color:var(--wd-compound);
+                            border-color:var(--wd-compound-soft-border); }
+.td-taxon    .id-badge.wd { background:var(--wd-taxon-soft-bg); color:var(--wd-taxon);
+                            border-color:var(--wd-taxon-soft-border); }
+.td-ref      .id-badge.wd { background:var(--wd-reference-soft-bg); color:var(--wd-reference);
+                            border-color:var(--wd-reference-soft-border); }
+.id-badge.sc     { background:var(--wd-compound-soft-bg); color:var(--wd-compound); border-color:var(--wd-compound-soft-border-weak); }
+.id-badge.doi    { background:var(--wd-reference-soft-bg); color:var(--wd-reference); border-color:var(--wd-reference-soft-border-weak); }
 .id-badge.mono   { background:var(--surface); color:var(--text2); border-color:var(--border); }
 /* `.stmt` must out-specify `.mono` — the statement badge carries both
    classes (`id-badge stmt mono`) and, without this override, the later
    `.mono` rule would wipe its reference-blue palette. */
 .id-badge.stmt,
-.id-badge.stmt.mono { background:color-mix(in srgb, var(--wd-reference) 12%, var(--surface)); color:var(--wd-reference); border-color:color-mix(in srgb, var(--wd-reference) 30%, var(--results-border)); }
-.id-badge.mono.inchikey { background:color-mix(in srgb, var(--wd-compound) 12%, var(--surface)); color:var(--wd-compound); border-color:color-mix(in srgb, var(--wd-compound) 30%, var(--results-border)); }
+.id-badge.stmt.mono { background:var(--wd-reference-soft-bg); color:var(--wd-reference); border-color:var(--wd-reference-soft-border-weak); }
+.id-badge.mono.inchikey { background:var(--wd-compound-soft-bg); color:var(--wd-compound); border-color:var(--wd-compound-soft-border-weak); }
 
 .td-mono         { font-family:var(--mono); font-size:var(--fs-label); white-space:nowrap; }
 .td-num          { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
