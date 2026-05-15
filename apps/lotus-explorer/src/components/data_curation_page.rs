@@ -214,7 +214,7 @@ pub fn DataCurationPage() -> Element {
                             "{button_add_row(locale)}"
                         }
                         button {
-                            class: "btn btn-sm",
+                            class: "btn btn-sm btn-soft-accent",
                             r#type: "button",
                             disabled: processing_value,
                             onclick: move |_| {
@@ -255,6 +255,7 @@ pub fn DataCurationPage() -> Element {
                             "{button_append_tsv_rows(locale)}"
                         }
                         input {
+                            class: "curation-file-input",
                             aria_label: "TSV file upload",
                             r#type: "file",
                             accept: ".tsv,text/tab-separated-values,text/plain",
@@ -509,8 +510,5 @@ fn rows_to_tsv(rows: &[CurationInputRow]) -> String {
 }
 
 fn clean_tsv_cell(value: &str) -> String {
-    value
-        .replace(['\t', '\r', '\n'], " ")
-        .trim()
-        .to_string()
+    value.replace(['\t', '\r', '\n'], " ").trim().to_string()
 }

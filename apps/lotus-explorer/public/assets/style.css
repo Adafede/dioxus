@@ -177,6 +177,16 @@ a:hover { text-decoration: underline; }
 .btn:active { transform: translateY(1px); }
 .btn-primary { background: var(--btn-primary-bg); border-color: var(--btn-primary-bg); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--btn-primary-hover-bg); border-color: var(--btn-primary-hover-bg); }
+.btn-soft-accent {
+  color: color-mix(in srgb, var(--accent2) 80%, var(--text));
+  border-color: color-mix(in srgb, var(--accent2) 38%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+.btn-soft-accent:hover:not(:disabled) {
+  color: color-mix(in srgb, var(--accent2) 88%, var(--text));
+  border-color: color-mix(in srgb, var(--accent2) 56%, var(--border));
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface));
+}
 .btn-sm { min-height: 34px; padding: 5px 10px; font-size: var(--fs-0); }
 .btn-xs { min-height: 30px; padding: 2px 8px; font-size: var(--fs-label); line-height: 1.2; border-radius: 4px; }
 .btn-block { width: 100%; justify-content: center; text-align: center; }
@@ -442,6 +452,28 @@ a:hover { text-decoration: underline; }
 }
 .curation-tsv { min-height: 130px; font-family: var(--mono); }
 .curation-qs { min-height: 220px; font-family: var(--mono); }
+
+.curation-file-input {
+  color: var(--text2);
+  max-width: 100%;
+  font-size: var(--fs-0);
+}
+.curation-file-input::file-selector-button {
+  margin-right: 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  min-height: 34px;
+  background: color-mix(in srgb, var(--surface2) 44%, var(--surface));
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.curation-file-input::file-selector-button:hover {
+  background: color-mix(in srgb, var(--surface2) 68%, var(--surface));
+  border-color: color-mix(in srgb, var(--border) 84%, var(--accent));
+}
 
 .curation-table { width: 100%; border-collapse: collapse; font-size: var(--fs-0); }
 .curation-table th,
@@ -729,9 +761,9 @@ input[type="number"].form-input::-webkit-inner-spin-button {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text3);
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  color: color-mix(in srgb, var(--text) 88%, #000);
+  background: color-mix(in srgb, var(--surface2) 55%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--border) 86%, var(--text));
   border-radius: 999px;
   padding: 1px 6px;
   white-space: normal;
@@ -740,7 +772,7 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .stat-value-secondary {
   font-size: var(--fs-0);
   font-weight: 700;
-  color: var(--wd-entries);
+  color: color-mix(in srgb, var(--text2) 88%, #000);
   font-variant-numeric: tabular-nums;
   min-width: 0;
   max-width: 100%;
@@ -749,13 +781,29 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .stat-label      { font-size:var(--fs-label); color:var(--critical-muted); text-transform:uppercase; letter-spacing:0.08em;
                    min-width:0; overflow-wrap:anywhere;
                    font-weight:600; }
-.stat-badge:nth-child(1)::before,
-.stat-badge:nth-child(2)::before,
-.stat-badge:nth-child(3)::before,
-.stat-badge:nth-child(4)::before { background: var(--border); }
-.stat-badge:nth-child(1) .stat-value,
-.stat-badge:nth-child(2) .stat-value,
-.stat-badge:nth-child(3) .stat-value,
+.stat-badge:nth-child(1) {
+  background: color-mix(in srgb, var(--wd-compound) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--wd-compound) 26%, var(--border));
+}
+.stat-badge:nth-child(2) {
+  background: color-mix(in srgb, var(--wd-taxon) 11%, var(--surface));
+  border-color: color-mix(in srgb, var(--wd-taxon) 26%, var(--border));
+}
+.stat-badge:nth-child(3) {
+  background: color-mix(in srgb, var(--wd-reference) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--wd-reference) 26%, var(--border));
+}
+.stat-badge:nth-child(4) {
+  background: color-mix(in srgb, var(--wd-entries) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--wd-entries) 24%, var(--border));
+}
+.stat-badge:nth-child(1)::before { background: color-mix(in srgb, var(--wd-compound) 76%, #fff); }
+.stat-badge:nth-child(2)::before { background: color-mix(in srgb, var(--wd-taxon) 76%, #fff); }
+.stat-badge:nth-child(3)::before { background: color-mix(in srgb, var(--wd-reference) 76%, #fff); }
+.stat-badge:nth-child(4)::before { background: color-mix(in srgb, var(--wd-entries) 72%, #fff); }
+.stat-badge:nth-child(1) .stat-value { color: color-mix(in srgb, var(--wd-compound) 84%, var(--text)); }
+.stat-badge:nth-child(2) .stat-value { color: color-mix(in srgb, var(--wd-taxon) 84%, var(--text)); }
+.stat-badge:nth-child(3) .stat-value { color: color-mix(in srgb, var(--wd-reference) 84%, var(--text)); }
 .stat-badge:nth-child(4) .stat-value { color: var(--text); }
 
 /* Cell types */
