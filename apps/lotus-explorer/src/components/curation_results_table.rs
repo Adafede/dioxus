@@ -16,6 +16,8 @@ const NA_TEXT: &str = "n/a";
 
 #[component]
 pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> Element {
+    let scroll_hint_id = "curation-results-scroll-hint";
+
     rsx! {
         div { class: "curation-card",
             h3 { "{crate::i18n::heading_results(locale)}" }
@@ -26,8 +28,17 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     }
                 }
             }
-            p { class: "curation-scroll-hint", "{hint_scroll_curation_results(locale)}" }
-            div { class: "curation-table-scroll",
+            p {
+                id: scroll_hint_id,
+                class: "curation-scroll-hint",
+                "{hint_scroll_curation_results(locale)}"
+            }
+            div {
+                class: "curation-table-scroll",
+                role: "region",
+                tabindex: "0",
+                aria_label: "{crate::i18n::heading_results(locale)}",
+                aria_describedby: scroll_hint_id,
                 table { class: "curation-table curation-results-table",
                     thead {
                         tr {
