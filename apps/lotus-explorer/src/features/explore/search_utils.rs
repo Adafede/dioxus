@@ -9,25 +9,15 @@ pub fn sanitize_taxon_input(taxon: &str) -> String {
     let parts: Vec<&str> = replaced.split_whitespace().collect();
     if parts.len() > 1 {
         let first = parts[0];
-        if first.is_empty() {
-            return replaced;
-        }
-        let mut first_cap = String::with_capacity(first.len());
+        // `split_whitespace` never produces empty tokens, so `first` is always
+        // non-empty.  `chars.as_str()` gives the remaining slice after the first
+        // char so we can lowercase the rest without collecting each char individually.
         let mut chars = first.chars();
-        if let Some(c) = chars.next() {
-            for uc in c.to_uppercase() {
-                first_cap.push(uc);
-            }
-        }
-        for c in chars {
-            for lc in c.to_lowercase() {
-                first_cap.push(lc);
-            }
-        }
-        let mut out = first_cap;
-        out.push(' ');
-        out.push_str(&parts[1..].join(" "));
-        out
+        let first_cap = match chars.next() {
+            Some(c) => c.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
+            None => String::new(),
+        };
+        format!("{first_cap} {}", parts[1..].join(" "))
     } else {
         replaced
     }

@@ -73,8 +73,7 @@ impl CriteriaQueryDto {
         let parse_u16 = |name: &str| params.get(name).and_then(|v| v.parse::<u16>().ok());
         let formula_filter = params
             .get("formula_filter")
-            .map(|v| is_true_flag(v))
-            .unwrap_or(false)
+            .is_some_and(|v| is_true_flag(v))
             .then(|| FormulaQueryDto {
                 exact: params.get("formula_exact").cloned(),
                 c_min: parse_u16("c_min"),
@@ -118,16 +117,14 @@ impl CriteriaQueryDto {
                 .map(|v| v.clamp(0.05, 1.0)),
             mass_filter: params
                 .get("mass_filter")
-                .map(|v| is_true_flag(v))
-                .unwrap_or(false)
+                .is_some_and(|v| is_true_flag(v))
                 .then(|| RangeF64Dto {
                     min: parse_f64("mass_min"),
                     max: parse_f64("mass_max"),
                 }),
             year_filter: params
                 .get("year_filter")
-                .map(|v| is_true_flag(v))
-                .unwrap_or(false)
+                .is_some_and(|v| is_true_flag(v))
                 .then(|| RangeU16Dto {
                     min: parse_u16("year_start"),
                     max: parse_u16("year_end"),
@@ -342,15 +339,9 @@ pub fn persist_view_query_param(view: AppView) {
 }
 
 pub fn parse_startup_action_from_params(params: &BTreeMap<String, String>) -> InitialDownloadState {
-    let wants_download = params
-        .get("download")
-        .map(|v| is_true_flag(v))
-        .unwrap_or(false);
+    let wants_download = params.get("download").is_some_and(|v| is_true_flag(v));
     if !wants_download {
-        let wants_execute = params
-            .get("execute")
-            .map(|v| is_true_flag(v))
-            .unwrap_or(false);
+        let wants_execute = params.get("execute").is_some_and(|v| is_true_flag(v));
         return InitialDownloadState {
             direct_execute: wants_execute,
             ..InitialDownloadState::default()
