@@ -41,16 +41,20 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
         ContentPhase::Loading => rsx! {
             LoadingState {}
         },
-        ContentPhase::Error => rsx! {
-            div { class: "empty-state",
-                p { class: "form-hint", "An error occurred during the search." }
+        // Error state: `ErrorNotice` (rendered above this viewport in the page
+        // layout) already shows the full typed error with dismiss + retry
+        // actions.  Rendering a second error message here would be redundant
+        // and could clash with localised notice text, so we intentionally yield
+        // an empty fragment and let the notice carry the UX weight.
+        ContentPhase::Error => rsx! {},
+        ContentPhase::Empty => {
+            let locale = crate::hooks::use_locale();
+            rsx! {
+                div { class: "empty-state",
+                    p { class: "form-hint", "{crate::i18n::t(locale, crate::i18n::TextKey::NoResults)}" }
+                }
             }
-        },
-        ContentPhase::Empty => rsx! {
-            div { class: "empty-state",
-                p { class: "form-hint", "No results found. Try adjusting your search criteria." }
-            }
-        },
+        }
         ContentPhase::Loaded => rsx! {
             ResultsTable {}
         },

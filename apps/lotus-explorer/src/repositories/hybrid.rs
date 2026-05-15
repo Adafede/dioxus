@@ -11,7 +11,6 @@
 
 use crate::api;
 use crate::api::SearchResponse;
-use crate::data::api::ApiLayer;
 use crate::models::SearchCriteria;
 use crate::repositories::{LotusRepository, RepositoryError};
 use crate::sparql;
@@ -38,12 +37,13 @@ impl LotusRepository for HybridRepository {
     ) -> Option<Result<SearchResponse, RepositoryError>> {
         // No API base → caller skips the API path entirely.
         api::api_base_url()?;
-        let api_layer = ApiLayer::new();
+        // Call the transport client directly, mapping ApiClientError → RepositoryError
+        // via the existing `From` implementation.  Bypassing the ApiLayer / AppError
+        // intermediary eliminates a 4-hop conversion chain with no semantic benefit.
         Some(
-            api_layer
-                .search(criteria, limit, include_counts)
+            api::search(criteria, limit, include_counts)
                 .await
-                .map_err(Into::into),
+                .map_err(RepositoryError::from),
         )
     }
 

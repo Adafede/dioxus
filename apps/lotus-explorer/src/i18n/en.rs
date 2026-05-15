@@ -122,6 +122,10 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::OpenInQleverTitle => "Open this query in the QLever web interface",
         TextKey::SparqlQuery => "SPARQL query",
         TextKey::NoResults => "No results. Try broadening your search.",
+        TextKey::StageTaxonSearch => "taxon lookup",
+        TextKey::StageCountQuery => "result counting",
+        TextKey::StageDisplayQuery => "preview fetch",
+        TextKey::StageFallbackQuery => "fallback fetch",
         TextKey::DisplayCappedHint => {
             "Displaying the first rows only for memory safety on this device. Counts remain exact."
         }

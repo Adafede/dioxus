@@ -134,6 +134,10 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::OpenInQleverTitle => "Diese Abfrage in der QLever-Weboberfläche öffnen",
         TextKey::SparqlQuery => "SPARQL-Abfrage",
         TextKey::NoResults => "Keine Ergebnisse. Bitte erweitern Sie die Suche.",
+        TextKey::StageTaxonSearch => "Taxon-Auflösung",
+        TextKey::StageCountQuery => "Ergebniszählung",
+        TextKey::StageDisplayQuery => "Vorschauabruf",
+        TextKey::StageFallbackQuery => "Fallback-Abruf",
         TextKey::DisplayCappedHint => {
             "Aus Speichergründen werden auf diesem Gerät nur die ersten Zeilen angezeigt. Die Gesamtzahlen bleiben exakt."
         }

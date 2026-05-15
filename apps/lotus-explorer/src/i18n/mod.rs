@@ -176,6 +176,11 @@ pub enum TextKey {
     KindNoteSmiles,
     KindNoteMol2000,
     KindNoteMol3000,
+    // Error stage labels (used in transport error messages)
+    StageTaxonSearch,
+    StageCountQuery,
+    StageDisplayQuery,
+    StageFallbackQuery,
     // Table/export
     DatasetStatistics,
     DownloadResults,

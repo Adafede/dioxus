@@ -38,9 +38,6 @@ pub enum QueryStage {
     CountQuery,
     DisplayQuery,
     FallbackQuery,
-    Network,
-    Http,
-    Unknown,
     #[cfg(target_arch = "wasm32")]
     CountAndPreview,
 }
@@ -49,12 +46,9 @@ impl QueryStage {
     pub const fn as_key(self) -> &'static str {
         match self {
             Self::TaxonSearch => "taxon_search",
-            Self::CountQuery => "count query",
-            Self::DisplayQuery => "display query",
-            Self::FallbackQuery => "fallback query",
-            Self::Network => "network",
-            Self::Http => "http",
-            Self::Unknown => "unknown",
+            Self::CountQuery => "count_query",
+            Self::DisplayQuery => "display_query",
+            Self::FallbackQuery => "fallback_query",
             #[cfg(target_arch = "wasm32")]
             Self::CountAndPreview => "count_and_preview",
         }
@@ -147,6 +141,7 @@ pub enum DomainError {
 
 impl DomainError {
     /// Construct a transport error for the given query stage and repository source.
+    #[allow(dead_code)] // used in unit tests via `#[cfg(test)]`
     pub fn transport(stage: QueryStage, source: crate::repositories::RepositoryError) -> Self {
         Self::Transport { stage, source }
     }

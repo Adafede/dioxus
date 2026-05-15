@@ -45,7 +45,6 @@ pub fn Footer() -> Element {
                     links: &[
                         ("https://github.com/cdk/depict", "CDK Depict"),
                         ("https://citation.js.org", "Citation.js"),
-                        ("https://idsm.elixir-czech.cz", "IDSM"),
                         ("https://lifescience.opensource.epam.com/ketcher", "Ketcher"),
                         ("https://qlever.dev/wikidata", "QLever"),
                         ("https://www.rdkitjs.com", "RDKit.js"),

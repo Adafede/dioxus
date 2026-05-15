@@ -128,6 +128,10 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::OpenInQleverTitle => "Ouvrir cette requête dans l'interface web de QLever",
         TextKey::SparqlQuery => "Requête SPARQL",
         TextKey::NoResults => "Aucun résultat. Essayez une recherche plus large.",
+        TextKey::StageTaxonSearch => "résolution du taxon",
+        TextKey::StageCountQuery => "comptage des résultats",
+        TextKey::StageDisplayQuery => "récupération de l'aperçu",
+        TextKey::StageFallbackQuery => "récupération de secours",
         TextKey::DisplayCappedHint => {
             "Affichage des premières lignes uniquement pour préserver la mémoire de l'appareil. Les totaux restent exacts."
         }

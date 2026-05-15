@@ -74,24 +74,6 @@ impl ParseDetail {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
-#[error("{message}")]
-pub struct ValidationDetail {
-    pub message: Arc<str>,
-}
-
-impl ValidationDetail {
-    pub fn new(message: impl Into<Arc<str>>) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.message
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum RepositoryError {
     #[error("LOTUS API not configured")]
     NotConfigured,
@@ -104,12 +86,6 @@ pub enum RepositoryError {
 
     #[error("parse error: {0}")]
     Parse(ParseDetail),
-
-    #[error("validation error: {0}")]
-    Validation(ValidationDetail),
-
-    #[error("unknown error: {message} [{context}]")]
-    Unknown { message: String, context: String },
 }
 
 impl RepositoryError {
@@ -120,10 +96,6 @@ impl RepositoryError {
     pub fn parse(message: impl Into<Arc<str>>) -> Self {
         Self::Parse(ParseDetail::new(message))
     }
-
-    pub fn validation(message: impl Into<Arc<str>>) -> Self {
-        Self::Validation(ValidationDetail::new(message))
-    }
 }
 
 impl From<crate::api::ApiClientError> for RepositoryError {
@@ -133,25 +105,6 @@ impl From<crate::api::ApiClientError> for RepositoryError {
             crate::api::ApiClientError::Network(msg) => Self::network(msg),
             crate::api::ApiClientError::Http(status, body) => Self::Http { status, body },
             crate::api::ApiClientError::Parse(msg) => Self::parse(msg),
-        }
-    }
-}
-
-impl From<crate::core::error::AppError> for RepositoryError {
-    fn from(value: crate::core::error::AppError) -> Self {
-        let crate::core::error::AppError { kind, context } = value;
-        match kind {
-            crate::core::error::ErrorKind::Network(msg) => Self::network(msg),
-            crate::core::error::ErrorKind::Http { status, message } => Self::Http {
-                status,
-                body: message.to_string(),
-            },
-            crate::core::error::ErrorKind::Parse(msg) => Self::parse(msg),
-            crate::core::error::ErrorKind::Validation(err) => Self::validation(err.to_string()),
-            crate::core::error::ErrorKind::Unknown(msg) => Self::Unknown {
-                message: msg.to_string(),
-                context: context.to_string(),
-            },
         }
     }
 }

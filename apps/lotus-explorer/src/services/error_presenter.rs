@@ -61,32 +61,17 @@ pub fn error_hint_text(locale: Locale, kind: ErrorKind) -> &'static str {
 fn format_transport_fault(locale: Locale, stage: QueryStage, source: &RepositoryError) -> String {
     let detail = transport_error_summary(source);
     let stage_label = stage_display_label(locale, stage);
-    err_query_stage_failed(locale, &stage_label, &detail)
+    err_query_stage_failed(locale, stage_label, &detail)
 }
 
-fn stage_display_label(locale: Locale, stage: QueryStage) -> String {
-    match (locale, stage) {
-        (Locale::En, QueryStage::TaxonSearch) => "taxon lookup".to_string(),
-        (Locale::En, QueryStage::CountQuery) => "result counting".to_string(),
-        (Locale::En, QueryStage::DisplayQuery) => "preview fetch".to_string(),
-        (Locale::En, QueryStage::FallbackQuery) => "fallback fetch".to_string(),
-
-        (Locale::Fr, QueryStage::TaxonSearch) => "resolution du taxon".to_string(),
-        (Locale::Fr, QueryStage::CountQuery) => "comptage des resultats".to_string(),
-        (Locale::Fr, QueryStage::DisplayQuery) => "recuperation de l'apercu".to_string(),
-        (Locale::Fr, QueryStage::FallbackQuery) => "recuperation de secours".to_string(),
-
-        (Locale::De, QueryStage::TaxonSearch) => "Taxon-Auflosung".to_string(),
-        (Locale::De, QueryStage::CountQuery) => "Ergebniszahlung".to_string(),
-        (Locale::De, QueryStage::DisplayQuery) => "Vorschauabruf".to_string(),
-        (Locale::De, QueryStage::FallbackQuery) => "Fallback-Abruf".to_string(),
-
-        (Locale::It, QueryStage::TaxonSearch) => "risoluzione del taxon".to_string(),
-        (Locale::It, QueryStage::CountQuery) => "conteggio risultati".to_string(),
-        (Locale::It, QueryStage::DisplayQuery) => "recupero anteprima".to_string(),
-        (Locale::It, QueryStage::FallbackQuery) => "recupero di fallback".to_string(),
-
-        _ => stage.to_string(),
+fn stage_display_label(locale: Locale, stage: QueryStage) -> &'static str {
+    match stage {
+        QueryStage::TaxonSearch => t(locale, TextKey::StageTaxonSearch),
+        QueryStage::CountQuery => t(locale, TextKey::StageCountQuery),
+        QueryStage::DisplayQuery => t(locale, TextKey::StageDisplayQuery),
+        QueryStage::FallbackQuery => t(locale, TextKey::StageFallbackQuery),
+        #[cfg(target_arch = "wasm32")]
+        QueryStage::CountAndPreview => t(locale, TextKey::StageDisplayQuery),
     }
 }
 
@@ -95,8 +80,6 @@ fn transport_error_summary(source: &RepositoryError) -> String {
         RepositoryError::NotConfigured => return "LOTUS API not configured".to_string(),
         RepositoryError::Network(detail) => detail.as_str(),
         RepositoryError::Parse(detail) => detail.as_str(),
-        RepositoryError::Validation(detail) => detail.as_str(),
-        RepositoryError::Unknown { message, .. } => message.as_str(),
         RepositoryError::Http { status, body } => {
             return format!("HTTP {status}: {}", compact_error_text(body));
         }
@@ -141,22 +124,22 @@ fn format_parse_fault(locale: Locale, fault: &ParseFault) -> String {
         }
         ParseFault::TaxonPick { details } => err_query_stage_failed(
             locale,
-            &stage_display_label(locale, QueryStage::TaxonSearch),
+            stage_display_label(locale, QueryStage::TaxonSearch),
             &compact_error_text(details),
         ),
         ParseFault::CountCsv { details } => err_query_stage_failed(
             locale,
-            &stage_display_label(locale, QueryStage::CountQuery),
+            stage_display_label(locale, QueryStage::CountQuery),
             &compact_error_text(details),
         ),
         ParseFault::DisplayCsv { details } => err_query_stage_failed(
             locale,
-            &stage_display_label(locale, QueryStage::DisplayQuery),
+            stage_display_label(locale, QueryStage::DisplayQuery),
             &compact_error_text(details),
         ),
         ParseFault::FallbackCsv { details } => err_query_stage_failed(
             locale,
-            &stage_display_label(locale, QueryStage::FallbackQuery),
+            stage_display_label(locale, QueryStage::FallbackQuery),
             &compact_error_text(details),
         ),
     }
