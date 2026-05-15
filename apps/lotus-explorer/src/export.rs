@@ -7,7 +7,7 @@ use crate::models::{ElementState, SearchCriteria, SmilesSearchType};
 use serde_json::{Map, Value, json};
 
 pub const APP_VERSION: &str = "0.1.0";
-pub const APP_NAME: &str = "LOTUS Knowledge Explorer";
+pub const APP_NAME: &str = "LOTUS Knowledge Search";
 pub const APP_URL: &str = "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer";
 pub const QLEVER_ENDPOINT: &str = "https://qlever.dev/api/wikidata";
 
@@ -211,14 +211,14 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
             ),
             format!(
                 "Chemical compounds from {effective_taxon}. Retrieved via LOTUS \
-                 Knowledge Explorer with {st} chemical search (SACHEM/IDSM)."
+                 Knowledge Search with {st} chemical search (SACHEM/IDSM)."
             ),
         )
     } else {
         (
             format!("LOTUS Data — {effective_taxon}"),
             format!(
-                "Chemical compounds from {effective_taxon}. Retrieved via LOTUS Knowledge Explorer."
+                "Chemical compounds from {effective_taxon}. Retrieved via LOTUS Knowledge Search."
             ),
         )
     };

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! The "Draw" tab: a full-pane Ketcher molecule editor.
+//! The "Structure editor" tab: a full-pane Ketcher molecule editor.
 
 use crate::components::search_panel::KetcherPanel;
 use crate::i18n::view_label_draw;

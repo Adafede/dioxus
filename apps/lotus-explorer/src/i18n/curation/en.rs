@@ -227,19 +227,19 @@ pub(super) fn curation_pending_reference(doi: &str) -> String {
 }
 
 pub(super) fn view_switch_aria() -> &'static str {
-    "View"
+    "Choose section"
 }
 
 pub(super) fn view_label_explorer() -> &'static str {
-    "Explorer"
+    "Search"
 }
 
 pub(super) fn view_label_curation_explorer() -> &'static str {
-    "Curation Explorer"
+    "Curation"
 }
 
 pub(super) fn view_label_draw() -> &'static str {
-    "Draw"
+    "Structure editor"
 }
 
 pub(super) fn curation_status_label(status_key: &str) -> &'static str {

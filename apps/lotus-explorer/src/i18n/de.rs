@@ -17,7 +17,7 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::FiltersShow => "Filter anzeigen",
         TextKey::FiltersHide => "Filter ausblenden",
         TextKey::Language => "Sprache",
-        TextKey::PageTitle => "LOTUS Knowledge Explorer",
+        TextKey::PageTitle => "LOTUS Knowledge Search",
         TextKey::GoToHomepage => "Zur Startseite",
         TextKey::PageSubtitle => "Naturstoff-Vorkommen - Verbindung, Taxon, Referenz.",
         TextKey::ResolvedTaxon => "Aufgelöstes Taxon",
@@ -105,7 +105,9 @@ pub fn de_t(key: TextKey) -> &'static str {
         }
         TextKey::KetcherHintB => " und kopieren Sie dann mit ",
         TextKey::KetcherHintC => " (oder ",
-        TextKey::KetcherHintD => ") und verwenden Sie den Inhalt im Strukturfeld des Explorers.",
+        TextKey::KetcherHintD => {
+            ") und verwenden Sie den Inhalt im Strukturfeld der Registerkarte Suche."
+        }
         TextKey::KetcherIframeTitle => "Ketcher-Struktureditor",
         TextKey::KindNoteSmiles => "  Wird als einzeiliges SPARQL-Literal gesendet.",
         TextKey::KindNoteMol2000 => {

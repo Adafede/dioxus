@@ -233,19 +233,19 @@ pub(super) fn curation_pending_reference(doi: &str) -> String {
 }
 
 pub(super) fn view_switch_aria() -> &'static str {
-    "Vue"
+    "Sélecteur de section"
 }
 
 pub(super) fn view_label_explorer() -> &'static str {
-    "Explorateur"
+    "Recherche"
 }
 
 pub(super) fn view_label_curation_explorer() -> &'static str {
-    "Explorateur de curation"
+    "Curation"
 }
 
 pub(super) fn view_label_draw() -> &'static str {
-    "Dessiner"
+    "Éditeur de structure"
 }
 
 pub(super) fn curation_status_label(status_key: &str) -> &'static str {
@@ -255,6 +255,6 @@ pub(super) fn curation_status_label(status_key: &str) -> &'static str {
         "new_compound" => "nouvel élément, création générée",
         "pending_dependencies" => "en attente des entités prérequises",
         "error" => "erreur",
-        _ => "status",
+        _ => "statut",
     }
 }

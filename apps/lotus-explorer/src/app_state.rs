@@ -26,7 +26,7 @@ use crate::download::DownloadFormat;
 /// App-level state.  One signal of this type lives at the root of `App`.
 ///
 /// Scope is deliberately narrow:
-/// * **view** — which page is rendered (Explore / Curation / Draw).
+/// * **view** — which page is rendered (Search / Curation / Structure editor).
 /// * **download** — pending download format + direct-execute flag read by the
 ///   download-dispatch hook.
 /// * **metrics** — one-shot logging guards that prevent duplicate telemetry

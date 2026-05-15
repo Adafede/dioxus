@@ -238,19 +238,19 @@ pub(super) fn curation_pending_reference(doi: &str) -> String {
 }
 
 pub(super) fn view_switch_aria() -> &'static str {
-    "Ansicht"
+    "Bereichsauswahl"
 }
 
 pub(super) fn view_label_explorer() -> &'static str {
-    "Explorer"
+    "Suche"
 }
 
 pub(super) fn view_label_curation_explorer() -> &'static str {
-    "Curation Explorer"
+    "Kuratierung"
 }
 
 pub(super) fn view_label_draw() -> &'static str {
-    "Zeichnen"
+    "Struktureditor"
 }
 
 pub(super) fn curation_status_label(status_key: &str) -> &'static str {
@@ -260,6 +260,6 @@ pub(super) fn curation_status_label(status_key: &str) -> &'static str {
         "new_compound" => "neuer Eintrag, Erstellung erzeugt",
         "pending_dependencies" => "wartet auf vorausgesetzte Entitäten",
         "error" => "fehler",
-        _ => "status",
+        _ => "Status",
     }
 }

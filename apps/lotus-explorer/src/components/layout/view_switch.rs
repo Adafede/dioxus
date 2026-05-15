@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! View-switcher nav component (Explore / Curation Explorer / Draw).
+//! View-switcher nav component (Search / Curation / Structure editor).
 //!
 //! Reads `AppStateContext` for the current view and `use_locale()` for labels —
 //! zero props required.
@@ -59,7 +59,7 @@ fn ViewBtn(
     let active = current == target;
     rsx! {
         button {
-            class: if active { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
+            class: if active { "btn btn-sm lang-btn active" } else { "btn btn-sm lang-btn" },
             r#type: "button",
             aria_pressed: if active { "true" } else { "false" },
             aria_current: if active { "page" } else { "false" },

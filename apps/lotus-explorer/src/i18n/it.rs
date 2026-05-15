@@ -17,7 +17,7 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::FiltersShow => "Mostra filtri",
         TextKey::FiltersHide => "Nascondi filtri",
         TextKey::Language => "Lingua",
-        TextKey::PageTitle => "LOTUS Knowledge Explorer",
+        TextKey::PageTitle => "LOTUS Knowledge Search",
         TextKey::GoToHomepage => "Vai alla home page",
         TextKey::PageSubtitle => "Occorrenze di prodotti naturali - composto, taxon, riferimento.",
         TextKey::ResolvedTaxon => "Taxon risolto",
@@ -105,7 +105,7 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::KetcherHintA => "Devi disegnare o cercare una struttura? Apri la scheda ",
         TextKey::KetcherHintB => " e poi copia con ",
         TextKey::KetcherHintC => " (oppure ",
-        TextKey::KetcherHintD => ") e usalo nel campo struttura dell'esploratore.",
+        TextKey::KetcherHintD => ") e usalo nel campo struttura della scheda Ricerca.",
         TextKey::KetcherIframeTitle => "Editor di strutture Ketcher",
         TextKey::KindNoteSmiles => "  Inviato come letterale SPARQL su una singola riga.",
         TextKey::KindNoteMol2000 => {

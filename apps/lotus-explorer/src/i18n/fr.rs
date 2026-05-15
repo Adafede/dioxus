@@ -17,7 +17,7 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::FiltersShow => "Afficher les filtres",
         TextKey::FiltersHide => "Masquer les filtres",
         TextKey::Language => "Langue",
-        TextKey::PageTitle => "LOTUS Knowledge Explorer",
+        TextKey::PageTitle => "LOTUS Knowledge Search",
         TextKey::GoToHomepage => "Aller à la page d'accueil",
         TextKey::PageSubtitle => "Occurrences de produits naturels - composé, taxon, référence.",
         TextKey::ResolvedTaxon => "Taxon résolu",
@@ -101,7 +101,9 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::KetcherHintA => "Besoin de dessiner ou trouver une structure ? Ouvrez l'onglet ",
         TextKey::KetcherHintB => ", puis copiez avec ",
         TextKey::KetcherHintC => " (ou ",
-        TextKey::KetcherHintD => ") et utilisez-la dans le champ structure de l'explorateur.",
+        TextKey::KetcherHintD => {
+            ") puis utilisez-la dans le champ structure de l'onglet Recherche."
+        }
         TextKey::KetcherIframeTitle => "Éditeur de structure Ketcher",
         TextKey::KindNoteSmiles => "  Envoyé comme littéral SPARQL sur une seule ligne.",
         TextKey::KindNoteMol2000 => "  Transmis tel quel à SACHEM scoredSubstructureSearch.",
