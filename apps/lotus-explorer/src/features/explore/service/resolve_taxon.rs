@@ -55,7 +55,9 @@ pub async fn resolve<R: LotusRepository>(
         });
     }
     // Pass a bare Wikidata QID directly — no SPARQL round-trip needed.
-    if taxon.to_uppercase().starts_with('Q') && taxon[1..].chars().all(|c| c.is_ascii_digit()) {
+    // Accepts both 'Q' and 'q' prefix; the slice `&taxon[1..]` is safe since
+    // 'Q'/'q' are single-byte ASCII characters.
+    if taxon.starts_with(['Q', 'q']) && taxon[1..].chars().all(|c| c.is_ascii_digit()) {
         return Ok(TaxonResolution {
             qid: Some(taxon.to_uppercase()),
             warning: None,

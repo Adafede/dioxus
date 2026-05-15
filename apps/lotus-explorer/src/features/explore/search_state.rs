@@ -10,7 +10,7 @@
 
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
-use crate::models::{CompoundEntry, DatasetStats, Rows, SearchCriteria, SortState};
+use crate::models::{CompoundEntry, DatasetStats, Rows, SearchCriteria, SortDir, SortState};
 use crate::services::search_telemetry as telemetry;
 use dioxus::prelude::*;
 use std::sync::Arc;
@@ -171,14 +171,14 @@ pub fn reduce(mut state: ExploreState, action: ExploreAction) -> ExploreState {
         }
         ExploreAction::SortToggled(column) => {
             if state.result.sort.col == column {
-                state.result.sort.dir = if state.result.sort.dir == crate::models::SortDir::Asc {
-                    crate::models::SortDir::Desc
+                state.result.sort.dir = if state.result.sort.dir == SortDir::Asc {
+                    SortDir::Desc
                 } else {
-                    crate::models::SortDir::Asc
+                    SortDir::Asc
                 };
             } else {
                 state.result.sort.col = column;
-                state.result.sort.dir = crate::models::SortDir::Asc;
+                state.result.sort.dir = SortDir::Asc;
             }
         }
     }
@@ -193,6 +193,9 @@ pub fn dispatch_explore_action(mut state: Signal<ExploreState>, action: ExploreA
 }
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
+
+/// Searches taking longer than this threshold are flagged as slow queries.
+const SLOW_QUERY_THRESHOLD_MS: f64 = 5_000.0;
 
 #[derive(Default, Clone, Copy)]
 pub struct SearchMetrics {
@@ -219,7 +222,7 @@ pub fn emit_search_summary(total_elapsed: std::time::Duration, metrics: SearchMe
         metrics.network_ms, metrics.parse_ms, metrics.sparql_calls
     );
     telemetry::search_summary_done(&details);
-    if total_ms >= 5000.0 {
+    if total_ms >= SLOW_QUERY_THRESHOLD_MS {
         telemetry::search_summary_slow_query(&details);
     }
 }

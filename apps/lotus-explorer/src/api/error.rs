@@ -8,12 +8,12 @@ pub enum ApiClientError {
     #[error("LOTUS API not configured")]
     NotConfigured,
 
-    #[error("Network error: {0}")]
+    #[error("network error: {0}")]
     Network(String),
 
     #[error("HTTP {0}: {1}")]
     Http(u16, String),
 
-    #[error("Parse error: {0}")]
+    #[error("parse error: {0}")]
     Parse(String),
 }

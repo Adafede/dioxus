@@ -16,6 +16,8 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
 
     let state = use_results_context();
     let explore = state.explore;
+    // Hoisted to component top-level — hooks must be called unconditionally.
+    let locale = crate::hooks::use_locale();
 
     let loading = use_lifecycle_selector(explore, |lc| lc.loading);
     let has_error = use_lifecycle_selector(explore, |lc| lc.error.is_some());
@@ -48,7 +50,6 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
         // an empty fragment and let the notice carry the UX weight.
         ContentPhase::Error => rsx! {},
         ContentPhase::Empty => {
-            let locale = crate::hooks::use_locale();
             rsx! {
                 div { class: "empty-state",
                     p { class: "form-hint", "{crate::i18n::t(locale, crate::i18n::TextKey::NoResults)}" }
