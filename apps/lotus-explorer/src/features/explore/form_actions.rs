@@ -63,12 +63,11 @@ pub enum FormAction {
     IState(ElementState),
 }
 
-/// Apply a FormAction to SearchCriteria, returning the mutated copy.
+/// Apply a `FormAction` to a mutable criteria reference.
 ///
-/// This is a **pure function** — no side effects, fully testable.
-/// Called by [`crate::state::FormCriteriaContext::update`].
-#[must_use]
-pub fn apply_form_action(mut criteria: SearchCriteria, action: FormAction) -> SearchCriteria {
+/// This is the hot-path reducer used by the form context to avoid cloning the
+/// entire `SearchCriteria` on each keystroke.
+pub fn apply_form_action_mut(criteria: &mut SearchCriteria, action: FormAction) {
     match action {
         FormAction::Taxon(v) => criteria.taxon = v,
         FormAction::Smiles(v) => criteria.smiles = v,
@@ -97,6 +96,14 @@ pub fn apply_form_action(mut criteria: SearchCriteria, action: FormAction) -> Se
         FormAction::BrState(v) => criteria.br_state = v,
         FormAction::IState(v) => criteria.i_state = v,
     }
+}
+
+/// Apply a `FormAction` to `SearchCriteria`, returning the updated copy.
+///
+/// Kept as a pure helper for reducer-style tests and functional call sites.
+#[must_use]
+pub fn apply_form_action(mut criteria: SearchCriteria, action: FormAction) -> SearchCriteria {
+    apply_form_action_mut(&mut criteria, action);
     criteria
 }
 
@@ -141,5 +148,14 @@ mod tests {
         let _result = apply_form_action(original.clone(), FormAction::Taxon("test".into()));
         // Original unchanged
         assert_eq!(original.taxon, SearchCriteria::default().taxon);
+    }
+
+    #[test]
+    fn form_action_mut_updates_existing_reference() {
+        let mut criteria = SearchCriteria::default();
+        apply_form_action_mut(&mut criteria, FormAction::FormulaEnabled(true));
+        apply_form_action_mut(&mut criteria, FormAction::FormulaExact("C15H10O5".into()));
+        assert!(criteria.formula_enabled);
+        assert_eq!(criteria.formula_exact, "C15H10O5");
     }
 }

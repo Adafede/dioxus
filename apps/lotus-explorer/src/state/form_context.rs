@@ -3,7 +3,7 @@
 
 //! Search-form context with dirty tracking and action-based updates.
 
-use crate::features::explore::form_actions::{FormAction, apply_form_action};
+use crate::features::explore::form_actions::{FormAction, apply_form_action_mut};
 use crate::models::SearchCriteria;
 use dioxus::prelude::*;
 
@@ -20,9 +20,7 @@ impl FormCriteriaContext {
 
     pub fn update(&self, action: FormAction) {
         let mut criteria = self.criteria;
-        let current = criteria.peek().clone();
-        let updated = apply_form_action(current, action);
-        *criteria.write() = updated;
+        criteria.with_mut(|criteria| apply_form_action_mut(criteria, action));
     }
 
     pub fn is_dirty(&self) -> bool {

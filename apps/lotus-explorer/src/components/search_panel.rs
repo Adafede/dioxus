@@ -20,6 +20,8 @@
 pub use crate::components::form_sections::{
     FormulaSection, MassRangeInput, TaxonInput, YearRangeInput,
 };
+use crate::features::explore::form_actions::FormAction;
+use crate::features::explore::selectors::use_criteria_selector;
 
 #[path = "search_panel/structure_model.rs"]
 mod structure_model;
@@ -83,14 +85,22 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
 fn StructureSection() -> Element {
     let locale = crate::hooks::use_locale();
     let ctx = use_form_criteria_context();
-    let mut c = ctx.criteria;
+    let c = ctx.criteria;
+    let structure_fields = use_criteria_selector(c, |criteria| {
+        (
+            criteria.smiles.clone(),
+            criteria.smiles_search_type,
+            criteria.smiles_threshold,
+        )
+    });
+    let (smiles, smiles_search_type, smiles_threshold) = structure_fields.read().clone();
+    let smiles_for_kind = smiles.clone();
     // Memoised classifier: `classify_structure` uppercases the entire Molfile
     // on every call.  Recompute only when the SMILES text changes.
-    let kind = use_memo(move || classify_structure(&c.read().smiles));
+    let kind = use_memo(move || classify_structure(&smiles_for_kind));
     let kind_value = *kind.read();
-    let criteria = c.read().clone();
     let view_model =
-        structure_model::build_structure_section_model(kind_value, criteria.smiles_search_type);
+        structure_model::build_structure_section_model(kind_value, smiles_search_type);
 
     rsx! {
         div { class: "form-section",
@@ -102,8 +112,8 @@ fn StructureSection() -> Element {
                 class: "form-textarea mono",
                 spellcheck: "false",
                 placeholder: "{t(locale, TextKey::StructurePlaceholder)}",
-                value: "{criteria.smiles}",
-                oninput: move |e| c.write().smiles = e.value(),
+                value: "{smiles}",
+                oninput: move |e| ctx.update(FormAction::Smiles(e.value())),
                 rows: "4",
             }
             if let Some(note_key) = view_model.note_key {
@@ -125,8 +135,10 @@ fn StructureSection() -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        checked: criteria.smiles_search_type == SmilesSearchType::Substructure,
-                        onchange: move |_| c.write().smiles_search_type = SmilesSearchType::Substructure,
+                        checked: smiles_search_type == SmilesSearchType::Substructure,
+                        onchange: move |_| {
+                            ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Substructure))
+                        },
                     }
                     "{t(locale, TextKey::Substructure)}"
                 }
@@ -134,8 +146,10 @@ fn StructureSection() -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        checked: criteria.smiles_search_type == SmilesSearchType::Similarity,
-                        onchange: move |_| c.write().smiles_search_type = SmilesSearchType::Similarity,
+                        checked: smiles_search_type == SmilesSearchType::Similarity,
+                        onchange: move |_| {
+                            ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Similarity))
+                        },
                     }
                     "{t(locale, TextKey::Similarity)}"
                 }
@@ -143,7 +157,7 @@ fn StructureSection() -> Element {
             if view_model.show_similarity_threshold {
                 div { class: "form-section nested",
                     label { class: "form-label sm", r#for: "threshold-input",
-                        "{threshold_label(locale, criteria.smiles_threshold)}"
+                        "{threshold_label(locale, smiles_threshold)}"
                     }
                     input {
                         id: "threshold-input",
@@ -152,13 +166,13 @@ fn StructureSection() -> Element {
                         min: "0.0",
                         max: "1.0",
                         step: "0.01",
-                        value: "{criteria.smiles_threshold}",
+                        value: "{smiles_threshold}",
                         aria_valuemin: "0",
                         aria_valuemax: "1",
-                        aria_valuenow: "{criteria.smiles_threshold}",
+                        aria_valuenow: "{smiles_threshold}",
                         oninput: move |e| {
                             if let Ok(v) = e.value().parse::<f64>() {
-                                c.write().smiles_threshold = v;
+                                ctx.update(FormAction::SmilesThreshold(v));
                             }
                         },
                     }

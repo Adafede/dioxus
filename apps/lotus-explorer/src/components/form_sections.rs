@@ -9,10 +9,33 @@
 //! existed previously.
 
 use crate::features::explore::form_actions::FormAction;
+use crate::features::explore::selectors::use_criteria_selector;
 use crate::i18n::{TextKey, t};
 use crate::models::*;
 use crate::state::use_form_criteria_context;
 use dioxus::prelude::*;
+
+#[derive(Clone, PartialEq)]
+struct FormulaSectionState {
+    formula_enabled: bool,
+    formula_exact: String,
+    c_min: u16,
+    c_max: u16,
+    h_min: u16,
+    h_max: u16,
+    n_min: u16,
+    n_max: u16,
+    o_min: u16,
+    o_max: u16,
+    p_min: u16,
+    p_max: u16,
+    s_min: u16,
+    s_max: u16,
+    f_state: ElementState,
+    cl_state: ElementState,
+    br_state: ElementState,
+    i_state: ElementState,
+}
 
 fn parse_f64_input(raw: &str) -> Option<f64> {
     raw.parse::<f64>().ok()
@@ -36,7 +59,7 @@ fn normalized_year_input_max(current_year: u16) -> u16 {
 pub fn TaxonInput(on_search: EventHandler<()>) -> Element {
     let locale = crate::hooks::use_locale();
     let ctx = use_form_criteria_context();
-    let taxon = ctx.criteria.read().taxon.clone();
+    let taxon = use_criteria_selector(ctx.criteria, |c| c.taxon.clone());
 
     rsx! {
         div { class: "form-section",
@@ -48,7 +71,7 @@ pub fn TaxonInput(on_search: EventHandler<()>) -> Element {
                 autocomplete: "off",
                 spellcheck: "false",
                 placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
-                value: "{taxon}",
+                value: "{taxon.read()}",
                 oninput: move |e| ctx.update(FormAction::Taxon(e.value())),
                 onkeydown: move |e| {
                     if e.key() == Key::Enter {
@@ -68,8 +91,8 @@ pub fn TaxonInput(on_search: EventHandler<()>) -> Element {
 pub fn MassRangeInput() -> Element {
     let locale = crate::hooks::use_locale();
     let ctx = use_form_criteria_context();
-    let min_value = ctx.criteria.read().mass_min;
-    let max_value = ctx.criteria.read().mass_max;
+    let mass_range = use_criteria_selector(ctx.criteria, |c| (c.mass_min, c.mass_max));
+    let (min_value, max_value) = *mass_range.read();
 
     rsx! {
         div {
@@ -126,8 +149,8 @@ pub fn YearRangeInput() -> Element {
     use crate::models::DEFAULT_YEAR_MIN;
     let locale = crate::hooks::use_locale();
     let ctx = use_form_criteria_context();
-    let min_value = ctx.criteria.read().year_min;
-    let max_value = ctx.criteria.read().year_max;
+    let year_range = use_criteria_selector(ctx.criteria, |c| (c.year_min, c.year_max));
+    let (min_value, max_value) = *year_range.read();
     let current = normalized_year_input_max(crate::models::current_year());
 
     rsx! {
@@ -294,8 +317,27 @@ fn ElemStateSelect(
 pub fn FormulaSection() -> Element {
     let locale = crate::hooks::use_locale();
     let ctx = use_form_criteria_context();
-    let mut c = ctx.criteria;
-    let criteria = c.read().clone();
+    let criteria = use_criteria_selector(ctx.criteria, |c| FormulaSectionState {
+        formula_enabled: c.formula_enabled,
+        formula_exact: c.formula_exact.clone(),
+        c_min: c.c_min,
+        c_max: c.c_max,
+        h_min: c.h_min,
+        h_max: c.h_max,
+        n_min: c.n_min,
+        n_max: c.n_max,
+        o_min: c.o_min,
+        o_max: c.o_max,
+        p_min: c.p_min,
+        p_max: c.p_max,
+        s_min: c.s_min,
+        s_max: c.s_max,
+        f_state: c.f_state,
+        cl_state: c.cl_state,
+        br_state: c.br_state,
+        i_state: c.i_state,
+    });
+    let criteria = criteria.read().clone();
     let enabled = criteria.formula_enabled;
 
     rsx! {
@@ -304,7 +346,7 @@ pub fn FormulaSection() -> Element {
                 input {
                     r#type: "checkbox",
                     checked: enabled,
-                    onchange: move |e| c.write().formula_enabled = e.checked(),
+                    onchange: move |e| ctx.update(FormAction::FormulaEnabled(e.checked())),
                 }
                 "{t(locale, TextKey::FormulaFilter)}"
             }
@@ -322,7 +364,7 @@ pub fn FormulaSection() -> Element {
                         spellcheck: "false",
                         placeholder: "C15H10O5",
                         value: "{criteria.formula_exact}",
-                        oninput: move |e| c.write().formula_exact = e.value(),
+                        oninput: move |e| ctx.update(FormAction::FormulaExact(e.value())),
                     }
                 }
 
