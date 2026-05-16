@@ -4,6 +4,7 @@
 //! Action catalog for the Explore feature reducer.
 
 use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
+use crate::features::explore::command::SearchCommand;
 use crate::models::{CompoundEntry, DatasetStats, SearchCriteria, SortColumn};
 use std::sync::Arc;
 
@@ -13,7 +14,7 @@ pub enum ExploreAction {
     /// Start a new search lifecycle.
     SearchRequested {
         criteria_snapshot: SearchCriteria,
-        direct_download: bool,
+        command: SearchCommand,
     },
 
     /// Update the spinner / lifecycle phase.

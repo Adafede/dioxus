@@ -8,6 +8,7 @@
 //! `service::` modules so that those remain independently testable.
 
 use crate::features::explore::actions::ExploreAction;
+use crate::features::explore::command::SearchCommand;
 use crate::features::explore::search_state::{
     ExploreState, SearchMetrics, dispatch_explore_action, emit_search_summary,
 };
@@ -69,11 +70,12 @@ fn validate_search_criteria(criteria: &SearchCriteria) -> Result<(), DomainError
 /// Validate input, dispatch `SearchRequested`, then spawn `do_search`.
 pub fn start_search<R: LotusRepository>(
     criteria: Signal<SearchCriteria>,
-    direct_download_mode: bool,
+    command: SearchCommand,
     explore: Signal<ExploreState>,
     task_controller: SearchTaskController,
     repo: R,
 ) {
+    let direct_download_mode = command.direct_download();
     let crit = criteria.peek().clone();
     if let Err(error) = validate_search_criteria(&crit) {
         dispatch_explore_action(explore, ExploreAction::SearchFailed { error });
@@ -84,7 +86,7 @@ pub fn start_search<R: LotusRepository>(
         explore,
         ExploreAction::SearchRequested {
             criteria_snapshot: crit.clone(),
-            direct_download: direct_download_mode,
+            command,
         },
     );
     let request_token = explore.peek().lifecycle.search_request_token;

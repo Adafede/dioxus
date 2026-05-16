@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 pub mod actions;
+pub mod command;
 pub mod download_dispatch;
 pub mod form_actions;
 pub mod orchestrator;

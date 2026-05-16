@@ -38,6 +38,7 @@ use dioxus::prelude::*;
 #[cfg(test)]
 use download::DownloadFormat;
 use features::explore::actions::ExploreAction;
+use features::explore::command::SearchCommand;
 use features::explore::download_dispatch::{use_download_dispatch_effect, use_startup_effect};
 use features::explore::orchestrator::{SearchTaskController, start_search};
 use features::explore::search_state::{ExploreState, dispatch_explore_action};
@@ -147,12 +148,12 @@ fn App() -> Element {
         let tc = search_task_controller.clone();
         move |_: ()| {
             form_ctx.mark_searched();
-            start_search(criteria, false, explore, tc.clone(), repo);
+            start_search(criteria, SearchCommand::Interactive, explore, tc.clone(), repo);
         }
     };
     let on_preview = {
         let tc = search_task_controller.clone();
-        move |_: ()| start_search(criteria, false, explore, tc.clone(), repo)
+        move |_: ()| start_search(criteria, SearchCommand::Interactive, explore, tc.clone(), repo)
     };
     let tc_retry = search_task_controller.clone();
 
@@ -192,7 +193,7 @@ fn App() -> Element {
                         TaxonNotice {}
                         ErrorNotice {
                             on_dismiss: move |_| dispatch_explore_action(explore, ExploreAction::ErrorDismissed),
-                            on_retry: move |_| start_search(criteria, false, explore, tc_retry.clone(), repo),
+                            on_retry: move |_| start_search(criteria, SearchCommand::Interactive, explore, tc_retry.clone(), repo),
                         }
                         HeaderMetaSection {}
                         ResultsViewport { on_preview }

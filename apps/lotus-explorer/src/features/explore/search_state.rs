@@ -107,13 +107,13 @@ pub fn reduce(mut state: ExploreState, action: ExploreAction) -> ExploreState {
     match action {
         ExploreAction::SearchRequested {
             criteria_snapshot,
-            direct_download,
+            command,
         } => {
             state.lifecycle.loading = true;
             state.lifecycle.error = None;
             state.lifecycle.query_phase = QueryPhase::ResolvingTaxon;
             state.lifecycle.searched_once = true;
-            state.lifecycle.download_only_mode = direct_download;
+            state.lifecycle.download_only_mode = command.direct_download();
             state.lifecycle.download_dispatching = false;
             state.lifecycle.search_request_token =
                 state.lifecycle.search_request_token.saturating_add(1);
@@ -232,6 +232,7 @@ pub fn emit_search_summary(total_elapsed: std::time::Duration, metrics: SearchMe
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::features::explore::command::SearchCommand;
     use crate::features::explore::types::{DomainError, ValidationFault};
     use crate::models::{SearchCriteria, SortColumn, SortDir};
     use std::sync::Arc;
@@ -249,7 +250,7 @@ mod tests {
             state,
             ExploreAction::SearchRequested {
                 criteria_snapshot: SearchCriteria::default(),
-                direct_download: false,
+                command: SearchCommand::Interactive,
             },
         );
         assert!(next.lifecycle.loading);
@@ -269,7 +270,7 @@ mod tests {
             state,
             ExploreAction::SearchRequested {
                 criteria_snapshot: SearchCriteria::default(),
-                direct_download: true,
+                command: SearchCommand::StartupDownload,
             },
         );
         assert!(next.lifecycle.download_only_mode);
@@ -283,7 +284,7 @@ mod tests {
                 state,
                 ExploreAction::SearchRequested {
                     criteria_snapshot: SearchCriteria::default(),
-                    direct_download: false,
+                    command: SearchCommand::Interactive,
                 },
             );
             assert_eq!(state.lifecycle.search_request_token, expected);

@@ -7,6 +7,7 @@ use crate::app_state::AppState;
 use crate::download::execute_download;
 use crate::export;
 use crate::features::explore::actions::ExploreAction;
+use crate::features::explore::command::SearchCommand;
 use crate::features::explore::orchestrator::{SearchTaskController, start_search};
 use crate::features::explore::search_state::{ExploreState, dispatch_explore_action};
 use crate::features::explore::types::{DomainError, ValidationFault};
@@ -58,7 +59,11 @@ pub fn use_startup_effect<R: LotusRepository>(
             }
             start_search(
                 criteria,
-                pending.is_some(),
+                if pending.is_some() {
+                    SearchCommand::StartupDownload
+                } else {
+                    SearchCommand::StartupExecute
+                },
                 explore,
                 search_tasks.clone(),
                 repo,
