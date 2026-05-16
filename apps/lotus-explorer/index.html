@@ -242,6 +242,18 @@
                 return CiteCtor;
             }
 
+            async function fetchDoiCslJson(doi) {
+                const response = await fetch(`https://doi.org/${encodeURIComponent(doi)}`, {
+                    headers: {
+                        Accept: "application/vnd.citationstyles.csl+json, application/json;q=0.9",
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error(`DOI metadata fetch failed: HTTP ${response.status}`);
+                }
+                return await response.json();
+            }
+
             window.__lotusCitation = {
                 async quickStatements(doi) {
                     const trimmed = String(doi || "").trim();
@@ -249,9 +261,13 @@
                         return "";
                     }
                     const CiteCtor = await resolveCitationBridge();
-                    const cite = await CiteCtor.async(`https://doi.org/${trimmed}`, {
-                        forceType: '@doi/api',
-                    });
+                    const cslJson = await fetchDoiCslJson(trimmed);
+                    let cite;
+                    try {
+                        cite = new CiteCtor(cslJson);
+                    } catch (_ctorError) {
+                        cite = await CiteCtor.async(cslJson);
+                    }
                     const output = cite.format('quickstatements');
                     return typeof output === "string" ? output : "";
                 },

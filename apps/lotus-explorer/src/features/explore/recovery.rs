@@ -89,18 +89,8 @@ pub fn should_clear_state_on_error(error_stage: QueryStage) -> bool {
         // Taxon resolution failed — everything downstream is invalid.
         QueryStage::TaxonSearch => true,
 
-        // Count failed — counts are invalid, but we can still use older results.
-        QueryStage::CountQuery => false,
-
-        // Display query failed — counts are valid, just no preview rows.
-        QueryStage::DisplayQuery => false,
-
-        // Fallback query failed — we tried to recover and failed.
-        QueryStage::FallbackQuery => false,
-
-        // Neither count nor preview succeeded.
-        #[cfg(target_arch = "wasm32")]
-        QueryStage::CountAndPreview => false,
+        // Results query failed — keep previous results visible.
+        QueryStage::ResultsQuery => false,
     }
 }
 
@@ -130,7 +120,7 @@ mod tests {
     #[test]
     fn network_errors_retryable() {
         let err = DomainError::Transport {
-            stage: QueryStage::CountQuery,
+            stage: QueryStage::ResultsQuery,
             source: RepositoryError::network("timeout"),
         };
         assert!(is_retryable_error(&err));
@@ -139,7 +129,7 @@ mod tests {
     #[test]
     fn http_4xx_not_retryable() {
         let err = DomainError::Transport {
-            stage: QueryStage::DisplayQuery,
+            stage: QueryStage::ResultsQuery,
             source: RepositoryError::Http {
                 status: 400,
                 body: "bad request".into(),
@@ -151,7 +141,7 @@ mod tests {
     #[test]
     fn http_5xx_retryable() {
         let err = DomainError::Transport {
-            stage: QueryStage::DisplayQuery,
+            stage: QueryStage::ResultsQuery,
             source: RepositoryError::Http {
                 status: 502,
                 body: "bad gateway".into(),
@@ -163,7 +153,7 @@ mod tests {
     #[test]
     fn parse_errors_not_retryable() {
         use crate::features::explore::types::ParseFault;
-        let err = DomainError::Parse(ParseFault::DisplayCsv {
+        let err = DomainError::Parse(ParseFault::ResultsCsv {
             details: "invalid csv row".into(),
         });
         assert!(!is_retryable_error(&err));
@@ -172,7 +162,7 @@ mod tests {
     #[test]
     fn not_configured_transport_not_retryable() {
         let err = DomainError::Transport {
-            stage: QueryStage::DisplayQuery,
+            stage: QueryStage::ResultsQuery,
             source: RepositoryError::NotConfigured,
         };
         assert!(!is_retryable_error(&err));
@@ -196,13 +186,8 @@ mod tests {
     }
 
     #[test]
-    fn count_query_error_keeps_previous_results() {
-        assert!(!should_clear_state_on_error(QueryStage::CountQuery));
-    }
-
-    #[test]
     fn display_query_error_keeps_previous_results() {
-        assert!(!should_clear_state_on_error(QueryStage::DisplayQuery));
+        assert!(!should_clear_state_on_error(QueryStage::ResultsQuery));
     }
 
     #[test]
@@ -212,7 +197,7 @@ mod tests {
         assert!(!should_show_retry_button(&validation_err));
 
         let network_err = DomainError::Transport {
-            stage: QueryStage::CountQuery,
+            stage: QueryStage::ResultsQuery,
             source: RepositoryError::network("timeout"),
         };
         assert!(should_show_retry_button(&network_err));

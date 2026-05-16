@@ -52,4 +52,23 @@ impl LotusRepository for HybridRepository {
             .await
             .map_err(|e| RepositoryError::network(e.to_string()))
     }
+
+    async fn sparql_body(
+        &self,
+        query: &str,
+    ) -> Result<shared::sparql::ResponseBody, RepositoryError> {
+        sparql::execute_sparql_body(query)
+            .await
+            .map_err(|e| RepositoryError::network(e.to_string()))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    async fn sparql_tempfile(
+        &self,
+        query: &str,
+    ) -> Result<tempfile::NamedTempFile, RepositoryError> {
+        sparql::execute_sparql_tempfile(query)
+            .await
+            .map_err(|e| RepositoryError::network(e.to_string()))
+    }
 }

@@ -33,8 +33,8 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::LoadingTitle => "Wikidata wird über QLever abgefragt...",
         TextKey::LoadingHint => "Große Ergebnismengen können einige Sekunden dauern.",
         TextKey::LoadingResolvingTaxon => "Taxon wird aufgelöst...",
-        TextKey::LoadingCounting => "Treffer werden gezählt...",
-        TextKey::LoadingFetchingPreview => "Ergebnisse werden geladen...",
+        TextKey::LoadingFetchingResults => "Ergebnisse werden geladen...",
+        TextKey::LoadingProcessingResults => "Ergebnisanzahlen werden verarbeitet...",
         TextKey::LoadingRendering => "Tabelle wird gerendert...",
         TextKey::Retry => "Erneut versuchen",
         TextKey::ErrorHintValidation => "Bitte Eingaben prüfen, dann erneut versuchen.",
@@ -135,9 +135,7 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::SparqlQuery => "SPARQL-Abfrage",
         TextKey::NoResults => "Keine Ergebnisse. Bitte erweitern Sie die Suche.",
         TextKey::StageTaxonSearch => "Taxon-Auflösung",
-        TextKey::StageCountQuery => "Ergebniszählung",
-        TextKey::StageDisplayQuery => "Vorschauabruf",
-        TextKey::StageFallbackQuery => "Fallback-Abruf",
+        TextKey::StageResultsQuery => "Ergebnisabruf",
         TextKey::DisplayCappedHint => {
             "Aus Speichergründen werden auf diesem Gerät nur die ersten Zeilen angezeigt. Die Gesamtzahlen bleiben exakt."
         }

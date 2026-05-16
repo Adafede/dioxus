@@ -44,12 +44,17 @@ web-sys = { workspace = true, features = [
   "HtmlAnchorElement",
   "HtmlCollection",
   "HtmlElement",
+  "HtmlFormElement",
+  "HtmlInputElement",
   "HtmlTextAreaElement",
   "Location",
   "Performance",
   "Url",
   "Window",
 ] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

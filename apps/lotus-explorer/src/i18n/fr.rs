@@ -33,8 +33,8 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::LoadingTitle => "Interrogation de Wikidata via QLever...",
         TextKey::LoadingHint => "Les grands jeux de résultats peuvent prendre du temps.",
         TextKey::LoadingResolvingTaxon => "Résolution du taxon...",
-        TextKey::LoadingCounting => "Comptage des correspondances...",
-        TextKey::LoadingFetchingPreview => "Récupération des résultats...",
+        TextKey::LoadingFetchingResults => "Récupération des résultats...",
+        TextKey::LoadingProcessingResults => "Traitement des comptages de résultats...",
         TextKey::LoadingRendering => "Rendu du tableau...",
         TextKey::Retry => "Réessayer",
         TextKey::ErrorHintValidation => "Veuillez ajuster la saisie puis réessayer.",
@@ -129,9 +129,7 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::SparqlQuery => "Requête SPARQL",
         TextKey::NoResults => "Aucun résultat. Essayez une recherche plus large.",
         TextKey::StageTaxonSearch => "résolution du taxon",
-        TextKey::StageCountQuery => "comptage des résultats",
-        TextKey::StageDisplayQuery => "récupération de l'aperçu",
-        TextKey::StageFallbackQuery => "récupération de secours",
+        TextKey::StageResultsQuery => "récupération des résultats",
         TextKey::DisplayCappedHint => {
             "Affichage des premières lignes uniquement pour préserver la mémoire de l'appareil. Les totaux restent exacts."
         }

@@ -2,13 +2,16 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::models::{CompoundEntry, DatasetStats, TaxonMatch};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::sparql::execute_sparql_tempfile as shared_execute_tempfile;
 use crate::sparql::{
     FetchError, QLEVER_WIKIDATA, SparqlResponseFormat, col_idx, execute_sparql as shared_execute,
-    execute_sparql_bytes as shared_execute_bytes,
+    execute_sparql_body as shared_execute_body, execute_sparql_bytes as shared_execute_bytes,
     execute_sparql_with_format as shared_execute_with_format, extract_qid,
     fetch_export_url_bytes as shared_fetch_export_url_bytes, field, parse_year,
 };
 use std::collections::{HashMap, HashSet};
+use std::io::Read;
 use std::num::Wrapping;
 use std::sync::Arc;
 
@@ -139,6 +142,15 @@ pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
 
 pub async fn execute_sparql_bytes(sparql: &str) -> Result<Vec<u8>, FetchError> {
     shared_execute_bytes(sparql, QLEVER_WIKIDATA).await
+}
+
+pub async fn execute_sparql_body(sparql: &str) -> Result<crate::sparql::ResponseBody, FetchError> {
+    shared_execute_body(sparql, QLEVER_WIKIDATA).await
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn execute_sparql_tempfile(sparql: &str) -> Result<tempfile::NamedTempFile, FetchError> {
+    shared_execute_tempfile(sparql, QLEVER_WIKIDATA).await
 }
 
 pub async fn execute_sparql_format(
@@ -322,10 +334,17 @@ pub fn parse_compounds_csv_capped_bytes(
     csv_bytes: &[u8],
     max_rows: usize,
 ) -> Result<(Vec<CompoundEntry>, DatasetStats, bool), FetchError> {
+    parse_compounds_csv_capped_reader(csv_bytes, max_rows)
+}
+
+pub fn parse_compounds_csv_capped_reader<R: Read>(
+    reader: R,
+    max_rows: usize,
+) -> Result<(Vec<CompoundEntry>, DatasetStats, bool), FetchError> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
         .flexible(true)
-        .from_reader(csv_bytes);
+        .from_reader(reader);
 
     let headers = rdr
         .byte_headers()
@@ -578,7 +597,6 @@ mod tests {
         assert_eq!(rows[1].statement.as_deref(), Some("S2"));
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn parse_compounds_capped_reports_cap_and_stats() {
         let csv = b"compound,compoundLabel,compound_inchikey,compound_smiles_conn,compound_mass,compound_formula,taxon,taxon_name,ref_qid,ref_title,ref_doi,ref_date,statement\nQ1,cmpd,IK1,C,123.4,C1H2,Q10,TaxonA,Q100,TitleA,10.1/a,2022-01-01,http://www.wikidata.org/entity/statement/S1\nQ2,cmpd2,IK2,CC,111.1,C2H4,Q11,TaxonB,Q101,TitleB,10.1/b,2021-01-01,http://www.wikidata.org/entity/statement/S2\nQ3,cmpd3,IK3,CCC,99.1,C3H6,Q12,TaxonC,Q102,TitleC,10.1/c,2020-01-01,http://www.wikidata.org/entity/statement/S3\n";
@@ -588,5 +606,18 @@ mod tests {
         assert_eq!(stats.n_entries, 3);
         assert_eq!(stats.n_entries_unique, 3);
         assert_eq!(stats.n_compounds, 3);
+    }
+
+    #[test]
+    fn parse_compounds_capped_reader_matches_bytes_path() {
+        let csv = b"compound,compoundLabel,taxon,ref_qid\nQ1,cmpd,Q10,Q100\nQ2,cmpd2,Q11,Q101\nQ3,cmpd3,Q12,Q102\n";
+        let (rows_bytes, stats_bytes, capped_bytes) =
+            parse_compounds_csv_capped_bytes(csv, 2).expect("bytes parse");
+        let (rows_reader, stats_reader, capped_reader) =
+            parse_compounds_csv_capped_reader(std::io::Cursor::new(csv), 2).expect("reader parse");
+
+        assert_eq!(rows_reader.len(), rows_bytes.len());
+        assert_eq!(stats_reader, stats_bytes);
+        assert_eq!(capped_reader, capped_bytes);
     }
 }

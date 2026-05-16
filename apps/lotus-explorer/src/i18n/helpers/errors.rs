@@ -158,16 +158,6 @@ pub fn warn_ambiguous_taxon(
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn err_wasm_large_query_fallback(locale: Locale, err_msg: &str) -> String {
-    match locale {
-        Locale::En => en::err_wasm_large_query_fallback(err_msg),
-        Locale::Fr => fr::err_wasm_large_query_fallback(err_msg),
-        Locale::De => de::err_wasm_large_query_fallback(err_msg),
-        Locale::It => it::err_wasm_large_query_fallback(err_msg),
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
 pub fn error_hint_memory(locale: Locale) -> &'static str {
     match locale {
         Locale::En => en::error_hint_memory(),

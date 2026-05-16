@@ -6,9 +6,13 @@
 //! QLever CSV export URL format:
 //!   `https://qlever.dev/api/wikidata?query=<encoded>&action=csv_export`
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::io::{Seek, Write};
 use std::sync::OnceLock;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
+
+pub type ResponseBody = bytes::Bytes;
 
 /// Default QLever endpoint for Wikidata (used by lotus-explorer).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
@@ -79,7 +83,24 @@ pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, Fetc
 /// Useful for memory-sensitive paths where callers parse CSV directly from bytes
 /// without first materializing an intermediate UTF-8 `String`.
 pub async fn execute_sparql_bytes(sparql: &str, endpoint: &str) -> Result<Vec<u8>, FetchError> {
-    execute_sparql_with_format_bytes(sparql, endpoint, SparqlResponseFormat::Csv).await
+    let body = execute_sparql_body(sparql, endpoint).await?;
+    Ok(body.to_vec())
+}
+
+/// Execute a SPARQL query and return the raw response body.
+///
+/// This avoids an extra `Bytes -> Vec<u8>` copy for callers that can parse from
+/// borrowed byte slices or readers.
+pub async fn execute_sparql_body(sparql: &str, endpoint: &str) -> Result<ResponseBody, FetchError> {
+    execute_sparql_with_format_body(sparql, endpoint, SparqlResponseFormat::Csv).await
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn execute_sparql_tempfile(
+    sparql: &str,
+    endpoint: &str,
+) -> Result<tempfile::NamedTempFile, FetchError> {
+    execute_sparql_with_format_tempfile(sparql, endpoint, SparqlResponseFormat::Csv).await
 }
 
 pub async fn execute_sparql_with_format(
@@ -96,6 +117,15 @@ pub async fn execute_sparql_with_format_bytes(
     endpoint: &str,
     format: SparqlResponseFormat,
 ) -> Result<Vec<u8>, FetchError> {
+    let body = execute_sparql_with_format_body(sparql, endpoint, format).await?;
+    Ok(body.to_vec())
+}
+
+pub async fn execute_sparql_with_format_body(
+    sparql: &str,
+    endpoint: &str,
+    format: SparqlResponseFormat,
+) -> Result<ResponseBody, FetchError> {
     log::debug!("SPARQL POST endpoint: {endpoint}");
 
     const MAX_ATTEMPTS: u32 = 2;
@@ -143,7 +173,7 @@ pub async fn execute_sparql_with_format_bytes(
                                 }
                                 return Err(last_err.unwrap());
                             }
-                            Ok(bytes.to_vec())
+                            Ok(bytes)
                         }
                         Err(e) => {
                             last_err = Some(FetchError::Network(e.to_string()));
@@ -158,6 +188,104 @@ pub async fn execute_sparql_with_format_bytes(
                 let body = resp.text().await.unwrap_or_default();
                 log::error!("HTTP {code}: {body}");
                 // Fail fast on client errors (4xx); retry on server errors (5xx).
+                if (400..500).contains(&code) {
+                    return Err(FetchError::Http(code, body));
+                }
+                last_err = Some(FetchError::Http(code, body));
+            }
+            Err(e) => {
+                last_err = Some(FetchError::Network(e.to_string()));
+            }
+        }
+    }
+
+    Err(last_err.unwrap_or_else(|| FetchError::Network("unknown error".into())))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn execute_sparql_with_format_tempfile(
+    sparql: &str,
+    endpoint: &str,
+    format: SparqlResponseFormat,
+) -> Result<tempfile::NamedTempFile, FetchError> {
+    log::debug!("SPARQL POST endpoint: {endpoint}");
+
+    const MAX_ATTEMPTS: u32 = 2;
+    let client = http_client();
+    let mut last_err: Option<FetchError> = None;
+
+    'attempts: for attempt in 0..MAX_ATTEMPTS {
+        let mut body = format!("query={}", urlencoding::encode(sparql));
+        if let Some(action) = format.action() {
+            body.push_str("&action=");
+            body.push_str(action);
+        }
+
+        let result = client
+            .post(endpoint)
+            .header("Accept", format.accept())
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
+            .send()
+            .await;
+
+        match result {
+            Ok(mut resp) => {
+                let status = resp.status();
+                let code = status.as_u16();
+                if status.is_success() {
+                    let mut file = tempfile::NamedTempFile::new()
+                        .map_err(|e| FetchError::Parse(format!("tempfile create failed: {e}")))?;
+                    let mut preview = Vec::with_capacity(2048);
+                    let mut wrote_any = false;
+
+                    loop {
+                        match resp.chunk().await {
+                            Ok(Some(chunk)) => {
+                                wrote_any = true;
+                                if preview.len() < 2048 {
+                                    let take = (2048 - preview.len()).min(chunk.len());
+                                    preview.extend_from_slice(&chunk[..take]);
+                                }
+                                file.write_all(&chunk).map_err(|e| {
+                                    FetchError::Parse(format!("tempfile write failed: {e}"))
+                                })?;
+                            }
+                            Ok(None) => break,
+                            Err(e) => {
+                                last_err = Some(FetchError::Network(e.to_string()));
+                                if attempt + 1 < MAX_ATTEMPTS {
+                                    continue 'attempts;
+                                }
+                                return Err(last_err.unwrap());
+                            }
+                        }
+                    }
+
+                    if !wrote_any {
+                        return Err(FetchError::Empty);
+                    }
+
+                    let preview_text = String::from_utf8_lossy(&preview);
+                    if looks_like_gateway_error(&preview_text) {
+                        last_err = Some(FetchError::Http(
+                            502,
+                            "upstream gateway error (HTML payload)".into(),
+                        ));
+                        if attempt + 1 < MAX_ATTEMPTS {
+                            continue;
+                        }
+                        return Err(last_err.unwrap());
+                    }
+
+                    file.as_file_mut()
+                        .rewind()
+                        .map_err(|e| FetchError::Parse(format!("tempfile rewind failed: {e}")))?;
+                    return Ok(file);
+                }
+
+                let body = resp.text().await.unwrap_or_default();
+                log::error!("HTTP {code}: {body}");
                 if (400..500).contains(&code) {
                     return Err(FetchError::Http(code, body));
                 }

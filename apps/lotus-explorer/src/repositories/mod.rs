@@ -34,6 +34,8 @@ pub use hybrid::HybridRepository;
 
 use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
+#[cfg(not(target_arch = "wasm32"))]
+use std::io::{Seek, Write};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -127,4 +129,31 @@ pub trait LotusRepository: Clone + 'static {
 
     /// Execute a SPARQL query and return raw CSV bytes.
     async fn sparql_bytes(&self, query: &str) -> Result<Vec<u8>, RepositoryError>;
+
+    /// Execute a SPARQL query and return the raw response body without forcing a
+    /// `Bytes -> Vec<u8>` copy in hot paths.
+    async fn sparql_body(
+        &self,
+        query: &str,
+    ) -> Result<shared::sparql::ResponseBody, RepositoryError> {
+        self.sparql_bytes(query)
+            .await
+            .map(shared::sparql::ResponseBody::from)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    async fn sparql_tempfile(
+        &self,
+        query: &str,
+    ) -> Result<tempfile::NamedTempFile, RepositoryError> {
+        let body = self.sparql_body(query).await?;
+        let mut file = tempfile::NamedTempFile::new()
+            .map_err(|e| RepositoryError::parse(format!("tempfile create failed: {e}")))?;
+        file.write_all(&body)
+            .map_err(|e| RepositoryError::parse(format!("tempfile write failed: {e}")))?;
+        file.as_file_mut()
+            .rewind()
+            .map_err(|e| RepositoryError::parse(format!("tempfile rewind failed: {e}")))?;
+        Ok(file)
+    }
 }

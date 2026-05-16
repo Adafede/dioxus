@@ -66,13 +66,6 @@ pub fn warn_ambiguous_taxon(best_name: &str, best_qid: &str, names: &str) -> Str
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn err_wasm_large_query_fallback(err_msg: &str) -> String {
-    format!(
-        "Le repli sur grande requête est désactivé sur wasm pour éviter la saturation de la mémoire ({err_msg}). Essayez d'ajouter des filtres ou utilisez un navigateur desktop pour les grands exports."
-    )
-}
-
-#[cfg(target_arch = "wasm32")]
 pub fn error_hint_memory() -> &'static str {
     "Résultat trop volumineux pour la mémoire de l'appareil."
 }

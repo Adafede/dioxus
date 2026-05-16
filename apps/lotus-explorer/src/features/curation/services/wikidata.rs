@@ -2,6 +2,9 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::*;
+use std::collections::HashMap;
+
+const LOOKUP_BATCH_SIZE: usize = 128;
 
 pub(super) async fn fetch_wikidata_compound_by_inchikey(
     inchikey: &str,
@@ -50,24 +53,6 @@ pub(super) async fn fetch_wikidata_compound_by_inchikey(
     }))
 }
 
-/// Returns (Option<QID>, Vec<creation_QS_lines>).
-/// If the taxon exists, returns (Some(qid), []). Otherwise returns (None, <minimal CREATE QS>).
-pub(super) async fn resolve_or_create_taxon(
-    name: &str,
-) -> Result<(Option<String>, Vec<String>), CurationError> {
-    if let Some(qid) = resolve_taxon_qid(name).await? {
-        return Ok((Some(qid), Vec::new()));
-    }
-    let qs = vec![
-        "## -- Step: create missing taxon --".to_string(),
-        "CREATE".to_string(),
-        format!("LAST|Len|\"{}\"", escape_qs_string(name)),
-        format!("LAST|P31|{WD_TAXON_QID}"),
-        format!("LAST|P225|\"{}\"", escape_qs_string(name)),
-    ];
-    Ok((None, qs))
-}
-
 pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, CurationError> {
     let query = format!(
         "{CURATION_SPARQL_PREFIXES}\n\
@@ -83,6 +68,43 @@ pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, Cura
     extract_first_qid(&raw, "taxon")
 }
 
+pub(super) async fn resolve_taxon_qids_batch(
+    names: &[String],
+) -> Result<HashMap<String, String>, CurationError> {
+    if names.is_empty() {
+        return Ok(HashMap::new());
+    }
+    if names.len() == 1 {
+        let mut resolved = HashMap::new();
+        if let Some(qid) = resolve_taxon_qid(&names[0]).await? {
+            resolved.insert(names[0].clone(), qid);
+        }
+        return Ok(resolved);
+    }
+
+    let mut resolved = HashMap::new();
+    for chunk in names.chunks(LOOKUP_BATCH_SIZE) {
+        let values = chunk
+            .iter()
+            .map(|name| format!("\"{}\"", escape_sparql_string(name)))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let query = format!(
+            "{CURATION_SPARQL_PREFIXES}\n\
+             SELECT ?lookup ?taxon WHERE {{\n  \
+               VALUES ?lookup {{ {values} }}\n  \
+               ?taxon wdt:P225 ?taxonName .\n  \
+               FILTER(LCASE(STR(?taxonName)) = ?lookup)\n\
+             }}"
+        );
+        let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
+            .await
+            .map_err(|e| CurationError::Http(e.to_string()))?;
+        resolved.extend(extract_qid_map(&raw, "lookup", "taxon")?);
+    }
+    Ok(resolved)
+}
+
 pub(super) async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, CurationError> {
     let query = format!(
         "{CURATION_SPARQL_PREFIXES}\n\
@@ -93,6 +115,43 @@ pub(super) async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, C
         .await
         .map_err(|e| CurationError::Http(e.to_string()))?;
     extract_first_qid(&raw, "ref")
+}
+
+pub(super) async fn resolve_reference_qids_batch(
+    dois: &[String],
+) -> Result<HashMap<String, String>, CurationError> {
+    if dois.is_empty() {
+        return Ok(HashMap::new());
+    }
+    if dois.len() == 1 {
+        let mut resolved = HashMap::new();
+        if let Some(qid) = resolve_reference_qid(&dois[0]).await? {
+            resolved.insert(dois[0].clone(), qid);
+        }
+        return Ok(resolved);
+    }
+
+    let mut resolved = HashMap::new();
+    for chunk in dois.chunks(LOOKUP_BATCH_SIZE) {
+        let values = chunk
+            .iter()
+            .map(|doi| format!("\"{}\"", escape_sparql_string(doi)))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let query = format!(
+            "{CURATION_SPARQL_PREFIXES}\n\
+             SELECT ?lookup ?ref WHERE {{\n  \
+               VALUES ?lookup {{ {values} }}\n  \
+               ?ref wdt:P356 ?refDoi .\n  \
+               FILTER(UCASE(STR(?refDoi)) = ?lookup)\n\
+             }}"
+        );
+        let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
+            .await
+            .map_err(|e| CurationError::Http(e.to_string()))?;
+        resolved.extend(extract_qid_map(&raw, "lookup", "ref")?);
+    }
+    Ok(resolved)
 }
 
 pub(super) async fn compound_has_taxon_with_ref(
@@ -137,4 +196,69 @@ pub(super) async fn compound_has_taxon(
         .get("boolean")
         .and_then(Value::as_bool)
         .unwrap_or(false))
+}
+
+fn extract_qid_map(
+    raw_json: &str,
+    key_var: &str,
+    qid_var: &str,
+) -> Result<HashMap<String, String>, CurationError> {
+    let json =
+        serde_json::from_str::<Value>(raw_json).map_err(|e| CurationError::Parse(e.to_string()))?;
+    let mut out = HashMap::new();
+    if let Some(bindings) = json
+        .get("results")
+        .and_then(|v| v.get("bindings"))
+        .and_then(Value::as_array)
+    {
+        for binding in bindings {
+            let Some(lookup) = binding
+                .get(key_var)
+                .and_then(|v| v.get("value"))
+                .and_then(Value::as_str)
+            else {
+                continue;
+            };
+            let Some(qid) = binding
+                .get(qid_var)
+                .and_then(|v| v.get("value"))
+                .and_then(Value::as_str)
+                .and_then(extract_qid_from_uri)
+            else {
+                continue;
+            };
+            out.entry(lookup.to_string())
+                .or_insert_with(|| qid.to_string());
+        }
+    }
+    Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_qid_map_reads_lookup_to_qid_bindings() {
+        let raw = r#"{
+          "results": {
+            "bindings": [
+              {
+                "lookup": { "type": "literal", "value": "gentiana lutea" },
+                "taxon": { "type": "uri", "value": "http://www.wikidata.org/entity/Q123" }
+              },
+              {
+                "lookup": { "type": "literal", "value": "10.1000/ABC" },
+                "ref": { "type": "uri", "value": "http://www.wikidata.org/entity/Q456" }
+              }
+            ]
+          }
+        }"#;
+
+        let taxa = extract_qid_map(raw, "lookup", "taxon").expect("taxa map");
+        assert_eq!(taxa.get("gentiana lutea"), Some(&"Q123".to_string()));
+
+        let refs = extract_qid_map(raw, "lookup", "ref").expect("ref map");
+        assert_eq!(refs.get("10.1000/ABC"), Some(&"Q456".to_string()));
+    }
 }

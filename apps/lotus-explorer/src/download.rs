@@ -11,10 +11,10 @@ use crate::sparql;
 #[cfg(target_arch = "wasm32")]
 use crate::{api, models::SearchCriteria};
 use crate::{perf, queries};
+#[cfg(target_arch = "wasm32")]
+use shared::sparql::QLEVER_WIKIDATA;
 #[cfg(not(target_arch = "wasm32"))]
 use shared::sparql::SparqlResponseFormat;
-#[cfg(target_arch = "wasm32")]
-use shared::sparql::{QLEVER_WIKIDATA, SparqlResponseFormat};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DownloadFormat {
@@ -170,62 +170,108 @@ async fn execute_download_wasm(
                 "event=download format={} phase=fetch state=fallback reason=api_export_urls_failed detail={err}",
                 format.log_name()
             );
-            execute_download_wasm_direct_post(format, query, filename, dl_timer).await
+            execute_download_wasm_browser_post(format, query, filename, dl_timer).await
         }
     }
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn execute_download_wasm_direct_post(
+async fn execute_download_wasm_browser_post(
     format: DownloadFormat,
     query: String,
     filename: String,
     dl_timer: perf::TimerHandle,
 ) -> Result<(), String> {
-    let (query_for_fetch, response_format, mime) = match format {
-        DownloadFormat::Csv => (query, SparqlResponseFormat::Csv, "text/csv;charset=utf-8"),
-        DownloadFormat::Json => (
-            query,
-            SparqlResponseFormat::SparqlJson,
-            "application/sparql-results+json;charset=utf-8",
-        ),
+    let (query_for_fetch, action) = match format {
+        DownloadFormat::Csv => (query, "csv_export"),
+        DownloadFormat::Json => (query, "qlever_json_export"),
         DownloadFormat::Rdf => (
             queries::query_construct_from_select(&query),
-            SparqlResponseFormat::Turtle,
-            "text/turtle;charset=utf-8",
+            "turtle_export",
         ),
     };
 
-    let body = shared::sparql::execute_sparql_with_format(
-        &query_for_fetch,
-        QLEVER_WIKIDATA,
-        response_format,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-
+    // Hand off the actual response streaming to the browser so huge exports do
+    // not cross the wasm/JS memory boundary.
     let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
     perf::log_timing(
         "download",
         &format!(
-            "event=download format={} phase=fetch state=success source=direct_post body_bytes={}",
+            "event=download format={} phase=fetch state=delegated source=browser_post",
             format.log_name(),
-            body.len()
         ),
         Some(fetch_elapsed),
     );
 
     let trigger_timer = perf::start_timer(&format.trigger_timer_label());
-    trigger_download(&filename, mime, &body);
+    trigger_download_post(QLEVER_WIKIDATA, &query_for_fetch, action, &filename)?;
     let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
     perf::log_timing(
         "download",
         &format!(
-            "event=download format={} phase=trigger state=success source=direct_post",
+            "event=download format={} phase=trigger state=success source=browser_post",
             format.log_name()
         ),
         Some(trigger_elapsed),
     );
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn trigger_download_post(
+    endpoint: &str,
+    query: &str,
+    action: &str,
+    filename: &str,
+) -> Result<(), String> {
+    let Some((window, document)) = window_and_document() else {
+        return Err("window/document unavailable".to_string());
+    };
+
+    let form = document
+        .create_element("form")
+        .map_err(|_| "failed to create form element".to_string())?
+        .dyn_into::<web_sys::HtmlFormElement>()
+        .map_err(|_| "failed to cast form element".to_string())?;
+    form.set_method("POST");
+    form.set_action(endpoint);
+    form.set_target("_blank");
+    let _ = form.set_attribute("accept-charset", "UTF-8");
+    let _ = form.set_attribute("enctype", "application/x-www-form-urlencoded");
+
+    append_hidden_input(&document, &form, "query", query)?;
+    append_hidden_input(&document, &form, "action", action)?;
+    append_hidden_input(&document, &form, "filename", filename)?;
+
+    let body = document
+        .body()
+        .ok_or_else(|| "document body unavailable".to_string())?;
+    body.append_child(&form)
+        .map_err(|_| "failed to append form to body".to_string())?;
+    form.submit()
+        .map_err(|_| "failed to submit download form".to_string())?;
+    let _ = body.remove_child(&form);
+    let _ = window;
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn append_hidden_input(
+    document: &web_sys::Document,
+    form: &web_sys::HtmlFormElement,
+    name: &str,
+    value: &str,
+) -> Result<(), String> {
+    let input = document
+        .create_element("input")
+        .map_err(|_| format!("failed to create input {name}"))?
+        .dyn_into::<web_sys::HtmlInputElement>()
+        .map_err(|_| format!("failed to cast input {name}"))?;
+    input.set_type("hidden");
+    input.set_name(name);
+    input.set_value(value);
+    form.append_child(&input)
+        .map_err(|_| format!("failed to append input {name}"))?;
     Ok(())
 }
 

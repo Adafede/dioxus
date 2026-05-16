@@ -62,11 +62,7 @@ fn format_transport_fault(locale: Locale, stage: QueryStage, source: &Repository
 fn stage_display_label(locale: Locale, stage: QueryStage) -> &'static str {
     match stage {
         QueryStage::TaxonSearch => t(locale, TextKey::StageTaxonSearch),
-        QueryStage::CountQuery => t(locale, TextKey::StageCountQuery),
-        QueryStage::DisplayQuery => t(locale, TextKey::StageDisplayQuery),
-        QueryStage::FallbackQuery => t(locale, TextKey::StageFallbackQuery),
-        #[cfg(target_arch = "wasm32")]
-        QueryStage::CountAndPreview => t(locale, TextKey::StageDisplayQuery),
+        QueryStage::ResultsQuery => t(locale, TextKey::StageResultsQuery),
     }
 }
 
@@ -129,19 +125,9 @@ fn format_parse_fault(locale: Locale, fault: &ParseFault) -> String {
             stage_display_label(locale, QueryStage::TaxonSearch),
             &compact_error_text(details),
         ),
-        ParseFault::CountCsv { details } => err_query_stage_failed(
+        ParseFault::ResultsCsv { details } => err_query_stage_failed(
             locale,
-            stage_display_label(locale, QueryStage::CountQuery),
-            &compact_error_text(details),
-        ),
-        ParseFault::DisplayCsv { details } => err_query_stage_failed(
-            locale,
-            stage_display_label(locale, QueryStage::DisplayQuery),
-            &compact_error_text(details),
-        ),
-        ParseFault::FallbackCsv { details } => err_query_stage_failed(
-            locale,
-            stage_display_label(locale, QueryStage::FallbackQuery),
+            stage_display_label(locale, QueryStage::ResultsQuery),
             &compact_error_text(details),
         ),
     }

@@ -210,6 +210,12 @@ impl SearchMetrics {
         self.sparql_calls += 1;
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn add_parallel_network(&mut self, elapsed: std::time::Duration, calls: usize) {
+        self.network_ms += elapsed.as_secs_f64() * 1000.0;
+        self.sparql_calls += calls;
+    }
+
     pub fn add_parse(&mut self, elapsed: std::time::Duration) {
         self.parse_ms += elapsed.as_secs_f64() * 1000.0;
     }
@@ -299,9 +305,9 @@ mod tests {
         state.lifecycle.loading = true;
         let next = reduce(
             state,
-            ExploreAction::SearchPhaseChanged(QueryPhase::Counting),
+            ExploreAction::SearchPhaseChanged(QueryPhase::ProcessingResults),
         );
-        assert_eq!(next.lifecycle.query_phase, QueryPhase::Counting);
+        assert_eq!(next.lifecycle.query_phase, QueryPhase::ProcessingResults);
         assert!(next.lifecycle.loading, "loading must be untouched");
     }
 

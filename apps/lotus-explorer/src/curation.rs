@@ -2,7 +2,9 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::features::curation::domain;
-use crate::features::curation::services::{curate_single_row, inputs, pipeline};
+use crate::features::curation::services::{
+    curate_single_row, inputs, pipeline, prepare_lookup_context,
+};
 #[cfg(test)]
 use crate::features::curation::services::{
     extract_exact_mass_from_json, extract_formula_from_inchi, normalize_formula_for_wikidata,
@@ -40,7 +42,14 @@ pub async fn curate_rows(
     locale: Locale,
     rows: Vec<CurationInputRow>,
 ) -> Result<(Vec<CurationResultRow>, QuickStatementsBundle), CurationError> {
-    pipeline::curate_rows(locale, rows, curate_single_row, row_uniqueness_key).await
+    let lookup_context = prepare_lookup_context(&rows).await?;
+    pipeline::curate_rows(
+        locale,
+        rows,
+        move |locale, row| curate_single_row(locale, row, lookup_context.clone()),
+        row_uniqueness_key,
+    )
+    .await
 }
 
 pub fn build_quickstatements_bundle(results: &[CurationResultRow]) -> QuickStatementsBundle {

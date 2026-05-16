@@ -35,8 +35,8 @@ pub fn it_t(key: TextKey) -> &'static str {
             "I set di risultati di grandi dimensioni possono richiedere alcuni secondi."
         }
         TextKey::LoadingResolvingTaxon => "Risoluzione del taxon...",
-        TextKey::LoadingCounting => "Conteggio delle corrispondenze...",
-        TextKey::LoadingFetchingPreview => "Recupero risultati...",
+        TextKey::LoadingFetchingResults => "Recupero risultati...",
+        TextKey::LoadingProcessingResults => "Elaborazione dei conteggi risultati...",
         TextKey::LoadingRendering => "Rendering della tabella...",
         TextKey::Retry => "Riprova",
         TextKey::ErrorHintValidation => "Controlla l'input e riprova.",
@@ -133,9 +133,7 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::SparqlQuery => "Query SPARQL",
         TextKey::NoResults => "Nessun risultato. Prova ad ampliare la ricerca.",
         TextKey::StageTaxonSearch => "risoluzione del taxon",
-        TextKey::StageCountQuery => "conteggio risultati",
-        TextKey::StageDisplayQuery => "recupero anteprima",
-        TextKey::StageFallbackQuery => "recupero di fallback",
+        TextKey::StageResultsQuery => "recupero risultati",
         TextKey::DisplayCappedHint => {
             "Per sicurezza di memoria su questo dispositivo vengono mostrate solo le prime righe. I conteggi restano esatti."
         }

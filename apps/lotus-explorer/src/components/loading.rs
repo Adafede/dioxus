@@ -4,7 +4,7 @@
 //! Loading and download-dispatching overlay components.
 //!
 //! These components are intentionally small so that phase-text transitions
-//! (e.g., ResolvingTaxon → Counting → FetchingPreview) only re-render
+//! (e.g., ResolvingTaxon -> FetchingResults -> ProcessingResults) only re-render
 //! the component that subscribes to `query_phase`, not the entire
 //! `ResultsViewport` tree.
 
@@ -79,8 +79,8 @@ pub fn query_phase_text(locale: Locale, phase: QueryPhase) -> &'static str {
         QueryPhase::Idle => t(locale, TextKey::LoadingTitle),
         QueryPhase::PreparingQuery => t(locale, TextKey::LoadingTitle),
         QueryPhase::ResolvingTaxon => t(locale, TextKey::LoadingResolvingTaxon),
-        QueryPhase::Counting => t(locale, TextKey::LoadingCounting),
-        QueryPhase::FetchingPreview => t(locale, TextKey::LoadingFetchingPreview),
+        QueryPhase::FetchingResults => t(locale, TextKey::LoadingFetchingResults),
+        QueryPhase::ProcessingResults => t(locale, TextKey::LoadingProcessingResults),
         QueryPhase::Rendering => t(locale, TextKey::LoadingRendering),
     }
 }

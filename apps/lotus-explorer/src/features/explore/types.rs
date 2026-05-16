@@ -17,8 +17,8 @@ pub enum QueryPhase {
     Idle,
     PreparingQuery,
     ResolvingTaxon,
-    Counting,
-    FetchingPreview,
+    FetchingResults,
+    ProcessingResults,
     Rendering,
 }
 
@@ -36,22 +36,14 @@ pub enum ErrorKind {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QueryStage {
     TaxonSearch,
-    CountQuery,
-    DisplayQuery,
-    FallbackQuery,
-    #[cfg(target_arch = "wasm32")]
-    CountAndPreview,
+    ResultsQuery,
 }
 
 impl QueryStage {
     pub const fn as_key(self) -> &'static str {
         match self {
             Self::TaxonSearch => "taxon_search",
-            Self::CountQuery => "count_query",
-            Self::DisplayQuery => "display_query",
-            Self::FallbackQuery => "fallback_query",
-            #[cfg(target_arch = "wasm32")]
-            Self::CountAndPreview => "count_and_preview",
+            Self::ResultsQuery => "results_query",
         }
     }
 }
@@ -118,9 +110,7 @@ pub enum ValidationFault {
 
 /// Fine-grained CSV / data parse fault.
 ///
-/// Some variants (like `FallbackCsv`) are reachable only on non-wasm targets or
-/// during fallback recovery paths. All are included for comprehensive error
-/// reporting and test scenario coverage.
+/// Parse variants are scoped to active Explore pipeline stages.
 #[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Error)]
 pub enum ParseFault {
@@ -128,12 +118,8 @@ pub enum ParseFault {
     TaxonCsv { details: String },
     #[error("taxon candidate selection failed: {details}")]
     TaxonPick { details: String },
-    #[error("count csv parse failed: {details}")]
-    CountCsv { details: String },
-    #[error("display csv parse failed: {details}")]
-    DisplayCsv { details: String },
-    #[error("fallback csv parse failed: {details}")]
-    FallbackCsv { details: String },
+    #[error("results csv parse failed: {details}")]
+    ResultsCsv { details: String },
 }
 
 /// Top-level domain error used throughout the Explore feature.
@@ -201,7 +187,7 @@ mod tests {
     #[test]
     fn transport_domain_error_exposes_repository_source() {
         let err = DomainError::transport(
-            QueryStage::DisplayQuery,
+            QueryStage::ResultsQuery,
             crate::repositories::RepositoryError::network("timeout"),
         );
 
@@ -211,12 +197,12 @@ mod tests {
 
     #[test]
     fn transport_at_closure_maps_repository_error() {
-        let mapper = DomainError::transport_at(QueryStage::CountQuery);
+        let mapper = DomainError::transport_at(QueryStage::ResultsQuery);
         let err = mapper(crate::repositories::RepositoryError::network("timed out"));
         assert!(matches!(
             err,
             DomainError::Transport {
-                stage: QueryStage::CountQuery,
+                stage: QueryStage::ResultsQuery,
                 ..
             }
         ));

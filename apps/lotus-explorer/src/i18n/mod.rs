@@ -116,8 +116,8 @@ pub enum TextKey {
     LoadingTitle,
     LoadingHint,
     LoadingResolvingTaxon,
-    LoadingCounting,
-    LoadingFetchingPreview,
+    LoadingFetchingResults,
+    LoadingProcessingResults,
     LoadingRendering,
     Retry,
     ErrorHintValidation,
@@ -182,9 +182,7 @@ pub enum TextKey {
     KindNoteMol3000,
     // Error stage labels (used in transport error messages)
     StageTaxonSearch,
-    StageCountQuery,
-    StageDisplayQuery,
-    StageFallbackQuery,
+    StageResultsQuery,
     // Table/export
     DatasetStatistics,
     DownloadResults,

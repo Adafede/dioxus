@@ -28,7 +28,7 @@ mod wikidata;
 use chemical::{convert_smiles, has_undefined_stereo, resolve_exact_mass};
 use helpers::{
     binding_value, escape_qs_string, escape_sparql_string, extract_first_qid, extract_qid_from_uri,
-    has_isomeric_smiles, has_stereo_marks, normalize_doi,
+    has_isomeric_smiles, has_stereo_marks, normalize_doi, normalize_taxon_lookup_key,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use http_client::{BatchConvertResponse, natprod_client};
@@ -37,7 +37,7 @@ use http_client::{js_value_to_json, rdkit_bridge_call};
 use reference_metadata::fetch_reference_quickstatements;
 use wikidata::{
     compound_has_taxon, compound_has_taxon_with_ref, fetch_wikidata_compound_by_inchikey,
-    resolve_or_create_taxon, resolve_reference_qid,
+    resolve_reference_qids_batch, resolve_taxon_qids_batch,
 };
 
 pub mod inputs;
@@ -46,7 +46,7 @@ pub mod quickstatements;
 
 #[cfg(test)]
 pub(crate) use chemical::extract_exact_mass_from_json;
-pub(crate) use enrichment::curate_single_row;
+pub(crate) use enrichment::{curate_single_row, prepare_lookup_context};
 pub(crate) use helpers::{
     extract_formula_from_inchi, normalize_formula_for_wikidata, qs_mass_statement,
 };

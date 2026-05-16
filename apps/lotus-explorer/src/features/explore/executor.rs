@@ -9,9 +9,7 @@
 use crate::features::explore::request::SearchRequest;
 use crate::features::explore::search_state::{SearchMetrics, emit_search_summary};
 use crate::features::explore::service::{
-    build_query::{apply_server_filters, build_sparql_query, normalize_smiles},
-    fetch_preview, resolve_taxon,
-    strategy::ExecutionStrategy,
+    build_query::normalize_smiles, results_pipeline, strategy::ExecutionStrategy,
 };
 use crate::features::explore::types::{DomainError, QueryPhase};
 use crate::models::{CompoundEntry, DatasetStats};
@@ -115,54 +113,39 @@ where
             telemetry::api_path_not_available("reason=download_only_mode");
         }
 
-        // SPARQL pipeline.
-        if resolve_taxon::requires_remote_lookup(request.criteria().taxon.trim()) {
-            (self.on_phase)(QueryPhase::ResolvingTaxon);
-        }
-
-        let taxon_resolution =
-            resolve_taxon::resolve(request.criteria().taxon.trim(), &self.repo, &mut metrics)
-                .await?;
-
-        let sparql_query =
-            build_sparql_query(&smiles, request.criteria(), taxon_resolution.qid.as_deref());
-        let execution_query = apply_server_filters(&sparql_query, request.criteria());
+        let pipeline_outcome = results_pipeline::execute(
+            request,
+            &smiles,
+            &self.repo,
+            &mut metrics,
+            &self.on_phase,
+            strategy.is_download_only(),
+        )
+        .await?;
 
         if strategy.is_download_only() {
             let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
             telemetry::direct_download_ready(total_elapsed);
             emit_search_summary(total_elapsed, metrics);
             return Ok(SearchOutcome {
-                rows: Vec::new(),
-                qid: taxon_resolution.qid,
-                warning: taxon_resolution.warning,
-                query: execution_query,
-                total_matches: None,
-                total_stats: None,
-                display_capped_rows: false,
+                rows: pipeline_outcome.rows,
+                qid: pipeline_outcome.qid,
+                warning: pipeline_outcome.warning,
+                query: pipeline_outcome.query,
+                total_matches: pipeline_outcome.total_matches,
+                total_stats: pipeline_outcome.total_stats,
+                display_capped_rows: pipeline_outcome.display_capped_rows,
             });
         }
 
-        let display_limit = runtime_table_row_limit();
-        (self.on_phase)(QueryPhase::Counting);
-
-        let fetch_result = fetch_preview::fetch(
-            &execution_query,
-            display_limit,
-            &self.repo,
-            &mut metrics,
-            || (self.on_phase)(QueryPhase::FetchingPreview),
-        )
-        .await?;
-
         let outcome = SearchOutcome {
-            rows: fetch_result.rows,
-            qid: taxon_resolution.qid,
-            warning: taxon_resolution.warning,
-            query: execution_query,
-            total_matches: fetch_result.total_matches,
-            total_stats: fetch_result.total_stats,
-            display_capped_rows: fetch_result.display_capped_rows,
+            rows: pipeline_outcome.rows,
+            qid: pipeline_outcome.qid,
+            warning: pipeline_outcome.warning,
+            query: pipeline_outcome.query,
+            total_matches: pipeline_outcome.total_matches,
+            total_stats: pipeline_outcome.total_stats,
+            display_capped_rows: pipeline_outcome.display_capped_rows,
         };
 
         let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);

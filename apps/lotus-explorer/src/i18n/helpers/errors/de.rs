@@ -66,13 +66,6 @@ pub fn warn_ambiguous_taxon(best_name: &str, best_qid: &str, names: &str) -> Str
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn err_wasm_large_query_fallback(err_msg: &str) -> String {
-    format!(
-        "Große-Query-Fallback auf wasm deaktiviert, um Speicherprobleme zu vermeiden ({err_msg}). Bitte Filter verfeinern oder für sehr große Exporte einen Desktop-Browser nutzen."
-    )
-}
-
-#[cfg(target_arch = "wasm32")]
 pub fn error_hint_memory() -> &'static str {
     "Ergebnis ist zu groß für den verfügbaren Gerätspeicher."
 }

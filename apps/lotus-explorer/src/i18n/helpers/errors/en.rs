@@ -66,13 +66,6 @@ pub fn warn_ambiguous_taxon(best_name: &str, best_qid: &str, names: &str) -> Str
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn err_wasm_large_query_fallback(err_msg: &str) -> String {
-    format!(
-        "Large-query fallback disabled on wasm to avoid memory exhaustion ({err_msg}). Try adding filters or use a desktop browser for large result exports."
-    )
-}
-
-#[cfg(target_arch = "wasm32")]
 pub fn error_hint_memory() -> &'static str {
     "Result too large for current device memory."
 }

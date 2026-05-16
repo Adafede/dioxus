@@ -33,8 +33,8 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::LoadingTitle => "Querying Wikidata via QLever...",
         TextKey::LoadingHint => "Large result sets may take several seconds.",
         TextKey::LoadingResolvingTaxon => "Resolving taxon...",
-        TextKey::LoadingCounting => "Counting matches...",
-        TextKey::LoadingFetchingPreview => "Fetching results...",
+        TextKey::LoadingFetchingResults => "Fetching results...",
+        TextKey::LoadingProcessingResults => "Processing result counts...",
         TextKey::LoadingRendering => "Rendering table...",
         TextKey::Retry => "Retry",
         TextKey::ErrorHintValidation => "Please adjust your query input and try again.",
@@ -123,9 +123,7 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::SparqlQuery => "SPARQL query",
         TextKey::NoResults => "No results. Try broadening your search.",
         TextKey::StageTaxonSearch => "taxon lookup",
-        TextKey::StageCountQuery => "result counting",
-        TextKey::StageDisplayQuery => "preview fetch",
-        TextKey::StageFallbackQuery => "fallback fetch",
+        TextKey::StageResultsQuery => "results fetch",
         TextKey::DisplayCappedHint => {
             "Displaying the first rows only for memory safety on this device. Counts remain exact."
         }
