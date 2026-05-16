@@ -5,8 +5,8 @@ use super::{CurationResultRow, QuickStatementsBundle};
 use std::collections::HashSet;
 
 pub fn build_quickstatements_bundle(results: &[CurationResultRow]) -> QuickStatementsBundle {
-    let mut seen_dependency_blocks = HashSet::<&str>::new();
-    let mut dependencies = Vec::new();
+    let mut seen_dependency_blocks = HashSet::<&str>::with_capacity(results.len());
+    let mut dependencies = Vec::with_capacity(results.len());
     for block in results.iter().flat_map(|r| r.dependency_blocks.iter()) {
         let block = block.as_str();
         if block.trim().is_empty() {
@@ -17,16 +17,14 @@ pub fn build_quickstatements_bundle(results: &[CurationResultRow]) -> QuickState
         }
     }
 
-    let main = results
-        .iter()
-        .filter(|r| !r.quickstatements.is_empty())
-        .map(|r| r.quickstatements.join("\n"))
-        .collect::<Vec<_>>()
-        .join("\n\n");
+    let mut main_sections = Vec::with_capacity(results.len());
+    for row in results.iter().filter(|r| !r.quickstatements.is_empty()) {
+        main_sections.push(row.quickstatements.join("\n"));
+    }
 
     QuickStatementsBundle {
         dependencies: std::sync::Arc::<str>::from(dependencies.join("\n\n")),
-        main: std::sync::Arc::<str>::from(main),
+        main: std::sync::Arc::<str>::from(main_sections.join("\n\n")),
     }
 }
 

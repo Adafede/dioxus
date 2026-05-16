@@ -2,59 +2,12 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::*;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-
-#[derive(Default)]
-pub(crate) struct LookupContext {
-    taxon_qids: HashMap<String, String>,
-    reference_qids: HashMap<String, String>,
-}
-
-impl LookupContext {
-    fn taxon_qid(&self, key: &str) -> Option<&str> {
-        self.taxon_qids.get(key).map(String::as_str)
-    }
-
-    fn reference_qid(&self, doi: &str) -> Option<&str> {
-        self.reference_qids.get(doi).map(String::as_str)
-    }
-}
-
-pub(crate) async fn prepare_lookup_context(
-    rows: &[CurationInputRow],
-) -> Result<Arc<LookupContext>, CurationError> {
-    let mut taxon_keys = Vec::new();
-    let mut seen_taxa = HashSet::new();
-    let mut dois = Vec::new();
-    let mut seen_dois = HashSet::new();
-
-    for row in rows {
-        if let Some(taxon_key) = row.taxon.as_deref().and_then(normalize_taxon_lookup_key)
-            && seen_taxa.insert(taxon_key.clone())
-        {
-            taxon_keys.push(taxon_key);
-        }
-
-        if let Some(doi) = row.doi.as_deref().and_then(normalize_doi)
-            && seen_dois.insert(doi.clone())
-        {
-            dois.push(doi);
-        }
-    }
-
-    Ok(Arc::new(LookupContext {
-        taxon_qids: resolve_taxon_qids_batch(&taxon_keys).await?,
-        reference_qids: resolve_reference_qids_batch(&dois).await?,
-    }))
-}
 
 pub(crate) async fn curate_single_row(
     locale: Locale,
     input: CurationInputRow,
-    lookup_context: Arc<LookupContext>,
 ) -> CurationResultRow {
-    match enrich_and_generate(locale, &input, lookup_context.as_ref()).await {
+    match enrich_and_generate(locale, &input).await {
         Ok(result) => result,
         Err(err) => CurationResultRow {
             input,
@@ -76,7 +29,6 @@ pub(crate) async fn curate_single_row(
 async fn enrich_and_generate(
     locale: Locale,
     input: &CurationInputRow,
-    lookup_context: &LookupContext,
 ) -> Result<CurationResultRow, CurationError> {
     let converted = convert_smiles(&input.smiles).await?;
     let mass_resolution = resolve_exact_mass(&input.smiles, &converted.canonical_smiles).await;
@@ -135,8 +87,7 @@ async fn enrich_and_generate(
             }
 
             let dependencies =
-                resolve_row_dependencies(locale, input, normalized_doi.as_deref(), lookup_context)
-                    .await?;
+                resolve_row_dependencies(locale, input, normalized_doi.as_deref()).await?;
 
             if let Some(deps) = dependencies.as_ref() {
                 let (should_add, p703) = match (
@@ -214,8 +165,7 @@ async fn enrich_and_generate(
         }
         None => {
             let dependencies =
-                resolve_row_dependencies(locale, input, normalized_doi.as_deref(), lookup_context)
-                    .await?;
+                resolve_row_dependencies(locale, input, normalized_doi.as_deref()).await?;
             let mut lines = vec!["CREATE".to_string()];
             lines.push(format!("LAST|Len|\"{}\"", escape_qs_string(&input.name)));
             lines.push("LAST|Den|\"chemical compound\"".to_string());
@@ -323,28 +273,14 @@ async fn resolve_row_dependencies(
     locale: Locale,
     input: &CurationInputRow,
     normalized_doi: Option<&str>,
-    lookup_context: &LookupContext,
 ) -> Result<Option<DependencyResolution>, CurationError> {
     let Some(taxon_name) = input.taxon.as_deref() else {
         return Ok(None);
     };
 
-    let taxon_qid_opt = normalize_taxon_lookup_key(taxon_name)
-        .and_then(|key| lookup_context.taxon_qid(&key).map(str::to_string));
-    let taxon_new_qs = if taxon_qid_opt.is_none() {
-        vec![
-            "## -- Step: create missing taxon --".to_string(),
-            "CREATE".to_string(),
-            format!("LAST|Len|\"{}\"", escape_qs_string(taxon_name)),
-            format!("LAST|P31|{WD_TAXON_QID}"),
-            format!("LAST|P225|\"{}\"", escape_qs_string(taxon_name)),
-        ]
-    } else {
-        Vec::new()
-    };
-
+    let (taxon_qid_opt, taxon_new_qs) = resolve_or_create_taxon(taxon_name).await?;
     let (ref_qid_opt, ref_new_qs) = if let Some(doi) = normalized_doi {
-        resolve_or_create_reference(doi, lookup_context).await?
+        resolve_or_create_reference(doi).await?
     } else {
         (None, Vec::new())
     };
@@ -377,16 +313,16 @@ async fn resolve_row_dependencies(
     Ok(Some(resolution))
 }
 
-/// Fetch pre-generated QuickStatements from DOI metadata + citation.js formatting on WASM.
+/// Fetch pre-generated QuickStatements from Scholia (native) or citation.js (WASM)
 async fn resolve_or_create_reference(
     doi: &str,
-    lookup_context: &LookupContext,
 ) -> Result<(Option<String>, Vec<String>), CurationError> {
-    if let Some(qid) = lookup_context.reference_qid(doi) {
-        return Ok((Some(qid.to_string()), Vec::new()));
+    // Check if reference already exists in Wikidata
+    if let Some(qid) = resolve_reference_qid(doi).await? {
+        return Ok((Some(qid), Vec::new()));
     }
 
-    // No existing reference in the batched lookup cache: try to synthesize QS.
+    // Try to fetch QuickStatements from Scholia or citation.js
     let qs_lines = fetch_reference_quickstatements(doi)
         .await
         .unwrap_or_default();

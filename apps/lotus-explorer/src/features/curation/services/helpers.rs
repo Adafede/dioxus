@@ -71,14 +71,6 @@ pub(super) fn normalize_doi(value: &str) -> Option<String> {
     Some(canonical.to_ascii_uppercase())
 }
 
-pub(super) fn normalize_taxon_lookup_key(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-    Some(trimmed.to_ascii_lowercase())
-}
-
 pub(super) fn has_stereo_marks(smiles: &str) -> bool {
     smiles.contains('@') || smiles.contains('/') || smiles.contains('\\')
 }
