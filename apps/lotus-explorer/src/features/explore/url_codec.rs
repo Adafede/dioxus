@@ -11,6 +11,7 @@ use crate::download::DownloadFormat;
 use crate::i18n::Locale;
 use crate::models::{ElementState, SearchCriteria, SmilesSearchType};
 use std::collections::BTreeMap;
+use std::str::FromStr;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct InitialDownloadState {
@@ -93,10 +94,18 @@ impl CriteriaQueryDto {
                 p_max: parse_u16("p_max"),
                 s_min: parse_u16("s_min"),
                 s_max: parse_u16("s_max"),
-                f_state: params.get("f_state").map(|v| ElementState::from_str(v)),
-                cl_state: params.get("cl_state").map(|v| ElementState::from_str(v)),
-                br_state: params.get("br_state").map(|v| ElementState::from_str(v)),
-                i_state: params.get("i_state").map(|v| ElementState::from_str(v)),
+                f_state: params
+                    .get("f_state")
+                    .map(|v| ElementState::from_str(v).unwrap_or_default()),
+                cl_state: params
+                    .get("cl_state")
+                    .map(|v| ElementState::from_str(v).unwrap_or_default()),
+                br_state: params
+                    .get("br_state")
+                    .map(|v| ElementState::from_str(v).unwrap_or_default()),
+                i_state: params
+                    .get("i_state")
+                    .map(|v| ElementState::from_str(v).unwrap_or_default()),
             });
 
         Self {
@@ -269,7 +278,11 @@ pub fn build_shareable_url(criteria: &SearchCriteria) -> Option<String> {
     Some(format!("?{query}"))
 }
 
-pub fn is_true_flag(v: &str) -> bool {
+/// Test whether a URL query-parameter value represents a boolean true flag.
+///
+/// Accepts `"1"`, `"true"`, `"yes"`, and `"on"` (case-insensitive, trimmed).
+/// All other values — including absent keys — are treated as false.
+pub(crate) fn is_true_flag(v: &str) -> bool {
     matches!(
         v.trim().to_ascii_lowercase().as_str(),
         "1" | "true" | "yes" | "on"

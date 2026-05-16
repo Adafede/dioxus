@@ -6,7 +6,7 @@
 //! This module has **no dependency on the Dioxus runtime** and carries **no
 //! locale strings**, making every function directly unit-testable.
 
-use crate::features::explore::search_state::SearchMetrics;
+use crate::features::explore::search_metrics::SearchMetrics;
 use crate::features::explore::types::{
     DomainError, ParseFault, QueryStage, TaxonWarning, ValidationFault,
 };

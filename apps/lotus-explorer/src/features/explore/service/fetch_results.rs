@@ -6,7 +6,7 @@
 //! This module is **Dioxus-free**: the phase-change callback (`on_fetching`)
 //! is a plain `Fn()` closure so that tests can supply a no-op.
 
-use crate::features::explore::search_state::SearchMetrics;
+use crate::features::explore::search_metrics::SearchMetrics;
 use crate::features::explore::types::{DomainError, ParseFault, QueryStage};
 use crate::models::{CompoundEntry, DatasetStats};
 use crate::perf;

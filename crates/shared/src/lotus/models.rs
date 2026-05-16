@@ -2,8 +2,22 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Domain models for the LOTUS explorer/API shared core.
+//!
+//! ## Linked Open Data / Wikidata
+//!
+//! All entity identifiers in the LOTUS dataset follow the Wikidata entity URI
+//! scheme.  The canonical prefix is [`WIKIDATA_ENTITY_BASE`].  Statement
+//! identifiers use [`WIKIDATA_STATEMENT_BASE`].  These constants are
+//! re-exported here so every layer (DTO deserialization, SPARQL parsing, UI
+//! display) uses a single authoritative value.
 
 use std::sync::Arc;
+
+/// Base URI for Wikidata entities (e.g. `Q12345` → `<BASE>Q12345`).
+pub const WIKIDATA_ENTITY_BASE: &str = "http://www.wikidata.org/entity/";
+
+/// Base URI for Wikidata reification statements.
+pub const WIKIDATA_STATEMENT_BASE: &str = "http://www.wikidata.org/entity/statement/";
 
 #[cfg(target_arch = "wasm32")]
 pub const TABLE_ROW_LIMIT: usize = 1_000;
@@ -128,12 +142,11 @@ impl CompoundEntry {
     }
 
     pub fn statement_id_str(&self) -> Option<&str> {
-        const STMT_PREFIX: &str = "http://www.wikidata.org/entity/statement/";
         let raw = self.statement.as_deref().map(str::trim)?;
         if raw.is_empty() {
             return None;
         }
-        Some(raw.strip_prefix(STMT_PREFIX).unwrap_or(raw))
+        Some(raw.strip_prefix(WIKIDATA_STATEMENT_BASE).unwrap_or(raw))
     }
 
     pub fn statement_id(&self) -> Option<String> {
@@ -318,12 +331,24 @@ pub enum SmilesSearchType {
     Similarity,
 }
 
+impl Default for SmilesSearchType {
+    fn default() -> Self {
+        Self::Substructure
+    }
+}
+
 impl SmilesSearchType {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Substructure => "substructure",
             Self::Similarity => "similarity",
         }
+    }
+}
+
+impl std::fmt::Display for SmilesSearchType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
     }
 }
 
@@ -334,6 +359,12 @@ pub enum ElementState {
     Excluded,
 }
 
+impl Default for ElementState {
+    fn default() -> Self {
+        Self::Allowed
+    }
+}
+
 impl ElementState {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -342,14 +373,29 @@ impl ElementState {
             Self::Excluded => "excluded",
         }
     }
+}
 
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(value: &str) -> Self {
-        match value {
+impl std::fmt::Display for ElementState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl std::str::FromStr for ElementState {
+    type Err = std::convert::Infallible;
+
+    /// Parse a case-sensitive element-state string.
+    ///
+    /// Accepts `"required"` and `"excluded"`; all other values (including
+    /// `"allowed"` and unrecognised strings) map to [`ElementState::Allowed`].
+    /// This is intentionally infallible so URL parameters can always be decoded
+    /// without propagating parse errors through the call stack.
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Ok(match value {
             "required" => Self::Required,
             "excluded" => Self::Excluded,
             _ => Self::Allowed,
-        }
+        })
     }
 }
 
@@ -363,18 +409,23 @@ pub struct DatasetStats {
 }
 
 impl DatasetStats {
+    /// Compute dataset statistics from a slice of result entries.
+    ///
+    /// Uses `&str` slices (borrowed from `Arc<str>` fields) so no strings are
+    /// copied or re-allocated.  A single pass over the entries populates all
+    /// three deduplicated ID sets simultaneously.
     pub fn from_entries(entries: &[CompoundEntry]) -> Self {
         use std::collections::HashSet;
-        let mut c: HashSet<u64> = HashSet::with_capacity(entries.len());
-        let mut t: HashSet<u64> = HashSet::with_capacity(entries.len());
-        let mut r: HashSet<u64> = HashSet::with_capacity(entries.len());
+        let mut c: HashSet<&str> = HashSet::with_capacity(entries.len());
+        let mut t: HashSet<&str> = HashSet::with_capacity(entries.len());
+        let mut r: HashSet<&str> = HashSet::with_capacity(entries.len());
         for e in entries {
-            c.insert(fnv1a64(e.compound_qid.as_ref().as_bytes()));
+            c.insert(e.compound_qid.as_ref());
             if !e.taxon_qid.is_empty() {
-                t.insert(fnv1a64(e.taxon_qid.as_ref().as_bytes()));
+                t.insert(e.taxon_qid.as_ref());
             }
             if !e.reference_qid.is_empty() {
-                r.insert(fnv1a64(e.reference_qid.as_ref().as_bytes()));
+                r.insert(e.reference_qid.as_ref());
             }
         }
         Self {
@@ -385,16 +436,6 @@ impl DatasetStats {
             n_entries_unique: entries.len(),
         }
     }
-}
-
-#[inline]
-fn fnv1a64(bytes: &[u8]) -> u64 {
-    let mut h: u64 = 0xcbf29ce484222325;
-    for b in bytes {
-        h ^= *b as u64;
-        h = h.wrapping_mul(0x100000001b3);
-    }
-    h
 }
 
 #[derive(Debug, Clone)]

@@ -12,7 +12,7 @@ use super::{
     fetch_results, resolve_taxon,
 };
 use crate::features::explore::request::SearchRequest;
-use crate::features::explore::search_state::SearchMetrics;
+use crate::features::explore::search_metrics::SearchMetrics;
 use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
 use crate::models::{CompoundEntry, DatasetStats};
 use crate::repositories::LotusRepository;

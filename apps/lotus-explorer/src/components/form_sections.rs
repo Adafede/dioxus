@@ -301,7 +301,7 @@ fn ElemStateSelect(
                 class: "form-input sm",
                 aria_label: "{label} {t(locale, TextKey::ElementRequirement)}",
                 value: "{value.as_str()}",
-                onchange: move |e| on_change.call(ElementState::from_str(&e.value())),
+                onchange: move |e| on_change.call(e.value().parse::<ElementState>().unwrap_or_default()),
                 option { value: "allowed", "{t(locale, TextKey::ElementStateAllowed)}" }
                 option { value: "required", "{t(locale, TextKey::ElementStateRequired)}" }
                 option { value: "excluded", "{t(locale, TextKey::ElementStateExcluded)}" }

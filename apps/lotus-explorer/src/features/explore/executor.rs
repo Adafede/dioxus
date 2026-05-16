@@ -7,7 +7,7 @@
 //! not mutate Dioxus state directly.
 
 use crate::features::explore::request::SearchRequest;
-use crate::features::explore::search_state::{SearchMetrics, emit_search_summary};
+use crate::features::explore::search_metrics::{SearchMetrics, emit_search_summary};
 use crate::features::explore::service::{
     build_query::normalize_smiles, results_pipeline, strategy::ExecutionStrategy,
 };

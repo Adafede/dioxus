@@ -468,21 +468,33 @@ pub fn field(record: &csv::StringRecord, idx: Option<usize>) -> &str {
     idx.and_then(|i| record.get(i)).unwrap_or("").trim()
 }
 
-/// Strip the Wikidata entity URL prefix to get a bare QID (e.g. `Q12345`).
-/// Also accepts bare QIDs like `Q12345` directly.
+/// Strip the Wikidata entity URI prefix to get a bare QID (e.g. `Q12345`).
+///
+/// Accepts:
+/// * Full canonical URIs:  `http://www.wikidata.org/entity/Q12345`  ([`WIKIDATA_ENTITY_BASE`])
+/// * HTTPS variant:        `https://www.wikidata.org/entity/Q12345`
+/// * Bare QIDs:            `Q12345`
+///
+/// Returns an empty string for any unrecognised format.
+///
+/// [`WIKIDATA_ENTITY_BASE`]: crate::lotus::models::WIKIDATA_ENTITY_BASE
 pub fn extract_qid(s: &str) -> String {
-    // Full URI: http://www.wikidata.org/entity/Q12345
-    if let Some(rest) = s.split("wikidata.org/entity/").last() {
-        let r = rest.trim();
-        if r.starts_with('Q') && r[1..].chars().all(|c| c.is_ascii_digit()) {
-            return r.to_string();
-        }
+    use crate::lotus::models::WIKIDATA_ENTITY_BASE;
+    // The HTTPS form is identical except for the scheme — Wikidata canonical
+    // URIs use `http://`, but some serialisations emit `https://`.
+    const WIKIDATA_ENTITY_BASE_HTTPS: &str = "https://www.wikidata.org/entity/";
+
+    let candidate = s
+        .strip_prefix(WIKIDATA_ENTITY_BASE)
+        .or_else(|| s.strip_prefix(WIKIDATA_ENTITY_BASE_HTTPS))
+        .unwrap_or(s)
+        .trim();
+
+    if candidate.starts_with('Q') && candidate[1..].chars().all(|c| c.is_ascii_digit()) {
+        candidate.to_string()
+    } else {
+        String::new()
     }
-    // Already a bare QID
-    if s.starts_with('Q') && s[1..].chars().all(|c| c.is_ascii_digit()) {
-        return s.to_string();
-    }
-    String::new()
 }
 
 /// Return `Some(s)` only if `s` is non-empty after trimming.

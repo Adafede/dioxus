@@ -12,6 +12,7 @@ pub mod lifecycle;
 pub mod orchestrator;
 pub mod recovery;
 pub mod request;
+pub mod search_metrics;
 pub mod search_state;
 pub mod search_utils;
 pub mod selectors;

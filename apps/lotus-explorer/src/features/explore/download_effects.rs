@@ -11,6 +11,7 @@
 use crate::app_state::MetricsState;
 use crate::download::DownloadFormat;
 use crate::features::explore::search_state::ExploreState;
+#[cfg(target_arch = "wasm32")]
 use crate::models::SearchCriteria;
 
 // ── State Query Helpers ───────────────────────────────────────────────────────
@@ -107,8 +108,11 @@ pub enum DispatchPhase {
     WaitingForQuery { format: DownloadFormat },
     /// All preconditions met — ready to dispatch download.
     Ready {
-        /// Criteria snapshot to embed in download (WASM specific).
-        /// Desktop builds don't need this.
+        /// Criteria snapshot embedded in download metadata.
+        ///
+        /// Only materialised on WASM targets — desktop builds don't embed
+        /// metadata in files so the clone is skipped entirely.
+        #[cfg(target_arch = "wasm32")]
         criteria: SearchCriteria,
         /// Query to pass to download executor.
         query: String,
@@ -141,11 +145,11 @@ pub fn classify_dispatch_phase(
         return DispatchPhase::WaitingForQuery { format: fmt };
     };
 
-    let criteria = explore.ui.executed_criteria.clone();
-    let filename = crate::export::generate_filename(&criteria, fmt.extension());
+    let filename = crate::export::generate_filename(&explore.ui.executed_criteria, fmt.extension());
 
     DispatchPhase::Ready {
-        criteria,
+        #[cfg(target_arch = "wasm32")]
+        criteria: explore.ui.executed_criteria.clone(),
         query,
         filename,
         format: fmt,
@@ -155,6 +159,8 @@ pub fn classify_dispatch_phase(
 #[cfg(test)]
 mod tests {
     use super::*;
+    // SearchCriteria is needed to construct ExploreState fixtures regardless of target.
+    use crate::models::SearchCriteria;
 
     #[test]
     fn should_trigger_startup_search_requires_all_conditions() {
@@ -224,12 +230,14 @@ mod tests {
         let phase = classify_dispatch_phase(Some(DownloadFormat::Json), &explore);
 
         if let DispatchPhase::Ready {
+            #[cfg(target_arch = "wasm32")]
             criteria,
             query,
             format,
             ..
         } = phase
         {
+            #[cfg(target_arch = "wasm32")]
             assert_eq!(criteria.taxon, "Rosa");
             assert!(query.contains("SELECT"));
             assert_eq!(format, DownloadFormat::Json);

@@ -2,8 +2,18 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Export metadata helpers for LOTUS results.
+//!
+//! ## Schema.org
+//!
+//! [`build_metadata_json`] produces a [Schema.org Dataset] JSON-LD document.
+//! Typed structs for each Schema.org class (e.g. [`Organization`],
+//! [`ScholarlyArticle`]) ensure the serialised JSON is structurally correct
+//! without relying on raw `serde_json::Map` mutations.
+//!
+//! [Schema.org Dataset]: https://schema.org/Dataset
 
 use crate::models::{ElementState, SearchCriteria, SmilesSearchType};
+use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 pub const APP_VERSION: &str = "0.1.0";
@@ -178,6 +188,117 @@ pub fn criteria_to_filters_value(criteria: &SearchCriteria) -> Value {
     Value::Object(filters)
 }
 
+// ── Schema.org typed structs ──────────────────────────────────────────────────
+
+/// A Schema.org [`Organization`](https://schema.org/Organization) or
+/// [`DataDownload`](https://schema.org/DataDownload) node serialised in JSON-LD.
+#[derive(Serialize)]
+struct Organization<'a> {
+    #[serde(rename = "@type")]
+    type_: &'a str,
+    name: &'a str,
+    url: &'a str,
+}
+
+/// Schema.org [`SoftwareApplication`](https://schema.org/SoftwareApplication)
+/// used as the dataset `creator`.
+#[derive(Serialize)]
+struct Creator<'a> {
+    #[serde(rename = "@type")]
+    type_: &'a str,
+    name: &'a str,
+    version: &'a str,
+    url: &'a str,
+}
+
+/// Schema.org [`ScholarlyArticle`](https://schema.org/ScholarlyArticle).
+#[derive(Serialize)]
+struct ScholarlyArticle<'a> {
+    #[serde(rename = "@type")]
+    type_: &'a str,
+    name: &'a str,
+    identifier: &'a str,
+    url: &'a str,
+}
+
+/// Schema.org [`DataDownload`](https://schema.org/DataDownload) — one entry
+/// per available serialisation format.
+#[derive(Serialize)]
+struct DataDownload<'a> {
+    #[serde(rename = "@type")]
+    type_: &'a str,
+    #[serde(rename = "encodingFormat")]
+    encoding_format: &'a str,
+    #[serde(rename = "contentUrl")]
+    content_url: &'a str,
+}
+
+/// Metadata about the SACHEM/IDSM chemical-structure search service — only
+/// present when a SMILES query was active.
+#[derive(Serialize)]
+struct ChemicalSearchService<'a> {
+    name: &'a str,
+    provider: &'a str,
+    endpoint: &'a str,
+}
+
+/// Metadata about the SPARQL backend used to run the query.
+#[derive(Serialize)]
+struct SparqlEndpointInfo<'a> {
+    url: &'a str,
+    name: &'a str,
+    description: &'a str,
+}
+
+/// Cryptographic hashes for query reproducibility and result identification.
+#[derive(Serialize)]
+struct Provenance {
+    query_hash: HashInfo,
+    result_hash: HashInfo,
+    dataset_uri: String,
+}
+
+/// A single hash value with its algorithm label.
+#[derive(Serialize)]
+struct HashInfo {
+    algorithm: &'static str,
+    value: String,
+}
+
+/// Top-level [Schema.org Dataset](https://schema.org/Dataset) document.
+///
+/// Fields that are conditionally absent use `#[serde(skip_serializing_if)]`
+/// so they are omitted rather than serialised as `null`.
+#[derive(Serialize)]
+struct DatasetMetadata<'a> {
+    #[serde(rename = "@context")]
+    context: &'a str,
+    #[serde(rename = "@type")]
+    type_: &'a str,
+    name: String,
+    description: String,
+    version: &'a str,
+    #[serde(rename = "dateCreated")]
+    date_created: String,
+    license: &'a str,
+    creator: Creator<'a>,
+    provider: Vec<Organization<'a>>,
+    citation: Vec<ScholarlyArticle<'a>>,
+    distribution: Vec<DataDownload<'a>>,
+    #[serde(rename = "numberOfRecords", skip_serializing_if = "Option::is_none")]
+    number_of_records: Option<usize>,
+    #[serde(rename = "variablesMeasured")]
+    variables_measured: Vec<&'a str>,
+    search_parameters: Value,
+    #[serde(
+        rename = "chemical_search_service",
+        skip_serializing_if = "Option::is_none"
+    )]
+    chemical_search_service: Option<ChemicalSearchService<'a>>,
+    sparql_endpoint: SparqlEndpointInfo<'a>,
+    provenance: Provenance,
+}
+
 // ── Metadata (Schema.org Dataset, JSON-LD) ───────────────────────────────────
 
 pub struct MetadataInputs<'a> {
@@ -224,16 +345,26 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
     };
 
     let mut providers = vec![
-        json!({ "@type": "Organization", "name": "LOTUS Initiative",
-                "url": "https://www.wikidata.org/wiki/Q104225190" }),
-        json!({ "@type": "Organization", "name": "Wikidata",
-                "url": "http://www.wikidata.org/" }),
+        Organization {
+            type_: "Organization",
+            name: "LOTUS Initiative",
+            url: "https://www.wikidata.org/wiki/Q104225190",
+        },
+        Organization {
+            type_: "Organization",
+            name: "Wikidata",
+            url: "http://www.wikidata.org/",
+        },
     ];
     if chem.is_some() {
-        providers.push(json!({ "@type": "Organization", "name": "IDSM",
-                               "url": "https://idsm.elixir-czech.cz/" }));
+        providers.push(Organization {
+            type_: "Organization",
+            name: "IDSM",
+            url: "https://idsm.elixir-czech.cz/",
+        });
     }
 
+    // ── search_parameters (dynamic — built from criteria) ────────────────────
     let mut search_params = Map::new();
     search_params.insert("taxon".into(), Value::String(effective_taxon));
     search_params.insert(
@@ -290,53 +421,52 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
         search_params.insert("filters".into(), filters.clone());
     }
 
-    let mut meta = Map::new();
-    meta.insert(
-        "@context".into(),
-        Value::String("https://schema.org/".into()),
-    );
-    meta.insert("@type".into(), Value::String("Dataset".into()));
-    meta.insert("name".into(), Value::String(dataset_name));
-    meta.insert("description".into(), Value::String(description));
-    meta.insert("version".into(), Value::String(APP_VERSION.into()));
-    meta.insert("dateCreated".into(), Value::String(now_iso8601()));
-    meta.insert(
-        "license".into(),
-        Value::String("https://creativecommons.org/publicdomain/zero/1.0/".into()),
-    );
-    meta.insert(
-        "creator".into(),
-        json!({
-            "@type": "SoftwareApplication",
-            "name": APP_NAME,
-            "version": APP_VERSION,
-            "url": APP_URL,
-        }),
-    );
-    meta.insert("provider".into(), Value::Array(providers));
-    meta.insert(
-        "citation".into(),
-        json!([{
-            "@type": "ScholarlyArticle",
-            "name": "The LOTUS initiative for open knowledge management in natural products research",
-            "identifier": "https://doi.org/10.7554/eLife.70780",
-            "url": "https://doi.org/10.7554/eLife.70780",
-        }]),
-    );
-    meta.insert(
-        "distribution".into(),
-        json!([
-            { "@type": "DataDownload", "encodingFormat": "text/csv",         "contentUrl": "data:text/csv" },
-            { "@type": "DataDownload", "encodingFormat": "application/sparql-results+json", "contentUrl": "data:application/sparql-results+json" },
-            { "@type": "DataDownload", "encodingFormat": "text/turtle",      "contentUrl": "data:text/turtle" },
-        ]),
-    );
-    if let Some(n_records) = inp.number_of_records_override {
-        meta.insert("numberOfRecords".into(), Value::Number(n_records.into()));
-    }
-    meta.insert(
-        "variablesMeasured".into(),
-        json!([
+    let chemical_search_service = chem.is_some().then_some(ChemicalSearchService {
+        name: "SACHEM",
+        provider: "IDSM",
+        endpoint: "https://idsm.elixir-czech.cz/sparql/endpoint/",
+    });
+
+    let dataset = DatasetMetadata {
+        context: "https://schema.org/",
+        type_: "Dataset",
+        name: dataset_name,
+        description,
+        version: APP_VERSION,
+        date_created: now_iso8601(),
+        license: "https://creativecommons.org/publicdomain/zero/1.0/",
+        creator: Creator {
+            type_: "SoftwareApplication",
+            name: APP_NAME,
+            version: APP_VERSION,
+            url: APP_URL,
+        },
+        provider: providers,
+        citation: vec![ScholarlyArticle {
+            type_: "ScholarlyArticle",
+            name: "The LOTUS initiative for open knowledge management in natural products research",
+            identifier: "https://doi.org/10.7554/eLife.70780",
+            url: "https://doi.org/10.7554/eLife.70780",
+        }],
+        distribution: vec![
+            DataDownload {
+                type_: "DataDownload",
+                encoding_format: "text/csv",
+                content_url: "data:text/csv",
+            },
+            DataDownload {
+                type_: "DataDownload",
+                encoding_format: "application/sparql-results+json",
+                content_url: "data:application/sparql-results+json",
+            },
+            DataDownload {
+                type_: "DataDownload",
+                encoding_format: "text/turtle",
+                content_url: "data:text/turtle",
+            },
+        ],
+        number_of_records: inp.number_of_records_override,
+        variables_measured: vec![
             "compound_name",
             "compound_smiles",
             "compound_inchikey",
@@ -349,37 +479,28 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
             "compound_qid",
             "taxon_qid",
             "reference_qid",
-        ]),
-    );
-    meta.insert("search_parameters".into(), Value::Object(search_params));
-    if chem.is_some() {
-        meta.insert(
-            "chemical_search_service".into(),
-            json!({
-                "name": "SACHEM",
-                "provider": "IDSM",
-                "endpoint": "https://idsm.elixir-czech.cz/sparql/endpoint/",
-            }),
-        );
-    }
-    meta.insert(
-        "sparql_endpoint".into(),
-        json!({
-            "url": QLEVER_ENDPOINT,
-            "name": "QLever Wikidata",
-            "description": "Fast SPARQL endpoint for Wikidata",
-        }),
-    );
-    meta.insert(
-        "provenance".into(),
-        json!({
-            "query_hash":  { "algorithm": "SHA-256", "value": inp.query_hash },
-            "result_hash": { "algorithm": "SHA-256", "value": inp.result_hash },
-            "dataset_uri": format!("urn:hash:sha256:{}", inp.result_hash),
-        }),
-    );
+        ],
+        search_parameters: Value::Object(search_params),
+        chemical_search_service,
+        sparql_endpoint: SparqlEndpointInfo {
+            url: QLEVER_ENDPOINT,
+            name: "QLever Wikidata",
+            description: "Fast SPARQL endpoint for Wikidata",
+        },
+        provenance: Provenance {
+            query_hash: HashInfo {
+                algorithm: "SHA-256",
+                value: inp.query_hash.to_string(),
+            },
+            result_hash: HashInfo {
+                algorithm: "SHA-256",
+                value: inp.result_hash.to_string(),
+            },
+            dataset_uri: format!("urn:hash:sha256:{}", inp.result_hash),
+        },
+    };
 
-    serde_json::to_string_pretty(&Value::Object(meta)).unwrap_or_default()
+    serde_json::to_string_pretty(&dataset).unwrap_or_default()
 }
 
 fn title_case(s: &str) -> String {

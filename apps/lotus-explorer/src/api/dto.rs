@@ -6,9 +6,8 @@ use crate::{
     queries,
 };
 use serde::{Deserialize, Serialize};
+use shared::lotus::models::WIKIDATA_STATEMENT_BASE;
 use std::sync::Arc;
-
-const WIKIDATA_STATEMENT_PREFIX: &str = "http://www.wikidata.org/entity/statement/";
 
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -132,7 +131,7 @@ fn normalize_statement(value: Option<String>) -> Option<String> {
     }
     Some(
         trimmed
-            .strip_prefix(WIKIDATA_STATEMENT_PREFIX)
+            .strip_prefix(WIKIDATA_STATEMENT_BASE)
             .unwrap_or(trimmed)
             .to_string(),
     )

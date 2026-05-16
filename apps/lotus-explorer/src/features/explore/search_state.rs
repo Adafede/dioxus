@@ -7,11 +7,13 @@
 //! `use_memo`-based selectors (see [`super::selectors`]) can provide
 //! narrow reactive subscriptions.  Only the coarsest component
 //! subscriptions need to observe the whole state.
+//!
+//! Execution-time metrics ([`super::search_metrics::SearchMetrics`]) live in
+//! their own module and are not part of persistent application state.
 
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
 use crate::models::{CompoundEntry, DatasetStats, Rows, SearchCriteria, SortDir, SortState};
-use crate::services::search_telemetry as telemetry;
 use dioxus::prelude::*;
 use std::sync::Arc;
 
@@ -189,47 +191,6 @@ pub fn dispatch_explore_action(mut state: Signal<ExploreState>, action: ExploreA
     let next = reduce(state.peek().clone(), action);
     if *state.peek() != next {
         *state.write() = next;
-    }
-}
-
-// ── Metrics ───────────────────────────────────────────────────────────────────
-
-/// Searches taking longer than this threshold are flagged as slow queries.
-const SLOW_QUERY_THRESHOLD_MS: f64 = 5_000.0;
-
-#[derive(Default, Clone, Copy)]
-pub struct SearchMetrics {
-    pub network_ms: f64,
-    pub parse_ms: f64,
-    pub sparql_calls: usize,
-}
-
-impl SearchMetrics {
-    pub fn add_network(&mut self, elapsed: std::time::Duration) {
-        self.network_ms += elapsed.as_secs_f64() * 1000.0;
-        self.sparql_calls += 1;
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub fn add_parallel_network(&mut self, elapsed: std::time::Duration, calls: usize) {
-        self.network_ms += elapsed.as_secs_f64() * 1000.0;
-        self.sparql_calls += calls;
-    }
-
-    pub fn add_parse(&mut self, elapsed: std::time::Duration) {
-        self.parse_ms += elapsed.as_secs_f64() * 1000.0;
-    }
-}
-
-pub fn emit_search_summary(total_elapsed: std::time::Duration, metrics: SearchMetrics) {
-    let total_ms = total_elapsed.as_secs_f64() * 1000.0;
-    let details = format!(
-        "total_ms={total_ms:.1} network_ms={:.1} parse_ms={:.1} sparql_calls={}",
-        metrics.network_ms, metrics.parse_ms, metrics.sparql_calls
-    );
-    telemetry::search_summary_done(&details);
-    if total_ms >= SLOW_QUERY_THRESHOLD_MS {
-        telemetry::search_summary_slow_query(&details);
     }
 }
 

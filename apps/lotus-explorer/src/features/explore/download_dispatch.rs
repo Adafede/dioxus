@@ -133,7 +133,7 @@ pub fn use_download_dispatch_effect(
                 query,
                 filename,
                 format,
-                #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+                #[cfg(target_arch = "wasm32")]
                 criteria,
             } => {
                 // All preconditions met — clear pending download and start dispatch.
