@@ -14,6 +14,15 @@ pub fn err_invalid_search_input(locale: Locale) -> String {
     }
 }
 
+pub fn err_api_not_configured(locale: Locale) -> String {
+    match locale {
+        Locale::En => "LOTUS API is not configured.".to_string(),
+        Locale::Fr => "L'API LOTUS n'est pas configurée.".to_string(),
+        Locale::De => "Die LOTUS-API ist nicht konfiguriert.".to_string(),
+        Locale::It => "L'API LOTUS non è configurata.".to_string(),
+    }
+}
+
 pub fn err_taxon_too_long(locale: Locale) -> String {
     match locale {
         Locale::En => "Taxon input is too long. Please keep it under 500 characters.".to_string(),

@@ -9,9 +9,9 @@ use crate::features::explore::types::{
 #[cfg(target_arch = "wasm32")]
 use crate::i18n::error_hint_memory;
 use crate::i18n::{
-    Locale, TextKey, err_element_count_too_high, err_invalid_search_input, err_mass_out_of_range,
-    err_mass_range_invalid, err_query_stage_failed, err_structure_too_long, err_taxon_not_found,
-    err_taxon_parse_failed, err_taxon_resolution_failed, err_taxon_too_long,
+    Locale, TextKey, err_api_not_configured, err_element_count_too_high, err_invalid_search_input,
+    err_mass_out_of_range, err_mass_range_invalid, err_query_stage_failed, err_structure_too_long,
+    err_taxon_not_found, err_taxon_parse_failed, err_taxon_resolution_failed, err_taxon_too_long,
     err_unsupported_format, err_year_out_of_range, err_year_range_invalid, t, warn_ambiguous_taxon,
     warn_input_standardized,
 };
@@ -54,7 +54,7 @@ pub fn error_hint_text(locale: Locale, kind: ErrorKind) -> &'static str {
 }
 
 fn format_transport_fault(locale: Locale, stage: QueryStage, source: &RepositoryError) -> String {
-    let detail = transport_error_summary(source);
+    let detail = transport_error_summary(locale, source);
     let stage_label = stage_display_label(locale, stage);
     err_query_stage_failed(locale, stage_label, &detail)
 }
@@ -70,9 +70,9 @@ fn stage_display_label(locale: Locale, stage: QueryStage) -> &'static str {
     }
 }
 
-fn transport_error_summary(source: &RepositoryError) -> String {
+fn transport_error_summary(locale: Locale, source: &RepositoryError) -> String {
     let raw = match source {
-        RepositoryError::NotConfigured => return "LOTUS API not configured".to_string(),
+        RepositoryError::NotConfigured => return err_api_not_configured(locale),
         RepositoryError::Network(detail) => detail.as_str(),
         RepositoryError::Parse(detail) => detail.as_str(),
         RepositoryError::Http { status, body } => {
@@ -163,9 +163,17 @@ mod tests {
     #[test]
     fn transport_error_summary_truncates_long_network_message() {
         let long = "x".repeat(400);
-        let summary = transport_error_summary(&RepositoryError::network(long));
+        let summary = transport_error_summary(Locale::En, &RepositoryError::network(long));
         assert!(summary.chars().count() <= 221);
         assert!(summary.ends_with('…'));
+    }
+
+    #[test]
+    fn transport_error_summary_localizes_not_configured() {
+        let en = transport_error_summary(Locale::En, &RepositoryError::NotConfigured);
+        let fr = transport_error_summary(Locale::Fr, &RepositoryError::NotConfigured);
+        assert!(en.contains("configured"));
+        assert!(fr.contains("configurée"));
     }
 
     #[test]

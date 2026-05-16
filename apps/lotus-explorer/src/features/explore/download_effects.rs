@@ -31,25 +31,6 @@ pub fn should_trigger_startup_search(
     (pending_format.is_some() || direct_execute) && !searched_once && !loading
 }
 
-/// Check if download dispatch effect should wait for loading to complete.
-///
-/// When download is pending and results are still loading, the dispatch effect
-/// must wait.  This prevents race conditions where results are not yet available.
-#[must_use]
-#[allow(dead_code)] // Available for future loading-wait orchestration
-pub fn is_waiting_for_loading(loading: bool) -> bool {
-    loading
-}
-
-/// Check if download dispatch effect should wait for SPARQL query to materialize.
-///
-/// After loading completes, the query must exist in state before download can proceed.
-#[must_use]
-#[allow(dead_code)] // Available for future query-wait orchestration
-pub fn is_waiting_for_query(query: Option<&str>) -> bool {
-    query.is_none()
-}
-
 // ── Telemetry Helpers ─────────────────────────────────────────────────────────
 
 /// Determine telemetry call for startup trigger based on mode.
@@ -196,19 +177,6 @@ mod tests {
             false,
             true
         )); // already loading
-    }
-
-    #[test]
-    fn is_waiting_for_loading_simple_flag_check() {
-        assert!(is_waiting_for_loading(true));
-        assert!(!is_waiting_for_loading(false));
-    }
-
-    #[test]
-    fn is_waiting_for_query_checks_presence() {
-        assert!(!is_waiting_for_query(Some("SELECT * WHERE"))); // query exists
-        assert!(is_waiting_for_query(None));
-        assert!(!is_waiting_for_query(Some(""))); // empty string is still "present"
     }
 
     #[test]
