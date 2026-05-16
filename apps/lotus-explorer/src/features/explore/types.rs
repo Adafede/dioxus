@@ -103,8 +103,6 @@ pub enum ValidationFault {
     YearRangeInvalid,
     #[error("element count is too high")]
     ElementCountTooHigh,
-    #[error("invalid filter combination")]
-    InvalidFilters,
     #[error("taxon not found: {input}")]
     TaxonNotFound { input: String },
     #[allow(dead_code)]

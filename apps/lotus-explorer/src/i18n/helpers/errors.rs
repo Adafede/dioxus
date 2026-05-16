@@ -89,15 +89,6 @@ pub fn err_element_count_too_high(locale: Locale) -> String {
     }
 }
 
-pub fn err_invalid_filters(locale: Locale) -> String {
-    match locale {
-        Locale::En => "One or more filters are invalid.".to_string(),
-        Locale::Fr => "Un ou plusieurs filtres sont invalides.".to_string(),
-        Locale::De => "Ein oder mehrere Filter sind ungültig.".to_string(),
-        Locale::It => "Uno o più filtri non sono validi.".to_string(),
-    }
-}
-
 pub fn err_unsupported_format(locale: Locale, fmt: &str) -> String {
     match locale {
         Locale::En => format!("Unsupported format '{fmt}'. Use csv, json, or rdf."),

@@ -21,33 +21,57 @@ use crate::models::SearchCriteria;
 #[allow(dead_code)] // Public API for future form validation wiring
 pub type ValidationResult<T> = Result<T, ValidationError>;
 
+/// Strongly-typed validation code used for fault mapping and UI error routing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ValidationCode {
+    TaxonTooLong,
+    StructureTooLong,
+    MassOutOfRange,
+    MinGreaterThanMax,
+    YearOutOfRange,
+    YearRangeInvalid,
+    ElementCountHighWarning,
+    MassRangeInvalid,
+}
+
+/// Strongly-typed field identifier for validation targeting in UI forms.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ValidationField {
+    Taxon,
+    Smiles,
+    Mass,
+    Year,
+    Formula,
+}
+
 /// A validation error with localization context.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[allow(dead_code)] // Members accessed via public API in future phases
 pub struct ValidationError {
     /// Field name for error targeting.
-    pub field: &'static str,
-    /// Message key for i18n lookup.
-    pub message_key: &'static str,
+    pub field: ValidationField,
+    /// Typed validation code (stable contract for domain fault mapping).
+    pub code: ValidationCode,
 }
 
 impl ValidationError {
     #[allow(dead_code)]
-    pub fn new(field: &'static str, message_key: &'static str) -> Self {
-        Self { field, message_key }
+    pub fn new(field: ValidationField, code: ValidationCode) -> Self {
+        Self { field, code }
     }
 }
 
 fn validation_fault_from_error(error: &ValidationError) -> ValidationFault {
-    match error.message_key {
-        "TaxonTooLong" => ValidationFault::TaxonTooLong,
-        "StructureTooLong" => ValidationFault::StructureTooLong,
-        "MassOutOfRange" => ValidationFault::MassOutOfRange,
-        "MinGreaterThanMax" | "MassRangeInvalid" => ValidationFault::MassRangeInvalid,
-        "YearOutOfRange" => ValidationFault::YearOutOfRange,
-        "YearRangeInvalid" => ValidationFault::YearRangeInvalid,
-        "ElementCountHighWarning" => ValidationFault::ElementCountTooHigh,
-        _ => ValidationFault::InvalidFilters,
+    match error.code {
+        ValidationCode::TaxonTooLong => ValidationFault::TaxonTooLong,
+        ValidationCode::StructureTooLong => ValidationFault::StructureTooLong,
+        ValidationCode::MassOutOfRange => ValidationFault::MassOutOfRange,
+        ValidationCode::MinGreaterThanMax | ValidationCode::MassRangeInvalid => {
+            ValidationFault::MassRangeInvalid
+        }
+        ValidationCode::YearOutOfRange => ValidationFault::YearOutOfRange,
+        ValidationCode::YearRangeInvalid => ValidationFault::YearRangeInvalid,
+        ValidationCode::ElementCountHighWarning => ValidationFault::ElementCountTooHigh,
     }
 }
 
@@ -63,7 +87,10 @@ pub fn validate_taxon(input: &str) -> ValidationResult<()> {
     }
 
     if trimmed.len() > 500 {
-        return Err(ValidationError::new("taxon", "TaxonTooLong"));
+        return Err(ValidationError::new(
+            ValidationField::Taxon,
+            ValidationCode::TaxonTooLong,
+        ));
     }
 
     Ok(())
@@ -77,7 +104,10 @@ pub fn validate_smiles(input: &str) -> ValidationResult<()> {
     }
 
     if input.len() > 10_000 {
-        return Err(ValidationError::new("smiles", "StructureTooLong"));
+        return Err(ValidationError::new(
+            ValidationField::Smiles,
+            ValidationCode::StructureTooLong,
+        ));
     }
 
     Ok(())
@@ -89,11 +119,17 @@ pub fn validate_mass(value: f64, min_max: (f64, f64)) -> ValidationResult<()> {
     let (min, max) = min_max;
 
     if !(0.0..=10_000.0).contains(&value) {
-        return Err(ValidationError::new("mass", "MassOutOfRange"));
+        return Err(ValidationError::new(
+            ValidationField::Mass,
+            ValidationCode::MassOutOfRange,
+        ));
     }
 
     if min > max {
-        return Err(ValidationError::new("mass", "MinGreaterThanMax"));
+        return Err(ValidationError::new(
+            ValidationField::Mass,
+            ValidationCode::MinGreaterThanMax,
+        ));
     }
 
     Ok(())
@@ -106,7 +142,10 @@ pub fn validate_year(value: u16) -> ValidationResult<()> {
     let current_year = crate::models::current_year();
 
     if !(MIN_YEAR..=current_year).contains(&value) {
-        return Err(ValidationError::new("year", "YearOutOfRange"));
+        return Err(ValidationError::new(
+            ValidationField::Year,
+            ValidationCode::YearOutOfRange,
+        ));
     }
 
     Ok(())
@@ -119,7 +158,10 @@ pub fn validate_year_range(min: u16, max: u16) -> ValidationResult<()> {
     validate_year(max)?;
 
     if min > max {
-        return Err(ValidationError::new("year", "YearRangeInvalid"));
+        return Err(ValidationError::new(
+            ValidationField::Year,
+            ValidationCode::YearRangeInvalid,
+        ));
     }
 
     Ok(())
@@ -129,7 +171,10 @@ pub fn validate_year_range(min: u16, max: u16) -> ValidationResult<()> {
 #[allow(dead_code)]
 pub fn validate_element_count(value: u16) -> ValidationResult<()> {
     if value > 1000 {
-        return Err(ValidationError::new("formula", "ElementCountHighWarning"));
+        return Err(ValidationError::new(
+            ValidationField::Formula,
+            ValidationCode::ElementCountHighWarning,
+        ));
     }
 
     Ok(())
@@ -177,7 +222,10 @@ pub fn validate_mass_range(min: f64, max: f64) -> ValidationResult<()> {
     validate_mass(max, (min, max))?;
 
     if min > max {
-        return Err(ValidationError::new("mass", "MassRangeInvalid"));
+        return Err(ValidationError::new(
+            ValidationField::Mass,
+            ValidationCode::MassRangeInvalid,
+        ));
     }
 
     Ok(())
@@ -323,5 +371,20 @@ mod tests {
             validate_dispatch_criteria(&criteria),
             Err(ValidationFault::YearRangeInvalid)
         );
+    }
+
+    #[test]
+    fn validation_error_uses_typed_field_for_taxon() {
+        let long = "x".repeat(501);
+        let err = validate_taxon(&long).expect_err("expected taxon length error");
+        assert_eq!(err.field, ValidationField::Taxon);
+        assert_eq!(err.code, ValidationCode::TaxonTooLong);
+    }
+
+    #[test]
+    fn validation_error_uses_typed_field_for_mass() {
+        let err = validate_mass(-1.0, (-1.0, 100.0)).expect_err("expected mass range error");
+        assert_eq!(err.field, ValidationField::Mass);
+        assert_eq!(err.code, ValidationCode::MassOutOfRange);
     }
 }
