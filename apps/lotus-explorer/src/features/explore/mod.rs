@@ -5,6 +5,7 @@ pub mod actions;
 pub mod command;
 pub mod download_dispatch;
 pub mod form_actions;
+pub mod lifecycle;
 pub mod orchestrator;
 pub mod request;
 pub mod search_state;

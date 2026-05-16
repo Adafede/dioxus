@@ -9,6 +9,7 @@
 
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::command::SearchCommand;
+use crate::features::explore::lifecycle::SearchLifecycleCoordinator;
 use crate::features::explore::request::SearchRequest;
 use crate::features::explore::search_state::{
     ExploreState, SearchMetrics, dispatch_explore_action, emit_search_summary,
@@ -209,46 +210,6 @@ fn validate_search_criteria(criteria: &SearchCriteria) -> Result<(), DomainError
     Ok(())
 }
 
-#[derive(Clone, Copy)]
-struct SearchLifecycleCoordinator {
-    explore: Signal<ExploreState>,
-}
-
-impl SearchLifecycleCoordinator {
-    fn new(explore: Signal<ExploreState>) -> Self {
-        Self { explore }
-    }
-
-    fn is_stale_request(&self, request: &SearchRequest) -> bool {
-        request.request_token() != self.explore.peek().lifecycle.search_request_token
-    }
-
-    fn on_phase(&self, phase: QueryPhase) {
-        dispatch_explore_action(self.explore, ExploreAction::SearchPhaseChanged(phase));
-    }
-
-    fn on_success(&self, request: &SearchRequest, outcome: SearchOutcome) {
-        if self.is_stale_request(request) {
-            telemetry::stale_result_ignored(request.request_token());
-            return;
-        }
-
-        self.on_phase(QueryPhase::Rendering);
-        dispatch_explore_action(
-            self.explore,
-            build_search_succeeded_action(request, outcome),
-        );
-    }
-
-    fn on_error(&self, request: &SearchRequest, error: DomainError) {
-        if self.is_stale_request(request) {
-            telemetry::stale_error_ignored(request.request_token());
-            return;
-        }
-        dispatch_explore_action(self.explore, ExploreAction::SearchFailed { error });
-    }
-}
-
 fn build_search_succeeded_action(request: &SearchRequest, outcome: SearchOutcome) -> ExploreAction {
     let SearchOutcome {
         rows,
@@ -303,7 +264,9 @@ pub fn start_search<R: LotusRepository>(
 
     let task = spawn(async move {
         match do_search(&request, repo.clone(), |phase| coordinator.on_phase(phase)).await {
-            Ok(outcome) => coordinator.on_success(&request, outcome),
+            Ok(outcome) => {
+                coordinator.on_success(&request, build_search_succeeded_action(&request, outcome))
+            }
             Err(e) => coordinator.on_error(&request, e),
         }
     });
