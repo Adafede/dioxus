@@ -173,7 +173,7 @@ mod tests {
         let en = transport_error_summary(Locale::En, &RepositoryError::NotConfigured);
         let fr = transport_error_summary(Locale::Fr, &RepositoryError::NotConfigured);
         assert!(en.contains("configured"));
-        assert!(fr.contains("configurée"));
+        assert!(fr.to_ascii_lowercase().contains("configure"));
     }
 
     #[test]

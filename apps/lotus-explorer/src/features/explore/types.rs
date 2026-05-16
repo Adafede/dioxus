@@ -105,6 +105,9 @@ pub enum ValidationFault {
     ElementCountTooHigh,
     #[error("taxon not found: {input}")]
     TaxonNotFound { input: String },
+    /// This variant is only used during non-wasm fallback flows.
+    /// On wasm, taxon resolution is handled differently, but we keep this
+    /// variant for API compatibility and to support test scenarios.
     #[allow(dead_code)]
     #[error("taxon resolution produced no candidates")]
     TaxonResolutionNoMatch,
@@ -113,7 +116,10 @@ pub enum ValidationFault {
 }
 
 /// Fine-grained CSV / data parse fault.
-// Some variants are only reachable on non-wasm targets (e.g. FallbackCsv).
+///
+/// Some variants (like `FallbackCsv`) are reachable only on non-wasm targets or
+/// during fallback recovery paths. All are included for comprehensive error
+/// reporting and test scenario coverage.
 #[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Error)]
 pub enum ParseFault {
@@ -155,7 +161,10 @@ pub enum DomainError {
 
 impl DomainError {
     /// Construct a transport error for the given query stage and repository source.
-    #[allow(dead_code)] // used in unit tests via `#[cfg(test)]`
+    ///
+    /// This function is primarily used in unit tests and benchmarks to construct
+    /// error scenarios for testing error handling and propagation logic.
+    #[allow(dead_code)] // Used in unit tests and test utilities
     pub fn transport(stage: QueryStage, source: crate::repositories::RepositoryError) -> Self {
         Self::Transport { stage, source }
     }

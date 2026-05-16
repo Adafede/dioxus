@@ -7,11 +7,15 @@
 //! localized labels. It is easy to extend without introducing a full
 //! translation framework.
 //!
+//! Two main systems:
+//! - [`TextKey`] — Enumerated UI labels (returns `&'static str`)
+//! - [`error_key::ErrorKey`] — Localized error messages (returns `String`)
+//!
 //! Translation tables live in per-locale submodules:
 //! - [`en`] — English
-//! - [`fr`] — French
-//! - [`de`] — German
-//! - [`it`] — Italian
+//! - [`fr`] — French (with accents)
+//! - [`de`] — German (with umlauts)
+//! - [`it`] — Italian (with accents)
 
 mod curation;
 pub use curation::*;
@@ -243,6 +247,8 @@ mod helpers;
 
 pub use helpers::*;
 
+pub mod error_key;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -284,5 +290,28 @@ mod tests {
         assert_eq!(format_count(Locale::De, 1_234_567), "1.234.567");
         assert_eq!(format_count(Locale::It, 1_234_567), "1.234.567");
         assert_eq!(format_count(Locale::En, 42), "42");
+    }
+
+    #[test]
+    fn error_key_messages_exist_for_all_locales() {
+        let keys = [
+            error_key::ErrorKey::InvalidSearchInput,
+            error_key::ErrorKey::TaxonTooLong,
+            error_key::ErrorKey::StructureTooLong,
+            error_key::ErrorKey::MassOutOfRange,
+            error_key::ErrorKey::TaxonNotFound,
+        ];
+
+        for key in &keys {
+            for locale in &[Locale::En, Locale::Fr, Locale::De, Locale::It] {
+                let msg = error_key::err(*locale, *key);
+                assert!(
+                    !msg.is_empty(),
+                    "Error message for {:?} in {:?} should not be empty",
+                    key,
+                    locale
+                );
+            }
+        }
     }
 }
