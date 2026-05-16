@@ -2,7 +2,9 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::features::curation::domain;
-use crate::features::curation::services::wikidata::resolve_taxon_qids_batch;
+use crate::features::curation::services::wikidata::{
+    resolve_reference_qids_batch, resolve_taxon_qids_batch,
+};
 use crate::features::curation::services::{curate_single_row, inputs, pipeline};
 #[cfg(test)]
 use crate::features::curation::services::{
@@ -10,7 +12,7 @@ use crate::features::curation::services::{
     qs_mass_statement,
 };
 use crate::i18n::Locale;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub use domain::{
     CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
@@ -45,13 +47,27 @@ pub async fn curate_rows(
     let prefetched_taxa = Arc::new(
         resolve_taxon_qids_batch(rows.iter().filter_map(|row| row.taxon.as_deref())).await?,
     );
+    let prefetched_references = Arc::new(
+        resolve_reference_qids_batch(rows.iter().filter_map(|row| row.doi.as_deref())).await?,
+    );
+    let occurrence_ask_cache = Arc::new(Mutex::new(Default::default()));
 
     pipeline::curate_rows(
         locale,
         rows,
         {
             let prefetched_taxa = Arc::clone(&prefetched_taxa);
-            move |locale, row| curate_single_row(locale, row, Arc::clone(&prefetched_taxa))
+            let prefetched_references = Arc::clone(&prefetched_references);
+            let occurrence_ask_cache = Arc::clone(&occurrence_ask_cache);
+            move |locale, row| {
+                curate_single_row(
+                    locale,
+                    row,
+                    Arc::clone(&prefetched_taxa),
+                    Arc::clone(&prefetched_references),
+                    Arc::clone(&occurrence_ask_cache),
+                )
+            }
         },
         row_uniqueness_key,
     )

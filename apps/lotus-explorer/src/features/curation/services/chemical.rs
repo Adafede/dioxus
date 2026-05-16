@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::*;
+use futures::try_join;
 
 #[derive(Debug, Deserialize)]
 pub(super) struct ConvertFormatsResponse {
@@ -21,45 +22,41 @@ struct RdkitConvertResponse {
 }
 
 pub(super) async fn convert_smiles(smiles: &str) -> Result<ConvertFormatsResponse, CurationError> {
-    let canonicalsmiles = convert_with_batch(smiles, "canonicalsmiles").await?;
-    let isomeric_smiles = convert_with_batch(smiles, "isomericsmiles").await?;
-    let inchi = convert_with_batch(smiles, "inchi").await?;
-    let inchikey = convert_with_batch(smiles, "inchikey").await?;
-    Ok(ConvertFormatsResponse {
-        canonical_smiles: canonicalsmiles,
-        isomeric_smiles,
-        inchi,
-        inchikey,
-    })
-}
-
-async fn convert_with_batch(smiles: &str, output_format: &str) -> Result<String, CurationError> {
     #[cfg(target_arch = "wasm32")]
     {
-        return convert_with_rdkit(smiles, output_format).await;
+        return convert_with_rdkit(smiles).await;
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        return convert_with_batch_direct(smiles, output_format).await;
+        let (canonical_smiles, isomeric_smiles, inchi, inchikey) = try_join!(
+            convert_with_batch_direct(smiles, "canonicalsmiles"),
+            convert_with_batch_direct(smiles, "isomericsmiles"),
+            convert_with_batch_direct(smiles, "inchi"),
+            convert_with_batch_direct(smiles, "inchikey"),
+        )?;
+
+        Ok(ConvertFormatsResponse {
+            canonical_smiles,
+            isomeric_smiles,
+            inchi,
+            inchikey,
+        })
     }
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn convert_with_rdkit(smiles: &str, output_format: &str) -> Result<String, CurationError> {
+async fn convert_with_rdkit(smiles: &str) -> Result<ConvertFormatsResponse, CurationError> {
     let value = rdkit_bridge_call("convert", smiles.trim()).await?;
     let parsed = js_value_to_json(value)?;
     let converted = serde_json::from_value::<RdkitConvertResponse>(parsed)
         .map_err(|e| CurationError::Parse(format!("rdkit.js convert parse error: {e}")))?;
-    match output_format {
-        "canonicalsmiles" => Ok(converted.canonicalsmiles),
-        "isomericsmiles" => Ok(converted.isomericsmiles),
-        "inchi" => Ok(converted.inchi),
-        "inchikey" => Ok(converted.inchikey),
-        _ => Err(CurationError::InvalidInput(format!(
-            "unsupported conversion format: {output_format}"
-        ))),
-    }
+    Ok(ConvertFormatsResponse {
+        canonical_smiles: converted.canonicalsmiles,
+        isomeric_smiles: converted.isomericsmiles,
+        inchi: converted.inchi,
+        inchikey: converted.inchikey,
+    })
 }
 
 #[cfg(not(target_arch = "wasm32"))]

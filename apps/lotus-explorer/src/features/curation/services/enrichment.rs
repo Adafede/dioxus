@@ -3,14 +3,95 @@
 
 use super::*;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum AskCacheKey {
+    Taxon {
+        compound_qid: String,
+        taxon_qid: String,
+    },
+    TaxonWithRef {
+        compound_qid: String,
+        taxon_qid: String,
+        ref_qid: String,
+    },
+}
+
+#[derive(Default)]
+pub(crate) struct OccurrenceAskCache {
+    values: HashMap<AskCacheKey, bool>,
+}
+
+fn read_cached_ask(cache: &Mutex<OccurrenceAskCache>, key: &AskCacheKey) -> Option<bool> {
+    cache
+        .lock()
+        .ok()
+        .and_then(|guard| guard.values.get(key).copied())
+}
+
+fn write_cached_ask(cache: &Mutex<OccurrenceAskCache>, key: AskCacheKey, value: bool) {
+    if let Ok(mut guard) = cache.lock() {
+        guard.values.insert(key, value);
+    }
+}
+
+async fn compound_has_taxon_cached(
+    cache: &Mutex<OccurrenceAskCache>,
+    compound_qid: &str,
+    taxon_qid: &str,
+) -> Result<bool, CurationError> {
+    let key = AskCacheKey::Taxon {
+        compound_qid: compound_qid.to_string(),
+        taxon_qid: taxon_qid.to_string(),
+    };
+
+    if let Some(cached) = read_cached_ask(cache, &key) {
+        return Ok(cached);
+    }
+
+    let value = compound_has_taxon(compound_qid, taxon_qid).await?;
+    write_cached_ask(cache, key, value);
+    Ok(value)
+}
+
+async fn compound_has_taxon_with_ref_cached(
+    cache: &Mutex<OccurrenceAskCache>,
+    compound_qid: &str,
+    taxon_qid: &str,
+    ref_qid: &str,
+) -> Result<bool, CurationError> {
+    let key = AskCacheKey::TaxonWithRef {
+        compound_qid: compound_qid.to_string(),
+        taxon_qid: taxon_qid.to_string(),
+        ref_qid: ref_qid.to_string(),
+    };
+
+    if let Some(cached) = read_cached_ask(cache, &key) {
+        return Ok(cached);
+    }
+
+    let value = compound_has_taxon_with_ref(compound_qid, taxon_qid, ref_qid).await?;
+    write_cached_ask(cache, key, value);
+    Ok(value)
+}
 
 pub(crate) async fn curate_single_row(
     locale: Locale,
     input: CurationInputRow,
     prefetched_taxa: Arc<HashMap<String, String>>,
+    prefetched_references: Arc<HashMap<String, String>>,
+    occurrence_ask_cache: Arc<Mutex<OccurrenceAskCache>>,
 ) -> CurationResultRow {
-    match enrich_and_generate(locale, &input, prefetched_taxa.as_ref()).await {
+    match enrich_and_generate(
+        locale,
+        &input,
+        prefetched_taxa.as_ref(),
+        prefetched_references.as_ref(),
+        occurrence_ask_cache.as_ref(),
+    )
+    .await
+    {
         Ok(result) => result,
         Err(err) => CurationResultRow {
             input,
@@ -33,10 +114,10 @@ async fn enrich_and_generate(
     locale: Locale,
     input: &CurationInputRow,
     prefetched_taxa: &HashMap<String, String>,
+    prefetched_references: &HashMap<String, String>,
+    occurrence_ask_cache: &Mutex<OccurrenceAskCache>,
 ) -> Result<CurationResultRow, CurationError> {
     let converted = convert_smiles(&input.smiles).await?;
-    let mass_resolution = resolve_exact_mass(&input.smiles, &converted.canonical_smiles).await;
-    let exact_mass = mass_resolution.exact_mass;
     let formula_from_inchi =
         extract_formula_from_inchi(&converted.inchi).map(|f| normalize_formula_for_wikidata(&f));
     let normalized_doi = input.doi.as_deref().and_then(normalize_doi);
@@ -44,6 +125,16 @@ async fn enrich_and_generate(
 
     let result = match wd_compound {
         Some(existing) => {
+            let mass_resolution = if existing.mass.is_none() {
+                resolve_exact_mass(&input.smiles, &converted.canonical_smiles).await
+            } else {
+                MassResolution {
+                    exact_mass: None,
+                    warning: None,
+                }
+            };
+            let exact_mass = mass_resolution.exact_mass;
+
             let mut lines: Vec<String> = Vec::new();
             let mut changes = 0usize;
             let mut status = CurationStatus::ExistingComplete;
@@ -90,9 +181,14 @@ async fn enrich_and_generate(
                 changes += 1;
             }
 
-            let dependencies =
-                resolve_row_dependencies(locale, input, normalized_doi.as_deref(), prefetched_taxa)
-                    .await?;
+            let dependencies = resolve_row_dependencies(
+                locale,
+                input,
+                normalized_doi.as_deref(),
+                prefetched_taxa,
+                prefetched_references,
+            )
+            .await?;
 
             if let Some(deps) = dependencies.as_ref() {
                 let (should_add, p703) = match (
@@ -101,7 +197,13 @@ async fn enrich_and_generate(
                     normalized_doi.as_deref(),
                 ) {
                     (Some(tqid), Some(rqid), _) => {
-                        let add = !compound_has_taxon_with_ref(&existing.qid, tqid, rqid).await?;
+                        let add = !compound_has_taxon_with_ref_cached(
+                            occurrence_ask_cache,
+                            &existing.qid,
+                            tqid,
+                            rqid,
+                        )
+                        .await?;
                         (
                             add,
                             format!(
@@ -113,7 +215,9 @@ async fn enrich_and_generate(
                     // Reference item does not exist yet: generate it in dependencies, then rerun.
                     (Some(_), None, Some(_)) => (false, String::new()),
                     (Some(tqid), None, None) => {
-                        let add = !compound_has_taxon(&existing.qid, tqid).await?;
+                        let add =
+                            !compound_has_taxon_cached(occurrence_ask_cache, &existing.qid, tqid)
+                                .await?;
                         (
                             add,
                             format!("{}|{}|{}", existing.qid, WD_OCCURS_IN_TAXON_PROP, tqid),
@@ -169,9 +273,18 @@ async fn enrich_and_generate(
             }
         }
         None => {
-            let dependencies =
-                resolve_row_dependencies(locale, input, normalized_doi.as_deref(), prefetched_taxa)
-                    .await?;
+            let mass_resolution =
+                resolve_exact_mass(&input.smiles, &converted.canonical_smiles).await;
+            let exact_mass = mass_resolution.exact_mass;
+
+            let dependencies = resolve_row_dependencies(
+                locale,
+                input,
+                normalized_doi.as_deref(),
+                prefetched_taxa,
+                prefetched_references,
+            )
+            .await?;
             let mut lines = vec!["CREATE".to_string()];
             lines.push(format!("LAST|Len|\"{}\"", escape_qs_string(&input.name)));
             lines.push("LAST|Den|\"chemical compound\"".to_string());
@@ -280,6 +393,7 @@ async fn resolve_row_dependencies(
     input: &CurationInputRow,
     normalized_doi: Option<&str>,
     prefetched_taxa: &HashMap<String, String>,
+    prefetched_references: &HashMap<String, String>,
 ) -> Result<Option<DependencyResolution>, CurationError> {
     let Some(taxon_name) = input.taxon.as_deref() else {
         return Ok(None);
@@ -291,7 +405,8 @@ async fn resolve_row_dependencies(
     let (taxon_qid_opt, taxon_new_qs) =
         resolve_or_create_taxon(taxon_name, prefetched_taxon_qid).await?;
     let (ref_qid_opt, ref_new_qs) = if let Some(doi) = normalized_doi {
-        resolve_or_create_reference(doi).await?
+        let prefetched_ref_qid = prefetched_references.get(doi).map(String::as_str);
+        resolve_or_create_reference(doi, prefetched_ref_qid).await?
     } else {
         (None, Vec::new())
     };
@@ -327,7 +442,12 @@ async fn resolve_row_dependencies(
 /// Fetch pre-generated QuickStatements from Scholia (native) or citation.js (WASM)
 async fn resolve_or_create_reference(
     doi: &str,
+    pre_resolved_qid: Option<&str>,
 ) -> Result<(Option<String>, Vec<String>), CurationError> {
+    if let Some(qid) = pre_resolved_qid {
+        return Ok((Some(qid.to_string()), Vec::new()));
+    }
+
     // Check if reference already exists in Wikidata
     if let Some(qid) = resolve_reference_qid(doi).await? {
         return Ok((Some(qid), Vec::new()));

@@ -146,6 +146,81 @@ fn build_single_taxon_lookup_query(name: &str) -> Option<String> {
     ))
 }
 
+fn build_reference_lookup_query(dois: &[String]) -> String {
+    let values = dois
+        .iter()
+        .map(|doi| {
+            format!(
+                "(\"{}\" \"{}\")",
+                escape_sparql_string(doi),
+                escape_sparql_string(doi)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n    ");
+
+    format!(
+        "{CURATION_SPARQL_PREFIXES}\n\
+         SELECT ?lookup ?ref WHERE {{\n  \
+           VALUES (?lookup ?doi) {{\n    \
+             {values}\n  \
+           }}\n  \
+           ?ref wdt:P356 ?doi .\n\
+         }}"
+    )
+}
+
+pub async fn resolve_reference_qids_batch<'a>(
+    dois: impl IntoIterator<Item = &'a str>,
+) -> Result<HashMap<String, String>, CurationError> {
+    let mut seen = HashSet::new();
+    let mut normalized_dois = Vec::new();
+
+    for doi in dois {
+        let Some(normalized) = normalize_doi(doi) else {
+            continue;
+        };
+        if seen.insert(normalized.clone()) {
+            normalized_dois.push(normalized);
+        }
+    }
+
+    if normalized_dois.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let query = build_reference_lookup_query(&normalized_dois);
+    let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
+        .await
+        .map_err(|e| CurationError::Http(e.to_string()))?;
+    let json =
+        serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))?;
+
+    let mut resolved = HashMap::new();
+    for binding in json
+        .get("results")
+        .and_then(|v| v.get("bindings"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(lookup) = binding_value(binding, "lookup") else {
+            continue;
+        };
+        let Some(qid) = binding
+            .get("ref")
+            .and_then(|v| v.get("value"))
+            .and_then(Value::as_str)
+            .and_then(extract_qid_from_uri)
+        else {
+            continue;
+        };
+        resolved.insert(lookup, qid.to_string());
+    }
+
+    Ok(resolved)
+}
+
 fn build_taxon_lookup_query(lookups: &[(String, String)]) -> String {
     let values = lookups
         .iter()
@@ -328,5 +403,15 @@ mod tests {
         assert!(query.contains("wdt:P31 wd:Q16521"));
         assert!(!query.contains("LCASE"));
         assert!(!query.contains("FILTER"));
+    }
+
+    #[test]
+    fn build_reference_lookup_query_uses_values_pairs() {
+        let query =
+            build_reference_lookup_query(&["10.1000/ABC".to_string(), "10.2000/XYZ".to_string()]);
+
+        assert!(query.contains("VALUES (?lookup ?doi)"));
+        assert!(query.contains("\"10.1000/ABC\" \"10.1000/ABC\""));
+        assert!(query.contains("?ref wdt:P356 ?doi"));
     }
 }
