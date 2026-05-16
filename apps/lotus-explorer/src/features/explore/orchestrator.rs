@@ -14,7 +14,7 @@ use crate::features::explore::lifecycle::SearchLifecycleCoordinator;
 use crate::features::explore::request::SearchRequest;
 use crate::features::explore::search_state::{ExploreState, dispatch_explore_action};
 use crate::features::explore::service::finalize;
-use crate::features::explore::types::{DomainError, ValidationFault};
+use crate::features::explore::types::DomainError;
 use crate::models::SearchCriteria;
 use crate::repositories::LotusRepository;
 use crate::services::search_telemetry as telemetry;
@@ -42,13 +42,8 @@ impl SearchTaskController {
 }
 
 fn validate_search_criteria(criteria: &SearchCriteria) -> Result<(), DomainError> {
-    if criteria.taxon.trim().is_empty()
-        && criteria.smiles.trim().is_empty()
-        && !criteria.formula_enabled
-    {
-        return Err(DomainError::Validation(ValidationFault::EmptyInput));
-    }
-    Ok(())
+    crate::features::explore::form_validation::validate_dispatch_criteria(criteria)
+        .map_err(DomainError::Validation)
 }
 
 fn build_search_succeeded_action(request: &SearchRequest, outcome: SearchOutcome) -> ExploreAction {
@@ -117,6 +112,7 @@ pub fn start_search<R: LotusRepository>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::features::explore::types::ValidationFault;
 
     #[test]
     fn build_search_succeeded_action_applies_finalized_counts() {
@@ -145,5 +141,47 @@ mod tests {
             }
             _ => panic!("expected SearchSucceeded action"),
         }
+    }
+
+    #[test]
+    fn validate_search_criteria_rejects_empty_input() {
+        let criteria = SearchCriteria {
+            taxon: " ".into(),
+            smiles: "".into(),
+            formula_enabled: false,
+            ..SearchCriteria::default()
+        };
+
+        let result = validate_search_criteria(&criteria);
+        assert_eq!(
+            result,
+            Err(DomainError::Validation(ValidationFault::EmptyInput))
+        );
+    }
+
+    #[test]
+    fn validate_search_criteria_accepts_formula_only_input() {
+        let criteria = SearchCriteria {
+            taxon: "".into(),
+            smiles: "".into(),
+            formula_enabled: true,
+            ..SearchCriteria::default()
+        };
+
+        assert_eq!(validate_search_criteria(&criteria), Ok(()));
+    }
+
+    #[test]
+    fn validate_search_criteria_maps_shared_mass_validation_fault() {
+        let criteria = SearchCriteria {
+            taxon: "Rosa".into(),
+            mass_min: -1.0,
+            ..SearchCriteria::default()
+        };
+
+        assert_eq!(
+            validate_search_criteria(&criteria),
+            Err(DomainError::Validation(ValidationFault::MassOutOfRange))
+        );
     }
 }

@@ -14,6 +14,7 @@
 //! Each validator is a pure function that takes raw input and returns a `Result`.
 //! Validators can be composed to build complex validation pipelines.
 
+use crate::features::explore::types::ValidationFault;
 use crate::models::SearchCriteria;
 
 /// Validation result for a form field.
@@ -34,6 +35,19 @@ impl ValidationError {
     #[allow(dead_code)]
     pub fn new(field: &'static str, message_key: &'static str) -> Self {
         Self { field, message_key }
+    }
+}
+
+fn validation_fault_from_error(error: &ValidationError) -> ValidationFault {
+    match error.message_key {
+        "TaxonTooLong" => ValidationFault::TaxonTooLong,
+        "StructureTooLong" => ValidationFault::StructureTooLong,
+        "MassOutOfRange" => ValidationFault::MassOutOfRange,
+        "MinGreaterThanMax" | "MassRangeInvalid" => ValidationFault::MassRangeInvalid,
+        "YearOutOfRange" => ValidationFault::YearOutOfRange,
+        "YearRangeInvalid" => ValidationFault::YearRangeInvalid,
+        "ElementCountHighWarning" => ValidationFault::ElementCountTooHigh,
+        _ => ValidationFault::InvalidFilters,
     }
 }
 
@@ -169,6 +183,26 @@ pub fn validate_mass_range(min: f64, max: f64) -> ValidationResult<()> {
     Ok(())
 }
 
+/// Validate criteria at the orchestration boundary.
+///
+/// This validator returns domain-native `ValidationFault` so `start_search`
+/// can fail fast without translating from UI-oriented validation error keys.
+pub fn validate_dispatch_criteria(criteria: &SearchCriteria) -> Result<(), ValidationFault> {
+    if criteria.taxon.trim().is_empty()
+        && criteria.smiles.trim().is_empty()
+        && !criteria.formula_enabled
+    {
+        return Err(ValidationFault::EmptyInput);
+    }
+    if let Err(errors) = validate_criteria(criteria)
+        && let Some(first) = errors.first()
+    {
+        return Err(validation_fault_from_error(first));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -235,5 +269,59 @@ mod tests {
     #[test]
     fn validate_element_count_rejects_unreasonably_high_counts() {
         assert!(validate_element_count(1001).is_err());
+    }
+
+    #[test]
+    fn validate_dispatch_criteria_rejects_empty_primary_filters() {
+        let criteria = SearchCriteria {
+            taxon: "   ".into(),
+            smiles: "".into(),
+            formula_enabled: false,
+            ..SearchCriteria::default()
+        };
+        assert_eq!(
+            validate_dispatch_criteria(&criteria),
+            Err(ValidationFault::EmptyInput)
+        );
+    }
+
+    #[test]
+    fn validate_dispatch_criteria_accepts_formula_only_search() {
+        let criteria = SearchCriteria {
+            taxon: "".into(),
+            smiles: "".into(),
+            formula_enabled: true,
+            ..SearchCriteria::default()
+        };
+        assert_eq!(validate_dispatch_criteria(&criteria), Ok(()));
+    }
+
+    #[test]
+    fn validate_dispatch_criteria_maps_mass_out_of_range_to_domain_fault() {
+        let criteria = SearchCriteria {
+            taxon: "Rosa".into(),
+            mass_min: -1.0,
+            ..SearchCriteria::default()
+        };
+
+        assert_eq!(
+            validate_dispatch_criteria(&criteria),
+            Err(ValidationFault::MassOutOfRange)
+        );
+    }
+
+    #[test]
+    fn validate_dispatch_criteria_maps_year_range_to_domain_fault() {
+        let criteria = SearchCriteria {
+            taxon: "Rosa".into(),
+            year_min: 2025,
+            year_max: 2020,
+            ..SearchCriteria::default()
+        };
+
+        assert_eq!(
+            validate_dispatch_criteria(&criteria),
+            Err(ValidationFault::YearRangeInvalid)
+        );
     }
 }

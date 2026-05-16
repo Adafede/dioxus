@@ -89,6 +89,22 @@ pub enum TaxonWarning {
 pub enum ValidationFault {
     #[error("empty input")]
     EmptyInput,
+    #[error("taxon is too long")]
+    TaxonTooLong,
+    #[error("structure input is too long")]
+    StructureTooLong,
+    #[error("mass is out of range")]
+    MassOutOfRange,
+    #[error("mass range is invalid")]
+    MassRangeInvalid,
+    #[error("year is out of range")]
+    YearOutOfRange,
+    #[error("year range is invalid")]
+    YearRangeInvalid,
+    #[error("element count is too high")]
+    ElementCountTooHigh,
+    #[error("invalid filter combination")]
+    InvalidFilters,
     #[error("taxon not found: {input}")]
     TaxonNotFound { input: String },
     #[allow(dead_code)]

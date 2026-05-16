@@ -14,6 +14,90 @@ pub fn err_invalid_search_input(locale: Locale) -> String {
     }
 }
 
+pub fn err_taxon_too_long(locale: Locale) -> String {
+    match locale {
+        Locale::En => "Taxon input is too long. Please keep it under 500 characters.".to_string(),
+        Locale::Fr => {
+            "La valeur du taxon est trop longue. Veuillez rester sous 500 caractères.".to_string()
+        }
+        Locale::De => "Die Taxon-Eingabe ist zu lang. Bitte unter 500 Zeichen bleiben.".to_string(),
+        Locale::It => {
+            "Il valore del taxon è troppo lungo. Mantienilo sotto i 500 caratteri.".to_string()
+        }
+    }
+}
+
+pub fn err_structure_too_long(locale: Locale) -> String {
+    match locale {
+        Locale::En => {
+            "Structure input is too long. Please shorten the SMILES/Molfile text.".to_string()
+        }
+        Locale::Fr => {
+            "La structure est trop longue. Raccourcissez le texte SMILES/Molfile.".to_string()
+        }
+        Locale::De => {
+            "Die Struktur-Eingabe ist zu lang. Bitte den SMILES/Molfile-Text kürzen.".to_string()
+        }
+        Locale::It => {
+            "L'input della struttura è troppo lungo. Riduci il testo SMILES/Molfile.".to_string()
+        }
+    }
+}
+
+pub fn err_mass_out_of_range(locale: Locale) -> String {
+    match locale {
+        Locale::En => "Mass values must be between 0 and 10000.".to_string(),
+        Locale::Fr => "Les valeurs de masse doivent être comprises entre 0 et 10000.".to_string(),
+        Locale::De => "Massenwerte müssen zwischen 0 und 10000 liegen.".to_string(),
+        Locale::It => "I valori di massa devono essere compresi tra 0 e 10000.".to_string(),
+    }
+}
+
+pub fn err_mass_range_invalid(locale: Locale) -> String {
+    match locale {
+        Locale::En => "Mass minimum cannot exceed mass maximum.".to_string(),
+        Locale::Fr => "La masse minimale ne peut pas dépasser la masse maximale.".to_string(),
+        Locale::De => "Die minimale Masse darf die maximale Masse nicht überschreiten.".to_string(),
+        Locale::It => "La massa minima non può superare la massa massima.".to_string(),
+    }
+}
+
+pub fn err_year_out_of_range(locale: Locale) -> String {
+    match locale {
+        Locale::En => "Year is outside the supported range.".to_string(),
+        Locale::Fr => "L'année est hors de la plage prise en charge.".to_string(),
+        Locale::De => "Das Jahr liegt außerhalb des unterstützten Bereichs.".to_string(),
+        Locale::It => "L'anno è fuori dall'intervallo supportato.".to_string(),
+    }
+}
+
+pub fn err_year_range_invalid(locale: Locale) -> String {
+    match locale {
+        Locale::En => "Year from cannot exceed year to.".to_string(),
+        Locale::Fr => "L'année de début ne peut pas dépasser l'année de fin.".to_string(),
+        Locale::De => "Das Startjahr darf nicht größer als das Endjahr sein.".to_string(),
+        Locale::It => "L'anno iniziale non può superare l'anno finale.".to_string(),
+    }
+}
+
+pub fn err_element_count_too_high(locale: Locale) -> String {
+    match locale {
+        Locale::En => "Formula element counts are too high.".to_string(),
+        Locale::Fr => "Les comptages d'éléments de la formule sont trop élevés.".to_string(),
+        Locale::De => "Die Elementanzahl in der Formel ist zu hoch.".to_string(),
+        Locale::It => "I conteggi degli elementi della formula sono troppo alti.".to_string(),
+    }
+}
+
+pub fn err_invalid_filters(locale: Locale) -> String {
+    match locale {
+        Locale::En => "One or more filters are invalid.".to_string(),
+        Locale::Fr => "Un ou plusieurs filtres sont invalides.".to_string(),
+        Locale::De => "Ein oder mehrere Filter sind ungültig.".to_string(),
+        Locale::It => "Uno o più filtri non sono validi.".to_string(),
+    }
+}
+
 pub fn err_unsupported_format(locale: Locale, fmt: &str) -> String {
     match locale {
         Locale::En => format!("Unsupported format '{fmt}'. Use csv, json, or rdf."),
