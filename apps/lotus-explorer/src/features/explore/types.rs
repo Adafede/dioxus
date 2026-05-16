@@ -15,6 +15,7 @@ use thiserror::Error;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QueryPhase {
     Idle,
+    PreparingQuery,
     ResolvingTaxon,
     Counting,
     FetchingPreview,

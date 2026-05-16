@@ -28,6 +28,15 @@ pub struct TaxonResolution {
     pub warning: Option<TaxonWarning>,
 }
 
+#[must_use]
+pub fn requires_remote_lookup(taxon: &str) -> bool {
+    if taxon.is_empty() || taxon == "*" {
+        return false;
+    }
+
+    !(taxon.starts_with(['Q', 'q']) && taxon[1..].chars().all(|c| c.is_ascii_digit()))
+}
+
 /// Resolve a free-text taxon name (or QID, or wildcard) to a Wikidata QID.
 ///
 /// Returns:
@@ -57,7 +66,7 @@ pub async fn resolve<R: LotusRepository>(
     // Pass a bare Wikidata QID directly — no SPARQL round-trip needed.
     // Accepts both 'Q' and 'q' prefix; the slice `&taxon[1..]` is safe since
     // 'Q'/'q' are single-byte ASCII characters.
-    if taxon.starts_with(['Q', 'q']) && taxon[1..].chars().all(|c| c.is_ascii_digit()) {
+    if !requires_remote_lookup(taxon) && !taxon.is_empty() && taxon != "*" {
         return Ok(TaxonResolution {
             qid: Some(taxon.to_uppercase()),
             warning: None,
@@ -218,6 +227,15 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(r.qid.as_deref(), Some("Q12345"));
+    }
+
+    #[test]
+    fn remote_lookup_required_only_for_named_taxa() {
+        assert!(!requires_remote_lookup(""));
+        assert!(!requires_remote_lookup("*"));
+        assert!(!requires_remote_lookup("Q12345"));
+        assert!(!requires_remote_lookup("q12345"));
+        assert!(requires_remote_lookup("Gentiana lutea"));
     }
 
     #[test]

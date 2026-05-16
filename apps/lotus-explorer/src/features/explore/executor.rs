@@ -116,6 +116,10 @@ where
         }
 
         // SPARQL pipeline.
+        if resolve_taxon::requires_remote_lookup(request.criteria().taxon.trim()) {
+            (self.on_phase)(QueryPhase::ResolvingTaxon);
+        }
+
         let taxon_resolution =
             resolve_taxon::resolve(request.criteria().taxon.trim(), &self.repo, &mut metrics)
                 .await?;

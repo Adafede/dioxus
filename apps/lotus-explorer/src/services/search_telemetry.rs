@@ -212,6 +212,15 @@ pub fn counting_done(
     );
 }
 
+pub fn preview_started(display_limit: usize) {
+    log_debug_evt(
+        "search",
+        "fetching_preview",
+        "started",
+        Some(&format!("display_limit={display_limit}")),
+    );
+}
+
 pub fn preview_done(elapsed: Duration, rows: usize) {
     log_timing_evt(
         "search",

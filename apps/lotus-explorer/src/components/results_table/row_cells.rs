@@ -33,7 +33,10 @@ impl PreparedRow {
             depict_url: depict_url_cached(entry),
             doi: trimmed_optional_arc(entry.ref_doi.as_deref()),
             statement_id: trimmed_statement_id_arc(entry.statement.as_deref()),
-            reference_title_short: entry.ref_title.as_deref().map(|title| truncate_arc_str(title, 60)),
+            reference_title_short: entry
+                .ref_title
+                .as_deref()
+                .map(|title| truncate_arc_str(title, 60)),
             short_inchikey: entry.inchikey.as_deref().map(short_inchikey_arc),
             display_name,
         }
@@ -441,6 +444,11 @@ mod tests {
         assert_eq!(prepared.short_inchikey.as_deref(), Some("AAAA"));
         assert_eq!(prepared.doi.as_deref(), Some("10.1000/test"));
         assert_eq!(prepared.statement_id.as_deref(), Some("Q1-ABC"));
-        assert!(prepared.depict_url.as_deref().is_some_and(|url| url.contains("annotate=cip")));
+        assert!(
+            prepared
+                .depict_url
+                .as_deref()
+                .is_some_and(|url| url.contains("annotate=cip"))
+        );
     }
 }

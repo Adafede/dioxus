@@ -126,8 +126,9 @@ async fn fetch_two_phase<R: LotusRepository>(
         })?;
         let count_parse_elapsed = perf::end_timer("LOTUS:count_parse", count_parse_timer);
         metrics.add_parse(count_parse_elapsed);
+        let count_total_elapsed = count_elapsed.saturating_add(count_parse_elapsed);
         telemetry::counting_done(
-            count_parse_elapsed,
+            count_total_elapsed,
             full_stats.n_entries,
             full_stats.n_compounds,
             full_stats.n_taxa,
@@ -135,6 +136,7 @@ async fn fetch_two_phase<R: LotusRepository>(
         );
 
         on_fetching();
+        telemetry::preview_started(display_limit);
 
         let display_timer = perf::start_timer("LOTUS:display_query");
         let display_csv = repo
@@ -154,7 +156,8 @@ async fn fetch_two_phase<R: LotusRepository>(
         )?;
         let display_parse_elapsed = perf::end_timer("LOTUS:display_parse", display_parse_timer);
         metrics.add_parse(display_parse_elapsed);
-        telemetry::preview_done(display_parse_elapsed, rows.len());
+        let display_total_elapsed = display_elapsed.saturating_add(display_parse_elapsed);
+        telemetry::preview_done(display_total_elapsed, rows.len());
 
         let total_matches = full_stats.n_entries;
         let display_capped_rows = total_matches > rows.len();
@@ -188,13 +191,19 @@ async fn fetch_two_phase<R: LotusRepository>(
         metrics.add_network(count_elapsed);
         metrics.add_network(display_elapsed);
 
+        let count_parse_timer = perf::start_timer("LOTUS:count_parse");
         let full_stats = sparql::parse_counts_csv_bytes(&counts_csv).map_err(|e| {
             DomainError::Parse(ParseFault::CountCsv {
                 details: e.to_string(),
             })
         })?;
+        let count_parse_elapsed = perf::end_timer("LOTUS:count_parse", count_parse_timer);
+        metrics.add_parse(count_parse_elapsed);
+        let count_total_elapsed = count_elapsed
+            .max(display_elapsed)
+            .saturating_add(count_parse_elapsed);
         telemetry::counting_done(
-            count_elapsed,
+            count_total_elapsed,
             full_stats.n_entries,
             full_stats.n_compounds,
             full_stats.n_taxa,
@@ -202,7 +211,9 @@ async fn fetch_two_phase<R: LotusRepository>(
         );
 
         on_fetching();
+        telemetry::preview_started(display_limit);
 
+        let display_parse_timer = perf::start_timer("LOTUS:display_parse");
         let rows = sparql::parse_compounds_csv_display_bytes(&display_csv, display_limit).map_err(
             |e| {
                 DomainError::Parse(ParseFault::DisplayCsv {
@@ -210,7 +221,9 @@ async fn fetch_two_phase<R: LotusRepository>(
                 })
             },
         )?;
-        telemetry::preview_done(display_elapsed, rows.len());
+        let display_parse_elapsed = perf::end_timer("LOTUS:display_parse", display_parse_timer);
+        metrics.add_parse(display_parse_elapsed);
+        telemetry::preview_done(display_parse_elapsed, rows.len());
         let total_matches = full_stats.n_entries;
         let display_capped_rows = total_matches > rows.len();
         Ok(FetchResult {

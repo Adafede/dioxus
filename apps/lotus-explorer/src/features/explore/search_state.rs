@@ -111,7 +111,7 @@ pub fn reduce(mut state: ExploreState, action: ExploreAction) -> ExploreState {
         } => {
             state.lifecycle.loading = true;
             state.lifecycle.error = None;
-            state.lifecycle.query_phase = QueryPhase::ResolvingTaxon;
+            state.lifecycle.query_phase = QueryPhase::PreparingQuery;
             state.lifecycle.searched_once = true;
             state.lifecycle.download_only_mode = command.direct_download();
             state.lifecycle.download_dispatching = false;
@@ -255,7 +255,7 @@ mod tests {
         );
         assert!(next.lifecycle.loading);
         assert!(next.lifecycle.error.is_none());
-        assert_eq!(next.lifecycle.query_phase, QueryPhase::ResolvingTaxon);
+        assert_eq!(next.lifecycle.query_phase, QueryPhase::PreparingQuery);
         assert!(next.lifecycle.searched_once);
         assert!(!next.lifecycle.download_only_mode);
         assert_eq!(next.lifecycle.search_request_token, 1);

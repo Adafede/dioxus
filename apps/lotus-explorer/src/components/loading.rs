@@ -77,9 +77,23 @@ pub fn DownloadOnlyState(on_preview: EventHandler<()>) -> Element {
 pub fn query_phase_text(locale: Locale, phase: QueryPhase) -> &'static str {
     match phase {
         QueryPhase::Idle => t(locale, TextKey::LoadingTitle),
+        QueryPhase::PreparingQuery => t(locale, TextKey::LoadingTitle),
         QueryPhase::ResolvingTaxon => t(locale, TextKey::LoadingResolvingTaxon),
         QueryPhase::Counting => t(locale, TextKey::LoadingCounting),
         QueryPhase::FetchingPreview => t(locale, TextKey::LoadingFetchingPreview),
         QueryPhase::Rendering => t(locale, TextKey::LoadingRendering),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preparing_phase_uses_generic_loading_title() {
+        assert_eq!(
+            query_phase_text(Locale::En, QueryPhase::PreparingQuery),
+            query_phase_text(Locale::En, QueryPhase::Idle)
+        );
     }
 }
