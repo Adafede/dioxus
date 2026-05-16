@@ -161,6 +161,24 @@ mod tests {
     }
 
     #[test]
+    fn parse_errors_not_retryable() {
+        use crate::features::explore::types::ParseFault;
+        let err = DomainError::Parse(ParseFault::DisplayCsv {
+            details: "invalid csv row".into(),
+        });
+        assert!(!is_retryable_error(&err));
+    }
+
+    #[test]
+    fn not_configured_transport_not_retryable() {
+        let err = DomainError::Transport {
+            stage: QueryStage::DisplayQuery,
+            source: RepositoryError::NotConfigured,
+        };
+        assert!(!is_retryable_error(&err));
+    }
+
+    #[test]
     fn backoff_delay_grows_exponentially() {
         assert!(backoff_delay_ms(0) < backoff_delay_ms(1));
         assert!(backoff_delay_ms(1) < backoff_delay_ms(2));

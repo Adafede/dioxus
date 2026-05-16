@@ -106,10 +106,10 @@ pub fn use_download_dispatch_effect(
                     });
                 }
             }
-            DispatchPhase::WaitingForLoading => {
+            DispatchPhase::WaitingForLoading { format } => {
                 // Still loading — log once per cycle via guard.
                 if !app_state.peek().metrics.waiting_loading_logged {
-                    telemetry::download_dispatch_waiting_loading(pending.unwrap().log_name());
+                    telemetry::download_dispatch_waiting_loading(format.log_name());
                     app_state.with_mut(|state| state.metrics.waiting_loading_logged = true);
                 }
                 // Reset query-waiting guard since we're focused on loading now.
@@ -117,10 +117,10 @@ pub fn use_download_dispatch_effect(
                     app_state.with_mut(|state| state.metrics.waiting_query_logged = false);
                 }
             }
-            DispatchPhase::WaitingForQuery => {
+            DispatchPhase::WaitingForQuery { format } => {
                 // Loading complete, waiting for query — log once via guard.
                 if !app_state.peek().metrics.waiting_query_logged {
-                    telemetry::download_dispatch_waiting_query(pending.unwrap().log_name());
+                    telemetry::download_dispatch_waiting_query(format.log_name());
                     app_state.with_mut(|state| state.metrics.waiting_query_logged = true);
                 }
                 // Reset loading guard since loading has finished.

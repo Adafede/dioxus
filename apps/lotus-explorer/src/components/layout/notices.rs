@@ -7,12 +7,13 @@
 //! `ResultsContext` — no `explore` or `locale` props are drilled from `App`.
 
 use crate::components::copy_button::CopyButton;
+use crate::features::explore::recovery;
 use crate::features::explore::selectors::{use_lifecycle_selector, use_result_selector};
 use crate::features::explore::types::ErrorKind;
 use crate::features::explore::url_state::absolute_share_url;
 use crate::i18n::{TextKey, t};
 use crate::services::error_presenter::{
-    error_hint_text, format_domain_error, format_taxon_warning, is_retryable,
+    error_hint_text, format_domain_error, format_taxon_warning,
 };
 use crate::state::use_results_context;
 use dioxus::prelude::*;
@@ -67,6 +68,9 @@ pub fn TaxonNotice() -> Element {
 }
 
 /// Error notice with optional retry and dismiss buttons.
+///
+/// Retry visibility is delegated to `explore::recovery` so policy remains
+/// consistent with orchestration-level error handling.
 #[component]
 pub fn ErrorNotice(on_dismiss: EventHandler<()>, on_retry: EventHandler<()>) -> Element {
     let locale = crate::hooks::use_locale();
@@ -84,7 +88,7 @@ pub fn ErrorNotice(on_dismiss: EventHandler<()>, on_retry: EventHandler<()>) -> 
             span { class: "notice-label", "{t(locale, TextKey::Error)}" }
             span { class: "notice-value", "{msg}" }
             span { class: "notice-value", "{error_hint_text(locale, kind)}" }
-            if is_retryable(kind) && !*is_loading.read() {
+            if recovery::should_show_retry_button(domain_err) && !*is_loading.read() {
                 button {
                     class: "btn btn-sm",
                     r#type: "button",

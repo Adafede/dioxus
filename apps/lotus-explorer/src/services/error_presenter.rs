@@ -40,13 +40,6 @@ pub fn format_taxon_warning(locale: Locale, warning: &TaxonWarning) -> String {
     }
 }
 
-pub fn is_retryable(kind: ErrorKind) -> bool {
-    matches!(
-        kind,
-        ErrorKind::Network | ErrorKind::Parse | ErrorKind::Unknown
-    )
-}
-
 pub fn error_hint_text(locale: Locale, kind: ErrorKind) -> &'static str {
     match kind {
         ErrorKind::Validation => t(locale, TextKey::ErrorHintValidation),

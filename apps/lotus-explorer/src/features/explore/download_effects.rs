@@ -125,9 +125,9 @@ pub enum DispatchPhase {
     /// No download pending — nothing to do.
     Inactive,
     /// Download pending, still waiting for results to load.
-    WaitingForLoading,
+    WaitingForLoading { format: DownloadFormat },
     /// Loading complete, waiting for SPARQL query to materialize.
-    WaitingForQuery,
+    WaitingForQuery { format: DownloadFormat },
     /// All preconditions met — ready to dispatch download.
     Ready {
         /// Criteria snapshot to embed in download (WASM specific).
@@ -157,11 +157,11 @@ pub fn classify_dispatch_phase(
     };
 
     if explore.lifecycle.loading {
-        return DispatchPhase::WaitingForLoading;
+        return DispatchPhase::WaitingForLoading { format: fmt };
     }
 
     let Some(query) = explore.result.sparql_query.as_deref().map(str::to_string) else {
-        return DispatchPhase::WaitingForQuery;
+        return DispatchPhase::WaitingForQuery { format: fmt };
     };
 
     let criteria = explore.ui.executed_criteria.clone();
@@ -226,7 +226,12 @@ mod tests {
         let mut explore = ExploreState::default();
         explore.lifecycle.loading = true;
         let phase = classify_dispatch_phase(Some(DownloadFormat::Csv), &explore);
-        assert_eq!(phase, DispatchPhase::WaitingForLoading);
+        assert_eq!(
+            phase,
+            DispatchPhase::WaitingForLoading {
+                format: DownloadFormat::Csv,
+            }
+        );
     }
 
     #[test]
@@ -234,7 +239,12 @@ mod tests {
         let explore = ExploreState::default();
         // result.sparql_query is None by default
         let phase = classify_dispatch_phase(Some(DownloadFormat::Csv), &explore);
-        assert_eq!(phase, DispatchPhase::WaitingForQuery);
+        assert_eq!(
+            phase,
+            DispatchPhase::WaitingForQuery {
+                format: DownloadFormat::Csv,
+            }
+        );
     }
 
     #[test]
