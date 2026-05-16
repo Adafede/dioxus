@@ -77,43 +77,39 @@ impl StartupTriggerMode {
 
 // ── Metrics State Management ──────────────────────────────────────────────────
 
-/// Update metrics state guard when entering "waiting for loading" phase.
+/// Metrics state when no download dispatch is pending.
 #[must_use]
-#[allow(dead_code)] // Available for future metrics-guard orchestration
-pub fn enter_waiting_loading_phase(metrics: MetricsState) -> MetricsState {
+pub fn metrics_for_inactive_phase(_: &MetricsState) -> MetricsState {
+    MetricsState::default()
+}
+
+/// Metrics state after a waiting-for-loading dispatch tick.
+///
+/// `logged_waiting_loading` must be `true` only when telemetry was emitted
+/// during this tick; this keeps the guard aligned with log side effects.
+#[must_use]
+pub fn metrics_for_waiting_loading_phase(
+    metrics: &MetricsState,
+    logged_waiting_loading: bool,
+) -> MetricsState {
+    MetricsState {
+        waiting_loading_logged: metrics.waiting_loading_logged || logged_waiting_loading,
+        waiting_query_logged: false,
+    }
+}
+
+/// Metrics state after a waiting-for-query dispatch tick.
+///
+/// `logged_waiting_query` must be `true` only when telemetry was emitted
+/// during this tick; this keeps the guard aligned with log side effects.
+#[must_use]
+pub fn metrics_for_waiting_query_phase(
+    metrics: &MetricsState,
+    logged_waiting_query: bool,
+) -> MetricsState {
     MetricsState {
         waiting_loading_logged: false,
-        ..metrics
-    }
-}
-
-/// Update metrics state guard when exiting "waiting for loading" phase.
-#[must_use]
-#[allow(dead_code)] // Available for future metrics-guard orchestration
-pub fn exit_waiting_loading_phase(metrics: MetricsState) -> MetricsState {
-    MetricsState {
-        waiting_loading_logged: false,
-        ..metrics
-    }
-}
-
-/// Update metrics state guard when entering "waiting for query" phase.
-#[must_use]
-#[allow(dead_code)] // Available for future metrics-guard orchestration
-pub fn enter_waiting_query_phase(metrics: MetricsState) -> MetricsState {
-    MetricsState {
-        waiting_query_logged: false,
-        ..metrics
-    }
-}
-
-/// Update metrics state guard when exiting "waiting for query" phase.
-#[must_use]
-#[allow(dead_code)] // Available for future metrics-guard orchestration
-pub fn exit_waiting_query_phase(metrics: MetricsState) -> MetricsState {
-    MetricsState {
-        waiting_query_logged: false,
-        ..metrics
+        waiting_query_logged: metrics.waiting_query_logged || logged_waiting_query,
     }
 }
 
@@ -284,5 +280,39 @@ mod tests {
         // Enum discriminates visibly
         matches!(download_mode, StartupTriggerMode::Download { .. });
         matches!(execute_mode, StartupTriggerMode::DirectExecute);
+    }
+
+    #[test]
+    fn inactive_phase_resets_metrics_guards() {
+        let metrics = MetricsState {
+            waiting_loading_logged: true,
+            waiting_query_logged: true,
+        };
+        assert_eq!(
+            metrics_for_inactive_phase(&metrics),
+            MetricsState::default()
+        );
+    }
+
+    #[test]
+    fn waiting_loading_phase_sets_loading_guard_and_clears_query_guard() {
+        let metrics = MetricsState {
+            waiting_loading_logged: false,
+            waiting_query_logged: true,
+        };
+        let next = metrics_for_waiting_loading_phase(&metrics, true);
+        assert!(next.waiting_loading_logged);
+        assert!(!next.waiting_query_logged);
+    }
+
+    #[test]
+    fn waiting_query_phase_sets_query_guard_and_clears_loading_guard() {
+        let metrics = MetricsState {
+            waiting_loading_logged: true,
+            waiting_query_logged: false,
+        };
+        let next = metrics_for_waiting_query_phase(&metrics, true);
+        assert!(!next.waiting_loading_logged);
+        assert!(next.waiting_query_logged);
     }
 }

@@ -99,33 +99,34 @@ pub fn use_download_dispatch_effect(
             DispatchPhase::Inactive => {
                 // No download pending — reset any logging guards.
                 let metrics = app_state.peek().metrics.clone();
-                if metrics.waiting_loading_logged || metrics.waiting_query_logged {
-                    app_state.with_mut(|state| {
-                        state.metrics.waiting_loading_logged = false;
-                        state.metrics.waiting_query_logged = false;
-                    });
+                let next = download_effects::metrics_for_inactive_phase(&metrics);
+                if next != metrics {
+                    app_state.with_mut(|state| state.metrics = next);
                 }
             }
             DispatchPhase::WaitingForLoading { format } => {
                 // Still loading — log once per cycle via guard.
-                if !app_state.peek().metrics.waiting_loading_logged {
+                let metrics = app_state.peek().metrics.clone();
+                let should_log = !metrics.waiting_loading_logged;
+                if should_log {
                     telemetry::download_dispatch_waiting_loading(format.log_name());
-                    app_state.with_mut(|state| state.metrics.waiting_loading_logged = true);
                 }
-                // Reset query-waiting guard since we're focused on loading now.
-                if app_state.peek().metrics.waiting_query_logged {
-                    app_state.with_mut(|state| state.metrics.waiting_query_logged = false);
+                let next =
+                    download_effects::metrics_for_waiting_loading_phase(&metrics, should_log);
+                if next != metrics {
+                    app_state.with_mut(|state| state.metrics = next);
                 }
             }
             DispatchPhase::WaitingForQuery { format } => {
                 // Loading complete, waiting for query — log once via guard.
-                if !app_state.peek().metrics.waiting_query_logged {
+                let metrics = app_state.peek().metrics.clone();
+                let should_log = !metrics.waiting_query_logged;
+                if should_log {
                     telemetry::download_dispatch_waiting_query(format.log_name());
-                    app_state.with_mut(|state| state.metrics.waiting_query_logged = true);
                 }
-                // Reset loading guard since loading has finished.
-                if app_state.peek().metrics.waiting_loading_logged {
-                    app_state.with_mut(|state| state.metrics.waiting_loading_logged = false);
+                let next = download_effects::metrics_for_waiting_query_phase(&metrics, should_log);
+                if next != metrics {
+                    app_state.with_mut(|state| state.metrics = next);
                 }
             }
             DispatchPhase::Ready {
