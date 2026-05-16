@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::features::curation::domain;
+use crate::features::curation::services::wikidata::resolve_taxon_qids_batch;
 use crate::features::curation::services::{curate_single_row, inputs, pipeline};
 #[cfg(test)]
 use crate::features::curation::services::{
@@ -9,6 +10,7 @@ use crate::features::curation::services::{
     qs_mass_statement,
 };
 use crate::i18n::Locale;
+use std::sync::Arc;
 
 pub use domain::{
     CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
@@ -40,7 +42,20 @@ pub async fn curate_rows(
     locale: Locale,
     rows: Vec<CurationInputRow>,
 ) -> Result<(Vec<CurationResultRow>, QuickStatementsBundle), CurationError> {
-    pipeline::curate_rows(locale, rows, curate_single_row, row_uniqueness_key).await
+    let prefetched_taxa = Arc::new(
+        resolve_taxon_qids_batch(rows.iter().filter_map(|row| row.taxon.as_deref())).await?,
+    );
+
+    pipeline::curate_rows(
+        locale,
+        rows,
+        {
+            let prefetched_taxa = Arc::clone(&prefetched_taxa);
+            move |locale, row| curate_single_row(locale, row, Arc::clone(&prefetched_taxa))
+        },
+        row_uniqueness_key,
+    )
+    .await
 }
 
 pub fn build_quickstatements_bundle(results: &[CurationResultRow]) -> QuickStatementsBundle {

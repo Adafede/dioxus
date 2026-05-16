@@ -2,12 +2,15 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::*;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 pub(crate) async fn curate_single_row(
     locale: Locale,
     input: CurationInputRow,
+    prefetched_taxa: Arc<HashMap<String, String>>,
 ) -> CurationResultRow {
-    match enrich_and_generate(locale, &input).await {
+    match enrich_and_generate(locale, &input, prefetched_taxa.as_ref()).await {
         Ok(result) => result,
         Err(err) => CurationResultRow {
             input,
@@ -29,6 +32,7 @@ pub(crate) async fn curate_single_row(
 async fn enrich_and_generate(
     locale: Locale,
     input: &CurationInputRow,
+    prefetched_taxa: &HashMap<String, String>,
 ) -> Result<CurationResultRow, CurationError> {
     let converted = convert_smiles(&input.smiles).await?;
     let mass_resolution = resolve_exact_mass(&input.smiles, &converted.canonical_smiles).await;
@@ -87,7 +91,8 @@ async fn enrich_and_generate(
             }
 
             let dependencies =
-                resolve_row_dependencies(locale, input, normalized_doi.as_deref()).await?;
+                resolve_row_dependencies(locale, input, normalized_doi.as_deref(), prefetched_taxa)
+                    .await?;
 
             if let Some(deps) = dependencies.as_ref() {
                 let (should_add, p703) = match (
@@ -165,7 +170,8 @@ async fn enrich_and_generate(
         }
         None => {
             let dependencies =
-                resolve_row_dependencies(locale, input, normalized_doi.as_deref()).await?;
+                resolve_row_dependencies(locale, input, normalized_doi.as_deref(), prefetched_taxa)
+                    .await?;
             let mut lines = vec!["CREATE".to_string()];
             lines.push(format!("LAST|Len|\"{}\"", escape_qs_string(&input.name)));
             lines.push("LAST|Den|\"chemical compound\"".to_string());
@@ -273,12 +279,17 @@ async fn resolve_row_dependencies(
     locale: Locale,
     input: &CurationInputRow,
     normalized_doi: Option<&str>,
+    prefetched_taxa: &HashMap<String, String>,
 ) -> Result<Option<DependencyResolution>, CurationError> {
     let Some(taxon_name) = input.taxon.as_deref() else {
         return Ok(None);
     };
 
-    let (taxon_qid_opt, taxon_new_qs) = resolve_or_create_taxon(taxon_name).await?;
+    let prefetched_taxon_qid = normalize_taxon_lookup(taxon_name)
+        .and_then(|lookup| prefetched_taxa.get(&lookup))
+        .map(String::as_str);
+    let (taxon_qid_opt, taxon_new_qs) =
+        resolve_or_create_taxon(taxon_name, prefetched_taxon_qid).await?;
     let (ref_qid_opt, ref_new_qs) = if let Some(doi) = normalized_doi {
         resolve_or_create_reference(doi).await?
     } else {

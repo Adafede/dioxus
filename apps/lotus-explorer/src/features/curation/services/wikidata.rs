@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::*;
+use std::collections::{HashMap, HashSet};
 
 pub(super) async fn fetch_wikidata_compound_by_inchikey(
     inchikey: &str,
@@ -54,7 +55,12 @@ pub(super) async fn fetch_wikidata_compound_by_inchikey(
 /// If the taxon exists, returns (Some(qid), []). Otherwise returns (None, <minimal CREATE QS>).
 pub(super) async fn resolve_or_create_taxon(
     name: &str,
+    pre_resolved_qid: Option<&str>,
 ) -> Result<(Option<String>, Vec<String>), CurationError> {
+    if let Some(qid) = pre_resolved_qid {
+        return Ok((Some(qid.to_string()), Vec::new()));
+    }
+
     if let Some(qid) = resolve_taxon_qid(name).await? {
         return Ok((Some(qid), Vec::new()));
     }
@@ -68,15 +74,160 @@ pub(super) async fn resolve_or_create_taxon(
     Ok((None, qs))
 }
 
-pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, CurationError> {
-    let query = format!(
+pub(super) fn normalize_taxon_lookup(name: &str) -> Option<String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_ascii_lowercase())
+    }
+}
+
+fn canonicalize_taxon_label(name: &str) -> String {
+    let mut words = name.split_whitespace();
+    let Some(first) = words.next() else {
+        return String::new();
+    };
+
+    let first = {
+        let mut chars = first.chars();
+        match chars.next() {
+            Some(ch) => {
+                let mut rebuilt = String::new();
+                rebuilt.push(ch.to_ascii_uppercase());
+                rebuilt.extend(chars.map(|c| c.to_ascii_lowercase()));
+                rebuilt
+            }
+            None => String::new(),
+        }
+    };
+
+    let mut rebuilt = String::new();
+    rebuilt.push_str(&first);
+    for word in words {
+        rebuilt.push(' ');
+        rebuilt.push_str(&word.to_ascii_lowercase());
+    }
+    rebuilt
+}
+
+fn taxon_name_candidates(name: &str) -> Vec<String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+
+    let canonical = canonicalize_taxon_label(trimmed);
+    if canonical == trimmed {
+        vec![trimmed.to_string()]
+    } else {
+        vec![trimmed.to_string(), canonical]
+    }
+}
+
+fn build_single_taxon_lookup_query(name: &str) -> Option<String> {
+    let values = taxon_name_candidates(name)
+        .into_iter()
+        .map(|candidate| format!("\"{}\"", escape_sparql_string(&candidate)))
+        .collect::<Vec<_>>();
+
+    if values.is_empty() {
+        return None;
+    }
+
+    Some(format!(
         "{CURATION_SPARQL_PREFIXES}\n\
          SELECT ?taxon WHERE {{\n  \
-           ?taxon wdt:P225 ?taxonName .\n  \
-           FILTER(LCASE(STR(?taxonName)) = LCASE(\"{}\"))\n\
+           VALUES ?taxonName {{ {} }}\n  \
+           ?taxon wdt:P225 ?taxonName ;\n        \
+                  wdt:P31 wd:Q16521 .\n\
          }} LIMIT 1",
-        escape_sparql_string(name)
-    );
+        values.join(" ")
+    ))
+}
+
+fn build_taxon_lookup_query(lookups: &[(String, String)]) -> String {
+    let values = lookups
+        .iter()
+        .map(|(lookup, taxon_name)| {
+            format!(
+                "(\"{}\" \"{}\")",
+                escape_sparql_string(lookup),
+                escape_sparql_string(taxon_name)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n    ");
+
+    format!(
+        "{CURATION_SPARQL_PREFIXES}\n\
+         SELECT ?lookup ?taxon WHERE {{\n  \
+           VALUES (?lookup ?taxonName) {{\n    \
+             {values}\n  \
+           }}\n  \
+           ?taxon wdt:P225 ?taxonName ;\n        \
+                  wdt:P31 wd:Q16521 .\n\
+         }}"
+    )
+}
+
+pub async fn resolve_taxon_qids_batch<'a>(
+    names: impl IntoIterator<Item = &'a str>,
+) -> Result<HashMap<String, String>, CurationError> {
+    let mut seen = HashSet::new();
+    let mut lookups = Vec::new();
+
+    for name in names {
+        let trimmed = name.trim();
+        let Some(lookup) = normalize_taxon_lookup(trimmed) else {
+            continue;
+        };
+        if seen.insert(lookup.clone()) {
+            lookups.push((lookup, trimmed.to_string()));
+        }
+    }
+
+    if lookups.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let query = build_taxon_lookup_query(&lookups);
+    let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
+        .await
+        .map_err(|e| CurationError::Http(e.to_string()))?;
+    let json =
+        serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))?;
+
+    let mut resolved = HashMap::new();
+    for binding in json
+        .get("results")
+        .and_then(|v| v.get("bindings"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(lookup) = binding_value(binding, "lookup") else {
+            continue;
+        };
+        let Some(qid) = binding
+            .get("taxon")
+            .and_then(|v| v.get("value"))
+            .and_then(Value::as_str)
+            .and_then(extract_qid_from_uri)
+        else {
+            continue;
+        };
+
+        resolved.insert(lookup, qid.to_string());
+    }
+
+    Ok(resolved)
+}
+
+pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, CurationError> {
+    let Some(query) = build_single_taxon_lookup_query(name) else {
+        return Ok(None);
+    };
     let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
         .await
         .map_err(|e| CurationError::Http(e.to_string()))?;
@@ -137,4 +288,45 @@ pub(super) async fn compound_has_taxon(
         .get("boolean")
         .and_then(Value::as_bool)
         .unwrap_or(false))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_taxon_lookup_trims_and_lowercases() {
+        assert_eq!(
+            normalize_taxon_lookup("  Gentiana lutea  "),
+            Some("gentiana lutea".to_string())
+        );
+        assert_eq!(normalize_taxon_lookup("   \n"), None);
+    }
+
+    #[test]
+    fn build_taxon_lookup_query_uses_values_pairs_and_taxon_type_constraint() {
+        let query = build_taxon_lookup_query(&[
+            (
+                "voacanga africana".to_string(),
+                "Voacanga africana".to_string(),
+            ),
+            ("gentiana lutea".to_string(), "Gentiana lutea".to_string()),
+        ]);
+
+        assert!(query.contains("VALUES (?lookup ?taxonName)"));
+        assert!(query.contains("wdt:P225 ?taxonName"));
+        assert!(query.contains("wdt:P31 wd:Q16521"));
+        assert!(query.contains("\"voacanga africana\" \"Voacanga africana\""));
+    }
+
+    #[test]
+    fn build_single_taxon_lookup_query_uses_values_without_lcase_filter() {
+        let query = build_single_taxon_lookup_query("ficticia imaginaria").expect("query");
+
+        assert!(query.contains("VALUES ?taxonName"));
+        assert!(query.contains("\"ficticia imaginaria\" \"Ficticia imaginaria\""));
+        assert!(query.contains("wdt:P31 wd:Q16521"));
+        assert!(!query.contains("LCASE"));
+        assert!(!query.contains("FILTER"));
+    }
 }

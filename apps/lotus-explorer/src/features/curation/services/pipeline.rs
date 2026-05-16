@@ -18,7 +18,7 @@ pub async fn curate_rows<F, Fut>(
     row_uniqueness_key: fn(&CurationInputRow) -> String,
 ) -> Result<(Vec<CurationResultRow>, QuickStatementsBundle), CurationError>
 where
-    F: Fn(Locale, CurationInputRow) -> Fut + Copy,
+    F: Fn(Locale, CurationInputRow) -> Fut + Clone,
     Fut: Future<Output = CurationResultRow>,
 {
     let mut seen_keys = std::collections::HashSet::with_capacity(rows.len());
@@ -30,7 +30,10 @@ where
     }
 
     let mut indexed_results = stream::iter(unique_rows.into_iter().enumerate())
-        .map(|(idx, row)| async move { (idx, curate_single_row(locale, row).await) })
+        .map(|(idx, row)| {
+            let curate_single_row = curate_single_row.clone();
+            async move { (idx, curate_single_row(locale, row).await) }
+        })
         .buffer_unordered(CURATION_CONCURRENCY)
         .collect::<Vec<_>>()
         .await;

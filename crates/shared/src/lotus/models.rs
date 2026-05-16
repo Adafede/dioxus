@@ -325,16 +325,11 @@ impl SearchCriteria {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum SmilesSearchType {
+    #[default]
     Substructure,
     Similarity,
-}
-
-impl Default for SmilesSearchType {
-    fn default() -> Self {
-        Self::Substructure
-    }
 }
 
 impl SmilesSearchType {
@@ -352,17 +347,12 @@ impl std::fmt::Display for SmilesSearchType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ElementState {
+    #[default]
     Allowed,
     Required,
     Excluded,
-}
-
-impl Default for ElementState {
-    fn default() -> Self {
-        Self::Allowed
-    }
 }
 
 impl ElementState {

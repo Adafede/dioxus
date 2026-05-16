@@ -23,7 +23,7 @@ mod enrichment;
 mod helpers;
 mod http_client;
 mod reference_metadata;
-mod wikidata;
+pub(crate) mod wikidata;
 
 use chemical::{convert_smiles, has_undefined_stereo, resolve_exact_mass};
 use helpers::{
@@ -37,7 +37,7 @@ use http_client::{js_value_to_json, rdkit_bridge_call};
 use reference_metadata::fetch_reference_quickstatements;
 use wikidata::{
     compound_has_taxon, compound_has_taxon_with_ref, fetch_wikidata_compound_by_inchikey,
-    resolve_or_create_taxon, resolve_reference_qid,
+    normalize_taxon_lookup, resolve_or_create_taxon, resolve_reference_qid,
 };
 
 pub mod inputs;
