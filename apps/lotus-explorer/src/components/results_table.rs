@@ -41,8 +41,14 @@ pub fn ResultsTable() -> Element {
     let sort_state = use_result_selector(explore, |result| result.sort);
     let entries_len = entries.read().len();
 
+    let prepared_rows = use_memo(move || row_cells::prepare_rows(entries.read().as_ref()));
+
+    let sort_index_cache: Memo<sort_model::SortIndexCache> =
+        use_memo(move || sort_model::build_sort_index_cache(entries.read().as_ref()));
+
     let sorted_indices: Memo<Arc<[u32]>> = use_memo(move || {
-        sort_model::build_sorted_indices(entries.read().as_ref(), *sort_state.read())
+        let cache = sort_index_cache.read().clone();
+        sort_model::indices_for_sort(&cache, *sort_state.read())
     });
 
     let total = entries_len;
@@ -64,6 +70,7 @@ pub fn ResultsTable() -> Element {
                 VirtualizedResultsTable {
                     explore,
                     entries,
+                    prepared_rows,
                     sort_state,
                     sorted_indices,
                 }

@@ -7,8 +7,38 @@ use crate::i18n::{
 };
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
-use std::borrow::Cow;
 use std::sync::Arc;
+
+#[derive(Clone, PartialEq)]
+pub(super) struct PreparedRow {
+    pub(super) display_name: Arc<str>,
+    pub(super) display_name_short: Arc<str>,
+    pub(super) depict_url: Option<Arc<str>>,
+    pub(super) doi: Option<Arc<str>>,
+    pub(super) statement_id: Option<Arc<str>>,
+    pub(super) reference_title_short: Option<Arc<str>>,
+    pub(super) short_inchikey: Option<Arc<str>>,
+}
+
+pub(super) fn prepare_rows(rows: &[CompoundEntry]) -> Arc<[PreparedRow]> {
+    let prepared: Vec<PreparedRow> = rows.iter().map(PreparedRow::from_entry).collect();
+    Arc::from(prepared.into_boxed_slice())
+}
+
+impl PreparedRow {
+    fn from_entry(entry: &CompoundEntry) -> Self {
+        let display_name = normalized_display_name(entry);
+        Self {
+            display_name_short: truncate_arc_str(&display_name, 60),
+            depict_url: depict_url_cached(entry),
+            doi: trimmed_optional_arc(entry.ref_doi.as_deref()),
+            statement_id: trimmed_statement_id_arc(entry.statement.as_deref()),
+            reference_title_short: entry.ref_title.as_deref().map(|title| truncate_arc_str(title, 60)),
+            short_inchikey: entry.inchikey.as_deref().map(short_inchikey_arc),
+            display_name,
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct RowText {
@@ -34,38 +64,44 @@ pub(super) fn ResultsRowsWindow(
     locale: Locale,
     text: RowText,
     rows: Arc<[CompoundEntry]>,
+    prepared_rows: Arc<[PreparedRow]>,
     order: Arc<[u32]>,
     start_row: usize,
     visible_count: usize,
 ) -> Element {
     rsx! {
         for i in order.iter().skip(start_row).take(visible_count).copied() {
-            {row_view(locale, text, &rows[i as usize], i)}
+            {row_view(locale, text, &rows[i as usize], &prepared_rows[i as usize], i)}
         }
     }
 }
 
-fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) -> Element {
+fn row_view(
+    locale: Locale,
+    text: RowText,
+    entry: &CompoundEntry,
+    prepared: &PreparedRow,
+    row_key: u32,
+) -> Element {
     let compound_qid = entry.compound_qid.as_ref();
     let taxon_qid = entry.taxon_qid.as_ref();
     let reference_qid = entry.reference_qid.as_ref();
-    let doi = entry.doi();
-    let depict_url = entry.depict_url();
-    let statement_id = entry.statement_id_str();
-    let truncated_ref_title = entry
-        .ref_title
-        .as_deref()
-        .map(|title| truncate_title(title, 60));
-    let name: &str = if entry.name.trim().is_empty() {
-        entry.compound_qid.as_ref()
-    } else {
-        &entry.name
-    };
-    let truncated_compound_name = truncate_title(name, 60);
+    let doi = prepared.doi.as_deref();
+    let statement_id = prepared.statement_id.as_deref();
+    let name = prepared.display_name.as_ref();
     rsx! {
         tr { key: "{row_key}", class: "data-row",
-            {structure_cell(locale, text, depict_url.as_deref(), name)}
-            {compound_cell(locale, text, entry, name, truncated_compound_name, compound_qid)}
+            {structure_cell(locale, text, prepared.depict_url.as_deref(), name)}
+            {
+                compound_cell(
+                    locale,
+                    text,
+                    entry,
+                    prepared,
+                    name,
+                    compound_qid,
+                )
+            }
             {mass_cell(entry.mass)}
             {formula_cell(entry.formula.as_deref())}
             {taxon_cell(locale, text, entry, taxon_qid)}
@@ -74,10 +110,10 @@ fn row_view(locale: Locale, text: RowText, entry: &CompoundEntry, row_key: u32) 
                     locale,
                     text,
                     entry,
+                    prepared,
                     reference_qid,
                     doi,
                     statement_id,
-                    truncated_ref_title,
                 )
             }
             {year_cell(entry.pub_year)}
@@ -114,8 +150,8 @@ fn compound_cell(
     locale: Locale,
     text: RowText,
     entry: &CompoundEntry,
+    prepared: &PreparedRow,
     name: &str,
-    truncated_name: Cow<'_, str>,
     compound_qid: &str,
 ) -> Element {
     rsx! {
@@ -127,7 +163,7 @@ fn compound_cell(
                     rel: "noopener noreferrer",
                     class: "primary-link",
                     title: "{name}",
-                    "{truncated_name}"
+                    "{prepared.display_name_short}"
                 }
             }
             div { class: "badge-row",
@@ -157,7 +193,7 @@ fn compound_cell(
                         class: "id-badge mono inchikey",
                         title: "{ik}",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                        "{short_inchikey(ik)}"
+                        "{prepared.short_inchikey.as_deref().unwrap_or(ik)}"
                     }
                 }
             }
@@ -220,17 +256,17 @@ fn reference_cell(
     locale: Locale,
     text: RowText,
     entry: &CompoundEntry,
+    prepared: &PreparedRow,
     reference_qid: &str,
     doi: Option<&str>,
     statement_id: Option<&str>,
-    truncated_ref_title: Option<Cow<'_, str>>,
 ) -> Element {
     rsx! {
         td { class: "td-ref",
             div { class: "cell-primary",
                 if let (Some(full_title), Some(display_title)) = (
                     entry.ref_title.as_deref(),
-                    truncated_ref_title.as_deref(),
+                    prepared.reference_title_short.as_deref(),
                 )
                 {
                     a {
@@ -300,18 +336,60 @@ fn year_cell(pub_year: Option<i16>) -> Element {
     }
 }
 
-fn short_inchikey(ik: &str) -> &str {
-    ik.split('-').next().unwrap_or(ik)
+fn short_inchikey_arc(ik: &str) -> Arc<str> {
+    Arc::<str>::from(ik.split('-').next().unwrap_or(ik))
 }
 
-fn truncate_title(title: &str, max_chars: usize) -> Cow<'_, str> {
+fn truncate_arc_str(title: &str, max_chars: usize) -> Arc<str> {
     let trimmed = title.trim();
     if trimmed.chars().count() <= max_chars {
-        return Cow::Borrowed(trimmed);
+        return Arc::<str>::from(trimmed);
     }
     let mut out: String = trimmed.chars().take(max_chars).collect();
     out.push('…');
-    Cow::Owned(out)
+    Arc::<str>::from(out)
+}
+
+fn normalized_display_name(entry: &CompoundEntry) -> Arc<str> {
+    let trimmed = entry.name.trim();
+    if trimmed.is_empty() {
+        entry.compound_qid.clone()
+    } else if trimmed.len() == entry.name.len() {
+        entry.name.clone()
+    } else {
+        Arc::<str>::from(trimmed)
+    }
+}
+
+fn depict_url_cached(entry: &CompoundEntry) -> Option<Arc<str>> {
+    let smiles = entry.smiles.as_deref()?.trim();
+    if smiles.is_empty() || smiles.contains('\n') {
+        return None;
+    }
+    Some(Arc::<str>::from(format!(
+        "https://www.simolecule.com/cdkdepict/depict/cow/svg?smi={}&annotate=cip",
+        urlencoding::encode(smiles)
+    )))
+}
+
+fn trimmed_optional_arc(value: Option<&str>) -> Option<Arc<str>> {
+    let trimmed = value?.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(Arc::<str>::from(trimmed))
+    }
+}
+
+fn trimmed_statement_id_arc(value: Option<&str>) -> Option<Arc<str>> {
+    const STMT_PREFIX: &str = "http://www.wikidata.org/entity/statement/";
+    let trimmed = value?.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(Arc::<str>::from(
+        trimmed.strip_prefix(STMT_PREFIX).unwrap_or(trimmed),
+    ))
 }
 
 #[cfg(test)]
@@ -320,22 +398,49 @@ mod tests {
 
     #[test]
     fn short_inchikey_returns_first_segment() {
-        assert_eq!(short_inchikey("AAAA-BBBB-CCCC"), "AAAA");
-        assert_eq!(short_inchikey("NOSPLIT"), "NOSPLIT");
+        assert_eq!(short_inchikey_arc("AAAA-BBBB-CCCC").as_ref(), "AAAA");
+        assert_eq!(short_inchikey_arc("NOSPLIT").as_ref(), "NOSPLIT");
     }
 
     #[test]
     fn truncate_title_borrows_when_already_short() {
         let title = "Short title";
-        let truncated = truncate_title(title, 60);
-        assert!(matches!(truncated, Cow::Borrowed(_)));
-        assert_eq!(truncated, "Short title");
+        let truncated = truncate_arc_str(title, 60);
+        assert_eq!(truncated.as_ref(), "Short title");
     }
 
     #[test]
     fn truncate_title_trims_and_appends_ellipsis() {
-        let truncated = truncate_title("  This title is definitely longer than ten chars  ", 10);
-        assert!(matches!(truncated, Cow::Owned(_)));
-        assert_eq!(truncated, "This title…");
+        let truncated = truncate_arc_str("  This title is definitely longer than ten chars  ", 10);
+        assert_eq!(truncated.as_ref(), "This title…");
+    }
+
+    #[test]
+    fn prepared_row_caches_trimmed_and_derived_fields() {
+        let entry = CompoundEntry {
+            compound_qid: Arc::<str>::from("Q1"),
+            name: Arc::<str>::from("  Alpha  "),
+            inchikey: Some(Arc::<str>::from("AAAA-BBBB-CCCC")),
+            smiles: Some(Arc::<str>::from("CCO")),
+            mass: None,
+            formula: None,
+            taxon_qid: Arc::<str>::from("T1"),
+            taxon_name: Arc::<str>::from("Taxon"),
+            reference_qid: Arc::<str>::from("R1"),
+            ref_title: Some(Arc::<str>::from("  A fairly short title  ")),
+            ref_doi: Some(Arc::<str>::from(" 10.1000/test ")),
+            pub_year: None,
+            statement: Some(Arc::<str>::from(
+                "http://www.wikidata.org/entity/statement/Q1-ABC",
+            )),
+        };
+
+        let prepared = PreparedRow::from_entry(&entry);
+        assert_eq!(prepared.display_name.as_ref(), "Alpha");
+        assert_eq!(prepared.display_name_short.as_ref(), "Alpha");
+        assert_eq!(prepared.short_inchikey.as_deref(), Some("AAAA"));
+        assert_eq!(prepared.doi.as_deref(), Some("10.1000/test"));
+        assert_eq!(prepared.statement_id.as_deref(), Some("Q1-ABC"));
+        assert!(prepared.depict_url.as_deref().is_some_and(|url| url.contains("annotate=cip")));
     }
 }
