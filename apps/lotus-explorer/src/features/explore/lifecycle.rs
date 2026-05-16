@@ -85,5 +85,3 @@ mod tests {
         assert!(matches!(actions[1], ExploreAction::ErrorDismissed));
     }
 }
-
-
