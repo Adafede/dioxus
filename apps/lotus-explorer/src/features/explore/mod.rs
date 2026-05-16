@@ -6,6 +6,7 @@ pub mod command;
 pub mod download_dispatch;
 pub mod form_actions;
 pub mod orchestrator;
+pub mod request;
 pub mod search_state;
 pub mod search_utils;
 pub mod selectors;

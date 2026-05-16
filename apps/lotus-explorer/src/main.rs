@@ -148,12 +148,26 @@ fn App() -> Element {
         let tc = search_task_controller.clone();
         move |_: ()| {
             form_ctx.mark_searched();
-            start_search(criteria, SearchCommand::Interactive, explore, tc.clone(), repo);
+            start_search(
+                criteria,
+                SearchCommand::Interactive,
+                explore,
+                tc.clone(),
+                repo,
+            );
         }
     };
     let on_preview = {
         let tc = search_task_controller.clone();
-        move |_: ()| start_search(criteria, SearchCommand::Interactive, explore, tc.clone(), repo)
+        move |_: ()| {
+            start_search(
+                criteria,
+                SearchCommand::Interactive,
+                explore,
+                tc.clone(),
+                repo,
+            )
+        }
     };
     let tc_retry = search_task_controller.clone();
 

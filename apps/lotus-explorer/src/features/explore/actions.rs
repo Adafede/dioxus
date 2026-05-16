@@ -3,8 +3,8 @@
 
 //! Action catalog for the Explore feature reducer.
 
-use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
 use crate::features::explore::command::SearchCommand;
+use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
 use crate::models::{CompoundEntry, DatasetStats, SearchCriteria, SortColumn};
 use std::sync::Arc;
 

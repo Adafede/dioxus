@@ -9,6 +9,7 @@
 
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::command::SearchCommand;
+use crate::features::explore::request::SearchRequest;
 use crate::features::explore::search_state::{
     ExploreState, SearchMetrics, dispatch_explore_action, emit_search_summary,
 };
@@ -75,37 +76,30 @@ pub fn start_search<R: LotusRepository>(
     task_controller: SearchTaskController,
     repo: R,
 ) {
-    let direct_download_mode = command.direct_download();
-    let crit = criteria.peek().clone();
-    if let Err(error) = validate_search_criteria(&crit) {
+    let request = SearchRequest::new(criteria.peek().clone(), command);
+    if let Err(error) = validate_search_criteria(request.criteria()) {
         dispatch_explore_action(explore, ExploreAction::SearchFailed { error });
         return;
     }
 
-    dispatch_explore_action(
-        explore,
-        ExploreAction::SearchRequested {
-            criteria_snapshot: crit.clone(),
-            command,
-        },
-    );
-    let request_token = explore.peek().lifecycle.search_request_token;
+    dispatch_explore_action(explore, request.as_action());
+    let request = request.with_request_token(explore.peek().lifecycle.search_request_token);
 
     let task = spawn(async move {
-        match do_search(crit.clone(), explore, direct_download_mode, repo.clone()).await {
+        match do_search(&request, explore, repo.clone()).await {
             Ok(outcome) => {
-                if request_token != explore.peek().lifecycle.search_request_token {
-                    telemetry::stale_result_ignored(request_token);
+                if request.request_token() != explore.peek().lifecycle.search_request_token {
+                    telemetry::stale_result_ignored(request.request_token());
                     return;
                 }
 
                 let meta = finalize::finalize(
-                    &crit,
+                    request.criteria(),
                     outcome.qid.as_deref(),
                     &outcome.rows,
                     outcome.total_matches,
                     outcome.total_stats.clone(),
-                    direct_download_mode,
+                    request.direct_download(),
                 );
 
                 dispatch_explore_action(
@@ -129,8 +123,8 @@ pub fn start_search<R: LotusRepository>(
                 );
             }
             Err(e) => {
-                if request_token != explore.peek().lifecycle.search_request_token {
-                    telemetry::stale_error_ignored(request_token);
+                if request.request_token() != explore.peek().lifecycle.search_request_token {
+                    telemetry::stale_error_ignored(request.request_token());
                     return;
                 }
                 dispatch_explore_action(explore, ExploreAction::SearchFailed { error: e });
@@ -144,21 +138,20 @@ pub fn start_search<R: LotusRepository>(
 /// [`DomainError`].  No locale strings are produced here — formatting happens
 /// at the UI boundary in `components::layout::notices`.
 pub async fn do_search<R: LotusRepository>(
-    crit: SearchCriteria,
+    request: &SearchRequest,
     explore: Signal<ExploreState>,
-    direct_download_mode: bool,
     repo: R,
 ) -> Result<SearchOutcome, DomainError> {
     let search_timer = perf::start_timer("LOTUS:search_total");
     let mut metrics = SearchMetrics::default();
     telemetry::search_start();
 
-    let strategy = ExecutionStrategy::resolve(direct_download_mode);
-    let smiles = normalize_smiles(&crit.smiles);
+    let strategy = ExecutionStrategy::resolve(request.direct_download());
+    let smiles = normalize_smiles(&request.criteria().smiles);
 
     // ── API fast path ─────────────────────────────────────────────────────────
     if strategy == ExecutionStrategy::ApiFirst {
-        let mut api_crit = crit.clone();
+        let mut api_crit = request.criteria().clone();
         api_crit.smiles = smiles.clone();
         let display_limit = runtime_table_row_limit();
         let include_counts = true;
@@ -210,10 +203,12 @@ pub async fn do_search<R: LotusRepository>(
 
     // ── SPARQL pipeline ───────────────────────────────────────────────────────
 
-    let taxon_resolution = resolve_taxon::resolve(crit.taxon.trim(), &repo, &mut metrics).await?;
+    let taxon_resolution =
+        resolve_taxon::resolve(request.criteria().taxon.trim(), &repo, &mut metrics).await?;
 
-    let sparql_query = build_sparql_query(&smiles, &crit, taxon_resolution.qid.as_deref());
-    let execution_query = apply_server_filters(&sparql_query, &crit);
+    let sparql_query =
+        build_sparql_query(&smiles, request.criteria(), taxon_resolution.qid.as_deref());
+    let execution_query = apply_server_filters(&sparql_query, request.criteria());
 
     if strategy.is_download_only() {
         let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);

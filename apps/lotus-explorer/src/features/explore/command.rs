@@ -34,4 +34,3 @@ mod tests {
         assert!(SearchCommand::StartupDownload.direct_download());
     }
 }
-
