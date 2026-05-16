@@ -34,7 +34,7 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::LoadingHint => "Large result sets may take several seconds.",
         TextKey::LoadingResolvingTaxon => "Resolving taxon...",
         TextKey::LoadingCounting => "Counting matches...",
-        TextKey::LoadingFetchingPreview => "Fetching preview rows...",
+        TextKey::LoadingFetchingPreview => "Fetching results...",
         TextKey::LoadingRendering => "Rendering table...",
         TextKey::Retry => "Retry",
         TextKey::ErrorHintValidation => "Please adjust your query input and try again.",

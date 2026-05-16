@@ -34,7 +34,7 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::LoadingHint => "Große Ergebnismengen können einige Sekunden dauern.",
         TextKey::LoadingResolvingTaxon => "Taxon wird aufgelöst...",
         TextKey::LoadingCounting => "Treffer werden gezählt...",
-        TextKey::LoadingFetchingPreview => "Vorschauzeilen werden geladen...",
+        TextKey::LoadingFetchingPreview => "Ergebnisse werden geladen...",
         TextKey::LoadingRendering => "Tabelle wird gerendert...",
         TextKey::Retry => "Erneut versuchen",
         TextKey::ErrorHintValidation => "Bitte Eingaben prüfen, dann erneut versuchen.",

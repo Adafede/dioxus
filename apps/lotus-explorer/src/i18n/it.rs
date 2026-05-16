@@ -36,7 +36,7 @@ pub fn it_t(key: TextKey) -> &'static str {
         }
         TextKey::LoadingResolvingTaxon => "Risoluzione del taxon...",
         TextKey::LoadingCounting => "Conteggio delle corrispondenze...",
-        TextKey::LoadingFetchingPreview => "Recupero righe di anteprima...",
+        TextKey::LoadingFetchingPreview => "Recupero risultati...",
         TextKey::LoadingRendering => "Rendering della tabella...",
         TextKey::Retry => "Riprova",
         TextKey::ErrorHintValidation => "Controlla l'input e riprova.",

@@ -34,7 +34,7 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::LoadingHint => "Les grands jeux de résultats peuvent prendre du temps.",
         TextKey::LoadingResolvingTaxon => "Résolution du taxon...",
         TextKey::LoadingCounting => "Comptage des correspondances...",
-        TextKey::LoadingFetchingPreview => "Récupération de l'aperçu...",
+        TextKey::LoadingFetchingPreview => "Récupération des résultats...",
         TextKey::LoadingRendering => "Rendu du tableau...",
         TextKey::Retry => "Réessayer",
         TextKey::ErrorHintValidation => "Veuillez ajuster la saisie puis réessayer.",

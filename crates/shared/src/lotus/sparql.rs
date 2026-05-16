@@ -59,7 +59,6 @@ fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
     h
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[inline]
 fn fnv1a_one(bytes: &[u8]) -> u64 {
     fnv1a_extend(Wrapping(14695981039346656037u64), bytes).0
@@ -319,7 +318,6 @@ pub fn parse_counts_csv_bytes(csv_bytes: &[u8]) -> Result<DatasetStats, FetchErr
     })
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 pub fn parse_compounds_csv_capped_bytes(
     csv_bytes: &[u8],
     max_rows: usize,

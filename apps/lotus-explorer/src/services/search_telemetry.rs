@@ -185,68 +185,22 @@ pub fn query_build_after_server_filters(has_service: bool, has_filter: bool) {
     );
 }
 
-#[cfg(target_arch = "wasm32")]
-pub fn counting_sequential_fetch_wasm() {
-    log_debug_evt("search", "counting", "sequential_fetch_wasm", None);
-}
-
-pub fn counting_parallel_fetch_started() {
-    log_debug_evt("search", "counting", "parallel_fetch_started", None);
-}
-
-pub fn counting_done(
-    elapsed: Duration,
-    entries: usize,
-    compounds: usize,
-    taxa: usize,
-    refs: usize,
-) {
-    log_timing_evt(
-        "search",
-        "counting",
-        "done",
-        elapsed,
-        Some(&format!(
-            "entries={entries} compounds={compounds} taxa={taxa} refs={refs}"
-        )),
-    );
-}
-
-pub fn preview_started(display_limit: usize) {
+pub fn results_fetch_started(display_limit: usize) {
     log_debug_evt(
         "search",
-        "fetching_preview",
+        "fetching_results",
         "started",
         Some(&format!("display_limit={display_limit}")),
     );
 }
 
-pub fn preview_done(elapsed: Duration, rows: usize) {
+pub fn results_fetch_done(elapsed: Duration, rows: usize, total_matches: usize) {
     log_timing_evt(
         "search",
-        "fetching_preview",
+        "fetching_results",
         "done",
         elapsed,
-        Some(&format!("rows={rows}")),
-    );
-}
-
-pub fn fallback_entered(reason: &str) {
-    log_warn_evt(
-        "search",
-        "fallback",
-        "entered",
-        Some(&format!("reason=two_phase_failed original={reason}")),
-    );
-}
-
-pub fn fallback_done(elapsed: Duration, rows: usize) {
-    log_timing_evt(
-        "search",
-        "fallback",
-        "done",
-        elapsed,
-        Some(&format!("rows={rows}")),
+        Some(&format!("rows={rows} total_matches={total_matches}")),
     );
 }
 
