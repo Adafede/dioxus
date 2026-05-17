@@ -19,7 +19,9 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::Language => "Langue",
         TextKey::PageTitle => "Explorateur LOTUS de données ouvertes liées",
         TextKey::GoToHomepage => "Aller à la page d'accueil",
-        TextKey::PageSubtitle => "Explorez des données ouvertes liées : produits naturels, organismes et littérature scientifique.",
+        TextKey::PageSubtitle => {
+            "Explorez des données ouvertes liées : produits naturels, organismes et littérature scientifique."
+        }
         TextKey::ResolvedTaxon => "Taxon résolu",
         TextKey::QueryHash => "Hash de la requête",
         TextKey::ResultHash => "Hash du résultat",
@@ -47,7 +49,9 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::WelcomeLeadA => {
             "Cette application démontre la puissance des données ouvertes liées en connectant les produits naturels aux organismes et à la littérature scientifique. "
         }
-        TextKey::WelcomeLeadB => "Le modèle de données relie les composés, les taxa et les références—provenant de ",
+        TextKey::WelcomeLeadB => {
+            "Le modèle de données relie les composés, les taxa et les références—provenant de "
+        }
         TextKey::WelcomeLeadC => ", publiées en tant que données ouvertes liées sur ",
         TextKey::WelcomeLeadD => " et interrogées via SPARQL par ",
         TextKey::WelcomeLeadE => ".",

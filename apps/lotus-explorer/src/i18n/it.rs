@@ -19,7 +19,9 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::Language => "Lingua",
         TextKey::PageTitle => "Esploratore LOTUS di dati aperti collegati",
         TextKey::GoToHomepage => "Vai alla home page",
-        TextKey::PageSubtitle => "Esplora dati aperti collegati: prodotti naturali, organismi e letteratura scientifica.",
+        TextKey::PageSubtitle => {
+            "Esplora dati aperti collegati: prodotti naturali, organismi e letteratura scientifica."
+        }
         TextKey::ResolvedTaxon => "Taxon risolto",
         TextKey::QueryHash => "Hash della query",
         TextKey::ResultHash => "Hash del risultato",
@@ -49,7 +51,9 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::WelcomeLeadA => {
             "Questa applicazione dimostra la potenza dei dati aperti collegati collegando i prodotti naturali agli organismi e alla letteratura scientifica. "
         }
-        TextKey::WelcomeLeadB => "Il modello di dati collega gli composti, i taxa e i riferimenti—provenienti da ",
+        TextKey::WelcomeLeadB => {
+            "Il modello di dati collega gli composti, i taxa e i riferimenti—provenienti da "
+        }
         TextKey::WelcomeLeadC => ", pubblicati come dati aperti collegati su ",
         TextKey::WelcomeLeadD => " e interrogati tramite SPARQL tramite ",
         TextKey::WelcomeLeadE => ".",

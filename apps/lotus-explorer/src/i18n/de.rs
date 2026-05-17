@@ -19,7 +19,9 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::Language => "Sprache",
         TextKey::PageTitle => "LOTUS Explorer für verknüpfte offene Daten",
         TextKey::GoToHomepage => "Zur Startseite",
-        TextKey::PageSubtitle => "Erkunden Sie verknüpfte offene Daten: Naturstoffe, Organismen und wissenschaftliche Literatur.",
+        TextKey::PageSubtitle => {
+            "Erkunden Sie verknüpfte offene Daten: Naturstoffe, Organismen und wissenschaftliche Literatur."
+        }
         TextKey::ResolvedTaxon => "Aufgelöstes Taxon",
         TextKey::QueryHash => "Abfrage-Hash",
         TextKey::ResultHash => "Ergebnis-Hash",
@@ -47,7 +49,9 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::WelcomeLeadA => {
             "Diese Anwendung demonstriert die Leistungsfähigkeit verknüpfter offener Daten durch Verbindung natürlicher Produkte mit Organismen und wissenschaftlicher Literatur. "
         }
-        TextKey::WelcomeLeadB => "Das Datenmodell verknüpft Verbindungen, Taxa und Referenzen—aus der ",
+        TextKey::WelcomeLeadB => {
+            "Das Datenmodell verknüpft Verbindungen, Taxa und Referenzen—aus der "
+        }
         TextKey::WelcomeLeadC => ", veröffentlicht als verknüpfte offene Daten auf ",
         TextKey::WelcomeLeadD => " und abgefragt via SPARQL durch ",
         TextKey::WelcomeLeadE => ".",

@@ -19,7 +19,9 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::Language => "Language",
         TextKey::PageTitle => "LOTUS Linked Open Data Explorer",
         TextKey::GoToHomepage => "Go to homepage",
-        TextKey::PageSubtitle => "Explore linked open data: natural products, organisms, and scientific literature.",
+        TextKey::PageSubtitle => {
+            "Explore linked open data: natural products, organisms, and scientific literature."
+        }
         TextKey::ResolvedTaxon => "Resolved taxon",
         TextKey::QueryHash => "Query hash",
         TextKey::ResultHash => "Result hash",
@@ -42,8 +44,12 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintParse => "Response parsing failed. Retry or refine query.",
         TextKey::ErrorHintUnknown => "Unexpected error. Retry may help.",
         TextKey::SkipToResults => "Skip to results",
-        TextKey::WelcomeLeadA => "This app demonstrates the power of linked open data by connecting natural products to organisms and scientific literature. ",
-        TextKey::WelcomeLeadB => "The data model links compounds, taxa, and references—sourced from the ",
+        TextKey::WelcomeLeadA => {
+            "This app demonstrates the power of linked open data by connecting natural products to organisms and scientific literature. "
+        }
+        TextKey::WelcomeLeadB => {
+            "The data model links compounds, taxa, and references—sourced from the "
+        }
         TextKey::WelcomeLeadC => ", published as linked data on ",
         TextKey::WelcomeLeadD => ", and queried via SPARQL through ",
         TextKey::WelcomeLeadE => ".",
