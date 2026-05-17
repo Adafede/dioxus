@@ -38,10 +38,12 @@ use dioxus::prelude::*;
 #[cfg(test)]
 use download::DownloadFormat;
 use features::explore::actions::ExploreAction;
-use features::explore::command::SearchCommand;
 use features::explore::download_dispatch::{use_download_dispatch_effect, use_startup_effect};
-use features::explore::orchestrator::{SearchTaskController, start_search};
+use features::explore::orchestrator::SearchTaskController;
 use features::explore::search_state::{ExploreState, dispatch_explore_action};
+use features::explore::state::controller::{
+    classes_for_view, retry_search, start_interactive_search, start_preview_search,
+};
 use features::explore::url_state::{
     build_shareable_url, initial_url_state, persist_locale_query_param, persist_view_query_param,
 };
@@ -147,49 +149,25 @@ fn App() -> Element {
     let on_search = {
         let tc = search_task_controller.clone();
         move |_: ()| {
-            form_ctx.mark_searched();
-            start_search(
-                criteria,
-                SearchCommand::Interactive,
-                explore,
-                tc.clone(),
-                repo,
-            );
+            start_interactive_search(criteria, explore, tc.clone(), repo, form_ctx);
         }
     };
     let on_preview = {
         let tc = search_task_controller.clone();
-        move |_: ()| {
-            start_search(
-                criteria,
-                SearchCommand::Interactive,
-                explore,
-                tc.clone(),
-                repo,
-            )
-        }
+        move |_: ()| start_preview_search(criteria, explore, tc.clone(), repo)
     };
     let tc_retry = search_task_controller.clone();
 
     // ── Layout ────────────────────────────────────────────────────────────────
     let current_view = app_state.read().view;
-    let app_layout_class = if current_view == AppView::Explore {
-        "app-layout"
-    } else {
-        "app-layout no-sidebar"
-    };
-    let main_class = if current_view == AppView::Explore {
-        "main-content"
-    } else {
-        "main-content single-pane"
-    };
+    let layout_classes = classes_for_view(current_view);
 
     rsx! {
         LocaleProvider { locale,
             a { class: "skip-link", href: SKIP_TO_RESULTS_HREF,
                 "{t(locale_value, TextKey::SkipToResults)}"
             }
-            div { class: "{app_layout_class}",
+            div { class: "{layout_classes.app_layout}",
 
                 if current_view == AppView::Explore {
                     Sidebar { on_search }
@@ -197,7 +175,7 @@ fn App() -> Element {
 
                 main {
                     id: MAIN_PANEL_ID,
-                    class: "{main_class}",
+                    class: "{layout_classes.main}",
                     tabindex: "-1",
                     aria_labelledby: PAGE_TITLE_ID,
                     PageHeader {}
@@ -207,7 +185,7 @@ fn App() -> Element {
                         TaxonNotice {}
                         ErrorNotice {
                             on_dismiss: move |_| dispatch_explore_action(explore, ExploreAction::ErrorDismissed),
-                            on_retry: move |_| start_search(criteria, SearchCommand::Interactive, explore, tc_retry.clone(), repo),
+                            on_retry: move |_| retry_search(criteria, explore, tc_retry.clone(), repo),
                         }
                         HeaderMetaSection {}
                         ResultsViewport { on_preview }

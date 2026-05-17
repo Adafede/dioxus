@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::*;
+#[cfg(not(target_arch = "wasm32"))]
 use futures::try_join;
 
 #[derive(Debug, Deserialize)]

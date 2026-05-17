@@ -14,6 +14,7 @@ name = "lotus-explorer"
 path = "src/main.rs"
 
 [dependencies]
+async-trait = "0.1"
 console_log = { workspace = true }
 # Use the workspace pin (`dioxus = "0.7.9"`, `features = ["web"]`) so dx can
 # auto-detect the `wasm32-unknown-unknown` target. Without a platform

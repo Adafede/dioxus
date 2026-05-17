@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CurationInputRow {
@@ -52,19 +52,33 @@ impl Default for QuickStatementsBundle {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CurationErrorKind {
+    InvalidInput,
+    Transport,
+    Parse,
+}
+
+#[derive(Debug, Error)]
 pub enum CurationError {
+    #[error("{0}")]
     InvalidInput(String),
+    #[error("{0}")]
     Http(String),
+    #[error("{0}")]
     Parse(String),
 }
 
-impl fmt::Display for CurationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl CurationError {
+    pub fn kind(&self) -> CurationErrorKind {
         match self {
-            Self::InvalidInput(msg) => write!(f, "{msg}"),
-            Self::Http(msg) => write!(f, "{msg}"),
-            Self::Parse(msg) => write!(f, "{msg}"),
+            Self::InvalidInput(_) => CurationErrorKind::InvalidInput,
+            Self::Http(_) => CurationErrorKind::Transport,
+            Self::Parse(_) => CurationErrorKind::Parse,
         }
+    }
+
+    pub fn is_recoverable(&self) -> bool {
+        !matches!(self, Self::Parse(_))
     }
 }

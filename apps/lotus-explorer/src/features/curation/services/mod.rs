@@ -35,10 +35,7 @@ use http_client::{BatchConvertResponse, natprod_client};
 #[cfg(target_arch = "wasm32")]
 use http_client::{js_value_to_json, rdkit_bridge_call};
 use reference_metadata::fetch_reference_quickstatements;
-use wikidata::{
-    compound_has_taxon, compound_has_taxon_with_ref, fetch_wikidata_compound_by_inchikey,
-    normalize_taxon_lookup, resolve_or_create_taxon, resolve_reference_qid,
-};
+use wikidata::normalize_taxon_lookup;
 
 pub mod inputs;
 pub mod pipeline;

@@ -1,9 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-pub mod domain;
-pub mod queue;
-pub mod repositories;
-pub mod services;
-pub mod state;
-pub mod workflow;
+pub mod controller;

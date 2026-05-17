@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::*;
+use crate::features::curation::repositories::CurationKnowledgeRepository;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -37,6 +38,7 @@ fn write_cached_ask(cache: &Mutex<OccurrenceAskCache>, key: AskCacheKey, value: 
 }
 
 async fn compound_has_taxon_cached(
+    repository: &dyn CurationKnowledgeRepository,
     cache: &Mutex<OccurrenceAskCache>,
     compound_qid: &str,
     taxon_qid: &str,
@@ -50,12 +52,15 @@ async fn compound_has_taxon_cached(
         return Ok(cached);
     }
 
-    let value = compound_has_taxon(compound_qid, taxon_qid).await?;
+    let value = repository
+        .compound_has_taxon(compound_qid, taxon_qid)
+        .await?;
     write_cached_ask(cache, key, value);
     Ok(value)
 }
 
 async fn compound_has_taxon_with_ref_cached(
+    repository: &dyn CurationKnowledgeRepository,
     cache: &Mutex<OccurrenceAskCache>,
     compound_qid: &str,
     taxon_qid: &str,
@@ -71,7 +76,9 @@ async fn compound_has_taxon_with_ref_cached(
         return Ok(cached);
     }
 
-    let value = compound_has_taxon_with_ref(compound_qid, taxon_qid, ref_qid).await?;
+    let value = repository
+        .compound_has_taxon_with_ref(compound_qid, taxon_qid, ref_qid)
+        .await?;
     write_cached_ask(cache, key, value);
     Ok(value)
 }
@@ -79,6 +86,7 @@ async fn compound_has_taxon_with_ref_cached(
 pub(crate) async fn curate_single_row(
     locale: Locale,
     input: CurationInputRow,
+    repository: Arc<dyn CurationKnowledgeRepository>,
     prefetched_taxa: Arc<HashMap<String, String>>,
     prefetched_references: Arc<HashMap<String, String>>,
     occurrence_ask_cache: Arc<Mutex<OccurrenceAskCache>>,
@@ -86,6 +94,7 @@ pub(crate) async fn curate_single_row(
     match enrich_and_generate(
         locale,
         &input,
+        repository.as_ref(),
         prefetched_taxa.as_ref(),
         prefetched_references.as_ref(),
         occurrence_ask_cache.as_ref(),
@@ -113,6 +122,7 @@ pub(crate) async fn curate_single_row(
 async fn enrich_and_generate(
     locale: Locale,
     input: &CurationInputRow,
+    repository: &dyn CurationKnowledgeRepository,
     prefetched_taxa: &HashMap<String, String>,
     prefetched_references: &HashMap<String, String>,
     occurrence_ask_cache: &Mutex<OccurrenceAskCache>,
@@ -121,7 +131,9 @@ async fn enrich_and_generate(
     let formula_from_inchi =
         extract_formula_from_inchi(&converted.inchi).map(|f| normalize_formula_for_wikidata(&f));
     let normalized_doi = input.doi.as_deref().and_then(normalize_doi);
-    let wd_compound = fetch_wikidata_compound_by_inchikey(&converted.inchikey).await?;
+    let wd_compound = repository
+        .fetch_compound_by_inchikey(&converted.inchikey)
+        .await?;
 
     let result = match wd_compound {
         Some(existing) => {
@@ -185,6 +197,7 @@ async fn enrich_and_generate(
                 locale,
                 input,
                 normalized_doi.as_deref(),
+                repository,
                 prefetched_taxa,
                 prefetched_references,
             )
@@ -198,6 +211,7 @@ async fn enrich_and_generate(
                 ) {
                     (Some(tqid), Some(rqid), _) => {
                         let add = !compound_has_taxon_with_ref_cached(
+                            repository,
                             occurrence_ask_cache,
                             &existing.qid,
                             tqid,
@@ -215,9 +229,13 @@ async fn enrich_and_generate(
                     // Reference item does not exist yet: generate it in dependencies, then rerun.
                     (Some(_), None, Some(_)) => (false, String::new()),
                     (Some(tqid), None, None) => {
-                        let add =
-                            !compound_has_taxon_cached(occurrence_ask_cache, &existing.qid, tqid)
-                                .await?;
+                        let add = !compound_has_taxon_cached(
+                            repository,
+                            occurrence_ask_cache,
+                            &existing.qid,
+                            tqid,
+                        )
+                        .await?;
                         (
                             add,
                             format!("{}|{}|{}", existing.qid, WD_OCCURS_IN_TAXON_PROP, tqid),
@@ -281,6 +299,7 @@ async fn enrich_and_generate(
                 locale,
                 input,
                 normalized_doi.as_deref(),
+                repository,
                 prefetched_taxa,
                 prefetched_references,
             )
@@ -392,6 +411,7 @@ async fn resolve_row_dependencies(
     locale: Locale,
     input: &CurationInputRow,
     normalized_doi: Option<&str>,
+    repository: &dyn CurationKnowledgeRepository,
     prefetched_taxa: &HashMap<String, String>,
     prefetched_references: &HashMap<String, String>,
 ) -> Result<Option<DependencyResolution>, CurationError> {
@@ -402,11 +422,12 @@ async fn resolve_row_dependencies(
     let prefetched_taxon_qid = normalize_taxon_lookup(taxon_name)
         .and_then(|lookup| prefetched_taxa.get(&lookup))
         .map(String::as_str);
-    let (taxon_qid_opt, taxon_new_qs) =
-        resolve_or_create_taxon(taxon_name, prefetched_taxon_qid).await?;
+    let (taxon_qid_opt, taxon_new_qs) = repository
+        .resolve_or_create_taxon(taxon_name, prefetched_taxon_qid)
+        .await?;
     let (ref_qid_opt, ref_new_qs) = if let Some(doi) = normalized_doi {
         let prefetched_ref_qid = prefetched_references.get(doi).map(String::as_str);
-        resolve_or_create_reference(doi, prefetched_ref_qid).await?
+        resolve_or_create_reference(repository, doi, prefetched_ref_qid).await?
     } else {
         (None, Vec::new())
     };
@@ -441,6 +462,7 @@ async fn resolve_row_dependencies(
 
 /// Fetch pre-generated QuickStatements from Scholia (native) or citation.js (WASM)
 async fn resolve_or_create_reference(
+    repository: &dyn CurationKnowledgeRepository,
     doi: &str,
     pre_resolved_qid: Option<&str>,
 ) -> Result<(Option<String>, Vec<String>), CurationError> {
@@ -449,7 +471,7 @@ async fn resolve_or_create_reference(
     }
 
     // Check if reference already exists in Wikidata
-    if let Some(qid) = resolve_reference_qid(doi).await? {
+    if let Some(qid) = repository.resolve_reference_qid(doi).await? {
         return Ok((Some(qid), Vec::new()));
     }
 
@@ -459,4 +481,88 @@ async fn resolve_or_create_reference(
         .unwrap_or_default();
 
     Ok((None, qs_lines))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use futures::executor::block_on;
+    use std::collections::HashMap;
+
+    #[derive(Default)]
+    struct MockRepo {
+        ask_calls: Mutex<usize>,
+    }
+
+    #[async_trait(?Send)]
+    impl CurationKnowledgeRepository for MockRepo {
+        async fn fetch_compound_by_inchikey(
+            &self,
+            _inchikey: &str,
+        ) -> Result<Option<WikidataCompound>, CurationError> {
+            Ok(None)
+        }
+
+        async fn resolve_or_create_taxon(
+            &self,
+            _name: &str,
+            _pre_resolved_qid: Option<&str>,
+        ) -> Result<(Option<String>, Vec<String>), CurationError> {
+            Ok((None, Vec::new()))
+        }
+
+        async fn resolve_reference_qid(&self, _doi: &str) -> Result<Option<String>, CurationError> {
+            Ok(None)
+        }
+
+        async fn compound_has_taxon_with_ref(
+            &self,
+            _compound_qid: &str,
+            _taxon_qid: &str,
+            _ref_qid: &str,
+        ) -> Result<bool, CurationError> {
+            Ok(false)
+        }
+
+        async fn compound_has_taxon(
+            &self,
+            _compound_qid: &str,
+            _taxon_qid: &str,
+        ) -> Result<bool, CurationError> {
+            if let Ok(mut calls) = self.ask_calls.lock() {
+                *calls += 1;
+            }
+            Ok(false)
+        }
+
+        async fn resolve_taxon_qids_batch(
+            &self,
+            _names: &[String],
+        ) -> Result<HashMap<String, String>, CurationError> {
+            Ok(HashMap::new())
+        }
+
+        async fn resolve_reference_qids_batch(
+            &self,
+            _dois: &[String],
+        ) -> Result<HashMap<String, String>, CurationError> {
+            Ok(HashMap::new())
+        }
+    }
+
+    #[test]
+    fn ask_cache_reuses_result_for_same_compound_taxon_pair() {
+        let repo = MockRepo::default();
+        let cache = Mutex::new(OccurrenceAskCache::default());
+
+        let first = block_on(compound_has_taxon_cached(&repo, &cache, "Q1", "Q2"))
+            .expect("first ask result");
+        let second = block_on(compound_has_taxon_cached(&repo, &cache, "Q1", "Q2"))
+            .expect("second ask result");
+
+        assert!(!first);
+        assert!(!second);
+        assert_eq!(*repo.ask_calls.lock().expect("counter lock"), 1);
+    }
 }

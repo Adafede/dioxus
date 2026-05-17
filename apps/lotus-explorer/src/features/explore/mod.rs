@@ -17,6 +17,7 @@ pub mod search_state;
 pub mod search_utils;
 pub mod selectors;
 pub mod service;
+pub mod state;
 pub mod taxon_cache;
 pub mod types;
 mod url_codec;

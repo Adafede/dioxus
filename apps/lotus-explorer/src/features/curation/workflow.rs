@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::curation::{
-    CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
-    build_quickstatements_bundle, curate_rows, row_uniqueness_key,
+    CurationError, CurationErrorKind, CurationInputRow, CurationResultRow, CurationStatus,
+    QuickStatementsBundle, build_quickstatements_bundle, curate_rows, row_uniqueness_key,
 };
 use crate::i18n::{
     Locale, msg_curation_failed, msg_curation_rate_limited, msg_done_review_copy,
@@ -35,6 +35,16 @@ pub fn format_curation_error(locale: Locale, detail: &str) -> String {
     }
 
     msg_curation_failed(locale, detail)
+}
+
+pub fn format_curation_error_typed(locale: Locale, err: &CurationError) -> String {
+    if matches!(err.kind(), CurationErrorKind::Transport) {
+        return format_curation_error(locale, &err.to_string());
+    }
+    if !err.is_recoverable() {
+        return msg_curation_failed(locale, &err.to_string());
+    }
+    msg_curation_failed(locale, &err.to_string())
 }
 
 pub async fn run_curation(

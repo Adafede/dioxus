@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::features::curation::domain;
-use crate::features::curation::services::wikidata::{
-    resolve_reference_qids_batch, resolve_taxon_qids_batch,
+use crate::features::curation::repositories::{
+    CurationKnowledgeRepository, WikidataKnowledgeRepository,
 };
 use crate::features::curation::services::{curate_single_row, inputs, pipeline};
 #[cfg(test)]
@@ -15,7 +15,8 @@ use crate::i18n::Locale;
 use std::sync::{Arc, Mutex};
 
 pub use domain::{
-    CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
+    CurationError, CurationErrorKind, CurationInputRow, CurationResultRow, CurationStatus,
+    QuickStatementsBundle,
 };
 
 // ── Sub-modules ───────────────────────────────────────────────────────────────
@@ -44,12 +45,19 @@ pub async fn curate_rows(
     locale: Locale,
     rows: Vec<CurationInputRow>,
 ) -> Result<(Vec<CurationResultRow>, QuickStatementsBundle), CurationError> {
-    let prefetched_taxa = Arc::new(
-        resolve_taxon_qids_batch(rows.iter().filter_map(|row| row.taxon.as_deref())).await?,
-    );
-    let prefetched_references = Arc::new(
-        resolve_reference_qids_batch(rows.iter().filter_map(|row| row.doi.as_deref())).await?,
-    );
+    let repository: Arc<dyn CurationKnowledgeRepository> = Arc::new(WikidataKnowledgeRepository);
+    let taxon_names = rows
+        .iter()
+        .filter_map(|row| row.taxon.as_ref().cloned())
+        .collect::<Vec<_>>();
+    let doi_values = rows
+        .iter()
+        .filter_map(|row| row.doi.as_ref().cloned())
+        .collect::<Vec<_>>();
+
+    let prefetched_taxa = Arc::new(repository.resolve_taxon_qids_batch(&taxon_names).await?);
+    let prefetched_references =
+        Arc::new(repository.resolve_reference_qids_batch(&doi_values).await?);
     let occurrence_ask_cache = Arc::new(Mutex::new(Default::default()));
 
     pipeline::curate_rows(
@@ -59,10 +67,12 @@ pub async fn curate_rows(
             let prefetched_taxa = Arc::clone(&prefetched_taxa);
             let prefetched_references = Arc::clone(&prefetched_references);
             let occurrence_ask_cache = Arc::clone(&occurrence_ask_cache);
+            let repository = Arc::clone(&repository);
             move |locale, row| {
                 curate_single_row(
                     locale,
                     row,
+                    Arc::clone(&repository),
                     Arc::clone(&prefetched_taxa),
                     Arc::clone(&prefetched_references),
                     Arc::clone(&occurrence_ask_cache),

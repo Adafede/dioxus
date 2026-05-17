@@ -15,5 +15,6 @@ pub(crate) use constants::{
 pub(crate) use internal::{DependencyResolution, MassResolution, WikidataCompound};
 pub use quickstatements::build_quickstatements_bundle;
 pub use types::{
-    CurationError, CurationInputRow, CurationResultRow, CurationStatus, QuickStatementsBundle,
+    CurationError, CurationErrorKind, CurationInputRow, CurationResultRow, CurationStatus,
+    QuickStatementsBundle,
 };
