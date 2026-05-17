@@ -1,8 +1,8 @@
 # dioxus-apps
 
-A Cargo workspace that hosts multiple small Dioxus web applications, each compiled independently to WASM and deployable to any static host.
+A Cargo workspace hosting multi-app web experiences compiled to WASM. Currently showcases **lotus-explorer**, a linked open data demonstration app exploring the LOTUS natural products knowledge graph from Wikidata via SPARQL.
 
-It now also includes a small native HTTP API for the LOTUS explorer, documented with OpenAPI / Swagger UI.
+Each app compiles independently to WASM and deploys to any static host. An optional native HTTP API (lotus-api) provides advanced search and export capabilities.
 
 ## Start here
 
@@ -207,7 +207,7 @@ Deploy any of them to:
 | App | Description |
 |-----|-------------|
 | `lotus-api` | Native OpenAPI / Swagger service for LOTUS search execution and export URL generation |
-| `lotus-explorer` | LOTUS Wikidata natural-product occurrence explorer (compound × taxon × reference) |
+| `lotus-explorer` | Linked Open Data explorer: query the LOTUS natural product knowledge graph from Wikidata via SPARQL |
 | `hello-world` | Minimal template — copy to start a new app |
 
 ## LOTUS URL Automation

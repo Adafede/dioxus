@@ -1,6 +1,6 @@
 # lotus-explorer
 
-Web interface for exploring LOTUS compound-taxon-reference statements from Wikidata.
+A linked open data (LOD) explorer demonstrating the power of semantic web technologies. Explore the LOTUS compound-taxon-reference knowledge graph from Wikidata using SPARQL queries.
 
 ## Curation share links
 

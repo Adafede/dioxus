@@ -17,9 +17,9 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::FiltersShow => "Mostra filtri",
         TextKey::FiltersHide => "Nascondi filtri",
         TextKey::Language => "Lingua",
-        TextKey::PageTitle => "LOTUS Knowledge Search",
+        TextKey::PageTitle => "Esploratore LOTUS di dati aperti collegati",
         TextKey::GoToHomepage => "Vai alla home page",
-        TextKey::PageSubtitle => "Occorrenze di prodotti naturali - composto, taxon, riferimento.",
+        TextKey::PageSubtitle => "Esplora dati aperti collegati: prodotti naturali, organismi e letteratura scientifica.",
         TextKey::ResolvedTaxon => "Taxon risolto",
         TextKey::QueryHash => "Hash della query",
         TextKey::ResultHash => "Hash del risultato",
@@ -47,11 +47,11 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintUnknown => "Errore inatteso. Riprova.",
         TextKey::SkipToResults => "Vai ai risultati",
         TextKey::WelcomeLeadA => {
-            "Ogni riga collega un composto all'organismo da cui è stato segnalato, "
+            "Questa applicazione dimostra la potenza dei dati aperti collegati collegando i prodotti naturali agli organismi e alla letteratura scientifica. "
         }
-        TextKey::WelcomeLeadB => "con il riferimento bibliografico. I dati provengono dalla ",
-        TextKey::WelcomeLeadC => ", archiviati su ",
-        TextKey::WelcomeLeadD => " e interrogati tramite ",
+        TextKey::WelcomeLeadB => "Il modello di dati collega gli composti, i taxa e i riferimenti—provenienti da ",
+        TextKey::WelcomeLeadC => ", pubblicati come dati aperti collegati su ",
+        TextKey::WelcomeLeadD => " e interrogati tramite SPARQL tramite ",
         TextKey::WelcomeLeadE => ".",
         TextKey::ExampleGentiana => "Inserisci un nome di taxon o un QID Wikidata",
         TextKey::ExampleAllTriples => "Tutte le triple LOTUS composto-taxon-riferimento",

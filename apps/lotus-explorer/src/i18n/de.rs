@@ -17,9 +17,9 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::FiltersShow => "Filter anzeigen",
         TextKey::FiltersHide => "Filter ausblenden",
         TextKey::Language => "Sprache",
-        TextKey::PageTitle => "LOTUS Knowledge Search",
+        TextKey::PageTitle => "LOTUS Explorer für verknüpfte offene Daten",
         TextKey::GoToHomepage => "Zur Startseite",
-        TextKey::PageSubtitle => "Naturstoff-Vorkommen - Verbindung, Taxon, Referenz.",
+        TextKey::PageSubtitle => "Erkunden Sie verknüpfte offene Daten: Naturstoffe, Organismen und wissenschaftliche Literatur.",
         TextKey::ResolvedTaxon => "Aufgelöstes Taxon",
         TextKey::QueryHash => "Abfrage-Hash",
         TextKey::ResultHash => "Ergebnis-Hash",
@@ -45,11 +45,11 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintUnknown => "Unerwarteter Fehler. Ein erneuter Versuch kann helfen.",
         TextKey::SkipToResults => "Zu den Ergebnissen springen",
         TextKey::WelcomeLeadA => {
-            "Jede Zeile verknüpft eine Verbindung mit dem Organismus, aus dem sie gemeldet wurde, "
+            "Diese Anwendung demonstriert die Leistungsfähigkeit verknüpfter offener Daten durch Verbindung natürlicher Produkte mit Organismen und wissenschaftlicher Literatur. "
         }
-        TextKey::WelcomeLeadB => "mit der Literaturreferenz. Die Daten stammen aus der ",
-        TextKey::WelcomeLeadC => ", gespeichert auf ",
-        TextKey::WelcomeLeadD => " und abgefragt über ",
+        TextKey::WelcomeLeadB => "Das Datenmodell verknüpft Verbindungen, Taxa und Referenzen—aus der ",
+        TextKey::WelcomeLeadC => ", veröffentlicht als verknüpfte offene Daten auf ",
+        TextKey::WelcomeLeadD => " und abgefragt via SPARQL durch ",
         TextKey::WelcomeLeadE => ".",
         TextKey::ExampleGentiana => "Taxonname oder Wikidata-QID eingeben",
         TextKey::ExampleAllTriples => "Alle LOTUS-Verbindung-Taxon-Referenz-Tripel",

@@ -7,7 +7,7 @@ asset_dir = "assets"
 # and ignores any `out_dir` key set here.
 
 [web.app]
-title = "LOTUS Knowledge Explorer"
+title = "LOTUS Linked Open Data Explorer"
 # Set base_path when serving under a subpath, e.g.:
 # base_path = "/lotus-explorer"
 
