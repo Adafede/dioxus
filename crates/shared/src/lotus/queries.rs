@@ -649,7 +649,9 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
         return out;
     };
 
-    let mut out = String::with_capacity(trimmed.len() + (filters.len() + prelude.len() + required_inserts.len()) * 100);
+    let mut out = String::with_capacity(
+        trimmed.len() + (filters.len() + prelude.len() + required_inserts.len()) * 100,
+    );
     out.push_str(&trimmed[..last_close]);
     out.push('\n');
 
@@ -756,7 +758,7 @@ fn normalize_formula_digit(c: char) -> char {
 mod tests {
     use super::*;
 
-     #[test]
+    #[test]
     fn server_filter_query_includes_formula_and_halogen_clauses() {
         let mut crit = SearchCriteria {
             taxon: "*".into(),
@@ -811,12 +813,7 @@ mod tests {
 
     #[test]
     fn sachem_query_uses_combined_prefixes() {
-        let q = query_sachem(
-            "c1ccccc1",
-            SmilesSearchType::Substructure,
-            0.8,
-            None,
-        );
+        let q = query_sachem("c1ccccc1", SmilesSearchType::Substructure, 0.8, None);
         // Should have all standard prefixes
         assert!(q.contains("PREFIX xsd:"));
         assert!(q.contains("PREFIX wd:"));
@@ -845,12 +842,7 @@ mod tests {
 
     #[test]
     fn sachem_no_taxon_query_makes_taxa_optional() {
-        let q = query_sachem(
-            "c1ccccc1",
-            SmilesSearchType::Substructure,
-            0.8,
-            None,
-        );
+        let q = query_sachem("c1ccccc1", SmilesSearchType::Substructure, 0.8, None);
         // Taxa block should be OPTIONAL when no taxon specified
         assert!(q.contains("OPTIONAL {"));
         assert!(q.contains("?c p:P703 ?statement"));
