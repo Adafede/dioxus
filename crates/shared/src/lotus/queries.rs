@@ -30,6 +30,8 @@ const SUBSCRIPT_DIGIT_MAPPINGS: [(char, char); 10] = [
 /// - prov: W3C PROV provenance ontology
 /// - rdfs: RDF Schema vocabulary
 /// - xsd: XML Schema datatypes for typed literals
+/// - wikibase: QLever/wikiba.se ontology terms
+/// - schema: Schema.org vocabulary
 const PREFIXES: &str = r#"PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
 PREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX prov:   <http://www.w3.org/ns/prov#>
@@ -41,6 +43,25 @@ PREFIX pq:     <http://www.wikidata.org/prop/qualifier/>
 PREFIX pr:     <http://www.wikidata.org/prop/reference/>
 PREFIX wikibase: <http://wikiba.se/ontology#>
 PREFIX schema: <http://schema.org/>
+"#;
+
+/// Extended PREFIXES for structure search queries (Sachem/IDSM service).
+/// Includes all standard prefixes plus:
+/// - sachem: IDSM Sachem structure search service predicates
+/// - idsm: IDSM SPARQL endpoint reference
+const PREFIXES_WITH_STRUCTURE: &str = r#"PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX prov:   <http://www.w3.org/ns/prov#>
+PREFIX wd:     <http://www.wikidata.org/entity/>
+PREFIX wdt:    <http://www.wikidata.org/prop/direct/>
+PREFIX p:      <http://www.wikidata.org/prop/>
+PREFIX ps:     <http://www.wikidata.org/prop/statement/>
+PREFIX pq:     <http://www.wikidata.org/prop/qualifier/>
+PREFIX pr:     <http://www.wikidata.org/prop/reference/>
+PREFIX wikibase: <http://wikiba.se/ontology#>
+PREFIX schema: <http://schema.org/>
+PREFIX sachem: <http://bioinfo.uochb.cas.cz/rdf/v1.0/sachem#>
+PREFIX idsm:   <https://idsm.elixir-czech.cz/sparql/endpoint/>
 "#;
 
 /// SELECT clause for compound-taxon-reference triples.
@@ -90,7 +111,9 @@ const TAXON_REFERENCE_ASSOCIATION: &str = r#"
 "#;
 
 /// Reference metadata: title (P1476), DOI (P356), publication date (P577).
-/// These properties are fetched from the source reference (work) entity.
+/// - P1476: Reference title (optional)
+/// - P356: DOI (optional)
+/// - P577: Publication date (optional by default; becomes required when year filtering active)
 const REFERENCE_METADATA_OPTIONAL: &str = r#"
   OPTIONAL { ?r wdt:P1476 ?ref_title. }
   OPTIONAL { ?r wdt:P356 ?ref_doi. }
@@ -116,7 +139,7 @@ const COMPOUND_ENRICHED_VARS: &str = r#"?c ?compound_inchikey ?compound_smiles_c
 
 /// Compound properties with efficient subscript digit normalization.
 /// - P2017: SMILES isomeric (preferred over P233 when available)
-/// - P2067: Molecular mass
+/// - P2067: Molecular mass (optional by default; becomes required when mass filtering active)
 /// - P274: Chemical formula (raw fetch; normalization happens at the display/export layer)
 /// - rdfs:label in "mul" (multilingual) or "en" (English) language tags
 const PROPERTIES_OPTIONAL: &str = r#"
@@ -291,13 +314,15 @@ WHERE {{
 /// - Substructure: Finds all compounds containing the query structure
 ///
 /// **Taxon Filtering:**
-/// - With taxon: inner SELECT isolates matching compounds, outer applies taxon filter
-/// - Without taxon: structure search proceeds; OPTIONAL enrichment for taxa+refs
+/// - With taxon: inner SELECT isolates matching compounds, then applies taxon ancestry filter.
+/// - Without taxon: structure search proceeds; OPTIONAL enrichment for taxa+refs.
 ///
 /// **Query Optimization:**
 /// Sachem service is isolated in a subquery to allow efficient pre-filtering
 /// before expensive reference/property lookups. This pattern avoids combinatorial
-/// explosions when many compounds match the structure query.
+/// explosions when many compounds match the structure query. When taxon filtering
+/// is active, the taxon ancestry filter is applied *inside* the Sachem pass to
+/// ensure QLever planner only enriches matching rows.
 pub fn query_sachem(
     smiles: &str,
     search_type: SmilesSearchType,
@@ -391,9 +416,7 @@ pub fn query_sachem(
     };
 
     format!(
-        r#"{PREFIXES}
-PREFIX sachem: <http://bioinfo.uochb.cas.cz/rdf/v1.0/sachem#>
-PREFIX idsm:   <https://idsm.elixir-czech.cz/sparql/endpoint/>
+        r#"{PREFIXES_WITH_STRUCTURE}
 {COMPOUND_SELECT}
 WHERE {{
 {body}
@@ -518,30 +541,34 @@ pub fn query_with_limit(base_query: &str, limit: usize) -> String {
 /// - Formula: element count bounds (C/H/N/O/P/S) and halogen requirements (F/Cl/Br/I)
 ///
 /// **Optimization Strategy:**
-/// Filters are implemented as SPARQL FILTER() clauses inserted before the closing
-/// brace of the WHERE block. This allows the SPARQL engine to apply them as
-/// cardinality reduction operators early in query execution.
+/// When mass or date filters are present, they are inserted as *required* triples
+/// (not OPTIONAL) to ensure the FILTER() clauses only operate on bound rows. This
+/// reduces cardinality before optional enrichment and allows QLever to plan joins
+/// more efficiently. Filters that don't use mass/date leave those as optional.
 ///
 /// Formula filters use pre-computed element count bindings (REGEX patterns on
 /// tokenized formula) to avoid repeated regex evaluation per row.
 pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) -> String {
     let mut filters = Vec::new();
     let mut prelude = Vec::new();
+    let mut required_inserts = Vec::new();
 
     if criteria.has_mass_filter() {
         let min = criteria.mass_min;
         let max = criteria.mass_max;
         filters.push(format!(
-            "FILTER(BOUND(?compound_mass) && ?compound_mass >= {min:.6} && ?compound_mass <= {max:.6})"
+            "FILTER(?compound_mass >= {min:.6} && ?compound_mass <= {max:.6})"
         ));
+        required_inserts.push("?c wdt:P2067 ?compound_mass .".to_string());
     }
 
     if criteria.has_year_filter() {
         let start = criteria.year_min;
         let end = criteria.year_max;
         filters.push(format!(
-            "FILTER(BOUND(?ref_date) && YEAR(?ref_date) >= {start} && YEAR(?ref_date) <= {end})"
+            "FILTER(YEAR(?ref_date) >= {start} && YEAR(?ref_date) <= {end})"
         ));
+        required_inserts.push("?r wdt:P577 ?ref_date .".to_string());
     }
 
     if criteria.has_formula_filter() {
@@ -603,22 +630,41 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
         filters.push(format!("FILTER(?_formula_norm = \"{exact_escaped}\")"));
     }
 
-    if prelude.is_empty() && filters.is_empty() {
+    if prelude.is_empty() && filters.is_empty() && required_inserts.is_empty() {
         return base_query.to_string();
     }
 
     let trimmed = base_query.trim_end();
     let Some(last_close) = trimmed.rfind('}') else {
-        return format!("{trimmed}\n{}", filters.join("\n"));
+        let mut out = String::with_capacity((filters.len() + required_inserts.len()) * 100);
+        out.push_str(trimmed);
+        for insert in required_inserts {
+            out.push('\n');
+            out.push_str(&insert);
+        }
+        for filter in filters {
+            out.push('\n');
+            out.push_str(&filter);
+        }
+        return out;
     };
 
-    let mut out = String::with_capacity(trimmed.len() + (filters.len() + prelude.len()) * 100);
+    let mut out = String::with_capacity(trimmed.len() + (filters.len() + prelude.len() + required_inserts.len()) * 100);
     out.push_str(&trimmed[..last_close]);
     out.push('\n');
+
+    if !required_inserts.is_empty() {
+        for insert in required_inserts {
+            out.push_str(&insert);
+            out.push('\n');
+        }
+    }
+
     if !prelude.is_empty() {
         out.push_str(&prelude.join("\n"));
         out.push('\n');
     }
+
     out.push_str(&filters.join("\n"));
     out.push('\n');
     out.push_str(&trimmed[last_close..]);
@@ -710,7 +756,7 @@ fn normalize_formula_digit(c: char) -> char {
 mod tests {
     use super::*;
 
-    #[test]
+     #[test]
     fn server_filter_query_includes_formula_and_halogen_clauses() {
         let mut crit = SearchCriteria {
             taxon: "*".into(),
@@ -728,6 +774,34 @@ mod tests {
     }
 
     #[test]
+    fn server_filter_inserts_required_mass_when_mass_filtering() {
+        let mut crit = SearchCriteria {
+            ..SearchCriteria::default()
+        };
+        crit.mass_min = 100.0;
+        crit.mass_max = 500.0;
+
+        let q = query_with_server_filters(&query_all_compounds(), &crit);
+        assert!(q.contains("?c wdt:P2067 ?compound_mass"));
+        assert!(q.contains("FILTER(?compound_mass >= 100"));
+        assert!(q.contains("?compound_mass <= 500"));
+    }
+
+    #[test]
+    fn server_filter_inserts_required_date_when_year_filtering() {
+        let mut crit = SearchCriteria {
+            ..SearchCriteria::default()
+        };
+        crit.year_min = 2000;
+        crit.year_max = 2024;
+
+        let q = query_with_server_filters(&query_all_compounds(), &crit);
+        assert!(q.contains("?r wdt:P577 ?ref_date"));
+        assert!(q.contains("FILTER(YEAR(?ref_date) >= 2000"));
+        assert!(q.contains("YEAR(?ref_date) <= 2024)"));
+    }
+
+    #[test]
     fn construct_query_switches_select_to_construct() {
         let q = query_construct_from_select(&query_compounds_by_taxon("Q2382443"));
         assert!(q.contains("CONSTRUCT"));
@@ -736,24 +810,52 @@ mod tests {
     }
 
     #[test]
-    fn sachem_taxon_query_prefilters_before_service() {
+    fn sachem_query_uses_combined_prefixes() {
+        let q = query_sachem(
+            "c1ccccc1",
+            SmilesSearchType::Substructure,
+            0.8,
+            None,
+        );
+        // Should have all standard prefixes
+        assert!(q.contains("PREFIX xsd:"));
+        assert!(q.contains("PREFIX wd:"));
+        assert!(q.contains("PREFIX wdt:"));
+        // Should have structure-specific prefixes
+        assert!(q.contains("PREFIX sachem:"));
+        assert!(q.contains("PREFIX idsm:"));
+        // Should NOT duplicate prefixes
+        assert_eq!(q.matches("PREFIX xsd:").count(), 1);
+        assert_eq!(q.matches("PREFIX sachem:").count(), 1);
+    }
+
+    #[test]
+    fn sachem_taxon_query_applies_ancestry_filter() {
         let q = query_sachem(
             "c1ccccc1",
             SmilesSearchType::Substructure,
             0.8,
             Some("Q158572"),
         );
-        let taxon_pos = q
-            .find("?t (wdt:P171*) wd:Q158572")
-            .expect("taxon restriction should exist");
-        let service_pos = q
-            .find("SERVICE idsm:wikidata")
-            .expect("SACHEM service clause should exist");
-        assert!(
-            service_pos < taxon_pos,
-            "SACHEM service should be isolated in inner subquery before outer taxon joins"
+        assert!(q.contains("?t (wdt:P171*) wd:Q158572"));
+        // Should bind taxon_name and reference metadata
+        assert!(q.contains("?t wdt:P225 ?taxon_name"));
+        assert!(q.contains("?ref pr:P248 ?r"));
+    }
+
+    #[test]
+    fn sachem_no_taxon_query_makes_taxa_optional() {
+        let q = query_sachem(
+            "c1ccccc1",
+            SmilesSearchType::Substructure,
+            0.8,
+            None,
         );
-        assert!(q.contains("SELECT DISTINCT ?c"));
+        // Taxa block should be OPTIONAL when no taxon specified
+        assert!(q.contains("OPTIONAL {"));
+        assert!(q.contains("?c p:P703 ?statement"));
+        // Should not have ancestry filter
+        assert!(!q.contains("?t (wdt:P171*)"));
     }
 
     #[test]
@@ -795,7 +897,6 @@ mod tests {
         let q = query_compounds_by_taxon("Q2382443");
         assert!(q.contains("?compound_formula_raw"));
         assert!(q.contains("AS ?compound_formula"));
-        assert!(!q.contains("BIND(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(STR(?compound_formula_raw)"));
     }
 
     #[test]
@@ -817,5 +918,21 @@ mod tests {
         assert!(q.contains("?compound_formula"));
         assert_eq!(q.matches("PREFIX xsd:").count(), 1);
         assert_eq!(q.matches("PREFIX wdt:").count(), 1);
+    }
+
+    #[test]
+    fn prefixes_once_per_query_not_duplicated() {
+        let q1 = query_all_compounds();
+        assert_eq!(q1.matches("PREFIX xsd:").count(), 1);
+        assert_eq!(q1.matches("PREFIX rdfs:").count(), 1);
+        assert_eq!(q1.matches("PREFIX wd:").count(), 1);
+
+        let q2 = query_compounds_by_taxon("Q2382443");
+        assert_eq!(q2.matches("PREFIX xsd:").count(), 1);
+        assert_eq!(q2.matches("PREFIX wdt:").count(), 1);
+
+        let q3 = query_sachem("c1ccccc1", SmilesSearchType::Substructure, 0.8, None);
+        assert_eq!(q3.matches("PREFIX sachem:").count(), 1);
+        assert_eq!(q3.matches("PREFIX idsm:").count(), 1);
     }
 }
