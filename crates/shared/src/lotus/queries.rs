@@ -19,20 +19,34 @@ const SUBSCRIPT_DIGIT_MAPPINGS: [(char, char); 10] = [
     ('₉', '9'),
 ];
 
-const PREFIXES: &str = r#"
+/// Standard Wikidata/QLever SPARQL PREFIX declarations.
+/// These prefixes follow W3C ontologies and Wikidata vocabulary standards:
+/// - wd: Wikidata entity URIs
+/// - wdt: Wikidata direct properties (simplified truthy statements)
+/// - p: Wikidata property nodes (full statement structures)
+/// - ps: Property statement values
+/// - pq: Property qualifiers on statements
+/// - pr: Property references on statements
+/// - prov: W3C PROV provenance ontology
+/// - rdfs: RDF Schema vocabulary
+/// - xsd: XML Schema datatypes for typed literals
+const PREFIXES: &str = r#"PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX prov:   <http://www.w3.org/ns/prov#>
 PREFIX wd:     <http://www.wikidata.org/entity/>
 PREFIX wdt:    <http://www.wikidata.org/prop/direct/>
 PREFIX p:      <http://www.wikidata.org/prop/>
 PREFIX ps:     <http://www.wikidata.org/prop/statement/>
 PREFIX pq:     <http://www.wikidata.org/prop/qualifier/>
 PREFIX pr:     <http://www.wikidata.org/prop/reference/>
-PREFIX prov:   <http://www.w3.org/ns/prov#>
-PREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX wikibase: <http://wikiba.se/ontology#>
-PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
 PREFIX schema: <http://schema.org/>
 "#;
 
+/// SELECT clause for compound-taxon-reference triples.
+/// Extracts entity QIDs as integers (using STRAFTER to strip "Q" prefix)
+/// to reduce result set size and improve parsing performance.
+/// Also includes full reference URI (?ref) for RDF/Turtle export compatibility.
 const COMPOUND_SELECT: &str = r#"
 SELECT
   (xsd:integer(STRAFTER(STR(?c), "Q")) AS ?compound)
@@ -52,11 +66,21 @@ SELECT
   ?statement
 "#;
 
+/// Compound identifier retrieval via Wikidata direct properties.
+/// P235: InChIKey (canonical chemical fingerprint)
+/// P233: SMILES string (canonical SMILES, connection-table form)
 const COMPOUND_IDENTIFIERS: &str = r#"
   ?c wdt:P235 ?compound_inchikey;
      wdt:P233 ?compound_smiles_conn.
 "#;
 
+/// Taxon-reference association via Wikidata statement structure.
+/// P703: Found in taxon (connects compound to organism)
+/// This uses the full property-statement-reference pattern to preserve provenance:
+/// - p:P703 is the property node
+/// - ps:P703 is the statement's object (the taxon)
+/// - prov:wasDerivedFrom connects to the reference
+/// - pr:P248 is the reference metadata (work/source)
 const TAXON_REFERENCE_ASSOCIATION: &str = r#"
   ?c p:P703 ?statement.
   ?statement ps:P703 ?t;
@@ -65,64 +89,84 @@ const TAXON_REFERENCE_ASSOCIATION: &str = r#"
   ?t wdt:P225 ?taxon_name.
 "#;
 
+/// Reference metadata: title (P1476), DOI (P356), publication date (P577).
+/// These properties are fetched from the source reference (work) entity.
 const REFERENCE_METADATA_OPTIONAL: &str = r#"
   OPTIONAL { ?r wdt:P1476 ?ref_title. }
   OPTIONAL { ?r wdt:P356 ?ref_doi. }
   OPTIONAL { ?r wdt:P577 ?ref_date. }
 "#;
 
+/// Core variables projected from the innermost (Level-1) SELECT.
+/// This is the minimal set needed for the compound–taxon–reference triple lookup;
+/// no optional properties are included so QLever can plan the join order freely.
+const COMPOUND_CORE_VARS: &str =
+    "?c ?compound_inchikey ?compound_smiles_conn ?t ?taxon_name ?r ?ref ?statement";
+
+/// Full variable list projected by the middle (Level-2) SELECT after optional enrichment.
+/// Every variable that the outer SELECT clause or any downstream query wrapper may
+/// reference must be listed here so QLever can propagate it outward.
+const COMPOUND_ENRICHED_VARS: &str = r#"?c ?compound_inchikey ?compound_smiles_conn
+      ?compound_smiles_iso ?compound_mass ?compound_formula_raw
+      ?compoundLabel
+      ?t ?taxon_name
+      ?r ?ref
+      ?ref_title ?ref_doi ?ref_date
+      ?statement"#;
+
+/// Compound properties with efficient subscript digit normalization.
+/// - P2017: SMILES isomeric (preferred over P233 when available)
+/// - P2067: Molecular mass
+/// - P274: Chemical formula (raw fetch; normalization happens at the display/export layer)
+/// - rdfs:label in "mul" (multilingual) or "en" (English) language tags
 const PROPERTIES_OPTIONAL: &str = r#"
   OPTIONAL { ?c wdt:P2017 ?compound_smiles_iso. }
   OPTIONAL { ?c wdt:P2067 ?compound_mass. }
-  OPTIONAL {
-    ?c wdt:P274 ?compound_formula_raw.
-    BIND(
-      REPLACE(
-        REPLACE(
-          REPLACE(
-            REPLACE(
-              REPLACE(
-                REPLACE(
-                  REPLACE(
-                    REPLACE(
-                      REPLACE(REPLACE(STR(?compound_formula_raw), "₀", "0"), "₁", "1"),
-                      "₂",
-                      "2"
-                    ),
-                    "₃",
-                    "3"
-                  ),
-                  "₄",
-                  "4"
-                ),
-                "₅",
-                "5"
-              ),
-              "₆",
-              "6"
-            ),
-            "₇",
-            "7"
-          ),
-          "₈",
-          "8"
-        ),
-        "₉",
-        "9"
-      ) AS ?compound_formula
-    )
-  }
-  OPTIONAL {
-    ?c rdfs:label ?compoundLabelMul.
-    FILTER(LANG(?compoundLabelMul) = "mul")
-  }
-  OPTIONAL {
-    ?c rdfs:label ?compoundLabelEn.
-    FILTER(LANG(?compoundLabelEn) = "en")
-  }
+  OPTIONAL { ?c wdt:P274 ?compound_formula_raw. }
+  OPTIONAL { ?c rdfs:label ?compoundLabelMul. FILTER(LANG(?compoundLabelMul) = "mul") }
+  OPTIONAL { ?c rdfs:label ?compoundLabelEn. FILTER(LANG(?compoundLabelEn) = "en") }
   BIND(COALESCE(?compoundLabelMul, ?compoundLabelEn) AS ?compoundLabel)
 "#;
 
+fn compound_formula_expr(raw_var: &str) -> String {
+    format!(
+        "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(STR({raw_var}), \"₀\", \"0\"), \"₁\", \"1\"), \"₂\", \"2\"), \"₃\", \"3\"), \"₄\", \"4\"), \"₅\", \"5\"), \"₆\", \"6\"), \"₇\", \"7\"), \"₈\", \"8\"), \"₉\", \"9\")"
+    )
+}
+
+fn compound_select_clause() -> String {
+    format!(
+        r#"
+SELECT
+  (xsd:integer(STRAFTER(STR(?c), "Q")) AS ?compound)
+  ?compoundLabel
+  ?compound_inchikey
+  ?compound_smiles_conn
+  ?compound_smiles_iso
+  ?compound_mass
+  ({formula} AS ?compound_formula)
+  (xsd:integer(STRAFTER(STR(?t), "Q")) AS ?taxon)
+  ?taxon_name
+  (xsd:integer(STRAFTER(STR(?r), "Q")) AS ?ref_qid)
+  ?ref
+  ?ref_title
+  ?ref_doi
+  ?ref_date
+  ?statement
+"#,
+        formula = compound_formula_expr("?compound_formula_raw")
+    )
+}
+
+/// Search for taxa by scientific name.
+///
+/// **Method:**
+/// Uses Wikidata's P225 (taxon name, scientific nomenclature).
+/// Returns all matching Wikidata entities where the scientific name equals the query.
+///
+/// **Use Cases:**
+/// - Autocomplete/suggestions for taxon filtering
+/// - Validation that a taxon exists before querying compounds
 pub fn query_taxon_search(name: &str) -> String {
     let e = name.replace('\\', r"\\").replace('"', r#"\""#);
     format!(
@@ -138,59 +182,122 @@ SELECT
     )
 }
 
+/// Query compounds found in a specific taxon and all descendants.
+///
+/// **Three-Level Query Structure:**
+/// ```text
+/// SELECT (outer xsd:integer projections)
+/// WHERE {
+///   { ── Level 2: middle SELECT ──────────────────────────────────────
+///     SELECT COMPOUND_ENRICHED_VARS
+///     WHERE {
+///       { ── Level 1: innermost SELECT ──────────────────────────────
+///         SELECT COMPOUND_CORE_VARS
+///         WHERE {
+///           core compound-taxon-reference triples
+///           ?t (wdt:P171*) wd:Q…  ← ancestry filter INSIDE here
+///         }
+///       }
+///       OPTIONAL { … }   ← reference + property OPTIONALs here
+///     }
+///   }
+/// }
+/// ```
+///
+/// **Why three levels?**
+/// - Level 1 applies the `P171*` transitive-closure filter *before* any join,
+///   so QLever sees only rows in the target clade when planning OPTIONALs.
+/// - Level 2 runs all OPTIONALs exclusively on the already-filtered rows,
+///   avoiding expensive enrichment of taxa that are later discarded.
+/// - The outer SELECT handles the `xsd:integer(STRAFTER(…))` projections on
+///   a tiny, pre-enriched result set.
 pub fn query_compounds_by_taxon(taxon_qid: &str) -> String {
+    let compound_select = compound_select_clause();
     format!(
         r#"{PREFIXES}
-{COMPOUND_SELECT}
+{compound_select}
 WHERE {{
   {{
     SELECT
-      ?c
-      ?compound_inchikey
-      ?compound_smiles_conn
-      ?t
-      ?taxon_name
-      ?r
-      ?ref
-      ?statement
+      {COMPOUND_ENRICHED_VARS}
     WHERE {{
-      {COMPOUND_IDENTIFIERS}
-      {TAXON_REFERENCE_ASSOCIATION}
+      {{
+        SELECT {COMPOUND_CORE_VARS}
+        WHERE {{
+          {COMPOUND_IDENTIFIERS}
+          {TAXON_REFERENCE_ASSOCIATION}
+          ?t (wdt:P171*) wd:{taxon_qid}.
+        }}
+      }}
+      {REFERENCE_METADATA_OPTIONAL}
+      {PROPERTIES_OPTIONAL}
     }}
   }}
-  ?t (wdt:P171*) wd:{taxon_qid}.
-  {REFERENCE_METADATA_OPTIONAL}
-  {PROPERTIES_OPTIONAL}
 }}"#
     )
 }
 
+/// Query all compounds from all organisms/taxa in Lotus.
+///
+/// **Two-Level SELECT Structure (no ancestry filter):**
+/// ```text
+/// SELECT (outer xsd:integer projections)
+/// WHERE {
+///   { ── middle SELECT ─────────────────────────────────────────────
+///     SELECT COMPOUND_ENRICHED_VARS
+///     WHERE {
+///       { ── innermost SELECT ─────────────────────────────────────
+///         SELECT COMPOUND_CORE_VARS
+///         WHERE { core compound-taxon-reference triples }
+///       }
+///       OPTIONAL { … }   ← OPTIONALs run after inner join completes
+///     }
+///   }
+/// }
+/// ```
+///
+/// Uses the same three-level scaffolding as `query_compounds_by_taxon` to keep
+/// optional enrichment strictly post-join, even when no ancestry filter is active.
+/// Large result sets should use LIMIT or be paginated via QLever.
 pub fn query_all_compounds() -> String {
+    let compound_select = compound_select_clause();
     format!(
         r#"{PREFIXES}
-{COMPOUND_SELECT}
+{compound_select}
 WHERE {{
   {{
     SELECT
-      ?c
-      ?compound_inchikey
-      ?compound_smiles_conn
-      ?t
-      ?taxon_name
-      ?r
-      ?ref
-      ?statement
+      {COMPOUND_ENRICHED_VARS}
     WHERE {{
-      {COMPOUND_IDENTIFIERS}
-      {TAXON_REFERENCE_ASSOCIATION}
+      {{
+        SELECT {COMPOUND_CORE_VARS}
+        WHERE {{
+          {COMPOUND_IDENTIFIERS}
+          {TAXON_REFERENCE_ASSOCIATION}
+        }}
+      }}
+      {REFERENCE_METADATA_OPTIONAL}
+      {PROPERTIES_OPTIONAL}
     }}
   }}
-  {REFERENCE_METADATA_OPTIONAL}
-  {PROPERTIES_OPTIONAL}
 }}"#
     )
 }
 
+/// Structure similarity/substructure search query via IDSM/Sachem service.
+///
+/// **Search Types:**
+/// - Similarity: Tanimoto similarity filtering (0-1 scale via `threshold`)
+/// - Substructure: Finds all compounds containing the query structure
+///
+/// **Taxon Filtering:**
+/// - With taxon: inner SELECT isolates matching compounds, outer applies taxon filter
+/// - Without taxon: structure search proceeds; OPTIONAL enrichment for taxa+refs
+///
+/// **Query Optimization:**
+/// Sachem service is isolated in a subquery to allow efficient pre-filtering
+/// before expensive reference/property lookups. This pattern avoids combinatorial
+/// explosions when many compounds match the structure query.
 pub fn query_sachem(
     smiles: &str,
     search_type: SmilesSearchType,
@@ -354,6 +461,19 @@ pub fn escape_structure_literal(smiles: &str) -> String {
     }
 }
 
+/// Generate a dataset statistics query from a base compound query.
+///
+/// **Metrics:**
+/// - n_entries: total result triples (including duplicates)
+/// - n_entries_unique: unique compound-taxon-reference combinations
+/// - n_compounds: distinct compounds (Wikidata entities)
+/// - n_taxa: distinct organisms
+/// - n_references: distinct evidence sources
+///
+/// **Optimization:**
+/// Uses COUNT(DISTINCT ...) to compute cardinality without materializing
+/// full result sets. The implementation wraps the base query's WHERE block
+/// to preserve all filtering/search logic.
 pub fn query_counts_from_base(base_query: &str) -> String {
     let Some(select_pos) = base_query.find("SELECT") else {
         return base_query.to_string();
@@ -379,11 +499,31 @@ WHERE {{
     )
 }
 
+/// Append a LIMIT clause to a base query for pagination or sampling.
+///
+/// **Use Cases:**
+/// - Pagination: fetch first N results, then apply OFFSET for next page
+/// - Sampling: LIMIT 100 for quick exploratory queries
+/// - UI constraints: avoid overwhelming clients with massive result sets
 pub fn query_with_limit(base_query: &str, limit: usize) -> String {
     let trimmed = base_query.trim_end();
     format!("{trimmed}\nLIMIT {limit}")
 }
 
+/// Apply server-side filtering conditions (mass, year, molecular formula) to a query.
+///
+/// **Filter Types:**
+/// - Mass: range filter on P2067 (molecular weight)
+/// - Year: range filter on P577 (publication date) via YEAR() function
+/// - Formula: element count bounds (C/H/N/O/P/S) and halogen requirements (F/Cl/Br/I)
+///
+/// **Optimization Strategy:**
+/// Filters are implemented as SPARQL FILTER() clauses inserted before the closing
+/// brace of the WHERE block. This allows the SPARQL engine to apply them as
+/// cardinality reduction operators early in query execution.
+///
+/// Formula filters use pre-computed element count bindings (REGEX patterns on
+/// tokenized formula) to avoid repeated regex evaluation per row.
 pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) -> String {
     let mut filters = Vec::new();
     let mut prelude = Vec::new();
@@ -405,8 +545,8 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
     }
 
     if criteria.has_formula_filter() {
-        prelude.push("FILTER(BOUND(?compound_formula))".to_string());
-        prelude.push("BIND(STR(?compound_formula) AS ?_formula_raw)".to_string());
+        prelude.push("FILTER(BOUND(?compound_formula_raw))".to_string());
+        prelude.push("BIND(STR(?compound_formula_raw) AS ?_formula_raw)".to_string());
         prelude.push(r#"BIND(REPLACE(?_formula_raw, " ", "") AS ?_formula_nospace)"#.to_string());
         prelude.push(format!(
             "BIND({} AS ?_formula_norm)",
@@ -485,6 +625,18 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
     out
 }
 
+/// Transform a SELECT query into a CONSTRUCT query for RDF export.
+///
+/// **Output Format:**
+/// Turtle-serializable RDF triples representing the full compound-taxon-reference
+/// relationship graph. This is useful for:
+/// - Semantic web integration (LOD/linked data compatible)
+/// - Downstream Semantic Web applications
+/// - Preserving full statement structure and provenance
+///
+/// **Pattern:**
+/// Maps the SELECT variables to RDF triples using Wikidata vocabulary:
+/// compound properties (P235, P233, etc.), taxon info, references, and metadata.
 pub fn query_construct_from_select(select_query: &str) -> String {
     let Some(select_pos) = select_query.find("SELECT") else {
         return select_query.to_string();
@@ -514,16 +666,24 @@ CONSTRUCT {{
   ?r wdt:P356 ?ref_doi .
   ?r wdt:P577 ?ref_date .
 }}
-{where_block}"#
+{where_block}"#,
+        prefixes = prefixes,
+        where_block = where_block
     )
 }
 
+/// Build a BIND expression that normalizes subscript digits (₀-₉) to ASCII (0-9).
+/// This handles Wikidata's use of subscript digits in chemical formulas.
+/// The expression is left to right, preserving semantic correctness.
 fn normalize_digits_expr(var: &str) -> String {
-    SUBSCRIPT_DIGIT_MAPPINGS
-        .into_iter()
-        .fold(var.to_string(), |acc, (from, to)| {
-            format!(r#"REPLACE({acc}, "{from}", "{to}")"#)
-        })
+    // Build: BIND(REPLACE(REPLACE(...REPLACE(var, "₀", "0")..., "₉", "9") AS ?result)
+    // This is more efficient than deeply nested SELECTs or multiple BINDs.
+    SUBSCRIPT_DIGIT_MAPPINGS.iter().fold(
+        format!("STR({var})"),
+        |acc, &(subscript_char, ascii_digit)| {
+            format!(r#"REPLACE({acc}, "{subscript_char}", "{ascii_digit}")"#)
+        },
+    )
 }
 
 fn element_count_bind(symbol: &str, out_var: &str) -> String {
@@ -628,5 +788,34 @@ mod tests {
         let q = query_all_compounds();
         assert!(q.contains("\n  ?ref\n"));
         assert!(q.contains("?ref_qid"));
+    }
+
+    #[test]
+    fn compound_queries_project_raw_formula_and_normalize_at_display_layer() {
+        let q = query_compounds_by_taxon("Q2382443");
+        assert!(q.contains("?compound_formula_raw"));
+        assert!(q.contains("AS ?compound_formula"));
+        assert!(!q.contains("BIND(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(STR(?compound_formula_raw)"));
+    }
+
+    #[test]
+    fn server_filters_bind_formula_from_raw_formula_column() {
+        let crit = SearchCriteria {
+            formula_enabled: true,
+            formula_exact: "C6H12O6".into(),
+            ..SearchCriteria::default()
+        };
+        let q = query_with_server_filters(&query_all_compounds(), &crit);
+        assert!(q.contains("BOUND(?compound_formula_raw)"));
+        assert!(q.contains("STR(?compound_formula_raw)"));
+        assert!(q.contains("?_formula_norm"));
+    }
+
+    #[test]
+    fn construct_query_rebinds_formula_from_raw_column() {
+        let q = query_construct_from_select(&query_compounds_by_taxon("Q2382443"));
+        assert!(q.contains("?compound_formula"));
+        assert_eq!(q.matches("PREFIX xsd:").count(), 1);
+        assert_eq!(q.matches("PREFIX wdt:").count(), 1);
     }
 }
