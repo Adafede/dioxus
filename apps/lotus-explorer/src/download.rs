@@ -15,6 +15,7 @@ use crate::{perf, queries};
 use shared::sparql::QLEVER_WIKIDATA;
 #[cfg(not(target_arch = "wasm32"))]
 use shared::sparql::SparqlResponseFormat;
+use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DownloadFormat {
@@ -112,7 +113,7 @@ impl DownloadFormat {
 pub async fn execute_download(
     format: DownloadFormat,
     #[cfg(target_arch = "wasm32")] criteria: std::sync::Arc<SearchCriteria>,
-    query: String,
+    query: Arc<str>,
     filename: String,
 ) -> Result<(), String> {
     let dl_timer = perf::start_timer(format.timer_label());
@@ -133,7 +134,7 @@ pub async fn execute_download(
 async fn execute_download_wasm(
     format: DownloadFormat,
     criteria: std::sync::Arc<SearchCriteria>,
-    query: String,
+    query: Arc<str>,
     filename: String,
     dl_timer: perf::TimerHandle,
 ) -> Result<(), String> {
@@ -178,15 +179,15 @@ async fn execute_download_wasm(
 #[cfg(target_arch = "wasm32")]
 async fn execute_download_wasm_browser_post(
     format: DownloadFormat,
-    query: String,
+    query: Arc<str>,
     filename: String,
     dl_timer: perf::TimerHandle,
 ) -> Result<(), String> {
     let (query_for_fetch, action) = match format {
-        DownloadFormat::Csv => (query, "csv_export"),
-        DownloadFormat::Json => (query, "qlever_json_export"),
+        DownloadFormat::Csv => (query.to_string(), "csv_export"),
+        DownloadFormat::Json => (query.to_string(), "qlever_json_export"),
         DownloadFormat::Rdf => (
-            queries::query_construct_from_select(&query),
+            queries::query_construct_from_select(query.as_ref()),
             "turtle_export",
         ),
     };
@@ -293,7 +294,7 @@ fn append_filename_query(url: &str, filename: &str) -> String {
 #[cfg(not(target_arch = "wasm32"))]
 async fn execute_download_native(
     format: DownloadFormat,
-    query: String,
+    query: Arc<str>,
     filename: String,
     dl_timer: perf::TimerHandle,
 ) -> Result<(), String> {
@@ -303,11 +304,11 @@ async fn execute_download_native(
 #[cfg(not(target_arch = "wasm32"))]
 async fn execute_download_direct(
     format: DownloadFormat,
-    query: String,
+    query: Arc<str>,
     filename: String,
     dl_timer: perf::TimerHandle,
 ) -> Result<(), String> {
-    match format.fetch_direct(&query).await {
+    match format.fetch_direct(query.as_ref()).await {
         Ok(body) => {
             let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
             perf::log_timing(

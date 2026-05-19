@@ -13,6 +13,7 @@ use crate::download::DownloadFormat;
 use crate::features::explore::search_state::ExploreState;
 #[cfg(target_arch = "wasm32")]
 use crate::models::SearchCriteria;
+use std::sync::Arc;
 
 // ── State Query Helpers ───────────────────────────────────────────────────────
 
@@ -113,9 +114,9 @@ pub enum DispatchPhase {
         /// Only materialised on WASM targets — desktop builds don't embed
         /// metadata in files so the clone is skipped entirely.
         #[cfg(target_arch = "wasm32")]
-        criteria: SearchCriteria,
+        criteria: Arc<SearchCriteria>,
         /// Query to pass to download executor.
-        query: String,
+        query: Arc<str>,
         /// Filename to use for downloaded file.
         filename: String,
         /// Download format (for telemetry).
@@ -141,7 +142,7 @@ pub fn classify_dispatch_phase(
         return DispatchPhase::WaitingForLoading { format: fmt };
     }
 
-    let Some(query) = explore.result.sparql_query.as_deref().map(str::to_string) else {
+    let Some(query) = explore.result.sparql_query.clone() else {
         return DispatchPhase::WaitingForQuery { format: fmt };
     };
 
@@ -149,7 +150,7 @@ pub fn classify_dispatch_phase(
 
     DispatchPhase::Ready {
         #[cfg(target_arch = "wasm32")]
-        criteria: explore.ui.executed_criteria.clone(),
+        criteria: Arc::new(explore.ui.executed_criteria.clone()),
         query,
         filename,
         format: fmt,

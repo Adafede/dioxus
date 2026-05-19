@@ -19,7 +19,7 @@ const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
 fn spawn_query_download(
     format: DownloadFormat,
     status_message: String,
-    criteria_snapshot: SearchCriteria,
+    criteria_snapshot: Arc<SearchCriteria>,
     filename: String,
     query: Arc<str>,
     mut download_busy: Signal<bool>,
@@ -41,8 +41,8 @@ fn spawn_query_download(
         if let Err(err) = execute_download(
             format,
             #[cfg(target_arch = "wasm32")]
-            Arc::new(criteria_snapshot),
-            query.to_string(),
+            criteria_snapshot,
+            query,
             filename,
         )
         .await
@@ -62,7 +62,7 @@ fn spawn_query_download(
 fn dispatch_query_download_spec(
     spec: DownloadQuerySpec,
     locale: crate::i18n::Locale,
-    criteria_snapshot: SearchCriteria,
+    criteria_snapshot: Arc<SearchCriteria>,
     filename: String,
     query: Arc<str>,
     download_busy: Signal<bool>,
@@ -278,7 +278,7 @@ pub fn DownloadActionsGroup() -> Element {
         .clone()
         .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
 
-    let criteria_value = criteria.read().clone();
+    let criteria_value = Arc::new(criteria.read().clone());
     let sparql_query_value = sparql_query.read().clone();
     let metadata_json_value = metadata_json.read().clone();
 

@@ -21,8 +21,6 @@ use crate::models::SearchCriteria;
 use crate::repositories::LotusRepository;
 use crate::services::search_telemetry as telemetry;
 use dioxus::prelude::*;
-#[cfg(target_arch = "wasm32")]
-use std::sync::Arc;
 
 pub fn use_startup_effect<R: LotusRepository>(
     mut app_state: Signal<AppState>,
@@ -154,7 +152,7 @@ pub fn use_download_dispatch_effect(
                     if let Err(err) = execute_download(
                         format,
                         #[cfg(target_arch = "wasm32")]
-                        Arc::new(criteria.clone()),
+                        criteria,
                         query,
                         filename,
                     )
