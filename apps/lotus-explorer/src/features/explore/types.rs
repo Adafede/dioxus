@@ -177,6 +177,17 @@ impl DomainError {
             Self::MemoryLimit { .. } => ErrorKind::Memory,
         }
     }
+
+    /// Extract the query stage at which this error occurred, if applicable.
+    pub fn query_stage(&self) -> QueryStage {
+        match self {
+            Self::Transport { stage, .. } => *stage,
+            #[cfg(target_arch = "wasm32")]
+            Self::MemoryLimit { stage } => *stage,
+            // For validation and parse errors, assume results stage as fallback
+            _ => QueryStage::ResultsQuery,
+        }
+    }
 }
 
 #[cfg(test)]
