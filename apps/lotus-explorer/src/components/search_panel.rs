@@ -184,7 +184,7 @@ fn StructureSection() -> Element {
 // ── Ketcher editor panel (full-width, rendered in the main content area) ─────
 
 /// Relative URL at which the Ketcher standalone build is served.
-const KETCHER_URL: &str = "ketcher/index.html";
+const KETCHER_URL: &str = "assets/ketcher/index.html";
 
 #[component]
 pub fn KetcherPanel() -> Element {
