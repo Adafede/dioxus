@@ -26,18 +26,13 @@ use crate::features::explore::url_state::{
 use crate::hooks::LocaleProvider;
 use crate::i18n::{Locale, TextKey, t};
 use crate::models::SearchCriteria;
-use crate::repositories::HybridRepository;
+use crate::services::AppServices;
 use crate::state::{
     AppStateContext, FormCriteriaContext, ResultsContext, use_form_criteria_context,
 };
 use crate::ui::a11y_contract::{MAIN_PANEL_ID, PAGE_TITLE_ID, SKIP_TO_RESULTS_HREF};
 use dioxus::prelude::*;
 use std::sync::Arc;
-
-#[derive(Clone, Copy)]
-struct AppDependencies {
-    repo: HybridRepository,
-}
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn locale_lang_tag(locale: Locale) -> &'static str {
@@ -82,9 +77,7 @@ pub fn AppRoot() -> Element {
     let locale: Signal<Locale> = use_signal(|| startup.locale);
     let explore: Signal<ExploreState> = use_signal(ExploreState::default);
 
-    let _deps = use_context_provider(|| AppDependencies {
-        repo: HybridRepository::new(),
-    });
+    let services = use_context_provider(AppServices::new);
     let _app_state_ctx = use_context_provider(move || AppStateContext::new(app_state));
     let _form_criteria_ctx =
         use_context_provider(move || FormCriteriaContext::new(criteria, criteria_baseline));
@@ -92,8 +85,7 @@ pub fn AppRoot() -> Element {
     let search_task_controller = use_context_provider(SearchTaskController::new);
 
     let locale_value = *locale.read();
-    let deps = use_context::<AppDependencies>();
-    let repo = deps.repo;
+    let repo = services.repository();
 
     let shareable_url =
         use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));

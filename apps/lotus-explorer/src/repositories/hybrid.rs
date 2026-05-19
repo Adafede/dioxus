@@ -19,14 +19,8 @@ use crate::sparql;
 ///
 /// Holds no state of its own; all configuration is read from environment and
 /// runtime globals (`api_base_url`, `sparql::execute_sparql_bytes`, etc.).
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct HybridRepository;
-
-impl HybridRepository {
-    pub fn new() -> Self {
-        Self
-    }
-}
 
 impl LotusRepository for HybridRepository {
     async fn api_search(
