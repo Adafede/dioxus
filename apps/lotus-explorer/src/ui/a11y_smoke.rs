@@ -10,10 +10,10 @@
 mod tests {
     #[test]
     fn main_landmark_is_labelled_and_skip_link_targets_it() {
-        let main_src = include_str!("../main.rs");
-        assert!(main_src.contains("href: SKIP_TO_RESULTS_HREF"));
-        assert!(main_src.contains("id: MAIN_PANEL_ID"));
-        assert!(main_src.contains("aria_labelledby: PAGE_TITLE_ID"));
+        let shell_src = include_str!("../app/shell.rs");
+        assert!(shell_src.contains("href: SKIP_TO_RESULTS_HREF"));
+        assert!(shell_src.contains("id: MAIN_PANEL_ID"));
+        assert!(shell_src.contains("aria_labelledby: PAGE_TITLE_ID"));
     }
 
     #[test]
