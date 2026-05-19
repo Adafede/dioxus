@@ -14,8 +14,6 @@
 //! 3. If `should_retry` is true, schedule a retry after `backoff_ms`
 //! 4. Clear state conditionally based on `should_clear_state_on_error(error.query_stage())`
 
-#![allow(dead_code)] // These are public APIs used by telemetry/logging infrastructure
-
 use crate::features::explore::error_recovery_coordinator::{
     classify_error_recovery, should_clear_state_on_error,
 };
@@ -25,6 +23,7 @@ use std::time::Duration;
 /// Utility to compute retry scheduling for a failed search.
 ///
 /// Returns the backoff duration before retry attempt, or None if the error is permanent.
+#[allow(dead_code)]
 pub fn compute_retry_schedule(
     error: &DomainError,
     attempt_count: u32,

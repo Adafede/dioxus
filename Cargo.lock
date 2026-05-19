@@ -2172,6 +2172,7 @@ dependencies = [
  "console_log",
  "dioxus",
  "futures",
+ "gloo-timers",
  "js-sys",
  "log",
  "reqwest 0.13.3",

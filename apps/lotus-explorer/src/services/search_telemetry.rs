@@ -32,6 +32,47 @@ pub fn stale_error_ignored(request_token: u64) {
     );
 }
 
+pub fn search_error_classified(error_class: &str, attempt: u32, will_retry: bool) {
+    let state = if will_retry { "retryable" } else { "permanent" };
+    log_info_evt(
+        "search",
+        "error_recovery",
+        state,
+        Some(&format!(
+            "error_class={error_class} attempt={attempt} will_retry={will_retry}"
+        )),
+    );
+}
+
+pub fn search_retry_scheduled(error_class: &str, next_attempt: u32, backoff_ms: u64) {
+    log_info_evt(
+        "search",
+        "error_recovery",
+        "retry_scheduled",
+        Some(&format!(
+            "error_class={error_class} next_attempt={next_attempt} backoff_ms={backoff_ms}"
+        )),
+    );
+}
+
+pub fn search_max_retries_exceeded(error_class: &str, attempt: u32) {
+    log_warn_evt(
+        "search",
+        "error_recovery",
+        "max_retries_exceeded",
+        Some(&format!("error_class={error_class} attempt={attempt}")),
+    );
+}
+
+pub fn search_success_after_retries(retry_count: u32) {
+    log_info_evt(
+        "search",
+        "error_recovery",
+        "success_after_retries",
+        Some(&format!("retry_count={retry_count}")),
+    );
+}
+
 pub fn api_path_not_available(reason: &str) {
     log_info_evt("search", "api", "path_not_available", Some(reason));
 }

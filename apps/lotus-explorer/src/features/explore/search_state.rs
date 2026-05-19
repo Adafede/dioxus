@@ -12,6 +12,7 @@
 //! their own module and are not part of persistent application state.
 
 use crate::features::explore::actions::ExploreAction;
+use crate::features::explore::error_recovery_coordinator::should_clear_state_on_error;
 use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
 use crate::models::{CompoundEntry, DatasetStats, Rows, SearchCriteria, SortDir, SortState};
 use dioxus::prelude::*;
@@ -155,6 +156,9 @@ pub fn reduce(mut state: ExploreState, action: ExploreAction) -> ExploreState {
         }
         ExploreAction::SearchFailed { error } => {
             state.lifecycle.loading = false;
+            if should_clear_state_on_error(error.query_stage()) {
+                state.result = ResultDataState::default();
+            }
             state.lifecycle.error = Some(error);
             state.lifecycle.query_phase = QueryPhase::Idle;
             state.lifecycle.download_dispatching = false;
@@ -200,8 +204,9 @@ pub fn dispatch_explore_action(mut state: Signal<ExploreState>, action: ExploreA
 mod tests {
     use super::*;
     use crate::features::explore::command::SearchCommand;
-    use crate::features::explore::types::{DomainError, ValidationFault};
+    use crate::features::explore::types::{DomainError, QueryStage, ValidationFault};
     use crate::models::{SearchCriteria, SortColumn, SortDir};
+    use crate::repositories::RepositoryError;
     use std::sync::Arc;
 
     fn default_state() -> ExploreState {
@@ -313,6 +318,34 @@ mod tests {
         assert!(!next.lifecycle.loading);
         assert_eq!(next.lifecycle.error, Some(err));
         assert_eq!(next.lifecycle.query_phase, QueryPhase::Idle);
+    }
+
+    #[test]
+    fn search_failed_clears_results_for_taxon_stage_errors() {
+        let mut state = default_state();
+        state.result.resolved_qid = Some("Q123".into());
+        state.result.total_matches = Some(9);
+        let err =
+            DomainError::transport(QueryStage::TaxonSearch, RepositoryError::network("timeout"));
+
+        let next = reduce(state, ExploreAction::SearchFailed { error: err });
+        assert!(next.result.resolved_qid.is_none());
+        assert!(next.result.total_matches.is_none());
+    }
+
+    #[test]
+    fn search_failed_preserves_results_for_results_stage_errors() {
+        let mut state = default_state();
+        state.result.resolved_qid = Some("Q123".into());
+        state.result.total_matches = Some(9);
+        let err = DomainError::transport(
+            QueryStage::ResultsQuery,
+            RepositoryError::network("timeout"),
+        );
+
+        let next = reduce(state, ExploreAction::SearchFailed { error: err });
+        assert_eq!(next.result.resolved_qid.as_deref(), Some("Q123"));
+        assert_eq!(next.result.total_matches, Some(9));
     }
 
     // ── ErrorDismissed ────────────────────────────────────────────────────────

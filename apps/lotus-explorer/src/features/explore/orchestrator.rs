@@ -10,7 +10,7 @@
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::command::SearchCommand;
 use crate::features::explore::executor::{SearchOutcome, do_search};
-use crate::features::explore::lifecycle::SearchLifecycleCoordinator;
+use crate::features::explore::lifecycle::{ErrorHandlingOutcome, SearchLifecycleCoordinator};
 use crate::features::explore::request::SearchRequest;
 use crate::features::explore::search_state::{ExploreState, dispatch_explore_action};
 use crate::features::explore::service::finalize;
@@ -22,6 +22,9 @@ use dioxus::core::Task;
 use dioxus::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Duration;
+
+const MAX_RETRIES: u32 = 3;
 
 #[derive(Clone, Default)]
 pub struct SearchTaskController {
@@ -99,14 +102,47 @@ pub fn start_search<R: LotusRepository>(
     let coordinator = SearchLifecycleCoordinator::new(explore);
 
     let task = spawn(async move {
-        match do_search(&request, repo.clone(), |phase| coordinator.on_phase(phase)).await {
-            Ok(outcome) => {
-                coordinator.on_success(&request, build_search_succeeded_action(&request, outcome))
+        let mut attempt_count = 0u32;
+        loop {
+            match do_search(&request, repo.clone(), |phase| coordinator.on_phase(phase)).await {
+                Ok(outcome) => {
+                    if attempt_count > 0 {
+                        telemetry::search_success_after_retries(attempt_count);
+                    }
+                    coordinator
+                        .on_success(&request, build_search_succeeded_action(&request, outcome));
+                    break;
+                }
+                Err(error) => {
+                    match coordinator.on_error(&request, error, attempt_count, MAX_RETRIES) {
+                        ErrorHandlingOutcome::RetryScheduled { backoff } => {
+                            attempt_count = attempt_count.saturating_add(1);
+                            delay_for(backoff).await;
+                        }
+                        ErrorHandlingOutcome::Finalized => break,
+                    }
+                }
             }
-            Err(e) => coordinator.on_error(&request, e),
         }
     });
     task_controller.replace_in_flight(task);
+}
+
+async fn delay_for(backoff: Duration) {
+    if backoff.is_zero() {
+        return;
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        let millis = u32::try_from(backoff.as_millis()).unwrap_or(u32::MAX);
+        gloo_timers::future::TimeoutFuture::new(millis).await;
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = backoff;
+    }
 }
 
 #[cfg(test)]

@@ -7,8 +7,6 @@
 //! when, and with what backoff strategy. It uses SPARQL error classification to distinguish
 //! transient upstream cache conflicts from permanent errors.
 
-#![allow(dead_code)] // These are public APIs used by telemetry/logging infrastructure
-
 use crate::features::explore::types::{DomainError, QueryStage};
 use crate::repositories::RepositoryError;
 
@@ -39,6 +37,21 @@ pub enum ErrorClass {
     Parse,
     /// Unclassified error.
     Unknown,
+}
+
+impl ErrorClass {
+    #[must_use]
+    pub const fn as_key(self) -> &'static str {
+        match self {
+            Self::Validation => "validation",
+            Self::Network => "network",
+            Self::CacheConflict => "cache_conflict",
+            Self::RateLimit => "rate_limit",
+            Self::QuerySyntax => "query_syntax",
+            Self::Parse => "parse",
+            Self::Unknown => "unknown",
+        }
+    }
 }
 
 /// Determine retry strategy for a failed search given the error and attempt count.
@@ -123,6 +136,12 @@ fn classify_transport_error_recovery(
                     backoff_ms: Some(backoff_delay_ms(attempt)),
                     error_class: ErrorClass::RateLimit,
                 }
+            } else if msg.contains("syntax") || msg.contains("malformed") {
+                ErrorRecoveryDecision {
+                    should_retry: false,
+                    backoff_ms: None,
+                    error_class: ErrorClass::QuerySyntax,
+                }
             } else {
                 ErrorRecoveryDecision {
                     should_retry: false,
@@ -200,6 +219,17 @@ mod tests {
         assert!(decision.should_retry);
         assert_eq!(decision.backoff_ms, Some(400)); // 100 * 2^2
         assert_eq!(decision.error_class, ErrorClass::RateLimit);
+    }
+
+    #[test]
+    fn syntax_error_is_permanent() {
+        let err = DomainError::Transport {
+            stage: QueryStage::ResultsQuery,
+            source: RepositoryError::parse("SPARQL syntax error near WHERE"),
+        };
+        let decision = classify_error_recovery(&err, 0);
+        assert!(!decision.should_retry);
+        assert_eq!(decision.error_class, ErrorClass::QuerySyntax);
     }
 
     #[test]
