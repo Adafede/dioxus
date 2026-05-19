@@ -34,7 +34,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache
-        uses: Swatinem/rust-cache@2.9.1
+        uses: Swatinem/rust-cache@v2.9.1
 
       - name: Check workspace (all targets)
         run: cargo check --workspace --all-targets --locked
@@ -61,7 +61,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Cache
-        uses: Swatinem/rust-cache@2.9.1
+        uses: Swatinem/rust-cache@v2.9.1
 
       - name: Check lotus-explorer for wasm32
         run: cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked
@@ -78,7 +78,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: Swatinem/rust-cache@2.9.1
+      - uses: Swatinem/rust-cache@v2.9.1
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   fmt:
