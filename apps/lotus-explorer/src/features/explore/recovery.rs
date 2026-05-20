@@ -14,6 +14,7 @@
 //! - **User Communication**: Categorize errors so UI can format them localization-aware.
 
 use crate::features::explore::types::DomainError;
+use crate::features::explore::transport_classification::classify_transport_error;
 use crate::repositories::RepositoryError;
 
 // ── Error Classification ──────────────────────────────────────────────────────
@@ -40,20 +41,7 @@ pub fn is_retryable_error(error: &DomainError) -> bool {
 /// Determines whether a repository/network error is transient and worth retrying.
 #[must_use]
 pub fn is_retryable_transport_error(error: &RepositoryError) -> bool {
-    match error {
-        // API not configured: permanent.
-        RepositoryError::NotConfigured => false,
-
-        // Network errors: transient (connection refused, timeout, DNS failure).
-        RepositoryError::Network(_) => true,
-
-        // HTTP 5xx: transient (server error, may recover).
-        // HTTP 4xx: permanent (client error, won't recover).
-        RepositoryError::Http { status, .. } => *status >= 500,
-
-        // Parse errors: permanent (data format issue).
-        RepositoryError::Parse(_) => false,
-    }
+    classify_transport_error(error).is_retryable()
 }
 
 // ── User-Facing Recovery UI ───────────────────────────────────────────────────
@@ -144,5 +132,16 @@ mod tests {
             source: RepositoryError::network("timeout"),
         };
         assert!(should_show_retry_button(&network_err));
+    }
+
+    #[test]
+    fn cache_conflict_parse_errors_are_retryable() {
+        let err = DomainError::Transport {
+            stage: crate::features::explore::types::QueryStage::ResultsQuery,
+            source: RepositoryError::parse(
+                "Trying to insert a cache key which was already present",
+            ),
+        };
+        assert!(is_retryable_error(&err));
     }
 }

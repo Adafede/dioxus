@@ -45,6 +45,7 @@ pub fn format_taxon_warning(locale: Locale, warning: &TaxonWarning) -> String {
 pub fn error_hint_text(locale: Locale, kind: ErrorKind) -> &'static str {
     match kind {
         ErrorKind::Validation => t(locale, TextKey::ErrorHintValidation),
+        ErrorKind::Configuration => t(locale, TextKey::ErrorHintConfiguration),
         ErrorKind::BadRequest => t(locale, TextKey::ErrorHintBadRequest),
         ErrorKind::Network => t(locale, TextKey::ErrorHintNetwork),
         ErrorKind::Parse => t(locale, TextKey::ErrorHintParse),
@@ -199,6 +200,16 @@ mod tests {
         assert_eq!(
             error_hint_text(Locale::En, err.kind()),
             t(Locale::En, TextKey::ErrorHintParse)
+        );
+    }
+
+    #[test]
+    fn error_hint_for_not_configured_uses_configuration_hint() {
+        let err = DomainError::transport(QueryStage::ResultsQuery, RepositoryError::NotConfigured);
+
+        assert_eq!(
+            error_hint_text(Locale::En, err.kind()),
+            t(Locale::En, TextKey::ErrorHintConfiguration)
         );
     }
 }

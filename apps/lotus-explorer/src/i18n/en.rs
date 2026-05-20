@@ -40,6 +40,9 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::LoadingRendering => "Rendering table...",
         TextKey::Retry => "Retry",
         TextKey::ErrorHintValidation => "Please adjust your query input and try again.",
+        TextKey::ErrorHintConfiguration => {
+            "This environment is missing required service configuration."
+        }
         TextKey::ErrorHintNetwork => "Network issue detected. Retry may succeed.",
         TextKey::ErrorHintBadRequest => {
             "The server rejected the request. Check your search parameters."

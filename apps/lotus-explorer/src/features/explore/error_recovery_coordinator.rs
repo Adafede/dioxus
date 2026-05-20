@@ -8,6 +8,9 @@
 //! transient upstream cache conflicts from permanent errors.
 
 use crate::features::explore::types::{DomainError, QueryStage};
+use crate::features::explore::transport_classification::{
+    TransportFailureKind, classify_transport_error,
+};
 use crate::repositories::RepositoryError;
 
 /// Encapsulates retry decision-making for a failed search operation.
@@ -25,18 +28,25 @@ pub struct ErrorRecoveryDecision {
 pub enum ErrorClass {
     /// Validation error (user input is wrong, don't retry).
     Validation,
+    /// Environment/application configuration problem.
+    Configuration,
     /// Network timeout or connection error (transient, retry with backoff).
     Network,
+    /// HTTP 5xx or comparable upstream failure.
+    Server,
     /// Upstream SPARQL cache conflict (transient, retry immediately).
     CacheConflict,
     /// Rate limit or query queue full (transient, retry with backoff).
     RateLimit,
+    /// HTTP 4xx request rejected for non-syntax reasons.
+    BadRequest,
     /// Query syntax error (permanent, don't retry).
     QuerySyntax,
     /// Parse error (permanent, don't retry).
     Parse,
-    /// Unclassified error.
-    Unknown,
+    /// Memory pressure in the browser runtime.
+    #[cfg(target_arch = "wasm32")]
+    Memory,
 }
 
 impl ErrorClass {
@@ -44,12 +54,16 @@ impl ErrorClass {
     pub const fn as_key(self) -> &'static str {
         match self {
             Self::Validation => "validation",
+            Self::Configuration => "configuration",
             Self::Network => "network",
+            Self::Server => "server",
             Self::CacheConflict => "cache_conflict",
             Self::RateLimit => "rate_limit",
+            Self::BadRequest => "bad_request",
             Self::QuerySyntax => "query_syntax",
             Self::Parse => "parse",
-            Self::Unknown => "unknown",
+            #[cfg(target_arch = "wasm32")]
+            Self::Memory => "memory",
         }
     }
 }
@@ -82,7 +96,7 @@ pub fn classify_error_recovery(error: &DomainError, attempt: u32) -> ErrorRecove
         DomainError::MemoryLimit { .. } => ErrorRecoveryDecision {
             should_retry: false,
             backoff_ms: None,
-            error_class: ErrorClass::Unknown,
+            error_class: ErrorClass::Memory,
         },
     }
 }
@@ -92,64 +106,53 @@ fn classify_transport_error_recovery(
     repo_error: &RepositoryError,
     attempt: u32,
 ) -> ErrorRecoveryDecision {
-    match repo_error {
-        RepositoryError::NotConfigured => ErrorRecoveryDecision {
+    match classify_transport_error(repo_error) {
+        TransportFailureKind::Configuration => ErrorRecoveryDecision {
             should_retry: false,
             backoff_ms: None,
-            error_class: ErrorClass::Network,
+            error_class: ErrorClass::Configuration,
         },
-
-        RepositoryError::Network(_) => ErrorRecoveryDecision {
+        TransportFailureKind::Network => ErrorRecoveryDecision {
             should_retry: true,
             backoff_ms: Some(backoff_delay_ms(attempt)),
             error_class: ErrorClass::Network,
         },
 
-        RepositoryError::Http { status, .. } => {
-            if *status >= 500 {
-                ErrorRecoveryDecision {
-                    should_retry: true,
-                    backoff_ms: Some(backoff_delay_ms(attempt)),
-                    error_class: ErrorClass::Unknown,
-                }
-            } else {
-                ErrorRecoveryDecision {
-                    should_retry: false,
-                    backoff_ms: None,
-                    error_class: ErrorClass::Unknown,
-                }
-            }
-        }
+        TransportFailureKind::Server => ErrorRecoveryDecision {
+            should_retry: true,
+            backoff_ms: Some(backoff_delay_ms(attempt)),
+            error_class: ErrorClass::Server,
+        },
 
-        RepositoryError::Parse(detail) => {
-            // Classify based on the error message for now
-            let msg = detail.as_str().to_lowercase();
-            if msg.contains("cache") {
-                ErrorRecoveryDecision {
-                    should_retry: true,
-                    backoff_ms: Some(100), // Immediate retry for cache conflicts
-                    error_class: ErrorClass::CacheConflict,
-                }
-            } else if msg.contains("too many") || msg.contains("rate limit") {
-                ErrorRecoveryDecision {
-                    should_retry: true,
-                    backoff_ms: Some(backoff_delay_ms(attempt)),
-                    error_class: ErrorClass::RateLimit,
-                }
-            } else if msg.contains("syntax") || msg.contains("malformed") {
-                ErrorRecoveryDecision {
-                    should_retry: false,
-                    backoff_ms: None,
-                    error_class: ErrorClass::QuerySyntax,
-                }
-            } else {
-                ErrorRecoveryDecision {
-                    should_retry: false,
-                    backoff_ms: None,
-                    error_class: ErrorClass::Parse,
-                }
-            }
-        }
+        TransportFailureKind::CacheConflict => ErrorRecoveryDecision {
+            should_retry: true,
+            backoff_ms: Some(100),
+            error_class: ErrorClass::CacheConflict,
+        },
+
+        TransportFailureKind::RateLimit => ErrorRecoveryDecision {
+            should_retry: true,
+            backoff_ms: Some(backoff_delay_ms(attempt)),
+            error_class: ErrorClass::RateLimit,
+        },
+
+        TransportFailureKind::BadRequest => ErrorRecoveryDecision {
+            should_retry: false,
+            backoff_ms: None,
+            error_class: ErrorClass::BadRequest,
+        },
+
+        TransportFailureKind::QuerySyntax => ErrorRecoveryDecision {
+            should_retry: false,
+            backoff_ms: None,
+            error_class: ErrorClass::QuerySyntax,
+        },
+
+        TransportFailureKind::Parse => ErrorRecoveryDecision {
+            should_retry: false,
+            backoff_ms: None,
+            error_class: ErrorClass::Parse,
+        },
     }
 }
 
@@ -230,6 +233,46 @@ mod tests {
         let decision = classify_error_recovery(&err, 0);
         assert!(!decision.should_retry);
         assert_eq!(decision.error_class, ErrorClass::QuerySyntax);
+    }
+
+    #[test]
+    fn http_syntax_error_is_classified_without_retry() {
+        let err = DomainError::Transport {
+            stage: QueryStage::ResultsQuery,
+            source: RepositoryError::Http {
+                status: 400,
+                body: "Invalid SPARQL query: mismatched input 'AS' expecting ','".into(),
+            },
+        };
+        let decision = classify_error_recovery(&err, 0);
+        assert!(!decision.should_retry);
+        assert_eq!(decision.error_class, ErrorClass::QuerySyntax);
+    }
+
+    #[test]
+    fn http_5xx_is_retryable_server_error() {
+        let err = DomainError::Transport {
+            stage: QueryStage::ResultsQuery,
+            source: RepositoryError::Http {
+                status: 503,
+                body: "temporary upstream failure".into(),
+            },
+        };
+        let decision = classify_error_recovery(&err, 0);
+        assert!(decision.should_retry);
+        assert_eq!(decision.error_class, ErrorClass::Server);
+        assert_eq!(decision.backoff_ms, Some(200));
+    }
+
+    #[test]
+    fn not_configured_is_a_configuration_error() {
+        let err = DomainError::Transport {
+            stage: QueryStage::ResultsQuery,
+            source: RepositoryError::NotConfigured,
+        };
+        let decision = classify_error_recovery(&err, 0);
+        assert!(!decision.should_retry);
+        assert_eq!(decision.error_class, ErrorClass::Configuration);
     }
 
     #[test]

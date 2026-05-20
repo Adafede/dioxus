@@ -40,6 +40,9 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::LoadingRendering => "Tabelle wird gerendert...",
         TextKey::Retry => "Erneut versuchen",
         TextKey::ErrorHintValidation => "Bitte Eingaben prüfen, dann erneut versuchen.",
+        TextKey::ErrorHintConfiguration => {
+            "Für diese Umgebung fehlt die erforderliche Dienstkonfiguration."
+        }
         TextKey::ErrorHintNetwork => "Netzwerkproblem erkannt. Ein erneuter Versuch kann helfen.",
         TextKey::ErrorHintBadRequest => {
             "Der Server hat die Anfrage abgelehnt. Bitte Suchparameter prüfen."

@@ -44,10 +44,10 @@ pub mod search_state;
 pub mod search_utils;
 pub mod selectors;
 pub mod service;
-#[cfg(test)]
-pub mod sparql_errors;
+mod sparql_errors;
 pub mod state;
 pub mod taxon_cache;
+mod transport_classification;
 pub mod types;
 mod url_codec;
 pub mod url_state;

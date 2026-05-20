@@ -10,18 +10,32 @@ use serde_json::Value;
 
 /// Classify a SPARQL error response to determine retryability.
 pub fn classify_sparql_exception(json: &Value) -> SparqlErrorClass {
-    let exception = json.get("exception").and_then(|e| e.as_str()).unwrap_or("");
+    classify_sparql_error_text(json.get("exception").and_then(|e| e.as_str()).unwrap_or(""))
+}
 
-    if exception.contains("cache key") {
+/// Classify a plain SPARQL/QLever error message.
+pub fn classify_sparql_error_text(message: &str) -> SparqlErrorClass {
+    let normalized = message.trim().to_ascii_lowercase();
+
+    if normalized.contains("cache key") || normalized.contains("already present") {
         return SparqlErrorClass::CacheConflict;
     }
-    if exception.contains("timeout") || exception.contains("Too many") {
+    if normalized.contains("timeout")
+        || normalized.contains("too many")
+        || normalized.contains("rate limit")
+        || normalized.contains("queue")
+    {
         return SparqlErrorClass::RateLimit;
     }
-    if exception.contains("syntax") || exception.contains("grammar") {
+    if normalized.contains("syntax")
+        || normalized.contains("grammar")
+        || normalized.contains("malformed")
+        || normalized.contains("invalid sparql query")
+        || normalized.contains("mismatched input")
+    {
         return SparqlErrorClass::QuerySyntax;
     }
-    if exception.contains("no results") {
+    if normalized.contains("no results") || normalized.contains("query returned no results") {
         return SparqlErrorClass::NoResults;
     }
     SparqlErrorClass::Unknown
@@ -77,6 +91,16 @@ mod tests {
         assert_eq!(
             classify_sparql_exception(&json!({ "exception": "unexpected upstream failure" })),
             SparqlErrorClass::Unknown
+        );
+    }
+
+    #[test]
+    fn classify_sparql_error_text_detects_qlever_parser_messages() {
+        assert_eq!(
+            classify_sparql_error_text(
+                "Invalid SPARQL query: Token \"AS\": mismatched input 'AS' expecting ','"
+            ),
+            SparqlErrorClass::QuerySyntax
         );
     }
 

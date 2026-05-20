@@ -40,6 +40,9 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::LoadingRendering => "Rendu du tableau...",
         TextKey::Retry => "Réessayer",
         TextKey::ErrorHintValidation => "Veuillez ajuster la saisie puis réessayer.",
+        TextKey::ErrorHintConfiguration => {
+            "Cette instance ne dispose pas de la configuration de service requise."
+        }
         TextKey::ErrorHintNetwork => "Problème réseau détecté. Réessayer peut aider.",
         TextKey::ErrorHintBadRequest => {
             "Le serveur a rejeté la requête. Vérifiez les paramètres de recherche."

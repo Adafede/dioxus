@@ -121,6 +121,7 @@ pub enum TextKey {
     LoadingRendering,
     Retry,
     ErrorHintValidation,
+    ErrorHintConfiguration,
     ErrorHintNetwork,
     ErrorHintBadRequest,
     ErrorHintParse,
