@@ -19,6 +19,11 @@ pub(crate) fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiEr
         c.smiles_search_type = v.into();
     }
     if let Some(v) = req.smiles_threshold {
+        if v <= 0.0 {
+            return Err(ApiError::bad_request(
+                "smiles_threshold must be greater than 0",
+            ));
+        }
         c.smiles_threshold = v.clamp(0.05, 1.0);
     }
     if let Some(v) = req.mass_min {

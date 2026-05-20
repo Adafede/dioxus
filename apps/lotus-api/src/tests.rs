@@ -545,7 +545,7 @@ fn apply_request_rejects_inverted_element_ranges() {
     assert!(apply_request(&req).is_err());
 }
 
-// ── smiles_threshold clamping ─────────────────────────────────────────────────
+// ── smiles_threshold validation ────────────────────────────────────────────────
 
 #[test]
 fn apply_request_clamps_similarity_threshold() {
@@ -581,15 +581,20 @@ fn apply_request_clamps_similarity_threshold() {
         }
     }
 
-    let c = apply_request(&make_req(0.0)).expect("zero threshold");
+    // threshold = 0 must be rejected
     assert!(
-        c.smiles_threshold >= 0.05,
-        "threshold should be clamped to minimum 0.05"
+        apply_request(&make_req(0.0)).is_err(),
+        "threshold 0 should be rejected"
     );
 
+    // threshold = 2.0 is clamped to 1.0
     let c = apply_request(&make_req(2.0)).expect("over-one threshold");
     assert!(
         c.smiles_threshold <= 1.0,
         "threshold should be clamped to maximum 1.0"
     );
+
+    // threshold = 0.5 is within range
+    let c = apply_request(&make_req(0.5)).expect("valid threshold");
+    assert_eq!(c.smiles_threshold, 0.5);
 }

@@ -37,6 +37,10 @@ pub fn err_element_count_too_high() -> String {
     "Les comptages d'éléments de la formule sont trop élevés.".to_string()
 }
 
+pub fn err_similarity_threshold_invalid() -> String {
+    "Le seuil de similarité doit être supérieur à 0.".to_string()
+}
+
 pub fn err_unsupported_format(fmt: &str) -> String {
     format!("Format '{fmt}' non pris en charge. Utilisez csv, json ou rdf.")
 }

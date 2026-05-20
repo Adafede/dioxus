@@ -15,7 +15,7 @@
 //! Validators can be composed to build complex validation pipelines.
 
 use crate::features::explore::types::ValidationFault;
-use crate::models::SearchCriteria;
+use crate::models::{SearchCriteria, SmilesSearchType};
 
 /// Validation result for a form field.
 type ValidationResult<T> = Result<T, ValidationError>;
@@ -30,6 +30,7 @@ pub enum ValidationCode {
     YearOutOfRange,
     YearRangeInvalid,
     ElementCountHighWarning,
+    SimilarityThresholdInvalid,
 }
 
 /// Strongly-typed field identifier for validation targeting in UI forms.
@@ -40,6 +41,7 @@ pub enum ValidationField {
     Mass,
     Year,
     Formula,
+    SimilarityThreshold,
 }
 
 /// A validation error with localization context.
@@ -66,6 +68,7 @@ fn validation_fault_from_error(error: &ValidationError) -> ValidationFault {
         ValidationCode::YearOutOfRange => ValidationFault::YearOutOfRange,
         ValidationCode::YearRangeInvalid => ValidationFault::YearRangeInvalid,
         ValidationCode::ElementCountHighWarning => ValidationFault::ElementCountTooHigh,
+        ValidationCode::SimilarityThresholdInvalid => ValidationFault::SimilarityThresholdInvalid,
     }
 }
 
@@ -168,6 +171,22 @@ fn validate_element_count(value: u16) -> ValidationResult<()> {
     Ok(())
 }
 
+/// Validate the similarity threshold when similarity search is active.
+///
+/// The threshold must be strictly greater than 0 and at most 1.0.
+fn validate_similarity_threshold(
+    search_type: SmilesSearchType,
+    threshold: f64,
+) -> ValidationResult<()> {
+    if search_type == SmilesSearchType::Similarity && threshold <= 0.0 {
+        return Err(ValidationError::new(
+            ValidationField::SimilarityThreshold,
+            ValidationCode::SimilarityThresholdInvalid,
+        ));
+    }
+    Ok(())
+}
+
 /// Validate entire search criteria at once.
 ///
 /// Runs all validators and collects results. Returns `Ok(())` if all pass,
@@ -192,6 +211,12 @@ fn validate_criteria(criteria: &SearchCriteria) -> Result<(), Vec<ValidationErro
     }
 
     if let Err(e) = validate_element_count(criteria.c_min + criteria.h_min) {
+        errors.push(e);
+    }
+
+    if let Err(e) =
+        validate_similarity_threshold(criteria.smiles_search_type, criteria.smiles_threshold)
+    {
         errors.push(e);
     }
 
@@ -366,5 +391,47 @@ mod tests {
         let err = validate_mass(-1.0, (-1.0, 100.0)).expect_err("expected mass range error");
         assert_eq!(err.field, ValidationField::Mass);
         assert_eq!(err.code, ValidationCode::MassOutOfRange);
+    }
+
+    #[test]
+    fn validate_dispatch_criteria_rejects_zero_similarity_threshold() {
+        use crate::models::SmilesSearchType;
+        let criteria = SearchCriteria {
+            taxon: "Rosa".into(),
+            smiles: "c1ccccc1".into(),
+            smiles_search_type: SmilesSearchType::Similarity,
+            smiles_threshold: 0.0,
+            ..SearchCriteria::default()
+        };
+        assert_eq!(
+            validate_dispatch_criteria(&criteria),
+            Err(ValidationFault::SimilarityThresholdInvalid)
+        );
+    }
+
+    #[test]
+    fn validate_dispatch_criteria_accepts_positive_similarity_threshold() {
+        use crate::models::SmilesSearchType;
+        let criteria = SearchCriteria {
+            taxon: "Rosa".into(),
+            smiles: "c1ccccc1".into(),
+            smiles_search_type: SmilesSearchType::Similarity,
+            smiles_threshold: 0.7,
+            ..SearchCriteria::default()
+        };
+        assert_eq!(validate_dispatch_criteria(&criteria), Ok(()));
+    }
+
+    #[test]
+    fn validate_dispatch_criteria_ignores_threshold_for_substructure() {
+        use crate::models::SmilesSearchType;
+        let criteria = SearchCriteria {
+            taxon: "Rosa".into(),
+            smiles: "c1ccccc1".into(),
+            smiles_search_type: SmilesSearchType::Substructure,
+            smiles_threshold: 0.0,
+            ..SearchCriteria::default()
+        };
+        assert_eq!(validate_dispatch_criteria(&criteria), Ok(()));
     }
 }

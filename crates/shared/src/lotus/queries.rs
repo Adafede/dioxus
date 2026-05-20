@@ -415,9 +415,10 @@ pub fn query_sachem(
         )
     };
 
+    let compound_select = compound_select_clause();
     format!(
         r#"{PREFIXES_WITH_STRUCTURE}
-{COMPOUND_SELECT}
+{compound_select}
 WHERE {{
 {body}
 }}"#
@@ -910,6 +911,14 @@ mod tests {
         assert!(q.contains("?compound_formula"));
         assert_eq!(q.matches("PREFIX xsd:").count(), 1);
         assert_eq!(q.matches("PREFIX wdt:").count(), 1);
+    }
+
+    #[test]
+    fn sachem_query_projects_formula_from_raw_column() {
+        let q = query_sachem("c1ccccc1", SmilesSearchType::Substructure, 0.8, None);
+        // The formula column must be derived from ?compound_formula_raw, not a bare ?compound_formula
+        assert!(q.contains("?compound_formula_raw"));
+        assert!(q.contains("AS ?compound_formula"));
     }
 
     #[test]

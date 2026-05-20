@@ -96,6 +96,8 @@ pub enum ValidationFault {
     YearRangeInvalid,
     #[error("element count is too high")]
     ElementCountTooHigh,
+    #[error("similarity threshold must be greater than 0")]
+    SimilarityThresholdInvalid,
     #[error("taxon not found: {input}")]
     TaxonNotFound { input: String },
     #[error("unsupported download format: {format}")]

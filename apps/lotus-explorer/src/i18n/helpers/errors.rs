@@ -89,6 +89,15 @@ pub fn err_element_count_too_high(locale: Locale) -> String {
     }
 }
 
+pub fn err_similarity_threshold_invalid(locale: Locale) -> String {
+    match locale {
+        Locale::En => en::err_similarity_threshold_invalid(),
+        Locale::Fr => fr::err_similarity_threshold_invalid(),
+        Locale::De => de::err_similarity_threshold_invalid(),
+        Locale::It => it::err_similarity_threshold_invalid(),
+    }
+}
+
 pub fn err_unsupported_format(locale: Locale, fmt: &str) -> String {
     match locale {
         Locale::En => en::err_unsupported_format(fmt),
