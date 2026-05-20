@@ -31,6 +31,13 @@ fn test_config() -> AppConfig {
     AppConfig::from_provider(|_| None).expect("test config")
 }
 
+async fn body_json(response: axum::response::Response) -> serde_json::Value {
+    let bytes = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("body bytes");
+    serde_json::from_slice(&bytes).expect("json body")
+}
+
 #[test]
 fn supports_u16_formula_ranges() {
     let req = SearchRequest {
@@ -221,6 +228,13 @@ async fn export_file_rejects_unsupported_format() {
         .expect("unsupported format response");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let json = body_json(response).await;
+    assert!(
+        json.get("error")
+            .and_then(serde_json::Value::as_str)
+            .is_some()
+    );
 }
 
 #[tokio::test]
@@ -314,4 +328,11 @@ async fn export_file_rejects_unknown_cache_key() {
         .expect("unknown key response");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let json = body_json(response).await;
+    assert!(
+        json.get("error")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|msg| msg.contains("expired") || msg.contains("unknown"))
+    );
 }
