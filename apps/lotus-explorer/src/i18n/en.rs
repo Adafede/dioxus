@@ -126,7 +126,7 @@ pub fn en_t(key: TextKey) -> &'static str {
         TextKey::DownloadMetadataLabel => "Download metadata",
         TextKey::OpenInQlever => "Open in QLever",
         TextKey::OpenInQleverTitle => "Open this query in the QLever web interface",
-        TextKey::SparqlQuery => "SPARQL query",
+        TextKey::SparqlQuery => "Show SPARQL query",
         TextKey::NoResults => "No results. Try broadening your search.",
         TextKey::StageTaxonSearch => "taxon lookup",
         TextKey::StageResultsQuery => "results fetch",

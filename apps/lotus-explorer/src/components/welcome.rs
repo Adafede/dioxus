@@ -102,10 +102,10 @@ fn DownloadExampleRow(
     let absolute = absolute_current_url_with_query(query.trim_start_matches('?'));
     let absolute = Arc::<str>::from(absolute);
     rsx! {
-        div { class: "share-bar", role: "status",
-            span { class: "share-bar-label", "{format}" }
+        div { class: "notice notice-info", role: "status",
+            span { class: "notice-label", "{format}" }
             input {
-                class: "share-bar-input mono",
+                class: "notice-value notice-copy-field mono",
                 r#type: "text",
                 readonly: true,
                 value: "{absolute}",

@@ -40,8 +40,7 @@
   .view-switch .btn { flex:1 1 180px; justify-content:center; }
   /* share-bar: reduce margin to match page-header-meta at this breakpoint */
   .share-bar { margin-left: 18px; margin-right: 18px; }
-  .curation-wrap .share-bar,
-  .welcome-cli-list .share-bar { margin-left: 0; margin-right: 0; }
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
 }
 
 @media (max-width:480px) {
@@ -58,6 +57,7 @@
   .notice-dismiss { align-self:flex-end; margin-left:0; }
   /* share-bar: match notice margin and stack input */
   .share-bar { margin-left: 12px; margin-right: 12px; }
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
   .share-bar-input { width: 100%; min-width: 0; }
 
   .filters-toggle {
@@ -146,8 +146,7 @@
     margin-right:10px;
   }
   .share-bar { margin-left: 10px; margin-right: 10px; }
-  .curation-wrap .share-bar,
-  .welcome-cli-list .share-bar { margin-left: 0; margin-right: 0; }
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
 
   /* Stack meta items vertically on very narrow screens */
   .page-header-meta {
@@ -244,8 +243,7 @@
     margin-right:8px;
   }
   .share-bar { margin-left: 8px; margin-right: 8px; }
-  .curation-wrap .share-bar,
-  .welcome-cli-list .share-bar { margin-left: 0; margin-right: 0; }
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
 
   .main-content > .notice {
     padding-left:8px;

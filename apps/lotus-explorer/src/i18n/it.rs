@@ -134,7 +134,7 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::DownloadMetadataLabel => "Scarica metadati",
         TextKey::OpenInQlever => "Apri in QLever",
         TextKey::OpenInQleverTitle => "Apri questa query nell'interfaccia web di QLever",
-        TextKey::SparqlQuery => "Query SPARQL",
+        TextKey::SparqlQuery => "Mostra la query SPARQL",
         TextKey::NoResults => "Nessun risultato. Prova ad ampliare la ricerca.",
         TextKey::StageTaxonSearch => "risoluzione del taxon",
         TextKey::StageResultsQuery => "recupero risultati",

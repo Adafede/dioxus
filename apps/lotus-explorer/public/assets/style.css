@@ -482,8 +482,7 @@ a:hover { text-decoration: underline; }
   transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 /* Inside flex containers that provide their own gap/padding — reset margin */
-.curation-wrap .share-bar,
-.welcome-cli-list .share-bar {
+.curation-wrap .share-bar {
   margin: 0;
 }
 .share-bar-label {
@@ -868,8 +867,8 @@ input[type="number"].form-input::-webkit-inner-spin-button {
 .query-panel     { background:var(--panel-bg-soft); border:1px solid var(--panel-border);
                    border-radius:var(--radius); box-shadow:var(--panel-shadow);
                    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease; }
-.query-panel > summary { cursor:pointer; padding:8px 14px; font-size:var(--fs-label); color:var(--text2);
-                         user-select:none; text-transform:uppercase; letter-spacing:1px;
+.query-panel > summary { cursor:pointer; padding:8px 14px; font-size:var(--fs-0); color:var(--text2);
+                         user-select:none; letter-spacing:0.04em;
                          font-weight:600; list-style:none; }
 .query-panel > summary::-webkit-details-marker { display:none; }
 .query-panel > summary::before { content:"▸ "; color:var(--text3); }
@@ -1171,8 +1170,7 @@ input[type="number"].form-input::-webkit-inner-spin-button {
   /* share-bar mirrors page-header-meta margin */
   .share-bar { margin-left: 32px; margin-right: 32px; }
   /* flex-container children keep their own zero margin */
-  .curation-wrap .share-bar,
-  .welcome-cli-list .share-bar { margin-left: 0; margin-right: 0; }
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
   .main-content > .notice {
     padding-left: 32px;
     padding-right: 32px;
