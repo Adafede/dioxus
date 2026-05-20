@@ -425,7 +425,10 @@ mod tests {
         params.insert("smiles_threshold".into(), "0".into());
 
         let crit = parse_criteria_from_params(&params);
-        assert_eq!(crit.smiles_threshold, SearchCriteria::default().smiles_threshold);
+        assert_eq!(
+            crit.smiles_threshold,
+            SearchCriteria::default().smiles_threshold
+        );
     }
 
     #[test]

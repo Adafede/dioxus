@@ -41,7 +41,9 @@ pub fn fr_t(key: TextKey) -> &'static str {
         TextKey::Retry => "Réessayer",
         TextKey::ErrorHintValidation => "Veuillez ajuster la saisie puis réessayer.",
         TextKey::ErrorHintNetwork => "Problème réseau détecté. Réessayer peut aider.",
-        TextKey::ErrorHintBadRequest => "Le serveur a rejeté la requête. Vérifiez les paramètres de recherche.",
+        TextKey::ErrorHintBadRequest => {
+            "Le serveur a rejeté la requête. Vérifiez les paramètres de recherche."
+        }
         TextKey::ErrorHintParse => {
             "Échec de lecture de la réponse. Réessayez ou affinez la requête."
         }

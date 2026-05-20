@@ -43,7 +43,9 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::Retry => "Riprova",
         TextKey::ErrorHintValidation => "Controlla l'input e riprova.",
         TextKey::ErrorHintNetwork => "Problema di rete rilevato. Riprova.",
-        TextKey::ErrorHintBadRequest => "Il server ha rifiutato la richiesta. Controlla i parametri di ricerca.",
+        TextKey::ErrorHintBadRequest => {
+            "Il server ha rifiutato la richiesta. Controlla i parametri di ricerca."
+        }
         TextKey::ErrorHintParse => {
             "Impossibile interpretare la risposta. Riprova o affina la query."
         }
