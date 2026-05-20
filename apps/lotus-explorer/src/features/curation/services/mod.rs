@@ -22,6 +22,7 @@ mod chemical;
 mod enrichment;
 mod helpers;
 mod http_client;
+mod occurrence_cache;
 mod reference_metadata;
 pub(crate) mod wikidata;
 
