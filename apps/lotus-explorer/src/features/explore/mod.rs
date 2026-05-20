@@ -12,6 +12,7 @@ pub mod form_validation;
 pub mod interactions;
 pub mod lifecycle;
 pub mod orchestrator;
+pub mod outcome;
 pub mod recovery;
 pub mod request;
 pub mod retryable_orchestrator;

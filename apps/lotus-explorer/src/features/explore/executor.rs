@@ -6,28 +6,16 @@
 //! This module runs the API/SPARQL workflow and emits phase callbacks, but does
 //! not mutate Dioxus state directly.
 
+use crate::features::explore::outcome::SearchOutcome;
 use crate::features::explore::request::SearchRequest;
 use crate::features::explore::search_metrics::{SearchMetrics, emit_search_summary};
 use crate::features::explore::service::{
-    build_query::normalize_smiles, results_pipeline, strategy::ExecutionStrategy,
+    api_pipeline, build_query::normalize_smiles, results_pipeline, strategy::ExecutionStrategy,
 };
 use crate::features::explore::types::{DomainError, QueryPhase};
-use crate::models::{CompoundEntry, DatasetStats};
 use crate::perf;
-use crate::repositories::{LotusRepository, RepositoryError};
+use crate::repositories::LotusRepository;
 use crate::services::search_telemetry as telemetry;
-use shared::lotus::models::runtime_table_row_limit;
-
-/// The raw outcome from a completed search execution.
-pub struct SearchOutcome {
-    pub rows: Vec<CompoundEntry>,
-    pub qid: Option<String>,
-    pub warning: Option<crate::features::explore::types::TaxonWarning>,
-    pub query: String,
-    pub total_matches: Option<usize>,
-    pub total_stats: Option<DatasetStats>,
-    pub display_capped_rows: bool,
-}
 
 pub struct SearchExecutor<R, P>
 where
@@ -58,60 +46,12 @@ where
 
         // API fast path.
         if strategy == ExecutionStrategy::ApiFirst {
-            let mut api_crit = request.criteria().clone();
-            api_crit.smiles = smiles.clone();
-            let display_limit = runtime_table_row_limit();
-            let include_counts = true;
-            let api_timer = perf::start_timer("LOTUS:api_search");
-            match self
-                .repo
-                .api_search(&api_crit, display_limit, include_counts)
-                .await
+            if let Some(outcome) =
+                api_pipeline::try_execute(request, &smiles, &self.repo, &mut metrics).await
             {
-                None => {
-                    telemetry::api_path_not_available("reason=not_configured");
-                }
-                Some(Ok(response)) => {
-                    let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
-                    metrics.add_network(api_elapsed);
-                    telemetry::api_success(
-                        api_elapsed,
-                        response.rows.len(),
-                        response.total_matches,
-                    );
-                    let display_capped_rows = if include_counts {
-                        response.total_matches > response.rows.len()
-                    } else {
-                        response.rows.len() >= display_limit
-                    };
-                    let rows = response
-                        .rows
-                        .into_iter()
-                        .map(CompoundEntry::from)
-                        .collect::<Vec<_>>();
-                    let warning = response
-                        .warning
-                        .map(crate::features::explore::types::TaxonWarning::ApiMessage);
-                    let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
-                    emit_search_summary(total_elapsed, metrics);
-                    return Ok(SearchOutcome {
-                        rows,
-                        qid: response.resolved_taxon_qid,
-                        warning,
-                        query: response.query,
-                        total_matches: Some(response.total_matches),
-                        total_stats: Some(response.stats.into()),
-                        display_capped_rows,
-                    });
-                }
-                Some(Err(RepositoryError::NotConfigured)) => {
-                    let _ = perf::end_timer("LOTUS:api_search", api_timer);
-                    telemetry::api_path_not_available("reason=not_configured");
-                }
-                Some(Err(err)) => {
-                    let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
-                    telemetry::api_fallback_direct(api_elapsed, &err.to_string());
-                }
+                let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
+                emit_search_summary(total_elapsed, metrics);
+                return Ok(outcome);
             }
         } else {
             telemetry::api_path_not_available("reason=download_only_mode");
@@ -131,26 +71,10 @@ where
             let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
             telemetry::direct_download_ready(total_elapsed);
             emit_search_summary(total_elapsed, metrics);
-            return Ok(SearchOutcome {
-                rows: pipeline_outcome.rows,
-                qid: pipeline_outcome.qid,
-                warning: pipeline_outcome.warning,
-                query: pipeline_outcome.query,
-                total_matches: pipeline_outcome.total_matches,
-                total_stats: pipeline_outcome.total_stats,
-                display_capped_rows: pipeline_outcome.display_capped_rows,
-            });
+            return Ok(SearchOutcome::from_results_pipeline(pipeline_outcome));
         }
 
-        let outcome = SearchOutcome {
-            rows: pipeline_outcome.rows,
-            qid: pipeline_outcome.qid,
-            warning: pipeline_outcome.warning,
-            query: pipeline_outcome.query,
-            total_matches: pipeline_outcome.total_matches,
-            total_stats: pipeline_outcome.total_stats,
-            display_capped_rows: pipeline_outcome.display_capped_rows,
-        };
+        let outcome = SearchOutcome::from_results_pipeline(pipeline_outcome);
 
         let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
         telemetry::search_complete(

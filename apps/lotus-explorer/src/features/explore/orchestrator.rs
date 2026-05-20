@@ -9,8 +9,9 @@
 
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::command::SearchCommand;
-use crate::features::explore::executor::{SearchOutcome, do_search};
+use crate::features::explore::executor::do_search;
 use crate::features::explore::lifecycle::{ErrorHandlingOutcome, SearchLifecycleCoordinator};
+use crate::features::explore::outcome::SearchOutcome;
 use crate::features::explore::request::SearchRequest;
 use crate::features::explore::search_state::{ExploreState, dispatch_explore_action};
 use crate::features::explore::service::finalize;
