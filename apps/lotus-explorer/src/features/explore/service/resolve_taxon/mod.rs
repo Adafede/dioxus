@@ -6,12 +6,13 @@
 //! This module has **no dependency on the Dioxus runtime** and carries **no
 //! locale strings**, making every function directly unit-testable.
 
+mod match_selection;
+
 use crate::features::explore::search_metrics::SearchMetrics;
 use crate::features::explore::types::{
     DomainError, ParseFault, QueryStage, TaxonWarning, ValidationFault,
 };
 use crate::features::explore::{search_utils::sanitize_taxon_input, taxon_cache};
-use crate::models::TaxonMatch;
 use crate::perf;
 use crate::queries;
 use crate::repositories::LotusRepository;
@@ -51,17 +52,8 @@ pub async fn resolve<R: LotusRepository>(
     repo: &R,
     metrics: &mut SearchMetrics,
 ) -> Result<TaxonResolution, DomainError> {
-    if taxon.is_empty() {
-        return Ok(TaxonResolution {
-            qid: None,
-            warning: None,
-        });
-    }
-    if taxon == "*" {
-        return Ok(TaxonResolution {
-            qid: Some("*".to_string()),
-            warning: None,
-        });
+    if let Some(resolution) = immediate_resolution(taxon) {
+        return Ok(resolution);
     }
     // Pass a bare Wikidata QID directly — no SPARQL round-trip needed.
     // Accepts both 'Q' and 'q' prefix; the slice `&taxon[1..]` is safe since
@@ -119,40 +111,28 @@ pub async fn resolve<R: LotusRepository>(
         }));
     }
 
-    let lower = sanitized.to_lowercase();
-    let exact: Vec<&TaxonMatch> = matches
-        .iter()
-        .filter(|m| m.name.to_lowercase() == lower)
-        .collect();
+    let selection = match_selection::pick_best_match(&sanitized, &matches)?;
+    let warning = selection.warning.or(standardized_warning);
 
-    let best = exact
-        .first()
-        .copied()
-        .or_else(|| matches.first())
-        .ok_or(DomainError::Parse(ParseFault::TaxonPick {
-            details: "no candidates after parse".to_string(),
-        }))?;
-
-    let warning = if exact.len() > 1 || (exact.is_empty() && matches.len() > 1) {
-        let candidates = matches
-            .iter()
-            .take(4)
-            .map(|m| format!("{} ({})", m.name, m.qid))
-            .collect::<Vec<_>>();
-        Some(TaxonWarning::Ambiguous {
-            chosen_name: best.name.clone(),
-            chosen_qid: best.qid.clone(),
-            candidates,
-        })
-    } else {
-        standardized_warning
-    };
-
-    taxon_cache::store(&sanitized, &best.qid);
+    taxon_cache::store(&sanitized, &selection.best.qid);
     Ok(TaxonResolution {
-        qid: Some(best.qid.clone()),
+        qid: Some(selection.best.qid.clone()),
         warning,
     })
+}
+
+fn immediate_resolution(taxon: &str) -> Option<TaxonResolution> {
+    match taxon {
+        "" => Some(TaxonResolution {
+            qid: None,
+            warning: None,
+        }),
+        "*" => Some(TaxonResolution {
+            qid: Some("*".to_string()),
+            warning: None,
+        }),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
