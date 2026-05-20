@@ -13,20 +13,20 @@ use crate::features::curation::state::page_controller::{
 use crate::features::curation::workflow;
 use crate::features::explore::url_state::absolute_share_url;
 use crate::i18n::{
-    TextKey, button_add_row, button_append_tsv_rows, button_generate_quickstatements,
-    button_generating, button_load_example_rows, button_remove, button_second_pass, col_action,
-    col_name, curation_qs_dev_label, curation_qs_dev_main_hint, curation_qs_dev_prereq_hint,
-    heading_add_one_row, heading_queued_rows, heading_quickstatements,
-    heading_quickstatements_dependencies, heading_tsv_import, hint_expected_tsv_headers,
-    msg_add_row_before_generate, msg_delay_advice, msg_duplicate_row_skipped, msg_examples_loaded,
-    msg_name_smiles_required, msg_second_pass_running, msg_two_step_hint, placeholder_doi_optional,
-    placeholder_molecule_name, placeholder_taxon_optional, t,
+    TextKey, button_add_row, button_append_tsv_rows, button_load_example_rows, heading_add_one_row,
+    heading_tsv_import, hint_expected_tsv_headers, msg_add_row_before_generate,
+    msg_duplicate_row_skipped, msg_examples_loaded, msg_name_smiles_required,
+    msg_second_pass_running, placeholder_doi_optional, placeholder_molecule_name,
+    placeholder_taxon_optional, t,
 };
 use dioxus::prelude::*;
 use std::sync::Arc;
 
 use super::copy_button::CopyButton;
 use super::curation_results_table::CurationResultsTable;
+
+mod sections;
+use sections::{QueueRowsCard, QuickStatementsCard};
 
 #[component]
 pub fn DataCurationPage() -> Element {
@@ -84,7 +84,7 @@ pub fn DataCurationPage() -> Element {
         import_tsv_rows(locale, &content, rows, status_message);
     };
 
-    let on_process = move |_| {
+    let on_process = move |_: ()| {
         let snapshot = rows.read().clone();
         if snapshot.is_empty() {
             *status_message.write() = Some(msg_add_row_before_generate(locale));
@@ -119,7 +119,7 @@ pub fn DataCurationPage() -> Element {
         }
     });
 
-    let on_second_pass = move |_| {
+    let on_second_pass = move |_: ()| {
         let pending_inputs = workflow::second_pass_inputs(result_rows.read().as_ref());
         if pending_inputs.is_empty() {
             awaiting_second_pass.set(false);
@@ -310,127 +310,25 @@ pub fn DataCurationPage() -> Element {
                 }
             }
 
-            div { class: "curation-card",
-                div { class: "curation-actions curation-space-between",
-                    h3 { "{heading_queued_rows(locale)}" }
-                    button {
-                        class: "btn btn-sm btn-primary",
-                        r#type: "button",
-                        disabled: processing_value,
-                        onclick: on_process,
-                        if processing_value {
-                            "{button_generating(locale)}"
-                        } else {
-                            "{button_generate_quickstatements(locale)}"
-                        }
-                    }
-                }
-                table {
-                    class: "curation-table",
-                    aria_label: "{heading_queued_rows(locale)}",
-                    thead {
-                        tr {
-                            th { "#" }
-                            th { "{col_name(locale)}" }
-                            th { "SMILES" }
-                            th { "{t(locale, TextKey::TaxonCol)}" }
-                            th { "DOI" }
-                            th { "{col_action(locale)}" }
-                        }
-                    }
-                    tbody {
-                        for (idx, row) in rows.read().iter().enumerate() {
-                            tr {
-                                td { "{idx + 1}" }
-                                td { "{row.name}" }
-                                td { class: "mono curation-cell-wrap", "{row.smiles}" }
-                                td { "{row.taxon.as_deref().unwrap_or(\"\")}" }
-                                td { class: "mono", "{row.doi.as_deref().unwrap_or(\"\")}" }
-                                td {
-                                    button {
-                                        class: "btn btn-xs",
-                                        r#type: "button",
-                                        onclick: move |_| {
-                                            if idx < rows.read().len() {
-                                                rows.write().remove(idx);
-                                            }
-                                        },
-                                        "{button_remove(locale)}"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            QueueRowsCard {
+                locale,
+                rows,
+                processing: processing_value,
+                on_process,
             }
 
             if !result_rows_value.is_empty() {
                 CurationResultsTable { locale, rows: result_rows_value.clone() }
             }
 
-            if !quickstatements_value.dependencies.is_empty()
-                || !quickstatements_value.main.is_empty()
-            {
-                div { class: "curation-card",
-                    if !quickstatements_value.dependencies.is_empty() {
-                        p { class: "curation-hint", "{msg_two_step_hint(locale)}" }
-                        p { class: "curation-hint", "{msg_delay_advice(locale)}" }
-                        p { class: "curation-hint",
-                            a {
-                                href: "{qs_dependency_link}",
-                                target: "_blank",
-                                rel: "noopener noreferrer",
-                                "{curation_qs_dev_label(locale)}"
-                            }
-                            " — {curation_qs_dev_prereq_hint(locale)}"
-                        }
-                        div { class: "curation-actions curation-space-between",
-                            h3 { "{heading_quickstatements_dependencies(locale)}" }
-                            CopyButton {
-                                text: quickstatements_value.dependencies.clone(),
-                                locale,
-                            }
-                        }
-                        textarea {
-                            class: "form-textarea curation-qs",
-                            aria_label: "{heading_quickstatements_dependencies(locale)}",
-                            readonly: true,
-                            value: "{quickstatements_value.dependencies}",
-                        }
-                        button {
-                            class: "btn btn-sm btn-primary btn-block",
-                            r#type: "button",
-                            disabled: processing_value,
-                            onclick: on_second_pass,
-                            "{button_second_pass(locale)}"
-                        }
-                    }
-
-                    if !awaiting_second_pass_value && !quickstatements_value.main.is_empty() {
-                        p { class: "curation-hint",
-                            a {
-                                href: "{qs_main_link}",
-                                target: "_blank",
-                                rel: "noopener noreferrer",
-                                "{curation_qs_dev_label(locale)}"
-                            }
-                            " — {curation_qs_dev_main_hint(locale)}"
-                        }
-                        div { class: "curation-actions curation-space-between",
-                            h3 { "{heading_quickstatements(locale)}" }
-                            CopyButton {
-                                text: quickstatements_value.main.clone(),
-                                locale,
-                            }
-                        }
-                        textarea {
-                            class: "form-textarea curation-qs",
-                            aria_label: "{heading_quickstatements(locale)}",
-                            readonly: true,
-                            value: "{quickstatements_value.main}",
-                        }
-                    }
-                }
+            QuickStatementsCard {
+                locale,
+                quickstatements: quickstatements_value.clone(),
+                awaiting_second_pass: awaiting_second_pass_value,
+                processing: processing_value,
+                qs_dependency_link,
+                qs_main_link,
+                on_second_pass,
             }
         }
     }
