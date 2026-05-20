@@ -19,7 +19,7 @@ jobs:
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
       CARGO_PROFILE_RELEASE_DEBUG: "0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: https://github.com/actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
