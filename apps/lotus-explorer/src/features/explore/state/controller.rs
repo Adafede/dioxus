@@ -38,7 +38,7 @@ pub fn start_interactive_search<R: LotusRepository>(
     form_ctx: FormCriteriaContext,
 ) {
     form_ctx.mark_searched();
-    start_search(
+    run_search(
         criteria,
         SearchCommand::Interactive,
         explore,
@@ -53,7 +53,7 @@ pub fn start_preview_search<R: LotusRepository>(
     task_controller: SearchTaskController,
     repo: R,
 ) {
-    start_search(
+    run_search(
         criteria,
         SearchCommand::Interactive,
         explore,
@@ -68,13 +68,23 @@ pub fn retry_search<R: LotusRepository>(
     task_controller: SearchTaskController,
     repo: R,
 ) {
-    start_search(
+    run_search(
         criteria,
         SearchCommand::Interactive,
         explore,
         task_controller,
         repo,
     );
+}
+
+fn run_search<R: LotusRepository>(
+    criteria: Signal<SearchCriteria>,
+    command: SearchCommand,
+    explore: Signal<ExploreState>,
+    task_controller: SearchTaskController,
+    repo: R,
+) {
+    start_search(criteria, command, explore, task_controller, repo);
 }
 
 #[cfg(test)]

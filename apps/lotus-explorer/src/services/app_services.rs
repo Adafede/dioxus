@@ -15,7 +15,6 @@
 //! - **Testability**: Services can be swapped via dependency injection
 
 use crate::repositories::HybridRepository;
-use std::marker::PhantomData;
 
 /// Application-wide services container.
 ///
@@ -25,17 +24,16 @@ use std::marker::PhantomData;
 pub struct AppServices {
     /// Data repository (API/SPARQL hybrid adapter).
     repo: HybridRepository,
-    /// Placeholder for future services (telemetry, analytics, etc.)
-    _marker: PhantomData<()>,
 }
 
 impl AppServices {
     /// Create a new services container with all dependencies initialized.
     pub fn new() -> Self {
-        Self {
-            repo: HybridRepository,
-            _marker: PhantomData,
-        }
+        Self::from_repository(HybridRepository)
+    }
+
+    pub fn from_repository(repo: HybridRepository) -> Self {
+        Self { repo }
     }
 
     /// Get the data repository.
@@ -67,5 +65,11 @@ mod tests {
         let repo1 = services.repository();
         let repo2 = services.repository();
         assert_eq!(repo1, repo2);
+    }
+
+    #[test]
+    fn app_services_supports_explicit_repository_injection() {
+        let services = AppServices::from_repository(HybridRepository);
+        assert_eq!(services.repository(), HybridRepository);
     }
 }

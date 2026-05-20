@@ -9,7 +9,13 @@ use std::sync::Arc;
 
 use super::{ExploreState, ResultDataState};
 
+#[cfg(test)]
 pub fn reduce(mut state: ExploreState, action: ExploreAction) -> ExploreState {
+    reduce_mut(&mut state, action);
+    state
+}
+
+pub fn reduce_mut(state: &mut ExploreState, action: ExploreAction) {
     match action {
         ExploreAction::SearchRequested {
             criteria_snapshot,
@@ -91,5 +97,4 @@ pub fn reduce(mut state: ExploreState, action: ExploreAction) -> ExploreState {
             }
         }
     }
-    state
 }

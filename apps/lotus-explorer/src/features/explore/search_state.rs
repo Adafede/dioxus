@@ -10,7 +10,9 @@ mod reducer;
 mod state_types;
 
 pub use dispatch::dispatch_explore_action;
+#[cfg(test)]
 pub use reducer::reduce;
+pub(crate) use reducer::reduce_mut;
 pub use state_types::{ExploreState, ResultDataState, SearchLifecycleState, UiChromeState};
 
 #[cfg(test)]
