@@ -64,29 +64,6 @@ PREFIX sachem: <http://bioinfo.uochb.cas.cz/rdf/v1.0/sachem#>
 PREFIX idsm:   <https://idsm.elixir-czech.cz/sparql/endpoint/>
 "#;
 
-/// SELECT clause for compound-taxon-reference triples.
-/// Extracts entity QIDs as integers (using STRAFTER to strip "Q" prefix)
-/// to reduce result set size and improve parsing performance.
-/// Also includes full reference URI (?ref) for RDF/Turtle export compatibility.
-const COMPOUND_SELECT: &str = r#"
-SELECT
-  (xsd:integer(STRAFTER(STR(?c), "Q")) AS ?compound)
-  ?compoundLabel
-  ?compound_inchikey
-  ?compound_smiles_conn
-  ?compound_smiles_iso
-  ?compound_mass
-  ?compound_formula
-  (xsd:integer(STRAFTER(STR(?t), "Q")) AS ?taxon)
-  ?taxon_name
-  (xsd:integer(STRAFTER(STR(?r), "Q")) AS ?ref_qid)
-  ?ref
-  ?ref_title
-  ?ref_doi
-  ?ref_date
-  ?statement
-"#;
-
 /// Compound identifier retrieval via Wikidata direct properties.
 /// P235: InChIKey (canonical chemical fingerprint)
 /// P233: SMILES string (canonical SMILES, connection-table form)
@@ -153,7 +130,7 @@ const PROPERTIES_OPTIONAL: &str = r#"
 
 fn compound_formula_expr(raw_var: &str) -> String {
     format!(
-        "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(STR({raw_var}), \"₀\", \"0\"), \"₁\", \"1\"), \"₂\", \"2\"), \"₃\", \"3\"), \"₄\", \"4\"), \"₅\", \"5\"), \"₆\", \"6\"), \"₇\", \"7\"), \"₈\", \"8\"), \"₉\", \"9\")"
+        "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(STR({raw_var}), \"₀\", \"0\"), \"₁\", \"1\"), \"₂\", \"2\"), \"₃\", \"3\"), \"₄\", \"4\"), \"₅\", \"5\"), \"₆\", \"6\"), \"₇\", \"7\"), \"₈\", \"8\"), \"₉\", \"9\")"
     )
 }
 
