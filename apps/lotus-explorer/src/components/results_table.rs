@@ -68,7 +68,6 @@ pub fn ResultsTable() -> Element {
                 }
             } else {
                 VirtualizedResultsTable {
-                    explore,
                     entries,
                     prepared_rows,
                     sort_state,

@@ -2,13 +2,6 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::app::view::AppView;
-use crate::features::explore::command::SearchCommand;
-use crate::features::explore::orchestrator::{SearchTaskController, start_search};
-use crate::features::explore::search_state::ExploreState;
-use crate::models::SearchCriteria;
-use crate::repositories::LotusRepository;
-use crate::state::FormCriteriaContext;
-use dioxus::prelude::Signal;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AppLayoutClasses {
@@ -28,63 +21,6 @@ pub fn classes_for_view(view: AppView) -> AppLayoutClasses {
             main: "main-content single-pane",
         }
     }
-}
-
-pub fn start_interactive_search<R: LotusRepository>(
-    criteria: Signal<SearchCriteria>,
-    explore: Signal<ExploreState>,
-    task_controller: SearchTaskController,
-    repo: R,
-    form_ctx: FormCriteriaContext,
-) {
-    form_ctx.mark_searched();
-    run_search(
-        criteria,
-        SearchCommand::Interactive,
-        explore,
-        task_controller,
-        repo,
-    );
-}
-
-pub fn start_preview_search<R: LotusRepository>(
-    criteria: Signal<SearchCriteria>,
-    explore: Signal<ExploreState>,
-    task_controller: SearchTaskController,
-    repo: R,
-) {
-    run_search(
-        criteria,
-        SearchCommand::Interactive,
-        explore,
-        task_controller,
-        repo,
-    );
-}
-
-pub fn retry_search<R: LotusRepository>(
-    criteria: Signal<SearchCriteria>,
-    explore: Signal<ExploreState>,
-    task_controller: SearchTaskController,
-    repo: R,
-) {
-    run_search(
-        criteria,
-        SearchCommand::Interactive,
-        explore,
-        task_controller,
-        repo,
-    );
-}
-
-fn run_search<R: LotusRepository>(
-    criteria: Signal<SearchCriteria>,
-    command: SearchCommand,
-    explore: Signal<ExploreState>,
-    task_controller: SearchTaskController,
-    repo: R,
-) {
-    start_search(criteria, command, explore, task_controller, repo);
 }
 
 #[cfg(test)]

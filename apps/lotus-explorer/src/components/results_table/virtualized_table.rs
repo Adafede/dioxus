@@ -10,9 +10,7 @@ use super::table_header::TableHeader;
 use super::{
     ROW_HEIGHT_PX_COMFORTABLE, TABLE_SCROLL_ID, TABLE_VIEWPORT_FALLBACK_PX, VIRTUAL_OVERSCAN_ROWS,
 };
-use crate::features::explore::actions::ExploreAction;
-use crate::features::explore::search_state::ExploreState;
-use crate::features::explore::search_state::dispatch_explore_action;
+use crate::features::explore::interactions::use_explore_interactions;
 use crate::hooks::use_virtualization::{self, VirtualizationConfig};
 use crate::i18n::{TextKey, t};
 use crate::models::{Rows, SortState};
@@ -21,13 +19,13 @@ use std::sync::Arc;
 
 #[component]
 pub(super) fn VirtualizedResultsTable(
-    explore: Signal<ExploreState>,
     entries: Memo<Rows>,
     prepared_rows: Memo<Arc<[PreparedRow]>>,
     sort_state: Memo<SortState>,
     sorted_indices: Memo<Arc<[u32]>>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
+    let interactions = use_explore_interactions();
     let total = entries.read().len();
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut row_height_px = use_signal(|| ROW_HEIGHT_PX_COMFORTABLE);
@@ -144,9 +142,7 @@ pub(super) fn VirtualizedResultsTable(
                 thead {
                     TableHeader {
                         current_sort,
-                        on_sort_toggle: move |col| {
-                            dispatch_explore_action(explore, ExploreAction::SortToggled(col));
-                        },
+                        on_sort_toggle: move |col| interactions.toggle_sort(col),
                     }
                 }
                 tbody {

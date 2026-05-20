@@ -11,7 +11,7 @@ use crate::ui::ContentPhase;
 use dioxus::prelude::*;
 
 #[component]
-pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
+pub fn ResultsViewport() -> Element {
     use crate::features::explore::selectors::{use_lifecycle_selector, use_result_selector};
 
     let state = use_results_context();
@@ -66,7 +66,7 @@ pub fn ResultsViewport(on_preview: EventHandler<()>) -> Element {
                 }
             } else {
                 rsx! {
-                    DownloadOnlyState { on_preview }
+                    DownloadOnlyState {}
                 }
             }
         }

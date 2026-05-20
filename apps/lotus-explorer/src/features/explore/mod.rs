@@ -9,6 +9,7 @@ pub mod error_recovery_coordinator;
 pub mod executor;
 pub mod form_actions;
 pub mod form_validation;
+pub mod interactions;
 pub mod lifecycle;
 pub mod orchestrator;
 pub mod recovery;

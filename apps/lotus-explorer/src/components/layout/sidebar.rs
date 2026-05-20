@@ -3,12 +3,12 @@
 
 //! Sidebar: mobile-filter toggle button, search panel, and branding logo.
 //!
-//! Reads mobile-filter state from `ResultsContext.explore` and dispatches
-//! `MobileFiltersToggled` directly — the only prop is `on_search`.
+//! Reads mobile-filter state from selectors and invokes explore interactions via
+//! context — zero props required.
 
 use crate::components::search_panel::SearchPanel;
-use crate::features::explore::actions::ExploreAction;
-use crate::features::explore::search_state::dispatch_explore_action;
+use crate::features::explore::interactions::use_explore_interactions;
+use crate::features::explore::selectors::use_ui_selector;
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
@@ -17,14 +17,13 @@ use dioxus::prelude::*;
 
 /// Sidebar: filter toggle + `SearchPanel` + logo.
 ///
-/// The only prop is `on_search` because the search action captures `criteria`,
-/// `explore`, and `repo` from `App` scope and cannot come from context.
-/// All other concerns (mobile state, locale) are read from context.
+/// All concerns (mobile state, locale, search actions) are read from context.
 #[component]
-pub fn Sidebar(on_search: EventHandler<()>) -> Element {
+pub fn Sidebar() -> Element {
     let locale = use_locale();
     let explore = use_results_context().explore;
-    let mobile_filters_open = explore.read().ui.mobile_filters_open;
+    let interactions = use_explore_interactions();
+    let mobile_filters_open = *use_ui_selector(explore, |ui| ui.mobile_filters_open).read();
 
     rsx! {
         aside {
@@ -36,14 +35,14 @@ pub fn Sidebar(on_search: EventHandler<()>) -> Element {
                 aria_controls: SEARCH_PANEL_BODY_ID,
                 aria_expanded: if mobile_filters_open { "true" } else { "false" },
                 aria_pressed: if mobile_filters_open { "true" } else { "false" },
-                onclick: move |_| dispatch_explore_action(explore, ExploreAction::MobileFiltersToggled),
+                onclick: move |_| interactions.toggle_mobile_filters(),
                 if mobile_filters_open {
                     "{t(locale, TextKey::FiltersHide)}"
                 } else {
                     "{t(locale, TextKey::FiltersShow)}"
                 }
             }
-            SearchPanel { on_search }
+            SearchPanel {}
             div { class: "sidebar-logo-wrap",
                 div {
                     class: "sidebar-logo-link",

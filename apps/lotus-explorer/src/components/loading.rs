@@ -8,6 +8,8 @@
 //! the component that subscribes to `query_phase`, not the entire
 //! `ResultsViewport` tree.
 
+use crate::features::explore::interactions::use_explore_interactions;
+use crate::features::explore::selectors::use_lifecycle_selector;
 use crate::features::explore::types::QueryPhase;
 use crate::i18n::{Locale, TextKey, t};
 use crate::state::use_results_context;
@@ -20,8 +22,8 @@ use dioxus::prelude::*;
 #[component]
 pub fn LoadingState() -> Element {
     let locale = crate::hooks::use_locale();
-    let state = use_results_context();
-    let query_phase = state.explore.read().lifecycle.query_phase;
+    let explore = use_results_context().explore;
+    let query_phase = *use_lifecycle_selector(explore, |lifecycle| lifecycle.query_phase).read();
     rsx! {
         div {
             class: "loading-state",
@@ -55,8 +57,9 @@ pub fn DownloadDispatchState() -> Element {
 /// Notice shown when the URL triggered a download-only mode but the SPARQL
 /// query has not materialised yet, offering the user a "Run search" escape.
 #[component]
-pub fn DownloadOnlyState(on_preview: EventHandler<()>) -> Element {
+pub fn DownloadOnlyState() -> Element {
     let locale = crate::hooks::use_locale();
+    let interactions = use_explore_interactions();
     rsx! {
         div { class: "notice notice-info", role: "status",
             span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
@@ -64,7 +67,7 @@ pub fn DownloadOnlyState(on_preview: EventHandler<()>) -> Element {
             button {
                 class: "btn btn-sm",
                 r#type: "button",
-                onclick: move |_| on_preview.call(()),
+                onclick: move |_| interactions.preview(),
                 "{t(locale, TextKey::RunSearch)}"
             }
         }

@@ -11,7 +11,7 @@ use crate::hooks::use_locale;
 use crate::i18n::{
     view_label_curation_explorer, view_label_draw, view_label_explorer, view_switch_aria,
 };
-use crate::state::use_app_state_context;
+use crate::state::{use_app_selector, use_app_state_context};
 use dioxus::prelude::*;
 
 /// Three-button view switcher.
@@ -22,7 +22,7 @@ pub fn ViewSwitch() -> Element {
     let ctx = use_app_state_context();
     let locale = use_locale();
     let mut app_state = ctx.state;
-    let current_view = app_state.read().view;
+    let current_view = *use_app_selector(app_state, |state| state.view).read();
 
     rsx! {
         nav { class: "view-switch", aria_label: "{view_switch_aria(locale)}",

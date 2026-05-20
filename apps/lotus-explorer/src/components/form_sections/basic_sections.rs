@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::features::explore::form_actions::FormAction;
+use crate::features::explore::interactions::use_explore_interactions;
 use crate::features::explore::selectors::use_criteria_selector;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
@@ -11,9 +12,10 @@ use super::shared::{normalized_year_input_max, parse_f64_input, parse_u16_input}
 
 /// Taxon input section - reads value from `FormCriteriaContext`.
 #[component]
-pub fn TaxonInput(on_search: EventHandler<()>) -> Element {
+pub fn TaxonInput() -> Element {
     let locale = crate::hooks::use_locale();
     let ctx = use_form_criteria_context();
+    let interactions = use_explore_interactions();
     let taxon = use_criteria_selector(ctx.criteria, |c| c.taxon.clone());
 
     rsx! {
@@ -30,7 +32,7 @@ pub fn TaxonInput(on_search: EventHandler<()>) -> Element {
                 oninput: move |e| ctx.update(FormAction::Taxon(e.value())),
                 onkeydown: move |e| {
                     if e.key() == Key::Enter {
-                        on_search.call(());
+                        interactions.search();
                     }
                 },
             }

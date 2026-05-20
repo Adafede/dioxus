@@ -11,8 +11,8 @@
 //!
 //! Every form section (`TaxonInput`, `StructureSection`, `MassRangeInput`,
 //! `YearRangeInput`, `FormulaSection`) reads and writes `FormCriteriaContext`
-//! directly.  `SearchPanel` passes only the `on_search` action through to
-//! `TaxonInput` (for Enter-key submission) and to the search button.
+//! directly.  Search execution is invoked via `ExploreInteractions` context,
+//! including Enter-key submission from `TaxonInput`.
 //!
 //! **Props eliminated vs original:** 38 (18 values + 18 callbacks for formula,
 //! plus value + on_input for taxon, plus 4 for mass, plus 4 for year).
@@ -27,6 +27,8 @@ use crate::features::explore::selectors::use_criteria_selector;
 mod structure_model;
 
 use crate::components::form_inputs::SearchButton;
+use crate::features::explore::interactions::use_explore_interactions;
+use crate::features::explore::selectors::use_lifecycle_selector;
 use crate::i18n::{TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::classify_structure;
@@ -35,13 +37,14 @@ use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use dioxus::prelude::*;
 
 #[component]
-pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
+pub fn SearchPanel() -> Element {
     let state = use_results_context();
     let form_ctx = use_form_criteria_context();
+    let interactions = use_explore_interactions();
     let locale = crate::hooks::use_locale();
 
-    // Loading flag from the live explore signal — no stale copy.
-    let loading = state.explore.read().lifecycle.loading;
+    // Loading flag subscribed via selector so result churn does not rerender the sidebar.
+    let loading = *use_lifecycle_selector(state.explore, |lifecycle| lifecycle.loading).read();
     // Dirty flag: show affordance when form changed since last search.
     let is_dirty = form_ctx.is_dirty();
 
@@ -55,7 +58,7 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
 
             div { id: SEARCH_PANEL_BODY_ID, class: "search-panel-body",
                 // All sections are zero-prop — they read FormCriteriaContext.
-                TaxonInput { on_search }
+                TaxonInput {}
                 StructureSection {}
                 MassRangeInput {}
                 YearRangeInput {}
@@ -72,7 +75,7 @@ pub fn SearchPanel(on_search: EventHandler<()>) -> Element {
                     "{t(locale, TextKey::Searching)}"
                 }
             } else {
-                SearchButton { on_click: move |_| on_search.call(()) }
+                SearchButton { on_click: move |_| interactions.search() }
             }
         }
     }

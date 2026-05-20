@@ -7,8 +7,9 @@ use crate::app::view::AppView;
 use crate::i18n::Locale;
 use std::collections::BTreeMap;
 
+#[allow(unused_imports)]
 pub use super::url_codec::{
-    InitialUrlState, build_shareable_url, parse_criteria_from_params,
+    InitialDownloadState, InitialUrlState, build_shareable_url, parse_criteria_from_params,
     parse_startup_action_from_params,
 };
 

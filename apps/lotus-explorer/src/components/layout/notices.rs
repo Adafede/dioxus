@@ -7,6 +7,7 @@
 //! `ResultsContext` — no `explore` or `locale` props are drilled from `App`.
 
 use crate::components::copy_button::CopyButton;
+use crate::features::explore::interactions::use_explore_interactions;
 use crate::features::explore::recovery;
 use crate::features::explore::selectors::{use_lifecycle_selector, use_result_selector};
 use crate::features::explore::types::ErrorKind;
@@ -72,9 +73,11 @@ pub fn TaxonNotice() -> Element {
 /// Retry visibility is delegated to `explore::recovery` so policy remains
 /// consistent with orchestration-level error handling.
 #[component]
-pub fn ErrorNotice(on_dismiss: EventHandler<()>, on_retry: EventHandler<()>) -> Element {
+pub fn ErrorNotice() -> Element {
     let locale = crate::hooks::use_locale();
     let explore = use_results_context().explore;
+    let interactions = use_explore_interactions();
+    let retry_interactions = interactions.clone();
     let domain_error = use_lifecycle_selector(explore, |lifecycle| lifecycle.error.clone());
     let is_loading = use_lifecycle_selector(explore, |lifecycle| lifecycle.loading);
     let domain_error = domain_error.read();
@@ -92,7 +95,7 @@ pub fn ErrorNotice(on_dismiss: EventHandler<()>, on_retry: EventHandler<()>) -> 
                 button {
                     class: "btn btn-sm",
                     r#type: "button",
-                    onclick: move |_| on_retry.call(()),
+                    onclick: move |_| retry_interactions.retry(),
                     "{t(locale, TextKey::Retry)}"
                 }
             }
@@ -100,7 +103,7 @@ pub fn ErrorNotice(on_dismiss: EventHandler<()>, on_retry: EventHandler<()>) -> 
                 class: "notice-dismiss",
                 r#type: "button",
                 aria_label: "{t(locale, TextKey::DismissError)}",
-                onclick: move |_| on_dismiss.call(()),
+                onclick: move |_| interactions.dismiss_error(),
                 "×"
             }
         }
