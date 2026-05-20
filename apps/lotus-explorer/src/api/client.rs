@@ -15,7 +15,7 @@ pub async fn search(
     limit: usize,
     include_counts: bool,
 ) -> Result<SearchResponse, ApiClientError> {
-    let base = api_base_url().ok_or(ApiClientError::NotConfigured)?;
+    let base = api_base_url().unwrap_or_default();
     let request = SearchRequest::from_criteria(criteria, limit, include_counts);
     match post_json(&base, "/v1/search", &request).await {
         Ok(response) => Ok(response),
@@ -34,7 +34,7 @@ pub async fn search(
 pub async fn export_urls(
     criteria: &SearchCriteria,
 ) -> Result<crate::api::dto::ExportUrlResponse, ApiClientError> {
-    let base = api_base_url().ok_or(ApiClientError::NotConfigured)?;
+    let base = api_base_url().unwrap_or_default();
     let request = SearchRequest::from_criteria(criteria, 1, false);
     let response: crate::api::dto::ExportUrlResponse =
         post_json(&base, "/v1/export-url", &request).await?;

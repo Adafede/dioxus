@@ -286,11 +286,11 @@ pub fn DataCurationPage() -> Element {
             }
 
             if let Some(share) = shareable_url.read().as_deref() {
-                div { class: "notice notice-info", role: "status",
-                    span { class: "notice-label", "{t(locale, TextKey::Share)}" }
+                div { class: "share-bar", role: "status",
+                    span { class: "share-bar-label", "{t(locale, TextKey::Share)}" }
                     input {
                         aria_label: "{t(locale, TextKey::CopyShareableLink)}",
-                        class: "notice-value notice-copy-field mono",
+                        class: "share-bar-input mono",
                         r#type: "text",
                         readonly: true,
                         value: "{share}",

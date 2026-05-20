@@ -29,11 +29,11 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
         return rsx! {};
     };
     rsx! {
-        div { class: "notice notice-info", role: "status",
-            span { class: "notice-label", "{t(locale, TextKey::Share)}" }
+        div { class: "share-bar", role: "status",
+            span { class: "share-bar-label", "{t(locale, TextKey::Share)}" }
             input {
                 id: share_input_id,
-                class: "notice-value notice-copy-field mono",
+                class: "share-bar-input mono",
                 r#type: "text",
                 readonly: true,
                 value: "{share}",

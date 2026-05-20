@@ -23,7 +23,9 @@ pub fn api_base_url() -> Option<String> {
             if let Ok(hostname) = window.location().hostname() {
                 let hostname = hostname.to_ascii_lowercase();
                 if hostname == "localhost" || hostname == "127.0.0.1" {
-                    return Some("http://127.0.0.1:8787".to_string());
+                    // Use relative/empty base for development to leverage Dioxus dev server proxy.
+                    // The dev server is configured to proxy /v1 requests to the API backend.
+                    return Some(String::new());
                 }
             }
         }

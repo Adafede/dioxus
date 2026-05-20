@@ -45,7 +45,7 @@ img, svg, canvas, video {
   --shadow-sm: 0 4px 14px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.09);
   --mono:      'Fira Code', ui-monospace, SFMono-Regular, 'JetBrains Mono', Consolas, monospace;
-  --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --sans:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --fs-0:      clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);
   --fs-1:      clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
   --fs-2:      clamp(0.9375rem, 0.9rem + 0.28vw, 1.0625rem);
@@ -158,6 +158,8 @@ body {
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-optical-sizing: auto;
 }
 
 .skip-link {
@@ -353,7 +355,7 @@ a:hover { text-decoration: underline; }
 .sidebar-logo-link {
   border-radius: 14px;
 }
-.page-title  { font-size:var(--fs-4); font-weight:800; letter-spacing:-.024em; line-height:1.06; color:var(--text); }
+.page-title  { font-size:var(--fs-4); font-weight:800; letter-spacing:-.028em; line-height:1.06; color:var(--text); }
 .page-title-link,
 .page-title-link:visited {
   color: inherit;
@@ -460,6 +462,53 @@ a:hover { text-decoration: underline; }
 .notice-dismiss   { margin-left:auto; background:none; border:0; color:inherit; cursor:pointer;
                     font-size:18px; line-height:1; padding:0 4px; opacity:.7; }
 .notice-dismiss:hover { opacity:1; }
+
+/* ── Share bar ───────────────────────────────────────────────────────────── */
+/* Styled like .page-header-meta so it sits visually flush with the rest of
+   the query-context strip (resolved taxon, hashes, etc.).                   */
+.share-bar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 10px 24px 0;
+  padding: 7px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface));
+  box-shadow: var(--panel-shadow);
+  font-size: var(--fs-0);
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+/* Inside flex containers that provide their own gap/padding — reset margin */
+.curation-wrap .share-bar,
+.welcome-cli-list .share-bar {
+  margin: 0;
+}
+.share-bar-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  font-size: var(--fs-0);
+  color: var(--text2);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.share-bar-input {
+  flex: 1;
+  min-width: min(200px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: var(--fs-0);
+}
+.share-bar-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
 
 /* Search panel */
 .search-panel    { padding:18px 16px; display:flex; flex-direction:column; gap:14px;
@@ -1111,6 +1160,32 @@ input[type="number"].form-input::-webkit-inner-spin-button {
   .formula-minmax-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Large-screen refinements (≥ 1440 px) ───────────────────────────────── */
+/* Give the main panel uniform, more generous horizontal spacing so every
+   section — header, notices, meta bar, share bar, results — shares the same gutter. */
+@media (min-width: 1440px) {
+  .page-header { padding-left: 32px; padding-right: 32px; }
+  .page-header-meta { margin-left: 32px; margin-right: 32px; }
+  /* share-bar mirrors page-header-meta margin */
+  .share-bar { margin-left: 32px; margin-right: 32px; }
+  /* flex-container children keep their own zero margin */
+  .curation-wrap .share-bar,
+  .welcome-cli-list .share-bar { margin-left: 0; margin-right: 0; }
+  .main-content > .notice {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  .results-wrap { padding-left: 32px; padding-right: 32px; }
+  .curation-wrap { padding-left: 32px; padding-right: 32px; }
+  .draw-wrap     { padding-left: 32px; padding-right: 32px; }
+}
+
+/* Cap inner-content width on very wide monitors so lines don't get too long
+   and the four stat cards don't stretch awkwardly. */
+@media (min-width: 1800px) {
+  .results-wrap { max-width: 1760px; }
 }
 .footer-aside    { color:var(--text2); font-size:var(--fs-0); }
 .footer-links    { list-style:none; display:flex; flex-wrap:wrap; gap:5px 8px; margin:0; padding:0; min-width:0; }

@@ -6,6 +6,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum ApiClientError {
     #[error("LOTUS API not configured")]
+    #[expect(dead_code)]
     NotConfigured,
 
     #[error("network error: {0}")]
