@@ -102,14 +102,15 @@ pub fn QueryPanel() -> Element {
         if let Some(q) = sparql_query.read().as_ref() {
             details { class: "query-panel",
                 summary { "{t(locale, TextKey::SparqlQuery)}" }
-                div { class: "query-panel-actions",
+                div { class: "query-body",
+                    pre { class: "query-text", "{q.as_ref()}" }
                     crate::components::copy_button::CopyButton {
                         text: q.clone(),
                         title: t(locale, TextKey::CopySparqlQuery),
                         locale,
+                        class: "btn btn-xs copy-btn query-copy-btn",
                     }
                 }
-                pre { class: "query-text", "{q.as_ref()}" }
             }
         }
     }
