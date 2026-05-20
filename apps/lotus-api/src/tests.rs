@@ -6,12 +6,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use axum::body::Body;
+use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
+use utoipa::OpenApi;
 
 use crate::{
-    build_router,
+    ApiDoc, build_router,
     config::AppConfig,
     query_logic::{apply_request, normalized_structure_input},
     state::AppState,
@@ -220,6 +221,81 @@ async fn export_file_rejects_unsupported_format() {
         .expect("unsupported format response");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn search_rejects_malformed_json_payload() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/search")
+                .header("content-type", "application/json")
+                .body(Body::from("{not-json"))
+                .expect("request"),
+        )
+        .await
+        .expect("malformed-json response");
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn openapi_json_endpoint_serves_core_paths() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/openapi.json")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("openapi response");
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("openapi body bytes");
+    let json: serde_json::Value = serde_json::from_slice(&body).expect("openapi json");
+
+    assert!(json["paths"].get("/health").is_some());
+    assert!(json["paths"].get("/v1/search").is_some());
+    assert!(json["paths"].get("/v1/export-url").is_some());
+    assert!(
+        json["paths"]
+            .get("/v1/export-file/{cache_key}/{format}")
+            .is_some()
+    );
+}
+
+#[test]
+fn openapi_contains_core_paths() {
+    let doc = ApiDoc::openapi();
+    assert!(doc.paths.paths.contains_key("/health"));
+    assert!(doc.paths.paths.contains_key("/v1/search"));
+    assert!(doc.paths.paths.contains_key("/v1/export-url"));
+    assert!(
+        doc.paths
+            .paths
+            .contains_key("/v1/export-file/{cache_key}/{format}")
+    );
+}
+
+#[test]
+fn openapi_contains_error_and_search_schemas() {
+    let doc = ApiDoc::openapi();
+    let components = doc.components.expect("openapi components");
+
+    assert!(components.schemas.contains_key("ErrorResponse"));
+    assert!(components.schemas.contains_key("SearchRequest"));
+    assert!(components.schemas.contains_key("SearchResponse"));
+    assert!(components.schemas.contains_key("ExportUrlResponse"));
 }
 
 #[tokio::test]
