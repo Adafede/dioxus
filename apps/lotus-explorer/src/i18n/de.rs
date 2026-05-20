@@ -41,6 +41,7 @@ pub fn de_t(key: TextKey) -> &'static str {
         TextKey::Retry => "Erneut versuchen",
         TextKey::ErrorHintValidation => "Bitte Eingaben prüfen, dann erneut versuchen.",
         TextKey::ErrorHintNetwork => "Netzwerkproblem erkannt. Ein erneuter Versuch kann helfen.",
+        TextKey::ErrorHintBadRequest => "Der Server hat die Anfrage abgelehnt. Bitte Suchparameter prüfen.",
         TextKey::ErrorHintParse => {
             "Antwort konnte nicht verarbeitet werden. Erneut versuchen oder Abfrage verfeinern."
         }

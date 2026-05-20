@@ -129,9 +129,7 @@ const PROPERTIES_OPTIONAL: &str = r#"
 "#;
 
 fn compound_formula_expr(raw_var: &str) -> String {
-    format!(
-        "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(STR({raw_var}), \"₀\", \"0\"), \"₁\", \"1\"), \"₂\", \"2\"), \"₃\", \"3\"), \"₄\", \"4\"), \"₅\", \"5\"), \"₆\", \"6\"), \"₇\", \"7\"), \"₈\", \"8\"), \"₉\", \"9\")"
-    )
+    normalize_digits_expr(raw_var)
 }
 
 fn compound_select_clause() -> String {

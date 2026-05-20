@@ -122,6 +122,7 @@ pub enum TextKey {
     Retry,
     ErrorHintValidation,
     ErrorHintNetwork,
+    ErrorHintBadRequest,
     ErrorHintParse,
     ErrorHintUnknown,
     SkipToResults,

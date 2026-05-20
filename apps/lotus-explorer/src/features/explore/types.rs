@@ -25,6 +25,9 @@ pub enum QueryPhase {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ErrorKind {
     Validation,
+    /// HTTP 4xx — the request itself was invalid; retrying the same request will not help.
+    BadRequest,
+    /// Network/transport failure — may be transient, retry may succeed.
     Network,
     Parse,
     #[cfg(target_arch = "wasm32")]
@@ -166,7 +169,14 @@ impl DomainError {
     pub fn kind(&self) -> ErrorKind {
         match self {
             Self::Validation(_) => ErrorKind::Validation,
-            Self::Transport { .. } => ErrorKind::Network,
+            Self::Transport { source, .. } => match source {
+                crate::repositories::RepositoryError::Http { status, .. }
+                    if *status >= 400 && *status < 500 =>
+                {
+                    ErrorKind::BadRequest
+                }
+                _ => ErrorKind::Network,
+            },
             Self::Parse(_) => ErrorKind::Parse,
             #[cfg(target_arch = "wasm32")]
             Self::MemoryLimit { .. } => ErrorKind::Memory,
