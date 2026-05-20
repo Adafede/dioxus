@@ -7,7 +7,7 @@ use std::{
 };
 
 use axum::body::{Body, to_bytes};
-use axum::http::{Request, StatusCode};
+use axum::http::{Request, StatusCode, header};
 use tower::ServiceExt;
 use utoipa::OpenApi;
 
@@ -36,6 +36,15 @@ async fn body_json(response: axum::response::Response) -> serde_json::Value {
         .await
         .expect("body bytes");
     serde_json::from_slice(&bytes).expect("json body")
+}
+
+fn content_type_header(response: &axum::response::Response) -> String {
+    response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_string()
 }
 
 #[test]
@@ -228,6 +237,7 @@ async fn export_file_rejects_unsupported_format() {
         .expect("unsupported format response");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert!(content_type_header(&response).starts_with("application/json"));
 
     let json = body_json(response).await;
     assert!(
@@ -255,6 +265,62 @@ async fn search_rejects_malformed_json_payload() {
         .expect("malformed-json response");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn search_rejects_semantically_empty_payload() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/search")
+                .header("content-type", "application/json")
+                .body(Body::from("{}"))
+                .expect("request"),
+        )
+        .await
+        .expect("empty search payload response");
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert!(content_type_header(&response).starts_with("application/json"));
+
+    let json = body_json(response).await;
+    assert!(
+        json.get("error")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|msg| msg.contains("taxon") || msg.contains("smiles"))
+    );
+}
+
+#[tokio::test]
+async fn export_url_rejects_semantically_empty_payload() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/export-url")
+                .header("content-type", "application/json")
+                .body(Body::from("{}"))
+                .expect("request"),
+        )
+        .await
+        .expect("empty export payload response");
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert!(content_type_header(&response).starts_with("application/json"));
+
+    let json = body_json(response).await;
+    assert!(
+        json.get("error")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|msg| msg.contains("taxon") || msg.contains("smiles"))
+    );
 }
 
 #[tokio::test]
@@ -328,6 +394,7 @@ async fn export_file_rejects_unknown_cache_key() {
         .expect("unknown key response");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert!(content_type_header(&response).starts_with("application/json"));
 
     let json = body_json(response).await;
     assert!(
