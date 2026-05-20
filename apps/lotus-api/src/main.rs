@@ -129,4 +129,3 @@ async fn shutdown_signal() {
         _ = terminate => { log::info!("event=shutdown signal=terminate"); },
     }
 }
-
