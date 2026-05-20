@@ -6,9 +6,15 @@ use std::{
     time::{Duration, Instant},
 };
 
+use axum::body::Body;
+use axum::http::{Request, StatusCode};
+use tower::ServiceExt;
+
 use crate::{
+    build_router,
     config::AppConfig,
     query_logic::{apply_request, normalized_structure_input},
+    state::AppState,
     state::{CachedExportResponse, prune_cache},
     types::{ExportUrlResponse, SearchRequest},
 };
@@ -18,6 +24,10 @@ fn map_provider(values: &[(&str, &str)]) -> HashMap<String, String> {
         .iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))
         .collect()
+}
+
+fn test_config() -> AppConfig {
+    AppConfig::from_provider(|_| None).expect("test config")
 }
 
 #[test]
@@ -156,4 +166,76 @@ fn prune_cache_removes_oldest_when_over_capacity() {
     });
     assert!(cache.contains_key("b"));
     assert!(!cache.contains_key("a"));
+}
+
+#[tokio::test]
+async fn health_route_returns_ok() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/health")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("health response");
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn unknown_route_returns_not_found() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/does-not-exist")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("not found response");
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn export_file_rejects_unsupported_format() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/export-file/some-key/ttl")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("unsupported format response");
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn export_file_rejects_unknown_cache_key() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/export-file/missing/csv")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("unknown key response");
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }

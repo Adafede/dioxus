@@ -40,5 +40,8 @@ urlencoding = { workspace = true }
 utoipa = { version = "5", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
+[dev-dependencies]
+tower = "0.5"
+
 [lints]
 workspace = true

@@ -24,7 +24,8 @@ pub enum DownloadFormat {
 
 impl DownloadFormat {
     pub fn from_str(s: &str) -> Option<Self> {
-        match s {
+        let normalized = s.trim().to_ascii_lowercase();
+        match normalized.as_str() {
             "csv" => Some(Self::Csv),
             "json" | "ndjson" => Some(Self::Json),
             "rdf" => Some(Self::Rdf),
@@ -124,6 +125,11 @@ mod tests {
             Some(DownloadFormat::Json)
         );
         assert_eq!(DownloadFormat::from_str("rdf"), Some(DownloadFormat::Rdf));
+        assert_eq!(
+            DownloadFormat::from_str(" JSON "),
+            Some(DownloadFormat::Json)
+        );
+        assert_eq!(DownloadFormat::from_str("RDF"), Some(DownloadFormat::Rdf));
         assert_eq!(DownloadFormat::from_str("ttl"), None);
     }
 }
