@@ -186,12 +186,13 @@ pub async fn execute_sparql_with_format_body(
                 }
 
                 let body = resp.text().await.unwrap_or_default();
-                log::error!("HTTP {code}: {body}");
+                let detail = compact_http_error_text(&body);
+                log::error!("event=sparql_http_error status={code} detail={detail}");
                 // Fail fast on client errors (4xx); retry on server errors (5xx).
                 if (400..500).contains(&code) {
-                    return Err(FetchError::Http(code, body));
+                    return Err(FetchError::Http(code, detail));
                 }
-                last_err = Some(FetchError::Http(code, body));
+                last_err = Some(FetchError::Http(code, detail));
             }
             Err(e) => {
                 last_err = Some(FetchError::Network(e.to_string()));
@@ -285,11 +286,12 @@ pub async fn execute_sparql_with_format_tempfile(
                 }
 
                 let body = resp.text().await.unwrap_or_default();
-                log::error!("HTTP {code}: {body}");
+                let detail = compact_http_error_text(&body);
+                log::error!("event=sparql_http_error status={code} detail={detail}");
                 if (400..500).contains(&code) {
-                    return Err(FetchError::Http(code, body));
+                    return Err(FetchError::Http(code, detail));
                 }
-                last_err = Some(FetchError::Http(code, body));
+                last_err = Some(FetchError::Http(code, detail));
             }
             Err(e) => {
                 last_err = Some(FetchError::Network(e.to_string()));
@@ -361,10 +363,11 @@ async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>,
                 }
 
                 let body = resp.text().await.unwrap_or_default();
+                let detail = compact_http_error_text(&body);
                 if (400..500).contains(&code) {
-                    return Err(FetchError::Http(code, body));
+                    return Err(FetchError::Http(code, detail));
                 }
-                last_err = Some(FetchError::Http(code, body));
+                last_err = Some(FetchError::Http(code, detail));
             }
             Err(e) => {
                 last_err = Some(FetchError::Network(e.to_string()));
@@ -454,6 +457,67 @@ fn looks_like_gateway_error(body: &str) -> bool {
         || contains_ci(sample, "nginx")
         || contains_ci(sample, "cloudflare");
     html && gateway
+}
+
+fn compact_http_error_text(body: &str) -> String {
+    const MAX_CHARS: usize = 240;
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        return "empty response body".to_string();
+    }
+
+    if let Some(exception) = parse_json_exception_field(trimmed) {
+        return truncate_chars(exception.trim(), MAX_CHARS);
+    }
+
+    let first_meaningful_line = trimmed
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty() && *line != "{" && *line != "}")
+        .unwrap_or(trimmed);
+
+    truncate_chars(first_meaningful_line.trim_matches(','), MAX_CHARS)
+}
+
+fn parse_json_exception_field(input: &str) -> Option<String> {
+    let key = "\"exception\"";
+    let key_pos = input.find(key)?;
+    let mut rest = input[key_pos + key.len()..].trim_start();
+    rest = rest.strip_prefix(':')?.trim_start();
+    let quoted = rest.strip_prefix('"')?;
+
+    let mut out = String::new();
+    let mut escaped = false;
+    for ch in quoted.chars() {
+        if escaped {
+            let decoded = match ch {
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                '"' => '"',
+                '\\' => '\\',
+                other => other,
+            };
+            out.push(decoded);
+            escaped = false;
+            continue;
+        }
+        match ch {
+            '\\' => escaped = true,
+            '"' => return Some(out),
+            other => out.push(other),
+        }
+    }
+    None
+}
+
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    if text.chars().count() <= max_chars {
+        return text.to_string();
+    }
+    let mut out = text.chars().take(max_chars).collect::<String>();
+    out.push('…');
+    out
 }
 
 // ── CSV helpers ───────────────────────────────────────────────────────────────
@@ -565,5 +629,25 @@ mod tests {
             Some("10.1000/xyz".to_string())
         );
         assert_eq!(clean_doi("  "), None);
+    }
+
+    #[test]
+    fn compact_http_error_text_prefers_json_exception_field() {
+        let body = r#"{
+  "exception": "Trying to insert a cache key which was already present",
+  "query": "SELECT ..."
+}"#;
+        assert_eq!(
+            compact_http_error_text(body),
+            "Trying to insert a cache key which was already present"
+        );
+    }
+
+    #[test]
+    fn compact_http_error_text_truncates_long_fallback_line() {
+        let body = format!("{{\n  \"detail\": \"{}\"\n}}", "x".repeat(400));
+        let compact = compact_http_error_text(&body);
+        assert!(compact.chars().count() <= 241);
+        assert!(compact.ends_with('…'));
     }
 }
