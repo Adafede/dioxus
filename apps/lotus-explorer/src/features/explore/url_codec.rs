@@ -128,6 +128,7 @@ impl CriteriaQueryDto {
             smiles_threshold: params
                 .get("smiles_threshold")
                 .and_then(|v| v.parse::<f64>().ok())
+                .filter(|v| v.is_finite() && *v > 0.0)
                 .map(|v| v.clamp(0.05, 1.0)),
             mass_filter: params
                 .get("mass_filter")
@@ -416,5 +417,23 @@ mod tests {
         assert!(startup.pending_format.is_none());
         assert_eq!(startup.pending_invalid_format.as_deref(), Some("ttl"));
         assert!(!startup.direct_execute);
+    }
+
+    #[test]
+    fn parse_criteria_rejects_non_positive_smiles_threshold() {
+        let mut params = BTreeMap::new();
+        params.insert("smiles_threshold".into(), "0".into());
+
+        let crit = parse_criteria_from_params(&params);
+        assert_eq!(crit.smiles_threshold, SearchCriteria::default().smiles_threshold);
+    }
+
+    #[test]
+    fn parse_criteria_clamps_low_positive_smiles_threshold() {
+        let mut params = BTreeMap::new();
+        params.insert("smiles_threshold".into(), "0.01".into());
+
+        let crit = parse_criteria_from_params(&params);
+        assert_eq!(crit.smiles_threshold, 0.05);
     }
 }
