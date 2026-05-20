@@ -8,3 +8,4 @@
 - `COLLABORATION_AI_SKILLS.md` — PR discipline and AI-assisted contribution protocol
 - `SUGGESTIONS.md` — non-normative improvement notes
 
+See also: `../ARCHITECTURE.md`

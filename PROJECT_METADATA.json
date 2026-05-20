@@ -25,9 +25,10 @@
   ],
   "agent_docs": {
     "guide": "AI_AGENT_GUIDE.md",
-    "contributing": "CONTRIBUTING_AI.md",
+    "contributing": ".github/CONTRIBUTING_AI.md",
     "skills_index": "apps/lotus-explorer/docs/skills/README.md",
-    "skills_root": "apps/lotus-explorer/SKILLS.md"
+    "skills_root": "apps/lotus-explorer/SKILLS.md",
+    "architecture": "apps/lotus-explorer/docs/ARCHITECTURE.md"
   },
   "validation_commands": [
     "cargo check --workspace --all-targets --locked",
@@ -36,4 +37,3 @@
     "cargo doc --workspace --no-deps --locked"
   ]
 }
-
