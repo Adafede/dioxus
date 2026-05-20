@@ -411,8 +411,7 @@ impl DatasetStats {
         let mut c: HashSet<&str> = HashSet::with_capacity(entries.len());
         let mut t: HashSet<&str> = HashSet::with_capacity(entries.len());
         let mut r: HashSet<&str> = HashSet::with_capacity(entries.len());
-        let mut unique_triples: HashSet<(&str, &str, &str)> =
-            HashSet::with_capacity(entries.len());
+        let mut unique_triples: HashSet<(&str, &str, &str)> = HashSet::with_capacity(entries.len());
         for e in entries {
             c.insert(e.compound_qid.as_ref());
             if !e.taxon_qid.is_empty() {

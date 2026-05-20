@@ -593,4 +593,3 @@ fn apply_request_clamps_similarity_threshold() {
         "threshold should be clamped to maximum 1.0"
     );
 }
-

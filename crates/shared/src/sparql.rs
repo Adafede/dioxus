@@ -133,23 +133,15 @@ pub async fn execute_sparql_with_format_body(
     let mut last_err: Option<FetchError> = None;
 
     for attempt in 0..MAX_ATTEMPTS {
-        let mut body = format!("query={}", urlencoding::encode(sparql));
-        if let Some(action) = format.action() {
-            body.push_str("&action=");
-            body.push_str(action);
-        }
+        // `Accept` and `Content-Type: application/x-www-form-urlencoded` are
+        // both CORS-safelisted, so the request stays simple (no preflight).
+        // Do not add `User-Agent` or other custom headers — browsers refuse to
+        // let WASM set them, which causes QLever to reject the preflight.
         let result = client
             .post(endpoint)
-            // `Accept` and `Content-Type: application/x-www-form-urlencoded`
-            // (added by `.form(...)`) are both CORS-safelisted, so this stays
-            // a *simple* request and no preflight is triggered. Do **not**
-            // add `User-Agent` or any other custom header here — browsers
-            // refuse to let WASM set them and the resulting preflight is
-            // rejected by QLever with an opaque "CORS request did not
-            // succeed" error.
             .header("Accept", format.accept())
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(body)
+            .body(build_sparql_form_body(sparql, format))
             .send()
             .await;
 
@@ -216,17 +208,11 @@ pub async fn execute_sparql_with_format_tempfile(
     let mut last_err: Option<FetchError> = None;
 
     'attempts: for attempt in 0..MAX_ATTEMPTS {
-        let mut body = format!("query={}", urlencoding::encode(sparql));
-        if let Some(action) = format.action() {
-            body.push_str("&action=");
-            body.push_str(action);
-        }
-
         let result = client
             .post(endpoint)
             .header("Accept", format.accept())
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(body)
+            .body(build_sparql_form_body(sparql, format))
             .send()
             .await;
 
@@ -378,6 +364,15 @@ async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>,
     Err(last_err.unwrap_or_else(|| FetchError::Network("unknown error".into())))
 }
 
+fn build_sparql_form_body(sparql: &str, format: SparqlResponseFormat) -> String {
+    let mut body = format!("query={}", urlencoding::encode(sparql));
+    if let Some(action) = format.action() {
+        body.push_str("&action=");
+        body.push_str(action);
+    }
+    body
+}
+
 fn http_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT.get_or_init(build_http_client)
@@ -414,28 +409,12 @@ fn build_http_client() -> reqwest::Client {
 }
 
 fn looks_like_gateway_error(body: &str) -> bool {
-    // Inspect at most ~2 KiB; find the largest valid char boundary at or before the cap.
     let cap = body.len().min(2048);
-    let safe_end = (0..=cap).rev().find(|&i| body.is_char_boundary(i)).unwrap_or(0);
+    let safe_end = (0..=cap)
+        .rev()
+        .find(|&i| body.is_char_boundary(i))
+        .unwrap_or(0);
     let sample = &body[..safe_end];
-    // Case-insensitive `contains` without allocating a lowercase copy.
-    fn contains_ci(h: &str, needle: &str) -> bool {
-        if needle.len() > h.len() {
-            return false;
-        }
-        let nb = needle.as_bytes();
-        let hb = h.as_bytes();
-        for i in 0..=hb.len() - nb.len() {
-            if hb[i..i + nb.len()]
-                .iter()
-                .zip(nb)
-                .all(|(a, b)| a.eq_ignore_ascii_case(b))
-            {
-                return true;
-            }
-        }
-        false
-    }
     let html = contains_ci(sample, "<html")
         || contains_ci(sample, "<!doctype")
         || contains_ci(sample, "<head")
@@ -447,6 +426,24 @@ fn looks_like_gateway_error(body: &str) -> bool {
         || contains_ci(sample, "nginx")
         || contains_ci(sample, "cloudflare");
     html && gateway
+}
+
+fn contains_ci(h: &str, needle: &str) -> bool {
+    if needle.len() > h.len() {
+        return false;
+    }
+    let nb = needle.as_bytes();
+    let hb = h.as_bytes();
+    for i in 0..=hb.len() - nb.len() {
+        if hb[i..i + nb.len()]
+            .iter()
+            .zip(nb)
+            .all(|(a, b)| a.eq_ignore_ascii_case(b))
+        {
+            return true;
+        }
+    }
+    false
 }
 
 fn compact_http_error_text(body: &str) -> String {

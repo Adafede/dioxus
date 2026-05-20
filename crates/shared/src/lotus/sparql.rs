@@ -17,6 +17,118 @@ use std::sync::Arc;
 
 const WIKIDATA_STATEMENT_PREFIX: &str = "http://www.wikidata.org/entity/statement/";
 
+/// Column indices for the compound CSV format used by all LOTUS SPARQL queries.
+struct CompoundColumns {
+    compound: Option<usize>,
+    label: Option<usize>,
+    inchikey: Option<usize>,
+    smiles_iso: Option<usize>,
+    smiles_con: Option<usize>,
+    mass: Option<usize>,
+    formula: Option<usize>,
+    taxon: Option<usize>,
+    taxon_name: Option<usize>,
+    ref_qid: Option<usize>,
+    ref_title: Option<usize>,
+    ref_doi: Option<usize>,
+    ref_date: Option<usize>,
+    statement: Option<usize>,
+}
+
+impl CompoundColumns {
+    fn detect(headers: &csv::ByteRecord) -> Self {
+        let find =
+            |name: &str| -> Option<usize> { headers.iter().position(|h| h == name.as_bytes()) };
+        Self {
+            compound: find("compound"),
+            label: find("compoundLabel"),
+            inchikey: find("compound_inchikey"),
+            smiles_iso: find("compound_smiles_iso"),
+            smiles_con: find("compound_smiles_conn"),
+            mass: find("compound_mass"),
+            formula: find("compound_formula"),
+            taxon: find("taxon"),
+            taxon_name: find("taxon_name"),
+            ref_qid: find("ref_qid"),
+            ref_title: find("ref_title"),
+            ref_doi: find("ref_doi"),
+            ref_date: find("ref_date"),
+            statement: find("statement"),
+        }
+    }
+}
+
+/// String interners for all `CompoundEntry` fields.
+struct CompoundInterners {
+    qid: StrInterner,
+    label: StrInterner,
+    taxon_name: StrInterner,
+    ref_title: StrInterner,
+    doi: StrInterner,
+    inchikey: StrInterner,
+    smiles: StrInterner,
+    formula: StrInterner,
+    statement: StrInterner,
+}
+
+impl CompoundInterners {
+    fn new(cap: usize) -> Self {
+        Self {
+            qid: StrInterner::with_capacity(cap),
+            label: StrInterner::with_capacity(cap),
+            taxon_name: StrInterner::with_capacity(64),
+            ref_title: StrInterner::with_capacity(128),
+            doi: StrInterner::with_capacity(cap / 2),
+            inchikey: StrInterner::with_capacity(cap),
+            smiles: StrInterner::with_capacity(cap * 2),
+            formula: StrInterner::with_capacity(cap),
+            statement: StrInterner::with_capacity(cap),
+        }
+    }
+
+    fn build_entry(
+        &mut self,
+        cols: &CompoundColumns,
+        rec: &csv::ByteRecord,
+        compound_qid: &str,
+        taxon_qid: &str,
+        reference_qid: &str,
+    ) -> CompoundEntry {
+        let label = byte_field_str(rec, cols.label);
+        let inchikey = byte_field_str(rec, cols.inchikey);
+        let smiles_iso = byte_field_str(rec, cols.smiles_iso);
+        let smiles_con = byte_field_str(rec, cols.smiles_con);
+        let mass_str = byte_field_str(rec, cols.mass);
+        let formula = byte_field_str(rec, cols.formula);
+        let taxon_name = byte_field_str(rec, cols.taxon_name);
+        let ref_title = byte_field_str(rec, cols.ref_title);
+        let ref_doi = byte_field_str(rec, cols.ref_doi);
+        let ref_date = byte_field_str(rec, cols.ref_date);
+        let statement = byte_field_str(rec, cols.statement);
+
+        CompoundEntry {
+            compound_qid: self.qid.intern_or_empty(compound_qid),
+            name: self.label.intern_or_empty(label),
+            inchikey: self.inchikey.intern_optional(inchikey),
+            smiles: self.smiles.intern_optional(if smiles_iso.is_empty() {
+                smiles_con
+            } else {
+                smiles_iso
+            }),
+            mass: mass_str.parse::<f64>().ok(),
+            formula: self.formula.intern_optional(formula),
+            taxon_qid: self.qid.intern_or_empty(taxon_qid),
+            taxon_name: self.taxon_name.intern_or_empty(taxon_name),
+            reference_qid: self.qid.intern_or_empty(reference_qid),
+            ref_title: self.ref_title.intern_optional(ref_title),
+            ref_doi: normalize_doi_value(ref_doi).and_then(|d| self.doi.intern_optional(d)),
+            pub_year: parse_year(ref_date).and_then(|y| i16::try_from(y).ok()),
+            statement: normalize_statement_value(statement)
+                .and_then(|s| self.statement.intern_optional(s)),
+        }
+    }
+}
+
 #[derive(Default)]
 struct StrInterner {
     map: HashMap<Box<str>, Arc<str>>,
@@ -181,35 +293,12 @@ pub fn parse_compounds_csv_display_bytes(
         .byte_headers()
         .map_err(|e| FetchError::Parse(e.to_string()))?
         .clone();
-    let find = |name: &str| -> Option<usize> { headers.iter().position(|h| h == name.as_bytes()) };
-
-    let c_compound = find("compound");
-    let c_label = find("compoundLabel");
-    let c_inchikey = find("compound_inchikey");
-    let c_smiles_iso = find("compound_smiles_iso");
-    let c_smiles_con = find("compound_smiles_conn");
-    let c_mass = find("compound_mass");
-    let c_formula = find("compound_formula");
-    let c_taxon = find("taxon");
-    let c_taxon_name = find("taxon_name");
-    let c_ref_qid = find("ref_qid");
-    let c_ref_title = find("ref_title");
-    let c_ref_doi = find("ref_doi");
-    let c_ref_date = find("ref_date");
-    let c_statement = find("statement");
+    let cols = CompoundColumns::detect(&headers);
 
     let initial_cap = max_rows.min(1024);
     let mut entries: Vec<CompoundEntry> = Vec::with_capacity(initial_cap);
     let mut seen: HashSet<u64> = HashSet::with_capacity(initial_cap.saturating_mul(2));
-    let mut taxon_name_intern = StrInterner::with_capacity(64);
-    let mut ref_title_intern = StrInterner::with_capacity(128);
-    let mut qid_intern = StrInterner::with_capacity(512);
-    let mut doi_intern = StrInterner::with_capacity(256);
-    let mut label_intern = StrInterner::with_capacity(512);
-    let mut inchikey_intern = StrInterner::with_capacity(512);
-    let mut smiles_intern = StrInterner::with_capacity(1024);
-    let mut formula_intern = StrInterner::with_capacity(512);
-    let mut statement_intern = StrInterner::with_capacity(512);
+    let mut interners = CompoundInterners::new(initial_cap);
     let mut compound_qid = String::new();
     let mut taxon_qid = String::new();
     let mut reference_qid = String::new();
@@ -221,7 +310,7 @@ pub fn parse_compounds_csv_display_bytes(
             .map_err(|e| FetchError::Parse(e.to_string()))?
     {
         compound_qid.clear();
-        if let Some(i) = c_compound
+        if let Some(i) = cols.compound
             && let Some(b) = rec.get(i)
         {
             fill_qid(&mut compound_qid, b);
@@ -230,13 +319,13 @@ pub fn parse_compounds_csv_display_bytes(
             continue;
         }
         taxon_qid.clear();
-        if let Some(i) = c_taxon
+        if let Some(i) = cols.taxon
             && let Some(b) = rec.get(i)
         {
             fill_qid(&mut taxon_qid, b);
         }
         reference_qid.clear();
-        if let Some(i) = c_ref_qid
+        if let Some(i) = cols.ref_qid
             && let Some(b) = rec.get(i)
         {
             fill_qid(&mut reference_qid, b);
@@ -251,38 +340,7 @@ pub fn parse_compounds_csv_display_bytes(
             continue;
         }
 
-        let label = byte_field_str(&rec, c_label);
-        let inchikey = byte_field_str(&rec, c_inchikey);
-        let smiles_iso = byte_field_str(&rec, c_smiles_iso);
-        let smiles_con = byte_field_str(&rec, c_smiles_con);
-        let mass = byte_field_str(&rec, c_mass);
-        let formula = byte_field_str(&rec, c_formula);
-        let taxon_name = byte_field_str(&rec, c_taxon_name);
-        let ref_title = byte_field_str(&rec, c_ref_title);
-        let ref_doi = byte_field_str(&rec, c_ref_doi);
-        let ref_date = byte_field_str(&rec, c_ref_date);
-        let statement = byte_field_str(&rec, c_statement);
-
-        entries.push(CompoundEntry {
-            compound_qid: qid_intern.intern_or_empty(&compound_qid),
-            name: label_intern.intern_or_empty(label),
-            inchikey: inchikey_intern.intern_optional(inchikey),
-            smiles: smiles_intern.intern_optional(if smiles_iso.is_empty() {
-                smiles_con
-            } else {
-                smiles_iso
-            }),
-            mass: mass.parse::<f64>().ok(),
-            formula: formula_intern.intern_optional(formula),
-            taxon_qid: qid_intern.intern_or_empty(&taxon_qid),
-            taxon_name: taxon_name_intern.intern_or_empty(taxon_name),
-            reference_qid: qid_intern.intern_or_empty(&reference_qid),
-            ref_title: ref_title_intern.intern_optional(ref_title),
-            ref_doi: normalize_doi_value(ref_doi).and_then(|d| doi_intern.intern_optional(d)),
-            pub_year: parse_year(ref_date).and_then(|y| i16::try_from(y).ok()),
-            statement: normalize_statement_value(statement)
-                .and_then(|s| statement_intern.intern_optional(s)),
-        });
+        entries.push(interners.build_entry(&cols, &rec, &compound_qid, &taxon_qid, &reference_qid));
     }
 
     Ok(entries)
@@ -350,23 +408,7 @@ pub fn parse_compounds_csv_capped_reader<R: Read>(
         .byte_headers()
         .map_err(|e| FetchError::Parse(e.to_string()))?
         .clone();
-
-    let find = |name: &str| -> Option<usize> { headers.iter().position(|h| h == name.as_bytes()) };
-
-    let c_compound = find("compound");
-    let c_label = find("compoundLabel");
-    let c_inchikey = find("compound_inchikey");
-    let c_smiles_iso = find("compound_smiles_iso");
-    let c_smiles_con = find("compound_smiles_conn");
-    let c_mass = find("compound_mass");
-    let c_formula = find("compound_formula");
-    let c_taxon = find("taxon");
-    let c_taxon_name = find("taxon_name");
-    let c_ref_qid = find("ref_qid");
-    let c_ref_title = find("ref_title");
-    let c_ref_doi = find("ref_doi");
-    let c_ref_date = find("ref_date");
-    let c_statement = find("statement");
+    let cols = CompoundColumns::detect(&headers);
 
     let initial_cap = max_rows.min(2048);
     let mut entries: Vec<CompoundEntry> = Vec::with_capacity(initial_cap);
@@ -376,15 +418,7 @@ pub fn parse_compounds_csv_capped_reader<R: Read>(
     let mut ref_fps: HashSet<u64> = HashSet::with_capacity(initial_cap);
     let mut total_raw = 0usize;
     let mut total_distinct = 0usize;
-    let mut taxon_name_intern = StrInterner::with_capacity(64);
-    let mut ref_title_intern = StrInterner::with_capacity(128);
-    let mut qid_intern = StrInterner::with_capacity(1024);
-    let mut doi_intern = StrInterner::with_capacity(512);
-    let mut label_intern = StrInterner::with_capacity(1024);
-    let mut inchikey_intern = StrInterner::with_capacity(1024);
-    let mut smiles_intern = StrInterner::with_capacity(2048);
-    let mut formula_intern = StrInterner::with_capacity(1024);
-    let mut statement_intern = StrInterner::with_capacity(1024);
+    let mut interners = CompoundInterners::new(initial_cap);
 
     let mut compound_qid = String::new();
     let mut taxon_qid = String::new();
@@ -396,7 +430,7 @@ pub fn parse_compounds_csv_capped_reader<R: Read>(
         .map_err(|e| FetchError::Parse(e.to_string()))?
     {
         compound_qid.clear();
-        if let Some(i) = c_compound
+        if let Some(i) = cols.compound
             && let Some(b) = rec.get(i)
         {
             fill_qid(&mut compound_qid, b);
@@ -406,13 +440,13 @@ pub fn parse_compounds_csv_capped_reader<R: Read>(
         }
         total_raw += 1;
         taxon_qid.clear();
-        if let Some(i) = c_taxon
+        if let Some(i) = cols.taxon
             && let Some(b) = rec.get(i)
         {
             fill_qid(&mut taxon_qid, b);
         }
         reference_qid.clear();
-        if let Some(i) = c_ref_qid
+        if let Some(i) = cols.ref_qid
             && let Some(b) = rec.get(i)
         {
             fill_qid(&mut reference_qid, b);
@@ -436,42 +470,15 @@ pub fn parse_compounds_csv_capped_reader<R: Read>(
             ref_fps.insert(fnv1a_one(reference_qid.as_bytes()));
         }
 
-        if entries.len() >= max_rows {
-            continue;
+        if entries.len() < max_rows {
+            entries.push(interners.build_entry(
+                &cols,
+                &rec,
+                &compound_qid,
+                &taxon_qid,
+                &reference_qid,
+            ));
         }
-
-        let label = byte_field_str(&rec, c_label);
-        let inchikey = byte_field_str(&rec, c_inchikey);
-        let smiles_iso = byte_field_str(&rec, c_smiles_iso);
-        let smiles_con = byte_field_str(&rec, c_smiles_con);
-        let mass = byte_field_str(&rec, c_mass);
-        let formula = byte_field_str(&rec, c_formula);
-        let taxon_name = byte_field_str(&rec, c_taxon_name);
-        let ref_title = byte_field_str(&rec, c_ref_title);
-        let ref_doi = byte_field_str(&rec, c_ref_doi);
-        let ref_date = byte_field_str(&rec, c_ref_date);
-        let statement = byte_field_str(&rec, c_statement);
-
-        entries.push(CompoundEntry {
-            compound_qid: qid_intern.intern_or_empty(&compound_qid),
-            name: label_intern.intern_or_empty(label),
-            inchikey: inchikey_intern.intern_optional(inchikey),
-            smiles: smiles_intern.intern_optional(if smiles_iso.is_empty() {
-                smiles_con
-            } else {
-                smiles_iso
-            }),
-            mass: mass.parse::<f64>().ok(),
-            formula: formula_intern.intern_optional(formula),
-            taxon_qid: qid_intern.intern_or_empty(&taxon_qid),
-            taxon_name: taxon_name_intern.intern_or_empty(taxon_name),
-            reference_qid: qid_intern.intern_or_empty(&reference_qid),
-            ref_title: ref_title_intern.intern_optional(ref_title),
-            ref_doi: normalize_doi_value(ref_doi).and_then(|d| doi_intern.intern_optional(d)),
-            pub_year: parse_year(ref_date).and_then(|y| i16::try_from(y).ok()),
-            statement: normalize_statement_value(statement)
-                .and_then(|s| statement_intern.intern_optional(s)),
-        });
     }
 
     let stats = DatasetStats {
