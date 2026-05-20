@@ -3,6 +3,7 @@
 
 //! Virtualized results table body and WASM scroll scheduling glue.
 
+use super::render_model::build_virtualized_table_render_model;
 use super::row_cells::{ResultsRowsWindow, row_text};
 use super::table_view_model::TableViewModel;
 #[cfg(target_arch = "wasm32")]
@@ -66,12 +67,9 @@ pub(super) fn VirtualizedResultsTable(
     );
     let text = row_text(locale);
 
-    // Extract prepared view model components for rendering.
     let view_model = table_view_model.read();
-    let current_sort = view_model.sort_state;
     let rows = entries.read().clone();
-    let prepared = view_model.prepared_rows.clone();
-    let order = view_model.sorted_indices.clone();
+    let render_model = build_virtualized_table_render_model(&view_model, virtualization);
 
     #[cfg(target_arch = "wasm32")]
     use_effect(move || {
@@ -142,17 +140,17 @@ pub(super) fn VirtualizedResultsTable(
                 }
                 thead {
                     TableHeader {
-                        current_sort,
+                        current_sort: render_model.current_sort,
                         on_sort_toggle: move |col| interactions.toggle_sort(col),
                     }
                 }
                 tbody {
-                    if virtualization.top_spacer_px > 0 {
+                    if render_model.has_top_spacer() {
                         tr { class: "virtual-spacer-row", aria_hidden: "true",
                             td {
                                 class: "virtual-spacer-cell",
                                 colspan: "7",
-                                style: "height: {virtualization.top_spacer_px}px;",
+                                style: "height: {render_model.top_spacer_px}px;",
                             }
                         }
                     }
@@ -163,20 +161,18 @@ pub(super) fn VirtualizedResultsTable(
                                     locale,
                                     text,
                                     rows,
-                                    prepared_rows: prepared,
-                                    order,
-                                    start_row: virtualization.start_row,
-                                    visible_count: virtualization.visible_count(),
+                                    prepared_rows: render_model.prepared_rows.clone(),
+                                    visible_order: render_model.visible_order.clone(),
                                 }
                             }
                         }
                     }
-                    if virtualization.bottom_spacer_px > 0 {
+                    if render_model.has_bottom_spacer() {
                         tr { class: "virtual-spacer-row", aria_hidden: "true",
                             td {
                                 class: "virtual-spacer-cell",
                                 colspan: "7",
-                                style: "height: {virtualization.bottom_spacer_px}px;",
+                                style: "height: {render_model.bottom_spacer_px}px;",
                             }
                         }
                     }

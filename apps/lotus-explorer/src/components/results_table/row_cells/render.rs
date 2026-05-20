@@ -36,12 +36,10 @@ pub(in crate::components::results_table) fn ResultsRowsWindow(
     text: RowText,
     rows: Arc<[CompoundEntry]>,
     prepared_rows: Arc<[PreparedRow]>,
-    order: Arc<[u32]>,
-    start_row: usize,
-    visible_count: usize,
+    visible_order: Arc<[u32]>,
 ) -> Element {
     rsx! {
-        for i in order.iter().skip(start_row).take(visible_count).copied() {
+        for i in visible_order.iter().copied() {
             {row_view(locale, text, &rows[i as usize], &prepared_rows[i as usize], i)}
         }
     }

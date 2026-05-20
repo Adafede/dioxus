@@ -8,6 +8,8 @@ use crate::ui::a11y_contract::{RESULTS_SECTION_HEADING_ID, RESULTS_SECTION_ID};
 use dioxus::prelude::*;
 
 mod download_model;
+mod header_model;
+mod render_model;
 mod row_cells;
 mod scroll_runtime;
 mod sort_helpers;
