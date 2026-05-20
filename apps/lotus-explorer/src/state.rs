@@ -4,7 +4,7 @@
 pub mod form_context;
 
 use crate::app_state::AppState;
-use crate::features::explore::search_state::ExploreState;
+use crate::features::explore::ExploreState;
 use dioxus::prelude::*;
 
 pub use form_context::{FormCriteriaContext, use_form_criteria_context};
@@ -69,7 +69,7 @@ pub fn use_results_context() -> ResultsContext {
 
 #[cfg(test)]
 mod tests {
-    use crate::features::explore::form_actions::{FormAction, apply_form_action};
+    use crate::features::explore::{FormAction, apply_form_action};
     use crate::models::SearchCriteria;
 
     #[test]

@@ -11,7 +11,7 @@ use crate::features::curation::state::page_controller::{
     import_tsv_rows, rows_to_tsv, start_curation_run,
 };
 use crate::features::curation::workflow;
-use crate::features::explore::url_state::absolute_share_url;
+use crate::features::explore::absolute_share_url;
 use crate::i18n::{
     TextKey, button_add_row, button_append_tsv_rows, button_load_example_rows, heading_add_one_row,
     heading_tsv_import, hint_expected_tsv_headers, msg_add_row_before_generate,

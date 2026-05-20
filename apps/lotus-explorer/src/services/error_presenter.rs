@@ -3,7 +3,7 @@
 
 //! User-facing formatting for domain errors and warnings.
 
-use crate::features::explore::types::{
+use crate::features::explore::{
     DomainError, ErrorKind, ParseFault, QueryStage, TaxonWarning, ValidationFault,
 };
 #[cfg(target_arch = "wasm32")]

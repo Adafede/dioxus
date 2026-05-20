@@ -1,6 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! Explore feature facade.
+//!
+//! External modules should prefer these re-exports over deep module imports,
+//! so feature internals can evolve without widespread callsite churn.
+
+pub use download_dispatch::{use_download_dispatch_effect, use_startup_effect};
+pub use form_actions::FormAction;
+#[cfg(test)]
+pub use form_actions::apply_form_action;
+pub use interactions::{ExploreInteractions, use_explore_interactions};
+pub use orchestrator::SearchTaskController;
+pub use search_state::ExploreState;
+pub use selectors::{use_criteria_selector, use_lifecycle_selector, use_result_selector};
+pub use state::controller::classes_for_view;
+pub use types::{DomainError, ErrorKind, ParseFault, QueryStage, TaxonWarning, ValidationFault};
+pub use url_state::{
+    InitialUrlState, absolute_current_url_with_query, absolute_share_url, build_shareable_url,
+    initial_url_state, persist_locale_query_param, persist_view_query_param,
+};
+
+#[cfg(test)]
+pub use url_state::InitialDownloadState;
+
 pub mod actions;
 pub mod command;
 pub mod download_dispatch;

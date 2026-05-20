@@ -20,15 +20,13 @@
 pub use crate::components::form_sections::{
     FormulaSection, MassRangeInput, TaxonInput, YearRangeInput,
 };
-use crate::features::explore::form_actions::FormAction;
-use crate::features::explore::selectors::use_criteria_selector;
+use crate::features::explore::{FormAction, use_criteria_selector};
 
 #[path = "search_panel/structure_model.rs"]
 mod structure_model;
 
 use crate::components::form_inputs::SearchButton;
-use crate::features::explore::interactions::use_explore_interactions;
-use crate::features::explore::selectors::use_lifecycle_selector;
+use crate::features::explore::{use_explore_interactions, use_lifecycle_selector};
 use crate::i18n::{TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::classify_structure;

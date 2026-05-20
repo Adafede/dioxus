@@ -12,15 +12,10 @@ use crate::components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
 use crate::components::layout::page_header::PageHeader;
 use crate::components::layout::sidebar::Sidebar;
 use crate::components::results_viewport::ResultsViewport;
-use crate::features::explore::download_dispatch::{
+use crate::features::explore::{
+    ExploreInteractions, ExploreState, SearchTaskController, build_shareable_url, classes_for_view,
+    initial_url_state, persist_locale_query_param, persist_view_query_param,
     use_download_dispatch_effect, use_startup_effect,
-};
-use crate::features::explore::interactions::ExploreInteractions;
-use crate::features::explore::orchestrator::SearchTaskController;
-use crate::features::explore::search_state::ExploreState;
-use crate::features::explore::state::controller::classes_for_view;
-use crate::features::explore::url_state::{
-    build_shareable_url, initial_url_state, persist_locale_query_param, persist_view_query_param,
 };
 use crate::hooks::LocaleProvider;
 use crate::i18n::{Locale, TextKey, t};

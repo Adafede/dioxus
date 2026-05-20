@@ -4,7 +4,7 @@
 //! Welcome screen shown before the first search, with example queries.
 
 use crate::components::copy_button::CopyButton;
-use crate::features::explore::url_state::absolute_current_url_with_query;
+use crate::features::explore::absolute_current_url_with_query;
 use crate::i18n::{TextKey, t};
 use dioxus::prelude::*;
 use std::sync::Arc;

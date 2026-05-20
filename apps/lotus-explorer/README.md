@@ -6,6 +6,10 @@ A linked open data (LOD) explorer demonstrating the power of semantic web techno
 
 - URL schema and examples: [`docs/CURATION_SHARE_LINKS.md`](./docs/CURATION_SHARE_LINKS.md)
 
+## Engineering skills
+
+- Skills index: [`SKILLS.md`](./SKILLS.md)
+
 ## Development testing
 
 - Run only logging format tests during telemetry/event-shape work:

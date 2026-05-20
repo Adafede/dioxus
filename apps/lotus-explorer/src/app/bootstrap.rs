@@ -7,8 +7,7 @@
 //! snapshot can be tested without a Dioxus runtime.
 
 use crate::app_state::{AppState, DownloadState};
-use crate::features::explore::search_state::ExploreState;
-use crate::features::explore::url_state::InitialUrlState;
+use crate::features::explore::{ExploreState, InitialUrlState};
 use crate::i18n::Locale;
 use crate::models::SearchCriteria;
 
@@ -47,7 +46,7 @@ mod tests {
     use super::*;
     use crate::app::view::AppView;
     use crate::download::DownloadFormat;
-    use crate::features::explore::url_state::InitialDownloadState;
+    use crate::features::explore::InitialDownloadState;
 
     #[test]
     fn bootstrap_app_copies_startup_view_locale_and_download_state() {
