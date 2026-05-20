@@ -4,7 +4,7 @@
 use crate::models::CompoundEntry;
 use std::sync::Arc;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub(in crate::components::results_table) struct PreparedRow {
     pub(super) display_name: Arc<str>,
     pub(super) display_name_short: Arc<str>,

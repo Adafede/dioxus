@@ -3,7 +3,8 @@
 
 //! Virtualized results table body and WASM scroll scheduling glue.
 
-use super::row_cells::{PreparedRow, ResultsRowsWindow, row_text};
+use super::row_cells::{ResultsRowsWindow, row_text};
+use super::table_view_model::TableViewModel;
 #[cfg(target_arch = "wasm32")]
 use super::scroll_runtime;
 use super::table_header::TableHeader;
@@ -13,16 +14,13 @@ use super::{
 use crate::features::explore::interactions::use_explore_interactions;
 use crate::hooks::use_virtualization::{self, VirtualizationConfig};
 use crate::i18n::{TextKey, t};
-use crate::models::{Rows, SortState};
+use crate::models::Rows;
 use dioxus::prelude::*;
-use std::sync::Arc;
 
 #[component]
 pub(super) fn VirtualizedResultsTable(
     entries: Memo<Rows>,
-    prepared_rows: Memo<Arc<[PreparedRow]>>,
-    sort_state: Memo<SortState>,
-    sorted_indices: Memo<Arc<[u32]>>,
+    table_view_model: Memo<TableViewModel>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
     let interactions = use_explore_interactions();
@@ -67,10 +65,13 @@ pub(super) fn VirtualizedResultsTable(
             .max(TABLE_VIEWPORT_FALLBACK_PX),
     );
     let text = row_text(locale);
-    let current_sort = *sort_state.read();
+
+    // Extract prepared view model components for rendering.
+    let view_model = table_view_model.read();
+    let current_sort = view_model.sort_state;
     let rows = entries.read().clone();
-    let prepared = prepared_rows.read().clone();
-    let order = sorted_indices.read().clone();
+    let prepared = view_model.prepared_rows.clone();
+    let order = view_model.sorted_indices.clone();
 
     #[cfg(target_arch = "wasm32")]
     use_effect(move || {

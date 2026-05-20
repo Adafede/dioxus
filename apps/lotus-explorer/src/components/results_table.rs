@@ -6,18 +6,20 @@ use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
 use crate::ui::a11y_contract::{RESULTS_SECTION_HEADING_ID, RESULTS_SECTION_ID};
 use dioxus::prelude::*;
-use std::sync::Arc;
 
 mod download_model;
-mod sort_helpers;
-mod sort_model;
-mod table_toolbar_sections;
-mod toolbar;
-use toolbar::ResultsToolbar;
 mod row_cells;
 mod scroll_runtime;
+mod sort_helpers;
+mod sort_model;
 mod table_header;
+mod table_toolbar_sections;
+mod table_view_model;
+mod toolbar;
 mod virtualized_table;
+
+use table_view_model::build_table_view_model;
+use toolbar::ResultsToolbar;
 use virtualized_table::VirtualizedResultsTable;
 
 const TABLE_SCROLL_ID: &str = "results-table-scroll";
@@ -28,10 +30,11 @@ const TABLE_VIEWPORT_FALLBACK_PX: usize = 640;
 /// Renders the full results section.
 ///
 /// Reactive surface is deliberately narrow: this component subscribes only to
-/// `entries` (for the empty-state check and sort index) and `locale`. All
-/// query-panel / stats / download signals are delegated to `ResultsToolbar`,
-/// which subscribes to them independently. Sort interactions therefore only
-/// re-render `VirtualizedResultsTable`, not the toolbar or stats bar.
+/// `entries` (for the empty-state check) and `locale`. Table preparation is
+/// isolated in `build_table_view_model`, which is memoized to avoid unnecessary
+/// re-preparation. All query-panel / stats / download signals are delegated to
+/// `ResultsToolbar`, which subscribes to them independently. Sort interactions
+/// therefore only re-render `VirtualizedResultsTable`, not the toolbar or stats bar.
 #[component]
 pub fn ResultsTable() -> Element {
     let state = use_results_context();
@@ -41,14 +44,9 @@ pub fn ResultsTable() -> Element {
     let sort_state = use_result_selector(explore, |result| result.sort);
     let entries_len = entries.read().len();
 
-    let prepared_rows = use_memo(move || row_cells::prepare_rows(entries.read().as_ref()));
-
-    let sort_index_cache: Memo<sort_model::SortIndexCache> =
-        use_memo(move || sort_model::build_sort_index_cache(entries.read().as_ref()));
-
-    let sorted_indices: Memo<Arc<[u32]>> = use_memo(move || {
-        let cache = sort_index_cache.read().clone();
-        sort_model::indices_for_sort(&cache, *sort_state.read())
+    // Single unified memo for all table preparation: entries + sort_state → prepared view model.
+    let table_view_model = use_memo(move || {
+        build_table_view_model(&entries.read(), *sort_state.read())
     });
 
     let total = entries_len;
@@ -69,9 +67,7 @@ pub fn ResultsTable() -> Element {
             } else {
                 VirtualizedResultsTable {
                     entries,
-                    prepared_rows,
-                    sort_state,
-                    sorted_indices,
+                    table_view_model,
                 }
             }
         }
