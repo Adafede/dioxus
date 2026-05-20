@@ -172,4 +172,20 @@ mod tests {
         let rendered = format_domain_error(Locale::En, &err);
         assert!(rendered.contains("Year"));
     }
+
+    #[test]
+    fn error_hint_for_http_4xx_is_bad_request_not_network() {
+        let err = DomainError::transport(
+            QueryStage::ResultsQuery,
+            RepositoryError::Http {
+                status: 400,
+                body: "Invalid SPARQL query".to_string(),
+            },
+        );
+
+        assert_eq!(
+            error_hint_text(Locale::En, err.kind()),
+            "The server rejected the request. Check your search parameters."
+        );
+    }
 }

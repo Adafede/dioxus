@@ -215,6 +215,29 @@ mod tests {
     }
 
     #[test]
+    fn transport_http_4xx_is_classified_as_bad_request() {
+        let err = DomainError::transport(
+            QueryStage::ResultsQuery,
+            crate::repositories::RepositoryError::Http {
+                status: 400,
+                body: "invalid query".into(),
+            },
+        );
+
+        assert_eq!(err.kind(), ErrorKind::BadRequest);
+    }
+
+    #[test]
+    fn transport_network_is_classified_as_network() {
+        let err = DomainError::transport(
+            QueryStage::ResultsQuery,
+            crate::repositories::RepositoryError::network("timeout"),
+        );
+
+        assert_eq!(err.kind(), ErrorKind::Network);
+    }
+
+    #[test]
     fn transport_at_closure_maps_repository_error() {
         let mapper = DomainError::transport_at(QueryStage::ResultsQuery);
         let err = mapper(crate::repositories::RepositoryError::network("timed out"));
