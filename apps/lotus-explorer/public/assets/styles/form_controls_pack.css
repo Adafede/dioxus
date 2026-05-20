@@ -1,0 +1,108 @@
+/* Form controls pack: shared form primitives, structure editor, and search button. */
+
+.form-section { display:flex; flex-direction:column; gap:5px; padding:10px 12px; border:1px solid var(--panel-border); border-radius:12px; background:var(--panel-bg-soft); }
+.form-section.nested { padding-left:10px; border-left:1px solid var(--border); margin-top:4px; }
+.form-label { font-size:var(--fs-0); font-weight:700; color:var(--critical-text); text-transform:uppercase; letter-spacing:0.08em; }
+.form-label.sm { font-size:var(--fs-0); font-weight:700; color:var(--text); text-transform:none; letter-spacing:0; }
+.form-hint { font-size:var(--fs-0); color:var(--text2); }
+.radio-group { display:flex; gap:14px; }
+.radio-label { display:flex; align-items:center; gap:6px; font-size:var(--fs-0); cursor:pointer; color:var(--text2); }
+.radio-label input { accent-color:var(--accent); }
+.range-input { width:100%; accent-color:var(--accent); margin-top:4px; }
+.range-inputs { display:flex; align-items:flex-end; gap:8px; }
+.range-pair { display:flex; flex-direction:column; gap:3px; }
+.range-sep { color:var(--text3); padding-bottom:8px; }
+
+.formula-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.formula-exact-row,
+.formula-exact-input { width: 100%; max-width: none; }
+
+.formula-num-pair {
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg-soft);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formula-num-label { color: var(--text2); }
+.formula-minmax-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.formula-minmax-grid .range-pair,
+.formula-grid .range-pair { min-width: 0; }
+
+.formula-minmax-grid .form-input.sm,
+.formula-grid .form-input.sm {
+  width: 100%;
+  min-width: 6ch;
+  padding-left: 6px;
+  padding-right: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Make two-ended range filters responsive without affecting formula rows. */
+.range-inputs--pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 8px;
+}
+
+.range-inputs--pair .range-pair { min-width: 0; }
+.range-inputs--pair .form-input { width: 100%; }
+
+/* Normalize number input chrome for consistent borders on Safari/Firefox. */
+input[type="number"].form-input { appearance: textfield; -moz-appearance: textfield; }
+input[type="number"].form-input::-webkit-outer-spin-button,
+input[type="number"].form-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Structure section */
+.form-textarea.mono, .mono { font-family: var(--mono); }
+.kind-pill {
+  display:inline-block;
+  padding:1px 7px;
+  border-radius:999px;
+  font-size:var(--fs-micro);
+  font-weight:700;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  margin-right:6px;
+  color:#fff;
+  background:var(--text3);
+}
+
+.kind-pill[data-kind="smiles"] { background:var(--accent2, #5b6cff); }
+.kind-pill[data-kind="mol2000"] { background:#c97a2b; }
+.kind-pill[data-kind="mol3000"] { background:#2b8f57; }
+.kind-note { color:var(--text2); }
+
+.ketcher-panel { margin:0; border:1px solid var(--panel-border); border-radius:var(--radius); background:var(--panel-bg-soft); box-shadow:var(--panel-shadow); transition: background .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.ketcher-wrap { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+.ketcher-iframe { width:100%; height:min(78vh, 820px); min-height:600px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fff; }
+.ketcher-hint { margin-top:2px; font-size:var(--fs-0); color:var(--text2); }
+
+.search-btn { display:flex; align-items:center; justify-content:center; gap:8px; background:var(--btn-primary-bg); color:#fff; border:0; border-radius:var(--radius-sm); padding:11px 16px; font-size:var(--fs-ui); font-weight:700; cursor:pointer; box-shadow:var(--shadow-xs); transition:background .15s, box-shadow .15s, transform .12s ease; text-align:center; line-height:1.2; white-space:normal; }
+.search-btn:hover:not(:disabled) { background:var(--btn-primary-hover-bg); box-shadow:var(--shadow-sm); }
+.search-btn:active { transform: translateY(1px); }
+.search-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+.btn:focus-visible,
+.search-btn:focus-visible,
+.sort-btn:focus-visible,
+.notice-dismiss:focus-visible,
+.primary-link:focus-visible,
+.id-badge:focus-visible,
+.filters-toggle:focus-visible,
+.copy-btn:focus-visible {
+  outline: 3px solid var(--accent2);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .formula-grid,
+  .formula-minmax-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

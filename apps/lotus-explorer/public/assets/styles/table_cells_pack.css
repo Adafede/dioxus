@@ -1,0 +1,75 @@
+/* Results table cell pack extracted from style.css. */
+
+.td-depict { width:auto; min-width:0; padding:6px 10px !important; }
+.depict-img { display:block; background:var(--bg2); border:1px solid var(--border); border-radius:6px; width:min(100%, 108px); max-width:108px; height:auto; object-fit:contain; box-shadow:var(--shadow-xs); }
+.td-compound { min-width:0; }
+.td-taxon { min-width:0; }
+.td-ref { min-width:0; }
+.cell-primary { font-weight:500; }
+.primary-link { color:var(--text); }
+.primary-link:hover { color:var(--accent); text-decoration:none; }
+
+.cell-primary .primary-link {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.35;
+  max-height: calc(1.35em * 2);
+  overflow-wrap: anywhere;
+}
+
+.td-compound,
+.td-taxon,
+.td-ref {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  box-shadow: inset 0 0 0 1px var(--results-border);
+}
+
+.td-compound { box-shadow: inset 3px 0 0 rgba(153, 0, 0, 0.38), inset 0 0 0 1px var(--results-border); }
+.td-taxon { box-shadow: inset 3px 0 0 rgba(51, 153, 102, 0.42), inset 0 0 0 1px var(--results-border); }
+.td-ref { box-shadow: inset 3px 0 0 rgba(0, 102, 153, 0.44), inset 0 0 0 1px var(--results-border); }
+
+.td-compound a:not(.primary-link) { color:var(--wd-compound); }
+.td-compound a:not(.primary-link):hover { color:color-mix(in srgb, var(--wd-compound) 88%, var(--text)); text-decoration:none; }
+.td-taxon a { color:var(--wd-taxon); }
+.td-taxon a:hover { color:color-mix(in srgb, var(--wd-taxon) 88%, var(--text)); text-decoration:none; }
+.primary-link.taxon { color:var(--text); font-style:italic; }
+.primary-link.taxon:hover { color:var(--text); text-decoration:none; }
+.td-ref a:not(.primary-link) { color:var(--wd-reference); }
+.td-ref a:not(.primary-link):hover { color:color-mix(in srgb, var(--wd-reference) 88%, var(--text)); text-decoration:none; }
+.td-compound .primary-link,
+.td-ref .primary-link { color:var(--text); }
+.td-compound .primary-link:hover,
+.td-ref .primary-link:hover { color:var(--text); text-decoration:none; }
+
+.badge-row { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; overflow:visible; min-width:0; }
+.id-badge { display:inline-block; font-size:var(--fs-micro); padding:1px 5px; border-radius:3px; font-weight:600; text-decoration:none !important; line-height:1.5; border:1px solid transparent; font-family:var(--mono); max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.id-badge:hover { filter:brightness(1.15); }
+
+.id-badge {
+  backdrop-filter: blur(6px);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+
+.id-badge:hover { box-shadow: var(--shadow-xs); }
+
+.td-compound .id-badge.wd { background:var(--wd-compound-soft-bg); color:var(--wd-compound); border-color:var(--wd-compound-soft-border); }
+.td-taxon .id-badge.wd { background:var(--wd-taxon-soft-bg); color:var(--wd-taxon); border-color:var(--wd-taxon-soft-border); }
+.td-ref .id-badge.wd { background:var(--wd-reference-soft-bg); color:var(--wd-reference); border-color:var(--wd-reference-soft-border); }
+.id-badge.sc { background:var(--wd-compound-soft-bg); color:var(--wd-compound); border-color:var(--wd-compound-soft-border-weak); }
+.id-badge.doi { background:var(--wd-reference-soft-bg); color:var(--wd-reference); border-color:var(--wd-reference-soft-border-weak); }
+.id-badge.mono { background:var(--surface); color:var(--text2); border-color:var(--border); }
+
+/* `.stmt` must out-specify `.mono` when both classes are present. */
+.id-badge.stmt,
+.id-badge.stmt.mono { background:var(--wd-reference-soft-bg); color:var(--wd-reference); border-color:var(--wd-reference-soft-border-weak); }
+.id-badge.mono.inchikey { background:var(--wd-compound-soft-bg); color:var(--wd-compound); border-color:var(--wd-compound-soft-border-weak); }
+
+.td-mono { font-family:var(--mono); font-size:var(--fs-label); white-space:nowrap; }
+.td-num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.td-formula .formula { font-family:var(--mono); font-size:var(--fs-0); color:var(--text); }
+.td-year { text-align:center; color:var(--critical-muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.na { color:var(--text3); }
+
