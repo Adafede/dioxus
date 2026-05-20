@@ -25,10 +25,14 @@ pub(in crate::components::results_table) fn ResultsRowsWindow(
     text: RowText,
     rows: Arc<[CompoundEntry]>,
     prepared_rows: Arc<[PreparedRow]>,
-    visible_order: Arc<[u32]>,
+    order: Arc<[u32]>,
+    start_row: usize,
+    end_row: usize,
 ) -> Element {
+    let start = start_row.min(order.len());
+    let end = end_row.min(order.len()).max(start);
     rsx! {
-        for i in visible_order.iter().copied() {
+        for i in order[start..end].iter().copied() {
             {row_view(locale, text, &rows[i as usize], &prepared_rows[i as usize], i)}
         }
     }

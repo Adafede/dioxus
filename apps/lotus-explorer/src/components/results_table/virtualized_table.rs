@@ -81,7 +81,9 @@ pub(super) fn VirtualizedResultsTable(
                                     text,
                                     rows,
                                     prepared_rows: render_model.prepared_rows.clone(),
-                                    visible_order: render_model.visible_order.clone(),
+                                    order: render_model.sorted_indices.clone(),
+                                    start_row: render_model.start_row,
+                                    end_row: render_model.end_row,
                                 }
                             }
                         }

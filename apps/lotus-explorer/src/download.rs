@@ -96,6 +96,7 @@ pub fn trigger_download(filename: &str, mime: &str, content_or_url: &str) {
 }
 
 #[cfg(target_arch = "wasm32")]
+#[allow(dead_code)]
 pub fn trigger_download_url(filename: &str, url: &str) {
     wasm::trigger_download_url(filename, url);
 }

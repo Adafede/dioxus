@@ -13,7 +13,9 @@ use std::sync::Arc;
 pub(super) struct VirtualizedTableRenderModel {
     pub(super) current_sort: SortState,
     pub(super) prepared_rows: Arc<[PreparedRow]>,
-    pub(super) visible_order: Arc<[u32]>,
+    pub(super) sorted_indices: Arc<[u32]>,
+    pub(super) start_row: usize,
+    pub(super) end_row: usize,
     pub(super) top_spacer_px: usize,
     pub(super) bottom_spacer_px: usize,
 }
@@ -38,24 +40,12 @@ pub(super) fn build_virtualized_table_render_model(
     VirtualizedTableRenderModel {
         current_sort: view_model.sort_state,
         prepared_rows: view_model.prepared_rows.clone(),
-        visible_order: visible_order_window(
-            &view_model.sorted_indices,
-            virtualization.start_row,
-            virtualization.visible_count(),
-        ),
+        sorted_indices: view_model.sorted_indices.clone(),
+        start_row: virtualization.start_row,
+        end_row: virtualization.end_row,
         top_spacer_px: virtualization.top_spacer_px,
         bottom_spacer_px: virtualization.bottom_spacer_px,
     }
-}
-
-#[must_use]
-fn visible_order_window(order: &[u32], start_row: usize, visible_count: usize) -> Arc<[u32]> {
-    if visible_count == 0 || start_row >= order.len() {
-        return Arc::from([]);
-    }
-
-    let end_row = start_row.saturating_add(visible_count).min(order.len());
-    Arc::from(order[start_row..end_row].to_vec().into_boxed_slice())
 }
 
 #[cfg(test)]
@@ -114,7 +104,9 @@ mod tests {
 
         let render_model = build_virtualized_table_render_model(&view_model, virtualization);
 
-        assert_eq!(render_model.visible_order.as_ref(), &[0, 1]);
+        assert_eq!(render_model.sorted_indices.as_ref(), &[2, 0, 1]);
+        assert_eq!(render_model.start_row, 1);
+        assert_eq!(render_model.end_row, 3);
         assert_eq!(render_model.top_spacer_px, 114);
         assert_eq!(render_model.bottom_spacer_px, 0);
         assert!(render_model.has_top_spacer());
@@ -139,7 +131,8 @@ mod tests {
 
         let render_model = build_virtualized_table_render_model(&view_model, virtualization);
 
-        assert!(render_model.visible_order.is_empty());
+        assert_eq!(render_model.start_row, 9);
+        assert_eq!(render_model.end_row, 9);
         assert!(!render_model.has_top_spacer());
         assert!(render_model.has_bottom_spacer());
     }
@@ -162,6 +155,8 @@ mod tests {
 
         assert_eq!(render_model.current_sort, sort_state);
         assert_eq!(render_model.prepared_rows.len(), 3);
-        assert_eq!(render_model.visible_order.as_ref(), &[1, 2]);
+        assert_eq!(render_model.sorted_indices.as_ref(), &[1, 2, 0]);
+        assert_eq!(render_model.start_row, 0);
+        assert_eq!(render_model.end_row, 2);
     }
 }
