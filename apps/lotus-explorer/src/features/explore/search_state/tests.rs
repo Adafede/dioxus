@@ -199,4 +199,3 @@ fn dispatch_no_op_does_not_change_state() {
     );
     assert_eq!(next.lifecycle.query_phase, state.lifecycle.query_phase);
 }
-
