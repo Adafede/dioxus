@@ -175,6 +175,7 @@ impl DomainError {
                 {
                     ErrorKind::BadRequest
                 }
+                crate::repositories::RepositoryError::Parse(_) => ErrorKind::Parse,
                 _ => ErrorKind::Network,
             },
             Self::Parse(_) => ErrorKind::Parse,
@@ -235,6 +236,16 @@ mod tests {
         );
 
         assert_eq!(err.kind(), ErrorKind::Network);
+    }
+
+    #[test]
+    fn transport_parse_is_classified_as_parse() {
+        let err = DomainError::transport(
+            QueryStage::ResultsQuery,
+            crate::repositories::RepositoryError::parse("csv decode failed"),
+        );
+
+        assert_eq!(err.kind(), ErrorKind::Parse);
     }
 
     #[test]

@@ -188,4 +188,17 @@ mod tests {
             "The server rejected the request. Check your search parameters."
         );
     }
+
+    #[test]
+    fn error_hint_for_transport_parse_uses_parse_hint() {
+        let err = DomainError::transport(
+            QueryStage::ResultsQuery,
+            RepositoryError::parse("csv parse failed"),
+        );
+
+        assert_eq!(
+            error_hint_text(Locale::En, err.kind()),
+            t(Locale::En, TextKey::ErrorHintParse)
+        );
+    }
 }
