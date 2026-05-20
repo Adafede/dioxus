@@ -42,7 +42,12 @@ const X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(handlers::health, handlers::search, handlers::export_urls),
+    paths(
+        handlers::health,
+        handlers::search,
+        handlers::export_urls,
+        handlers::export_file
+    ),
     components(
         schemas(
             HealthResponse,

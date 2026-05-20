@@ -305,6 +305,22 @@ pub(crate) async fn export_urls(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/export-file/{cache_key}/{format}",
+    params(
+        ("cache_key" = String, Path, description = "Export cache key returned by /v1/export-url"),
+        ("format" = String, Path, description = "Export format: csv|json|rdf"),
+        ("filename" = Option<String>, Query, description = "Optional direct filename (disables gzip wrapping)")
+    ),
+    responses(
+        (status = 200, description = "Export file bytes"),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 502, description = "Upstream export failure", body = ErrorResponse),
+        (status = 503, description = "Server overloaded", body = ErrorResponse),
+        (status = 504, description = "Export fetch timeout", body = ErrorResponse)
+    )
+)]
 pub(crate) async fn export_file(
     State(state): State<AppState>,
     Path((cache_key, format_raw)): Path<(String, String)>,

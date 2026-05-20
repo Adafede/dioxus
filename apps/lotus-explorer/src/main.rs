@@ -26,8 +26,9 @@ mod ui;
 mod utils;
 
 use dioxus::prelude::*;
+
 #[cfg(test)]
-use download::DownloadFormat;
+mod tests;
 
 fn main() {
     let level = if cfg!(debug_assertions) {
@@ -37,23 +38,4 @@ fn main() {
     };
     console_log::init_with_level(level).ok();
     launch(app::shell::AppRoot);
-}
-
-#[cfg(test)]
-fn is_supported_download_format(fmt: &str) -> bool {
-    DownloadFormat::from_str(fmt).is_some()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn supported_download_formats_include_documented_values() {
-        assert!(is_supported_download_format("csv"));
-        assert!(is_supported_download_format("json"));
-        assert!(is_supported_download_format("ndjson"));
-        assert!(is_supported_download_format("rdf"));
-        assert!(!is_supported_download_format("ttl"));
-    }
 }
