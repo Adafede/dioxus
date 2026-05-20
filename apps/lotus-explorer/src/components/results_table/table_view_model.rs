@@ -9,7 +9,7 @@
 
 use super::row_cells::{PreparedRow, prepare_rows};
 use super::sort_model::{build_sort_index_cache, indices_for_sort};
-use crate::models::{SortState, Rows};
+use crate::models::{Rows, SortState};
 use std::sync::Arc;
 
 /// Complete prepared state for rendering a results table.
@@ -79,9 +79,30 @@ mod tests {
     #[test]
     fn view_model_contains_prepared_rows_and_sorted_indices() {
         let rows = vec![
-            test_entry("Gamma", Some(3.0), Some("C3"), "Taxon C", Some(2003), Some("Ref C")),
-            test_entry("Alpha", Some(1.0), Some("C1"), "Taxon A", Some(2001), Some("Ref A")),
-            test_entry("Beta", Some(2.0), Some("C2"), "Taxon B", Some(2002), Some("Ref B")),
+            test_entry(
+                "Gamma",
+                Some(3.0),
+                Some("C3"),
+                "Taxon C",
+                Some(2003),
+                Some("Ref C"),
+            ),
+            test_entry(
+                "Alpha",
+                Some(1.0),
+                Some("C1"),
+                "Taxon A",
+                Some(2001),
+                Some("Ref A"),
+            ),
+            test_entry(
+                "Beta",
+                Some(2.0),
+                Some("C2"),
+                "Taxon B",
+                Some(2002),
+                Some("Ref B"),
+            ),
         ];
         let rows_arc: Rows = Arc::from(rows);
         let sort_state = SortState::default(); // Name, Asc
@@ -99,9 +120,30 @@ mod tests {
     #[test]
     fn view_model_respects_sort_direction() {
         let rows = vec![
-            test_entry("Gamma", Some(3.0), Some("C3"), "Taxon C", Some(2003), Some("Ref C")),
-            test_entry("Alpha", Some(1.0), Some("C1"), "Taxon A", Some(2001), Some("Ref A")),
-            test_entry("Beta", Some(2.0), Some("C2"), "Taxon B", Some(2002), Some("Ref B")),
+            test_entry(
+                "Gamma",
+                Some(3.0),
+                Some("C3"),
+                "Taxon C",
+                Some(2003),
+                Some("Ref C"),
+            ),
+            test_entry(
+                "Alpha",
+                Some(1.0),
+                Some("C1"),
+                "Taxon A",
+                Some(2001),
+                Some("Ref A"),
+            ),
+            test_entry(
+                "Beta",
+                Some(2.0),
+                Some("C2"),
+                "Taxon B",
+                Some(2002),
+                Some("Ref B"),
+            ),
         ];
         let rows_arc: Rows = Arc::from(rows);
         let sort_desc = SortState {
@@ -118,9 +160,30 @@ mod tests {
     #[test]
     fn view_model_sorts_by_different_columns() {
         let rows = vec![
-            test_entry("Alpha", Some(10.0), Some("C1"), "Taxon A", Some(2001), Some("Ref A")),
-            test_entry("Beta", Some(30.0), Some("C2"), "Taxon B", Some(2002), Some("Ref B")),
-            test_entry("Gamma", Some(20.0), Some("C3"), "Taxon C", Some(2003), Some("Ref C")),
+            test_entry(
+                "Alpha",
+                Some(10.0),
+                Some("C1"),
+                "Taxon A",
+                Some(2001),
+                Some("Ref A"),
+            ),
+            test_entry(
+                "Beta",
+                Some(30.0),
+                Some("C2"),
+                "Taxon B",
+                Some(2002),
+                Some("Ref B"),
+            ),
+            test_entry(
+                "Gamma",
+                Some(20.0),
+                Some("C3"),
+                "Taxon C",
+                Some(2003),
+                Some("Ref C"),
+            ),
         ];
         let rows_arc: Rows = Arc::from(rows);
         let sort_by_mass_desc = SortState {
@@ -137,8 +200,22 @@ mod tests {
     #[test]
     fn view_model_equality_matches_entries_and_sort_state() {
         let rows = vec![
-            test_entry("Alpha", Some(1.0), Some("C1"), "Taxon A", Some(2001), Some("Ref A")),
-            test_entry("Beta", Some(2.0), Some("C2"), "Taxon B", Some(2002), Some("Ref B")),
+            test_entry(
+                "Alpha",
+                Some(1.0),
+                Some("C1"),
+                "Taxon A",
+                Some(2001),
+                Some("Ref A"),
+            ),
+            test_entry(
+                "Beta",
+                Some(2.0),
+                Some("C2"),
+                "Taxon B",
+                Some(2002),
+                Some("Ref B"),
+            ),
         ];
         let rows_arc: Rows = Arc::from(rows);
         let sort_state = SortState::default();
@@ -165,9 +242,30 @@ mod tests {
     fn prepared_rows_appear_in_same_order_as_entries() {
         // Create entries with names that won't be in alphabetical order initially
         let rows = vec![
-            test_entry("Charlie", Some(3.0), Some("C3"), "Taxon C", Some(2003), Some("Ref C")),
-            test_entry("Alice", Some(1.0), Some("C1"), "Taxon A", Some(2001), Some("Ref A")),
-            test_entry("Bob", Some(2.0), Some("C2"), "Taxon B", Some(2002), Some("Ref B")),
+            test_entry(
+                "Charlie",
+                Some(3.0),
+                Some("C3"),
+                "Taxon C",
+                Some(2003),
+                Some("Ref C"),
+            ),
+            test_entry(
+                "Alice",
+                Some(1.0),
+                Some("C1"),
+                "Taxon A",
+                Some(2001),
+                Some("Ref A"),
+            ),
+            test_entry(
+                "Bob",
+                Some(2.0),
+                Some("C2"),
+                "Taxon B",
+                Some(2002),
+                Some("Ref B"),
+            ),
         ];
         let rows_arc: Rows = Arc::from(rows);
         let sort_state = SortState::default();
@@ -182,13 +280,3 @@ mod tests {
         assert_eq!(view_model.sorted_indices.as_ref(), &[1, 2, 0]);
     }
 }
-
-
-
-
-
-
-
-
-
-

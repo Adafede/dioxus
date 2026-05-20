@@ -7,7 +7,9 @@
 //! `VirtualizedResultsTable`: signal ownership, virtualization configuration,
 //! SSR fallback sizing, and WASM scroll-frame scheduling.
 
-use super::{ROW_HEIGHT_PX_COMFORTABLE, TABLE_SCROLL_ID, TABLE_VIEWPORT_FALLBACK_PX, VIRTUAL_OVERSCAN_ROWS};
+use super::{
+    ROW_HEIGHT_PX_COMFORTABLE, TABLE_SCROLL_ID, TABLE_VIEWPORT_FALLBACK_PX, VIRTUAL_OVERSCAN_ROWS,
+};
 use crate::hooks::use_virtualization::{self, VirtualizationConfig, VirtualizationState};
 use dioxus::prelude::*;
 
@@ -89,7 +91,7 @@ pub(super) fn use_results_table_virtualization(
 
 impl ResultsTableVirtualizationController {
     #[cfg(target_arch = "wasm32")]
-    pub(super) fn sync_after_render(&self, total_rows: usize) {
+    pub(super) fn sync_after_render(&mut self, total_rows: usize) {
         if should_reset_first_visible_row(total_rows, *self.first_visible_row.read()) {
             self.first_visible_row.set(0);
             return;
@@ -109,7 +111,7 @@ impl ResultsTableVirtualizationController {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(super) fn sync_after_render(&self, _total_rows: usize) {}
+    pub(super) fn sync_after_render(&mut self, _total_rows: usize) {}
 
     pub(super) fn handle_scroll(&self, _total_rows: usize) {
         #[cfg(target_arch = "wasm32")]
@@ -142,6 +144,7 @@ pub(super) fn build_virtualization_config(row_height_px: usize) -> Virtualizatio
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[must_use]
 pub(super) fn server_viewport_height_px(total_rows: usize, row_height_px: usize) -> usize {
     total_rows
@@ -170,12 +173,20 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn server_viewport_height_never_drops_below_fallback() {
-        assert_eq!(server_viewport_height_px(0, 114), TABLE_VIEWPORT_FALLBACK_PX);
-        assert_eq!(server_viewport_height_px(1, 114), TABLE_VIEWPORT_FALLBACK_PX);
+        assert_eq!(
+            server_viewport_height_px(0, 114),
+            TABLE_VIEWPORT_FALLBACK_PX
+        );
+        assert_eq!(
+            server_viewport_height_px(1, 114),
+            TABLE_VIEWPORT_FALLBACK_PX
+        );
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn server_viewport_height_scales_with_large_datasets() {
         assert_eq!(server_viewport_height_px(10, 114), 1_140);
     }
@@ -187,7 +198,3 @@ mod tests {
         assert!(!should_reset_first_visible_row(3, 5));
     }
 }
-
-
-
-

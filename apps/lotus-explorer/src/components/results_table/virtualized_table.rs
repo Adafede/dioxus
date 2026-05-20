@@ -5,8 +5,8 @@
 
 use super::render_model::build_virtualized_table_render_model;
 use super::row_cells::{ResultsRowsWindow, row_text};
-use super::table_view_model::TableViewModel;
 use super::table_header::TableHeader;
+use super::table_view_model::TableViewModel;
 use super::virtualization_controller::use_results_table_virtualization;
 use crate::features::explore::interactions::use_explore_interactions;
 use crate::i18n::{TextKey, t};
@@ -27,7 +27,7 @@ pub(super) fn VirtualizedResultsTable(
     let view_model = table_view_model.read();
     let rows = entries.read().clone();
     let render_model = build_virtualized_table_render_model(&view_model, virtualization.state);
-    let effect_virtualization = virtualization.clone();
+    let mut effect_virtualization = virtualization.clone();
     let scroll_virtualization = virtualization.clone();
 
     use_effect(move || {

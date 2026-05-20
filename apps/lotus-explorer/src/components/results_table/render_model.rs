@@ -60,10 +60,10 @@ fn visible_order_window(order: &[u32], start_row: usize, visible_count: usize) -
 
 #[cfg(test)]
 mod tests {
+    use super::super::row_cells::prepare_rows;
     use super::*;
     use crate::hooks::use_virtualization::VirtualizationState;
     use crate::models::{CompoundEntry, Rows, SortColumn, SortDir};
-    use super::super::row_cells::prepare_rows;
 
     fn test_entry(name: &str) -> CompoundEntry {
         CompoundEntry {
@@ -84,7 +84,11 @@ mod tests {
     }
 
     fn test_view_model(sorted_indices: &[u32], sort_state: SortState) -> TableViewModel {
-        let rows: Rows = Arc::from(vec![test_entry("Alpha"), test_entry("Beta"), test_entry("Gamma")]);
+        let rows: Rows = Arc::from(vec![
+            test_entry("Alpha"),
+            test_entry("Beta"),
+            test_entry("Gamma"),
+        ]);
         TableViewModel {
             prepared_rows: prepare_rows(rows.as_ref()),
             sorted_indices: Arc::from(sorted_indices.to_vec().into_boxed_slice()),
@@ -161,5 +165,3 @@ mod tests {
         assert_eq!(render_model.visible_order.as_ref(), &[1, 2]);
     }
 }
-
-

@@ -122,5 +122,3 @@ mod tests {
         assert!(!reference.next_descending);
     }
 }
-
-

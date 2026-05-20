@@ -48,9 +48,8 @@ pub fn ResultsTable() -> Element {
     let entries_len = entries.read().len();
 
     // Single unified memo for all table preparation: entries + sort_state → prepared view model.
-    let table_view_model = use_memo(move || {
-        build_table_view_model(&entries.read(), *sort_state.read())
-    });
+    let table_view_model =
+        use_memo(move || build_table_view_model(&entries.read(), *sort_state.read()));
 
     let total = entries_len;
 
