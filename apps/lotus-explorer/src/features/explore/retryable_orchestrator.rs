@@ -14,9 +14,9 @@
 //! 3. If `should_retry` is true, schedule a retry after `backoff_ms`
 //! 4. Clear state conditionally based on `should_clear_state_on_error(error.query_stage())`
 
-use crate::features::explore::error_recovery_coordinator::{
-    classify_error_recovery, should_clear_state_on_error,
-};
+#[cfg(test)]
+use crate::features::explore::error_recovery_coordinator::should_clear_state_on_error;
+use crate::features::explore::error_recovery_coordinator::{ErrorClass, classify_error_recovery};
 use crate::features::explore::types::DomainError;
 #[cfg(test)]
 use std::time::Duration;
@@ -30,15 +30,9 @@ pub fn compute_retry_schedule(
     attempt_count: u32,
     max_retries: u32,
 ) -> Option<Duration> {
-    if attempt_count >= max_retries {
-        return None;
-    }
-
-    let recovery = classify_error_recovery(error, attempt_count);
-    if recovery.should_retry {
-        recovery.backoff_ms.map(Duration::from_millis)
-    } else {
-        None
+    match plan_retry(error, attempt_count, max_retries).eligibility {
+        RetryEligibility::Retryable { backoff_ms, .. } => backoff_ms.map(Duration::from_millis),
+        RetryEligibility::Permanent | RetryEligibility::MaxRetriesExceeded => None,
     }
 }
 
@@ -46,28 +40,45 @@ pub fn compute_retry_schedule(
 ///
 /// Returns `true` if state should be cleared (bad error at early stage),
 /// `false` if state should be preserved (e.g., we have previous results to show).
+#[cfg(test)]
 pub fn should_preserve_results_on_error(error: &DomainError) -> bool {
     !should_clear_state_on_error(error.query_stage())
 }
 
 /// Utility to summarize retry eligibility for UI feedback.
+#[cfg(test)]
 pub fn retry_eligibility_summary(
     error: &DomainError,
     attempt_count: u32,
     max_retries: u32,
 ) -> RetryEligibility {
-    if attempt_count >= max_retries {
-        return RetryEligibility::MaxRetriesExceeded;
-    }
+    plan_retry(error, attempt_count, max_retries).eligibility
+}
 
+/// Normalized retry decision used by lifecycle/telemetry orchestration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RetryPlan {
+    pub error_class: ErrorClass,
+    pub eligibility: RetryEligibility,
+}
+
+/// Compute a complete retry plan from a domain error and attempt counts.
+pub fn plan_retry(error: &DomainError, attempt_count: u32, max_retries: u32) -> RetryPlan {
     let recovery = classify_error_recovery(error, attempt_count);
-    if recovery.should_retry {
+    let eligibility = if attempt_count >= max_retries {
+        RetryEligibility::MaxRetriesExceeded
+    } else if recovery.should_retry {
         RetryEligibility::Retryable {
             backoff_ms: recovery.backoff_ms,
             next_attempt_number: attempt_count + 1,
         }
     } else {
         RetryEligibility::Permanent
+    };
+
+    RetryPlan {
+        error_class: recovery.error_class,
+        eligibility,
     }
 }
 
@@ -167,5 +178,35 @@ mod tests {
         };
         let summary = retry_eligibility_summary(&error, 3, 3);
         assert_eq!(summary, RetryEligibility::MaxRetriesExceeded);
+    }
+
+    #[test]
+    fn plan_retry_keeps_error_class_and_retryability_in_sync() {
+        let error = DomainError::Transport {
+            stage: QueryStage::ResultsQuery,
+            source: RepositoryError::network("timeout"),
+        };
+
+        let plan = plan_retry(&error, 0, 3);
+        assert_eq!(plan.error_class.as_key(), "network");
+        assert_eq!(
+            plan.eligibility,
+            RetryEligibility::Retryable {
+                backoff_ms: Some(200),
+                next_attempt_number: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn plan_retry_reports_max_retries_without_losing_error_class() {
+        let error = DomainError::Transport {
+            stage: QueryStage::ResultsQuery,
+            source: RepositoryError::network("timeout"),
+        };
+
+        let plan = plan_retry(&error, 3, 3);
+        assert_eq!(plan.error_class.as_key(), "network");
+        assert_eq!(plan.eligibility, RetryEligibility::MaxRetriesExceeded);
     }
 }

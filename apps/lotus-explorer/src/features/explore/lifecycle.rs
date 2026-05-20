@@ -7,11 +7,8 @@
 //! transitions) in one module so orchestration stays focused on request flow.
 
 use crate::features::explore::actions::ExploreAction;
-use crate::features::explore::error_recovery_coordinator::classify_error_recovery;
 use crate::features::explore::request::SearchRequest;
-use crate::features::explore::retryable_orchestrator::{
-    RetryEligibility, retry_eligibility_summary, should_preserve_results_on_error,
-};
+use crate::features::explore::retryable_orchestrator::{RetryEligibility, plan_retry};
 use crate::features::explore::search_state::{ExploreState, dispatch_explore_action};
 use crate::features::explore::types::{DomainError, QueryPhase};
 use crate::services::search_telemetry as telemetry;
@@ -62,21 +59,21 @@ impl SearchLifecycleCoordinator {
             return ErrorHandlingOutcome::Finalized;
         }
 
-        let decision = classify_error_recovery(&error, attempt_count);
+        let retry_plan = plan_retry(&error, attempt_count, max_retries);
         telemetry::search_error_classified(
-            decision.error_class.as_key(),
+            retry_plan.error_class.as_key(),
             attempt_count,
-            decision.should_retry,
+            matches!(retry_plan.eligibility, RetryEligibility::Retryable { .. }),
         );
 
-        match retry_eligibility_summary(&error, attempt_count, max_retries) {
+        match retry_plan.eligibility {
             RetryEligibility::Retryable {
                 backoff_ms,
                 next_attempt_number,
             } => {
                 let backoff = Duration::from_millis(backoff_ms.unwrap_or(0));
                 telemetry::search_retry_scheduled(
-                    decision.error_class.as_key(),
+                    retry_plan.error_class.as_key(),
                     next_attempt_number,
                     backoff.as_millis() as u64,
                 );
@@ -84,15 +81,13 @@ impl SearchLifecycleCoordinator {
             }
             RetryEligibility::MaxRetriesExceeded => {
                 telemetry::search_max_retries_exceeded(
-                    decision.error_class.as_key(),
+                    retry_plan.error_class.as_key(),
                     attempt_count,
                 );
                 dispatch_error(self.explore, error);
                 ErrorHandlingOutcome::Finalized
             }
             RetryEligibility::Permanent => {
-                // We currently preserve prior rows for late-stage failures to avoid UI flicker.
-                let _preserve_previous_results = should_preserve_results_on_error(&error);
                 dispatch_error(self.explore, error);
                 ErrorHandlingOutcome::Finalized
             }
