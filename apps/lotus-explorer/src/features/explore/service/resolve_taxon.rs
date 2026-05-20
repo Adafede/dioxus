@@ -66,7 +66,8 @@ pub async fn resolve<R: LotusRepository>(
     // Pass a bare Wikidata QID directly — no SPARQL round-trip needed.
     // Accepts both 'Q' and 'q' prefix; the slice `&taxon[1..]` is safe since
     // 'Q'/'q' are single-byte ASCII characters.
-    if !requires_remote_lookup(taxon) && !taxon.is_empty() && taxon != "*" {
+    // At this point taxon is neither empty nor "*" (both handled above).
+    if !requires_remote_lookup(taxon) {
         return Ok(TaxonResolution {
             qid: Some(taxon.to_uppercase()),
             warning: None,

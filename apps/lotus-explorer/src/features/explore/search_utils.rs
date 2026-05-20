@@ -6,21 +6,24 @@ use sha2::{Digest, Sha256};
 
 pub fn sanitize_taxon_input(taxon: &str) -> String {
     let replaced = taxon.replace('_', " ");
-    let parts: Vec<&str> = replaced.split_whitespace().collect();
-    if parts.len() > 1 {
-        let first = parts[0];
-        // `split_whitespace` never produces empty tokens, so `first` is always
-        // non-empty.  `chars.as_str()` gives the remaining slice after the first
-        // char so we can lowercase the rest without collecting each char individually.
-        let mut chars = first.chars();
-        let first_cap = match chars.next() {
-            Some(c) => c.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
-            None => String::new(),
-        };
-        format!("{first_cap} {}", parts[1..].join(" "))
-    } else {
-        replaced
+    let mut parts = replaced.split_whitespace();
+    // If there are no tokens (blank or all-underscore input) return the replaced string.
+    let Some(first_word) = parts.next() else {
+        return replaced;
+    };
+    // `split_whitespace` never produces empty tokens, so `first_word` is guaranteed
+    // non-empty.  `chars.as_str()` gives the tail after the first char so we can
+    // lowercase the rest without collecting each char individually.
+    let mut chars = first_word.chars();
+    let mut out = match chars.next() {
+        None => String::new(),
+        Some(c) => c.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
+    };
+    for part in parts {
+        out.push(' ');
+        out.push_str(part);
     }
+    out
 }
 
 pub fn compute_hashes(
