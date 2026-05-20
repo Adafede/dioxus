@@ -17,7 +17,6 @@ impl AppView {
         }
     }
 
-    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
     pub fn query_value(self) -> Option<&'static str> {
         match self {
             Self::Explore => None,

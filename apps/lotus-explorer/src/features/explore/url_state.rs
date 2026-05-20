@@ -7,11 +7,13 @@ use crate::app::view::AppView;
 use crate::i18n::Locale;
 use std::collections::BTreeMap;
 
-#[allow(unused_imports)]
 pub use super::url_codec::{
-    InitialDownloadState, InitialUrlState, build_shareable_url, parse_criteria_from_params,
+    InitialUrlState, build_shareable_url, parse_criteria_from_params,
     parse_startup_action_from_params,
 };
+
+#[cfg(test)]
+pub use super::url_codec::InitialDownloadState;
 
 pub fn initial_url_state() -> InitialUrlState {
     let params = read_url_query_params();
@@ -102,7 +104,7 @@ pub fn persist_view_query_param(view: AppView) {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let _ = view;
+        let _ = view.query_value();
     }
 }
 

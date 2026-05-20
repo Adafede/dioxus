@@ -245,6 +245,7 @@ mod helpers;
 
 pub use helpers::*;
 
+#[cfg(any(test, doc))]
 pub mod error_key;
 
 #[cfg(test)]
@@ -292,15 +293,7 @@ mod tests {
 
     #[test]
     fn error_key_messages_exist_for_all_locales() {
-        let keys = [
-            error_key::ErrorKey::InvalidSearchInput,
-            error_key::ErrorKey::TaxonTooLong,
-            error_key::ErrorKey::StructureTooLong,
-            error_key::ErrorKey::MassOutOfRange,
-            error_key::ErrorKey::TaxonNotFound,
-        ];
-
-        for key in &keys {
+        for key in error_key::ALL_ERROR_KEYS {
             for locale in &[Locale::En, Locale::Fr, Locale::De, Locale::It] {
                 let msg = error_key::err(*locale, *key);
                 assert!(

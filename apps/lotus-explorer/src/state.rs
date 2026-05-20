@@ -50,7 +50,6 @@ impl ResultsContext {
 // ── Hook Helpers ──────────────────────────────────────────────────────────────
 
 /// Hook to read the root AppStateContext from any descendant component.
-#[allow(dead_code)] // Public hook — components may call this for view switching
 pub fn use_app_state_context() -> AppStateContext {
     use_context::<AppStateContext>()
 }

@@ -60,18 +60,6 @@ impl DownloadFormat {
     pub fn trigger_timer_label(&self) -> String {
         format!("{}_trigger", self.timer_label())
     }
-
-    #[cfg(target_arch = "wasm32")]
-    #[allow(dead_code)]
-    pub fn export_url_from_query(&self, query: &str) -> String {
-        let plan = coordinator::query_export_plan(*self, query);
-        format!(
-            "{}?query={}&action={}",
-            shared::sparql::QLEVER_WIKIDATA,
-            urlencoding::encode(plan.query.as_ref()),
-            plan.action,
-        )
-    }
 }
 
 /// Execute a download in the given format using direct query export.

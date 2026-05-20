@@ -18,8 +18,7 @@ use crate::features::explore::types::ValidationFault;
 use crate::models::SearchCriteria;
 
 /// Validation result for a form field.
-#[allow(dead_code)] // Public API for future form validation wiring
-pub type ValidationResult<T> = Result<T, ValidationError>;
+type ValidationResult<T> = Result<T, ValidationError>;
 
 /// Strongly-typed validation code used for fault mapping and UI error routing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,7 +30,6 @@ pub enum ValidationCode {
     YearOutOfRange,
     YearRangeInvalid,
     ElementCountHighWarning,
-    MassRangeInvalid,
 }
 
 /// Strongly-typed field identifier for validation targeting in UI forms.
@@ -46,8 +44,7 @@ pub enum ValidationField {
 
 /// A validation error with localization context.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[allow(dead_code)] // Members accessed via public API in future phases
-pub struct ValidationError {
+struct ValidationError {
     /// Field name for error targeting.
     pub field: ValidationField,
     /// Typed validation code (stable contract for domain fault mapping).
@@ -55,8 +52,7 @@ pub struct ValidationError {
 }
 
 impl ValidationError {
-    #[allow(dead_code)]
-    pub fn new(field: ValidationField, code: ValidationCode) -> Self {
+    fn new(field: ValidationField, code: ValidationCode) -> Self {
         Self { field, code }
     }
 }
@@ -66,9 +62,7 @@ fn validation_fault_from_error(error: &ValidationError) -> ValidationFault {
         ValidationCode::TaxonTooLong => ValidationFault::TaxonTooLong,
         ValidationCode::StructureTooLong => ValidationFault::StructureTooLong,
         ValidationCode::MassOutOfRange => ValidationFault::MassOutOfRange,
-        ValidationCode::MinGreaterThanMax | ValidationCode::MassRangeInvalid => {
-            ValidationFault::MassRangeInvalid
-        }
+        ValidationCode::MinGreaterThanMax => ValidationFault::MassRangeInvalid,
         ValidationCode::YearOutOfRange => ValidationFault::YearOutOfRange,
         ValidationCode::YearRangeInvalid => ValidationFault::YearRangeInvalid,
         ValidationCode::ElementCountHighWarning => ValidationFault::ElementCountTooHigh,
@@ -78,8 +72,7 @@ fn validation_fault_from_error(error: &ValidationError) -> ValidationFault {
 // ── Validators for common patterns ───────────────────────────────────────────
 
 /// Validate that a taxon string is not empty and within reasonable bounds.
-#[allow(dead_code)]
-pub fn validate_taxon(input: &str) -> ValidationResult<()> {
+fn validate_taxon(input: &str) -> ValidationResult<()> {
     let trimmed = input.trim();
 
     if trimmed.is_empty() {
@@ -97,8 +90,7 @@ pub fn validate_taxon(input: &str) -> ValidationResult<()> {
 }
 
 /// Validate that a SMILES/Molfile string is not too long.
-#[allow(dead_code)]
-pub fn validate_smiles(input: &str) -> ValidationResult<()> {
+fn validate_smiles(input: &str) -> ValidationResult<()> {
     if input.is_empty() {
         return Ok(()); // Optional field
     }
@@ -114,8 +106,7 @@ pub fn validate_smiles(input: &str) -> ValidationResult<()> {
 }
 
 /// Validate that a mass value is within valid range.
-#[allow(dead_code)]
-pub fn validate_mass(value: f64, min_max: (f64, f64)) -> ValidationResult<()> {
+fn validate_mass(value: f64, min_max: (f64, f64)) -> ValidationResult<()> {
     let (min, max) = min_max;
 
     if !(0.0..=10_000.0).contains(&value) {
@@ -136,8 +127,7 @@ pub fn validate_mass(value: f64, min_max: (f64, f64)) -> ValidationResult<()> {
 }
 
 /// Validate that a year value is within reasonable range.
-#[allow(dead_code)]
-pub fn validate_year(value: u16) -> ValidationResult<()> {
+fn validate_year(value: u16) -> ValidationResult<()> {
     const MIN_YEAR: u16 = 1600;
     let current_year = crate::models::current_year();
 
@@ -152,8 +142,7 @@ pub fn validate_year(value: u16) -> ValidationResult<()> {
 }
 
 /// Validate that a year range is sensible.
-#[allow(dead_code)]
-pub fn validate_year_range(min: u16, max: u16) -> ValidationResult<()> {
+fn validate_year_range(min: u16, max: u16) -> ValidationResult<()> {
     validate_year(min)?;
     validate_year(max)?;
 
@@ -168,8 +157,7 @@ pub fn validate_year_range(min: u16, max: u16) -> ValidationResult<()> {
 }
 
 /// Validate that an element count is within valid range.
-#[allow(dead_code)]
-pub fn validate_element_count(value: u16) -> ValidationResult<()> {
+fn validate_element_count(value: u16) -> ValidationResult<()> {
     if value > 1000 {
         return Err(ValidationError::new(
             ValidationField::Formula,
@@ -184,8 +172,7 @@ pub fn validate_element_count(value: u16) -> ValidationResult<()> {
 ///
 /// Runs all validators and collects results. Returns `Ok(())` if all pass,
 /// or `Err(Vec<ValidationError>)` if any fail.
-#[allow(dead_code)]
-pub fn validate_criteria(criteria: &SearchCriteria) -> Result<(), Vec<ValidationError>> {
+fn validate_criteria(criteria: &SearchCriteria) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
 
     if let Err(e) = validate_taxon(&criteria.taxon) {
@@ -216,17 +203,10 @@ pub fn validate_criteria(criteria: &SearchCriteria) -> Result<(), Vec<Validation
 }
 
 /// Validate mass range. Helper for test code and validators.
-#[allow(dead_code)]
-pub fn validate_mass_range(min: f64, max: f64) -> ValidationResult<()> {
+#[cfg(test)]
+fn validate_mass_range(min: f64, max: f64) -> ValidationResult<()> {
     validate_mass(min, (min, max))?;
     validate_mass(max, (min, max))?;
-
-    if min > max {
-        return Err(ValidationError::new(
-            ValidationField::Mass,
-            ValidationCode::MassRangeInvalid,
-        ));
-    }
 
     Ok(())
 }

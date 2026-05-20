@@ -14,7 +14,7 @@ use crate::features::explore::service::{
 use crate::features::explore::types::{DomainError, QueryPhase};
 use crate::models::{CompoundEntry, DatasetStats};
 use crate::perf;
-use crate::repositories::LotusRepository;
+use crate::repositories::{LotusRepository, RepositoryError};
 use crate::services::search_telemetry as telemetry;
 use shared::lotus::models::runtime_table_row_limit;
 
@@ -103,6 +103,10 @@ where
                         total_stats: Some(response.stats.into()),
                         display_capped_rows,
                     });
+                }
+                Some(Err(RepositoryError::NotConfigured)) => {
+                    let _ = perf::end_timer("LOTUS:api_search", api_timer);
+                    telemetry::api_path_not_available("reason=not_configured");
                 }
                 Some(Err(err)) => {
                     let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);

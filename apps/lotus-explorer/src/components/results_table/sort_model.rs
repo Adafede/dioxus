@@ -50,7 +50,7 @@ pub(super) fn indices_for_sort(cache: &SortIndexCache, sort: SortState) -> Arc<[
     }
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 #[must_use]
 pub(super) fn build_sorted_indices(rows: &[CompoundEntry], sort: SortState) -> Arc<[u32]> {
     let ascending = build_sorted_indices_for_column(rows, sort.col);

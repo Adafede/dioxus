@@ -45,10 +45,6 @@ pub fn err_taxon_parse_failed(detail: &str) -> String {
     format!("Parsing del taxon non riuscito: {detail}")
 }
 
-pub fn err_taxon_resolution_failed() -> String {
-    "Risoluzione del taxon non riuscita.".to_string()
-}
-
 pub fn err_query_stage_failed(stage: &str, detail: &str) -> String {
     format!("Fase {stage} non riuscita: {detail}")
 }

@@ -12,9 +12,6 @@ pub enum ExecutionStrategy {
     /// Try the REST API first; fall back to direct SPARQL if the API is
     /// unconfigured or returns an error.
     ApiFirst,
-    /// Skip the API entirely and run the full SPARQL pipeline.
-    #[allow(dead_code)]
-    DirectSparql,
     /// Skip all queries; build the query string and return it for download.
     DownloadOnly,
 }
@@ -62,6 +59,5 @@ mod tests {
     fn download_only_is_download_only() {
         assert!(ExecutionStrategy::DownloadOnly.is_download_only());
         assert!(!ExecutionStrategy::ApiFirst.is_download_only());
-        assert!(!ExecutionStrategy::DirectSparql.is_download_only());
     }
 }

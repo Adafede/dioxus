@@ -103,7 +103,6 @@ impl RepositoryError {
 impl From<crate::api::ApiClientError> for RepositoryError {
     fn from(value: crate::api::ApiClientError) -> Self {
         match value {
-            crate::api::ApiClientError::NotConfigured => Self::NotConfigured,
             crate::api::ApiClientError::Network(msg) => Self::network(msg),
             crate::api::ApiClientError::Http(status, body) => Self::Http { status, body },
             crate::api::ApiClientError::Parse(msg) => Self::parse(msg),
@@ -117,8 +116,9 @@ impl From<crate::api::ApiClientError> for RepositoryError {
 /// The two async methods cover the only two I/O paths in the orchestrator.
 pub trait LotusRepository: Clone + 'static {
     /// Try the REST API fast path.  Returns:
-    /// - `None` — API is not configured; caller should fall back to SPARQL
+    /// - `None` — API path unavailable without an attempted request (e.g. test stub)
     /// - `Some(Ok(resp))` — successful API response
+    /// - `Some(Err(RepositoryError::NotConfigured))` — API not configured; caller should fall back
     /// - `Some(Err(reason))` — API call failed; caller should fall back
     async fn api_search(
         &self,

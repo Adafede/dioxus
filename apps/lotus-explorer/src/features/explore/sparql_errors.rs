@@ -6,8 +6,6 @@
 //! QLever and other SPARQL endpoints may return errors that are transient
 //! (cache invalidation, server hiccups) or permanent (bad query structure).
 
-#![allow(dead_code)] // Public API for error recovery integration
-
 use serde_json::Value;
 
 /// Classify a SPARQL error response to determine retryability.
@@ -50,5 +48,46 @@ impl SparqlErrorClass {
 
     pub fn should_backoff(self) -> bool {
         matches!(self, Self::RateLimit)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn classify_sparql_exception_maps_known_error_shapes() {
+        assert_eq!(
+            classify_sparql_exception(&json!({ "exception": "cache key conflict" })),
+            SparqlErrorClass::CacheConflict
+        );
+        assert_eq!(
+            classify_sparql_exception(&json!({ "exception": "timeout while running query" })),
+            SparqlErrorClass::RateLimit
+        );
+        assert_eq!(
+            classify_sparql_exception(&json!({ "exception": "syntax error near SELECT" })),
+            SparqlErrorClass::QuerySyntax
+        );
+        assert_eq!(
+            classify_sparql_exception(&json!({ "exception": "no results" })),
+            SparqlErrorClass::NoResults
+        );
+        assert_eq!(
+            classify_sparql_exception(&json!({ "exception": "unexpected upstream failure" })),
+            SparqlErrorClass::Unknown
+        );
+    }
+
+    #[test]
+    fn retryability_helpers_match_classification_contract() {
+        assert!(SparqlErrorClass::CacheConflict.is_retryable());
+        assert!(SparqlErrorClass::RateLimit.is_retryable());
+        assert!(SparqlErrorClass::Unknown.is_retryable());
+        assert!(!SparqlErrorClass::QuerySyntax.is_retryable());
+        assert!(!SparqlErrorClass::NoResults.is_retryable());
+        assert!(SparqlErrorClass::RateLimit.should_backoff());
+        assert!(!SparqlErrorClass::CacheConflict.should_backoff());
     }
 }

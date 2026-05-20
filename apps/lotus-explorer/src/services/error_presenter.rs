@@ -11,8 +11,8 @@ use crate::i18n::error_hint_memory;
 use crate::i18n::{
     Locale, TextKey, err_api_not_configured, err_element_count_too_high, err_invalid_search_input,
     err_mass_out_of_range, err_mass_range_invalid, err_query_stage_failed, err_structure_too_long,
-    err_taxon_not_found, err_taxon_parse_failed, err_taxon_resolution_failed, err_taxon_too_long,
-    err_unsupported_format, err_year_out_of_range, err_year_range_invalid, t, warn_ambiguous_taxon,
+    err_taxon_not_found, err_taxon_parse_failed, err_taxon_too_long, err_unsupported_format,
+    err_year_out_of_range, err_year_range_invalid, t, warn_ambiguous_taxon,
     warn_input_standardized,
 };
 use crate::repositories::RepositoryError;
@@ -110,7 +110,6 @@ fn format_validation_fault(locale: Locale, fault: &ValidationFault) -> String {
         ValidationFault::YearRangeInvalid => err_year_range_invalid(locale),
         ValidationFault::ElementCountTooHigh => err_element_count_too_high(locale),
         ValidationFault::TaxonNotFound { input } => err_taxon_not_found(locale, input),
-        ValidationFault::TaxonResolutionNoMatch => err_taxon_resolution_failed(locale),
         ValidationFault::UnsupportedFormat { format } => err_unsupported_format(locale, format),
     }
 }

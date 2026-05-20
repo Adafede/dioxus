@@ -98,12 +98,6 @@ pub enum ValidationFault {
     ElementCountTooHigh,
     #[error("taxon not found: {input}")]
     TaxonNotFound { input: String },
-    /// This variant is only used during non-wasm fallback flows.
-    /// On wasm, taxon resolution is handled differently, but we keep this
-    /// variant for API compatibility and to support test scenarios.
-    #[allow(dead_code)]
-    #[error("taxon resolution produced no candidates")]
-    TaxonResolutionNoMatch,
     #[error("unsupported download format: {format}")]
     UnsupportedFormat { format: String },
 }
@@ -111,7 +105,6 @@ pub enum ValidationFault {
 /// Fine-grained CSV / data parse fault.
 ///
 /// Parse variants are scoped to active Explore pipeline stages.
-#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Error)]
 pub enum ParseFault {
     #[error("taxon csv parse failed: {details}")]
@@ -151,7 +144,7 @@ impl DomainError {
     ///
     /// This function is primarily used in unit tests and benchmarks to construct
     /// error scenarios for testing error handling and propagation logic.
-    #[allow(dead_code)] // Used in unit tests and test utilities
+    #[cfg(test)]
     pub fn transport(stage: QueryStage, source: crate::repositories::RepositoryError) -> Self {
         Self::Transport { stage, source }
     }
@@ -193,7 +186,6 @@ impl DomainError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::error::Error;
 
     #[test]
     fn transport_domain_error_exposes_repository_source() {
@@ -202,8 +194,12 @@ mod tests {
             crate::repositories::RepositoryError::network("timeout"),
         );
 
-        let source = err.source().expect("transport errors should expose source");
-        assert_eq!(source.to_string(), "network error: timeout");
+        match err {
+            DomainError::Transport { source, .. } => {
+                assert_eq!(source.to_string(), "network error: timeout");
+            }
+            _ => panic!("expected transport error"),
+        }
     }
 
     #[test]

@@ -30,6 +30,20 @@ pub struct FetchResult {
     pub display_capped_rows: bool,
 }
 
+pub struct FetchHooks<OnFetching, OnProcessing> {
+    on_fetching: OnFetching,
+    on_processing: OnProcessing,
+}
+
+impl<OnFetching, OnProcessing> FetchHooks<OnFetching, OnProcessing> {
+    pub fn new(on_fetching: OnFetching, on_processing: OnProcessing) -> Self {
+        Self {
+            on_fetching,
+            on_processing,
+        }
+    }
+}
+
 struct PlannedResultsFetch<'a> {
     execution_query: &'a str,
     display_limit: usize,
@@ -59,16 +73,18 @@ struct ProcessedResults {
 ///
 /// `on_fetching` is called before the network fetch begins and `on_processing`
 /// before CSV parsing/stat aggregation; in tests pass `|| ()`.
-#[allow(clippy::too_many_arguments)]
-pub async fn fetch<R: LotusRepository>(
+pub async fn fetch<R: LotusRepository, OnFetching: Fn(), OnProcessing: Fn()>(
     execution_query: &str,
     display_limit: usize,
     repo: &R,
     metrics: &mut SearchMetrics,
-    on_fetching: impl Fn(),
-    on_processing: impl Fn(),
+    hooks: FetchHooks<OnFetching, OnProcessing>,
 ) -> Result<FetchResult, DomainError> {
     let plan = plan_full_results_fetch(execution_query, display_limit);
+    let FetchHooks {
+        on_fetching,
+        on_processing,
+    } = hooks;
     on_fetching();
     telemetry::results_fetch_started(plan.display_limit);
 

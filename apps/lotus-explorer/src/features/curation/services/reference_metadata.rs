@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-#[cfg_attr(not(any(test, target_arch = "wasm32")), allow(dead_code))]
 fn parse_quickstatements_text(text: &str) -> Option<Vec<String>> {
     let lines = text
         .lines()
@@ -43,6 +42,7 @@ pub(super) async fn fetch_reference_quickstatements(doi: &str) -> Option<Vec<Str
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) async fn fetch_reference_quickstatements(_doi: &str) -> Option<Vec<String>> {
+    let _ = parse_quickstatements_text("");
     None
 }
 

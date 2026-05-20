@@ -17,12 +17,11 @@
 //!
 //! ## Wired consumers
 //! * [`crate::components::results_viewport::ResultsViewport`] — uses
-//!   `use_lifecycle_selector` and `use_result_selector` (Phase 3 ✅)
+//!   `use_lifecycle_selector` and `use_result_selector`
 //! * [`crate::components::results_table::ResultsTable`] — uses `use_result_selector`
 //! * [`crate::components::results_table::toolbar::ResultsToolbar`] — uses both
-//!
-//! `use_ui_selector` and `use_criteria_selector` are public API for future
-//! components.
+//! * [`crate::components::layout::sidebar::Sidebar`] — uses `use_ui_selector`
+//! * [`crate::components::form_sections`] — use `use_criteria_selector`
 
 use crate::features::explore::search_state::{
     ExploreState, ResultDataState, SearchLifecycleState, UiChromeState,
@@ -56,7 +55,6 @@ pub fn use_result_selector<T: PartialEq + Clone + 'static>(
 ///
 /// The component using this memo only re-renders when `f` returns a different
 /// value, isolating it from lifecycle and result-data mutations.
-#[allow(dead_code)] // Public API — available for future UI-chrome consumers
 pub fn use_ui_selector<T: PartialEq + Clone + 'static>(
     explore: Signal<ExploreState>,
     f: impl Fn(&UiChromeState) -> T + 'static,
@@ -68,7 +66,6 @@ pub fn use_ui_selector<T: PartialEq + Clone + 'static>(
 ///
 /// The component using this memo only re-renders when `f` returns a different
 /// value, isolating it from unrelated criteria-field mutations.
-#[allow(dead_code)] // Public API — available for future criteria-field consumers
 pub fn use_criteria_selector<T: PartialEq + Clone + 'static>(
     criteria: Signal<SearchCriteria>,
     f: impl Fn(&SearchCriteria) -> T + 'static,

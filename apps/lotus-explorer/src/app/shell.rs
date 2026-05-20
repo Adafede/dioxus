@@ -34,7 +34,6 @@ use crate::ui::a11y_contract::{MAIN_PANEL_ID, PAGE_TITLE_ID, SKIP_TO_RESULTS_HRE
 use dioxus::prelude::*;
 use std::sync::Arc;
 
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn locale_lang_tag(locale: Locale) -> &'static str {
     match locale {
         Locale::En => "en",
@@ -55,7 +54,9 @@ fn sync_document_lang(locale: Locale) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn sync_document_lang(_: Locale) {}
+fn sync_document_lang(locale: Locale) {
+    let _ = locale_lang_tag(locale);
+}
 
 #[component]
 pub fn AppRoot() -> Element {

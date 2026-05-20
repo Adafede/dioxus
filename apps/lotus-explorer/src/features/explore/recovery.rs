@@ -13,14 +13,13 @@
 //! - **State Cleanup**: Clear partial/stale results on error to prevent UI inconsistencies.
 //! - **User Communication**: Categorize errors so UI can format them localization-aware.
 
-use crate::features::explore::types::{DomainError, QueryStage};
+use crate::features::explore::types::DomainError;
 use crate::repositories::RepositoryError;
 
 // ── Error Classification ──────────────────────────────────────────────────────
 
 /// Determines whether an error is recoverable and worth retrying.
 #[must_use]
-#[allow(dead_code)] // Public API for future error recovery wiring
 pub fn is_retryable_error(error: &DomainError) -> bool {
     match error {
         // Validation errors should NEVER retry — user input is wrong.
@@ -40,7 +39,6 @@ pub fn is_retryable_error(error: &DomainError) -> bool {
 
 /// Determines whether a repository/network error is transient and worth retrying.
 #[must_use]
-#[allow(dead_code)] // Public API for future error recovery wiring
 pub fn is_retryable_transport_error(error: &RepositoryError) -> bool {
     match error {
         // API not configured: permanent.
@@ -58,42 +56,6 @@ pub fn is_retryable_transport_error(error: &RepositoryError) -> bool {
     }
 }
 
-// ── Retry Timing Strategy ─────────────────────────────────────────────────────
-
-/// Compute exponential backoff for a retry attempt.
-///
-/// ```ignore
-/// let delay_ms = backoff_delay_ms(attempt: 0);  // ~100ms
-/// let delay_ms = backoff_delay_ms(attempt: 1);  // ~200ms
-/// let delay_ms = backoff_delay_ms(attempt: 2);  // ~400ms
-/// ```
-#[must_use]
-#[allow(dead_code)] // Public API for future retry orchestration
-pub fn backoff_delay_ms(attempt: u32) -> u64 {
-    // Base 100ms, exponential 2^attempt, capped at 10s (max 10 attempts)
-    let base = 100u64;
-    let exponent = (attempt as u64).min(7); // Cap at 2^7 = 128
-    (base * 2u64.pow(exponent as u32)).min(10_000)
-}
-
-// ── Error Stage Analysis ──────────────────────────────────────────────────────
-
-/// Determine whether partial results should be cleared after error at given stage.
-///
-/// For example: if taxon resolution fails, results from previous searches are stale.
-/// But if we fail during the display query, earlier counts are still valid.
-#[must_use]
-#[allow(dead_code)] // Public API for future state-cleanup orchestration
-pub fn should_clear_state_on_error(error_stage: QueryStage) -> bool {
-    match error_stage {
-        // Taxon resolution failed — everything downstream is invalid.
-        QueryStage::TaxonSearch => true,
-
-        // Results query failed — keep previous results visible.
-        QueryStage::ResultsQuery => false,
-    }
-}
-
 // ── User-Facing Recovery UI ───────────────────────────────────────────────────
 
 /// Determine whether a "Retry" button should be shown for this error.
@@ -101,7 +63,6 @@ pub fn should_clear_state_on_error(error_stage: QueryStage) -> bool {
 /// - Non-retryable errors (validation, parse): only "Dismiss"
 /// - Retryable errors (network): both "Retry" and "Dismiss"
 #[must_use]
-#[allow(dead_code)] // Public API for future UI error handling improvements
 pub fn should_show_retry_button(error: &DomainError) -> bool {
     is_retryable_error(error)
 }
@@ -119,6 +80,7 @@ mod tests {
 
     #[test]
     fn network_errors_retryable() {
+        use crate::features::explore::types::QueryStage;
         let err = DomainError::Transport {
             stage: QueryStage::ResultsQuery,
             source: RepositoryError::network("timeout"),
@@ -128,6 +90,7 @@ mod tests {
 
     #[test]
     fn http_4xx_not_retryable() {
+        use crate::features::explore::types::QueryStage;
         let err = DomainError::Transport {
             stage: QueryStage::ResultsQuery,
             source: RepositoryError::Http {
@@ -140,6 +103,7 @@ mod tests {
 
     #[test]
     fn http_5xx_retryable() {
+        use crate::features::explore::types::QueryStage;
         let err = DomainError::Transport {
             stage: QueryStage::ResultsQuery,
             source: RepositoryError::Http {
@@ -161,6 +125,7 @@ mod tests {
 
     #[test]
     fn not_configured_transport_not_retryable() {
+        use crate::features::explore::types::QueryStage;
         let err = DomainError::Transport {
             stage: QueryStage::ResultsQuery,
             source: RepositoryError::NotConfigured,
@@ -169,30 +134,8 @@ mod tests {
     }
 
     #[test]
-    fn backoff_delay_grows_exponentially() {
-        assert!(backoff_delay_ms(0) < backoff_delay_ms(1));
-        assert!(backoff_delay_ms(1) < backoff_delay_ms(2));
-        assert!(backoff_delay_ms(7) == backoff_delay_ms(8)); // Capped
-    }
-
-    #[test]
-    fn backoff_delay_capped_at_10_seconds() {
-        assert!(backoff_delay_ms(10) <= 10_000);
-    }
-
-    #[test]
-    fn taxon_search_error_clears_state() {
-        assert!(should_clear_state_on_error(QueryStage::TaxonSearch));
-    }
-
-    #[test]
-    fn display_query_error_keeps_previous_results() {
-        assert!(!should_clear_state_on_error(QueryStage::ResultsQuery));
-    }
-
-    #[test]
     fn retry_button_shown_only_for_retryable_errors() {
-        use crate::features::explore::types::ValidationFault;
+        use crate::features::explore::types::{QueryStage, ValidationFault};
         let validation_err = DomainError::Validation(ValidationFault::EmptyInput);
         assert!(!should_show_retry_button(&validation_err));
 

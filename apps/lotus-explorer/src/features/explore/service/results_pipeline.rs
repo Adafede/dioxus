@@ -69,8 +69,10 @@ pub async fn execute<R: LotusRepository>(
         display_limit,
         repo,
         metrics,
-        || on_phase(QueryPhase::FetchingResults),
-        || on_phase(QueryPhase::ProcessingResults),
+        fetch_results::FetchHooks::new(
+            || on_phase(QueryPhase::FetchingResults),
+            || on_phase(QueryPhase::ProcessingResults),
+        ),
     )
     .await?;
 

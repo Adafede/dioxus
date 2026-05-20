@@ -18,12 +18,13 @@ use crate::features::explore::error_recovery_coordinator::{
     classify_error_recovery, should_clear_state_on_error,
 };
 use crate::features::explore::types::DomainError;
+#[cfg(test)]
 use std::time::Duration;
 
 /// Utility to compute retry scheduling for a failed search.
 ///
 /// Returns the backoff duration before retry attempt, or None if the error is permanent.
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn compute_retry_schedule(
     error: &DomainError,
     attempt_count: u32,

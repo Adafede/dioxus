@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+#[cfg(any(target_arch = "wasm32", test))]
 #[must_use]
 pub(super) fn next_first_visible_row(
     scroll_top_px: usize,
@@ -19,7 +19,7 @@ pub(super) fn next_first_visible_row(
     (scroll_top_px / row_height_px).min(total_rows)
 }
 
-#[cfg_attr(not(any(target_arch = "wasm32", test)), allow(dead_code))]
+#[cfg(any(target_arch = "wasm32", test))]
 #[must_use]
 pub(super) fn resolve_sampled_row_height_px(
     sampled_total_px: usize,

@@ -107,15 +107,6 @@ pub fn err_taxon_parse_failed(locale: Locale, detail: &str) -> String {
     }
 }
 
-pub fn err_taxon_resolution_failed(locale: Locale) -> String {
-    match locale {
-        Locale::En => en::err_taxon_resolution_failed(),
-        Locale::Fr => fr::err_taxon_resolution_failed(),
-        Locale::De => de::err_taxon_resolution_failed(),
-        Locale::It => it::err_taxon_resolution_failed(),
-    }
-}
-
 pub fn err_query_stage_failed(locale: Locale, stage: &str, detail: &str) -> String {
     match locale {
         Locale::En => en::err_query_stage_failed(stage, detail),

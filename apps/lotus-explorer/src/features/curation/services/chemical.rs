@@ -150,7 +150,6 @@ async fn descriptor_mass_direct(smiles: &str) -> Result<f64, CurationError> {
         .ok_or_else(|| CurationError::Parse("missing exact_molecular_weight".to_string()))
 }
 
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub(crate) fn extract_exact_mass_from_json(value: &Value) -> Option<f64> {
     if let Some(v) = value
         .get("exact_molecular_weight")
@@ -175,7 +174,6 @@ pub(crate) fn extract_exact_mass_from_json(value: &Value) -> Option<f64> {
     None
 }
 
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 fn parse_exact_mass_scalar(value: &Value) -> Option<f64> {
     if let Some(v) = value.as_f64() {
         return Some(v);

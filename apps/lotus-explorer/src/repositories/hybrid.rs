@@ -29,8 +29,9 @@ impl LotusRepository for HybridRepository {
         limit: usize,
         include_counts: bool,
     ) -> Option<Result<SearchResponse, RepositoryError>> {
-        // No API base → caller skips the API path entirely.
-        api::api_base_url()?;
+        if api::api_base_url().is_none() {
+            return Some(Err(RepositoryError::NotConfigured));
+        }
         // Call the transport client directly, mapping ApiClientError → RepositoryError
         // via the existing `From` implementation.  Bypassing the ApiLayer / AppError
         // intermediary eliminates a 4-hop conversion chain with no semantic benefit.

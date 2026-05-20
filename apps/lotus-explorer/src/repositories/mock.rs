@@ -3,9 +3,7 @@
 
 //! [`MockRepository`] — a test stub for demonstrating SPARQL-only queries without backend dependencies.
 //!
-//! All unused members are intentional for test coverage; marked allow(dead_code) for clarity.
-
-#![allow(dead_code)]
+//! Test-only mock repository used by explorer unit tests.
 
 use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
