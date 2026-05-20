@@ -14,6 +14,7 @@ use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
 use crate::repositories::{LotusRepository, RepositoryError};
 use crate::sparql;
+use shared::sparql::FetchError;
 
 /// Zero-size, `Copy` production repository.
 ///
@@ -45,7 +46,7 @@ impl LotusRepository for HybridRepository {
     async fn sparql_bytes(&self, query: &str) -> Result<Vec<u8>, RepositoryError> {
         sparql::execute_sparql_bytes(query)
             .await
-            .map_err(|e| RepositoryError::network(e.to_string()))
+            .map_err(map_fetch_error)
     }
 
     async fn sparql_body(
@@ -54,7 +55,7 @@ impl LotusRepository for HybridRepository {
     ) -> Result<shared::sparql::ResponseBody, RepositoryError> {
         sparql::execute_sparql_body(query)
             .await
-            .map_err(|e| RepositoryError::network(e.to_string()))
+            .map_err(map_fetch_error)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -64,6 +65,38 @@ impl LotusRepository for HybridRepository {
     ) -> Result<tempfile::NamedTempFile, RepositoryError> {
         sparql::execute_sparql_tempfile(query)
             .await
-            .map_err(|e| RepositoryError::network(e.to_string()))
+            .map_err(map_fetch_error)
+    }
+}
+
+fn map_fetch_error(err: FetchError) -> RepositoryError {
+    match err {
+        FetchError::Http(status, body) => RepositoryError::Http { status, body },
+        FetchError::Network(msg) => RepositoryError::network(msg),
+        FetchError::Parse(msg) => RepositoryError::parse(msg),
+        FetchError::Empty => RepositoryError::parse("query returned no results"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn map_fetch_error_preserves_http_status_and_body() {
+        let mapped = map_fetch_error(FetchError::Http(400, "invalid query".to_string()));
+        assert_eq!(
+            mapped,
+            RepositoryError::Http {
+                status: 400,
+                body: "invalid query".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn map_fetch_error_keeps_network_as_network() {
+        let mapped = map_fetch_error(FetchError::Network("timeout".to_string()));
+        assert!(matches!(mapped, RepositoryError::Network(_)));
     }
 }
