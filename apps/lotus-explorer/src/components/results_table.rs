@@ -18,6 +18,7 @@ mod table_header;
 mod table_toolbar_sections;
 mod table_view_model;
 mod toolbar;
+mod virtualization_controller;
 mod virtualized_table;
 
 use table_view_model::build_table_view_model;

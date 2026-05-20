@@ -6,14 +6,9 @@
 use super::render_model::build_virtualized_table_render_model;
 use super::row_cells::{ResultsRowsWindow, row_text};
 use super::table_view_model::TableViewModel;
-#[cfg(target_arch = "wasm32")]
-use super::scroll_runtime;
 use super::table_header::TableHeader;
-use super::{
-    ROW_HEIGHT_PX_COMFORTABLE, TABLE_SCROLL_ID, TABLE_VIEWPORT_FALLBACK_PX, VIRTUAL_OVERSCAN_ROWS,
-};
+use super::virtualization_controller::use_results_table_virtualization;
 use crate::features::explore::interactions::use_explore_interactions;
-use crate::hooks::use_virtualization::{self, VirtualizationConfig};
 use crate::i18n::{TextKey, t};
 use crate::models::Rows;
 use dioxus::prelude::*;
@@ -26,100 +21,24 @@ pub(super) fn VirtualizedResultsTable(
     let locale = crate::hooks::use_locale();
     let interactions = use_explore_interactions();
     let total = entries.read().len();
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
-    let mut row_height_px = use_signal(|| ROW_HEIGHT_PX_COMFORTABLE);
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut, unused_variables))]
-    let mut first_visible_row = use_signal(|| 0usize);
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-    let viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
-    #[cfg(target_arch = "wasm32")]
-    let scroll_host = use_signal(|| None::<web_sys::HtmlElement>);
-    #[cfg(target_arch = "wasm32")]
-    let scroll_raf_scheduled = use_signal(|| false);
-    #[cfg(target_arch = "wasm32")]
-    let scroll_raf_cb = use_signal(|| None::<wasm_bindgen::closure::Closure<dyn FnMut(f64)>>);
-    #[cfg(target_arch = "wasm32")]
-    let scroll_raf_id = use_signal(|| None::<i32>);
-
-    let virtualization_config = VirtualizationConfig {
-        row_height_px: *row_height_px.read(),
-        overscan_rows: VIRTUAL_OVERSCAN_ROWS,
-        viewport_fallback_px: TABLE_VIEWPORT_FALLBACK_PX,
-        scroll_id: TABLE_SCROLL_ID,
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let virtualization = use_virtualization::use_virtualization(
-        virtualization_config,
-        total,
-        *first_visible_row.read(),
-        *viewport_height_px.read(),
-    );
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let virtualization = use_virtualization::use_virtualization(
-        virtualization_config,
-        total,
-        0,
-        total
-            .saturating_mul(*row_height_px.read())
-            .max(TABLE_VIEWPORT_FALLBACK_PX),
-    );
+    let virtualization = use_results_table_virtualization(total);
     let text = row_text(locale);
 
     let view_model = table_view_model.read();
     let rows = entries.read().clone();
-    let render_model = build_virtualized_table_render_model(&view_model, virtualization);
+    let render_model = build_virtualized_table_render_model(&view_model, virtualization.state);
+    let effect_virtualization = virtualization.clone();
+    let scroll_virtualization = virtualization.clone();
 
-    #[cfg(target_arch = "wasm32")]
     use_effect(move || {
-        if total == 0 {
-            if *first_visible_row.read() != 0 {
-                first_visible_row.set(0);
-            }
-            return;
-        }
-
-        let current_row_height = *row_height_px.read();
-        let measured_row_height =
-            scroll_runtime::measure_row_height_px(TABLE_SCROLL_ID, current_row_height);
-        if measured_row_height != current_row_height {
-            row_height_px.set(measured_row_height);
-        }
-
-        scroll_runtime::schedule_virtual_scroll_frame(
-            scroll_host,
-            scroll_raf_scheduled,
-            scroll_raf_cb,
-            scroll_raf_id,
-            TABLE_SCROLL_ID,
-            measured_row_height,
-            total,
-            first_visible_row,
-            viewport_height_px,
-        );
+        effect_virtualization.sync_after_render(total);
     });
 
-    let on_scroll = move |_| {
-        #[cfg(target_arch = "wasm32")]
-        {
-            scroll_runtime::schedule_virtual_scroll_frame(
-                scroll_host,
-                scroll_raf_scheduled,
-                scroll_raf_cb,
-                scroll_raf_id,
-                TABLE_SCROLL_ID,
-                *row_height_px.read(),
-                total,
-                first_visible_row,
-                viewport_height_px,
-            );
-        }
-    };
+    let on_scroll = move |_| scroll_virtualization.handle_scroll(total);
 
     rsx! {
         div {
-            id: virtualization_config.scroll_id,
+            id: virtualization.config.scroll_id,
             class: "table-scroll",
             role: "region",
             tabindex: "0",
