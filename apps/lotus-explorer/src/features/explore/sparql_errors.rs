@@ -6,13 +6,6 @@
 //! QLever and other SPARQL endpoints may return errors that are transient
 //! (cache invalidation, server hiccups) or permanent (bad query structure).
 
-use serde_json::Value;
-
-/// Classify a SPARQL error response to determine retryability.
-pub fn classify_sparql_exception(json: &Value) -> SparqlErrorClass {
-    classify_sparql_error_text(json.get("exception").and_then(|e| e.as_str()).unwrap_or(""))
-}
-
 /// Classify a plain SPARQL/QLever error message.
 pub fn classify_sparql_error_text(message: &str) -> SparqlErrorClass {
     let normalized = message.trim().to_ascii_lowercase();
@@ -55,20 +48,27 @@ pub enum SparqlErrorClass {
     Unknown,
 }
 
-impl SparqlErrorClass {
-    pub fn is_retryable(self) -> bool {
-        matches!(self, Self::CacheConflict | Self::RateLimit | Self::Unknown)
-    }
-
-    pub fn should_backoff(self) -> bool {
-        matches!(self, Self::RateLimit)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
+    use serde_json::{Value, json};
+
+    fn classify_sparql_exception(json: &Value) -> SparqlErrorClass {
+        classify_sparql_error_text(json.get("exception").and_then(|e| e.as_str()).unwrap_or(""))
+    }
+
+    fn is_retryable(class: SparqlErrorClass) -> bool {
+        matches!(
+            class,
+            SparqlErrorClass::CacheConflict
+                | SparqlErrorClass::RateLimit
+                | SparqlErrorClass::Unknown
+        )
+    }
+
+    fn should_backoff(class: SparqlErrorClass) -> bool {
+        matches!(class, SparqlErrorClass::RateLimit)
+    }
 
     #[test]
     fn classify_sparql_exception_maps_known_error_shapes() {
@@ -106,12 +106,12 @@ mod tests {
 
     #[test]
     fn retryability_helpers_match_classification_contract() {
-        assert!(SparqlErrorClass::CacheConflict.is_retryable());
-        assert!(SparqlErrorClass::RateLimit.is_retryable());
-        assert!(SparqlErrorClass::Unknown.is_retryable());
-        assert!(!SparqlErrorClass::QuerySyntax.is_retryable());
-        assert!(!SparqlErrorClass::NoResults.is_retryable());
-        assert!(SparqlErrorClass::RateLimit.should_backoff());
-        assert!(!SparqlErrorClass::CacheConflict.should_backoff());
+        assert!(is_retryable(SparqlErrorClass::CacheConflict));
+        assert!(is_retryable(SparqlErrorClass::RateLimit));
+        assert!(is_retryable(SparqlErrorClass::Unknown));
+        assert!(!is_retryable(SparqlErrorClass::QuerySyntax));
+        assert!(!is_retryable(SparqlErrorClass::NoResults));
+        assert!(should_backoff(SparqlErrorClass::RateLimit));
+        assert!(!should_backoff(SparqlErrorClass::CacheConflict));
     }
 }

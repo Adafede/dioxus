@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+//! Pure URL codec for explore state.
+//!
+//! This module intentionally contains no browser/runtime side effects so it can
+//! be tested on any target and reused by both startup parsing and URL builders.
+
+use crate::app::view::AppView;
+use crate::i18n::Locale;
+use crate::models::SearchCriteria;
+use std::collections::BTreeMap;
+
+mod criteria;
+mod encode;
+mod startup;
+
+pub use criteria::parse_criteria_from_params;
+pub use encode::build_shareable_url;
+pub use startup::{InitialDownloadState, parse_startup_action_from_params};
+
+#[cfg(target_arch = "wasm32")]
+pub use encode::build_query_string;
+
+pub type QueryParams = BTreeMap<String, String>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct InitialUrlState {
+    pub criteria: SearchCriteria,
+    pub view: AppView,
+    pub locale: Locale,
+    pub download: InitialDownloadState,
+}
+
+/// Test whether a URL query-parameter value represents a boolean true flag.
+///
+/// Accepts `"1"`, `"true"`, `"yes"`, and `"on"` (case-insensitive, trimmed).
+/// All other values — including absent keys — are treated as false.
+pub(crate) fn is_true_flag(v: &str) -> bool {
+    matches!(
+        v.trim().to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes" | "on"
+    )
+}
+
+#[cfg(test)]
+mod tests;

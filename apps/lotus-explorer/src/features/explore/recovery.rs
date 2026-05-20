@@ -13,8 +13,8 @@
 //! - **State Cleanup**: Clear partial/stale results on error to prevent UI inconsistencies.
 //! - **User Communication**: Categorize errors so UI can format them localization-aware.
 
-use crate::features::explore::types::DomainError;
 use crate::features::explore::transport_classification::classify_transport_error;
+use crate::features::explore::types::DomainError;
 use crate::repositories::RepositoryError;
 
 // ── Error Classification ──────────────────────────────────────────────────────

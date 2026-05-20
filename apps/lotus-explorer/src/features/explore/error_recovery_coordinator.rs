@@ -7,10 +7,10 @@
 //! when, and with what backoff strategy. It uses SPARQL error classification to distinguish
 //! transient upstream cache conflicts from permanent errors.
 
-use crate::features::explore::types::{DomainError, QueryStage};
 use crate::features::explore::transport_classification::{
     TransportFailureKind, classify_transport_error,
 };
+use crate::features::explore::types::{DomainError, QueryStage};
 use crate::repositories::RepositoryError;
 
 /// Encapsulates retry decision-making for a failed search operation.
