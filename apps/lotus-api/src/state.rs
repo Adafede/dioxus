@@ -129,6 +129,62 @@ impl RuntimeMetrics {
             request_timeouts: self.request_timeouts.load(Ordering::Relaxed),
         }
     }
+
+    pub(crate) fn render_prometheus(&self) -> String {
+        let snapshot = self.snapshot();
+        format!(
+            concat!(
+                "# HELP lotus_api_health_status Health status indicator.\n",
+                "# TYPE lotus_api_health_status gauge\n",
+                "lotus_api_health_status{{status=\"{}\"}} 1\n",
+                "# HELP lotus_api_uptime_seconds Time since process start.\n",
+                "# TYPE lotus_api_uptime_seconds gauge\n",
+                "lotus_api_uptime_seconds {}\n",
+                "# HELP lotus_api_search_cache_hits Total search cache hits.\n",
+                "# TYPE lotus_api_search_cache_hits counter\n",
+                "lotus_api_search_cache_hits {}\n",
+                "# HELP lotus_api_search_cache_misses Total search cache misses.\n",
+                "# TYPE lotus_api_search_cache_misses counter\n",
+                "lotus_api_search_cache_misses {}\n",
+                "# HELP lotus_api_search_inflight_waits Search requests coalesced behind an in-flight request.\n",
+                "# TYPE lotus_api_search_inflight_waits counter\n",
+                "lotus_api_search_inflight_waits {}\n",
+                "# HELP lotus_api_search_upstream_hits Search requests that reached upstream execution.\n",
+                "# TYPE lotus_api_search_upstream_hits counter\n",
+                "lotus_api_search_upstream_hits {}\n",
+                "# HELP lotus_api_export_cache_hits Total export cache hits.\n",
+                "# TYPE lotus_api_export_cache_hits counter\n",
+                "lotus_api_export_cache_hits {}\n",
+                "# HELP lotus_api_export_cache_misses Total export cache misses.\n",
+                "# TYPE lotus_api_export_cache_misses counter\n",
+                "lotus_api_export_cache_misses {}\n",
+                "# HELP lotus_api_export_inflight_waits Export requests coalesced behind an in-flight request.\n",
+                "# TYPE lotus_api_export_inflight_waits counter\n",
+                "lotus_api_export_inflight_waits {}\n",
+                "# HELP lotus_api_export_upstream_hits Export requests that reached upstream execution.\n",
+                "# TYPE lotus_api_export_upstream_hits counter\n",
+                "lotus_api_export_upstream_hits {}\n",
+                "# HELP lotus_api_overload_rejections Requests rejected because the server was busy.\n",
+                "# TYPE lotus_api_overload_rejections counter\n",
+                "lotus_api_overload_rejections {}\n",
+                "# HELP lotus_api_request_timeouts Requests that exceeded the configured timeout.\n",
+                "# TYPE lotus_api_request_timeouts counter\n",
+                "lotus_api_request_timeouts {}\n"
+            ),
+            snapshot.status,
+            snapshot.uptime_secs,
+            snapshot.search_cache_hits,
+            snapshot.search_cache_misses,
+            snapshot.search_inflight_waits,
+            snapshot.search_upstream_hits,
+            snapshot.export_cache_hits,
+            snapshot.export_cache_misses,
+            snapshot.export_inflight_waits,
+            snapshot.export_upstream_hits,
+            snapshot.overload_rejections,
+            snapshot.request_timeouts,
+        )
+    }
 }
 
 pub(crate) fn build_search_cache_key(query: &str, limit: usize, include_counts: bool) -> String {

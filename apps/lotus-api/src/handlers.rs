@@ -39,6 +39,20 @@ pub(crate) async fn health(State(state): State<AppState>) -> Json<HealthResponse
 }
 
 #[utoipa::path(
+    get,
+    path = "/metrics",
+    responses((status = 200, description = "Prometheus-style runtime metrics", body = String))
+)]
+pub(crate) async fn metrics(State(state): State<AppState>) -> Response {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
+        .header(header::CACHE_CONTROL, "no-store")
+        .body(axum::body::Body::from(state.metrics.render_prometheus()))
+        .expect("metrics response")
+}
+
+#[utoipa::path(
     post,
     path = "/v1/search",
     request_body = SearchRequest,

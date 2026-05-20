@@ -204,6 +204,64 @@ async fn health_route_returns_ok() {
 }
 
 #[tokio::test]
+async fn metrics_route_returns_runtime_counters() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/metrics")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("metrics response");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(content_type_header(&response).starts_with("text/plain"));
+
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("metrics body bytes");
+    let body = String::from_utf8(body.to_vec()).expect("utf8 metrics body");
+    assert!(body.contains("lotus_api_uptime_seconds"));
+    assert!(body.contains("lotus_api_search_cache_hits"));
+}
+
+#[tokio::test]
+async fn secure_headers_are_applied() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/health")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("health response");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get(header::X_CONTENT_TYPE_OPTIONS)
+            .and_then(|value| value.to_str().ok()),
+        Some("nosniff")
+    );
+    assert_eq!(
+        response
+            .headers()
+            .get(header::REFERRER_POLICY)
+            .and_then(|value| value.to_str().ok()),
+        Some("no-referrer")
+    );
+}
+
+#[tokio::test]
 async fn unknown_route_returns_not_found() {
     let config = test_config();
     let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
@@ -345,6 +403,7 @@ async fn openapi_json_endpoint_serves_core_paths() {
     let json: serde_json::Value = serde_json::from_slice(&body).expect("openapi json");
 
     assert!(json["paths"].get("/health").is_some());
+    assert!(json["paths"].get("/metrics").is_some());
     assert!(json["paths"].get("/v1/search").is_some());
     assert!(json["paths"].get("/v1/export-url").is_some());
     assert!(
@@ -358,6 +417,7 @@ async fn openapi_json_endpoint_serves_core_paths() {
 fn openapi_contains_core_paths() {
     let doc = ApiDoc::openapi();
     assert!(doc.paths.paths.contains_key("/health"));
+    assert!(doc.paths.paths.contains_key("/metrics"));
     assert!(doc.paths.paths.contains_key("/v1/search"));
     assert!(doc.paths.paths.contains_key("/v1/export-url"));
     assert!(

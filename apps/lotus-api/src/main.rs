@@ -14,11 +14,14 @@ mod tests;
 
 use axum::{
     Router,
+    body::Body,
     extract::DefaultBodyLimit,
-    http::header::HeaderName,
+    http::{HeaderName, HeaderValue, header},
+    middleware::{self, Next},
+    response::Response,
     routing::{get, post},
 };
-use handlers::{export_file, export_urls, health, search};
+use handlers::{export_file, export_urls, health, metrics, search};
 use tower_http::{
     compression::CompressionLayer,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
@@ -44,6 +47,7 @@ const X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 #[openapi(
     paths(
         handlers::health,
+        handlers::metrics,
         handlers::search,
         handlers::export_urls,
         handlers::export_file
@@ -93,6 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn build_router(max_body_bytes: usize, config: &AppConfig, state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
+        .route("/metrics", get(metrics))
         .route("/v1/search", post(search))
         .route("/v1/export-url", post(export_urls))
         .route("/v1/export-file/{cache_key}/{format}", get(export_file))
@@ -108,8 +113,22 @@ fn build_router(max_body_bytes: usize, config: &AppConfig, state: AppState) -> R
         )
         .layer(PropagateRequestIdLayer::new(X_REQUEST_ID))
         .layer(SetRequestIdLayer::new(X_REQUEST_ID, MakeRequestUuid))
+        .layer(middleware::from_fn(add_security_headers))
         .layer(CompressionLayer::new())
         .layer(build_cors_layer(config))
+}
+
+async fn add_security_headers(req: axum::http::Request<Body>, next: Next) -> Response {
+    let mut response = next.run(req).await;
+    response.headers_mut().insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    response.headers_mut().insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("no-referrer"),
+    );
+    response
 }
 
 async fn shutdown_signal() {
