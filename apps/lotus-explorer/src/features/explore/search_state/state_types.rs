@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
+use crate::models::{CompoundEntry, DatasetStats, Rows, SearchCriteria, SortState};
+use std::sync::Arc;
+
+/// Lifecycle-related fields: loading flag, current error, phase indicator,
+/// and bookkeeping tokens. Changes here should re-render loading overlays
+/// and error notices.
+#[derive(Clone, PartialEq)]
+pub struct SearchLifecycleState {
+    pub loading: bool,
+    pub error: Option<DomainError>,
+    pub query_phase: QueryPhase,
+    pub searched_once: bool,
+    pub download_only_mode: bool,
+    pub download_dispatching: bool,
+    pub search_request_token: u64,
+}
+
+impl Default for SearchLifecycleState {
+    fn default() -> Self {
+        Self {
+            loading: false,
+            error: None,
+            query_phase: QueryPhase::Idle,
+            searched_once: false,
+            download_only_mode: false,
+            download_dispatching: false,
+            search_request_token: 0,
+        }
+    }
+}
+
+/// Result payload and presentation state. Changes here re-render the results
+/// table, toolbar, header-meta row, and taxon notice.
+#[derive(Clone, PartialEq)]
+pub struct ResultDataState {
+    pub entries: Rows,
+    pub taxon_notice: Option<TaxonWarning>,
+    pub resolved_qid: Option<String>,
+    pub query_hash: Option<String>,
+    pub result_hash: Option<String>,
+    pub sparql_query: Option<Arc<str>>,
+    pub metadata_json: Option<Arc<str>>,
+    pub total_matches: Option<usize>,
+    pub total_stats: Option<DatasetStats>,
+    pub display_capped_rows: bool,
+    pub sort: SortState,
+}
+
+impl Default for ResultDataState {
+    fn default() -> Self {
+        Self {
+            entries: Arc::<[CompoundEntry]>::from([]),
+            taxon_notice: None,
+            resolved_qid: None,
+            query_hash: None,
+            result_hash: None,
+            sparql_query: None,
+            metadata_json: None,
+            total_matches: None,
+            total_stats: None,
+            display_capped_rows: false,
+            sort: SortState::default(),
+        }
+    }
+}
+
+/// UI chrome and the last-executed criteria snapshot. Changes here re-render
+/// the sidebar / mobile-filter overlay and the query toolbar.
+#[derive(Clone, PartialEq, Default)]
+pub struct UiChromeState {
+    pub executed_criteria: SearchCriteria,
+    pub mobile_filters_open: bool,
+}
+
+#[derive(Clone, PartialEq, Default)]
+pub struct ExploreState {
+    pub lifecycle: SearchLifecycleState,
+    pub result: ResultDataState,
+    pub ui: UiChromeState,
+}
