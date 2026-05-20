@@ -208,32 +208,31 @@ async fn resolve_taxon_qid(
 
 fn sanitize_taxon_input(taxon: &str) -> String {
     let replaced = taxon.replace('_', " ");
-    let parts: Vec<&str> = replaced.split_whitespace().collect();
-    if parts.len() <= 1 {
-        return replaced;
-    }
+    let mut parts = replaced.split_whitespace();
 
-    let first = parts[0];
-    if first.is_empty() {
-        return replaced;
-    }
-
-    let mut first_cap = String::with_capacity(first.len());
-    let mut chars = first.chars();
-    if let Some(c) = chars.next() {
-        for uc in c.to_uppercase() {
-            first_cap.push(uc);
+    // Capitalize first word: uppercase first char, lowercase the rest.
+    // Works correctly for multi-byte Unicode chars (e.g. accented letters).
+    let first = match parts.next() {
+        None => return replaced,
+        Some(w) => {
+            let mut chars = w.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(c) => c.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
+            }
         }
-    }
-    for c in chars {
-        for lc in c.to_lowercase() {
-            first_cap.push(lc);
-        }
+    };
+
+    // Collect remaining words (kept as-is).
+    let rest: Vec<&str> = parts.collect();
+    if rest.is_empty() {
+        return first;
     }
 
-    let mut out = first_cap;
+    let mut out = String::with_capacity(first.len() + 1 + rest.join(" ").len());
+    out.push_str(&first);
     out.push(' ');
-    out.push_str(&parts[1..].join(" "));
+    out.push_str(&rest.join(" "));
     out
 }
 

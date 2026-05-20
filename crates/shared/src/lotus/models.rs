@@ -403,12 +403,16 @@ impl DatasetStats {
     ///
     /// Uses `&str` slices (borrowed from `Arc<str>` fields) so no strings are
     /// copied or re-allocated.  A single pass over the entries populates all
-    /// three deduplicated ID sets simultaneously.
+    /// deduplicated ID sets simultaneously, including unique
+    /// compound-taxon-reference triples (matching the `COUNT(DISTINCT …)`
+    /// computed by `query_counts_from_base`).
     pub fn from_entries(entries: &[CompoundEntry]) -> Self {
         use std::collections::HashSet;
         let mut c: HashSet<&str> = HashSet::with_capacity(entries.len());
         let mut t: HashSet<&str> = HashSet::with_capacity(entries.len());
         let mut r: HashSet<&str> = HashSet::with_capacity(entries.len());
+        let mut unique_triples: HashSet<(&str, &str, &str)> =
+            HashSet::with_capacity(entries.len());
         for e in entries {
             c.insert(e.compound_qid.as_ref());
             if !e.taxon_qid.is_empty() {
@@ -417,13 +421,18 @@ impl DatasetStats {
             if !e.reference_qid.is_empty() {
                 r.insert(e.reference_qid.as_ref());
             }
+            unique_triples.insert((
+                e.compound_qid.as_ref(),
+                e.taxon_qid.as_ref(),
+                e.reference_qid.as_ref(),
+            ));
         }
         Self {
             n_compounds: c.len(),
             n_taxa: t.len(),
             n_references: r.len(),
             n_entries: entries.len(),
-            n_entries_unique: entries.len(),
+            n_entries_unique: unique_triples.len(),
         }
     }
 }
@@ -467,8 +476,52 @@ impl Default for SortState {
 
 #[cfg(test)]
 mod tests {
-    use super::{ElementState, SearchCriteria};
+    use super::{CompoundEntry, DatasetStats, ElementState, SearchCriteria};
     use std::collections::BTreeMap;
+    use std::sync::Arc;
+
+    fn make_entry(compound: &str, taxon: &str, reference: &str) -> CompoundEntry {
+        CompoundEntry {
+            compound_qid: Arc::from(compound),
+            name: Arc::from(""),
+            taxon_qid: Arc::from(taxon),
+            taxon_name: Arc::from(""),
+            reference_qid: Arc::from(reference),
+            ..CompoundEntry::default()
+        }
+    }
+
+    #[test]
+    fn dataset_stats_from_entries_counts_unique_triples() {
+        let entries = vec![
+            make_entry("Q1", "Q10", "Q100"),
+            make_entry("Q1", "Q10", "Q100"), // duplicate triple
+            make_entry("Q1", "Q11", "Q101"), // same compound, different taxon+ref
+            make_entry("Q2", "Q10", "Q100"),
+        ];
+        let stats = DatasetStats::from_entries(&entries);
+        assert_eq!(stats.n_entries, 4);
+        assert_eq!(stats.n_entries_unique, 3); // 3 distinct (compound, taxon, ref) triples
+        assert_eq!(stats.n_compounds, 2);
+        assert_eq!(stats.n_taxa, 2);
+        assert_eq!(stats.n_references, 2);
+    }
+
+    #[test]
+    fn dataset_stats_from_entries_empty_slice() {
+        let stats = DatasetStats::from_entries(&[]);
+        assert_eq!(stats.n_entries, 0);
+        assert_eq!(stats.n_entries_unique, 0);
+        assert_eq!(stats.n_compounds, 0);
+    }
+
+    #[test]
+    fn dataset_stats_from_entries_all_identical() {
+        let entries = vec![make_entry("Q1", "Q1", "Q1"); 5];
+        let stats = DatasetStats::from_entries(&entries);
+        assert_eq!(stats.n_entries, 5);
+        assert_eq!(stats.n_entries_unique, 1);
+    }
 
     #[test]
     fn shareable_query_params_omit_default_formula_values_when_only_toggle_is_enabled() {

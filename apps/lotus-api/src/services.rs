@@ -15,9 +15,10 @@ pub(crate) async fn build_search_response(
     warning: Option<String>,
 ) -> Result<SearchResponse, ApiError> {
     let display_query = queries::query_with_limit(execution_query, limit);
-    let count_query = queries::query_counts_from_base(execution_query);
 
-    let rows = if include_counts {
+    let (rows, stats) = if include_counts {
+        let count_query = queries::query_counts_from_base(execution_query);
+
         let rows_future = async {
             let rows_bytes = sparql::execute_sparql_bytes(&display_query)
                 .await
@@ -45,30 +46,23 @@ pub(crate) async fn build_search_response(
                 DatasetStats::from_entries(&rows)
             }
         };
-        return Ok(SearchResponse {
-            resolved_taxon_qid,
-            warning,
-            query: execution_query.to_string(),
-            total_matches: stats.n_entries,
-            stats: SearchStats::from(stats),
-            rows: rows.into_iter().map(RowDto::from).collect(),
-        });
+        (rows, stats)
     } else {
         let rows_bytes = sparql::execute_sparql_bytes(&display_query)
             .await
             .map_err(|e| ApiError::upstream(format!("display query failed: {e}")))?;
-        sparql::parse_compounds_csv_display_bytes(&rows_bytes, limit)
-            .map_err(|e| ApiError::upstream(format!("display parse failed: {e}")))?
+        let rows = sparql::parse_compounds_csv_display_bytes(&rows_bytes, limit)
+            .map_err(|e| ApiError::upstream(format!("display parse failed: {e}")))?;
+        let stats = DatasetStats::from_entries(&rows);
+        (rows, stats)
     };
-
-    let stats = DatasetStats::from_entries(&rows);
 
     Ok(SearchResponse {
         resolved_taxon_qid,
         warning,
         query: execution_query.to_string(),
-        rows: rows.into_iter().map(RowDto::from).collect(),
         total_matches: stats.n_entries,
-        stats: stats.into(),
+        stats: SearchStats::from(stats),
+        rows: rows.into_iter().map(RowDto::from).collect(),
     })
 }

@@ -414,20 +414,10 @@ fn build_http_client() -> reqwest::Client {
 }
 
 fn looks_like_gateway_error(body: &str) -> bool {
-    // Inspect at most ~2 KiB; work on borrowed bytes to avoid allocation.
-    let end = body.len().min(2048);
-    let sample = &body[..if body.is_char_boundary(end) {
-        end
-    } else {
-        {
-            // back up to the previous char boundary
-            let mut i = end;
-            while i > 0 && !body.is_char_boundary(i) {
-                i -= 1;
-            }
-            i
-        }
-    }];
+    // Inspect at most ~2 KiB; find the largest valid char boundary at or before the cap.
+    let cap = body.len().min(2048);
+    let safe_end = (0..=cap).rev().find(|&i| body.is_char_boundary(i)).unwrap_or(0);
+    let sample = &body[..safe_end];
     // Case-insensitive `contains` without allocating a lowercase copy.
     fn contains_ci(h: &str, needle: &str) -> bool {
         if needle.len() > h.len() {

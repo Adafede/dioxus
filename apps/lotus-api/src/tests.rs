@@ -14,7 +14,7 @@ use utoipa::OpenApi;
 use crate::{
     ApiDoc, build_router,
     config::AppConfig,
-    query_logic::{apply_request, normalized_structure_input},
+    query_logic::{apply_request, normalized_structure_input, sanitize_download_filename},
     state::AppState,
     state::{CachedExportResponse, prune_cache},
     types::{ExportUrlResponse, SearchRequest},
@@ -463,3 +463,134 @@ async fn export_file_rejects_unknown_cache_key() {
             .is_some_and(|msg| msg.contains("expired") || msg.contains("unknown"))
     );
 }
+
+// ── sanitize_download_filename ────────────────────────────────────────────────
+
+#[test]
+fn sanitize_filename_replaces_slash_with_underscore() {
+    // '/' and '\' are replaced with '_'; leading dots from trim_matches get removed too.
+    // "../../etc/passwd" → ".._.._etc_passwd" → trim leading dots → "_.._etc_passwd"
+    assert_eq!(
+        sanitize_download_filename("../../etc/passwd"),
+        "_.._etc_passwd"
+    );
+    assert_eq!(
+        sanitize_download_filename(r"C:\Windows\system32"),
+        "C:_Windows_system32"
+    );
+}
+
+#[test]
+fn sanitize_filename_removes_control_chars() {
+    let input = "file\x00name\x1f.csv";
+    let result = sanitize_download_filename(input);
+    assert!(!result.contains('\x00'));
+    assert!(!result.contains('\x1f'));
+    assert!(result.contains("filename"));
+}
+
+#[test]
+fn sanitize_filename_trims_leading_trailing_dots() {
+    assert_eq!(sanitize_download_filename("...hidden"), "hidden");
+    assert_eq!(sanitize_download_filename("file..."), "file");
+}
+
+#[test]
+fn sanitize_filename_preserves_normal_names() {
+    assert_eq!(
+        sanitize_download_filename("export_2024-01-15.csv"),
+        "export_2024-01-15.csv"
+    );
+}
+
+#[test]
+fn sanitize_filename_empty_or_whitespace_returns_empty() {
+    assert_eq!(sanitize_download_filename(""), "");
+    assert_eq!(sanitize_download_filename("   "), "");
+}
+
+// ── element-range validation ──────────────────────────────────────────────────
+
+#[test]
+fn apply_request_rejects_inverted_element_ranges() {
+    let req = SearchRequest {
+        taxon: Some("*".to_string()),
+        smiles: None,
+        smiles_search_type: None,
+        smiles_threshold: None,
+        mass_min: None,
+        mass_max: None,
+        year_min: None,
+        year_max: None,
+        formula_exact: None,
+        c_min: Some(50),
+        c_max: Some(10), // max < min — should be rejected
+        h_min: None,
+        h_max: None,
+        n_min: None,
+        n_max: None,
+        o_min: None,
+        o_max: None,
+        p_min: None,
+        p_max: None,
+        s_min: None,
+        s_max: None,
+        f_state: None,
+        cl_state: None,
+        br_state: None,
+        i_state: None,
+        limit: None,
+        include_counts: None,
+    };
+    assert!(apply_request(&req).is_err());
+}
+
+// ── smiles_threshold clamping ─────────────────────────────────────────────────
+
+#[test]
+fn apply_request_clamps_similarity_threshold() {
+    fn make_req(threshold: f64) -> SearchRequest {
+        SearchRequest {
+            taxon: Some("*".to_string()),
+            smiles: Some("c1ccccc1".to_string()),
+            smiles_search_type: None,
+            smiles_threshold: Some(threshold),
+            mass_min: None,
+            mass_max: None,
+            year_min: None,
+            year_max: None,
+            formula_exact: None,
+            c_min: None,
+            c_max: None,
+            h_min: None,
+            h_max: None,
+            n_min: None,
+            n_max: None,
+            o_min: None,
+            o_max: None,
+            p_min: None,
+            p_max: None,
+            s_min: None,
+            s_max: None,
+            f_state: None,
+            cl_state: None,
+            br_state: None,
+            i_state: None,
+            limit: None,
+            include_counts: None,
+        }
+    }
+
+    let c = apply_request(&make_req(0.0)).expect("zero threshold");
+    assert!(
+        c.smiles_threshold >= 0.05,
+        "threshold should be clamped to minimum 0.05"
+    );
+
+    let c = apply_request(&make_req(2.0)).expect("over-one threshold");
+    assert!(
+        c.smiles_threshold <= 1.0,
+        "threshold should be clamped to maximum 1.0"
+    );
+}
+
