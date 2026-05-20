@@ -9,6 +9,7 @@ A linked open data (LOD) explorer demonstrating the power of semantic web techno
 ## Engineering skills
 
 - Skills index: [`SKILLS.md`](./SKILLS.md)
+- Suggestions: [`docs/skills/SUGGESTIONS.md`](./docs/skills/SUGGESTIONS.md)
 
 ## Development testing
 

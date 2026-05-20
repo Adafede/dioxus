@@ -1,0 +1,39 @@
+{
+  "name": "dioxus-apps",
+  "workspace_root": "/Users/adrutz/Git/dioxus",
+  "primary_language": "Rust",
+  "secondary_languages": ["Markdown", "JSON", "YAML"],
+  "packages": [
+    {
+      "name": "lotus-explorer",
+      "kind": "wasm app",
+      "path": "apps/lotus-explorer",
+      "entrypoint": "src/main.rs"
+    },
+    {
+      "name": "lotus-api",
+      "kind": "native http api",
+      "path": "apps/lotus-api",
+      "entrypoint": "src/main.rs"
+    },
+    {
+      "name": "shared",
+      "kind": "shared library",
+      "path": "crates/shared",
+      "entrypoint": "src/lib.rs"
+    }
+  ],
+  "agent_docs": {
+    "guide": "AI_AGENT_GUIDE.md",
+    "contributing": "CONTRIBUTING_AI.md",
+    "skills_index": "apps/lotus-explorer/docs/skills/README.md",
+    "skills_root": "apps/lotus-explorer/SKILLS.md"
+  },
+  "validation_commands": [
+    "cargo check --workspace --all-targets --locked",
+    "cargo test --workspace --all-targets --locked",
+    "cargo clippy --workspace --all-targets --locked -- -D warnings",
+    "cargo doc --workspace --no-deps --locked"
+  ]
+}
+

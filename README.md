@@ -15,6 +15,13 @@ Follow this order for fastest onboarding:
 5. `API endpoints`
 6. `Deploying the LOTUS API` (only when publishing)
 
+## AI and repository metadata
+
+- AI agent guide: [`AI_AGENT_GUIDE.md`](./AI_AGENT_GUIDE.md)
+- AI contribution guide: [`CONTRIBUTING_AI.md`](./CONTRIBUTING_AI.md)
+- Machine-readable metadata: [`PROJECT_METADATA.json`](./PROJECT_METADATA.json)
+- App skillbook: [`apps/lotus-explorer/SKILLS.md`](./apps/lotus-explorer/SKILLS.md)
+
 ## Prerequisites
 
 ```bash
@@ -259,6 +266,6 @@ A frozen version is archived on Zenodo: https://doi.org/10.5281/zenodo.5794106
 - Contribution guide: `CONTRIBUTING.md`
 - Security policy: `SECURITY.md`
 - Release process: `.github/RELEASE_CHECKLIST.md`
-- Change history: `CHANGELOG.md`
+- Change history: [`CHANGELOG.md`](./CHANGELOG.md)
 - License: `LICENSE` (GNU AGPL v3.0)
 
