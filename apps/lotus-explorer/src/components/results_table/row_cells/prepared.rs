@@ -46,10 +46,11 @@ fn short_inchikey_arc(ik: &str) -> Arc<str> {
 
 fn truncate_arc_str(title: &str, max_chars: usize) -> Arc<str> {
     let trimmed = title.trim();
-    if trimmed.chars().count() <= max_chars {
+    let Some((end, _)) = trimmed.char_indices().nth(max_chars) else {
         return Arc::<str>::from(trimmed);
-    }
-    let mut out: String = trimmed.chars().take(max_chars).collect();
+    };
+    let mut out = String::with_capacity(end + 3);
+    out.push_str(&trimmed[..end]);
     out.push('…');
     Arc::<str>::from(out)
 }
@@ -70,10 +71,16 @@ fn depict_url_cached(entry: &CompoundEntry) -> Option<Arc<str>> {
     if smiles.is_empty() || smiles.contains('\n') {
         return None;
     }
-    Some(Arc::<str>::from(format!(
-        "https://www.simolecule.com/cdkdepict/depict/cow/svg?smi={}&annotate=cip",
-        urlencoding::encode(smiles)
-    )))
+    let encoded = urlencoding::encode(smiles);
+    let mut url = String::with_capacity(
+        "https://www.simolecule.com/cdkdepict/depict/cow/svg?smi=".len()
+            + encoded.len()
+            + "&annotate=cip".len(),
+    );
+    url.push_str("https://www.simolecule.com/cdkdepict/depict/cow/svg?smi=");
+    url.push_str(encoded.as_ref());
+    url.push_str("&annotate=cip");
+    Some(Arc::<str>::from(url))
 }
 
 fn trimmed_optional_arc(value: Option<&str>) -> Option<Arc<str>> {

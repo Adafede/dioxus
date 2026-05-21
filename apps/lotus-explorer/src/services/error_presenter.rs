@@ -95,11 +95,11 @@ fn looks_like_html(msg: &str) -> bool {
     if head.is_empty() {
         return false;
     }
-    let sample = head
-        .chars()
-        .take(256)
-        .collect::<String>()
-        .to_ascii_lowercase();
+    let sample = match head.char_indices().nth(256) {
+        Some((idx, _)) => &head[..idx],
+        None => head,
+    };
+    let sample = sample.to_ascii_lowercase();
     sample.starts_with("<!doctype html")
         || sample.starts_with("<html")
         || sample.contains("<html")
@@ -119,17 +119,12 @@ fn compact_error_text(msg: &str) -> String {
 
 fn truncate_for_notice(text: &str) -> String {
     const MAX_CHARS: usize = 220;
-    // Count actual characters (not bytes) to handle multi-byte UTF-8 correctly
-    if text.chars().count() <= MAX_CHARS {
-        return text.to_string();
-    }
-    let mut result = String::new();
-    for (idx, ch) in text.chars().enumerate() {
-        if idx >= MAX_CHARS {
-            break;
-        }
-        result.push(ch);
-    }
+    let end = match text.char_indices().nth(MAX_CHARS) {
+        Some((idx, _)) => idx,
+        None => return text.to_string(),
+    };
+    let mut result = String::with_capacity(end + 3);
+    result.push_str(&text[..end]);
     result.push('…');
     result
 }

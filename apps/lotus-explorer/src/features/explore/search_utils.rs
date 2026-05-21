@@ -3,23 +3,32 @@
 
 use crate::models::{CompoundEntry, SearchCriteria};
 use sha2::{Digest, Sha256};
+use std::borrow::Cow;
 use std::fmt::Write as _;
 
 pub fn sanitize_taxon_input(taxon: &str) -> String {
-    let replaced = taxon.replace('_', " ");
+    let replaced: Cow<'_, str> = if taxon.contains('_') {
+        Cow::Owned(taxon.replace('_', " "))
+    } else {
+        Cow::Borrowed(taxon)
+    };
+
     let mut parts = replaced.split_whitespace();
     // If there are no tokens (blank or all-underscore input) return the replaced string.
     let Some(first_word) = parts.next() else {
-        return replaced;
+        return replaced.into_owned();
     };
     // `split_whitespace` never produces empty tokens, so `first_word` is guaranteed
     // non-empty.  `chars.as_str()` gives the tail after the first char so we can
     // lowercase the rest without collecting each char individually.
     let mut chars = first_word.chars();
-    let mut out = match chars.next() {
-        None => String::new(),
-        Some(c) => c.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
-    };
+    let mut out = String::with_capacity(replaced.len());
+    if let Some(c) = chars.next() {
+        out.extend(c.to_uppercase());
+        for c in chars {
+            out.extend(c.to_lowercase());
+        }
+    }
     for part in parts {
         out.push(' ');
         out.push_str(part);
@@ -34,7 +43,8 @@ pub fn compute_hashes(
 ) -> (String, String) {
     let normalized_qid = if qid.trim().is_empty() { "*" } else { qid };
     let normalized_taxon = criteria.taxon.trim();
-    let mut query_source = format!("{}|{}", normalized_qid, normalized_taxon);
+    let mut query_source = String::with_capacity(normalized_qid.len() + normalized_taxon.len() + 64);
+    write!(query_source, "{}|{}", normalized_qid, normalized_taxon).expect("String write is infallible");
 
     // Build `|key=value&key=value&…` suffix without an intermediate Vec<String>.
     for (i, (k, v)) in criteria.shareable_query_params().into_iter().enumerate() {

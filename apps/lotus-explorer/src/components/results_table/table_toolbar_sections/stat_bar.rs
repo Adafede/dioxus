@@ -57,10 +57,8 @@ pub fn StatBar() -> Element {
             result.entries.clone()
         });
     let toolbar_snapshot = use_toolbar_result_snapshot(explore);
-    let entries: Memo<crate::models::Rows> = use_memo(move || entries_arc.read().0.clone());
-
     let fallback_stats: Memo<DatasetStats> =
-        use_memo(move || DatasetStats::from_entries(entries.read().as_ref()));
+        use_memo(move || DatasetStats::from_entries(entries_arc.read().0.as_ref()));
     let snapshot_ref = toolbar_snapshot.read();
     let fallback_stats_ref = fallback_stats.read();
     let stats = snapshot_ref
