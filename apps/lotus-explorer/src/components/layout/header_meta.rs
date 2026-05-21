@@ -66,7 +66,9 @@ pub fn HeaderMetaSection() -> Element {
             result_hash.read().clone(),
         );
         if current_meta != *prev_meta.read() {
-            meta_visible.set(current_meta.0.is_some() || current_meta.1.is_some() || current_meta.2.is_some());
+            meta_visible.set(
+                current_meta.0.is_some() || current_meta.1.is_some() || current_meta.2.is_some(),
+            );
             prev_meta.set(current_meta);
         }
     });
@@ -76,7 +78,9 @@ pub fn HeaderMetaSection() -> Element {
     let result_hash_value = result_hash.read().clone();
 
     let has_meta = *meta_visible.read()
-        && (resolved_qid_value.is_some() || query_hash_value.is_some() || result_hash_value.is_some());
+        && (resolved_qid_value.is_some()
+            || query_hash_value.is_some()
+            || result_hash_value.is_some());
 
     rsx! {
         if has_meta {
