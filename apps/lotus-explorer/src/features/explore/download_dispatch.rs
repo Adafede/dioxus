@@ -60,7 +60,10 @@ pub fn use_startup_effect<R: LotusRepository>(
 
         let (searched_once, loading) = {
             let explore_state = explore.read();
-            (explore_state.lifecycle.searched_once, explore_state.lifecycle.loading)
+            (
+                explore_state.lifecycle.searched_once,
+                explore_state.lifecycle.loading,
+            )
         };
         if download_effects::should_trigger_startup_search(
             pending,
