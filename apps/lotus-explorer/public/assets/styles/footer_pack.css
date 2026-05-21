@@ -4,11 +4,11 @@
 .footer-line { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); column-gap:24px; row-gap:0; align-items:start; padding:10px 0; border-bottom:1px solid var(--panel-border); }
 .footer-line:last-child { border-bottom:none; padding-bottom:0; }
 .footer-line:first-child { padding-top:0; }
-.footer-row { display:grid; grid-template-columns:max-content minmax(0, 1fr); column-gap:10px; row-gap:4px; align-items:start; padding:4px 0; }
-.footer-label { color:var(--text2); font-weight:700; text-transform:uppercase; font-size:var(--fs-0); letter-spacing:1px; min-width:0; white-space:nowrap; padding-top:4px; }
+.footer-row { display:grid; grid-template-columns:clamp(7.5rem, 7vw, 9rem) minmax(0, 1fr); column-gap:6px; row-gap:4px; align-items:start; padding:2px 0; }
+.footer-label { color:var(--text2); font-weight:700; text-transform:uppercase; font-size:var(--fs-0); letter-spacing:1px; min-width:0; white-space:nowrap; padding-top:4px; text-align:left; }
 .footer-aside { color:var(--text2); font-size:var(--fs-0); }
-.footer-links { list-style:none; display:flex; flex-wrap:wrap; gap:5px 8px; margin:0; padding:0; min-width:0; justify-content:flex-start; align-items:flex-start; }
-.footer-links li { display:inline-flex; align-items:baseline; gap:5px; min-width:0; padding:2px 9px; border-radius:999px; background:var(--panel-bg); border:1px solid var(--panel-border); transition: border-color .12s, box-shadow .12s; }
+.footer-links { list-style:none; display:flex; flex-wrap:wrap; gap:3px 5px; margin:0; padding:0; min-width:0; justify-content:flex-start; align-items:flex-start; }
+.footer-links li { display:inline-flex; align-items:center; gap:4px; min-width:0; padding:1px 7px; border-radius:999px; background:var(--panel-bg); border:1px solid var(--panel-border); transition: border-color .12s, box-shadow .12s; }
 .footer-links li:hover { border-color:color-mix(in srgb, var(--panel-border) 60%, var(--accent)); box-shadow:var(--shadow-xs); }
 .footer-link { color:var(--text); text-decoration:none; }
 .footer-link:hover { text-decoration:underline; }

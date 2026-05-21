@@ -3,7 +3,6 @@
 
 use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
-use crate::state::use_form_criteria_context;
 use dioxus::prelude::*;
 
 #[component]
@@ -15,30 +14,30 @@ pub fn QueryPanel() -> Element {
             result.sparql_query.clone()
         });
 
-    // Track search criteria to auto-close the panel when parameters change
-    let form_ctx = use_form_criteria_context();
-    let criteria = crate::features::explore::selectors::use_criteria_selector(
-        form_ctx.criteria,
-        |c| c.clone(),
-    );
+    let mut prev_query = use_signal(|| None::<String>);
 
-    // Close the query panel when search parameters change (new search incoming)
+    // Close the query panel when the SPARQL query itself changes.
     use_effect(move || {
-        // Reading criteria triggers dependency tracking - effect re-runs when criteria changes
-        let _ = criteria.read();
+        let current_query = sparql_query
+            .read()
+            .as_ref()
+            .map(|query| query.as_ref().to_string());
 
-        // This effect re-runs whenever criteria changes
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Ok(window) = web_sys::window().ok_or(()) {
-                if let Ok(document) = window.document().ok_or(()) {
-                    if let Some(details) =
-                        document.query_selector(".query-panel").ok().flatten()
-                    {
-                        let _ = details.remove_attribute("open");
+        if current_query != *prev_query.read() {
+            #[cfg(target_arch = "wasm32")]
+            {
+                if let Ok(window) = web_sys::window().ok_or(()) {
+                    if let Ok(document) = window.document().ok_or(()) {
+                        if let Some(details) =
+                            document.query_selector(".query-panel").ok().flatten()
+                        {
+                            let _ = details.remove_attribute("open");
+                        }
                     }
                 }
             }
+
+            prev_query.set(current_query);
         }
     });
 
