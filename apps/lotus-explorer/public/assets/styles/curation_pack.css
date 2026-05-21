@@ -131,7 +131,7 @@
 /* col 2 – Wikidata QID */
 .curation-results-table th:nth-child(2),
 .curation-results-table td:nth-child(2) {
-  min-width: 10ch;
+  min-width: 12ch;
 }
 
 /* col 3 – Name */
@@ -165,7 +165,7 @@
 /* col 8 – Formula */
 .curation-results-table th:nth-child(8),
 .curation-results-table td:nth-child(8) {
-  min-width: 10ch;
+  min-width: 12ch;
 }
 
 /* col 9 – Exact Mass */
