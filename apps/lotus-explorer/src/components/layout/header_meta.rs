@@ -81,8 +81,7 @@ pub fn HeaderMetaSection() -> Element {
             c.clone()
         });
 
-    let mut prev_criteria = use_signal(|| criteria.read().clone());
-    let mut prev_meta = use_signal(|| header_snapshot.read().clone());
+    let mut criteria_effect_ready = use_signal(|| false);
     let mut meta_visible = use_signal(|| {
         let snapshot = header_snapshot.read();
         snapshot.resolved_qid.is_some()
@@ -92,23 +91,23 @@ pub fn HeaderMetaSection() -> Element {
 
     // Criteria changes invalidate the entire metadata strip until fresh results arrive.
     use_effect(move || {
-        let current_criteria = criteria.read().clone();
-        if current_criteria != *prev_criteria.read() {
+        let _ = criteria.read();
+        if *criteria_effect_ready.read() {
             meta_visible.set(false);
-            prev_criteria.set(current_criteria);
+        } else {
+            criteria_effect_ready.set(true);
         }
     });
 
     // Show metadata again when a fresh metadata tuple is produced.
     use_effect(move || {
-        let current_meta = header_snapshot.read().clone();
-        if current_meta != *prev_meta.read() {
+        let current_meta = header_snapshot.read();
+        if !*meta_visible.read() {
             meta_visible.set(
                 current_meta.resolved_qid.is_some()
                     || current_meta.query_hash.is_some()
                     || current_meta.result_hash.is_some(),
             );
-            prev_meta.set(current_meta);
         }
     });
 

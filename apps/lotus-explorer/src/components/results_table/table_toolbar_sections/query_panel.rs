@@ -19,25 +19,24 @@ pub fn QueryPanel() -> Element {
             c.clone()
         });
 
-    let mut prev_criteria = use_signal(|| criteria.read().clone());
-    let mut prev_query = use_signal(|| toolbar_snapshot.read().sparql_query.clone());
+    let mut criteria_effect_ready = use_signal(|| false);
     let mut panel_visible = use_signal(|| toolbar_snapshot.read().sparql_query.is_some());
 
     // Parameter changes should remove the tab until a new query is generated.
     use_effect(move || {
-        let current_criteria = criteria.read();
-        if *current_criteria != *prev_criteria.read() {
+        let _ = criteria.read();
+        if *criteria_effect_ready.read() {
             panel_visible.set(false);
-            prev_criteria.set(current_criteria.clone());
+        } else {
+            criteria_effect_ready.set(true);
         }
     });
 
     // Show the tab again when a new query value arrives for current parameters.
     use_effect(move || {
-        let current_query = toolbar_snapshot.read().sparql_query.clone();
-        if current_query != *prev_query.read() {
-            panel_visible.set(current_query.is_some());
-            prev_query.set(current_query);
+        let current_query = toolbar_snapshot.read();
+        if !*panel_visible.read() {
+            panel_visible.set(current_query.sparql_query.is_some());
         }
     });
 
