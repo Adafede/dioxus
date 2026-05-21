@@ -91,6 +91,8 @@
   border: 1px solid var(--panel-border);
   border-radius: 14px;
   background: var(--panel-bg-soft);
+  box-shadow: var(--panel-shadow);
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 
 .curation-table-scroll:focus-visible {
@@ -100,7 +102,7 @@
 }
 
 .curation-scroll-hint {
-  display: none;
+  display: flex;
   align-items: center;
   gap: 8px;
   color: var(--text3);
@@ -120,24 +122,56 @@
   min-width: max-content;
 }
 
+/* col 1 – Status + badges + note */
 .curation-results-table th:nth-child(1),
 .curation-results-table td:nth-child(1) {
-  min-width: 280px;
+  min-width: 220px;
 }
 
+/* col 2 – Wikidata QID */
 .curation-results-table th:nth-child(2),
 .curation-results-table td:nth-child(2) {
-  min-width: 120px;
+  min-width: 10ch;
 }
 
+/* col 3 – Name */
+.curation-results-table th:nth-child(3),
+.curation-results-table td:nth-child(3) {
+  min-width: 18ch;
+}
+
+/* col 4 – Original SMILES  /  col 5 – Canonical SMILES */
 .curation-results-table th:nth-child(4),
 .curation-results-table th:nth-child(5),
-.curation-results-table th:nth-child(7),
 .curation-results-table td:nth-child(4),
-.curation-results-table td:nth-child(5),
+.curation-results-table td:nth-child(5) {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+/* col 6 – InChIKey (always 27 chars in mono) */
+.curation-results-table th:nth-child(6),
+.curation-results-table td:nth-child(6) {
+  min-width: 28ch;
+}
+
+/* col 7 – InChI */
+.curation-results-table th:nth-child(7),
 .curation-results-table td:nth-child(7) {
   min-width: 220px;
   max-width: 320px;
+}
+
+/* col 8 – Formula */
+.curation-results-table th:nth-child(8),
+.curation-results-table td:nth-child(8) {
+  min-width: 10ch;
+}
+
+/* col 9 – Exact Mass */
+.curation-results-table th:nth-child(9),
+.curation-results-table td:nth-child(9) {
+  min-width: 12ch;
 }
 
 /* Queue rows table column widths */
@@ -185,14 +219,15 @@
   background: color-mix(in srgb, var(--surface) 90%, transparent);
 }
 
-.curation-status.is-ok { border-left-color: var(--wd-taxon); }
-.curation-status.is-warn { border-left-color: var(--wd-compound); }
-.curation-status.is-new { border-left-color: var(--wd-compound); }
+/* ok → wd-taxon green (complete/existing) */
+.curation-status.is-ok      { border-left-color: var(--wd-taxon); }
+/* warn → wd-entries neutral (needs updates, not critical) */
+.curation-status.is-warn    { border-left-color: var(--wd-entries); }
+/* new → wd-reference blue (informational: new item to create) */
+.curation-status.is-new     { border-left-color: var(--wd-reference); }
+/* pending → wd-reference blue (waiting on dependencies) */
 .curation-status.is-pending { border-left-color: var(--wd-reference); }
-.curation-status.is-error { border-left-color: var(--wd-compound); }
-
-
-
-
+/* error → wd-compound red (failure) */
+.curation-status.is-error   { border-left-color: var(--wd-compound); }
 
 

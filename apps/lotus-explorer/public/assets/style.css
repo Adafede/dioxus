@@ -120,29 +120,29 @@ img, svg, canvas, video {
 
 @media (prefers-color-scheme: dark) {
   :root {
-      --bg:        #10141b;
-      --bg2:       #171d26;
-      --surface:   #1f2733;
-      --surface2:  #2a3443;
-      --border:    #38475a;
-      --text:      #eef4fb;
-      --text2:     #d5deea;
-      --text3:     #a7b4c7;
-      --accent:    #8cbcff;
-      --accent2:   #5e98f3;
-      --btn-primary-bg: #2f6fed;
-      --btn-primary-hover-bg: #285fcc;
-      --green:     #4cc38a;
-      --red:       #ff8a80;
-      --yellow:    #f0b35e;
-      --purple:    #c3a0ff;
+    --bg:        #10141b;
+    --bg2:       #171d26;
+    --surface:   #1f2733;
+    --surface2:  #2a3443;
+    --border:    #38475a;
+    --text:      #eef4fb;
+    --text2:     #d5deea;
+    --text3:     #a7b4c7;
+    --accent:    #8cbcff;
+    --accent2:   #5e98f3;
+    --btn-primary-bg: #2f6fed;
+    --btn-primary-hover-bg: #285fcc;
+    --green:     #4cc38a;
+    --red:       #ff8a80;
+    --yellow:    #f0b35e;
+    --purple:    #c3a0ff;
     --shadow-xs: 0 1px 2px rgb(0 0 0 / 45%);
     --shadow-sm: 0 4px 14px rgb(0 0 0 / 35%);
     --shadow-md: 0 10px 30px rgb(0 0 0 / 35%);
     --glass:     rgb(22 27 34 / 78%);
-      --ring:      0 0 0 3px rgb(140 188 255 / 28%);
+    --ring:      0 0 0 3px rgb(140 188 255 / 28%);
     --critical-text: #e8edf5;
-      --critical-muted: #d0d9e5;
+    --critical-muted: #d0d9e5;
 
     /* Slightly stronger fills/stripes in dark mode to preserve distinction. */
     --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 24%, var(--surface));

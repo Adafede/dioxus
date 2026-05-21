@@ -17,7 +17,5 @@
 .footer-link.blue { color:var(--wd-reference); font-weight:700; }
 .footer-link.muted { color:var(--text2); font-weight:700; }
 
-/* Download buttons */
-.dl-group { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-.dl-group .btn { border-radius:var(--radius-sm); border-right-width:1px; }
+/* Download buttons — .dl-group base styles live in results_pack.css */
 
