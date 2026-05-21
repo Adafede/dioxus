@@ -49,8 +49,8 @@ pub fn ResultsTable() -> Element {
 
     // Single unified memo for all table preparation: entries + sort_state → prepared view model.
     let table_view_model = use_memo(move || {
-        let current = snapshot.read().clone();
-        build_table_view_model(&current.entries, current.sort)
+        let snapshot_ref = snapshot.read();
+        build_table_view_model(&snapshot_ref.entries, snapshot_ref.sort)
     });
 
     let total = entries_len;

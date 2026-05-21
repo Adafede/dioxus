@@ -79,7 +79,7 @@ pub fn AppRoot() -> Element {
     let search_task_controller = use_context_provider(SearchTaskController::new);
     let _explore_interactions = use_context_provider({
         let tc = search_task_controller.clone();
-        move || ExploreInteractions::new(criteria, form_ctx, explore, tc.clone(), repo)
+        move || ExploreInteractions::new(criteria, form_ctx, explore, tc, repo)
     });
 
     rsx! {

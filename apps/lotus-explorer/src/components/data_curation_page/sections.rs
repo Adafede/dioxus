@@ -292,17 +292,17 @@ pub fn QuickStatementsCard(
     processing: bool,
     on_second_pass: EventHandler<()>,
 ) -> Element {
-    let quickstatements = quickstatements.read().clone();
-    if quickstatements.dependencies.is_empty() && quickstatements.main.is_empty() {
+    let qs_ref = quickstatements.read();
+    if qs_ref.dependencies.is_empty() && qs_ref.main.is_empty() {
         return rsx! {};
     }
 
-    let qs_dependency_link = build_qs_dev_link(&quickstatements.dependencies);
-    let qs_main_link = build_qs_dev_link(&quickstatements.main);
+    let qs_dependency_link = build_qs_dev_link(&qs_ref.dependencies);
+    let qs_main_link = build_qs_dev_link(&qs_ref.main);
 
     rsx! {
         div { class: "curation-card",
-            if !quickstatements.dependencies.is_empty() {
+            if !qs_ref.dependencies.is_empty() {
                 p { class: "curation-hint", "{msg_two_step_hint(locale)}" }
                 p { class: "curation-hint", "{msg_delay_advice(locale)}" }
                 p { class: "curation-hint",
@@ -317,7 +317,7 @@ pub fn QuickStatementsCard(
                 div { class: "curation-actions curation-space-between",
                     h3 { "{heading_quickstatements_dependencies(locale)}" }
                     CopyButton {
-                        text: quickstatements.dependencies.clone(),
+                        text: qs_ref.dependencies.clone(),
                         locale,
                     }
                 }
@@ -325,7 +325,7 @@ pub fn QuickStatementsCard(
                     class: "form-textarea curation-qs",
                     aria_label: "{heading_quickstatements_dependencies(locale)}",
                     readonly: true,
-                    value: "{quickstatements.dependencies}",
+                    value: "{qs_ref.dependencies}",
                 }
                 button {
                     class: "btn btn-sm btn-primary btn-block",
@@ -336,7 +336,7 @@ pub fn QuickStatementsCard(
                 }
             }
 
-            if !awaiting_second_pass && !quickstatements.main.is_empty() {
+            if !awaiting_second_pass && !qs_ref.main.is_empty() {
                 p { class: "curation-hint",
                     a {
                         href: "{qs_main_link}",
@@ -349,7 +349,7 @@ pub fn QuickStatementsCard(
                 div { class: "curation-actions curation-space-between",
                     h3 { "{heading_quickstatements(locale)}" }
                     CopyButton {
-                        text: quickstatements.main.clone(),
+                        text: qs_ref.main.clone(),
                         locale,
                     }
                 }
@@ -357,7 +357,7 @@ pub fn QuickStatementsCard(
                     class: "form-textarea curation-qs",
                     aria_label: "{heading_quickstatements(locale)}",
                     readonly: true,
-                    value: "{quickstatements.main}",
+                    value: "{qs_ref.main}",
                 }
             }
         }
