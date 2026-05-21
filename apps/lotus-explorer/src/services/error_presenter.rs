@@ -119,12 +119,19 @@ fn compact_error_text(msg: &str) -> String {
 
 fn truncate_for_notice(text: &str) -> String {
     const MAX_CHARS: usize = 220;
+    // Count actual characters (not bytes) to handle multi-byte UTF-8 correctly
     if text.chars().count() <= MAX_CHARS {
         return text.to_string();
     }
-    let mut out = text.chars().take(MAX_CHARS).collect::<String>();
-    out.push('…');
-    out
+    let mut result = String::new();
+    for (idx, ch) in text.chars().enumerate() {
+        if idx >= MAX_CHARS {
+            break;
+        }
+        result.push(ch);
+    }
+    result.push('…');
+    result
 }
 
 fn format_validation_fault(locale: Locale, fault: &ValidationFault) -> String {

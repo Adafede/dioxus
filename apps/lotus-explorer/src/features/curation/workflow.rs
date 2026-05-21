@@ -90,10 +90,9 @@ pub fn apply_second_pass(
 
     let merged_rows = previous_rows
         .iter()
-        .cloned()
         .map(|row| {
             let key = row_uniqueness_key(&row.input);
-            by_key.remove(&key).unwrap_or(row)
+            by_key.remove(&key).unwrap_or_else(|| row.clone())
         })
         .collect::<Vec<_>>();
 

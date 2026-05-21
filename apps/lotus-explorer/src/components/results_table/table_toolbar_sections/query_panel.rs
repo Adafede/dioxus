@@ -14,18 +14,14 @@ pub fn QueryPanel() -> Element {
     let explore = use_results_context().explore;
     let form_ctx = use_form_criteria_context();
     let toolbar_snapshot = use_toolbar_result_snapshot(explore);
-    let criteria =
-        crate::features::explore::selectors::use_criteria_selector(form_ctx.criteria, |c| {
-            c.clone()
-        });
 
     let mut criteria_effect_ready = use_signal(|| false);
     let mut panel_visible = use_signal(|| toolbar_snapshot.read().sparql_query.is_some());
 
     // Parameter changes should remove the tab until a new query is generated.
-    // peek() for the guard so this effect only subscribes to `criteria`, not to itself.
+    // peek() for the guard so this effect only subscribes to `form_ctx.criteria`, not to itself.
     use_effect(move || {
-        let _ = criteria.read();
+        let _ = form_ctx.criteria.read();
         if *criteria_effect_ready.peek() {
             panel_visible.set(false);
         } else {

@@ -76,10 +76,6 @@ pub fn HeaderMetaSection() -> Element {
     let form_ctx = use_form_criteria_context();
     let locale = crate::hooks::use_locale();
     let header_snapshot = use_header_meta_snapshot(explore);
-    let criteria =
-        crate::features::explore::selectors::use_criteria_selector(form_ctx.criteria, |c| {
-            c.clone()
-        });
 
     let mut criteria_effect_ready = use_signal(|| false);
     let mut meta_visible = use_signal(|| {
@@ -90,9 +86,9 @@ pub fn HeaderMetaSection() -> Element {
     });
 
     // Criteria changes invalidate the entire metadata strip until fresh results arrive.
-    // peek() for the guard so the effect only subscribes to `criteria`, not to itself.
+    // peek() for the guard so the effect only subscribes to `form_ctx.criteria`, not to itself.
     use_effect(move || {
-        let _ = criteria.read();
+        let _ = form_ctx.criteria.read();
         if *criteria_effect_ready.peek() {
             meta_visible.set(false);
         } else {
