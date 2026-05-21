@@ -22,6 +22,14 @@ pub fn DataCurationPage() -> Element {
         build_curation_share_url(controller.rows.read().as_slice(), locale, true)
             .map(Arc::<str>::from)
     });
+    let result_rows_memo = use_memo(move || {
+        let rows = controller.result_rows.read();
+        if rows.is_empty() {
+            None
+        } else {
+            Some(rows.clone())
+        }
+    });
     let ui_state = CurationUiState::from_controller(controller);
     let has_tsv_input = controller.has_tsv_input();
 
@@ -74,8 +82,8 @@ pub fn DataCurationPage() -> Element {
                 on_process,
             }
 
-            if !controller.result_rows.read().is_empty() {
-                CurationResultsTable { locale, rows: controller.result_rows.read().clone() }
+            if let Some(rows) = result_rows_memo.read().as_ref() {
+                CurationResultsTable { locale, rows: rows.clone() }
             }
 
             QuickStatementsCard {
