@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+use crate::components::copy_button::CopyButton;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
@@ -48,13 +49,16 @@ pub fn QueryPanel() -> Element {
                 details { class: "query-panel",
                     summary { "{t(locale, TextKey::SparqlQuery)}" }
                     div { class: "query-body",
-                        pre { class: "query-text", "{q.as_ref()}" }
-                        crate::components::copy_button::CopyButton {
-                            text: q.clone(),
-                            title: t(locale, TextKey::CopySparqlQuery),
-                            locale,
-                            class: "btn btn-xs copy-btn query-copy-btn",
+                        div { class: "query-actions",
+                            span { class: "query-label", "{t(locale, TextKey::SparqlQuery)}" }
+                            CopyButton {
+                                text: q.clone(),
+                                title: t(locale, TextKey::CopySparqlQuery),
+                                locale,
+                                class: "btn btn-xs copy-btn query-copy-btn",
+                            }
                         }
+                        pre { class: "query-text", "{q.as_ref()}" }
                     }
                 }
             }

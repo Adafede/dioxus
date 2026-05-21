@@ -178,8 +178,8 @@ impl CurationUiState {
         Self {
             processing: *controller.processing.read(),
             awaiting_second_pass: *controller.awaiting_second_pass.read(),
-            has_rows: controller.rows.read().len() > 0,
-            has_results: controller.result_rows.read().len() > 0,
+            has_rows: !controller.rows.read().is_empty(),
+            has_results: !controller.result_rows.read().is_empty(),
             has_status_message: controller.status_message.read().is_some(),
         }
     }

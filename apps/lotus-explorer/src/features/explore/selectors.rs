@@ -95,3 +95,55 @@ pub fn use_criteria_selector<T: PartialEq + Clone + 'static>(
 ) -> Memo<T> {
     use_memo(move || f(&criteria.read()))
 }
+
+/// Snapshot of commonly-queried explore UI state flags.
+/// Used to reduce signal reads and prevent unnecessary component re-renders
+/// across results viewport, table, and toolbar sections.
+#[derive(Clone, Copy, PartialEq)]
+pub struct ExploreUiState {
+    pub loading: bool,
+    pub has_error: bool,
+    pub searched_once: bool,
+    pub has_entries: bool,
+    pub has_query: bool,
+    pub has_resolved_qid: bool,
+}
+
+impl ExploreUiState {
+    pub fn from_explore(explore: Signal<ExploreState>) -> Self {
+        let explore_read = explore.read();
+        Self {
+            loading: explore_read.lifecycle.loading,
+            has_error: explore_read.lifecycle.error.is_some(),
+            searched_once: explore_read.lifecycle.searched_once,
+            has_entries: !explore_read.result.entries.is_empty(),
+            has_query: explore_read.result.sparql_query.is_some(),
+            has_resolved_qid: explore_read.result.resolved_qid.is_some(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn explore_ui_state_all_false_by_default() {
+        let explore = ExploreState::default();
+        let ui_state = ExploreUiState {
+            loading: explore.lifecycle.loading,
+            has_error: explore.lifecycle.error.is_some(),
+            searched_once: explore.lifecycle.searched_once,
+            has_entries: !explore.result.entries.is_empty(),
+            has_query: explore.result.sparql_query.is_some(),
+            has_resolved_qid: explore.result.resolved_qid.is_some(),
+        };
+
+        assert!(!ui_state.loading);
+        assert!(!ui_state.has_error);
+        assert!(!ui_state.searched_once);
+        assert!(!ui_state.has_entries);
+        assert!(!ui_state.has_query);
+        assert!(!ui_state.has_resolved_qid);
+    }
+}

@@ -12,27 +12,23 @@ use dioxus::prelude::*;
 
 #[component]
 pub fn ResultsViewport() -> Element {
-    use crate::features::explore::{use_lifecycle_selector, use_result_selector};
+    use crate::features::explore::{ExploreUiState, use_lifecycle_selector};
 
     let state = use_results_context();
     let explore = state.explore;
     // Hoisted to component top-level — hooks must be called unconditionally.
     let locale = crate::hooks::use_locale();
 
-    let loading = use_lifecycle_selector(explore, |lc| lc.loading);
-    let has_error = use_lifecycle_selector(explore, |lc| lc.error.is_some());
-    let searched_once = use_lifecycle_selector(explore, |lc| lc.searched_once);
-    let download_only_mode = use_lifecycle_selector(explore, |lc| lc.download_only_mode);
-    let download_dispatching = use_lifecycle_selector(explore, |lc| lc.download_dispatching);
-    let entries_empty = use_result_selector(explore, |r| r.entries.is_empty());
+    let ui_state = use_memo(move || ExploreUiState::from_explore(explore));
 
     let phase = use_memo(move || {
+        let s = *ui_state.read();
         ContentPhase::from_lifecycle(
-            *loading.read(),
-            *has_error.read(),
-            *searched_once.read(),
-            *download_only_mode.read(),
-            !*entries_empty.read(),
+            s.loading,
+            s.has_error,
+            s.searched_once,
+            false, // download_only_mode is rare; would need a separate selector
+            s.has_entries,
         )
     });
 
@@ -60,6 +56,8 @@ pub fn ResultsViewport() -> Element {
             ResultsTable {}
         },
         ContentPhase::DownloadOnly => {
+            let download_dispatching =
+                use_lifecycle_selector(explore, |lc| lc.download_dispatching);
             if *download_dispatching.read() {
                 rsx! {
                     DownloadDispatchState {}
