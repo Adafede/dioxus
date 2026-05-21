@@ -369,8 +369,5 @@ a:hover { text-decoration: underline; }
   .draw-wrap     { padding-left: 32px; padding-right: 32px; }
 }
 
-/* Cap inner-content width on very wide monitors so lines don't get too long
-   and the four stat cards don't stretch awkwardly. */
-@media (min-width: 1800px) {
-  .results-wrap { max-width: 1760px; }
-}
+/* Removed max-width constraint to allow stats and results to expand freely
+   on wide monitors, matching the behavior of share and hashes panels. */

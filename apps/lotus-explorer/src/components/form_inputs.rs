@@ -22,6 +22,12 @@ pub fn TextInput(
     placeholder: Option<String>,
     hint: Option<String>,
 ) -> Element {
+    let hint_id = if hint.is_some() {
+        format!("{id}-hint")
+    } else {
+        String::new()
+    };
+
     rsx! {
         div { class: "form-section",
             if !label.is_empty() {
@@ -34,11 +40,12 @@ pub fn TextInput(
                 class: "form-input",
                 value: "{value}",
                 placeholder: placeholder.unwrap_or_default(),
+                aria_describedby: if !hint_id.is_empty() { "{hint_id}" } else { "" },
                 oninput: move |e| on_change.call(e.value()),
             }
 
             if let Some(hint_text) = hint {
-                p { class: "form-hint", "{hint_text}" }
+                p { id: "{hint_id}", class: "form-hint sr-hint", "{hint_text}" }
             }
         }
     }
@@ -56,6 +63,8 @@ pub fn RangeInput(
     max_label: String,
 ) -> Element {
     let parse_f64 = |s: &str| s.parse::<f64>().unwrap_or(0.0);
+    let min_id = "range-min-input";
+    let max_id = "range-max-input";
 
     rsx! {
         div { class: "form-section",
@@ -63,8 +72,9 @@ pub fn RangeInput(
 
             div { class: "range-inputs",
                 div { class: "range-pair",
-                    label { class: "form-label sm", "{min_label}" }
+                    label { class: "form-label sm", r#for: "{min_id}", "{min_label}" }
                     input {
+                        id: "{min_id}",
                         r#type: "number",
                         class: "form-input",
                         value: "{min_value}",
@@ -74,8 +84,9 @@ pub fn RangeInput(
                 }
 
                 div { class: "range-pair",
-                    label { class: "form-label sm", "{max_label}" }
+                    label { class: "form-label sm", r#for: "{max_id}", "{max_label}" }
                     input {
+                        id: "{max_id}",
                         r#type: "number",
                         class: "form-input",
                         value: "{max_value}",

@@ -26,11 +26,10 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::QueryHash => "Hash della query",
         TextKey::ResultHash => "Hash del risultato",
         TextKey::CopyTaxonQid => "Copia QID del taxon",
-        TextKey::CopyFullQueryHash => "Copia hash completo della query (SHA-256)",
-        TextKey::CopyFullResultHash => "Copia hash completo del risultato (SHA-256)",
-        TextKey::CopyShareableLink => "Copia link condivisibile",
-        TextKey::CopySparqlQuery => "Copia query SPARQL",
-        TextKey::ArchiveNotice => "Archivio congelato:",
+         TextKey::CopyFullQueryHash => "Copia hash completo della query (SHA-256)",
+         TextKey::CopyFullResultHash => "Copia hash completo del risultato (SHA-256)",
+         TextKey::CopyShareableLink => "Copia link condivisibile",
+         TextKey::ArchiveNotice => "Archivio congelato:",
         TextKey::Unique => "Uniche",
         TextKey::LoadingTitle => "Interrogazione di Wikidata tramite QLever...",
         TextKey::LoadingHint => {
@@ -137,11 +136,10 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::DownloadRdfTitle => "Scarica i risultati in RDF (Turtle)",
         TextKey::DownloadRdfLabel => "Scarica RDF",
         TextKey::DownloadMetadataTitle => "Scarica metadati Schema.org (JSON-LD)",
-        TextKey::DownloadMetadataLabel => "Scarica metadati",
-        TextKey::OpenInQlever => "Apri in QLever",
-        TextKey::OpenInQleverTitle => "Apri questa query nell'interfaccia web di QLever",
-        TextKey::SparqlQuery => "Mostra la query SPARQL",
-        TextKey::NoResults => "Nessun risultato. Prova ad ampliare la ricerca.",
+         TextKey::DownloadMetadataLabel => "Scarica metadati",
+         TextKey::OpenInQlever => "Apri in QLever",
+         TextKey::OpenInQleverTitle => "Apri questa query nell'interfaccia web di QLever",
+         TextKey::NoResults => "Nessun risultato. Prova ad ampliare la ricerca.",
         TextKey::StageTaxonSearch => "risoluzione del taxon",
         TextKey::StageResultsQuery => "recupero risultati",
         TextKey::DisplayCappedHint => {
@@ -166,7 +164,9 @@ pub fn it_t(key: TextKey) -> &'static str {
         TextKey::OpenFullSizeDepiction => "Apri la rappresentazione a dimensione piena",
         TextKey::OpenInWikidata => "Apri in Wikidata",
         TextKey::OpenInScholia => "Apri in Scholia",
-        TextKey::OpenDoi => "Apri DOI",
-        TextKey::Statement => "Dichiarazione",
-    }
-}
+         TextKey::OpenDoi => "Apri DOI",
+         TextKey::Statement => "Dichiarazione",
+         TextKey::SparqlQuery => "Query SPARQL",
+         TextKey::CopySparqlQuery => "Copia query SPARQL",
+     }
+ }

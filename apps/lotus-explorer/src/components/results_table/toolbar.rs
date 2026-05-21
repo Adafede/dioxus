@@ -4,7 +4,7 @@
 //! Toolbar assembly for the results table: query panel, stats bar, downloads,
 //! and the capped-rows notice.
 
-use super::table_toolbar_sections::{CappedRowsNotice, QueryPanel, StatBar};
+use super::table_toolbar_sections::{CappedRowsNotice, StatBar};
 use dioxus::prelude::*;
 
 /// Toolbar: query panel + stats bar + download actions + capped-rows notice.
@@ -14,7 +14,7 @@ use dioxus::prelude::*;
 #[component]
 pub(super) fn ResultsToolbar() -> Element {
     rsx! {
-        QueryPanel {}
+        super::table_toolbar_sections::QueryPanel {}
         div { class: "results-toolbar",
             StatBar {}
             super::table_toolbar_sections::DownloadActionsGroup {}

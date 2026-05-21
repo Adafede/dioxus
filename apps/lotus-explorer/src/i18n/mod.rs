@@ -105,12 +105,11 @@ pub enum TextKey {
     ResolvedTaxon,
     QueryHash,
     ResultHash,
-    CopyTaxonQid,
-    CopyFullQueryHash,
-    CopyFullResultHash,
-    CopyShareableLink,
-    CopySparqlQuery,
-    ArchiveNotice,
+     CopyTaxonQid,
+     CopyFullQueryHash,
+     CopyFullResultHash,
+     CopyShareableLink,
+     ArchiveNotice,
     Unique,
     // Loading/welcome
     LoadingTitle,
@@ -199,11 +198,10 @@ pub enum TextKey {
     DownloadRdfTitle,
     DownloadRdfLabel,
     DownloadMetadataTitle,
-    DownloadMetadataLabel,
-    OpenInQlever,
-    OpenInQleverTitle,
-    SparqlQuery,
-    NoResults,
+     DownloadMetadataLabel,
+     OpenInQlever,
+     OpenInQleverTitle,
+     NoResults,
     DisplayCappedHint,
     // Columns
     Structure,
@@ -226,9 +224,11 @@ pub enum TextKey {
     OpenFullSizeDepiction,
     OpenInWikidata,
     OpenInScholia,
-    OpenDoi,
-    Statement,
-}
+     OpenDoi,
+     Statement,
+     SparqlQuery,
+     CopySparqlQuery,
+ }
 
 /// Resolve a [`TextKey`] for the given [`Locale`].
 ///
@@ -301,6 +301,48 @@ mod tests {
                 assert!(
                     !msg.is_empty(),
                     "Error message for {:?} in {:?} should not be empty",
+                    key,
+                    locale
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn all_text_keys_have_translations_in_all_locales() {
+        let keys = vec![
+            TextKey::Share,
+            TextKey::Copy,
+            TextKey::Copied,
+            TextKey::Notice,
+            TextKey::Search,
+            TextKey::Searching,
+            TextKey::RunSearch,
+            TextKey::SkipToResults,
+            TextKey::DatasetStatistics,
+            TextKey::NoResults,
+            TextKey::Error,
+            TextKey::TableTriplesAria,
+            TextKey::Structure,
+            TextKey::Compound,
+            TextKey::Mass,
+            TextKey::Formula,
+            TextKey::TaxonCol,
+            TextKey::Reference,
+            TextKey::Year,
+            TextKey::Taxon,
+            TextKey::DownloadResults,
+            TextKey::DownloadCsvTitle,
+            TextKey::DownloadJsonTitle,
+            TextKey::DownloadRdfTitle,
+        ];
+
+        for key in keys.iter() {
+            for locale in &[Locale::En, Locale::Fr, Locale::De, Locale::It] {
+                let text = t(*locale, *key);
+                assert!(
+                    !text.is_empty(),
+                    "TextKey {:?} has empty translation in {:?}",
                     key,
                     locale
                 );

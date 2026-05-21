@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 1700px;
+  max-width: 100%;
   width: 100%;
 }
 
@@ -19,10 +19,21 @@
   padding: 10px 12px;
   background: var(--panel-bg-soft);
   box-shadow: var(--panel-shadow);
+  width: 100%;
+  min-width: 0;
 }
 
 .results-toolbar > .stat-bar,
 .results-toolbar > .toolbar-actions {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Stats */
+.stat-bar {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
   width: 100%;
   min-width: 0;
 }
@@ -137,7 +148,7 @@
 }
 
 .sort-icon { color: var(--text3); font-size: var(--fs-0); font-weight: 700; line-height: 1; margin-left: 0; margin-top: 0; }
-.data-row { border-bottom: 1px solid var(--results-border); transition: background .14s ease; }
+.data-row { border-bottom: 1px solid var(--results-border); transition: background .14s ease; contain: layout paint; }
 .data-row:hover { background: color-mix(in srgb, var(--surface2) 84%, var(--bg2)); }
 .results-table tbody tr:nth-child(odd) td { background: color-mix(in srgb, var(--surface) 94%, transparent); }
 .results-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface) 88%, transparent); }
@@ -153,9 +164,6 @@
   min-width: 0;
 }
 
-/* Stats */
-.stat-bar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
-
 .stat-badge {
   display: flex;
   flex-direction: column;
@@ -168,6 +176,7 @@
   box-shadow: var(--shadow-xs);
   position: relative;
   overflow: hidden;
+  flex: 1 1 0;
 }
 
 .stat-badge::before {
@@ -180,8 +189,8 @@
   background: var(--wd-reference);
 }
 
-.stat-value-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; min-width: 0; }
-.stat-value { font-size: var(--fs-stat); font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; min-width: 0; }
+.stat-value-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; min-width: 0; width: 100%; justify-content: center; }
+.stat-value { font-size: var(--fs-stat); font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; min-width: 0; flex: 0 1 auto; line-height: 1.2; }
 
 .stat-secondary-row {
   display: flex;
@@ -190,6 +199,8 @@
   gap: 6px;
   min-width: 0;
   max-width: 100%;
+  width: 100%;
+  justify-content: center;
 }
 
 .stat-secondary-label {
@@ -202,8 +213,9 @@
   border: 1px solid var(--results-border);
   border-radius: 999px;
   padding: 1px 6px;
-  white-space: normal;
+  white-space: nowrap;
   overflow-wrap: anywhere;
+  flex: 0 0 auto;
 }
 
 .stat-value-secondary {
@@ -214,6 +226,7 @@
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
+  flex: 0 0 auto;
 }
 
 .stat-label {
@@ -224,6 +237,8 @@
   min-width: 0;
   overflow-wrap: anywhere;
   font-weight: 700;
+  width: 100%;
+  text-align: center;
 }
 
 .stat-badge:nth-child(1),
