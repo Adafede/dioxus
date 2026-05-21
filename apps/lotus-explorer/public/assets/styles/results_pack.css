@@ -64,11 +64,18 @@
 }
 
 .dl-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   min-width: 0;
   max-width: 100%;
+  align-items: center;
 }
 
 .dl-group .btn {
+  border-radius: var(--radius-sm);
+  border-right-width: 1px;
+  flex: 1 1 160px;
   min-width: 0;
 }
 

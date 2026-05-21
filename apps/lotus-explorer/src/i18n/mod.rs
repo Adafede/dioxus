@@ -105,11 +105,11 @@ pub enum TextKey {
     ResolvedTaxon,
     QueryHash,
     ResultHash,
-     CopyTaxonQid,
-     CopyFullQueryHash,
-     CopyFullResultHash,
-     CopyShareableLink,
-     ArchiveNotice,
+    CopyTaxonQid,
+    CopyFullQueryHash,
+    CopyFullResultHash,
+    CopyShareableLink,
+    ArchiveNotice,
     Unique,
     // Loading/welcome
     LoadingTitle,
@@ -198,10 +198,10 @@ pub enum TextKey {
     DownloadRdfTitle,
     DownloadRdfLabel,
     DownloadMetadataTitle,
-     DownloadMetadataLabel,
-     OpenInQlever,
-     OpenInQleverTitle,
-     NoResults,
+    DownloadMetadataLabel,
+    OpenInQlever,
+    OpenInQleverTitle,
+    NoResults,
     DisplayCappedHint,
     // Columns
     Structure,
@@ -224,11 +224,11 @@ pub enum TextKey {
     OpenFullSizeDepiction,
     OpenInWikidata,
     OpenInScholia,
-     OpenDoi,
-     Statement,
-     SparqlQuery,
-     CopySparqlQuery,
- }
+    OpenDoi,
+    Statement,
+    SparqlQuery,
+    CopySparqlQuery,
+}
 
 /// Resolve a [`TextKey`] for the given [`Locale`].
 ///

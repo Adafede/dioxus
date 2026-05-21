@@ -260,17 +260,17 @@ pub fn DownloadActionsGroup() -> Element {
                             "{metadata_label}"
                         }
                     }
-                }
-            }
-            if let Some(url) = toolbar_model.qlever_ui_url.as_deref() {
-                a {
-                    class: "btn btn-sm",
-                    href: "{url}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    title: "{qlever_title}",
-                    aria_label: "{qlever_title}",
-                    "{qlever_label}"
+                    if let Some(url) = toolbar_model.qlever_ui_url.as_deref() {
+                        a {
+                            class: "btn btn-sm",
+                            href: "{url}",
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                            title: "{qlever_title}",
+                            aria_label: "{qlever_title}",
+                            "{qlever_label}"
+                        }
+                    }
                 }
             }
         }
