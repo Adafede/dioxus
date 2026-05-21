@@ -36,11 +36,7 @@ pub fn finalize(
     let filtered_stats = if direct_download_mode {
         None
     } else {
-        Some(
-            raw_stats
-                .clone()
-                .unwrap_or_else(|| DatasetStats::from_entries(rows)),
-        )
+        Some(raw_stats.unwrap_or_else(|| DatasetStats::from_entries(rows)))
     };
     let filtered_matches = if direct_download_mode {
         None

@@ -67,7 +67,7 @@ impl std::fmt::Display for QueryStage {
 // ── Taxon warning (structured, formatted at UI boundary) ─────────────────────
 
 /// A structured warning about taxon resolution, formatted by the UI layer.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TaxonWarning {
     /// The raw input was normalised before lookup.
     Standardized {
@@ -88,7 +88,7 @@ pub enum TaxonWarning {
 // ── Domain error hierarchy (i18n-free) ───────────────────────────────────────
 
 /// Fine-grained validation fault.
-#[derive(Clone, Debug, PartialEq, Error)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum ValidationFault {
     #[error("empty input")]
     EmptyInput,
@@ -117,7 +117,7 @@ pub enum ValidationFault {
 /// Fine-grained CSV / data parse fault.
 ///
 /// Parse variants are scoped to active Explore pipeline stages.
-#[derive(Clone, Debug, PartialEq, Error)]
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum ParseFault {
     #[error("taxon csv parse failed: {details}")]
     TaxonCsv { details: String },
@@ -194,7 +194,7 @@ impl DomainError {
     }
 
     /// Extract the query stage at which this error occurred, if applicable.
-    pub fn query_stage(&self) -> QueryStage {
+    pub const fn query_stage(&self) -> QueryStage {
         match self {
             Self::Transport { stage, .. } => *stage,
             #[cfg(target_arch = "wasm32")]

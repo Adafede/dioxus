@@ -11,7 +11,7 @@ pub fn metrics_for_inactive_phase(_: &MetricsState) -> MetricsState {
 /// `logged_waiting_loading` must be `true` only when telemetry was emitted
 /// during this tick; this keeps the guard aligned with log side effects.
 #[must_use]
-pub fn metrics_for_waiting_loading_phase(
+pub const fn metrics_for_waiting_loading_phase(
     metrics: &MetricsState,
     logged_waiting_loading: bool,
 ) -> MetricsState {
@@ -26,7 +26,7 @@ pub fn metrics_for_waiting_loading_phase(
 /// `logged_waiting_query` must be `true` only when telemetry was emitted
 /// during this tick; this keeps the guard aligned with log side effects.
 #[must_use]
-pub fn metrics_for_waiting_query_phase(
+pub const fn metrics_for_waiting_query_phase(
     metrics: &MetricsState,
     logged_waiting_query: bool,
 ) -> MetricsState {

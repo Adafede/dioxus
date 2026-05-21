@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 #[derive(Debug)]
-pub(crate) struct WikidataCompound {
+pub struct WikidataCompound {
     pub(crate) qid: String,
     pub(crate) canonical_smiles: Option<String>,
     pub(crate) isomeric_smiles: Option<String>,
@@ -12,7 +12,7 @@ pub(crate) struct WikidataCompound {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct DependencyResolution {
+pub struct DependencyResolution {
     pub(crate) taxon_qid: Option<String>,
     pub(crate) reference_qid: Option<String>,
     pub(crate) dependency_blocks: Vec<String>,
@@ -20,7 +20,7 @@ pub(crate) struct DependencyResolution {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct MassResolution {
+pub struct MassResolution {
     pub(crate) exact_mass: Option<f64>,
     pub(crate) warning: Option<String>,
 }

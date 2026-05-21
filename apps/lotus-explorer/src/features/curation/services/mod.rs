@@ -24,7 +24,7 @@ mod helpers;
 mod http_client;
 mod occurrence_cache;
 mod reference_metadata;
-pub(crate) mod wikidata;
+pub mod wikidata;
 
 use chemical::{convert_smiles, has_undefined_stereo, resolve_exact_mass};
 use helpers::{
@@ -44,7 +44,5 @@ pub mod quickstatements;
 
 #[cfg(test)]
 pub(crate) use chemical::extract_exact_mass_from_json;
-pub(crate) use enrichment::curate_single_row;
-pub(crate) use helpers::{
-    extract_formula_from_inchi, normalize_formula_for_wikidata, qs_mass_statement,
-};
+pub use enrichment::curate_single_row;
+pub use helpers::{extract_formula_from_inchi, normalize_formula_for_wikidata, qs_mass_statement};

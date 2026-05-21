@@ -48,7 +48,7 @@ pub(super) fn escape_qs_string(value: &str) -> String {
 
 /// Format a Wikidata QuickStatements mass statement using the dalton unit (Q483261).
 /// Unit syntax is `U<QID>` - there is NO leading `Q` after the `U`.
-pub(crate) fn qs_mass_statement(subject: &str, mass: f64) -> String {
+pub fn qs_mass_statement(subject: &str, mass: f64) -> String {
     format!("{subject}|P2067|+{mass:.6}U483261")
 }
 
@@ -79,7 +79,7 @@ pub(super) fn has_isomeric_smiles(smiles: &str) -> bool {
     has_stereo_marks(smiles)
 }
 
-pub(crate) fn extract_formula_from_inchi(inchi: &str) -> Option<String> {
+pub fn extract_formula_from_inchi(inchi: &str) -> Option<String> {
     let cleaned = inchi.trim();
     if cleaned.is_empty() || !cleaned.starts_with("InChI=") {
         return None;
@@ -91,7 +91,7 @@ pub(crate) fn extract_formula_from_inchi(inchi: &str) -> Option<String> {
     Some(right.to_string())
 }
 
-pub(crate) fn normalize_formula_for_wikidata(value: &str) -> String {
+pub fn normalize_formula_for_wikidata(value: &str) -> String {
     value
         .chars()
         .map(|ch| match ch {

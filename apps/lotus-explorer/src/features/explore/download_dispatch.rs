@@ -29,7 +29,7 @@ pub fn use_startup_effect<R: LotusRepository>(
     search_tasks: SearchTaskController,
     repo: R,
 ) {
-    let repo_for_effect = repo.clone();
+    let repo_for_effect = repo;
     use_effect(move || {
         let repo = repo_for_effect.clone();
         let pending = app_state.read().download.pending_format;
@@ -158,7 +158,7 @@ pub fn use_download_dispatch_effect(
                     )
                     .await
                     {
-                        telemetry::download_dispatch_error(format.log_name(), &err.to_string());
+                        telemetry::download_dispatch_error(format.log_name(), &err);
                     }
                     dispatch_explore_action(explore, ExploreAction::DownloadDispatchFinished);
                 });

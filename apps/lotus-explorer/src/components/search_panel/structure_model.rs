@@ -27,7 +27,7 @@ pub(super) fn build_structure_section_model(
 }
 
 #[must_use]
-fn kind_class(kind: StructureKind) -> &'static str {
+const fn kind_class(kind: StructureKind) -> &'static str {
     match kind {
         StructureKind::Empty => "empty",
         StructureKind::Smiles => "smiles",
@@ -37,7 +37,7 @@ fn kind_class(kind: StructureKind) -> &'static str {
 }
 
 #[must_use]
-fn kind_note_key(kind: StructureKind) -> Option<TextKey> {
+const fn kind_note_key(kind: StructureKind) -> Option<TextKey> {
     match kind {
         StructureKind::Empty => None,
         StructureKind::Smiles => Some(TextKey::KindNoteSmiles),

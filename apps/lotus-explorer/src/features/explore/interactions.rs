@@ -26,7 +26,7 @@ pub struct ExploreInteractions {
 }
 
 impl ExploreInteractions {
-    pub fn new(
+    pub const fn new(
         criteria: Signal<SearchCriteria>,
         form: FormCriteriaContext,
         explore: Signal<ExploreState>,

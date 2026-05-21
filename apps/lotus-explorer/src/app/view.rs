@@ -17,7 +17,7 @@ impl AppView {
         }
     }
 
-    pub fn query_value(self) -> Option<&'static str> {
+    pub const fn query_value(self) -> Option<&'static str> {
         match self {
             Self::Explore => None,
             Self::Curation => Some("curation-explorer"),

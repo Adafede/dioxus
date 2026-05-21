@@ -36,7 +36,7 @@ pub struct InitialUrlState {
 ///
 /// Accepts `"1"`, `"true"`, `"yes"`, and `"on"` (case-insensitive, trimmed).
 /// All other values — including absent keys — are treated as false.
-pub(crate) fn is_true_flag(v: &str) -> bool {
+pub fn is_true_flag(v: &str) -> bool {
     matches!(
         v.trim().to_ascii_lowercase().as_str(),
         "1" | "true" | "yes" | "on"

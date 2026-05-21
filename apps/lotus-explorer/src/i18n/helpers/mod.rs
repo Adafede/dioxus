@@ -49,7 +49,7 @@ pub fn format_count(locale: Locale, value: usize) -> String {
     group_digits(value, sep)
 }
 
-pub fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static str {
+pub const fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'static str {
     match (locale, noun, count == 1) {
         (Locale::En, CountNoun::Compound, true) => "Compound",
         (Locale::En, CountNoun::Compound, false) => "Compounds",

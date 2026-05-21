@@ -64,7 +64,7 @@ impl Default for AppState {
 // ── Download State: Orchestration ─────────────────────────────────────────────
 
 /// Download action orchestration and pending-format queue.
-#[derive(Clone, PartialEq, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct DownloadState {
     /// Parsed pending programmatic download format.
     pub pending_format: Option<DownloadFormat>,
@@ -82,7 +82,7 @@ pub struct DownloadState {
 /// Guards that prevent duplicate log events during the download-wait sequence.
 ///
 /// These are reset to `false` once the awaited condition resolves.
-#[derive(Clone, PartialEq, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct MetricsState {
     /// We already logged "waiting for loading to finish" this dispatch cycle.
     pub waiting_loading_logged: bool,

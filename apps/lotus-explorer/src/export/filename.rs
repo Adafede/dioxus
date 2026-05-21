@@ -34,7 +34,7 @@ pub fn now_iso8601() -> String {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn epoch_to_ymdhms(secs: i64) -> (i32, u32, u32, u32, u32, u32) {
+const fn epoch_to_ymdhms(secs: i64) -> (i32, u32, u32, u32, u32, u32) {
     // Dependency-free date conversion (Howard Hinnant, public domain).
     let days = secs.div_euclid(86_400);
     let rem = secs.rem_euclid(86_400);

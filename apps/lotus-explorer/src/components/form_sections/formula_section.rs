@@ -112,7 +112,7 @@ pub fn FormulaSection() -> Element {
         br_state: c.br_state,
         i_state: c.i_state,
     });
-    let criteria = criteria.read().clone();
+    let criteria = criteria.read();
     let enabled = criteria.formula_enabled;
 
     rsx! {

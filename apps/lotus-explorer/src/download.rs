@@ -33,7 +33,7 @@ impl DownloadFormat {
         }
     }
 
-    pub fn extension(&self) -> &'static str {
+    pub const fn extension(&self) -> &'static str {
         match self {
             Self::Csv => "csv",
             Self::Json => "json",
@@ -41,7 +41,7 @@ impl DownloadFormat {
         }
     }
 
-    pub fn log_name(&self) -> &'static str {
+    pub const fn log_name(&self) -> &'static str {
         match self {
             Self::Csv => "csv",
             Self::Json => "json",
@@ -49,7 +49,7 @@ impl DownloadFormat {
         }
     }
 
-    pub fn timer_label(&self) -> &'static str {
+    pub const fn timer_label(&self) -> &'static str {
         match self {
             Self::Csv => "LOTUS:download_csv",
             Self::Json => "LOTUS:download_json",

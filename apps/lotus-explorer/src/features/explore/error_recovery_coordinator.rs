@@ -166,7 +166,7 @@ fn backoff_delay_ms(attempt: u32) -> u64 {
 }
 
 /// Determine whether partial results should be cleared after error at given stage.
-pub fn should_clear_state_on_error(error_stage: QueryStage) -> bool {
+pub const fn should_clear_state_on_error(error_stage: QueryStage) -> bool {
     match error_stage {
         QueryStage::TaxonSearch => true, // Everything downstream is invalid
         QueryStage::ResultsQuery => false, // Keep previous results visible

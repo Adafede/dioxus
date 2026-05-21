@@ -20,7 +20,7 @@ enum AskCacheKey {
 }
 
 #[derive(Default)]
-pub(crate) struct OccurrenceAskCache {
+pub struct OccurrenceAskCache {
     values: HashMap<AskCacheKey, bool>,
 }
 
@@ -37,7 +37,7 @@ fn write_cached_ask(cache: &Mutex<OccurrenceAskCache>, key: AskCacheKey, value: 
     }
 }
 
-pub(crate) async fn compound_has_taxon_cached(
+pub async fn compound_has_taxon_cached(
     repository: &dyn CurationKnowledgeRepository,
     cache: &Mutex<OccurrenceAskCache>,
     compound_qid: &str,
@@ -59,7 +59,7 @@ pub(crate) async fn compound_has_taxon_cached(
     Ok(value)
 }
 
-pub(crate) async fn compound_has_taxon_with_ref_cached(
+pub async fn compound_has_taxon_with_ref_cached(
     repository: &dyn CurationKnowledgeRepository,
     cache: &Mutex<OccurrenceAskCache>,
     compound_qid: &str,

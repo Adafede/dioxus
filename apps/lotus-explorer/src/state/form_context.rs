@@ -14,7 +14,7 @@ pub struct FormCriteriaContext {
 }
 
 impl FormCriteriaContext {
-    pub fn new(criteria: Signal<SearchCriteria>, baseline: Signal<SearchCriteria>) -> Self {
+    pub const fn new(criteria: Signal<SearchCriteria>, baseline: Signal<SearchCriteria>) -> Self {
         Self { criteria, baseline }
     }
 

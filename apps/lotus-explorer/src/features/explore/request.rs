@@ -16,7 +16,7 @@ pub struct SearchRequest {
 
 impl SearchRequest {
     #[must_use]
-    pub fn new(criteria: SearchCriteria, command: SearchCommand) -> Self {
+    pub const fn new(criteria: SearchCriteria, command: SearchCommand) -> Self {
         Self {
             criteria,
             command,
@@ -25,7 +25,7 @@ impl SearchRequest {
     }
 
     #[must_use]
-    pub fn with_request_token(mut self, request_token: u64) -> Self {
+    pub const fn with_request_token(mut self, request_token: u64) -> Self {
         self.request_token = request_token;
         self
     }
@@ -39,7 +39,7 @@ impl SearchRequest {
     }
 
     #[must_use]
-    pub fn criteria(&self) -> &SearchCriteria {
+    pub const fn criteria(&self) -> &SearchCriteria {
         &self.criteria
     }
 

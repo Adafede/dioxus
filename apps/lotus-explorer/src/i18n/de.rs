@@ -5,7 +5,7 @@
 
 use crate::i18n::TextKey;
 
-pub fn de_t(key: TextKey) -> &'static str {
+pub const fn de_t(key: TextKey) -> &'static str {
     match key {
         TextKey::Share => "Teilen",
         TextKey::Copy => "Kopieren",

@@ -79,7 +79,7 @@ pub(super) fn VirtualizedResultsTable(
                                 ResultsRowsWindow {
                                     locale,
                                     text,
-                                    rows: rows.clone(),
+                                    rows: rows,
                                     prepared_rows: render_model.prepared_rows.clone(),
                                     order: render_model.sorted_indices.clone(),
                                     start_row: render_model.start_row,

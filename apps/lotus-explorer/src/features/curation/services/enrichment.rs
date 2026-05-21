@@ -9,7 +9,7 @@ use crate::features::curation::repositories::CurationKnowledgeRepository;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub(crate) async fn curate_single_row(
+pub async fn curate_single_row(
     locale: Locale,
     input: CurationInputRow,
     repository: Arc<dyn CurationKnowledgeRepository>,

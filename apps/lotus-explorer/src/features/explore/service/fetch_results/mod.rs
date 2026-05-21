@@ -33,7 +33,7 @@ pub struct FetchHooks<OnFetching, OnProcessing> {
 }
 
 impl<OnFetching, OnProcessing> FetchHooks<OnFetching, OnProcessing> {
-    pub fn new(on_fetching: OnFetching, on_processing: OnProcessing) -> Self {
+    pub const fn new(on_fetching: OnFetching, on_processing: OnProcessing) -> Self {
         Self {
             on_fetching,
             on_processing,
@@ -91,7 +91,10 @@ pub async fn fetch<R: LotusRepository, OnFetching: Fn(), OnProcessing: Fn()>(
     }
 }
 
-fn plan_full_results_fetch(execution_query: &str, display_limit: usize) -> PlannedResultsFetch<'_> {
+const fn plan_full_results_fetch(
+    execution_query: &str,
+    display_limit: usize,
+) -> PlannedResultsFetch<'_> {
     PlannedResultsFetch {
         execution_query,
         display_limit,

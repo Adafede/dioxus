@@ -20,13 +20,13 @@ use super::scroll_runtime;
 pub(super) struct ResultsTableVirtualizationController {
     pub(super) config: VirtualizationConfig,
     pub(super) state: VirtualizationState,
-    #[allow(dead_code)]
+    #[cfg(target_arch = "wasm32")]
     row_height_px: Signal<usize>,
-    #[allow(dead_code)]
+    #[cfg(target_arch = "wasm32")]
     row_height_measured: Signal<bool>,
-    #[allow(dead_code)]
+    #[cfg(target_arch = "wasm32")]
     first_visible_row: Signal<usize>,
-    #[allow(dead_code)]
+    #[cfg(target_arch = "wasm32")]
     viewport_height_px: Signal<usize>,
     #[cfg(target_arch = "wasm32")]
     scroll_host: Signal<Option<web_sys::HtmlElement>>,
@@ -42,11 +42,12 @@ pub(super) struct ResultsTableVirtualizationController {
 pub(super) fn use_results_table_virtualization(
     total_rows: usize,
 ) -> ResultsTableVirtualizationController {
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let row_height_px = use_signal(|| ROW_HEIGHT_PX_COMFORTABLE);
+    #[cfg(target_arch = "wasm32")]
     let row_height_measured = use_signal(|| false);
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
+    #[cfg(target_arch = "wasm32")]
     let first_visible_row = use_signal(|| 0usize);
+    #[cfg(target_arch = "wasm32")]
     let viewport_height_px = use_signal(|| TABLE_VIEWPORT_FALLBACK_PX);
     #[cfg(target_arch = "wasm32")]
     let scroll_host = use_signal(|| None::<web_sys::HtmlElement>);
@@ -78,9 +79,13 @@ pub(super) fn use_results_table_virtualization(
     ResultsTableVirtualizationController {
         config,
         state,
+        #[cfg(target_arch = "wasm32")]
         row_height_px,
+        #[cfg(target_arch = "wasm32")]
         row_height_measured,
+        #[cfg(target_arch = "wasm32")]
         first_visible_row,
+        #[cfg(target_arch = "wasm32")]
         viewport_height_px,
         #[cfg(target_arch = "wasm32")]
         scroll_host,
@@ -131,7 +136,7 @@ impl ResultsTableVirtualizationController {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(super) fn sync_after_render(&mut self, _total_rows: usize) {}
+    pub(super) const fn sync_after_render(&mut self, _total_rows: usize) {}
 
     pub(super) fn handle_scroll(&self, _total_rows: usize) {
         #[cfg(target_arch = "wasm32")]
@@ -155,7 +160,7 @@ impl ResultsTableVirtualizationController {
 }
 
 #[must_use]
-pub(super) fn build_virtualization_config(row_height_px: usize) -> VirtualizationConfig {
+pub(super) const fn build_virtualization_config(row_height_px: usize) -> VirtualizationConfig {
     VirtualizationConfig {
         row_height_px,
         overscan_rows: VIRTUAL_OVERSCAN_ROWS,

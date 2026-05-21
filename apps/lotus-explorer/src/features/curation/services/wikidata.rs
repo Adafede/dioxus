@@ -4,7 +4,7 @@
 use super::*;
 use std::collections::{HashMap, HashSet};
 
-pub(crate) async fn fetch_wikidata_compound_by_inchikey(
+pub async fn fetch_wikidata_compound_by_inchikey(
     inchikey: &str,
 ) -> Result<Option<WikidataCompound>, CurationError> {
     let query = format!(
@@ -53,7 +53,7 @@ pub(crate) async fn fetch_wikidata_compound_by_inchikey(
 
 /// Returns (Option<QID>, Vec<creation_QS_lines>).
 /// If the taxon exists, returns (Some(qid), []). Otherwise returns (None, <minimal CREATE QS>).
-pub(crate) async fn resolve_or_create_taxon(
+pub async fn resolve_or_create_taxon(
     name: &str,
     pre_resolved_qid: Option<&str>,
 ) -> Result<(Option<String>, Vec<String>), CurationError> {
@@ -309,7 +309,7 @@ pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, Cura
     extract_first_qid(&raw, "taxon")
 }
 
-pub(crate) async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, CurationError> {
+pub async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, CurationError> {
     let query = format!(
         "{CURATION_SPARQL_PREFIXES}\n\
          SELECT ?ref WHERE {{ ?ref wdt:P356 \"{}\" . }} LIMIT 1",
@@ -321,7 +321,7 @@ pub(crate) async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, C
     extract_first_qid(&raw, "ref")
 }
 
-pub(crate) async fn compound_has_taxon_with_ref(
+pub async fn compound_has_taxon_with_ref(
     compound_qid: &str,
     taxon_qid: &str,
     ref_qid: &str,
@@ -346,7 +346,7 @@ pub(crate) async fn compound_has_taxon_with_ref(
         .unwrap_or(false))
 }
 
-pub(crate) async fn compound_has_taxon(
+pub async fn compound_has_taxon(
     compound_qid: &str,
     taxon_qid: &str,
 ) -> Result<bool, CurationError> {

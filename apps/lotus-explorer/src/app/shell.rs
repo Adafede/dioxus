@@ -29,7 +29,7 @@ use crate::ui::a11y_contract::{MAIN_PANEL_ID, PAGE_TITLE_ID, SKIP_TO_RESULTS_HRE
 use dioxus::prelude::*;
 use std::sync::Arc;
 
-fn locale_lang_tag(locale: Locale) -> &'static str {
+const fn locale_lang_tag(locale: Locale) -> &'static str {
     match locale {
         Locale::En => "en",
         Locale::Fr => "fr",
@@ -63,12 +63,11 @@ pub fn AppRoot() -> Element {
         explore: initial_explore,
     } = bootstrap_app(initial_url_state());
 
-    let app_state: Signal<AppState> = use_signal(move || initial_app_state.clone());
-    let criteria: Signal<SearchCriteria> = use_signal(move || initial_criteria.clone());
-    let criteria_baseline: Signal<SearchCriteria> =
-        use_signal(move || initial_criteria_baseline.clone());
+    let app_state: Signal<AppState> = use_signal(move || initial_app_state);
+    let criteria: Signal<SearchCriteria> = use_signal(move || initial_criteria);
+    let criteria_baseline: Signal<SearchCriteria> = use_signal(move || initial_criteria_baseline);
     let locale: Signal<Locale> = use_signal(move || initial_locale);
-    let explore: Signal<ExploreState> = use_signal(move || initial_explore.clone());
+    let explore: Signal<ExploreState> = use_signal(move || initial_explore);
 
     let services = use_context_provider(AppServices::new);
     let repo = services.repository();
@@ -78,7 +77,7 @@ pub fn AppRoot() -> Element {
     let _results_ctx = use_context_provider(move || ResultsContext::new(explore));
     let search_task_controller = use_context_provider(SearchTaskController::new);
     let _explore_interactions = use_context_provider({
-        let tc = search_task_controller.clone();
+        let tc = search_task_controller;
         move || ExploreInteractions::new(criteria, form_ctx, explore, tc, repo)
     });
 

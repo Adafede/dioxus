@@ -27,8 +27,7 @@ fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Elemen
     }
 }
 
-#[component]
-fn CurationResultTableRow(locale: Locale, row: Arc<CurationResultRow>) -> Element {
+fn render_curation_result_row(locale: Locale, row: &CurationResultRow) -> Element {
     rsx! {
         tr {
             td { "{row.input.name}" }
@@ -118,7 +117,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     }
                     tbody {
                         for row in rows.iter() {
-                            CurationResultTableRow { locale, row: Arc::new(row.clone()) }
+                            {render_curation_result_row(locale, row)}
                         }
                     }
                 }
@@ -138,7 +137,7 @@ fn status_label(locale: Locale, status: &CurationStatus) -> &'static str {
     curation_status_label(locale, key)
 }
 
-fn status_class(status: &CurationStatus) -> &'static str {
+const fn status_class(status: &CurationStatus) -> &'static str {
     match status {
         CurationStatus::ExistingComplete => "is-ok",
         CurationStatus::ExistingNeedsUpdates => "is-warn",

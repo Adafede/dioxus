@@ -2,99 +2,99 @@
 
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-pub(super) fn heading_add_one_row() -> &'static str {
+pub(super) const fn heading_add_one_row() -> &'static str {
     "Aggiungi una riga"
 }
 
-pub(super) fn heading_tsv_import() -> &'static str {
+pub(super) const fn heading_tsv_import() -> &'static str {
     "Import TSV"
 }
 
-pub(super) fn heading_queued_rows() -> &'static str {
+pub(super) const fn heading_queued_rows() -> &'static str {
     "Righe in coda"
 }
 
-pub(super) fn heading_results() -> &'static str {
+pub(super) const fn heading_results() -> &'static str {
     "Risultati della curation"
 }
 
-pub(super) fn heading_quickstatements() -> &'static str {
+pub(super) const fn heading_quickstatements() -> &'static str {
     "QuickStatements (copia-incolla)"
 }
 
-pub(super) fn heading_quickstatements_dependencies() -> &'static str {
+pub(super) const fn heading_quickstatements_dependencies() -> &'static str {
     "QuickStatements — prerequisiti"
 }
 
-pub(super) fn placeholder_molecule_name() -> &'static str {
+pub(super) const fn placeholder_molecule_name() -> &'static str {
     "Nome molecola"
 }
 
-pub(super) fn placeholder_taxon_optional() -> &'static str {
+pub(super) const fn placeholder_taxon_optional() -> &'static str {
     "Taxon (opzionale)"
 }
 
-pub(super) fn placeholder_doi_optional() -> &'static str {
+pub(super) const fn placeholder_doi_optional() -> &'static str {
     "DOI (opzionale)"
 }
 
-pub(super) fn button_add_row() -> &'static str {
+pub(super) const fn button_add_row() -> &'static str {
     "Aggiungi"
 }
 
-pub(super) fn button_load_example_rows() -> &'static str {
+pub(super) const fn button_load_example_rows() -> &'static str {
     "Carica esempi"
 }
 
-pub(super) fn button_append_tsv_rows() -> &'static str {
+pub(super) const fn button_append_tsv_rows() -> &'static str {
     "Aggiungi righe TSV"
 }
 
-pub(super) fn button_generate_quickstatements() -> &'static str {
+pub(super) const fn button_generate_quickstatements() -> &'static str {
     "Genera QuickStatements"
 }
 
-pub(super) fn button_generating() -> &'static str {
+pub(super) const fn button_generating() -> &'static str {
     "Generazione..."
 }
 
-pub(super) fn button_remove() -> &'static str {
+pub(super) const fn button_remove() -> &'static str {
     "Rimuovi"
 }
 
-pub(super) fn col_name() -> &'static str {
+pub(super) const fn col_name() -> &'static str {
     "Nome"
 }
 
-pub(super) fn col_action() -> &'static str {
+pub(super) const fn col_action() -> &'static str {
     "Azione"
 }
 
-pub(super) fn col_original_smiles() -> &'static str {
+pub(super) const fn col_original_smiles() -> &'static str {
     "SMILES originale"
 }
 
-pub(super) fn col_canonical_smiles() -> &'static str {
+pub(super) const fn col_canonical_smiles() -> &'static str {
     "SMILES canonico"
 }
 
-pub(super) fn col_exact_mass() -> &'static str {
+pub(super) const fn col_exact_mass() -> &'static str {
     "Massa esatta"
 }
 
-pub(super) fn col_status() -> &'static str {
+pub(super) const fn col_status() -> &'static str {
     "Stato"
 }
 
-pub(super) fn label_new_item() -> &'static str {
+pub(super) const fn label_new_item() -> &'static str {
     "nuova voce"
 }
 
-pub(super) fn hint_expected_tsv_headers() -> &'static str {
+pub(super) const fn hint_expected_tsv_headers() -> &'static str {
     "Intestazioni attese: name, smiles, organism/taxon, doi"
 }
 
-pub(super) fn hint_scroll_curation_results() -> &'static str {
+pub(super) const fn hint_scroll_curation_results() -> &'static str {
     "Suggerimento: scorri orizzontalmente per vedere tutte le colonne dei risultati."
 }
 
@@ -134,7 +134,7 @@ pub(super) fn msg_curation_failed(detail: &str) -> String {
     format!("Curation non riuscita: {detail}")
 }
 
-pub(super) fn msg_curation_rate_limited() -> &'static str {
+pub(super) const fn msg_curation_rate_limited() -> &'static str {
     {
         "Limite di richieste raggiunto su un servizio di metadati upstream (HTTP 429). Attendi circa 60 secondi e riprova."
     }
@@ -146,21 +146,21 @@ pub(super) fn msg_prerequisites_pending(count: usize) -> String {
     )
 }
 
-pub(super) fn msg_two_step_hint() -> &'static str {
+pub(super) const fn msg_two_step_hint() -> &'static str {
     {
         "Flusso in due fasi: esegui prima i prerequisiti, crea/unisci quegli elementi in Wikidata, poi fai di nuovo clic su Genera QuickStatements così il blocco principale usa direttamente i QID risolti."
     }
 }
 
-pub(super) fn button_second_pass() -> &'static str {
+pub(super) const fn button_second_pass() -> &'static str {
     "Ho creato gli elementi mancanti, facciamo il resto"
 }
 
-pub(super) fn msg_second_pass_running() -> &'static str {
+pub(super) const fn msg_second_pass_running() -> &'static str {
     "Esecuzione del secondo passaggio sulle righe che dipendevano da elementi mancanti..."
 }
 
-pub(super) fn msg_second_pass_done() -> &'static str {
+pub(super) const fn msg_second_pass_done() -> &'static str {
     {
         "Secondo passaggio completato. I QuickStatements principali sono stati aggiornati con i QID risolti quando disponibili."
     }
@@ -172,55 +172,55 @@ pub(super) fn msg_second_pass_still_pending_count(count: usize) -> String {
     )
 }
 
-pub(super) fn curation_badge_prerequisite_pending() -> &'static str {
+pub(super) const fn curation_badge_prerequisite_pending() -> &'static str {
     "Prerequisito in attesa"
 }
 
-pub(super) fn curation_badge_mass_missing() -> &'static str {
+pub(super) const fn curation_badge_mass_missing() -> &'static str {
     "Massa mancante"
 }
 
-pub(super) fn curation_badge_second_pass_required() -> &'static str {
+pub(super) const fn curation_badge_second_pass_required() -> &'static str {
     "Secondo passaggio richiesto"
 }
 
-pub(super) fn curation_mass_warning_title() -> &'static str {
+pub(super) const fn curation_mass_warning_title() -> &'static str {
     "La massa esatta non è stata risolta dagli endpoint dei descrittori"
 }
 
-pub(super) fn msg_delay_advice() -> &'static str {
+pub(super) const fn msg_delay_advice() -> &'static str {
     {
         "Suggerimento: Wikidata e gli endpoint di query possono richiedere 30-120 secondi per rendere visibili i nuovi elementi."
     }
 }
 
-pub(super) fn curation_qs_dev_label() -> &'static str {
+pub(super) const fn curation_qs_dev_label() -> &'static str {
     "Apri QS-Dev"
 }
 
-pub(super) fn curation_qs_dev_prereq_hint() -> &'static str {
+pub(super) const fn curation_qs_dev_prereq_hint() -> &'static str {
     {
         "Apri QS-Dev, incolla il blocco dei prerequisiti, eseguilo, crea o unisci i nuovi elementi in Wikidata, attendi un momento e poi torna qui per il secondo passaggio."
     }
 }
 
-pub(super) fn curation_qs_dev_main_hint() -> &'static str {
+pub(super) const fn curation_qs_dev_main_hint() -> &'static str {
     "Apri QS-Dev, incolla il blocco principale, controlla i comandi e poi eseguili."
 }
 
-pub(super) fn curation_note_existing_complete() -> &'static str {
+pub(super) const fn curation_note_existing_complete() -> &'static str {
     "La voce esiste già su Wikidata e non sono stati rilevati campi mancanti."
 }
 
-pub(super) fn curation_note_existing_updates() -> &'static str {
+pub(super) const fn curation_note_existing_updates() -> &'static str {
     "Trovata una voce Wikidata esistente: generati QuickStatements di aggiornamento."
 }
 
-pub(super) fn curation_note_new_compound() -> &'static str {
+pub(super) const fn curation_note_new_compound() -> &'static str {
     "Nessuna voce Wikidata trovata tramite InChIKey: generati QuickStatements di creazione."
 }
 
-pub(super) fn curation_note_dependencies_pending() -> &'static str {
+pub(super) const fn curation_note_dependencies_pending() -> &'static str {
     "Le entità prerequisito non sono ancora risolte."
 }
 
@@ -232,19 +232,19 @@ pub(super) fn curation_pending_reference(doi: &str) -> String {
     format!("Il riferimento per il DOI '{doi}' non è ancora disponibile.")
 }
 
-pub(super) fn view_switch_aria() -> &'static str {
+pub(super) const fn view_switch_aria() -> &'static str {
     "Selettore di sezione"
 }
 
-pub(super) fn view_label_explorer() -> &'static str {
+pub(super) const fn view_label_explorer() -> &'static str {
     "Ricerca"
 }
 
-pub(super) fn view_label_curation_explorer() -> &'static str {
+pub(super) const fn view_label_curation_explorer() -> &'static str {
     "Curazione"
 }
 
-pub(super) fn view_label_draw() -> &'static str {
+pub(super) const fn view_label_draw() -> &'static str {
     "Editor di struttura"
 }
 

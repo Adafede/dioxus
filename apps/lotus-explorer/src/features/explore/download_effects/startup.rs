@@ -7,7 +7,7 @@ use crate::download::DownloadFormat;
 /// * Not currently loading
 /// * Either pending download format or direct-execute flag is set
 #[must_use]
-pub fn should_trigger_startup_search(
+pub const fn should_trigger_startup_search(
     pending_format: Option<DownloadFormat>,
     direct_execute: bool,
     searched_once: bool,

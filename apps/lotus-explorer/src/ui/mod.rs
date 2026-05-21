@@ -28,7 +28,7 @@ pub enum ContentPhase {
 
 impl ContentPhase {
     /// Determine phase from lifecycle state selectors.
-    pub fn from_lifecycle(
+    pub const fn from_lifecycle(
         loading: bool,
         error: bool,
         searched_once: bool,

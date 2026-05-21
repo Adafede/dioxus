@@ -14,7 +14,7 @@ pub(super) fn search_requested(state: &mut SearchLifecycleState, command: Search
     state.search_request_token = state.search_request_token.saturating_add(1);
 }
 
-pub(super) fn phase_changed(state: &mut SearchLifecycleState, phase: QueryPhase) {
+pub(super) const fn phase_changed(state: &mut SearchLifecycleState, phase: QueryPhase) {
     state.query_phase = phase;
 }
 
@@ -40,10 +40,10 @@ pub(super) fn dismiss_error(state: &mut SearchLifecycleState) {
     state.error = None;
 }
 
-pub(super) fn download_dispatch_started(state: &mut SearchLifecycleState) {
+pub(super) const fn download_dispatch_started(state: &mut SearchLifecycleState) {
     state.download_dispatching = true;
 }
 
-pub(super) fn download_dispatch_finished(state: &mut SearchLifecycleState) {
+pub(super) const fn download_dispatch_finished(state: &mut SearchLifecycleState) {
     state.download_dispatching = false;
 }

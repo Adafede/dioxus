@@ -87,7 +87,7 @@ async fn fetch_direct(format: DownloadFormat, query: &str) -> Result<String, Str
     }
 }
 
-fn content_type(format: DownloadFormat) -> &'static str {
+const fn content_type(format: DownloadFormat) -> &'static str {
     match format {
         DownloadFormat::Csv => "text/csv;charset=utf-8",
         DownloadFormat::Json => "application/sparql-results+json;charset=utf-8",
@@ -95,4 +95,4 @@ fn content_type(format: DownloadFormat) -> &'static str {
     }
 }
 
-pub(super) fn trigger_download(_: &str, _: &str, _: &str) {}
+pub(super) const fn trigger_download(_: &str, _: &str, _: &str) {}

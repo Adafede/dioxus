@@ -37,11 +37,11 @@ pub(super) struct ValidationError {
 }
 
 impl ValidationError {
-    pub(super) fn new(field: ValidationField, code: ValidationCode) -> Self {
+    pub(super) const fn new(field: ValidationField, code: ValidationCode) -> Self {
         Self { field, code }
     }
 
-    pub(super) fn into_fault(self) -> ValidationFault {
+    pub(super) const fn into_fault(self) -> ValidationFault {
         match self.code {
             ValidationCode::TaxonTooLong => ValidationFault::TaxonTooLong,
             ValidationCode::StructureTooLong => ValidationFault::StructureTooLong,

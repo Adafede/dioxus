@@ -22,7 +22,7 @@ pub struct AppStateContext {
 }
 
 impl AppStateContext {
-    pub fn new(state: Signal<AppState>) -> Self {
+    pub const fn new(state: Signal<AppState>) -> Self {
         Self { state }
     }
 }
@@ -42,7 +42,7 @@ pub struct ResultsContext {
 }
 
 impl ResultsContext {
-    pub fn new(explore: Signal<ExploreState>) -> Self {
+    pub const fn new(explore: Signal<ExploreState>) -> Self {
         Self { explore }
     }
 }

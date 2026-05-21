@@ -32,7 +32,7 @@ where
     P: Fn(QueryPhase),
 {
     #[must_use]
-    pub fn new(repo: R, on_phase: P) -> Self {
+    pub const fn new(repo: R, on_phase: P) -> Self {
         Self { repo, on_phase }
     }
 

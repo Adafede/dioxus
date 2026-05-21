@@ -22,12 +22,12 @@ pub(super) struct VirtualizedTableRenderModel {
 
 impl VirtualizedTableRenderModel {
     #[must_use]
-    pub(super) fn has_top_spacer(&self) -> bool {
+    pub(super) const fn has_top_spacer(&self) -> bool {
         self.top_spacer_px > 0
     }
 
     #[must_use]
-    pub(super) fn has_bottom_spacer(&self) -> bool {
+    pub(super) const fn has_bottom_spacer(&self) -> bool {
         self.bottom_spacer_px > 0
     }
 }

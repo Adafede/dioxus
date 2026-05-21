@@ -28,7 +28,7 @@ pub struct SearchLifecycleCoordinator {
 
 impl SearchLifecycleCoordinator {
     #[must_use]
-    pub fn new(explore: Signal<ExploreState>) -> Self {
+    pub const fn new(explore: Signal<ExploreState>) -> Self {
         Self { explore }
     }
 
@@ -104,12 +104,12 @@ fn dispatch_error(explore: Signal<ExploreState>, error: DomainError) {
 }
 
 #[must_use]
-pub fn is_stale_token(request_token: u64, current_token: u64) -> bool {
+pub const fn is_stale_token(request_token: u64, current_token: u64) -> bool {
     request_token != current_token
 }
 
 #[must_use]
-pub fn success_transition_actions(success_action: ExploreAction) -> [ExploreAction; 2] {
+pub const fn success_transition_actions(success_action: ExploreAction) -> [ExploreAction; 2] {
     [
         ExploreAction::SearchPhaseChanged(QueryPhase::Rendering),
         success_action,

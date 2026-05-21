@@ -4,7 +4,7 @@
 use super::*;
 use std::collections::BTreeMap;
 
-pub(crate) const CURATION_ROWS_PARAM: &str = "curation_rows";
+pub const CURATION_ROWS_PARAM: &str = "curation_rows";
 const CURATION_RUN_PARAM: &str = "curation_run";
 
 pub fn initial_curation_rows_from_url() -> Vec<CurationInputRow> {
@@ -70,9 +70,7 @@ fn curation_query_params(
     params
 }
 
-pub(crate) fn curation_rows_from_query_params(
-    params: &BTreeMap<String, String>,
-) -> Vec<CurationInputRow> {
+pub fn curation_rows_from_query_params(params: &BTreeMap<String, String>) -> Vec<CurationInputRow> {
     params
         .get(CURATION_ROWS_PARAM)
         .and_then(|raw| serde_json::from_str::<Vec<CurationInputRow>>(raw).ok())

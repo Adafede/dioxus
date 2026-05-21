@@ -153,7 +153,7 @@ pub fn use_curation_page_controller(locale: Locale) -> CurationPageController {
     }
 }
 
-pub fn should_autorun(
+pub const fn should_autorun(
     autorun_pending: bool,
     queued_rows: usize,
     processing: bool,
@@ -164,7 +164,7 @@ pub fn should_autorun(
 
 /// Snapshot of commonly-queried UI state flags.
 /// Used to reduce signal reads and prevent unnecessary component re-renders.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct CurationUiState {
     pub processing: bool,
     pub awaiting_second_pass: bool,

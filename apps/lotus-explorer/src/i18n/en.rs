@@ -5,7 +5,7 @@
 
 use crate::i18n::TextKey;
 
-pub fn en_t(key: TextKey) -> &'static str {
+pub const fn en_t(key: TextKey) -> &'static str {
     match key {
         TextKey::Share => "Share",
         TextKey::Copy => "Copy",

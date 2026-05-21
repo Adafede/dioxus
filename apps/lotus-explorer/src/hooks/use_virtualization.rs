@@ -32,7 +32,7 @@ pub struct VirtualizationState {
 impl VirtualizationState {
     #[cfg_attr(not(test), allow(dead_code))]
     #[must_use]
-    pub fn visible_count(self) -> usize {
+    pub const fn visible_count(self) -> usize {
         self.end_row.saturating_sub(self.start_row)
     }
 }

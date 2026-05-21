@@ -70,7 +70,7 @@ pub enum CurationError {
 }
 
 impl CurationError {
-    pub fn kind(&self) -> CurationErrorKind {
+    pub const fn kind(&self) -> CurationErrorKind {
         match self {
             Self::InvalidInput(_) => CurationErrorKind::InvalidInput,
             Self::Http(_) => CurationErrorKind::Transport,
@@ -78,7 +78,7 @@ impl CurationError {
         }
     }
 
-    pub fn is_recoverable(&self) -> bool {
+    pub const fn is_recoverable(&self) -> bool {
         !matches!(self, Self::Parse(_))
     }
 }

@@ -32,12 +32,12 @@ impl AppServices {
         Self::from_repository(HybridRepository)
     }
 
-    pub fn from_repository(repo: HybridRepository) -> Self {
+    pub const fn from_repository(repo: HybridRepository) -> Self {
         Self { repo }
     }
 
     /// Get the data repository.
-    pub fn repository(&self) -> HybridRepository {
+    pub const fn repository(&self) -> HybridRepository {
         self.repo
     }
 }

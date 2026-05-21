@@ -215,7 +215,7 @@ pub fn DownloadActionsGroup() -> Element {
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
-                                let criteria_snapshot = criteria_value.clone();
+                                let criteria_snapshot = criteria_value;
                                 let filename = toolbar_model.rdf_filename.clone();
                                 move |_| {
                                     dispatch_query_download_spec(

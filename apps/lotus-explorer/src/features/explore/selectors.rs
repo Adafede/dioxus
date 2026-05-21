@@ -99,7 +99,7 @@ pub fn use_criteria_selector<T: PartialEq + Clone + 'static>(
 /// Snapshot of commonly-queried explore UI state flags.
 /// Used to reduce signal reads and prevent unnecessary component re-renders
 /// across results viewport, table, and toolbar sections.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ExploreUiState {
     pub loading: bool,
     pub has_error: bool,
@@ -154,7 +154,7 @@ pub fn use_toolbar_result_snapshot(explore: Signal<ExploreState>) -> Memo<Toolba
     use_memo(move || toolbar_snapshot_from_result(&explore.read().result))
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct HeaderMetaSnapshot {
     pub resolved_qid: Option<String>,
     pub query_hash: Option<String>,

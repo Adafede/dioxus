@@ -16,7 +16,7 @@ pub(super) struct SortIndexCache {
 }
 
 impl SortIndexCache {
-    fn ascending_indices(&self, col: SortColumn) -> &Arc<[u32]> {
+    const fn ascending_indices(&self, col: SortColumn) -> &Arc<[u32]> {
         match col {
             SortColumn::Name => &self.by_name,
             SortColumn::Mass => &self.by_mass,
