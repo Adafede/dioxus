@@ -47,14 +47,11 @@ pub fn QueryPanel() -> Element {
                 details { class: "query-panel",
                     summary { "{t(locale, TextKey::SparqlQuery)}" }
                     div { class: "query-body",
-                        div { class: "query-actions",
-                            span { class: "query-label", "{t(locale, TextKey::SparqlQuery)}" }
-                            CopyButton {
-                                text: q.clone(),
-                                title: t(locale, TextKey::CopySparqlQuery),
-                                locale,
-                                class: "btn btn-xs copy-btn query-copy-btn",
-                            }
+                        CopyButton {
+                            text: q.clone(),
+                            title: t(locale, TextKey::CopySparqlQuery),
+                            locale,
+                            class: "btn btn-xs copy-btn query-copy-btn",
                         }
                         pre { class: "query-text", "{q.as_ref()}" }
                     }

@@ -168,15 +168,14 @@ SELECT
 pub fn query_taxon_search(name: &str) -> String {
     let e = name.replace('\\', r"\\").replace('"', r#"\""#);
     format!(
-        r#"
-PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+        r#"PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 SELECT
-?taxon
-?taxon_name WHERE {{
-    VALUES ?taxon_name {{ "{e}" }}
-    ?taxon wdt:P225 ?taxon_name .
-}}
-"#
+  ?taxon
+  ?taxon_name
+WHERE {{
+  VALUES ?taxon_name {{ "{e}" }}
+  ?taxon wdt:P225 ?taxon_name .
+}}"#
     )
 }
 
@@ -949,5 +948,26 @@ mod tests {
         let q3 = query_sachem("c1ccccc1", SmilesSearchType::Substructure, 0.8, None);
         assert_eq!(q3.matches("PREFIX sachem:").count(), 1);
         assert_eq!(q3.matches("PREFIX idsm:").count(), 1);
+    }
+
+    #[test]
+    fn taxon_search_query_format_is_valid() {
+        let q = query_taxon_search("Test Taxon");
+        // Should contain exactly one PREFIX
+        assert_eq!(q.matches("PREFIX").count(), 1);
+        // Should have wdt: prefix
+        assert!(q.contains("PREFIX wdt:"));
+        // Should have SELECT
+        assert!(q.contains("SELECT"));
+        // Should have VALUES
+        assert!(q.contains("VALUES"));
+        // Should reference the taxon name
+        assert!(q.contains("Test Taxon"));
+        // Should start with PREFIX (no leading whitespace)
+        assert!(
+            q.starts_with("PREFIX"),
+            "query should start with PREFIX immediately, got: {}",
+            &q[..q.len().min(50)]
+        );
     }
 }
