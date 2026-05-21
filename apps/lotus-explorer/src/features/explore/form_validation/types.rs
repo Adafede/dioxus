@@ -7,6 +7,7 @@ pub(super) type ValidationResult<T> = Result<T, ValidationError>;
 pub(super) enum ValidationCode {
     TaxonTooLong,
     StructureTooLong,
+    InvalidStructure,
     MassOutOfRange,
     MinGreaterThanMax,
     YearOutOfRange,
@@ -44,6 +45,7 @@ impl ValidationError {
         match self.code {
             ValidationCode::TaxonTooLong => ValidationFault::TaxonTooLong,
             ValidationCode::StructureTooLong => ValidationFault::StructureTooLong,
+            ValidationCode::InvalidStructure => ValidationFault::EmptyInput,
             ValidationCode::MassOutOfRange => ValidationFault::MassOutOfRange,
             ValidationCode::MinGreaterThanMax => ValidationFault::MassRangeInvalid,
             ValidationCode::YearOutOfRange => ValidationFault::YearOutOfRange,

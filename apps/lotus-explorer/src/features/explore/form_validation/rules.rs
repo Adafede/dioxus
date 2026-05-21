@@ -24,7 +24,26 @@ pub(super) fn validate_smiles(input: &str) -> ValidationResult<()> {
         MAX_STRUCTURE_LEN,
         ValidationField::Smiles,
         ValidationCode::StructureTooLong,
-    )
+    )?;
+
+    let trimmed = input.trim();
+    if trimmed.len() == 1
+        && matches!(
+            crate::queries::classify_structure(trimmed),
+            crate::queries::StructureKind::Smiles
+        )
+        && trimmed
+            .chars()
+            .next()
+            .is_some_and(|ch| ch.is_ascii_lowercase())
+    {
+        return Err(ValidationError::new(
+            ValidationField::Smiles,
+            ValidationCode::InvalidStructure,
+        ));
+    }
+
+    Ok(())
 }
 
 /// Validate that a mass value is within valid range.

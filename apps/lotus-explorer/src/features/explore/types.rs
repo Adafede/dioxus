@@ -34,6 +34,8 @@ pub enum ErrorKind {
     BadRequest,
     /// Network/transport failure — may be transient, retry may succeed.
     Network,
+    /// Upstream service rate-limited this request.
+    RateLimit,
     Parse,
     #[cfg(target_arch = "wasm32")]
     Memory,
@@ -180,10 +182,10 @@ impl DomainError {
                     ErrorKind::BadRequest
                 }
                 TransportFailureKind::Parse => ErrorKind::Parse,
+                TransportFailureKind::RateLimit => ErrorKind::RateLimit,
                 TransportFailureKind::Network
                 | TransportFailureKind::Server
-                | TransportFailureKind::CacheConflict
-                | TransportFailureKind::RateLimit => ErrorKind::Network,
+                | TransportFailureKind::CacheConflict => ErrorKind::Network,
             },
             Self::Parse(_) => ErrorKind::Parse,
             #[cfg(target_arch = "wasm32")]

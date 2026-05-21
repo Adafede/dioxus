@@ -40,6 +40,11 @@ fn validate_smiles_rejects_extremely_long_input() {
 }
 
 #[test]
+fn validate_smiles_rejects_single_lowercase_token() {
+    assert!(validate_smiles("d").is_err());
+}
+
+#[test]
 fn validate_mass_range_rejects_inverted_range() {
     assert!(validate_mass_range(200.0, 100.0).is_err());
 }
@@ -177,4 +182,18 @@ fn validate_dispatch_criteria_ignores_threshold_for_substructure() {
         ..SearchCriteria::default()
     };
     assert_eq!(validate_dispatch_criteria(&criteria), Ok(()));
+}
+
+#[test]
+fn validate_dispatch_criteria_rejects_malformed_single_letter_structure() {
+    let criteria = SearchCriteria {
+        taxon: "Rosa".into(),
+        smiles: "d".into(),
+        smiles_search_type: SmilesSearchType::Substructure,
+        ..SearchCriteria::default()
+    };
+    assert_eq!(
+        validate_dispatch_criteria(&criteria),
+        Err(ValidationFault::EmptyInput)
+    );
 }

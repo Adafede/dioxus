@@ -43,6 +43,9 @@ pub fn fr_t(key: TextKey) -> &'static str {
             "Cette instance ne dispose pas de la configuration de service requise."
         }
         TextKey::ErrorHintNetwork => "Problème réseau détecté. Réessayer peut aider.",
+        TextKey::ErrorHintRateLimit => {
+            "Limite de débit atteinte sur le service amont. Attendez environ une minute puis réessayez."
+        }
         TextKey::ErrorHintBadRequest => {
             "Le serveur a rejeté la requête. Vérifiez les paramètres de recherche."
         }

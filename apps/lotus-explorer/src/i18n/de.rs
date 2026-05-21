@@ -43,6 +43,9 @@ pub fn de_t(key: TextKey) -> &'static str {
             "Für diese Umgebung fehlt die erforderliche Dienstkonfiguration."
         }
         TextKey::ErrorHintNetwork => "Netzwerkproblem erkannt. Ein erneuter Versuch kann helfen.",
+        TextKey::ErrorHintRateLimit => {
+            "Ratenlimit beim vorgelagerten Dienst erreicht. Bitte etwa eine Minute warten und erneut versuchen."
+        }
         TextKey::ErrorHintBadRequest => {
             "Der Server hat die Anfrage abgelehnt. Bitte Suchparameter prüfen."
         }

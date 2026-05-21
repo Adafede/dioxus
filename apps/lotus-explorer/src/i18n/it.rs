@@ -45,6 +45,9 @@ pub fn it_t(key: TextKey) -> &'static str {
             "In questo ambiente manca la configurazione di servizio richiesta."
         }
         TextKey::ErrorHintNetwork => "Problema di rete rilevato. Riprova.",
+        TextKey::ErrorHintRateLimit => {
+            "Limite di richieste raggiunto sul servizio upstream. Attendi circa un minuto e riprova."
+        }
         TextKey::ErrorHintBadRequest => {
             "Il server ha rifiutato la richiesta. Controlla i parametri di ricerca."
         }

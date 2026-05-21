@@ -48,6 +48,7 @@ pub fn error_hint_text(locale: Locale, kind: ErrorKind) -> &'static str {
         ErrorKind::Configuration => t(locale, TextKey::ErrorHintConfiguration),
         ErrorKind::BadRequest => t(locale, TextKey::ErrorHintBadRequest),
         ErrorKind::Network => t(locale, TextKey::ErrorHintNetwork),
+        ErrorKind::RateLimit => t(locale, TextKey::ErrorHintRateLimit),
         ErrorKind::Parse => t(locale, TextKey::ErrorHintParse),
         #[cfg(target_arch = "wasm32")]
         ErrorKind::Memory => "",
@@ -74,10 +75,35 @@ fn transport_error_summary(locale: Locale, source: &RepositoryError) -> String {
         RepositoryError::Network(detail) => detail.as_str(),
         RepositoryError::Parse(detail) => detail.as_str(),
         RepositoryError::Http { status, body } => {
-            return format!("HTTP {status}: {}", compact_error_text(body));
+            let detail = if looks_like_html(body) {
+                if *status == 429 {
+                    "Too many requests from upstream service".to_string()
+                } else {
+                    "Upstream service returned an HTML error page".to_string()
+                }
+            } else {
+                compact_error_text(body)
+            };
+            return format!("HTTP {status}: {detail}");
         }
     };
     compact_error_text(raw)
+}
+
+fn looks_like_html(msg: &str) -> bool {
+    let head = msg.trim_start();
+    if head.is_empty() {
+        return false;
+    }
+    let sample = head
+        .chars()
+        .take(256)
+        .collect::<String>()
+        .to_ascii_lowercase();
+    sample.starts_with("<!doctype html")
+        || sample.starts_with("<html")
+        || sample.contains("<html")
+        || sample.contains("<body")
 }
 
 fn compact_error_text(msg: &str) -> String {
@@ -210,6 +236,38 @@ mod tests {
         assert_eq!(
             error_hint_text(Locale::En, err.kind()),
             t(Locale::En, TextKey::ErrorHintConfiguration)
+        );
+    }
+
+    #[test]
+    fn transport_error_summary_replaces_html_payloads_with_readable_text() {
+        let summary = transport_error_summary(
+            Locale::En,
+            &RepositoryError::Http {
+                status: 503,
+                body: "<html><body>Service unavailable</body></html>".to_string(),
+            },
+        );
+
+        assert_eq!(
+            summary,
+            "HTTP 503: Upstream service returned an HTML error page"
+        );
+    }
+
+    #[test]
+    fn error_hint_for_rate_limit_uses_rate_limit_hint() {
+        let err = DomainError::transport(
+            QueryStage::ResultsQuery,
+            RepositoryError::Http {
+                status: 429,
+                body: "<html><body>Too many requests</body></html>".to_string(),
+            },
+        );
+
+        assert_eq!(
+            error_hint_text(Locale::En, err.kind()),
+            t(Locale::En, TextKey::ErrorHintRateLimit)
         );
     }
 }

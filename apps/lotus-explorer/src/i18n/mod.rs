@@ -122,6 +122,7 @@ pub enum TextKey {
     ErrorHintValidation,
     ErrorHintConfiguration,
     ErrorHintNetwork,
+    ErrorHintRateLimit,
     ErrorHintBadRequest,
     ErrorHintParse,
     ErrorHintUnknown,

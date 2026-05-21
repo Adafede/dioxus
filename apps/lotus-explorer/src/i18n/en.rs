@@ -43,6 +43,9 @@ pub fn en_t(key: TextKey) -> &'static str {
             "This environment is missing required service configuration."
         }
         TextKey::ErrorHintNetwork => "Network issue detected. Retry may succeed.",
+        TextKey::ErrorHintRateLimit => {
+            "Rate limit reached on the upstream service. Please wait about a minute and retry."
+        }
         TextKey::ErrorHintBadRequest => {
             "The server rejected the request. Check your search parameters."
         }
