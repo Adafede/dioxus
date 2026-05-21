@@ -268,13 +268,6 @@ impl SearchCriteria {
         }
         if !self.smiles.trim().is_empty() {
             params.push(("structure".to_string(), self.smiles.clone()));
-            if !self.smiles.contains('\n') && !self.smiles.contains('\r') {
-                params.push(("smiles".to_string(), self.smiles.clone()));
-            }
-            params.push((
-                "smiles_search_type".to_string(),
-                self.smiles_search_type.as_str().to_string(),
-            ));
             params.push((
                 "structure_search_type".to_string(),
                 self.smiles_search_type.as_str().to_string(),
@@ -475,7 +468,7 @@ impl Default for SortState {
 
 #[cfg(test)]
 mod tests {
-    use super::{CompoundEntry, DatasetStats, ElementState, SearchCriteria};
+    use super::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType};
     use std::collections::BTreeMap;
     use std::sync::Arc;
 
@@ -592,5 +585,26 @@ mod tests {
         assert!(!params.contains_key("o_min"));
         assert!(!params.contains_key("f_state"));
         assert!(!params.contains_key("i_state"));
+    }
+
+    #[test]
+    fn shareable_query_params_use_single_structure_param_namespace() {
+        let criteria = SearchCriteria {
+            taxon: "Gentiana lutea".into(),
+            smiles: "CCCC".into(),
+            smiles_search_type: SmilesSearchType::Substructure,
+            ..SearchCriteria::default()
+        };
+
+        let params: BTreeMap<String, String> =
+            criteria.shareable_query_params().into_iter().collect();
+
+        assert_eq!(params.get("structure").map(String::as_str), Some("CCCC"));
+        assert_eq!(
+            params.get("structure_search_type").map(String::as_str),
+            Some("substructure")
+        );
+        assert!(!params.contains_key("smiles"));
+        assert!(!params.contains_key("smiles_search_type"));
     }
 }
