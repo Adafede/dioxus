@@ -918,6 +918,16 @@ mod tests {
     }
 
     #[test]
+    fn construct_query_normalizes_formula_subscript_digits() {
+        let q = query_construct_from_select(&query_compounds_by_taxon("Q2382443"));
+        assert!(q.contains("BIND("));
+        assert!(q.contains("STR(?compound_formula_raw)"));
+        // Regression guard: keep subscript-digit normalization in RDF export.
+        assert!(q.contains("\"₆\""));
+        assert!(q.contains("\"6\""));
+    }
+
+    #[test]
     fn sachem_query_projects_formula_from_raw_column() {
         let q = query_sachem("c1ccccc1", SmilesSearchType::Substructure, 0.8, None);
         // The formula column must be derived from ?compound_formula_raw, not a bare ?compound_formula

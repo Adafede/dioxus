@@ -14,10 +14,13 @@ use utoipa::OpenApi;
 use crate::{
     ApiDoc, build_router,
     config::AppConfig,
-    query_logic::{apply_request, normalized_structure_input, sanitize_download_filename},
+    query_logic::{
+        apply_request, build_upstream_export_url, normalized_structure_input,
+        sanitize_download_filename,
+    },
     state::AppState,
     state::{CachedExportResponse, prune_cache},
-    types::{ExportUrlResponse, SearchRequest},
+    types::{ExportArchiveFormat, ExportUrlResponse, SearchRequest},
 };
 
 fn map_provider(values: &[(&str, &str)]) -> HashMap<String, String> {
@@ -141,6 +144,27 @@ fn normalized_structure_preserves_multiline_molfile() {
     let normalized = normalized_structure_input(molfile);
     assert!(normalized.starts_with('\n'));
     assert!(normalized.contains("V3000"));
+}
+
+#[test]
+fn rdf_export_url_uses_construct_query_with_normalized_formula_binding() {
+    let select = shared::lotus::queries::query_compounds_by_taxon("Q2382443");
+    let url = build_upstream_export_url(&select, ExportArchiveFormat::Rdf);
+
+    assert!(url.contains("action=turtle_export"));
+
+    let query_param = url
+        .split("query=")
+        .nth(1)
+        .and_then(|tail| tail.split('&').next())
+        .expect("query param");
+    let decoded = urlencoding::decode(query_param)
+        .expect("decode query")
+        .into_owned();
+
+    assert!(decoded.contains("?c wdt:P274 ?compound_formula ."));
+    assert!(decoded.contains("AS ?compound_formula"));
+    assert!(decoded.contains("STR(?compound_formula_raw)"));
 }
 
 #[test]
