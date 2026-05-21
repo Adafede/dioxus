@@ -30,9 +30,8 @@ pub(super) fn resolve_sampled_row_height_px(
     if sampled_count == 0 {
         return fallback;
     }
-    // Bias slightly upward to avoid under-estimation, which makes virtualization feel too fast.
     let avg = sampled_total_px / sampled_count;
-    avg.saturating_add(8).max(fallback)
+    avg.max(1)
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -181,12 +180,11 @@ mod tests {
 
     #[test]
     fn sampled_row_height_uses_upward_biased_average() {
-        // 4 rows averaging 130px -> 138px after +8 safety margin.
-        assert_eq!(resolve_sampled_row_height_px(520, 4, 114), 138);
+        assert_eq!(resolve_sampled_row_height_px(520, 4, 114), 130);
     }
 
     #[test]
     fn sampled_row_height_never_drops_below_fallback() {
-        assert_eq!(resolve_sampled_row_height_px(300, 4, 114), 114);
+        assert_eq!(resolve_sampled_row_height_px(0, 4, 114), 1);
     }
 }

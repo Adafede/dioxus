@@ -45,7 +45,11 @@ pub fn compute_virtualization_state(
     first_visible_row: usize,
     viewport_height_px: usize,
 ) -> VirtualizationState {
-    let viewport_height_px = viewport_height_px.max(config.viewport_fallback_px);
+    let viewport_height_px = if viewport_height_px == 0 {
+        config.viewport_fallback_px
+    } else {
+        viewport_height_px
+    };
     let window_rows = ((viewport_height_px.saturating_add(config.row_height_px - 1))
         / config.row_height_px)
         .max(1)
