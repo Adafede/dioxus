@@ -21,16 +21,24 @@ fn StatBadge(
         format_count(locale, value)
     };
     let label = count_label(locale, noun, value);
+    let secondary_inline = secondary_value.map(|secondary| {
+        if let Some(label) = secondary_label {
+            let inline_label = label
+                .chars()
+                .flat_map(char::to_lowercase)
+                .collect::<String>();
+            format!("({} {inline_label})", format_count(locale, secondary))
+        } else {
+            format!("({})", format_count(locale, secondary))
+        }
+    });
     rsx! {
         div { class: "stat-badge",
             div { class: "stat-value-row",
                 span { class: "stat-value", "{display_value}" }
-                if let Some(secondary) = secondary_value {
-                    div { class: "stat-secondary-row",
-                        span { class: "stat-value-secondary mono", "{format_count(locale, secondary)}" }
-                        if let Some(label) = secondary_label {
-                            span { class: "stat-secondary-label", "{label}" }
-                        }
+                if let Some(secondary_text) = secondary_inline.as_ref() {
+                    span { class: "stat-value-secondary mono",
+                        "{secondary_text}"
                     }
                 }
             }
