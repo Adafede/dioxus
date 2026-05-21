@@ -179,9 +179,9 @@ async fn enrich_and_generate(
                 if !deps.pending_messages.is_empty() {
                     status = CurationStatus::PendingDependencies;
                     note = format!(
-                        "{} {}",
+                        "{}\n{}",
                         curation_note_dependencies_pending(locale),
-                        deps.pending_messages.join(" ")
+                        deps.pending_messages.join("\n")
                     );
                 }
             }
@@ -298,9 +298,9 @@ async fn enrich_and_generate(
                     (
                         CurationStatus::PendingDependencies,
                         format!(
-                            "{} {}",
+                            "{}\n{}",
                             curation_note_dependencies_pending(locale),
-                            deps.pending_messages.join(" ")
+                            deps.pending_messages.join("\n")
                         ),
                     )
                 }

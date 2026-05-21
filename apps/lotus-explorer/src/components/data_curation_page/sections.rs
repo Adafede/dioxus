@@ -243,38 +243,43 @@ pub fn QueueRowsCard(
                     }
                 }
             }
-            table {
-                class: "curation-table",
+            div {
+                class: "curation-table-scroll",
+                role: "region",
+                tabindex: "0",
                 aria_label: "{heading_queued_rows(locale)}",
-                thead {
-                    tr {
-                        th { "#" }
-                        th { "{col_name(locale)}" }
-                        th { "SMILES" }
-                        th { "{t(locale, TextKey::TaxonCol)}" }
-                        th { "DOI" }
-                        th { "{col_action(locale)}" }
-                    }
-                }
-                tbody {
-                    for (idx, row) in rows.read().iter().enumerate() {
+                table {
+                    class: "curation-table curation-queue-table",
+                    thead {
                         tr {
-                            td { "{idx + 1}" }
-                            td { "{row.name}" }
-                            td { class: "mono curation-cell-wrap", "{row.smiles}" }
-                            td { "{row.taxon.as_deref().unwrap_or(\"\")}" }
-                            td { class: "mono", "{row.doi.as_deref().unwrap_or(\"\")}" }
-                            td {
-                                button {
-                                    class: "btn btn-xs",
-                                    r#type: "button",
-                                    onclick: move |_| {
-                                        if idx < rows.read().len() {
-                                            rows.write().remove(idx);
-                                        }
-                                    },
-                                    "{button_remove(locale)}"
+                            th { "{col_action(locale)}" }
+                            th { "#" }
+                            th { "{col_name(locale)}" }
+                            th { "SMILES" }
+                            th { "{t(locale, TextKey::TaxonCol)}" }
+                            th { "DOI" }
+                        }
+                    }
+                    tbody {
+                        for (idx, row) in rows.read().iter().enumerate() {
+                            tr {
+                                td {
+                                    button {
+                                        class: "btn btn-xs",
+                                        r#type: "button",
+                                        onclick: move |_| {
+                                            if idx < rows.read().len() {
+                                                rows.write().remove(idx);
+                                            }
+                                        },
+                                        "{button_remove(locale)}"
+                                    }
                                 }
+                                td { "{idx + 1}" }
+                                td { "{row.name}" }
+                                td { class: "mono curation-cell-wrap", "{row.smiles}" }
+                                td { "{row.taxon.as_deref().unwrap_or(\"\")}" }
+                                td { class: "mono", "{row.doi.as_deref().unwrap_or(\"\")}" }
                             }
                         }
                     }

@@ -105,52 +105,8 @@ fn extract_batch_convert_output(parsed: BatchConvertResponse) -> Result<String, 
     Ok(first.output.clone())
 }
 
-pub(super) async fn descriptor_mass(smiles: &str) -> Result<f64, CurationError> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        return descriptor_mass_via_rdkit(smiles).await;
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        return descriptor_mass_direct(smiles).await;
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-async fn descriptor_mass_via_rdkit(smiles: &str) -> Result<f64, CurationError> {
-    let value = rdkit_bridge_call("exactMass", smiles.trim()).await?;
-    value.as_f64().ok_or_else(|| {
-        CurationError::Parse("rdkit.js exactMass did not return a number".to_string())
-    })
-}
-
 #[cfg(not(target_arch = "wasm32"))]
-async fn descriptor_mass_direct(smiles: &str) -> Result<f64, CurationError> {
-    let url = format!(
-        "{NATPROD_API_BASE}/chem/descriptors/multiple?smiles={}",
-        urlencoding::encode(smiles.trim())
-    );
-    let response = natprod_client()
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| CurationError::Http(e.to_string()))?;
-    if !response.status().is_success() {
-        return Err(CurationError::Http(format!(
-            "naturalproducts.net chem/descriptors failed with HTTP {}",
-            response.status().as_u16()
-        )));
-    }
-    let parsed = response
-        .json::<Value>()
-        .await
-        .map_err(|e| CurationError::Parse(e.to_string()))?;
-    extract_exact_mass_from_json(&parsed)
-        .ok_or_else(|| CurationError::Parse("missing exact_molecular_weight".to_string()))
-}
-
-#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
 pub fn extract_exact_mass_from_json(value: &Value) -> Option<f64> {
     if let Some(v) = value
         .get("exact_molecular_weight")
@@ -193,6 +149,27 @@ fn parse_exact_mass_scalar(value: &Value) -> Option<f64> {
         .and_then(|s| s.replace(',', "").parse::<f64>().ok())
 }
 
+pub(super) async fn descriptor_mass(smiles: &str) -> Result<f64, CurationError> {
+    descriptor_mass_via_rdkit(smiles).await
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn descriptor_mass_via_rdkit(smiles: &str) -> Result<f64, CurationError> {
+    let value = rdkit_bridge_call("exactMass", smiles.trim()).await?;
+    value.as_f64().ok_or_else(|| {
+        CurationError::Parse("rdkit.js exactMass did not return a number".to_string())
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+async fn descriptor_mass_via_rdkit(_smiles: &str) -> Result<f64, CurationError> {
+    // For non-WASM environments (e.g., server-side), use a reasonable default or error
+    // Since the app is browser-based, this shouldn't be called in production
+    Err(CurationError::Parse(
+        "RDKit JS not available in non-browser environment".to_string(),
+    ))
+}
+
 pub(super) async fn resolve_exact_mass(
     input_smiles: &str,
     canonical_smiles: &str,
@@ -211,12 +188,11 @@ pub(super) async fn resolve_exact_mass(
                             warning: None,
                         };
                     }
-                    Err(input_err) => {
+                    Err(_input_err) => {
                         return MassResolution {
                             exact_mass: None,
                             warning: Some(format!(
-                                "exact mass unavailable (canonical lookup failed: \
-                                 {canonical_err}; input lookup failed: {input_err})"
+                                "Mass unavailable - service limit: {canonical_err}"
                             )),
                         };
                     }
@@ -224,7 +200,7 @@ pub(super) async fn resolve_exact_mass(
             }
             MassResolution {
                 exact_mass: None,
-                warning: Some(format!("exact mass unavailable ({canonical_err})")),
+                warning: Some(format!("Mass unavailable - {canonical_err}")),
             }
         }
     }

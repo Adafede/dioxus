@@ -30,29 +30,6 @@ fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Elemen
 fn render_curation_result_row(locale: Locale, row: &CurationResultRow) -> Element {
     rsx! {
         tr {
-            td { "{row.input.name}" }
-            td { class: "mono curation-cell-wrap", "{row.input.smiles}" }
-            td { class: "mono curation-cell-wrap",
-                "{row.canonical_smiles.as_deref().unwrap_or(NA_TEXT)}"
-            }
-            td { class: "mono", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
-            td { class: "mono curation-cell-wrap",
-                "{row.inchi.as_deref().unwrap_or(NA_TEXT)}"
-            }
-            td { class: "mono", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
-            td { class: "mono", "{format_mass(row.exact_mass)}" }
-            td {
-                if let Some(qid) = row.wikidata_qid.as_deref() {
-                    a {
-                        href: "https://www.wikidata.org/wiki/{qid}",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        "{qid}"
-                    }
-                } else {
-                    "{label_new_item(locale)}"
-                }
-            }
             td {
                 span { class: "curation-status {status_class(&row.status)}",
                     "{status_label(locale, &row.status)}"
@@ -78,6 +55,29 @@ fn render_curation_result_row(locale: Locale, row: &CurationResultRow) -> Elemen
                 }
                 div { class: "curation-note", "{row.note}" }
             }
+            td {
+                if let Some(qid) = row.wikidata_qid.as_deref() {
+                    a {
+                        href: "https://www.wikidata.org/wiki/{qid}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        "{qid}"
+                    }
+                } else {
+                    "{label_new_item(locale)}"
+                }
+            }
+            td { "{row.input.name}" }
+            td { class: "mono curation-cell-wrap", "{row.input.smiles}" }
+            td { class: "mono curation-cell-wrap",
+                "{row.canonical_smiles.as_deref().unwrap_or(NA_TEXT)}"
+            }
+            td { class: "mono", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
+            td { class: "mono curation-cell-wrap",
+                "{row.inchi.as_deref().unwrap_or(NA_TEXT)}"
+            }
+            td { class: "mono", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
+            td { class: "mono", "{format_mass(row.exact_mass)}" }
         }
     }
 }
@@ -104,6 +104,8 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                 table { class: "curation-table curation-results-table",
                     thead {
                         tr {
+                            th { "{col_status(locale)}" }
+                            th { "Wikidata" }
                             th { "{col_name(locale)}" }
                             th { "{col_original_smiles(locale)}" }
                             th { "{col_canonical_smiles(locale)}" }
@@ -111,8 +113,6 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                             th { "InChI" }
                             th { "{t(locale, TextKey::Formula)}" }
                             th { "{col_exact_mass(locale)}" }
-                            th { "Wikidata" }
-                            th { "{col_status(locale)}" }
                         }
                     }
                     tbody {
