@@ -25,10 +25,10 @@ pub fn QueryPanel() -> Element {
 
     // Parameter changes should remove the tab until a new query is generated.
     use_effect(move || {
-        let current_criteria = criteria.read().clone();
-        if current_criteria != *prev_criteria.read() {
+        let current_criteria = criteria.read();
+        if *current_criteria != *prev_criteria.read() {
             panel_visible.set(false);
-            prev_criteria.set(current_criteria);
+            prev_criteria.set(current_criteria.clone());
         }
     });
 

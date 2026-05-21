@@ -33,7 +33,7 @@ pub(super) struct TableViewModel {
 /// This is the primary boundary: raw data → fully-prepared view model.
 /// All preparation and caching logic is encapsulated here.
 #[must_use]
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 pub(super) fn build_table_view_model(rows: &Rows, sort_state: SortState) -> TableViewModel {
     let prepared_rows = prepare_rows(rows.as_ref());
     let sort_index_cache = build_sort_index_cache(rows.as_ref());

@@ -40,17 +40,17 @@ impl CurationPageController {
     }
 
     pub fn parse_tsv(self) {
-        let content = self.tsv_input.read().clone();
+        let content = self.tsv_input.read();
         import_tsv_rows(self.locale, &content, self.rows, self.status_message);
     }
 
     pub fn process(mut self) {
-        let snapshot = self.rows.read().clone();
-        if snapshot.is_empty() {
+        if self.rows.read().is_empty() {
             self.status_message
                 .set(Some(msg_add_row_before_generate(self.locale)));
             return;
         }
+        let snapshot = self.rows.read().clone();
         start_curation_run(
             self.locale,
             snapshot,
