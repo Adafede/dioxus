@@ -73,4 +73,3 @@ pub fn use_add_row_form() -> AddRowForm {
         doi: use_signal(String::new),
     }
 }
-

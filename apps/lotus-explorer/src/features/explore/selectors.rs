@@ -28,6 +28,20 @@ use crate::features::explore::search_state::{
 };
 use crate::models::SearchCriteria;
 use dioxus::prelude::*;
+use std::sync::Arc;
+
+/// Wrapper around `Arc<T>` that compares by pointer identity.
+///
+/// This is useful for large immutable payloads (for example `Arc<[CompoundEntry]>`)
+/// where deep `PartialEq` checks are unnecessarily expensive.
+#[derive(Clone)]
+pub struct ArcPtrEq<T: ?Sized>(pub Arc<T>);
+
+impl<T: ?Sized> PartialEq for ArcPtrEq<T> {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
 
 /// Subscribe to a derived value from [`SearchLifecycleState`].
 ///
@@ -49,6 +63,15 @@ pub fn use_result_selector<T: PartialEq + Clone + 'static>(
     f: impl Fn(&ResultDataState) -> T + 'static,
 ) -> Memo<T> {
     use_memo(move || f(&explore.read().result))
+}
+
+/// Subscribe to an `Arc<T>` derived from [`ResultDataState`] using pointer
+/// equality (`Arc::ptr_eq`) instead of deep value equality.
+pub fn use_result_arc_selector<T: ?Sized + 'static>(
+    explore: Signal<ExploreState>,
+    f: impl Fn(&ResultDataState) -> Arc<T> + 'static,
+) -> Memo<ArcPtrEq<T>> {
+    use_memo(move || ArcPtrEq(f(&explore.read().result)))
 }
 
 /// Subscribe to a derived value from [`UiChromeState`].

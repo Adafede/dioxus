@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::curation::{
-    CurationResultRow, QuickStatementsBundle, build_curation_share_url,
-    curate_rows, example_rows, initial_curation_autorun_from_url, initial_curation_rows_from_url,
+    CurationResultRow, QuickStatementsBundle, build_curation_share_url, curate_rows, example_rows,
+    initial_curation_autorun_from_url, initial_curation_rows_from_url,
 };
 use crate::features::curation::queue::append_unique_rows;
 use crate::features::curation::services::quickstatements::build_qs_dev_link;

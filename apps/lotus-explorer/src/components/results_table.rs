@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::features::explore::selectors::use_result_selector;
+use crate::features::explore::selectors::{use_result_arc_selector, use_result_selector};
 use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
 use crate::ui::a11y_contract::{RESULTS_SECTION_HEADING_ID, RESULTS_SECTION_ID};
@@ -43,8 +43,9 @@ pub fn ResultsTable() -> Element {
     let state = use_results_context();
     let explore = state.explore;
     let locale = crate::hooks::use_locale();
-    let entries = use_result_selector(explore, |result| result.entries.clone());
+    let entries_arc = use_result_arc_selector(explore, |result| result.entries.clone());
     let sort_state = use_result_selector(explore, |result| result.sort);
+    let entries: Memo<crate::models::Rows> = use_memo(move || entries_arc.read().0.clone());
     let entries_len = entries.read().len();
 
     // Single unified memo for all table preparation: entries + sort_state → prepared view model.

@@ -43,9 +43,11 @@ fn StatBadge(
 pub fn StatBar() -> Element {
     let locale = crate::hooks::use_locale();
     let explore = use_results_context().explore;
-    let entries = crate::features::explore::selectors::use_result_selector(explore, |result| {
-        result.entries.clone()
-    });
+    let entries_arc =
+        crate::features::explore::selectors::use_result_arc_selector(explore, |result| {
+            result.entries.clone()
+        });
+    let entries: Memo<crate::models::Rows> = use_memo(move || entries_arc.read().0.clone());
     let total_stats = crate::features::explore::selectors::use_result_selector(explore, |result| {
         result.total_stats.clone()
     });
