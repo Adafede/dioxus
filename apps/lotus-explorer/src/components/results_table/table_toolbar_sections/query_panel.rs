@@ -23,9 +23,10 @@ pub fn QueryPanel() -> Element {
     let mut panel_visible = use_signal(|| toolbar_snapshot.read().sparql_query.is_some());
 
     // Parameter changes should remove the tab until a new query is generated.
+    // peek() for the guard so this effect only subscribes to `criteria`, not to itself.
     use_effect(move || {
         let _ = criteria.read();
-        if *criteria_effect_ready.read() {
+        if *criteria_effect_ready.peek() {
             panel_visible.set(false);
         } else {
             criteria_effect_ready.set(true);
@@ -33,9 +34,10 @@ pub fn QueryPanel() -> Element {
     });
 
     // Show the tab again when a new query value arrives for current parameters.
+    // peek() for panel_visible so this only subscribes to `toolbar_snapshot`.
     use_effect(move || {
         let current_query = toolbar_snapshot.read();
-        if !*panel_visible.read() {
+        if !*panel_visible.peek() {
             panel_visible.set(current_query.sparql_query.is_some());
         }
     });

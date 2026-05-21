@@ -90,9 +90,10 @@ pub fn HeaderMetaSection() -> Element {
     });
 
     // Criteria changes invalidate the entire metadata strip until fresh results arrive.
+    // peek() for the guard so the effect only subscribes to `criteria`, not to itself.
     use_effect(move || {
         let _ = criteria.read();
-        if *criteria_effect_ready.read() {
+        if *criteria_effect_ready.peek() {
             meta_visible.set(false);
         } else {
             criteria_effect_ready.set(true);
@@ -100,9 +101,10 @@ pub fn HeaderMetaSection() -> Element {
     });
 
     // Show metadata again when a fresh metadata tuple is produced.
+    // peek() for meta_visible so this effect only subscribes to `header_snapshot`.
     use_effect(move || {
         let current_meta = header_snapshot.read();
-        if !*meta_visible.read() {
+        if !*meta_visible.peek() {
             meta_visible.set(
                 current_meta.resolved_qid.is_some()
                     || current_meta.query_hash.is_some()
