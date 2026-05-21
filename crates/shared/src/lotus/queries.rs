@@ -671,6 +671,7 @@ pub fn query_construct_from_select(select_query: &str) -> String {
     let where_abs = select_pos + where_pos;
     let prefixes = &select_query[..select_pos];
     let where_block = select_query[where_abs..].trim();
+    let normalized_where_block = construct_where_with_formula_bind(where_block);
 
     format!(
         r#"{prefixes}
@@ -692,8 +693,34 @@ CONSTRUCT {{
 }}
 {where_block}"#,
         prefixes = prefixes,
-        where_block = where_block
+        where_block = normalized_where_block
     )
+}
+
+fn construct_where_with_formula_bind(where_block: &str) -> String {
+    let Some(open_brace) = where_block.find('{') else {
+        return where_block.to_string();
+    };
+    let Some(close_brace) = where_block.rfind('}') else {
+        return where_block.to_string();
+    };
+    if close_brace <= open_brace {
+        return where_block.to_string();
+    }
+
+    let inner = &where_block[(open_brace + 1)..close_brace];
+    let formula_bind = format!(
+        "  BIND({} AS ?compound_formula)",
+        compound_formula_expr("?compound_formula_raw")
+    );
+
+    let mut out = String::with_capacity(where_block.len() + formula_bind.len() + 16);
+    out.push_str("WHERE {");
+    out.push_str(inner);
+    out.push('\n');
+    out.push_str(&formula_bind);
+    out.push_str("\n}");
+    out
 }
 
 /// Build a BIND expression that normalizes subscript digits (₀-₉) to ASCII (0-9).
@@ -883,7 +910,9 @@ mod tests {
     #[test]
     fn construct_query_rebinds_formula_from_raw_column() {
         let q = query_construct_from_select(&query_compounds_by_taxon("Q2382443"));
-        assert!(q.contains("?compound_formula"));
+        assert!(q.contains("?compound_formula_raw"));
+        assert!(q.contains("AS ?compound_formula"));
+        assert!(q.contains("?c wdt:P274 ?compound_formula ."));
         assert_eq!(q.matches("PREFIX xsd:").count(), 1);
         assert_eq!(q.matches("PREFIX wdt:").count(), 1);
     }
