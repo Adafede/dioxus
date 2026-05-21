@@ -36,12 +36,6 @@ pub fn DataCurationPage() -> Element {
     let on_second_pass = move |_: ()| controller.run_second_pass();
     let on_import_uploaded_tsv = move |content: String| controller.import_uploaded_tsv(content);
     let on_import_error = move |message: String| controller.status_message.set(Some(message));
-    let rows_for_table = controller.result_rows.read().clone();
-    let status_message = controller
-        .status_message
-        .read()
-        .clone()
-        .map(Arc::<str>::from);
 
     rsx! {
         section { class: "curation-wrap",
@@ -69,8 +63,8 @@ pub fn DataCurationPage() -> Element {
                 ShareBar { locale, share: share.clone() }
             }
 
-            if let Some(message) = status_message {
-                StatusNotice { locale, message }
+            if let Some(status) = controller.status_message.read().as_ref() {
+                StatusNotice { locale, message: Arc::<str>::from(status.as_str()) }
             }
 
             QueueRowsCard {
@@ -80,8 +74,8 @@ pub fn DataCurationPage() -> Element {
                 on_process,
             }
 
-            if !rows_for_table.is_empty() {
-                CurationResultsTable { locale, rows: rows_for_table }
+            if !controller.result_rows.read().is_empty() {
+                CurationResultsTable { locale, rows: controller.result_rows.read().clone() }
             }
 
             QuickStatementsCard {

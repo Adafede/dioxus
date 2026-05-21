@@ -28,7 +28,7 @@ fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Elemen
 }
 
 #[component]
-fn CurationResultTableRow(locale: Locale, row: CurationResultRow) -> Element {
+fn CurationResultTableRow(locale: Locale, row: Arc<CurationResultRow>) -> Element {
     rsx! {
         tr {
             td { "{row.input.name}" }
@@ -118,7 +118,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     }
                     tbody {
                         for row in rows.iter() {
-                            CurationResultTableRow { locale, row: row.clone() }
+                            CurationResultTableRow { locale, row: Arc::new(row.clone()) }
                         }
                     }
                 }
