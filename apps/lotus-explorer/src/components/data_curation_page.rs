@@ -2,17 +2,16 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::curation::build_curation_share_url;
-use crate::features::curation::state::page_controller::use_curation_page_controller;
-use crate::features::explore::absolute_share_url;
-use crate::i18n::{TextKey, t};
+use crate::features::curation::use_curation_page_controller;
 use dioxus::prelude::*;
 use std::sync::Arc;
 
-use super::copy_button::CopyButton;
 use super::curation_results_table::CurationResultsTable;
 
 mod sections;
-use sections::{AddRowCard, QueueRowsCard, QuickStatementsCard, TsvImportCard};
+use sections::{
+    AddRowCard, QueueRowsCard, QuickStatementsCard, ShareBar, StatusNotice, TsvImportCard,
+};
 
 #[component]
 pub fn DataCurationPage() -> Element {
@@ -38,6 +37,7 @@ pub fn DataCurationPage() -> Element {
     let on_import_uploaded_tsv = move |content: String| controller.import_uploaded_tsv(content);
     let on_import_error = move |message: String| controller.status_message.set(Some(message));
     let rows_for_table = controller.result_rows.read().clone();
+    let status_message = controller.status_message.read().clone().map(Arc::<str>::from);
 
     rsx! {
         section { class: "curation-wrap",
@@ -61,29 +61,12 @@ pub fn DataCurationPage() -> Element {
                 }
             }
 
-            if let Some(share) = shareable_url.read().as_deref() {
-                div { class: "share-bar", role: "status",
-                    span { class: "share-bar-label", "{t(locale, TextKey::Share)}" }
-                    input {
-                        aria_label: "{t(locale, TextKey::CopyShareableLink)}",
-                        class: "share-bar-input mono",
-                        r#type: "text",
-                        readonly: true,
-                        value: "{share}",
-                    }
-                    CopyButton {
-                        text: Arc::<str>::from(absolute_share_url(share)),
-                        title: t(locale, TextKey::CopyShareableLink),
-                        locale,
-                    }
-                }
+            if let Some(share) = shareable_url.read().as_ref() {
+                ShareBar { locale, share: share.clone() }
             }
 
-            if let Some(msg) = controller.status_message.read().as_deref() {
-                div { class: "notice notice-info", role: "status",
-                    span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
-                    span { class: "notice-value", "{msg}" }
-                }
+            if let Some(message) = status_message {
+                StatusNotice { locale, message }
             }
 
             QueueRowsCard {

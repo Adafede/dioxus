@@ -16,6 +16,39 @@ use crate::i18n::{
 use dioxus::prelude::*;
 
 use crate::components::copy_button::CopyButton;
+use crate::features::explore::absolute_share_url;
+use std::sync::Arc;
+
+#[component]
+pub fn ShareBar(locale: Locale, share: Arc<str>) -> Element {
+    rsx! {
+        div { class: "share-bar", role: "status",
+            span { class: "share-bar-label", "{t(locale, TextKey::Share)}" }
+            input {
+                aria_label: "{t(locale, TextKey::CopyShareableLink)}",
+                class: "share-bar-input mono",
+                r#type: "text",
+                readonly: true,
+                value: "{share}",
+            }
+            CopyButton {
+                text: Arc::<str>::from(absolute_share_url(&share)),
+                title: t(locale, TextKey::CopyShareableLink),
+                locale,
+            }
+        }
+    }
+}
+
+#[component]
+pub fn StatusNotice(locale: Locale, message: Arc<str>) -> Element {
+    rsx! {
+        div { class: "notice notice-info", role: "status",
+            span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
+            span { class: "notice-value", "{message}" }
+        }
+    }
+}
 
 #[component]
 pub fn AddRowCard(
