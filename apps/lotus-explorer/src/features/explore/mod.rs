@@ -15,7 +15,7 @@ pub use orchestrator::SearchTaskController;
 pub use search_state::ExploreState;
 pub use selectors::{
     ExploreUiState, use_criteria_selector, use_header_meta_snapshot, use_lifecycle_selector,
-    use_table_result_snapshot, use_toolbar_result_snapshot,
+    use_toolbar_result_snapshot,
 };
 pub use state::controller::classes_for_view;
 pub use types::{DomainError, ErrorKind, ParseFault, QueryStage, TaxonWarning, ValidationFault};

@@ -30,8 +30,8 @@ pub enum ExploreAction {
         total_matches: Option<usize>,
         total_stats: Option<DatasetStats>,
         display_capped_rows: bool,
-        query_hash: String,
-        result_hash: String,
+        query_hash: Arc<str>,
+        result_hash: Arc<str>,
         metadata_json: Arc<str>,
     },
 

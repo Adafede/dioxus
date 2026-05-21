@@ -12,8 +12,8 @@ pub(super) struct SearchSuccessPayload {
     pub total_matches: Option<usize>,
     pub total_stats: Option<DatasetStats>,
     pub display_capped_rows: bool,
-    pub query_hash: String,
-    pub result_hash: String,
+    pub query_hash: Arc<str>,
+    pub result_hash: Arc<str>,
     pub metadata_json: Arc<str>,
 }
 
@@ -28,7 +28,7 @@ pub(super) fn clear(state: &mut ResultDataState) {
 pub(super) fn search_succeeded(state: &mut ResultDataState, payload: SearchSuccessPayload) {
     state.entries = Arc::from(payload.rows.into_boxed_slice());
     state.taxon_notice = payload.warning;
-    state.resolved_qid = payload.qid;
+    state.resolved_qid = payload.qid.map(Arc::from);
     state.query_hash = Some(payload.query_hash);
     state.result_hash = Some(payload.result_hash);
     state.sparql_query = Some(Arc::<str>::from(payload.query));

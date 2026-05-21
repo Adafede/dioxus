@@ -8,14 +8,14 @@
 //! and is bounded by the number of distinct taxon names searched during the
 //! session, which is expected to be small.
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-type TaxonCache = BTreeMap<String, String>;
+type TaxonCache = HashMap<String, String>;
 
 fn taxon_cache() -> &'static Mutex<TaxonCache> {
     static CACHE: OnceLock<Mutex<TaxonCache>> = OnceLock::new();
-    CACHE.get_or_init(|| Mutex::new(BTreeMap::new()))
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 /// Returns the cached QID for the given taxon `name`, or `None` if not cached.

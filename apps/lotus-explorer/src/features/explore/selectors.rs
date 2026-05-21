@@ -18,7 +18,9 @@
 //! ## Wired consumers
 //! * [`crate::components::results_viewport::ResultsViewport`] — uses
 //!   `use_lifecycle_selector` and `use_result_selector`
-//! * [`crate::components::results_table::ResultsTable`] — uses `use_result_selector`
+//! * [`crate::components::results_table::ResultsTable`] — uses
+//!   `use_result_arc_selector` (entries, ptr equality) and `use_result_selector`
+//!   (sort); this eliminates O(N) deep comparisons on every sort toggle.
 //! * [`crate::components::results_table::toolbar::ResultsToolbar`] — uses both
 //! * [`crate::components::layout::sidebar::Sidebar`] — uses `use_ui_selector`
 //! * [`crate::components::form_sections`] — use `use_criteria_selector`
@@ -26,7 +28,7 @@
 use crate::features::explore::search_state::{
     ExploreState, ResultDataState, SearchLifecycleState, UiChromeState,
 };
-use crate::models::{CompoundEntry, DatasetStats, SearchCriteria, SortState};
+use crate::models::{DatasetStats, SearchCriteria};
 use dioxus::prelude::*;
 use std::sync::Arc;
 
@@ -131,8 +133,8 @@ impl ExploreUiState {
 pub struct ToolbarResultSnapshot {
     pub sparql_query: Option<Arc<str>>,
     pub metadata_json: Option<Arc<str>>,
-    pub query_hash: Option<String>,
-    pub result_hash: Option<String>,
+    pub query_hash: Option<Arc<str>>,
+    pub result_hash: Option<Arc<str>>,
     pub total_stats: Option<DatasetStats>,
     pub total_matches: Option<usize>,
     pub display_capped_rows: bool,
@@ -156,9 +158,9 @@ pub fn use_toolbar_result_snapshot(explore: Signal<ExploreState>) -> Memo<Toolba
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct HeaderMetaSnapshot {
-    pub resolved_qid: Option<String>,
-    pub query_hash: Option<String>,
-    pub result_hash: Option<String>,
+    pub resolved_qid: Option<Arc<str>>,
+    pub query_hash: Option<Arc<str>>,
+    pub result_hash: Option<Arc<str>>,
 }
 
 pub fn header_meta_snapshot_from_result(result: &ResultDataState) -> HeaderMetaSnapshot {
@@ -171,23 +173,6 @@ pub fn header_meta_snapshot_from_result(result: &ResultDataState) -> HeaderMetaS
 
 pub fn use_header_meta_snapshot(explore: Signal<ExploreState>) -> Memo<HeaderMetaSnapshot> {
     use_memo(move || header_meta_snapshot_from_result(&explore.read().result))
-}
-
-#[derive(Clone, PartialEq)]
-pub struct TableResultSnapshot {
-    pub entries: Arc<[CompoundEntry]>,
-    pub sort: SortState,
-}
-
-pub fn table_snapshot_from_result(result: &ResultDataState) -> TableResultSnapshot {
-    TableResultSnapshot {
-        entries: result.entries.clone(),
-        sort: result.sort,
-    }
-}
-
-pub fn use_table_result_snapshot(explore: Signal<ExploreState>) -> Memo<TableResultSnapshot> {
-    use_memo(move || table_snapshot_from_result(&explore.read().result))
 }
 
 #[cfg(test)]
@@ -224,8 +209,8 @@ mod tests {
         let result = ResultDataState {
             sparql_query: Some(Arc::from("SELECT * WHERE { ?s ?p ?o }")),
             metadata_json: Some(Arc::from("{\"k\":\"v\"}")),
-            query_hash: Some("qh".to_string()),
-            result_hash: Some("rh".to_string()),
+            query_hash: Some(Arc::from("qh")),
+            result_hash: Some(Arc::from("rh")),
             total_matches: Some(12),
             display_capped_rows: true,
             ..ResultDataState::default()
@@ -249,8 +234,8 @@ mod tests {
         let result = ResultDataState {
             sparql_query: Some(Arc::from("SELECT * WHERE { ?s ?p ?o }")),
             metadata_json: Some(Arc::from("{\"k\":\"v\"}")),
-            query_hash: Some("queryhash0123456789".to_string()),
-            result_hash: Some("resulthash0123456789".to_string()),
+            query_hash: Some(Arc::from("queryhash0123456789")),
+            result_hash: Some(Arc::from("resulthash0123456789")),
             total_matches: Some(42),
             display_capped_rows: true,
             ..ResultDataState::default()

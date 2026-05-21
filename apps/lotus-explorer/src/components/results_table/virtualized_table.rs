@@ -9,23 +9,24 @@ use super::table_header::TableHeader;
 use super::table_view_model::TableViewModel;
 use super::virtualization_controller::use_results_table_virtualization;
 use crate::features::explore::interactions::use_explore_interactions;
+use crate::features::explore::selectors::ArcPtrEq;
 use crate::i18n::{TextKey, t};
-use crate::models::Rows;
+use crate::models::CompoundEntry;
 use dioxus::prelude::*;
 
 #[component]
 pub(super) fn VirtualizedResultsTable(
-    entries: Memo<Rows>,
+    entries: Memo<ArcPtrEq<[CompoundEntry]>>,
     table_view_model: Memo<TableViewModel>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
     let interactions = use_explore_interactions();
-    let total = entries.read().len();
+    let total = entries.read().0.len();
     let virtualization = use_results_table_virtualization(total);
     let text = row_text(locale);
 
     let view_model = table_view_model.read();
-    let rows = entries.read().clone();
+    let rows = entries.read().0.clone();
     let render_model = build_virtualized_table_render_model(&view_model, virtualization.state);
     let mut effect_virtualization = virtualization.clone();
     let scroll_virtualization = virtualization.clone();

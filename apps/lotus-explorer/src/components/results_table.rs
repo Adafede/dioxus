@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::features::explore::use_table_result_snapshot;
+use crate::features::explore::selectors::{use_result_arc_selector, use_result_selector};
 use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
 use crate::ui::a11y_contract::{RESULTS_SECTION_HEADING_ID, RESULTS_SECTION_ID};
@@ -35,26 +35,36 @@ const TABLE_VIEWPORT_FALLBACK_PX: usize = 640;
 /// Reactive surface is deliberately narrow: this component subscribes only to
 /// `entries` (for the empty-state check) and `locale`. Table preparation is
 /// split into two memos:
-/// 1. `prepared_state` — re-runs only when entries change (expensive: row prep + sort cache)
-/// 2. `table_view_model` — re-runs when entries OR sort changes (cheap: index selection only)
-/// Sort interactions therefore never re-run row preparation, and never re-render the toolbar.
+/// 1. `prepared_state` — re-runs only when the entries `Arc` pointer changes
+///    (expensive: row prep + lazy sort-index cache allocation).
+/// 2. `table_view_model` — re-runs when entries OR sort changes (cheap: index
+///    selection only).
+///
+/// Sort interactions therefore **never** re-run row preparation and never
+/// trigger an O(N) deep-comparison of entries; the `use_result_arc_selector`
+/// uses pointer equality (`Arc::ptr_eq`) so that only a genuine new result set
+/// propagates through the `prepared_state` memo.
 #[component]
 pub fn ResultsTable() -> Element {
     let state = use_results_context();
     let explore = state.explore;
     let locale = crate::hooks::use_locale();
-    let snapshot = use_table_result_snapshot(explore);
-    let entries: Memo<crate::models::Rows> = use_memo(move || snapshot.read().entries.clone());
-    let entries_len = entries.read().len();
 
-    // Expensive step: row text derivation + sort-index cache. Only re-runs when entries change.
-    let prepared_state = use_memo(move || prepare_table_state(&entries.read()));
+    // Narrow selectors — each memo fires only for its own slice of state.
+    // `entries_arc` uses Arc pointer equality, so sort changes never cause
+    // an O(N) deep-equality scan of the result set.
+    let entries_arc = use_result_arc_selector(explore, |r| r.entries.clone());
+    let sort = use_result_selector(explore, |r| r.sort);
 
-    // Cheap step: pick the right sort indices. Re-runs when entries or sort changes.
-    let table_view_model =
-        use_memo(move || apply_sort(&prepared_state.read(), snapshot.read().sort));
+    // Expensive step: row-text derivation + lazy sort-index cache allocation.
+    // Depends on `entries_arc` (ptr equality) so it is skipped on sort changes.
+    let prepared_state = use_memo(move || prepare_table_state(entries_arc.read().0.clone()));
 
-    let total = entries_len;
+    // Cheap step: pick the right sort indices without re-running row prep.
+    // Fires whenever entries change OR sort changes.
+    let table_view_model = use_memo(move || apply_sort(&prepared_state.read(), *sort.read()));
+
+    let total = entries_arc.read().0.len();
 
     rsx! {
         section {
@@ -71,7 +81,7 @@ pub fn ResultsTable() -> Element {
                 }
             } else {
                 VirtualizedResultsTable {
-                    entries,
+                    entries: entries_arc,
                     table_view_model,
                 }
             }

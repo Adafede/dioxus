@@ -110,9 +110,9 @@ pub fn HeaderMetaSection() -> Element {
     });
 
     let snapshot_ref = header_snapshot.read();
-    let resolved_qid_value = snapshot_ref.resolved_qid.as_deref();
-    let query_hash_value = snapshot_ref.query_hash.as_deref();
-    let result_hash_value = snapshot_ref.result_hash.as_deref();
+    let resolved_qid_value = snapshot_ref.resolved_qid.clone();
+    let query_hash_value = snapshot_ref.query_hash.clone();
+    let result_hash_value = snapshot_ref.result_hash.clone();
 
     let has_meta = *meta_visible.read()
         && (resolved_qid_value.is_some()
@@ -122,14 +122,14 @@ pub fn HeaderMetaSection() -> Element {
     rsx! {
         if has_meta {
             div { class: "page-header-meta",
-                if let Some(qid) = resolved_qid_value {
-                    ResolvedTaxonMetaItem { locale, qid: Arc::from(qid) }
+                if let Some(qid) = resolved_qid_value.as_ref() {
+                    ResolvedTaxonMetaItem { locale, qid: qid.clone() }
                 }
-                if let Some(qh) = query_hash_value {
-                    QueryHashMetaItem { locale, full_hash: Arc::from(qh) }
+                if let Some(qh) = query_hash_value.as_ref() {
+                    QueryHashMetaItem { locale, full_hash: qh.clone() }
                 }
-                if let Some(rh) = result_hash_value {
-                    ResultHashMetaItem { locale, full_hash: Arc::from(rh) }
+                if let Some(rh) = result_hash_value.as_ref() {
+                    ResultHashMetaItem { locale, full_hash: rh.clone() }
                 }
             }
         }

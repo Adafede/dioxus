@@ -131,11 +131,10 @@ pub fn DownloadActionsGroup() -> Element {
     // Local download state — busy flag and status text.
     let download_busy = use_signal(|| false);
     let download_status: Signal<Option<String>> = use_signal(|| None);
-    let download_status_text = download_status
-        .read()
+    let download_status_ref = download_status.read();
+    let download_status_text = download_status_ref
         .as_deref()
-        .unwrap_or_else(|| t(locale, TextKey::PreparingDownload))
-        .to_string();
+        .unwrap_or_else(|| t(locale, TextKey::PreparingDownload));
 
     let sparql_query_value = snapshot.sparql_query.clone();
     let metadata_json_value = snapshot.metadata_json.clone();

@@ -3,53 +3,106 @@
 
 use crate::models::{CompoundEntry, SortColumn, SortDir, SortState};
 use std::cmp::Ordering;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-#[derive(Clone, PartialEq, Debug)]
-pub(super) struct SortIndexCache {
-    by_name: Arc<[u32]>,
-    by_mass: Arc<[u32]>,
-    by_formula: Arc<[u32]>,
-    by_taxon_name: Arc<[u32]>,
-    by_pub_year: Arc<[u32]>,
-    by_ref_title: Arc<[u32]>,
+// --- Lazy sort index cache ---------------------------------------------------
+
+/// Number of sortable columns (one slot per `SortColumn` variant).
+const NUM_SORT_COLS: usize = 6;
+
+const fn sort_column_index(col: SortColumn) -> usize {
+    match col {
+        SortColumn::Name => 0,
+        SortColumn::Mass => 1,
+        SortColumn::Formula => 2,
+        SortColumn::TaxonName => 3,
+        SortColumn::PubYear => 4,
+        SortColumn::RefTitle => 5,
+    }
+}
+
+struct SortCacheInner {
+    rows: Arc<[CompoundEntry]>,
+    /// Ascending sort indices per column; `None` until first access.
+    by_col: Mutex<[Option<Arc<[u32]>>; NUM_SORT_COLS]>,
+}
+
+/// Lazily-populated, cheaply-cloneable sort index cache.
+///
+/// Each column's ascending sort index is built on the first `indices_for_sort`
+/// call that requests it, then stored for reuse.  Cloning is `O(1)` — both the
+/// original and the clone share the same `Arc<SortCacheInner>`.
+///
+/// Two `SortIndexCache` values are equal iff they originate from the same
+/// source-rows `Arc` (pointer equality).  This is the correct semantic for
+/// Dioxus memos: the same batch of results always produces an equal cache.
+#[derive(Clone)]
+pub(super) struct SortIndexCache(Arc<SortCacheInner>);
+
+impl PartialEq for SortIndexCache {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0.rows, &other.0.rows)
+    }
+}
+
+impl std::fmt::Debug for SortIndexCache {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SortIndexCache")
+            .field("rows_len", &self.0.rows.len())
+            .finish_non_exhaustive()
+    }
+}
+
+/// Build a new lazy sort index cache backed by `rows`.
+///
+/// No sort work is performed here; indices are computed on first access per
+/// column.
+#[must_use]
+pub(super) fn build_sort_index_cache(rows: Arc<[CompoundEntry]>) -> SortIndexCache {
+    SortIndexCache(Arc::new(SortCacheInner {
+        rows,
+        by_col: Mutex::new(Default::default()),
+    }))
 }
 
 impl SortIndexCache {
-    const fn ascending_indices(&self, col: SortColumn) -> &Arc<[u32]> {
-        match col {
-            SortColumn::Name => &self.by_name,
-            SortColumn::Mass => &self.by_mass,
-            SortColumn::Formula => &self.by_formula,
-            SortColumn::TaxonName => &self.by_taxon_name,
-            SortColumn::PubYear => &self.by_pub_year,
-            SortColumn::RefTitle => &self.by_ref_title,
+    /// Return (or lazily compute) the ascending sort index for `col`.
+    fn ascending_for(&self, col: SortColumn) -> Arc<[u32]> {
+        let idx = sort_column_index(col);
+        // Fast path: return the cached value while holding the lock briefly.
+        {
+            let guard = self.0.by_col.lock().expect("sort cache not poisoned");
+            if let Some(cached) = &guard[idx] {
+                return cached.clone();
+            }
         }
+        // Compute outside the lock so that other columns can be accessed
+        // concurrently on native; on WASM the Mutex is a no-op anyway.
+        let computed = build_sorted_indices_for_column(&self.0.rows, col);
+        // Store and return; a benign race on native means two threads might
+        // both compute the same column — both results are identical, so the
+        // last writer's value is silently discarded by get_or_insert.
+        let mut guard = self.0.by_col.lock().expect("sort cache not poisoned");
+        guard[idx].get_or_insert(computed).clone()
     }
 }
 
-#[must_use]
-pub(super) fn build_sort_index_cache(rows: &[CompoundEntry]) -> SortIndexCache {
-    SortIndexCache {
-        by_name: build_sorted_indices_for_column(rows, SortColumn::Name),
-        by_mass: build_sorted_indices_for_column(rows, SortColumn::Mass),
-        by_formula: build_sorted_indices_for_column(rows, SortColumn::Formula),
-        by_taxon_name: build_sorted_indices_for_column(rows, SortColumn::TaxonName),
-        by_pub_year: build_sorted_indices_for_column(rows, SortColumn::PubYear),
-        by_ref_title: build_sorted_indices_for_column(rows, SortColumn::RefTitle),
-    }
-}
-
+/// Returns the sorted index sequence for the given `SortState`.
+///
+/// The ascending index for the requested column is computed on first access
+/// and cached; reversing is applied on-the-fly without extra allocation when
+/// the direction is already ascending.
 #[must_use]
 pub(super) fn indices_for_sort(cache: &SortIndexCache, sort: SortState) -> Arc<[u32]> {
-    let ascending = cache.ascending_indices(sort.col);
+    let ascending = cache.ascending_for(sort.col);
     if sort.dir == SortDir::Asc {
-        ascending.clone()
+        ascending
     } else {
-        reversed_indices(ascending)
+        reversed_indices(&ascending)
     }
 }
 
+/// Test-only helper: directly build a sorted index from a slice without caching.
 #[cfg(test)]
 #[must_use]
 pub(super) fn build_sorted_indices(rows: &[CompoundEntry], sort: SortState) -> Arc<[u32]> {
@@ -249,7 +302,8 @@ mod tests {
             ),
         ];
 
-        let cache = build_sort_index_cache(&rows);
+        let rows_arc: Arc<[CompoundEntry]> = Arc::from(rows.as_slice());
+        let cache = build_sort_index_cache(rows_arc);
         let asc = indices_for_sort(
             &cache,
             SortState {

@@ -16,18 +16,14 @@ fn StatBadge(
     plus: bool,
 ) -> Element {
     let locale = crate::hooks::use_locale();
-    let display_value = if plus {
-        format!("{}+", format_count(locale, value))
-    } else {
-        format_count(locale, value)
-    };
+    let mut display_value = format_count(locale, value);
+    if plus {
+        display_value.push('+');
+    }
     let label = count_label(locale, noun, value);
     let secondary_inline = secondary_value.map(|secondary| {
         if let Some(label) = secondary_label {
-            let inline_label = label
-                .chars()
-                .flat_map(char::to_lowercase)
-                .collect::<String>();
+            let inline_label = label.to_lowercase();
             format!("({} {inline_label})", format_count(locale, secondary))
         } else {
             format!("({})", format_count(locale, secondary))

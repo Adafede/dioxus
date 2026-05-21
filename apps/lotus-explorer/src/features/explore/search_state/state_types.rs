@@ -39,9 +39,9 @@ impl Default for SearchLifecycleState {
 pub struct ResultDataState {
     pub entries: Rows,
     pub taxon_notice: Option<TaxonWarning>,
-    pub resolved_qid: Option<String>,
-    pub query_hash: Option<String>,
-    pub result_hash: Option<String>,
+    pub resolved_qid: Option<Arc<str>>,
+    pub query_hash: Option<Arc<str>>,
+    pub result_hash: Option<Arc<str>>,
     pub sparql_query: Option<Arc<str>>,
     pub metadata_json: Option<Arc<str>>,
     pub total_matches: Option<usize>,

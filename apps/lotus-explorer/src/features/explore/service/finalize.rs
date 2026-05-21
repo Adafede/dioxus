@@ -13,8 +13,8 @@ use std::sync::Arc;
 
 /// Computed hashes and metadata JSON for a single search result.
 pub struct FinalizedMeta {
-    pub query_hash: String,
-    pub result_hash: String,
+    pub query_hash: Arc<str>,
+    pub result_hash: Arc<str>,
     pub metadata_json: Arc<str>,
     /// Filtered match count (absent in download-only mode).
     pub filtered_matches: Option<usize>,
@@ -54,8 +54,8 @@ pub fn finalize(
     }));
 
     FinalizedMeta {
-        query_hash,
-        result_hash,
+        query_hash: Arc::from(query_hash),
+        result_hash: Arc::from(result_hash),
         metadata_json,
         filtered_matches,
         filtered_stats,

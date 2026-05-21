@@ -36,7 +36,7 @@ pub(super) struct TableViewModel {
 #[cfg(test)]
 pub(super) fn build_table_view_model(rows: &Rows, sort_state: SortState) -> TableViewModel {
     let prepared_rows = prepare_rows(rows.as_ref());
-    let sort_index_cache = build_sort_index_cache(rows.as_ref());
+    let sort_index_cache = build_sort_index_cache(rows.clone());
     let sorted_indices = indices_for_sort(&sort_index_cache, sort_state);
 
     TableViewModel {
@@ -57,9 +57,9 @@ pub(super) struct PreparedTableState {
 /// Build only the row preparation and sort-index cache from entries.
 /// This should be memoized independently of sort state.
 #[must_use]
-pub(super) fn prepare_table_state(rows: &Rows) -> PreparedTableState {
+pub(super) fn prepare_table_state(rows: Rows) -> PreparedTableState {
     let prepared_rows = prepare_rows(rows.as_ref());
-    let sort_cache = build_sort_index_cache(rows.as_ref());
+    let sort_cache = build_sort_index_cache(rows);
     PreparedTableState {
         prepared_rows,
         sort_cache,
