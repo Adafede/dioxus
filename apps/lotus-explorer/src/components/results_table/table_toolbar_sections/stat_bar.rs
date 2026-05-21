@@ -65,11 +65,9 @@ pub fn StatBar() -> Element {
     let stats = snapshot_ref
         .total_stats
         .as_ref()
-        .map(|s| s.clone())
+        .cloned()
         .unwrap_or_else(|| fallback_stats.read().clone());
-    let entries_value = snapshot_ref
-        .total_matches
-        .unwrap_or(stats.n_entries);
+    let entries_value = snapshot_ref.total_matches.unwrap_or(stats.n_entries);
     let entries_unique_value = stats.n_entries_unique;
 
     rsx! {

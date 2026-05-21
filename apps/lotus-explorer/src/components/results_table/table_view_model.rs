@@ -8,7 +8,7 @@
 //! the preparation logic testable in isolation.
 
 use super::row_cells::{PreparedRow, prepare_rows};
-use super::sort_model::{build_sort_index_cache, indices_for_sort};
+use super::sort_model::{SortIndexCache, build_sort_index_cache, indices_for_sort};
 use crate::models::{Rows, SortState};
 use std::sync::Arc;
 
@@ -33,6 +33,7 @@ pub(super) struct TableViewModel {
 /// This is the primary boundary: raw data → fully-prepared view model.
 /// All preparation and caching logic is encapsulated here.
 #[must_use]
+#[cfg_attr(not(test), allow(dead_code))]
 pub(super) fn build_table_view_model(rows: &Rows, sort_state: SortState) -> TableViewModel {
     let prepared_rows = prepare_rows(rows.as_ref());
     let sort_index_cache = build_sort_index_cache(rows.as_ref());
@@ -42,6 +43,38 @@ pub(super) fn build_table_view_model(rows: &Rows, sort_state: SortState) -> Tabl
         prepared_rows,
         sorted_indices,
         sort_state,
+    }
+}
+
+/// Preparation-only step: row text derivation without sort ordering.
+/// Separated so that sort-state changes don't re-run the expensive row preparation.
+#[derive(Clone, PartialEq, Debug)]
+pub(super) struct PreparedTableState {
+    pub(super) prepared_rows: Arc<[PreparedRow]>,
+    pub(super) sort_cache: SortIndexCache,
+}
+
+/// Build only the row preparation and sort-index cache from entries.
+/// This should be memoized independently of sort state.
+#[must_use]
+pub(super) fn prepare_table_state(rows: &Rows) -> PreparedTableState {
+    let prepared_rows = prepare_rows(rows.as_ref());
+    let sort_cache = build_sort_index_cache(rows.as_ref());
+    PreparedTableState {
+        prepared_rows,
+        sort_cache,
+    }
+}
+
+/// Build a [`TableViewModel`] from an already-prepared [`PreparedTableState`] and sort state.
+/// Only re-runs index selection when sort changes; row preparation is skipped.
+#[must_use]
+pub(super) fn apply_sort(state: &PreparedTableState, sort: SortState) -> TableViewModel {
+    let sorted_indices = indices_for_sort(&state.sort_cache, sort);
+    TableViewModel {
+        prepared_rows: state.prepared_rows.clone(),
+        sorted_indices,
+        sort_state: sort,
     }
 }
 

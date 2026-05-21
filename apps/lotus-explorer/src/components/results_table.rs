@@ -21,7 +21,7 @@ mod toolbar;
 mod virtualization_controller;
 mod virtualized_table;
 
-use table_view_model::build_table_view_model;
+use table_view_model::{apply_sort, prepare_table_state};
 use toolbar::ResultsToolbar;
 use virtualized_table::VirtualizedResultsTable;
 
@@ -34,10 +34,10 @@ const TABLE_VIEWPORT_FALLBACK_PX: usize = 640;
 ///
 /// Reactive surface is deliberately narrow: this component subscribes only to
 /// `entries` (for the empty-state check) and `locale`. Table preparation is
-/// isolated in `build_table_view_model`, which is memoized to avoid unnecessary
-/// re-preparation. All query-panel / stats / download signals are delegated to
-/// `ResultsToolbar`, which subscribes to them independently. Sort interactions
-/// therefore only re-render `VirtualizedResultsTable`, not the toolbar or stats bar.
+/// split into two memos:
+/// 1. `prepared_state` — re-runs only when entries change (expensive: row prep + sort cache)
+/// 2. `table_view_model` — re-runs when entries OR sort changes (cheap: index selection only)
+/// Sort interactions therefore never re-run row preparation, and never re-render the toolbar.
 #[component]
 pub fn ResultsTable() -> Element {
     let state = use_results_context();
@@ -47,11 +47,12 @@ pub fn ResultsTable() -> Element {
     let entries: Memo<crate::models::Rows> = use_memo(move || snapshot.read().entries.clone());
     let entries_len = entries.read().len();
 
-    // Single unified memo for all table preparation: entries + sort_state → prepared view model.
-    let table_view_model = use_memo(move || {
-        let snapshot_ref = snapshot.read();
-        build_table_view_model(&snapshot_ref.entries, snapshot_ref.sort)
-    });
+    // Expensive step: row text derivation + sort-index cache. Only re-runs when entries change.
+    let prepared_state = use_memo(move || prepare_table_state(&entries.read()));
+
+    // Cheap step: pick the right sort indices. Re-runs when entries or sort changes.
+    let table_view_model =
+        use_memo(move || apply_sort(&prepared_state.read(), snapshot.read().sort));
 
     let total = entries_len;
 

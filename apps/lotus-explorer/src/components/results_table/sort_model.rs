@@ -5,7 +5,7 @@ use crate::models::{CompoundEntry, SortColumn, SortDir, SortState};
 use std::cmp::Ordering;
 use std::sync::Arc;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub(super) struct SortIndexCache {
     by_name: Arc<[u32]>,
     by_mass: Arc<[u32]>,

@@ -109,12 +109,13 @@ pub fn DownloadActionsGroup() -> Element {
     });
     let toolbar_snapshot = use_toolbar_result_snapshot(explore);
 
+    let snapshot = toolbar_snapshot.read();
     let toolbar_model = build_download_toolbar_model(
         &criteria.read(),
-        toolbar_snapshot.read().sparql_query.as_deref(),
-        toolbar_snapshot.read().metadata_json.as_deref(),
-        toolbar_snapshot.read().query_hash.as_deref(),
-        toolbar_snapshot.read().result_hash.as_deref(),
+        snapshot.sparql_query.as_deref(),
+        snapshot.metadata_json.as_deref(),
+        snapshot.query_hash.as_deref(),
+        snapshot.result_hash.as_deref(),
     );
 
     let download_results_label = t(locale, TextKey::DownloadResults);
@@ -134,12 +135,14 @@ pub fn DownloadActionsGroup() -> Element {
     let download_status: Signal<Option<String>> = use_signal(|| None);
     let download_status_text = download_status
         .read()
-        .clone()
-        .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
+        .as_deref()
+        .unwrap_or_else(|| t(locale, TextKey::PreparingDownload))
+        .to_string();
 
     let criteria_value = Arc::new(criteria.read().clone());
-    let sparql_query_value = toolbar_snapshot.read().sparql_query.clone();
-    let metadata_json_value = toolbar_snapshot.read().metadata_json.clone();
+    let sparql_query_value = snapshot.sparql_query.clone();
+    let metadata_json_value = snapshot.metadata_json.clone();
+    drop(snapshot);
 
     rsx! {
         div { class: "toolbar-actions",
