@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::curation::build_curation_share_url;
+use crate::features::curation::state::page_controller::CurationUiState;
 use crate::features::curation::use_curation_page_controller;
 use dioxus::prelude::*;
 use std::sync::Arc;
@@ -21,8 +22,7 @@ pub fn DataCurationPage() -> Element {
         build_curation_share_url(controller.rows.read().as_slice(), locale, true)
             .map(Arc::<str>::from)
     });
-    let processing_value = *controller.processing.read();
-    let awaiting_second_pass_value = *controller.awaiting_second_pass.read();
+    let ui_state = CurationUiState::from_controller(controller);
     let has_tsv_input = controller.has_tsv_input();
 
     use_effect(move || {
@@ -37,7 +37,11 @@ pub fn DataCurationPage() -> Element {
     let on_import_uploaded_tsv = move |content: String| controller.import_uploaded_tsv(content);
     let on_import_error = move |message: String| controller.status_message.set(Some(message));
     let rows_for_table = controller.result_rows.read().clone();
-    let status_message = controller.status_message.read().clone().map(Arc::<str>::from);
+    let status_message = controller
+        .status_message
+        .read()
+        .clone()
+        .map(Arc::<str>::from);
 
     rsx! {
         section { class: "curation-wrap",
@@ -45,7 +49,7 @@ pub fn DataCurationPage() -> Element {
                 AddRowCard {
                     locale,
                     form: controller.form,
-                    processing: processing_value,
+                    processing: ui_state.processing,
                     on_add_row,
                     on_load_examples,
                 }
@@ -53,7 +57,7 @@ pub fn DataCurationPage() -> Element {
                 TsvImportCard {
                     locale,
                     tsv_input: controller.tsv_input,
-                    processing: processing_value,
+                    processing: ui_state.processing,
                     has_tsv_input,
                     on_parse_tsv,
                     on_import_uploaded_tsv,
@@ -72,7 +76,7 @@ pub fn DataCurationPage() -> Element {
             QueueRowsCard {
                 locale,
                 rows: controller.rows,
-                processing: processing_value,
+                processing: ui_state.processing,
                 on_process,
             }
 
@@ -83,8 +87,8 @@ pub fn DataCurationPage() -> Element {
             QuickStatementsCard {
                 locale,
                 quickstatements: controller.quickstatements,
-                awaiting_second_pass: awaiting_second_pass_value,
-                processing: processing_value,
+                awaiting_second_pass: ui_state.awaiting_second_pass,
+                processing: ui_state.processing,
                 on_second_pass,
             }
         }

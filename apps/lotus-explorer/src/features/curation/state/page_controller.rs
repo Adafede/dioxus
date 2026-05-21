@@ -162,6 +162,29 @@ pub fn should_autorun(
     autorun_pending && queued_rows > 0 && !processing && result_rows == 0
 }
 
+/// Snapshot of commonly-queried UI state flags.
+/// Used to reduce signal reads and prevent unnecessary component re-renders.
+#[derive(Clone, Copy, PartialEq)]
+pub struct CurationUiState {
+    pub processing: bool,
+    pub awaiting_second_pass: bool,
+    pub has_rows: bool,
+    pub has_results: bool,
+    pub has_status_message: bool,
+}
+
+impl CurationUiState {
+    pub fn from_controller(controller: CurationPageController) -> Self {
+        Self {
+            processing: *controller.processing.read(),
+            awaiting_second_pass: *controller.awaiting_second_pass.read(),
+            has_rows: controller.rows.read().len() > 0,
+            has_results: controller.result_rows.read().len() > 0,
+            has_status_message: controller.status_message.read().is_some(),
+        }
+    }
+}
+
 pub fn start_curation_run(
     locale: Locale,
     snapshot: Vec<CurationInputRow>,
