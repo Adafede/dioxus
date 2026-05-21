@@ -15,19 +15,82 @@ use std::sync::Arc;
 const NA_TEXT: &str = "n/a";
 
 #[component]
+fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Element {
+    rsx! {
+        div { class: "curation-badges",
+            for (status, count) in status_counts(rows.as_ref()) {
+                span { class: "curation-status curation-status-badge {status_class(&status)}",
+                    "{status_label(locale, &status)} ({count})"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn CurationResultTableRow(locale: Locale, row: CurationResultRow) -> Element {
+    rsx! {
+        tr {
+            td { "{row.input.name}" }
+            td { class: "mono curation-cell-wrap", "{row.input.smiles}" }
+            td { class: "mono curation-cell-wrap",
+                "{row.canonical_smiles.as_deref().unwrap_or(NA_TEXT)}"
+            }
+            td { class: "mono", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
+            td { class: "mono curation-cell-wrap",
+                "{row.inchi.as_deref().unwrap_or(NA_TEXT)}"
+            }
+            td { class: "mono", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
+            td { class: "mono", "{format_mass(row.exact_mass)}" }
+            td {
+                if let Some(qid) = row.wikidata_qid.as_deref() {
+                    a {
+                        href: "https://www.wikidata.org/wiki/{qid}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        "{qid}"
+                    }
+                } else {
+                    "{label_new_item(locale)}"
+                }
+            }
+            td {
+                span { class: "curation-status {status_class(&row.status)}",
+                    "{status_label(locale, &row.status)}"
+                }
+                div { class: "curation-row-badges",
+                    if !row.dependency_blocks.is_empty() {
+                        span { class: "curation-status curation-status-badge is-pending",
+                            "{curation_badge_prerequisite_pending(locale)}"
+                        }
+                    }
+                    if matches!(row.status, CurationStatus::PendingDependencies) {
+                        span { class: "curation-status curation-status-badge is-pending",
+                            "{curation_badge_second_pass_required(locale)}"
+                        }
+                    }
+                    if row.exact_mass.is_none() {
+                        span {
+                            class: "curation-status curation-status-badge is-warn",
+                            title: "{row.mass_warning.as_deref().unwrap_or(curation_mass_warning_title(locale))}",
+                            "{curation_badge_mass_missing(locale)}"
+                        }
+                    }
+                }
+                div { class: "curation-note", "{row.note}" }
+            }
+        }
+    }
+}
+
+#[component]
 pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> Element {
     let scroll_hint_id = "curation-results-scroll-hint";
 
     rsx! {
         div { class: "curation-card",
             h3 { "{crate::i18n::heading_results(locale)}" }
-            div { class: "curation-badges",
-                for (status, count) in status_counts(rows.as_ref()) {
-                    span { class: "curation-status curation-status-badge {status_class(&status)}",
-                        "{status_label(locale, &status)} ({count})"
-                    }
-                }
-            }
+            StatusSummaryBadges { locale, rows: rows.clone() }
             p {
                 id: scroll_hint_id,
                 class: "curation-scroll-hint",
@@ -55,56 +118,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     }
                     tbody {
                         for row in rows.iter() {
-                            tr {
-                                td { "{row.input.name}" }
-                                td { class: "mono curation-cell-wrap", "{row.input.smiles}" }
-                                td { class: "mono curation-cell-wrap",
-                                    "{row.canonical_smiles.as_deref().unwrap_or(NA_TEXT)}"
-                                }
-                                td { class: "mono", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
-                                td { class: "mono curation-cell-wrap",
-                                    "{row.inchi.as_deref().unwrap_or(NA_TEXT)}"
-                                }
-                                td { class: "mono", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
-                                td { class: "mono", "{format_mass(row.exact_mass)}" }
-                                td {
-                                    if let Some(qid) = row.wikidata_qid.as_deref() {
-                                        a {
-                                            href: "https://www.wikidata.org/wiki/{qid}",
-                                            target: "_blank",
-                                            rel: "noopener noreferrer",
-                                            "{qid}"
-                                        }
-                                    } else {
-                                        "{label_new_item(locale)}"
-                                    }
-                                }
-                                td {
-                                    span { class: "curation-status {status_class(&row.status)}",
-                                        "{status_label(locale, &row.status)}"
-                                    }
-                                    div { class: "curation-row-badges",
-                                        if !row.dependency_blocks.is_empty() {
-                                            span { class: "curation-status curation-status-badge is-pending",
-                                                "{curation_badge_prerequisite_pending(locale)}"
-                                            }
-                                        }
-                                        if matches!(row.status, CurationStatus::PendingDependencies) {
-                                            span { class: "curation-status curation-status-badge is-pending",
-                                                "{curation_badge_second_pass_required(locale)}"
-                                            }
-                                        }
-                                        if row.exact_mass.is_none() {
-                                            span {
-                                                class: "curation-status curation-status-badge is-warn",
-                                                title: "{row.mass_warning.as_deref().unwrap_or(curation_mass_warning_title(locale))}",
-                                                "{curation_badge_mass_missing(locale)}"
-                                            }
-                                        }
-                                    }
-                                    div { class: "curation-note", "{row.note}" }
-                                }
-                            }
+                            CurationResultTableRow { locale, row: row.clone() }
                         }
                     }
                 }

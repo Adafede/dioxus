@@ -26,7 +26,7 @@
 use crate::features::explore::search_state::{
     ExploreState, ResultDataState, SearchLifecycleState, UiChromeState,
 };
-use crate::models::SearchCriteria;
+use crate::models::{CompoundEntry, DatasetStats, SearchCriteria, SortState};
 use dioxus::prelude::*;
 use std::sync::Arc;
 
@@ -104,6 +104,8 @@ pub struct ExploreUiState {
     pub loading: bool,
     pub has_error: bool,
     pub searched_once: bool,
+    pub download_only_mode: bool,
+    pub download_dispatching: bool,
     pub has_entries: bool,
     pub has_query: bool,
     pub has_resolved_qid: bool,
@@ -116,6 +118,8 @@ impl ExploreUiState {
             loading: explore_read.lifecycle.loading,
             has_error: explore_read.lifecycle.error.is_some(),
             searched_once: explore_read.lifecycle.searched_once,
+            download_only_mode: explore_read.lifecycle.download_only_mode,
+            download_dispatching: explore_read.lifecycle.download_dispatching,
             has_entries: !explore_read.result.entries.is_empty(),
             has_query: explore_read.result.sparql_query.is_some(),
             has_resolved_qid: explore_read.result.resolved_qid.is_some(),
@@ -123,9 +127,73 @@ impl ExploreUiState {
     }
 }
 
+#[derive(Clone, PartialEq)]
+pub struct ToolbarResultSnapshot {
+    pub sparql_query: Option<Arc<str>>,
+    pub metadata_json: Option<Arc<str>>,
+    pub query_hash: Option<String>,
+    pub result_hash: Option<String>,
+    pub total_stats: Option<DatasetStats>,
+    pub total_matches: Option<usize>,
+    pub display_capped_rows: bool,
+}
+
+pub fn toolbar_snapshot_from_result(result: &ResultDataState) -> ToolbarResultSnapshot {
+    ToolbarResultSnapshot {
+        sparql_query: result.sparql_query.clone(),
+        metadata_json: result.metadata_json.clone(),
+        query_hash: result.query_hash.clone(),
+        result_hash: result.result_hash.clone(),
+        total_stats: result.total_stats.clone(),
+        total_matches: result.total_matches,
+        display_capped_rows: result.display_capped_rows,
+    }
+}
+
+pub fn use_toolbar_result_snapshot(explore: Signal<ExploreState>) -> Memo<ToolbarResultSnapshot> {
+    use_memo(move || toolbar_snapshot_from_result(&explore.read().result))
+}
+
+#[derive(Clone, PartialEq)]
+pub struct HeaderMetaSnapshot {
+    pub resolved_qid: Option<String>,
+    pub query_hash: Option<String>,
+    pub result_hash: Option<String>,
+}
+
+pub fn header_meta_snapshot_from_result(result: &ResultDataState) -> HeaderMetaSnapshot {
+    HeaderMetaSnapshot {
+        resolved_qid: result.resolved_qid.clone(),
+        query_hash: result.query_hash.clone(),
+        result_hash: result.result_hash.clone(),
+    }
+}
+
+pub fn use_header_meta_snapshot(explore: Signal<ExploreState>) -> Memo<HeaderMetaSnapshot> {
+    use_memo(move || header_meta_snapshot_from_result(&explore.read().result))
+}
+
+#[derive(Clone, PartialEq)]
+pub struct TableResultSnapshot {
+    pub entries: Arc<[CompoundEntry]>,
+    pub sort: SortState,
+}
+
+pub fn table_snapshot_from_result(result: &ResultDataState) -> TableResultSnapshot {
+    TableResultSnapshot {
+        entries: result.entries.clone(),
+        sort: result.sort,
+    }
+}
+
+pub fn use_table_result_snapshot(explore: Signal<ExploreState>) -> Memo<TableResultSnapshot> {
+    use_memo(move || table_snapshot_from_result(&explore.read().result))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
 
     #[test]
     fn explore_ui_state_all_false_by_default() {
@@ -134,6 +202,8 @@ mod tests {
             loading: explore.lifecycle.loading,
             has_error: explore.lifecycle.error.is_some(),
             searched_once: explore.lifecycle.searched_once,
+            download_only_mode: explore.lifecycle.download_only_mode,
+            download_dispatching: explore.lifecycle.download_dispatching,
             has_entries: !explore.result.entries.is_empty(),
             has_query: explore.result.sparql_query.is_some(),
             has_resolved_qid: explore.result.resolved_qid.is_some(),
@@ -142,8 +212,62 @@ mod tests {
         assert!(!ui_state.loading);
         assert!(!ui_state.has_error);
         assert!(!ui_state.searched_once);
+        assert!(!ui_state.download_only_mode);
+        assert!(!ui_state.download_dispatching);
         assert!(!ui_state.has_entries);
         assert!(!ui_state.has_query);
         assert!(!ui_state.has_resolved_qid);
+    }
+
+    #[test]
+    fn toolbar_snapshot_copies_result_fields() {
+        let result = ResultDataState {
+            sparql_query: Some(Arc::from("SELECT * WHERE { ?s ?p ?o }")),
+            metadata_json: Some(Arc::from("{\"k\":\"v\"}")),
+            query_hash: Some("qh".to_string()),
+            result_hash: Some("rh".to_string()),
+            total_matches: Some(12),
+            display_capped_rows: true,
+            ..ResultDataState::default()
+        };
+
+        let snapshot = toolbar_snapshot_from_result(&result);
+        assert_eq!(
+            snapshot.sparql_query.as_deref(),
+            Some("SELECT * WHERE { ?s ?p ?o }")
+        );
+        assert_eq!(snapshot.metadata_json.as_deref(), Some("{\"k\":\"v\"}"));
+        assert_eq!(snapshot.query_hash.as_deref(), Some("qh"));
+        assert_eq!(snapshot.result_hash.as_deref(), Some("rh"));
+        assert_eq!(snapshot.total_matches, Some(12));
+        assert!(snapshot.display_capped_rows);
+    }
+
+    #[test]
+    #[ignore = "profiling benchmark"]
+    fn profile_toolbar_snapshot_construction_cost() {
+        let result = ResultDataState {
+            sparql_query: Some(Arc::from("SELECT * WHERE { ?s ?p ?o }")),
+            metadata_json: Some(Arc::from("{\"k\":\"v\"}")),
+            query_hash: Some("queryhash0123456789".to_string()),
+            result_hash: Some("resulthash0123456789".to_string()),
+            total_matches: Some(42),
+            display_capped_rows: true,
+            ..ResultDataState::default()
+        };
+
+        let loops = 100_000;
+        let start = Instant::now();
+        let mut observed = 0usize;
+        for _ in 0..loops {
+            let snap = toolbar_snapshot_from_result(&result);
+            observed += snap.total_matches.unwrap_or(0);
+        }
+        let elapsed = start.elapsed();
+        eprintln!(
+            "toolbar snapshot benchmark: loops={loops} elapsed_ms={:.3} observed={observed}",
+            elapsed.as_secs_f64() * 1000.0
+        );
+        assert_eq!(observed, loops * 42);
     }
 }

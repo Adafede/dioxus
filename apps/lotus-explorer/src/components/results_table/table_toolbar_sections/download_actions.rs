@@ -9,6 +9,7 @@ use super::super::download_model::{
     DOWNLOAD_QUERY_RDF_SPEC, DownloadQuerySpec, build_download_toolbar_model,
 };
 use crate::download::{DownloadFormat, execute_download, trigger_download};
+use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::models::SearchCriteria;
 use crate::perf;
@@ -106,27 +107,14 @@ pub fn DownloadActionsGroup() -> Element {
     let criteria = crate::features::explore::selectors::use_ui_selector(explore, |ui| {
         ui.executed_criteria.clone()
     });
-    let sparql_query =
-        crate::features::explore::selectors::use_result_selector(explore, |result| {
-            result.sparql_query.clone()
-        });
-    let metadata_json =
-        crate::features::explore::selectors::use_result_selector(explore, |result| {
-            result.metadata_json.clone()
-        });
-    let query_hash = crate::features::explore::selectors::use_result_selector(explore, |result| {
-        result.query_hash.clone()
-    });
-    let result_hash = crate::features::explore::selectors::use_result_selector(explore, |result| {
-        result.result_hash.clone()
-    });
+    let toolbar_snapshot = use_toolbar_result_snapshot(explore);
 
     let toolbar_model = build_download_toolbar_model(
         &criteria.read(),
-        sparql_query.read().as_deref(),
-        metadata_json.read().as_deref(),
-        query_hash.read().as_deref(),
-        result_hash.read().as_deref(),
+        toolbar_snapshot.read().sparql_query.as_deref(),
+        toolbar_snapshot.read().metadata_json.as_deref(),
+        toolbar_snapshot.read().query_hash.as_deref(),
+        toolbar_snapshot.read().result_hash.as_deref(),
     );
 
     let download_results_label = t(locale, TextKey::DownloadResults);
@@ -150,8 +138,8 @@ pub fn DownloadActionsGroup() -> Element {
         .unwrap_or_else(|| t(locale, TextKey::PreparingDownload).to_string());
 
     let criteria_value = Arc::new(criteria.read().clone());
-    let sparql_query_value = sparql_query.read().clone();
-    let metadata_json_value = metadata_json.read().clone();
+    let sparql_query_value = toolbar_snapshot.read().sparql_query.clone();
+    let metadata_json_value = toolbar_snapshot.read().metadata_json.clone();
 
     rsx! {
         div { class: "toolbar-actions",

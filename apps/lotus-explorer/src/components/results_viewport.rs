@@ -12,7 +12,7 @@ use dioxus::prelude::*;
 
 #[component]
 pub fn ResultsViewport() -> Element {
-    use crate::features::explore::{ExploreUiState, use_lifecycle_selector};
+    use crate::features::explore::ExploreUiState;
 
     let state = use_results_context();
     let explore = state.explore;
@@ -27,7 +27,7 @@ pub fn ResultsViewport() -> Element {
             s.loading,
             s.has_error,
             s.searched_once,
-            false, // download_only_mode is rare; would need a separate selector
+            s.download_only_mode,
             s.has_entries,
         )
     });
@@ -56,9 +56,7 @@ pub fn ResultsViewport() -> Element {
             ResultsTable {}
         },
         ContentPhase::DownloadOnly => {
-            let download_dispatching =
-                use_lifecycle_selector(explore, |lc| lc.download_dispatching);
-            if *download_dispatching.read() {
+            if ui_state.read().download_dispatching {
                 rsx! {
                     DownloadDispatchState {}
                 }

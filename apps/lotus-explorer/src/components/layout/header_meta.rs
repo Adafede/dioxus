@@ -6,11 +6,64 @@
 //! Reads from [`crate::state::ResultsContext`] and `use_locale()` — zero props.
 
 use crate::components::copy_button::CopyButton;
+use crate::features::explore::use_header_meta_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
 use dioxus::prelude::*;
 use std::sync::Arc;
+
+fn hash_prefix(value: &str) -> &str {
+    value.get(..12).unwrap_or(value)
+}
+
+#[component]
+fn ResolvedTaxonMetaItem(locale: crate::i18n::Locale, qid: Arc<str>) -> Element {
+    rsx! {
+        span { class: "meta-item",
+            span { class: "meta-key", "{t(locale, TextKey::ResolvedTaxon)}" }
+            span { class: "meta-sep", ":" }
+            span { class: "meta-val mono", "{qid}" }
+            CopyButton {
+                text: qid,
+                title: t(locale, TextKey::CopyTaxonQid),
+                locale,
+            }
+        }
+    }
+}
+
+#[component]
+fn QueryHashMetaItem(locale: crate::i18n::Locale, full_hash: Arc<str>) -> Element {
+    rsx! {
+        span { class: "meta-item",
+            span { class: "meta-key", "{t(locale, TextKey::QueryHash)}" }
+            span { class: "meta-sep", ":" }
+            span { class: "meta-val mono", "{hash_prefix(&full_hash)}" }
+            CopyButton {
+                text: full_hash,
+                title: t(locale, TextKey::CopyFullQueryHash),
+                locale,
+            }
+        }
+    }
+}
+
+#[component]
+fn ResultHashMetaItem(locale: crate::i18n::Locale, full_hash: Arc<str>) -> Element {
+    rsx! {
+        span { class: "meta-item",
+            span { class: "meta-key", "{t(locale, TextKey::ResultHash)}" }
+            span { class: "meta-sep", ":" }
+            span { class: "meta-val mono", "{hash_prefix(&full_hash)}" }
+            CopyButton {
+                text: full_hash,
+                title: t(locale, TextKey::CopyFullResultHash),
+                locale,
+            }
+        }
+    }
+}
 
 /// Displays resolved-taxon QID, query/result hashes, and total-match count.
 ///
@@ -22,31 +75,19 @@ pub fn HeaderMetaSection() -> Element {
     let explore = use_results_context().explore;
     let form_ctx = use_form_criteria_context();
     let locale = crate::hooks::use_locale();
-    let resolved_qid =
-        crate::features::explore::selectors::use_result_selector(explore, |result| {
-            result.resolved_qid.clone()
-        });
-    let query_hash = crate::features::explore::selectors::use_result_selector(explore, |result| {
-        result.query_hash.clone()
-    });
-    let result_hash = crate::features::explore::selectors::use_result_selector(explore, |result| {
-        result.result_hash.clone()
-    });
+    let header_snapshot = use_header_meta_snapshot(explore);
     let criteria =
         crate::features::explore::selectors::use_criteria_selector(form_ctx.criteria, |c| {
             c.clone()
         });
 
     let mut prev_criteria = use_signal(|| criteria.read().clone());
-    let mut prev_meta = use_signal(|| {
-        (
-            resolved_qid.read().clone(),
-            query_hash.read().clone(),
-            result_hash.read().clone(),
-        )
-    });
+    let mut prev_meta = use_signal(|| header_snapshot.read().clone());
     let mut meta_visible = use_signal(|| {
-        resolved_qid.read().is_some() || query_hash.read().is_some() || result_hash.read().is_some()
+        let snapshot = header_snapshot.read();
+        snapshot.resolved_qid.is_some()
+            || snapshot.query_hash.is_some()
+            || snapshot.result_hash.is_some()
     });
 
     // Criteria changes invalidate the entire metadata strip until fresh results arrive.
@@ -60,22 +101,21 @@ pub fn HeaderMetaSection() -> Element {
 
     // Show metadata again when a fresh metadata tuple is produced.
     use_effect(move || {
-        let current_meta = (
-            resolved_qid.read().clone(),
-            query_hash.read().clone(),
-            result_hash.read().clone(),
-        );
+        let current_meta = header_snapshot.read().clone();
         if current_meta != *prev_meta.read() {
             meta_visible.set(
-                current_meta.0.is_some() || current_meta.1.is_some() || current_meta.2.is_some(),
+                current_meta.resolved_qid.is_some()
+                    || current_meta.query_hash.is_some()
+                    || current_meta.result_hash.is_some(),
             );
             prev_meta.set(current_meta);
         }
     });
 
-    let resolved_qid_value = resolved_qid.read().clone();
-    let query_hash_value = query_hash.read().clone();
-    let result_hash_value = result_hash.read().clone();
+    let snapshot = header_snapshot.read().clone();
+    let resolved_qid_value = snapshot.resolved_qid;
+    let query_hash_value = snapshot.query_hash;
+    let result_hash_value = snapshot.result_hash;
 
     let has_meta = *meta_visible.read()
         && (resolved_qid_value.is_some()
@@ -86,40 +126,13 @@ pub fn HeaderMetaSection() -> Element {
         if has_meta {
             div { class: "page-header-meta",
                 if let Some(qid) = resolved_qid_value.as_deref() {
-                    span { class: "meta-item",
-                        span { class: "meta-key", "{t(locale, TextKey::ResolvedTaxon)}" }
-                        span { class: "meta-sep", ":" }
-                        span { class: "meta-val mono", "{qid}" }
-                        CopyButton {
-                            text: Arc::<str>::from(qid),
-                            title: t(locale, TextKey::CopyTaxonQid),
-                            locale,
-                        }
-                    }
+                    ResolvedTaxonMetaItem { locale, qid: Arc::from(qid) }
                 }
                 if let Some(qh) = query_hash_value.as_deref() {
-                    span { class: "meta-item",
-                        span { class: "meta-key", "{t(locale, TextKey::QueryHash)}" }
-                        span { class: "meta-sep", ":" }
-                        span { class: "meta-val mono", "{&qh[..12]}" }
-                        CopyButton {
-                            text: Arc::<str>::from(qh),
-                            title: t(locale, TextKey::CopyFullQueryHash),
-                            locale,
-                        }
-                    }
+                    QueryHashMetaItem { locale, full_hash: Arc::from(qh) }
                 }
                 if let Some(rh) = result_hash_value.as_deref() {
-                    span { class: "meta-item",
-                        span { class: "meta-key", "{t(locale, TextKey::ResultHash)}" }
-                        span { class: "meta-sep", ":" }
-                        span { class: "meta-val mono", "{&rh[..12]}" }
-                        CopyButton {
-                            text: Arc::<str>::from(rh),
-                            title: t(locale, TextKey::CopyFullResultHash),
-                            locale,
-                        }
-                    }
+                    ResultHashMetaItem { locale, full_hash: Arc::from(rh) }
                 }
             }
         }
