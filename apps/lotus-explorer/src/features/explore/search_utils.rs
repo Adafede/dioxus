@@ -43,8 +43,10 @@ pub fn compute_hashes(
 ) -> (String, String) {
     let normalized_qid = if qid.trim().is_empty() { "*" } else { qid };
     let normalized_taxon = criteria.taxon.trim();
-    let mut query_source = String::with_capacity(normalized_qid.len() + normalized_taxon.len() + 64);
-    write!(query_source, "{}|{}", normalized_qid, normalized_taxon).expect("String write is infallible");
+    let mut query_source =
+        String::with_capacity(normalized_qid.len() + normalized_taxon.len() + 64);
+    write!(query_source, "{}|{}", normalized_qid, normalized_taxon)
+        .expect("String write is infallible");
 
     // Build `|key=value&key=value&…` suffix without an intermediate Vec<String>.
     for (i, (k, v)) in criteria.shareable_query_params().into_iter().enumerate() {
