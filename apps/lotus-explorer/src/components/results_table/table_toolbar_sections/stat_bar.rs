@@ -62,11 +62,11 @@ pub fn StatBar() -> Element {
     let fallback_stats: Memo<DatasetStats> =
         use_memo(move || DatasetStats::from_entries(entries.read().as_ref()));
     let snapshot_ref = toolbar_snapshot.read();
+    let fallback_stats_ref = fallback_stats.read();
     let stats = snapshot_ref
         .total_stats
         .as_ref()
-        .cloned()
-        .unwrap_or_else(|| fallback_stats.read().clone());
+        .unwrap_or(&fallback_stats_ref);
     let entries_value = snapshot_ref.total_matches.unwrap_or(stats.n_entries);
     let entries_unique_value = stats.n_entries_unique;
 

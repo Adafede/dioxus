@@ -24,7 +24,7 @@ const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
 fn spawn_query_download(
     format: DownloadFormat,
     status_message: String,
-    criteria_snapshot: Arc<SearchCriteria>,
+    _criteria_snapshot: Option<Arc<SearchCriteria>>,
     filename: String,
     query: Arc<str>,
     mut download_busy: Signal<bool>,
@@ -46,7 +46,7 @@ fn spawn_query_download(
         if let Err(err) = execute_download(
             format,
             #[cfg(target_arch = "wasm32")]
-            criteria_snapshot,
+            _criteria_snapshot.expect("wasm download requires criteria snapshot"),
             query,
             filename,
         )
@@ -57,8 +57,6 @@ fn spawn_query_download(
                 format.log_name()
             );
         }
-        #[cfg(not(target_arch = "wasm32"))]
-        let _ = &criteria_snapshot;
         *download_busy.write() = false;
         *download_status.write() = None;
     });
@@ -67,7 +65,7 @@ fn spawn_query_download(
 fn dispatch_query_download_spec(
     spec: DownloadQuerySpec,
     locale: crate::i18n::Locale,
-    criteria_snapshot: Arc<SearchCriteria>,
+    criteria_snapshot: Option<Arc<SearchCriteria>>,
     filename: String,
     query: Arc<str>,
     download_busy: Signal<bool>,
@@ -139,7 +137,6 @@ pub fn DownloadActionsGroup() -> Element {
         .unwrap_or_else(|| t(locale, TextKey::PreparingDownload))
         .to_string();
 
-    let criteria_value = Arc::new(criteria.read().clone());
     let sparql_query_value = snapshot.sparql_query.clone();
     let metadata_json_value = snapshot.metadata_json.clone();
     drop(snapshot);
@@ -167,8 +164,11 @@ pub fn DownloadActionsGroup() -> Element {
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
-                                let criteria_snapshot = criteria_value.clone();
                                 let filename = toolbar_model.csv_filename.clone();
+                                #[cfg(target_arch = "wasm32")]
+                                let criteria_snapshot = Some(Arc::new(criteria.read().clone()));
+                                #[cfg(not(target_arch = "wasm32"))]
+                                let criteria_snapshot = None;
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_CSV_SPEC,
@@ -191,8 +191,11 @@ pub fn DownloadActionsGroup() -> Element {
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
-                                let criteria_snapshot = criteria_value.clone();
                                 let filename = toolbar_model.json_filename.clone();
+                                #[cfg(target_arch = "wasm32")]
+                                let criteria_snapshot = Some(Arc::new(criteria.read().clone()));
+                                #[cfg(not(target_arch = "wasm32"))]
+                                let criteria_snapshot = None;
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_JSON_SPEC,
@@ -215,8 +218,11 @@ pub fn DownloadActionsGroup() -> Element {
                             disabled: *download_busy.read(),
                             onclick: {
                                 let q = query.clone();
-                                let criteria_snapshot = criteria_value;
                                 let filename = toolbar_model.rdf_filename.clone();
+                                #[cfg(target_arch = "wasm32")]
+                                let criteria_snapshot = Some(Arc::new(criteria.read().clone()));
+                                #[cfg(not(target_arch = "wasm32"))]
+                                let criteria_snapshot = None;
                                 move |_| {
                                     dispatch_query_download_spec(
                                         DOWNLOAD_QUERY_RDF_SPEC,
