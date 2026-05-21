@@ -65,18 +65,26 @@ pub(crate) fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiEr
         c.formula_exact = v.trim().to_string();
     }
 
-    c.c_min = req.c_min.unwrap_or(c.c_min);
-    c.c_max = req.c_max.unwrap_or(c.c_max);
-    c.h_min = req.h_min.unwrap_or(c.h_min);
-    c.h_max = req.h_max.unwrap_or(c.h_max);
-    c.n_min = req.n_min.unwrap_or(c.n_min);
-    c.n_max = req.n_max.unwrap_or(c.n_max);
-    c.o_min = req.o_min.unwrap_or(c.o_min);
-    c.o_max = req.o_max.unwrap_or(c.o_max);
-    c.p_min = req.p_min.unwrap_or(c.p_min);
-    c.p_max = req.p_max.unwrap_or(c.p_max);
-    c.s_min = req.s_min.unwrap_or(c.s_min);
-    c.s_max = req.s_max.unwrap_or(c.s_max);
+    // Apply optional element-count bounds from the request.
+    macro_rules! apply_opt {
+        ($src:expr => $dst:expr) => {
+            if let Some(v) = $src {
+                $dst = v;
+            }
+        };
+    }
+    apply_opt!(req.c_min => c.c_min);
+    apply_opt!(req.c_max => c.c_max);
+    apply_opt!(req.h_min => c.h_min);
+    apply_opt!(req.h_max => c.h_max);
+    apply_opt!(req.n_min => c.n_min);
+    apply_opt!(req.n_max => c.n_max);
+    apply_opt!(req.o_min => c.o_min);
+    apply_opt!(req.o_max => c.o_max);
+    apply_opt!(req.p_min => c.p_min);
+    apply_opt!(req.p_max => c.p_max);
+    apply_opt!(req.s_min => c.s_min);
+    apply_opt!(req.s_max => c.s_max);
 
     if c.c_min > c.c_max
         || c.h_min > c.h_max
@@ -88,18 +96,11 @@ pub(crate) fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiEr
         return Err(ApiError::bad_request("Element min must be <= max"));
     }
 
-    if let Some(v) = req.f_state {
-        c.f_state = v.into();
-    }
-    if let Some(v) = req.cl_state {
-        c.cl_state = v.into();
-    }
-    if let Some(v) = req.br_state {
-        c.br_state = v.into();
-    }
-    if let Some(v) = req.i_state {
-        c.i_state = v.into();
-    }
+    // Halogen presence states — each converts via `Into` from the request enum.
+    apply_opt!(req.f_state.map(Into::into)  => c.f_state);
+    apply_opt!(req.cl_state.map(Into::into) => c.cl_state);
+    apply_opt!(req.br_state.map(Into::into) => c.br_state);
+    apply_opt!(req.i_state.map(Into::into)  => c.i_state);
 
     Ok(c)
 }

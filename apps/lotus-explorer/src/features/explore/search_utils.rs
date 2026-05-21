@@ -3,6 +3,7 @@
 
 use crate::models::{CompoundEntry, SearchCriteria};
 use sha2::{Digest, Sha256};
+use std::fmt::Write as _;
 
 pub fn sanitize_taxon_input(taxon: &str) -> String {
     let replaced = taxon.replace('_', " ");
@@ -34,16 +35,15 @@ pub fn compute_hashes(
     let normalized_qid = if qid.trim().is_empty() { "*" } else { qid };
     let normalized_taxon = criteria.taxon.trim();
     let mut query_source = format!("{}|{}", normalized_qid, normalized_taxon);
-    let params = criteria.shareable_query_params();
-    if !params.is_empty() {
-        query_source.push('|');
-        query_source.push_str(
-            &params
-                .into_iter()
-                .map(|(k, v)| format!("{}={}", k, v))
-                .collect::<Vec<_>>()
-                .join("&"),
-        );
+
+    // Build `|key=value&key=value&…` suffix without an intermediate Vec<String>.
+    for (i, (k, v)) in criteria.shareable_query_params().into_iter().enumerate() {
+        if i == 0 {
+            query_source.push('|');
+        } else {
+            query_source.push('&');
+        }
+        write!(query_source, "{k}={v}").expect("String write is infallible");
     }
     let query_hash = to_hex_lower(&Sha256::digest(query_source.as_bytes()));
 
@@ -53,8 +53,16 @@ pub fn compute_hashes(
         .collect::<Vec<_>>();
     compounds.sort_unstable();
     compounds.dedup();
-    let result_source = compounds.join("|");
-    let result_hash = to_hex_lower(&Sha256::digest(result_source.as_bytes()));
+
+    // Stream QIDs directly into the hasher — avoids allocating a joined String.
+    let mut result_hasher = Sha256::new();
+    for (i, qid) in compounds.iter().enumerate() {
+        if i > 0 {
+            result_hasher.update(b"|");
+        }
+        result_hasher.update(qid.as_bytes());
+    }
+    let result_hash = to_hex_lower(&result_hasher.finalize());
 
     (query_hash, result_hash)
 }

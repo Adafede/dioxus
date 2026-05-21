@@ -2,22 +2,22 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::curation::{
-    CurationInputRow, CurationResultRow, QuickStatementsBundle, build_curation_share_url,
+    CurationResultRow, QuickStatementsBundle, build_curation_share_url,
     curate_rows, example_rows, initial_curation_autorun_from_url, initial_curation_rows_from_url,
 };
-use crate::features::curation::queue::{append_unique_rows, non_empty_trimmed};
+use crate::features::curation::queue::append_unique_rows;
 use crate::features::curation::services::quickstatements::build_qs_dev_link;
 use crate::features::curation::state::page_controller::{
     import_tsv_rows, rows_to_tsv, start_curation_run,
 };
 use crate::features::curation::workflow;
 use crate::features::explore::absolute_share_url;
+use crate::hooks::use_add_row_form;
 use crate::i18n::{
     TextKey, button_add_row, button_append_tsv_rows, button_load_example_rows, heading_add_one_row,
     heading_tsv_import, hint_expected_tsv_headers, msg_add_row_before_generate,
-    msg_duplicate_row_skipped, msg_examples_loaded, msg_name_smiles_required,
-    msg_second_pass_running, placeholder_doi_optional, placeholder_molecule_name,
-    placeholder_taxon_optional, t,
+    msg_examples_loaded, msg_second_pass_running, placeholder_doi_optional,
+    placeholder_molecule_name, placeholder_taxon_optional, t,
 };
 use dioxus::prelude::*;
 use std::sync::Arc;
@@ -31,10 +31,7 @@ use sections::{QueueRowsCard, QuickStatementsCard};
 #[component]
 pub fn DataCurationPage() -> Element {
     let locale = crate::hooks::use_locale();
-    let mut name_input = use_signal(String::new);
-    let mut smiles_input = use_signal(String::new);
-    let mut taxon_input = use_signal(String::new);
-    let mut doi_input = use_signal(String::new);
+    let mut form = use_add_row_form();
     let mut tsv_input = use_signal(String::new);
     let mut rows = use_signal(initial_curation_rows_from_url);
     let mut processing = use_signal(|| false);
@@ -56,27 +53,7 @@ pub fn DataCurationPage() -> Element {
     let qs_main_link = build_qs_dev_link(&quickstatements_value.main);
 
     let on_add_row = move |_| {
-        let name = name_input.read().trim().to_string();
-        let smiles = smiles_input.read().trim().to_string();
-        if name.is_empty() || smiles.is_empty() {
-            *status_message.write() = Some(msg_name_smiles_required(locale));
-            return;
-        }
-        let row = CurationInputRow {
-            name,
-            smiles,
-            taxon: non_empty_trimmed(&taxon_input.read()),
-            doi: non_empty_trimmed(&doi_input.read()),
-        };
-        if append_unique_rows(&mut rows.write(), vec![row]).skipped > 0 {
-            *status_message.write() = Some(msg_duplicate_row_skipped(locale));
-            return;
-        }
-        *status_message.write() = None;
-        name_input.set(String::new());
-        smiles_input.set(String::new());
-        taxon_input.set(String::new());
-        doi_input.set(String::new());
+        form.try_add(locale, rows, status_message);
     };
 
     let on_parse_tsv = move |_| {
@@ -163,8 +140,8 @@ pub fn DataCurationPage() -> Element {
                             class: "form-input",
                             r#type: "text",
                             placeholder: "{placeholder_molecule_name(locale)}",
-                            value: "{name_input}",
-                            oninput: move |e| name_input.set(e.value()),
+                            value: "{form.name}",
+                            oninput: move |e| form.name.set(e.value()),
                         }
                         label {
                             class: "form-label",
@@ -176,8 +153,8 @@ pub fn DataCurationPage() -> Element {
                             class: "form-input",
                             r#type: "text",
                             placeholder: "SMILES",
-                            value: "{smiles_input}",
-                            oninput: move |e| smiles_input.set(e.value()),
+                            value: "{form.smiles}",
+                            oninput: move |e| form.smiles.set(e.value()),
                         }
                         label {
                             class: "form-label",
@@ -189,8 +166,8 @@ pub fn DataCurationPage() -> Element {
                             class: "form-input",
                             r#type: "text",
                             placeholder: "{placeholder_taxon_optional(locale)}",
-                            value: "{taxon_input}",
-                            oninput: move |e| taxon_input.set(e.value()),
+                            value: "{form.taxon}",
+                            oninput: move |e| form.taxon.set(e.value()),
                         }
                         label { class: "form-label", r#for: "curation-doi-input",
                             "{placeholder_doi_optional(locale)}"
@@ -200,8 +177,8 @@ pub fn DataCurationPage() -> Element {
                             class: "form-input",
                             r#type: "text",
                             placeholder: "{placeholder_doi_optional(locale)}",
-                            value: "{doi_input}",
-                            oninput: move |e| doi_input.set(e.value()),
+                            value: "{form.doi}",
+                            oninput: move |e| form.doi.set(e.value()),
                         }
                     }
                     div { class: "curation-actions",

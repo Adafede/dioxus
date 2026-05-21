@@ -150,92 +150,33 @@ impl FormulaQueryDto {
     }
 
     fn apply(self, criteria: &mut SearchCriteria) {
+        // Declarative field assignment: moves value from Option<T> into criteria field when Some.
+        macro_rules! set_if_some {
+            ($src:expr => $dst:expr) => {
+                if let Some(v) = $src {
+                    $dst = v;
+                }
+            };
+        }
+
         criteria.formula_enabled = true;
-        apply_option(
-            self.exact,
-            |criteria, value| criteria.formula_exact = value,
-            criteria,
-        );
-        apply_option(
-            self.c_min,
-            |criteria, value| criteria.c_min = value,
-            criteria,
-        );
-        apply_option(
-            self.c_max,
-            |criteria, value| criteria.c_max = value,
-            criteria,
-        );
-        apply_option(
-            self.h_min,
-            |criteria, value| criteria.h_min = value,
-            criteria,
-        );
-        apply_option(
-            self.h_max,
-            |criteria, value| criteria.h_max = value,
-            criteria,
-        );
-        apply_option(
-            self.n_min,
-            |criteria, value| criteria.n_min = value,
-            criteria,
-        );
-        apply_option(
-            self.n_max,
-            |criteria, value| criteria.n_max = value,
-            criteria,
-        );
-        apply_option(
-            self.o_min,
-            |criteria, value| criteria.o_min = value,
-            criteria,
-        );
-        apply_option(
-            self.o_max,
-            |criteria, value| criteria.o_max = value,
-            criteria,
-        );
-        apply_option(
-            self.p_min,
-            |criteria, value| criteria.p_min = value,
-            criteria,
-        );
-        apply_option(
-            self.p_max,
-            |criteria, value| criteria.p_max = value,
-            criteria,
-        );
-        apply_option(
-            self.s_min,
-            |criteria, value| criteria.s_min = value,
-            criteria,
-        );
-        apply_option(
-            self.s_max,
-            |criteria, value| criteria.s_max = value,
-            criteria,
-        );
-        apply_option(
-            self.f_state,
-            |criteria, value| criteria.f_state = value,
-            criteria,
-        );
-        apply_option(
-            self.cl_state,
-            |criteria, value| criteria.cl_state = value,
-            criteria,
-        );
-        apply_option(
-            self.br_state,
-            |criteria, value| criteria.br_state = value,
-            criteria,
-        );
-        apply_option(
-            self.i_state,
-            |criteria, value| criteria.i_state = value,
-            criteria,
-        );
+        set_if_some!(self.exact    => criteria.formula_exact);
+        set_if_some!(self.c_min   => criteria.c_min);
+        set_if_some!(self.c_max   => criteria.c_max);
+        set_if_some!(self.h_min   => criteria.h_min);
+        set_if_some!(self.h_max   => criteria.h_max);
+        set_if_some!(self.n_min   => criteria.n_min);
+        set_if_some!(self.n_max   => criteria.n_max);
+        set_if_some!(self.o_min   => criteria.o_min);
+        set_if_some!(self.o_max   => criteria.o_max);
+        set_if_some!(self.p_min   => criteria.p_min);
+        set_if_some!(self.p_max   => criteria.p_max);
+        set_if_some!(self.s_min   => criteria.s_min);
+        set_if_some!(self.s_max   => criteria.s_max);
+        set_if_some!(self.f_state  => criteria.f_state);
+        set_if_some!(self.cl_state => criteria.cl_state);
+        set_if_some!(self.br_state => criteria.br_state);
+        set_if_some!(self.i_state  => criteria.i_state);
     }
 }
 
@@ -324,14 +265,4 @@ fn parse_positive_threshold(value: Option<&String>) -> Option<f64> {
         .and_then(|raw| raw.parse::<f64>().ok())
         .filter(|v| v.is_finite() && *v > 0.0)
         .map(|v| v.clamp(0.05, 1.0))
-}
-
-fn apply_option<T>(
-    value: Option<T>,
-    set: impl FnOnce(&mut SearchCriteria, T),
-    criteria: &mut SearchCriteria,
-) {
-    if let Some(value) = value {
-        set(criteria, value);
-    }
 }
