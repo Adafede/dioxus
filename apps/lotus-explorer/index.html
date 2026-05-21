@@ -107,11 +107,27 @@
             }
         </style>
         <script>
+            function waitForInitRDKitModule(timeoutMs = 12000) {
+                const start = Date.now();
+                return new Promise((resolve, reject) => {
+                    function poll() {
+                        if (typeof initRDKitModule === "function") {
+                            resolve(initRDKitModule);
+                            return;
+                        }
+                        if (Date.now() - start >= timeoutMs) {
+                            reject(new Error("RDKit_minimal.js is not loaded"));
+                            return;
+                        }
+                        setTimeout(poll, 16);
+                    }
+                    poll();
+                });
+            }
+
             const rdkitReady = (async () => {
-                if (typeof initRDKitModule !== "function") {
-                    throw new Error("RDKit_minimal.js is not loaded");
-                }
-                const RDKit = await initRDKitModule();
+                const init = await waitForInitRDKitModule();
+                const RDKit = await init();
 
                 function withMol(smiles, callback) {
                     const trimmed = String(smiles || "").trim();

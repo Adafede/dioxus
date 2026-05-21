@@ -15,7 +15,7 @@ use dioxus::prelude::*;
 ///
 /// Because every field is a [`Signal`] (which is `Copy`), this struct is
 /// itself `Copy` and can be captured by `move` closures without cloning.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct AddRowForm {
     pub name: Signal<String>,
     pub smiles: Signal<String>,
