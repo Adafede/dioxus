@@ -28,7 +28,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     rel: "noopener noreferrer",
                     class: "primary-link",
                     title: "{name}",
-                    "{prepared.display_name_short}"
+                    "{prepared.display_name}"
                 }
             }
             div { class: "badge-row",
@@ -58,7 +58,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         class: "id-badge mono inchikey",
                         title: "{ik}",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                        "{prepared.short_inchikey.as_deref().unwrap_or(ik)}"
+                        "{ik}"
                     }
                 }
             }

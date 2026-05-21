@@ -15,7 +15,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
     locale: Locale,
     text: RowText,
     entry: &CompoundEntry,
-    prepared: &PreparedRow,
+    _prepared: &PreparedRow,
     reference_qid: &str,
     doi: Option<&str>,
     statement_id: Option<&str>,
@@ -23,10 +23,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
     rsx! {
         td { class: "td-ref",
             div { class: "cell-primary",
-                if let (Some(full_title), Some(display_title)) = (
-                    entry.ref_title.as_deref(),
-                    prepared.reference_title_short.as_deref(),
-                )
+                if let Some(full_title) = entry.ref_title.as_deref()
                 {
                     a {
                         href: "https://www.wikidata.org/entity/{reference_qid}",
@@ -34,7 +31,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         rel: "noopener noreferrer",
                         class: "primary-link",
                         title: "{full_title}",
-                        "{display_title}"
+                        "{full_title}"
                     }
                 } else {
                     a {

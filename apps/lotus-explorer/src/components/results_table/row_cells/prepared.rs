@@ -26,14 +26,11 @@ impl PreparedRow {
     fn from_entry(entry: &CompoundEntry) -> Self {
         let display_name = normalized_display_name(entry);
         Self {
-            display_name_short: truncate_arc_str(&display_name, 60),
+            display_name_short: display_name.clone(),
             depict_url: depict_url_cached(entry),
             doi: trimmed_optional_arc(entry.ref_doi.as_deref()),
             statement_id: trimmed_statement_id_arc(entry.statement.as_deref()),
-            reference_title_short: entry
-                .ref_title
-                .as_deref()
-                .map(|title| truncate_arc_str(title, 60)),
+            reference_title_short: trimmed_optional_arc(entry.ref_title.as_deref()),
             short_inchikey: entry.inchikey.as_deref().map(short_inchikey_arc),
             display_name,
         }
@@ -42,17 +39,6 @@ impl PreparedRow {
 
 fn short_inchikey_arc(ik: &str) -> Arc<str> {
     Arc::<str>::from(ik.split('-').next().unwrap_or(ik))
-}
-
-fn truncate_arc_str(title: &str, max_chars: usize) -> Arc<str> {
-    let trimmed = title.trim();
-    let Some((end, _)) = trimmed.char_indices().nth(max_chars) else {
-        return Arc::<str>::from(trimmed);
-    };
-    let mut out = String::with_capacity(end + 3);
-    out.push_str(&trimmed[..end]);
-    out.push('…');
-    Arc::<str>::from(out)
 }
 
 fn normalized_display_name(entry: &CompoundEntry) -> Arc<str> {
@@ -114,16 +100,59 @@ mod tests {
     }
 
     #[test]
-    fn truncate_title_borrows_when_already_short() {
-        let title = "Short title";
-        let truncated = truncate_arc_str(title, 60);
-        assert_eq!(truncated.as_ref(), "Short title");
+    fn reference_title_short_keeps_trimmed_full_text() {
+        let entry = CompoundEntry {
+            compound_qid: Arc::<str>::from("Q1"),
+            name: Arc::<str>::from("Alpha"),
+            inchikey: None,
+            smiles: None,
+            mass: None,
+            formula: None,
+            taxon_qid: Arc::<str>::from("T1"),
+            taxon_name: Arc::<str>::from("Taxon"),
+            reference_qid: Arc::<str>::from("R1"),
+            ref_title: Some(Arc::<str>::from(
+                "  This reference title is intentionally much longer than sixty characters to verify it stays intact.  ",
+            )),
+            ref_doi: None,
+            pub_year: None,
+            statement: None,
+        };
+
+        let prepared = PreparedRow::from_entry(&entry);
+        assert_eq!(
+            prepared.reference_title_short.as_deref(),
+            Some(
+                "This reference title is intentionally much longer than sixty characters to verify it stays intact.",
+            )
+        );
     }
 
     #[test]
-    fn truncate_title_trims_and_appends_ellipsis() {
-        let truncated = truncate_arc_str("  This title is definitely longer than ten chars  ", 10);
-        assert_eq!(truncated.as_ref(), "This title…");
+    fn display_name_short_keeps_full_trimmed_name() {
+        let entry = CompoundEntry {
+            compound_qid: Arc::<str>::from("Q1"),
+            name: Arc::<str>::from(
+                "  This compound name is intentionally much longer than sixty characters to verify it stays intact.  ",
+            ),
+            inchikey: None,
+            smiles: None,
+            mass: None,
+            formula: None,
+            taxon_qid: Arc::<str>::from("T1"),
+            taxon_name: Arc::<str>::from("Taxon"),
+            reference_qid: Arc::<str>::from("R1"),
+            ref_title: None,
+            ref_doi: None,
+            pub_year: None,
+            statement: None,
+        };
+
+        let prepared = PreparedRow::from_entry(&entry);
+        assert_eq!(
+            prepared.display_name_short.as_ref(),
+            "This compound name is intentionally much longer than sixty characters to verify it stays intact.",
+        );
     }
 
     #[test]

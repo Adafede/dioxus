@@ -14,6 +14,7 @@
 .range-sep { color:var(--text3); padding-bottom:8px; }
 
 .formula-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
 .formula-exact-row,
 .formula-exact-input { width: 100%; max-width: none; }
 
@@ -29,6 +30,7 @@
 
 .formula-num-label { color: var(--text2); }
 .formula-minmax-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
 .formula-minmax-grid .range-pair,
 .formula-grid .range-pair { min-width: 0; }
 
@@ -53,12 +55,14 @@
 .range-inputs--pair .form-input { width: 100%; }
 
 /* Normalize number input chrome for consistent borders on Safari/Firefox. */
-input[type="number"].form-input { appearance: textfield; -moz-appearance: textfield; }
+input[type="number"].form-input { appearance: textfield; }
+
 input[type="number"].form-input::-webkit-outer-spin-button,
-input[type="number"].form-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"].form-input::-webkit-inner-spin-button { appearance: none; margin: 0; }
 
 /* Structure section */
 .form-textarea.mono, .mono { font-family: var(--mono); }
+
 .kind-pill {
   display:inline-block;
   padding:1px 7px;
@@ -99,7 +103,7 @@ input[type="number"].form-input::-webkit-inner-spin-button { -webkit-appearance:
   outline-offset: 2px;
 }
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .formula-grid,
   .formula-minmax-grid {
     grid-template-columns: 1fr;

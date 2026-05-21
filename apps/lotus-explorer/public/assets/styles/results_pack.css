@@ -81,8 +81,7 @@
 }
 
 .table-scroll {
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow: auto;
   max-height: min(72vh, 980px);
   border: 1px solid var(--results-border);
   border-radius: 14px;
@@ -97,7 +96,22 @@
   box-shadow: var(--ring);
 }
 
-.results-table { width: 100%; border-collapse: collapse; font-size: var(--fs-ui); table-layout: fixed; }
+.results-table {
+  width: 100%;
+  min-width: max-content;
+  border-collapse: collapse;
+  font-size: var(--fs-ui);
+  table-layout: auto;
+  word-break: break-word;
+}
+
+.col-structure { width: 124px; }
+.col-compound { width: 32ch; }
+.col-mass { width: 10ch; }
+.col-formula { width: 14ch; }
+.col-taxon { width: 28ch; }
+.col-reference { width: 44ch; }
+.col-year { width: 8ch; }
 .results-table thead { position: sticky; top: 0; z-index: 2; background: var(--bg2); }
 .virtual-spacer-row { border: 0 !important; }
 .virtual-spacer-cell { padding: 0 !important; border: 0 !important; }
@@ -110,10 +124,12 @@
   font-weight: 700;
   color: var(--critical-muted);
   border-bottom: 1px solid var(--results-border);
-  white-space: normal;
+  white-space: nowrap;
   user-select: none;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  width: auto;
+  min-width: max-content;
 }
 
 .th-static { color: var(--critical-muted); }
@@ -123,10 +139,10 @@
   text-transform: inherit;
   letter-spacing: inherit;
   display: block;
-  min-width: 0;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  min-width: max-content;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
   line-height: 1.2;
 }
 
@@ -149,10 +165,10 @@
   cursor: pointer;
   display: grid;
   align-items: start;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto auto;
   column-gap: 6px;
   width: 100%;
-  min-width: 0;
+  min-width: max-content;
 }
 
 .sort-icon { color: var(--text3); font-size: var(--fs-0); font-weight: 700; line-height: 1; margin-left: 0; margin-top: 0; }
@@ -165,9 +181,9 @@
   padding: 8px 10px;
   vertical-align: top;
   contain: layout paint;
+  word-break: break-word;
 }
 
-.results-table th,
 .results-table td {
   min-width: 0;
 }

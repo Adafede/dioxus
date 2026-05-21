@@ -78,8 +78,7 @@
 
 .curation-table-scroll {
   width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: auto hidden;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   background: var(--panel-bg-soft);
