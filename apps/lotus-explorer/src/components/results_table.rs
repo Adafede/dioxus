@@ -66,7 +66,7 @@ pub fn ResultsTable() -> Element {
 
             if total == 0 {
                 div { class: "empty-state",
-                    p { "{t(locale, TextKey::NoResults)}" }
+                    p { class: "form-hint", "{t(locale, TextKey::NoResults)}" }
                 }
             } else {
                 VirtualizedResultsTable {

@@ -17,7 +17,7 @@ pub fn ResultsViewport() -> Element {
     let state = use_results_context();
     let explore = state.explore;
     // Hoisted to component top-level — hooks must be called unconditionally.
-    let locale = crate::hooks::use_locale();
+    let _locale = crate::hooks::use_locale();
 
     let ui_state = use_memo(move || ExploreUiState::from_explore(explore));
 
@@ -45,13 +45,9 @@ pub fn ResultsViewport() -> Element {
         // and could clash with localised notice text, so we intentionally yield
         // an empty fragment and let the notice carry the UX weight.
         ContentPhase::Error => rsx! {},
-        ContentPhase::Empty => {
-            rsx! {
-                div { class: "empty-state",
-                    p { class: "form-hint", "{crate::i18n::t(locale, crate::i18n::TextKey::NoResults)}" }
-                }
-            }
-        }
+        ContentPhase::Empty => rsx! {
+            ResultsTable {}
+        },
         ContentPhase::Loaded => rsx! {
             ResultsTable {}
         },
