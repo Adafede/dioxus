@@ -4,6 +4,7 @@ members = [
   "apps/hello-world",
   "apps/lotus-api",
   "apps/lotus-explorer",
+  "apps/lotus-pubchem-tree",
   "crates/shared",
 ]
 

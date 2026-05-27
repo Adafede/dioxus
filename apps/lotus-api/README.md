@@ -6,6 +6,9 @@ OpenAPI/Swagger service for programmatic LOTUS explorer access.
 
 - `POST /v1/search`: run a LOTUS search with filters and get JSON rows + stats.
 - `POST /v1/export-url`: generate direct QLever CSV/JSON/RDF export URLs.
+- `POST /v1/pubchem-tree/fetch`: fetch and cache source data for PubChem tree generation.
+- `POST /v1/pubchem-tree/build`: build tree previews + download artifact links from a session.
+- `GET /v1/pubchem-tree/download/{session_id}/{artifact}`: download generated JSON artifact.
 - `GET /openapi.json`: OpenAPI schema.
 - `GET /docs`: Swagger UI.
 - `GET /health`: liveness probe.

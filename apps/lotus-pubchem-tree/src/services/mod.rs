@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-pub mod models;
-pub mod pubchem_tree;
-pub mod queries;
-pub mod sparql;
+mod error_presenter;
+
+pub use error_presenter::present_api_error;

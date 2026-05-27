@@ -8,7 +8,15 @@ use axum::{
     response::Response,
 };
 use shared::lotus::models;
-use std::{sync::atomic::Ordering, time::Instant};
+use shared::lotus::pubchem_tree::{
+    DownloadArtifactKind, NPCLASSIFIER_CACHE_URL, PubchemTreeError, build_download_json,
+    build_trees, compute_stats, fetch_dataset,
+};
+use std::{
+    sync::{Arc, atomic::Ordering},
+    time::Instant,
+};
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use tokio::time::timeout;
 
 use crate::{
@@ -19,15 +27,45 @@ use crate::{
     },
     services::build_search_response,
     state::{
-        AppState, build_export_cache_key, build_search_cache_key, export_cache_get,
-        export_cache_put, export_inflight_cell, export_inflight_remove, search_cache_get,
-        search_cache_put, search_inflight_cell, search_inflight_remove,
+        AppState, BuiltPubchemSession, build_export_cache_key, build_pubchem_session_id,
+        build_search_cache_key, export_cache_get, export_cache_put, export_inflight_cell,
+        export_inflight_remove, pubchem_session_get, pubchem_session_put_built,
+        pubchem_session_put_fetched, search_cache_get, search_cache_put, search_inflight_cell,
+        search_inflight_remove,
     },
     types::{
-        ExportArchiveFormat, ExportFileQuery, ExportUrlResponse, HealthResponse, SearchRequest,
-        SearchResponse,
+        DataStatsDto, DownloadArtifactDto, ExportArchiveFormat, ExportFileQuery, ExportUrlResponse,
+        HealthResponse, PreviewTreeDto, PubchemBuildRequest, PubchemBuildResponse,
+        PubchemFetchResponse, SearchRequest, SearchResponse, TreeSummaryDto,
     },
 };
+
+fn map_pubchem_error(err: PubchemTreeError) -> ApiError {
+    match err {
+        PubchemTreeError::Invalid(message) => ApiError::bad_request(message),
+        PubchemTreeError::Http(_, message)
+        | PubchemTreeError::Network(message)
+        | PubchemTreeError::Parse(message) => ApiError::upstream(message),
+    }
+}
+
+fn generated_at_rfc3339() -> String {
+    OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
+}
+
+fn date_stamp(generated_at: &str) -> String {
+    generated_at
+        .chars()
+        .take(10)
+        .filter(|ch| *ch != '-')
+        .collect()
+}
+
+fn pubchem_download_url(session_id: &str, kind: DownloadArtifactKind) -> String {
+    format!("/v1/pubchem-tree/download/{session_id}/{}", kind.key())
+}
 
 #[utoipa::path(
     get,
@@ -317,6 +355,185 @@ pub(crate) async fn export_urls(
             Err(err.into())
         }
     }
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/pubchem-tree/fetch",
+    responses(
+        (status = 200, description = "Fetched LOTUS dataset statistics and session id", body = PubchemFetchResponse),
+        (status = 502, description = "Upstream SPARQL failure", body = ErrorResponse),
+        (status = 503, description = "Server overloaded", body = ErrorResponse),
+        (status = 504, description = "Fetch timeout", body = ErrorResponse)
+    )
+)]
+pub(crate) async fn pubchem_fetch(
+    State(state): State<AppState>,
+) -> Result<Json<PubchemFetchResponse>, ApiError> {
+    let _permit = state.request_permits.try_acquire().map_err(|_| {
+        state
+            .metrics
+            .overload_rejections
+            .fetch_add(1, Ordering::Relaxed);
+        ApiError::overloaded("Server is busy, retry shortly")
+    })?;
+
+    let fetched = timeout(
+        state.request_timeout,
+        fetch_dataset(shared::sparql::QLEVER_WIKIDATA),
+    )
+    .await
+    .map_err(|_| {
+        state
+            .metrics
+            .request_timeouts
+            .fetch_add(1, Ordering::Relaxed);
+        ApiError::upstream("PubChem tree fetch timed out")
+    })?
+    .map_err(map_pubchem_error)?;
+
+    let stats = compute_stats(&fetched);
+    let session_id = build_pubchem_session_id(&state);
+    pubchem_session_put_fetched(&state, session_id.clone(), Arc::new(fetched));
+
+    Ok(Json(PubchemFetchResponse {
+        session_id,
+        stats: DataStatsDto::from(stats),
+    }))
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/pubchem-tree/build",
+    request_body = PubchemBuildRequest,
+    responses(
+        (status = 200, description = "Built PubChem tree previews and download links", body = PubchemBuildResponse),
+        (status = 400, description = "Unknown or expired session", body = ErrorResponse),
+        (status = 502, description = "Build failure", body = ErrorResponse),
+        (status = 503, description = "Server overloaded", body = ErrorResponse),
+        (status = 504, description = "Build timeout", body = ErrorResponse)
+    )
+)]
+pub(crate) async fn pubchem_build(
+    State(state): State<AppState>,
+    Json(req): Json<PubchemBuildRequest>,
+) -> Result<Json<PubchemBuildResponse>, ApiError> {
+    let _permit = state.request_permits.try_acquire().map_err(|_| {
+        state
+            .metrics
+            .overload_rejections
+            .fetch_add(1, Ordering::Relaxed);
+        ApiError::overloaded("Server is busy, retry shortly")
+    })?;
+
+    let session = pubchem_session_get(&state, &req.session_id)
+        .ok_or_else(|| ApiError::bad_request("PubChem tree session expired or is unknown"))?;
+
+    let built_session = match session.built {
+        Some(built) => built,
+        None => {
+            let fetched = session.fetched.clone();
+            let bundle = timeout(
+                state.request_timeout,
+                build_trees(&fetched, NPCLASSIFIER_CACHE_URL),
+            )
+            .await
+            .map_err(|_| {
+                state
+                    .metrics
+                    .request_timeouts
+                    .fetch_add(1, Ordering::Relaxed);
+                ApiError::upstream("PubChem tree build timed out")
+            })?
+            .map_err(map_pubchem_error)?;
+            let built = Arc::new(BuiltPubchemSession {
+                generated_at: generated_at_rfc3339(),
+                bundle: Arc::new(bundle),
+            });
+            let _ = pubchem_session_put_built(&state, &req.session_id, built.clone());
+            built
+        }
+    };
+
+    let generated_at = built_session.generated_at.clone();
+    let date_stamp = date_stamp(&generated_at);
+    let bundle = built_session.bundle.as_ref();
+    let downloads = [
+        DownloadArtifactKind::BiologicalPubchem,
+        DownloadArtifactKind::ChemicalWikidataPubchem,
+        DownloadArtifactKind::ChemicalNpclassifierPubchem,
+        DownloadArtifactKind::BiologicalFull,
+        DownloadArtifactKind::ChemicalWikidataFull,
+        DownloadArtifactKind::ChemicalNpclassifierFull,
+    ]
+    .into_iter()
+    .filter(|kind| kind.available(bundle))
+    .map(|kind| DownloadArtifactDto {
+        key: kind.key().to_string(),
+        label: kind.label().to_string(),
+        url: pubchem_download_url(&req.session_id, kind),
+        filename: kind.filename(&date_stamp),
+    })
+    .collect();
+
+    Ok(Json(PubchemBuildResponse {
+        session_id: req.session_id,
+        generated_at,
+        biological_summary: TreeSummaryDto::from(bundle.biological_summary),
+        chemical_summary: TreeSummaryDto::from(bundle.chemical_summary),
+        npclassifier_summary: TreeSummaryDto::from(bundle.npclassifier_summary),
+        biological_preview: PreviewTreeDto::from(bundle.biological_preview.clone()),
+        chemical_preview: PreviewTreeDto::from(bundle.chemical_preview.clone()),
+        npclassifier_preview: PreviewTreeDto::from(bundle.npclassifier_preview.clone()),
+        npclassifier_warning: bundle.npclassifier_warning.clone(),
+        downloads,
+    }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/pubchem-tree/download/{session_id}/{artifact}",
+    params(
+        ("session_id" = String, Path, description = "PubChem tree session id"),
+        ("artifact" = String, Path, description = "Artifact key: biological|chemical-wikidata|chemical-npclassifier|biological-full|chemical-wikidata-full|chemical-npclassifier-full")
+    ),
+    responses(
+        (status = 200, description = "JSON download artifact"),
+        (status = 400, description = "Unknown session or artifact", body = ErrorResponse)
+    )
+)]
+pub(crate) async fn pubchem_download(
+    State(state): State<AppState>,
+    Path((session_id, artifact_raw)): Path<(String, String)>,
+) -> Result<Response, ApiError> {
+    let kind = DownloadArtifactKind::parse(&artifact_raw)
+        .ok_or_else(|| ApiError::bad_request("Unsupported PubChem tree artifact"))?;
+    let session = pubchem_session_get(&state, &session_id)
+        .ok_or_else(|| ApiError::bad_request("PubChem tree session expired or is unknown"))?;
+    let built = session
+        .built
+        .ok_or_else(|| ApiError::bad_request("PubChem tree has not been built for this session"))?;
+
+    if !kind.available(&built.bundle) {
+        return Err(ApiError::bad_request(
+            "Requested PubChem tree artifact is not available for this session",
+        ));
+    }
+
+    let payload =
+        build_download_json(kind, &built.bundle, &built.generated_at).map_err(map_pubchem_error)?;
+    let filename = kind.filename(&date_stamp(&built.generated_at));
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json; charset=utf-8")
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{filename}\""),
+        )
+        .header(header::CACHE_CONTROL, "private, max-age=600")
+        .body(axum::body::Body::from(payload))
+        .map_err(|e| ApiError::upstream(format!("response build failed: {e}")))
 }
 
 #[utoipa::path(

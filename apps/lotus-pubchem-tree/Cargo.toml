@@ -1,0 +1,30 @@
+[package]
+name = "lotus-pubchem-tree"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "LOTUS PubChem Tree Generator web app"
+license = "AGPL-3.0-only"
+keywords = ["dioxus", "lotus", "pubchem", "wasm"]
+categories = ["science", "wasm", "web-programming"]
+publish = false
+
+[[bin]]
+name = "lotus-pubchem-tree"
+path = "src/main.rs"
+
+[dependencies]
+console_log = { workspace = true }
+dioxus = { workspace = true }
+log = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+urlencoding = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { workspace = true, features = ["Location", "Storage", "Window"] }
+
+[lints]
+workspace = true
+

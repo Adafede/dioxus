@@ -1,6 +1,6 @@
 # dioxus-apps
 
-A Cargo workspace hosting multi-app web experiences compiled to WASM. **lotus-explorer** explores the LOTUS natural products knowledge graph from Wikidata via SPARQL. **lotus-api** provides a native HTTP API for advanced search and export.
+A Cargo workspace hosting multi-app web experiences compiled to WASM. **lotus-explorer** explores the LOTUS natural products knowledge graph from Wikidata via SPARQL. **lotus-pubchem-tree** builds PubChem classification JSON trees from LOTUS/Wikidata data. **lotus-api** provides a native HTTP API for advanced search, export, and tree-generation workflows.
 
 ## Prerequisites
 
@@ -14,6 +14,7 @@ cargo install dioxus-cli --version 0.7.9 --locked
 
 ```bash
 dx serve --package lotus-explorer
+dx serve --package lotus-pubchem-tree
 ```
 
 To also run the optional API:
@@ -38,6 +39,7 @@ dioxus-apps/
 └── apps/
     ├── lotus-api/          ← OpenAPI service for LOTUS search and exports
     ├── lotus-explorer/     ← LOTUS Wikidata natural-product explorer
+    ├── lotus-pubchem-tree/ ← LOTUS PubChem tree generator frontend
     └── hello-world/        ← minimal template for new apps
 ```
 
@@ -45,6 +47,7 @@ dioxus-apps/
 
 ```bash
 dx serve --package lotus-explorer
+dx serve --package lotus-pubchem-tree
 cargo run -p lotus-api
 ```
 

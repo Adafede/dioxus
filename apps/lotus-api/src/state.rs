@@ -6,23 +6,26 @@ use crate::{
     types::{ExportUrlResponse, HealthResponse, SearchResponse},
 };
 use sha2::{Digest, Sha256};
+use shared::lotus::pubchem_tree::{FetchedDataset, PubchemTreeBundle};
 use std::{
     collections::HashMap,
     sync::{
         Arc, Mutex,
         atomic::{AtomicU64, Ordering},
     },
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tokio::sync::{OnceCell, Semaphore};
 
 pub(crate) const TAXON_CACHE_TTL: Duration = Duration::from_secs(60 * 60 * 24);
 pub(crate) const SEARCH_CACHE_TTL: Duration = Duration::from_secs(60 * 3);
 pub(crate) const EXPORT_CACHE_TTL: Duration = Duration::from_secs(60 * 10);
+pub(crate) const PUBCHEM_SESSION_TTL: Duration = Duration::from_secs(60 * 30);
 const CACHE_PRUNE_INTERVAL: Duration = Duration::from_secs(20);
 const MAX_TAXON_CACHE_ENTRIES: usize = 512;
 const MAX_SEARCH_CACHE_ENTRIES: usize = 128;
 const MAX_EXPORT_CACHE_ENTRIES: usize = 256;
+const MAX_PUBCHEM_SESSION_ENTRIES: usize = 16;
 
 pub(crate) type InFlightSearch =
     Arc<OnceCell<Result<SearchResponse, crate::errors::SharedApiError>>>;
@@ -37,11 +40,14 @@ pub(crate) struct AppState {
     pub(crate) taxon_cache: Arc<Mutex<HashMap<String, CachedTaxonResolution>>>,
     pub(crate) search_cache: Arc<Mutex<HashMap<String, CachedSearchResponse>>>,
     pub(crate) export_cache: Arc<Mutex<HashMap<String, CachedExportResponse>>>,
+    pub(crate) pubchem_sessions: Arc<Mutex<HashMap<String, CachedPubchemSession>>>,
     pub(crate) search_inflight: Arc<Mutex<HashMap<String, InFlightSearch>>>,
     pub(crate) export_inflight: Arc<Mutex<HashMap<String, InFlightExport>>>,
     pub(crate) taxon_cache_prune_after: Arc<Mutex<Instant>>,
     pub(crate) search_cache_prune_after: Arc<Mutex<Instant>>,
     pub(crate) export_cache_prune_after: Arc<Mutex<Instant>>,
+    pub(crate) pubchem_sessions_prune_after: Arc<Mutex<Instant>>,
+    pub(crate) next_pubchem_session_id: Arc<AtomicU64>,
     pub(crate) metrics: Arc<RuntimeMetrics>,
 }
 
@@ -54,11 +60,16 @@ impl AppState {
             taxon_cache: Arc::new(Mutex::new(HashMap::new())),
             search_cache: Arc::new(Mutex::new(HashMap::new())),
             export_cache: Arc::new(Mutex::new(HashMap::new())),
+            pubchem_sessions: Arc::new(Mutex::new(HashMap::new())),
             search_inflight: Arc::new(Mutex::new(HashMap::new())),
             export_inflight: Arc::new(Mutex::new(HashMap::new())),
             taxon_cache_prune_after: Arc::new(Mutex::new(Instant::now() + CACHE_PRUNE_INTERVAL)),
             search_cache_prune_after: Arc::new(Mutex::new(Instant::now() + CACHE_PRUNE_INTERVAL)),
             export_cache_prune_after: Arc::new(Mutex::new(Instant::now() + CACHE_PRUNE_INTERVAL)),
+            pubchem_sessions_prune_after: Arc::new(Mutex::new(
+                Instant::now() + CACHE_PRUNE_INTERVAL,
+            )),
+            next_pubchem_session_id: Arc::new(AtomicU64::new(0)),
             metrics: Arc::new(RuntimeMetrics::new()),
         }
     }
@@ -80,6 +91,24 @@ pub(crate) struct CachedSearchResponse {
 pub(crate) struct CachedExportResponse {
     pub(crate) inserted_at: Instant,
     pub(crate) value: ExportUrlResponse,
+}
+
+#[derive(Clone)]
+pub(crate) struct BuiltPubchemSession {
+    pub(crate) generated_at: String,
+    pub(crate) bundle: Arc<PubchemTreeBundle>,
+}
+
+#[derive(Clone)]
+pub(crate) struct PubchemSession {
+    pub(crate) fetched: Arc<FetchedDataset>,
+    pub(crate) built: Option<Arc<BuiltPubchemSession>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct CachedPubchemSession {
+    pub(crate) inserted_at: Instant,
+    pub(crate) value: PubchemSession,
 }
 
 pub(crate) struct RuntimeMetrics {
@@ -203,6 +232,24 @@ pub(crate) fn build_export_cache_key(query: &str) -> String {
     format!("export:{}", sha256_hex(hasher.finalize()))
 }
 
+pub(crate) fn build_pubchem_session_id(state: &AppState) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"pubchem-session");
+    hasher.update(
+        state
+            .next_pubchem_session_id
+            .fetch_add(1, Ordering::Relaxed)
+            .to_le_bytes(),
+    );
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos()
+        .to_le_bytes();
+    hasher.update(timestamp);
+    format!("pubchem:{}", sha256_hex(hasher.finalize()))
+}
+
 fn sha256_hex(bytes: impl AsRef<[u8]>) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let bytes = bytes.as_ref();
@@ -274,6 +321,67 @@ pub(crate) fn export_cache_put(state: &AppState, key: String, value: ExportUrlRe
             },
         );
     }
+}
+
+pub(crate) fn pubchem_session_get(state: &AppState, key: &str) -> Option<PubchemSession> {
+    let mut cache = state.pubchem_sessions.lock().ok()?;
+    maybe_prune_cache(
+        &mut cache,
+        &state.pubchem_sessions_prune_after,
+        PUBCHEM_SESSION_TTL,
+        MAX_PUBCHEM_SESSION_ENTRIES,
+        |entry| entry.inserted_at,
+    );
+    cache.get(key).map(|entry| entry.value.clone())
+}
+
+pub(crate) fn pubchem_session_put_fetched(
+    state: &AppState,
+    key: String,
+    fetched: Arc<FetchedDataset>,
+) {
+    if let Ok(mut cache) = state.pubchem_sessions.lock() {
+        maybe_prune_cache(
+            &mut cache,
+            &state.pubchem_sessions_prune_after,
+            PUBCHEM_SESSION_TTL,
+            MAX_PUBCHEM_SESSION_ENTRIES,
+            |entry| entry.inserted_at,
+        );
+        cache.insert(
+            key,
+            CachedPubchemSession {
+                inserted_at: Instant::now(),
+                value: PubchemSession {
+                    fetched,
+                    built: None,
+                },
+            },
+        );
+    }
+}
+
+pub(crate) fn pubchem_session_put_built(
+    state: &AppState,
+    key: &str,
+    built: Arc<BuiltPubchemSession>,
+) -> bool {
+    let Ok(mut cache) = state.pubchem_sessions.lock() else {
+        return false;
+    };
+    maybe_prune_cache(
+        &mut cache,
+        &state.pubchem_sessions_prune_after,
+        PUBCHEM_SESSION_TTL,
+        MAX_PUBCHEM_SESSION_ENTRIES,
+        |entry| entry.inserted_at,
+    );
+    let Some(entry) = cache.get_mut(key) else {
+        return false;
+    };
+    entry.inserted_at = Instant::now();
+    entry.value.built = Some(built);
+    true
 }
 
 pub(crate) fn search_inflight_cell(state: &AppState, key: &str) -> (InFlightSearch, bool) {

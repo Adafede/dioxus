@@ -449,6 +449,13 @@ fn openapi_contains_core_paths() {
             .paths
             .contains_key("/v1/export-file/{cache_key}/{format}")
     );
+    assert!(doc.paths.paths.contains_key("/v1/pubchem-tree/fetch"));
+    assert!(doc.paths.paths.contains_key("/v1/pubchem-tree/build"));
+    assert!(
+        doc.paths
+            .paths
+            .contains_key("/v1/pubchem-tree/download/{session_id}/{artifact}")
+    );
 }
 
 #[test]
@@ -485,6 +492,56 @@ async fn export_file_rejects_unknown_cache_key() {
         json.get("error")
             .and_then(serde_json::Value::as_str)
             .is_some_and(|msg| msg.contains("expired") || msg.contains("unknown"))
+    );
+}
+
+#[tokio::test]
+async fn pubchem_build_rejects_unknown_session() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/pubchem-tree/build")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"session_id":"missing"}"#))
+                .expect("request"),
+        )
+        .await
+        .expect("pubchem build response");
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let json = body_json(response).await;
+    assert!(
+        json.get("error")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|msg| msg.contains("session"))
+    );
+}
+
+#[tokio::test]
+async fn pubchem_download_rejects_unknown_session() {
+    let config = test_config();
+    let app = build_router(config.max_body_bytes, &config, AppState::new(&config));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/pubchem-tree/download/missing/biological")
+                .body(Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("pubchem download response");
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let json = body_json(response).await;
+    assert!(
+        json.get("error")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|msg| msg.contains("session"))
     );
 }
 

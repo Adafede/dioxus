@@ -1,0 +1,16 @@
+[application]
+name = "lotus-pubchem-tree"
+default_platform = "web"
+asset_dir = "public"
+
+[web.app]
+title = "LOTUS PubChem Tree Generator"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src", "public"]
+
+[[web.proxy]]
+path = "/v1"
+backend = "http://127.0.0.1:8787/v1"
+

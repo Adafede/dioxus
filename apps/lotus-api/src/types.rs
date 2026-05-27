@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use shared::lotus::models::{CompoundEntry, DatasetStats, SmilesSearchType};
 use utoipa::ToSchema;
 
+use shared::lotus::pubchem_tree::{DataStats, PreviewNode, PreviewTree, TreeSummary};
+
 #[derive(Debug, Serialize, ToSchema)]
 pub(crate) struct HealthResponse {
     pub(crate) status: &'static str,
@@ -202,4 +204,114 @@ impl ExportArchiveFormat {
             Self::Rdf => "text/turtle; charset=utf-8",
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub(crate) struct DataStatsDto {
+    pub(crate) n_compounds: usize,
+    pub(crate) n_taxa: usize,
+    pub(crate) n_compound_taxon_pairs: usize,
+    pub(crate) n_taxa_with_ncbi: usize,
+    pub(crate) n_taxon_parent_pairs: usize,
+    pub(crate) n_taxa_with_names: usize,
+    pub(crate) n_compound_parent_pairs: usize,
+    pub(crate) n_compounds_with_labels: usize,
+}
+
+impl From<DataStats> for DataStatsDto {
+    fn from(value: DataStats) -> Self {
+        Self {
+            n_compounds: value.n_compounds,
+            n_taxa: value.n_taxa,
+            n_compound_taxon_pairs: value.n_compound_taxon_pairs,
+            n_taxa_with_ncbi: value.n_taxa_with_ncbi,
+            n_taxon_parent_pairs: value.n_taxon_parent_pairs,
+            n_taxa_with_names: value.n_taxa_with_names,
+            n_compound_parent_pairs: value.n_compound_parent_pairs,
+            n_compounds_with_labels: value.n_compounds_with_labels,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub(crate) struct TreeSummaryDto {
+    pub(crate) root_nodes: usize,
+    pub(crate) total_nodes: usize,
+}
+
+impl From<TreeSummary> for TreeSummaryDto {
+    fn from(value: TreeSummary) -> Self {
+        Self {
+            root_nodes: value.root_nodes,
+            total_nodes: value.total_nodes,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub(crate) struct PreviewNodeDto {
+    pub(crate) label: String,
+    #[schema(no_recursion)]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub(crate) children: Vec<PreviewNodeDto>,
+}
+
+impl From<PreviewNode> for PreviewNodeDto {
+    fn from(value: PreviewNode) -> Self {
+        Self {
+            label: value.label,
+            children: value.children.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub(crate) struct PreviewTreeDto {
+    pub(crate) shown_nodes: usize,
+    pub(crate) total_nodes: usize,
+    pub(crate) nodes: Vec<PreviewNodeDto>,
+}
+
+impl From<PreviewTree> for PreviewTreeDto {
+    fn from(value: PreviewTree) -> Self {
+        Self {
+            shown_nodes: value.shown_nodes,
+            total_nodes: value.total_nodes,
+            nodes: value.nodes.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub(crate) struct DownloadArtifactDto {
+    pub(crate) key: String,
+    pub(crate) label: String,
+    pub(crate) url: String,
+    pub(crate) filename: String,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub(crate) struct PubchemFetchResponse {
+    pub(crate) session_id: String,
+    pub(crate) stats: DataStatsDto,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub(crate) struct PubchemBuildRequest {
+    pub(crate) session_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub(crate) struct PubchemBuildResponse {
+    pub(crate) session_id: String,
+    pub(crate) generated_at: String,
+    pub(crate) biological_summary: TreeSummaryDto,
+    pub(crate) chemical_summary: TreeSummaryDto,
+    pub(crate) npclassifier_summary: TreeSummaryDto,
+    pub(crate) biological_preview: PreviewTreeDto,
+    pub(crate) chemical_preview: PreviewTreeDto,
+    pub(crate) npclassifier_preview: PreviewTreeDto,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) npclassifier_warning: Option<String>,
+    pub(crate) downloads: Vec<DownloadArtifactDto>,
 }

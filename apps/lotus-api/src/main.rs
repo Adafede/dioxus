@@ -21,7 +21,10 @@ use axum::{
     response::Response,
     routing::{get, post},
 };
-use handlers::{export_file, export_urls, health, metrics, search};
+use handlers::{
+    export_file, export_urls, health, metrics, pubchem_build, pubchem_download, pubchem_fetch,
+    search,
+};
 use tower_http::{
     compression::CompressionLayer,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
@@ -36,8 +39,9 @@ use crate::{
     errors::ErrorResponse,
     state::AppState,
     types::{
-        ApiElementState, ApiSmilesSearchType, ExportUrlResponse, HealthResponse, RowDto,
-        SearchRequest, SearchResponse, SearchStats,
+        ApiElementState, ApiSmilesSearchType, DataStatsDto, DownloadArtifactDto, ExportUrlResponse,
+        HealthResponse, PreviewNodeDto, PreviewTreeDto, PubchemBuildRequest, PubchemBuildResponse,
+        PubchemFetchResponse, RowDto, SearchRequest, SearchResponse, SearchStats, TreeSummaryDto,
     },
 };
 
@@ -50,7 +54,10 @@ const X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
         handlers::metrics,
         handlers::search,
         handlers::export_urls,
-        handlers::export_file
+        handlers::export_file,
+        handlers::pubchem_fetch,
+        handlers::pubchem_build,
+        handlers::pubchem_download
     ),
     components(
         schemas(
@@ -62,7 +69,15 @@ const X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
             ExportUrlResponse,
             ErrorResponse,
             ApiSmilesSearchType,
-            ApiElementState
+            ApiElementState,
+            DataStatsDto,
+            TreeSummaryDto,
+            PreviewNodeDto,
+            PreviewTreeDto,
+            DownloadArtifactDto,
+            PubchemFetchResponse,
+            PubchemBuildRequest,
+            PubchemBuildResponse
         )
     ),
     tags((name = "lotus-api", description = "LOTUS explorer programmatic API"))
@@ -101,6 +116,12 @@ fn build_router(max_body_bytes: usize, config: &AppConfig, state: AppState) -> R
         .route("/v1/search", post(search))
         .route("/v1/export-url", post(export_urls))
         .route("/v1/export-file/{cache_key}/{format}", get(export_file))
+        .route("/v1/pubchem-tree/fetch", post(pubchem_fetch))
+        .route("/v1/pubchem-tree/build", post(pubchem_build))
+        .route(
+            "/v1/pubchem-tree/download/{session_id}/{artifact}",
+            get(pubchem_download),
+        )
         .merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()))
         .with_state(state)
         .layer(DefaultBodyLimit::max(max_body_bytes))
