@@ -18,7 +18,8 @@ pub async fn try_execute<R: LotusRepository>(
     metrics: &mut SearchMetrics,
 ) -> Option<SearchOutcome> {
     let mut api_criteria = request.criteria().clone();
-    api_criteria.smiles = normalized_smiles.to_string();
+    api_criteria.smiles.clear();
+    api_criteria.smiles.push_str(normalized_smiles);
     let display_limit = runtime_table_row_limit();
     let include_counts = true;
     let api_timer = perf::start_timer("LOTUS:api_search");
