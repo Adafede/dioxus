@@ -1,6 +1,10 @@
 APP ?= lotus-explorer
 
-.PHONY: serve build check test clippy fmt fmt-check qa deny audit supply-chain clean
+.PHONY: serve build check test test-verbose clippy fmt fmt-check qa deny audit supply-chain clean doc help
+
+## Display this help message
+help:
+	@grep -E '^## ' Makefile | sed 's/## //'
 
 ## Run an app in dev mode (hot-reload)
 serve:
@@ -10,7 +14,6 @@ serve:
 build:
 	dx build --release --package $(APP)
 
-
 ## Type-check the whole workspace without building WASM
 check:
 	cargo check --workspace --all-targets --locked
@@ -18,6 +21,10 @@ check:
 ## Run workspace tests
 test:
 	cargo test --workspace --all-targets --locked
+
+## Run tests with output (useful for debugging)
+test-verbose:
+	cargo test --workspace --all-targets --locked -- --nocapture
 
 ## Lint all targets with warnings denied
 clippy:
@@ -31,7 +38,11 @@ fmt:
 fmt-check:
 	cargo fmt --all -- --check
 
-## CI-equivalent quality gate
+## Build documentation with dependencies visible
+doc:
+	cargo doc --workspace --all-features --no-deps --locked
+
+## CI-equivalent quality gate: format, check, test, lint
 qa: fmt-check check test clippy
 	cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked
 	cargo doc --workspace --no-deps --locked
