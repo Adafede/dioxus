@@ -158,11 +158,19 @@ fn classify_transport_error_recovery(
 
 /// Compute exponential backoff for retry attempt.
 ///
-/// Base 100ms, exp 2^(attempt+1), capped at 10s.
+/// Base 100ms, doubles each attempt (`2^(attempt+1)`), capped at 10s.
+///
+/// | attempt | backoff |
+/// |---------|---------|
+/// | 0       | 200 ms  |
+/// | 1       | 400 ms  |
+/// | 2       | 800 ms  |
+/// | 6+      | 10 000 ms (cap) |
 fn backoff_delay_ms(attempt: u32) -> u64 {
-    let base = 100u64;
-    let exponent = ((attempt + 1) as u64).min(7); // Cap at 2^7 = 128
-    (base * 2u64.pow(exponent as u32)).min(10_000)
+    const BASE_MS: u64 = 100;
+    const MAX_MS: u64 = 10_000;
+    let exponent = (attempt + 1).min(7); // 100 * 2^7 = 12_800, rounded down to cap
+    (BASE_MS << exponent).min(MAX_MS)
 }
 
 /// Determine whether partial results should be cleared after error at given stage.
