@@ -344,7 +344,7 @@ pub async fn search(
                 err.status,
                 err.message,
             );
-            Err(err.into())
+            Err(err)
         }
     }
 }
@@ -393,7 +393,7 @@ pub async fn export_urls(
                 err.status,
                 err.message,
             );
-            Err(err.into())
+            Err(err)
         }
     }
 }
