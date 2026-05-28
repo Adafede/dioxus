@@ -94,11 +94,7 @@ impl SortIndexCache {
         let idx = sort_column_index(col);
         // Fast path: return the cached value while holding the lock briefly.
         {
-            let guard = self
-                .0
-                .desc_by_col
-                .lock()
-                .expect("sort cache not poisoned");
+            let guard = self.0.desc_by_col.lock().expect("sort cache not poisoned");
             if let Some(cached) = &guard[idx] {
                 return cached.clone();
             }
@@ -107,11 +103,7 @@ impl SortIndexCache {
         let ascending = self.ascending_for(col);
         let computed = reversed_indices(&ascending);
 
-        let mut guard = self
-            .0
-            .desc_by_col
-            .lock()
-            .expect("sort cache not poisoned");
+        let mut guard = self.0.desc_by_col.lock().expect("sort cache not poisoned");
         guard[idx].get_or_insert(computed).clone()
     }
 }
