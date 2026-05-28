@@ -31,8 +31,8 @@ pub(crate) enum ApiSmilesSearchType {
 impl From<ApiSmilesSearchType> for SmilesSearchType {
     fn from(value: ApiSmilesSearchType) -> Self {
         match value {
-            ApiSmilesSearchType::Substructure => SmilesSearchType::Substructure,
-            ApiSmilesSearchType::Similarity => SmilesSearchType::Similarity,
+            ApiSmilesSearchType::Substructure => Self::Substructure,
+            ApiSmilesSearchType::Similarity => Self::Similarity,
         }
     }
 }
@@ -48,9 +48,9 @@ pub(crate) enum ApiElementState {
 impl From<ApiElementState> for shared::lotus::models::ElementState {
     fn from(value: ApiElementState) -> Self {
         match value {
-            ApiElementState::Allowed => shared::lotus::models::ElementState::Allowed,
-            ApiElementState::Required => shared::lotus::models::ElementState::Required,
-            ApiElementState::Excluded => shared::lotus::models::ElementState::Excluded,
+            ApiElementState::Allowed => Self::Allowed,
+            ApiElementState::Required => Self::Required,
+            ApiElementState::Excluded => Self::Excluded,
         }
     }
 }
