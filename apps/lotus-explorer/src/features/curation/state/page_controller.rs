@@ -97,8 +97,8 @@ impl CurationPageController {
     }
 
     pub fn import_uploaded_tsv(mut self, content: String) {
-        self.tsv_input.set(content.clone());
         import_tsv_rows(self.locale, &content, self.rows, self.status_message);
+        self.tsv_input.set(content);
     }
 
     pub fn run_second_pass(mut self) {
@@ -239,22 +239,41 @@ pub fn import_tsv_rows(
 }
 
 pub fn rows_to_tsv(rows: &[CurationInputRow]) -> String {
-    let mut out = String::from("name\tsmiles\ttaxon\tdoi\n");
+    // Pre-allocate: header + proportional estimate per row
+    let mut out = String::with_capacity(24 + rows.len() * 64);
+    out.push_str("name\tsmiles\ttaxon\tdoi\n");
     for row in rows {
-        out.push_str(&clean_tsv_cell(&row.name));
+        push_tsv_cell(&mut out, &row.name);
         out.push('\t');
-        out.push_str(&clean_tsv_cell(&row.smiles));
+        push_tsv_cell(&mut out, &row.smiles);
         out.push('\t');
-        out.push_str(&clean_tsv_cell(row.taxon.as_deref().unwrap_or("")));
+        push_tsv_cell(&mut out, row.taxon.as_deref().unwrap_or(""));
         out.push('\t');
-        out.push_str(&clean_tsv_cell(row.doi.as_deref().unwrap_or("")));
+        push_tsv_cell(&mut out, row.doi.as_deref().unwrap_or(""));
         out.push('\n');
     }
     out
 }
 
+/// Append a sanitized TSV cell into `buf`. Replaces tab/CR/LF with spaces,
+/// then trims the result — without any intermediate heap allocation.
+fn push_tsv_cell(buf: &mut String, value: &str) {
+    // Trim ASCII whitespace on both ends first, avoiding inner allocations
+    let trimmed = value.trim();
+    for ch in trimmed.chars() {
+        if matches!(ch, '\t' | '\r' | '\n') {
+            buf.push(' ');
+        } else {
+            buf.push(ch);
+        }
+    }
+}
+
+/// Returns a sanitized TSV cell string (for external use / tests).
 pub fn clean_tsv_cell(value: &str) -> String {
-    value.replace(['\t', '\r', '\n'], " ").trim().to_string()
+    let mut buf = String::with_capacity(value.len());
+    push_tsv_cell(&mut buf, value);
+    buf
 }
 
 #[cfg(test)]
