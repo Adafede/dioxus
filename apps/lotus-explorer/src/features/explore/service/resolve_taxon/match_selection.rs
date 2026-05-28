@@ -1,6 +1,12 @@
 use crate::features::explore::types::{DomainError, ParseFault, TaxonWarning};
 use crate::models::TaxonMatch;
 
+fn eq_casefold(a: &str, b: &str) -> bool {
+    a.chars()
+        .flat_map(char::to_lowercase)
+        .eq(b.chars().flat_map(char::to_lowercase))
+}
+
 pub(super) struct MatchSelection<'a> {
     pub best: &'a TaxonMatch,
     pub warning: Option<TaxonWarning>,
@@ -10,15 +16,13 @@ pub(super) fn pick_best_match<'a>(
     sanitized: &str,
     matches: &'a [TaxonMatch],
 ) -> Result<MatchSelection<'a>, DomainError> {
-    let lower = sanitized.to_lowercase();
-
     // Scan once: find the first exact match and whether a second exists.
     // Early-exit after the second exact match so we avoid scanning the entire
     // candidate list just to count duplicates.
     let mut first_exact: Option<&TaxonMatch> = None;
     let mut multiple_exact = false;
     for candidate in matches {
-        if candidate.name.to_lowercase() == lower {
+        if eq_casefold(&candidate.name, sanitized) {
             if first_exact.is_none() {
                 first_exact = Some(candidate);
             } else {
