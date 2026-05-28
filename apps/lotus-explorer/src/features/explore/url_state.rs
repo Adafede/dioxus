@@ -84,7 +84,7 @@ pub fn persist_view_query_param(view: AppView) {
     {
         let mut params = read_url_query_params();
         if let Some(view_param) = view.query_value() {
-            params.insert("view".to_string(), view_param.to_string());
+            params.insert("view".into(), view_param.into());
         } else {
             params.remove("view");
         }
