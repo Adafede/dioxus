@@ -1,13 +1,14 @@
 use crate::models::SearchCriteria;
-use std::fmt::Write;
-
 pub fn build_shareable_url(criteria: &SearchCriteria) -> Option<String> {
     let params = criteria.shareable_query_params();
     if params.is_empty() {
         return None;
     }
     let query = build_query_string_from_pairs(params.iter().map(|(k, v)| (k.as_str(), v.as_str())));
-    Some(format!("?{query}"))
+    let mut out = String::with_capacity(query.len() + 1);
+    out.push('?');
+    out.push_str(&query);
+    Some(out)
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -21,12 +22,11 @@ fn build_query_string_from_pairs<'a>(iter: impl Iterator<Item = (&'a str, &'a st
         if index > 0 {
             query.push('&');
         }
-        let _ = write!(
-            query,
-            "{}={}",
-            urlencoding::encode(key),
-            urlencoding::encode(value)
-        );
+        let key_encoded = urlencoding::encode(key);
+        let value_encoded = urlencoding::encode(value);
+        query.push_str(&key_encoded);
+        query.push('=');
+        query.push_str(&value_encoded);
     }
     query
 }
