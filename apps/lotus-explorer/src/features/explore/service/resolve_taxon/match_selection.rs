@@ -11,22 +11,32 @@ pub(super) fn pick_best_match<'a>(
     matches: &'a [TaxonMatch],
 ) -> Result<MatchSelection<'a>, DomainError> {
     let lower = sanitized.to_lowercase();
-    let exact: Vec<&TaxonMatch> = matches
-        .iter()
-        .filter(|candidate| candidate.name.to_lowercase() == lower)
-        .collect();
 
-    let best = exact
-        .first()
-        .copied()
+    // Scan once: find the first exact match and whether a second exists.
+    // Early-exit after the second exact match so we avoid scanning the entire
+    // candidate list just to count duplicates.
+    let mut first_exact: Option<&TaxonMatch> = None;
+    let mut multiple_exact = false;
+    for candidate in matches {
+        if candidate.name.to_lowercase() == lower {
+            if first_exact.is_none() {
+                first_exact = Some(candidate);
+            } else {
+                multiple_exact = true;
+                break;
+            }
+        }
+    }
+
+    let best = first_exact
         .or_else(|| matches.first())
         .ok_or_else(|| {
             DomainError::Parse(ParseFault::TaxonPick {
-                details: "no candidates after parse".to_string(),
+                details: "no candidates after parse".into(),
             })
         })?;
 
-    let warning = if exact.len() > 1 || (exact.is_empty() && matches.len() > 1) {
+    let warning = if multiple_exact || (first_exact.is_none() && matches.len() > 1) {
         Some(TaxonWarning::Ambiguous {
             chosen_name: best.name.clone(),
             chosen_qid: best.qid.clone(),
@@ -49,8 +59,8 @@ mod tests {
 
     fn candidate(name: &str, qid: &str) -> TaxonMatch {
         TaxonMatch {
-            qid: qid.to_string(),
-            name: name.to_string(),
+            qid: qid.into(),
+            name: name.into(),
         }
     }
 
