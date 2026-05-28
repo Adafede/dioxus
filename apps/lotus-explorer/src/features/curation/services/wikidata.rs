@@ -39,10 +39,10 @@ pub async fn fetch_wikidata_compound_by_inchikey(
         .and_then(|v| v.get("value"))
         .and_then(Value::as_str)
         .and_then(extract_qid_from_uri)
-        .ok_or_else(|| CurationError::Parse("missing compound qid".to_string()))?;
+        .ok_or_else(|| CurationError::Parse("missing compound qid".into()))?;
 
     Ok(Some(WikidataCompound {
-        qid: qid.to_string(),
+        qid: qid.into(),
         canonical_smiles: binding_value(first, "canonical"),
         isomeric_smiles: binding_value(first, "iso"),
         inchi: binding_value(first, "inchi"),
@@ -58,15 +58,15 @@ pub async fn resolve_or_create_taxon(
     pre_resolved_qid: Option<&str>,
 ) -> Result<(Option<String>, Vec<String>), CurationError> {
     if let Some(qid) = pre_resolved_qid {
-        return Ok((Some(qid.to_string()), Vec::new()));
+        return Ok((Some(qid.into()), Vec::new()));
     }
 
     if let Some(qid) = resolve_taxon_qid(name).await? {
         return Ok((Some(qid), Vec::new()));
     }
     let qs = vec![
-        "## -- Step: create missing taxon --".to_string(),
-        "CREATE".to_string(),
+        "## -- Step: create missing taxon --".into(),
+        "CREATE".into(),
         format!("LAST|Len|\"{}\"", escape_qs_string(name)),
         format!("LAST|P31|{WD_TAXON_QID}"),
         format!("LAST|P225|\"{}\"", escape_qs_string(name)),
@@ -111,20 +111,26 @@ fn taxon_name_candidates(name: &str) -> Vec<String> {
 
     let canonical = canonicalize_taxon_label(trimmed);
     if canonical == trimmed {
-        vec![trimmed.to_string()]
+        vec![trimmed.into()]
     } else {
-        vec![trimmed.to_string(), canonical]
+        vec![trimmed.into(), canonical]
     }
 }
 
 fn build_single_taxon_lookup_query(name: &str) -> Option<String> {
-    let values = taxon_name_candidates(name)
-        .into_iter()
-        .map(|candidate| format!("\"{}\"", escape_sparql_string(&candidate)))
-        .collect::<Vec<_>>();
-
-    if values.is_empty() {
+    let candidates = taxon_name_candidates(name);
+    if candidates.is_empty() {
         return None;
+    }
+
+    let mut values = String::with_capacity(candidates.len() * 40);
+    for (i, candidate) in candidates.iter().enumerate() {
+        if i > 0 {
+            values.push(' ');
+        }
+        values.push('"');
+        values.push_str(&escape_sparql_string(candidate));
+        values.push('"');
     }
 
     Some(format!(
@@ -134,22 +140,23 @@ fn build_single_taxon_lookup_query(name: &str) -> Option<String> {
            ?taxon wdt:P225 ?taxonName ;\n        \
                   wdt:P31 wd:Q16521 .\n\
          }} LIMIT 1",
-        values.join(" ")
+        values
     ))
 }
 
 fn build_reference_lookup_query(dois: &[String]) -> String {
-    let values = dois
-        .iter()
-        .map(|doi| {
-            format!(
-                "(\"{}\" \"{}\")",
-                escape_sparql_string(doi),
-                escape_sparql_string(doi)
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n    ");
+    let mut values = String::with_capacity(dois.len() * 48);
+    for (i, doi) in dois.iter().enumerate() {
+        if i > 0 {
+            values.push_str("\n    ");
+        }
+        let escaped = escape_sparql_string(doi);
+        values.push_str("(\"");
+        values.push_str(&escaped);
+        values.push_str("\" \"");
+        values.push_str(&escaped);
+        values.push_str("\")");
+    }
 
     format!(
         "{CURATION_SPARQL_PREFIXES}\n\
@@ -174,8 +181,7 @@ pub async fn resolve_reference_qids_batch<'a>(
         };
         // `insert` borrows the key only if the value is already present,
         // so we can use `contains` + `push` to avoid an unconditional clone.
-        if !seen.contains(&normalized) {
-            seen.insert(normalized.clone());
+        if seen.insert(normalized.clone()) {
             normalized_dois.push(normalized);
         }
     }
@@ -210,7 +216,7 @@ pub async fn resolve_reference_qids_batch<'a>(
         else {
             continue;
         };
-        resolved.insert(lookup, qid.to_string());
+        resolved.insert(lookup, qid.into());
     }
 
     Ok(resolved)
@@ -253,9 +259,8 @@ pub async fn resolve_taxon_qids_batch<'a>(
         let Some(lookup) = normalize_taxon_lookup(trimmed) else {
             continue;
         };
-        if !seen.contains(&lookup) {
-            seen.insert(lookup.clone());
-            lookups.push((lookup, trimmed.to_string()));
+        if seen.insert(lookup.clone()) {
+            lookups.push((lookup, trimmed.into()));
         }
     }
 
@@ -290,7 +295,7 @@ pub async fn resolve_taxon_qids_batch<'a>(
             continue;
         };
 
-        resolved.insert(lookup, qid.to_string());
+        resolved.insert(lookup, qid.into());
     }
 
     Ok(resolved)
