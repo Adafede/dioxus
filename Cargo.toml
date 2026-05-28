@@ -51,7 +51,10 @@ missing_errors_doc = "warn"
 missing_panics_doc = "warn"
 wildcard_imports = "warn"
 cargo_common_metadata = "warn"
-multiple_crate_versions = "warn"
+# Third-party transitive dependency graph has unavoidable version splits
+# (dioxus, reqwest, sha2, windows-sys, etc.). Keeping this as "warn" would
+# fail `-- -D warnings` CI runs without any actionable fix in project code.
+multiple_crate_versions = "allow"
 lint_groups_priority = "warn"
 
 # Additional broad-noise lints discovered under full workspace + all-target checks.
