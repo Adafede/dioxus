@@ -380,16 +380,14 @@ fn maybe_prune_cache<V, F>(
     F: Fn(&V) -> Instant,
 {
     let now = Instant::now();
-    let should_prune = if let Ok(mut next_prune) = prune_after.lock() {
+    let should_prune = prune_after.lock().map_or(true, |mut next_prune| {
         if now < *next_prune {
             false
         } else {
             *next_prune = now + CACHE_PRUNE_INTERVAL;
             true
         }
-    } else {
-        true
-    };
+    });
 
     if should_prune {
         prune_cache(cache, ttl, max_entries, inserted_at);

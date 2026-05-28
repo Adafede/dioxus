@@ -494,10 +494,8 @@ pub fn parse_compounds_csv_capped_reader<R: Read>(
 
 #[inline]
 fn byte_field_str(rec: &csv::ByteRecord, idx: Option<usize>) -> &str {
-    match idx.and_then(|i| rec.get(i)) {
-        Some(bytes) => std::str::from_utf8(bytes).unwrap_or("").trim(),
-        None => "",
-    }
+    idx.and_then(|i| rec.get(i))
+        .map_or("", |bytes| std::str::from_utf8(bytes).unwrap_or("").trim())
 }
 
 fn fill_qid(out: &mut String, bytes: &[u8]) {

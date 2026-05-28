@@ -22,12 +22,13 @@ fn StatBadge(
     }
     let label = count_label(locale, noun, value);
     let secondary_inline = secondary_value.map(|secondary| {
-        if let Some(label) = secondary_label {
-            let inline_label = label.to_lowercase();
-            format!("({} {inline_label})", format_count(locale, secondary))
-        } else {
-            format!("({})", format_count(locale, secondary))
-        }
+        secondary_label.map_or_else(
+            || format!("({})", format_count(locale, secondary)),
+            |label| {
+                let inline_label = label.to_lowercase();
+                format!("({} {inline_label})", format_count(locale, secondary))
+            },
+        )
     });
     rsx! {
         div { class: "stat-badge",

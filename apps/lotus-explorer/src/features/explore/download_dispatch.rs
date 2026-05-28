@@ -71,17 +71,18 @@ pub fn use_startup_effect<R: LotusRepository>(
             searched_once,
             loading,
         ) {
-            let (trigger_mode, command) = if let Some(format) = pending {
-                (
-                    StartupTriggerMode::Download { format },
-                    SearchCommand::StartupDownload,
-                )
-            } else {
+            let (trigger_mode, command) = pending.map_or(
                 (
                     StartupTriggerMode::DirectExecute,
                     SearchCommand::StartupExecute,
-                )
-            };
+                ),
+                |format| {
+                    (
+                        StartupTriggerMode::Download { format },
+                        SearchCommand::StartupDownload,
+                    )
+                },
+            );
             trigger_mode.log();
 
             start_search(criteria, command, explore, search_tasks.clone(), repo);

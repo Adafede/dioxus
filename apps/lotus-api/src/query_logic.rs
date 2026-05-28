@@ -229,10 +229,9 @@ fn sanitize_taxon_input(taxon: &str) -> String {
         return replaced;
     };
     let mut chars = first_word.chars();
-    let mut out = match chars.next() {
-        None => String::new(),
-        Some(c) => c.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
-    };
+    let mut out = chars.next().map_or_else(String::new, |c| {
+        c.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
+    });
     for part in parts {
         out.push(' ');
         out.push_str(part);

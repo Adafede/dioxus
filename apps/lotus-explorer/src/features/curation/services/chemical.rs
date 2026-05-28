@@ -182,21 +182,15 @@ pub(super) async fn resolve_exact_mass(
         Err(canonical_err) => {
             if canonical_smiles.trim() != input_smiles.trim() {
                 return match descriptor_mass(input_smiles).await {
-                    Ok(value) => {
-                        MassResolution {
-                            exact_mass: Some(value),
-                            warning: None,
-                        }
-                    }
-                    Err(_input_err) => {
-                        MassResolution {
-                            exact_mass: None,
-                            warning: Some(format!(
-                                "Mass unavailable - service limit: {canonical_err}"
-                            )),
-                        }
-                    }
-                }
+                    Ok(value) => MassResolution {
+                        exact_mass: Some(value),
+                        warning: None,
+                    },
+                    Err(_input_err) => MassResolution {
+                        exact_mass: None,
+                        warning: Some(format!("Mass unavailable - service limit: {canonical_err}")),
+                    },
+                };
             }
             MassResolution {
                 exact_mass: None,
@@ -237,7 +231,6 @@ pub(super) async fn has_undefined_stereo(smiles: &str) -> bool {
         };
         json.get("stereoisomers")
             .and_then(Value::as_array)
-            .map(|a| a.len() > 1)
-            .unwrap_or(false)
+            .is_some_and(|a| a.len() > 1)
     }
 }

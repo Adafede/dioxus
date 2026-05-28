@@ -258,10 +258,8 @@ pub async fn execute_sparql_with_format_tempfile(
 
                     let preview_text = String::from_utf8_lossy(&preview);
                     if looks_like_gateway_error(&preview_text) {
-                        let err = FetchError::Http(
-                            502,
-                            "upstream gateway error (HTML payload)".into(),
-                        );
+                        let err =
+                            FetchError::Http(502, "upstream gateway error (HTML payload)".into());
                         if attempt + 1 < MAX_ATTEMPTS {
                             last_err = Some(err);
                             continue;
@@ -565,7 +563,8 @@ pub fn extract_qid(s: &str) -> String {
     // All QID characters are ASCII — check bytes instead of chars to avoid
     // the full Unicode iterator overhead.
     let bytes = candidate.as_bytes();
-    if bytes.first() == Some(&b'Q') && bytes[1..].iter().all(u8::is_ascii_digit) && bytes.len() > 1 {
+    if bytes.first() == Some(&b'Q') && bytes[1..].iter().all(u8::is_ascii_digit) && bytes.len() > 1
+    {
         candidate.to_string()
     } else {
         String::new()

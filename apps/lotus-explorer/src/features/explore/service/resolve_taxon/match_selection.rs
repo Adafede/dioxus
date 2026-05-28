@@ -35,13 +35,11 @@ pub(super) fn pick_best_match<'a>(
         }
     }
 
-    let best = first_exact
-        .or_else(|| matches.first())
-        .ok_or_else(|| {
-            DomainError::Parse(ParseFault::TaxonPick {
-                details: "no candidates after parse".into(),
-            })
-        })?;
+    let best = first_exact.or_else(|| matches.first()).ok_or_else(|| {
+        DomainError::Parse(ParseFault::TaxonPick {
+            details: "no candidates after parse".into(),
+        })
+    })?;
 
     let warning = if multiple_exact || (first_exact.is_none() && matches.len() > 1) {
         Some(TaxonWarning::Ambiguous {

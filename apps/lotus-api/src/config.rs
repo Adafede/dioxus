@@ -53,9 +53,7 @@ impl AppConfig {
 
         let cors_allowed_origins = parse_allowed_origins(get("CORS_ALLOWED_ORIGINS"))?;
         if app_env == "production" && cors_allowed_origins.is_none() {
-            return Err(
-                "APP_ENV=production requires CORS_ALLOWED_ORIGINS to be configured".into(),
-            );
+            return Err("APP_ENV=production requires CORS_ALLOWED_ORIGINS to be configured".into());
         }
 
         Ok(Self {
@@ -77,13 +75,11 @@ impl AppConfig {
 }
 
 fn parse_u16_env(value: Option<String>, name: &str, default_value: u16) -> Result<u16, String> {
-    match value {
-        Some(raw) => raw
-            .trim()
+    value.map_or(Ok(default_value), |raw| {
+        raw.trim()
             .parse::<u16>()
-            .map_err(|e| format!("{name} must be a valid u16: {e}")),
-        None => Ok(default_value),
-    }
+            .map_err(|e| format!("{name} must be a valid u16: {e}"))
+    })
 }
 
 fn parse_usize_env(
@@ -91,13 +87,11 @@ fn parse_usize_env(
     name: &str,
     default_value: usize,
 ) -> Result<usize, String> {
-    match value {
-        Some(raw) => raw
-            .trim()
+    value.map_or(Ok(default_value), |raw| {
+        raw.trim()
             .parse::<usize>()
-            .map_err(|e| format!("{name} must be a valid non-negative integer: {e}")),
-        None => Ok(default_value),
-    }
+            .map_err(|e| format!("{name} must be a valid non-negative integer: {e}"))
+    })
 }
 
 fn parse_allowed_origins(value: Option<String>) -> Result<Option<Vec<HeaderValue>>, String> {

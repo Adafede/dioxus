@@ -351,27 +351,10 @@ pub fn query_sachem(
   }}"#
     );
 
-    let body = if let Some(qid) = taxon_qid {
-        format!(
-            r#"
-  {sachem_subquery}
-
-  {COMPOUND_IDENTIFIERS}
-
-  ?c p:P703 ?statement .
-  ?statement ps:P703 ?t ;
-             prov:wasDerivedFrom ?ref .
-  ?ref pr:P248 ?r .
-  ?t wdt:P225 ?taxon_name .
-  ?t (wdt:P171*) wd:{qid} .
-
-  {REFERENCE_METADATA_OPTIONAL}
-  {PROPERTIES_OPTIONAL}
-"#
-        )
-    } else {
-        format!(
-            r#"
+    let body = taxon_qid.map_or_else(
+        || {
+            format!(
+                r#"
   {sachem_clause}
   {COMPOUND_IDENTIFIERS}
 
@@ -386,8 +369,28 @@ pub fn query_sachem(
 
   {PROPERTIES_OPTIONAL}
 "#
-        )
-    };
+            )
+        },
+        |qid| {
+            format!(
+                r#"
+  {sachem_subquery}
+
+  {COMPOUND_IDENTIFIERS}
+
+  ?c p:P703 ?statement .
+  ?statement ps:P703 ?t ;
+             prov:wasDerivedFrom ?ref .
+  ?ref pr:P248 ?r .
+  ?t wdt:P225 ?taxon_name .
+  ?t (wdt:P171*) wd:{qid} .
+
+  {REFERENCE_METADATA_OPTIONAL}
+  {PROPERTIES_OPTIONAL}
+"#
+            )
+        },
+    );
 
     let compound_select = compound_select_clause();
     format!(

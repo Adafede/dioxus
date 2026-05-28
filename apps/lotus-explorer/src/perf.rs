@@ -33,16 +33,17 @@ pub fn log_timing(phase: &str, message: &str, duration: Option<Duration>) {
         return;
     }
 
-    let msg = if let Some(d) = duration {
-        format!(
-            "[LOTUS:{}] {} ({:.1}ms)",
-            phase,
-            message,
-            d.as_secs_f64() * 1000.0
-        )
-    } else {
-        format!("[LOTUS:{}] {}", phase, message)
-    };
+    let msg = duration.map_or_else(
+        || format!("[LOTUS:{}] {}", phase, message),
+        |d| {
+            format!(
+                "[LOTUS:{}] {} ({:.1}ms)",
+                phase,
+                message,
+                d.as_secs_f64() * 1000.0
+            )
+        },
+    );
 
     #[cfg(target_arch = "wasm32")]
     {

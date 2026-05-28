@@ -20,7 +20,7 @@ pub fn initial_url_state() -> InitialUrlState {
     InitialUrlState {
         criteria: parse_criteria_from_params(&params),
         view: AppView::from_query_value(params.get("view").map(String::as_str)),
-        locale: Locale::detect(params.get("lang").map(String::as_str).unwrap_or("")),
+        locale: Locale::detect(params.get("lang").map_or("", String::as_str)),
         download: parse_startup_action_from_params(&params),
     }
 }

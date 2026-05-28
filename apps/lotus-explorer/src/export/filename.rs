@@ -26,8 +26,7 @@ pub fn now_iso8601() -> String {
 
         let secs = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs() as i64)
-            .unwrap_or(0);
+            .map_or(0, |d| d.as_secs() as i64);
         let (y, m, d, hh, mm, ss) = epoch_to_ymdhms(secs);
         format!("{y:04}-{m:02}-{d:02}T{hh:02}:{mm:02}:{ss:02}Z")
     }

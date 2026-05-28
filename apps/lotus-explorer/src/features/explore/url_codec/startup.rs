@@ -16,7 +16,7 @@ pub fn parse_startup_action_from_params(params: &QueryParams) -> InitialDownload
         };
     }
 
-    let requested_format = params.get("format").map(String::as_str).unwrap_or("csv");
+    let requested_format = params.get("format").map_or("csv", String::as_str);
     let pending_format = DownloadFormat::from_str(requested_format);
 
     InitialDownloadState {
@@ -27,4 +27,3 @@ pub fn parse_startup_action_from_params(params: &QueryParams) -> InitialDownload
         direct_execute: false,
     }
 }
-

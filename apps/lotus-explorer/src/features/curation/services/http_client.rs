@@ -90,9 +90,7 @@ pub(super) fn js_value_to_json(value: JsValue) -> Result<Value, CurationError> {
     let text = JSON::stringify(&value)
         .ok()
         .and_then(|s| s.as_string())
-        .ok_or_else(|| {
-            CurationError::Parse("rdkit.js returned a non-serializable value".into())
-        })?;
+        .ok_or_else(|| CurationError::Parse("rdkit.js returned a non-serializable value".into()))?;
     serde_json::from_str(&text)
         .map_err(|e| CurationError::Parse(format!("rdkit.js JSON parse error: {e}")))
 }

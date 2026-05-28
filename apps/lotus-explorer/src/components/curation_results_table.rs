@@ -168,7 +168,5 @@ fn status_counts(rows: &[CurationResultRow]) -> Vec<(CurationStatus, usize)> {
 }
 
 fn format_mass(value: Option<f64>) -> String {
-    value
-        .map(|m| format!("{m:.5}"))
-        .unwrap_or_else(|| "n/a".to_string())
+    value.map_or_else(|| "n/a".to_string(), |m| format!("{m:.5}"))
 }

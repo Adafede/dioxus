@@ -5,7 +5,6 @@ use super::*;
 
 // -- SPARQL / QS helpers -------------------------------------------------------
 
-
 pub(super) fn extract_qid_from_uri(uri: &str) -> Option<&str> {
     uri.rsplit('/').next().filter(|segment| {
         segment.starts_with('Q') && segment[1..].bytes().all(|b| b.is_ascii_digit())
@@ -56,11 +55,7 @@ pub(super) fn normalize_doi(value: &str) -> Option<String> {
     if trimmed.is_empty() {
         return None;
     }
-    let canonical = if let Some(idx) = find_ascii_ci(trimmed, b"doi.org/") {
-        &trimmed[(idx + 8)..]
-    } else {
-        trimmed
-    };
+    let canonical = find_ascii_ci(trimmed, b"doi.org/").map_or(trimmed, |idx| &trimmed[(idx + 8)..]);
     if canonical.is_empty() {
         return None;
     }
@@ -72,11 +67,8 @@ pub(super) fn find_ascii_ci(haystack: &str, needle: &[u8]) -> Option<usize> {
     if needle.is_empty() || hb.len() < needle.len() {
         return None;
     }
-    hb.windows(needle.len()).position(|w| {
-        w.iter()
-            .zip(needle)
-            .all(|(a, b)| a.eq_ignore_ascii_case(b))
-    })
+    hb.windows(needle.len())
+        .position(|w| w.iter().zip(needle).all(|(a, b)| a.eq_ignore_ascii_case(b)))
 }
 
 pub(super) fn has_stereo_marks(smiles: &str) -> bool {

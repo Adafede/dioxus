@@ -124,29 +124,32 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
     };
 
     let chem = filters.get("chemical_structure").cloned();
-    let (dataset_name, description) = if let Some(c) = chem.as_ref() {
-        let st = c
-            .get("search_type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("substructure");
-        (
-            format!(
-                "LOTUS Data — {} search in {effective_taxon}",
-                title_case(st)
-            ),
-            format!(
-                "Chemical compounds from {effective_taxon}. Retrieved via LOTUS \
-                 Knowledge Search with {st} chemical search (SACHEM/IDSM)."
-            ),
-        )
-    } else {
-        (
-            format!("LOTUS Data — {effective_taxon}"),
-            format!(
-                "Chemical compounds from {effective_taxon}. Retrieved via LOTUS Knowledge Search."
-            ),
-        )
-    };
+    let (dataset_name, description) = chem.as_ref().map_or_else(
+        || {
+            (
+                format!("LOTUS Data — {effective_taxon}"),
+                format!(
+                    "Chemical compounds from {effective_taxon}. Retrieved via LOTUS Knowledge Search."
+                ),
+            )
+        },
+        |c| {
+            let st = c
+                .get("search_type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("substructure");
+            (
+                format!(
+                    "LOTUS Data — {} search in {effective_taxon}",
+                    title_case(st)
+                ),
+                format!(
+                    "Chemical compounds from {effective_taxon}. Retrieved via LOTUS \
+                     Knowledge Search with {st} chemical search (SACHEM/IDSM)."
+                ),
+            )
+        },
+    );
 
     let mut providers = vec![
         Organization {
@@ -311,10 +314,9 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
 
 fn title_case(s: &str) -> String {
     let mut chars = s.chars();
-    match chars.next() {
-        Some(c) => c.to_uppercase().chain(chars).collect(),
-        None => String::new(),
-    }
+    chars
+        .next()
+        .map_or_else(String::new, |c| c.to_uppercase().chain(chars).collect())
 }
 
 #[cfg(test)]

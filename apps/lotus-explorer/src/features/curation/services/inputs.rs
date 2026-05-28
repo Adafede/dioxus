@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::features::curation::domain::{CurationError, CurationInputRow};
 use super::helpers::find_ascii_ci;
+use crate::features::curation::domain::{CurationError, CurationInputRow};
 
 pub fn example_rows() -> Vec<CurationInputRow> {
     vec![
@@ -28,10 +28,7 @@ pub fn example_rows() -> Vec<CurationInputRow> {
 }
 
 pub fn parse_tsv_rows(tsv: &str) -> Result<Vec<CurationInputRow>, CurationError> {
-    let mut lines = tsv
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty());
+    let mut lines = tsv.lines().map(str::trim).filter(|line| !line.is_empty());
 
     let header = match lines.next() {
         Some(h) => h,
@@ -43,9 +40,10 @@ pub fn parse_tsv_rows(tsv: &str) -> Result<Vec<CurationInputRow>, CurationError>
         .iter()
         .position(|c| c == "name")
         .ok_or_else(|| CurationError::InvalidInput("TSV is missing a 'name' column".into()))?;
-    let smiles_idx = columns.iter().position(|c| c == "smiles").ok_or_else(|| {
-        CurationError::InvalidInput("TSV is missing a 'smiles' column".into())
-    })?;
+    let smiles_idx = columns
+        .iter()
+        .position(|c| c == "smiles")
+        .ok_or_else(|| CurationError::InvalidInput("TSV is missing a 'smiles' column".into()))?;
     let taxon_idx = columns
         .iter()
         .position(|c| matches!(c.as_str(), "taxon" | "organism"));
@@ -129,17 +127,12 @@ fn normalize_doi(value: &str) -> Option<String> {
     if trimmed.is_empty() {
         return None;
     }
-    let canonical = if let Some(idx) = find_ascii_ci(trimmed, b"doi.org/") {
-        &trimmed[(idx + 8)..]
-    } else {
-        trimmed
-    };
+    let canonical = find_ascii_ci(trimmed, b"doi.org/").map_or(trimmed, |idx| &trimmed[(idx + 8)..]);
     if canonical.is_empty() {
         return None;
     }
     Some(canonical.to_ascii_uppercase())
 }
-
 
 fn non_empty(value: &str) -> Option<&str> {
     let trimmed = value.trim();

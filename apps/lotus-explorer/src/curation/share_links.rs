@@ -16,8 +16,7 @@ pub fn initial_curation_autorun_from_url() -> bool {
     let params = read_curation_url_query_params();
     params
         .get(CURATION_RUN_PARAM)
-        .map(|value| is_true_flag(value))
-        .unwrap_or(false)
+        .is_some_and(|value| is_true_flag(value))
 }
 
 pub fn build_curation_share_url(

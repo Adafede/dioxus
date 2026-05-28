@@ -25,7 +25,8 @@ pub async fn curate_single_row(
         prefetched_references.as_ref(),
         occurrence_ask_cache.as_ref(),
     )
-        .await.unwrap_or_else(|err| CurationResultRow {
+    .await
+    .unwrap_or_else(|err| CurationResultRow {
         input,
         canonical_smiles: None,
         inchikey: None,
@@ -284,28 +285,31 @@ async fn enrich_and_generate(
                 }
             }
 
-            let (status, note) = if let Some(deps) = dependencies.as_ref() {
-                if deps.pending_messages.is_empty() {
+            let (status, note) = dependencies.as_ref().map_or_else(
+                || {
                     (
                         CurationStatus::NewCompound,
                         curation_note_new_compound(locale).into(),
                     )
-                } else {
-                    (
-                        CurationStatus::PendingDependencies,
-                        format!(
-                            "{}\n{}",
-                            curation_note_dependencies_pending(locale),
-                            deps.pending_messages.join("\n")
-                        ),
-                    )
-                }
-            } else {
-                (
-                    CurationStatus::NewCompound,
-                    curation_note_new_compound(locale).into(),
-                )
-            };
+                },
+                |deps| {
+                    if deps.pending_messages.is_empty() {
+                        (
+                            CurationStatus::NewCompound,
+                            curation_note_new_compound(locale).into(),
+                        )
+                    } else {
+                        (
+                            CurationStatus::PendingDependencies,
+                            format!(
+                                "{}\n{}",
+                                curation_note_dependencies_pending(locale),
+                                deps.pending_messages.join("\n")
+                            ),
+                        )
+                    }
+                },
+            );
 
             CurationResultRow {
                 input: input.clone(),
