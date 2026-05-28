@@ -76,7 +76,7 @@ async fn enrich_and_generate(
             let mut lines: Vec<String> = Vec::new();
             let mut changes = 0usize;
             let mut status = CurationStatus::ExistingComplete;
-            let mut note = curation_note_existing_complete(locale).to_string();
+            let mut note = curation_note_existing_complete(locale).into();
 
             if existing.canonical_smiles.is_none() {
                 lines.push(format!(
@@ -188,10 +188,10 @@ async fn enrich_and_generate(
 
             if matches!(status, CurationStatus::ExistingComplete) {
                 if changes == 0 {
-                    note = curation_note_existing_complete(locale).to_string();
+                    note = curation_note_existing_complete(locale).into();
                 } else {
                     status = CurationStatus::ExistingNeedsUpdates;
-                    note = curation_note_existing_updates(locale).to_string();
+                    note = curation_note_existing_updates(locale).into();
                 }
             }
 
@@ -230,9 +230,9 @@ async fn enrich_and_generate(
                 prefetched_references,
             )
             .await?;
-            let mut lines = vec!["CREATE".to_string()];
+            let mut lines = vec!["CREATE".into()];
             lines.push(format!("LAST|Len|\"{}\"", escape_qs_string(&input.name)));
-            lines.push("LAST|Den|\"chemical compound\"".to_string());
+            lines.push("LAST|Den|\"chemical compound\"".into());
 
             if has_undefined_stereo(&input.smiles).await {
                 lines.push(format!("LAST|P31|{WD_STEREOISOMER_GROUP_QID}"));
@@ -292,7 +292,7 @@ async fn enrich_and_generate(
                 if deps.pending_messages.is_empty() {
                     (
                         CurationStatus::NewCompound,
-                        curation_note_new_compound(locale).to_string(),
+                        curation_note_new_compound(locale).into(),
                     )
                 } else {
                     (
@@ -307,7 +307,7 @@ async fn enrich_and_generate(
             } else {
                 (
                     CurationStatus::NewCompound,
-                    curation_note_new_compound(locale).to_string(),
+                    curation_note_new_compound(locale).into(),
                 )
             };
 
@@ -393,7 +393,7 @@ async fn resolve_or_create_reference(
     pre_resolved_qid: Option<&str>,
 ) -> Result<(Option<String>, Vec<String>), CurationError> {
     if let Some(qid) = pre_resolved_qid {
-        return Ok((Some(qid.to_string()), Vec::new()));
+        return Ok((Some(qid.into()), Vec::new()));
     }
 
     // Check if reference already exists in Wikidata
