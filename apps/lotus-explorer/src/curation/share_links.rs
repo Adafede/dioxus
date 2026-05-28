@@ -49,23 +49,23 @@ fn curation_query_params(
     autorun: bool,
 ) -> BTreeMap<String, String> {
     let mut params = BTreeMap::new();
-    params.insert("view".to_string(), "curation-explorer".to_string());
+    params.insert("view".into(), "curation-explorer".into());
     params.insert(
-        "lang".to_string(),
+        "lang".into(),
         match locale {
             Locale::En => "en",
             Locale::Fr => "fr",
             Locale::De => "de",
             Locale::It => "it",
         }
-        .to_string(),
+        .into(),
     );
     params.insert(
-        CURATION_ROWS_PARAM.to_string(),
-        serde_json::to_string(rows).unwrap_or_else(|_| "[]".to_string()),
+        CURATION_ROWS_PARAM.into(),
+        serde_json::to_string(rows).unwrap_or_else(|_| String::from("[]")),
     );
     if autorun {
-        params.insert(CURATION_RUN_PARAM.to_string(), "true".to_string());
+        params.insert(CURATION_RUN_PARAM.into(), "true".into());
     }
     params
 }
