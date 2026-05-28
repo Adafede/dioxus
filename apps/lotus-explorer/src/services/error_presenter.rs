@@ -23,7 +23,7 @@ pub fn format_domain_error(locale: Locale, err: &DomainError) -> String {
         DomainError::Transport { stage, source } => format_transport_fault(locale, *stage, source),
         DomainError::Parse(p) => format_parse_fault(locale, p),
         #[cfg(target_arch = "wasm32")]
-        DomainError::MemoryLimit { .. } => error_hint_memory(locale).to_string(),
+        DomainError::MemoryLimit { .. } => error_hint_memory(locale).into(),
     }
 }
 
@@ -77,9 +77,9 @@ fn transport_error_summary(locale: Locale, source: &RepositoryError) -> String {
         RepositoryError::Http { status, body } => {
             let detail = if looks_like_html(body) {
                 if *status == 429 {
-                    "Too many requests from upstream service".to_string()
+                    "Too many requests from upstream service".into()
                 } else {
-                    "Upstream service returned an HTML error page".to_string()
+                    "Upstream service returned an HTML error page".into()
                 }
             } else {
                 compact_error_text(body)
