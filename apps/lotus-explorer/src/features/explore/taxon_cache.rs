@@ -35,7 +35,7 @@ pub fn store(name: &str, qid: &str) {
         return;
     }
     if let Ok(mut guard) = taxon_cache().lock() {
-        guard.insert(key, qid.to_string());
+        guard.insert(key, qid.into());
     }
 }
 
