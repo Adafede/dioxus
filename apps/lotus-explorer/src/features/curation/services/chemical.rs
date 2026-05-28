@@ -69,7 +69,7 @@ async fn convert_with_batch_direct(
     let payload = serde_json::json!({
         "inputs": [{ "value": smiles.trim(), "input_format": "smiles" }]
     });
-    let response = natprod_client()
+    let response = natprod_client()?
         .post(url)
         .json(&payload)
         .send()
@@ -226,7 +226,10 @@ pub(super) async fn has_undefined_stereo(smiles: &str) -> bool {
             "{NATPROD_API_BASE}/chem/stereoisomers?smiles={}",
             urlencoding::encode(smiles.trim())
         );
-        let Ok(response) = natprod_client().get(url).send().await else {
+        let Ok(client) = natprod_client() else {
+            return false;
+        };
+        let Ok(response) = client.get(url).send().await else {
             return false;
         };
         let Ok(json) = response.json::<Value>().await else {
