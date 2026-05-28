@@ -41,17 +41,22 @@ pub async fn export_urls(
     Ok(normalize_export_urls(&base, response))
 }
 
-fn http_client() -> &'static reqwest::Client {
-    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    CLIENT.get_or_init(build_http_client)
+fn http_client() -> Result<&'static reqwest::Client, ApiClientError> {
+    static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
+    match CLIENT.get_or_init(build_http_client) {
+        Ok(client) => Ok(client),
+        Err(message) => Err(ApiClientError::Network(format!(
+            "failed to initialize HTTP client: {message}"
+        ))),
+    }
 }
 
-fn build_http_client() -> reqwest::Client {
+fn build_http_client() -> Result<reqwest::Client, String> {
     #[cfg(target_arch = "wasm32")]
     {
         reqwest::Client::builder()
             .build()
-            .expect("LOTUS explorer API client")
+            .map_err(|e| e.to_string())
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -63,7 +68,7 @@ fn build_http_client() -> reqwest::Client {
             .pool_max_idle_per_host(8)
             .tcp_keepalive(Duration::from_secs(30))
             .build()
-            .expect("LOTUS explorer API client")
+            .map_err(|e| e.to_string())
     }
 }
 
@@ -88,10 +93,9 @@ fn resolve_api_url(base: &str, url: &str) -> String {
         return trimmed.to_string();
     }
     let base = base.trim_end_matches('/');
-    if trimmed.starts_with('/') {
-        format!("{base}{trimmed}")
-    } else {
-        format!("{base}/{trimmed}")
+    match trimmed.starts_with('/') {
+        true => format!("{base}{trimmed}"),
+        false => format!("{base}/{trimmed}"),
     }
 }
 
@@ -101,7 +105,8 @@ where
     Res: for<'de> Deserialize<'de>,
 {
     let url = format!("{}{}", base.trim_end_matches('/'), path);
-    let response = http_client()
+    let client = http_client()?;
+    let response = client
         .post(url)
         .json(body)
         .send()
