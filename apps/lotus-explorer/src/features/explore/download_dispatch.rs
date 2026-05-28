@@ -101,13 +101,12 @@ pub fn use_download_dispatch_effect(
             let state = app_state.read();
             state.download.pending_format
         };
-        let explore_state = {
-            let state = explore.read();
-            state.clone()
-        };
-
         // Classify current phase based on pending format and explore state.
-        let phase = download_effects::classify_dispatch_phase(pending, &explore_state);
+        // Compute within a scoped read to avoid cloning the entire ExploreState.
+        let phase = {
+            let state = explore.read();
+            download_effects::classify_dispatch_phase(pending, &state)
+        };
 
         match phase {
             DispatchPhase::Inactive => {
