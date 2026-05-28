@@ -127,19 +127,19 @@ pub(crate) struct RowDto {
 impl From<CompoundEntry> for RowDto {
     fn from(value: CompoundEntry) -> Self {
         Self {
-            compound_qid: value.compound_qid.as_ref().to_string(),
-            name: value.name.as_ref().to_string(),
-            inchikey: value.inchikey.map(|v| v.as_ref().to_string()),
-            smiles: value.smiles.map(|v| v.as_ref().to_string()),
+            compound_qid: value.compound_qid.to_string(),
+            name: value.name.to_string(),
+            inchikey: value.inchikey.map(|v| v.to_string()),
+            smiles: value.smiles.map(|v| v.to_string()),
             mass: value.mass,
-            formula: value.formula.map(|v| v.as_ref().to_string()),
-            taxon_qid: value.taxon_qid.as_ref().to_string(),
-            taxon_name: value.taxon_name.as_ref().to_string(),
-            reference_qid: value.reference_qid.as_ref().to_string(),
-            ref_title: value.ref_title.map(|v| v.as_ref().to_string()),
-            ref_doi: value.ref_doi.map(|v| v.as_ref().to_string()),
+            formula: value.formula.map(|v| v.to_string()),
+            taxon_qid: value.taxon_qid.to_string(),
+            taxon_name: value.taxon_name.to_string(),
+            reference_qid: value.reference_qid.to_string(),
+            ref_title: value.ref_title.map(|v| v.to_string()),
+            ref_doi: value.ref_doi.map(|v| v.to_string()),
             pub_year: value.pub_year,
-            statement: value.statement.map(|v| v.as_ref().to_string()),
+            statement: value.statement.map(|v| v.to_string()),
         }
     }
 }
