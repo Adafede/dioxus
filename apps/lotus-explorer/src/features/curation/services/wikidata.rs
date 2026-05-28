@@ -11,6 +11,21 @@ async fn execute_sparql_json(query: &str) -> Result<Value, CurationError> {
     serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))
 }
 
+fn json_bindings(json: &Value) -> impl Iterator<Item = &Value> {
+    json.get("results")
+        .and_then(|v| v.get("bindings"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+}
+
+fn first_json_binding(json: &Value) -> Option<&Value> {
+    json.get("results")
+        .and_then(|v| v.get("bindings"))
+        .and_then(Value::as_array)
+        .and_then(|arr| arr.first())
+}
+
 pub async fn fetch_wikidata_compound_by_inchikey(
     inchikey: &str,
 ) -> Result<Option<WikidataCompound>, CurationError> {
@@ -27,12 +42,7 @@ pub async fn fetch_wikidata_compound_by_inchikey(
         escape_sparql_string(inchikey)
     );
     let json = execute_sparql_json(&query).await?;
-    let Some(first) = json
-        .get("results")
-        .and_then(|v| v.get("bindings"))
-        .and_then(Value::as_array)
-        .and_then(|arr| arr.first())
-    else {
+    let Some(first) = first_json_binding(&json) else {
         return Ok(None);
     };
 
@@ -195,13 +205,7 @@ pub async fn resolve_reference_qids_batch<'a>(
     let json = execute_sparql_json(&query).await?;
 
     let mut resolved = HashMap::new();
-    for binding in json
-        .get("results")
-        .and_then(|v| v.get("bindings"))
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
+    for binding in json_bindings(&json) {
         let Some(lookup) = binding_value(binding, "lookup") else {
             continue;
         };
@@ -269,13 +273,7 @@ pub async fn resolve_taxon_qids_batch<'a>(
     let json = execute_sparql_json(&query).await?;
 
     let mut resolved = HashMap::new();
-    for binding in json
-        .get("results")
-        .and_then(|v| v.get("bindings"))
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
+    for binding in json_bindings(&json) {
         let Some(lookup) = binding_value(binding, "lookup") else {
             continue;
         };

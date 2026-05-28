@@ -53,8 +53,10 @@ pub fn parse_criteria_from_params(params: &QueryParams) -> SearchCriteria {
 
 impl CriteriaQueryDto {
     fn parse(params: &QueryParams) -> Self {
+        let taxon = params.get("taxon").cloned();
         Self {
-            taxon: params.get("taxon").cloned(),
+            has_explicit_taxon: taxon.is_some(),
+            taxon,
             structure: params
                 .get("structure")
                 .cloned()
@@ -80,7 +82,6 @@ impl CriteriaQueryDto {
                 "year_end",
             ),
             formula_filter: FormulaQueryDto::parse(params),
-            has_explicit_taxon: params.contains_key("taxon"),
         }
     }
 

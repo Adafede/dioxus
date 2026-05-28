@@ -2,6 +2,9 @@ use crate::features::explore::types::{DomainError, ParseFault, TaxonWarning};
 use crate::models::TaxonMatch;
 
 fn eq_casefold(a: &str, b: &str) -> bool {
+    if a.is_ascii() && b.is_ascii() {
+        return a.eq_ignore_ascii_case(b);
+    }
     a.chars()
         .flat_map(char::to_lowercase)
         .eq(b.chars().flat_map(char::to_lowercase))

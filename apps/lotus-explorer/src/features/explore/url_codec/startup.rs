@@ -16,19 +16,15 @@ pub fn parse_startup_action_from_params(params: &QueryParams) -> InitialDownload
         };
     }
 
-    let requested_format = requested_download_format(params);
-    let pending_format = DownloadFormat::from_str(&requested_format);
+    let requested_format = params.get("format").map(String::as_str).unwrap_or("csv");
+    let pending_format = DownloadFormat::from_str(requested_format);
 
     InitialDownloadState {
         pending_format,
-        pending_invalid_format: pending_format.is_none().then_some(requested_format),
+        pending_invalid_format: pending_format
+            .is_none()
+            .then(|| requested_format.trim().to_ascii_lowercase()),
         direct_execute: false,
     }
 }
 
-fn requested_download_format(params: &QueryParams) -> String {
-    params
-        .get("format")
-        .map(|value| value.to_ascii_lowercase())
-        .unwrap_or_else(|| "csv".into())
-}

@@ -24,12 +24,17 @@ pub enum DownloadFormat {
 
 impl DownloadFormat {
     pub fn from_str(s: &str) -> Option<Self> {
-        let normalized = s.trim().to_ascii_lowercase();
-        match normalized.as_str() {
-            "csv" => Some(Self::Csv),
-            "json" | "ndjson" => Some(Self::Json),
-            "rdf" => Some(Self::Rdf),
-            _ => None,
+        let normalized = s.trim();
+        if normalized.eq_ignore_ascii_case("csv") {
+            Some(Self::Csv)
+        } else if normalized.eq_ignore_ascii_case("json")
+            || normalized.eq_ignore_ascii_case("ndjson")
+        {
+            Some(Self::Json)
+        } else if normalized.eq_ignore_ascii_case("rdf") {
+            Some(Self::Rdf)
+        } else {
+            None
         }
     }
 
