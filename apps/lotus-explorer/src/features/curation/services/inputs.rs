@@ -128,8 +128,7 @@ fn normalize_doi(value: &str) -> Option<String> {
     if trimmed.is_empty() {
         return None;
     }
-    let lowered = trimmed.to_ascii_lowercase();
-    let canonical = if let Some(idx) = lowered.find("doi.org/") {
+    let canonical = if let Some(idx) = find_ascii_ci(trimmed, b"doi.org/") {
         &trimmed[(idx + 8)..]
     } else {
         trimmed
@@ -138,6 +137,18 @@ fn normalize_doi(value: &str) -> Option<String> {
         return None;
     }
     Some(canonical.to_ascii_uppercase())
+}
+
+fn find_ascii_ci(haystack: &str, needle: &[u8]) -> Option<usize> {
+    let hb = haystack.as_bytes();
+    if needle.is_empty() || hb.len() < needle.len() {
+        return None;
+    }
+    hb.windows(needle.len()).position(|w| {
+        w.iter()
+            .zip(needle)
+            .all(|(a, b)| a.eq_ignore_ascii_case(b))
+    })
 }
 
 fn non_empty(value: &str) -> Option<&str> {

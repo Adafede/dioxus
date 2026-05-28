@@ -19,6 +19,13 @@ fn json_bindings(json: &Value) -> impl Iterator<Item = &Value> {
         .flatten()
 }
 
+fn json_bindings_len(json: &Value) -> usize {
+    json.get("results")
+        .and_then(|v| v.get("bindings"))
+        .and_then(Value::as_array)
+        .map_or(0, Vec::len)
+}
+
 fn first_json_binding(json: &Value) -> Option<&Value> {
     json.get("results")
         .and_then(|v| v.get("bindings"))
@@ -68,7 +75,11 @@ pub async fn fetch_wikidata_compound_by_inchikey(
         isomeric_smiles: binding_value(first, "iso"),
         inchi: binding_value(first, "inchi"),
         formula: binding_value(first, "formula"),
-        mass: binding_value(first, "mass").and_then(|v| v.parse::<f64>().ok()),
+        mass: first
+            .get("mass")
+            .and_then(|v| v.get("value"))
+            .and_then(Value::as_str)
+            .and_then(|v| v.parse::<f64>().ok()),
     }))
 }
 
@@ -213,7 +224,7 @@ pub async fn resolve_reference_qids_batch<'a>(
     let query = build_reference_lookup_query(&normalized_dois);
     let json = execute_sparql_json(&query).await?;
 
-    let mut resolved = HashMap::new();
+    let mut resolved = HashMap::with_capacity(json_bindings_len(&json));
     for binding in json_bindings(&json) {
         let Some(lookup) = binding_value(binding, "lookup") else {
             continue;
@@ -281,7 +292,7 @@ pub async fn resolve_taxon_qids_batch<'a>(
     let query = build_taxon_lookup_query(&lookups);
     let json = execute_sparql_json(&query).await?;
 
-    let mut resolved = HashMap::new();
+    let mut resolved = HashMap::with_capacity(json_bindings_len(&json));
     for binding in json_bindings(&json) {
         let Some(lookup) = binding_value(binding, "lookup") else {
             continue;
