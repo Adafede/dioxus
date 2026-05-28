@@ -49,28 +49,52 @@ pub fn parse_tsv_rows(tsv: &str) -> Result<Vec<CurationInputRow>, CurationError>
         .iter()
         .position(|c| matches!(c.as_str(), "taxon" | "organism"));
     let doi_idx = columns.iter().position(|c| c == "doi");
+    let max_needed_idx = [Some(name_idx), Some(smiles_idx), taxon_idx, doi_idx]
+        .into_iter()
+        .flatten()
+        .max()
+        .unwrap_or(0);
 
     let mut out = Vec::new();
     for line in lines {
-        let fields = line.split('\t').map(str::trim).collect::<Vec<_>>();
-        let Some(name) = fields.get(name_idx) else {
+        let mut name: Option<&str> = None;
+        let mut smiles: Option<&str> = None;
+        let mut taxon_raw: Option<&str> = None;
+        let mut doi_raw: Option<&str> = None;
+
+        for (idx, field) in line.split('\t').enumerate() {
+            if idx > max_needed_idx {
+                break;
+            }
+            let field = field.trim();
+            if idx == name_idx {
+                name = Some(field);
+            }
+            if idx == smiles_idx {
+                smiles = Some(field);
+            }
+            if taxon_idx == Some(idx) {
+                taxon_raw = Some(field);
+            }
+            if doi_idx == Some(idx) {
+                doi_raw = Some(field);
+            }
+        }
+
+        let Some(name) = name else {
             continue;
         };
-        let Some(smiles) = fields.get(smiles_idx) else {
+        let Some(smiles) = smiles else {
             continue;
         };
         if name.is_empty() || smiles.is_empty() {
             continue;
         }
-        let taxon = taxon_idx
-            .and_then(|idx| fields.get(idx))
-            .and_then(|v| non_empty(v).map(ToOwned::to_owned));
-        let doi = doi_idx
-            .and_then(|idx| fields.get(idx))
-            .and_then(|value| normalize_doi(value));
+        let taxon = taxon_raw.and_then(|v| non_empty(v).map(ToOwned::to_owned));
+        let doi = doi_raw.and_then(normalize_doi);
         out.push(CurationInputRow {
-            name: (*name).into(),
-            smiles: (*smiles).into(),
+            name: name.into(),
+            smiles: smiles.into(),
             taxon,
             doi,
         });
