@@ -33,7 +33,7 @@ impl AppConfig {
         let host = get("HOST")
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| "127.0.0.1".to_string());
+            .unwrap_or_else(|| "127.0.0.1".into());
 
         let port = parse_u16_env(get("PORT"), "PORT", 8787)?;
         let default_limit = parse_usize_env(get("DEFAULT_LIMIT"), "DEFAULT_LIMIT", 500)?
@@ -49,12 +49,12 @@ impl AppConfig {
         let app_env = get("APP_ENV")
             .map(|value| value.trim().to_ascii_lowercase())
             .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| "development".to_string());
+            .unwrap_or_else(|| "development".into());
 
         let cors_allowed_origins = parse_allowed_origins(get("CORS_ALLOWED_ORIGINS"))?;
         if app_env == "production" && cors_allowed_origins.is_none() {
             return Err(
-                "APP_ENV=production requires CORS_ALLOWED_ORIGINS to be configured".to_string(),
+                "APP_ENV=production requires CORS_ALLOWED_ORIGINS to be configured".into(),
             );
         }
 
