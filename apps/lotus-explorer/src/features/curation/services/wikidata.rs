@@ -222,17 +222,18 @@ pub async fn resolve_reference_qids_batch<'a>(
 }
 
 fn build_taxon_lookup_query(lookups: &[(String, String)]) -> String {
-    let values = lookups
-        .iter()
-        .map(|(lookup, taxon_name)| {
-            format!(
-                "(\"{}\" \"{}\")",
-                escape_sparql_string(lookup),
-                escape_sparql_string(taxon_name)
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n    ");
+    let mut values = String::new();
+    for (i, (lookup, taxon_name)) in lookups.iter().enumerate() {
+        if i > 0 {
+            values.push_str("\n    ");
+        }
+        values.push('(');
+        values.push('"');
+        values.push_str(&escape_sparql_string(lookup));
+        values.push_str("\" \"");
+        values.push_str(&escape_sparql_string(taxon_name));
+        values.push_str("\")");
+    }
 
     format!(
         "{CURATION_SPARQL_PREFIXES}\n\
@@ -249,8 +250,8 @@ fn build_taxon_lookup_query(lookups: &[(String, String)]) -> String {
 pub async fn resolve_taxon_qids_batch<'a>(
     names: impl IntoIterator<Item = &'a str>,
 ) -> Result<HashMap<String, String>, CurationError> {
-    let mut seen = HashSet::new();
     let mut lookups = Vec::new();
+    let mut seen = HashSet::new();
 
     for name in names {
         let trimmed = name.trim();
@@ -296,8 +297,7 @@ pub async fn resolve_taxon_qids_batch<'a>(
         resolved.insert(lookup, qid.to_string());
     }
 
-    Ok(resolved)
-}
+    Ok(resolved)}
 
 pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, CurationError> {
     let Some(query) = build_single_taxon_lookup_query(name) else {
