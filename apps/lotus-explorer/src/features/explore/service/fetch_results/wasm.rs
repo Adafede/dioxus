@@ -3,6 +3,7 @@ use crate::features::explore::search_metrics::SearchMetrics;
 use crate::features::explore::types::{DomainError, ParseFault, QueryStage};
 use crate::perf;
 use crate::queries;
+use crate::repositories::RepositoryError;
 use crate::repositories::LotusRepository;
 use crate::services::search_telemetry as telemetry;
 use crate::sparql;
@@ -80,7 +81,12 @@ pub(super) fn is_probable_memory_limit(err: &DomainError) -> bool {
     }
 
     match err {
-        DomainError::Transport { source, .. } => has_memory_signature(&source.to_string()),
+        DomainError::Transport { source, .. } => match source {
+            RepositoryError::NotConfigured => false,
+            RepositoryError::Network(detail) => has_memory_signature(detail.as_str()),
+            RepositoryError::Http { body, .. } => has_memory_signature(body),
+            RepositoryError::Parse(detail) => has_memory_signature(detail.as_str()),
+        },
         DomainError::Parse(ParseFault::ResultsCsv { details }) => has_memory_signature(details),
         _ => false,
     }
