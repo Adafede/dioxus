@@ -15,7 +15,7 @@ pub fn non_empty_trimmed(value: &str) -> Option<String> {
     if trimmed.is_empty() {
         None
     } else {
-        Some(trimmed.to_string())
+        Some(trimmed.into())
     }
 }
 
