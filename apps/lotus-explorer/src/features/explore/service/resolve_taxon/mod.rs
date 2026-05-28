@@ -34,8 +34,9 @@ pub fn requires_remote_lookup(taxon: &str) -> bool {
     if taxon.is_empty() || taxon == "*" {
         return false;
     }
-
-    !(taxon.starts_with(['Q', 'q']) && taxon[1..].chars().all(|c| c.is_ascii_digit()))
+    // QIDs are always ASCII — use byte-level check to avoid Unicode iterator.
+    let bytes = taxon.as_bytes();
+    !(matches!(bytes[0], b'Q' | b'q') && bytes[1..].iter().all(u8::is_ascii_digit))
 }
 
 /// Resolve a free-text taxon name (or QID, or wildcard) to a Wikidata QID.
