@@ -16,16 +16,17 @@ pub type ResponseBody = bytes::Bytes;
 
 /// Default `QLever` endpoint for Wikidata (used by lotus-explorer).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
+const MAX_HTTP_ATTEMPTS: u32 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SparqlResponseFormat {
+pub enum ResponseFormat {
     Csv,
     SparqlJson,
     Turtle,
     NTriples,
 }
 
-impl SparqlResponseFormat {
+impl ResponseFormat {
     const fn accept(self) -> &'static str {
         match self {
             Self::Csv => "text/csv",
@@ -74,14 +75,21 @@ impl std::fmt::Display for FetchError {
 /// with `Accept: text/csv` so the endpoint can honor content negotiation
 /// even when the `action=csv_export` form parameter is ignored. Retries
 /// transient network / 5xx errors; 4xx errors fail fast.
-pub async fn execute_sparql(sparql: &str, endpoint: &str) -> Result<String, FetchError> {
-    execute_sparql_with_format(sparql, endpoint, SparqlResponseFormat::Csv).await
+///
+/// # Errors
+/// Returns [`FetchError`] when the request fails, the upstream responds with an
+/// HTTP error, or the body is empty / invalid UTF-8.
+pub async fn execute_query(sparql: &str, endpoint: &str) -> Result<String, FetchError> {
+    execute_sparql_with_format(sparql, endpoint, ResponseFormat::Csv).await
 }
 
 /// Execute a SPARQL query and return raw response bytes.
 ///
 /// Useful for memory-sensitive paths where callers parse CSV directly from bytes
 /// without first materializing an intermediate UTF-8 `String`.
+///
+/// # Errors
+/// Returns [`FetchError`] for network/HTTP failures or empty upstream payloads.
 pub async fn execute_sparql_bytes(sparql: &str, endpoint: &str) -> Result<Vec<u8>, FetchError> {
     let body = execute_sparql_body(sparql, endpoint).await?;
     Ok(body.to_vec())
@@ -91,48 +99,68 @@ pub async fn execute_sparql_bytes(sparql: &str, endpoint: &str) -> Result<Vec<u8
 ///
 /// This avoids an extra `Bytes -> Vec<u8>` copy for callers that can parse from
 /// borrowed byte slices or readers.
+///
+/// # Errors
+/// Returns [`FetchError`] for network/HTTP failures or empty upstream payloads.
 pub async fn execute_sparql_body(sparql: &str, endpoint: &str) -> Result<ResponseBody, FetchError> {
-    execute_sparql_with_format_body(sparql, endpoint, SparqlResponseFormat::Csv).await
+    execute_sparql_with_format_body(sparql, endpoint, ResponseFormat::Csv).await
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+/// Execute a SPARQL query and stream the response into a temporary file.
+///
+/// # Errors
+/// Returns [`FetchError`] when request/streaming/tempfile I/O fails, or when
+/// the upstream response is empty / an HTTP error.
 pub async fn execute_sparql_tempfile(
     sparql: &str,
     endpoint: &str,
 ) -> Result<tempfile::NamedTempFile, FetchError> {
-    execute_sparql_with_format_tempfile(sparql, endpoint, SparqlResponseFormat::Csv).await
+    execute_sparql_with_format_tempfile(sparql, endpoint, ResponseFormat::Csv).await
 }
 
+/// Execute a SPARQL query and decode response bytes as UTF-8 text.
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures, empty responses, or
+/// invalid UTF-8 payloads.
 pub async fn execute_sparql_with_format(
     sparql: &str,
     endpoint: &str,
-    format: SparqlResponseFormat,
+    format: ResponseFormat,
 ) -> Result<String, FetchError> {
     let bytes = execute_sparql_with_format_bytes(sparql, endpoint, format).await?;
     String::from_utf8(bytes).map_err(|e| FetchError::Parse(e.to_string()))
 }
 
+/// Execute a SPARQL query and return response bytes in a chosen representation.
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures or empty responses.
 pub async fn execute_sparql_with_format_bytes(
     sparql: &str,
     endpoint: &str,
-    format: SparqlResponseFormat,
+    format: ResponseFormat,
 ) -> Result<Vec<u8>, FetchError> {
     let body = execute_sparql_with_format_body(sparql, endpoint, format).await?;
     Ok(body.to_vec())
 }
 
+/// Execute a SPARQL query and return the raw response body for a representation.
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures or empty responses.
 pub async fn execute_sparql_with_format_body(
     sparql: &str,
     endpoint: &str,
-    format: SparqlResponseFormat,
+    format: ResponseFormat,
 ) -> Result<ResponseBody, FetchError> {
     log::debug!("SPARQL POST endpoint: {endpoint}");
 
-    const MAX_ATTEMPTS: u32 = 2;
     let client = http_client()?;
     let mut last_err: Option<FetchError> = None;
 
-    for attempt in 0..MAX_ATTEMPTS {
+    for attempt in 0..MAX_HTTP_ATTEMPTS {
         // `Accept` and `Content-Type: application/x-www-form-urlencoded` are
         // both CORS-safelisted, so the request stays simple (no preflight).
         // Do not add `User-Agent` or other custom headers — browsers refuse to
@@ -160,7 +188,7 @@ pub async fn execute_sparql_with_format_body(
                                     502,
                                     "upstream gateway error (HTML payload)".into(),
                                 );
-                                if attempt + 1 < MAX_ATTEMPTS {
+                                if attempt + 1 < MAX_HTTP_ATTEMPTS {
                                     last_err = Some(err);
                                     continue;
                                 }
@@ -170,7 +198,7 @@ pub async fn execute_sparql_with_format_body(
                         }
                         Err(e) => {
                             let err = FetchError::Network(e.to_string());
-                            if attempt + 1 < MAX_ATTEMPTS {
+                            if attempt + 1 < MAX_HTTP_ATTEMPTS {
                                 last_err = Some(err);
                                 continue;
                             }
@@ -197,19 +225,23 @@ pub async fn execute_sparql_with_format_body(
     Err(last_err.unwrap_or_else(|| FetchError::Network("unknown error".into())))
 }
 
+/// Execute a SPARQL query and stream the selected representation into a tempfile.
+///
+/// # Errors
+/// Returns [`FetchError`] when request/streaming/tempfile I/O fails, or when
+/// the upstream response is empty / an HTTP error.
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn execute_sparql_with_format_tempfile(
     sparql: &str,
     endpoint: &str,
-    format: SparqlResponseFormat,
+    format: ResponseFormat,
 ) -> Result<tempfile::NamedTempFile, FetchError> {
     log::debug!("SPARQL POST endpoint: {endpoint}");
 
-    const MAX_ATTEMPTS: u32 = 2;
     let client = http_client()?;
     let mut last_err: Option<FetchError> = None;
 
-    'attempts: for attempt in 0..MAX_ATTEMPTS {
+    'attempts: for attempt in 0..MAX_HTTP_ATTEMPTS {
         let result = client
             .post(endpoint)
             .header("Accept", format.accept())
@@ -243,7 +275,7 @@ pub async fn execute_sparql_with_format_tempfile(
                             Ok(None) => break,
                             Err(e) => {
                                 let err = FetchError::Network(e.to_string());
-                                if attempt + 1 < MAX_ATTEMPTS {
+                                if attempt + 1 < MAX_HTTP_ATTEMPTS {
                                     last_err = Some(err);
                                     continue 'attempts;
                                 }
@@ -260,7 +292,7 @@ pub async fn execute_sparql_with_format_tempfile(
                     if looks_like_gateway_error(&preview_text) {
                         let err =
                             FetchError::Http(502, "upstream gateway error (HTML payload)".into());
-                        if attempt + 1 < MAX_ATTEMPTS {
+                        if attempt + 1 < MAX_HTTP_ATTEMPTS {
                             last_err = Some(err);
                             continue;
                         }
@@ -295,9 +327,12 @@ pub async fn execute_sparql_with_format_tempfile(
 ///
 /// This is useful for clients that want direct `QLever` export representations
 /// while still using HTTP content negotiation (`Accept` / `Accept-Encoding`).
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures or empty responses.
 pub async fn fetch_export_url_bytes(
     url: &str,
-    format: SparqlResponseFormat,
+    format: ResponseFormat,
 ) -> Result<Vec<u8>, FetchError> {
     fetch_url_bytes_with_accept(url, format.accept()).await
 }
@@ -307,16 +342,18 @@ pub async fn fetch_export_url_bytes(
 /// Unlike [`fetch_export_url_bytes`], this does not constrain the `Accept`
 /// header to a specific SPARQL representation. It is used for API-managed
 /// download artifacts such as `application/gzip` attachments.
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures or empty responses.
 pub async fn fetch_url_bytes(url: &str) -> Result<Vec<u8>, FetchError> {
     fetch_url_bytes_with_accept(url, "*/*").await
 }
 
 async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>, FetchError> {
-    const MAX_ATTEMPTS: u32 = 2;
     let client = http_client()?;
     let mut last_err: Option<FetchError> = None;
 
-    for attempt in 0..MAX_ATTEMPTS {
+    for attempt in 0..MAX_HTTP_ATTEMPTS {
         let result = client.get(url).header("Accept", accept).send().await;
 
         match result {
@@ -333,7 +370,7 @@ async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>,
                                     502,
                                     "upstream gateway error (HTML payload)".into(),
                                 );
-                                if attempt + 1 < MAX_ATTEMPTS {
+                                if attempt + 1 < MAX_HTTP_ATTEMPTS {
                                     last_err = Some(err);
                                     continue;
                                 }
@@ -343,7 +380,7 @@ async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>,
                         }
                         Err(e) => {
                             let err = FetchError::Network(e.to_string());
-                            if attempt + 1 < MAX_ATTEMPTS {
+                            if attempt + 1 < MAX_HTTP_ATTEMPTS {
                                 last_err = Some(err);
                                 continue;
                             }
@@ -368,7 +405,7 @@ async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>,
     Err(last_err.unwrap_or_else(|| FetchError::Network("unknown error".into())))
 }
 
-fn build_sparql_form_body(sparql: &str, format: SparqlResponseFormat) -> String {
+fn build_sparql_form_body(sparql: &str, format: ResponseFormat) -> String {
     let encoded = urlencoding::encode(sparql);
     // "query=" + encoded + optional "&action=<name>"
     let action = format.action();

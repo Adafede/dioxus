@@ -535,70 +535,84 @@ pub fn query_with_limit(base_query: &str, limit: usize) -> String {
 ///
 /// Formula filters use pre-computed element count bindings (REGEX patterns on
 /// tokenized formula) to avoid repeated regex evaluation per row.
-pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) -> String {
-    let mut filters = Vec::new();
-    let mut prelude = Vec::new();
-    let mut required_inserts = Vec::new();
+fn apply_mass_filters(
+    criteria: &SearchCriteria,
+    filters: &mut Vec<String>,
+    required_inserts: &mut Vec<String>,
+) {
+    if !criteria.has_mass_filter() {
+        return;
+    }
+    filters.push(format!(
+        "FILTER(?compound_mass >= {:.6} && ?compound_mass <= {:.6})",
+        criteria.mass_min, criteria.mass_max
+    ));
+    required_inserts.push("?c wdt:P2067 ?compound_mass .".to_string());
+}
 
-    if criteria.has_mass_filter() {
-        let min = criteria.mass_min;
-        let max = criteria.mass_max;
-        filters.push(format!(
-            "FILTER(?compound_mass >= {min:.6} && ?compound_mass <= {max:.6})"
-        ));
-        required_inserts.push("?c wdt:P2067 ?compound_mass .".to_string());
+fn apply_year_filters(
+    criteria: &SearchCriteria,
+    filters: &mut Vec<String>,
+    required_inserts: &mut Vec<String>,
+) {
+    if !criteria.has_year_filter() {
+        return;
+    }
+    filters.push(format!(
+        "FILTER(YEAR(?ref_date) >= {} && YEAR(?ref_date) <= {})",
+        criteria.year_min, criteria.year_max
+    ));
+    required_inserts.push("?r wdt:P577 ?ref_date .".to_string());
+}
+
+fn apply_formula_filters(
+    criteria: &SearchCriteria,
+    prelude: &mut Vec<String>,
+    filters: &mut Vec<String>,
+) {
+    if !criteria.has_formula_filter() {
+        return;
     }
 
-    if criteria.has_year_filter() {
-        let start = criteria.year_min;
-        let end = criteria.year_max;
-        filters.push(format!(
-            "FILTER(YEAR(?ref_date) >= {start} && YEAR(?ref_date) <= {end})"
-        ));
-        required_inserts.push("?r wdt:P577 ?ref_date .".to_string());
-    }
+    prelude.push("FILTER(BOUND(?compound_formula_raw))".to_string());
+    prelude.push("BIND(STR(?compound_formula_raw) AS ?_formula_raw)".to_string());
+    prelude.push(r#"BIND(REPLACE(?_formula_raw, " ", "") AS ?_formula_nospace)"#.to_string());
+    prelude.push(format!(
+        "BIND({} AS ?_formula_norm)",
+        normalize_digits_expr("?_formula_nospace")
+    ));
+    prelude.push(
+        "BIND(REPLACE(?_formula_norm, \"([A-Z])\", \"|$1\") AS ?_formula_tokens)".to_string(),
+    );
 
-    if criteria.has_formula_filter() {
-        prelude.push("FILTER(BOUND(?compound_formula_raw))".to_string());
-        prelude.push("BIND(STR(?compound_formula_raw) AS ?_formula_raw)".to_string());
-        prelude.push(r#"BIND(REPLACE(?_formula_raw, " ", "") AS ?_formula_nospace)"#.to_string());
-        prelude.push(format!(
-            "BIND({} AS ?_formula_norm)",
-            normalize_digits_expr("?_formula_nospace")
-        ));
-        prelude.push(
-            "BIND(REPLACE(?_formula_norm, \"([A-Z])\", \"|$1\") AS ?_formula_tokens)".to_string(),
-        );
-
-        for (symbol, min, max, default_max) in [
-            ("C", criteria.c_min, criteria.c_max, DEFAULT_C_MAX),
-            ("H", criteria.h_min, criteria.h_max, DEFAULT_H_MAX),
-            ("N", criteria.n_min, criteria.n_max, DEFAULT_N_MAX),
-            ("O", criteria.o_min, criteria.o_max, DEFAULT_O_MAX),
-            ("P", criteria.p_min, criteria.p_max, DEFAULT_P_MAX),
-            ("S", criteria.s_min, criteria.s_max, DEFAULT_S_MAX),
-        ] {
-            if min > 0 || max < default_max {
-                let var = format!("?_count_{}", symbol.to_ascii_lowercase());
-                prelude.push(element_count_bind(symbol, &var));
-                filters.push(format!("FILTER({var} >= {min} && {var} <= {max})"));
-            }
+    for (symbol, min, max, default_max) in [
+        ("C", criteria.c_min, criteria.c_max, DEFAULT_C_MAX),
+        ("H", criteria.h_min, criteria.h_max, DEFAULT_H_MAX),
+        ("N", criteria.n_min, criteria.n_max, DEFAULT_N_MAX),
+        ("O", criteria.o_min, criteria.o_max, DEFAULT_O_MAX),
+        ("P", criteria.p_min, criteria.p_max, DEFAULT_P_MAX),
+        ("S", criteria.s_min, criteria.s_max, DEFAULT_S_MAX),
+    ] {
+        if min > 0 || max < default_max {
+            let var = format!("?_count_{}", symbol.to_ascii_lowercase());
+            prelude.push(element_count_bind(symbol, &var));
+            filters.push(format!("FILTER({var} >= {min} && {var} <= {max})"));
         }
+    }
 
-        for (symbol, state) in [
-            ("F", criteria.f_state),
-            ("Cl", criteria.cl_state),
-            ("Br", criteria.br_state),
-            ("I", criteria.i_state),
-        ] {
-            if state != ElementState::Allowed {
-                let var = format!("?_count_{}", symbol.to_ascii_lowercase());
-                prelude.push(element_count_bind(symbol, &var));
-                match state {
-                    ElementState::Allowed => {}
-                    ElementState::Required => filters.push(format!("FILTER({var} > 0)")),
-                    ElementState::Excluded => filters.push(format!("FILTER({var} = 0)")),
-                }
+    for (symbol, state) in [
+        ("F", criteria.f_state),
+        ("Cl", criteria.cl_state),
+        ("Br", criteria.br_state),
+        ("I", criteria.i_state),
+    ] {
+        if state != ElementState::Allowed {
+            let var = format!("?_count_{}", symbol.to_ascii_lowercase());
+            prelude.push(element_count_bind(symbol, &var));
+            match state {
+                ElementState::Allowed => {}
+                ElementState::Required => filters.push(format!("FILTER({var} > 0)")),
+                ElementState::Excluded => filters.push(format!("FILTER({var} = 0)")),
             }
         }
     }
@@ -616,22 +630,25 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
         let exact_escaped = exact_norm.replace('\\', r"\\").replace('"', r#"\""#);
         filters.push(format!("FILTER(?_formula_norm = \"{exact_escaped}\")"));
     }
+}
 
-    if prelude.is_empty() && filters.is_empty() && required_inserts.is_empty() {
-        return base_query.to_string();
-    }
-
+fn inject_filter_fragments(
+    base_query: &str,
+    required_inserts: &[String],
+    prelude: &[String],
+    filters: &[String],
+) -> String {
     let trimmed = base_query.trim_end();
     let Some(last_close) = trimmed.rfind('}') else {
         let mut out = String::with_capacity((filters.len() + required_inserts.len()) * 100);
         out.push_str(trimmed);
         for insert in required_inserts {
             out.push('\n');
-            out.push_str(&insert);
+            out.push_str(insert);
         }
         for filter in filters {
             out.push('\n');
-            out.push_str(&filter);
+            out.push_str(filter);
         }
         return out;
     };
@@ -642,22 +659,35 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
     out.push_str(&trimmed[..last_close]);
     out.push('\n');
 
-    if !required_inserts.is_empty() {
-        for insert in required_inserts {
-            out.push_str(&insert);
-            out.push('\n');
-        }
+    for insert in required_inserts {
+        out.push_str(insert);
+        out.push('\n');
     }
-
     if !prelude.is_empty() {
         out.push_str(&prelude.join("\n"));
         out.push('\n');
     }
-
     out.push_str(&filters.join("\n"));
     out.push('\n');
     out.push_str(&trimmed[last_close..]);
     out
+}
+
+#[must_use]
+pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) -> String {
+    let mut filters = Vec::new();
+    let mut prelude = Vec::new();
+    let mut required_inserts = Vec::new();
+
+    apply_mass_filters(criteria, &mut filters, &mut required_inserts);
+    apply_year_filters(criteria, &mut filters, &mut required_inserts);
+    apply_formula_filters(criteria, &mut prelude, &mut filters);
+
+    if prelude.is_empty() && filters.is_empty() && required_inserts.is_empty() {
+        return base_query.to_string();
+    }
+
+    inject_filter_fragments(base_query, &required_inserts, &prelude, &filters)
 }
 
 /// Transform a SELECT query into a CONSTRUCT query for RDF export.
@@ -790,9 +820,11 @@ mod tests {
 
     #[test]
     fn server_filter_inserts_required_mass_when_mass_filtering() {
-        let mut crit = SearchCriteria::default();
-        crit.mass_min = 100.0;
-        crit.mass_max = 500.0;
+        let crit = SearchCriteria {
+            mass_min: 100.0,
+            mass_max: 500.0,
+            ..SearchCriteria::default()
+        };
 
         let q = query_with_server_filters(&query_all_compounds(), &crit);
         assert!(q.contains("?c wdt:P2067 ?compound_mass"));
@@ -802,9 +834,11 @@ mod tests {
 
     #[test]
     fn server_filter_inserts_required_date_when_year_filtering() {
-        let mut crit = SearchCriteria::default();
-        crit.year_min = 2000;
-        crit.year_max = 2024;
+        let crit = SearchCriteria {
+            year_min: 2000,
+            year_max: 2024,
+            ..SearchCriteria::default()
+        };
 
         let q = query_with_server_filters(&query_all_compounds(), &crit);
         assert!(q.contains("?r wdt:P577 ?ref_date"));

@@ -5,7 +5,7 @@ use super::coordinator::query_export_plan;
 use crate::download::DownloadFormat;
 use crate::perf;
 use crate::sparql;
-use shared::sparql::SparqlResponseFormat;
+use shared::sparql::ResponseFormat;
 use std::sync::Arc;
 
 pub(super) async fn execute_download_native(
@@ -71,16 +71,16 @@ async fn execute_download_direct(
 async fn fetch_direct(format: DownloadFormat, query: &str) -> Result<String, String> {
     let plan = query_export_plan(format, query);
     match format {
-        DownloadFormat::Csv => sparql::execute_sparql(plan.query.as_ref())
+        DownloadFormat::Csv => sparql::execute_query(plan.query.as_ref())
             .await
             .map_err(|e| e.to_string()),
         DownloadFormat::Json => {
-            sparql::execute_sparql_format(plan.query.as_ref(), SparqlResponseFormat::SparqlJson)
+            sparql::execute_sparql_format(plan.query.as_ref(), ResponseFormat::SparqlJson)
                 .await
                 .map_err(|e| e.to_string())
         }
         DownloadFormat::Rdf => {
-            sparql::execute_sparql_format(plan.query.as_ref(), SparqlResponseFormat::Turtle)
+            sparql::execute_sparql_format(plan.query.as_ref(), ResponseFormat::Turtle)
                 .await
                 .map_err(|e| e.to_string())
         }

@@ -15,7 +15,7 @@ use crate::i18n::{
 use crate::sparql::execute_sparql_format;
 use serde::Deserialize;
 use serde_json::Value;
-use shared::sparql::SparqlResponseFormat;
+use shared::sparql::ResponseFormat;
 
 mod chemical;
 mod enrichment;

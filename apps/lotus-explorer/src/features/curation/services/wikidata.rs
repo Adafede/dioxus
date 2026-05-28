@@ -5,7 +5,7 @@ use super::*;
 use std::collections::{HashMap, HashSet};
 
 async fn execute_sparql_json(query: &str) -> Result<Value, CurationError> {
-    let raw = execute_sparql_format(query, SparqlResponseFormat::SparqlJson)
+    let raw = execute_sparql_format(query, ResponseFormat::SparqlJson)
         .await
         .map_err(|e| CurationError::Http(e.to_string()))?;
     serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))

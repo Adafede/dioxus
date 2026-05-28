@@ -5,7 +5,7 @@ use super::models::{CompoundEntry, DatasetStats, TaxonMatch};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::sparql::execute_sparql_tempfile as shared_execute_tempfile;
 use crate::sparql::{
-    FetchError, QLEVER_WIKIDATA, SparqlResponseFormat, col_idx, execute_sparql as shared_execute,
+    FetchError, QLEVER_WIKIDATA, ResponseFormat, col_idx, execute_query as shared_execute,
     execute_sparql_body as shared_execute_body, execute_sparql_bytes as shared_execute_bytes,
     execute_sparql_with_format as shared_execute_with_format, extract_qid,
     fetch_export_url_bytes as shared_fetch_export_url_bytes, field, parse_year,
@@ -248,38 +248,70 @@ fn normalize_doi_value(value: &str) -> Option<&str> {
     }
 }
 
-pub async fn execute_sparql(sparql: &str) -> Result<String, FetchError> {
+/// Execute a LOTUS query on the default Wikidata `QLever` endpoint.
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures, empty responses, or
+/// invalid UTF-8 payloads.
+pub async fn execute_query(sparql: &str) -> Result<String, FetchError> {
     shared_execute(sparql, QLEVER_WIKIDATA).await
 }
 
+/// Execute a LOTUS query and return raw response bytes.
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures or empty responses.
 pub async fn execute_sparql_bytes(sparql: &str) -> Result<Vec<u8>, FetchError> {
     shared_execute_bytes(sparql, QLEVER_WIKIDATA).await
 }
 
+/// Execute a LOTUS query and return the raw response body.
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures or empty responses.
 pub async fn execute_sparql_body(sparql: &str) -> Result<crate::sparql::ResponseBody, FetchError> {
     shared_execute_body(sparql, QLEVER_WIKIDATA).await
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+/// Execute a LOTUS query and stream the response into a temporary file.
+///
+/// # Errors
+/// Returns [`FetchError`] when request/streaming/tempfile I/O fails, or when
+/// the upstream response is empty / an HTTP error.
 pub async fn execute_sparql_tempfile(sparql: &str) -> Result<tempfile::NamedTempFile, FetchError> {
     shared_execute_tempfile(sparql, QLEVER_WIKIDATA).await
 }
 
+/// Execute a LOTUS query with an explicit response format.
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures, empty responses, or
+/// invalid UTF-8 payloads.
 pub async fn execute_sparql_format(
     sparql: &str,
-    format: SparqlResponseFormat,
+    format: ResponseFormat,
 ) -> Result<String, FetchError> {
     shared_execute_with_format(sparql, QLEVER_WIKIDATA, format).await
 }
 
+/// Fetch an export URL and decode the response as UTF-8 text.
+///
+/// # Errors
+/// Returns [`FetchError`] for transport/HTTP failures, empty responses, or
+/// invalid UTF-8 payloads.
 pub async fn fetch_export_url_format(
     url: &str,
-    format: SparqlResponseFormat,
+    format: ResponseFormat,
 ) -> Result<String, FetchError> {
     let bytes = shared_fetch_export_url_bytes(url, format).await?;
     String::from_utf8(bytes).map_err(|e| FetchError::Parse(e.to_string()))
 }
 
+/// Parse CSV bytes into deduplicated `CompoundEntry` display rows.
+///
+/// # Errors
+/// Returns [`FetchError::Parse`] when CSV decoding fails.
 pub fn parse_compounds_csv_display_bytes(
     csv_bytes: &[u8],
     max_rows: usize,
@@ -346,6 +378,10 @@ pub fn parse_compounds_csv_display_bytes(
     Ok(entries)
 }
 
+/// Parse a single-row counts CSV into [`DatasetStats`].
+///
+/// # Errors
+/// Returns [`FetchError::Parse`] when CSV decoding fails or no row is present.
 pub fn parse_counts_csv_bytes(csv_bytes: &[u8]) -> Result<DatasetStats, FetchError> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
@@ -388,6 +424,10 @@ pub fn parse_counts_csv_bytes(csv_bytes: &[u8]) -> Result<DatasetStats, FetchErr
     })
 }
 
+/// Parse capped compound rows and aggregate stats from CSV bytes.
+///
+/// # Errors
+/// Returns [`FetchError::Parse`] when CSV decoding fails.
 pub fn parse_compounds_csv_capped_bytes(
     csv_bytes: &[u8],
     max_rows: usize,
@@ -395,6 +435,10 @@ pub fn parse_compounds_csv_capped_bytes(
     parse_compounds_csv_capped_reader(csv_bytes, max_rows)
 }
 
+/// Parse capped compound rows and aggregate stats from any CSV reader.
+///
+/// # Errors
+/// Returns [`FetchError::Parse`] when CSV decoding fails.
 pub fn parse_compounds_csv_capped_reader<R: Read>(
     reader: R,
     max_rows: usize,
@@ -538,6 +582,10 @@ fn fill_qid(out: &mut String, bytes: &[u8]) {
     }
 }
 
+/// Parse taxon search CSV rows into `(qid, name)` matches.
+///
+/// # Errors
+/// Returns [`FetchError::Parse`] when CSV decoding fails.
 pub fn parse_taxon_csv_bytes(csv_bytes: &[u8]) -> Result<Vec<TaxonMatch>, FetchError> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
