@@ -44,11 +44,18 @@ pub fn absolute_current_url_with_query(query: &str) -> String {
         if let Some(win) = web_sys::window() {
             let loc = win.location();
             if let (Ok(origin), Ok(pathname)) = (loc.origin(), loc.pathname()) {
+                if query.is_empty() {
+                    return format!("{origin}{pathname}");
+                }
                 return format!("{origin}{pathname}?{query}");
             }
         }
     }
-    format!("?{query}")
+    if query.is_empty() {
+        String::new()
+    } else {
+        format!("?{query}")
+    }
 }
 
 pub fn persist_locale_query_param(locale: Locale) {
@@ -89,15 +96,7 @@ pub fn persist_view_query_param(view: AppView) {
             params.remove("view");
         }
         let query = build_query_string(&params);
-        let url = if query.is_empty() {
-            let mut url = absolute_current_url_with_query("");
-            if url.ends_with('?') {
-                url.pop();
-            }
-            url
-        } else {
-            absolute_current_url_with_query(&query)
-        };
+        let url = absolute_current_url_with_query(&query);
         if let Some(win) = web_sys::window()
             && let Ok(history) = win.history()
         {
@@ -125,9 +124,7 @@ pub fn read_url_query_params() -> BTreeMap<String, String> {
             if pair.is_empty() {
                 continue;
             }
-            let mut parts = pair.splitn(2, '=');
-            let key = parts.next().unwrap_or_default();
-            let val = parts.next().unwrap_or_default();
+            let (key, val) = pair.split_once('=').unwrap_or((pair, ""));
             let key_decoded = urlencoding::decode(key)
                 .map(|v| v.into_owned())
                 .unwrap_or_else(|_| key.into());

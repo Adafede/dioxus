@@ -26,6 +26,15 @@ fn first_json_binding(json: &Value) -> Option<&Value> {
         .and_then(|arr| arr.first())
 }
 
+fn extract_first_qid_from_json(json: &Value, var_name: &str) -> Option<String> {
+    first_json_binding(json)
+        .and_then(|binding| binding.get(var_name))
+        .and_then(|v| v.get("value"))
+        .and_then(Value::as_str)
+        .and_then(extract_qid_from_uri)
+        .map(str::to_owned)
+}
+
 pub async fn fetch_wikidata_compound_by_inchikey(
     inchikey: &str,
 ) -> Result<Option<WikidataCompound>, CurationError> {
@@ -296,10 +305,8 @@ pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, Cura
     let Some(query) = build_single_taxon_lookup_query(name) else {
         return Ok(None);
     };
-    let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
-        .await
-        .map_err(|e| CurationError::Http(e.to_string()))?;
-    extract_first_qid(&raw, "taxon")
+    let json = execute_sparql_json(&query).await?;
+    Ok(extract_first_qid_from_json(&json, "taxon"))
 }
 
 pub async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, CurationError> {
@@ -308,10 +315,8 @@ pub async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, Curation
          SELECT ?ref WHERE {{ ?ref wdt:P356 \"{}\" . }} LIMIT 1",
         escape_sparql_string(&doi.to_ascii_uppercase())
     );
-    let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
-        .await
-        .map_err(|e| CurationError::Http(e.to_string()))?;
-    extract_first_qid(&raw, "ref")
+    let json = execute_sparql_json(&query).await?;
+    Ok(extract_first_qid_from_json(&json, "ref"))
 }
 
 pub async fn compound_has_taxon_with_ref(

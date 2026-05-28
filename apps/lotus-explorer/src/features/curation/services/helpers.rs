@@ -5,24 +5,6 @@ use super::*;
 
 // -- SPARQL / QS helpers -------------------------------------------------------
 
-pub(super) fn extract_first_qid(
-    raw_json: &str,
-    var_name: &str,
-) -> Result<Option<String>, CurationError> {
-    let json =
-        serde_json::from_str::<Value>(raw_json).map_err(|e| CurationError::Parse(e.to_string()))?;
-    let qid = json
-        .get("results")
-        .and_then(|v| v.get("bindings"))
-        .and_then(Value::as_array)
-        .and_then(|arr| arr.first())
-        .and_then(|b| b.get(var_name))
-        .and_then(|v| v.get("value"))
-        .and_then(Value::as_str)
-        .and_then(extract_qid_from_uri)
-        .map(ToOwned::to_owned);
-    Ok(qid)
-}
 
 pub(super) fn extract_qid_from_uri(uri: &str) -> Option<&str> {
     uri.rsplit('/').next().filter(|segment| {

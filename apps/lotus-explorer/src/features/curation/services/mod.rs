@@ -28,7 +28,7 @@ pub mod wikidata;
 
 use chemical::{convert_smiles, has_undefined_stereo, resolve_exact_mass};
 use helpers::{
-    binding_value, escape_qs_string, escape_sparql_string, extract_first_qid, extract_qid_from_uri,
+    binding_value, escape_qs_string, escape_sparql_string, extract_qid_from_uri,
     has_isomeric_smiles, has_stereo_marks, normalize_doi,
 };
 #[cfg(not(target_arch = "wasm32"))]

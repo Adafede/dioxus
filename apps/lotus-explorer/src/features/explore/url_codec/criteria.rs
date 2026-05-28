@@ -256,7 +256,7 @@ fn parse_element_state(params: &QueryParams, name: &str) -> Option<ElementState>
 }
 
 fn parse_search_type(value: &str) -> SmilesSearchType {
-    if value == "similarity" {
+    if value.eq_ignore_ascii_case("similarity") {
         SmilesSearchType::Similarity
     } else {
         SmilesSearchType::Substructure
