@@ -89,21 +89,13 @@ fn canonicalize_taxon_label(name: &str) -> String {
         return String::new();
     };
 
-    let first = {
-        let mut chars = first.chars();
-        match chars.next() {
-            Some(ch) => {
-                let mut rebuilt = String::new();
-                rebuilt.push(ch.to_ascii_uppercase());
-                rebuilt.extend(chars.map(|c| c.to_ascii_lowercase()));
-                rebuilt
-            }
-            None => String::new(),
-        }
-    };
-
-    let mut rebuilt = String::new();
-    rebuilt.push_str(&first);
+    // Pre-allocate with known length — output is same byte count as input.
+    let mut rebuilt = String::with_capacity(name.len());
+    let mut chars = first.chars();
+    if let Some(ch) = chars.next() {
+        rebuilt.push(ch.to_ascii_uppercase());
+        rebuilt.extend(chars.map(|c| c.to_ascii_lowercase()));
+    }
     for word in words {
         rebuilt.push(' ');
         rebuilt.push_str(&word.to_ascii_lowercase());
@@ -180,7 +172,10 @@ pub async fn resolve_reference_qids_batch<'a>(
         let Some(normalized) = normalize_doi(doi) else {
             continue;
         };
-        if seen.insert(normalized.clone()) {
+        // `insert` borrows the key only if the value is already present,
+        // so we can use `contains` + `push` to avoid an unconditional clone.
+        if !seen.contains(&normalized) {
+            seen.insert(normalized.clone());
             normalized_dois.push(normalized);
         }
     }
@@ -258,7 +253,8 @@ pub async fn resolve_taxon_qids_batch<'a>(
         let Some(lookup) = normalize_taxon_lookup(trimmed) else {
             continue;
         };
-        if seen.insert(lookup.clone()) {
+        if !seen.contains(&lookup) {
+            seen.insert(lookup.clone());
             lookups.push((lookup, trimmed.to_string()));
         }
     }
