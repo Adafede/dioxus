@@ -164,7 +164,7 @@ pub(crate) async fn search(
                 log::warn!("event=search state=timeout phase=execution");
                 SharedApiError {
                     status: StatusCode::GATEWAY_TIMEOUT,
-                    message: "search execution timed out".to_string(),
+                    message: "search execution timed out".into(),
                 }
             })?
             .map_err(SharedApiError::from)
