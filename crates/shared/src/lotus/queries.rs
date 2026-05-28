@@ -32,7 +32,7 @@ const SUBSCRIPT_DIGIT_MAPPINGS: [(char, char); 10] = [
 /// - xsd: XML Schema datatypes for typed literals
 /// - wikibase: QLever/wikiba.se ontology terms
 /// - schema: Schema.org vocabulary
-const PREFIXES: &str = r#"PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+const PREFIXES: &str = r"PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
 PREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX prov:   <http://www.w3.org/ns/prov#>
 PREFIX wd:     <http://www.wikidata.org/entity/>
@@ -43,13 +43,13 @@ PREFIX pq:     <http://www.wikidata.org/prop/qualifier/>
 PREFIX pr:     <http://www.wikidata.org/prop/reference/>
 PREFIX wikibase: <http://wikiba.se/ontology#>
 PREFIX schema: <http://schema.org/>
-"#;
+";
 
 /// Extended PREFIXES for structure search queries (Sachem/IDSM service).
 /// Includes all standard prefixes plus:
 /// - sachem: IDSM Sachem structure search service predicates
 /// - idsm: IDSM SPARQL endpoint reference
-const PREFIXES_WITH_STRUCTURE: &str = r#"PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+const PREFIXES_WITH_STRUCTURE: &str = r"PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
 PREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX prov:   <http://www.w3.org/ns/prov#>
 PREFIX wd:     <http://www.wikidata.org/entity/>
@@ -62,15 +62,15 @@ PREFIX wikibase: <http://wikiba.se/ontology#>
 PREFIX schema: <http://schema.org/>
 PREFIX sachem: <http://bioinfo.uochb.cas.cz/rdf/v1.0/sachem#>
 PREFIX idsm:   <https://idsm.elixir-czech.cz/sparql/endpoint/>
-"#;
+";
 
 /// Compound identifier retrieval via Wikidata direct properties.
-/// P235: InChIKey (canonical chemical fingerprint)
+/// P235: `InChIKey` (canonical chemical fingerprint)
 /// P233: SMILES string (canonical SMILES, connection-table form)
-const COMPOUND_IDENTIFIERS: &str = r#"
+const COMPOUND_IDENTIFIERS: &str = r"
   ?c wdt:P235 ?compound_inchikey;
      wdt:P233 ?compound_smiles_conn.
-"#;
+";
 
 /// Taxon-reference association via Wikidata statement structure.
 /// P703: Found in taxon (connects compound to organism)
@@ -79,40 +79,40 @@ const COMPOUND_IDENTIFIERS: &str = r#"
 /// - ps:P703 is the statement's object (the taxon)
 /// - prov:wasDerivedFrom connects to the reference
 /// - pr:P248 is the reference metadata (work/source)
-const TAXON_REFERENCE_ASSOCIATION: &str = r#"
+const TAXON_REFERENCE_ASSOCIATION: &str = r"
   ?c p:P703 ?statement.
   ?statement ps:P703 ?t;
              prov:wasDerivedFrom ?ref.
   ?ref pr:P248 ?r.
   ?t wdt:P225 ?taxon_name.
-"#;
+";
 
 /// Reference metadata: title (P1476), DOI (P356), publication date (P577).
 /// - P1476: Reference title (optional)
 /// - P356: DOI (optional)
 /// - P577: Publication date (optional by default; becomes required when year filtering active)
-const REFERENCE_METADATA_OPTIONAL: &str = r#"
+const REFERENCE_METADATA_OPTIONAL: &str = r"
   OPTIONAL { ?r wdt:P1476 ?ref_title. }
   OPTIONAL { ?r wdt:P356 ?ref_doi. }
   OPTIONAL { ?r wdt:P577 ?ref_date. }
-"#;
+";
 
 /// Core variables projected from the innermost (Level-1) SELECT.
 /// This is the minimal set needed for the compound–taxon–reference triple lookup;
-/// no optional properties are included so QLever can plan the join order freely.
+/// no optional properties are included so `QLever` can plan the join order freely.
 const COMPOUND_CORE_VARS: &str =
     "?c ?compound_inchikey ?compound_smiles_conn ?t ?taxon_name ?r ?ref ?statement";
 
 /// Full variable list projected by the middle (Level-2) SELECT after optional enrichment.
 /// Every variable that the outer SELECT clause or any downstream query wrapper may
-/// reference must be listed here so QLever can propagate it outward.
-const COMPOUND_ENRICHED_VARS: &str = r#"?c ?compound_inchikey ?compound_smiles_conn
+/// reference must be listed here so `QLever` can propagate it outward.
+const COMPOUND_ENRICHED_VARS: &str = r"?c ?compound_inchikey ?compound_smiles_conn
       ?compound_smiles_iso ?compound_mass ?compound_formula_raw
       ?compoundLabel
       ?t ?taxon_name
       ?r ?ref
       ?ref_title ?ref_doi ?ref_date
-      ?statement"#;
+      ?statement";
 
 /// Compound properties with efficient subscript digit normalization.
 /// - P2017: SMILES isomeric (preferred over P233 when available)
@@ -165,6 +165,7 @@ SELECT
 /// **Use Cases:**
 /// - Autocomplete/suggestions for taxon filtering
 /// - Validation that a taxon exists before querying compounds
+#[must_use] 
 pub fn query_taxon_search(name: &str) -> String {
     let e = name.replace('\\', r"\\").replace('"', r#"\""#);
     format!(
@@ -203,15 +204,16 @@ WHERE {{
 ///
 /// **Why three levels?**
 /// - Level 1 applies the `P171*` transitive-closure filter *before* any join,
-///   so QLever sees only rows in the target clade when planning OPTIONALs.
+///   so `QLever` sees only rows in the target clade when planning OPTIONALs.
 /// - Level 2 runs all OPTIONALs exclusively on the already-filtered rows,
 ///   avoiding expensive enrichment of taxa that are later discarded.
 /// - The outer SELECT handles the `xsd:integer(STRAFTER(…))` projections on
 ///   a tiny, pre-enriched result set.
+#[must_use] 
 pub fn query_compounds_by_taxon(taxon_qid: &str) -> String {
     let compound_select = compound_select_clause();
     format!(
-        r#"{PREFIXES}
+        r"{PREFIXES}
 {compound_select}
 WHERE {{
   {{
@@ -230,7 +232,7 @@ WHERE {{
       {PROPERTIES_OPTIONAL}
     }}
   }}
-}}"#
+}}"
     )
 }
 
@@ -255,11 +257,12 @@ WHERE {{
 ///
 /// Uses the same three-level scaffolding as `query_compounds_by_taxon` to keep
 /// optional enrichment strictly post-join, even when no ancestry filter is active.
-/// Large result sets should use LIMIT or be paginated via QLever.
+/// Large result sets should use LIMIT or be paginated via `QLever`.
+#[must_use] 
 pub fn query_all_compounds() -> String {
     let compound_select = compound_select_clause();
     format!(
-        r#"{PREFIXES}
+        r"{PREFIXES}
 {compound_select}
 WHERE {{
   {{
@@ -277,7 +280,7 @@ WHERE {{
       {PROPERTIES_OPTIONAL}
     }}
   }}
-}}"#
+}}"
     )
 }
 
@@ -296,7 +299,8 @@ WHERE {{
 /// before expensive reference/property lookups. This pattern avoids combinatorial
 /// explosions when many compounds match the structure query. When taxon filtering
 /// is active, the taxon ancestry filter is applied *inside* the Sachem pass to
-/// ensure QLever planner only enriches matching rows.
+/// ensure `QLever` planner only enriches matching rows.
+#[must_use] 
 pub fn query_sachem(
     smiles: &str,
     search_type: SmilesSearchType,
@@ -334,27 +338,27 @@ pub fn query_sachem(
   }}"#
         ),
         SmilesSearchType::Substructure => format!(
-            r#"SERVICE idsm:wikidata {{
+            r"SERVICE idsm:wikidata {{
     ?c sachem:substructureSearch [
       sachem:query {structure_literal}
     ].
-  }}"#
+  }}"
         ),
     };
 
     let sachem_subquery = format!(
-        r#"{{
+        r"{{
     SELECT DISTINCT ?c
     WHERE {{
       {sachem_clause}
     }}
-  }}"#
+  }}"
     );
 
     let body = taxon_qid.map_or_else(
         || {
             format!(
-                r#"
+                r"
   {sachem_clause}
   {COMPOUND_IDENTIFIERS}
 
@@ -368,12 +372,12 @@ pub fn query_sachem(
   }}
 
   {PROPERTIES_OPTIONAL}
-"#
+"
             )
         },
         |qid| {
             format!(
-                r#"
+                r"
   {sachem_subquery}
 
   {COMPOUND_IDENTIFIERS}
@@ -387,18 +391,18 @@ pub fn query_sachem(
 
   {REFERENCE_METADATA_OPTIONAL}
   {PROPERTIES_OPTIONAL}
-"#
+"
             )
         },
     );
 
     let compound_select = compound_select_clause();
     format!(
-        r#"{PREFIXES_WITH_STRUCTURE}
+        r"{PREFIXES_WITH_STRUCTURE}
 {compound_select}
 WHERE {{
 {body}
-}}"#
+}}"
     )
 }
 
@@ -411,7 +415,8 @@ pub enum StructureKind {
 }
 
 impl StructureKind {
-    pub fn label(self) -> &'static str {
+    #[must_use] 
+    pub const fn label(self) -> &'static str {
         match self {
             Self::Empty => "—",
             Self::Smiles => "SMILES",
@@ -421,6 +426,7 @@ impl StructureKind {
     }
 }
 
+#[must_use] 
 pub fn classify_structure(text: &str) -> StructureKind {
     let trimmed = text.trim();
     if trimmed.is_empty() {
@@ -444,6 +450,7 @@ fn looks_like_molfile(text: &str) -> bool {
     )
 }
 
+#[must_use] 
 pub fn escape_structure_literal(smiles: &str) -> String {
     let normalized = smiles.replace("\r\n", "\n").replace('\r', "\n");
     let is_molfile = looks_like_molfile(&normalized);
@@ -465,16 +472,17 @@ pub fn escape_structure_literal(smiles: &str) -> String {
 /// Generate a dataset statistics query from a base compound query.
 ///
 /// **Metrics:**
-/// - n_entries: total result triples (including duplicates)
-/// - n_entries_unique: unique compound-taxon-reference combinations
-/// - n_compounds: distinct compounds (Wikidata entities)
-/// - n_taxa: distinct organisms
-/// - n_references: distinct evidence sources
+/// - `n_entries`: total result triples (including duplicates)
+/// - `n_entries_unique`: unique compound-taxon-reference combinations
+/// - `n_compounds`: distinct compounds (Wikidata entities)
+/// - `n_taxa`: distinct organisms
+/// - `n_references`: distinct evidence sources
 ///
 /// **Optimization:**
 /// Uses COUNT(DISTINCT ...) to compute cardinality without materializing
 /// full result sets. The implementation wraps the base query's WHERE block
 /// to preserve all filtering/search logic.
+#[must_use] 
 pub fn query_counts_from_base(base_query: &str) -> String {
     let Some(select_pos) = base_query.find("SELECT") else {
         return base_query.to_string();
@@ -506,6 +514,7 @@ WHERE {{
 /// - Pagination: fetch first N results, then apply OFFSET for next page
 /// - Sampling: LIMIT 100 for quick exploratory queries
 /// - UI constraints: avoid overwhelming clients with massive result sets
+#[must_use] 
 pub fn query_with_limit(base_query: &str, limit: usize) -> String {
     let trimmed = base_query.trim_end();
     format!("{trimmed}\nLIMIT {limit}")
@@ -515,13 +524,13 @@ pub fn query_with_limit(base_query: &str, limit: usize) -> String {
 ///
 /// **Filter Types:**
 /// - Mass: range filter on P2067 (molecular weight)
-/// - Year: range filter on P577 (publication date) via YEAR() function
+/// - Year: range filter on P577 (publication date) via `YEAR()` function
 /// - Formula: element count bounds (C/H/N/O/P/S) and halogen requirements (F/Cl/Br/I)
 ///
 /// **Optimization Strategy:**
 /// When mass or date filters are present, they are inserted as *required* triples
-/// (not OPTIONAL) to ensure the FILTER() clauses only operate on bound rows. This
-/// reduces cardinality before optional enrichment and allows QLever to plan joins
+/// (not OPTIONAL) to ensure the `FILTER()` clauses only operate on bound rows. This
+/// reduces cardinality before optional enrichment and allows `QLever` to plan joins
 /// more efficiently. Filters that don't use mass/date leave those as optional.
 ///
 /// Formula filters use pre-computed element count bindings (REGEX patterns on
@@ -663,6 +672,7 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
 /// **Pattern:**
 /// Maps the SELECT variables to RDF triples using Wikidata vocabulary:
 /// compound properties (P235, P233, etc.), taxon info, references, and metadata.
+#[must_use] 
 pub fn query_construct_from_select(select_query: &str) -> String {
     let Some(select_pos) = select_query.find("SELECT") else {
         return select_query.to_string();
@@ -676,7 +686,7 @@ pub fn query_construct_from_select(select_query: &str) -> String {
     let normalized_where_block = construct_where_with_formula_bind(where_block);
 
     format!(
-        r#"{prefixes}
+        r"{prefixes}
 CONSTRUCT {{
   ?c wdt:P235 ?compound_inchikey .
   ?c wdt:P233 ?compound_smiles_conn .
@@ -693,9 +703,7 @@ CONSTRUCT {{
   ?r wdt:P356 ?ref_doi .
   ?r wdt:P577 ?ref_date .
 }}
-{where_block}"#,
-        prefixes = prefixes,
-        where_block = normalized_where_block
+{normalized_where_block}"
     )
 }
 
@@ -741,7 +749,7 @@ fn normalize_digits_expr(var: &str) -> String {
 
 fn element_count_bind(symbol: &str, out_var: &str) -> String {
     let escaped = symbol.replace('"', "\\\"");
-    let pattern = format!(r#"\\|{escaped}([0-9]*)(\\||$)"#);
+    let pattern = format!(r"\\|{escaped}([0-9]*)(\\||$)");
     let capture_expr = format!(r#"REPLACE(?_formula_tokens, ".*{pattern}.*", "$1")"#);
     format!(
         "BIND(IF(REGEX(?_formula_tokens, \"{pattern}\"), IF(STRLEN({capture_expr}) = 0, 1, xsd:integer({capture_expr})), 0) AS {out_var})"
@@ -782,9 +790,7 @@ mod tests {
 
     #[test]
     fn server_filter_inserts_required_mass_when_mass_filtering() {
-        let mut crit = SearchCriteria {
-            ..SearchCriteria::default()
-        };
+        let mut crit = SearchCriteria::default();
         crit.mass_min = 100.0;
         crit.mass_max = 500.0;
 
@@ -796,9 +802,7 @@ mod tests {
 
     #[test]
     fn server_filter_inserts_required_date_when_year_filtering() {
-        let mut crit = SearchCriteria {
-            ..SearchCriteria::default()
-        };
+        let mut crit = SearchCriteria::default();
         crit.year_min = 2000;
         crit.year_max = 2024;
 

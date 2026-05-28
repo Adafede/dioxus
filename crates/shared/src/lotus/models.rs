@@ -35,7 +35,8 @@ pub const DEFAULT_YEAR_MIN: u16 = 1800;
 
 pub type Rows = Arc<[CompoundEntry]>;
 
-pub fn runtime_table_row_limit() -> usize {
+#[must_use] 
+pub const fn runtime_table_row_limit() -> usize {
     #[cfg(target_arch = "wasm32")]
     {
         // Keep wasm conservative by default while still scaling on capable devices.
@@ -95,7 +96,7 @@ pub fn current_year() -> u16 {
             let secs = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_or(0, |d| d.as_secs() as i64);
-            (1970 + secs / 31_556_952).clamp(0, u16::MAX as i64) as u16
+            (1970 + secs / 31_556_952).clamp(0, i64::from(u16::MAX)) as u16
         }
     })
 }
@@ -125,10 +126,12 @@ impl CompoundEntry {
             .filter(|d| !d.is_empty())
     }
 
+    #[must_use] 
     pub fn doi_url(&self) -> Option<String> {
         self.doi().map(|d| format!("https://doi.org/{d}"))
     }
 
+    #[must_use] 
     pub fn depict_url(&self) -> Option<String> {
         let smiles = self.smiles.as_deref()?.trim();
         if smiles.is_empty() || smiles.contains('\n') {
@@ -217,15 +220,18 @@ impl Default for SearchCriteria {
 }
 
 impl SearchCriteria {
+    #[must_use] 
     pub fn has_mass_filter(&self) -> bool {
         self.mass_min > 0.0 || self.mass_max < 10000.0
     }
 
+    #[must_use] 
     pub fn has_year_filter(&self) -> bool {
         self.year_min > DEFAULT_YEAR_MIN || self.year_max < current_year()
     }
 
-    pub fn element_ranges(&self) -> [(&'static str, u16, u16, u16); 6] {
+    #[must_use] 
+    pub const fn element_ranges(&self) -> [(&'static str, u16, u16, u16); 6] {
         [
             ("C", self.c_min, self.c_max, DEFAULT_C_MAX),
             ("H", self.h_min, self.h_max, DEFAULT_H_MAX),
@@ -236,6 +242,7 @@ impl SearchCriteria {
         ]
     }
 
+    #[must_use] 
     pub fn has_formula_filter(&self) -> bool {
         self.formula_enabled
             && (!self.formula_exact.trim().is_empty()
@@ -249,6 +256,7 @@ impl SearchCriteria {
                 || self.i_state != ElementState::Allowed)
     }
 
+    #[must_use] 
     pub fn has_effective_filters(&self) -> bool {
         !self.smiles.trim().is_empty()
             || self.has_mass_filter()
@@ -256,10 +264,12 @@ impl SearchCriteria {
             || self.has_formula_filter()
     }
 
+    #[must_use] 
     pub fn is_valid(&self) -> bool {
         !self.taxon.trim().is_empty() || !self.smiles.trim().is_empty()
     }
 
+    #[must_use] 
     pub fn shareable_query_params(&self) -> Vec<(String, String)> {
         let mut params = Vec::new();
         if !self.taxon.trim().is_empty() {
@@ -317,7 +327,7 @@ impl SearchCriteria {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SmilesSearchType {
     #[default]
     Substructure,
@@ -325,7 +335,8 @@ pub enum SmilesSearchType {
 }
 
 impl SmilesSearchType {
-    pub fn as_str(self) -> &'static str {
+    #[must_use] 
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Substructure => "substructure",
             Self::Similarity => "similarity",
@@ -339,7 +350,7 @@ impl std::fmt::Display for SmilesSearchType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ElementState {
     #[default]
     Allowed,
@@ -348,7 +359,8 @@ pub enum ElementState {
 }
 
 impl ElementState {
-    pub fn as_str(self) -> &'static str {
+    #[must_use] 
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Allowed => "allowed",
             Self::Required => "required",
@@ -381,7 +393,7 @@ impl std::str::FromStr for ElementState {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DatasetStats {
     pub n_compounds: usize,
     pub n_taxa: usize,
@@ -398,6 +410,7 @@ impl DatasetStats {
     /// deduplicated ID sets simultaneously, including unique
     /// compound-taxon-reference triples (matching the `COUNT(DISTINCT …)`
     /// computed by `query_counts_from_base`).
+    #[must_use] 
     pub fn from_entries(entries: &[CompoundEntry]) -> Self {
         use std::collections::HashSet;
         let mut c: HashSet<&str> = HashSet::with_capacity(entries.len());
@@ -434,7 +447,7 @@ pub struct TaxonMatch {
     pub name: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortColumn {
     Name,
     Mass,
@@ -444,13 +457,13 @@ pub enum SortColumn {
     RefTitle,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDir {
     Asc,
     Desc,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SortState {
     pub col: SortColumn,
     pub dir: SortDir,

@@ -3,7 +3,7 @@
 
 //! Generic SPARQL/QLever HTTP utilities shared by all apps.
 //!
-//! QLever CSV export URL format:
+//! `QLever` CSV export URL format:
 //!   `https://qlever.dev/api/wikidata?query=<encoded>&action=csv_export`
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -14,7 +14,7 @@ use std::time::Duration;
 
 pub type ResponseBody = bytes::Bytes;
 
-/// Default QLever endpoint for Wikidata (used by lotus-explorer).
+/// Default `QLever` endpoint for Wikidata (used by lotus-explorer).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,7 +26,7 @@ pub enum SparqlResponseFormat {
 }
 
 impl SparqlResponseFormat {
-    fn accept(self) -> &'static str {
+    const fn accept(self) -> &'static str {
         match self {
             Self::Csv => "text/csv",
             Self::SparqlJson => "application/sparql-results+json",
@@ -35,7 +35,7 @@ impl SparqlResponseFormat {
         }
     }
 
-    fn action(self) -> Option<&'static str> {
+    const fn action(self) -> Option<&'static str> {
         match self {
             Self::Csv => Some("csv_export"),
             Self::SparqlJson => Some("sparql_json_export"),
@@ -293,7 +293,7 @@ pub async fn execute_sparql_with_format_tempfile(
 /// Fetch a fully-formed export URL (for example with `action=csv_export`) and
 /// return raw response bytes.
 ///
-/// This is useful for clients that want direct QLever export representations
+/// This is useful for clients that want direct `QLever` export representations
 /// while still using HTTP content negotiation (`Accept` / `Accept-Encoding`).
 pub async fn fetch_export_url_bytes(
     url: &str,
@@ -413,7 +413,7 @@ fn build_http_client() -> Result<reqwest::Client, String> {
         // sets without any changes to callers.
         reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(8))
-            .timeout(Duration::from_secs(120))
+            .timeout(Duration::from_mins(2))
             .pool_idle_timeout(Duration::from_secs(90))
             .pool_max_idle_per_host(32)
             .tcp_keepalive(Duration::from_secs(30))
@@ -531,11 +531,13 @@ fn truncate_chars(text: &str, max_chars: usize) -> String {
 // ── CSV helpers ───────────────────────────────────────────────────────────────
 
 /// Index of a named header column (None if absent).
+#[must_use] 
 pub fn col_idx(headers: &csv::StringRecord, name: &str) -> Option<usize> {
     headers.iter().position(|h| h == name)
 }
 
 /// Get a trimmed field value by optional column index.
+#[must_use] 
 pub fn field(record: &csv::StringRecord, idx: Option<usize>) -> &str {
     idx.and_then(|i| record.get(i)).unwrap_or("").trim()
 }
@@ -572,22 +574,26 @@ pub fn extract_qid(s: &str) -> String {
 }
 
 /// Return `Some(s)` only if `s` is non-empty after trimming.
+#[must_use] 
 pub fn non_empty(s: &str) -> Option<&str> {
     let t = s.trim();
     if t.is_empty() { None } else { Some(t) }
 }
 
 /// Prefer `a`, fall back to `b`, return None if both empty.
+#[must_use] 
 pub fn coalesce<'a>(a: &'a str, b: &'a str) -> Option<&'a str> {
     non_empty(a).or_else(|| non_empty(b))
 }
 
 /// Parse `2021-04-23T00:00:00Z` or `2021` → year as i32.
+#[must_use] 
 pub fn parse_year(s: &str) -> Option<i32> {
     s.trim().split(['-', 'T']).next()?.trim().parse().ok()
 }
 
 /// Normalise a DOI: strip `https://doi.org/` prefix if present.
+#[must_use] 
 pub fn clean_doi(s: &str) -> Option<String> {
     let t = s.trim();
     if t.is_empty() {

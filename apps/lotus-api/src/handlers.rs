@@ -34,7 +34,7 @@ use crate::{
     path = "/health",
     responses((status = 200, description = "Service health", body = HealthResponse))
 )]
-pub(crate) async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
+pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     Json(state.metrics.snapshot())
 }
 
@@ -43,7 +43,7 @@ pub(crate) async fn health(State(state): State<AppState>) -> Json<HealthResponse
     path = "/metrics",
     responses((status = 200, description = "Prometheus-style runtime metrics", body = String))
 )]
-pub(crate) async fn metrics(State(state): State<AppState>) -> Response {
+pub async fn metrics(State(state): State<AppState>) -> Response {
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
@@ -64,7 +64,7 @@ pub(crate) async fn metrics(State(state): State<AppState>) -> Response {
         (status = 504, description = "Search timeout", body = ErrorResponse)
     )
 )]
-pub(crate) async fn search(
+pub async fn search(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,
 ) -> Result<Json<SearchResponse>, ApiError> {
@@ -131,18 +131,18 @@ pub(crate) async fn search(
     log::debug!("event=search state=cache_miss");
 
     let (cell, is_leader) = search_inflight_cell(&state, &cache_key);
-    if !is_leader {
-        state
-            .metrics
-            .search_inflight_waits
-            .fetch_add(1, Ordering::Relaxed);
-        log::debug!("event=search state=coalesced_wait");
-    } else {
+    if is_leader {
         state
             .metrics
             .search_upstream_hits
             .fetch_add(1, Ordering::Relaxed);
         log::debug!("event=search state=upstream_hit");
+    } else {
+        state
+            .metrics
+            .search_inflight_waits
+            .fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=search state=coalesced_wait");
     }
     let metrics = state.metrics.clone();
     let request_timeout = state.request_timeout;
@@ -208,7 +208,7 @@ pub(crate) async fn search(
         (status = 504, description = "Taxon-resolution timeout", body = ErrorResponse)
     )
 )]
-pub(crate) async fn export_urls(
+pub async fn export_urls(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,
 ) -> Result<Json<ExportUrlResponse>, ApiError> {
@@ -266,18 +266,18 @@ pub(crate) async fn export_urls(
     log::debug!("event=export state=cache_miss");
 
     let (cell, is_leader) = export_inflight_cell(&state, &cache_key);
-    if !is_leader {
-        state
-            .metrics
-            .export_inflight_waits
-            .fetch_add(1, Ordering::Relaxed);
-        log::debug!("event=export state=coalesced_wait");
-    } else {
+    if is_leader {
         state
             .metrics
             .export_upstream_hits
             .fetch_add(1, Ordering::Relaxed);
         log::debug!("event=export state=upstream_hit");
+    } else {
+        state
+            .metrics
+            .export_inflight_waits
+            .fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=export state=coalesced_wait");
     }
     let response = cell
         .get_or_init(|| async {
@@ -335,7 +335,7 @@ pub(crate) async fn export_urls(
         (status = 504, description = "Export fetch timeout", body = ErrorResponse)
     )
 )]
-pub(crate) async fn export_file(
+pub async fn export_file(
     State(state): State<AppState>,
     Path((cache_key, format_raw)): Path<(String, String)>,
     Query(params): Query<ExportFileQuery>,

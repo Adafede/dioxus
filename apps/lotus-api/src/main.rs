@@ -149,7 +149,7 @@ async fn shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => { log::info!("event=shutdown signal=ctrl_c"); },
-        _ = terminate => { log::info!("event=shutdown signal=terminate"); },
+        () = ctrl_c => { log::info!("event=shutdown signal=ctrl_c"); },
+        () = terminate => { log::info!("event=shutdown signal=terminate"); },
     }
 }

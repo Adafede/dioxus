@@ -55,7 +55,8 @@ pub(super) fn normalize_doi(value: &str) -> Option<String> {
     if trimmed.is_empty() {
         return None;
     }
-    let canonical = find_ascii_ci(trimmed, b"doi.org/").map_or(trimmed, |idx| &trimmed[(idx + 8)..]);
+    let canonical =
+        find_ascii_ci(trimmed, b"doi.org/").map_or(trimmed, |idx| &trimmed[(idx + 8)..]);
     if canonical.is_empty() {
         return None;
     }

@@ -93,7 +93,7 @@ fn config_uses_safe_defaults() {
     assert_eq!(cfg.host, "127.0.0.1");
     assert_eq!(cfg.port, 8787);
     assert_eq!(cfg.default_limit, 500);
-    assert_eq!(cfg.request_timeout, Duration::from_millis(45_000));
+    assert_eq!(cfg.request_timeout, Duration::from_secs(45));
     assert_eq!(cfg.max_concurrency, 256);
     assert_eq!(cfg.max_body_bytes, 1_048_576);
     assert!(cfg.cors_allowed_origins.is_none());
@@ -107,7 +107,7 @@ fn config_reads_performance_tunables() {
         ("MAX_BODY_BYTES", "2097152"),
     ]);
     let cfg = AppConfig::from_provider(|name| env.get(name).cloned()).expect("valid config");
-    assert_eq!(cfg.request_timeout, Duration::from_millis(120_000));
+    assert_eq!(cfg.request_timeout, Duration::from_mins(2));
     assert_eq!(cfg.max_concurrency, 512);
     assert_eq!(cfg.max_body_bytes, 2_097_152);
 }
@@ -173,7 +173,7 @@ fn prune_cache_removes_oldest_when_over_capacity() {
         (
             "a".to_string(),
             CachedExportResponse {
-                inserted_at: Instant::now() - Duration::from_secs(30),
+                inserted_at: Instant::now().checked_sub(Duration::from_secs(30)).unwrap(),
                 value: ExportUrlResponse {
                     query: "a".into(),
                     csv_url: "a".into(),
@@ -202,7 +202,7 @@ fn prune_cache_removes_oldest_when_over_capacity() {
         ),
     ]);
 
-    prune_cache(&mut cache, Duration::from_secs(60), 1, |entry| {
+    prune_cache(&mut cache, Duration::from_mins(1), 1, |entry| {
         entry.inserted_at
     });
     assert!(cache.contains_key("b"));

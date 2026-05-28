@@ -14,7 +14,7 @@ use flate2::{Compression, write::GzEncoder};
 use shared::lotus::models::{SearchCriteria, TaxonMatch};
 use shared::lotus::{queries, sparql};
 
-pub(crate) fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiError> {
+pub fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiError> {
     let mut c = SearchCriteria {
         taxon: req.taxon.clone().unwrap_or_default(),
         smiles: req.smiles.clone().unwrap_or_default(),
@@ -111,12 +111,17 @@ pub(crate) fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiEr
     Ok(c)
 }
 
-pub(crate) fn build_execution_query(
+pub fn build_execution_query(
     criteria: &SearchCriteria,
     resolved_taxon_qid: Option<&str>,
 ) -> String {
     let smiles = normalized_structure_input(&criteria.smiles);
-    let base_query = if !smiles.is_empty() {
+    let base_query = if smiles.is_empty() {
+        match resolved_taxon_qid {
+            Some("*") | None => queries::query_all_compounds(),
+            Some(qid) => queries::query_compounds_by_taxon(qid),
+        }
+    } else {
         let taxon_for_sachem = match resolved_taxon_qid {
             Some("*") => Some("Q2382443"),
             Some(qid) => Some(qid),
@@ -128,17 +133,12 @@ pub(crate) fn build_execution_query(
             criteria.smiles_threshold,
             taxon_for_sachem,
         )
-    } else {
-        match resolved_taxon_qid {
-            Some("*") | None => queries::query_all_compounds(),
-            Some(qid) => queries::query_compounds_by_taxon(qid),
-        }
     };
 
     queries::query_with_server_filters(&base_query, criteria)
 }
 
-pub(crate) fn normalized_structure_input(value: &str) -> String {
+pub fn normalized_structure_input(value: &str) -> String {
     let normalized = if value.contains('\r') {
         value.replace("\r\n", "\n").replace('\r', "\n")
     } else {
@@ -150,7 +150,7 @@ pub(crate) fn normalized_structure_input(value: &str) -> String {
     }
 }
 
-pub(crate) async fn resolve_taxon_qid_cached(
+pub async fn resolve_taxon_qid_cached(
     state: &AppState,
     taxon_input: String,
 ) -> Result<(Option<String>, Option<String>), ApiError> {
@@ -245,7 +245,7 @@ fn is_qid(value: &str) -> bool {
     matches!(chars.next(), Some('Q' | 'q')) && !v.is_empty() && chars.all(|c| c.is_ascii_digit())
 }
 
-pub(crate) fn qlever_export_url(query: &str, action: &str) -> String {
+pub fn qlever_export_url(query: &str, action: &str) -> String {
     format!(
         "{}?query={}&action={action}",
         shared::sparql::QLEVER_WIKIDATA,
@@ -253,11 +253,11 @@ pub(crate) fn qlever_export_url(query: &str, action: &str) -> String {
     )
 }
 
-pub(crate) fn api_export_file_url(cache_key: &str, format: ExportArchiveFormat) -> String {
+pub fn api_export_file_url(cache_key: &str, format: ExportArchiveFormat) -> String {
     format!("/v1/export-file/{cache_key}/{}", format.extension())
 }
 
-pub(crate) fn build_upstream_export_url(query: &str, format: ExportArchiveFormat) -> String {
+pub fn build_upstream_export_url(query: &str, format: ExportArchiveFormat) -> String {
     match format {
         ExportArchiveFormat::Csv => qlever_export_url(query, "csv_export"),
         ExportArchiveFormat::Json => qlever_export_url(query, "qlever_json_export"),
@@ -268,7 +268,7 @@ pub(crate) fn build_upstream_export_url(query: &str, format: ExportArchiveFormat
     }
 }
 
-pub(crate) fn gzip_bytes(input: &[u8]) -> std::io::Result<Vec<u8>> {
+pub fn gzip_bytes(input: &[u8]) -> std::io::Result<Vec<u8>> {
     use std::io::Write;
 
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
@@ -276,7 +276,7 @@ pub(crate) fn gzip_bytes(input: &[u8]) -> std::io::Result<Vec<u8>> {
     encoder.finish()
 }
 
-pub(crate) fn sanitize_download_filename(input: &str) -> String {
+pub fn sanitize_download_filename(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for c in input.trim().chars() {
         if c.is_control() {

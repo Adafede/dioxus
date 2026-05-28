@@ -11,18 +11,18 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, ToSchema)]
-pub(crate) struct ErrorResponse {
+pub struct ErrorResponse {
     pub(crate) error: String,
 }
 
 #[derive(Debug)]
-pub(crate) struct ApiError {
+pub struct ApiError {
     pub(crate) status: StatusCode,
     pub(crate) message: String,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct SharedApiError {
+pub struct SharedApiError {
     pub(crate) status: StatusCode,
     pub(crate) message: String,
 }

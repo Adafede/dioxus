@@ -16,21 +16,21 @@ use std::{
 };
 use tokio::sync::{OnceCell, Semaphore};
 
-pub(crate) const TAXON_CACHE_TTL: Duration = Duration::from_secs(60 * 60 * 24);
-pub(crate) const SEARCH_CACHE_TTL: Duration = Duration::from_secs(60 * 3);
-pub(crate) const EXPORT_CACHE_TTL: Duration = Duration::from_secs(60 * 10);
+pub const TAXON_CACHE_TTL: Duration = Duration::from_hours(24);
+pub const SEARCH_CACHE_TTL: Duration = Duration::from_mins(3);
+pub const EXPORT_CACHE_TTL: Duration = Duration::from_mins(10);
 const CACHE_PRUNE_INTERVAL: Duration = Duration::from_secs(20);
 const MAX_TAXON_CACHE_ENTRIES: usize = 512;
 const MAX_SEARCH_CACHE_ENTRIES: usize = 128;
 const MAX_EXPORT_CACHE_ENTRIES: usize = 256;
 
-pub(crate) type InFlightSearch =
+pub type InFlightSearch =
     Arc<OnceCell<Result<SearchResponse, crate::errors::SharedApiError>>>;
-pub(crate) type InFlightExport =
+pub type InFlightExport =
     Arc<OnceCell<Result<ExportUrlResponse, crate::errors::SharedApiError>>>;
 
 #[derive(Clone)]
-pub(crate) struct AppState {
+pub struct AppState {
     pub(crate) default_limit: usize,
     pub(crate) request_timeout: Duration,
     pub(crate) request_permits: Arc<Semaphore>,
@@ -65,24 +65,24 @@ impl AppState {
 }
 
 #[derive(Clone)]
-pub(crate) struct CachedTaxonResolution {
+pub struct CachedTaxonResolution {
     pub(crate) inserted_at: Instant,
     pub(crate) value: (Option<String>, Option<String>),
 }
 
 #[derive(Clone)]
-pub(crate) struct CachedSearchResponse {
+pub struct CachedSearchResponse {
     pub(crate) inserted_at: Instant,
     pub(crate) value: SearchResponse,
 }
 
 #[derive(Clone)]
-pub(crate) struct CachedExportResponse {
+pub struct CachedExportResponse {
     pub(crate) inserted_at: Instant,
     pub(crate) value: ExportUrlResponse,
 }
 
-pub(crate) struct RuntimeMetrics {
+pub struct RuntimeMetrics {
     started_at: Instant,
     pub(crate) search_cache_hits: AtomicU64,
     pub(crate) search_cache_misses: AtomicU64,
@@ -187,16 +187,16 @@ impl RuntimeMetrics {
     }
 }
 
-pub(crate) fn build_search_cache_key(query: &str, limit: usize, include_counts: bool) -> String {
+pub fn build_search_cache_key(query: &str, limit: usize, include_counts: bool) -> String {
     let mut hasher = Sha256::new();
     hasher.update(b"search");
     hasher.update(limit.to_le_bytes());
-    hasher.update([include_counts as u8]);
+    hasher.update([u8::from(include_counts)]);
     hasher.update(query.as_bytes());
     format!("search:{}", sha256_hex(hasher.finalize()))
 }
 
-pub(crate) fn build_export_cache_key(query: &str) -> String {
+pub fn build_export_cache_key(query: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(b"export");
     hasher.update(query.as_bytes());
@@ -214,7 +214,7 @@ fn sha256_hex(bytes: impl AsRef<[u8]>) -> String {
     out
 }
 
-pub(crate) fn search_cache_get(state: &AppState, key: &str) -> Option<SearchResponse> {
+pub fn search_cache_get(state: &AppState, key: &str) -> Option<SearchResponse> {
     let mut cache = state.search_cache.lock().ok()?;
     maybe_prune_cache(
         &mut cache,
@@ -226,7 +226,7 @@ pub(crate) fn search_cache_get(state: &AppState, key: &str) -> Option<SearchResp
     cache.get(key).map(|entry| entry.value.clone())
 }
 
-pub(crate) fn search_cache_put(state: &AppState, key: String, value: SearchResponse) {
+pub fn search_cache_put(state: &AppState, key: String, value: SearchResponse) {
     if let Ok(mut cache) = state.search_cache.lock() {
         maybe_prune_cache(
             &mut cache,
@@ -245,7 +245,7 @@ pub(crate) fn search_cache_put(state: &AppState, key: String, value: SearchRespo
     }
 }
 
-pub(crate) fn export_cache_get(state: &AppState, key: &str) -> Option<ExportUrlResponse> {
+pub fn export_cache_get(state: &AppState, key: &str) -> Option<ExportUrlResponse> {
     let mut cache = state.export_cache.lock().ok()?;
     maybe_prune_cache(
         &mut cache,
@@ -257,7 +257,7 @@ pub(crate) fn export_cache_get(state: &AppState, key: &str) -> Option<ExportUrlR
     cache.get(key).map(|entry| entry.value.clone())
 }
 
-pub(crate) fn export_cache_put(state: &AppState, key: String, value: ExportUrlResponse) {
+pub fn export_cache_put(state: &AppState, key: String, value: ExportUrlResponse) {
     if let Ok(mut cache) = state.export_cache.lock() {
         maybe_prune_cache(
             &mut cache,
@@ -276,7 +276,7 @@ pub(crate) fn export_cache_put(state: &AppState, key: String, value: ExportUrlRe
     }
 }
 
-pub(crate) fn search_inflight_cell(state: &AppState, key: &str) -> (InFlightSearch, bool) {
+pub fn search_inflight_cell(state: &AppState, key: &str) -> (InFlightSearch, bool) {
     let mut inflight = state.search_inflight.lock().expect("search inflight mutex");
     if let Some(existing) = inflight.get(key) {
         return (existing.clone(), false);
@@ -286,7 +286,7 @@ pub(crate) fn search_inflight_cell(state: &AppState, key: &str) -> (InFlightSear
     (cell, true)
 }
 
-pub(crate) fn search_inflight_remove(
+pub fn search_inflight_remove(
     state: &AppState,
     key: &str,
     cell: &InFlightSearch,
@@ -304,7 +304,7 @@ pub(crate) fn search_inflight_remove(
     }
 }
 
-pub(crate) fn export_inflight_cell(state: &AppState, key: &str) -> (InFlightExport, bool) {
+pub fn export_inflight_cell(state: &AppState, key: &str) -> (InFlightExport, bool) {
     let mut inflight = state.export_inflight.lock().expect("export inflight mutex");
     if let Some(existing) = inflight.get(key) {
         return (existing.clone(), false);
@@ -314,7 +314,7 @@ pub(crate) fn export_inflight_cell(state: &AppState, key: &str) -> (InFlightExpo
     (cell, true)
 }
 
-pub(crate) fn export_inflight_remove(
+pub fn export_inflight_remove(
     state: &AppState,
     key: &str,
     cell: &InFlightExport,
@@ -332,7 +332,7 @@ pub(crate) fn export_inflight_remove(
     }
 }
 
-pub(crate) fn taxon_cache_get(
+pub fn taxon_cache_get(
     state: &AppState,
     key: &str,
 ) -> Option<(Option<String>, Option<String>)> {
@@ -347,7 +347,7 @@ pub(crate) fn taxon_cache_get(
     cache.get(key).map(|entry| entry.value.clone())
 }
 
-pub(crate) fn taxon_cache_put(
+pub fn taxon_cache_put(
     state: &AppState,
     key: String,
     value: (Option<String>, Option<String>),
@@ -394,7 +394,7 @@ fn maybe_prune_cache<V, F>(
     }
 }
 
-pub(crate) fn prune_cache<V, F>(
+pub fn prune_cache<V, F>(
     cache: &mut HashMap<String, V>,
     ttl: Duration,
     max_entries: usize,

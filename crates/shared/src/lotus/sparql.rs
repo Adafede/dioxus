@@ -168,7 +168,7 @@ impl StrInterner {
 fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
     const FNV_PRIME: Wrapping<u64> = Wrapping(1099511628211);
     for b in bytes {
-        h ^= Wrapping(*b as u64);
+        h ^= Wrapping(u64::from(*b));
         h *= FNV_PRIME;
     }
     h

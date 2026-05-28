@@ -6,7 +6,7 @@ use shared::lotus::models::{CompoundEntry, DatasetStats, SmilesSearchType};
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, ToSchema)]
-pub(crate) struct HealthResponse {
+pub struct HealthResponse {
     pub(crate) status: &'static str,
     pub(crate) uptime_secs: u64,
     pub(crate) search_cache_hits: u64,
@@ -23,7 +23,7 @@ pub(crate) struct HealthResponse {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum ApiSmilesSearchType {
+pub enum ApiSmilesSearchType {
     Substructure,
     Similarity,
 }
@@ -39,7 +39,7 @@ impl From<ApiSmilesSearchType> for SmilesSearchType {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum ApiElementState {
+pub enum ApiElementState {
     Allowed,
     Required,
     Excluded,
@@ -56,7 +56,7 @@ impl From<ApiElementState> for shared::lotus::models::ElementState {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
-pub(crate) struct SearchRequest {
+pub struct SearchRequest {
     pub(crate) taxon: Option<String>,
     pub(crate) smiles: Option<String>,
     pub(crate) smiles_search_type: Option<ApiSmilesSearchType>,
@@ -87,7 +87,7 @@ pub(crate) struct SearchRequest {
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
-pub(crate) struct SearchStats {
+pub struct SearchStats {
     pub(crate) n_compounds: usize,
     pub(crate) n_taxa: usize,
     pub(crate) n_references: usize,
@@ -108,7 +108,7 @@ impl From<DatasetStats> for SearchStats {
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
-pub(crate) struct RowDto {
+pub struct RowDto {
     pub(crate) compound_qid: String,
     pub(crate) name: String,
     pub(crate) inchikey: Option<String>,
@@ -145,7 +145,7 @@ impl From<CompoundEntry> for RowDto {
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
-pub(crate) struct SearchResponse {
+pub struct SearchResponse {
     pub(crate) resolved_taxon_qid: Option<String>,
     pub(crate) warning: Option<String>,
     pub(crate) query: String,
@@ -155,7 +155,7 @@ pub(crate) struct SearchResponse {
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
-pub(crate) struct ExportUrlResponse {
+pub struct ExportUrlResponse {
     pub(crate) query: String,
     pub(crate) csv_url: String,
     pub(crate) json_url: String,
@@ -166,12 +166,12 @@ pub(crate) struct ExportUrlResponse {
 }
 
 #[derive(Debug, Default, Deserialize)]
-pub(crate) struct ExportFileQuery {
+pub struct ExportFileQuery {
     pub(crate) filename: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum ExportArchiveFormat {
+pub enum ExportArchiveFormat {
     Csv,
     Json,
     Rdf,
@@ -187,7 +187,7 @@ impl ExportArchiveFormat {
         }
     }
 
-    pub(crate) fn extension(self) -> &'static str {
+    pub(crate) const fn extension(self) -> &'static str {
         match self {
             Self::Csv => "csv",
             Self::Json => "json",
@@ -195,7 +195,7 @@ impl ExportArchiveFormat {
         }
     }
 
-    pub(crate) fn content_type(self) -> &'static str {
+    pub(crate) const fn content_type(self) -> &'static str {
         match self {
             Self::Csv => "text/csv; charset=utf-8",
             Self::Json => "application/sparql-results+json; charset=utf-8",

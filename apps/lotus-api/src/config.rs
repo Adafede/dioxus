@@ -11,7 +11,7 @@ use std::{net::SocketAddr, time::Duration};
 use tower_http::cors::{Any, CorsLayer};
 
 #[derive(Debug, Clone)]
-pub(crate) struct AppConfig {
+pub struct AppConfig {
     pub(crate) host: String,
     pub(crate) port: u16,
     pub(crate) default_limit: usize,
@@ -122,7 +122,7 @@ fn parse_allowed_origins(value: Option<String>) -> Result<Option<Vec<HeaderValue
     }
 }
 
-pub(crate) fn build_cors_layer(config: &AppConfig) -> CorsLayer {
+pub fn build_cors_layer(config: &AppConfig) -> CorsLayer {
     let layer = CorsLayer::new().allow_methods(Any).allow_headers(Any);
     match &config.cors_allowed_origins {
         Some(origins) => layer.allow_origin(origins.clone()),

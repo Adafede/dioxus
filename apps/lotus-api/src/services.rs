@@ -7,7 +7,7 @@ use crate::{
 };
 use shared::lotus::{models::DatasetStats, queries, sparql};
 
-pub(crate) async fn build_search_response(
+pub async fn build_search_response(
     execution_query: &str,
     limit: usize,
     include_counts: bool,
