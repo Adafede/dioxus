@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! Data Transfer Objects (DTOs) for the LOTUS API client.
+//!
+//! Defines the serializable request payloads sent to the backend and the
+//! deserializable response shapes received. Internal domain types are kept
+//! separate; conversion happens at the edge via [`From`] implementations.
+
 use crate::{
     models::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType},
     queries,
@@ -116,7 +122,12 @@ impl SearchRequest {
 }
 
 fn normalize_structure_for_api(value: &str) -> String {
-    let normalized = value.replace("\r\n", "\n").replace('\r', "\n");
+    // Normalize CRLF → LF first, then bare CR → LF, to avoid double-converting.
+    let normalized = if value.contains('\r') {
+        value.replace("\r\n", "\n").replace('\r', "\n")
+    } else {
+        value.to_string()
+    };
     match queries::classify_structure(&normalized) {
         queries::StructureKind::MolfileV2000 | queries::StructureKind::MolfileV3000 => normalized,
         _ => normalized.trim().to_string(),
@@ -173,16 +184,17 @@ pub struct SearchStats {
 
 impl From<SearchStats> for DatasetStats {
     fn from(value: SearchStats) -> Self {
+        // The API may omit n_entries_unique for legacy compatibility; fall back to n_entries.
+        let n_entries_unique = match value.n_entries_unique {
+            0 => value.n_entries,
+            n => n,
+        };
         Self {
             n_compounds: value.n_compounds,
             n_taxa: value.n_taxa,
             n_references: value.n_references,
             n_entries: value.n_entries,
-            n_entries_unique: if value.n_entries_unique == 0 {
-                value.n_entries
-            } else {
-                value.n_entries_unique
-            },
+            n_entries_unique,
         }
     }
 }
