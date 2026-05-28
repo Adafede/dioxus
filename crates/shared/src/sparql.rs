@@ -129,7 +129,7 @@ pub async fn execute_sparql_with_format_body(
     log::debug!("SPARQL POST endpoint: {endpoint}");
 
     const MAX_ATTEMPTS: u32 = 2;
-    let client = http_client();
+    let client = http_client()?;
     let mut last_err: Option<FetchError> = None;
 
     for attempt in 0..MAX_ATTEMPTS {
@@ -156,23 +156,25 @@ pub async fn execute_sparql_with_format_body(
                             // HTML gateway pages are text, so inspect a lossy preview.
                             let preview = String::from_utf8_lossy(&bytes);
                             if looks_like_gateway_error(&preview) {
-                                last_err = Some(FetchError::Http(
+                                let err = FetchError::Http(
                                     502,
                                     "upstream gateway error (HTML payload)".into(),
-                                ));
+                                );
                                 if attempt + 1 < MAX_ATTEMPTS {
+                                    last_err = Some(err);
                                     continue;
                                 }
-                                return Err(last_err.unwrap());
+                                return Err(err);
                             }
                             Ok(bytes)
                         }
                         Err(e) => {
-                            last_err = Some(FetchError::Network(e.to_string()));
+                            let err = FetchError::Network(e.to_string());
                             if attempt + 1 < MAX_ATTEMPTS {
+                                last_err = Some(err);
                                 continue;
                             }
-                            Err(last_err.unwrap())
+                            Err(err)
                         }
                     };
                 }
@@ -204,7 +206,7 @@ pub async fn execute_sparql_with_format_tempfile(
     log::debug!("SPARQL POST endpoint: {endpoint}");
 
     const MAX_ATTEMPTS: u32 = 2;
-    let client = http_client();
+    let client = http_client()?;
     let mut last_err: Option<FetchError> = None;
 
     'attempts: for attempt in 0..MAX_ATTEMPTS {
@@ -240,11 +242,12 @@ pub async fn execute_sparql_with_format_tempfile(
                             }
                             Ok(None) => break,
                             Err(e) => {
-                                last_err = Some(FetchError::Network(e.to_string()));
+                                let err = FetchError::Network(e.to_string());
                                 if attempt + 1 < MAX_ATTEMPTS {
+                                    last_err = Some(err);
                                     continue 'attempts;
                                 }
-                                return Err(last_err.unwrap());
+                                return Err(err);
                             }
                         }
                     }
@@ -255,14 +258,15 @@ pub async fn execute_sparql_with_format_tempfile(
 
                     let preview_text = String::from_utf8_lossy(&preview);
                     if looks_like_gateway_error(&preview_text) {
-                        last_err = Some(FetchError::Http(
+                        let err = FetchError::Http(
                             502,
                             "upstream gateway error (HTML payload)".into(),
-                        ));
+                        );
                         if attempt + 1 < MAX_ATTEMPTS {
+                            last_err = Some(err);
                             continue;
                         }
-                        return Err(last_err.unwrap());
+                        return Err(err);
                     }
 
                     file.as_file_mut()
@@ -311,7 +315,7 @@ pub async fn fetch_url_bytes(url: &str) -> Result<Vec<u8>, FetchError> {
 
 async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>, FetchError> {
     const MAX_ATTEMPTS: u32 = 2;
-    let client = http_client();
+    let client = http_client()?;
     let mut last_err: Option<FetchError> = None;
 
     for attempt in 0..MAX_ATTEMPTS {
@@ -327,23 +331,25 @@ async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>,
                         Ok(bytes) => {
                             let preview = String::from_utf8_lossy(&bytes);
                             if looks_like_gateway_error(&preview) {
-                                last_err = Some(FetchError::Http(
+                                let err = FetchError::Http(
                                     502,
                                     "upstream gateway error (HTML payload)".into(),
-                                ));
+                                );
                                 if attempt + 1 < MAX_ATTEMPTS {
+                                    last_err = Some(err);
                                     continue;
                                 }
-                                return Err(last_err.unwrap());
+                                return Err(err);
                             }
                             Ok(bytes.to_vec())
                         }
                         Err(e) => {
-                            last_err = Some(FetchError::Network(e.to_string()));
+                            let err = FetchError::Network(e.to_string());
                             if attempt + 1 < MAX_ATTEMPTS {
+                                last_err = Some(err);
                                 continue;
                             }
-                            Err(last_err.unwrap())
+                            Err(err)
                         }
                     };
                 }
@@ -379,12 +385,17 @@ fn build_sparql_form_body(sparql: &str, format: SparqlResponseFormat) -> String 
     body
 }
 
-fn http_client() -> &'static reqwest::Client {
-    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    CLIENT.get_or_init(build_http_client)
+fn http_client() -> Result<&'static reqwest::Client, FetchError> {
+    static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
+    match CLIENT.get_or_init(build_http_client) {
+        Ok(client) => Ok(client),
+        Err(msg) => Err(FetchError::Network(format!(
+            "failed to initialize SPARQL HTTP client: {msg}"
+        ))),
+    }
 }
 
-fn build_http_client() -> reqwest::Client {
+fn build_http_client() -> Result<reqwest::Client, String> {
     #[cfg(target_arch = "wasm32")]
     {
         // In the browser, fetch automatically sends `Accept-Encoding: gzip,
@@ -392,7 +403,7 @@ fn build_http_client() -> reqwest::Client {
         // is required.
         reqwest::Client::builder()
             .build()
-            .expect("shared SPARQL HTTP client")
+            .map_err(|e| e.to_string())
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -410,7 +421,7 @@ fn build_http_client() -> reqwest::Client {
             .tcp_keepalive(Duration::from_secs(30))
             .gzip(true)
             .build()
-            .expect("shared SPARQL HTTP client")
+            .map_err(|e| e.to_string())
     }
 }
 
@@ -456,7 +467,7 @@ fn compact_http_error_text(body: &str) -> String {
     const MAX_CHARS: usize = 240;
     let trimmed = body.trim();
     if trimmed.is_empty() {
-        return "empty response body".to_string();
+        return "empty response body".into();
     }
 
     if let Some(exception) = parse_json_exception_field(trimmed) {
@@ -562,17 +573,13 @@ pub fn extract_qid(s: &str) -> String {
 }
 
 /// Return `Some(s)` only if `s` is non-empty after trimming.
-pub fn non_empty(s: &str) -> Option<String> {
+pub fn non_empty(s: &str) -> Option<&str> {
     let t = s.trim();
-    if t.is_empty() {
-        None
-    } else {
-        Some(t.to_string())
-    }
+    if t.is_empty() { None } else { Some(t) }
 }
 
 /// Prefer `a`, fall back to `b`, return None if both empty.
-pub fn coalesce<'a>(a: &'a str, b: &'a str) -> Option<String> {
+pub fn coalesce<'a>(a: &'a str, b: &'a str) -> Option<&'a str> {
     non_empty(a).or_else(|| non_empty(b))
 }
 
@@ -616,10 +623,10 @@ mod tests {
     fn extract_qid_handles_uri_and_plain_qid() {
         assert_eq!(
             extract_qid("http://www.wikidata.org/entity/Q12345"),
-            "Q12345".to_string()
+            "Q12345"
         );
-        assert_eq!(extract_qid("Q999"), "Q999".to_string());
-        assert_eq!(extract_qid("not-a-qid"), "".to_string());
+        assert_eq!(extract_qid("Q999"), "Q999");
+        assert_eq!(extract_qid("not-a-qid"), "");
     }
 
     #[test]
