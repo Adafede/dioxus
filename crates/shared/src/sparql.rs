@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::module_name_repetitions,
+    clippy::items_after_statements
+)]
+
 //! Generic SPARQL/QLever HTTP utilities shared by all apps.
 //!
 //! `QLever` CSV export URL format:

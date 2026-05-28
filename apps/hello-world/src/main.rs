@@ -9,6 +9,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 #![allow(non_snake_case)]
+#![allow(clippy::multiple_crate_versions)]
 
 use dioxus::prelude::*;
 

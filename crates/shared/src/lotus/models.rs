@@ -95,8 +95,9 @@ pub fn current_year() -> u16 {
             use std::time::{SystemTime, UNIX_EPOCH};
             let secs = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .map_or(0, |d| d.as_secs() as i64);
-            (1970 + secs / 31_556_952).clamp(0, i64::from(u16::MAX)) as u16
+                .map_or(0_i64, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX));
+            let year = (1970 + secs / 31_556_952).clamp(0, i64::from(u16::MAX));
+            u16::try_from(year).unwrap_or(u16::MAX)
         }
     })
 }

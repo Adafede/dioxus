@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+#![allow(clippy::missing_errors_doc, clippy::module_name_repetitions)]
+
 use super::models::{CompoundEntry, DatasetStats, TaxonMatch};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::sparql::execute_sparql_tempfile as shared_execute_tempfile;
@@ -166,7 +168,7 @@ impl StrInterner {
 
 #[inline]
 fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
-    const FNV_PRIME: Wrapping<u64> = Wrapping(1099511628211);
+    const FNV_PRIME: Wrapping<u64> = Wrapping(1_099_511_628_211);
     for b in bytes {
         h ^= Wrapping(u64::from(*b));
         h *= FNV_PRIME;
@@ -176,11 +178,11 @@ fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
 
 #[inline]
 fn fnv1a_one(bytes: &[u8]) -> u64 {
-    fnv1a_extend(Wrapping(14695981039346656037u64), bytes).0
+    fnv1a_extend(Wrapping(14_695_981_039_346_656_037_u64), bytes).0
 }
 
 fn entry_key_fingerprint(compound_qid: &[u8], taxon_qid: &[u8], reference_qid: &[u8]) -> u64 {
-    let mut h = Wrapping(14695981039346656037u64);
+    let mut h = Wrapping(14_695_981_039_346_656_037_u64);
     h = fnv1a_extend(h, compound_qid);
     h = fnv1a_extend(h, &[0x1f]);
     h = fnv1a_extend(h, taxon_qid);
