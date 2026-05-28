@@ -15,7 +15,11 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn natprod_client() -> Result<&'static reqwest::Client, CurationError> {
     static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
-    match CLIENT.get_or_init(|| reqwest::Client::builder().build().map_err(|e| e.to_string())) {
+    match CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .build()
+            .map_err(|e| e.to_string())
+    }) {
         Ok(client) => Ok(client),
         Err(message) => Err(CurationError::Http(format!(
             "failed to initialize curation HTTP client: {message}"
