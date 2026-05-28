@@ -64,7 +64,9 @@ impl CriteriaQueryDto {
                 .map(String::as_str)
                 .or_else(|| params.get("smiles_search_type").map(String::as_str))
                 .map(parse_search_type),
-            smiles_threshold: parse_positive_threshold(params.get("smiles_threshold")),
+            smiles_threshold: parse_positive_threshold(
+                params.get("smiles_threshold").map(String::as_str),
+            ),
             mass_filter: RangeF64Dto::parse_when_enabled(
                 params,
                 "mass_filter",
@@ -260,7 +262,7 @@ fn parse_search_type(value: &str) -> SmilesSearchType {
     }
 }
 
-fn parse_positive_threshold(value: Option<&String>) -> Option<f64> {
+fn parse_positive_threshold(value: Option<&str>) -> Option<f64> {
     value
         .and_then(|raw| raw.parse::<f64>().ok())
         .filter(|v| v.is_finite() && *v > 0.0)
