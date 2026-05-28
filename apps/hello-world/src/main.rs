@@ -8,17 +8,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-
 use dioxus::prelude::*;
 
 fn main() {
     console_log::init_with_level(log::Level::Info).ok();
-    launch(App);
+    launch(app);
 }
 
-#[allow(non_snake_case)]
 #[component]
-fn App() -> Element {
+fn app() -> Element {
     let mut count = use_signal(|| 0i32);
 
     rsx! {

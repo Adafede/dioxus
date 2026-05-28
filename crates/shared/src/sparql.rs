@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-
 //! Generic SPARQL/QLever HTTP utilities shared by all apps.
 //!
 //! `QLever` CSV export URL format:
@@ -532,13 +531,13 @@ fn truncate_chars(text: &str, max_chars: usize) -> String {
 // ── CSV helpers ───────────────────────────────────────────────────────────────
 
 /// Index of a named header column (None if absent).
-#[must_use] 
+#[must_use]
 pub fn col_idx(headers: &csv::StringRecord, name: &str) -> Option<usize> {
     headers.iter().position(|h| h == name)
 }
 
 /// Get a trimmed field value by optional column index.
-#[must_use] 
+#[must_use]
 pub fn field(record: &csv::StringRecord, idx: Option<usize>) -> &str {
     idx.and_then(|i| record.get(i)).unwrap_or("").trim()
 }
@@ -575,26 +574,26 @@ pub fn extract_qid(s: &str) -> String {
 }
 
 /// Return `Some(s)` only if `s` is non-empty after trimming.
-#[must_use] 
+#[must_use]
 pub fn non_empty(s: &str) -> Option<&str> {
     let t = s.trim();
     if t.is_empty() { None } else { Some(t) }
 }
 
 /// Prefer `a`, fall back to `b`, return None if both empty.
-#[must_use] 
+#[must_use]
 pub fn coalesce<'a>(a: &'a str, b: &'a str) -> Option<&'a str> {
     non_empty(a).or_else(|| non_empty(b))
 }
 
 /// Parse `2021-04-23T00:00:00Z` or `2021` → year as i32.
-#[must_use] 
+#[must_use]
 pub fn parse_year(s: &str) -> Option<i32> {
     s.trim().split(['-', 'T']).next()?.trim().parse().ok()
 }
 
 /// Normalise a DOI: strip `https://doi.org/` prefix if present.
-#[must_use] 
+#[must_use]
 pub fn clean_doi(s: &str) -> Option<String> {
     let t = s.trim();
     if t.is_empty() {

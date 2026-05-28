@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-
 use super::models::{
     DEFAULT_C_MAX, DEFAULT_H_MAX, DEFAULT_N_MAX, DEFAULT_O_MAX, DEFAULT_P_MAX, DEFAULT_S_MAX,
     ElementState, SearchCriteria, SmilesSearchType,
@@ -166,7 +165,7 @@ SELECT
 /// **Use Cases:**
 /// - Autocomplete/suggestions for taxon filtering
 /// - Validation that a taxon exists before querying compounds
-#[must_use] 
+#[must_use]
 pub fn query_taxon_search(name: &str) -> String {
     let e = name.replace('\\', r"\\").replace('"', r#"\""#);
     format!(
@@ -210,7 +209,7 @@ WHERE {{
 ///   avoiding expensive enrichment of taxa that are later discarded.
 /// - The outer SELECT handles the `xsd:integer(STRAFTER(…))` projections on
 ///   a tiny, pre-enriched result set.
-#[must_use] 
+#[must_use]
 pub fn query_compounds_by_taxon(taxon_qid: &str) -> String {
     let compound_select = compound_select_clause();
     format!(
@@ -259,7 +258,7 @@ WHERE {{
 /// Uses the same three-level scaffolding as `query_compounds_by_taxon` to keep
 /// optional enrichment strictly post-join, even when no ancestry filter is active.
 /// Large result sets should use LIMIT or be paginated via `QLever`.
-#[must_use] 
+#[must_use]
 pub fn query_all_compounds() -> String {
     let compound_select = compound_select_clause();
     format!(
@@ -301,7 +300,7 @@ WHERE {{
 /// explosions when many compounds match the structure query. When taxon filtering
 /// is active, the taxon ancestry filter is applied *inside* the Sachem pass to
 /// ensure `QLever` planner only enriches matching rows.
-#[must_use] 
+#[must_use]
 pub fn query_sachem(
     smiles: &str,
     search_type: SmilesSearchType,
@@ -416,7 +415,7 @@ pub enum StructureKind {
 }
 
 impl StructureKind {
-    #[must_use] 
+    #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
             Self::Empty => "—",
@@ -427,7 +426,7 @@ impl StructureKind {
     }
 }
 
-#[must_use] 
+#[must_use]
 pub fn classify_structure(text: &str) -> StructureKind {
     let trimmed = text.trim();
     if trimmed.is_empty() {
@@ -451,7 +450,7 @@ fn looks_like_molfile(text: &str) -> bool {
     )
 }
 
-#[must_use] 
+#[must_use]
 pub fn escape_structure_literal(smiles: &str) -> String {
     let normalized = smiles.replace("\r\n", "\n").replace('\r', "\n");
     let is_molfile = looks_like_molfile(&normalized);
@@ -483,7 +482,7 @@ pub fn escape_structure_literal(smiles: &str) -> String {
 /// Uses COUNT(DISTINCT ...) to compute cardinality without materializing
 /// full result sets. The implementation wraps the base query's WHERE block
 /// to preserve all filtering/search logic.
-#[must_use] 
+#[must_use]
 pub fn query_counts_from_base(base_query: &str) -> String {
     let Some(select_pos) = base_query.find("SELECT") else {
         return base_query.to_string();
@@ -515,7 +514,7 @@ WHERE {{
 /// - Pagination: fetch first N results, then apply OFFSET for next page
 /// - Sampling: LIMIT 100 for quick exploratory queries
 /// - UI constraints: avoid overwhelming clients with massive result sets
-#[must_use] 
+#[must_use]
 pub fn query_with_limit(base_query: &str, limit: usize) -> String {
     let trimmed = base_query.trim_end();
     format!("{trimmed}\nLIMIT {limit}")
@@ -673,7 +672,7 @@ pub fn query_with_server_filters(base_query: &str, criteria: &SearchCriteria) ->
 /// **Pattern:**
 /// Maps the SELECT variables to RDF triples using Wikidata vocabulary:
 /// compound properties (P235, P233, etc.), taxon info, references, and metadata.
-#[must_use] 
+#[must_use]
 pub fn query_construct_from_select(select_query: &str) -> String {
     let Some(select_pos) = select_query.find("SELECT") else {
         return select_query.to_string();

@@ -24,10 +24,8 @@ const MAX_TAXON_CACHE_ENTRIES: usize = 512;
 const MAX_SEARCH_CACHE_ENTRIES: usize = 128;
 const MAX_EXPORT_CACHE_ENTRIES: usize = 256;
 
-pub type InFlightSearch =
-    Arc<OnceCell<Result<SearchResponse, crate::errors::SharedApiError>>>;
-pub type InFlightExport =
-    Arc<OnceCell<Result<ExportUrlResponse, crate::errors::SharedApiError>>>;
+pub type InFlightSearch = Arc<OnceCell<Result<SearchResponse, crate::errors::SharedApiError>>>;
+pub type InFlightExport = Arc<OnceCell<Result<ExportUrlResponse, crate::errors::SharedApiError>>>;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -277,21 +275,25 @@ pub fn export_cache_put(state: &AppState, key: String, value: ExportUrlResponse)
 }
 
 pub fn search_inflight_cell(state: &AppState, key: &str) -> (InFlightSearch, bool) {
-    let existing = state.search_inflight.lock().expect("search inflight mutex").get(key).cloned();
+    let existing = state
+        .search_inflight
+        .lock()
+        .expect("search inflight mutex")
+        .get(key)
+        .cloned();
     if let Some(existing) = existing {
         return (existing, false);
     }
     let cell = Arc::new(OnceCell::new());
-    state.search_inflight.lock().expect("search inflight mutex").insert(key.to_string(), cell.clone());
+    state
+        .search_inflight
+        .lock()
+        .expect("search inflight mutex")
+        .insert(key.to_string(), cell.clone());
     (cell, true)
 }
 
-pub fn search_inflight_remove(
-    state: &AppState,
-    key: &str,
-    cell: &InFlightSearch,
-    is_leader: bool,
-) {
+pub fn search_inflight_remove(state: &AppState, key: &str, cell: &InFlightSearch, is_leader: bool) {
     if !is_leader {
         return;
     }
@@ -305,21 +307,25 @@ pub fn search_inflight_remove(
 }
 
 pub fn export_inflight_cell(state: &AppState, key: &str) -> (InFlightExport, bool) {
-    let existing = state.export_inflight.lock().expect("export inflight mutex").get(key).cloned();
+    let existing = state
+        .export_inflight
+        .lock()
+        .expect("export inflight mutex")
+        .get(key)
+        .cloned();
     if let Some(existing) = existing {
         return (existing, false);
     }
     let cell = Arc::new(OnceCell::new());
-    state.export_inflight.lock().expect("export inflight mutex").insert(key.to_string(), cell.clone());
+    state
+        .export_inflight
+        .lock()
+        .expect("export inflight mutex")
+        .insert(key.to_string(), cell.clone());
     (cell, true)
 }
 
-pub fn export_inflight_remove(
-    state: &AppState,
-    key: &str,
-    cell: &InFlightExport,
-    is_leader: bool,
-) {
+pub fn export_inflight_remove(state: &AppState, key: &str, cell: &InFlightExport, is_leader: bool) {
     if !is_leader {
         return;
     }
@@ -332,10 +338,7 @@ pub fn export_inflight_remove(
     }
 }
 
-pub fn taxon_cache_get(
-    state: &AppState,
-    key: &str,
-) -> Option<(Option<String>, Option<String>)> {
+pub fn taxon_cache_get(state: &AppState, key: &str) -> Option<(Option<String>, Option<String>)> {
     let mut cache = state.taxon_cache.lock().ok()?;
     maybe_prune_cache(
         &mut cache,
@@ -347,11 +350,7 @@ pub fn taxon_cache_get(
     cache.get(key).map(|entry| entry.value.clone())
 }
 
-pub fn taxon_cache_put(
-    state: &AppState,
-    key: String,
-    value: (Option<String>, Option<String>),
-) {
+pub fn taxon_cache_put(state: &AppState, key: String, value: (Option<String>, Option<String>)) {
     if let Ok(mut cache) = state.taxon_cache.lock() {
         maybe_prune_cache(
             &mut cache,
