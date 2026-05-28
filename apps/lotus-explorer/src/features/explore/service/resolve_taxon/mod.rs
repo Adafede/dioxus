@@ -36,7 +36,7 @@ pub fn requires_remote_lookup(taxon: &str) -> bool {
     }
     // QIDs are always ASCII — use byte-level check to avoid Unicode iterator.
     let bytes = taxon.as_bytes();
-    !(matches!(bytes[0], b'Q' | b'q') && bytes[1..].iter().all(u8::is_ascii_digit))
+    !(bytes.len() > 1 && matches!(bytes[0], b'Q' | b'q') && bytes[1..].iter().all(u8::is_ascii_digit))
 }
 
 /// Resolve a free-text taxon name (or QID, or wildcard) to a Wikidata QID.
@@ -72,7 +72,7 @@ pub async fn resolve<R: LotusRepository>(
 
     let standardized_warning = if sanitized != taxon {
         Some(TaxonWarning::Standardized {
-            original: taxon.to_string(),
+            original: taxon.into(),
             standardized: sanitized.clone(),
         })
     } else {
@@ -108,7 +108,7 @@ pub async fn resolve<R: LotusRepository>(
 
     if matches.is_empty() {
         return Err(DomainError::Validation(ValidationFault::TaxonNotFound {
-            input: taxon.to_string(),
+            input: taxon.into(),
         }));
     }
 
@@ -157,7 +157,7 @@ mod tests {
         }
         fn err_network(msg: &str) -> Self {
             Self {
-                response: Err(RepositoryError::network(msg.to_string())),
+                response: Err(RepositoryError::network(msg)),
             }
         }
     }
@@ -217,6 +217,8 @@ mod tests {
         assert!(!requires_remote_lookup("*"));
         assert!(!requires_remote_lookup("Q12345"));
         assert!(!requires_remote_lookup("q12345"));
+        assert!(requires_remote_lookup("Q"));
+        assert!(requires_remote_lookup("q"));
         assert!(requires_remote_lookup("Gentiana lutea"));
     }
 
