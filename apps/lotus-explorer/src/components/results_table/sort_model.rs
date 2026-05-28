@@ -24,7 +24,9 @@ const fn sort_column_index(col: SortColumn) -> usize {
 struct SortCacheInner {
     rows: Arc<[CompoundEntry]>,
     /// Ascending sort indices per column; `None` until first access.
-    by_col: Mutex<[Option<Arc<[u32]>>; NUM_SORT_COLS]>,
+    asc_by_col: Mutex<[Option<Arc<[u32]>>; NUM_SORT_COLS]>,
+    /// Descending sort indices per column; derived from ascending once and then reused.
+    desc_by_col: Mutex<[Option<Arc<[u32]>>; NUM_SORT_COLS]>,
 }
 
 /// Lazily-populated, cheaply-cloneable sort index cache.
@@ -61,7 +63,8 @@ impl std::fmt::Debug for SortIndexCache {
 pub(super) fn build_sort_index_cache(rows: Arc<[CompoundEntry]>) -> SortIndexCache {
     SortIndexCache(Arc::new(SortCacheInner {
         rows,
-        by_col: Mutex::new(Default::default()),
+        asc_by_col: Mutex::new(Default::default()),
+        desc_by_col: Mutex::new(Default::default()),
     }))
 }
 
@@ -71,7 +74,7 @@ impl SortIndexCache {
         let idx = sort_column_index(col);
         // Fast path: return the cached value while holding the lock briefly.
         {
-            let guard = self.0.by_col.lock().expect("sort cache not poisoned");
+            let guard = self.0.asc_by_col.lock().expect("sort cache not poisoned");
             if let Some(cached) = &guard[idx] {
                 return cached.clone();
             }
@@ -82,7 +85,33 @@ impl SortIndexCache {
         // Store and return; a benign race on native means two threads might
         // both compute the same column — both results are identical, so the
         // last writer's value is silently discarded by get_or_insert.
-        let mut guard = self.0.by_col.lock().expect("sort cache not poisoned");
+        let mut guard = self.0.asc_by_col.lock().expect("sort cache not poisoned");
+        guard[idx].get_or_insert(computed).clone()
+    }
+
+    /// Return (or lazily compute) the descending sort index for `col`.
+    fn descending_for(&self, col: SortColumn) -> Arc<[u32]> {
+        let idx = sort_column_index(col);
+        // Fast path: return the cached value while holding the lock briefly.
+        {
+            let guard = self
+                .0
+                .desc_by_col
+                .lock()
+                .expect("sort cache not poisoned");
+            if let Some(cached) = &guard[idx] {
+                return cached.clone();
+            }
+        }
+
+        let ascending = self.ascending_for(col);
+        let computed = reversed_indices(&ascending);
+
+        let mut guard = self
+            .0
+            .desc_by_col
+            .lock()
+            .expect("sort cache not poisoned");
         guard[idx].get_or_insert(computed).clone()
     }
 }
@@ -94,11 +123,10 @@ impl SortIndexCache {
 /// the direction is already ascending.
 #[must_use]
 pub(super) fn indices_for_sort(cache: &SortIndexCache, sort: SortState) -> Arc<[u32]> {
-    let ascending = cache.ascending_for(sort.col);
     if sort.dir == SortDir::Asc {
-        ascending
+        cache.ascending_for(sort.col)
     } else {
-        reversed_indices(&ascending)
+        cache.descending_for(sort.col)
     }
 }
 
@@ -372,5 +400,54 @@ mod tests {
 
         let expected_desc: Vec<u32> = asc.iter().rev().copied().collect();
         assert_eq!(desc.as_ref(), expected_desc.as_slice());
+    }
+
+    #[test]
+    fn descending_indices_are_cached_per_column() {
+        let rows = vec![
+            entry(
+                "Gamma",
+                Some(3.0),
+                Some("C3"),
+                "Taxon C",
+                Some(2003),
+                Some("Ref C"),
+            ),
+            entry(
+                "Alpha",
+                Some(1.0),
+                Some("C1"),
+                "Taxon A",
+                Some(2001),
+                Some("Ref A"),
+            ),
+            entry(
+                "Beta",
+                Some(2.0),
+                Some("C2"),
+                "Taxon B",
+                Some(2002),
+                Some("Ref B"),
+            ),
+        ];
+
+        let rows_arc: Arc<[CompoundEntry]> = Arc::from(rows.as_slice());
+        let cache = build_sort_index_cache(rows_arc);
+        let first = indices_for_sort(
+            &cache,
+            SortState {
+                col: SortColumn::Name,
+                dir: SortDir::Desc,
+            },
+        );
+        let second = indices_for_sort(
+            &cache,
+            SortState {
+                col: SortColumn::Name,
+                dir: SortDir::Desc,
+            },
+        );
+
+        assert!(Arc::ptr_eq(&first, &second));
     }
 }
