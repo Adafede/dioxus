@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! SPARQL query construction, taxon resolution, and request transformation logic.
+//!
+//! This module bridges the HTTP request layer and the upstream SPARQL endpoint:
+//! validating and normalizing request parameters, caching taxon QID lookups,
+//! building query strings and export URLs, and providing gzip compression.
+
 use crate::errors::ApiError;
 use crate::state::{AppState, taxon_cache_get, taxon_cache_put};
 use crate::types::{ExportArchiveFormat, SearchRequest};
@@ -133,7 +139,11 @@ pub(crate) fn build_execution_query(
 }
 
 pub(crate) fn normalized_structure_input(value: &str) -> String {
-    let normalized = value.replace("\r\n", "\n").replace('\r', "\n");
+    let normalized = if value.contains('\r') {
+        value.replace("\r\n", "\n").replace('\r', "\n")
+    } else {
+        value.to_string()
+    };
     match queries::classify_structure(&normalized) {
         queries::StructureKind::MolfileV2000 | queries::StructureKind::MolfileV3000 => normalized,
         _ => normalized.trim().to_string(),
@@ -161,18 +171,18 @@ pub(crate) async fn resolve_taxon_qid_cached(
 async fn resolve_taxon_qid(
     taxon_input: String,
 ) -> Result<(Option<String>, Option<String>), ApiError> {
-    let taxon = taxon_input.trim().to_string();
+    let taxon = taxon_input.trim();
     if taxon.is_empty() {
         return Ok((None, None));
     }
     if taxon == "*" {
-        return Ok((Some("*".to_string()), None));
+        return Ok((Some("*".into()), None));
     }
-    if is_qid(&taxon) {
+    if is_qid(taxon) {
         return Ok((Some(taxon.to_ascii_uppercase()), None));
     }
 
-    let sanitized = sanitize_taxon_input(&taxon);
+    let sanitized = sanitize_taxon_input(taxon);
     let query = queries::query_taxon_search(&sanitized);
     let csv = sparql::execute_sparql_bytes(&query)
         .await
@@ -232,12 +242,8 @@ fn sanitize_taxon_input(taxon: &str) -> String {
 
 fn is_qid(value: &str) -> bool {
     let v = value.trim();
-    if v.len() < 2 {
-        return false;
-    }
     let mut chars = v.chars();
-    let first = chars.next().unwrap_or_default();
-    (first == 'Q' || first == 'q') && chars.all(|c| c.is_ascii_digit())
+    matches!(chars.next(), Some('Q' | 'q')) && !v.is_empty() && chars.all(|c| c.is_ascii_digit())
 }
 
 pub(crate) fn qlever_export_url(query: &str, action: &str) -> String {
