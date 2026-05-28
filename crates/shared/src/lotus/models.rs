@@ -35,8 +35,9 @@ pub const DEFAULT_YEAR_MIN: u16 = 1800;
 
 pub type Rows = Arc<[CompoundEntry]>;
 
-#[must_use] 
-pub const fn runtime_table_row_limit() -> usize {
+#[must_use]
+#[allow(clippy::missing_const_for_fn)]
+pub fn runtime_table_row_limit() -> usize {
     #[cfg(target_arch = "wasm32")]
     {
         // Keep wasm conservative by default while still scaling on capable devices.
