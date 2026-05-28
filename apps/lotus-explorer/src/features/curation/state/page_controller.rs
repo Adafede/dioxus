@@ -269,16 +269,15 @@ fn push_tsv_cell(buf: &mut String, value: &str) {
     }
 }
 
-/// Returns a sanitized TSV cell string (for external use / tests).
-pub fn clean_tsv_cell(value: &str) -> String {
-    let mut buf = String::with_capacity(value.len());
-    push_tsv_cell(&mut buf, value);
-    buf
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn clean_tsv_cell(value: &str) -> String {
+        let mut buf = String::with_capacity(value.len());
+        push_tsv_cell(&mut buf, value);
+        buf
+    }
 
     #[test]
     fn clean_tsv_cell_normalizes_multiline_and_tabs() {
