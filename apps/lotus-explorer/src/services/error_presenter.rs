@@ -95,15 +95,14 @@ fn looks_like_html(msg: &str) -> bool {
     if head.is_empty() {
         return false;
     }
-    let sample = match head.char_indices().nth(256) {
-        Some((idx, _)) => &head[..idx],
-        None => head,
-    };
-    let sample = sample.to_ascii_lowercase();
-    sample.starts_with("<!doctype html")
-        || sample.starts_with("<html")
-        || sample.contains("<html")
-        || sample.contains("<body")
+    // Sample at most 256 bytes (ASCII-safe) to avoid scanning huge payloads
+    let sample = &head[..head.len().min(256)];
+    // Case-insensitive prefix check without heap allocation
+    let lc: String = sample.to_ascii_lowercase();
+    lc.starts_with("<!doctype html")
+        || lc.starts_with("<html")
+        || lc.contains("<html")
+        || lc.contains("<body")
 }
 
 fn compact_error_text(msg: &str) -> String {
