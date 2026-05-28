@@ -46,9 +46,10 @@ pub fn Sidebar() -> Element {
             div { class: "sidebar-logo-wrap",
                 div {
                     class: "sidebar-logo-link",
-                    img {
+                    object {
                         class: "sidebar-logo",
-                        src: "assets/lotus_ferris.svg",
+                        data: "assets/lotus_ferris.svg",
+                        r#type: "image/svg+xml",
                         alt: "",
                         "aria-hidden": "true",
                     }
