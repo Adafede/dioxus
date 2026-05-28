@@ -111,7 +111,7 @@ impl CurationPageController {
         let previous_rows = self.result_rows.read().clone();
         self.processing.set(true);
         self.status_message
-            .set(Some(msg_second_pass_running(self.locale).to_string()));
+            .set(Some(msg_second_pass_running(self.locale).into()));
 
         spawn(async move {
             match curate_rows(self.locale, pending_inputs).await {
@@ -287,10 +287,10 @@ mod tests {
     #[test]
     fn rows_to_tsv_writes_expected_header_and_cells() {
         let rows = vec![CurationInputRow {
-            name: "A\nname".to_string(),
-            smiles: "CCO".to_string(),
-            taxon: Some("Tax\ton".to_string()),
-            doi: Some("10.1/ABC".to_string()),
+            name: "A\nname".into(),
+            smiles: "CCO".into(),
+            taxon: Some("Tax\ton".into()),
+            doi: Some("10.1/ABC".into()),
         }];
 
         let tsv = rows_to_tsv(&rows);
