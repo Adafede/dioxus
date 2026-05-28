@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-#![allow(clippy::missing_errors_doc, clippy::module_name_repetitions)]
 
 use super::models::{CompoundEntry, DatasetStats, TaxonMatch};
 #[cfg(not(target_arch = "wasm32"))]

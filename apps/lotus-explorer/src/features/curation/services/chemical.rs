@@ -106,7 +106,7 @@ fn extract_batch_convert_output(parsed: BatchConvertResponse) -> Result<String, 
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-#[allow(dead_code)]
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn extract_exact_mass_from_json(value: &Value) -> Option<f64> {
     if let Some(v) = value
         .get("exact_molecular_weight")
@@ -132,6 +132,7 @@ pub fn extract_exact_mass_from_json(value: &Value) -> Option<f64> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg_attr(not(test), allow(dead_code))]
 fn parse_exact_mass_scalar(value: &Value) -> Option<f64> {
     if let Some(v) = value.as_f64() {
         return Some(v);

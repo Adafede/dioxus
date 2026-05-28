@@ -8,8 +8,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-#![allow(non_snake_case)]
-#![allow(clippy::multiple_crate_versions)]
 
 use dioxus::prelude::*;
 
@@ -18,6 +16,7 @@ fn main() {
     launch(App);
 }
 
+#[allow(non_snake_case)]
 #[component]
 fn App() -> Element {
     let mut count = use_signal(|| 0i32);

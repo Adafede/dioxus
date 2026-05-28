@@ -64,6 +64,7 @@ pub async fn metrics(State(state): State<AppState>) -> Response {
         (status = 504, description = "Search timeout", body = ErrorResponse)
     )
 )]
+#[allow(clippy::too_many_lines)]
 pub async fn search(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,
@@ -208,6 +209,7 @@ pub async fn search(
         (status = 504, description = "Taxon-resolution timeout", body = ErrorResponse)
     )
 )]
+#[allow(clippy::too_many_lines)]
 pub async fn export_urls(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,

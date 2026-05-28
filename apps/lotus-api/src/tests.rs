@@ -620,5 +620,5 @@ fn apply_request_clamps_similarity_threshold() {
 
     // threshold = 0.5 is within range
     let c = apply_request(&make_req(0.5)).expect("valid threshold");
-    assert_eq!(c.smiles_threshold, 0.5);
+    assert!((c.smiles_threshold - 0.5).abs() < f64::EPSILON);
 }

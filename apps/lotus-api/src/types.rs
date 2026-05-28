@@ -87,6 +87,7 @@ pub struct SearchRequest {
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
+#[allow(clippy::struct_field_names)]
 pub struct SearchStats {
     pub(crate) n_compounds: usize,
     pub(crate) n_taxa: usize,

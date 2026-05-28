@@ -277,12 +277,12 @@ pub fn export_cache_put(state: &AppState, key: String, value: ExportUrlResponse)
 }
 
 pub fn search_inflight_cell(state: &AppState, key: &str) -> (InFlightSearch, bool) {
-    let mut inflight = state.search_inflight.lock().expect("search inflight mutex");
-    if let Some(existing) = inflight.get(key) {
-        return (existing.clone(), false);
+    let existing = state.search_inflight.lock().expect("search inflight mutex").get(key).cloned();
+    if let Some(existing) = existing {
+        return (existing, false);
     }
     let cell = Arc::new(OnceCell::new());
-    inflight.insert(key.to_string(), cell.clone());
+    state.search_inflight.lock().expect("search inflight mutex").insert(key.to_string(), cell.clone());
     (cell, true)
 }
 
@@ -305,12 +305,12 @@ pub fn search_inflight_remove(
 }
 
 pub fn export_inflight_cell(state: &AppState, key: &str) -> (InFlightExport, bool) {
-    let mut inflight = state.export_inflight.lock().expect("export inflight mutex");
-    if let Some(existing) = inflight.get(key) {
-        return (existing.clone(), false);
+    let existing = state.export_inflight.lock().expect("export inflight mutex").get(key).cloned();
+    if let Some(existing) = existing {
+        return (existing, false);
     }
     let cell = Arc::new(OnceCell::new());
-    inflight.insert(key.to_string(), cell.clone());
+    state.export_inflight.lock().expect("export inflight mutex").insert(key.to_string(), cell.clone());
     (cell, true)
 }
 
