@@ -297,7 +297,8 @@ pub async fn resolve_taxon_qids_batch<'a>(
         resolved.insert(lookup, qid.to_string());
     }
 
-    Ok(resolved)}
+    Ok(resolved)
+}
 
 pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, CurationError> {
     let Some(query) = build_single_taxon_lookup_query(name) else {
