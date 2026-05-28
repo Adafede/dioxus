@@ -33,10 +33,15 @@ web-sys = { version = "0.3", features = ["Window"] }
 
 [workspace.lints.clippy]
 dbg_macro = "deny"
+todo = "warn"
+unimplemented = "warn"
+use_self = "warn"
+unnecessary_wraps = "warn"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
 unused_must_use = "deny"
+missing_debug_implementations = "warn"
 
 [profile.dev]
 opt-level = 1
