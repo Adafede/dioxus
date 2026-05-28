@@ -6,22 +6,22 @@ use crate::features::curation::domain::{CurationError, CurationInputRow};
 pub fn example_rows() -> Vec<CurationInputRow> {
     vec![
         CurationInputRow {
-            name: "Voatriafricanine A".to_string(),
-            smiles: "OC12N3C4=C(O)C([C@H](C[C@H]/5[C@@H]6C(OC)=O)C(N([H])C7=C8C=CC=C7)=C8CC6N(C)CC5=C\\C)=CC=C4[C@@]19CCN%10C9[C@@]%11(C[C@H]2C[C@H]%12[C@H]%13[C@@]%14(CC(C(OC)=O)=C%15NC%16=CC=CC=C%16[C@@]%15%17CCN([C@@H]%123)C%14%17)CCO%13)CCO[C@H]%11CC%10".to_string(),
-            taxon: Some("Voacanga africana".to_string()),
-            doi: Some("10.1021/acs.jnatprod.1c00812".to_string()),
+            name: "Voatriafricanine A".into(),
+            smiles: "OC12N3C4=C(O)C([C@H](C[C@H]/5[C@@H]6C(OC)=O)C(N([H])C7=C8C=CC=C7)=C8CC6N(C)CC5=C\\C)=CC=C4[C@@]19CCN%10C9[C@@]%11(C[C@H]2C[C@H]%12[C@H]%13[C@@]%14(CC(C(OC)=O)=C%15NC%16=CC=CC=C%16[C@@]%15%17CCN([C@@H]%123)C%14%17)CCO%13)CCO[C@H]%11CC%10".into(),
+            taxon: Some("Voacanga africana".into()),
+            doi: Some("10.1021/acs.jnatprod.1c00812".into()),
         },
         CurationInputRow {
-            name: "Voatriafricanine B (taxon and DOI wrong but new)".to_string(),
-            smiles: "OC12N3C4=C(O)C([C@H](C[C@H]/5[C@@H]6C(OC)=O)C(N([H])C7=C8C=CC=C7)=C8CC6N(C)CC5=C\\C)=CC=C4[C@@]19CCN%10C9[C@@]%11(C[C@H]2C[C@H]%12[C@H]%13[C@@]%14(CC(C(OC)=O)=C%15NC%16=C(OC)C=CC=C%16[C@@]%15%17CCN([C@@H]%123)C%14%17)CCO%13)CCO[C@H]%11CC%10".to_string(),
-            taxon: Some("Gentiana lutea".to_string()),
-            doi: Some("10.1068/P080363".to_string()),
+            name: "Voatriafricanine B (taxon and DOI wrong but new)".into(),
+            smiles: "OC12N3C4=C(O)C([C@H](C[C@H]/5[C@@H]6C(OC)=O)C(N([H])C7=C8C=CC=C7)=C8CC6N(C)CC5=C\\C)=CC=C4[C@@]19CCN%10C9[C@@]%11(C[C@H]2C[C@H]%12[C@H]%13[C@@]%14(CC(C(OC)=O)=C%15NC%16=C(OC)C=CC=C%16[C@@]%15%17CCN([C@@H]%123)C%14%17)CCO%13)CCO[C@H]%11CC%10".into(),
+            taxon: Some("Gentiana lutea".into()),
+            doi: Some("10.1068/P080363".into()),
         },
         CurationInputRow {
-            name: "[HYPOTHETICAL - non-real test case]".to_string(),
-            smiles: "CCN(CC)C(=O)N1C=NC2=C1N=CN2C(F)(F)F".to_string(),
-            taxon: Some("Ficticia imaginaria".to_string()),
-            doi: Some("10.59350/sk00y-3gh44".to_string()),
+            name: "[HYPOTHETICAL - non-real test case]".into(),
+            smiles: "CCN(CC)C(=O)N1C=NC2=C1N=CN2C(F)(F)F".into(),
+            taxon: Some("Ficticia imaginaria".into()),
+            doi: Some("10.59350/sk00y-3gh44".into()),
         },
     ]
 }
@@ -30,20 +30,20 @@ pub fn parse_tsv_rows(tsv: &str) -> Result<Vec<CurationInputRow>, CurationError>
     let mut lines = tsv
         .lines()
         .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .collect::<Vec<_>>();
-    if lines.is_empty() {
-        return Ok(Vec::new());
-    }
+        .filter(|line| !line.is_empty());
 
-    let header = lines.remove(0);
+    let header = match lines.next() {
+        Some(h) => h,
+        None => return Ok(Vec::new()),
+    };
+
     let columns = header.split('\t').map(normalize_header).collect::<Vec<_>>();
     let name_idx = columns
         .iter()
         .position(|c| c == "name")
-        .ok_or_else(|| CurationError::InvalidInput("TSV is missing a 'name' column".to_string()))?;
+        .ok_or_else(|| CurationError::InvalidInput("TSV is missing a 'name' column".into()))?;
     let smiles_idx = columns.iter().position(|c| c == "smiles").ok_or_else(|| {
-        CurationError::InvalidInput("TSV is missing a 'smiles' column".to_string())
+        CurationError::InvalidInput("TSV is missing a 'smiles' column".into())
     })?;
     let taxon_idx = columns
         .iter()
@@ -69,8 +69,8 @@ pub fn parse_tsv_rows(tsv: &str) -> Result<Vec<CurationInputRow>, CurationError>
             .and_then(|idx| fields.get(idx))
             .and_then(|value| normalize_doi(value));
         out.push(CurationInputRow {
-            name: (*name).to_string(),
-            smiles: (*smiles).to_string(),
+            name: (*name).into(),
+            smiles: (*smiles).into(),
             taxon,
             doi,
         });
@@ -143,10 +143,10 @@ mod tests {
     #[test]
     fn row_key_normalizes_taxon_and_doi() {
         let row = CurationInputRow {
-            name: "compound A".to_string(),
-            smiles: " CCO ".to_string(),
-            taxon: Some("  Voacanga africana ".to_string()),
-            doi: Some("https://doi.org/10.1000/abc".to_string()),
+            name: "compound A".into(),
+            smiles: " CCO ".into(),
+            taxon: Some("  Voacanga africana ".into()),
+            doi: Some("https://doi.org/10.1000/abc".into()),
         };
         assert_eq!(
             row_uniqueness_key(&row),
