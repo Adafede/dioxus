@@ -179,8 +179,7 @@ pub async fn resolve_reference_qids_batch<'a>(
         let Some(normalized) = normalize_doi(doi) else {
             continue;
         };
-        // `insert` borrows the key only if the value is already present,
-        // so we can use `contains` + `push` to avoid an unconditional clone.
+        // Keep only first occurrence per normalized DOI.
         if seen.insert(normalized.clone()) {
             normalized_dois.push(normalized);
         }
@@ -223,7 +222,7 @@ pub async fn resolve_reference_qids_batch<'a>(
 }
 
 fn build_taxon_lookup_query(lookups: &[(String, String)]) -> String {
-    let mut values = String::new();
+    let mut values = String::with_capacity(lookups.len() * 64);
     for (i, (lookup, taxon_name)) in lookups.iter().enumerate() {
         if i > 0 {
             values.push_str("\n    ");
