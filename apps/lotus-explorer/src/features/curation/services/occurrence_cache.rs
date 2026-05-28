@@ -44,8 +44,8 @@ pub async fn compound_has_taxon_cached(
     taxon_qid: &str,
 ) -> Result<bool, CurationError> {
     let key = AskCacheKey::Taxon {
-        compound_qid: compound_qid.to_string(),
-        taxon_qid: taxon_qid.to_string(),
+        compound_qid: compound_qid.into(),
+        taxon_qid: taxon_qid.into(),
     };
 
     if let Some(cached) = read_cached_ask(cache, &key) {
@@ -67,9 +67,9 @@ pub async fn compound_has_taxon_with_ref_cached(
     ref_qid: &str,
 ) -> Result<bool, CurationError> {
     let key = AskCacheKey::TaxonWithRef {
-        compound_qid: compound_qid.to_string(),
-        taxon_qid: taxon_qid.to_string(),
-        ref_qid: ref_qid.to_string(),
+        compound_qid: compound_qid.into(),
+        taxon_qid: taxon_qid.into(),
+        ref_qid: ref_qid.into(),
     };
 
     if let Some(cached) = read_cached_ask(cache, &key) {
