@@ -7,7 +7,7 @@ const QS_DEV_BATCH_NEW: &str = "https://qs-dev.toolforge.org/batch/new/?v1=";
 pub fn build_qs_dev_link(commands: &str) -> String {
     let trimmed = commands.trim();
     if trimmed.is_empty() {
-        return QS_DEV_HOME.to_string();
+        return QS_DEV_HOME.into();
     }
     format!("{QS_DEV_BATCH_NEW}{}", urlencoding::encode(trimmed))
 }
