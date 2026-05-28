@@ -30,5 +30,5 @@ fn requested_download_format(params: &QueryParams) -> String {
     params
         .get("format")
         .map(|value| value.to_ascii_lowercase())
-        .unwrap_or_else(|| "csv".to_string())
+        .unwrap_or_else(|| "csv".into())
 }
