@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+# Keep `clippy::multiple_crate_versions` enabled while acknowledging known
+# transitive duplicates from upstream dependency trees.
+allowed-duplicate-crates = [
+  "block-buffer",
+  "const-serialize",
+  "const-serialize-macro",
+  "convert_case",
+  "core-foundation",
+  "cpufeatures",
+  "crypto-common",
+  "digest",
+  "getrandom",
+  "gloo-timers",
+  "hashbrown",
+  "jni",
+  "jni-sys",
+  "r-efi",
+  "reqwest",
+  "rustc-hash",
+  "sha2",
+  "thiserror",
+  "thiserror-impl",
+  "tungstenite",
+  "windows-sys",
+  "windows-targets",
+  "windows_aarch64_gnullvm",
+  "windows_aarch64_msvc",
+  "windows_i686_gnu",
+  "windows_i686_gnullvm",
+  "windows_i686_msvc",
+  "windows_x86_64_gnu",
+  "windows_x86_64_gnullvm",
+  "windows_x86_64_msvc",
+  "winnow",
+  "wit-bindgen",
+]
+
