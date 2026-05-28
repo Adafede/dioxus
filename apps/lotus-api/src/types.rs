@@ -87,23 +87,27 @@ pub struct SearchRequest {
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
-#[allow(clippy::struct_field_names)]
 pub struct SearchStats {
-    pub(crate) n_compounds: usize,
-    pub(crate) n_taxa: usize,
-    pub(crate) n_references: usize,
-    pub(crate) n_entries: usize,
-    pub(crate) n_entries_unique: usize,
+    #[serde(rename = "n_compounds")]
+    pub(crate) compounds: usize,
+    #[serde(rename = "n_taxa")]
+    pub(crate) taxa: usize,
+    #[serde(rename = "n_references")]
+    pub(crate) references: usize,
+    #[serde(rename = "n_entries")]
+    pub(crate) entries: usize,
+    #[serde(rename = "n_entries_unique")]
+    pub(crate) unique_entries: usize,
 }
 
 impl From<DatasetStats> for SearchStats {
     fn from(value: DatasetStats) -> Self {
         Self {
-            n_compounds: value.n_compounds,
-            n_taxa: value.n_taxa,
-            n_references: value.n_references,
-            n_entries: value.n_entries,
-            n_entries_unique: value.n_entries_unique,
+            compounds: value.n_compounds,
+            taxa: value.n_taxa,
+            references: value.n_references,
+            entries: value.n_entries,
+            unique_entries: value.n_entries_unique,
         }
     }
 }

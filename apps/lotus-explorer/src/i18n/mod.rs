@@ -34,7 +34,6 @@ pub enum Locale {
 }
 
 impl Locale {
-    #[allow(clippy::missing_const_for_fn)]
     pub fn detect(lang_hint: &str) -> Self {
         let normalized = lang_hint.trim().to_ascii_lowercase();
         if normalized.starts_with("fr") {

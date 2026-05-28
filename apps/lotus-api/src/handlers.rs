@@ -52,34 +52,19 @@ pub async fn metrics(State(state): State<AppState>) -> Response {
         .expect("metrics response")
 }
 
-#[utoipa::path(
-    post,
-    path = "/v1/search",
-    request_body = SearchRequest,
-    responses(
-        (status = 200, description = "Search results", body = SearchResponse),
-        (status = 400, description = "Invalid request", body = ErrorResponse),
-        (status = 502, description = "Upstream SPARQL failure", body = ErrorResponse),
-        (status = 503, description = "Server overloaded", body = ErrorResponse),
-        (status = 504, description = "Search timeout", body = ErrorResponse)
-    )
-)]
-#[allow(clippy::too_many_lines)]
-pub async fn search(
-    State(state): State<AppState>,
-    Json(req): Json<SearchRequest>,
-) -> Result<Json<SearchResponse>, ApiError> {
-    let req_started = Instant::now();
-    let _permit = state.request_permits.try_acquire().map_err(|_| {
-        state
-            .metrics
-            .overload_rejections
-            .fetch_add(1, Ordering::Relaxed);
-        log::warn!("event=search state=rejected reason=overloaded");
-        ApiError::overloaded("Server is busy, retry shortly")
-    })?;
+struct PreparedSearchRequest {
+    execution_query: String,
+    resolved_taxon_qid: Option<String>,
+    warning: Option<String>,
+    limit: usize,
+    include_counts: bool,
+}
 
-    let mut criteria = apply_request(&req)?;
+async fn prepare_search_request(
+    state: &AppState,
+    req: &SearchRequest,
+) -> Result<PreparedSearchRequest, ApiError> {
+    let mut criteria = apply_request(req)?;
     if !criteria.is_valid() {
         return Err(ApiError::bad_request(
             "Either taxon or smiles/structure must be provided",
@@ -88,7 +73,7 @@ pub async fn search(
 
     let (resolved_taxon_qid, warning) = timeout(
         state.request_timeout,
-        resolve_taxon_qid_cached(&state, criteria.taxon.clone()),
+        resolve_taxon_qid_cached(state, criteria.taxon.clone()),
     )
     .await
     .map_err(|_| {
@@ -99,31 +84,41 @@ pub async fn search(
         log::warn!("event=search state=timeout phase=taxon");
         ApiError::upstream("taxon resolution timed out")
     })??;
+
     if let Some(qid) = resolved_taxon_qid.as_deref()
         && qid != "*"
     {
         criteria.taxon = qid.to_string();
     }
-    let execution_query = build_execution_query(&criteria, resolved_taxon_qid.as_deref());
-    let limit = req
-        .limit
-        .unwrap_or(state.default_limit)
-        .clamp(1, models::TABLE_ROW_LIMIT);
-    let include_counts = req.include_counts.unwrap_or(true);
-    log::info!(
-        "event=search state=start include_counts={} limit={} has_smiles={}",
-        include_counts,
-        limit,
-        !criteria.smiles.trim().is_empty(),
+
+    Ok(PreparedSearchRequest {
+        execution_query: build_execution_query(&criteria, resolved_taxon_qid.as_deref()),
+        resolved_taxon_qid,
+        warning,
+        limit: req
+            .limit
+            .unwrap_or(state.default_limit)
+            .clamp(1, models::TABLE_ROW_LIMIT),
+        include_counts: req.include_counts.unwrap_or(true),
+    })
+}
+
+async fn cached_search_response(
+    state: &AppState,
+    prepared: &PreparedSearchRequest,
+) -> Result<SearchResponse, ApiError> {
+    let cache_key = build_search_cache_key(
+        &prepared.execution_query,
+        prepared.limit,
+        prepared.include_counts,
     );
-    let cache_key = build_search_cache_key(&execution_query, limit, include_counts);
-    if let Some(cached) = search_cache_get(&state, &cache_key) {
+    if let Some(cached) = search_cache_get(state, &cache_key) {
         state
             .metrics
             .search_cache_hits
             .fetch_add(1, Ordering::Relaxed);
         log::debug!("event=search state=cache_hit");
-        return Ok(Json(cached));
+        return Ok(cached);
     }
     state
         .metrics
@@ -131,7 +126,7 @@ pub async fn search(
         .fetch_add(1, Ordering::Relaxed);
     log::debug!("event=search state=cache_miss");
 
-    let (cell, is_leader) = search_inflight_cell(&state, &cache_key);
+    let (cell, is_leader) = search_inflight_cell(state, &cache_key);
     if is_leader {
         state
             .metrics
@@ -145,18 +140,25 @@ pub async fn search(
             .fetch_add(1, Ordering::Relaxed);
         log::debug!("event=search state=coalesced_wait");
     }
+
     let metrics = state.metrics.clone();
     let request_timeout = state.request_timeout;
+    let execution_query = prepared.execution_query.clone();
+    let resolved_taxon_qid = prepared.resolved_taxon_qid.clone();
+    let warning = prepared.warning.clone();
+    let limit = prepared.limit;
+    let include_counts = prepared.include_counts;
+
     let response = cell
-        .get_or_init(|| async {
+        .get_or_init(|| async move {
             timeout(
                 request_timeout,
                 build_search_response(
                     &execution_query,
                     limit,
                     include_counts,
-                    resolved_taxon_qid.clone(),
-                    warning.clone(),
+                    resolved_taxon_qid,
+                    warning,
                 ),
             )
             .await
@@ -172,11 +174,161 @@ pub async fn search(
         })
         .await
         .clone();
-    search_inflight_remove(&state, &cache_key, &cell, is_leader);
+    search_inflight_remove(state, &cache_key, &cell, is_leader);
 
     match response {
         Ok(response) => {
-            search_cache_put(&state, cache_key, response.clone());
+            search_cache_put(state, cache_key, response.clone());
+            Ok(response)
+        }
+        Err(err) => Err(err.into()),
+    }
+}
+
+struct PreparedExportRequest {
+    query: String,
+    cache_key: String,
+}
+
+async fn prepare_export_request(
+    state: &AppState,
+    req: &SearchRequest,
+) -> Result<PreparedExportRequest, ApiError> {
+    let mut criteria = apply_request(req)?;
+    if !criteria.is_valid() {
+        return Err(ApiError::bad_request(
+            "Either taxon or smiles/structure must be provided",
+        ));
+    }
+
+    let (resolved_taxon_qid, _warning) = timeout(
+        state.request_timeout,
+        resolve_taxon_qid_cached(state, criteria.taxon.clone()),
+    )
+    .await
+    .map_err(|_| {
+        state
+            .metrics
+            .request_timeouts
+            .fetch_add(1, Ordering::Relaxed);
+        log::warn!("event=export state=timeout phase=taxon");
+        ApiError::upstream("taxon resolution timed out")
+    })??;
+
+    if let Some(qid) = resolved_taxon_qid.as_deref()
+        && qid != "*"
+    {
+        criteria.taxon = qid.to_string();
+    }
+
+    let query = build_execution_query(&criteria, resolved_taxon_qid.as_deref());
+    Ok(PreparedExportRequest {
+        cache_key: build_export_cache_key(&query),
+        query,
+    })
+}
+
+async fn cached_export_urls(
+    state: &AppState,
+    prepared: &PreparedExportRequest,
+) -> Result<ExportUrlResponse, ApiError> {
+    if let Some(cached) = export_cache_get(state, &prepared.cache_key) {
+        state
+            .metrics
+            .export_cache_hits
+            .fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=export state=cache_hit");
+        return Ok(cached);
+    }
+    state
+        .metrics
+        .export_cache_misses
+        .fetch_add(1, Ordering::Relaxed);
+    log::debug!("event=export state=cache_miss");
+
+    let (cell, is_leader) = export_inflight_cell(state, &prepared.cache_key);
+    if is_leader {
+        state
+            .metrics
+            .export_upstream_hits
+            .fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=export state=upstream_hit");
+    } else {
+        state
+            .metrics
+            .export_inflight_waits
+            .fetch_add(1, Ordering::Relaxed);
+        log::debug!("event=export state=coalesced_wait");
+    }
+
+    let query = prepared.query.clone();
+    let cache_key = prepared.cache_key.clone();
+    let response = cell
+        .get_or_init(|| async move {
+            Ok::<_, SharedApiError>(ExportUrlResponse {
+                csv_url: qlever_export_url(&query, "csv_export"),
+                json_url: qlever_export_url(&query, "qlever_json_export"),
+                rdf_url: qlever_export_url(
+                    &shared::lotus::queries::query_construct_from_select(&query),
+                    "turtle_export",
+                ),
+                csv_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Csv),
+                json_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Json),
+                rdf_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Rdf),
+                query,
+            })
+        })
+        .await
+        .clone();
+    export_inflight_remove(state, &prepared.cache_key, &cell, is_leader);
+
+    match response {
+        Ok(response) => {
+            export_cache_put(state, prepared.cache_key.clone(), response.clone());
+            Ok(response)
+        }
+        Err(err) => Err(err.into()),
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/search",
+    request_body = SearchRequest,
+    responses(
+        (status = 200, description = "Search results", body = SearchResponse),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 502, description = "Upstream SPARQL failure", body = ErrorResponse),
+        (status = 503, description = "Server overloaded", body = ErrorResponse),
+        (status = 504, description = "Search timeout", body = ErrorResponse)
+    )
+)]
+pub async fn search(
+    State(state): State<AppState>,
+    Json(req): Json<SearchRequest>,
+) -> Result<Json<SearchResponse>, ApiError> {
+    let req_started = Instant::now();
+    let _permit = state.request_permits.try_acquire().map_err(|_| {
+        state
+            .metrics
+            .overload_rejections
+            .fetch_add(1, Ordering::Relaxed);
+        log::warn!("event=search state=rejected reason=overloaded");
+        ApiError::overloaded("Server is busy, retry shortly")
+    })?;
+
+    let prepared = prepare_search_request(&state, &req).await?;
+    log::info!(
+        "event=search state=start include_counts={} limit={} has_smiles={}",
+        prepared.include_counts,
+        prepared.limit,
+        req.smiles
+            .as_deref()
+            .is_some_and(|smiles| !smiles.trim().is_empty()),
+    );
+
+    match cached_search_response(&state, &prepared).await {
+        Ok(response) => {
             log::info!(
                 "event=search state=success elapsed_ms={:.1} rows={} total_matches={}",
                 req_started.elapsed().as_secs_f64() * 1000.0,
@@ -209,7 +361,6 @@ pub async fn search(
         (status = 504, description = "Taxon-resolution timeout", body = ErrorResponse)
     )
 )]
-#[allow(clippy::too_many_lines)]
 pub async fn export_urls(
     State(state): State<AppState>,
     Json(req): Json<SearchRequest>,
@@ -224,85 +375,11 @@ pub async fn export_urls(
         ApiError::overloaded("Server is busy, retry shortly")
     })?;
 
-    let mut criteria = apply_request(&req)?;
-    if !criteria.is_valid() {
-        return Err(ApiError::bad_request(
-            "Either taxon or smiles/structure must be provided",
-        ));
-    }
-
-    let (resolved_taxon_qid, _warning) = timeout(
-        state.request_timeout,
-        resolve_taxon_qid_cached(&state, criteria.taxon.clone()),
-    )
-    .await
-    .map_err(|_| {
-        state
-            .metrics
-            .request_timeouts
-            .fetch_add(1, Ordering::Relaxed);
-        log::warn!("event=export state=timeout phase=taxon");
-        ApiError::upstream("taxon resolution timed out")
-    })??;
-    if let Some(qid) = resolved_taxon_qid.as_deref()
-        && qid != "*"
-    {
-        criteria.taxon = qid.to_string();
-    }
-    let query = build_execution_query(&criteria, resolved_taxon_qid.as_deref());
-    let cache_key = build_export_cache_key(&query);
+    let prepared = prepare_export_request(&state, &req).await?;
     log::info!("event=export state=start");
 
-    if let Some(cached) = export_cache_get(&state, &cache_key) {
-        state
-            .metrics
-            .export_cache_hits
-            .fetch_add(1, Ordering::Relaxed);
-        log::debug!("event=export state=cache_hit");
-        return Ok(Json(cached));
-    }
-    state
-        .metrics
-        .export_cache_misses
-        .fetch_add(1, Ordering::Relaxed);
-    log::debug!("event=export state=cache_miss");
-
-    let (cell, is_leader) = export_inflight_cell(&state, &cache_key);
-    if is_leader {
-        state
-            .metrics
-            .export_upstream_hits
-            .fetch_add(1, Ordering::Relaxed);
-        log::debug!("event=export state=upstream_hit");
-    } else {
-        state
-            .metrics
-            .export_inflight_waits
-            .fetch_add(1, Ordering::Relaxed);
-        log::debug!("event=export state=coalesced_wait");
-    }
-    let response = cell
-        .get_or_init(|| async {
-            Ok::<_, SharedApiError>(ExportUrlResponse {
-                csv_url: qlever_export_url(&query, "csv_export"),
-                json_url: qlever_export_url(&query, "qlever_json_export"),
-                rdf_url: qlever_export_url(
-                    &shared::lotus::queries::query_construct_from_select(&query),
-                    "turtle_export",
-                ),
-                csv_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Csv),
-                json_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Json),
-                rdf_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Rdf),
-                query,
-            })
-        })
-        .await
-        .clone();
-    export_inflight_remove(&state, &cache_key, &cell, is_leader);
-
-    match response {
+    match cached_export_urls(&state, &prepared).await {
         Ok(response) => {
-            export_cache_put(&state, cache_key, response.clone());
             log::info!(
                 "event=export state=success elapsed_ms={:.1}",
                 req_started.elapsed().as_secs_f64() * 1000.0,

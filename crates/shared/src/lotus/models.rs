@@ -35,52 +35,51 @@ pub const DEFAULT_YEAR_MIN: u16 = 1800;
 
 pub type Rows = Arc<[CompoundEntry]>;
 
+#[cfg(target_arch = "wasm32")]
 #[must_use]
-#[allow(clippy::missing_const_for_fn)]
 pub fn runtime_table_row_limit() -> usize {
-    #[cfg(target_arch = "wasm32")]
-    {
-        // Keep wasm conservative by default while still scaling on capable devices.
-        let mut limit = 500usize;
-        if let Some(win) = web_sys::window() {
-            let win_js = wasm_bindgen::JsValue::from(win);
-            if let Ok(nav) =
-                js_sys::Reflect::get(&win_js, &wasm_bindgen::JsValue::from_str("navigator"))
+    // Keep wasm conservative by default while still scaling on capable devices.
+    let mut limit = 500usize;
+    if let Some(win) = web_sys::window() {
+        let win_js = wasm_bindgen::JsValue::from(win);
+        if let Ok(nav) =
+            js_sys::Reflect::get(&win_js, &wasm_bindgen::JsValue::from_str("navigator"))
+        {
+            if let Ok(mem) =
+                js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("deviceMemory"))
+                && let Some(gb) = mem.as_f64()
             {
-                if let Ok(mem) =
-                    js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("deviceMemory"))
-                    && let Some(gb) = mem.as_f64()
-                {
-                    if gb <= 2.0 {
-                        limit = 220;
-                    } else if gb <= 4.0 {
-                        limit = 360;
-                    } else if gb >= 8.0 {
-                        limit = 800;
-                    }
+                if gb <= 2.0 {
+                    limit = 220;
+                } else if gb <= 4.0 {
+                    limit = 360;
+                } else if gb >= 8.0 {
+                    limit = 800;
                 }
+            }
 
-                if let Ok(ua) =
-                    js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("userAgent"))
-                    && let Some(ua) = ua.as_string()
-                {
-                    let ua = ua.to_ascii_lowercase();
-                    let mobile = ua.contains("iphone")
-                        || ua.contains("ipad")
-                        || ua.contains("android")
-                        || ua.contains("mobile");
-                    if mobile {
-                        limit = limit.min(280);
-                    }
+            if let Ok(ua) =
+                js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("userAgent"))
+                && let Some(ua) = ua.as_string()
+            {
+                let ua = ua.to_ascii_lowercase();
+                let mobile = ua.contains("iphone")
+                    || ua.contains("ipad")
+                    || ua.contains("android")
+                    || ua.contains("mobile");
+                if mobile {
+                    limit = limit.min(280);
                 }
             }
         }
-        limit.clamp(180, TABLE_ROW_LIMIT)
     }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        TABLE_ROW_LIMIT
-    }
+    limit.clamp(180, TABLE_ROW_LIMIT)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[must_use]
+pub const fn runtime_table_row_limit() -> usize {
+    TABLE_ROW_LIMIT
 }
 
 pub fn current_year() -> u16 {
