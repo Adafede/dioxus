@@ -365,8 +365,14 @@ async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>,
 }
 
 fn build_sparql_form_body(sparql: &str, format: SparqlResponseFormat) -> String {
-    let mut body = format!("query={}", urlencoding::encode(sparql));
-    if let Some(action) = format.action() {
+    let encoded = urlencoding::encode(sparql);
+    // "query=" + encoded + optional "&action=<name>"
+    let action = format.action();
+    let capacity = 6 + encoded.len() + action.map_or(0, |a| 8 + a.len());
+    let mut body = String::with_capacity(capacity);
+    body.push_str("query=");
+    body.push_str(&encoded);
+    if let Some(action) = action {
         body.push_str("&action=");
         body.push_str(action);
     }
@@ -499,12 +505,18 @@ fn parse_json_exception_field(input: &str) -> Option<String> {
 }
 
 fn truncate_chars(text: &str, max_chars: usize) -> String {
-    if text.chars().count() <= max_chars {
-        return text.to_string();
+    // Single forward scan: find the byte position after `max_chars` codepoints.
+    let mut chars = text.char_indices();
+    match chars.nth(max_chars) {
+        // Fewer than max_chars codepoints — no truncation needed.
+        None => text.to_string(),
+        Some((byte_pos, _)) => {
+            let mut out = String::with_capacity(byte_pos + 4); // 4 bytes for '…'
+            out.push_str(&text[..byte_pos]);
+            out.push('…');
+            out
+        }
     }
-    let mut out = text.chars().take(max_chars).collect::<String>();
-    out.push('…');
-    out
 }
 
 // ── CSV helpers ───────────────────────────────────────────────────────────────
@@ -531,8 +543,6 @@ pub fn field(record: &csv::StringRecord, idx: Option<usize>) -> &str {
 /// [`WIKIDATA_ENTITY_BASE`]: crate::lotus::models::WIKIDATA_ENTITY_BASE
 pub fn extract_qid(s: &str) -> String {
     use crate::lotus::models::WIKIDATA_ENTITY_BASE;
-    // The HTTPS form is identical except for the scheme — Wikidata canonical
-    // URIs use `http://`, but some serialisations emit `https://`.
     const WIKIDATA_ENTITY_BASE_HTTPS: &str = "https://www.wikidata.org/entity/";
 
     let candidate = s
@@ -541,7 +551,10 @@ pub fn extract_qid(s: &str) -> String {
         .unwrap_or(s)
         .trim();
 
-    if candidate.starts_with('Q') && candidate[1..].chars().all(|c| c.is_ascii_digit()) {
+    // All QID characters are ASCII — check bytes instead of chars to avoid
+    // the full Unicode iterator overhead.
+    let bytes = candidate.as_bytes();
+    if bytes.first() == Some(&b'Q') && bytes[1..].iter().all(u8::is_ascii_digit) && bytes.len() > 1 {
         candidate.to_string()
     } else {
         String::new()
