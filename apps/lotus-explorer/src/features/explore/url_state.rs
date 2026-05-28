@@ -35,7 +35,7 @@ pub fn absolute_share_url(share: &str) -> String {
             }
         }
     }
-    share.to_string()
+    share.into()
 }
 
 pub fn absolute_current_url_with_query(query: &str) -> String {
@@ -56,14 +56,14 @@ pub fn persist_locale_query_param(locale: Locale) {
     {
         let mut params = read_url_query_params();
         params.insert(
-            "lang".to_string(),
+            "lang".into(),
             match locale {
                 Locale::En => "en",
                 Locale::Fr => "fr",
                 Locale::De => "de",
                 Locale::It => "it",
             }
-            .to_string(),
+            .into(),
         );
         let query = build_query_string(&params);
         let url = absolute_current_url_with_query(&query);
@@ -90,9 +90,11 @@ pub fn persist_view_query_param(view: AppView) {
         }
         let query = build_query_string(&params);
         let url = if query.is_empty() {
-            absolute_current_url_with_query("")
-                .trim_end_matches('?')
-                .to_string()
+            let mut url = absolute_current_url_with_query("");
+            if url.ends_with('?') {
+                url.pop();
+            }
+            url
         } else {
             absolute_current_url_with_query(&query)
         };
@@ -128,10 +130,10 @@ pub fn read_url_query_params() -> BTreeMap<String, String> {
             let val = parts.next().unwrap_or_default();
             let key_decoded = urlencoding::decode(key)
                 .map(|v| v.into_owned())
-                .unwrap_or_else(|_| key.to_string());
+                .unwrap_or_else(|_| key.into());
             let val_decoded = urlencoding::decode(val)
                 .map(|v| v.into_owned())
-                .unwrap_or_else(|_| val.to_string());
+                .unwrap_or_else(|_| val.into());
             out.insert(key_decoded, val_decoded);
         }
         out
