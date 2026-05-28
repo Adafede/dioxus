@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! Application configuration management from environment variables.
+//!
+//! Handles initialization of server settings, resource limits, and CORS policy
+//! with sensible defaults and validation.
+
 use axum::http::HeaderValue;
 use std::{net::SocketAddr, time::Duration};
 use tower_http::cors::{Any, CorsLayer};
