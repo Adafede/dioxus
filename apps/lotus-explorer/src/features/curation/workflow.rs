@@ -31,20 +31,21 @@ pub fn format_curation_error(locale: Locale, detail: &str) -> String {
         || detail.contains("rate limited")
         || detail.contains("10 per 1 minute")
     {
-        return msg_curation_rate_limited(locale).to_string();
+        return msg_curation_rate_limited(locale).into();
     }
 
     msg_curation_failed(locale, detail)
 }
 
 pub fn format_curation_error_typed(locale: Locale, err: &CurationError) -> String {
+    let detail = err.to_string();
     if matches!(err.kind(), CurationErrorKind::Transport) {
-        return format_curation_error(locale, &err.to_string());
+        return format_curation_error(locale, &detail);
     }
     if !err.is_recoverable() {
-        return msg_curation_failed(locale, &err.to_string());
+        return msg_curation_failed(locale, &detail);
     }
-    msg_curation_failed(locale, &err.to_string())
+    msg_curation_failed(locale, &detail)
 }
 
 pub async fn run_curation(
@@ -106,7 +107,7 @@ pub fn apply_second_pass(
     let status_message = if awaiting_second_pass {
         msg_second_pass_still_pending_count(locale, pending_count)
     } else {
-        msg_second_pass_done(locale).to_string()
+        msg_second_pass_done(locale).into()
     };
 
     SecondPassOutcome {
