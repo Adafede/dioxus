@@ -128,7 +128,7 @@ fn immediate_resolution(taxon: &str) -> Option<TaxonResolution> {
             warning: None,
         }),
         "*" => Some(TaxonResolution {
-            qid: Some("*".to_string()),
+            qid: Some("*".into()),
             warning: None,
         }),
         _ => None,
