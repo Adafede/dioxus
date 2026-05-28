@@ -103,10 +103,10 @@ fn read_curation_url_query_params() -> BTreeMap<String, String> {
             let value = parts.next().unwrap_or_default();
             let key = urlencoding::decode(key)
                 .map(|decoded| decoded.into_owned())
-                .unwrap_or_else(|_| key.to_string());
+                .unwrap_or_else(|_| key.into());
             let value = urlencoding::decode(value)
                 .map(|decoded| decoded.into_owned())
-                .unwrap_or_else(|_| value.to_string());
+                .unwrap_or_else(|_| value.into());
             out.insert(key, value);
         }
         out
