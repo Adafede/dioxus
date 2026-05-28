@@ -15,7 +15,12 @@ use crate::services::search_telemetry as telemetry;
 /// * Plain SMILES strings are trimmed; molfile blocks retain their leading
 ///   whitespace because some parsers are sensitive to it.
 pub fn normalize_smiles(raw: &str) -> String {
-    let normalized = raw.replace("\r\n", "\n").replace('\r', "\n");
+    // Fast path: skip allocation when no carriage returns are present (common case).
+    let normalized = if raw.contains('\r') {
+        raw.replace("\r\n", "\n").replace('\r', "\n")
+    } else {
+        raw.to_owned()
+    };
     let kind = queries::classify_structure(&normalized);
     if matches!(
         kind,
