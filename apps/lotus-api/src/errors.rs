@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! Error handling and HTTP response mapping for LOTUS API endpoints.
+//!
+//! This module provides a consistent error abstraction layer that maps
+//! internal errors to appropriate HTTP status codes and JSON responses.
+
 use axum::{Json, http::StatusCode, response::IntoResponse, response::Response};
 use serde::Serialize;
 use utoipa::ToSchema;
