@@ -67,7 +67,7 @@ pub(super) fn normalize_doi(value: &str) -> Option<String> {
     Some(canonical.to_ascii_uppercase())
 }
 
-fn find_ascii_ci(haystack: &str, needle: &[u8]) -> Option<usize> {
+pub(super) fn find_ascii_ci(haystack: &str, needle: &[u8]) -> Option<usize> {
     let hb = haystack.as_bytes();
     if needle.is_empty() || hb.len() < needle.len() {
         return None;

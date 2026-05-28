@@ -17,7 +17,7 @@ pub enum DispatchPhase {
     Ready {
         /// Criteria snapshot embedded in download metadata.
         ///
-        /// Only materialised on WASM targets — desktop builds don't embed
+        /// Only materialized on WASM targets — desktop builds don't embed
         /// metadata in files so the clone is skipped entirely.
         #[cfg(target_arch = "wasm32")]
         criteria: Arc<SearchCriteria>,

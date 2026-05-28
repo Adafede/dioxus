@@ -11,7 +11,7 @@ pub(super) struct QueryExportPlan<'a> {
     pub query: Cow<'a, str>,
 }
 
-pub(super) fn query_export_plan<'a>(format: DownloadFormat, query: &'a str) -> QueryExportPlan<'a> {
+pub(super) fn query_export_plan(format: DownloadFormat, query: &str) -> QueryExportPlan<'_> {
     match format {
         DownloadFormat::Csv => QueryExportPlan {
             #[cfg(target_arch = "wasm32")]

@@ -86,7 +86,7 @@ pub struct DownloadState {
 pub struct MetricsState {
     /// We already logged "waiting for loading to finish" this dispatch cycle.
     pub waiting_loading_logged: bool,
-    /// We already logged "waiting for SPARQL query to materialise" this cycle.
+    /// We already logged "waiting for SPARQL query to materialize" this cycle.
     pub waiting_query_logged: bool,
 }
 
@@ -134,7 +134,7 @@ mod tests {
 
     // Phase 2 Integration regression tests: verify that AppState no longer
     // contains the removed SearchState / UiState mirror fields that caused the
-    // sync-effect anti-pattern.
+    // sync-effect antipattern.
 
     #[test]
     fn app_state_has_no_search_or_ui_mirror_fields() {

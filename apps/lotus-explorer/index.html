@@ -164,7 +164,7 @@
                 }
 
                 function stripStereoFromSmiles(smiles) {
-                    // Remove @/@@ stereo centres and / \ double-bond stereo designators so
+                    // Remove @/@@ stereo centers and / \ double-bond stereo designators so
                     // the result is suitable for Wikidata P233 (canonical, non-isomeric SMILES).
                     // [C@H] → [CH], C/C=C/C → CC=CC, etc.
                     return smiles.replace(/@{1,2}/g, "").replace(/[/\\]/g, "");

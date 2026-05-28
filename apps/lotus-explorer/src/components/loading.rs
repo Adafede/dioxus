@@ -55,7 +55,7 @@ pub fn DownloadDispatchState() -> Element {
 }
 
 /// Notice shown when the URL triggered a download-only mode but the SPARQL
-/// query has not materialised yet, offering the user a "Run search" escape.
+/// query has not materialized yet, offering the user a "Run search" escape.
 #[component]
 pub fn DownloadOnlyState() -> Element {
     let locale = crate::hooks::use_locale();

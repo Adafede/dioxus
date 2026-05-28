@@ -7,7 +7,7 @@
 //!
 //! This module previously defined `AppError`, `ErrorKind`, and `ValidationError`
 //! as an intermediate error layer between `ApiClientError` and `RepositoryError`.
-//! That layer was removed in favour of a direct `From<ApiClientError>` implementation
+//! That layer was removed in favor of a direct `From<ApiClientError>` implementation
 //! on `RepositoryError`, which reduces the conversion chain from 4 hops to 2:
 //!
 //! **Before:** `ApiClientError → AppError → RepositoryError → DomainError`

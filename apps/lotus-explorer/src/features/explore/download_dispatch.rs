@@ -7,7 +7,7 @@
 //! 1. **Startup Effect**: Decides whether to auto-trigger search based on URL parameters.
 //! 2. **Dispatch Effect**: Monitors search progress and coordinates the download phase once results ready.
 //!
-//! See [`super::download_effects`] for pure business logic separated from Dioxus hooks.
+//! See [`download_effects`] for pure business logic separated from Dioxus hooks.
 
 use crate::app_state::AppState;
 use crate::download::execute_download;

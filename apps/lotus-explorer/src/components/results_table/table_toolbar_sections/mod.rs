@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Sub-components for the ResultsTable toolbar sections.
+//! Subcomponents for the ResultsTable toolbar sections.
 //!
-//! Each sub-module owns exactly one visual concern:
+//! Each submodule owns exactly one visual concern:
 //! * [`stat_bar`] — dataset statistics badges and the capped-rows notice
 //! * [`download_actions`] — download button group (CSV, JSON, RDF, metadata) and QLever link
 //! * [`query_panel`] — SPARQL query display panel with copy functionality

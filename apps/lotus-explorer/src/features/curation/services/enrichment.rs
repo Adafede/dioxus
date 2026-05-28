@@ -17,7 +17,7 @@ pub async fn curate_single_row(
     prefetched_references: Arc<HashMap<String, String>>,
     occurrence_ask_cache: Arc<Mutex<OccurrenceAskCache>>,
 ) -> CurationResultRow {
-    match enrich_and_generate(
+    enrich_and_generate(
         locale,
         &input,
         repository.as_ref(),
@@ -25,24 +25,20 @@ pub async fn curate_single_row(
         prefetched_references.as_ref(),
         occurrence_ask_cache.as_ref(),
     )
-    .await
-    {
-        Ok(result) => result,
-        Err(err) => CurationResultRow {
-            input,
-            canonical_smiles: None,
-            inchikey: None,
-            inchi: None,
-            formula: None,
-            exact_mass: None,
-            mass_warning: None,
-            wikidata_qid: None,
-            status: CurationStatus::Error,
-            note: err.to_string(),
-            dependency_blocks: Vec::new(),
-            quickstatements: Vec::new(),
-        },
-    }
+        .await.unwrap_or_else(|err| CurationResultRow {
+        input,
+        canonical_smiles: None,
+        inchikey: None,
+        inchi: None,
+        formula: None,
+        exact_mass: None,
+        mass_warning: None,
+        wikidata_qid: None,
+        status: CurationStatus::Error,
+        note: err.to_string(),
+        dependency_blocks: Vec::new(),
+        quickstatements: Vec::new(),
+    })
 }
 
 async fn enrich_and_generate(

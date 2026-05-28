@@ -181,20 +181,20 @@ pub(super) async fn resolve_exact_mass(
         },
         Err(canonical_err) => {
             if canonical_smiles.trim() != input_smiles.trim() {
-                match descriptor_mass(input_smiles).await {
+                return match descriptor_mass(input_smiles).await {
                     Ok(value) => {
-                        return MassResolution {
+                        MassResolution {
                             exact_mass: Some(value),
                             warning: None,
-                        };
+                        }
                     }
                     Err(_input_err) => {
-                        return MassResolution {
+                        MassResolution {
                             exact_mass: None,
                             warning: Some(format!(
                                 "Mass unavailable - service limit: {canonical_err}"
                             )),
-                        };
+                        }
                     }
                 }
             }

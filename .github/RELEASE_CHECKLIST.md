@@ -59,13 +59,13 @@ Wait for all CI jobs to pass on the tagged commit:
 - `fmt`
 - `supply-chain`
 
-**Do not publish Docker images or Pages artefacts until all jobs are green.**
+**Do not publish Docker images or Pages artifacts until all jobs are green.**
 
 ---
 
 ## 6. Docker image (lotus-api)
 
-The deploy pipeline builds and pushes automatically on `main`. Verify the
+The pipeline builds and pushes automatically on `main`. Verify the
 image tag exists before advertising it:
 
 ```bash
@@ -80,7 +80,7 @@ docker pull ghcr.io/YOUR_ORG/lotus-api:vX.Y.Z
 - Create a new release on the forge, pointing at the signed tag.
 - Title: `vX.Y.Z`
 - Body: paste the relevant `CHANGELOG.md` section.
-- Attach any binary artefacts if applicable.
+- Attach any binary artifacts if applicable.
 
 ---
 

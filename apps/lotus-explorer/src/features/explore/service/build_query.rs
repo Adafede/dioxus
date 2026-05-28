@@ -9,7 +9,7 @@ use crate::models::{SearchCriteria, SmilesSearchType};
 use crate::queries;
 use crate::services::search_telemetry as telemetry;
 
-/// Normalise a raw SMILES/Molfile string from the criteria.
+/// Normalize a raw SMILES/Molfile string from the criteria.
 ///
 /// * Line endings are unified to `\n`.
 /// * Plain SMILES strings are trimmed; molfile blocks retain their leading

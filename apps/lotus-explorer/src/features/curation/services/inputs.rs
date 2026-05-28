@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::features::curation::domain::{CurationError, CurationInputRow};
+use super::helpers::find_ascii_ci;
 
 pub fn example_rows() -> Vec<CurationInputRow> {
     vec![
@@ -139,17 +140,6 @@ fn normalize_doi(value: &str) -> Option<String> {
     Some(canonical.to_ascii_uppercase())
 }
 
-fn find_ascii_ci(haystack: &str, needle: &[u8]) -> Option<usize> {
-    let hb = haystack.as_bytes();
-    if needle.is_empty() || hb.len() < needle.len() {
-        return None;
-    }
-    hb.windows(needle.len()).position(|w| {
-        w.iter()
-            .zip(needle)
-            .all(|(a, b)| a.eq_ignore_ascii_case(b))
-    })
-}
 
 fn non_empty(value: &str) -> Option<&str> {
     let trimmed = value.trim();

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
-
-#[cfg(not(target_arch = "wasm32"))]
-use crate::features::curation::domain::NATPROD_API_BASE;
-use crate::features::curation::domain::{
+pub(super) use crate::features::curation::domain::{
     CURATION_SPARQL_PREFIXES, CurationError, CurationInputRow, CurationResultRow, CurationStatus,
     DependencyResolution, MassResolution, WD_CHEMICAL_COMPOUND_QID, WD_OCCURS_IN_TAXON_PROP,
     WD_STEREOISOMER_GROUP_QID, WD_TAXON_QID, WD_TYPE_CHEMICAL_ENTITY_QID, WikidataCompound,
 };
+#[cfg(not(target_arch = "wasm32"))]
+pub(super) use crate::features::curation::domain::NATPROD_API_BASE;
 use crate::i18n::{
     Locale, curation_note_dependencies_pending, curation_note_existing_complete,
     curation_note_existing_updates, curation_note_new_compound, curation_pending_reference,

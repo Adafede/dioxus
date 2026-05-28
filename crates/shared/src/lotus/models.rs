@@ -370,7 +370,7 @@ impl std::str::FromStr for ElementState {
     /// Parse a case-sensitive element-state string.
     ///
     /// Accepts `"required"` and `"excluded"`; all other values (including
-    /// `"allowed"` and unrecognised strings) map to [`ElementState::Allowed`].
+    /// `"allowed"` and unrecognized strings) map to [`ElementState::Allowed`].
     /// This is intentionally infallible so URL parameters can always be decoded
     /// without propagating parse errors through the call stack.
     fn from_str(value: &str) -> Result<Self, Self::Err> {

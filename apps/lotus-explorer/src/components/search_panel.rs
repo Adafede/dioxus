@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Search panel and its sub-section components.
+//! Search panel and its subsection components.
 //!
 //! ## Architecture
 //!
 //! `SearchPanel` is now extremely thin — it owns only two concerns:
 //! * Presenting the search button (loading state + dirty indicator).
-//! * Delegating form sections to context-aware sub-components.
+//! * Delegating form sections to context-aware subcomponents.
 //!
 //! Every form section (`TaxonInput`, `StructureSection`, `MassRangeInput`,
 //! `YearRangeInput`, `FormulaSection`) reads and writes `FormCriteriaContext`

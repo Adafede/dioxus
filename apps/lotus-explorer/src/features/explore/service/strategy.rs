@@ -20,7 +20,7 @@ impl ExecutionStrategy {
     /// Choose a strategy from the `direct_download` flag.
     ///
     /// When the user triggered a download-only mode (`direct_download = true`)
-    /// we build the query but never fetch results.  Otherwise we prefer the
+    /// we build the query but never fetch results. Otherwise, we prefer the
     /// fast REST API path (`ApiFirst`).
     pub const fn resolve(direct_download: bool) -> Self {
         if direct_download {

@@ -42,7 +42,7 @@ pub fn ResultsViewport() -> Element {
         // Error state: `ErrorNotice` (rendered above this viewport in the page
         // layout) already shows the full typed error with dismiss + retry
         // actions.  Rendering a second error message here would be redundant
-        // and could clash with localised notice text, so we intentionally yield
+        // and could clash with localized notice text, so we intentionally yield
         // an empty fragment and let the notice carry the UX weight.
         ContentPhase::Error => rsx! {},
         ContentPhase::Empty => rsx! {

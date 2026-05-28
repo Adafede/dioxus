@@ -549,7 +549,7 @@ pub fn field(record: &csv::StringRecord, idx: Option<usize>) -> &str {
 /// * HTTPS variant:        `https://www.wikidata.org/entity/Q12345`
 /// * Bare QIDs:            `Q12345`
 ///
-/// Returns an empty string for any unrecognised format.
+/// Returns an empty string for any unrecognized format.
 ///
 /// [`WIKIDATA_ENTITY_BASE`]: crate::lotus::models::WIKIDATA_ENTITY_BASE
 pub fn extract_qid(s: &str) -> String {

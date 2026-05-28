@@ -35,7 +35,7 @@ fn ElemStateSelect(
     }
 }
 
-/// Formula element count range pair component (C, H, N, etc).
+/// Formula element count range pair component (C, H, N, etc.).
 #[component]
 fn NumPair(
     label: &'static str,

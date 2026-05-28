@@ -82,7 +82,7 @@ mod tests {
         }
     }
 
-    impl crate::repositories::LotusRepository for StubRepo {
+    impl LotusRepository for StubRepo {
         async fn api_search(
             &self,
             criteria: &SearchCriteria,
