@@ -75,12 +75,13 @@ pub(super) async fn rdkit_bridge_call(
         .call1(&bridge, &JsValue::from_str(smiles))
         .map_err(|err| CurationError::Http(format!("rdkit.js {method} call failed: {err:?}")))?;
 
-    if let Ok(promise) = result.clone().dyn_into::<Promise>() {
-        JsFuture::from(promise)
+    // `dyn_into` consumes `result` and returns `Err(original)` on type mismatch,
+    // so we can avoid cloning by matching on the returned value.
+    match result.dyn_into::<Promise>() {
+        Ok(promise) => JsFuture::from(promise)
             .await
-            .map_err(|err| CurationError::Http(format!("rdkit.js {method} failed: {err:?}")))
-    } else {
-        Ok(result)
+            .map_err(|err| CurationError::Http(format!("rdkit.js {method} failed: {err:?}"))),
+        Err(val) => Ok(val),
     }
 }
 
