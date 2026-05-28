@@ -54,3 +54,16 @@ strip = "symbols"
 lto = "fat"
 panic = "abort"
 codegen-units = 1
+
+# ── Benchmarking profile — optimized but with symbols for profiling ─────────
+[profile.bench]
+inherits = "release"
+debug = true
+strip = "none"
+codegen-units = 16
+
+# ── Testing profile — faster compilation, better diagnostics ─────────────────
+[profile.test]
+opt-level = 1
+lto = "thin"
+
