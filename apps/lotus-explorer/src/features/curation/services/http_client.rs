@@ -47,19 +47,19 @@ pub(super) async fn rdkit_bridge_call(
     smiles: &str,
 ) -> Result<JsValue, CurationError> {
     let window = web_sys::window().ok_or_else(|| {
-        CurationError::Http("window is unavailable; rdkit.js bridge cannot be used".to_string())
+        CurationError::Http("window is unavailable; rdkit.js bridge cannot be used".into())
     })?;
     let window_value = JsValue::from(window);
     let bridge = Reflect::get(&window_value, &JsValue::from_str("__lotusRdkit"))
-        .map_err(|_| CurationError::Http("rdkit.js bridge lookup failed".to_string()))?;
+        .map_err(|_| CurationError::Http("rdkit.js bridge lookup failed".into()))?;
     if bridge.is_null() || bridge.is_undefined() {
         return Err(CurationError::Http(
-            "rdkit.js bridge is unavailable; ensure RDKit assets are loaded".to_string(),
+            "rdkit.js bridge is unavailable; ensure RDKit assets are loaded".into(),
         ));
     }
 
     let ready = Reflect::get(&bridge, &JsValue::from_str("ready"))
-        .map_err(|_| CurationError::Http("rdkit.js readiness promise missing".to_string()))?;
+        .map_err(|_| CurationError::Http("rdkit.js readiness promise missing".into()))?;
     if let Ok(promise) = ready.dyn_into::<Promise>() {
         JsFuture::from(promise).await.map_err(|err| {
             CurationError::Http(format!("rdkit.js failed to initialize: {err:?}"))
@@ -91,7 +91,7 @@ pub(super) fn js_value_to_json(value: JsValue) -> Result<Value, CurationError> {
         .ok()
         .and_then(|s| s.as_string())
         .ok_or_else(|| {
-            CurationError::Parse("rdkit.js returned a non-serializable value".to_string())
+            CurationError::Parse("rdkit.js returned a non-serializable value".into())
         })?;
     serde_json::from_str(&text)
         .map_err(|e| CurationError::Parse(format!("rdkit.js JSON parse error: {e}")))
