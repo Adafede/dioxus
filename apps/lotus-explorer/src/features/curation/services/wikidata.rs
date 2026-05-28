@@ -4,6 +4,13 @@
 use super::*;
 use std::collections::{HashMap, HashSet};
 
+async fn execute_sparql_json(query: &str) -> Result<Value, CurationError> {
+    let raw = execute_sparql_format(query, SparqlResponseFormat::SparqlJson)
+        .await
+        .map_err(|e| CurationError::Http(e.to_string()))?;
+    serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))
+}
+
 pub async fn fetch_wikidata_compound_by_inchikey(
     inchikey: &str,
 ) -> Result<Option<WikidataCompound>, CurationError> {
@@ -19,12 +26,7 @@ pub async fn fetch_wikidata_compound_by_inchikey(
          }} LIMIT 1",
         escape_sparql_string(inchikey)
     );
-    let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
-        .await
-        .map_err(|e| CurationError::Http(e.to_string()))?;
-
-    let json =
-        serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))?;
+    let json = execute_sparql_json(&query).await?;
     let Some(first) = json
         .get("results")
         .and_then(|v| v.get("bindings"))
@@ -190,11 +192,7 @@ pub async fn resolve_reference_qids_batch<'a>(
     }
 
     let query = build_reference_lookup_query(&normalized_dois);
-    let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
-        .await
-        .map_err(|e| CurationError::Http(e.to_string()))?;
-    let json =
-        serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))?;
+    let json = execute_sparql_json(&query).await?;
 
     let mut resolved = HashMap::new();
     for binding in json
@@ -268,11 +266,7 @@ pub async fn resolve_taxon_qids_batch<'a>(
     }
 
     let query = build_taxon_lookup_query(&lookups);
-    let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
-        .await
-        .map_err(|e| CurationError::Http(e.to_string()))?;
-    let json =
-        serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))?;
+    let json = execute_sparql_json(&query).await?;
 
     let mut resolved = HashMap::new();
     for binding in json
@@ -336,11 +330,7 @@ pub async fn compound_has_taxon_with_ref(
            ?refnode pr:P248 wd:{ref_qid} .\n\
          }}"
     );
-    let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
-        .await
-        .map_err(|e| CurationError::Http(e.to_string()))?;
-    let parsed =
-        serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))?;
+    let parsed = execute_sparql_json(&query).await?;
     Ok(parsed
         .get("boolean")
         .and_then(Value::as_bool)
@@ -355,11 +345,7 @@ pub async fn compound_has_taxon(
         "{CURATION_SPARQL_PREFIXES}\n\
          ASK {{ wd:{compound_qid} wdt:{WD_OCCURS_IN_TAXON_PROP} wd:{taxon_qid} . }}"
     );
-    let raw = execute_sparql_format(&query, SparqlResponseFormat::SparqlJson)
-        .await
-        .map_err(|e| CurationError::Http(e.to_string()))?;
-    let parsed =
-        serde_json::from_str::<Value>(&raw).map_err(|e| CurationError::Parse(e.to_string()))?;
+    let parsed = execute_sparql_json(&query).await?;
     Ok(parsed
         .get("boolean")
         .and_then(Value::as_bool)
