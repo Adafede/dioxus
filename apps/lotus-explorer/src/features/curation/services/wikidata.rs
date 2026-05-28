@@ -381,11 +381,8 @@ mod tests {
     #[test]
     fn build_taxon_lookup_query_uses_values_pairs_and_taxon_type_constraint() {
         let query = build_taxon_lookup_query(&[
-            (
-                "voacanga africana".to_string(),
-                "Voacanga africana".to_string(),
-            ),
-            ("gentiana lutea".to_string(), "Gentiana lutea".to_string()),
+            ("voacanga africana".into(), "Voacanga africana".into()),
+            ("gentiana lutea".into(), "Gentiana lutea".into()),
         ]);
 
         assert!(query.contains("VALUES (?lookup ?taxonName)"));
@@ -407,8 +404,7 @@ mod tests {
 
     #[test]
     fn build_reference_lookup_query_uses_values_pairs() {
-        let query =
-            build_reference_lookup_query(&["10.1000/ABC".to_string(), "10.2000/XYZ".to_string()]);
+        let query = build_reference_lookup_query(&["10.1000/ABC".into(), "10.2000/XYZ".into()]);
 
         assert!(query.contains("VALUES (?lookup ?doi)"));
         assert!(query.contains("\"10.1000/ABC\" \"10.1000/ABC\""));
