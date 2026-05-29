@@ -19,6 +19,9 @@
     </linearGradient>
   </defs>
 
+  <!-- LOTUS text — static -->
+  <text xml:space="preserve" x="753.67999" y="1247.9128" style="font-size:16px;stroke-width:1.33333" transform="translate(-725.56083 -269.2746)"><tspan x="753.67999" y="1247.9128" dx="0 -8.8400002 -7.8199997" style="font-variant:normal;font-weight:300;font-size:340px;font-family:&quot;Albert Sans&quot;;writing-mode:lr-tb;fill:#484848;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.33333">LOTUS</tspan></text>
+
   <!-- Crab (Ferris) — vibrates on hover -->
   <g style="clip-rule:evenodd;fill-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:1.41421">
     <animateTransform
@@ -44,9 +47,6 @@
     <path d="M0 0c0 19.119-11.27 34.627-25.173 34.627-13.898 0-25.171-15.508-25.171-34.627 0-19.124 11.273-34.627 25.171-34.627C-11.27-34.627 0-19.124 0 0" style="fill:#fff;fill-rule:nonzero" transform="translate(478.35134 395.7622)"/>
     <path d="M.367.129c-.731-.57-.144-.84-.144-.84.036.32.249.547.249.547C.521-.548.525-.77.525-.77c.678.514.064.931.064.931.038.104.183.211.317.29L1 .77C.376.403.367.129.367.129" style="fill:url(#c);fill-rule:nonzero" transform="matrix(-.0000153 -239.021 -239.021 .0000153 359.74634 734.7222)"/>
   </g>
-
-  <!-- LOTUS text — static -->
-  <text xml:space="preserve" x="753.67999" y="1247.9128" style="font-size:16px;stroke-width:1.33333" transform="translate(-725.56083 -269.2746)"><tspan x="753.67999" y="1247.9128" dx="0 -8.8400002 -7.8199997" style="font-variant:normal;font-weight:300;font-size:340px;font-family:&quot;Albert Sans&quot;;writing-mode:lr-tb;fill:#484848;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.33333">LOTUS</tspan></text>
 
   <!-- Lotus flower — static -->
   <path d="M1279.8549 270.43606c-39.0859 67.512-64.8441 131.36907-80.5791 191.01307 19.7968 17.25866 38.0323 35.45653 54.7822 54.4924 3.807-7.61414 25.7968-50.43454 25.7969-50.4344 0 0 22.2799 42.82026 26.0868 50.4344 16.4973-19.03534 34.7316-37.23374 54.7823-54.4924-15.9894-59.644-41.7852-123.50107-80.8691-191.01307m-219.9984 117.3904c-4.0609 52.5376-2.3949 100.00467 3.1884 142.8976.2537 0 18.1501 51.95946 70.4343 97.39053 13.4516 11.9288 35.2045 32.9896 52.4633 57.10106 3.0456-10.65986 19.6435-72.36866 59.9996-153.33226-43.4007-51.01466-103.3443-100.65586-186.0856-144.05693m439.9968 0c-82.74 43.40067-142.9387 93.04213-186.0855 144.05693 40.3548 81.21747 56.9548 142.6724 60.0002 153.33226 17.2586-24.11146 39.012-45.17226 52.4626-57.10106 52.284-45.6848 70.4347-97.39053 70.4347-97.39053 5.584-42.89293 7.248-90.36013 3.188-142.8976" style="fill:#484848;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.33333" transform="translate(-725.56083 -269.2746)"/>
