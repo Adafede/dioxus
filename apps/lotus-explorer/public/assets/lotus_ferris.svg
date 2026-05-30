@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 1114.9493 981.01825">
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 1114.9493 981.01825" style="background: transparent; background-color: transparent;">
   <defs>
+    <style type="text/css">
+      path { fill-opacity: 1; }
+    </style>
     <linearGradient id="a" x1="0" x2="1" y1="0" y2="0" gradientTransform="matrix(1 0 0 -1 0 -.00065051)" gradientUnits="userSpaceOnUse">
       <stop offset="0" style="stop-color:#f74c00;stop-opacity:1"/>
       <stop offset=".33" style="stop-color:#f74c00;stop-opacity:1"/>
@@ -19,6 +22,7 @@
     </linearGradient>
   </defs>
 
+  <g id="logo-content">
   <!-- LOTUS text — static -->
   <text xml:space="preserve" x="753.67999" y="1247.9128" style="font-size:16px;stroke-width:1.33333" transform="translate(-725.56083 -269.2746)"><tspan x="753.67999" y="1247.9128" dx="0 -8.8400002 -7.8199997" style="font-variant:normal;font-weight:300;font-size:340px;font-family:&quot;Albert Sans&quot;;writing-mode:lr-tb;fill:#484848;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.33333">LOTUS</tspan></text>
 
@@ -55,4 +59,5 @@
   <path d="M1279.8548 499.99953c-123.0952 237.81479-102.9632 340.06305-62.6083 399.70719 31.4717 46.44626 94.0352 46.44706 125.5068 0 40.3547-59.644 60.1973-161.89213-62.8985-399.70719" style="fill:#396;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.33333" transform="translate(-725.56083 -269.2746)"/>
   <path d="M1052.0305 546.08619c-26.6495 69.79627-73.42959 248.04093 60.5792 349.56266 28.1723 21.57333 61.5403 20.5568 84.6371 2.02893-21.8272-37.3092-39.835-90.57773-16.2318-191.59279-51.2685-73.6032-89.1366-74.21293-128.9845-159.9988m455.3588 0c-39.5933 86.03973-77.4253 86.3956-128.6947 159.9988 23.604 101.01426 5.596 154.28373-16.232 191.59279 23.3507 18.274 56.4654 19.54414 84.6374-2.02893 133.7546-101.7756 87.192-279.76653 60.2893-349.56266" style="fill:#484848;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.33333" transform="translate(-725.56083 -269.2746)"/>
   <path d="M1725.6493 605.21592c-63.9 2.2248-123.1707 27.53134-173.0427 59.13 6.5987 70.55773-3.7226 154.40853-66.6666 219.1288 7.3613-.25374 14.7413-1.3756 22.6093-2.89854 159.3893-30.20266 101.1-153.79239 282.316-269.27332-22.144-5.01267-43.9173-6.8284-65.216-6.08694m-891.29825.29c-21.29974-.72186-43.07254 1.07374-65.21694 6.0868 181.2164 115.22733 122.92773 239.07133 282.31679 269.27333 7.868 1.52293 15.2477 2.3904 22.6085 2.89853-62.9434-64.97386-73.2649-148.82493-66.6661-219.12879-49.87266-31.78893-109.14306-56.96467-173.04225-59.12987" style="fill:#484848;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.33333" transform="translate(-725.56083 -269.2746)"/>
+  </g>
 </svg>

@@ -15,6 +15,8 @@ use crate::state::use_results_context;
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use dioxus::prelude::*;
 
+const LOTUS_FERRIS_SVG: &str = include_str!("../../../public/assets/lotus_ferris.svg");
+
 /// Sidebar: filter toggle + `SearchPanel` + logo.
 ///
 /// All concerns (mobile state, locale, search actions) are read from context.
@@ -46,12 +48,10 @@ pub fn Sidebar() -> Element {
             div { class: "sidebar-logo-wrap",
                 div {
                     class: "sidebar-logo-link",
-                    object {
+                    div {
                         class: "sidebar-logo",
-                        data: "assets/lotus_ferris.svg",
-                        r#type: "image/svg+xml",
-                        alt: "",
                         "aria-hidden": "true",
+                        dangerous_inner_html: LOTUS_FERRIS_SVG,
                     }
                 }
             }
