@@ -1,0 +1,68 @@
+# Netlify / Cloudflare Pages / compatible CDN — HTTP security headers
+# Reference: https://specification.website/spec/security/
+#
+# These headers are applied to every response served from this origin.
+# Adjust the Content-Security-Policy for your specific needs.
+
+/*
+  # ── Transport ─────────────────────────────────────────────────────────────
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+
+  # ── Framing & embedding ───────────────────────────────────────────────────
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://scripts.simpleanalyticscdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://qlever.dev https://query.wikidata.org https://www.wikidata.org https://www.simolecule.com https://idsm.elixir-czech.cz https://doi.org https://api.naturalproducts.net https://pubchem.ncbi.nlm.nih.gov https://api.semanticscholar.org https://api.openalex.org; worker-src blob:; frame-ancestors 'none'
+
+  # ── MIME sniffing ─────────────────────────────────────────────────────────
+  X-Content-Type-Options: nosniff
+
+  # ── Referrer ──────────────────────────────────────────────────────────────
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # ── Permissions ───────────────────────────────────────────────────────────
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+  # ── Cross-origin isolation (enables SharedArrayBuffer for WASM threads) ───
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+
+# ── WASM & heavy assets: aggressive caching ────────────────────────────────
+/assets/rdkit/*.wasm
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/rdkit/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/citation-js/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+# ── CSS: cache with revalidation ───────────────────────────────────────────
+/assets/*.css
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# ── Well-known files: no caching so updates propagate immediately ──────────
+/.well-known/*
+  Cache-Control: no-cache
+
+/robots.txt
+  Cache-Control: no-cache
+
+/sitemap.xml
+  Cache-Control: no-cache, max-age=3600
+
+/llms.txt
+  Cache-Control: no-cache
+
+# ── Manifest & icons: moderate caching ────────────────────────────────────
+/site.webmanifest
+  Cache-Control: public, max-age=86400
+
+/favicon.svg
+  Cache-Control: public, max-age=604800
+
+/favicon.ico
+  Cache-Control: public, max-age=604800
+
+/apple-touch-icon.png
+  Cache-Control: public, max-age=604800
+

@@ -1,18 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
     <head>
+        <!-- ── Foundations ──────────────────────────────────────────────────── -->
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <!-- Suppress the white flash before CSS loads in dark mode -->
+        <meta name="color-scheme" content="light dark">
         <title>{app_title}</title>
         <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-        <meta charset="UTF-8">
+
+        <!-- ── SEO & Discovery ──────────────────────────────────────────────── -->
+        <meta name="description" content="Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.">
+        <meta name="robots" content="index, follow">
+
+        <!-- ── Internationalisation — hreflang alternates ───────────────────── -->
+        <!-- Language is toggled via ?locale= query parameter in this SPA. -->
+        <link rel="alternate" hreflang="x-default" href="https://lotus.naturalproducts.net/">
+        <link rel="alternate" hreflang="en" href="https://lotus.naturalproducts.net/?locale=en">
+        <link rel="alternate" hreflang="fr" href="https://lotus.naturalproducts.net/?locale=fr">
+        <link rel="alternate" hreflang="de" href="https://lotus.naturalproducts.net/?locale=de">
+        <link rel="alternate" hreflang="it" href="https://lotus.naturalproducts.net/?locale=it">
+
+        <!-- ── Theme ────────────────────────────────────────────────────────── -->
+        <meta name="theme-color" content="#f6f8fb" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="#10141b" media="(prefers-color-scheme: dark)">
+
+        <!-- ── Open Graph ───────────────────────────────────────────────────── -->
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="LOTUS Knowledge Explorer">
+        <meta property="og:title" content="LOTUS Knowledge Explorer">
+        <meta property="og:description" content="Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.">
+        <meta property="og:locale" content="en_US">
+
+        <!-- ── Icons & Manifest ─────────────────────────────────────────────── -->
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+        <!-- ── Structured data (JSON-LD) ────────────────────────────────────── -->
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          "name": "LOTUS Knowledge Explorer",
+          "description": "Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.",
+          "applicationCategory": "ScienceApplication",
+          "operatingSystem": "Any",
+          "inLanguage": "en",
+          "isAccessibleForFree": true,
+          "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+          "codeRepository": "https://github.com/Adafede/dioxus",
+          "author": {
+            "@type": "Organization",
+            "name": "Contributors to the dioxus-apps project"
+          }
+        }
+        </script>
+
+        <!-- ── Resource hints ───────────────────────────────────────────────── -->
         <link rel="preconnect" href="https://qlever.dev" crossorigin>
         <link rel="preconnect" href="https://www.simolecule.com" crossorigin>
         <link rel="dns-prefetch" href="https://idsm.elixir-czech.cz">
         <link rel="prefetch" href="assets/rdkit/RDKit_minimal.js">
         <link rel="prefetch" href="assets/citation-js/citation.js">
+
+        <!-- ── Stylesheets ──────────────────────────────────────────────────── -->
         <link rel="stylesheet" href="assets/style.css">
         <link rel="stylesheet" href="assets/styles/accessibility_pack.css">
         <link rel="stylesheet" href="assets/styles/responsive_pack.css">
+
+        <!-- ── Deferred scripts ─────────────────────────────────────────────── -->
         <script defer src="assets/rdkit/RDKit_minimal.js"></script>
         <script defer src="assets/citation-js/citation.js"></script>
         <style>
@@ -360,6 +415,10 @@
         </script>
     </head>
     <body>
+        <!-- Skip link for keyboard and assistive-technology users (WCAG 2.4.1) -->
+        <a href="#main" class="skip-link">Skip to main content</a>
+
+        <!-- Privacy-respecting analytics — no cookies, GDPR-compliant -->
         <script async defer src="https://scripts.simpleanalyticscdn.com/latest.js" crossorigin="anonymous"></script>
         <div id="__dx-toast" class="dx-toast" aria-hidden="true">
             <div id="__dx-toast-inner" class="dx-toast-inner" style="right:-1000px;">

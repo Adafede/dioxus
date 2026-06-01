@@ -1,4 +1,26 @@
-/* Accessibility-specific media queries extracted from style.css for maintainability. */
+/* Accessibility-specific styles and media queries.
+   Extracted from style.css for maintainability and cacheable separately. */
+
+/* ── Skip link (WCAG 2.4.1 — Bypass Blocks) ─────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0.5rem;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: var(--accent, #0b5cab);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0 0 4px 4px;
+  text-decoration: none;
+  transition: top 0.1s;
+}
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid var(--accent2, #084b8a);
+  outline-offset: 2px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .sidebar::before,

@@ -1,10 +1,35 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" dir="ltr">
     <head>
-        <title>{app_title}</title>
+        <!-- ── Foundations ──────────────────────────────────────────────────── -->
+        <meta charset="UTF-8">
         <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta charset="UTF-8">
+        <!-- Suppress the white flash before CSS loads in dark mode -->
+        <meta name="color-scheme" content="light dark">
+        <title>{app_title}</title>
+
+        <!-- ── SEO & Discovery ──────────────────────────────────────────────── -->
+        <meta name="description" content="A minimal Dioxus web-app template. Copy this to start building your own Rust + WebAssembly web application.">
+        <meta name="robots" content="noindex, nofollow">
+
+        <!-- ── Theme ────────────────────────────────────────────────────────── -->
+        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="#181B20" media="(prefers-color-scheme: dark)">
+
+        <!-- ── Open Graph ───────────────────────────────────────────────────── -->
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="Hello World — Dioxus Template">
+        <meta property="og:description" content="A minimal Dioxus web-app template. Copy this to start building your own Rust + WebAssembly web application.">
+        <meta property="og:locale" content="en_US">
+
+        <!-- ── Icons & Manifest ─────────────────────────────────────────────── -->
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+        <link rel="alternate icon" href="/favicon.ico">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="manifest" href="/site.webmanifest">
+
+        <!-- ── Stylesheet ───────────────────────────────────────────────────── -->
         <link rel="stylesheet" href="assets/style.css">
         <style>
             /* Inter Font */
@@ -171,6 +196,9 @@
         </script>
     </head>
     <body>
+        <!-- Skip link for keyboard and assistive-technology users (WCAG 2.4.1) -->
+        <a href="#main" class="skip-link" style="position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:#0b5cab;color:#fff;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:none;">Skip to main content</a>
+        <style>.skip-link:focus{top:0!important}</style>
         <div id="__dx-toast" class="dx-toast" aria-hidden="true">
             <div id="__dx-toast-inner" class="dx-toast-inner" style="right:-1000px;">
                 <div class="dx-toast-level-bar-container">
