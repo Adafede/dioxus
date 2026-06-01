@@ -106,7 +106,7 @@ jobs:
           fetch-depth: 1
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-deny and cargo-audit
-        uses: taiki-e/install-action@v2.79.2
+        uses: taiki-e/install-action@v2.79.7
         with:
           # Pin tool versions for reproducible parser behavior in advisory DB checks.
           tool: cargo-deny@0.19.4,cargo-audit@0.22.1
