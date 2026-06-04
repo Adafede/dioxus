@@ -30,11 +30,9 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache
-        uses: Swatinem/rust-cache@v2.9.1
+      - uses: Swatinem/rust-cache@v2.9.1
 
       - name: Check workspace (all targets)
         run: cargo check --workspace --all-targets --locked
@@ -55,13 +53,11 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
-      - name: Cache
-        uses: Swatinem/rust-cache@v2.9.1
+      - uses: Swatinem/rust-cache@v2.9.1
 
       - name: Check lotus-explorer for wasm32
         run: cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked
@@ -105,8 +101,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install cargo-deny and cargo-audit
-        uses: taiki-e/install-action@v2.79.2
+      - uses: taiki-e/install-action@v2.79.7
         with:
           # Pin tool versions for reproducible parser behavior in advisory DB checks.
           tool: cargo-deny@0.19.4,cargo-audit@0.22.1
