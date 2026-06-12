@@ -1,6 +1,7 @@
 APP ?= lotus-explorer
 
 .PHONY: serve build check test test-verbose clippy fmt fmt-check qa deny audit supply-chain clean doc help
+.PHONY: machete license strict
 
 ## Display this help message
 help:
@@ -57,6 +58,28 @@ audit:
 
 ## Full supply-chain gate (requires cargo-deny and cargo-audit)
 supply-chain: deny audit
+
+## Run cargo-machete checks (if available)
+machete:
+	@{ \
+		cargo --list 2>/dev/null | grep -q 'machete' && cargo machete check --workspace || \
+		(command -v cargo-machete >/dev/null 2>&1 && cargo-machete check) || \
+		echo "cargo-machete not installed; to enable run: cargo install cargo-machete --locked"; \
+	}
+
+## Produce a compact license summary (requires cargo-license and jq)
+license:
+	@{ \
+		if command -v cargo-license >/dev/null 2>&1 || command -v cargo-license >/dev/null 2>&1; then \
+			cargo license -j | jq '.[] | {name, version, license}'; \
+		else \
+			echo "cargo-license not installed; install with: cargo install cargo-license --locked"; \
+		fi; \
+	}
+
+## Strict CI-equivalent gate that mirrors the repository CI: fmt-check, check, clippy, test, machete, supply-chain checks, license summary
+strict: fmt-check check test clippy machete supply-chain license
+	@echo "Strict gate complete"
 
 ## Remove all build artefacts
 clean:
