@@ -1,0 +1,19 @@
+{
+  "name": "Hello World — Dioxus Template",
+  "short_name": "Hello World",
+  "description": "A minimal Dioxus web-app template. Copy this to start building your own Rust + WebAssembly web application.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#e96020",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

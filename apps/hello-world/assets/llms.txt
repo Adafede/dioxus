@@ -1,0 +1,29 @@
+# llms.txt — Machine-readable site summary for AI agents and LLMs
+# See: https://llmstxt.org/
+
+# Hello World — Dioxus Template
+
+> A minimal Dioxus + Rust + WebAssembly web-application template.
+> Copy this app and replace the placeholder content to build your own SPA.
+
+This is a starter template, not a production application.
+
+## Stack
+
+- Language: Rust
+- UI framework: Dioxus (https://dioxuslabs.com/)
+- Target: WebAssembly (WASM)
+- Build tool: dx (Dioxus CLI)
+
+## Source
+
+- Repository: https://github.com/Adafede/dioxus/tree/main/apps/hello-world
+- Licence: AGPL-3.0-only
+
+## Usage
+
+1. Copy the app: `cp -r apps/hello-world apps/my-new-app`
+2. Edit `Cargo.toml` and `Dioxus.toml` (change `name`)
+3. Add the new app to workspace members in the root `Cargo.toml`
+4. Run: `dx serve --package my-new-app`
+

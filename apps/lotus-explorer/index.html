@@ -12,28 +12,30 @@
         <!-- ── SEO & Discovery ──────────────────────────────────────────────── -->
         <meta name="description" content="Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.">
         <meta name="robots" content="index, follow">
+        <link rel="canonical" href="https://adafede.github.io/dioxus/lotus-explorer/">
 
         <!-- ── Internationalisation — hreflang alternates ───────────────────── -->
         <!-- Language is toggled via ?locale= query parameter in this SPA. -->
-        <link rel="alternate" hreflang="x-default" href="https://lotus.naturalproducts.net/">
-        <link rel="alternate" hreflang="en" href="https://lotus.naturalproducts.net/?locale=en">
-        <link rel="alternate" hreflang="fr" href="https://lotus.naturalproducts.net/?locale=fr">
-        <link rel="alternate" hreflang="de" href="https://lotus.naturalproducts.net/?locale=de">
-        <link rel="alternate" hreflang="it" href="https://lotus.naturalproducts.net/?locale=it">
+        <link rel="alternate" hreflang="x-default" href="https://adafede.github.io/dioxus/lotus-explorer/">
+        <link rel="alternate" hreflang="en" href="https://adafede.github.io/dioxus/lotus-explorer/?locale=en">
+        <link rel="alternate" hreflang="fr" href="https://adafede.github.io/dioxus/lotus-explorer/?locale=fr">
+        <link rel="alternate" hreflang="de" href="https://adafede.github.io/dioxus/lotus-explorer/?locale=de">
+        <link rel="alternate" hreflang="it" href="https://adafede.github.io/dioxus/lotus-explorer/?locale=it">
 
         <!-- ── Theme ────────────────────────────────────────────────────────── -->
         <meta name="theme-color" content="#f6f8fb" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="#10141b" media="(prefers-color-scheme: dark)">
 
-        <!-- ── Open Graph ───────────────────────────────────────────────────── -->
+        <!-- ── Open Graph ───────────────────────────────────────────────── -->
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="LOTUS Knowledge Explorer">
         <meta property="og:title" content="LOTUS Knowledge Explorer">
         <meta property="og:description" content="Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.">
         <meta property="og:locale" content="en_US">
+        <meta property="og:url" content="https://adafede.github.io/dioxus/lotus-explorer/">
 
         <!-- ── Icons & Manifest ─────────────────────────────────────────────── -->
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+        <link rel="icon" href="favicon.svg" type="image/svg+xml">
 
         <!-- ── Structured data (JSON-LD) ────────────────────────────────────── -->
         <script type="application/ld+json">
@@ -54,6 +56,12 @@
           }
         }
         </script>
+
+        <!-- ── Discovery links for agents and crawlers ───────────────────── -->
+        <link rel="manifest" href="site.webmanifest">
+        <link rel="llmstxt" href="/llms.txt" type="text/plain">
+        <link rel="api-catalog" href="/.well-known/api-catalog.json" type="application/json">
+        <link rel="agent-skills" href="/.well-known/agent-skills.json" type="application/json">
 
         <!-- ── Resource hints ───────────────────────────────────────────────── -->
         <link rel="preconnect" href="https://qlever.dev" crossorigin>
@@ -438,6 +446,6 @@
                 </div>
             </div>
         </div>
-        <div id="main"></div>
+        <main id="main" role="main" tabindex="-1" aria-label="Main content"></main>
     </body>
 </html>

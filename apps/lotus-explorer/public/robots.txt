@@ -1,0 +1,50 @@
+# robots.txt — https://www.rfc-editor.org/rfc/rfc9309
+# Allow all well-behaved crawlers to index the full site.
+# Reference: https://specification.website/spec/seo/robots-txt/
+# Reference: https://specification.website/spec/agent-readiness/robots-for-ai-crawlers/
+
+# Default crawlers (search engines, browsers)
+User-agent: *
+Allow: /
+Disallow: /target/
+
+# Allow major AI/LLM crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Gemini
+Allow: /
+
+User-agent: Perplexity
+Allow: /
+
+User-agent: APIBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+# Declare data usage preferences (AI Preferences)
+# Reference: https://specification.website/spec/agent-readiness/content-signals/
+Content-Signal: *
+  Disallow-Search: false
+  Disallow-Ingest: false
+  Disallow-Train: false
+
+Sitemap: https://adafede.github.io/dioxus/lotus-explorer/sitemap.xml
+

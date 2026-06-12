@@ -1,0 +1,6 @@
+# robots.txt — https://www.rfc-editor.org/rfc/rfc9309
+# This is a development template — do not index.
+
+User-agent: *
+Disallow: /
+
