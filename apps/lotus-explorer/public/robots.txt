@@ -47,4 +47,3 @@ Content-Signal: *
   Disallow-Train: false
 
 Sitemap: https://adafede.github.io/dioxus/lotus-explorer/sitemap.xml
-

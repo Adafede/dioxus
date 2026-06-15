@@ -26,4 +26,3 @@ This is a starter template, not a production application.
 2. Edit `Cargo.toml` and `Dioxus.toml` (change `name`)
 3. Add the new app to workspace members in the root `Cargo.toml`
 4. Run: `dx serve --package my-new-app`
-

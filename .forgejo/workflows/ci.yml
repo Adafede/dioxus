@@ -117,4 +117,3 @@ jobs:
         run: cargo deny check advisories bans licenses sources
       - name: Cargo audit
         run: cargo audit
-

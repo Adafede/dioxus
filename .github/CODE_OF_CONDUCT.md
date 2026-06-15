@@ -31,4 +31,3 @@ For conduct issues, contact maintainers through the private channel documented i
 
 Maintainers may edit/remove content, warn contributors, or restrict participation
 for behavior that violates this policy.
-

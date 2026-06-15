@@ -37,4 +37,3 @@ allowed-duplicate-crates = [
   "winnow",
   "wit-bindgen",
 ]
-

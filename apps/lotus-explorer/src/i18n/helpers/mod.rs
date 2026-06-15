@@ -71,7 +71,7 @@ pub const fn count_label(locale: Locale, noun: CountNoun, count: usize) -> &'sta
         (Locale::De, CountNoun::Compound, false) => "Verbindungen",
         (Locale::De, CountNoun::Taxon, true) => "Taxon",
         (Locale::De, CountNoun::Taxon, false) => "Taxa",
-        (Locale::De, CountNoun::Reference, true) => "Referenz",
+        (Locale::De, CountNoun::Reference, true) => "Reference",
         (Locale::De, CountNoun::Reference, false) => "Referenzen",
         (Locale::De, CountNoun::Entry, true) => "Eintrag",
         (Locale::De, CountNoun::Entry, false) => "Einträge",

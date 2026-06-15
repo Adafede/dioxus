@@ -66,4 +66,3 @@ body:
           required: true
         - label: I am willing to contribute a pull request for this feature.
           required: false
-

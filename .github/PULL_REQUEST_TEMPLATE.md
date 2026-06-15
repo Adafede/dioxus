@@ -61,4 +61,3 @@ By submitting this pull request I confirm that my contribution is made available
 under the terms of the **GNU Affero General Public License v3.0 (AGPL-3.0-only)**,
 as specified in the `LICENSE` file, and I certify the
 [Developer Certificate of Origin](https://developercertificate.org/).
-

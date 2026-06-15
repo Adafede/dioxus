@@ -5,4 +5,3 @@ Contact: https://github.com/Adafede/dioxus/security/advisories/new
 Expires: 2027-01-01T00:00:00.000Z
 Preferred-Languages: en
 Policy: https://github.com/Adafede/dioxus/blob/main/SECURITY.md
-

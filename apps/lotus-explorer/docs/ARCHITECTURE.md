@@ -41,4 +41,3 @@ api client → dto mapper → repository → service → state controller → co
 ## Skills index
 
 - `../SKILLS.md`
-

@@ -43,7 +43,7 @@ pub(super) const fn button_add_row() -> &'static str {
 }
 
 pub(super) const fn button_load_example_rows() -> &'static str {
-    "Charger des exemples"
+    "Charger des examples"
 }
 
 pub(super) const fn button_append_tsv_rows() -> &'static str {
@@ -107,7 +107,7 @@ pub(super) fn msg_duplicate_row_skipped() -> String {
 }
 
 pub(super) fn msg_no_valid_tsv_rows() -> String {
-    "Aucune ligne valide trouvée dans l'entrée TSV.".to_string()
+    "Aucune ligne valid trouvée dans l'entrée TSV.".to_string()
 }
 
 pub(super) fn msg_tsv_import_complete(added: usize, skipped: usize) -> String {
@@ -118,7 +118,7 @@ pub(super) fn msg_tsv_import_complete(added: usize, skipped: usize) -> String {
 
 pub(super) fn msg_examples_loaded(added: usize, skipped: usize) -> String {
     format!(
-        "Exemples chargés : {added} ligne(s) unique(s) ajoutée(s), {skipped} doublon(s) ignoré(s)."
+        "Examples chargés : {added} ligne(s) unique(s) ajoutée(s), {skipped} doublon(s) ignoré(s)."
     )
 }
 
@@ -140,19 +140,19 @@ pub(super) fn msg_curation_failed(detail: &str) -> String {
 
 pub(super) const fn msg_curation_rate_limited() -> &'static str {
     {
-        "Limite de débit atteinte sur un service de métadonnées amont (HTTP 429). Attendez environ 60 s puis réessayez."
+        "Limit de débit atteinte sure un service de métadonnées amont (HTTP 429). Attendez environ 60 s puis réessayez."
     }
 }
 
 pub(super) fn msg_prerequisites_pending(count: usize) -> String {
     format!(
-        "{count} ligne(s) attend(ent) encore des entités préalables. Exécutez les prérequis, créez/fusionnez-les dans Wikidata, puis lancez la seconde passe."
+        "{count} ligne(s) attend(ent) encore des entités préalables. Exécutez les prérequis, créez/fusionnez-les dans Wikidata, puis lancez la second passe."
     )
 }
 
 pub(super) const fn msg_two_step_hint() -> &'static str {
     {
-        "Flux en deux étapes : exécutez d'abord les prérequis, créez/fusionnez ces éléments dans Wikidata, puis cliquez à nouveau sur Générer les QuickStatements pour que le bloc principal utilise directement les QID résolus."
+        "Flux en deux étapes : exécutez d'abord les prérequis, créez/fusionnez ces éléments dans Wikidata, puis cliquez à nouveau sure Générer les QuickStatements pour que le bloc principal utilise directement les QID résolus."
     }
 }
 
@@ -161,12 +161,12 @@ pub(super) const fn button_second_pass() -> &'static str {
 }
 
 pub(super) const fn msg_second_pass_running() -> &'static str {
-    "Exécution de la seconde passe sur les lignes qui dépendaient d'éléments manquants..."
+    "Exécution de la second passe sure les lignes qui dépendaient d'éléments manquants..."
 }
 
 pub(super) const fn msg_second_pass_done() -> &'static str {
     {
-        "Seconde passe terminée. Les QuickStatements principaux sont rafraîchis avec les QID résolus lorsque disponibles."
+        "Second passe terminée. Les QuickStatements principaux sont rafraîchis avec les QID résolus lorsque disponibles."
     }
 }
 
@@ -185,11 +185,11 @@ pub(super) const fn curation_badge_mass_missing() -> &'static str {
 }
 
 pub(super) const fn curation_badge_second_pass_required() -> &'static str {
-    "Seconde passe requise"
+    "Second passe requise"
 }
 
 pub(super) const fn curation_mass_warning_title() -> &'static str {
-    "La masse exacte n'a pas pu être résolue depuis les points de terminaison de descripteurs"
+    "La masse exacte n'a pas pu être résolue depuis les points de termination de descripteurs"
 }
 
 pub(super) const fn msg_delay_advice() -> &'static str {
@@ -204,12 +204,12 @@ pub(super) const fn curation_qs_dev_label() -> &'static str {
 
 pub(super) const fn curation_qs_dev_prereq_hint() -> &'static str {
     {
-        "Ouvrez QS-Dev, collez le bloc de prérequis, exécutez-le, créez ou fusionnez les nouveaux éléments dans Wikidata, attendez un instant, puis revenez ici pour la seconde passe."
+        "Ouvrez QS-Dev, collez le bloc de prérequis, exécutez-le, créez ou fusionnez les nouveaux éléments dans Wikidata, attendez un instant, puis revenez ici pour la second passe."
     }
 }
 
 pub(super) const fn curation_qs_dev_main_hint() -> &'static str {
-    "Ouvrez QS-Dev, collez le bloc principal, vérifiez les commandes, puis exécutez-les."
+    "Ouvrez QS-Dev, collez le bloc principal, vérifiez les commands, puis exécutez-les."
 }
 
 pub(super) const fn curation_note_existing_complete() -> &'static str {
@@ -254,8 +254,8 @@ pub(super) const fn view_label_draw() -> &'static str {
 
 pub(super) fn curation_status_label(status_key: &str) -> &'static str {
     match status_key {
-        "existing_complete" => "déjà complet",
-        "existing_updates" => "élément existant, mises à jour générées",
+        "existing_complete" => "déjà complete",
+        "existing_updates" => "élément existent, mises à jour générées",
         "new_compound" => "nouvel élément, création générée",
         "pending_dependencies" => "en attente des entités prérequises",
         "error" => "erreur",

@@ -768,7 +768,7 @@ fn construct_where_with_formula_bind(where_block: &str) -> String {
 /// The expression is left to right, preserving semantic correctness.
 fn normalize_digits_expr(var: &str) -> String {
     // Build: BIND(REPLACE(REPLACE(...REPLACE(var, "₀", "0")..., "₉", "9") AS ?result)
-    // This is more efficient than deeply nested SELECTs or multiple BINDs.
+    // This is more efficient than deeply nested SELECTTs or multiple BINDs.
     SUBSCRIPT_DIGIT_MAPPINGS.iter().fold(
         format!("STR({var})"),
         |acc, &(subscript_char, ascii_digit)| {

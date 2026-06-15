@@ -34,5 +34,3 @@
   Privacy: ✓ Privacy policy, no third-party tracking (Simple Analytics only)
   Resilience: ✓ Web app manifest, graceful error handling, offline detection
   i18n: ✓ Multiple language support, locale-aware formatting, RTL support
-
-

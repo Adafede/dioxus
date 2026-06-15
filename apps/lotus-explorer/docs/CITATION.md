@@ -7,4 +7,3 @@ If this explorer contributes to your work, please cite the LOTUS initiative pape
 - BibTeX (direct download in deployed app): `/docs/references.bib`
 
 Suggested citation key: `Rutz_2022_LOTUS`.
-

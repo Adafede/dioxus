@@ -67,7 +67,7 @@ pub(super) const fn col_name() -> &'static str {
 }
 
 pub(super) const fn col_action() -> &'static str {
-    "Aktion"
+    "Action"
 }
 
 pub(super) const fn col_original_smiles() -> &'static str {
@@ -207,13 +207,13 @@ pub(super) const fn curation_qs_dev_label() -> &'static str {
 
 pub(super) const fn curation_qs_dev_prereq_hint() -> &'static str {
     {
-        "Öffnen Sie QS-Dev, fügen Sie den Voraussetzungen-Block ein, führen Sie ihn aus, erstellen oder vereinigen Sie die neuen Einträge in Wikidata, warten Sie kurz und kehren Sie dann für den zweiten Durchlauf hierher zurück."
+        "Öffnen Sie QS-Dev, fügen Sie den Voraussetzungen-Block in, führen Sie ihn aus, erstellen oder vereinigen Sie die neuen Einträge in Wikidata, warten Sie kurz und kehren Sie dann für den zweiten Durchlauf hierher zurück."
     }
 }
 
 pub(super) const fn curation_qs_dev_main_hint() -> &'static str {
     {
-        "Öffnen Sie QS-Dev, fügen Sie den Hauptblock ein, prüfen Sie die Befehle und führen Sie sie dann aus."
+        "Öffnen Sie QS-Dev, fügen Sie den Hauptblock in, prüfen Sie die Befehle und führen Sie sie dann aus."
     }
 }
 
@@ -238,7 +238,7 @@ pub(super) fn curation_pending_taxon(taxon: &str) -> String {
 }
 
 pub(super) fn curation_pending_reference(doi: &str) -> String {
-    format!("Die Referenz für DOI '{doi}' ist noch nicht verfügbar.")
+    format!("Die Reference für DOI '{doi}' ist noch nicht verfügbar.")
 }
 
 pub(super) const fn view_switch_aria() -> &'static str {
@@ -246,7 +246,7 @@ pub(super) const fn view_switch_aria() -> &'static str {
 }
 
 pub(super) const fn view_label_explorer() -> &'static str {
-    "Suche"
+    "Such"
 }
 
 pub(super) const fn view_label_curation_explorer() -> &'static str {

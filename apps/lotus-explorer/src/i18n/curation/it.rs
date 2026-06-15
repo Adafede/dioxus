@@ -119,7 +119,7 @@ pub(super) fn msg_examples_loaded(added: usize, skipped: usize) -> String {
 }
 
 pub(super) fn msg_add_row_before_generate() -> String {
-    "Aggiungi almeno una riga prima di generare i QuickStatements.".to_string()
+    "Aggiungi almeno una riga prima di generate i QuickStatements.".to_string()
 }
 
 pub(super) fn msg_running_checks() -> String {
@@ -136,7 +136,7 @@ pub(super) fn msg_curation_failed(detail: &str) -> String {
 
 pub(super) const fn msg_curation_rate_limited() -> &'static str {
     {
-        "Limite di richieste raggiunto su un servizio di metadati upstream (HTTP 429). Attendi circa 60 secondi e riprova."
+        "Limit di richieste raggiunto su un servizio di metadati upstream (HTTP 429). Attendi circa 60 secondi e riprova."
     }
 }
 
@@ -200,7 +200,7 @@ pub(super) const fn curation_qs_dev_label() -> &'static str {
 
 pub(super) const fn curation_qs_dev_prereq_hint() -> &'static str {
     {
-        "Apri QS-Dev, incolla il blocco dei prerequisiti, eseguilo, crea o unisci i nuovi elementi in Wikidata, attendi un momento e poi torna qui per il secondo passaggio."
+        "Apri QS-Dev, incolla il blocco dei prerequisiti, eseguilo, crea o unisci i nuovi elementi in Wikidata, attendi un memento e poi torna qui per il secondo passaggio."
     }
 }
 

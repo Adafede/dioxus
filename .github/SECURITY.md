@@ -24,4 +24,3 @@ You will receive an acknowledgement within 3 business days. We aim to provide a 
 3. Run `make qa` and supply-chain checks.
 4. Publish a fixed release and rotate any impacted credentials.
 5. Publish an advisory/changelog note after patch availability.
-

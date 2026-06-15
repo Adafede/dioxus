@@ -20,4 +20,3 @@ Best-effort support is provided for:
 - latest tagged release
 
 Older revisions may not receive fixes.
-

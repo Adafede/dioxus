@@ -174,7 +174,7 @@ fn lookup_fr(key: ErrorKey) -> String {
         }
         #[cfg(target_arch = "wasm32")]
         ErrorKey::MemoryHint => {
-            "Résultat trop volumineux pour la mémoire actuelle de l'appareil.".to_string()
+            "Résultat trop volumineux pour la mémoire actuelle de l'apparel.".to_string()
         }
     }
 }
@@ -182,10 +182,10 @@ fn lookup_fr(key: ErrorKey) -> String {
 fn lookup_de(key: ErrorKey) -> String {
     match key {
         ErrorKey::InvalidSearchInput => {
-            "Bitte geben Sie einen Taxonnamen / QID oder eine SMILES-Struktur ein.".to_string()
+            "Bitte geben Sie einen Taxonnamen / QID oder eine SMILES-Struktur in.".to_string()
         }
         ErrorKey::TaxonTooLong => {
-            "Taxoneingabe ist zu lang. Bitte halten Sie sich unter 500 Zeichen.".to_string()
+            "Taxoneingabe ist zu lang. Bitte halten Sie sich under 500 Zeichen.".to_string()
         }
         ErrorKey::StructureTooLong => {
             "Struktureingabe ist zu lang. Bitte kürzen Sie den SMILES/Molfile-Text.".to_string()

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 pub fn err_invalid_search_input() -> String {
-    "Bitte geben Sie einen Taxonnamen / eine QID oder eine SMILES-Struktur ein.".to_string()
+    "Bitte geben Sie einen Taxonnamen / eine QID oder eine SMILES-Struktur in.".to_string()
 }
 
 pub fn err_api_not_configured() -> String {
@@ -10,7 +10,7 @@ pub fn err_api_not_configured() -> String {
 }
 
 pub fn err_taxon_too_long() -> String {
-    "Die Taxon-Eingabe ist zu lang. Bitte unter 500 Zeichen bleiben.".to_string()
+    "Die Taxon-Eingabe ist zu lang. Bitte under 500 Zeichen bleiben.".to_string()
 }
 
 pub fn err_structure_too_long() -> String {
@@ -30,7 +30,7 @@ pub fn err_year_out_of_range() -> String {
 }
 
 pub fn err_year_range_invalid() -> String {
-    "Das Startjahr darf nicht größer als das Endjahr sein.".to_string()
+    "Das Startjahr darf nicht größer also das Endjahr sein.".to_string()
 }
 
 pub fn err_element_count_too_high() -> String {
@@ -38,7 +38,7 @@ pub fn err_element_count_too_high() -> String {
 }
 
 pub fn err_similarity_threshold_invalid() -> String {
-    "Der Ähnlichkeitsschwellenwert muss größer als 0 sein.".to_string()
+    "Der Ähnlichkeitsschwellenwert muss größer also 0 sein.".to_string()
 }
 
 pub fn err_unsupported_format(fmt: &str) -> String {
