@@ -46,13 +46,13 @@ pub const fn it_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintNetwork => "Problema di rete rilevato. Riprova.",
         TextKey::ErrorHintRateLimit => {
-            "Limite di richieste raggiunto sul servizio upstream. Attendi circa un minuto e riprova."
+            "Limit di richieste raggiunto sul servizio upstream. Attendi circa un minuto e riprova."
         }
         TextKey::ErrorHintBadRequest => {
             "Il server ha rifiutato la richiesta. Controlla i parametri di ricerca."
         }
         TextKey::ErrorHintParse => {
-            "Impossibile interpretare la risposta. Riprova o affina la query."
+            "Impossible interpreter la risposta. Riprova o affina la query."
         }
         TextKey::ErrorHintUnknown => "Errore inatteso. Riprova.",
         TextKey::SkipToResults => "Vai ai risultati",
@@ -113,12 +113,12 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::YearFrom => "Da",
         TextKey::YearTo => "A",
         TextKey::RunSearch => "Avvia ricerca",
-        TextKey::KetcherSummary => "Editor di strutture (Ketcher)",
+        TextKey::KetcherSummary => "Editor di structure (Ketcher)",
         TextKey::KetcherHintA => "Devi disegnare o cercare una struttura? Apri la scheda ",
         TextKey::KetcherHintB => " e poi copia con ",
         TextKey::KetcherHintC => " (oppure ",
         TextKey::KetcherHintD => ") e usalo nel campo struttura della scheda Ricerca.",
-        TextKey::KetcherIframeTitle => "Editor di strutture Ketcher",
+        TextKey::KetcherIframeTitle => "Editor di structure Ketcher",
         TextKey::KindNoteSmiles => "  Inviato come letterale SPARQL su una singola riga.",
         TextKey::KindNoteMol2000 => {
             "  Inoltrato senza modifiche a SACHEM scoredSubstructureSearch."

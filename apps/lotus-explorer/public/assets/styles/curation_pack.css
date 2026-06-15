@@ -229,5 +229,3 @@
 .curation-status.is-pending { border-left-color: var(--wd-reference); }
 /* error → wd-compound red (failure) */
 .curation-status.is-error   { border-left-color: var(--wd-compound); }
-
-

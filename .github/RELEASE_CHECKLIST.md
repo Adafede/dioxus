@@ -104,4 +104,3 @@ make supply-chain
 
 Review and commit `Cargo.lock` with any intentional updates.
 Treat each lock-file commit as a mini release validation.
-

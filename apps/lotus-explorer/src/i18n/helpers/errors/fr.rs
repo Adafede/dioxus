@@ -62,10 +62,10 @@ pub fn warn_input_standardized(original: &str, normalized: &str) -> String {
 }
 
 pub fn warn_ambiguous_taxon(best_name: &str, best_qid: &str, names: &str) -> String {
-    format!("Nom de taxon ambigu; utilisation de {best_name} ({best_qid}). Candidats : {names}")
+    format!("Nom de taxon ambigu; utilisation de {best_name} ({best_qid}). Candidates : {names}")
 }
 
 #[cfg(target_arch = "wasm32")]
 pub fn error_hint_memory() -> &'static str {
-    "Résultat trop volumineux pour la mémoire de l'appareil."
+    "Résultat trop volumineux pour la mémoire de l'apparel."
 }

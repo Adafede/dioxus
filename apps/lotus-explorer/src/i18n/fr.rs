@@ -20,14 +20,14 @@ pub const fn fr_t(key: TextKey) -> &'static str {
         TextKey::PageTitle => "Explorateur LOTUS de données ouvertes liées",
         TextKey::GoToHomepage => "Aller à la page d'accueil",
         TextKey::PageSubtitle => {
-            "Explorez des données ouvertes liées : produits naturels, organismes et littérature scientifique."
+            "Explorez des données ouvertes liées : produits natures, organisms et littérature scientifique."
         }
         TextKey::ResolvedTaxon => "Taxon résolu",
         TextKey::QueryHash => "Hash de la requête",
         TextKey::ResultHash => "Hash du résultat",
         TextKey::CopyTaxonQid => "Copier le QID du taxon",
-        TextKey::CopyFullQueryHash => "Copier le hash complet de la requête (SHA-256)",
-        TextKey::CopyFullResultHash => "Copier le hash complet du résultat (SHA-256)",
+        TextKey::CopyFullQueryHash => "Copier le hash complete de la requête (SHA-256)",
+        TextKey::CopyFullResultHash => "Copier le hash complete du résultat (SHA-256)",
         TextKey::CopyShareableLink => "Copier le lien à partager",
         TextKey::ArchiveNotice => "Archive figée :",
         TextKey::Unique => "Uniques",
@@ -44,7 +44,7 @@ pub const fn fr_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintNetwork => "Problème réseau détecté. Réessayer peut aider.",
         TextKey::ErrorHintRateLimit => {
-            "Limite de débit atteinte sur le service amont. Attendez environ une minute puis réessayez."
+            "Limit de débit atteinte sure le service amont. Attendez environ une minute puis réessayez."
         }
         TextKey::ErrorHintBadRequest => {
             "Le serveur a rejeté la requête. Vérifiez les paramètres de recherche."
@@ -55,12 +55,12 @@ pub const fn fr_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintUnknown => "Erreur inattendue. Réessayer peut aider.",
         TextKey::SkipToResults => "Aller aux résultats",
         TextKey::WelcomeLeadA => {
-            "Cette application démontre la puissance des données ouvertes liées en connectant les produits naturels aux organismes et à la littérature scientifique. "
+            "Cette application démontre la puissance des données ouvertes liées en connectant les produits natures aux organisms et à la littérature scientifique. "
         }
         TextKey::WelcomeLeadB => {
             "Le modèle de données relie les composés, les taxa et les références—provenant de "
         }
-        TextKey::WelcomeLeadC => ", publiées en tant que données ouvertes liées sur ",
+        TextKey::WelcomeLeadC => ", publiées en tant que données ouvertes liées sure ",
         TextKey::WelcomeLeadD => " et interrogées via SPARQL par ",
         TextKey::WelcomeLeadE => ".",
         TextKey::ExampleGentiana => "Saisir un nom de taxon ou un QID Wikidata",
@@ -83,7 +83,7 @@ pub const fn fr_t(key: TextKey) -> &'static str {
         TextKey::StructureSmilesOrMol => "Structure - SMILES ou Molfile",
         TextKey::StructurePlaceholder => "c1ccccc1   - ou collez un Molfile (V2000 / V3000)",
         TextKey::StructureHintEmpty => {
-            "Optionnel. SMILES sur une ligne ou Molfile complet - finit par \"M  END\"."
+            "Optionnel. SMILES sure une ligne ou Molfile complete - finit par \"M  END\"."
         }
         TextKey::Substructure => "Sous-structure",
         TextKey::Similarity => "Similarité",
@@ -117,7 +117,7 @@ pub const fn fr_t(key: TextKey) -> &'static str {
             ") puis utilisez-la dans le champ structure de l'onglet Recherche."
         }
         TextKey::KetcherIframeTitle => "Éditeur de structure Ketcher",
-        TextKey::KindNoteSmiles => "  Envoyé comme littéral SPARQL sur une seule ligne.",
+        TextKey::KindNoteSmiles => "  Envoyé comme littéral SPARQL sure une seule ligne.",
         TextKey::KindNoteMol2000 => "  Transmis tel quel à SACHEM scoredSubstructureSearch.",
         TextKey::KindNoteMol3000 => {
             "  Transmis tel quel à SACHEM scoredSubstructureSearch (CTAB v3000)."
@@ -142,7 +142,7 @@ pub const fn fr_t(key: TextKey) -> &'static str {
         TextKey::StageTaxonSearch => "résolution du taxon",
         TextKey::StageResultsQuery => "récupération des résultats",
         TextKey::DisplayCappedHint => {
-            "Affichage des premières lignes uniquement pour préserver la mémoire de l'appareil. Les totaux restent exacts."
+            "Affichage des premières lignes uniquement pour préserver la mémoire de l'apparel. Les totaux restent exacts."
         }
         TextKey::Structure => "Structure",
         TextKey::Compound => "Composé",

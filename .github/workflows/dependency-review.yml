@@ -28,4 +28,3 @@ jobs:
         with:
           fail-on-severity: high
           deny-licenses: AGPL-1.0-only, AGPL-1.0-or-later, GPL-1.0-only, GPL-1.0-or-later
-

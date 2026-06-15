@@ -5,7 +5,7 @@
 
 # LOTUS Knowledge Explorer — Linked Open Data for Natural Products
 
-> A linked open data (LOD) explorer for the LOTUS compound–taxon–reference
+> A linked open data (LOAD) explorer for the LOTUS compound–taxon–reference
 > knowledge graph from Wikidata, queried via SPARQL.
 
 LOTUS is an open, Wikidata-backed dataset that links natural-product compounds to the taxa

@@ -1071,7 +1071,7 @@ const fieldTypes = {
   journalAbbreviation: 'string',
   shortTitle: 'string',
   abstract: 'string',
-  annote: 'string',
+  annotate: 'string',
   archive: 'string',
   archive_collection: 'string',
   archive_location: 'string',
@@ -2816,17 +2816,17 @@ function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = 
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
-const punctutationMatcher = string => string.replace(/$|( )|(?!^)(?=[A-Z])/g, '\\.?$1');
+const punctuationMatcher = string => string.replace(/$|( )|(?!^)(?=[A-Z])/g, '\\.?$1');
 
 const getListMatcher = list => `(?:${list.join('|')})\\b`;
 
 const getSplittingRegex = (matcher, flags) => new RegExp(`(?:^| )(${matcher}$)`, flags);
 
-const titles = ['mr', 'mrs', 'ms', 'miss', 'dr', 'herr', 'monsieur', 'hr', 'frau', 'a v m', 'admiraal', 'admiral', 'air cdre', 'air commodore', 'air marshal', 'air vice marshal', 'alderman', 'alhaji', 'ambassador', 'baron', 'barones', 'brig', 'brig gen', 'brig general', 'brigadier', 'brigadier general', 'brother', 'canon', 'capt', 'captain', 'cardinal', 'cdr', 'chief', 'cik', 'cmdr', 'coach', 'col', 'col dr', 'colonel', 'commandant', 'commander', 'commissioner', 'commodore', 'comte', 'comtessa', 'congressman', 'conseiller', 'consul', 'conte', 'contessa', 'corporal', 'councillor', 'count', 'countess', 'crown prince', 'crown princess', 'dame', 'datin', 'dato', 'datuk', 'datuk seri', 'deacon', 'deaconess', 'dean', 'dhr', 'dipl ing', 'doctor', 'dott', 'dott sa', 'dr', 'dr ing', 'dra', 'drs', 'embajador', 'embajadora', 'en', 'encik', 'eng', 'eur ing', 'exma sra', 'exmo sr', 'f o', 'father', 'first lieutient', 'first officer', 'flt lieut', 'flying officer', 'fr', 'frau', 'fraulein', 'fru', 'gen', 'generaal', 'general', 'governor', 'graaf', 'gravin', 'group captain', 'grp capt', 'h e dr', 'h h', 'h m', 'h r h', 'hajah', 'haji', 'hajim', 'her highness', 'her majesty', 'herr', 'high chief', 'his highness', 'his holiness', 'his majesty', 'hon', 'hr', 'hra', 'ing', 'ir', 'jonkheer', 'judge', 'justice', 'khun ying', 'kolonel', 'lady', 'lcda', 'lic', 'lieut', 'lieut cdr', 'lieut col', 'lieut gen', 'lord', 'm', 'm l', 'm r', 'madame', 'mademoiselle', 'maj gen', 'major', 'master', 'mevrouw', 'miss', 'mlle', 'mme', 'monsieur', 'monsignor', 'mr', 'mrs', 'ms', 'mstr', 'nti', 'pastor', 'president', 'prince', 'princess', 'princesse', 'prinses', 'prof', 'prof dr', 'prof sir', 'professor', 'puan', 'puan sri', 'rabbi', 'rear admiral', 'rev', 'rev canon', 'rev dr', 'rev mother', 'reverend', 'rva', 'senator', 'sergeant', 'sheikh', 'sheikha', 'sig', 'sig na', 'sig ra', 'sir', 'sister', 'sqn ldr', 'sr', 'sr d', 'sra', 'srta', 'sultan', 'tan sri', 'tan sri dato', 'tengku', 'teuku', 'than puying', 'the hon dr', 'the hon justice', 'the hon miss', 'the hon mr', 'the hon mrs', 'the hon ms', 'the hon sir', 'the very rev', 'toh puan', 'tun', 'vice admiral', 'viscount', 'viscountess', 'wg cdr'];
+const titles = ['mr', 'mrs', 'ms', 'miss', 'dr', 'herr', 'monsieur', 'hr', 'frau', 'a v m', 'admiral', 'admiral', 'air cdre', 'air commodore', 'air marshal', 'air vice marshal', 'alderman', 'alhaji', 'ambassador', 'baron', 'barones', 'brig', 'brig gen', 'brig general', 'brigadier', 'brigadier general', 'brother', 'canon', 'capt', 'captain', 'cardinal', 'cdr', 'chief', 'cik', 'cmdr', 'coach', 'col', 'col dr', 'colonel', 'commandant', 'commander', 'commissioner', 'commodore', 'comte', 'comtessa', 'congressman', 'conseiller', 'consul', 'conte', 'contessa', 'corporal', 'councillor', 'count', 'countess', 'crown prince', 'crown princess', 'dame', 'datin', 'dato', 'datuk', 'datuk seri', 'deacon', 'deaconess', 'dean', 'dhr', 'dipl ing', 'doctor', 'dott', 'dott sa', 'dr', 'dr ing', 'dra', 'drs', 'embajador', 'embajadora', 'en', 'encik', 'eng', 'eur ing', 'exma sra', 'exmo sr', 'f o', 'father', 'first lieutient', 'first officer', 'flt lieut', 'flying officer', 'fr', 'frau', 'fraulein', 'fru', 'gen', 'generaal', 'general', 'governor', 'graaf', 'gravin', 'group captain', 'grp capt', 'h e dr', 'h h', 'h m', 'h r h', 'hajah', 'haji', 'hajim', 'her highness', 'her majesty', 'herr', 'high chief', 'his highness', 'his holiness', 'his majesty', 'hon', 'hr', 'hra', 'ing', 'ir', 'jonkheer', 'judge', 'justice', 'khun ying', 'kolonel', 'lady', 'lcda', 'lic', 'lieut', 'lieut cdr', 'lieut col', 'lieut gen', 'lord', 'm', 'm l', 'm r', 'madame', 'mademoiselle', 'maj gen', 'major', 'master', 'mevrouw', 'miss', 'mlle', 'mme', 'monsieur', 'monsignor', 'mr', 'mrs', 'ms', 'mstr', 'nti', 'pastor', 'president', 'prince', 'princess', 'princesse', 'prinses', 'prof', 'prof dr', 'prof sir', 'professor', 'puan', 'puan sri', 'rabbi', 'rear admiral', 'rev', 'rev canon', 'rev dr', 'rev mother', 'reverend', 'rva', 'senator', 'sergeant', 'sheikh', 'sheikha', 'sig', 'sig na', 'sig ra', 'sir', 'sister', 'sqn ldr', 'sr', 'sr d', 'sra', 'srta', 'sultan', 'tan sri', 'tan sri dato', 'tengku', 'teuku', 'than puying', 'the hon dr', 'the hon justice', 'the hon miss', 'the hon mr', 'the hon mrs', 'the hon ms', 'the hon sir', 'the very rev', 'toh puan', 'tun', 'vice admiral', 'viscount', 'viscountess', 'wg cdr'];
 const suffixes = ['I', 'II', 'III', 'IV', 'V', 'Senior', 'Junior', 'Jr', 'Sr', 'PhD', 'Ph\\.D', 'APR', 'RPh', 'PE', 'MD', 'MA', 'DMD', 'CME', 'BVM', 'CFRE', 'CLU', 'CPA', 'CSC', 'CSJ', 'DC', 'DD', 'DDS', 'DO', 'DVM', 'EdD', 'Esq', 'JD', 'LLD', 'OD', 'OSB', 'PC', 'Ret', 'RGS', 'RN', 'RNC', 'SHCJ', 'SJ', 'SNJM', 'SSMO', 'USA', 'USAF', 'USAFR', 'USAR', 'USCG', 'USMC', 'USMCR', 'USN', 'USNR'];
 const particles = ['Vere', 'Von', 'Van', 'De', 'Del', 'Della', 'Di', 'Da', 'Pietro', 'Vanden', 'Du', 'St.', 'St', 'La', 'Lo', 'Ter', 'O', 'O\'', 'Mac', 'Fitz'];
-const titleMatcher = getListMatcher(titles.map(punctutationMatcher));
-const suffixMatcher = getListMatcher(suffixes.map(punctutationMatcher));
+const titleMatcher = getListMatcher(titles.map(punctuationMatcher));
+const suffixMatcher = getListMatcher(suffixes.map(punctuationMatcher));
 const particleMatcher = getListMatcher(particles);
 const titleSplitter = new RegExp(`^((?:${titleMatcher} )*)(.*)$`, 'i');
 const suffixSplitter = getSplittingRegex(`(?:${suffixMatcher}, )*(?:${suffixMatcher})`, 'i');
@@ -3395,17 +3395,17 @@ module.exports={
   "listd": ["list", "literal"],
   "liste": ["list", "literal"],
   "listf": ["list", "literal"],
-  "usera": ["field", "literal"],
+  "users": ["field", "literal"],
   "userb": ["field", "literal"],
   "userc": ["field", "literal"],
   "userd": ["field", "literal"],
-  "usere": ["field", "literal"],
+  "user": ["field", "literal"],
   "userf": ["field", "literal"],
   "verba": ["field", "literal"],
   "verbb": ["field", "literal"],
   "verbc": ["field", "literal"],
   "address": ["list", "literal"],
-  "annote": ["field", "literal"],
+  "annotate": ["field", "literal"],
   "archiveprefix": ["field", "literal"],
   "journal": ["field", "literal"],
   "key": ["field", "literal"],
@@ -4453,8 +4453,8 @@ const nonSpec = [{
   }
 }];
 const aliases = [{
-  source: 'annote',
-  target: 'annote',
+  source: 'annotate',
+  target: 'annotate',
   when: {
     source: {
       annotation: false
@@ -4514,7 +4514,7 @@ var _default = exports.default = new _core.util.Translator([...aliases, ...nonSp
   convert: _shared.Converters.DATE
 }, {
   source: 'annotation',
-  target: 'annote'
+  target: 'annotate'
 }, {
   source: ['author', 'author+an:orcid'],
   target: 'author',
@@ -4591,7 +4591,7 @@ var _default = exports.default = new _core.util.Translator([...aliases, ...nonSp
   target: 'collection-number',
   when: {
     source: {
-      [_shared.TYPE]: ['book', 'mvbook', 'inbook', 'bookinbook', 'suppbook', 'collection', 'mvcollection', 'incollection', 'suppcollection', 'manual', 'suppperiodical', 'proceedings', 'mvproceedings', 'refererence']
+      [_shared.TYPE]: ['book', 'mvbook', 'inbook', 'bookinbook', 'suppbook', 'collection', 'mvcollection', 'incollection', 'suppcollection', 'manual', 'suppperiodical', 'proceedings', 'mvproceedings', 'reference']
     },
     target: {
       type: ['bill', 'book', 'broadcast', 'chapter', 'dataset', 'entry', 'entry-dictionary', 'entry-encyclopedia', 'figure', 'graphic', 'interview', 'legislation', 'legal_case', 'manuscript', 'map', 'motion_picture', 'musical_score', 'pamphlet', 'post', 'post-weblog', 'personal_communication', 'review', 'review-book', 'song', 'speech', 'thesis', 'treaty', 'webpage']
@@ -5079,8 +5079,8 @@ var _default = exports.default = new _core.util.Translator([{
     }
   }
 }, {
-  source: 'annote',
-  target: 'annote'
+  source: 'annotate',
+  target: 'annotate'
 }, {
   source: 'address',
   target: 'publisher-place',
@@ -5097,7 +5097,7 @@ var _default = exports.default = new _core.util.Translator([{
   target: 'collection-number',
   when: {
     source: {
-      [_shared.TYPE]: ['book', 'mvbook', 'inbook', 'collection', 'mvcollection', 'incollection', 'suppcollection', 'manual', 'suppperiodical', 'proceedings', 'mvproceedings', 'refererence']
+      [_shared.TYPE]: ['book', 'mvbook', 'inbook', 'collection', 'mvcollection', 'incollection', 'suppcollection', 'manual', 'suppperiodical', 'proceedings', 'mvproceedings', 'reference']
     },
     target: {
       type: ['bill', 'book', 'broadcast', 'chapter', 'dataset', 'entry', 'entry-dictionary', 'entry-encyclopedia', 'figure', 'graphic', 'interview', 'legislation', 'legal_case', 'manuscript', 'map', 'motion_picture', 'musical_score', 'pamphlet', 'post', 'post-weblog', 'personal_communication', 'review', 'review-book', 'song', 'speech', 'thesis', 'treaty', 'webpage']
@@ -5399,7 +5399,7 @@ function crossref(target, entry, registry) {
     delete data.relatedoptions;
     delete data.relatedstring;
     delete data.relatedtype;
-    delete data.shortand;
+    delete data.shorthand;
     delete data.shortandintro;
     delete data.sortkey;
     if ((parent.type === 'mvbook' || parent.type === 'book') && BOOK_PART.has(target)) {
@@ -9808,7 +9808,7 @@ const PROP_MAPPINGS = [{
   convert: CONVERTERS.DATE
 }, 'PMID', 'PMCID', {
   source: 'PA',
-  target: 'annote',
+  target: 'annotate',
   convert: CONVERTERS.RICH_TEXT
 }];
 const translator = new _core.util.Translator(PROP_MAPPINGS);
@@ -10260,7 +10260,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -10321,7 +10321,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -10416,7 +10416,7 @@ module.exports=[
           "PAMP",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -10542,7 +10542,7 @@ module.exports=[
           "NEWS",
           "PAMP",
           "PAT",
-          "SER",
+          "SET",
           "STAT",
           "THES",
           "UNBILL"
@@ -10576,7 +10576,7 @@ module.exports=[
           "MGZN",
           "PAMP",
           "PCOMM",
-          "SER",
+          "SET",
           "STAND",
           "STAT",
           "UNPB"
@@ -10639,7 +10639,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -10709,7 +10709,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "STAND",
           "STAT",
           "UNBILL",
@@ -10793,7 +10793,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -10873,7 +10873,7 @@ module.exports=[
           "ECHAP",
           "ENCYC",
           "MUSIC",
-          "SER"
+          "SET"
         ]
       },
       "target": {
@@ -11000,7 +11000,7 @@ module.exports=[
           "CONF",
           "EBOOK",
           "MUSIC",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "VIDEO"
@@ -11186,7 +11186,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -11294,7 +11294,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -11416,7 +11416,7 @@ module.exports=[
         "TY": [
           "CHAP",
           "ECHAP",
-          "SER"
+          "SET"
         ]
       },
       "target": {
@@ -11503,7 +11503,7 @@ module.exports=[
     "when": {
       "source": {
         "TY": [
-          "SER"
+          "SET"
         ]
       },
       "target": {
@@ -11805,7 +11805,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -11907,7 +11907,7 @@ module.exports=[
           "PAMP",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -12072,7 +12072,7 @@ module.exports=[
           "PAMP",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -12210,7 +12210,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -12325,7 +12325,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -12419,7 +12419,7 @@ module.exports=[
           "NEWS",
           "PAMP",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "VIDEO"
@@ -12601,7 +12601,7 @@ module.exports=[
           "MGZN",
           "PAMP",
           "PCOMM",
-          "SER",
+          "SET",
           "STAND",
           "STAT",
           "UNPB"
@@ -12685,7 +12685,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -12800,7 +12800,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -12914,7 +12914,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -13029,7 +13029,7 @@ module.exports=[
           "CTLG",
           "EDBOOK",
           "PAMP",
-          "SER"
+          "SET"
         ]
       },
       "target": {
@@ -13241,7 +13241,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -13367,7 +13367,7 @@ module.exports=[
           "NEWS",
           "PAMP",
           "PCOMM",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -13466,7 +13466,7 @@ module.exports=[
           "GEN",
           "HEAR",
           "MUSIC",
-          "SER"
+          "SET"
         ]
       },
       "target": {
@@ -13573,7 +13573,7 @@ module.exports=[
           "MGZN",
           "MUSIC",
           "PAMP",
-          "SER"
+          "SET"
         ]
       },
       "target": {
@@ -13671,7 +13671,7 @@ module.exports=[
           "NEWS",
           "PAMP",
           "PCOMM",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -13853,7 +13853,7 @@ module.exports=[
           "JOUR",
           "MGZN",
           "NEWS",
-          "SER"
+          "SET"
         ]
       },
       "target": {
@@ -13942,7 +13942,7 @@ module.exports=[
       "source": {
         "TY": [
           "CHAP",
-          "SER"
+          "SET"
         ]
       },
       "target": {
@@ -14153,7 +14153,7 @@ module.exports=[
           "HEAR",
           "MAP",
           "PAMP",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "VIDEO"
@@ -14321,7 +14321,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "STAND",
           "STAT",
           "UNBILL",
@@ -14463,7 +14463,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAT",
@@ -14600,7 +14600,7 @@ module.exports=[
           "NEWS",
           "PAMP",
           "PAT",
-          "SER",
+          "SET",
           "STAT",
           "THES",
           "UNBILL"
@@ -14699,7 +14699,7 @@ module.exports=[
           "GEN",
           "GOVDOC",
           "MUSIC",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "VIDEO"
@@ -14777,7 +14777,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -14895,7 +14895,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -15011,7 +15011,7 @@ module.exports=[
           "MUSIC",
           "NEWS",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -15185,7 +15185,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -15345,7 +15345,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -15416,7 +15416,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -15485,7 +15485,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -15556,7 +15556,7 @@ module.exports=[
           "PAT",
           "PCOMM",
           "RPRT",
-          "SER",
+          "SET",
           "SLIDE",
           "SOUND",
           "STAND",
@@ -15617,7 +15617,7 @@ var _default = exports.default = [{
   target: 'container-title',
   when: {
     source: {
-      type: ['ABST', 'ADVS', 'ART', 'BILL', 'CASE', 'CHAP', 'COMP', 'CONF', 'CTLG', 'DATA', 'ELEC', 'GEN', 'HEAR', 'ICOMM', 'INPR', 'JFULL', 'JOUR', 'MAP', 'MGZN', 'MPCT', 'MUSIC', 'NEWS', 'PAMP', 'PAT', 'PCOMM', 'RPRT', 'SER', 'SLIDE', 'SOUND', 'STAT', 'THES', 'UNBILL', 'VIDEO'],
+      type: ['ABST', 'ADVS', 'ART', 'BILL', 'CASE', 'CHAP', 'COMP', 'CONF', 'CTLG', 'DATA', 'ELEC', 'GEN', 'HEAR', 'ICOMM', 'INPR', 'JFULL', 'JOUR', 'MAP', 'MGZN', 'MPCT', 'MUSIC', 'NEWS', 'PAMP', 'PAT', 'PCOMM', 'RPRT', 'SET', 'SLIDE', 'SOUND', 'STAT', 'THES', 'UNBILL', 'VIDEO'],
       T2: false
     },
     target: false
@@ -15767,7 +15767,7 @@ module.exports={
     "PAT": "patent",
     "PCOMM": "personal_communication",
     "RPRT": "report",
-    "SER": "periodical",
+    "SET": "periodical",
     "SLIDE": "motion_picture",
     "SOUND": "motion_picture",
     "STAND": "standard",
@@ -15809,7 +15809,7 @@ module.exports={
     "paper-conference": "CONF",
     "patent": "PAT",
     "performance": "GEN",
-    "periodical": "SER",
+    "periodical": "SET",
     "personal_communication": "PCOMM",
     "post-weblog": "BLOG",
     "post": "ICOMM",
@@ -17500,7 +17500,7 @@ const METADATA_PROPS = [{
   }
 }, {
   source: 'notes',
-  target: 'annote'
+  target: 'annotate'
 }, {
   source: 'contributors',
   target: ['editor', 'producer'],
@@ -18041,7 +18041,7 @@ function time(datavalue, options) {
     }
 }
 // Each time converter should be able to accept 2 keys of arguments:
-// - either datavalue.value objects (prefered as it gives access to the precision)
+// - either datavalue.value objects (preferred as it gives access to the precision)
 // - or the time string (datavalue.value.time)
 const timeConverters = {
     iso: wikibaseTimeToISOString,
@@ -19439,7 +19439,7 @@ function simplifySitelinks(sitelinks, options = {}) {
     }), {});
 }
 const aggregateValues = ({ sitelinks, addUrl, keepBadges }) => (index, key) => {
-    // Accomodating for wikibase-cli, which might set the sitelink to null
+    // Accommodating for wikibase-cli, which might set the sitelink to null
     // to signify that a requested sitelink was not found
     if (sitelinks[key] == null) {
         index[key] = sitelinks[key];
@@ -19752,7 +19752,7 @@ const propertyId = validate('property id', isPropertyId);
 const entityPageTitle = validate('entity page title', isEntityPageTitle);
 const revisionId = validate('revision id', isRevisionId);
 function typeOf(value) {
-    // just handling what differes from typeof
+    // just handling what differs from typeof
     const type = typeof value;
     if (type === 'object') {
         if (value === null)
@@ -19995,7 +19995,7 @@ const EntityTypes = [
 ];
 
 const searchEntitiesFactory = (buildUrl) => {
-    return function searchEntities({ search, language = 'en', uselang, limit = '20', continue: continu = '0', format = 'json', type = 'item', }) {
+    return function searchEntities({ search, language = 'en', uselang, limit = '20', continue: continue = '0', format = 'json', type = 'item', }) {
         rejectObsoleteInterface(arguments);
         uselang = uselang || language;
         if (!(search && search.length > 0))
@@ -20007,7 +20007,7 @@ const searchEntitiesFactory = (buildUrl) => {
             search,
             language,
             limit,
-            continue: continu,
+            continue: continue,
             format,
             uselang,
             type,
@@ -20032,7 +20032,7 @@ function buildUrlFactory(instanceApiEndpoint) {
 }
 
 const tip = `Tip: if you just want to access functions that don't need an instance or a sparqlEndpoint,
-those are also exposed directly on the module object. Exemple:
+those are also exposed directly on the module object. Example:
 import { isItemId, simplify } from 'wikibase-sdk'`;
 const common = Object.assign(Object.assign(Object.assign(Object.assign({ simplify,
     parse }, helpers), sitelinksHelpers), rankHelpers), timeHelpers);
@@ -20466,7 +20466,7 @@ function alloc (size, fill, encoding) {
   if (fill !== undefined) {
     // Only pay attention to encoding if it's a string. This
     // prevents accidentally sending in a number that would
-    // be interpretted as a start offset.
+    // be interpreted as a start offset.
     return typeof encoding === 'string'
       ? createBuffer(size).fill(fill, encoding)
       : createBuffer(size).fill(fill)
@@ -24841,7 +24841,7 @@ function readBlockScalar(state, nodeIndent) {
         }
       }
 
-      // Break this `while` cycle and go to the funciton's epilogue.
+      // Break this `while` cycle and go to the function's epilogue.
       break;
     }
 
@@ -25844,7 +25844,7 @@ module.exports = new Schema({
 //
 // NOTE: JS-YAML does not support schema-specific tag resolution restrictions.
 // So, this schema is not such strict as defined in the YAML specification.
-// It allows numbers in binary notaion, use `Null` and `NULL` as `null`, etc.
+// It allows numbers in binary notation, use `Null` and `NULL` as `null`, etc.
 
 
 'use strict';
@@ -26274,7 +26274,7 @@ function representYamlFloat(object, style) {
   res = object.toString(10);
 
   // JS stringifier can build scientific format without dots: 5e-100,
-  // while YAML requres dot: 5.e-100. Fix it with simple hack
+  // while YAML requires dot: 5.e-100. Fix it with simple hack
 
   return SCIENTIFIC_WITHOUT_DOT.test(res) ? res.replace('e', '.e') : res;
 }
@@ -26835,9 +26835,9 @@ module.exports = new Type('tag:yaml.org,2002:timestamp', {
         break;
       }
     }
-    var startPosition = 
+    var startPosition =
       lineBreaks < numLines ?
-      0 : 
+      0 :
       position + 1
     return string.substring(startPosition).split("\n")
   }
@@ -27355,13 +27355,13 @@ module.exports = new Type('tag:yaml.org,2002:timestamp', {
         col: this.col,
       }
     }
-    
+
     var numLinesAround = 2
     var firstDisplayedLine = Math.max(token.line - numLinesAround, 1)
     var lastDisplayedLine = token.line + numLinesAround
     var lastLineDigits = String(lastDisplayedLine).length
     var displayedLines = lastNLines(
-        this.buffer, 
+        this.buffer,
         (this.line - token.line) + numLinesAround + 1
       )
       .slice(0, 5)
@@ -27410,7 +27410,7 @@ var process = module.exports = {};
 var cachedSetTimeout;
 var cachedClearTimeout;
 
-function defaultSetTimout() {
+function defaultSetTimeout() {
     throw new Error('setTimeout has not been defined');
 }
 function defaultClearTimeout () {
@@ -27421,10 +27421,10 @@ function defaultClearTimeout () {
         if (typeof setTimeout === 'function') {
             cachedSetTimeout = setTimeout;
         } else {
-            cachedSetTimeout = defaultSetTimout;
+            cachedSetTimeout = defaultSetTimeout;
         }
     } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
+        cachedSetTimeout = defaultSetTimeout;
     }
     try {
         if (typeof clearTimeout === 'function') {
@@ -27438,23 +27438,23 @@ function defaultClearTimeout () {
 } ())
 function runTimeout(fun) {
     if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
+        //normal environments in sane situations
         return setTimeout(fun, 0);
     }
     // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+    if ((cachedSetTimeout === defaultSetTimeout || !cachedSetTimeout) && setTimeout) {
         cachedSetTimeout = setTimeout;
         return setTimeout(fun, 0);
     }
     try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
+        // when when somebody has screwed with setTimeout but no I.E. madness
         return cachedSetTimeout(fun, 0);
     } catch(e){
         try {
             // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
             return cachedSetTimeout.call(null, fun, 0);
         } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopefully our context correct otherwise it will throw a global error
             return cachedSetTimeout.call(this, fun, 0);
         }
     }
@@ -27463,7 +27463,7 @@ function runTimeout(fun) {
 }
 function runClearTimeout(marker) {
     if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
+        //normal environments in sane situations
         return clearTimeout(marker);
     }
     // if clearTimeout wasn't available but was latter defined
@@ -27472,14 +27472,14 @@ function runClearTimeout(marker) {
         return clearTimeout(marker);
     }
     try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
+        // when when somebody has screwed with setTimeout but no I.E. madness
         return cachedClearTimeout(marker);
     } catch (e){
         try {
             // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
             return cachedClearTimeout.call(null, marker);
         } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopefully our context correct otherwise it will throw a global error.
             // Some versions of I.E. have different rules for clearTimeout vs setTimeout
             return cachedClearTimeout.call(this, marker);
         }
@@ -27545,7 +27545,7 @@ process.nextTick = function (fun) {
     }
 };
 
-// v8 likes predictible objects
+// v8 likes predictable objects
 function Item(fun, array) {
     this.fun = fun;
     this.array = array;
@@ -30661,7 +30661,7 @@ const getTimeConverter = (key = 'iso') => {
 }
 
 // Each time converter should be able to accept 2 keys of arguments:
-// - either datavalue.value objects (prefered as it gives access to the precision)
+// - either datavalue.value objects (preferred as it gives access to the precision)
 // - or the time string (datavalue.value.time)
 const timeConverters = {
   iso: wikibaseTimeToISOString,
@@ -30696,7 +30696,7 @@ module.exports = {
   parse: (datatype, datavalue, options, claimId) => {
     // Known case of missing datatype: form.claims, sense.claims
     datatype = datatype || datavalue.type
-    // Known case requiring this: legacy "muscial notation" datatype
+    // Known case requiring this: legacy "musical notation" datatype
     datatype = datatype.replace(' ', '-')
 
     try {
@@ -31126,7 +31126,7 @@ module.exports = (sitelinks, options = {}) => {
 }
 
 const aggregateValues = ({ sitelinks, addUrl, keepBadges }) => (index, key) => {
-  // Accomodating for wikibase-cli, which might set the sitelink to null
+  // Accommodating for wikibase-cli, which might set the sitelink to null
   // to signify that a requested sitelink was not found
   if (sitelinks[key] == null) {
     index[key] = sitelinks[key]
@@ -31428,7 +31428,7 @@ module.exports = [
   'ady',
   'af',
   'ak',
-  'als',
+  'also',
   'alt',
   'ami',
   'am',
@@ -31548,7 +31548,7 @@ module.exports = [
   'ii',
   'ik',
   'ilo',
-  'inh',
+  'in',
   'io',
   'is',
   'it',
@@ -31945,7 +31945,7 @@ const { isPlainObject, forceArray, shortLang } = require('../utils/utils')
 module.exports = buildUrl => (titles, sites, languages, props, format, redirects) => {
   // polymorphism: arguments can be passed as an object keys
   if (isPlainObject(titles)) {
-    // Not using destructuring assigment there as it messes with both babel and standard
+    // Not using destructuring assignment there as it messes with both babel and standard
     const params = titles
     titles = params.titles
     sites = params.sites
@@ -32159,7 +32159,7 @@ module.exports = buildUrl => (search, language, limit, format, uselang) => {
 
   // polymorphism: arguments can be passed as an object keys
   if (isPlainObject(search)) {
-    // Not using destructuring assigment there as it messes with both babel and standard
+    // Not using destructuring assignment there as it messes with both babel and standard
     const params = search
     search = params.search
     language = params.language
@@ -32259,7 +32259,7 @@ const helpers = require('./helpers/helpers')
 const sitelinksHelpers = require('../lib/helpers/sitelinks')
 const rankHelpers = require('../lib/helpers/rank')
 const tip = `Tip: if you just want to access functions that don't need an instance or a sparqlEndpoint,
-those are also exposed directly on the module object. Exemple:
+those are also exposed directly on the module object. Example:
 const { isItemId, simplify } = require('wikibase-sdk')`
 
 const common = Object.assign({ simplify, parse }, helpers, sitelinksHelpers, rankHelpers)

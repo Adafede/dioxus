@@ -20,7 +20,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::PageTitle => "LOTUS Explorer für verknüpfte offene Daten",
         TextKey::GoToHomepage => "Zur Startseite",
         TextKey::PageSubtitle => {
-            "Erkunden Sie verknüpfte offene Daten: Naturstoffe, Organismen und wissenschaftliche Literatur."
+            "Erkunden Sie verknüpfte offene Daten: Naturstoffe, Organise und wissenschaftliche Literatur."
         }
         TextKey::ResolvedTaxon => "Aufgelöstes Taxon",
         TextKey::QueryHash => "Abfrage-Hash",
@@ -29,7 +29,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::CopyFullQueryHash => "Vollständigen Abfrage-Hash kopieren (SHA-256)",
         TextKey::CopyFullResultHash => "Vollständigen Ergebnis-Hash kopieren (SHA-256)",
         TextKey::CopyShareableLink => "Freigabelink kopieren",
-        TextKey::ArchiveNotice => "Eingefrorenes Archiv:",
+        TextKey::ArchiveNotice => "Eingefrorenes Archive:",
         TextKey::Unique => "Eindeutig",
         TextKey::LoadingTitle => "Wikidata wird über QLever abgefragt...",
         TextKey::LoadingHint => "Große Ergebnismengen können einige Sekunden dauern.",
@@ -42,7 +42,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintConfiguration => {
             "Für diese Umgebung fehlt die erforderliche Dienstkonfiguration."
         }
-        TextKey::ErrorHintNetwork => "Netzwerkproblem erkannt. Ein erneuter Versuch kann helfen.",
+        TextKey::ErrorHintNetwork => "Netzwerkproblem erkannt. In erneuter Versuch kann helfen.",
         TextKey::ErrorHintRateLimit => {
             "Ratenlimit beim vorgelagerten Dienst erreicht. Bitte etwa eine Minute warten und erneut versuchen."
         }
@@ -52,19 +52,19 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintParse => {
             "Antwort konnte nicht verarbeitet werden. Erneut versuchen oder Abfrage verfeinern."
         }
-        TextKey::ErrorHintUnknown => "Unerwarteter Fehler. Ein erneuter Versuch kann helfen.",
+        TextKey::ErrorHintUnknown => "Unerwarteter Fehler. In erneuter Versuch kann helfen.",
         TextKey::SkipToResults => "Zu den Ergebnissen springen",
         TextKey::WelcomeLeadA => {
-            "Diese Anwendung demonstriert die Leistungsfähigkeit verknüpfter offener Daten durch Verbindung natürlicher Produkte mit Organismen und wissenschaftlicher Literatur. "
+            "Diese Anwendung demonstriert die Leistungsfähigkeit verknüpfter oftener Daten durch Verbindung natürlicher Produkte mit Organise und wissenschaftlicher Literatur. "
         }
         TextKey::WelcomeLeadB => {
             "Das Datenmodell verknüpft Verbindungen, Taxa und Referenzen—aus der "
         }
-        TextKey::WelcomeLeadC => ", veröffentlicht als verknüpfte offene Daten auf ",
+        TextKey::WelcomeLeadC => ", veröffentlicht also verknüpfte offene Daten auf ",
         TextKey::WelcomeLeadD => " und abgefragt via SPARQL durch ",
         TextKey::WelcomeLeadE => ".",
         TextKey::ExampleGentiana => "Taxonname oder Wikidata-QID eingeben",
-        TextKey::ExampleAllTriples => "Alle LOTUS-Verbindung-Taxon-Referenz-Tripel",
+        TextKey::ExampleAllTriples => "Alle LOTUS-Verbindung-Taxon-Reference-Triple",
         TextKey::ExampleSmilesOnly => "SMILES oder Molfile in das Strukturfeld einfügen",
         TextKey::ExampleQueryExecute => "Ausführen",
         TextKey::ExampleQueryTaxon => "CSV herunterladen",
@@ -90,8 +90,8 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::Substructure => "Substruktur",
         TextKey::Similarity => "Ähnlichkeit",
         TextKey::StructureSearchMode => "Struktursuchmodus",
-        TextKey::EditCopyDaylightSmiles => "Bearbeiten -> Als Daylight SMILES kopieren",
-        TextKey::CopyExtendedSmilesMol => "Als erweiterte SMILES / MOL V3000 kopieren",
+        TextKey::EditCopyDaylightSmiles => "Bearbeiten -> Also Daylight SMILES kopieren",
+        TextKey::CopyExtendedSmilesMol => "Also erweiterte SMILES / MOL V3000 kopieren",
         TextKey::FormulaFilter => "Formelfilter",
         TextKey::ExactFormula => "Summenformel",
         TextKey::MinCount => "min",
@@ -103,14 +103,14 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::ElementStateRequired => "erforderlich",
         TextKey::ElementStateExcluded => "ausgeschlossen",
         TextKey::Search => "Suchen",
-        TextKey::Searching => "Suche...",
+        TextKey::Searching => "Such...",
         TextKey::MolecularMass => "Molekulare Masse (Da)",
         TextKey::Min => "Min",
         TextKey::Max => "Max",
         TextKey::PublicationYear => "Publikationsjahr",
         TextKey::YearFrom => "Von",
         TextKey::YearTo => "Bis",
-        TextKey::RunSearch => "Suche starten",
+        TextKey::RunSearch => "Such starten",
         TextKey::KetcherSummary => "Struktureditor (Ketcher)",
         TextKey::KetcherHintA => {
             "Sie möchten eine Struktur zeichnen oder suchen? Öffnen Sie den Tab "
@@ -118,10 +118,10 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::KetcherHintB => " und kopieren Sie dann mit ",
         TextKey::KetcherHintC => " (oder ",
         TextKey::KetcherHintD => {
-            ") und verwenden Sie den Inhalt im Strukturfeld der Registerkarte Suche."
+            ") und verwenden Sie den Inhalt im Strukturfeld der Registerkarte Such."
         }
         TextKey::KetcherIframeTitle => "Ketcher-Struktureditor",
-        TextKey::KindNoteSmiles => "  Wird als einzeiliges SPARQL-Literal gesendet.",
+        TextKey::KindNoteSmiles => "  Wird also einzeiliges SPARQL-Literal gesendet.",
         TextKey::KindNoteMol2000 => {
             "  Wird unverändert an SACHEM scoredSubstructureSearch weitergegeben."
         }
@@ -134,17 +134,17 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::StartingCsvDownload => "CSV-Download wird gestartet...",
         TextKey::PreparingJsonDownload => "JSON-Download wird vorbereitet...",
         TextKey::PreparingRdfDownload => "RDF-Download wird vorbereitet...",
-        TextKey::DownloadCsvTitle => "Ergebnisse als CSV herunterladen",
+        TextKey::DownloadCsvTitle => "Ergebnisse also CSV herunterladen",
         TextKey::DownloadCsvLabel => "CSV herunterladen",
-        TextKey::DownloadJsonTitle => "Ergebnisse als JSON herunterladen",
+        TextKey::DownloadJsonTitle => "Ergebnisse also JSON herunterladen",
         TextKey::DownloadJsonLabel => "JSON herunterladen",
-        TextKey::DownloadRdfTitle => "Ergebnisse als RDF (Turtle) herunterladen",
+        TextKey::DownloadRdfTitle => "Ergebnisse also RDF (Turtle) herunterladen",
         TextKey::DownloadRdfLabel => "RDF herunterladen",
         TextKey::DownloadMetadataTitle => "Schema.org-Metadaten herunterladen (JSON-LD)",
         TextKey::DownloadMetadataLabel => "Metadaten herunterladen",
         TextKey::OpenInQlever => "In QLever öffnen",
         TextKey::OpenInQleverTitle => "Diese Abfrage in der QLever-Weboberfläche öffnen",
-        TextKey::NoResults => "Keine Ergebnisse. Bitte erweitern Sie die Suche.",
+        TextKey::NoResults => "Keine Ergebnisse. Bitte erweitern Sie die Such.",
         TextKey::StageTaxonSearch => "Taxon-Auflösung",
         TextKey::StageResultsQuery => "Ergebnisabruf",
         TextKey::DisplayCappedHint => {
@@ -155,17 +155,17 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::Mass => "Masse",
         TextKey::Formula => "Formel",
         TextKey::TaxonCol => "Taxon",
-        TextKey::Reference => "Referenz",
+        TextKey::Reference => "Reference",
         TextKey::Year => "Jahr",
         TextKey::FooterData => "Daten",
         TextKey::FooterCitation => "Zitat",
         TextKey::FooterCode => "Code",
-        TextKey::FooterArchive => "Archiv",
+        TextKey::FooterArchive => "Archive",
         TextKey::FooterPrograms => "Programme",
         TextKey::FooterLicense => "Lizenz",
         TextKey::FooterForData => " für Daten ",
         TextKey::FooterForCode => " für Code",
-        TextKey::TableTriplesAria => "Verbindung-Taxon-Referenz-Tripel",
+        TextKey::TableTriplesAria => "Verbindung-Taxon-Reference-Triple",
         TextKey::OpenFullSizeDepiction => "Darstellung in voller Größe öffnen",
         TextKey::OpenInWikidata => "In Wikidata öffnen",
         TextKey::OpenInScholia => "In Scholia öffnen",
