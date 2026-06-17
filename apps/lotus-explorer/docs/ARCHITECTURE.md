@@ -25,12 +25,15 @@ src/
 
 ## Rules
 
-- Components render and dispatch — no business logic.
-- Feature internals are private; each feature exposes a typed facade via `mod.rs`.
+- Components render and dispatch --- no business logic.
+- Feature internals are private; each feature exposes a typed facade via
+  `mod.rs`.
 - API DTOs stop at repository boundaries and never reach components.
-- State subscriptions are narrow — components read only the slices they use.
-- Every async path has a stable token; stale completions are discarded before state commit.
-- Typed errors (`thiserror`) at all boundaries; user messages are derived separately.
+- State subscriptions are narrow --- components read only the slices they use.
+- Every async path has a stable token; stale completions are discarded before
+  state commit.
+- Typed errors (`thiserror`) at all boundaries; user messages are derived
+  separately.
 
 ## Data flow
 
@@ -41,4 +44,3 @@ api client → dto mapper → repository → service → state controller → co
 ## Skills index
 
 - `../SKILLS.md`
-

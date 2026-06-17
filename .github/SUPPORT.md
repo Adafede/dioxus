@@ -9,8 +9,8 @@ For usage questions and troubleshooting:
 
 ## Security issues
 
-Do **not** file public issues for security vulnerabilities.
-Follow the private reporting process in `SECURITY.md` (in this `.github/` directory).
+Do **not** file public issues for security vulnerabilities. Follow the private
+reporting process in `SECURITY.md` (in this `.github/` directory).
 
 ## Scope of support
 
@@ -20,4 +20,3 @@ Best-effort support is provided for:
 - latest tagged release
 
 Older revisions may not receive fixes.
-

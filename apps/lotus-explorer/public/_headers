@@ -76,4 +76,3 @@
 # ── SPA query parameters: exempt from cache variance ──────────────────────
 /index.html
   No-Vary-Search: params=("locale"), params_key_order=("locale","search","query")
-

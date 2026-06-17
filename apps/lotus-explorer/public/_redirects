@@ -7,4 +7,3 @@
 
 # Redirect any 404 back to index.html so the WASM SPA can handle routing
 /*  /index.html  200
-

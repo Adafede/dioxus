@@ -1,7 +1,7 @@
 # Code of Conduct
 
-This project is committed to a respectful, harassment-free experience for everyone,
-regardless of background, identity, or experience level.
+This project is committed to a respectful, harassment-free experience for
+everyone, regardless of background, identity, or experience level.
 
 ## Our standards
 
@@ -19,16 +19,16 @@ Unacceptable behavior includes:
 
 ## Scope
 
-This applies in all project spaces, including issues, pull requests, discussions,
-and any external representation of the project.
+This applies in all project spaces, including issues, pull requests,
+discussions, and any external representation of the project.
 
 ## Reporting
 
-For conduct issues, contact maintainers through the private channel documented in
-`SECURITY.md` (in this `.github/` directory). Reports are reviewed promptly and handled confidentially.
+For conduct issues, contact maintainers through the private channel documented
+in `SECURITY.md` (in this `.github/` directory). Reports are reviewed promptly
+and handled confidentially.
 
 ## Enforcement
 
-Maintainers may edit/remove content, warn contributors, or restrict participation
-for behavior that violates this policy.
-
+Maintainers may edit/remove content, warn contributors, or restrict
+participation for behavior that violates this policy.

@@ -1,0 +1,86 @@
+# Configuration file for `prek`, a git hook framework written in Rust.
+# See https://prek.j178.dev for more information.
+#:schema https://www.schemastore.org/prek.json
+
+default_stages = ["pre-commit"]
+fail_fast = false
+
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v6.0.0"
+hooks = [
+  {
+    id = "check-added-large-files",
+    args = ["--maxkb=2048"]
+  },
+  { id = "check-case-conflict" },
+  { id = "check-merge-conflict" },
+  { id = "check-symlinks" },
+  { id = "check-executables-have-shebangs" },
+  { id = "check-shebang-scripts-are-executable" },
+  { id = "check-toml" },
+  { id = "check-json" },
+  { id = "check-yaml" },
+  { id = "end-of-file-fixer" },
+  { id = "mixed-line-ending" },
+  { id = "trailing-whitespace" }
+]
+
+[[repos]]
+repo = "https://github.com/crate-ci/typos"
+rev = "v1.45.1"
+hooks = [
+  { id = "typos" }
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+  {
+    id = "cargo-fmt-check",
+    name = "cargo-fmt-check",
+    language = "system",
+    entry = "cargo fmt --all -- --check",
+    pass_filenames = false
+  },
+  {
+    id = "cargo-check-workspace",
+    name = "cargo-check-workspace",
+    language = "system",
+    entry = "cargo check --workspace --all-targets --locked",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-test-workspace",
+    name = "cargo-test-workspace",
+    language = "system",
+    entry = "cargo test --workspace --all-targets --locked --quiet",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-clippy-workspace",
+    name = "cargo-clippy-workspace",
+    language = "system",
+    entry = "cargo clippy --workspace --all-targets --locked -- -D warnings",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-check-wasm-lotus",
+    name = "cargo-check-wasm-lotus",
+    language = "system",
+    entry = "cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  }
+]
+
+[[repos]]
+repo = "https://github.com/jolars/panache-pre-commit"
+rev = "v2.43.1"
+hooks = [
+  { id = "panache-format" },
+  { id = "panache-lint" }
+]

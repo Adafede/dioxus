@@ -26,7 +26,10 @@
 
 ## Notes
 
-- Share links encode the queued input rows, not previously generated QuickStatements.
-- QuickStatements are regenerated on load so results stay reproducible after dependency creation or Wikidata changes.
-- If prerequisite entities are still missing, run the prerequisite block first in QS-Dev, create/merge items in Wikidata, then reopen or rerun the second pass.
-
+- Share links encode the queued input rows, not previously generated
+  QuickStatements.
+- QuickStatements are regenerated on load so results stay reproducible after
+  dependency creation or Wikidata changes.
+- If prerequisite entities are still missing, run the prerequisite block first
+  in QS-Dev, create/merge items in Wikidata, then reopen or rerun the second
+  pass.

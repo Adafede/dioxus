@@ -78,4 +78,3 @@ body:
           required: true
         - label: I am not reporting a security vulnerability (see `SECURITY.md`).
           required: true
-

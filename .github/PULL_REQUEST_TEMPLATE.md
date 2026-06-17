@@ -4,7 +4,7 @@
 
 Closes #<!-- issue number, if applicable -->
 
----
+--------------------------------------------------------------------------------
 
 ## Type of change
 
@@ -15,15 +15,15 @@ Closes #<!-- issue number, if applicable -->
 - [ ] Documentation update
 - [ ] Dependency update
 
----
+--------------------------------------------------------------------------------
 
 ## Changes
 
 <!-- Bullet-point list of what changed and why each change was made. -->
 
--
+- 
 
----
+--------------------------------------------------------------------------------
 
 ## Testing
 
@@ -33,7 +33,7 @@ Closes #<!-- issue number, if applicable -->
 - [ ] New tests added for new or fixed behavior
 - [ ] Manually tested with `dx serve --package <app>` / `cargo run -p lotus-api`
 
----
+--------------------------------------------------------------------------------
 
 ## Quality gate
 
@@ -45,7 +45,7 @@ make supply-chain  # cargo deny + cargo audit
 - [ ] `make qa` passes locally on a clean tree
 - [ ] `make supply-chain` passes (or changes are dependency-free)
 
----
+--------------------------------------------------------------------------------
 
 ## Documentation
 
@@ -53,12 +53,11 @@ make supply-chain  # cargo deny + cargo audit
 - [ ] API docs updated (OpenAPI annotations, doc comments) if applicable
 - [ ] `README.md` or `CONTRIBUTING.md` updated if behavior changed
 
----
+--------------------------------------------------------------------------------
 
 ## License
 
 By submitting this pull request I confirm that my contribution is made available
-under the terms of the **GNU Affero General Public License v3.0 (AGPL-3.0-only)**,
-as specified in the `LICENSE` file, and I certify the
+under the terms of the **GNU Affero General Public License v3.0
+(AGPL-3.0-only)**, as specified in the `LICENSE` file, and I certify the
 [Developer Certificate of Origin](https://developercertificate.org/).
-

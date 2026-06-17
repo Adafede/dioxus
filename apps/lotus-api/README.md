@@ -10,7 +10,8 @@ OpenAPI/Swagger service for programmatic LOTUS explorer access.
 - `GET /docs`: Swagger UI.
 - `GET /health`: liveness probe.
 
-This service reuses query and parser logic from `apps/lotus-explorer` and is intended as a thin API layer for integrations.
+This service reuses query and parser logic from `apps/lotus-explorer` and is
+intended as a thin API layer for integrations.
 
 ## Run
 
@@ -26,7 +27,8 @@ cargo run -p lotus-api
 - `PORT` (default: `8787`)
 - `DEFAULT_LIMIT` (default: `500`, clamped to service max)
 - `APP_ENV` (`development` by default; set to `production` in deployments)
-- `CORS_ALLOWED_ORIGINS` (comma-separated list, required when `APP_ENV=production`)
+- `CORS_ALLOWED_ORIGINS` (comma-separated list, required when
+  `APP_ENV=production`)
 
 Example production-like run:
 
@@ -60,7 +62,8 @@ curl -sS http://127.0.0.1:8787/v1/search \
 ## Notes
 
 - In development, CORS allows all origins for easy local integration.
-- In production (`APP_ENV=production`), startup fails unless `CORS_ALLOWED_ORIGINS` is explicitly configured.
-- Responses are content-negotiated and compressed (Brotli/Gzip) when clients send `Accept-Encoding`.
+- In production (`APP_ENV=production`), startup fails unless
+  `CORS_ALLOWED_ORIGINS` is explicitly configured.
+- Responses are content-negotiated and compressed (Brotli/Gzip) when clients
+  send `Accept-Encoding`.
 - Keep this service behind your reverse proxy and TLS termination layer.
-
