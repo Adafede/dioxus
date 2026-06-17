@@ -9,10 +9,11 @@
 
 ## License agreement
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0-only)**.
-By submitting a pull request you agree that your contribution is made available
-under the same license, and you certify that you have the right to do so
-(see [Developer Certificate of Origin](https://developercertificate.org/)).
+This project is licensed under the **GNU Affero General Public License v3.0
+(AGPL-3.0-only)**. By submitting a pull request you agree that your contribution
+is made available under the same license, and you certify that you have the
+right to do so (see [Developer Certificate of
+Origin](https://developercertificate.org/)).
 
 Add a `Signed-off-by` trailer to each commit:
 

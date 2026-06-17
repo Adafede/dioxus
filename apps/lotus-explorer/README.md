@@ -1,6 +1,7 @@
 # lotus-explorer
 
-A linked open data (LOD) explorer for the LOTUS compound-taxon-reference knowledge graph from Wikidata, queried via SPARQL.
+A linked open data (LOAD) explorer for the LOTUS compound-taxon-reference
+knowledge graph from Wikidata, queried via SPARQL.
 
 ## Architecture
 

@@ -2,9 +2,11 @@
 
 ## Workspace map
 
-- `apps/lotus-explorer` — Dioxus WASM explorer for LOTUS linked-open-data workflows.
-- `apps/lotus-api` — native Axum API for search execution, export URLs, and exports.
-- `crates/shared` — shared SPARQL and LOTUS data helpers.
+- `apps/lotus-explorer` --- Dioxus WASM explorer for LOTUS linked-open-data
+  workflows.
+- `apps/lotus-api` --- native Axum API for search execution, export URLs, and
+  exports.
+- `crates/shared` --- shared SPARQL and LOTUS data helpers.
 
 ## Stable commands
 

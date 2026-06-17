@@ -1,6 +1,9 @@
 # dioxus-apps
 
-A Cargo workspace hosting multi-app web experiences compiled to WASM. **lotus-explorer** explores the LOTUS natural products knowledge graph from Wikidata via SPARQL. **lotus-api** provides a native HTTP API for advanced search and export.
+A Cargo workspace hosting multi-app web experiences compiled to WASM.
+**lotus-explorer** explores the LOTUS natural products knowledge graph from
+Wikidata via SPARQL. **lotus-api** provides a native HTTP API for advanced
+search and export.
 
 ## Prerequisites
 
@@ -54,12 +57,12 @@ Open `http://127.0.0.1:8787/docs` for the Swagger UI.
 
 ## Explorer ⇄ API integration
 
-| Scenario | `api_base` source | API used |
-|---|---|---|
-| Codeberg Pages (public) | none | ✗ direct SPARQL |
-| Local dev | auto-detected `http://127.0.0.1:8787` | ✓ if server running |
-| Build-time | `LOTUS_API_BASE` env var | ✓ |
-| Runtime override | `?api_base=…` query param | ✓ |
+  | Scenario                | `api_base` source                     | API used            |
+  | ----------------------- | ------------------------------------- | ------------------- |
+  | Codeberg Pages (public) | none                                  | ✗ direct SPARQL     |
+  | Local dev               | auto-detected `http://127.0.0.1:8787` | ✓ if server running |
+  | Build-time              | `LOTUS_API_BASE` env var              | ✓                   |
+  | Runtime override        | `?api_base=…` query param             | ✓                   |
 
 ## API endpoints
 
@@ -90,10 +93,10 @@ make supply-chain
 
 The CI pipeline builds and pushes a container image on every push to `main`:
 
-| Forge | Image |
-|---|---|
-| Codeberg | `codeberg.org/adafede/lotus-api:latest` |
-| GitHub | `ghcr.io/adafede/lotus-api:latest` |
+  | Forge    | Image                                   |
+  | -------- | --------------------------------------- |
+  | Codeberg | `codeberg.org/adafede/lotus-api:latest` |
+  | GitHub   | `ghcr.io/adafede/lotus-api:latest`      |
 
 Self-host:
 
@@ -115,8 +118,8 @@ LOTUS_API_BASE=https://your-server.example.org \
 ## Adding a new app
 
 1. `cp -r apps/hello-world apps/my-new-app`
-2. Edit `apps/my-new-app/Cargo.toml` — change `name`
-3. Edit `apps/my-new-app/Dioxus.toml` — change `name` and `title`
+2. Edit `apps/my-new-app/Cargo.toml` --- change `name`
+3. Edit `apps/my-new-app/Dioxus.toml` --- change `name` and `title`
 4. Add `"apps/my-new-app"` to `members` in `Cargo.toml`
 5. `dx serve --package my-new-app`
 
@@ -124,10 +127,10 @@ LOTUS_API_BASE=https://your-server.example.org \
 
 `lotus-explorer` supports URL-driven execution and exports:
 
-- `?execute=true` — run query on load
-- `?download=true&format=csv` — download CSV
-- `?download=true&format=json` — download SPARQL Results JSON
-- `?download=true&format=rdf` — download RDF (Turtle)
+- `?execute=true` --- run query on load
+- `?download=true&format=csv` --- download CSV
+- `?download=true&format=json` --- download SPARQL Results JSON
+- `?download=true&format=rdf` --- download RDF (Turtle)
 
 When both `download` and `execute` are present, `download` takes priority.
 
@@ -155,7 +158,8 @@ On every push to `main`:
 - Contributing: [`.github/CONTRIBUTING.md`](./.github/CONTRIBUTING.md)
 - AI contributions: [`.github/CONTRIBUTING_AI.md`](./.github/CONTRIBUTING_AI.md)
 - Security: [`.github/SECURITY.md`](./.github/SECURITY.md)
-- Release process: [`.github/RELEASE_CHECKLIST.md`](./.github/RELEASE_CHECKLIST.md)
+- Release process:
+  [`.github/RELEASE_CHECKLIST.md`](./.github/RELEASE_CHECKLIST.md)
 - Change history: [`CHANGELOG.md`](./CHANGELOG.md)
 - License: `LICENSE` (GNU AGPL v3.0)
 
