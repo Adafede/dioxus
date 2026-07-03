@@ -3,7 +3,8 @@
 A Cargo workspace hosting multi-app web experiences compiled to WASM.
 **lotus-explorer** explores the LOTUS natural products knowledge graph from
 Wikidata via SPARQL. **lotus-api** provides a native HTTP API for advanced
-search and export.
+search and export. **jsoncount** is a small JSON-file counter for browsing
+non-null field counts in uploaded files.
 
 ## Prerequisites
 
@@ -39,9 +40,10 @@ dioxus-apps/
 ├── crates/
 │   └── shared/             ← SPARQL client, LOTUS models
 └── apps/
+    ├── hello-world/        ← minimal template for new apps
+    ├── jsoncount/           ← upload a JSON file and count non-null values per field
     ├── lotus-api/          ← OpenAPI service for LOTUS search and exports
-    ├── lotus-explorer/     ← LOTUS Wikidata natural-product explorer
-    └── hello-world/        ← minimal template for new apps
+    └── lotus-explorer/     ← LOTUS Wikidata natural-product explorer
 ```
 
 ## Running apps locally
@@ -49,6 +51,7 @@ dioxus-apps/
 ```bash
 dx serve --package lotus-explorer
 cargo run -p lotus-api
+dx serve --package jsoncount
 ```
 
 The API binds to `127.0.0.1:8787`. Override with `HOST` and `PORT` env vars.
@@ -78,9 +81,10 @@ Open `http://127.0.0.1:8787/docs` for the Swagger UI.
 
 ```bash
 make build APP=lotus-explorer
+make build APP=jsoncount
 ```
 
-Output: `target/dx/lotus-explorer/release/web/public/`
+Output: `target/dx/lotus-explorer/release/web/public/` and `target/dx/jsoncount/release/web/public/`
 
 Quality gate:
 

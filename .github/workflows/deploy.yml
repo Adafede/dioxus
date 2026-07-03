@@ -45,6 +45,12 @@ jobs:
         env:
           GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
 
+      - name: Build jsoncount
+        working-directory: apps/jsoncount
+        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/jsoncount/"
+        env:
+          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
+
       - name: Assemble site
         run: |
           DX_OUT="target/dx"
@@ -52,6 +58,7 @@ jobs:
           mkdir -p _site
           cp -r "$DX_OUT/lotus-explorer/$DX_WEB" _site/lotus-explorer
           cp -r "$DX_OUT/hello-world/$DX_WEB"    _site/hello-world
+          cp -r "$DX_OUT/jsoncount/$DX_WEB"      _site/jsoncount
 
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
@@ -80,6 +87,10 @@ jobs:
               <li>
                 <a href="./hello-world/">👋 Hello World</a>
                 <p class="desc">Minimal template for new apps</p>
+              </li>
+              <li>
+                <a href="./jsoncount/">🧮 JSON Counter</a>
+                <p class="desc">Upload a JSON file and count non-null values per field</p>
               </li>
             </ul>
           </body>

@@ -5,6 +5,12 @@
   "secondary_languages": ["Markdown", "JSON", "YAML"],
   "packages": [
     {
+      "name": "jsoncount",
+      "kind": "wasm app",
+      "path": "apps/jsoncount",
+      "entrypoint": "src/main.rs"
+    },
+    {
       "name": "lotus-explorer",
       "kind": "wasm app",
       "path": "apps/lotus-explorer",
