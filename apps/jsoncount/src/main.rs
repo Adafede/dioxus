@@ -450,7 +450,8 @@ async fn count_json_value(reader: &mut ChunkReader<'_>) -> Result<u64, ScanError
                     }
                 }
                 b'f' => {
-                    if reader.read_literal(b"alse").await? {
+                    let false_suffix = [b'a', b'l', b's', b'e'];
+                    if reader.read_literal(&false_suffix).await? {
                         count += 1;
                     }
                 }

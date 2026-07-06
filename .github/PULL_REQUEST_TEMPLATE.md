@@ -21,7 +21,7 @@ Closes #<!-- issue number, if applicable -->
 
 <!-- Bullet-point list of what changed and why each change was made. -->
 
-- 
+- Change 1
 
 --------------------------------------------------------------------------------
 
@@ -29,7 +29,8 @@ Closes #<!-- issue number, if applicable -->
 
 <!-- Describe how you verified this change. -->
 
-- [ ] Existing tests still pass (`make test`)
+- [ ] Existing tests still pass
+      (`cargo test --workspace --all-targets --locked`)
 - [ ] New tests added for new or fixed behavior
 - [ ] Manually tested with `dx serve --package <app>` / `cargo run -p lotus-api`
 
@@ -38,12 +39,12 @@ Closes #<!-- issue number, if applicable -->
 ## Quality gate
 
 ```bash
-make qa          # fmt-check + check + test + clippy + wasm32 + doc
-make supply-chain  # cargo deny + cargo audit
+prek run cargo-qa
+prek run cargo-supply-chain
 ```
 
-- [ ] `make qa` passes locally on a clean tree
-- [ ] `make supply-chain` passes (or changes are dependency-free)
+- [ ] `prek run cargo-qa` passes locally on a clean tree
+- [ ] `prek run cargo-supply-chain` passes (or changes are dependency-free)
 
 --------------------------------------------------------------------------------
 

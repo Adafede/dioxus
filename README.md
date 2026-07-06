@@ -35,7 +35,7 @@ Without `lotus-api`, the explorer falls back to direct QLever/SPARQL queries.
 ```
 dioxus-apps/
 ├── Cargo.toml              ← workspace root
-├── Makefile                ← convenience targets
+├── prek.toml               ← repo hooks and quality gate
 ├── .github/                ← CI, deploy, governance
 ├── crates/
 │   └── shared/             ← SPARQL client, LOTUS models
@@ -80,17 +80,45 @@ Open `http://127.0.0.1:8787/docs` for the Swagger UI.
 ## Building for production
 
 ```bash
-make build APP=lotus-explorer
-make build APP=jsoncount
+dx build --release --package lotus-explorer
+dx build --release --package jsoncount
 ```
 
-Output: `target/dx/lotus-explorer/release/web/public/` and `target/dx/jsoncount/release/web/public/`
+Output: `target/dx/lotus-explorer/release/web/public/` and
+`target/dx/jsoncount/release/web/public/`
 
-Quality gate:
+## Quality gate and local checks
+
+Install the repo hooks once:
 
 ```bash
-make qa
-make supply-chain
+cargo install prek --locked
+prek install
+```
+
+Run the repo quality gate manually:
+
+```bash
+prek run cargo-qa
+```
+
+Equivalent checks for the old Makefile targets:
+
+```bash
+prek run cargo-fmt-check        # fmt-check
+prek run cargo-check-workspace  # check
+prek run cargo-test-workspace   # test
+prek run cargo-clippy-workspace # clippy
+prek run cargo-doc-workspace    # doc
+prek run cargo-qa               # qa
+prek run cargo-deny             # deny
+prek run cargo-audit            # audit
+prek run cargo-supply-chain     # supply-chain
+prek run cargo-machete          # machete
+prek run cargo-license          # license
+prek run cargo-strict           # strict
+prek run cargo-tree-d           # tree-d
+prek run cargo-outdated         # outdated
 ```
 
 ## Deploying the API

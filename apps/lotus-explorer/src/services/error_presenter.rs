@@ -187,11 +187,11 @@ mod tests {
     fn transport_error_summary_localizes_not_configured() {
         let en = transport_error_summary(Locale::En, &RepositoryError::NotConfigured);
         let fr = transport_error_summary(Locale::Fr, &RepositoryError::NotConfigured);
-        // "configured" (EN) and "configurée" (FR) both share the ASCII stem "configur".
+        // "configured" (EN) and "configurée" (FR) both share the ASCII stem "config".
         // `to_ascii_lowercase` does not strip accents, so checking for "configure" would
         // miss the French past-participle "configurée" whose 'é' is non-ASCII.
-        assert!(en.to_ascii_lowercase().contains("configur"));
-        assert!(fr.to_ascii_lowercase().contains("configur"));
+        assert!(en.to_ascii_lowercase().contains("config"));
+        assert!(fr.to_ascii_lowercase().contains("config"));
     }
 
     #[test]

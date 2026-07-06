@@ -21,16 +21,25 @@ hooks = [
   { id = "check-toml" },
   { id = "check-json" },
   { id = "check-yaml" },
-  { id = "end-of-file-fixer" },
+  {
+    id = "end-of-file-fixer",
+    exclude = "(public/assets/)"
+  },
   { id = "mixed-line-ending" },
-  { id = "trailing-whitespace" }
+  {
+    id = "trailing-whitespace",
+    exclude = "(public/assets/)"
+  }
 ]
 
 [[repos]]
 repo = "https://github.com/crate-ci/typos"
 rev = "v1.45.1"
 hooks = [
-  { id = "typos" }
+  {
+    id = "typos",
+    exclude = "(apps/lotus-explorer/src/i18n/|public/assets/)"
+  }
 ]
 
 [[repos]]
@@ -41,7 +50,8 @@ hooks = [
     name = "cargo-fmt-check",
     language = "system",
     entry = "cargo fmt --all -- --check",
-    pass_filenames = false
+    pass_filenames = false,
+    files = "(?!.*public/assets/).*$"
   },
   {
     id = "cargo-check-workspace",
@@ -49,21 +59,112 @@ hooks = [
     language = "system",
     entry = "cargo check --workspace --all-targets --locked",
     pass_filenames = false,
-    stages = ["pre-push"]
+    stages = ["pre-push"],
+    files = "(?!.*public/assets/).*$"
   },
   {
     id = "cargo-test-workspace",
     name = "cargo-test-workspace",
     language = "system",
-    entry = "cargo test --workspace --all-targets --locked --quiet",
+    entry = "cargo test --workspace --all-targets --locked",
     pass_filenames = false,
-    stages = ["pre-push"]
+    stages = ["pre-push"],
+    files = "(?!.*public/assets/).*$"
   },
   {
     id = "cargo-clippy-workspace",
     name = "cargo-clippy-workspace",
     language = "system",
     entry = "cargo clippy --workspace --all-targets --locked -- -D warnings",
+    pass_filenames = false,
+    stages = ["pre-push"],
+    files = "(?!.*public/assets/).*$"
+  },
+  {
+    id = "cargo-rust-quality",
+    name = "cargo-rust-quality",
+    language = "system",
+    entry = "cargo fmt --all -- --check && cargo check --workspace --all-targets --locked && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --all-targets --locked",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-qa",
+    name = "cargo-qa",
+    language = "system",
+    entry = "cargo fmt --all -- --check && cargo check --workspace --all-targets --locked && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --all-targets --locked && cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked && cargo doc --workspace --no-deps --locked",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-doc-workspace",
+    name = "cargo-doc-workspace",
+    language = "system",
+    entry = "cargo doc --workspace --all-features --no-deps --locked",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-tree-d",
+    name = "cargo-tree-d",
+    language = "system",
+    entry = "cargo tree -d --workspace",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-outdated",
+    name = "cargo-outdated",
+    language = "system",
+    entry = "sh -c 'if command -v cargo-outdated >/dev/null 2>&1; then cargo outdated --workspace --exit-code 1; else echo \"cargo-outdated not installed; skipping\"; fi'",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-machete",
+    name = "cargo-machete",
+    language = "system",
+    entry = "sh -c 'if command -v cargo-machete >/dev/null 2>&1; then cargo machete check --workspace; else echo \"cargo-machete not installed; skipping\"; fi'",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-audit",
+    name = "cargo-audit",
+    language = "system",
+    entry = "sh -c 'if command -v cargo-audit >/dev/null 2>&1; then cargo audit; else echo \"cargo-audit not installed; skipping\"; fi'",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-deny",
+    name = "cargo-deny",
+    language = "system",
+    entry = "sh -c 'if command -v cargo-deny >/dev/null 2>&1; then cargo deny check advisories bans licenses sources; else echo \"cargo-deny not installed; skipping\"; fi'",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-supply-chain",
+    name = "cargo-supply-chain",
+    language = "system",
+    entry = "sh -c 'if command -v cargo-deny >/dev/null 2>&1; then cargo deny check advisories bans licenses sources; else echo \"cargo-deny not installed; skipping\"; fi; if command -v cargo-audit >/dev/null 2>&1; then cargo audit; else echo \"cargo-audit not installed; skipping\"; fi'",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-license",
+    name = "cargo-license",
+    language = "system",
+    entry = "sh -c 'if command -v cargo-license >/dev/null 2>&1; then cargo license -j; else echo \"cargo-license not installed; skipping\"; fi'",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "cargo-strict",
+    name = "cargo-strict",
+    language = "system",
+    entry = "sh -c 'cargo fmt --all -- --check && cargo check --workspace --all-targets --locked && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --all-targets --locked && cargo tree -d --workspace && if command -v cargo-outdated >/dev/null 2>&1; then cargo outdated --workspace --exit-code 1; else echo \"cargo-outdated not installed; skipping\"; fi && if command -v cargo-machete >/dev/null 2>&1; then cargo machete check --workspace; else echo \"cargo-machete not installed; skipping\"; fi && cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked && if command -v cargo-deny >/dev/null 2>&1; then cargo deny check advisories bans licenses sources; else echo \"cargo-deny not installed; skipping\"; fi && if command -v cargo-audit >/dev/null 2>&1; then cargo audit; else echo \"cargo-audit not installed; skipping\"; fi && if command -v cargo-license >/dev/null 2>&1; then cargo license -j; else echo \"cargo-license not installed; skipping\"; fi && cargo doc --workspace --no-deps --locked'",
     pass_filenames = false,
     stages = ["pre-push"]
   },

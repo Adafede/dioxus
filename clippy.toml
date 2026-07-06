@@ -4,6 +4,7 @@
 # Keep `clippy::multiple_crate_versions` enabled while acknowledging known
 # transitive duplicates from upstream dependency trees.
 allowed-duplicate-crates = [
+  "bitflags",
   "block-buffer",
   "const-serialize",
   "const-serialize-macro",
@@ -18,6 +19,8 @@ allowed-duplicate-crates = [
   "jni",
   "jni-sys",
   "r-efi",
+  "rand",
+  "rand_core",
   "reqwest",
   "rustc-hash",
   "sha2",
