@@ -135,7 +135,7 @@ fn compound_formula_expr(raw_var: &str) -> String {
 fn compound_select_clause() -> String {
     format!(
         r#"
-SELECT
+SELECT DISTINCT
   (xsd:integer(STRAFTER(STR(?c), "Q")) AS ?compound)
   ?compoundLabel
   ?compound_inchikey
@@ -196,7 +196,7 @@ WHERE {{
 ///           ?t (wdt:P171*) wd:Q…  ← ancestry filter INSIDE here
 ///         }
 ///       }
-///       OPTIONAL { … }   ← reference + property OPTIONALs here
+///       OPTIONAL { … }   ← reference + property OPTIONAL clauses here
 ///     }
 ///   }
 /// }
@@ -204,8 +204,8 @@ WHERE {{
 ///
 /// **Why three levels?**
 /// - Level 1 applies the `P171*` transitive-closure filter *before* any join,
-///   so `QLever` sees only rows in the target clade when planning OPTIONALs.
-/// - Level 2 runs all OPTIONALs exclusively on the already-filtered rows,
+///   so `QLever` sees only rows in the target clade when planning OPTIONAL clauses.
+/// - Level 2 runs all OPTIONAL clauses exclusively on the already-filtered rows,
 ///   avoiding expensive enrichment of taxa that are later discarded.
 /// - The outer SELECT handles the `xsd:integer(STRAFTER(…))` projections on
 ///   a tiny, pre-enriched result set.
@@ -249,7 +249,7 @@ WHERE {{
 ///         SELECT COMPOUND_CORE_VARS
 ///         WHERE { core compound-taxon-reference triples }
 ///       }
-///       OPTIONAL { … }   ← OPTIONALs run after inner join completes
+///       OPTIONAL { … }   ← OPTIONAL clauses run after inner join completes
 ///     }
 ///   }
 /// }
@@ -768,7 +768,7 @@ fn construct_where_with_formula_bind(where_block: &str) -> String {
 /// The expression is left to right, preserving semantic correctness.
 fn normalize_digits_expr(var: &str) -> String {
     // Build: BIND(REPLACE(REPLACE(...REPLACE(var, "₀", "0")..., "₉", "9") AS ?result)
-    // This is more efficient than deeply nested SELECTs or multiple BINDs.
+    // This is more efficient than deeply nested SELECT clauses or multiple BINDs.
     SUBSCRIPT_DIGIT_MAPPINGS.iter().fold(
         format!("STR({var})"),
         |acc, &(subscript_char, ascii_digit)| {
@@ -917,6 +917,20 @@ mod tests {
         for (from, to) in SUBSCRIPT_DIGIT_MAPPINGS {
             assert!(expr.contains(&format!("\"{from}\"")));
             assert!(expr.contains(&format!("\"{to}\"")));
+        }
+    }
+
+    #[test]
+    fn compound_queries_use_distinct_outer_select() {
+        let q1 = query_all_compounds();
+        let q2 = query_compounds_by_taxon("Q2382443");
+        let q3 = query_sachem("c1ccccc1", SmilesSearchType::Substructure, 0.8, None);
+
+        for q in [q1, q2, q3] {
+            assert!(
+                q.contains("SELECT DISTINCT"),
+                "missing DISTINCT on outer select: {q}"
+            );
         }
     }
 
