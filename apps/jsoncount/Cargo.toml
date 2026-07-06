@@ -14,10 +14,8 @@ name = "jsoncount"
 path = "src/main.rs"
 
 [dependencies]
-console_log = { workspace = true }
 dioxus = { workspace = true }
 gloo-timers = { version = "0.3", features = ["futures"] }
-log = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true }

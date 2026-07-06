@@ -2068,11 +2068,9 @@ dependencies = [
 name = "jsoncount"
 version = "0.1.0"
 dependencies = [
- "console_log",
  "dioxus",
  "gloo-timers",
  "js-sys",
- "log",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
