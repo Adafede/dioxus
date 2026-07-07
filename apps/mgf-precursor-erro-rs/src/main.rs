@@ -431,6 +431,8 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
         "CO" => "CO",
         "CO2" => "CO2",
         "O" => "O",
+        "C2H4" => return Some(28.031_300_128 * multiplier),
+        "CHNAO2" | "HCOONA" => return Some(67.987_423_942 * multiplier),
         "H" => return Some(PROTON_MASS * multiplier),
         "NA" => return Some(SODIUM_MASS * multiplier),
         "K" => return Some(POTASSIUM_MASS * multiplier),
@@ -1477,8 +1479,10 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
 
         if let Some(stripped) = trimmed.strip_prefix("MOLECULEMASS=") {
             if let Ok(value) = stripped.parse::<f64>() {
-                reference_mass = Some(value);
-                reference_mass_source = Some("MOLECULEMASS");
+                if reference_mass.is_none() {
+                    reference_mass = Some(value);
+                    reference_mass_source = Some("MOLECULEMASS");
+                }
             }
             continue;
         }
@@ -1762,7 +1766,38 @@ mod tests {
 
     #[test]
     fn rejects_uncommon_formula_adducts() {
-        assert!(super::parse_adduct_mass_spec("[M+C2H4]+").is_none());
+        assert!(super::parse_adduct_mass_spec("[M+ZZZ]+").is_none());
+    }
+
+    #[test]
+    fn supports_multi_part_formula_adducts() {
+        let mass = super::expected_precursor_mz(
+            1000.0,
+            Some("[M+H2O+CH3OH+H]+"),
+            Some("1+"),
+            Some("positive"),
+        )
+        .expect("multi-part formula adduct should be supported");
+        assert!(mass > 1000.0);
+    }
+
+    #[test]
+    fn supports_c2h4_and_sodium_formate_terms() {
+        let c2h4_loss =
+            super::expected_precursor_mz(1000.0, Some("[M-C2H4+H]+"), Some("1+"), Some("positive"))
+                .expect("C2H4 loss should be supported");
+        assert!((c2h4_loss - (1000.0 - 28.031_300_128 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9);
+
+        let sodium_formate = super::expected_precursor_mz(
+            1000.0,
+            Some("[M+CHNaO2+H]+"),
+            Some("1+"),
+            Some("positive"),
+        )
+        .expect("sodium formate should be supported");
+        assert!(
+            (sodium_formate - (1000.0 + 67.987_423_942 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9
+        );
     }
 }
 
