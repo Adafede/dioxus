@@ -80,9 +80,9 @@ struct PrecursorMetrics {
     abs_error_ppm_rms: f64,
     signed_error_da_mean: f64,
     signed_error_ppm_mean: f64,
+    within_0_0005_da: usize,
     within_0_001_da: usize,
     within_0_005_da: usize,
-    within_0_01_da: usize,
     within_1_ppm: usize,
     within_5_ppm: usize,
     within_10_ppm: usize,
@@ -113,9 +113,9 @@ impl Default for PrecursorMetrics {
             abs_error_ppm_rms: 0.0,
             signed_error_da_mean: 0.0,
             signed_error_ppm_mean: 0.0,
+            within_0_0005_da: 0,
             within_0_001_da: 0,
             within_0_005_da: 0,
-            within_0_01_da: 0,
             within_1_ppm: 0,
             within_5_ppm: 0,
             within_10_ppm: 0,
@@ -344,6 +344,7 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     let mut shift = 0.0f64;
     let mut current = String::new();
     let mut sign = 1.0f64;
+    let mut saw_unsupported_token = false;
 
     for ch in body.chars() {
         match ch {
@@ -356,6 +357,8 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
                     multiplier = 2.0;
                 } else if current.eq_ignore_ascii_case("3M") {
                     multiplier = 3.0;
+                } else if !current.is_empty() {
+                    saw_unsupported_token = true;
                 }
                 current.clear();
                 sign = 1.0;
@@ -369,6 +372,8 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
                     multiplier = 2.0;
                 } else if current.eq_ignore_ascii_case("3M") {
                     multiplier = 3.0;
+                } else if !current.is_empty() {
+                    saw_unsupported_token = true;
                 }
                 current.clear();
                 sign = -1.0;
@@ -385,9 +390,13 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
         multiplier = 2.0;
     } else if current.eq_ignore_ascii_case("3M") {
         multiplier = 3.0;
+    } else if !current.is_empty() {
+        saw_unsupported_token = true;
     }
 
-    if shift == 0.0 && multiplier == 1.0 && body == "M" {
+    if saw_unsupported_token {
+        None
+    } else if shift == 0.0 && multiplier == 1.0 && body == "M" {
         Some((1.0, 0.0))
     } else if body.is_empty() || body == "M" {
         None
@@ -415,8 +424,13 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     let formula = trimmed[digits_end..].trim().to_ascii_uppercase();
     let formula = match formula.as_str() {
         "FA" => "CH2O2",
-        "MEOH" => "CH4O",
+        "MEOH" | "CH3OH" => "CH4O",
         "HFA" => "C2HF3O2",
+        "H2O" => "H2O",
+        "NH3" => "NH3",
+        "CO" => "CO",
+        "CO2" => "CO2",
+        "O" => "O",
         "H" => return Some(PROTON_MASS * multiplier),
         "NA" => return Some(SODIUM_MASS * multiplier),
         "K" => return Some(POTASSIUM_MASS * multiplier),
@@ -427,7 +441,7 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
         "BR" => return Some(78.918_337_1 * multiplier),
         "NH4" => return Some(AMMONIUM_MASS * multiplier),
         "OH" => return Some(17.002_739_65 * multiplier),
-        _ => formula.as_str(),
+        _ => return None,
     };
     let formula: ChemicalFormula<u32, i32> = ChemicalFormula::from_str(formula).ok()?;
     Some(formula.isotopologue_mass() * multiplier)
@@ -734,14 +748,14 @@ fn app() -> Element {
                                     title: "Absolute precursor error (Da)".to_string(),
                                     subtitle: "Distribution across spectra, with tolerance bands highlighted".to_string(),
                                     histogram: metrics.da_error_histogram.clone(),
-                                    thresholds: vec![0.005, 0.01],
+                                    thresholds: vec![0.0005, 0.005],
                                     unit: "Da".to_string(),
                                 }
                                 histogram_plot {
                                     title: "Absolute precursor error (ppm)".to_string(),
                                     subtitle: "Distribution across spectra, with common tolerance bands".to_string(),
                                     histogram: metrics.ppm_error_histogram.clone(),
-                                    thresholds: vec![5.0, 10.0],
+                                    thresholds: vec![1.0, 5.0],
                                     unit: "ppm".to_string(),
                                 }
                                 scatter_plot {
@@ -758,22 +772,22 @@ fn app() -> Element {
 
                             div {
                                 style: "margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.55rem;",
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(22, 101, 52, 0.12);",
+                                    "≤ 0.0005 Da: {format_count_with_percentage(metrics.within_0_0005_da, metrics.spectra)}"
+                                }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f0fdf4; color: #15803d; border: 1px solid #4ade80; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(21, 128, 61, 0.12);",
                                     "≤ 0.001 Da: {format_count_with_percentage(metrics.within_0_001_da, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 999px; font-weight: 600;",
-                                    "≤ 0.01 Da: {format_count_with_percentage(metrics.within_0_01_da, metrics.spectra)}"
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(29, 78, 216, 0.12);",
+                                    "≤ 0.005 Da: {format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #b45309; border: 1px solid #fdba74; border-radius: 999px; font-weight: 600;",
-                                    "< 0.005 Da: {format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfeff; color: #0f766e; border: 1px solid #5eead4; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(15, 118, 110, 0.12);",
                                     "≤ 1 ppm: {format_count_with_percentage(metrics.within_1_ppm, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(109, 40, 217, 0.12);",
                                     "≤ 5 ppm: {format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
                                     "≤ 10 ppm: {format_count_with_percentage(metrics.within_10_ppm, metrics.spectra)}"
                                 }
                             }
@@ -1659,14 +1673,14 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
     metrics.signed_error_da_mean = error_da;
     metrics.signed_error_ppm_mean = ppm;
     metrics.record_error(abs_error_da, abs_ppm, &adduct_label, ppm, error_da);
+    if abs_error_da <= 0.0005 {
+        metrics.within_0_0005_da = 1;
+    }
     if abs_error_da <= 0.001 {
         metrics.within_0_001_da = 1;
     }
     if abs_error_da < 0.005 {
         metrics.within_0_005_da = 1;
-    }
-    if abs_error_da <= 0.01 {
-        metrics.within_0_01_da = 1;
     }
     if abs_ppm <= 1.0 {
         metrics.within_1_ppm = 1;
@@ -1735,10 +1749,20 @@ mod tests {
                 .expect("methanol adduct should be supported");
         assert!(methanol_mass > 1000.0);
 
+        let water_mass =
+            expected_precursor_mz(1000.0, Some("[M+H2O+H]+"), Some("1+"), Some("positive"))
+                .expect("water adduct should be supported");
+        assert!(water_mass > 1000.0);
+
         let dimer_mass =
             expected_precursor_mz(1000.0, Some("[2M+H]+"), Some("1+"), Some("positive"))
                 .expect("dimer adduct should be supported");
         assert!((dimer_mass - (2000.0 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn rejects_uncommon_formula_adducts() {
+        assert!(super::parse_adduct_mass_spec("[M+C2H4]+").is_none());
     }
 }
 
@@ -1799,9 +1823,9 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         + (next.signed_error_ppm_mean * next_spectra))
         / total_spectra;
 
+    current.within_0_0005_da += next.within_0_0005_da;
     current.within_0_001_da += next.within_0_001_da;
     current.within_0_005_da += next.within_0_005_da;
-    current.within_0_01_da += next.within_0_01_da;
     current.within_1_ppm += next.within_1_ppm;
     current.within_5_ppm += next.within_5_ppm;
     current.within_10_ppm += next.within_10_ppm;
