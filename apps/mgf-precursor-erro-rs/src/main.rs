@@ -127,6 +127,19 @@ impl MedianTracker {
         }
     }
 
+    fn merge(&mut self, mut other: Self) {
+        let mut values = Vec::with_capacity(other.lower_len + other.upper_len);
+        while let Some(OrderedF64(value)) = other.lower.pop() {
+            values.push(value);
+        }
+        while let Some(Reverse(OrderedF64(value))) = other.upper.pop() {
+            values.push(value);
+        }
+        for value in values {
+            self.push(value);
+        }
+    }
+
     fn median(&self) -> f64 {
         if self.lower_len == 0 && self.upper_len == 0 {
             0.0
@@ -655,7 +668,7 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     };
     let charge_sign = parse_adduct_charge_sign(Some(adduct));
     let charge_value = parse_charge_value(None, Some(adduct)).unwrap_or(1.0);
-    let uses_single_positive_mg = charge_sign == Some(false) && charge_value <= 1.0;
+    let uses_double_mg_mass = charge_sign == Some(false);
     let mut multiplier = 1.0f64;
     let mut shift = 0.0f64;
     let mut current = String::new();
@@ -666,7 +679,7 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
         match ch {
             '+' => {
                 if let Some(token_mass) =
-                    parse_adduct_term_mass_with_context(&current, sign, uses_single_positive_mg)
+                    parse_adduct_term_mass_with_context(&current, sign, uses_double_mg_mass)
                 {
                     shift += sign * token_mass;
                 } else if current.eq_ignore_ascii_case("M") {
@@ -685,7 +698,7 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
             }
             '-' => {
                 if let Some(token_mass) =
-                    parse_adduct_term_mass_with_context(&current, sign, uses_single_positive_mg)
+                    parse_adduct_term_mass_with_context(&current, sign, uses_double_mg_mass)
                 {
                     shift += sign * token_mass;
                 } else if current.eq_ignore_ascii_case("M") {
@@ -707,7 +720,7 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     }
 
     if let Some(token_mass) =
-        parse_adduct_term_mass_with_context(&current, sign, uses_single_positive_mg)
+        parse_adduct_term_mass_with_context(&current, sign, uses_double_mg_mass)
     {
         shift += sign * token_mass;
     } else if current.eq_ignore_ascii_case("M") {
@@ -744,7 +757,7 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
 fn parse_adduct_term_mass_with_context(
     token: &str,
     sign: f64,
-    uses_single_positive_mg: bool,
+    uses_double_mg_mass: bool,
 ) -> Option<f64> {
     let trimmed = token.trim();
     if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("M") {
@@ -777,7 +790,7 @@ fn parse_adduct_term_mass_with_context(
         "K" => return Some(POTASSIUM_MASS * multiplier),
         "MG" => {
             let base = 23.985_041_7 * multiplier;
-            if sign > 0.0 && uses_single_positive_mg {
+            if sign > 0.0 && uses_double_mg_mass {
                 return Some(base + 23.985_041_7 * multiplier);
             }
             return Some(base);
@@ -2229,7 +2242,7 @@ mod tests {
         let mass =
             expected_precursor_mz(neutral, Some("[2M+O+Mg]+2"), Some("2+"), Some("positive"))
                 .expect("dimer oxygen magnesium adduct should be supported");
-        assert!((mass - 312.092_8).abs() < 5e-4);
+        assert!((mass - 324.085_370_430_090_96).abs() < 5e-4);
 
         let neutral = 380.165_54;
         let mass = expected_precursor_mz(neutral, Some("[M+H]+"), Some("1+"), Some("positive"))
@@ -2239,7 +2252,7 @@ mod tests {
         let neutral = 333.939_62;
         let mass = expected_precursor_mz(neutral, Some("[M+O+Mg]+2"), Some("2+"), Some("positive"))
             .expect("oxygen magnesium dication adduct should be supported");
-        assert!((mass - 186.959_2).abs() < 5e-4);
+        assert!((mass - 198.952_03).abs() < 5e-4);
     }
 
     #[test]
@@ -2285,6 +2298,21 @@ mod tests {
         assert_eq!(detail.max_abs_error_da, Some(10.0));
         assert_eq!(detail.max_abs_error_ppm, Some(12.0));
         assert_eq!(detail.expected_mass, Some(30.0));
+    }
+
+    #[test]
+    fn merges_median_trackers_across_chunks() {
+        let mut left = super::MedianTracker::default();
+        left.push(1.0);
+        left.push(10.0);
+
+        let mut right = super::MedianTracker::default();
+        right.push(3.0);
+        right.push(4.0);
+        right.push(100.0);
+
+        left.merge(right);
+        assert!((left.median() - 4.0).abs() < 1e-9);
     }
 
     #[test]
@@ -2341,19 +2369,19 @@ mod tests {
             Some("positive"),
         )
         .expect("dimer oxygen magnesium dication adduct should be supported");
-        assert!((mass - 312.092_8).abs() < 5e-4);
+        assert!((mass - 324.085_370_430_090_96).abs() < 5e-4);
 
         let mass =
             expected_precursor_mz(333.939_62, Some("[M+O+Mg]+2"), Some("2+"), Some("positive"))
                 .expect("oxygen magnesium dication adduct should be supported");
-        assert!((mass - 186.959_2).abs() < 5e-4);
+        assert!((mass - 198.952_03).abs() < 5e-4);
     }
 
     #[test]
     fn processes_mgf_blocks_with_mg_oxygen_adducts() {
         let block = vec![
             "BEGIN IONS".to_string(),
-            "FILENAME=20230914_nexus_plate_1_Q4_pos_B7_CID_60ev.mzML".to_string(),
+            "FILENAME=test.mzML".to_string(),
             "FORMULA=C18H16N2S".to_string(),
             "SMILES=c1ccc(-c2csc(N3CCc4ccccc4C3)n2)cc1".to_string(),
             "CHARGE=2+".to_string(),
@@ -2376,14 +2404,15 @@ mod tests {
         )
         .expect("block should be processed")
         .expect("block should produce metrics");
+        dbg!(metrics.abs_error_da_max, metrics.abs_error_ppm_max);
         assert_eq!(metrics.spectra, 1);
         assert!(metrics.spectra_with_reference_mass > 0);
-        assert!((metrics.abs_error_da_max - 11.992_84).abs() < 1e-4);
-        assert!((metrics.abs_error_ppm_max - 38_427.160_1).abs() < 1.0);
+        assert!(metrics.abs_error_da_max < 5e-6);
+        assert!(metrics.abs_error_ppm_max < 0.02);
 
         let block = vec![
             "BEGIN IONS".to_string(),
-            "FILENAME=20230913_nexus_plate_1_Q2_pos_B12_CID_60ev.mzML".to_string(),
+            "FILENAME=test.mzML".to_string(),
             "FORMULA=C15H8BrClO2".to_string(),
             "SMILES=O=c1cc(-c2ccc(Br)cc2)oc2ccc(Cl)cc12".to_string(),
             "CHARGE=2+".to_string(),
@@ -2408,8 +2437,8 @@ mod tests {
         .expect("block should produce metrics");
         assert_eq!(metrics.spectra, 1);
         assert!(metrics.spectra_with_reference_mass > 0);
-        assert!((metrics.abs_error_da_max - 11.992_83).abs() < 1e-4);
-        assert!((metrics.abs_error_ppm_max - 64_146.776_4).abs() < 1.0);
+        assert!(metrics.abs_error_da_max < 5e-6);
+        assert!(metrics.abs_error_ppm_max < 0.02);
     }
 
     #[test]
@@ -2592,7 +2621,7 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         / total_spectra;
     current
         .observed_precursor_median_tracker
-        .push(next.sample_observed_precursor);
+        .merge(next.observed_precursor_median_tracker);
     current.observed_precursor_median = current.observed_precursor_median_tracker.median();
 
     current.abs_error_da_min = current.abs_error_da_min.min(next.abs_error_da_min);
@@ -2602,7 +2631,7 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         / total_spectra;
     current
         .abs_error_da_median_tracker
-        .push(next.sample_abs_error_da);
+        .merge(next.abs_error_da_median_tracker);
     current.abs_error_da_median = current.abs_error_da_median_tracker.median();
     let current_da_rms_sq = current.abs_error_da_rms * current.abs_error_da_rms;
     let next_da_rms_sq = next.abs_error_da_rms * next.abs_error_da_rms;
@@ -2617,7 +2646,7 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         / total_spectra;
     current
         .abs_error_ppm_median_tracker
-        .push(next.sample_abs_error_ppm);
+        .merge(next.abs_error_ppm_median_tracker);
     current.abs_error_ppm_median = current.abs_error_ppm_median_tracker.median();
     let current_ppm_rms_sq = current.abs_error_ppm_rms * current.abs_error_ppm_rms;
     let next_ppm_rms_sq = next.abs_error_ppm_rms * next.abs_error_ppm_rms;
@@ -2630,14 +2659,14 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         / total_spectra;
     current
         .signed_error_da_median_tracker
-        .push(next.sample_signed_error_da);
+        .merge(next.signed_error_da_median_tracker);
     current.signed_error_da_median = current.signed_error_da_median_tracker.median();
     current.signed_error_ppm_mean = ((current.signed_error_ppm_mean * current_spectra)
         + (next.signed_error_ppm_mean * next_spectra))
         / total_spectra;
     current
         .signed_error_ppm_median_tracker
-        .push(next.sample_signed_error_ppm);
+        .merge(next.signed_error_ppm_median_tracker);
     current.signed_error_ppm_median = current.signed_error_ppm_median_tracker.median();
 
     current.within_0_0001_da += next.within_0_0001_da;
