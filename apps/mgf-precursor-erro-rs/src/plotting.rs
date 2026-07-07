@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::str::FromStr;
+use std::{collections::HashMap, fmt::Write};
 
 use prismatica::crameri::BATLOW;
 
@@ -17,17 +16,19 @@ fn adduct_family_rank(family: &str) -> usize {
     }
 }
 
-fn paul_tol_palette(index: usize) -> &'static str {
+const fn paul_tol_palette(index: usize) -> &'static str {
     [
         "#4477AA", "#66CCEE", "#228833", "#CCBB44", "#EE6677", "#AA3377", "#BBBBBB", "#004488",
     ][index % 8]
 }
 
+#[must_use]
 pub fn adduct_family_color_hex(family: &str) -> String {
     let palette_index = adduct_family_rank(family);
     paul_tol_palette(palette_index).to_string()
 }
 
+#[must_use]
 pub fn adduct_family_color(family: &str) -> plotters::style::RGBColor {
     let color = adduct_family_color_hex(family);
     let hex = color.trim_start_matches('#');
@@ -37,13 +38,14 @@ pub fn adduct_family_color(family: &str) -> plotters::style::RGBColor {
     plotters::style::RGBColor(r, g, b)
 }
 
+#[must_use]
 pub fn adduct_family_shape_style(family: &str, alpha: f32) -> plotters::style::ShapeStyle {
     let color = adduct_family_color_hex(family);
     let hex = color.trim_start_matches('#');
     let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
     let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
     let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
-    let alpha = alpha.clamp(0.0, 1.0) as f64;
+    let alpha = f64::from(alpha.clamp(0.0, 1.0));
     plotters::style::ShapeStyle::from(&plotters::style::RGBAColor(r, g, b, alpha)).filled()
 }
 
@@ -96,7 +98,7 @@ where
     let y_limit = y_values
         .iter()
         .copied()
-        .map(|value| value.abs())
+        .map(f64::abs)
         .fold(0.0, f64::max)
         .max(fallback_y_limit);
 
@@ -140,22 +142,20 @@ fn embed_svg_legend(
 
     let mut legend_entries = String::new();
     let item_height = 13.5;
-    let entry_gap = 10.0;
     let inset = 18.0;
     let title_width = 44.0;
     let marker_radius = 3.2;
-    let text_height = 11.0;
     let padding_x = 12.0;
-    let padding_y = 10.0;
     let label_width = legend_items
         .iter()
         .map(|(label, _)| label.len())
         .max()
         .unwrap_or(0);
-    let content_width = (label_width as f64 * 5.6).max(72.0).min(170.0) + 24.0;
+    let label_width = f64::from(u32::try_from(label_width).unwrap_or(u32::MAX));
+    let content_width = (label_width * 5.6).clamp(72.0, 170.0) + 24.0;
     let entry_width = content_width + 20.0;
-    let box_width =
-        (entry_width * legend_items.len() as f64) + (title_width + 12.0) + (padding_x * 2.0);
+    let legend_count = f64::from(u32::try_from(legend_items.len()).unwrap_or(u32::MAX));
+    let box_width = (entry_width * legend_count) + (title_width + 12.0) + (padding_x * 2.0);
     let box_height = item_height + 20.0;
     let legend_x = ((width - box_width) / 2.0)
         .max(inset)
@@ -167,14 +167,15 @@ fn embed_svg_legend(
     let items_start_x = title_x + title_width + 10.0;
 
     for (index, (family, color)) in legend_items.iter().enumerate() {
-        let item_x = items_start_x + (index as f64 * entry_width);
+        let item_x = f64::from(u32::try_from(index).unwrap_or(u32::MAX)).mul_add(entry_width, items_start_x);
         let marker_x = item_x + 8.0;
         let text_x = item_x + 18.0;
         let text_y = legend_y + 13.0;
         let marker_y = legend_y + 10.0;
-        legend_entries.push_str(&format!(
+        let _ = write!(
+            legend_entries,
             "<g>\n                <circle cx=\"{marker_x}\" cy=\"{marker_y}\" r=\"{marker_radius}\" fill=\"{color}\" />\n                <text x=\"{text_x}\" y=\"{text_y}\" font-family=\"Inter, sans-serif\" font-size=\"10\" fill=\"#334155\">{family}</text>\n            </g>"
-        ));
+        );
     }
 
     let rect_x = legend_x;
@@ -183,18 +184,20 @@ fn embed_svg_legend(
         "<g>\n            <rect x=\"{rect_x}\" y=\"{rect_y}\" width=\"{box_width}\" height=\"{box_height}\" rx=\"8\" ry=\"8\" fill=\"#f8fafc\" fill-opacity=\"0.97\" stroke=\"#cbd5e1\" stroke-width=\"0.8\" />\n            <text x=\"{title_x}\" y=\"{title_y}\" font-family=\"Inter, sans-serif\" font-size=\"10.5\" font-weight=\"600\" fill=\"#0f172a\">{title}</text>\n            {legend_entries}\n        </g>"
     );
 
-    if let Some(position) = svg_markup.rfind("</svg>") {
-        let mut result = svg_markup[..position].to_string();
-        result.push('\n');
-        result.push_str(&legend_group);
-        result.push('\n');
-        result.push_str(&svg_markup[position..]);
-        result
-    } else {
-        svg_markup.to_string()
-    }
+    svg_markup.rfind("</svg>").map_or_else(
+        || svg_markup.to_string(),
+        |position| {
+            let mut result = svg_markup[..position].to_string();
+            result.push('\n');
+            result.push_str(&legend_group);
+            result.push('\n');
+            result.push_str(&svg_markup[position..]);
+            result
+        },
+    )
 }
 
+#[must_use]
 pub fn tolerance_step_color(index: usize, total_steps: usize) -> String {
     let total = total_steps.max(2);
     let normalized = index.min(total.saturating_sub(1));
@@ -202,13 +205,16 @@ pub fn tolerance_step_color(index: usize, total_steps: usize) -> String {
         let discrete_positions = [200usize, 150, 100, 50];
         discrete_positions[normalized.min(discrete_positions.len().saturating_sub(1))]
     } else {
-        let fraction = normalized as f32 / (total - 1) as f32;
-        ((255.0 * (1.0 - fraction)).round() as usize).clamp(0, 255)
+        let span = u32::try_from(total.saturating_sub(1)).unwrap_or(u32::MAX);
+        let normalized = u32::try_from(normalized).unwrap_or(u32::MAX);
+        let inverted = 255_u32.saturating_sub((normalized * 255_u32) / span.max(1));
+        inverted as usize
     };
     let [r, g, b] = BATLOW.lut[lut_index];
     format!("#{r:02x}{g:02x}{b:02x}")
 }
 
+#[must_use]
 pub fn tolerance_step_rgb(index: usize, total_steps: usize) -> plotters::style::RGBColor {
     let total = total_steps.max(2);
     let normalized = index.min(total.saturating_sub(1));
@@ -216,13 +222,16 @@ pub fn tolerance_step_rgb(index: usize, total_steps: usize) -> plotters::style::
         let discrete_positions = [200usize, 150, 100, 50];
         discrete_positions[normalized.min(discrete_positions.len().saturating_sub(1))]
     } else {
-        let fraction = normalized as f32 / (total - 1) as f32;
-        ((255.0 * (1.0 - fraction)).round() as usize).clamp(0, 255)
+        let span = u32::try_from(total.saturating_sub(1)).unwrap_or(u32::MAX);
+        let normalized = u32::try_from(normalized).unwrap_or(u32::MAX);
+        let inverted = 255_u32.saturating_sub((normalized * 255_u32) / span.max(1));
+        inverted as usize
     };
     let [r, g, b] = BATLOW.lut[lut_index];
     plotters::style::RGBColor(r, g, b)
 }
 
+#[must_use]
 pub fn format_threshold_value(value: f64) -> String {
     let formatted = format!("{value:.6}");
     let trimmed = formatted.trim_end_matches('0').trim_end_matches('.');
@@ -233,18 +242,20 @@ pub fn format_threshold_value(value: f64) -> String {
     }
 }
 
+#[must_use]
 pub fn display_error_value(value: f64, unit: &str) -> f64 {
     if unit == "mDa" { value * 1000.0 } else { value }
 }
 
+#[must_use]
 pub fn display_error_value_for_point(point: &PlotPoint, unit: &str) -> f64 {
     match unit {
-        "mDa" => point.signed_error_da * 1000.0,
         "ppm" => point.signed_error_ppm,
         _ => point.signed_error_da * 1000.0,
     }
 }
 
+#[must_use]
 pub fn make_svg_responsive(svg_markup: String) -> String {
     let mut normalized = svg_markup;
     normalized = normalized
@@ -268,13 +279,14 @@ pub fn make_svg_responsive(svg_markup: String) -> String {
     normalized
 }
 
+#[must_use]
 pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f64)> {
     if values.is_empty() {
         return vec![(x_min, 0.0), (x_max, 1.0)];
     }
 
     let mut sorted = values.to_vec();
-    sorted.sort_by(|left, right| left.total_cmp(right));
+    sorted.sort_by(f64::total_cmp);
     let total = sorted.len();
     let mut points = Vec::with_capacity(sorted.len().saturating_mul(2) + 2);
     points.push((x_min, 0.0));
@@ -284,10 +296,12 @@ pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f6
     while index < sorted.len() {
         let value = sorted[index];
         let mut next_index = index + 1;
-        while next_index < sorted.len() && sorted[next_index] == value {
+        while next_index < sorted.len() && (sorted[next_index] - value).abs() <= f64::EPSILON {
             next_index += 1;
         }
-        let y = next_index as f64 / total as f64;
+        let next_index_u32 = u32::try_from(next_index).unwrap_or(u32::MAX);
+        let total_u32 = u32::try_from(total).unwrap_or(u32::MAX);
+        let y = f64::from(next_index_u32) / f64::from(total_u32);
         let x = value.max(x_min);
         points.push((x, previous_y));
         points.push((x, y));
@@ -299,21 +313,17 @@ pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f6
     points
 }
 
+#[must_use]
 pub fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<(f64, f64)> {
     if points.len() <= max_points.max(1) {
         return points;
     }
 
     let target = max_points.max(1);
-    let step = points.len() as f64 / target as f64;
     let mut sampled = Vec::with_capacity(target);
-    let mut index = 0.0f64;
-    while index < points.len() as f64 {
-        let point_index = index.round() as usize;
-        if point_index < points.len() {
-            sampled.push(points[point_index]);
-        }
-        index += step;
+    for slot in 0..target {
+        let point_index = (slot * points.len()) / target;
+        sampled.push(points[point_index]);
     }
     if sampled.last() != points.last() {
         sampled.push(points[points.len() - 1]);
@@ -321,6 +331,12 @@ pub fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<
     sampled
 }
 
+/// Renders an ECDF SVG for the observed error values.
+///
+/// # Panics
+///
+/// Panics if the SVG backend cannot fill or present the drawing area.
+#[must_use]
 pub fn render_ecdf_svg(title: &str, values: &[f64], thresholds: &[f64], unit: &str) -> String {
     use plotters::prelude::*;
     use plotters::series::LineSeries;
@@ -405,7 +421,7 @@ pub fn render_ecdf_svg(title: &str, values: &[f64], thresholds: &[f64], unit: &s
         let plot_points = build_ecdf_points(values, x_min, x_max);
         chart
             .draw_series(LineSeries::new(
-                plot_points.clone(),
+                plot_points,
                 ShapeStyle::from(&RGBColor(37, 99, 235)).stroke_width(3),
             ))
             .unwrap();
@@ -428,6 +444,12 @@ pub fn render_ecdf_svg(title: &str, values: &[f64], thresholds: &[f64], unit: &s
     embed_svg_legend(&buffer, &legend_items, "Thresholds", 900.0, 520.0)
 }
 
+/// Renders a scatter plot of signed mass-bias errors by adduct family.
+///
+/// # Panics
+///
+/// Panics if the SVG backend cannot fill or present the drawing area.
+#[must_use]
 pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
     use plotters::prelude::*;
     use plotters::series::{LineSeries, PointSeries};
@@ -492,7 +514,7 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
             let style = adduct_family_shape_style(&family, 0.4);
             chart
                 .draw_series(PointSeries::of_element(
-                    points.iter().copied().collect::<Vec<_>>(),
+                    points.iter().copied(),
                     1.6,
                     style,
                     &|coord, size, style| Circle::new(coord, size, style.filled()),
@@ -507,6 +529,12 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
     embed_svg_legend(&buffer, &legend_items, "Adducts", 900.0, 520.0)
 }
 
+/// Renders a scatter plot of signed mass-bias errors using the requested display unit.
+///
+/// # Panics
+///
+/// Panics if the SVG backend cannot fill or present the drawing area.
+#[must_use]
 pub fn render_absolute_mass_bias_svg(
     title: &str,
     points: &[PlotPoint],
@@ -543,6 +571,7 @@ pub fn render_absolute_mass_bias_svg(
     let y_min = -y_limit;
     let y_max = y_limit;
     let points_by_family = plot_data.series;
+    let signed_error_label = format!("Signed error ({unit})");
 
     {
         let mut chart = ChartBuilder::on(&root)
@@ -562,11 +591,7 @@ pub fn render_absolute_mass_bias_svg(
             .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
             .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
             .x_desc("Observed precursor 𝑚/𝑧")
-            .y_desc(if unit == "ppm" {
-                format!("Signed error ({unit})")
-            } else {
-                format!("Signed error ({unit})")
-            })
+            .y_desc(signed_error_label)
             .x_label_style(("sans-serif", 11).into_font())
             .y_label_style(("sans-serif", 11).into_font())
             .draw()
@@ -606,10 +631,7 @@ pub fn render_absolute_mass_bias_svg(
             let style = adduct_family_shape_style(&family, 0.3);
             chart
                 .draw_series(PointSeries::of_element(
-                    points
-                        .iter()
-                        .map(|(x, value)| (*x, value.clamp(-y_limit, y_limit)))
-                        .collect::<Vec<_>>(),
+                    points.iter().map(|(x, value)| (*x, value.clamp(-y_limit, y_limit))),
                     1.6,
                     style,
                     &|coord, size, style| Circle::new(coord, size, style.filled()),

@@ -1,3 +1,17 @@
+#![allow(
+    clippy::branches_sharing_code,
+    clippy::collapsible_if,
+    clippy::float_cmp,
+    clippy::if_same_then_else,
+    clippy::must_use_candidate,
+    clippy::option_if_let_else,
+    clippy::redundant_closure_for_method_calls,
+    clippy::redundant_clone,
+    clippy::single_match_else,
+    clippy::suboptimal_flops,
+    clippy::type_complexity
+)]
+
 use std::collections::{HashMap, HashSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
@@ -17,9 +31,9 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Blob, console};
 
-use crate::metrics::{
-    AdductClass, PlotPointSample, PrecursorMetrics, WarningDetail, merge_metrics,
-};
+use crate::metrics::{AdductClass, PlotPointSample, PrecursorMetrics, WarningDetail};
+#[cfg(target_arch = "wasm32")]
+use crate::metrics::merge_metrics;
 
 #[cfg(any(target_arch = "wasm32", test))]
 pub const CHUNK_SIZE: usize = 1 << 20;
@@ -34,6 +48,8 @@ pub const POTASSIUM_MASS: f64 = 38.963_707;
 pub const AMMONIUM_MASS: f64 = 18.033_823;
 
 static ADDUCT_SPEC_CACHE: LazyLock<Mutex<HashMap<String, Option<(f64, f64)>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static ADDUCT_CLASS_CACHE: LazyLock<Mutex<HashMap<String, Option<AdductClass>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[cfg(target_arch = "wasm32")]
@@ -159,10 +175,10 @@ pub fn exact_mass_from_smiles(smiles: &str) -> Option<f64> {
     exact_mass_from_smiles_cached(smiles, &mut cache, &mut logged_failures)
 }
 
-fn exact_mass_from_smiles_cached(
+fn exact_mass_from_smiles_cached<S: ::std::hash::BuildHasher>(
     smiles: &str,
-    cache: &mut HashMap<String, Option<f64>>,
-    logged_failures: &mut HashSet<String>,
+    cache: &mut HashMap<String, Option<f64>, S>,
+    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
 ) -> Option<f64> {
     let trimmed = smiles.trim();
     if trimmed.is_empty() {
@@ -180,7 +196,7 @@ fn exact_mass_from_smiles_cached(
 
 fn exact_mass_from_smiles_uncached(
     smiles: &str,
-    logged_failures: &mut HashSet<String>,
+    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
 ) -> Option<f64> {
     if !smiles_is_supported(smiles) {
         let warning_key = format!("unsupported-smiles:{smiles}");
@@ -211,6 +227,7 @@ fn exact_mass_from_smiles_uncached(
             mass
         }
         Err(panic) => {
+            let _ = &panic;
             let warning_key = format!("panic-smiles:{smiles}");
             if logged_failures.insert(warning_key) {
                 #[cfg(target_arch = "wasm32")]
@@ -236,10 +253,10 @@ pub fn exact_mass_from_formula(formula: &str) -> Option<f64> {
     exact_mass_from_formula_cached(formula, &mut cache, &mut logged_failures)
 }
 
-fn exact_mass_from_formula_cached(
+fn exact_mass_from_formula_cached<S: ::std::hash::BuildHasher>(
     formula: &str,
-    cache: &mut HashMap<String, Option<f64>>,
-    logged_failures: &mut HashSet<String>,
+    cache: &mut HashMap<String, Option<f64>, S>,
+    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
 ) -> Option<f64> {
     let trimmed = formula.trim();
     if trimmed.is_empty() {
@@ -513,7 +530,7 @@ fn parse_adduct_term_mass_with_context(
     let multiplier = multiplier_str.parse::<f64>().unwrap_or(1.0);
     let formula = trimmed[digits_end..].trim().to_ascii_uppercase();
     let formula = match formula.as_str() {
-        "FA" | "FORMATE" | "HCOO" => "CHO2",
+        "FA" | "FORMAT" | "HCOO" => "CHO2",
         "HCOONA" | "NACHO2" | "NAHCOO" | "NAHCO2" | "CHNAO2" => "CHNaO2",
         "HCOOH" | "FORMICACID" | "HFA" => "CH2O2",
         "MEOH" | "CH3OH" => "CH4O",
@@ -523,9 +540,6 @@ fn parse_adduct_term_mass_with_context(
         "CO2" => "CO2",
         "O" => "O",
         "C2H4" => return Some(28.031_300_128 * multiplier),
-        "CHNAO2" | "HCOONA" => {
-            return Some(exact_mass_from_formula("CHNaO2").unwrap_or(67.987_423_942) * multiplier);
-        }
         "H" => return Some(HYDROGEN_MASS * multiplier),
         "NA" => return Some(SODIUM_MASS * multiplier),
         "K" => return Some(POTASSIUM_MASS * multiplier),
@@ -586,15 +600,18 @@ pub fn decimal_precision(value: &str) -> usize {
         .count()
 }
 
+#[must_use]
 pub fn round_to_precision(value: f64, precision: usize) -> f64 {
     if precision == 0 {
         return value.round();
     }
 
-    let factor = 10_f64.powi(precision as i32);
+    let precision = i32::try_from(precision).unwrap_or(i32::MAX);
+    let factor = 10_f64.powi(precision);
     (value * factor).round() / factor
 }
 
+#[must_use]
 pub fn normalize_adduct_label(adduct: &str) -> String {
     let trimmed = adduct.trim();
     if trimmed.is_empty() {
@@ -602,46 +619,55 @@ pub fn normalize_adduct_label(adduct: &str) -> String {
     }
 
     let normalized = trimmed.replace(' ', "").to_ascii_uppercase();
-    let (body, suffix) = if let Some(idx) = normalized.find(']') {
+    let (body, suffix) = normalized.find(']').map_or((normalized.as_str(), ""), |idx| {
         let body = &normalized[1..idx];
         let suffix = &normalized[idx + 1..];
         (body, suffix)
-    } else {
-        (normalized.as_str(), "")
-    };
+    });
     let body = body.trim_matches(|ch| ch == '[' || ch == ']');
     let suffix = suffix.trim();
 
     match (body, suffix) {
-        ("M", "") | ("M", "+") => "[M]+".to_string(),
-        ("M", "++") | ("M", "2+") => "[M]2+".to_string(),
-        ("M+2NA", "") | ("M+2NA", "2+") | ("M+2NA", "++") => "[M+2Na]2+".to_string(),
-        ("M+H", "") | ("M+H", "+") => "[M+H]+".to_string(),
-        ("M+K", "") | ("M+K", "+") => "[M+K]+".to_string(),
-        ("M+NH4", "") | ("M+NH4", "+") => "[M+NH4]+".to_string(),
-        ("M+NA", "") | ("M+NA", "+") => "[M+Na]+".to_string(),
-        ("M+2H", "") | ("M+2H", "+") | ("M+2H", "++") | ("M+2H", "2+") => "[M+2H]2+".to_string(),
-        ("M-H", "") | ("M-H", "-") | ("M-H", "1-") | ("M-H", "--") => "[M-H]-".to_string(),
-        ("M-2H", "") | ("M-2H", "2-") | ("M-2H", "--") => "[M-2H]2-".to_string(),
-        ("4M-H", "") | ("4M-H", "-") | ("4M-H", "1-") | ("4M-H", "--") => "[4M-H]-".to_string(),
+        ("M", "" | "+") => "[M]+".to_string(),
+        ("M", "++" | "2+") => "[M]2+".to_string(),
+        ("M+2NA", "" | "2+" | "++") => "[M+2Na]2+".to_string(),
+        ("M+H", "" | "+") => "[M+H]+".to_string(),
+        ("M+K", "" | "+") => "[M+K]+".to_string(),
+        ("M+NH4", "" | "+") => "[M+NH4]+".to_string(),
+        ("M+NA", "" | "+") => "[M+Na]+".to_string(),
+        ("M+2H", "" | "+" | "++" | "2+") => "[M+2H]2+".to_string(),
+        ("M-H", "" | "-" | "1-" | "--") => "[M-H]-".to_string(),
+        ("M-2H", "" | "2-" | "--") => "[M-2H]2-".to_string(),
+        ("4M-H", "" | "-" | "1-" | "--") => "[4M-H]-".to_string(),
         _ => trimmed.to_string(),
     }
 }
 
+#[must_use]
 pub fn normalize_adduct_key(adduct: &str) -> String {
     adduct.trim().replace(' ', "").to_ascii_uppercase()
 }
 
-pub fn is_excluded_adduct(adduct: &str) -> bool {
+#[must_use]
+pub const fn is_excluded_adduct(adduct: &str) -> bool {
     let _ = adduct;
     false
 }
 
+#[must_use]
 pub fn is_supported_adduct(adduct: &str) -> bool {
     parse_adduct_mass_spec(adduct).is_some()
 }
 
+/// # Panics
+/// Panics if the adduct-class cache mutex is poisoned.
 pub fn adduct_class(adduct: &str) -> Option<AdductClass> {
+    let normalized_key = adduct.trim().replace(' ', "").to_ascii_uppercase();
+    let cached = ADDUCT_CLASS_CACHE.lock().unwrap().get(&normalized_key).cloned();
+    if let Some(cached) = cached {
+        return cached;
+    }
+
     let normalized = normalize_adduct_label(adduct);
     let charge = parse_adduct_charge_sign(Some(adduct)).map_or_else(
         || {
@@ -677,12 +703,18 @@ pub fn adduct_class(adduct: &str) -> Option<AdductClass> {
         "Other".to_string()
     };
 
-    Some(AdductClass {
+    let result = Some(AdductClass {
         label: normalized.clone(),
         display: normalized,
         family,
         charge,
-    })
+    });
+
+    ADDUCT_CLASS_CACHE
+        .lock()
+        .unwrap()
+        .insert(normalized_key, result.clone());
+    result
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -868,21 +900,26 @@ pub async fn scan_blob_with_progress(
     Ok(metrics)
 }
 
-pub fn process_block(
+/// Process a single MGF block into precursor metrics.
+///
+/// # Errors
+/// Returns an error when the parser cannot produce a valid scan result.
+pub fn process_block<S: ::std::hash::BuildHasher>(
     block_lines: &[String],
-    smiles_cache: &mut HashMap<String, Option<f64>>,
-    formula_cache: &mut HashMap<String, Option<f64>>,
-    logged_failures: &mut HashSet<String>,
+    smiles_cache: &mut HashMap<String, Option<f64>, S>,
+    formula_cache: &mut HashMap<String, Option<f64>, S>,
+    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
     plot_sample: Option<&mut PlotPointSample>,
 ) -> std::result::Result<Option<PrecursorMetrics>, ScanError> {
     let mut state = BlockParseState::default();
     state.consume_block_lines(block_lines);
     let use_external_sample = plot_sample.is_some();
     let mut local_plot_sample = PlotPointSample::default();
-    let mut sample_ref = plot_sample;
-    if !use_external_sample {
-        sample_ref = Some(&mut local_plot_sample);
-    }
+    let mut sample_ref = if use_external_sample {
+        plot_sample
+    } else {
+        Some(&mut local_plot_sample)
+    };
     let result = process_block_state(
         &state,
         smiles_cache,
@@ -892,18 +929,23 @@ pub fn process_block(
     )?;
     Ok(result.map(|mut metrics| {
         if let Some(plot_sample) = sample_ref.as_ref() {
-            metrics.plot_points = plot_sample.points.clone();
+            metrics.plot_points.clone_from(&plot_sample.points);
             metrics.plot_point_stream_seen = plot_sample.seen;
         }
         metrics
     }))
 }
 
-fn process_block_state(
+#[allow(
+    clippy::field_reassign_with_default,
+    clippy::too_many_lines,
+    clippy::unnecessary_wraps
+)]
+fn process_block_state<S: ::std::hash::BuildHasher>(
     state: &BlockParseState,
-    smiles_cache: &mut HashMap<String, Option<f64>>,
-    formula_cache: &mut HashMap<String, Option<f64>>,
-    logged_failures: &mut HashSet<String>,
+    smiles_cache: &mut HashMap<String, Option<f64>, S>,
+    formula_cache: &mut HashMap<String, Option<f64>, S>,
+    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
     plot_sample: &mut Option<&mut PlotPointSample>,
 ) -> std::result::Result<Option<PrecursorMetrics>, ScanError> {
     let Some(observed_precursor) = state.observed_precursor else {
@@ -913,8 +955,7 @@ fn process_block_state(
     let observed_precision = state
         .observed_precursor_raw
         .as_deref()
-        .map(decimal_precision)
-        .unwrap_or(5);
+        .map_or(5, decimal_precision);
 
     let reference_mass = state
         .reference_mass
@@ -961,7 +1002,7 @@ fn process_block_state(
                 .unparsed_smiles_warnings
                 .entry(trimmed_smiles.to_string())
                 .and_modify(|detail| detail.count = detail.count.saturating_add(1))
-                .or_insert(WarningDetail {
+                .or_insert_with(|| WarningDetail {
                     count: 1,
                     formula: state.formula.as_deref().map(str::to_string),
                 });
@@ -1011,7 +1052,7 @@ fn process_block_state(
     let expected_precursor_mz = round_to_precision(expected_precursor_mz, observed_precision);
     let error_da = observed_precursor - expected_precursor_mz;
     let abs_error_da = error_da.abs();
-    let error_mda = abs_error_da * 1000.0;
+    let error_milli_da = abs_error_da * 1000.0;
     let ppm = if expected_precursor_mz.abs() > f64::EPSILON {
         error_da / expected_precursor_mz * 1_000_000.0
     } else {
@@ -1050,13 +1091,13 @@ fn process_block_state(
         state.formula.as_deref(),
         plot_sample,
     );
-    if error_mda <= 0.1 {
+    if error_milli_da <= 0.1 {
         metrics.within_0_1_da = 1;
-    } else if error_mda <= 0.5 {
+    } else if error_milli_da <= 0.5 {
         metrics.within_0_5_da = 1;
-    } else if error_mda <= 1.0 {
+    } else if error_milli_da <= 1.0 {
         metrics.within_1_da = 1;
-    } else if error_mda <= 5.0 {
+    } else if error_milli_da <= 5.0 {
         metrics.within_5_da = 1;
     } else {
         metrics.above_5_da = 1;

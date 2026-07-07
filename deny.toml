@@ -66,7 +66,6 @@ skip = [
   { name = "thiserror-impl" },
   { name = "windows-sys" },
   { name = "winnow" },
-  { name = "wit-bindgen" },
 ]
 
 # ── Source policy ─────────────────────────────────────────────────────────────
@@ -77,9 +76,7 @@ unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = [
   "https://github.com/earth-metabolome-initiative/geometric-traits",
-  "https://github.com/earth-metabolome-initiative/geometric-traits?branch=main",
   "https://github.com/earth-metabolome-initiative/mascot-rs.git",
   "https://github.com/earth-metabolome-initiative/mass-spectrometry-traits",
   "https://github.com/earth-metabolome-initiative/smiles-parser",
-  "https://github.com/earth-metabolome-initiative/smiles-parser?rev=ad15ce7205f4e3ad842f5eaa153d562f3548bd79",
 ]

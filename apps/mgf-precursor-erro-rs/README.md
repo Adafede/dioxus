@@ -1,6 +1,9 @@
 # mgf-precursor-erro-rs
 
-`mgf-precursor-erro-rs` is a Dioxus web app for uploading an MGF file and summarizing precursor mass errors. It uses `mascot-rs` to normalize each spectrum block and reports error summaries in absolute Da and ppm, alongside tolerance counts.
+`mgf-precursor-erro-rs` is a Dioxus web app for uploading an MGF file and
+summarizing precursor mass errors. It uses `mascot-rs` to normalize each
+spectrum block and reports error summaries in absolute Da and ppm, alongside
+tolerance counts.
 
 ## Run locally
 

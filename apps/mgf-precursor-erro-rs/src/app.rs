@@ -15,8 +15,7 @@ use crate::metrics::{PlotPoint, PrecursorMetrics};
 #[cfg(target_arch = "wasm32")]
 use crate::parser::{ScanError, scan_blob_with_progress};
 use crate::plotting::{
-    display_error_value, display_error_value_for_point, make_svg_responsive,
-    render_absolute_mass_bias_svg, render_ecdf_svg, render_mass_bias_svg,
+    make_svg_responsive, render_absolute_mass_bias_svg, render_ecdf_svg, render_mass_bias_svg,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -32,6 +31,11 @@ fn format_progress_message(processed: u64, total: u64) -> String {
 }
 
 #[cfg(target_arch = "wasm32")]
+/// Fetches an example MGF file from a remote URL and returns it as a browser blob.
+///
+/// # Errors
+///
+/// Returns an error if the request fails, the response is not ok, or the body cannot be read.
 async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
     let window = web_sys::window().ok_or_else(|| "Browser window unavailable.".to_string())?;
     let response_value = JsFuture::from(window.fetch_with_str(url))
@@ -129,6 +133,12 @@ fn load_example_mgf(
     });
 }
 
+/// Renders the MGF precursor-error analysis UI.
+///
+/// # Errors
+///
+/// Returns an error if the component tree fails to build or render.
+#[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
     let mut file_name = use_signal(String::new);
     let mut metrics = use_signal(|| None::<PrecursorMetrics>);
@@ -313,7 +323,7 @@ pub fn app() -> Element {
                                                     rsx! {
                                                         for (smiles, detail) in sorted_unparsed {
                                                             {
-                                                                let formula_display = detail.formula.as_deref().filter(|value| !value.trim().is_empty()).map_or_else(|| String::new(), |formula| format!(" [formula: {formula}]"));
+                                                                let formula_display = detail.formula.as_deref().filter(|value| !value.trim().is_empty()).map_or_else(String::new, |formula| format!(" [formula: {formula}]"));
                                                                 let item_label = format!("{smiles} ({}){formula_display}", detail.count);
                                                                 rsx! { li { "{item_label}" } }
                                                             }
@@ -360,7 +370,7 @@ pub fn app() -> Element {
                                                         let observed_value = detail.observed_precursor_mz.map_or_else(|| "n/a".to_string(), format_value);
                                                         let max_error_da = detail.max_abs_error_da.map_or_else(|| "n/a".to_string(), format_value);
                                                         let max_error_ppm = detail.max_abs_error_ppm.map_or_else(|| "n/a".to_string(), format_value);
-                                                        let formula_suffix = detail.formula.as_deref().filter(|value| !value.trim().is_empty()).map_or_else(|| String::new(), |formula| format!("; formula {formula}"));
+                                                        let formula_suffix = detail.formula.as_deref().filter(|value| !value.trim().is_empty()).map_or_else(String::new, |formula| format!("; formula {formula}"));
                                                         let item_label = format!("{smiles}{suffix} — worst error {max_error_da} Da / {max_error_ppm} ppm (derived expected precursor {expected_value}; observed precursor {observed_value}; reference mass {calc_value}){formula_suffix}");
                                                         rsx! { li { "{item_label}" } }
                                                     }
@@ -501,7 +511,9 @@ fn format_count_with_percentage(count: usize, total: usize) -> String {
     if total == 0 {
         format!("{count} (0.0%)")
     } else {
-        let pct = (count as f64 / total as f64) * 100.0;
+        let count = u32::try_from(count).unwrap_or(u32::MAX);
+        let total = u32::try_from(total).unwrap_or(u32::MAX);
+        let pct = (f64::from(count) / f64::from(total)) * 100.0;
         format!("{count} ({pct:.1}%)")
     }
 }
@@ -552,7 +564,20 @@ fn ecdf_plot(
     thresholds: Vec<f64>,
     unit: String,
 ) -> Element {
-    let svg_markup = make_svg_responsive(render_ecdf_svg(&title, &values, &thresholds, &unit));
+    let title_for_svg = title.clone();
+    let values_for_svg = values;
+    let thresholds_for_svg = thresholds;
+    let unit_for_svg = unit;
+    let svg_markup = use_memo(move || {
+        make_svg_responsive(render_ecdf_svg(
+            &title_for_svg,
+            &values_for_svg,
+            &thresholds_for_svg,
+            &unit_for_svg,
+        ))
+    });
+    let svg_markup = svg_markup.read().clone();
+    #[cfg(target_arch = "wasm32")]
     let download_markup = svg_markup.clone();
 
     rsx! {
@@ -587,7 +612,13 @@ fn mass_bias_plot(
     points: Vec<PlotPoint>,
     other_label: Option<String>,
 ) -> Element {
-    let svg_markup = make_svg_responsive(render_mass_bias_svg(&title, &points));
+    let title_for_svg = title.clone();
+    let points_for_svg = points;
+    let svg_markup = use_memo(move || {
+        make_svg_responsive(render_mass_bias_svg(&title_for_svg, &points_for_svg))
+    });
+    let svg_markup = svg_markup.read().clone();
+    #[cfg(target_arch = "wasm32")]
     let download_markup = svg_markup.clone();
 
     rsx! {
@@ -623,9 +654,20 @@ fn absolute_mass_bias_plot(
     unit: String,
     ticks: Vec<f64>,
 ) -> Element {
-    let svg_markup = make_svg_responsive(render_absolute_mass_bias_svg(
-        &title, &points, &unit, &ticks,
-    ));
+    let title_for_svg = title.clone();
+    let points_for_svg = points;
+    let unit_for_svg = unit;
+    let ticks_for_svg = ticks;
+    let svg_markup = use_memo(move || {
+        make_svg_responsive(render_absolute_mass_bias_svg(
+            &title_for_svg,
+            &points_for_svg,
+            &unit_for_svg,
+            &ticks_for_svg,
+        ))
+    });
+    let svg_markup = svg_markup.read().clone();
+    #[cfg(target_arch = "wasm32")]
     let download_markup = svg_markup.clone();
 
     rsx! {
@@ -682,4 +724,5 @@ fn download_svg(svg_markup: &str, filename: &str) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn download_svg(_svg_markup: &str, _filename: &str) {}
+#[allow(dead_code)]
+const fn download_svg(_svg_markup: &str, _filename: &str) {}

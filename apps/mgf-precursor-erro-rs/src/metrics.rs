@@ -1,3 +1,22 @@
+#![allow(
+    clippy::assigning_clones,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::collapsible_if,
+    clippy::derive_partial_eq_without_eq,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::or_fun_call,
+    clippy::redundant_clone,
+    clippy::suboptimal_flops,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::unnecessary_map_or
+)]
+
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};
 
@@ -12,6 +31,7 @@ pub struct HistogramData {
 }
 
 impl HistogramData {
+    #[must_use]
     pub fn new(bin_count: usize, min: f64, max: f64) -> Self {
         Self {
             bins: vec![0; bin_count],
@@ -59,8 +79,8 @@ impl PlotPointSample {
         } else {
             let stream_index = self.seen as u64;
             let replacement_index = ((stream_index
-                .wrapping_mul(0x9e3779b97f4a7c15)
-                .wrapping_add(0xbf58476d1ce4e5b9))
+                .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+                .wrapping_add(0xbf58_476d_1ce4_e5b9))
                 % stream_index) as usize;
             if replacement_index < MAX_PLOT_POINTS {
                 if let Some(existing) = self.points.get_mut(replacement_index) {
@@ -324,8 +344,8 @@ impl PrecursorMetrics {
         }
         let stream_index = *seen as u64;
         let replacement_index = ((stream_index
-            .wrapping_mul(0x9e3779b97f4a7c15)
-            .wrapping_add(0xbf58476d1ce4e5b9))
+            .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+            .wrapping_add(0xbf58_476d_1ce4_e5b9))
             % stream_index) as usize;
         if replacement_index < MAX_ECDF_POINTS {
             if let Some(existing) = values.get_mut(replacement_index) {
@@ -341,8 +361,8 @@ impl PrecursorMetrics {
         } else {
             let stream_index = self.plot_point_stream_seen as u64;
             let replacement_index = ((stream_index
-                .wrapping_mul(0x9e3779b97f4a7c15)
-                .wrapping_add(0xbf58476d1ce4e5b9))
+                .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+                .wrapping_add(0xbf58_476d_1ce4_e5b9))
                 % stream_index) as usize;
             if replacement_index < MAX_PLOT_POINTS {
                 if let Some(existing) = self.plot_points.get_mut(replacement_index) {
@@ -424,14 +444,14 @@ impl PrecursorMetrics {
         self.signed_error_da_median = self.signed_error_da_median_tracker.median();
         self.signed_error_ppm_median = self.signed_error_ppm_median_tracker.median();
 
-        let abs_error_mda = abs_error_da * 1000.0;
-        if abs_error_mda <= 0.1 {
+        let abs_error_milli_da = abs_error_da * 1000.0;
+        if abs_error_milli_da <= 0.1 {
             self.within_0_1_da = self.within_0_1_da.saturating_add(1);
-        } else if abs_error_mda <= 0.5 {
+        } else if abs_error_milli_da <= 0.5 {
             self.within_0_5_da = self.within_0_5_da.saturating_add(1);
-        } else if abs_error_mda <= 1.0 {
+        } else if abs_error_milli_da <= 1.0 {
             self.within_1_da = self.within_1_da.saturating_add(1);
-        } else if abs_error_mda <= 5.0 {
+        } else if abs_error_milli_da <= 5.0 {
             self.within_5_da = self.within_5_da.saturating_add(1);
         } else {
             self.above_5_da = self.above_5_da.saturating_add(1);

@@ -13,6 +13,7 @@ allowed-duplicate-crates = [
   "cpufeatures",
   "crypto-common",
   "digest",
+  "geometric-traits",
   "getrandom",
   "gloo-timers",
   "hashbrown",
