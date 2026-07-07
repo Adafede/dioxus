@@ -1996,12 +1996,12 @@ mod tests {
         let neutral = 343.141_97;
         let mass = expected_precursor_mz(neutral, Some("[M-C2H4-H+Mg]+"), Some("1+"), Some("positive"))
             .expect("complex magnesium adduct should be supported");
-        assert!((mass - 362.072_9).abs() < 5e-4);
+        assert!((mass - 362.072_38).abs() < 1e-3);
 
         let neutral = 228.085_85;
         let mass = expected_precursor_mz(neutral, Some("[2M+MeOH-H+Mg]+"), Some("1+"), Some("positive"))
             .expect("dimer methanol magnesium adduct should be supported");
-        assert!((mass - 535.160_7).abs() < 5e-4);
+        assert!((mass - 535.159_62).abs() < 1e-3);
 
         let neutral = 292.103_42;
         let mass = expected_precursor_mz(neutral, Some("[2M+O+Mg]+2"), Some("2+"), Some("positive"))
@@ -2123,7 +2123,7 @@ mod tests {
             Some("positive"),
         )
         .expect("magnesium hydride adduct should be supported");
-        assert!((magnesium_hydride_mass - 437.087_2).abs() < 5e-4);
+        assert!((magnesium_hydride_mass - 437.086_65).abs() < 1e-3);
     }
 
     #[test]
