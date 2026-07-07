@@ -1,7 +1,7 @@
 #![allow(clippy::all)]
 #![allow(warnings)]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
 
@@ -247,6 +247,26 @@ fn smiles_is_supported(smiles: &str) -> bool {
 }
 
 fn exact_mass_from_smiles(smiles: &str) -> Option<f64> {
+    let mut cache = HashMap::new();
+    exact_mass_from_smiles_cached(smiles, &mut cache)
+}
+
+fn exact_mass_from_smiles_cached(smiles: &str, cache: &mut HashMap<String, Option<f64>>) -> Option<f64> {
+    let trimmed = smiles.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Some(mass) = cache.get(trimmed) {
+        return *mass;
+    }
+
+    let mass = exact_mass_from_smiles_uncached(trimmed);
+    cache.insert(trimmed.to_string(), mass);
+    mass
+}
+
+fn exact_mass_from_smiles_uncached(smiles: &str) -> Option<f64> {
     if !smiles_is_supported(smiles) {
         #[cfg(target_arch = "wasm32")]
         console::warn_1(&format!("Skipping unsupported SMILES for mass parsing: {smiles}").into());
@@ -1551,6 +1571,7 @@ async fn scan_blob_with_progress(
     let mut current_block = Vec::new();
     let mut current_is_in_block = false;
     let mut metrics = PrecursorMetrics::default();
+    let mut smiles_cache = HashMap::new();
 
     while let Some(line) = reader.next_line().await? {
         let trimmed = line.trim();
@@ -1571,7 +1592,7 @@ async fn scan_blob_with_progress(
 
         if trimmed == "END IONS" {
             current_block.push(trimmed.to_string());
-            if let Some(result) = process_block(&mut current_block).await? {
+            if let Some(result) = process_block(&mut current_block, &mut smiles_cache).await? {
                 metrics = merge_metrics(metrics, result);
             }
             current_block.clear();
@@ -1586,7 +1607,10 @@ async fn scan_blob_with_progress(
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMetrics>, ScanError> {
+async fn process_block(
+    block_lines: &mut [String],
+    smiles_cache: &mut HashMap<String, Option<f64>>,
+) -> Result<Option<PrecursorMetrics>, ScanError> {
     let mut headers = std::collections::BTreeMap::new();
     let mut observed_precursor = None;
     let mut reference_mass = None;
@@ -1700,7 +1724,9 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
                 mass
             })
             .or_else(|| {
-                let parsed_smiles = smiles.as_deref().and_then(exact_mass_from_smiles);
+                let parsed_smiles = smiles
+                    .as_deref()
+                    .and_then(|value| exact_mass_from_smiles_cached(value, smiles_cache));
                 if smiles.is_some() && parsed_smiles.is_none() {
                     return None;
                 }
