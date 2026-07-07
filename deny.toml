@@ -23,6 +23,7 @@ allow = [
   "CC0-1.0",
   "Unicode-3.0",
   "CDLA-Permissive-2.0",
+  "GPL-3.0-only",
 ]
 
 [licenses.private]
@@ -52,10 +53,13 @@ skip = [
   { name = "cpufeatures" },
   { name = "crypto-common" },
   { name = "digest" },
+  { name = "geometric-traits" },
   { name = "getrandom" },
   { name = "jni" },
   { name = "jni-sys" },
   { name = "r-efi" },
+  { name = "rand" },
+  { name = "rand_core" },
   { name = "rustc-hash" },
   { name = "sha2" },
   { name = "thiserror" },
@@ -71,4 +75,11 @@ skip = [
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = []
+allow-git = [
+  "https://github.com/earth-metabolome-initiative/geometric-traits",
+  "https://github.com/earth-metabolome-initiative/geometric-traits?branch=main",
+  "https://github.com/earth-metabolome-initiative/mascot-rs.git",
+  "https://github.com/earth-metabolome-initiative/mass-spectrometry-traits",
+  "https://github.com/earth-metabolome-initiative/smiles-parser",
+  "https://github.com/earth-metabolome-initiative/smiles-parser?rev=ad15ce7205f4e3ad842f5eaa153d562f3548bd79",
+]
