@@ -80,8 +80,10 @@ struct PrecursorMetrics {
     abs_error_ppm_rms: f64,
     signed_error_da_mean: f64,
     signed_error_ppm_mean: f64,
-    within_0_01_da: usize,
+    within_0_001_da: usize,
     within_0_005_da: usize,
+    within_0_01_da: usize,
+    within_1_ppm: usize,
     within_5_ppm: usize,
     within_10_ppm: usize,
     da_error_histogram: HistogramData,
@@ -111,8 +113,10 @@ impl Default for PrecursorMetrics {
             abs_error_ppm_rms: 0.0,
             signed_error_da_mean: 0.0,
             signed_error_ppm_mean: 0.0,
-            within_0_01_da: 0,
+            within_0_001_da: 0,
             within_0_005_da: 0,
+            within_0_01_da: 0,
+            within_1_ppm: 0,
             within_5_ppm: 0,
             within_10_ppm: 0,
             da_error_histogram: HistogramData::new(48, 0.0, 0.5),
@@ -247,23 +251,21 @@ fn expected_precursor_mz(
 ) -> Option<f64> {
     let normalized_adduct = adduct.unwrap_or("").trim();
     let normalized_ion_mode = ion_mode.unwrap_or("").trim().to_ascii_lowercase();
-    let charge_text = charge.unwrap_or("").trim();
-    let charge_is_negative = charge_text.ends_with('-');
-    let charge_is_positive = charge_text.ends_with('+');
+    let charge_sign = parse_charge_sign(charge, ion_mode);
 
     let shift = if normalized_adduct.is_empty() {
-        if normalized_ion_mode == "negative" || charge_is_negative {
+        if charge_sign == Some(true) || normalized_ion_mode == "negative" {
             -PROTON_MASS
-        } else if normalized_ion_mode == "positive" || charge_is_positive {
+        } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
             PROTON_MASS
         } else {
             0.0
         }
     } else {
         parse_adduct_shift(normalized_adduct).unwrap_or_else(|| {
-            if normalized_ion_mode == "negative" || charge_is_negative {
+            if charge_sign == Some(true) || normalized_ion_mode == "negative" {
                 -PROTON_MASS
-            } else if normalized_ion_mode == "positive" || charge_is_positive {
+            } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
                 PROTON_MASS
             } else {
                 0.0
@@ -272,9 +274,9 @@ fn expected_precursor_mz(
     };
 
     let charge_value = parse_charge_value(charge, adduct).unwrap_or_else(|| {
-        if normalized_ion_mode == "negative" || charge_is_negative {
+        if charge_sign == Some(true) || normalized_ion_mode == "negative" {
             1.0
-        } else if normalized_ion_mode == "positive" || charge_is_positive {
+        } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
             1.0
         } else {
             1.0
@@ -282,6 +284,30 @@ fn expected_precursor_mz(
     });
 
     Some((neutral_mass + shift) / charge_value.max(1.0))
+}
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn parse_charge_sign(charge: Option<&str>, ion_mode: Option<&str>) -> Option<bool> {
+    let charge_text = charge.unwrap_or("").trim();
+    if charge_text.is_empty() {
+        return match ion_mode.unwrap_or("").trim().to_ascii_lowercase().as_str() {
+            "negative" => Some(true),
+            "positive" => Some(false),
+            _ => None,
+        };
+    }
+
+    let normalized = charge_text.replace(' ', "");
+    let first_char = normalized.chars().next();
+    let last_char = normalized.chars().last();
+
+    if first_char == Some('-') || last_char == Some('-') {
+        Some(true)
+    } else if first_char == Some('+') || last_char == Some('+') {
+        Some(false)
+    } else {
+        None
+    }
 }
 
 #[cfg(any(target_arch = "wasm32", test))]
@@ -631,11 +657,17 @@ fn app() -> Element {
 
                             div {
                                 style: "margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.55rem;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border-radius: 999px; font-weight: 600;",
+                                    "≤ 0.001 Da: {format_count_with_percentage(metrics.within_0_001_da, metrics.spectra)}"
+                                }
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #e0f2fe; color: #0369a1; border-radius: 999px; font-weight: 600;",
                                     "≤ 0.01 Da: {format_count_with_percentage(metrics.within_0_01_da, metrics.spectra)}"
                                 }
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f5f3ff; color: #7c3aed; border-radius: 999px; font-weight: 600;",
                                     "< 0.005 Da: {format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}"
+                                }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #b45309; border-radius: 999px; font-weight: 600;",
+                                    "≤ 1 ppm: {format_count_with_percentage(metrics.within_1_ppm, metrics.spectra)}"
                                 }
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #b45309; border-radius: 999px; font-weight: 600;",
                                     "≤ 5 ppm: {format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}"
@@ -845,7 +877,7 @@ fn is_excluded_adduct(adduct: &str) -> bool {
             | "[M-MEOH+H]+"
             | "[M-OH]+"
             | "[M]+*"
-        )
+    )
 }
 
 fn is_supported_adduct(adduct: &str) -> bool {
@@ -1666,11 +1698,17 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
     metrics.signed_error_da_mean = error_da;
     metrics.signed_error_ppm_mean = ppm;
     metrics.record_error(abs_error_da, abs_ppm, &adduct_label, ppm, error_da);
-    if abs_error_da <= 0.01 {
-        metrics.within_0_01_da = 1;
+    if abs_error_da <= 0.001 {
+        metrics.within_0_001_da = 1;
     }
     if abs_error_da < 0.005 {
         metrics.within_0_005_da = 1;
+    }
+    if abs_error_da <= 0.01 {
+        metrics.within_0_01_da = 1;
+    }
+    if abs_ppm <= 1.0 {
+        metrics.within_1_ppm = 1;
     }
     if abs_ppm <= 5.0 {
         metrics.within_5_ppm = 1;
@@ -1684,7 +1722,7 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
 
 #[cfg(test)]
 mod tests {
-    use super::{exact_mass_from_smiles, expected_precursor_mz};
+    use super::{PROTON_MASS, exact_mass_from_smiles, expected_precursor_mz};
 
     #[test]
     fn computes_exact_mass_from_smiles() {
@@ -1697,6 +1735,13 @@ mod tests {
         let mass = expected_precursor_mz(1000.0, Some("[M+2H]2+"), Some("2+"), Some("positive"))
             .expect("double protonated adduct should be supported");
         assert!((mass - 500.0 - 2.0 * 1.007_276_466_621 / 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn respects_negative_charge_signs() {
+        let mass = expected_precursor_mz(1000.0, None, Some("-1"), None)
+            .expect("negative charge should be supported");
+        assert!((mass - (1000.0 - PROTON_MASS)).abs() < 1e-9);
     }
 }
 
@@ -1757,8 +1802,10 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         + (next.signed_error_ppm_mean * next_spectra))
         / total_spectra;
 
-    current.within_0_01_da += next.within_0_01_da;
+    current.within_0_001_da += next.within_0_001_da;
     current.within_0_005_da += next.within_0_005_da;
+    current.within_0_01_da += next.within_0_01_da;
+    current.within_1_ppm += next.within_1_ppm;
     current.within_5_ppm += next.within_5_ppm;
     current.within_10_ppm += next.within_10_ppm;
 
