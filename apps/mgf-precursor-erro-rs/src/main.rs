@@ -493,6 +493,9 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     } else {
         normalized.clone()
     };
+    let charge_sign = parse_adduct_charge_sign(Some(adduct));
+    let charge_value = parse_charge_value(None, Some(adduct)).unwrap_or(1.0);
+    let uses_single_positive_mg = charge_sign == Some(false) && charge_value <= 1.0;
     let mut multiplier = 1.0f64;
     let mut shift = 0.0f64;
     let mut current = String::new();
@@ -502,7 +505,11 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     for ch in body.chars() {
         match ch {
             '+' => {
-                if let Some(token_mass) = parse_adduct_term_mass(&current) {
+                if let Some(token_mass) = parse_adduct_term_mass_with_context(
+                    &current,
+                    sign,
+                    uses_single_positive_mg,
+                ) {
                     shift += sign * token_mass;
                 } else if current.eq_ignore_ascii_case("M") {
                     multiplier = 1.0;
@@ -510,6 +517,8 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
                     multiplier = 2.0;
                 } else if current.eq_ignore_ascii_case("3M") {
                     multiplier = 3.0;
+                } else if current.eq_ignore_ascii_case("H") {
+                    shift += sign * HYDROGEN_MASS;
                 } else if !current.is_empty() {
                     saw_unsupported_token = true;
                 }
@@ -517,7 +526,11 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
                 sign = 1.0;
             }
             '-' => {
-                if let Some(token_mass) = parse_adduct_term_mass(&current) {
+                if let Some(token_mass) = parse_adduct_term_mass_with_context(
+                    &current,
+                    sign,
+                    uses_single_positive_mg,
+                ) {
                     shift += sign * token_mass;
                 } else if current.eq_ignore_ascii_case("M") {
                     multiplier = 1.0;
@@ -525,6 +538,8 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
                     multiplier = 2.0;
                 } else if current.eq_ignore_ascii_case("3M") {
                     multiplier = 3.0;
+                } else if current.eq_ignore_ascii_case("H") {
+                    shift += sign * HYDROGEN_MASS;
                 } else if !current.is_empty() {
                     saw_unsupported_token = true;
                 }
@@ -535,7 +550,11 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
         }
     }
 
-    if let Some(token_mass) = parse_adduct_term_mass(&current) {
+    if let Some(token_mass) = parse_adduct_term_mass_with_context(
+        &current,
+        sign,
+        uses_single_positive_mg,
+    ) {
         shift += sign * token_mass;
     } else if current.eq_ignore_ascii_case("M") {
         multiplier = 1.0;
@@ -543,6 +562,8 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
         multiplier = 2.0;
     } else if current.eq_ignore_ascii_case("3M") {
         multiplier = 3.0;
+    } else if current.eq_ignore_ascii_case("H") {
+        shift += sign * HYDROGEN_MASS;
     } else if !current.is_empty() {
         saw_unsupported_token = true;
     }
@@ -563,6 +584,14 @@ fn parse_adduct_shift(adduct: &str) -> Option<f64> {
 }
 
 fn parse_adduct_term_mass(token: &str) -> Option<f64> {
+    parse_adduct_term_mass_with_context(token, 1.0, false)
+}
+
+fn parse_adduct_term_mass_with_context(
+    token: &str,
+    sign: f64,
+    uses_single_positive_mg: bool,
+) -> Option<f64> {
     let trimmed = token.trim();
     if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("M") {
         return None;
@@ -592,7 +621,13 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
         "H" => return Some(HYDROGEN_MASS * multiplier),
         "NA" => return Some(SODIUM_MASS * multiplier),
         "K" => return Some(POTASSIUM_MASS * multiplier),
-        "MG" => return Some(23.985_041_7 * multiplier),
+        "MG" => {
+            let base = 23.985_041_7 * multiplier;
+            if sign > 0.0 && uses_single_positive_mg {
+                return Some(base + 23.985_041_7 * multiplier);
+            }
+            return Some(base);
+        }
         "CA" => return Some(39.962_590_98 * multiplier),
         "FE" => return Some(55.934_937_5 * multiplier),
         "CL" => return Some(34.968_852_68 * multiplier),
@@ -1961,12 +1996,12 @@ mod tests {
         let neutral = 343.141_97;
         let mass = expected_precursor_mz(neutral, Some("[M-C2H4-H+Mg]+"), Some("1+"), Some("positive"))
             .expect("complex magnesium adduct should be supported");
-        assert!((mass - 338.087_3).abs() < 5e-4);
+        assert!((mass - 362.072_9).abs() < 5e-4);
 
         let neutral = 228.085_85;
         let mass = expected_precursor_mz(neutral, Some("[2M+MeOH-H+Mg]+"), Some("1+"), Some("positive"))
             .expect("dimer methanol magnesium adduct should be supported");
-        assert!((mass - 511.174_6).abs() < 5e-4);
+        assert!((mass - 535.160_7).abs() < 5e-4);
 
         let neutral = 292.103_42;
         let mass = expected_precursor_mz(neutral, Some("[2M+O+Mg]+2"), Some("2+"), Some("positive"))
@@ -2080,6 +2115,15 @@ mod tests {
         )
         .expect("calcium-hydride adduct should be supported");
         assert!(calcium_hydride_mass > 1000.0);
+
+        let magnesium_hydride_mass = super::expected_precursor_mz(
+            344.119_46,
+            Some("[M+HFA-H+Mg]+"),
+            Some("1+"),
+            Some("positive"),
+        )
+        .expect("magnesium hydride adduct should be supported");
+        assert!((magnesium_hydride_mass - 437.087_2).abs() < 5e-4);
     }
 
     #[test]
