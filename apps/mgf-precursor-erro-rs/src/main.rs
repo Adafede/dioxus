@@ -26,11 +26,15 @@ const PROGRESS_INTERVAL: usize = 1 << 20;
 #[cfg(any(target_arch = "wasm32", test))]
 const PROTON_MASS: f64 = 1.007_276_466_621;
 #[cfg(any(target_arch = "wasm32", test))]
+const ELECTRON_MASS: f64 = 0.000_548_579_909_065;
+#[cfg(any(target_arch = "wasm32", test))]
 const SODIUM_MASS: f64 = 22.989_769_67;
 #[cfg(any(target_arch = "wasm32", test))]
 const POTASSIUM_MASS: f64 = 38.963_707;
 #[cfg(any(target_arch = "wasm32", test))]
 const AMMONIUM_MASS: f64 = 18.033_823;
+#[cfg(any(target_arch = "wasm32", test))]
+const WATER_MASS: f64 = 18.010_564_684;
 
 #[cfg(target_arch = "wasm32")]
 type ScanError = JsValue;
@@ -319,9 +323,9 @@ fn parse_adduct_shift(adduct: &str) -> Option<f64> {
     if normalized_upper.contains("M+NH4") || normalized_upper.contains("M+AMMONIUM") {
         Some(AMMONIUM_MASS)
     } else if normalized_upper.contains("M+NA") {
-        Some(SODIUM_MASS)
+        Some(SODIUM_MASS - ELECTRON_MASS)
     } else if normalized_upper.contains("M+K") {
-        Some(POTASSIUM_MASS)
+        Some(POTASSIUM_MASS - ELECTRON_MASS)
     } else if normalized_upper.contains("M+3H") {
         Some(3.0 * PROTON_MASS)
     } else if normalized_upper.contains("M+2H") {
@@ -331,9 +335,15 @@ fn parse_adduct_shift(adduct: &str) -> Option<f64> {
     } else if normalized_upper.contains("M-H") {
         Some(-PROTON_MASS)
     } else if normalized_upper.contains("M+2NA") {
-        Some(2.0 * SODIUM_MASS)
+        Some(2.0 * (SODIUM_MASS - ELECTRON_MASS))
     } else if normalized_upper.contains("M+2K") {
-        Some(2.0 * POTASSIUM_MASS)
+        Some(2.0 * (POTASSIUM_MASS - ELECTRON_MASS))
+    } else if normalized_upper.contains("M-5H2O") {
+        Some(-5.0 * WATER_MASS + ELECTRON_MASS)
+    } else if normalized_upper.contains("M-H2O") {
+        Some(-WATER_MASS + ELECTRON_MASS)
+    } else if normalized_upper.contains("M-2H") {
+        Some(-2.0 * PROTON_MASS)
     } else {
         None
     }
@@ -1767,7 +1777,9 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
 
 #[cfg(test)]
 mod tests {
-    use super::{PROTON_MASS, exact_mass_from_smiles, expected_precursor_mz};
+    use super::{
+        ELECTRON_MASS, PROTON_MASS, SODIUM_MASS, exact_mass_from_smiles, expected_precursor_mz,
+    };
 
     #[test]
     fn computes_exact_mass_from_smiles() {
@@ -1787,6 +1799,13 @@ mod tests {
         let mass = expected_precursor_mz(1000.0, None, Some("-1"), None)
             .expect("negative charge should be supported");
         assert!((mass - (1000.0 - PROTON_MASS)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn uses_ion_mass_for_sodium_adducts() {
+        let mass = expected_precursor_mz(1000.0, Some("[M+Na]+"), Some("1+"), Some("positive"))
+            .expect("sodium adduct should be supported");
+        assert!((mass - (1000.0 + SODIUM_MASS - ELECTRON_MASS)).abs() < 1e-9);
     }
 }
 
