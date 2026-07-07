@@ -1,7 +1,8 @@
 #![allow(clippy::all)]
 #![allow(warnings)]
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BinaryHeap, HashMap, HashSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
 
@@ -63,6 +64,82 @@ struct WarningDetail {
     formula: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug)]
+struct OrderedF64(f64);
+
+impl PartialEq for OrderedF64 {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl Eq for OrderedF64 {}
+
+impl Ord for OrderedF64 {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.total_cmp(&other.0)
+    }
+}
+
+impl PartialOrd for OrderedF64 {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct MedianTracker {
+    lower: BinaryHeap<OrderedF64>,
+    upper: BinaryHeap<Reverse<OrderedF64>>,
+    lower_len: usize,
+    upper_len: usize,
+}
+
+impl MedianTracker {
+    fn push(&mut self, value: f64) {
+        let should_go_lower = self.lower.is_empty()
+            || value
+                <= self
+                    .lower
+                    .peek()
+                    .map(|entry| entry.0)
+                    .unwrap_or(f64::NEG_INFINITY);
+        if should_go_lower {
+            self.lower.push(OrderedF64(value));
+            self.lower_len += 1;
+        } else {
+            self.upper.push(Reverse(OrderedF64(value)));
+            self.upper_len += 1;
+        }
+
+        if self.lower_len > self.upper_len + 1 {
+            if let Some(OrderedF64(value)) = self.lower.pop() {
+                self.upper.push(Reverse(OrderedF64(value)));
+            }
+            self.lower_len -= 1;
+            self.upper_len += 1;
+        } else if self.upper_len > self.lower_len {
+            if let Some(Reverse(OrderedF64(value))) = self.upper.pop() {
+                self.lower.push(OrderedF64(value));
+            }
+            self.upper_len -= 1;
+            self.lower_len += 1;
+        }
+    }
+
+    fn median(&self) -> f64 {
+        if self.lower_len == 0 && self.upper_len == 0 {
+            0.0
+        } else if self.lower_len > self.upper_len {
+            self.lower.peek().map(|entry| entry.0).unwrap_or(0.0)
+        } else {
+            let lower = self.lower.peek().map(|entry| entry.0).unwrap_or(0.0);
+            let upper = self.upper.peek().map(|entry| entry.0.0).unwrap_or(0.0);
+            (lower + upper) / 2.0
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 struct HighErrorSmilesDetail {
     count: usize,
@@ -81,7 +158,7 @@ struct AdductClass {
     charge: i32,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 struct PrecursorMetrics {
     spectra: usize,
     total_spectra: usize,
@@ -93,16 +170,31 @@ struct PrecursorMetrics {
     observed_precursor_min: f64,
     observed_precursor_max: f64,
     observed_precursor_mean: f64,
+    observed_precursor_median: f64,
+    observed_precursor_median_tracker: MedianTracker,
+    sample_observed_precursor: f64,
     abs_error_da_min: f64,
     abs_error_da_max: f64,
     abs_error_da_mean: f64,
+    abs_error_da_median: f64,
+    abs_error_da_median_tracker: MedianTracker,
+    sample_abs_error_da: f64,
     abs_error_da_rms: f64,
     abs_error_ppm_min: f64,
     abs_error_ppm_max: f64,
     abs_error_ppm_mean: f64,
+    abs_error_ppm_median: f64,
+    abs_error_ppm_median_tracker: MedianTracker,
+    sample_abs_error_ppm: f64,
     abs_error_ppm_rms: f64,
     signed_error_da_mean: f64,
+    signed_error_da_median: f64,
+    signed_error_da_median_tracker: MedianTracker,
+    sample_signed_error_da: f64,
     signed_error_ppm_mean: f64,
+    signed_error_ppm_median: f64,
+    signed_error_ppm_median_tracker: MedianTracker,
+    sample_signed_error_ppm: f64,
     within_0_0001_da: usize,
     within_0_0005_da: usize,
     within_0_001_da: usize,
@@ -131,16 +223,31 @@ impl Default for PrecursorMetrics {
             observed_precursor_min: 0.0,
             observed_precursor_max: 0.0,
             observed_precursor_mean: 0.0,
+            observed_precursor_median: 0.0,
+            observed_precursor_median_tracker: MedianTracker::default(),
+            sample_observed_precursor: 0.0,
             abs_error_da_min: 0.0,
             abs_error_da_max: 0.0,
             abs_error_da_mean: 0.0,
+            abs_error_da_median: 0.0,
+            abs_error_da_median_tracker: MedianTracker::default(),
+            sample_abs_error_da: 0.0,
             abs_error_da_rms: 0.0,
             abs_error_ppm_min: 0.0,
             abs_error_ppm_max: 0.0,
             abs_error_ppm_mean: 0.0,
+            abs_error_ppm_median: 0.0,
+            abs_error_ppm_median_tracker: MedianTracker::default(),
+            sample_abs_error_ppm: 0.0,
             abs_error_ppm_rms: 0.0,
             signed_error_da_mean: 0.0,
+            signed_error_da_median: 0.0,
+            signed_error_da_median_tracker: MedianTracker::default(),
+            sample_signed_error_da: 0.0,
             signed_error_ppm_mean: 0.0,
+            signed_error_ppm_median: 0.0,
+            signed_error_ppm_median_tracker: MedianTracker::default(),
+            sample_signed_error_ppm: 0.0,
             within_0_0001_da: 0,
             within_0_0005_da: 0,
             within_0_001_da: 0,
@@ -191,14 +298,30 @@ impl PrecursorMetrics {
         adduct_type: &str,
         ppm_error: f64,
         signed_error_da: f64,
+        observed_precursor_mz: f64,
         smiles: Option<&str>,
         calculated_mass: Option<f64>,
         expected_mass: Option<f64>,
-        observed_precursor_mz: Option<f64>,
         formula: Option<&str>,
     ) {
         self.da_error_histogram.add_value(abs_error_da);
         self.ppm_error_histogram.add_value(abs_ppm);
+        self.sample_observed_precursor = observed_precursor_mz;
+        self.sample_abs_error_da = abs_error_da;
+        self.sample_abs_error_ppm = abs_ppm;
+        self.sample_signed_error_da = signed_error_da;
+        self.sample_signed_error_ppm = ppm_error;
+        self.observed_precursor_median_tracker
+            .push(observed_precursor_mz);
+        self.abs_error_da_median_tracker.push(abs_error_da);
+        self.abs_error_ppm_median_tracker.push(abs_ppm);
+        self.signed_error_da_median_tracker.push(signed_error_da);
+        self.signed_error_ppm_median_tracker.push(ppm_error);
+        self.observed_precursor_median = self.observed_precursor_median_tracker.median();
+        self.abs_error_da_median = self.abs_error_da_median_tracker.median();
+        self.abs_error_ppm_median = self.abs_error_ppm_median_tracker.median();
+        self.signed_error_da_median = self.signed_error_da_median_tracker.median();
+        self.signed_error_ppm_median = self.signed_error_ppm_median_tracker.median();
 
         if abs_ppm > 10.0 {
             if let Some(smiles) = smiles.filter(|value| !value.trim().is_empty()) {
@@ -216,8 +339,8 @@ impl PrecursorMetrics {
                         if entry.formula.is_none() {
                             entry.formula = formula.map(str::to_string);
                         }
-                        if entry.observed_precursor_mz.is_none() && observed_precursor_mz.is_some() {
-                            entry.observed_precursor_mz = observed_precursor_mz;
+                        if entry.observed_precursor_mz.is_none() {
+                            entry.observed_precursor_mz = Some(observed_precursor_mz);
                         }
                         let current_error_da = abs_error_da;
                         let current_error_ppm = abs_ppm;
@@ -233,9 +356,7 @@ impl PrecursorMetrics {
                             if expected_mass.is_some() {
                                 entry.expected_mass = expected_mass;
                             }
-                            if observed_precursor_mz.is_some() {
-                                entry.observed_precursor_mz = observed_precursor_mz;
-                            }
+                            entry.observed_precursor_mz = Some(observed_precursor_mz);
                         }
                     })
                     .or_insert(HighErrorSmilesDetail {
@@ -245,7 +366,7 @@ impl PrecursorMetrics {
                         formula: formula.map(str::to_string),
                         max_abs_error_da: Some(abs_error_da),
                         max_abs_error_ppm: Some(abs_ppm),
-                       observed_precursor_mz,
+                        observed_precursor_mz: Some(observed_precursor_mz),
                     });
             }
         }
@@ -1002,6 +1123,7 @@ fn app() -> Element {
                                     ul { style: "padding-left: 1.1rem; margin: 0.25rem 0 0; color: #475569;",
                                         li { "min: {format_value(metrics.observed_precursor_min)}" }
                                         li { "max: {format_value(metrics.observed_precursor_max)}" }
+                                        li { "median: {format_value(metrics.observed_precursor_median)}" }
                                         li { "mean: {format_value(metrics.observed_precursor_mean)}" }
                                     }
                                 }
@@ -1009,6 +1131,7 @@ fn app() -> Element {
                                     h4 { style: "margin: 0 0 0.45rem; font-size: 0.95rem; color: #0f172a;", "Absolute error (Da)" }
                                     ul { style: "padding-left: 1.1rem; margin: 0.25rem 0 0; color: #475569;",
                                         li { "min: {format_value(metrics.abs_error_da_min)}" }
+                                        li { "median: {format_value(metrics.abs_error_da_median)}" }
                                         li { "mean: {format_value(metrics.abs_error_da_mean)}" }
                                         li { "RMS: {format_value(metrics.abs_error_da_rms)}" }
                                         li { "max: {format_value(metrics.abs_error_da_max)}" }
@@ -1018,6 +1141,7 @@ fn app() -> Element {
                                     h4 { style: "margin: 0 0 0.45rem; font-size: 0.95rem; color: #0f172a;", "Absolute error (ppm)" }
                                     ul { style: "padding-left: 1.1rem; margin: 0.25rem 0 0; color: #475569;",
                                         li { "min: {format_value(metrics.abs_error_ppm_min)}" }
+                                        li { "median: {format_value(metrics.abs_error_ppm_median)}" }
                                         li { "mean: {format_value(metrics.abs_error_ppm_mean)}" }
                                         li { "RMS: {format_value(metrics.abs_error_ppm_rms)}" }
                                         li { "max: {format_value(metrics.abs_error_ppm_max)}" }
@@ -1026,8 +1150,10 @@ fn app() -> Element {
                                 div { style: "background: white; padding: 0.8rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);",
                                     h4 { style: "margin: 0 0 0.45rem; font-size: 0.95rem; color: #0f172a;", "Signed mean" }
                                     ul { style: "padding-left: 1.1rem; margin: 0.25rem 0 0; color: #475569;",
-                                        li { "Da: {format_value(metrics.signed_error_da_mean)}" }
-                                        li { "ppm: {format_value(metrics.signed_error_ppm_mean)}" }
+                                        li { "Da median: {format_value(metrics.signed_error_da_median)}" }
+                                        li { "Da mean: {format_value(metrics.signed_error_da_mean)}" }
+                                        li { "ppm median: {format_value(metrics.signed_error_ppm_median)}" }
+                                        li { "ppm mean: {format_value(metrics.signed_error_ppm_mean)}" }
                                     }
                                 }
                             }
@@ -1092,6 +1218,21 @@ fn app() -> Element {
                 }
             }
         }
+    }
+}
+
+fn median(values: &[f64]) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
+
+    let mut sorted = values.to_vec();
+    sorted.sort_by(|left, right| left.total_cmp(right));
+    let midpoint = sorted.len() / 2;
+    if sorted.len() % 2 == 0 {
+        (sorted[midpoint - 1] + sorted[midpoint]) / 2.0
+    } else {
+        sorted[midpoint]
     }
 }
 
@@ -1443,7 +1584,10 @@ fn scatter_plot(
                 .unwrap_or_default();
             let x = padding + ((x_index - x_min) / x_span) * plot_width;
             let y = height - padding - ((point.signed_error_da - y_min) / y_span) * plot_height;
-            let color = category_colors.get(&adduct_class.display).copied().unwrap_or("#64748B");
+            let color = category_colors
+                .get(&adduct_class.display)
+                .copied()
+                .unwrap_or("#64748B");
             rsx! {
                 circle {
                     cx: x as i32,
@@ -1997,10 +2141,10 @@ fn process_block(
         &adduct_label,
         ppm,
         error_da,
+        observed_precursor,
         smiles.as_deref(),
         Some(reference_mass),
         Some(expected_precursor_mz),
-        Some(observed_precursor),
         formula.as_deref(),
     );
     if abs_error_da <= 0.0001 {
@@ -2114,11 +2258,11 @@ mod tests {
             "[M+H]+",
             12.0,
             0.0,
+            25.0,
             Some("CCO"),
             Some(1.0),
             Some(20.0),
-            Some(25.0),
-            None,
+            Some("C2H6O"),
         );
         metrics.record_error(
             10.0,
@@ -2126,18 +2270,66 @@ mod tests {
             "[M+H]+",
             12.0,
             0.0,
+            40.0,
             Some("CCO"),
             Some(1.0),
             Some(30.0),
-            Some(40.0),
-            None,
+            Some("C2H6O"),
         );
 
-        let detail = metrics.high_error_smiles.get("CCO").expect("entry should exist");
+        let detail = metrics
+            .high_error_smiles
+            .get("CCO")
+            .expect("entry should exist");
         assert_eq!(detail.count, 2);
         assert_eq!(detail.max_abs_error_da, Some(10.0));
         assert_eq!(detail.max_abs_error_ppm, Some(12.0));
         assert_eq!(detail.expected_mass, Some(30.0));
+    }
+
+    #[test]
+    fn computes_median_values_from_recorded_errors() {
+        let mut metrics = super::PrecursorMetrics::default();
+        metrics.record_error(
+            5.0,
+            6.0,
+            "[M+H]+",
+            6.0,
+            -2.0,
+            10.0,
+            Some("CCO"),
+            Some(1.0),
+            Some(2.0),
+            Some("C2H6O"),
+        );
+        metrics.record_error(
+            15.0,
+            24.0,
+            "[M+H]+",
+            24.0,
+            2.0,
+            30.0,
+            Some("CCO"),
+            Some(1.0),
+            Some(2.0),
+            Some("C2H6O"),
+        );
+        metrics.record_error(
+            25.0,
+            42.0,
+            "[M+H]+",
+            42.0,
+            4.0,
+            50.0,
+            Some("CCO"),
+            Some(1.0),
+            Some(2.0),
+            Some("C2H6O"),
+        );
+
+        assert!((metrics.abs_error_da_median - 15.0).abs() < 1e-9);
+        assert!((metrics.abs_error_ppm_median - 24.0).abs() < 1e-9);
+        assert!((metrics.observed_precursor_median - 30.0).abs() < 1e-9);
     }
 
     #[test]
@@ -2151,13 +2343,9 @@ mod tests {
         .expect("dimer oxygen magnesium dication adduct should be supported");
         assert!((mass - 312.092_8).abs() < 5e-4);
 
-        let mass = expected_precursor_mz(
-            333.939_62,
-            Some("[M+O+Mg]+2"),
-            Some("2+"),
-            Some("positive"),
-        )
-        .expect("oxygen magnesium dication adduct should be supported");
+        let mass =
+            expected_precursor_mz(333.939_62, Some("[M+O+Mg]+2"), Some("2+"), Some("positive"))
+                .expect("oxygen magnesium dication adduct should be supported");
         assert!((mass - 186.959_2).abs() < 5e-4);
     }
 
@@ -2190,6 +2378,38 @@ mod tests {
         .expect("block should produce metrics");
         assert_eq!(metrics.spectra, 1);
         assert!(metrics.spectra_with_reference_mass > 0);
+        assert!((metrics.abs_error_da_max - 11.992_84).abs() < 1e-4);
+        assert!((metrics.abs_error_ppm_max - 38_427.160_1).abs() < 1.0);
+
+        let block = vec![
+            "BEGIN IONS".to_string(),
+            "FILENAME=20230913_nexus_plate_1_Q2_pos_B12_CID_60ev.mzML".to_string(),
+            "FORMULA=C15H8BrClO2".to_string(),
+            "SMILES=O=c1cc(-c2ccc(Br)cc2)oc2ccc(Cl)cc12".to_string(),
+            "CHARGE=2+".to_string(),
+            "IONMODE=positive".to_string(),
+            "ADDUCT=[M+O+Mg]+2".to_string(),
+            "EXACTMASS=333.93962".to_string(),
+            "PRECURSOR_MZ=198.95203".to_string(),
+            "END IONS".to_string(),
+        ];
+
+        let mut smiles_cache = std::collections::HashMap::new();
+        let mut formula_cache = std::collections::HashMap::new();
+        let mut logged_failures = std::collections::HashSet::new();
+        let metrics = super::process_block(
+            &block,
+            None,
+            &mut smiles_cache,
+            &mut formula_cache,
+            &mut logged_failures,
+        )
+        .expect("block should be processed")
+        .expect("block should produce metrics");
+        assert_eq!(metrics.spectra, 1);
+        assert!(metrics.spectra_with_reference_mass > 0);
+        assert!((metrics.abs_error_da_max - 11.992_83).abs() < 1e-4);
+        assert!((metrics.abs_error_ppm_max - 64_146.776_4).abs() < 1.0);
     }
 
     #[test]
@@ -2370,12 +2590,20 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     current.observed_precursor_mean = ((current.observed_precursor_mean * current_spectra)
         + (next.observed_precursor_mean * next_spectra))
         / total_spectra;
+    current
+        .observed_precursor_median_tracker
+        .push(next.sample_observed_precursor);
+    current.observed_precursor_median = current.observed_precursor_median_tracker.median();
 
     current.abs_error_da_min = current.abs_error_da_min.min(next.abs_error_da_min);
     current.abs_error_da_max = current.abs_error_da_max.max(next.abs_error_da_max);
     current.abs_error_da_mean = ((current.abs_error_da_mean * current_spectra)
         + (next.abs_error_da_mean * next_spectra))
         / total_spectra;
+    current
+        .abs_error_da_median_tracker
+        .push(next.sample_abs_error_da);
+    current.abs_error_da_median = current.abs_error_da_median_tracker.median();
     let current_da_rms_sq = current.abs_error_da_rms * current.abs_error_da_rms;
     let next_da_rms_sq = next.abs_error_da_rms * next.abs_error_da_rms;
     current.abs_error_da_rms =
@@ -2387,6 +2615,10 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     current.abs_error_ppm_mean = ((current.abs_error_ppm_mean * current_spectra)
         + (next.abs_error_ppm_mean * next_spectra))
         / total_spectra;
+    current
+        .abs_error_ppm_median_tracker
+        .push(next.sample_abs_error_ppm);
+    current.abs_error_ppm_median = current.abs_error_ppm_median_tracker.median();
     let current_ppm_rms_sq = current.abs_error_ppm_rms * current.abs_error_ppm_rms;
     let next_ppm_rms_sq = next.abs_error_ppm_rms * next.abs_error_ppm_rms;
     current.abs_error_ppm_rms =
@@ -2396,9 +2628,17 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     current.signed_error_da_mean = ((current.signed_error_da_mean * current_spectra)
         + (next.signed_error_da_mean * next_spectra))
         / total_spectra;
+    current
+        .signed_error_da_median_tracker
+        .push(next.sample_signed_error_da);
+    current.signed_error_da_median = current.signed_error_da_median_tracker.median();
     current.signed_error_ppm_mean = ((current.signed_error_ppm_mean * current_spectra)
         + (next.signed_error_ppm_mean * next_spectra))
         / total_spectra;
+    current
+        .signed_error_ppm_median_tracker
+        .push(next.sample_signed_error_ppm);
+    current.signed_error_ppm_median = current.signed_error_ppm_median_tracker.median();
 
     current.within_0_0001_da += next.within_0_0001_da;
     current.within_0_0005_da += next.within_0_0005_da;
@@ -2442,11 +2682,15 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
                 if existing.formula.is_none() {
                     existing.formula = detail.formula.clone();
                 }
-                if existing.observed_precursor_mz.is_none() && detail.observed_precursor_mz.is_some() {
+                if existing.observed_precursor_mz.is_none()
+                    && detail.observed_precursor_mz.is_some()
+                {
                     existing.observed_precursor_mz = detail.observed_precursor_mz;
                 }
                 if let Some(detail_error_da) = detail.max_abs_error_da {
-                    let should_replace = existing.max_abs_error_da.map_or(true, |existing_error| detail_error_da > existing_error);
+                    let should_replace = existing
+                        .max_abs_error_da
+                        .map_or(true, |existing_error| detail_error_da > existing_error);
                     if should_replace {
                         existing.max_abs_error_da = Some(detail_error_da);
                         existing.max_abs_error_ppm = detail.max_abs_error_ppm;
