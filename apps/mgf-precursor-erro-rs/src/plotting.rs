@@ -105,14 +105,14 @@ where
     let mut families = family_points.keys().cloned().collect::<Vec<_>>();
     families.sort_by_key(|family| adduct_family_rank(family));
     let family_count = families.len().max(1);
-    let max_points_per_family = (1500usize / family_count).max(180usize);
+    let max_points_per_family = (900usize / family_count).max(120usize);
     let mut series = Vec::with_capacity(families.len());
     for family in families {
         let sampled = sample_scatter_points(
             family_points.remove(&family).unwrap_or_default(),
             max_points_per_family,
         );
-        series.push((family.clone(), sampled));
+        series.push((family, sampled));
     }
 
     let legend_items = series
@@ -288,6 +288,9 @@ pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f6
 
     let mut sorted = values.to_vec();
     sorted.sort_by(f64::total_cmp);
+    if sorted.len() > 50_000 {
+        sorted.truncate(50_000);
+    }
     let total = sorted.len();
     let mut points = Vec::with_capacity(sorted.len().saturating_mul(2) + 2);
     points.push((x_min, 0.0));
