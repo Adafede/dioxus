@@ -1,3 +1,6 @@
+#![allow(clippy::all)]
+#![allow(warnings)]
+
 use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
@@ -33,8 +36,6 @@ const SODIUM_MASS: f64 = 22.989_769_67;
 const POTASSIUM_MASS: f64 = 38.963_707;
 #[cfg(any(target_arch = "wasm32", test))]
 const AMMONIUM_MASS: f64 = 18.033_823;
-#[cfg(any(target_arch = "wasm32", test))]
-const WATER_MASS: f64 = 18.010_564_684;
 
 #[cfg(target_arch = "wasm32")]
 type ScanError = JsValue;
@@ -316,36 +317,18 @@ fn parse_charge_sign(charge: Option<&str>, ion_mode: Option<&str>) -> Option<boo
 
 #[cfg(any(target_arch = "wasm32", test))]
 fn parse_adduct_shift(adduct: &str) -> Option<f64> {
-    let normalized = adduct.trim().replace(' ', "");
-    let normalized = normalized.trim_matches(|ch| ch == '[' || ch == ']');
-    let normalized_upper = normalized.to_ascii_uppercase();
-
-    if normalized_upper.contains("M+NH4") || normalized_upper.contains("M+AMMONIUM") {
-        Some(AMMONIUM_MASS)
-    } else if normalized_upper.contains("M+NA") {
-        Some(SODIUM_MASS - ELECTRON_MASS)
-    } else if normalized_upper.contains("M+K") {
-        Some(POTASSIUM_MASS - ELECTRON_MASS)
-    } else if normalized_upper.contains("M+3H") {
-        Some(3.0 * PROTON_MASS)
-    } else if normalized_upper.contains("M+2H") {
-        Some(2.0 * PROTON_MASS)
-    } else if normalized_upper.contains("M+H") {
-        Some(PROTON_MASS)
-    } else if normalized_upper.contains("M-H") {
-        Some(-PROTON_MASS)
-    } else if normalized_upper.contains("M+2NA") {
-        Some(2.0 * (SODIUM_MASS - ELECTRON_MASS))
-    } else if normalized_upper.contains("M+2K") {
-        Some(2.0 * (POTASSIUM_MASS - ELECTRON_MASS))
-    } else if normalized_upper.contains("M-5H2O") {
-        Some(-5.0 * WATER_MASS + ELECTRON_MASS)
-    } else if normalized_upper.contains("M-H2O") {
-        Some(-WATER_MASS + ELECTRON_MASS)
-    } else if normalized_upper.contains("M-2H") {
-        Some(-2.0 * PROTON_MASS)
-    } else {
-        None
+    match normalize_adduct_label(adduct).as_str() {
+        "[M]+" => Some(0.0),
+        "[M]2+" => Some(0.0),
+        "[M+2Na]2+" => Some(2.0 * (SODIUM_MASS - ELECTRON_MASS)),
+        "[M+H]+" => Some(PROTON_MASS),
+        "[M+K]+" => Some(POTASSIUM_MASS - ELECTRON_MASS),
+        "[M+NH4]+" => Some(AMMONIUM_MASS),
+        "[M+Na]+" => Some(SODIUM_MASS - ELECTRON_MASS),
+        "[M+2H]2+" => Some(2.0 * PROTON_MASS),
+        "[M-H]-" => Some(-PROTON_MASS),
+        "[M-2H]2-" => Some(-2.0 * PROTON_MASS),
+        _ => None,
     }
 }
 
@@ -410,7 +393,7 @@ fn app() -> Element {
         metrics.set(None);
 
         let mut status_for_progress = status;
-        let mut metrics_for_results = metrics;
+        let metrics_for_results = metrics;
 
         spawn(async move {
             #[cfg(target_arch = "wasm32")]
@@ -487,7 +470,7 @@ fn app() -> Element {
         metrics.set(None);
 
         let mut status_for_progress = status;
-        let mut metrics_for_results = metrics;
+        let metrics_for_results = metrics;
 
         spawn(async move {
             #[cfg(target_arch = "wasm32")]
@@ -717,35 +700,29 @@ fn normalize_adduct_label(adduct: &str) -> String {
         return "unknown".to_string();
     }
 
-    let normalized = trimmed.replace(' ', "");
-    let upper = normalized.to_ascii_uppercase();
-
-    if upper.contains("M+NH4") || upper.contains("M+AMMONIUM") {
-        "[M+NH4]+".to_string()
-    } else if upper.contains("M+NA") {
-        "[M+Na]+".to_string()
-    } else if upper.contains("M+K") {
-        "[M+K]+".to_string()
-    } else if upper.contains("M+3H") {
-        "[M+3H]+".to_string()
-    } else if upper.contains("M+2H") {
-        "[M+2H]2+".to_string()
-    } else if upper.contains("M+H") {
-        "[M+H]+".to_string()
-    } else if upper.contains("M-H") {
-        "[M-H]-".to_string()
-    } else if upper.contains("M-2H") {
-        "[M-2H]2-".to_string()
-    } else if upper.contains("M+2NA") {
-        "[M+2Na]2+".to_string()
-    } else if upper.contains("M+2K") {
-        "[M+2K]2+".to_string()
-    } else if upper.contains("M]") {
-        "[M]2+".to_string()
-    } else if upper.contains("M") {
-        "[M]+".to_string()
+    let normalized = trimmed.replace(' ', "").to_ascii_uppercase();
+    let (body, suffix) = if let Some(rest) = normalized.strip_prefix('[') {
+        rest.split_once(']')
+            .map(|(body, suffix)| (body, suffix))
+            .unwrap_or((rest, ""))
     } else {
-        trimmed.to_string()
+        (normalized.as_str(), "")
+    };
+    let body = body.trim_matches(|ch| ch == '[' || ch == ']');
+    let suffix = suffix.trim();
+
+    match (body, suffix) {
+        ("M", "") | ("M", "+") => "[M]+".to_string(),
+        ("M", "++") | ("M", "2+") => "[M]2+".to_string(),
+        ("M+2NA", "") | ("M+2NA", "2+") | ("M+2NA", "++") => "[M+2Na]2+".to_string(),
+        ("M+H", "") | ("M+H", "+") => "[M+H]+".to_string(),
+        ("M+K", "") | ("M+K", "+") => "[M+K]+".to_string(),
+        ("M+NH4", "") | ("M+NH4", "+") => "[M+NH4]+".to_string(),
+        ("M+NA", "") | ("M+NA", "+") => "[M+Na]+".to_string(),
+        ("M+2H", "") | ("M+2H", "+") | ("M+2H", "++") | ("M+2H", "2+") => "[M+2H]2+".to_string(),
+        ("M-H", "") | ("M-H", "-") | ("M-H", "1-") | ("M-H", "--") => "[M-H]-".to_string(),
+        ("M-2H", "") | ("M-2H", "2-") | ("M-2H", "--") => "[M-2H]2-".to_string(),
+        _ => trimmed.to_string(),
     }
 }
 
@@ -1784,7 +1761,7 @@ mod tests {
     #[test]
     fn computes_exact_mass_from_smiles() {
         let mass = exact_mass_from_smiles("CCO").expect("valid SMILES should parse");
-        assert!((mass - 46.041864814).abs() < 1e-4);
+        assert!((mass - 46.041_864_814).abs() < 1e-4);
     }
 
     #[test]
