@@ -256,25 +256,26 @@ fn expected_precursor_mz(
 ) -> Option<f64> {
     let normalized_adduct = adduct.unwrap_or("").trim();
     let normalized_ion_mode = ion_mode.unwrap_or("").trim().to_ascii_lowercase();
-    let charge_sign = parse_charge_sign(charge, ion_mode);
+    let charge_sign = parse_charge_sign(charge, ion_mode)
+        .or_else(|| parse_adduct_charge_sign(adduct));
 
-    let shift = if normalized_adduct.is_empty() {
-        if charge_sign == Some(true) || normalized_ion_mode == "negative" {
+    let (multiplier, shift) = if normalized_adduct.is_empty() {
+        (1.0, if charge_sign == Some(true) || normalized_ion_mode == "negative" {
             -PROTON_MASS
         } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
             PROTON_MASS
         } else {
             0.0
-        }
+        })
     } else {
-        parse_adduct_shift(normalized_adduct).unwrap_or_else(|| {
-            if charge_sign == Some(true) || normalized_ion_mode == "negative" {
+        parse_adduct_mass_spec(normalized_adduct).unwrap_or_else(|| {
+            (1.0, if charge_sign == Some(true) || normalized_ion_mode == "negative" {
                 -PROTON_MASS
             } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
                 PROTON_MASS
             } else {
                 0.0
-            }
+            })
         })
     };
 
@@ -287,8 +288,27 @@ fn expected_precursor_mz(
             1.0
         }
     });
+    let electron_adjustment = match charge_sign {
+        Some(false) => -ELECTRON_MASS * charge_value,
+        Some(true) => ELECTRON_MASS * charge_value,
+        None => 0.0,
+    };
 
-    Some((neutral_mass + shift) / charge_value.max(1.0))
+    Some((neutral_mass * multiplier + shift + electron_adjustment) / charge_value.max(1.0))
+}
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
+    let adduct = adduct?.trim();
+    let cleaned = adduct.replace(' ', "");
+    let suffix = cleaned.split(']').nth(1).unwrap_or("").trim();
+    if suffix.contains('-') {
+        Some(true)
+    } else if suffix.contains('+') {
+        Some(false)
+    } else {
+        None
+    }
 }
 
 #[cfg(any(target_arch = "wasm32", test))]
@@ -316,20 +336,96 @@ fn parse_charge_sign(charge: Option<&str>, ion_mode: Option<&str>) -> Option<boo
 }
 
 #[cfg(any(target_arch = "wasm32", test))]
-fn parse_adduct_shift(adduct: &str) -> Option<f64> {
-    match normalize_adduct_label(adduct).as_str() {
-        "[M]+" => Some(0.0),
-        "[M]2+" => Some(0.0),
-        "[M+2Na]2+" => Some(2.0 * (SODIUM_MASS - ELECTRON_MASS)),
-        "[M+H]+" => Some(PROTON_MASS),
-        "[M+K]+" => Some(POTASSIUM_MASS - ELECTRON_MASS),
-        "[M+NH4]+" => Some(AMMONIUM_MASS),
-        "[M+Na]+" => Some(SODIUM_MASS - ELECTRON_MASS),
-        "[M+2H]2+" => Some(2.0 * PROTON_MASS),
-        "[M-H]-" => Some(-PROTON_MASS),
-        "[M-2H]2-" => Some(-2.0 * PROTON_MASS),
-        _ => None,
+fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
+    let normalized = adduct.trim().replace(' ', "").to_ascii_uppercase();
+    let body = if let Some(index) = normalized.find(']') {
+        normalized[1..index].to_string()
+    } else {
+        normalized.clone()
+    };
+    let mut multiplier = 1.0f64;
+    let mut shift = 0.0f64;
+    let mut current = String::new();
+    let mut sign = 1.0f64;
+
+    for ch in body.chars() {
+        match ch {
+            '+' => {
+                if let Some(token_mass) = parse_adduct_term_mass(&current) {
+                    shift += sign * token_mass;
+                } else if current.eq_ignore_ascii_case("M") {
+                    multiplier = 1.0;
+                } else if current.eq_ignore_ascii_case("2M") {
+                    multiplier = 2.0;
+                } else if current.eq_ignore_ascii_case("3M") {
+                    multiplier = 3.0;
+                }
+                current.clear();
+                sign = 1.0;
+            }
+            '-' => {
+                if let Some(token_mass) = parse_adduct_term_mass(&current) {
+                    shift += sign * token_mass;
+                } else if current.eq_ignore_ascii_case("M") {
+                    multiplier = 1.0;
+                } else if current.eq_ignore_ascii_case("2M") {
+                    multiplier = 2.0;
+                } else if current.eq_ignore_ascii_case("3M") {
+                    multiplier = 3.0;
+                }
+                current.clear();
+                sign = -1.0;
+            }
+            _ => current.push(ch),
+        }
     }
+
+    if let Some(token_mass) = parse_adduct_term_mass(&current) {
+        shift += sign * token_mass;
+    } else if current.eq_ignore_ascii_case("M") {
+        multiplier = 1.0;
+    } else if current.eq_ignore_ascii_case("2M") {
+        multiplier = 2.0;
+    } else if current.eq_ignore_ascii_case("3M") {
+        multiplier = 3.0;
+    }
+
+    if shift == 0.0 && multiplier == 1.0 && body == "M" {
+        Some((1.0, 0.0))
+    } else if body.is_empty() || body == "M" {
+        None
+    } else {
+        Some((multiplier, shift))
+    }
+}
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn parse_adduct_shift(adduct: &str) -> Option<f64> {
+    parse_adduct_mass_spec(adduct).map(|(_, shift)| shift)
+}
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn parse_adduct_term_mass(token: &str) -> Option<f64> {
+    let trimmed = token.trim();
+    if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("M") {
+        return None;
+    }
+
+    let (multiplier_str, formula) = trimmed
+        .chars()
+        .enumerate()
+        .find_map(|(index, ch)| ch.is_ascii_digit().then_some(index))
+        .map_or(("1", trimmed), |index| (&trimmed[..index], &trimmed[index..]));
+    let multiplier = multiplier_str.parse::<f64>().unwrap_or(1.0);
+    let formula = formula.trim().to_ascii_uppercase();
+    let formula = match formula.as_str() {
+        "FA" => "CH2O2",
+        "MEOH" => "CH4O",
+        "HFA" => "C2HF3O2",
+        _ => formula.as_str(),
+    };
+    let formula: ChemicalFormula<u32, i32> = ChemicalFormula::from_str(formula).ok()?;
+    Some(formula.isotopologue_mass() * multiplier)
 }
 
 #[cfg(any(target_arch = "wasm32", test))]
@@ -575,8 +671,16 @@ fn app() -> Element {
                                     p { style: "margin: 0; font-size: 0.9rem;", "{metrics.skipped_spectra} spectra were skipped because the adduct or reference mass could not be resolved." }
                                     if !metrics.unrecognized_adducts.is_empty() {
                                         ul { style: "margin: 0.45rem 0 0 1.1rem; padding: 0; font-size: 0.88rem;",
-                                            for (adduct, count) in metrics.unrecognized_adducts.iter() {
-                                                li { "{adduct}: {count}" }
+                                            {
+                                                let mut sorted_adducts = metrics.unrecognized_adducts.iter().collect::<Vec<_>>();
+                                                sorted_adducts.sort_by(|(left_adduct, left_count), (right_adduct, right_count)| {
+                                                    right_count.cmp(left_count).then_with(|| left_adduct.cmp(right_adduct))
+                                                });
+                                                rsx! {
+                                                    for (adduct, count) in sorted_adducts {
+                                                        li { "{adduct}: {count}" }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -736,77 +840,27 @@ fn is_excluded_adduct(adduct: &str) -> bool {
 }
 
 fn is_supported_adduct(adduct: &str) -> bool {
-    let normalized = normalize_adduct_label(adduct);
-    matches!(
-        normalized.as_str(),
-        "[M]+"
-            | "[M]2+"
-            | "[M+H]+"
-            | "[M+2H]2+"
-            | "[M+Na]+"
-            | "[M+2Na]2+"
-            | "[M+K]+"
-            | "[M+NH4]+"
-            | "[M-H]-"
-            | "[M-2H]2-"
-    )
+    parse_adduct_mass_spec(adduct).is_some()
 }
 
 fn adduct_class(adduct: &str) -> Option<AdductClass> {
     let normalized = normalize_adduct_label(adduct);
-    match normalized.as_str() {
-        "[M]+" => Some(AdductClass {
-            label: "[M]+".to_string(),
-            display: "[M]+".to_string(),
-            charge: 1,
-        }),
-        "[M]2+" => Some(AdductClass {
-            label: "[M]2+".to_string(),
-            display: "[M]2+".to_string(),
-            charge: 2,
-        }),
-        "[M+H]+" => Some(AdductClass {
-            label: "[M+H]+".to_string(),
-            display: "[M+H]+".to_string(),
-            charge: 1,
-        }),
-        "[M+2H]2+" => Some(AdductClass {
-            label: "[M+2H]2+".to_string(),
-            display: "[M+2H]2+".to_string(),
-            charge: 2,
-        }),
-        "[M+Na]+" => Some(AdductClass {
-            label: "[M+Na]+".to_string(),
-            display: "[M+Na]+".to_string(),
-            charge: 1,
-        }),
-        "[M+2Na]2+" => Some(AdductClass {
-            label: "[M+2Na]2+".to_string(),
-            display: "[M+2Na]2+".to_string(),
-            charge: 2,
-        }),
-        "[M+K]+" => Some(AdductClass {
-            label: "[M+K]+".to_string(),
-            display: "[M+K]+".to_string(),
-            charge: 1,
-        }),
-        "[M+NH4]+" => Some(AdductClass {
-            label: "[M+NH4]+".to_string(),
-            display: "[M+NH4]+".to_string(),
-            charge: 1,
-        }),
-        "[M-H]-" => Some(AdductClass {
-            label: "[M-H]-".to_string(),
-            display: "[M-H]-".to_string(),
-            charge: -1,
-        }),
-        "[M-2H]2-" => Some(AdductClass {
-            label: "[M-2H]2-".to_string(),
-            display: "[M-2H]2-".to_string(),
-            charge: -2,
-        }),
-        _ => None,
-    }
+    let charge = parse_adduct_charge_sign(Some(adduct)).map_or_else(|| {
+        if normalized.contains("]-") {
+            -1
+        } else if normalized.contains("]+") || normalized.contains("]2+") {
+            1
+        } else if normalized.contains("]2-") {
+            -2
+        } else {
+            0
+        }
+    }, |sign| if sign { -1 } else { 1 });
+    Some(AdductClass {
+        label: normalized.clone(),
+        display: normalized,
+        charge,
+    })
 }
 
 fn scientific_palette(index: usize) -> &'static str {
@@ -1661,6 +1715,21 @@ mod tests {
         assert_eq!(super::normalize_adduct_label("[M+2H]+"), "[M+2H]2+");
         assert_eq!(super::normalize_adduct_label("[M-H]1-"), "[M-H]-");
         assert_eq!(super::normalize_adduct_label("[M-2H]--"), "[M-2H]2-");
+    }
+
+    #[test]
+    fn supports_common_adduct_families() {
+        let mass = expected_precursor_mz(1000.0, Some("[M+Cl]-"), Some("1-"), Some("negative"))
+            .expect("chloride adduct should be supported");
+        assert!(mass > 1000.0);
+
+        let methanol_mass = expected_precursor_mz(1000.0, Some("[M+MeOH+H]+"), Some("1+"), Some("positive"))
+            .expect("methanol adduct should be supported");
+        assert!(methanol_mass > 1000.0);
+
+        let dimer_mass = expected_precursor_mz(1000.0, Some("[2M+H]+"), Some("1+"), Some("positive"))
+            .expect("dimer adduct should be supported");
+        assert!((dimer_mass - (2000.0 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9);
     }
 }
 
