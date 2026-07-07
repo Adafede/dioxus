@@ -15,7 +15,7 @@ use gloo_timers::future::TimeoutFuture;
 #[cfg(target_arch = "wasm32")]
 use js_sys::Uint8Array;
 use mascot_rs::prelude::*;
-use molecular_formulas::prelude::MolecularFormula;
+use molecular_formulas_010::molecular_formula::MolecularFormula;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
@@ -955,6 +955,45 @@ fn round_to_precision(value: f64, precision: usize) -> f64 {
     (value * factor).round() / factor
 }
 
+#[cfg(target_arch = "wasm32")]
+fn format_progress_message(processed: u64, total: u64) -> String {
+    let safe_total = total.max(1);
+    let displayed_processed = processed.min(safe_total);
+    let percent = (displayed_processed * 100 / safe_total).min(100);
+    format!("Scanning {displayed_processed}/{safe_total} bytes ({percent}%)...")
+}
+
+#[cfg(target_arch = "wasm32")]
+fn start_analysis(
+    blob: Blob,
+    status: Signal<String>,
+    metrics: Signal<Option<PrecursorMetrics>>,
+    busy: Signal<bool>,
+) {
+    let mut status_for_progress = status;
+    let mut metrics_for_results = metrics;
+    let mut busy_for_results = busy;
+
+    spawn(async move {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let total_bytes = blob.size() as u64;
+        status_for_progress.set(format!("Scanning {total_bytes} bytes..."));
+        let result = match scan_blob_with_progress(&blob, move |processed, total| {
+            status_for_progress.set(format_progress_message(processed, total));
+        })
+        .await
+        {
+            Ok(metrics) => metrics,
+            Err(error) => {
+                status_for_progress.set(format!("Error reading file: {error:?}"));
+                PrecursorMetrics::default()
+            }
+        };
+        metrics_for_results.set(Some(result));
+        busy_for_results.set(false);
+    });
+}
+
 #[component]
 fn app() -> Element {
     let mut file_name = use_signal(String::new);
@@ -987,41 +1026,14 @@ fn app() -> Element {
         status.set("Reading MGF...".to_string());
         metrics.set(None);
 
-        let mut status_for_progress = status;
-        let mut metrics_for_results = metrics;
+        #[cfg(target_arch = "wasm32")]
+        start_analysis(blob, status, metrics, busy);
 
-        spawn(async move {
-            #[cfg(target_arch = "wasm32")]
-            {
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                let total_bytes = blob.size() as u64;
-                status_for_progress.set(format!("Scanning {total_bytes} bytes..."));
-                let result = match scan_blob_with_progress(&blob, move |processed, total| {
-                    let safe_total = total.max(1);
-                    let displayed_processed = processed.min(safe_total);
-                    let percent = (displayed_processed * 100 / safe_total).min(100);
-                    status_for_progress.set(format!(
-                        "Scanning {displayed_processed}/{safe_total} bytes ({percent}%)..."
-                    ));
-                })
-                .await
-                {
-                    Ok(metrics) => metrics,
-                    Err(error) => {
-                        status_for_progress.set(format!("Error reading file: {error:?}"));
-                        PrecursorMetrics::default()
-                    }
-                };
-                metrics_for_results.set(Some(result));
-                busy.set(false);
-            }
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                status_for_progress.set("This app needs to run in a browser.".to_string());
-                busy.set(false);
-            }
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            status.set("This app needs to run in a browser.".to_string());
+            busy.set(false);
+        }
     };
 
     let on_drag_enter = move |evt: Event<DragData>| {
@@ -1064,41 +1076,14 @@ fn app() -> Element {
         status.set("Reading MGF...".to_string());
         metrics.set(None);
 
-        let mut status_for_progress = status;
-        let mut metrics_for_results = metrics;
+        #[cfg(target_arch = "wasm32")]
+        start_analysis(blob, status, metrics, busy);
 
-        spawn(async move {
-            #[cfg(target_arch = "wasm32")]
-            {
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                let total_bytes = blob.size() as u64;
-                status_for_progress.set(format!("Scanning {total_bytes} bytes..."));
-                let result = match scan_blob_with_progress(&blob, move |processed, total| {
-                    let safe_total = total.max(1);
-                    let displayed_processed = processed.min(safe_total);
-                    let percent = (displayed_processed * 100 / safe_total).min(100);
-                    status_for_progress.set(format!(
-                        "Scanning {displayed_processed}/{safe_total} bytes ({percent}%)..."
-                    ));
-                })
-                .await
-                {
-                    Ok(metrics) => metrics,
-                    Err(error) => {
-                        status_for_progress.set(format!("Error reading file: {error:?}"));
-                        PrecursorMetrics::default()
-                    }
-                };
-                metrics_for_results.set(Some(result));
-                busy.set(false);
-            }
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                status_for_progress.set("This app needs to run in a browser.".to_string());
-                busy.set(false);
-            }
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            status.set("This app needs to run in a browser.".to_string());
+            busy.set(false);
+        }
     };
 
     rsx! {
@@ -2043,15 +2028,11 @@ async fn scan_blob_with_progress(
 
 fn process_block(
     block_lines: &[String],
-    parsed_mascot: Option<&MascotGenericFormat<f64>>,
     smiles_cache: &mut HashMap<String, Option<f64>>,
     formula_cache: &mut HashMap<String, Option<f64>>,
     logged_failures: &mut HashSet<String>,
 ) -> Result<Option<PrecursorMetrics>, ScanError> {
     let mut state = BlockParseState::default();
-    if let Some(charge) = parsed_mascot.and_then(|block| block.charge()) {
-        state.charge = Some(charge.to_string());
-    }
     state.consume_block_lines(block_lines);
     process_block_state(&state, smiles_cache, formula_cache, logged_failures)
 }
@@ -2448,7 +2429,6 @@ mod tests {
         let mut logged_failures = std::collections::HashSet::new();
         let metrics = super::process_block(
             &block,
-            None,
             &mut smiles_cache,
             &mut formula_cache,
             &mut logged_failures,
@@ -2478,7 +2458,6 @@ mod tests {
         let mut logged_failures = std::collections::HashSet::new();
         let metrics = super::process_block(
             &block,
-            None,
             &mut smiles_cache,
             &mut formula_cache,
             &mut logged_failures,
@@ -2788,15 +2767,26 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
             .or_insert(detail);
     }
 
-    current.plot_points.extend(next.plot_points);
-    if current.plot_points.len() > 260 {
-        current.plot_points = current
+    let total_points = current.plot_points.len() + next.plot_points.len();
+    if total_points <= 260 {
+        current.plot_points.extend(next.plot_points);
+    } else {
+        let stride = (total_points / 260).max(1);
+        let mut merged = Vec::with_capacity(260);
+        for (idx, point) in current
             .plot_points
-            .iter()
+            .into_iter()
+            .chain(next.plot_points)
             .enumerate()
-            .filter(|(idx, _)| idx % (current.plot_points.len() / 260 + 1) == 0)
-            .map(|(_, point)| point.clone())
-            .collect();
+        {
+            if idx % stride == 0 {
+                merged.push(point);
+                if merged.len() == 260 {
+                    break;
+                }
+            }
+        }
+        current.plot_points = merged;
     }
 
     current
