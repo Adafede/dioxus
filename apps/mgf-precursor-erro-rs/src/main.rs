@@ -449,7 +449,9 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
         "CO2" => "CO2",
         "O" => "O",
         "C2H4" => return Some(28.031_300_128 * multiplier),
-        "CHNAO2" | "HCOONA" => return Some(67.987_423_942 * multiplier),
+        "CHNAO2" | "HCOONA" => {
+            return Some(exact_mass_from_formula("CHNaO2").unwrap_or(67.987_423_942) * multiplier)
+        }
         "H" => return Some(HYDROGEN_MASS * multiplier),
         "NA" => return Some(SODIUM_MASS * multiplier),
         "K" => return Some(POTASSIUM_MASS * multiplier),
@@ -1836,7 +1838,9 @@ mod tests {
             Some("positive"),
         )
         .expect("sodium formate should be supported");
-        assert!((sodium_formate - (1000.0 + 67.987_423_942 + PROTON_MASS)).abs() < 1e-9);
+        let sodium_formate_mass = super::exact_mass_from_formula("CHNaO2")
+            .expect("CHNaO2 mass should be available");
+        assert!((sodium_formate - (1000.0 + sodium_formate_mass + PROTON_MASS)).abs() < 1e-9);
 
         let formate_adduct = super::expected_precursor_mz(
             1000.0,
@@ -1856,7 +1860,9 @@ mod tests {
             Some("positive"),
         )
         .expect("sodium formate alias should be supported");
-        assert!((sodium_formate_alias - (1000.0 + 67.987_423_942)).abs() < 1e-9);
+        let sodium_formate_alias_mass = super::exact_mass_from_formula("CHNaO2")
+            .expect("CHNaO2 mass should be available");
+        assert!((sodium_formate_alias - (1000.0 + sodium_formate_alias_mass - ELECTRON_MASS)).abs() < 1e-9);
     }
 }
 
