@@ -5,6 +5,7 @@ use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap, HashMap, HashSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
+use std::sync::{LazyLock, Mutex};
 
 use dioxus::events::{DragData, FormData, WheelData};
 use dioxus::html::HasFileData;
@@ -33,6 +34,9 @@ const SODIUM_MASS: f64 = 22.989_769_67;
 const POTASSIUM_MASS: f64 = 38.963_707;
 const AMMONIUM_MASS: f64 = 18.033_823;
 
+static ADDUCT_SPEC_CACHE: LazyLock<Mutex<HashMap<String, Option<(f64, f64)>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
 #[cfg(target_arch = "wasm32")]
 type ScanError = JsValue;
 #[cfg(not(target_arch = "wasm32"))]
@@ -54,6 +58,114 @@ struct PlotPoint {
     adduct_type: String,
     signed_error_da: f64,
     signed_error_ppm: f64,
+}
+
+#[derive(Clone, Debug, Default)]
+struct BlockParseState {
+    observed_precursor_raw: Option<String>,
+    observed_precursor: Option<f64>,
+    reference_mass: Option<f64>,
+    reference_mass_source: Option<String>,
+    charge: Option<String>,
+    adduct: Option<String>,
+    ion_mode: Option<String>,
+    smiles: Option<String>,
+    formula: Option<String>,
+    feature_id: Option<String>,
+    scans: Option<String>,
+}
+
+impl BlockParseState {
+    fn consume_line(&mut self, line: &str) {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed == "BEGIN IONS" || trimmed == "END IONS" {
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("PRECURSOR_MZ=") {
+            self.observed_precursor_raw = Some(stripped.to_string());
+            if let Ok(value) = stripped.parse::<f64>() {
+                self.observed_precursor = Some(value);
+            }
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("PEPMASS=") {
+            self.observed_precursor_raw = Some(stripped.to_string());
+            if let Ok(value) = stripped.parse::<f64>() {
+                self.observed_precursor = Some(value);
+            }
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("EXACTMASS=") {
+            if let Ok(value) = stripped.parse::<f64>() {
+                self.reference_mass = Some(value);
+                self.reference_mass_source = Some("EXACTMASS".to_string());
+            }
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("MOLECULEMASS=") {
+            if let Ok(value) = stripped.parse::<f64>() {
+                if self.reference_mass.is_none() {
+                    self.reference_mass = Some(value);
+                    self.reference_mass_source = Some("MOLECULEMASS".to_string());
+                }
+            }
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("CHARGE=") {
+            self.charge = Some(stripped.to_string());
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("SMILES=") {
+            self.smiles = Some(stripped.trim().to_string());
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("FORMULA=") {
+            self.formula = Some(stripped.trim().to_string());
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("ADDUCT=") {
+            self.adduct = Some(stripped.to_string());
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("IONMODE=") {
+            self.ion_mode = Some(stripped.to_string());
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("FEATURE_ID=") {
+            self.feature_id = Some(stripped.to_string());
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("SCANS=") {
+            self.scans = Some(stripped.to_string());
+            return;
+        }
+
+        if let Some(stripped) = trimmed.strip_prefix("EXTRACTSCAN=") {
+            if self.feature_id.is_none() {
+                self.feature_id = Some(stripped.to_string());
+            }
+            if self.scans.is_none() {
+                self.scans = Some(stripped.to_string());
+            }
+        }
+    }
+
+    fn consume_block_lines(&mut self, block_lines: &[String]) {
+        for line in block_lines {
+            self.consume_line(line);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -567,18 +679,19 @@ fn expected_precursor_mz(
             0.0,
         )
     } else {
-        let (multiplier, shift) = parse_adduct_mass_spec(normalized_adduct).unwrap_or_else(|| {
-            (
-                1.0,
-                if charge_sign == Some(true) || normalized_ion_mode == "negative" {
-                    -PROTON_MASS
-                } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
-                    PROTON_MASS
-                } else {
-                    0.0
-                },
-            )
-        });
+        let (multiplier, shift) =
+            parse_adduct_mass_spec_cached(normalized_adduct).unwrap_or_else(|| {
+                (
+                    1.0,
+                    if charge_sign == Some(true) || normalized_ion_mode == "negative" {
+                        -PROTON_MASS
+                    } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
+                        PROTON_MASS
+                    } else {
+                        0.0
+                    },
+                )
+            });
         let uses_mg_charge_correction =
             normalized_adduct.to_ascii_uppercase().contains("MG") && charge_sign == Some(false);
         let electron_adjustment = match charge_sign {
@@ -716,6 +829,22 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     } else {
         Some((multiplier, shift))
     }
+}
+
+fn parse_adduct_mass_spec_cached(adduct: &str) -> Option<(f64, f64)> {
+    let normalized = adduct.trim().replace(' ', "");
+    if normalized.is_empty() {
+        return None;
+    }
+
+    let mut cache = ADDUCT_SPEC_CACHE.lock().unwrap();
+    if let Some(mass_spec) = cache.get(&normalized) {
+        return *mass_spec;
+    }
+
+    let mass_spec = parse_adduct_mass_spec(&normalized);
+    cache.insert(normalized, mass_spec);
+    mass_spec
 }
 
 fn parse_adduct_shift(adduct: &str) -> Option<f64> {
@@ -1870,7 +1999,7 @@ async fn scan_blob_with_progress(
         on_progress(processed, total);
     });
 
-    let mut current_block = Vec::new();
+    let mut current_state = BlockParseState::default();
     let mut current_is_in_block = false;
     let mut metrics = PrecursorMetrics::default();
     let mut smiles_cache = HashMap::new();
@@ -1884,9 +2013,8 @@ async fn scan_blob_with_progress(
         }
 
         if trimmed == "BEGIN IONS" {
-            current_block.clear();
+            current_state = BlockParseState::default();
             current_is_in_block = true;
-            current_block.push(trimmed.to_string());
             continue;
         }
 
@@ -1894,19 +2022,18 @@ async fn scan_blob_with_progress(
             continue;
         }
 
-        current_block.push(trimmed.to_string());
+        current_state.consume_line(trimmed);
 
         if trimmed == "END IONS" {
-            if let Some(result) = process_block(
-                &current_block,
-                None,
+            if let Some(result) = process_block_state(
+                &current_state,
                 &mut smiles_cache,
                 &mut formula_cache,
                 &mut logged_failures,
             )? {
                 metrics = merge_metrics(metrics, result);
             }
-            current_block.clear();
+            current_state = BlockParseState::default();
             current_is_in_block = false;
         }
     }
@@ -1921,142 +2048,69 @@ fn process_block(
     formula_cache: &mut HashMap<String, Option<f64>>,
     logged_failures: &mut HashSet<String>,
 ) -> Result<Option<PrecursorMetrics>, ScanError> {
-    let mut observed_precursor = None;
-    let mut observed_precursor_raw = None;
-    let mut reference_mass = None;
-    let mut reference_mass_source = None;
-    let mut charge = parsed_mascot
-        .and_then(|block| block.charge())
-        .map(|value| value.to_string());
-    let mut adduct = None;
-    let mut ion_mode = None;
-    let mut smiles = None;
-    let mut formula = None;
-    let mut feature_id = None;
-    let mut scans = None;
-
-    for line in block_lines.iter() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed == "BEGIN IONS" || trimmed == "END IONS" {
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("PRECURSOR_MZ=") {
-            observed_precursor_raw = Some(stripped.to_string());
-            if let Ok(value) = stripped.parse::<f64>() {
-                observed_precursor = Some(value);
-            }
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("PEPMASS=") {
-            observed_precursor_raw = Some(stripped.to_string());
-            if let Ok(value) = stripped.parse::<f64>() {
-                observed_precursor = Some(value);
-            }
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("EXACTMASS=") {
-            if let Ok(value) = stripped.parse::<f64>() {
-                reference_mass = Some(value);
-                reference_mass_source = Some("EXACTMASS");
-            }
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("MOLECULEMASS=") {
-            if let Ok(value) = stripped.parse::<f64>() {
-                if reference_mass.is_none() {
-                    reference_mass = Some(value);
-                    reference_mass_source = Some("MOLECULEMASS");
-                }
-            }
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("CHARGE=") {
-            charge = Some(stripped.to_string());
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("SMILES=") {
-            smiles = Some(stripped.trim().to_string());
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("FORMULA=") {
-            formula = Some(stripped.trim().to_string());
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("ADDUCT=") {
-            adduct = Some(stripped.to_string());
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("IONMODE=") {
-            ion_mode = Some(stripped.to_string());
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("FEATURE_ID=") {
-            feature_id = Some(stripped.to_string());
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("SCANS=") {
-            scans = Some(stripped.to_string());
-            continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("EXTRACTSCAN=") {
-            if feature_id.is_none() {
-                feature_id = Some(stripped.to_string());
-            }
-            if scans.is_none() {
-                scans = Some(stripped.to_string());
-            }
-            continue;
-        }
+    let mut state = BlockParseState::default();
+    if let Some(charge) = parsed_mascot.and_then(|block| block.charge()) {
+        state.charge = Some(charge.to_string());
     }
+    state.consume_block_lines(block_lines);
+    process_block_state(&state, smiles_cache, formula_cache, logged_failures)
+}
 
-    let Some(observed_precursor) = observed_precursor else {
+fn process_block_state(
+    state: &BlockParseState,
+    smiles_cache: &mut HashMap<String, Option<f64>>,
+    formula_cache: &mut HashMap<String, Option<f64>>,
+    logged_failures: &mut HashSet<String>,
+) -> Result<Option<PrecursorMetrics>, ScanError> {
+    let Some(observed_precursor) = state.observed_precursor else {
         return Ok(None);
     };
 
-    let observed_precision = observed_precursor_raw
+    let observed_precision = state
+        .observed_precursor_raw
         .as_deref()
         .map(decimal_precision)
         .unwrap_or(5);
 
-    let reference_mass = reference_mass.or_else(|| {
-        formula
-            .as_deref()
-            .and_then(|value| exact_mass_from_formula_cached(value, formula_cache, logged_failures))
-            .map(|mass| {
-                reference_mass_source = Some("FORMULA");
-                mass
-            })
-            .or_else(|| {
-                let parsed_smiles = smiles.as_deref().and_then(|value| {
-                    exact_mass_from_smiles_cached(value, smiles_cache, logged_failures)
-                });
-                if smiles.is_some() && parsed_smiles.is_none() {
-                    return None;
-                }
-                parsed_smiles.map(|mass| {
-                    reference_mass_source = Some("SMILES");
-                    mass
+    let reference_mass = state
+        .reference_mass
+        .map(|mass| {
+            (
+                mass,
+                state
+                    .reference_mass_source
+                    .clone()
+                    .or_else(|| Some("unknown".to_string())),
+            )
+        })
+        .or_else(|| {
+            state
+                .formula
+                .as_deref()
+                .and_then(|value| {
+                    exact_mass_from_formula_cached(value, formula_cache, logged_failures)
                 })
-            })
-    });
+                .map(|mass| (mass, Some("FORMULA".to_string())))
+        })
+        .or_else(|| {
+            let parsed_smiles = state.smiles.as_deref().and_then(|value| {
+                exact_mass_from_smiles_cached(value, smiles_cache, logged_failures)
+            });
+            if state.smiles.is_some() && parsed_smiles.is_none() {
+                return None;
+            }
+            parsed_smiles.map(|mass| (mass, Some("SMILES".to_string())))
+        });
 
-    let Some(reference_mass) = reference_mass else {
+    let Some((reference_mass, reference_mass_source)) = reference_mass else {
         let mut metrics = PrecursorMetrics::default();
         metrics.total_spectra = 1;
         metrics.skipped_spectra = 1;
-        if let Some(smiles_text) = smiles.as_deref().filter(|value| !value.trim().is_empty()) {
+        if let Some(smiles_text) = state
+            .smiles
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+        {
             let trimmed_smiles = smiles_text.trim();
             metrics.unparsed_smiles = 1;
             metrics
@@ -2065,19 +2119,19 @@ fn process_block(
                 .and_modify(|detail| detail.count = detail.count.saturating_add(1))
                 .or_insert(WarningDetail {
                     count: 1,
-                    formula: formula.as_deref().map(str::to_string),
+                    formula: state.formula.as_deref().map(str::to_string),
                 });
             let warning_key = format!(
                 "missing-reference-mass:{}|{}",
                 trimmed_smiles,
-                formula.as_deref().unwrap_or("n/a")
+                state.formula.as_deref().unwrap_or("n/a")
             );
             if logged_failures.insert(warning_key) {
                 #[cfg(target_arch = "wasm32")]
                 console::warn_1(
                     &format!(
                         "Unable to derive reference mass from SMILES/formula for: {trimmed_smiles} (formula: {})",
-                        formula.as_deref().unwrap_or("n/a")
+                        state.formula.as_deref().unwrap_or("n/a")
                     )
                     .into(),
                 );
@@ -2086,13 +2140,13 @@ fn process_block(
         return Ok(Some(metrics));
     };
 
-    let reference_mass_source = reference_mass_source.unwrap_or("unknown");
-    let reference_mass_label = adduct.as_deref().map_or_else(
-        || reference_mass_source.to_string(),
+    let reference_mass_source = reference_mass_source.unwrap_or_else(|| "unknown".to_string());
+    let reference_mass_label = state.adduct.as_deref().map_or_else(
+        || reference_mass_source.clone(),
         |adduct| format!("{reference_mass_source} + {adduct}"),
     );
-    let adduct_label = normalize_adduct_label(adduct.as_deref().unwrap_or("unknown"));
-    let adduct_text = adduct.as_deref().unwrap_or("").trim();
+    let adduct_label = normalize_adduct_label(state.adduct.as_deref().unwrap_or("unknown"));
+    let adduct_text = state.adduct.as_deref().unwrap_or("").trim();
     let adduct_is_excluded = is_excluded_adduct(adduct_text);
     let adduct_is_supported = adduct_text.is_empty() || is_supported_adduct(adduct_text);
     if adduct_is_excluded || !adduct_is_supported && !adduct_text.is_empty() {
@@ -2111,9 +2165,9 @@ fn process_block(
 
     let expected_precursor_mz = expected_precursor_mz(
         reference_mass,
-        adduct.as_deref(),
-        charge.as_deref(),
-        ion_mode.as_deref(),
+        state.adduct.as_deref(),
+        state.charge.as_deref(),
+        state.ion_mode.as_deref(),
     )
     .unwrap_or(reference_mass);
     let expected_precursor_mz = round_to_precision(expected_precursor_mz, observed_precision);
@@ -2151,10 +2205,10 @@ fn process_block(
         ppm,
         error_da,
         observed_precursor,
-        smiles.as_deref(),
+        state.smiles.as_deref(),
         Some(reference_mass),
         Some(expected_precursor_mz),
-        formula.as_deref(),
+        state.formula.as_deref(),
     );
     if abs_error_da <= 0.0001 {
         metrics.within_0_0001_da = 1;
