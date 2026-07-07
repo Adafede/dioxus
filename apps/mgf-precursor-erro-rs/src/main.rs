@@ -2882,7 +2882,7 @@ fn process_block_state(
     metrics.abs_error_ppm_rms = abs_ppm;
     metrics.signed_error_da_mean = error_da;
     metrics.signed_error_ppm_mean = ppm;
-    metrics.record_error(
+    metrics.record_error_with_plot_sample(
         abs_error_da,
         abs_ppm,
         &adduct_label,
@@ -2893,6 +2893,7 @@ fn process_block_state(
         Some(reference_mass),
         Some(expected_precursor_mz),
         state.formula.as_deref(),
+        plot_sample,
     );
     if error_mda <= 0.1 {
         metrics.within_0_1_da = 1;
@@ -2952,6 +2953,39 @@ mod tests {
         assert_eq!(metrics.within_1_da, 0);
         assert_eq!(metrics.within_5_da, 0);
         assert_eq!(metrics.above_5_da, 0);
+    }
+
+    #[test]
+    fn records_plot_points_when_an_external_sample_is_provided() {
+        let block = vec![
+            "BEGIN IONS".to_string(),
+            "FILENAME=test.mzML".to_string(),
+            "FORMULA=C10H12N2O".to_string(),
+            "SMILES=CC(=O)N1CCCCC1".to_string(),
+            "CHARGE=1+".to_string(),
+            "IONMODE=positive".to_string(),
+            "ADDUCT=[M+H]+".to_string(),
+            "EXACTMASS=164.095".to_string(),
+            "PRECURSOR_MZ=165.102".to_string(),
+            "END IONS".to_string(),
+        ];
+
+        let mut smiles_cache = std::collections::HashMap::new();
+        let mut formula_cache = std::collections::HashMap::new();
+        let mut logged_failures = std::collections::HashSet::new();
+        let mut sample = super::PlotPointSample::default();
+        let metrics = super::process_block(
+            &block,
+            &mut smiles_cache,
+            &mut formula_cache,
+            &mut logged_failures,
+            Some(&mut sample),
+        )
+        .expect("block should be processed")
+        .expect("block should produce metrics");
+
+        assert_eq!(metrics.plot_points.len(), 1);
+        assert!(metrics.plot_points[0].observed_precursor_mz > 0.0);
     }
 
     #[test]
