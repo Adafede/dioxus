@@ -27,6 +27,7 @@ const CHUNK_SIZE: usize = 1 << 20;
 #[cfg(any(target_arch = "wasm32", test))]
 const PROGRESS_INTERVAL: usize = 1 << 20;
 const PROTON_MASS: f64 = 1.007_276_466_621;
+const HYDROGEN_MASS: f64 = PROTON_MASS + ELECTRON_MASS;
 const ELECTRON_MASS: f64 = 0.000_548_579_909_065;
 const SODIUM_MASS: f64 = 22.989_769_67;
 const POTASSIUM_MASS: f64 = 38.963_707;
@@ -67,6 +68,7 @@ struct PrecursorMetrics {
     skipped_spectra: usize,
     spectra_with_reference_mass: usize,
     reference_mass_source: String,
+    unparsed_smiles: usize,
     observed_precursor_min: f64,
     observed_precursor_max: f64,
     observed_precursor_mean: f64,
@@ -101,6 +103,7 @@ impl Default for PrecursorMetrics {
             skipped_spectra: 0,
             spectra_with_reference_mass: 0,
             reference_mass_source: "none".to_string(),
+            unparsed_smiles: 0,
             observed_precursor_min: 0.0,
             observed_precursor_max: 0.0,
             observed_precursor_mean: 0.0,
@@ -435,7 +438,8 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     let multiplier = multiplier_str.parse::<f64>().unwrap_or(1.0);
     let formula = trimmed[digits_end..].trim().to_ascii_uppercase();
     let formula = match formula.as_str() {
-        "FA" => "CH2O2",
+        "FA" | "FORMATE" | "HCOO" => "CHO2",
+        "HCOOH" | "FORMICACID" => "CH2O2",
         "MEOH" | "CH3OH" => "CH4O",
         "HFA" => "C2HF3O2",
         "H2O" => "H2O",
@@ -445,7 +449,7 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
         "O" => "O",
         "C2H4" => return Some(28.031_300_128 * multiplier),
         "CHNAO2" | "HCOONA" => return Some(67.987_423_942 * multiplier),
-        "H" => return Some(PROTON_MASS * multiplier),
+        "H" => return Some(HYDROGEN_MASS * multiplier),
         "NA" => return Some(SODIUM_MASS * multiplier),
         "K" => return Some(POTASSIUM_MASS * multiplier),
         "MG" => return Some(23.985_041_7 * multiplier),
@@ -701,6 +705,9 @@ fn app() -> Element {
                                     style: "margin-top: 0.9rem; padding: 0.8rem 0.9rem; border: 1px solid #fcd34d; border-radius: 12px; background: #fffbeb; color: #92400e;",
                                     p { style: "margin: 0 0 0.35rem; font-weight: 700;", "Warnings" }
                                     p { style: "margin: 0; font-size: 0.9rem;", "{metrics.skipped_spectra} spectra were skipped because the adduct or reference mass could not be resolved." }
+                                    if metrics.unparsed_smiles > 0 {
+                                        p { style: "margin: 0.45rem 0 0; font-size: 0.88rem;", "{metrics.unparsed_smiles} spectra had SMILES that could not be parsed into a reference mass." }
+                                    }
                                     if !metrics.unrecognized_adducts.is_empty() {
                                         ul { style: "margin: 0.45rem 0 0 1.1rem; padding: 0; font-size: 0.88rem;",
                                             {
@@ -1582,13 +1589,14 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
                 mass
             })
             .or_else(|| {
-                smiles
-                    .as_deref()
-                    .and_then(exact_mass_from_smiles)
-                    .map(|mass| {
-                        reference_mass_source = Some("SMILES");
-                        mass
-                    })
+                let parsed_smiles = smiles.as_deref().and_then(exact_mass_from_smiles);
+                if smiles.is_some() && parsed_smiles.is_none() {
+                    return None;
+                }
+                parsed_smiles.map(|mass| {
+                    reference_mass_source = Some("SMILES");
+                    mass
+                })
             })
     });
 
@@ -1596,6 +1604,9 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
         let mut metrics = PrecursorMetrics::default();
         metrics.total_spectra = 1;
         metrics.skipped_spectra = 1;
+        if smiles.is_some() {
+            metrics.unparsed_smiles = 1;
+        }
         return Ok(Some(metrics));
     };
 
@@ -1759,7 +1770,7 @@ mod tests {
     fn handles_double_protonated_adducts() {
         let mass = expected_precursor_mz(1000.0, Some("[M+2H]2+"), Some("2+"), Some("positive"))
             .expect("double protonated adduct should be supported");
-        assert!((mass - (500.0 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9);
+        assert!((mass - (500.0 + PROTON_MASS)).abs() < 1e-9);
     }
 
     #[test]
@@ -1805,7 +1816,7 @@ mod tests {
         let dimer_mass =
             expected_precursor_mz(1000.0, Some("[2M+H]+"), Some("1+"), Some("positive"))
                 .expect("dimer adduct should be supported");
-        assert!((dimer_mass - (2000.0 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9);
+        assert!((dimer_mass - (2000.0 + PROTON_MASS)).abs() < 1e-9);
     }
 
     #[test]
@@ -1839,11 +1850,27 @@ mod tests {
     }
 
     #[test]
+    fn handles_hydrogen_minus_terms_for_metal_adducts() {
+        let protonated_mass = super::expected_precursor_mz(1000.0, Some("[M+H]+"), Some("1+"), Some("positive"))
+            .expect("protonated adduct should be supported");
+        assert!((protonated_mass - (1000.0 + PROTON_MASS)).abs() < 1e-9);
+
+        let calcium_hydride_mass = super::expected_precursor_mz(
+            1000.0,
+            Some("[M+HFA+Ca-H]+"),
+            Some("1+"),
+            Some("positive"),
+        )
+        .expect("calcium-hydride adduct should be supported");
+        assert!(calcium_hydride_mass > 1000.0);
+    }
+
+    #[test]
     fn supports_c2h4_and_sodium_formate_terms() {
         let c2h4_loss =
             super::expected_precursor_mz(1000.0, Some("[M-C2H4+H]+"), Some("1+"), Some("positive"))
                 .expect("C2H4 loss should be supported");
-        assert!((c2h4_loss - (1000.0 - 28.031_300_128 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9);
+        assert!((c2h4_loss - (1000.0 - 28.031_300_128 + PROTON_MASS)).abs() < 1e-9);
 
         let sodium_formate = super::expected_precursor_mz(
             1000.0,
@@ -1852,9 +1879,18 @@ mod tests {
             Some("positive"),
         )
         .expect("sodium formate should be supported");
-        assert!(
-            (sodium_formate - (1000.0 + 67.987_423_942 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9
-        );
+        assert!((sodium_formate - (1000.0 + 67.987_423_942 + PROTON_MASS)).abs() < 1e-9);
+
+        let formate_adduct = super::expected_precursor_mz(
+            1000.0,
+            Some("[M+FA]-"),
+            Some("1-"),
+            Some("negative"),
+        )
+        .expect("formate adduct should be supported");
+        let expected_formate_mass = 1000.0 + super::exact_mass_from_formula("CHO2")
+            .expect("CHO2 mass should be available");
+        assert!((formate_adduct - expected_formate_mass).abs() < 1e-9);
     }
 }
 
@@ -1868,6 +1904,7 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     current.total_spectra += next.total_spectra;
     current.skipped_spectra += next.skipped_spectra;
     current.spectra_with_reference_mass += next.spectra_with_reference_mass;
+    current.unparsed_smiles += next.unparsed_smiles;
     if current.reference_mass_source == "none" {
         current.reference_mass_source = next.reference_mass_source;
     } else if current.reference_mass_source != next.reference_mass_source
