@@ -278,6 +278,7 @@ struct HighErrorSmilesDetail {
 struct AdductClass {
     label: String,
     display: String,
+    family: String,
     charge: i32,
 }
 
@@ -763,7 +764,8 @@ fn apply_adduct_token(
     shift: &mut f64,
     saw_unsupported_token: &mut bool,
 ) {
-    if let Some(token_mass) = parse_adduct_term_mass_with_context(current, sign, uses_double_mg_mass)
+    if let Some(token_mass) =
+        parse_adduct_term_mass_with_context(current, sign, uses_double_mg_mass)
     {
         *shift += sign * token_mass;
     } else if let Some(token_multiplier) = parse_multiplicity_token(current) {
@@ -1476,9 +1478,30 @@ fn adduct_class(adduct: &str) -> Option<AdductClass> {
         },
         |sign| if sign { -1 } else { 1 },
     );
+    let family = if normalized.contains("[M+H]")
+        || normalized.contains("[M+2H]")
+        || normalized.contains("[M+NH4]")
+    {
+        "Protonated".to_string()
+    } else if normalized.contains("[M-H]") || normalized.contains("[M-2H]") {
+        "Deprotonated".to_string()
+    } else if normalized.contains("[M+NA]")
+        || normalized.contains("[M+K]")
+        || normalized.contains("[M+NH4]")
+    {
+        "Alkali / ammonium".to_string()
+    } else if normalized.contains("MG") || normalized.contains("CA") || normalized.contains("FE") {
+        "Metal / complex".to_string()
+    } else if normalized.contains("CL") || normalized.contains("BR") {
+        "Halide".to_string()
+    } else {
+        "Other".to_string()
+    };
+
     Some(AdductClass {
         label: normalized.clone(),
         display: normalized,
+        family,
         charge,
     })
 }
@@ -1500,6 +1523,15 @@ fn tolerance_step_color(index: usize, total_steps: usize) -> &'static str {
     palette[slot.min(palette.len() - 1)]
 }
 
+fn tolerance_step_rgb(index: usize, total_steps: usize) -> plotters::style::RGBColor {
+    match tolerance_step_color(index, total_steps) {
+        "#16A34A" => plotters::style::RGBColor(22, 163, 74),
+        "#4ADE80" => plotters::style::RGBColor(74, 222, 128),
+        "#F59E0B" => plotters::style::RGBColor(245, 158, 11),
+        _ => plotters::style::RGBColor(234, 88, 12),
+    }
+}
+
 fn format_threshold_value(value: f64) -> String {
     let formatted = format!("{value:.6}");
     let trimmed = formatted.trim_end_matches('0').trim_end_matches('.');
@@ -1510,6 +1542,194 @@ fn format_threshold_value(value: f64) -> String {
     }
 }
 
+fn render_histogram_svg(
+    title: &str,
+    histogram: &HistogramData,
+    thresholds: &[f64],
+    unit: &str,
+) -> String {
+    use plotters::prelude::*;
+    use plotters::series::{LineSeries, PointSeries};
+
+    let width = 720u32;
+    let height = 420u32;
+    let mut buffer = String::new();
+    let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let span = (histogram.max - histogram.min).abs().max(1e-9);
+    let x_min = histogram.min - span * 0.035;
+    let x_max = histogram.max + span * 0.035;
+    let max_count = histogram.bins.iter().copied().max().unwrap_or(1).max(1) as f64;
+
+    {
+        let mut chart = ChartBuilder::on(&root)
+            .margin(18)
+            .caption(title, ("sans-serif", 18).into_font())
+            .set_label_area_size(LabelAreaPosition::Left, 48)
+            .set_label_area_size(LabelAreaPosition::Bottom, 44)
+            .build_cartesian_2d(x_min..x_max, 0f64..max_count)
+            .unwrap();
+
+        chart
+            .configure_mesh()
+            .axis_style(ShapeStyle::from(&RGBColor(148, 163, 184)))
+            .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
+            .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
+            .x_desc(format!("Absolute error ({unit})"))
+            .y_desc("Count")
+            .x_label_style(("sans-serif", 11).into_font())
+            .y_label_style(("sans-serif", 11).into_font())
+            .draw()
+            .unwrap();
+
+        let bin_width = span / histogram.bins.len().max(1) as f64;
+        for (index, count) in histogram.bins.iter().enumerate() {
+            let x0 = histogram.min + index as f64 * bin_width;
+            let x1 = (x0 + bin_width).min(histogram.max);
+            let y0 = 0.0f64;
+            let y1 = *count as f64;
+            let color = plotters::style::RGBColor(
+                (59 + (index % 6) * 8) as u8,
+                (130 + (index % 5) * 12) as u8,
+                (246 - (index % 4) * 10) as u8,
+            );
+            chart
+                .draw_series(std::iter::once(Rectangle::new(
+                    [(x0, y0), (x1, y1)],
+                    ShapeStyle::from(&color).filled(),
+                )))
+                .unwrap();
+        }
+
+        for (index, threshold) in thresholds.iter().enumerate() {
+            let x = threshold.clamp(x_min, x_max);
+            let color = tolerance_step_rgb(index, thresholds.len());
+            chart
+                .draw_series(LineSeries::new(
+                    vec![(x, 0.0), (x, max_count)],
+                    ShapeStyle::from(&color).stroke_width(1),
+                ))
+                .unwrap();
+        }
+
+        root.present().unwrap();
+    }
+
+    drop(root);
+    buffer
+}
+
+fn render_scatter_svg(title: &str, points: &[PlotPoint], other_label: Option<&str>) -> String {
+    use plotters::prelude::*;
+    use plotters::series::{LineSeries, PointSeries};
+
+    let width = 720u32;
+    let height = 420u32;
+    let mut buffer = String::new();
+    let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let mut families = Vec::new();
+    for point in points {
+        let family = adduct_class(&point.adduct_type)
+            .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
+        if !families.iter().any(|existing: &String| existing == &family) {
+            families.push(family);
+        }
+    }
+    if families.is_empty() {
+        families.push("Other".to_string());
+    }
+
+    let y_values = points
+        .iter()
+        .map(|point| point.signed_error_da)
+        .collect::<Vec<_>>();
+    let y_min = y_values.iter().copied().fold(f64::INFINITY, f64::min) - 0.01;
+    let y_max = y_values.iter().copied().fold(f64::NEG_INFINITY, f64::max) + 0.01;
+    let y_span = (y_max - y_min).max(0.02);
+    let y_min = y_min - y_span * 0.05;
+    let y_max = y_max + y_span * 0.05;
+
+    {
+        let mut chart = ChartBuilder::on(&root)
+            .margin(18)
+            .caption(title, ("sans-serif", 18).into_font())
+            .set_label_area_size(LabelAreaPosition::Left, 48)
+            .set_label_area_size(LabelAreaPosition::Bottom, 64)
+            .build_cartesian_2d(0usize..families.len(), y_min..y_max)
+            .unwrap();
+
+        chart
+            .configure_mesh()
+            .axis_style(ShapeStyle::from(&RGBColor(148, 163, 184)))
+            .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
+            .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
+            .x_labels(families.len())
+            .x_label_formatter(&|x| {
+                families
+                    .get(*x)
+                    .cloned()
+                    .unwrap_or_else(|| "Other".to_string())
+            })
+            .x_label_style(("sans-serif", 10).into_font())
+            .y_desc("Signed error (Da)")
+            .y_label_style(("sans-serif", 11).into_font())
+            .draw()
+            .unwrap();
+
+        chart
+            .draw_series(LineSeries::new(
+                vec![(0usize, 0.0f64), (families.len(), 0.0f64)],
+                ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
+            ))
+            .unwrap();
+
+        let family_colors = families
+            .iter()
+            .enumerate()
+            .map(|(index, family)| {
+                let color = match family.as_str() {
+                    "Protonated" => RGBColor(30, 64, 175),
+                    "Deprotonated" => RGBColor(2, 132, 199),
+                    "Alkali / ammonium" => RGBColor(16, 185, 129),
+                    "Metal / complex" => RGBColor(217, 119, 6),
+                    "Halide" => RGBColor(190, 24, 93),
+                    _ => RGBColor(99, 102, 241),
+                };
+                (family.clone(), color)
+            })
+            .collect::<Vec<_>>();
+
+        for point in points {
+            let family = adduct_class(&point.adduct_type)
+                .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
+            let x_index = families
+                .iter()
+                .position(|candidate| *candidate == family)
+                .unwrap_or(0);
+            let color = family_colors
+                .iter()
+                .find(|(candidate, _)| candidate == &family)
+                .map(|(_, color)| *color)
+                .unwrap_or(RGBColor(99, 102, 241));
+            chart
+                .draw_series(PointSeries::of_element(
+                    vec![(x_index, point.signed_error_da)],
+                    5,
+                    &color,
+                    &|coord, size, style| Circle::new(coord, size, style.filled()),
+                ))
+                .unwrap();
+        }
+
+        root.present().unwrap();
+    }
+
+    drop(root);
+    buffer
+}
 #[component]
 fn histogram_plot(
     title: String,
@@ -1518,141 +1738,33 @@ fn histogram_plot(
     thresholds: Vec<f64>,
     unit: String,
 ) -> Element {
-    let mut zoom = use_signal(|| 1.0f64);
-    let max_count = histogram.bins.iter().copied().max().unwrap_or(1).max(1);
-    let width = 360.0f64;
-    let height = 220.0f64;
-    let padding = 24.0f64;
-    let plot_width = width - padding * 2.0;
-    let plot_height = height - padding * 2.0;
-    let zoom_in = move |_| {
-        let current_zoom = *zoom.read();
-        zoom.set((current_zoom * 1.18).min(8.0));
-    };
-    let zoom_out = move |_| {
-        let current_zoom = *zoom.read();
-        zoom.set((current_zoom / 1.18).max(0.8));
-    };
-    let reset_zoom = move |_| zoom.set(1.0);
-    let zoom_transform = format!(
-        "translate({} {}) scale({}) translate({} {})",
-        width / 2.0,
-        height / 2.0,
-        *zoom.read(),
-        -(width / 2.0),
-        -(height / 2.0)
-    );
-    let bars = histogram
-        .bins
-        .iter()
-        .enumerate()
-        .map(|(index, count)| {
-            let bar_width = plot_width / histogram.bins.len() as f64 - 2.0;
-            let x = padding + (index as f64 * (plot_width / histogram.bins.len() as f64));
-            let step = (histogram.max - histogram.min).max(1e-9) / histogram.bins.len() as f64;
-            let bin_center = histogram.min + (index as f64 + 0.5) * step;
-            let bar_height = if *count == 0 {
-                0.0
-            } else {
-                (*count as f64 / max_count as f64) * plot_height
-            };
-            let y = height - padding - bar_height;
-            let color = paul_tol_palette(index);
-            rsx! {
-                rect {
-                    x: x as i32,
-                    y: y as i32,
-                    width: bar_width as i32,
-                    height: bar_height as i32,
-                    fill: color,
-                    opacity: "0.95"
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let threshold_lines = thresholds
-        .iter()
-        .enumerate()
-        .map(|(index, threshold)| {
-            let normalized = ((threshold - histogram.min)
-                / (histogram.max - histogram.min).max(1e-9))
-            .clamp(0.0, 1.0);
-            let x = padding + normalized * plot_width;
-            rsx! {
-                line {
-                    x1: x as i32,
-                    y1: padding as i32,
-                    x2: x as i32,
-                    y2: (height - padding) as i32,
-                    stroke: tolerance_step_color(index, thresholds.len()),
-                    stroke_width: "1.25",
-                    stroke_dasharray: "4 3"
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-
+    let svg_markup = render_histogram_svg(&title, &histogram, &thresholds, &unit);
     let legend_items = thresholds
         .iter()
         .enumerate()
         .map(|(index, threshold)| {
             let label = format!("≤ {} {unit}", format_threshold_value(*threshold));
             rsx! {
-                div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
-                    span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", tolerance_step_color(index, thresholds.len())) }
-                    span { "{label}" }
-                }
+               div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
+                   span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", tolerance_step_color(index, thresholds.len())) }
+                   span { "{label}" }
+               }
             }
         })
         .collect::<Vec<_>>();
 
     rsx! {
         div {
-            style: "padding: 0.9rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
+            style: "padding: 0.95rem; border: 1px solid #e2e8f0; border-radius: 18px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);",
             h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
-            p { style: "margin: 0 0 0.65rem; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
-            div { style: "display: flex; justify-content: flex-end; gap: 0.3rem; margin-bottom: 0.45rem;",
-               button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 0.95rem;", onclick: zoom_in, "−" }
-               button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 0.95rem;", onclick: zoom_out, "＋" }
-               button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; padding: 0 0.55rem; height: 28px; cursor: pointer; font-size: 0.8rem; color: #475569;", onclick: reset_zoom, "Reset" }
-            }
-            div { style: "display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.6rem;",
+            p { style: "margin: 0 0 0.75rem; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
+            div { style: "display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.65rem;",
                for item in legend_items {
                    {item}
                }
             }
-            svg {
-               width: "100%",
-               height: "220px",
-               view_box: "0 0 360 220",
-               role: "img",
-               style: "display: block; overflow: visible;",
-               onwheel: move |evt: Event<WheelData>| {
-                   evt.prevent_default();
-                   let delta = evt.data().delta().strip_units();
-                   if delta.y < 0.0 {
-                       let current_zoom = *zoom.read();
-                       zoom.set((current_zoom * 1.12).min(8.0));
-                   } else {
-                       let current_zoom = *zoom.read();
-                       zoom.set((current_zoom / 1.12).max(0.8));
-                   }
-               },
-               title { "{title}" }
-               rect { x: 0, y: 0, width: 360, height: 220, fill: "#f8fafc" }
-               g { transform: zoom_transform,
-                   line { x1: padding as i32, y1: (height - padding) as i32, x2: (width - padding) as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
-                   line { x1: padding as i32, y1: padding as i32, x2: padding as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
-                   for bar in bars {
-                       {bar}
-                   }
-                   for line in threshold_lines {
-                       {line}
-                   }
-                   text { x: (padding + 4.0) as i32, y: (padding + 12.0) as i32, fill: "#64748b", font_size: "11", "0" }
-                   text { x: (width - padding - 20.0) as i32, y: (height - padding + 16.0) as i32, fill: "#64748b", font_size: "11", "{unit}" }
-               }
+            div { style: "border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; background: #fcfdff;",
+               dangerous_inner_html: svg_markup
             }
         }
     }
@@ -1665,228 +1777,50 @@ fn scatter_plot(
     points: Vec<PlotPoint>,
     other_label: Option<String>,
 ) -> Element {
-    let mut zoom = use_signal(|| 1.0f64);
-    let width = 360.0f64;
-    let height = 220.0f64;
-    let padding = 24.0f64;
-    let plot_width = width - padding * 2.0;
-    let plot_height = height - padding * 2.0;
-    let zoom_in = move |_| {
-        let current_zoom = *zoom.read();
-        zoom.set((current_zoom * 1.18).min(8.0));
-    };
-    let zoom_out = move |_| {
-        let current_zoom = *zoom.read();
-        zoom.set((current_zoom / 1.18).max(0.8));
-    };
-    let reset_zoom = move |_| zoom.set(1.0);
-    let zoom_transform = format!(
-        "translate({} {}) scale({}) translate({} {})",
-        width / 2.0,
-        height / 2.0,
-        *zoom.read(),
-        -(width / 2.0),
-        -(height / 2.0)
-    );
-
-    let categories = points
+    let svg_markup = render_scatter_svg(&title, &points, other_label.as_deref());
+    let families = points
         .iter()
-        .filter_map(|point| adduct_class(&point.adduct_type).map(|adduct| adduct.display))
+        .filter_map(|point| adduct_class(&point.adduct_type).map(|adduct| adduct.family))
         .collect::<Vec<_>>();
-    let unique_categories = categories.iter().fold(Vec::new(), |mut acc, category| {
-        if !acc.contains(category) {
-            acc.push(category.clone());
+    let unique_families = families.iter().fold(Vec::new(), |mut acc, family| {
+        if !acc.contains(family) {
+            acc.push(family.clone());
         }
         acc
     });
-
-    let x_positions = unique_categories
+    let legend_items = unique_families
         .iter()
         .enumerate()
-        .map(|(index, category)| (category.clone(), index as f64))
-        .collect::<Vec<_>>();
-    let x_lookup = x_positions.iter().cloned().collect::<BTreeMap<_, _>>();
-    let x_min = 0.0f64;
-    let x_max = (unique_categories.len().max(1) - 1) as f64;
-    let x_span = (x_max - x_min).max(1e-9);
-
-    let (y_min, y_max) = if points.is_empty() {
-        (-0.02, 0.02)
-    } else {
-        let min = points
-            .iter()
-            .map(|point| point.signed_error_da)
-            .fold(f64::INFINITY, f64::min);
-        let max = points
-            .iter()
-            .map(|point| point.signed_error_da)
-            .fold(f64::NEG_INFINITY, f64::max);
-        let span = (max - min).max(0.02);
-        (min - span * 0.05, max + span * 0.05)
-    };
-    let y_span = (y_max - y_min).max(1e-9);
-
-    let category_colors = unique_categories
-        .iter()
-        .enumerate()
-        .map(|(index, category)| (category.clone(), paul_tol_palette(index)))
-        .collect::<BTreeMap<_, _>>();
-
-    let circles = points
-        .iter()
-        .map(|point| {
-            let adduct_class = adduct_class(&point.adduct_type).unwrap_or_else(|| AdductClass {
-                label: point.adduct_type.clone(),
-                display: point.adduct_type.clone(),
-                charge: 0,
-            });
-            let x_index = x_lookup
-                .get(&adduct_class.display)
-                .copied()
-                .unwrap_or_default();
-            let x = padding + ((x_index - x_min) / x_span) * plot_width;
-            let y = height - padding - ((point.signed_error_da - y_min) / y_span) * plot_height;
-            let color = category_colors
-                .get(&adduct_class.display)
-                .copied()
-                .unwrap_or("#64748B");
+        .map(|(index, family)| {
+            let color = match family.as_str() {
+               "Protonated" => "#1d4ed8",
+               "Deprotonated" => "#0284c7",
+               "Alkali / ammonium" => "#10b981",
+               "Metal / complex" => "#d97706",
+               "Halide" => "#be185d",
+               _ => paul_tol_palette(index),
+            };
             rsx! {
-                circle {
-                    cx: x as i32,
-                    cy: y as i32,
-                    r: "2.2",
-                    fill: color,
-                    opacity: "0.95"
-                }
+               div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
+                   span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", color) }
+                   span { "{family}" }
+               }
             }
         })
         .collect::<Vec<_>>();
-
-    let category_labels = unique_categories
-        .iter()
-        .enumerate()
-        .map(|(index, label)| {
-            let x = padding + ((index as f64 - x_min) / x_span) * plot_width;
-            rsx! {
-                text { x: x as i32, y: (height - padding + 16.0) as i32, fill: "#64748b", font_size: "10", "{label}" }
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let tick_count = 5;
-    let y_ticks = (0..=tick_count)
-        .map(|tick| {
-            let ratio = tick as f64 / tick_count as f64;
-            let value = y_min + ratio * y_span;
-            let y = height - padding - ratio * plot_height;
-            rsx! {
-                line { x1: padding as i32, y1: y as i32, x2: (width - padding) as i32, y2: y as i32, stroke: "#e2e8f0", stroke_width: "0.8" }
-                text { x: (padding - 8.0) as i32, y: (y - 3.0) as i32, fill: "#64748b", font_size: "10", text_anchor: "end", {format_value(value)} }
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let category_counts = unique_categories
-        .iter()
-        .map(|label| {
-            let count = points
-                .iter()
-                .filter(|point| {
-                    adduct_class(&point.adduct_type)
-                        .map(|adduct| adduct.display == *label)
-                        .unwrap_or(false)
-                })
-                .count();
-            (label.clone(), count)
-        })
-        .collect::<Vec<_>>();
-
-    let category_count_labels = category_counts
-        .iter()
-        .enumerate()
-        .map(|(index, (_label, count))| {
-            let x = padding + ((index as f64 - x_min) / x_span) * plot_width;
-            rsx! {
-                text { x: x as i32, y: (height - padding + 30.0) as i32, fill: "#64748b", font_size: "9", text_anchor: "middle", "{count}" }
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let mut legend_items = unique_categories
-        .iter()
-        .enumerate()
-        .map(|(index, label)| {
-            let color = category_colors.get(label).copied().unwrap_or(paul_tol_palette(index));
-            rsx! {
-                div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
-                    span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", color) }
-                    span { "{label}" }
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-    if let Some(label) = other_label.as_ref() {
-        legend_items.push(rsx! {
-            div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
-                span { style: "display:inline-block; width:10px; height:10px; border-radius:999px; background:#BBBBBB;" }
-                span { "{label}" }
-            }
-        });
-    }
 
     rsx! {
         div {
-            style: "padding: 0.9rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
+            style: "padding: 0.95rem; border: 1px solid #e2e8f0; border-radius: 18px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);",
             h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
-            p { style: "margin: 0 0 0.65rem; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
-            div { style: "display: flex; justify-content: flex-end; gap: 0.3rem; margin-bottom: 0.45rem;",
-                button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 0.95rem;", onclick: zoom_in, "−" }
-                button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 0.95rem;", onclick: zoom_out, "＋" }
-                button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; padding: 0 0.55rem; height: 28px; cursor: pointer; font-size: 0.8rem; color: #475569;", onclick: reset_zoom, "Reset" }
+            p { style: "margin: 0 0 0.75rem; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
+            div { style: "display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.65rem;",
+               for item in legend_items {
+                   {item}
+               }
             }
-            div { style: "display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.6rem;",
-                for item in legend_items {
-                    {item}
-                }
-            }
-            svg {
-                width: "100%",
-                height: "220px",
-                view_box: "0 0 360 220",
-                role: "img",
-                style: "display: block; overflow: visible;",
-                onwheel: move |evt: Event<WheelData>| {
-                    evt.prevent_default();
-                    let delta = evt.data().delta().strip_units();
-                    if delta.y > 0.0 {
-                        let current_zoom = *zoom.read();
-                        zoom.set((current_zoom * 1.12).min(8.0));
-                    } else {
-                        let current_zoom = *zoom.read();
-                        zoom.set((current_zoom / 1.12).max(0.8));
-                    }
-                },
-                title { "{title}" }
-                rect { x: 0, y: 0, width: 360, height: 220, fill: "#f8fafc" }
-                g { transform: zoom_transform,
-                    line { x1: padding as i32, y1: (height - padding) as i32, x2: (width - padding) as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
-                    line { x1: padding as i32, y1: padding as i32, x2: padding as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
-                    line { x1: padding as i32, y1: (height - padding - ((0.0 - y_min) / y_span) * plot_height) as i32, x2: (width - padding) as i32, y2: (height - padding - ((0.0 - y_min) / y_span) * plot_height) as i32, stroke: "#94a3b8", stroke_width: "1", stroke_dasharray: "4 3" }
-                    for circle in circles {
-                        {circle}
-                    }
-                    for label in category_labels {
-                        {label}
-                    }
-                    for tick in y_ticks {
-                        {tick}
-                    }
-                    for count_label in category_count_labels {
-                        {count_label}
-                    }
-                    text { x: 12, y: (height / 2.0) as i32, fill: "#64748b", font_size: "11", transform: "rotate(-90 12 110)", "Signed error (Da)" }
-                    text { x: (width / 2.0) as i32, y: (height - 6.0) as i32, fill: "#64748b", font_size: "11", text_anchor: "middle", "Adduct type" }
-                }
+            div { style: "border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; background: #fcfdff;",
+               dangerous_inner_html: svg_markup
             }
         }
     }
@@ -2297,8 +2231,8 @@ mod tests {
 
     #[test]
     fn supports_quaternary_multiplicity_adducts() {
-        let spec = super::parse_adduct_mass_spec("[4M-H]-")
-            .expect("4M-H adduct should be supported");
+        let spec =
+            super::parse_adduct_mass_spec("[4M-H]-").expect("4M-H adduct should be supported");
         assert_eq!(spec, (4.0, -super::HYDROGEN_MASS));
     }
 
