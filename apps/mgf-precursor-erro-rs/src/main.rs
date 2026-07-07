@@ -90,6 +90,7 @@ struct PrecursorMetrics {
     ppm_error_histogram: HistogramData,
     plot_points: Vec<PlotPoint>,
     unrecognized_adducts: BTreeMap<String, usize>,
+    high_error_smiles: BTreeMap<String, usize>,
 }
 
 impl Default for PrecursorMetrics {
@@ -123,6 +124,7 @@ impl Default for PrecursorMetrics {
             ppm_error_histogram: HistogramData::new(48, 0.0, 50.0),
             plot_points: Vec::new(),
             unrecognized_adducts: BTreeMap::new(),
+            high_error_smiles: BTreeMap::new(),
         }
     }
 }
@@ -160,9 +162,19 @@ impl PrecursorMetrics {
         adduct_type: &str,
         ppm_error: f64,
         signed_error_da: f64,
+        smiles: Option<&str>,
     ) {
         self.da_error_histogram.add_value(abs_error_da);
         self.ppm_error_histogram.add_value(abs_ppm);
+
+        if abs_ppm > 10.0 {
+            if let Some(smiles) = smiles.filter(|value| !value.trim().is_empty()) {
+                self.high_error_smiles
+                    .entry(smiles.trim().to_string())
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+            }
+        }
 
         if self.plot_points.len() < 260 {
             self.plot_points.push(PlotPoint {
@@ -703,6 +715,23 @@ fn app() -> Element {
                                                 }
                                             }
                                         }
+                                    }
+                                }
+                            }
+
+                            if !metrics.high_error_smiles.is_empty() {
+                                div {
+                                    style: "margin-top: 1rem; padding: 0.8rem 0.9rem; border: 1px solid #fecaca; border-radius: 12px; background: #fef2f2; color: #991b1b;",
+                                    p { style: "margin: 0 0 0.35rem; font-weight: 700;", "SMILES for spectra above 10 ppm" }
+                                    ul { style: "margin: 0.25rem 0 0 1.1rem; padding: 0; font-size: 0.88rem; max-height: 240px; overflow: auto;",
+                                        for (smiles, count) in metrics.high_error_smiles.iter() {
+                                           {
+                                               let suffix = if *count > 1 { format!(" (x{count})") } else { String::new() };
+                                               rsx! {
+                                                   li { "{smiles}{suffix}" }
+                                               }
+                                           }
+                                       }
                                     }
                                 }
                             }
@@ -1545,19 +1574,19 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
     };
 
     let reference_mass = reference_mass.or_else(|| {
-        smiles
+        formula
             .as_deref()
-            .and_then(exact_mass_from_smiles)
+            .and_then(exact_mass_from_formula)
             .map(|mass| {
-                reference_mass_source = Some("SMILES");
+                reference_mass_source = Some("FORMULA");
                 mass
             })
             .or_else(|| {
-                formula
+                smiles
                     .as_deref()
-                    .and_then(exact_mass_from_formula)
+                    .and_then(exact_mass_from_smiles)
                     .map(|mass| {
-                        reference_mass_source = Some("FORMULA");
+                        reference_mass_source = Some("SMILES");
                         mass
                     })
             })
@@ -1676,7 +1705,14 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
     metrics.abs_error_ppm_rms = abs_ppm;
     metrics.signed_error_da_mean = error_da;
     metrics.signed_error_ppm_mean = ppm;
-    metrics.record_error(abs_error_da, abs_ppm, &adduct_label, ppm, error_da);
+    metrics.record_error(
+        abs_error_da,
+        abs_ppm,
+        &adduct_label,
+        ppm,
+        error_da,
+        smiles.as_deref(),
+    );
     if abs_error_da <= 0.0005 {
         metrics.within_0_0005_da = 1;
     }
@@ -1709,6 +1745,14 @@ mod tests {
     fn computes_exact_mass_from_smiles() {
         let mass = exact_mass_from_smiles("CCO").expect("valid SMILES should parse");
         assert!((mass - 46.041_864_814).abs() < 1e-4);
+    }
+
+    #[test]
+    fn treats_chiral_smiles_as_unavailable_when_parser_cannot_handle_them() {
+        let mass = exact_mass_from_smiles(
+            "C#C[C@]1(O)C=C[C@H]2[C@@H]3CCC4=CC(=O)CC[C@@H]4[C@H]3CC[C@@]21CC",
+        );
+        assert!(mass.is_none());
     }
 
     #[test]
@@ -1779,6 +1823,19 @@ mod tests {
         )
         .expect("multi-part formula adduct should be supported");
         assert!(mass > 1000.0);
+    }
+
+    #[test]
+    fn supports_iron_hydride_dimer_adducts() {
+        assert!(super::is_supported_adduct("[2M+HFA+Fe-H]+"));
+        let mass = super::expected_precursor_mz(
+            1000.0,
+            Some("[2M+HFA+Fe-H]+"),
+            Some("1+"),
+            Some("positive"),
+        )
+        .expect("iron hydride dimer adduct should be supported");
+        assert!(mass > 2000.0);
     }
 
     #[test]
@@ -1880,6 +1937,13 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         current
             .unrecognized_adducts
             .entry(adduct)
+            .and_modify(|existing| *existing += count)
+            .or_insert(count);
+    }
+    for (smiles, count) in next.high_error_smiles {
+        current
+            .high_error_smiles
+            .entry(smiles)
             .and_modify(|existing| *existing += count)
             .or_insert(count);
     }
