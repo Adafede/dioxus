@@ -1,7 +1,7 @@
 #![allow(clippy::all)]
 #![allow(warnings)]
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
 
@@ -248,10 +248,15 @@ fn smiles_is_supported(smiles: &str) -> bool {
 
 fn exact_mass_from_smiles(smiles: &str) -> Option<f64> {
     let mut cache = HashMap::new();
-    exact_mass_from_smiles_cached(smiles, &mut cache)
+    let mut logged_failures = HashSet::new();
+    exact_mass_from_smiles_cached(smiles, &mut cache, &mut logged_failures)
 }
 
-fn exact_mass_from_smiles_cached(smiles: &str, cache: &mut HashMap<String, Option<f64>>) -> Option<f64> {
+fn exact_mass_from_smiles_cached(
+    smiles: &str,
+    cache: &mut HashMap<String, Option<f64>>,
+    logged_failures: &mut HashSet<String>,
+) -> Option<f64> {
     let trimmed = smiles.trim();
     if trimmed.is_empty() {
         return None;
@@ -261,15 +266,21 @@ fn exact_mass_from_smiles_cached(smiles: &str, cache: &mut HashMap<String, Optio
         return *mass;
     }
 
-    let mass = exact_mass_from_smiles_uncached(trimmed);
+    let mass = exact_mass_from_smiles_uncached(trimmed, logged_failures);
     cache.insert(trimmed.to_string(), mass);
     mass
 }
 
-fn exact_mass_from_smiles_uncached(smiles: &str) -> Option<f64> {
+fn exact_mass_from_smiles_uncached(
+    smiles: &str,
+    logged_failures: &mut HashSet<String>,
+) -> Option<f64> {
     if !smiles_is_supported(smiles) {
-        #[cfg(target_arch = "wasm32")]
-        console::warn_1(&format!("Skipping unsupported SMILES for mass parsing: {smiles}").into());
+        let warning_key = format!("unsupported-smiles:{smiles}");
+        if logged_failures.insert(warning_key) {
+            #[cfg(target_arch = "wasm32")]
+            console::warn_1(&format!("Skipping unsupported SMILES for mass parsing: {smiles}").into());
+        }
         return None;
     }
 
@@ -308,29 +319,66 @@ fn exact_mass_from_smiles_uncached(smiles: &str) -> Option<f64> {
     match parsed {
         Ok(mass) => {
             if mass.is_none() {
-                #[cfg(target_arch = "wasm32")]
-                console::warn_1(&format!("SMILES parse failed for: {smiles}").into());
+                let warning_key = format!("parse-failed-smiles:{smiles}");
+                if logged_failures.insert(warning_key) {
+                    #[cfg(target_arch = "wasm32")]
+                    console::warn_1(&format!("SMILES parse failed for: {smiles}").into());
+                }
             }
             mass
         }
-        Err(_) => {
-            #[cfg(target_arch = "wasm32")]
-            console::warn_1(&format!("SMILES parser panicked for: {smiles}").into());
+        Err(panic) => {
+            let warning_key = format!("panic-smiles:{smiles}");
+            if logged_failures.insert(warning_key) {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    let panic_message = panic
+                        .downcast_ref::<&str>()
+                        .copied()
+                        .or_else(|| panic.downcast_ref::<String>().map(String::as_str))
+                        .unwrap_or("unknown panic");
+                    console::warn_1(&format!("SMILES parser panicked for: {smiles} ({panic_message})").into());
+                }
+            }
             None
         }
     }
 }
 
 fn exact_mass_from_formula(formula: &str) -> Option<f64> {
-    let parsed: Result<ChemicalFormula<u32, i32>, _> = ChemicalFormula::from_str(formula);
-    match parsed {
+    let mut cache = HashMap::new();
+    let mut logged_failures = HashSet::new();
+    exact_mass_from_formula_cached(formula, &mut cache, &mut logged_failures)
+}
+
+fn exact_mass_from_formula_cached(
+    formula: &str,
+    cache: &mut HashMap<String, Option<f64>>,
+    logged_failures: &mut HashSet<String>,
+) -> Option<f64> {
+    let trimmed = formula.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Some(mass) = cache.get(trimmed) {
+        return *mass;
+    }
+
+    let parsed: Result<ChemicalFormula<u32, i32>, _> = ChemicalFormula::from_str(trimmed);
+    let mass = match parsed {
         Ok(parsed_formula) => Some(parsed_formula.isotopologue_mass()),
         Err(_) => {
-            #[cfg(target_arch = "wasm32")]
-            console::warn_1(&format!("Formula parse failed for: {formula}").into());
+            let warning_key = format!("formula-parse-failed:{trimmed}");
+            if logged_failures.insert(warning_key) {
+                #[cfg(target_arch = "wasm32")]
+                console::warn_1(&format!("Formula parse failed for: {trimmed}").into());
+            }
             None
         }
-    }
+    };
+    cache.insert(trimmed.to_string(), mass);
+    mass
 }
 
 fn hill_order(left: &str, right: &str) -> std::cmp::Ordering {
@@ -356,7 +404,17 @@ fn expected_precursor_mz(
     let charge_sign =
         parse_charge_sign(charge, ion_mode).or_else(|| parse_adduct_charge_sign(adduct));
 
-    let (multiplier, shift) = if normalized_adduct.is_empty() {
+    let charge_value = parse_charge_value(charge, adduct).unwrap_or_else(|| {
+        if charge_sign == Some(true) || normalized_ion_mode == "negative" {
+            1.0
+        } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
+            1.0
+        } else {
+            1.0
+        }
+    });
+
+    let (multiplier, shift, electron_adjustment) = if normalized_adduct.is_empty() {
         (
             1.0,
             if charge_sign == Some(true) || normalized_ion_mode == "negative" {
@@ -366,9 +424,10 @@ fn expected_precursor_mz(
             } else {
                 0.0
             },
+            0.0,
         )
     } else {
-        parse_adduct_mass_spec(normalized_adduct).unwrap_or_else(|| {
+        let (multiplier, shift) = parse_adduct_mass_spec(normalized_adduct).unwrap_or_else(|| {
             (
                 1.0,
                 if charge_sign == Some(true) || normalized_ion_mode == "negative" {
@@ -379,22 +438,13 @@ fn expected_precursor_mz(
                     0.0
                 },
             )
-        })
-    };
-
-    let charge_value = parse_charge_value(charge, adduct).unwrap_or_else(|| {
-        if charge_sign == Some(true) || normalized_ion_mode == "negative" {
-            1.0
-        } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
-            1.0
-        } else {
-            1.0
-        }
-    });
-    let electron_adjustment = match charge_sign {
-        Some(false) => -ELECTRON_MASS * charge_value,
-        Some(true) => 0.0,
-        None => 0.0,
+        });
+        let electron_adjustment = match charge_sign {
+            Some(false) => -ELECTRON_MASS * charge_value,
+            Some(true) => ELECTRON_MASS * charge_value,
+            None => 0.0,
+        };
+        (multiplier, shift, electron_adjustment)
     };
 
     Some((neutral_mass * multiplier + shift + electron_adjustment) / charge_value.max(1.0))
@@ -1572,6 +1622,8 @@ async fn scan_blob_with_progress(
     let mut current_is_in_block = false;
     let mut metrics = PrecursorMetrics::default();
     let mut smiles_cache = HashMap::new();
+    let mut formula_cache = HashMap::new();
+    let mut logged_failures = HashSet::new();
 
     while let Some(line) = reader.next_line().await? {
         let trimmed = line.trim();
@@ -1592,7 +1644,14 @@ async fn scan_blob_with_progress(
 
         if trimmed == "END IONS" {
             current_block.push(trimmed.to_string());
-            if let Some(result) = process_block(&mut current_block, &mut smiles_cache).await? {
+            if let Some(result) = process_block(
+                &mut current_block,
+                &mut smiles_cache,
+                &mut formula_cache,
+                &mut logged_failures,
+            )
+            .await?
+            {
                 metrics = merge_metrics(metrics, result);
             }
             current_block.clear();
@@ -1610,6 +1669,8 @@ async fn scan_blob_with_progress(
 async fn process_block(
     block_lines: &mut [String],
     smiles_cache: &mut HashMap<String, Option<f64>>,
+    formula_cache: &mut HashMap<String, Option<f64>>,
+    logged_failures: &mut HashSet<String>,
 ) -> Result<Option<PrecursorMetrics>, ScanError> {
     let mut headers = std::collections::BTreeMap::new();
     let mut observed_precursor = None;
@@ -1718,15 +1779,15 @@ async fn process_block(
     let reference_mass = reference_mass.or_else(|| {
         formula
             .as_deref()
-            .and_then(exact_mass_from_formula)
+            .and_then(|value| exact_mass_from_formula_cached(value, formula_cache, logged_failures))
             .map(|mass| {
                 reference_mass_source = Some("FORMULA");
                 mass
             })
             .or_else(|| {
-                let parsed_smiles = smiles
-                    .as_deref()
-                    .and_then(|value| exact_mass_from_smiles_cached(value, smiles_cache));
+                let parsed_smiles = smiles.as_deref().and_then(|value| {
+                    exact_mass_from_smiles_cached(value, smiles_cache, logged_failures)
+                });
                 if smiles.is_some() && parsed_smiles.is_none() {
                     return None;
                 }
@@ -1742,15 +1803,31 @@ async fn process_block(
         metrics.total_spectra = 1;
         metrics.skipped_spectra = 1;
         if let Some(smiles_text) = smiles.as_deref().filter(|value| !value.trim().is_empty()) {
+            let trimmed_smiles = smiles_text.trim();
             metrics.unparsed_smiles = 1;
             metrics
                 .unparsed_smiles_warnings
-                .entry(smiles_text.trim().to_string())
+                .entry(trimmed_smiles.to_string())
                 .and_modify(|detail| detail.count = detail.count.saturating_add(1))
                 .or_insert(WarningDetail {
                     count: 1,
                     formula: formula.as_deref().map(str::to_string),
                 });
+            let warning_key = format!(
+                "missing-reference-mass:{}|{}",
+                trimmed_smiles,
+                formula.as_deref().unwrap_or("n/a")
+            );
+            if logged_failures.insert(warning_key) {
+                #[cfg(target_arch = "wasm32")]
+                console::warn_1(
+                    &format!(
+                        "Unable to derive reference mass from SMILES/formula for: {trimmed_smiles} (formula: {})",
+                        formula.as_deref().unwrap_or("n/a")
+                    )
+                    .into(),
+                );
+            }
         }
         return Ok(Some(metrics));
     };
@@ -1880,6 +1957,34 @@ mod tests {
     }
 
     #[test]
+    fn handles_complex_mg_and_meoh_adducts_from_multims2_blocks() {
+        let neutral = 343.141_97;
+        let mass = expected_precursor_mz(neutral, Some("[M-C2H4-H+Mg]+"), Some("1+"), Some("positive"))
+            .expect("complex magnesium adduct should be supported");
+        assert!((mass - 338.087_3).abs() < 5e-4);
+
+        let neutral = 228.085_85;
+        let mass = expected_precursor_mz(neutral, Some("[2M+MeOH-H+Mg]+"), Some("1+"), Some("positive"))
+            .expect("dimer methanol magnesium adduct should be supported");
+        assert!((mass - 511.174_6).abs() < 5e-4);
+
+        let neutral = 292.103_42;
+        let mass = expected_precursor_mz(neutral, Some("[2M+O+Mg]+2"), Some("2+"), Some("positive"))
+            .expect("dimer oxygen magnesium adduct should be supported");
+        assert!((mass - 312.092_8).abs() < 5e-4);
+
+        let neutral = 380.165_54;
+        let mass = expected_precursor_mz(neutral, Some("[M+H]+"), Some("1+"), Some("positive"))
+            .expect("protonated adduct should be supported");
+        assert!((mass - 381.172_8).abs() < 5e-4);
+
+        let neutral = 333.939_62;
+        let mass = expected_precursor_mz(neutral, Some("[M+O+Mg]+2"), Some("2+"), Some("positive"))
+            .expect("oxygen magnesium dication adduct should be supported");
+        assert!((mass - 186.959_2).abs() < 5e-4);
+    }
+
+    #[test]
     fn uses_ion_mass_for_sodium_adducts() {
         let mass = expected_precursor_mz(1000.0, Some("[M+Na]+"), Some("1+"), Some("positive"))
             .expect("sodium adduct should be supported");
@@ -1998,8 +2103,9 @@ mod tests {
         let formate_adduct =
             super::expected_precursor_mz(1000.0, Some("[M+FA]-"), Some("1-"), Some("negative"))
                 .expect("formate adduct should be supported");
-        let expected_formate_mass =
-            1000.0 + super::exact_mass_from_formula("CHO2").expect("CHO2 mass should be available");
+        let expected_formate_mass = 1000.0
+            + super::exact_mass_from_formula("CHO2").expect("CHO2 mass should be available")
+            + super::ELECTRON_MASS;
         assert!((formate_adduct - expected_formate_mass).abs() < 1e-9);
 
         let sodium_formate_alias =
