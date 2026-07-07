@@ -98,9 +98,11 @@ struct PrecursorMetrics {
     abs_error_ppm_rms: f64,
     signed_error_da_mean: f64,
     signed_error_ppm_mean: f64,
+    within_0_0001_da: usize,
     within_0_0005_da: usize,
     within_0_001_da: usize,
     within_0_005_da: usize,
+    within_0_5_ppm: usize,
     within_1_ppm: usize,
     within_5_ppm: usize,
     within_10_ppm: usize,
@@ -134,9 +136,11 @@ impl Default for PrecursorMetrics {
             abs_error_ppm_rms: 0.0,
             signed_error_da_mean: 0.0,
             signed_error_ppm_mean: 0.0,
+            within_0_0001_da: 0,
             within_0_0005_da: 0,
             within_0_001_da: 0,
             within_0_005_da: 0,
+            within_0_5_ppm: 0,
             within_1_ppm: 0,
             within_5_ppm: 0,
             within_10_ppm: 0,
@@ -994,16 +998,16 @@ fn app() -> Element {
                                 style: "margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;",
                                 histogram_plot {
                                     title: "Absolute precursor error (Da)".to_string(),
-                                    subtitle: "Distribution across spectra, with tolerance bands highlighted".to_string(),
+                                    subtitle: "Distribution across spectra, with tighter tolerance bands highlighted".to_string(),
                                     histogram: metrics.da_error_histogram.clone(),
-                                    thresholds: vec![0.0005, 0.005],
+                                    thresholds: vec![0.0001, 0.0005, 0.005],
                                     unit: "Da".to_string(),
                                 }
                                 histogram_plot {
                                     title: "Absolute precursor error (ppm)".to_string(),
-                                    subtitle: "Distribution across spectra, with common tolerance bands".to_string(),
+                                    subtitle: "Distribution across spectra, with tighter ppm tolerance bands".to_string(),
                                     histogram: metrics.ppm_error_histogram.clone(),
-                                    thresholds: vec![1.0, 5.0],
+                                    thresholds: vec![0.5, 1.0, 5.0],
                                     unit: "ppm".to_string(),
                                 }
                                 scatter_plot {
@@ -1020,19 +1024,25 @@ fn app() -> Element {
 
                             div {
                                 style: "margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.55rem;",
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(22, 101, 52, 0.12);",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f0fdf4; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(22, 101, 52, 0.12);",
+                                    "≤ 0.0001 Da: {format_count_with_percentage(metrics.within_0_0001_da, metrics.spectra)}"
+                                }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #4ade80; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(21, 128, 61, 0.12);",
                                     "≤ 0.0005 Da: {format_count_with_percentage(metrics.within_0_0005_da, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f0fdf4; color: #15803d; border: 1px solid #4ade80; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(21, 128, 61, 0.12);",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(29, 78, 216, 0.12);",
                                     "≤ 0.001 Da: {format_count_with_percentage(metrics.within_0_001_da, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(29, 78, 216, 0.12);",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(109, 40, 217, 0.12);",
                                     "≤ 0.005 Da: {format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}"
                                 }
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfeff; color: #0f766e; border: 1px solid #5eead4; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(15, 118, 110, 0.12);",
+                                    "≤ 0.5 ppm: {format_count_with_percentage(metrics.within_0_5_ppm, metrics.spectra)}"
+                                }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
                                     "≤ 1 ppm: {format_count_with_percentage(metrics.within_1_ppm, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(109, 40, 217, 0.12);",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(146, 64, 14, 0.12);",
                                     "≤ 5 ppm: {format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}"
                                 }
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
@@ -1132,10 +1142,33 @@ fn adduct_class(adduct: &str) -> Option<AdductClass> {
     })
 }
 
-fn scientific_palette(index: usize) -> &'static str {
+fn paul_tol_palette(index: usize) -> &'static str {
     [
         "#4477AA", "#66CCEE", "#228833", "#CCBB44", "#EE6677", "#AA3377", "#BBBBBB", "#004488",
     ][index % 8]
+}
+
+fn tolerance_gradient(error: f64, threshold: f64) -> &'static str {
+    if !error.is_finite() {
+        return "#64748B";
+    }
+    let ratio = (error / threshold).clamp(0.0, 1.0);
+    match ratio {
+        r if r <= 0.25 => "#16A34A",
+        r if r <= 0.5 => "#4ADE80",
+        r if r <= 0.75 => "#F59E0B",
+        _ => "#EF4444",
+    }
+}
+
+fn format_threshold_value(value: f64) -> String {
+    let formatted = format!("{value:.6}");
+    let trimmed = formatted.trim_end_matches('0').trim_end_matches('.');
+    if trimmed.is_empty() {
+        "0".to_string()
+    } else {
+        trimmed.to_string()
+    }
 }
 
 #[component]
@@ -1177,19 +1210,22 @@ fn histogram_plot(
         .map(|(index, count)| {
             let bar_width = plot_width / histogram.bins.len() as f64 - 2.0;
             let x = padding + (index as f64 * (plot_width / histogram.bins.len() as f64));
+            let step = (histogram.max - histogram.min).max(1e-9) / histogram.bins.len() as f64;
+            let bin_center = histogram.min + (index as f64 + 0.5) * step;
             let bar_height = if *count == 0 {
                 0.0
             } else {
                 (*count as f64 / max_count as f64) * plot_height
             };
             let y = height - padding - bar_height;
+            let color = tolerance_gradient(bin_center, thresholds.last().copied().unwrap_or(5.0));
             rsx! {
                 rect {
                     x: x as i32,
                     y: y as i32,
                     width: bar_width as i32,
                     height: bar_height as i32,
-                    fill: scientific_palette(index),
+                    fill: color,
                     opacity: "0.95"
                 }
             }
@@ -1210,7 +1246,7 @@ fn histogram_plot(
                     y1: padding as i32,
                     x2: x as i32,
                     y2: (height - padding) as i32,
-                    stroke: scientific_palette(index + 2),
+                    stroke: paul_tol_palette(index + 2),
                     stroke_width: "1.25",
                     stroke_dasharray: "4 3"
                 }
@@ -1222,10 +1258,10 @@ fn histogram_plot(
         .iter()
         .enumerate()
         .map(|(index, threshold)| {
-            let label = format!("≤ {threshold:.3} {unit}");
+            let label = format!("≤ {} {unit}", format_threshold_value(*threshold));
             rsx! {
                 div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
-                    span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", scientific_palette(index + 2)) }
+                    span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", paul_tol_palette(index + 2)) }
                     span { "{label}" }
                 }
             }
@@ -1354,7 +1390,7 @@ fn scatter_plot(
     let category_colors = unique_categories
         .iter()
         .enumerate()
-        .map(|(index, category)| (category.clone(), scientific_palette(index)))
+        .map(|(index, category)| (category.clone(), paul_tol_palette(index)))
         .collect::<BTreeMap<_, _>>();
 
     let circles = points
@@ -1371,10 +1407,7 @@ fn scatter_plot(
                 .unwrap_or_default();
             let x = padding + ((x_index - x_min) / x_span) * plot_width;
             let y = height - padding - ((point.signed_error_da - y_min) / y_span) * plot_height;
-            let color = category_colors
-                .get(&adduct_class.display)
-                .copied()
-                .unwrap_or(scientific_palette(7));
+            let color = tolerance_gradient(point.signed_error_da.abs(), 0.005);
             rsx! {
                 circle {
                     cx: x as i32,
@@ -1441,7 +1474,7 @@ fn scatter_plot(
         .iter()
         .enumerate()
         .map(|(index, label)| {
-            let color = category_colors.get(label).copied().unwrap_or(scientific_palette(index));
+            let color = category_colors.get(label).copied().unwrap_or(paul_tol_palette(index));
             rsx! {
                 div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
                     span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", color) }
@@ -1453,7 +1486,7 @@ fn scatter_plot(
     if let Some(label) = other_label.as_ref() {
         legend_items.push(rsx! {
             div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
-                span { style: "display:inline-block; width:10px; height:10px; border-radius:999px; background:#94a3b8;" }
+                span { style: "display:inline-block; width:10px; height:10px; border-radius:999px; background:#BBBBBB;" }
                 span { "{label}" }
             }
         });
@@ -1934,14 +1967,20 @@ fn process_block(
         Some(expected_precursor_mz),
         formula.as_deref(),
     );
+    if abs_error_da <= 0.0001 {
+        metrics.within_0_0001_da = 1;
+    }
     if abs_error_da <= 0.0005 {
         metrics.within_0_0005_da = 1;
     }
     if abs_error_da <= 0.001 {
         metrics.within_0_001_da = 1;
     }
-    if abs_error_da < 0.005 {
+    if abs_error_da <= 0.005 {
         metrics.within_0_005_da = 1;
+    }
+    if abs_ppm <= 0.5 {
+        metrics.within_0_5_ppm = 1;
     }
     if abs_ppm <= 1.0 {
         metrics.within_1_ppm = 1;
@@ -2244,9 +2283,11 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         + (next.signed_error_ppm_mean * next_spectra))
         / total_spectra;
 
+    current.within_0_0001_da += next.within_0_0001_da;
     current.within_0_0005_da += next.within_0_0005_da;
     current.within_0_001_da += next.within_0_001_da;
     current.within_0_005_da += next.within_0_005_da;
+    current.within_0_5_ppm += next.within_0_5_ppm;
     current.within_1_ppm += next.within_1_ppm;
     current.within_5_ppm += next.within_5_ppm;
     current.within_10_ppm += next.within_10_ppm;
