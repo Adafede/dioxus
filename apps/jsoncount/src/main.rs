@@ -94,9 +94,9 @@ fn spawn_scan(
 #[component]
 fn app() -> Element {
     let mut file_name = use_signal(String::new);
-    let mut results = use_signal(Vec::<ColumnResult>::new);
+    let results = use_signal(Vec::<ColumnResult>::new);
     let mut status = use_signal(|| "Choose a JSON file to begin.".to_string());
-    let mut busy = use_signal(|| false);
+    let busy = use_signal(|| false);
     let mut drag_active = use_signal(|| false);
 
     let on_file_change = move |evt: Event<FormData>| {
