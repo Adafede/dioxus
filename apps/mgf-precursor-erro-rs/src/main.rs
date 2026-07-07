@@ -13,9 +13,10 @@ use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
 #[cfg(target_arch = "wasm32")]
-use js_sys::Uint8Array;
+use js_sys::{Array, Uint8Array};
 use mascot_rs::prelude::*;
 use molecular_formulas_010::molecular_formula::MolecularFormula;
+use prismatica::crameri::BATLOW;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
@@ -27,6 +28,7 @@ use web_sys::{Blob, console};
 const CHUNK_SIZE: usize = 1 << 20;
 #[cfg(any(target_arch = "wasm32", test))]
 const PROGRESS_INTERVAL: usize = 1 << 20;
+const MAX_PLOT_POINTS: usize = 10_000;
 const PROTON_MASS: f64 = 1.007_276_466_621;
 const HYDROGEN_MASS: f64 = PROTON_MASS + ELECTRON_MASS;
 const ELECTRON_MASS: f64 = 0.000_548_579_909_065;
@@ -320,11 +322,11 @@ struct PrecursorMetrics {
     signed_error_ppm_median: f64,
     signed_error_ppm_median_tracker: MedianTracker,
     sample_signed_error_ppm: f64,
-    within_0_0001_da: usize,
-    within_0_0005_da: usize,
-    within_0_001_da: usize,
-    within_0_005_da: usize,
-    above_0_005_da: usize,
+    within_0_1_da: usize,
+    within_0_5_da: usize,
+    within_1_da: usize,
+    within_5_da: usize,
+    above_5_da: usize,
     within_0_5_ppm: usize,
     within_1_ppm: usize,
     within_5_ppm: usize,
@@ -332,7 +334,10 @@ struct PrecursorMetrics {
     above_10_ppm: usize,
     da_error_histogram: HistogramData,
     ppm_error_histogram: HistogramData,
+    absolute_error_da_values: Vec<f64>,
+    absolute_error_ppm_values: Vec<f64>,
     plot_points: Vec<PlotPoint>,
+    plot_point_stream_seen: usize,
     unrecognized_adducts: BTreeMap<String, usize>,
     high_error_smiles: BTreeMap<String, HighErrorSmilesDetail>,
 }
@@ -375,11 +380,11 @@ impl Default for PrecursorMetrics {
             signed_error_ppm_median: 0.0,
             signed_error_ppm_median_tracker: MedianTracker::default(),
             sample_signed_error_ppm: 0.0,
-            within_0_0001_da: 0,
-            within_0_0005_da: 0,
-            within_0_001_da: 0,
-            within_0_005_da: 0,
-            above_0_005_da: 0,
+            within_0_1_da: 0,
+            within_0_5_da: 0,
+            within_1_da: 0,
+            within_5_da: 0,
+            above_5_da: 0,
             within_0_5_ppm: 0,
             within_1_ppm: 0,
             within_5_ppm: 0,
@@ -387,7 +392,10 @@ impl Default for PrecursorMetrics {
             above_10_ppm: 0,
             da_error_histogram: HistogramData::new(48, 0.0, 0.5),
             ppm_error_histogram: HistogramData::new(48, 0.0, 50.0),
+            absolute_error_da_values: Vec::new(),
+            absolute_error_ppm_values: Vec::new(),
             plot_points: Vec::new(),
+            plot_point_stream_seen: 0,
             unrecognized_adducts: BTreeMap::new(),
             high_error_smiles: BTreeMap::new(),
         }
@@ -435,6 +443,8 @@ impl PrecursorMetrics {
     ) {
         self.da_error_histogram.add_value(abs_error_da);
         self.ppm_error_histogram.add_value(abs_ppm);
+        self.absolute_error_da_values.push(abs_error_da);
+        self.absolute_error_ppm_values.push(abs_ppm);
         self.sample_observed_precursor = observed_precursor_mz;
         self.sample_abs_error_da = abs_error_da;
         self.sample_abs_error_ppm = abs_ppm;
@@ -452,10 +462,28 @@ impl PrecursorMetrics {
         self.signed_error_da_median = self.signed_error_da_median_tracker.median();
         self.signed_error_ppm_median = self.signed_error_ppm_median_tracker.median();
 
-        if abs_error_da > 0.005 {
-            self.above_0_005_da = self.above_0_005_da.saturating_add(1);
+        let abs_error_mda = abs_error_da * 1000.0;
+        if abs_error_mda <= 0.1 {
+            self.within_0_1_da = self.within_0_1_da.saturating_add(1);
+        } else if abs_error_mda <= 0.5 {
+            self.within_0_5_da = self.within_0_5_da.saturating_add(1);
+        } else if abs_error_mda <= 1.0 {
+            self.within_1_da = self.within_1_da.saturating_add(1);
+        } else if abs_error_mda <= 5.0 {
+            self.within_5_da = self.within_5_da.saturating_add(1);
+        } else {
+            self.above_5_da = self.above_5_da.saturating_add(1);
         }
-        if abs_ppm > 10.0 {
+
+        if abs_ppm <= 0.5 {
+            self.within_0_5_ppm = self.within_0_5_ppm.saturating_add(1);
+        } else if abs_ppm <= 1.0 {
+            self.within_1_ppm = self.within_1_ppm.saturating_add(1);
+        } else if abs_ppm <= 5.0 {
+            self.within_5_ppm = self.within_5_ppm.saturating_add(1);
+        } else if abs_ppm <= 10.0 {
+            self.within_10_ppm = self.within_10_ppm.saturating_add(1);
+        } else {
             self.above_10_ppm = self.above_10_ppm.saturating_add(1);
         }
 
@@ -507,7 +535,8 @@ impl PrecursorMetrics {
             }
         }
 
-        if self.plot_points.len() < 260 {
+        self.plot_point_stream_seen = self.plot_point_stream_seen.saturating_add(1);
+        if self.plot_points.len() < MAX_PLOT_POINTS {
             self.plot_points.push(PlotPoint {
                 adduct_type: adduct_type.to_string(),
                 observed_precursor_mz,
@@ -515,10 +544,13 @@ impl PrecursorMetrics {
                 signed_error_ppm: ppm_error,
             });
         } else {
-            let len = self.plot_points.len();
-            let stride = (self.spectra / 260).max(1);
-            if self.spectra % stride == 0 {
-                if let Some(point) = self.plot_points.get_mut(len / 2) {
+            let stream_index = self.plot_point_stream_seen as u64;
+            let replacement_index = ((stream_index
+                .wrapping_mul(0x9e3779b97f4a7c15)
+                .wrapping_add(0xbf58476d1ce4e5b9))
+                % stream_index) as usize;
+            if replacement_index < MAX_PLOT_POINTS {
+                if let Some(point) = self.plot_points.get_mut(replacement_index) {
                     *point = PlotPoint {
                         adduct_type: adduct_type.to_string(),
                         observed_precursor_mz,
@@ -1005,6 +1037,43 @@ fn format_progress_message(processed: u64, total: u64) -> String {
 }
 
 #[cfg(target_arch = "wasm32")]
+const EXAMPLE_MGF_URL: &str =
+    "https://raw.githubusercontent.com/zamboni-lab/MultiMS2/main/data/multims2_spectra.mgf";
+
+#[cfg(target_arch = "wasm32")]
+async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
+    let window = web_sys::window().ok_or_else(|| "Browser window unavailable.".to_string())?;
+    let response_value = JsFuture::from(window.fetch_with_str(url))
+        .await
+        .map_err(|error| format!("Unable to fetch the example MGF: {error:?}"))?;
+    let response: web_sys::Response = response_value
+        .dyn_into()
+        .map_err(|error| format!("Expected a fetch response: {error:?}"))?;
+    if !response.ok() {
+        return Err(format!(
+            "The example MGF could not be loaded (HTTP {}).",
+            response.status()
+        ));
+    }
+
+    let text_value = JsFuture::from(
+        response
+            .text()
+            .map_err(|error| format!("Unable to read the example MGF response body: {error:?}"))?,
+    )
+    .await
+    .map_err(|error| format!("Unable to read the example MGF text: {error:?}"))?;
+    let text = js_sys::JsString::from(text_value)
+        .as_string()
+        .ok_or_else(|| "The example MGF response was not valid text.".to_string())?;
+
+    let array = Array::new();
+    array.push(&JsValue::from(text));
+    Blob::new_with_str_sequence(&array)
+        .map_err(|error| format!("Unable to create a blob from the example MGF: {error:?}"))
+}
+
+#[cfg(target_arch = "wasm32")]
 fn start_analysis(
     blob: Blob,
     status: Signal<String>,
@@ -1032,6 +1101,41 @@ fn start_analysis(
         };
         metrics_for_results.set(Some(result));
         busy_for_results.set(false);
+    });
+}
+
+#[cfg(target_arch = "wasm32")]
+fn load_example_mgf(
+    status: Signal<String>,
+    metrics: Signal<Option<PrecursorMetrics>>,
+    busy: Signal<bool>,
+    file_name: Signal<String>,
+) {
+    let mut status_for_progress = status;
+    let mut metrics_for_results = metrics;
+    let mut busy_for_results = busy;
+    let mut file_name_for_results = file_name;
+
+    spawn(async move {
+        status_for_progress.set("Loading example MGF...".to_string());
+        busy_for_results.set(true);
+        metrics_for_results.set(None);
+
+        match fetch_remote_blob(EXAMPLE_MGF_URL).await {
+            Ok(blob) => {
+                file_name_for_results.set("multims2_spectra.mgf".to_string());
+                start_analysis(
+                    blob,
+                    status_for_progress,
+                    metrics_for_results,
+                    busy_for_results,
+                );
+            }
+            Err(error) => {
+                status_for_progress.set(error);
+                busy_for_results.set(false);
+            }
+        }
     });
 }
 
@@ -1173,6 +1277,22 @@ fn app() -> Element {
                         }
                     }
 
+                    if file_name.read().is_empty() && metrics.read().is_none() && !(*busy.read()) {
+                        button {
+                            r#type: "button",
+                            style: "margin-top: 0.8rem; border: 1px solid #2563eb; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 0.84rem; font-weight: 700; padding: 0.45rem 0.8rem; cursor: pointer;",
+                            onclick: move |_| {
+                                #[cfg(target_arch = "wasm32")]
+                                load_example_mgf(status, metrics, busy, file_name);
+                                #[cfg(not(target_arch = "wasm32"))]
+                                {
+                                    status.set("This app needs to run in a browser.".to_string());
+                                }
+                            },
+                            "Load example MGF"
+                        }
+                    }
+
                     p {
                         style: "margin: 0.7rem 0 0; color: #475569; font-size: 0.9rem;",
                         if !file_name.read().is_empty() {
@@ -1279,8 +1399,8 @@ fn app() -> Element {
                             div {
                                 style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem;",
                                 div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Observed precursor m/z" }
-                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Surveyed precursor range and central tendency" }
+                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Observed precursor 𝑚/𝑧 distribution" }
+                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Range, mean, and median of the observed precursor 𝑚/𝑧 values" }
                                     div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
                                         span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "median {format_value(metrics.observed_precursor_median)}" }
                                         span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "mean {format_value(metrics.observed_precursor_mean)}" }
@@ -1288,8 +1408,8 @@ fn app() -> Element {
                                     }
                                 }
                                 div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Absolute error (Da)" }
-                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Robust central tendency and dispersion" }
+                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Absolute precursor error (Da)" }
+                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Median absolute deviation, mean absolute deviation, and RMS in daltons" }
                                     div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
                                         span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "median {format_value(metrics.abs_error_da_median)}" }
                                         span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "mean {format_value(metrics.abs_error_da_mean)}" }
@@ -1297,98 +1417,93 @@ fn app() -> Element {
                                     }
                                 }
                                 div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Absolute error (ppm)" }
-                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Relative drift across the precursor mass scale" }
+                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Relative precursor error (ppm)" }
+                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Median relative deviation, mean relative deviation, and RMS of the ppm error" }
                                     div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
                                         span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "median {format_value(metrics.abs_error_ppm_median)}" }
                                         span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "mean {format_value(metrics.abs_error_ppm_mean)}" }
                                         span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "RMS {format_value(metrics.abs_error_ppm_rms)}" }
                                     }
                                 }
-                                div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Signed bias" }
-                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Directionality of the residual error" }
-                                    div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "Da mean {format_value(metrics.signed_error_da_mean)}" }
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "ppm mean {format_value(metrics.signed_error_ppm_mean)}" }
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "max Da {format_value(metrics.abs_error_da_max)}" }
-                                    }
-                                }
                             }
 
                             div {
                                 style: "margin-top: 1rem; padding: 0.95rem 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                h4 { style: "margin: 0 0 0.25rem; font-size: 0.95rem; color: #0f172a;", "Tolerance compliance" }
-                                p { style: "margin: 0 0 0.7rem; color: #64748b; font-size: 0.84rem;", "Scientifically relevant mass-error bands for reporting and QC" }
+                                h4 { style: "margin: 0 0 0.25rem; font-size: 0.95rem; color: #0f172a;", "Tolerance-band compliance" }
+                                p { style: "margin: 0 0 0.7rem; color: #64748b; font-size: 0.84rem;", "Counts of spectra up to each reported mass-error cutoff (cumulative)" }
                                 div { style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem;",
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #dcfce7; background: #f0fdf4; color: #166534;",
+                                    div { style: tolerance_card_style(0),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.1 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_0001_da, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"0.1_da\", metrics.spectra)}" }
                                     }
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #dcfce7; background: #f0fdf4; color: #166534;",
+                                    div { style: tolerance_card_style(1),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_0005_da, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"0.5_da\", metrics.spectra)}" }
                                     }
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e;",
+                                    div { style: tolerance_card_style(2),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_001_da, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"1.0_da\", metrics.spectra)}" }
                                     }
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fed7aa; background: #fff7ed; color: #9a2c00;",
+                                    div { style: tolerance_card_style(3),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"5.0_da\", metrics.spectra)}" }
                                     }
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;",
+                                    div { style: tolerance_card_style(4),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 5.0 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.above_0_005_da, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \">5.0_da\", metrics.spectra)}" }
                                     }
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #dcfce7; background: #f0fdf4; color: #166534;",
+                                    div { style: tolerance_card_style(0),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_5_ppm, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"0.5_ppm\", metrics.spectra)}" }
                                     }
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e;",
+                                    div { style: tolerance_card_style(1),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_1_ppm, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"1.0_ppm\", metrics.spectra)}" }
                                     }
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fed7aa; background: #fff7ed; color: #9a2c00;",
+                                    div { style: tolerance_card_style(2),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"5.0_ppm\", metrics.spectra)}" }
                                     }
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;",
+                                    div { style: tolerance_card_style(3),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 10.0 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_10_ppm, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"10.0_ppm\", metrics.spectra)}" }
                                     }
-                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;",
+                                    div { style: tolerance_card_style(4),
                                         strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 10.0 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.above_10_ppm, metrics.spectra)}" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \">10.0_ppm\", metrics.spectra)}" }
                                     }
                                 }
                             }
 
                             div {
-                                style: "margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;",
-                                histogram_plot {
-                                    title: "Absolute precursor error distribution (Da)".to_string(),
-                                    subtitle: "Empirical error distribution with analytical tolerance bands".to_string(),
-                                    histogram: metrics.da_error_histogram.clone(),
-                                    thresholds: vec![0.0001, 0.0005, 0.005],
-                                    unit: "Da".to_string(),
+                                style: "margin-top: 1rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem;",
+                                ecdf_plot {
+                                    title: "Absolute precursor-error cumulative distribution (mDa)".to_string(),
+                                    subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale".to_string(),
+                                    values: metrics.absolute_error_da_values.iter().map(|value| value * 1000.0).collect::<Vec<_>>(),
+                                    thresholds: vec![0.1, 0.5, 1.0, 5.0],
+                                    unit: "mDa".to_string(),
                                 }
-                                histogram_plot {
-                                    title: "Absolute precursor error distribution (ppm)".to_string(),
-                                    subtitle: "Relative error distribution with reporting-grade ppm thresholds".to_string(),
-                                    histogram: metrics.ppm_error_histogram.clone(),
-                                    thresholds: vec![0.5, 1.0, 5.0],
+                                ecdf_plot {
+                                    title: "Relative precursor-error cumulative distribution (ppm)".to_string(),
+                                    subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale".to_string(),
+                                    values: metrics.absolute_error_ppm_values.clone(),
+                                    thresholds: vec![0.5, 1.0, 5.0, 10.0],
                                     unit: "ppm".to_string(),
                                 }
-                                scatter_plot {
-                                    title: "Signed error versus precursor m/z".to_string(),
-                                    subtitle: "Mass residuals by adduct family and precursor mass".to_string(),
+                                absolute_mass_bias_plot {
+                                    title: "Signed error vs. precursor 𝑚/𝑧 (mDa)".to_string(),
+                                    subtitle: "Signed error at each precursor 𝑚/𝑧, centered on zero and shown with a symmetric y-axis".to_string(),
                                     points: metrics.plot_points.clone(),
-                                    other_label: if metrics.skipped_spectra > 0 {
-                                        Some(format!("Other ({})", metrics.skipped_spectra))
-                                    } else {
-                                        None
-                                    },
+                                    unit: "mDa".to_string(),
+                                    ticks: vec![0.1, 0.5, 1.0, 5.0],
+                                }
+                                absolute_mass_bias_plot {
+                                    title: "Signed relative error vs. precursor 𝑚/𝑧 (ppm)".to_string(),
+                                    subtitle: "Signed relative error at each precursor 𝑚/𝑧, centered on zero and shown with a symmetric y-axis".to_string(),
+                                    points: metrics.plot_points.clone(),
+                                    unit: "ppm".to_string(),
+                                    ticks: vec![0.5, 1.0, 5.0, 10.0],
                                 }
                             }
 
@@ -1430,6 +1545,37 @@ fn format_count_with_percentage(count: usize, total: usize) -> String {
         let pct = (count as f64 / total as f64) * 100.0;
         format!("{count} ({pct:.1}%)")
     }
+}
+
+fn format_cumulative_bucket_count(
+    metrics: &PrecursorMetrics,
+    bucket: &str,
+    total: usize,
+) -> String {
+    let count = match bucket {
+        "0.1_da" => metrics.within_0_1_da,
+        "0.5_da" => metrics.within_0_1_da + metrics.within_0_5_da,
+        "1.0_da" => metrics.within_0_1_da + metrics.within_0_5_da + metrics.within_1_da,
+        "5.0_da" => {
+            metrics.within_0_1_da
+                + metrics.within_0_5_da
+                + metrics.within_1_da
+                + metrics.within_5_da
+        }
+        ">5.0_da" => metrics.above_5_da,
+        "0.5_ppm" => metrics.within_0_5_ppm,
+        "1.0_ppm" => metrics.within_0_5_ppm + metrics.within_1_ppm,
+        "5.0_ppm" => metrics.within_0_5_ppm + metrics.within_1_ppm + metrics.within_5_ppm,
+        "10.0_ppm" => {
+            metrics.within_0_5_ppm
+                + metrics.within_1_ppm
+                + metrics.within_5_ppm
+                + metrics.within_10_ppm
+        }
+        ">10.0_ppm" => metrics.above_10_ppm,
+        _ => 0,
+    };
+    format_count_with_percentage(count, total)
 }
 
 fn normalize_adduct_label(adduct: &str) -> String {
@@ -1528,24 +1674,159 @@ fn paul_tol_palette(index: usize) -> &'static str {
     ][index % 8]
 }
 
-fn tolerance_step_color(index: usize, total_steps: usize) -> &'static str {
-    let palette = ["#16A34A", "#4ADE80", "#F59E0B", "#EA580C"];
-    if total_steps <= 1 {
-        return palette[0];
+fn adduct_family_rank(family: &str) -> usize {
+    match family {
+        "Protonated" => 0,
+        "Deprotonated" => 1,
+        "Alkali / ammonium" => 2,
+        "Metal / complex" => 3,
+        "Halide" => 4,
+        "Other" => 5,
+        _ => 6,
     }
-    let normalized = index.min(total_steps.saturating_sub(1));
-    let slot = ((normalized as f64 / (total_steps - 1) as f64) * (palette.len() - 1) as f64).round()
-        as usize;
-    palette[slot.min(palette.len() - 1)]
+}
+
+fn adduct_family_color_hex(family: &str) -> String {
+    let palette_index = adduct_family_rank(family);
+    paul_tol_palette(palette_index).to_string()
+}
+
+fn adduct_family_color(family: &str) -> plotters::style::RGBColor {
+    let color = adduct_family_color_hex(family);
+    let hex = color.trim_start_matches('#');
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+    plotters::style::RGBColor(r, g, b)
+}
+
+fn adduct_family_shape_style(family: &str, alpha: f32) -> plotters::style::ShapeStyle {
+    let color = adduct_family_color_hex(family);
+    let hex = color.trim_start_matches('#');
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+    let alpha = alpha.clamp(0.0, 1.0) as f64;
+    plotters::style::ShapeStyle::from(&plotters::style::RGBAColor(r, g, b, alpha)).filled()
+}
+
+fn adduct_family_legend_items(points: &[PlotPoint]) -> Vec<(String, String)> {
+    let mut families = Vec::new();
+    for point in points {
+        let family = adduct_class(&point.adduct_type)
+            .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
+        if !families.iter().any(|existing: &String| existing == &family) {
+            families.push(family);
+        }
+    }
+    families.sort_by_key(|family| adduct_family_rank(family));
+    families
+        .into_iter()
+        .map(|family| (family.clone(), adduct_family_color_hex(&family)))
+        .collect()
+}
+
+fn embed_svg_legend(
+    svg_markup: &str,
+    legend_items: &[(String, String)],
+    title: &str,
+    width: f64,
+    height: f64,
+) -> String {
+    if legend_items.is_empty() {
+        return svg_markup.to_string();
+    }
+
+    let mut legend_entries = String::new();
+    let item_height = 13.5;
+    let entry_gap = 10.0;
+    let inset = 18.0;
+    let title_width = 44.0;
+    let marker_radius = 3.2;
+    let text_height = 11.0;
+    let padding_x = 12.0;
+    let padding_y = 10.0;
+    let label_width = legend_items
+        .iter()
+        .map(|(label, _)| label.len())
+        .max()
+        .unwrap_or(0);
+    let content_width = (label_width as f64 * 5.6).max(72.0).min(170.0) + 24.0;
+    let entry_width = content_width + 20.0;
+    let box_width =
+        (entry_width * legend_items.len() as f64) + (title_width + 12.0) + (padding_x * 2.0);
+    let box_height = item_height + 20.0;
+    let legend_x = ((width - box_width) / 2.0)
+        .max(inset)
+        .min(width - box_width - inset);
+    let legend_y = (height - box_height - inset).max(inset);
+
+    let title_x = legend_x + 10.0;
+    let title_y = legend_y + 12.0;
+    let items_start_x = title_x + title_width + 10.0;
+
+    for (index, (family, color)) in legend_items.iter().enumerate() {
+        let item_x = items_start_x + (index as f64 * entry_width);
+        let marker_x = item_x + 8.0;
+        let text_x = item_x + 18.0;
+        let text_y = legend_y + 13.0;
+        let marker_y = legend_y + 10.0;
+        legend_entries.push_str(&format!(
+            "<g>\n                <circle cx=\"{marker_x}\" cy=\"{marker_y}\" r=\"{marker_radius}\" fill=\"{color}\" />\n                <text x=\"{text_x}\" y=\"{text_y}\" font-family=\"Inter, sans-serif\" font-size=\"10\" fill=\"#334155\">{family}</text>\n            </g>"
+        ));
+    }
+
+    let rect_x = legend_x;
+    let rect_y = legend_y - 2.0;
+    let legend_group = format!(
+        "<g>\n            <rect x=\"{rect_x}\" y=\"{rect_y}\" width=\"{box_width}\" height=\"{box_height}\" rx=\"8\" ry=\"8\" fill=\"#f8fafc\" fill-opacity=\"0.97\" stroke=\"#cbd5e1\" stroke-width=\"0.8\" />\n            <text x=\"{title_x}\" y=\"{title_y}\" font-family=\"Inter, sans-serif\" font-size=\"10.5\" font-weight=\"600\" fill=\"#0f172a\">{title}</text>\n            {legend_entries}\n        </g>"
+    );
+
+    if let Some(position) = svg_markup.rfind("</svg>") {
+        let mut result = svg_markup[..position].to_string();
+        result.push('\n');
+        result.push_str(&legend_group);
+        result.push('\n');
+        result.push_str(&svg_markup[position..]);
+        result
+    } else {
+        svg_markup.to_string()
+    }
+}
+
+fn tolerance_step_color(index: usize, total_steps: usize) -> String {
+    let total = total_steps.max(2);
+    let normalized = index.min(total.saturating_sub(1));
+    let lut_index = if total <= 4 {
+        let discrete_positions = [200usize, 150, 100, 50];
+        discrete_positions[normalized.min(discrete_positions.len().saturating_sub(1))]
+    } else {
+        let fraction = normalized as f32 / (total - 1) as f32;
+        ((255.0 * (1.0 - fraction)).round() as usize).clamp(0, 255)
+    };
+    let [r, g, b] = BATLOW.lut[lut_index];
+    format!("#{r:02x}{g:02x}{b:02x}")
 }
 
 fn tolerance_step_rgb(index: usize, total_steps: usize) -> plotters::style::RGBColor {
-    match tolerance_step_color(index, total_steps) {
-        "#16A34A" => plotters::style::RGBColor(22, 163, 74),
-        "#4ADE80" => plotters::style::RGBColor(74, 222, 128),
-        "#F59E0B" => plotters::style::RGBColor(245, 158, 11),
-        _ => plotters::style::RGBColor(234, 88, 12),
-    }
+    let total = total_steps.max(2);
+    let normalized = index.min(total.saturating_sub(1));
+    let lut_index = if total <= 4 {
+        let discrete_positions = [200usize, 150, 100, 50];
+        discrete_positions[normalized.min(discrete_positions.len().saturating_sub(1))]
+    } else {
+        let fraction = normalized as f32 / (total - 1) as f32;
+        ((255.0 * (1.0 - fraction)).round() as usize).clamp(0, 255)
+    };
+    let [r, g, b] = BATLOW.lut[lut_index];
+    plotters::style::RGBColor(r, g, b)
+}
+
+fn tolerance_card_style(index: usize) -> String {
+    let color = tolerance_step_color(index, 5);
+    format!(
+        "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid {color}; background: #f8fafc; color: {color};"
+    )
 }
 
 fn format_threshold_value(value: f64) -> String {
@@ -1558,37 +1839,169 @@ fn format_threshold_value(value: f64) -> String {
     }
 }
 
-fn render_histogram_svg(
-    title: &str,
-    histogram: &HistogramData,
-    thresholds: &[f64],
-    unit: &str,
-) -> String {
+fn format_error_tick(value: f64, unit: &str) -> String {
+    if unit == "ppm" {
+        format!("{value:.2}")
+    } else {
+        format!("{value:.2}")
+    }
+}
+
+fn display_error_value(value: f64, unit: &str) -> f64 {
+    if unit == "mDa" { value * 1000.0 } else { value }
+}
+
+fn display_error_value_for_point(point: &PlotPoint, unit: &str) -> f64 {
+    match unit {
+        "mDa" => point.signed_error_da * 1000.0,
+        "ppm" => point.signed_error_ppm,
+        _ => point.signed_error_da * 1000.0,
+    }
+}
+
+fn transform_signed_error(value: f64, floor: f64) -> f64 {
+    if value == 0.0 {
+        0.0
+    } else if value > 0.0 {
+        value.abs().max(floor / 10.0).log10()
+    } else {
+        -value.abs().max(floor / 10.0).log10()
+    }
+}
+
+fn make_svg_responsive(svg_markup: String) -> String {
+    let mut normalized = svg_markup;
+    normalized = normalized
+        .replace("width=\"800\"", "width=\"100%\"")
+        .replace("width=\"900\"", "width=\"100%\"")
+        .replace("height=\"460\"", "height=\"auto\"")
+        .replace("height=\"520\"", "height=\"auto\"");
+    if !normalized.contains("viewBox=") {
+        normalized = normalized.replacen("<svg", "<svg viewBox=\"0 0 900 520\"", 1);
+    }
+    if !normalized.contains("preserveAspectRatio=") {
+        normalized = normalized.replacen("<svg", "<svg preserveAspectRatio=\"xMidYMid meet\"", 1);
+    }
+    if !normalized.contains("style=") {
+        normalized = normalized.replacen(
+            "<svg",
+            "<svg style=\"max-width:100%; height:auto; display:block; overflow:visible;\"",
+            1,
+        );
+    }
+    normalized
+}
+
+#[cfg(target_arch = "wasm32")]
+fn download_svg(svg_markup: &str, filename: &str) {
+    let safe_name = if filename.ends_with(".svg") {
+        filename.to_string()
+    } else {
+        format!("{filename}.svg")
+    };
+
+    let array = Array::new();
+    array.push(&JsValue::from(svg_markup));
+    let blob = Blob::new_with_str_sequence(&array).unwrap();
+    let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+    let anchor: web_sys::HtmlAnchorElement = document
+        .create_element("a")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlAnchorElement>()
+        .unwrap();
+    anchor.set_attribute("href", &url).unwrap();
+    anchor.set_attribute("download", &safe_name).unwrap();
+    anchor.set_attribute("style", "display:none").unwrap();
+    document.body().unwrap().append_child(&anchor).unwrap();
+    anchor.click();
+    document.body().unwrap().remove_child(&anchor).unwrap();
+    web_sys::Url::revoke_object_url(&url).unwrap();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn download_svg(_svg_markup: &str, _filename: &str) {}
+
+fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f64)> {
+    if values.is_empty() {
+        return vec![(x_min, 0.0), (x_max, 1.0)];
+    }
+
+    let mut sorted = values.to_vec();
+    sorted.sort_by(|left, right| left.total_cmp(right));
+    let total = sorted.len();
+    let mut points = Vec::with_capacity(sorted.len().saturating_mul(2) + 2);
+    points.push((x_min, 0.0));
+
+    let mut index = 0usize;
+    let mut previous_y = 0.0f64;
+    while index < sorted.len() {
+        let value = sorted[index];
+        let mut next_index = index + 1;
+        while next_index < sorted.len() && sorted[next_index] == value {
+            next_index += 1;
+        }
+        let y = next_index as f64 / total as f64;
+        let x = value.max(x_min);
+        points.push((x, previous_y));
+        points.push((x, y));
+        previous_y = y;
+        index = next_index;
+    }
+
+    points.push((x_max, 1.0));
+    points
+}
+
+fn render_ecdf_svg(title: &str, values: &[f64], thresholds: &[f64], unit: &str) -> String {
     use plotters::prelude::*;
     use plotters::series::LineSeries;
 
-    let width = 800u32;
-    let height = 460u32;
+    let width = 900u32;
+    let height = 520u32;
     let mut buffer = String::new();
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
-    let span = (histogram.max - histogram.min).abs().max(1e-9);
-    let x_min = histogram.min.max(0.0) - span * 0.035;
-    let x_max = histogram.max + span * 0.035;
-    let max_count = histogram.bins.iter().copied().max().unwrap_or(1).max(1) as f64;
-    let y_max = max_count + max_count * 0.12;
+    let legend_items = thresholds
+        .iter()
+        .enumerate()
+        .map(|(index, threshold)| {
+            let label = format!("≤ {} {unit}", format_threshold_value(*threshold));
+            (label, tolerance_step_color(index, thresholds.len()))
+        })
+        .collect::<Vec<_>>();
+
+    let observed_min = values.iter().copied().filter(|value| value.is_finite()).fold(f64::INFINITY, f64::min);
+    let x_min = if observed_min.is_finite() {
+        observed_min.max(1e-6)
+    } else {
+        1e-6
+    };
+    let observed_max = values.iter().copied().filter(|value| value.is_finite()).fold(0.0, f64::max);
+    let view_max = thresholds.iter().copied().fold(0.0, f64::max).max(1e-6);
+    let plot_max = observed_max.max(view_max);
+    let x_max = (plot_max * 1.03).max(x_min + 1e-3);
+    let x_max = if unit == "mDa" {
+        x_max.max(5.0)
+    } else {
+        x_max.max(10.0)
+    };
+    let y_floor = 1e-6f64;
+    let y_min = y_floor;
+    let y_max = 1.0f64;
 
     {
         let mut chart = ChartBuilder::on(&root)
-            .margin_top(16)
-            .margin_right(20)
-            .margin_bottom(26)
-            .margin_left(24)
+            .margin_top(28)
+            .margin_right(32)
+            .margin_bottom(36)
+            .margin_left(48)
             .caption(title, ("sans-serif", 18).into_font())
-            .set_label_area_size(LabelAreaPosition::Left, 56)
-            .set_label_area_size(LabelAreaPosition::Bottom, 54)
-            .build_cartesian_2d(x_min..x_max, 0f64..y_max)
+            .set_label_area_size(LabelAreaPosition::Left, 72)
+            .set_label_area_size(LabelAreaPosition::Bottom, 64)
+            .build_cartesian_2d((x_min..x_max).log_scale(), y_min..y_max)
             .unwrap();
 
         chart
@@ -1596,8 +2009,12 @@ fn render_histogram_svg(
             .axis_style(ShapeStyle::from(&RGBColor(148, 163, 184)))
             .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
             .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
-            .x_desc(format!("Absolute error ({unit})"))
-            .y_desc("Count")
+            .x_desc(if unit == "ppm" {
+                format!("Relative error ({unit})")
+            } else {
+                format!("Absolute error ({unit})")
+            })
+            .y_desc("cumulative fraction")
             .x_label_style(("sans-serif", 11).into_font())
             .y_label_style(("sans-serif", 11).into_font())
             .draw()
@@ -1605,42 +2022,26 @@ fn render_histogram_svg(
 
         chart
             .draw_series(LineSeries::new(
-                vec![(x_min, 0.0f64), (x_max, 0.0f64)],
+                vec![(x_min, y_min), (x_max, y_min)],
                 ShapeStyle::from(&RGBColor(203, 213, 225)).stroke_width(1),
             ))
             .unwrap();
 
-        let bin_width = span / histogram.bins.len().max(1) as f64;
-        for (index, count) in histogram.bins.iter().enumerate() {
-            let x0 = histogram.min + index as f64 * bin_width;
-            let x1 = (x0 + bin_width).min(histogram.max);
-            let y0 = 0.0f64;
-            let y1 = *count as f64;
-            let fill = if unit == "Da" {
-                RGBColor(37, 99, 235)
-            } else {
-                RGBColor(14, 116, 144)
-            };
-            chart
-                .draw_series(std::iter::once(Rectangle::new(
-                    [(x0, y0), (x1, y1)],
-                    ShapeStyle::from(&fill).filled(),
-                )))
-                .unwrap();
-            chart
-                .draw_series(std::iter::once(Rectangle::new(
-                    [(x0, y0), (x1, y1)],
-                    ShapeStyle::from(&RGBColor(30, 64, 175)).stroke_width(1),
-                )))
-                .unwrap();
-        }
+        let plot_points = build_ecdf_points(values, x_min, x_max);
+
+        chart
+            .draw_series(LineSeries::new(
+                plot_points.clone(),
+                ShapeStyle::from(&RGBColor(37, 99, 235)).stroke_width(3),
+            ))
+            .unwrap();
 
         for (index, threshold) in thresholds.iter().enumerate() {
             let x = threshold.clamp(x_min, x_max);
             let color = tolerance_step_rgb(index, thresholds.len());
             chart
                 .draw_series(LineSeries::new(
-                    vec![(x, 0.0), (x, y_max)],
+                    vec![(x, y_min), (x, y_max)],
                     ShapeStyle::from(&color).stroke_width(2),
                 ))
                 .unwrap();
@@ -1650,68 +2051,107 @@ fn render_histogram_svg(
     }
 
     drop(root);
-    buffer
+    embed_svg_legend(&buffer, &legend_items, "Thresholds", 900.0, 520.0)
 }
 
-fn render_scatter_svg(title: &str, points: &[PlotPoint], _other_label: Option<&str>) -> String {
+fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<(f64, f64)> {
+    if points.len() <= max_points.max(1) {
+        return points;
+    }
+
+    let target = max_points.max(1);
+    let step = points.len() as f64 / target as f64;
+    let mut sampled = Vec::with_capacity(target);
+    let mut index = 0.0f64;
+    while index < points.len() as f64 {
+        let point_index = index.round() as usize;
+        if point_index < points.len() {
+            sampled.push(points[point_index]);
+        }
+        index += step;
+    }
+    if sampled.last() != points.last() {
+        sampled.push(points[points.len() - 1]);
+    }
+    sampled
+}
+
+fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
     use plotters::prelude::*;
     use plotters::series::{LineSeries, PointSeries};
 
-    let width = 800u32;
-    let height = 460u32;
+    let width = 900u32;
+    let height = 520u32;
     let mut buffer = String::new();
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
-    let mut families = Vec::new();
-    for point in points {
-        let family = adduct_class(&point.adduct_type)
-            .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
-        if !families.iter().any(|existing: &String| existing == &family) {
-            families.push(family);
-        }
-    }
-    if families.is_empty() {
-        families.push("Other".to_string());
-    }
-
+    let legend_items = adduct_family_legend_items(points);
     let x_values = points
         .iter()
         .map(|point| point.observed_precursor_mz)
+        .filter(|value| value.is_finite())
         .collect::<Vec<_>>();
     let x_min = x_values
         .iter()
         .copied()
         .fold(f64::INFINITY, f64::min)
-        .max(1.0);
+        .min(1.0);
     let x_max = x_values
         .iter()
         .copied()
         .fold(f64::NEG_INFINITY, f64::max)
         .max(x_min + 1.0);
     let x_span = (x_max - x_min).max(1.0);
-    let x_min = (x_min - x_span * 0.05).max(1.0);
+    let x_min = x_min - x_span * 0.05;
     let x_max = x_max + x_span * 0.05;
 
     let y_values = points
         .iter()
-        .map(|point| point.signed_error_da)
+        .filter_map(|point| {
+            point
+                .signed_error_da
+                .is_finite()
+                .then_some(point.signed_error_da)
+        })
         .collect::<Vec<_>>();
-    let y_min = y_values.iter().copied().fold(f64::INFINITY, f64::min) - 0.01;
-    let y_max = y_values.iter().copied().fold(f64::NEG_INFINITY, f64::max) + 0.01;
-    let y_span = (y_max - y_min).max(0.02);
-    let y_min = y_min - y_span * 0.05;
-    let y_max = y_max + y_span * 0.05;
+    let max_abs_error = y_values
+        .iter()
+        .copied()
+        .map(|value| value.abs())
+        .fold(0.0, f64::max);
+    let y_limit = max_abs_error.max(1e-4);
+    let y_min = -y_limit;
+    let y_max = y_limit;
+
+    let mut points_by_family: BTreeMap<String, Vec<(f64, f64)>> = BTreeMap::new();
+    for point in points {
+        if !point.observed_precursor_mz.is_finite() || !point.signed_error_da.is_finite() {
+            continue;
+        }
+        let family = adduct_class(&point.adduct_type)
+            .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
+        points_by_family
+            .entry(family)
+            .or_default()
+            .push((point.observed_precursor_mz, point.signed_error_da));
+    }
+    let family_count = points_by_family.len().max(1);
+    let max_points_per_family = (1500usize / family_count).max(180usize);
+    for family_points in points_by_family.values_mut() {
+        *family_points =
+            sample_scatter_points(std::mem::take(family_points), max_points_per_family);
+    }
 
     {
         let mut chart = ChartBuilder::on(&root)
-            .margin_top(16)
-            .margin_right(20)
-            .margin_bottom(26)
-            .margin_left(24)
+            .margin_top(28)
+            .margin_right(32)
+            .margin_bottom(36)
+            .margin_left(48)
             .caption(title, ("sans-serif", 18).into_font())
-            .set_label_area_size(LabelAreaPosition::Left, 56)
-            .set_label_area_size(LabelAreaPosition::Bottom, 54)
+            .set_label_area_size(LabelAreaPosition::Left, 72)
+            .set_label_area_size(LabelAreaPosition::Bottom, 64)
             .build_cartesian_2d(x_min..x_max, y_min..y_max)
             .unwrap();
 
@@ -1720,7 +2160,7 @@ fn render_scatter_svg(title: &str, points: &[PlotPoint], _other_label: Option<&s
             .axis_style(ShapeStyle::from(&RGBColor(148, 163, 184)))
             .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
             .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
-            .x_desc("Observed precursor m/z")
+            .x_desc("Observed precursor 𝑚/𝑧")
             .y_desc("Signed error (Da)")
             .x_label_style(("sans-serif", 11).into_font())
             .y_label_style(("sans-serif", 11).into_font())
@@ -1734,37 +2174,13 @@ fn render_scatter_svg(title: &str, points: &[PlotPoint], _other_label: Option<&s
             ))
             .unwrap();
 
-        let family_colors = families
-            .iter()
-            .enumerate()
-            .map(|(_, family)| {
-                let color = match family.as_str() {
-                    "Protonated" => RGBColor(30, 64, 175),
-                    "Deprotonated" => RGBColor(2, 132, 199),
-                    "Alkali / ammonium" => RGBColor(16, 185, 129),
-                    "Metal / complex" => RGBColor(217, 119, 6),
-                    "Halide" => RGBColor(190, 24, 93),
-                    _ => RGBColor(99, 102, 241),
-                };
-                (family.clone(), color)
-            })
-            .collect::<Vec<_>>();
-
-        for point in points {
-            let family = adduct_class(&point.adduct_type)
-                .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
-            let color = family_colors
-                .iter()
-                .find(|(candidate, _)| candidate == &family)
-                .map(|(_, color)| *color)
-                .unwrap_or(RGBColor(99, 102, 241));
-            let point_size =
-                ((4.0 + (point.signed_error_ppm.abs() / 1000.0).min(6.0)).round()) as i32;
+        for (family, points) in points_by_family {
+            let style = adduct_family_shape_style(&family, 0.4);
             chart
                 .draw_series(PointSeries::of_element(
-                    vec![(point.observed_precursor_mz, point.signed_error_da)],
-                    point_size,
-                    &color,
+                    points.iter().copied().collect::<Vec<_>>(),
+                    1.6,
+                    style,
                     &|coord, size, style| Circle::new(coord, size, style.filled()),
                 ))
                 .unwrap();
@@ -1774,42 +2190,186 @@ fn render_scatter_svg(title: &str, points: &[PlotPoint], _other_label: Option<&s
     }
 
     drop(root);
-    buffer
+    embed_svg_legend(&buffer, &legend_items, "Adducts", 900.0, 520.0)
 }
+
+fn render_absolute_mass_bias_svg(
+    title: &str,
+    points: &[PlotPoint],
+    unit: &str,
+    ticks: &[f64],
+) -> String {
+    use plotters::prelude::*;
+    use plotters::series::{LineSeries, PointSeries};
+
+    let width = 900u32;
+    let height = 520u32;
+    let mut buffer = String::new();
+    let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let legend_items = adduct_family_legend_items(points);
+    let x_values = points
+        .iter()
+        .map(|point| point.observed_precursor_mz)
+        .filter(|value| value.is_finite())
+        .collect::<Vec<_>>();
+    let x_min = x_values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min)
+        .min(1.0);
+    let x_max = x_values
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max)
+        .max(x_min + 1.0);
+    let x_span = (x_max - x_min).max(1.0);
+    let x_min = x_min - x_span * 0.05;
+    let x_max = x_max + x_span * 0.05;
+
+    let mut points_by_family: BTreeMap<String, Vec<(f64, f64)>> = BTreeMap::new();
+    let mut y_values = Vec::new();
+    for point in points {
+        if !point.observed_precursor_mz.is_finite() {
+            continue;
+        }
+        let family = adduct_class(&point.adduct_type)
+            .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
+        let error_value = display_error_value_for_point(point, unit);
+        if error_value.is_finite() {
+            y_values.push(error_value);
+            points_by_family
+                .entry(family)
+                .or_default()
+                .push((point.observed_precursor_mz, error_value));
+        }
+    }
+    let family_count = points_by_family.len().max(1);
+    let max_points_per_family = (1500usize / family_count).max(180usize);
+    for family_points in points_by_family.values_mut() {
+        *family_points =
+            sample_scatter_points(std::mem::take(family_points), max_points_per_family);
+    }
+    let y_limit = y_values
+        .iter()
+        .copied()
+        .map(|value| value.abs())
+        .fold(0.0, f64::max)
+        .max(1e-3);
+    let y_min = -y_limit;
+    let y_max = y_limit;
+
+    {
+        let mut chart = ChartBuilder::on(&root)
+            .margin_top(28)
+            .margin_right(32)
+            .margin_bottom(36)
+            .margin_left(48)
+            .caption(title, ("sans-serif", 18).into_font())
+            .set_label_area_size(LabelAreaPosition::Left, 72)
+            .set_label_area_size(LabelAreaPosition::Bottom, 64)
+            .build_cartesian_2d(x_min..x_max, y_min..y_max)
+            .unwrap();
+
+        chart
+            .configure_mesh()
+            .axis_style(ShapeStyle::from(&RGBColor(148, 163, 184)))
+            .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
+            .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
+            .x_desc("Observed precursor 𝑚/𝑧")
+            .y_desc(if unit == "ppm" {
+                format!("Signed error ({unit})")
+            } else {
+                format!("Signed error ({unit})")
+            })
+            .x_label_style(("sans-serif", 11).into_font())
+            .y_label_style(("sans-serif", 11).into_font())
+            .draw()
+            .unwrap();
+
+        chart
+            .draw_series(LineSeries::new(
+                vec![(x_min, 0.0), (x_max, 0.0)],
+                ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
+            ))
+            .unwrap();
+
+        for tick in ticks {
+            if *tick <= 0.0 {
+                continue;
+            }
+            let positive_tick = (*tick).min(y_limit);
+            let negative_tick = -positive_tick;
+            if !(y_min..=y_max).contains(&positive_tick) {
+                continue;
+            }
+            chart
+                .draw_series(LineSeries::new(
+                    vec![(x_min, positive_tick), (x_max, positive_tick)],
+                    ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
+                ))
+                .unwrap();
+            chart
+                .draw_series(LineSeries::new(
+                    vec![(x_min, negative_tick), (x_max, negative_tick)],
+                    ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
+                ))
+                .unwrap();
+        }
+
+        for (family, points) in points_by_family {
+            let style = adduct_family_shape_style(&family, 0.3);
+            chart
+                .draw_series(PointSeries::of_element(
+                    points
+                        .iter()
+                        .map(|(x, value)| (*x, value.clamp(-y_limit, y_limit)))
+                        .collect::<Vec<_>>(),
+                    1.6,
+                    style,
+                    &|coord, size, style| Circle::new(coord, size, style.filled()),
+                ))
+                .unwrap();
+        }
+
+        root.present().unwrap();
+    }
+
+    drop(root);
+    embed_svg_legend(&buffer, &legend_items, "Adducts", 900.0, 520.0)
+}
+
 #[component]
-fn histogram_plot(
+fn ecdf_plot(
     title: String,
     subtitle: String,
-    histogram: HistogramData,
+    values: Vec<f64>,
     thresholds: Vec<f64>,
     unit: String,
 ) -> Element {
-    let svg_markup = render_histogram_svg(&title, &histogram, &thresholds, &unit);
-    let legend_items = thresholds
-        .iter()
-        .enumerate()
-        .map(|(index, threshold)| {
-            let label = format!("≤ {} {unit}", format_threshold_value(*threshold));
-            rsx! {
-               div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
-                   span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", tolerance_step_color(index, thresholds.len())) }
-                   span { "{label}" }
-               }
-            }
-        })
-        .collect::<Vec<_>>();
+    let svg_markup = make_svg_responsive(render_ecdf_svg(&title, &values, &thresholds, &unit));
+    let download_markup = svg_markup.clone();
 
     rsx! {
         div {
             style: "padding: 0.95rem; border: 1px solid #e2e8f0; border-radius: 18px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);",
-            h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
-            p { style: "margin: 0 0 0.75rem; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
-            div { style: "display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.65rem;",
-               for item in legend_items {
-                   {item}
+            div { style: "display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.65rem;",
+               div { style: "flex: 1;",
+                   h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
+                   p { style: "margin: 0; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
+               }
+               button {
+                   r#type: "button",
+                   style: "border: 1px solid #cbd5e1; border-radius: 999px; background: white; color: #334155; font-size: 0.76rem; font-weight: 700; padding: 0.35rem 0.65rem; cursor: pointer;",
+                   onclick: move |_| {
+                       #[cfg(target_arch = "wasm32")]
+                       download_svg(&download_markup, &title);
+                   },
+                   "Download"
                }
             }
-            div { style: "border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; background: #fcfdff;",
+            div { style: "border-radius: 16px; overflow: visible; border: 1px solid #e2e8f0; background: #fcfdff;",
                dangerous_inner_html: svg_markup
             }
         }
@@ -1817,55 +2377,72 @@ fn histogram_plot(
 }
 
 #[component]
-fn scatter_plot(
+fn mass_bias_plot(
     title: String,
     subtitle: String,
     points: Vec<PlotPoint>,
     other_label: Option<String>,
 ) -> Element {
-    let svg_markup = render_scatter_svg(&title, &points, other_label.as_deref());
-    let families = points
-        .iter()
-        .filter_map(|point| adduct_class(&point.adduct_type).map(|adduct| adduct.family))
-        .collect::<Vec<_>>();
-    let unique_families = families.iter().fold(Vec::new(), |mut acc, family| {
-        if !acc.contains(family) {
-            acc.push(family.clone());
-        }
-        acc
-    });
-    let legend_items = unique_families
-        .iter()
-        .enumerate()
-        .map(|(index, family)| {
-            let color = match family.as_str() {
-               "Protonated" => "#1d4ed8",
-               "Deprotonated" => "#0284c7",
-               "Alkali / ammonium" => "#10b981",
-               "Metal / complex" => "#d97706",
-               "Halide" => "#be185d",
-               _ => paul_tol_palette(index),
-            };
-            rsx! {
-               div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
-                   span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", color) }
-                   span { "{family}" }
-               }
-            }
-        })
-        .collect::<Vec<_>>();
+    let svg_markup = make_svg_responsive(render_mass_bias_svg(&title, &points));
+    let download_markup = svg_markup.clone();
 
     rsx! {
         div {
             style: "padding: 0.95rem; border: 1px solid #e2e8f0; border-radius: 18px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);",
-            h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
-            p { style: "margin: 0 0 0.75rem; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
-            div { style: "display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.65rem;",
-               for item in legend_items {
-                   {item}
+            div { style: "display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.65rem;",
+               div { style: "flex: 1;",
+                   h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
+                   p { style: "margin: 0; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
+               }
+               button {
+                   r#type: "button",
+                   style: "border: 1px solid #cbd5e1; border-radius: 999px; background: white; color: #334155; font-size: 0.76rem; font-weight: 700; padding: 0.35rem 0.65rem; cursor: pointer;",
+                   onclick: move |_| {
+                       #[cfg(target_arch = "wasm32")]
+                       download_svg(&download_markup, &title);
+                   },
+                   "Download"
                }
             }
-            div { style: "border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; background: #fcfdff;",
+            div { style: "border-radius: 16px; overflow: visible; border: 1px solid #e2e8f0; background: #fcfdff;",
+               dangerous_inner_html: svg_markup
+            }
+        }
+    }
+}
+
+#[component]
+fn absolute_mass_bias_plot(
+    title: String,
+    subtitle: String,
+    points: Vec<PlotPoint>,
+    unit: String,
+    ticks: Vec<f64>,
+) -> Element {
+    let svg_markup = make_svg_responsive(render_absolute_mass_bias_svg(
+        &title, &points, &unit, &ticks,
+    ));
+    let download_markup = svg_markup.clone();
+
+    rsx! {
+        div {
+            style: "padding: 0.95rem; border: 1px solid #e2e8f0; border-radius: 18px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);",
+            div { style: "display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.65rem;",
+               div { style: "flex: 1;",
+                   h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
+                   p { style: "margin: 0; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
+               }
+               button {
+                   r#type: "button",
+                   style: "border: 1px solid #cbd5e1; border-radius: 999px; background: white; color: #334155; font-size: 0.76rem; font-weight: 700; padding: 0.35rem 0.65rem; cursor: pointer;",
+                   onclick: move |_| {
+                       #[cfg(target_arch = "wasm32")]
+                       download_svg(&download_markup, &title);
+                   },
+                   "Download"
+               }
+            }
+            div { style: "border-radius: 16px; overflow: visible; border: 1px solid #e2e8f0; background: #fcfdff;",
                dangerous_inner_html: svg_markup
             }
         }
@@ -2177,6 +2754,7 @@ fn process_block_state(
     let expected_precursor_mz = round_to_precision(expected_precursor_mz, observed_precision);
     let error_da = observed_precursor - expected_precursor_mz;
     let abs_error_da = error_da.abs();
+    let error_mda = abs_error_da * 1000.0;
     let ppm = if expected_precursor_mz.abs() > f64::EPSILON {
         error_da / expected_precursor_mz * 1_000_000.0
     } else {
@@ -2214,16 +2792,16 @@ fn process_block_state(
         Some(expected_precursor_mz),
         state.formula.as_deref(),
     );
-    if abs_error_da <= 0.0001 {
-        metrics.within_0_0001_da = 1;
-    } else if abs_error_da <= 0.0005 {
-        metrics.within_0_0005_da = 1;
-    } else if abs_error_da <= 0.001 {
-        metrics.within_0_001_da = 1;
-    } else if abs_error_da <= 0.005 {
-        metrics.within_0_005_da = 1;
+    if error_mda <= 0.1 {
+        metrics.within_0_1_da = 1;
+    } else if error_mda <= 0.5 {
+        metrics.within_0_5_da = 1;
+    } else if error_mda <= 1.0 {
+        metrics.within_1_da = 1;
+    } else if error_mda <= 5.0 {
+        metrics.within_5_da = 1;
     } else {
-        metrics.above_0_005_da = 1;
+        metrics.above_5_da = 1;
     }
     if abs_ppm <= 0.5 {
         metrics.within_0_5_ppm = 1;
@@ -2259,6 +2837,38 @@ mod tests {
         );
         assert!(mass.is_some());
         assert!((mass.unwrap() - 310.193_280_077_12).abs() < 1e-6);
+    }
+
+    #[test]
+    fn buckets_absolute_errors_in_mda() {
+        let mut metrics = super::PrecursorMetrics::default();
+        metrics.record_error(
+            0.00005, 0.2, "[M+H]+", 0.2, 0.00005, 100.0, None, None, None, None,
+        );
+        assert_eq!(metrics.within_0_1_da, 1);
+        assert_eq!(metrics.within_0_5_da, 0);
+        assert_eq!(metrics.within_1_da, 0);
+        assert_eq!(metrics.within_5_da, 0);
+        assert_eq!(metrics.above_5_da, 0);
+    }
+
+    #[test]
+    fn converts_display_errors_to_the_requested_units() {
+        assert!((super::display_error_value(0.001, "mDa") - 1.0).abs() < 1e-9);
+        assert!((super::display_error_value(2.5, "ppm") - 2.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn builds_ecdf_points_from_sorted_values() {
+        let points = super::build_ecdf_points(&[0.1, 0.2, 0.2, 0.4], 0.001, 1.0);
+        assert!((points[0].0 - 0.001).abs() < 1e-9);
+        assert!((points[0].1 - 0.0).abs() < 1e-9);
+        assert!((points[1].0 - 0.1).abs() < 1e-9);
+        assert!((points[1].1 - 0.0).abs() < 1e-9);
+        assert!((points[2].0 - 0.1).abs() < 1e-9);
+        assert!((points[2].1 - 0.25).abs() < 1e-9);
+        assert!((points.last().unwrap().0 - 1.0).abs() < 1e-9);
+        assert!((points.last().unwrap().1 - 1.0).abs() < 1e-9);
     }
 
     #[test]
@@ -2381,7 +2991,7 @@ mod tests {
             Some(20.0),
             Some("C2H6O"),
         );
-        assert_eq!(metrics.above_0_005_da, 1);
+        assert_eq!(metrics.above_5_da, 1);
         assert_eq!(metrics.above_10_ppm, 1);
         assert!(metrics.high_error_smiles.is_empty());
 
@@ -2766,14 +3376,14 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         .merge(next.signed_error_ppm_median_tracker);
     current.signed_error_ppm_median = current.signed_error_ppm_median_tracker.median();
 
-    current.within_0_0001_da += next.within_0_0001_da;
-    current.within_0_0005_da += next.within_0_0005_da;
-    current.within_0_001_da += next.within_0_001_da;
-    current.within_0_005_da += next.within_0_005_da;
+    current.within_0_1_da += next.within_0_1_da;
+    current.within_0_5_da += next.within_0_5_da;
+    current.within_1_da += next.within_1_da;
+    current.within_5_da += next.within_5_da;
     current.within_0_5_ppm += next.within_0_5_ppm;
     current.within_1_ppm += next.within_1_ppm;
     current.within_5_ppm += next.within_5_ppm;
-    current.above_0_005_da += next.above_0_005_da;
+    current.above_5_da += next.above_5_da;
     current.within_10_ppm += next.within_10_ppm;
     current.above_10_ppm += next.above_10_ppm;
     for (idx, count) in next.da_error_histogram.bins.iter().enumerate() {
@@ -2786,6 +3396,12 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
             *current_count += count;
         }
     }
+    current
+        .absolute_error_da_values
+        .extend(next.absolute_error_da_values);
+    current
+        .absolute_error_ppm_values
+        .extend(next.absolute_error_ppm_values);
 
     for (adduct, count) in next.unrecognized_adducts {
         current
@@ -2837,23 +3453,20 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     }
 
     let total_points = current.plot_points.len() + next.plot_points.len();
-    if total_points <= 260 {
+    if total_points <= MAX_PLOT_POINTS {
         current.plot_points.extend(next.plot_points);
     } else {
-        let stride = (total_points / 260).max(1);
-        let mut merged = Vec::with_capacity(260);
-        for (idx, point) in current
-            .plot_points
-            .into_iter()
-            .chain(next.plot_points)
-            .enumerate()
-        {
-            if idx % stride == 0 {
+        let stride = (total_points / MAX_PLOT_POINTS).max(1);
+        let mut merged = Vec::with_capacity(MAX_PLOT_POINTS);
+        let mut seen = 0usize;
+        for point in current.plot_points.into_iter().chain(next.plot_points) {
+            if seen % stride == 0 {
                 merged.push(point);
-                if merged.len() == 260 {
+                if merged.len() == MAX_PLOT_POINTS {
                     break;
                 }
             }
+            seen += 1;
         }
         current.plot_points = merged;
     }

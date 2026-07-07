@@ -2479,6 +2479,7 @@ dependencies = [
  "mascot-rs",
  "molecular-formulas",
  "plotters",
+ "prismatica",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -2786,6 +2787,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
 dependencies = [
  "zerocopy",
+]
+
+[[package]]
+name = "prismatica"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0c437fd52d79d32ebfbcfa927bde28a7c6db4766e3f3af3ddcfa04547727483"
+dependencies = [
+ "libm",
 ]
 
 [[package]]
