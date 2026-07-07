@@ -28,7 +28,7 @@ use web_sys::{Blob, console};
 const CHUNK_SIZE: usize = 1 << 20;
 #[cfg(any(target_arch = "wasm32", test))]
 const PROGRESS_INTERVAL: usize = 1 << 20;
-const MAX_PLOT_POINTS: usize = 10_000;
+const MAX_PLOT_POINTS: usize = 65_536;
 const PROTON_MASS: f64 = 1.007_276_466_621;
 const HYDROGEN_MASS: f64 = PROTON_MASS + ELECTRON_MASS;
 const ELECTRON_MASS: f64 = 0.000_548_579_909_065;
@@ -1307,11 +1307,6 @@ fn app() -> Element {
                 style: "max-width: 960px; margin: 0 auto;",
                 div {
                     style: "display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;",
-                    img {
-                        src: "assets/favicon.svg",
-                        alt: "MGF precursor error icon",
-                        style: "width: 56px; height: 56px; border-radius: 16px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);",
-                    }
                     div {
                         h2 { style: "margin: 0; font-size: 1.7rem; letter-spacing: -0.02em;", "MGF Precursor Error Metrics" }
                         p {
