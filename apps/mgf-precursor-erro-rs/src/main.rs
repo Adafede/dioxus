@@ -26,15 +26,10 @@ use web_sys::Blob;
 const CHUNK_SIZE: usize = 1 << 20;
 #[cfg(any(target_arch = "wasm32", test))]
 const PROGRESS_INTERVAL: usize = 1 << 20;
-#[cfg(any(target_arch = "wasm32", test))]
 const PROTON_MASS: f64 = 1.007_276_466_621;
-#[cfg(any(target_arch = "wasm32", test))]
 const ELECTRON_MASS: f64 = 0.000_548_579_909_065;
-#[cfg(any(target_arch = "wasm32", test))]
 const SODIUM_MASS: f64 = 22.989_769_67;
-#[cfg(any(target_arch = "wasm32", test))]
 const POTASSIUM_MASS: f64 = 38.963_707;
-#[cfg(any(target_arch = "wasm32", test))]
 const AMMONIUM_MASS: f64 = 18.033_823;
 
 #[cfg(target_arch = "wasm32")]
@@ -247,7 +242,6 @@ fn hill_order(left: &str, right: &str) -> std::cmp::Ordering {
     }
 }
 
-#[cfg(any(target_arch = "wasm32", test))]
 fn expected_precursor_mz(
     neutral_mass: f64,
     adduct: Option<&str>,
@@ -256,26 +250,32 @@ fn expected_precursor_mz(
 ) -> Option<f64> {
     let normalized_adduct = adduct.unwrap_or("").trim();
     let normalized_ion_mode = ion_mode.unwrap_or("").trim().to_ascii_lowercase();
-    let charge_sign = parse_charge_sign(charge, ion_mode)
-        .or_else(|| parse_adduct_charge_sign(adduct));
+    let charge_sign =
+        parse_charge_sign(charge, ion_mode).or_else(|| parse_adduct_charge_sign(adduct));
 
     let (multiplier, shift) = if normalized_adduct.is_empty() {
-        (1.0, if charge_sign == Some(true) || normalized_ion_mode == "negative" {
-            -PROTON_MASS
-        } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
-            PROTON_MASS
-        } else {
-            0.0
-        })
-    } else {
-        parse_adduct_mass_spec(normalized_adduct).unwrap_or_else(|| {
-            (1.0, if charge_sign == Some(true) || normalized_ion_mode == "negative" {
+        (
+            1.0,
+            if charge_sign == Some(true) || normalized_ion_mode == "negative" {
                 -PROTON_MASS
             } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
                 PROTON_MASS
             } else {
                 0.0
-            })
+            },
+        )
+    } else {
+        parse_adduct_mass_spec(normalized_adduct).unwrap_or_else(|| {
+            (
+                1.0,
+                if charge_sign == Some(true) || normalized_ion_mode == "negative" {
+                    -PROTON_MASS
+                } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
+                    PROTON_MASS
+                } else {
+                    0.0
+                },
+            )
         })
     };
 
@@ -290,14 +290,13 @@ fn expected_precursor_mz(
     });
     let electron_adjustment = match charge_sign {
         Some(false) => -ELECTRON_MASS * charge_value,
-        Some(true) => ELECTRON_MASS * charge_value,
+        Some(true) => 0.0,
         None => 0.0,
     };
 
     Some((neutral_mass * multiplier + shift + electron_adjustment) / charge_value.max(1.0))
 }
 
-#[cfg(any(target_arch = "wasm32", test))]
 fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
     let adduct = adduct?.trim();
     let cleaned = adduct.replace(' ', "");
@@ -311,7 +310,6 @@ fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
     }
 }
 
-#[cfg(any(target_arch = "wasm32", test))]
 fn parse_charge_sign(charge: Option<&str>, ion_mode: Option<&str>) -> Option<bool> {
     let charge_text = charge.unwrap_or("").trim();
     if charge_text.is_empty() {
@@ -335,7 +333,6 @@ fn parse_charge_sign(charge: Option<&str>, ion_mode: Option<&str>) -> Option<boo
     }
 }
 
-#[cfg(any(target_arch = "wasm32", test))]
 fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     let normalized = adduct.trim().replace(' ', "").to_ascii_uppercase();
     let body = if let Some(index) = normalized.find(']') {
@@ -399,36 +396,43 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     }
 }
 
-#[cfg(any(target_arch = "wasm32", test))]
 fn parse_adduct_shift(adduct: &str) -> Option<f64> {
     parse_adduct_mass_spec(adduct).map(|(_, shift)| shift)
 }
 
-#[cfg(any(target_arch = "wasm32", test))]
 fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     let trimmed = token.trim();
     if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("M") {
         return None;
     }
 
-    let (multiplier_str, formula) = trimmed
+    let digits_end = trimmed
         .chars()
-        .enumerate()
-        .find_map(|(index, ch)| ch.is_ascii_digit().then_some(index))
-        .map_or(("1", trimmed), |index| (&trimmed[..index], &trimmed[index..]));
+        .position(|ch| !ch.is_ascii_digit())
+        .unwrap_or(trimmed.len());
+    let multiplier_str = &trimmed[..digits_end];
     let multiplier = multiplier_str.parse::<f64>().unwrap_or(1.0);
-    let formula = formula.trim().to_ascii_uppercase();
+    let formula = trimmed[digits_end..].trim().to_ascii_uppercase();
     let formula = match formula.as_str() {
         "FA" => "CH2O2",
         "MEOH" => "CH4O",
         "HFA" => "C2HF3O2",
+        "H" => return Some(PROTON_MASS * multiplier),
+        "NA" => return Some(SODIUM_MASS * multiplier),
+        "K" => return Some(POTASSIUM_MASS * multiplier),
+        "MG" => return Some(23.985_041_7 * multiplier),
+        "CA" => return Some(39.962_590_98 * multiplier),
+        "FE" => return Some(55.934_937_5 * multiplier),
+        "CL" => return Some(34.968_852_68 * multiplier),
+        "BR" => return Some(78.918_337_1 * multiplier),
+        "NH4" => return Some(AMMONIUM_MASS * multiplier),
+        "OH" => return Some(17.002_739_65 * multiplier),
         _ => formula.as_str(),
     };
     let formula: ChemicalFormula<u32, i32> = ChemicalFormula::from_str(formula).ok()?;
     Some(formula.isotopologue_mass() * multiplier)
 }
 
-#[cfg(any(target_arch = "wasm32", test))]
 fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {
     if let Some(value) = charge {
         let cleaned = value.trim();
@@ -489,7 +493,7 @@ fn app() -> Element {
         metrics.set(None);
 
         let mut status_for_progress = status;
-        let metrics_for_results = metrics;
+        let mut metrics_for_results = metrics;
 
         spawn(async move {
             #[cfg(target_arch = "wasm32")]
@@ -566,7 +570,7 @@ fn app() -> Element {
         metrics.set(None);
 
         let mut status_for_progress = status;
-        let metrics_for_results = metrics;
+        let mut metrics_for_results = metrics;
 
         spawn(async move {
             #[cfg(target_arch = "wasm32")]
@@ -754,22 +758,22 @@ fn app() -> Element {
 
                             div {
                                 style: "margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.55rem;",
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 600;",
                                     "≤ 0.001 Da: {format_count_with_percentage(metrics.within_0_001_da, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #e0f2fe; color: #0369a1; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 999px; font-weight: 600;",
                                     "≤ 0.01 Da: {format_count_with_percentage(metrics.within_0_01_da, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f5f3ff; color: #7c3aed; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #b45309; border: 1px solid #fdba74; border-radius: 999px; font-weight: 600;",
                                     "< 0.005 Da: {format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #b45309; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 600;",
                                     "≤ 1 ppm: {format_count_with_percentage(metrics.within_1_ppm, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #b45309; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 999px; font-weight: 600;",
                                     "≤ 5 ppm: {format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fdf2f8; color: #be185d; border-radius: 999px; font-weight: 600;",
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 600;",
                                     "≤ 10 ppm: {format_count_with_percentage(metrics.within_10_ppm, metrics.spectra)}"
                                 }
                             }
@@ -845,17 +849,20 @@ fn is_supported_adduct(adduct: &str) -> bool {
 
 fn adduct_class(adduct: &str) -> Option<AdductClass> {
     let normalized = normalize_adduct_label(adduct);
-    let charge = parse_adduct_charge_sign(Some(adduct)).map_or_else(|| {
-        if normalized.contains("]-") {
-            -1
-        } else if normalized.contains("]+") || normalized.contains("]2+") {
-            1
-        } else if normalized.contains("]2-") {
-            -2
-        } else {
-            0
-        }
-    }, |sign| if sign { -1 } else { 1 });
+    let charge = parse_adduct_charge_sign(Some(adduct)).map_or_else(
+        || {
+            if normalized.contains("]-") {
+                -1
+            } else if normalized.contains("]+") || normalized.contains("]2+") {
+                1
+            } else if normalized.contains("]2-") {
+                -2
+            } else {
+                0
+            }
+        },
+        |sign| if sign { -1 } else { 1 },
+    );
     Some(AdductClass {
         label: normalized.clone(),
         display: normalized,
@@ -1690,7 +1697,7 @@ mod tests {
     fn handles_double_protonated_adducts() {
         let mass = expected_precursor_mz(1000.0, Some("[M+2H]2+"), Some("2+"), Some("positive"))
             .expect("double protonated adduct should be supported");
-        assert!((mass - 500.0 - 2.0 * 1.007_276_466_621 / 2.0).abs() < 1e-9);
+        assert!((mass - (500.0 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9);
     }
 
     #[test]
@@ -1723,12 +1730,14 @@ mod tests {
             .expect("chloride adduct should be supported");
         assert!(mass > 1000.0);
 
-        let methanol_mass = expected_precursor_mz(1000.0, Some("[M+MeOH+H]+"), Some("1+"), Some("positive"))
-            .expect("methanol adduct should be supported");
+        let methanol_mass =
+            expected_precursor_mz(1000.0, Some("[M+MeOH+H]+"), Some("1+"), Some("positive"))
+                .expect("methanol adduct should be supported");
         assert!(methanol_mass > 1000.0);
 
-        let dimer_mass = expected_precursor_mz(1000.0, Some("[2M+H]+"), Some("1+"), Some("positive"))
-            .expect("dimer adduct should be supported");
+        let dimer_mass =
+            expected_precursor_mz(1000.0, Some("[2M+H]+"), Some("1+"), Some("positive"))
+                .expect("dimer adduct should be supported");
         assert!((dimer_mass - (2000.0 + PROTON_MASS - ELECTRON_MASS)).abs() < 1e-9);
     }
 }
