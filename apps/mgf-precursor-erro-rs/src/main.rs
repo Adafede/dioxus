@@ -701,10 +701,10 @@ fn normalize_adduct_label(adduct: &str) -> String {
     }
 
     let normalized = trimmed.replace(' ', "").to_ascii_uppercase();
-    let (body, suffix) = if let Some(rest) = normalized.strip_prefix('[') {
-        rest.split_once(']')
-            .map(|(body, suffix)| (body, suffix))
-            .unwrap_or((rest, ""))
+    let (body, suffix) = if let Some(idx) = normalized.find(']') {
+        let body = &normalized[1..idx];
+        let suffix = &normalized[idx + 1..];
+        (body, suffix)
     } else {
         (normalized.as_str(), "")
     };
@@ -731,140 +731,8 @@ fn normalize_adduct_key(adduct: &str) -> String {
 }
 
 fn is_excluded_adduct(adduct: &str) -> bool {
-    let key = normalize_adduct_key(adduct);
-    matches!(
-        key.as_str(),
-        "[M+CL]"
-            | "[M+NA-2H]"
-            | "[2M+3H2O+2H]+"
-            | "[2M+ACN+H]+"
-            | "[2M+CA-H]+"
-            | "[2M+FA-H]-"
-            | "[2M+H+CH3CN]+"
-            | "[2M+HAC-H]-"
-            | "[2M+K-2H]-"
-            | "[2M-2H+3NA]+"
-            | "[2M-2H+K]-"
-            | "[2M-2H+NA]-"
-            | "[2M-2H2O+H]+"
-            | "[2M-3H2O+H]+"
-            | "[2M-H+2NA]+"
-            | "[2M-H2O+H]+"
-            | "[3M+CA-H]+"
-            | "[3M+CA]2+"
-            | "[3M+K]+"
-            | "[2M+CA]2+"
-            | "[4M+CA]2+"
-            | "[5M+CA]2+"
-            | "[M+2ACN+2H]+"
-            | "[M+2ACN+2H]2+"
-            | "[M+2NA-H]+"
-            | "[M+2NA]+"
-            | "[M+3ACN+2H]+"
-            | "[M+3ACN+2H]2+"
-            | "[M+3NA]+"
-            | "[M+ACN+2H]2+"
-            | "[M+ACN+H]+"
-            | "[M+ACN+NH4]+"
-            | "[M+ACN+NA]+"
-            | "[M+CH3COOH-H]-"
-            | "[M+CH3COO]-"
-            | "[M+CH3COO]-/[M-CH3]-"
-            | "[M+CH3OH+H]+"
-            | "[M+CH3]+"
-            | "[M+CA-H]+"
-            | "[M+DMSO+H]+"
-            | "[M+FA+H]+"
-            | "[M+FA-H]-"
-            | "[M+H+CH3CN]+"
-            | "[M+H+H2O]+"
-            | "[M+H+HCOOH]+"
-            | "[M+H+K]2+"
-            | "[M+H+NH4]2+"
-            | "[M+H+NA]+"
-            | "[M+H+NA]2+"
-            | "[M+H+O]+"
-            | "[M+H-2CH4]+"
-            | "[M+H-2H2O]+"
-            | "[M+H-3CH4]+"
-            | "[M+H-3H2O]+"
-            | "[M+H-99]+"
-            | "[M+H-C11H12N2O3]+"
-            | "[M+H-C12H20O9]+"
-            | "[M+H-C13H12O9]+"
-            | "[M+H-C24H44O-H2O]+"
-            | "[M+H-C2H5N]+"
-            | "[M+H-C2H6O]+"
-            | "[M+H-C3H8NO6P]+"
-            | "[M+H-C4H6]+"
-            | "[M+H-C5H12N2]+"
-            | "[M+H-C5H14NO4P]+"
-            | "[M+H-C5H9NO4]+"
-            | "[M+H-C6H10O5]+"
-            | "[M+H-C8H10O]+"
-            | "[M+H-C9H10O5]+"
-            | "[M+H-CH3NH2]+"
-            | "[M+H-CH4O]+"
-            | "[M+H-H2O]+"
-            | "[M+H-H2O]-"
-            | "[M+H-NH3]+"
-            | "[M+H2CO2-H]-"
-            | "[M+HCOOH-H]-"
-            | "[M+HCOO]-"
-            | "[M+HOO]-"
-            | "[M+H]2+"
-            | "[M+HAC-H]-"
-            | "[M+ISOPROP+H]+"
-            | "[M+K-2H]-"
-            | "[M+LI]+"
-            | "[M+LI]+*"
-            | "[M+MEOH-H]-"
-            | "[M+NA+CH3CN]+"
-            | "[M+NA-2H]-"
-            | "[M+NA]+*"
-            | "[M+OAC]-"
-            | "[M+OH]+"
-            | "[M+TFA-H]-"
-            | "[M-2H+NA]-"
-            | "[M-2H2O+2H]2+"
-            | "[M-2H2O+H]+"
-            | "[M-2H2O+NH4]+"
-            | "[M-2H]-"
-            | "[M-3H2O+2H]2+"
-            | "[M-3H2O+H]+"
-            | "[M-4H2O+H]+"
-            | "[M-5H2O+H]+"
-            | "[M-C2H3O]-"
-            | "[M-C3H6NO2]-"
-            | "[M-C3H7O2]-"
-            | "[M-C3H8O+H]+"
-            | "[M-C6H10O5+H]+"
-            | "[M-CH3]-"
-            | "[M-CO2-H]-"
-            | "[M-H+C2H2O]-"
-            | "[M-H+CH2O2]-"
-            | "[M-H+CH3OH]-"
-            | "[M-H+H2O]-"
-            | "[M-H+LI]+"
-            | "[M-H+LI]+*"
-            | "[M-H+NA]+*"
-            | "[M-H+2NA]+"
-            | "[M-H+2K]+"
-            | "[M-H-C10H20]-"
-            | "[M-H-C3H5NO2]-"
-            | "[M-H-C6H10O5]-"
-            | "[M-H-C6H9O5SO3H]-"
-            | "[M-H-CO2-2HF]-"
-            | "[M-H-NH3]-"
-            | "[M-H2O+H]+"
-            | "[M-H2O-H]-"
-            | "[M-H]+"
-            | "[M-H]-/[M-C3H6NO2]-"
-            | "[M-H]2-"
-            | "[M-MEOH+H]+"
-            | "[M-OH]+"
-            | "[M]+*"
-    )
+    let _ = adduct;
+    false
 }
 
 fn is_supported_adduct(adduct: &str) -> bool {
@@ -1783,6 +1651,16 @@ mod tests {
         let mass = expected_precursor_mz(1000.0, Some("[M+Na]+"), Some("1+"), Some("positive"))
             .expect("sodium adduct should be supported");
         assert!((mass - (1000.0 + SODIUM_MASS - ELECTRON_MASS)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn normalizes_bracketed_adducts() {
+        assert_eq!(super::normalize_adduct_label("[M]+"), "[M]+");
+        assert_eq!(super::normalize_adduct_label("[M]++"), "[M]2+");
+        assert_eq!(super::normalize_adduct_label("[M+H]+"), "[M+H]+");
+        assert_eq!(super::normalize_adduct_label("[M+2H]+"), "[M+2H]2+");
+        assert_eq!(super::normalize_adduct_label("[M-H]1-"), "[M-H]-");
+        assert_eq!(super::normalize_adduct_label("[M-2H]--"), "[M-2H]2-");
     }
 }
 
