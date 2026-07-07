@@ -1,0 +1,11 @@
+[application]
+name = "mgf-precursor-erro-rs"
+default_platform = "web"
+asset_dir = "assets"
+
+[web.app]
+title = "MGF Precursor Error Metrics"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src", "assets"]

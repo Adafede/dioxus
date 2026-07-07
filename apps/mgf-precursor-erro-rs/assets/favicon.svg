@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="MGF precursor error icon">
+  <rect width="128" height="128" rx="24" fill="#0F172A"/>
+  <path d="M34 44h60" stroke="#F8FAFC" stroke-width="8" stroke-linecap="round"/>
+  <path d="M34 64h38" stroke="#60A5FA" stroke-width="8" stroke-linecap="round"/>
+  <path d="M34 84h46" stroke="#34D399" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="90" cy="64" r="14" fill="#F59E0B"/>
+  <path d="M82 64h16" stroke="#111827" stroke-width="4" stroke-linecap="round"/>
+  <path d="M90 56v16" stroke="#111827" stroke-width="4" stroke-linecap="round"/>
+  <path d="M94 40c9 0 16 7 16 16" stroke="#F8FAFC" stroke-width="4" stroke-linecap="round"/>
+</svg>

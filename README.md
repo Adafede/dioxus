@@ -4,7 +4,8 @@ A Cargo workspace hosting multi-app web experiences compiled to WASM.
 **lotus-explorer** explores the LOTUS natural products knowledge graph from
 Wikidata via SPARQL. **lotus-api** provides a native HTTP API for advanced
 search and export. **jsoncount** is a small JSON-file counter for browsing
-non-null field counts in uploaded files.
+non-null field counts in uploaded files. **mgf-precursor-erro-rs** analyzes
+uploaded MGF files and reports precursor mass errors in Da and ppm.
 
 ## Prerequisites
 
@@ -37,6 +38,12 @@ dioxus-apps/
 ├── Cargo.toml              ← workspace root
 ├── prek.toml               ← repo hooks and quality gate
 ├── .github/                ← CI, deploy, governance
+├── apps/
+│   ├── hello-world/        ← minimal template for new apps
+│   ├── jsoncount/           ← upload a JSON file and count non-null values per field
+│   ├── mgf-precursor-erro-rs/ ← upload an MGF file and summarize precursor mass errors
+│   ├── lotus-api/          ← OpenAPI service for LOTUS search and exports
+│   └── lotus-explorer/     ← LOTUS Wikidata natural-product explorer
 ├── crates/
 │   └── shared/             ← SPARQL client, LOTUS models
 └── apps/

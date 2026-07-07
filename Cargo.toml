@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "apps/hello-world",
   "apps/jsoncount",
+  "apps/mgf-precursor-erro-rs",
   "apps/lotus-api",
   "apps/lotus-explorer",
   "crates/shared",

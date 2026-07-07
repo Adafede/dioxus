@@ -51,6 +51,12 @@ jobs:
         env:
           GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
 
+      - name: Build mgf-precursor-erro-rs
+        working-directory: apps/mgf-precursor-erro-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/mgf-precursor-erro-rs/"
+        env:
+          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
+
       - name: Assemble site
         run: |
           DX_OUT="target/dx"
@@ -59,6 +65,7 @@ jobs:
           cp -r "$DX_OUT/lotus-explorer/$DX_WEB" _site/lotus-explorer
           cp -r "$DX_OUT/hello-world/$DX_WEB"    _site/hello-world
           cp -r "$DX_OUT/jsoncount/$DX_WEB"      _site/jsoncount
+          cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
 
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
@@ -91,6 +98,10 @@ jobs:
               <li>
                 <a href="./jsoncount/">🧮 JSON Counter</a>
                 <p class="desc">Upload a JSON file and count non-null values per field</p>
+              </li>
+              <li>
+                <a href="./mgf-precursor-erro-rs/">📊 MGF Precursor Error Metrics</a>
+                <p class="desc">Upload an MGF file and summarize precursor mass errors in Da and ppm</p>
               </li>
             </ul>
           </body>

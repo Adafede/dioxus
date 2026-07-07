@@ -1,4 +1,5 @@
-use dioxus::events::FormData;
+use dioxus::events::{DragData, FormData};
+use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
@@ -41,8 +42,92 @@ fn app() -> Element {
     let mut results = use_signal(Vec::<ColumnResult>::new);
     let mut status = use_signal(|| "Choose a JSON file to begin.".to_string());
     let mut busy = use_signal(|| false);
+    let mut drag_active = use_signal(|| false);
 
     let on_file_change = move |evt: Event<FormData>| {
+        let Some(file) = evt.data().files().into_iter().next() else {
+            status.set("No file selected.".to_string());
+            return;
+        };
+
+        #[cfg(target_arch = "wasm32")]
+        let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
+            status.set("This file type is not supported in the browser.".to_string());
+            return;
+        };
+
+        #[cfg(target_arch = "wasm32")]
+        let Ok(blob) = web_file.clone().dyn_into::<Blob>() else {
+            status.set("Unable to read the selected file as a blob.".to_string());
+            return;
+        };
+
+        file_name.set(file.name());
+        busy.set(true);
+        drag_active.set(false);
+        status.set("Reading file...".to_string());
+        results.set(vec![]);
+
+        let mut status_for_progress = status;
+
+        spawn(async move {
+            #[cfg(target_arch = "wasm32")]
+            {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let total_bytes = blob.size() as u64;
+                status_for_progress.set(format!("Counting {total_bytes} bytes..."));
+                let cols = match scan_blob_with_progress(&blob, move |processed, total| {
+                    let safe_total = total.max(1);
+                    let displayed_processed = processed.min(safe_total);
+                    let percent = (displayed_processed * 100 / safe_total).min(100);
+                    status_for_progress.set(format!(
+                        "Counting {displayed_processed}/{safe_total} bytes ({percent}%)..."
+                    ));
+                })
+                .await
+                {
+                    Ok(cols) => cols,
+                    Err(error) => {
+                        status_for_progress.set(format!("Error reading file: {error:?}"));
+                        vec![]
+                    }
+                };
+                let total: u64 = cols.iter().map(|col| col.count).sum();
+                status_for_progress.set(format!(
+                    "Done — {} columns, {} total non-null values",
+                    cols.len(),
+                    total
+                ));
+                results.set(cols);
+                busy.set(false);
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                status_for_progress.set("This app needs to run in a browser.".to_string());
+                busy.set(false);
+            }
+        });
+    };
+
+    let on_drag_enter = move |evt: Event<DragData>| {
+        evt.prevent_default();
+        drag_active.set(true);
+    };
+
+    let on_drag_over = move |evt: Event<DragData>| {
+        evt.prevent_default();
+        drag_active.set(true);
+    };
+
+    let on_drag_leave = move |evt: Event<DragData>| {
+        evt.prevent_default();
+        drag_active.set(false);
+    };
+
+    let on_drop = move |evt: Event<DragData>| {
+        evt.prevent_default();
+        drag_active.set(false);
         let Some(file) = evt.data().files().into_iter().next() else {
             status.set("No file selected.".to_string());
             return;
@@ -109,40 +194,59 @@ fn app() -> Element {
 
     rsx! {
         div {
-            style: "font-family: sans-serif; max-width: 700px; margin: 2rem auto; padding: 0 1rem;",
+            style: "min-height: 100vh; padding: 2rem 1rem 3rem; background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); color: #0f172a; font-family: sans-serif;",
+            div {
+                style: "max-width: 760px; margin: 0 auto; background: rgba(255,255,255,0.92); border: 1px solid rgba(148,163,184,0.22); border-radius: 20px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); padding: 1.4rem; backdrop-filter: blur(12px);",
+                h2 { style: "margin: 0 0 0.35rem; font-size: 1.6rem; letter-spacing: -0.02em;", "JSON Non-Null Field Counter" }
+                p { style: "margin: 0 0 1rem; color: #475569;", "Drop a JSON file into the upload area below or browse for it on disk." }
 
-            h2 { "JSON Non-Null Field Counter" }
-
-            input {
-                r#type: "file",
-                accept: ".json",
-                disabled: *busy.read(),
-                onchange: on_file_change,
-            }
-
-            p {
-                style: "color: #666; font-size: 0.85rem;",
-                if !file_name.read().is_empty() {
-                    "{file_name}"
-                }
-            }
-
-            p { style: "font-weight: bold;", "{status}" }
-
-            if !results.read().is_empty() {
-                table {
-                    style: "width: 100%; border-collapse: collapse; margin-top: 1rem;",
-                    thead {
-                        tr {
-                            th { style: "text-align: left; border-bottom: 2px solid #333; padding: 4px;", "Column" }
-                            th { style: "text-align: right; border-bottom: 2px solid #333; padding: 4px;", "Non-null count" }
-                        }
+                label {
+                    r#for: "json-upload",
+                    style: format!(
+                        "display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; min-height: 140px; width: 100%; box-sizing: border-box; position: relative; isolation: isolate; border: 2px dashed {}; border-radius: 18px; padding: 1rem; cursor: pointer; background: {}; color: #334155; font-weight: 600; text-align: center; transition: border-color 160ms ease, background 160ms ease;",
+                        if *drag_active.read() { "#2563eb" } else { "#94a3b8" },
+                        if *drag_active.read() { "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(239,246,255,0.94))" } else { "linear-gradient(135deg, rgba(248,250,252,0.95), rgba(239,246,255,0.95))" }
+                    ),
+                    ondragenter: on_drag_enter,
+                    ondragover: on_drag_over,
+                    ondragleave: on_drag_leave,
+                    ondrop: on_drop,
+                    span { style: "font-size: 1rem;", "Drop a JSON file here or click to browse" }
+                    span { style: "font-size: 0.85rem; font-weight: 500; color: #64748b;", ".json files only" }
+                    input {
+                        id: "json-upload",
+                        r#type: "file",
+                        accept: ".json",
+                        disabled: *busy.read(),
+                        onchange: on_file_change,
+                        style: "position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;",
                     }
-                    tbody {
-                        for col in results.read().iter() {
+                }
+
+                p {
+                    style: "margin: 0.8rem 0 0; color: #475569; font-size: 0.9rem;",
+                    if !file_name.read().is_empty() {
+                        "Selected file: {file_name}"
+                    }
+                }
+
+                p { style: "margin: 0.7rem 0 0; font-weight: 600; color: #334155;", "{status}" }
+
+                if !results.read().is_empty() {
+                    table {
+                        style: "width: 100%; border-collapse: collapse; margin-top: 1rem;",
+                        thead {
                             tr {
-                                td { style: "padding: 4px; border-bottom: 1px solid #ddd;", "{col.key}" }
-                                td { style: "padding: 4px; border-bottom: 1px solid #ddd; text-align: right;", "{col.count}" }
+                                th { style: "text-align: left; border-bottom: 2px solid #333; padding: 4px;", "Column" }
+                                th { style: "text-align: right; border-bottom: 2px solid #333; padding: 4px;", "Non-null count" }
+                            }
+                        }
+                        tbody {
+                            for col in results.read().iter() {
+                                tr {
+                                    td { style: "padding: 4px; border-bottom: 1px solid #ddd;", "{col.key}" }
+                                    td { style: "padding: 4px; border-bottom: 1px solid #ddd; text-align: right;", "{col.count}" }
+                                }
                             }
                         }
                     }
