@@ -58,9 +58,45 @@ struct HistogramData {
 #[derive(Clone, Debug, PartialEq)]
 struct PlotPoint {
     adduct_type: String,
+    adduct_family: String,
     observed_precursor_mz: f64,
     signed_error_da: f64,
     signed_error_ppm: f64,
+}
+
+#[derive(Clone, Debug, Default)]
+struct PlotPointSample {
+    seen: usize,
+    points: Vec<PlotPoint>,
+}
+
+impl PlotPointSample {
+    fn push(&mut self, point: PlotPoint) {
+        self.seen = self.seen.saturating_add(1);
+        if self.points.len() < MAX_PLOT_POINTS {
+            self.points.push(point);
+        } else {
+            let stream_index = self.seen as u64;
+            let replacement_index = ((stream_index
+                .wrapping_mul(0x9e3779b97f4a7c15)
+                .wrapping_add(0xbf58476d1ce4e5b9))
+                % stream_index) as usize;
+            if replacement_index < MAX_PLOT_POINTS {
+                if let Some(existing) = self.points.get_mut(replacement_index) {
+                    *existing = point;
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ScatterPlotData {
+    legend_items: Vec<(String, String)>,
+    x_min: f64,
+    x_max: f64,
+    y_limit: f64,
+    series: Vec<(String, Vec<(f64, f64)>)>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -441,6 +477,36 @@ impl PrecursorMetrics {
         expected_mass: Option<f64>,
         formula: Option<&str>,
     ) {
+        let mut no_plot_sample = None;
+        self.record_error_with_plot_sample(
+            abs_error_da,
+            abs_ppm,
+            adduct_type,
+            ppm_error,
+            signed_error_da,
+            observed_precursor_mz,
+            smiles,
+            calculated_mass,
+            expected_mass,
+            formula,
+            &mut no_plot_sample,
+        );
+    }
+
+    fn record_error_with_plot_sample(
+        &mut self,
+        abs_error_da: f64,
+        abs_ppm: f64,
+        adduct_type: &str,
+        ppm_error: f64,
+        signed_error_da: f64,
+        observed_precursor_mz: f64,
+        smiles: Option<&str>,
+        calculated_mass: Option<f64>,
+        expected_mass: Option<f64>,
+        formula: Option<&str>,
+        plot_sample: &mut Option<&mut PlotPointSample>,
+    ) {
         self.da_error_histogram.add_value(abs_error_da);
         self.ppm_error_histogram.add_value(abs_ppm);
         self.absolute_error_da_values.push(abs_error_da);
@@ -536,27 +602,30 @@ impl PrecursorMetrics {
         }
 
         self.plot_point_stream_seen = self.plot_point_stream_seen.saturating_add(1);
-        if self.plot_points.len() < MAX_PLOT_POINTS {
-            self.plot_points.push(PlotPoint {
-                adduct_type: adduct_type.to_string(),
-                observed_precursor_mz,
-                signed_error_da,
-                signed_error_ppm: ppm_error,
-            });
+        let point = PlotPoint {
+            adduct_type: adduct_type.to_string(),
+            adduct_family: adduct_class(adduct_type)
+                .map(|adduct| adduct.family)
+                .unwrap_or_else(|| "Other".to_string()),
+            observed_precursor_mz,
+            signed_error_da,
+            signed_error_ppm: ppm_error,
+        };
+        if let Some(sample) = plot_sample.as_mut() {
+            sample.push(point.clone());
         } else {
-            let stream_index = self.plot_point_stream_seen as u64;
-            let replacement_index = ((stream_index
-                .wrapping_mul(0x9e3779b97f4a7c15)
-                .wrapping_add(0xbf58476d1ce4e5b9))
-                % stream_index) as usize;
-            if replacement_index < MAX_PLOT_POINTS {
-                if let Some(point) = self.plot_points.get_mut(replacement_index) {
-                    *point = PlotPoint {
-                        adduct_type: adduct_type.to_string(),
-                        observed_precursor_mz,
-                        signed_error_da,
-                        signed_error_ppm: ppm_error,
-                    };
+            if self.plot_points.len() < MAX_PLOT_POINTS {
+                self.plot_points.push(point.clone());
+            } else {
+                let stream_index = self.plot_point_stream_seen as u64;
+                let replacement_index = ((stream_index
+                    .wrapping_mul(0x9e3779b97f4a7c15)
+                    .wrapping_add(0xbf58476d1ce4e5b9))
+                    % stream_index) as usize;
+                if replacement_index < MAX_PLOT_POINTS {
+                    if let Some(existing) = self.plot_points.get_mut(replacement_index) {
+                        *existing = point;
+                    }
                 }
             }
         }
@@ -1710,20 +1779,84 @@ fn adduct_family_shape_style(family: &str, alpha: f32) -> plotters::style::Shape
     plotters::style::ShapeStyle::from(&plotters::style::RGBAColor(r, g, b, alpha)).filled()
 }
 
-fn adduct_family_legend_items(points: &[PlotPoint]) -> Vec<(String, String)> {
-    let mut families = Vec::new();
+fn prepare_scatter_plot_data<F, G>(
+    points: &[PlotPoint],
+    x_value_fn: F,
+    y_value_fn: G,
+    fallback_y_limit: f64,
+) -> ScatterPlotData
+where
+    F: Fn(&PlotPoint) -> Option<f64>,
+    G: Fn(&PlotPoint) -> Option<f64>,
+{
+    let mut family_points: HashMap<String, Vec<(f64, f64)>> = HashMap::new();
+    let mut x_values = Vec::new();
+    let mut y_values = Vec::new();
+
     for point in points {
-        let family = adduct_class(&point.adduct_type)
-            .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
-        if !families.iter().any(|existing: &String| existing == &family) {
-            families.push(family);
+        let Some(x_value) = x_value_fn(point) else {
+            continue;
+        };
+        let Some(y_value) = y_value_fn(point) else {
+            continue;
+        };
+        if !x_value.is_finite() || !y_value.is_finite() {
+            continue;
         }
+        x_values.push(x_value);
+        y_values.push(y_value);
+        family_points
+            .entry(point.adduct_family.clone())
+            .or_default()
+            .push((x_value, y_value));
     }
+
+    let x_min = x_values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min)
+        .min(1.0);
+    let x_max = x_values
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max)
+        .max(x_min + 1.0);
+    let x_span = (x_max - x_min).max(1.0);
+    let x_min = x_min - x_span * 0.05;
+    let x_max = x_max + x_span * 0.05;
+
+    let y_limit = y_values
+        .iter()
+        .copied()
+        .map(|value| value.abs())
+        .fold(0.0, f64::max)
+        .max(fallback_y_limit);
+
+    let mut families = family_points.keys().cloned().collect::<Vec<_>>();
     families.sort_by_key(|family| adduct_family_rank(family));
-    families
-        .into_iter()
-        .map(|family| (family.clone(), adduct_family_color_hex(&family)))
-        .collect()
+    let family_count = families.len().max(1);
+    let max_points_per_family = (1500usize / family_count).max(180usize);
+    let mut series = Vec::with_capacity(families.len());
+    for family in families {
+        let sampled = sample_scatter_points(
+            family_points.remove(&family).unwrap_or_default(),
+            max_points_per_family,
+        );
+        series.push((family.clone(), sampled));
+    }
+
+    let legend_items = series
+        .iter()
+        .map(|(family, _)| (family.clone(), adduct_family_color_hex(family)))
+        .collect();
+
+    ScatterPlotData {
+        legend_items,
+        x_min,
+        x_max,
+        y_limit,
+        series,
+    }
 }
 
 fn embed_svg_legend(
@@ -1973,13 +2106,21 @@ fn render_ecdf_svg(title: &str, values: &[f64], thresholds: &[f64], unit: &str) 
         })
         .collect::<Vec<_>>();
 
-    let observed_min = values.iter().copied().filter(|value| value.is_finite()).fold(f64::INFINITY, f64::min);
+    let observed_min = values
+        .iter()
+        .copied()
+        .filter(|value| value.is_finite())
+        .fold(f64::INFINITY, f64::min);
     let x_min = if observed_min.is_finite() {
         observed_min.max(1e-6)
     } else {
         1e-6
     };
-    let observed_max = values.iter().copied().filter(|value| value.is_finite()).fold(0.0, f64::max);
+    let observed_max = values
+        .iter()
+        .copied()
+        .filter(|value| value.is_finite())
+        .fold(0.0, f64::max);
     let view_max = thresholds.iter().copied().fold(0.0, f64::max).max(1e-6);
     let plot_max = observed_max.max(view_max);
     let x_max = (plot_max * 1.03).max(x_min + 1e-3);
@@ -2086,62 +2227,24 @@ fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
-    let legend_items = adduct_family_legend_items(points);
-    let x_values = points
-        .iter()
-        .map(|point| point.observed_precursor_mz)
-        .filter(|value| value.is_finite())
-        .collect::<Vec<_>>();
-    let x_min = x_values
-        .iter()
-        .copied()
-        .fold(f64::INFINITY, f64::min)
-        .min(1.0);
-    let x_max = x_values
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max)
-        .max(x_min + 1.0);
-    let x_span = (x_max - x_min).max(1.0);
-    let x_min = x_min - x_span * 0.05;
-    let x_max = x_max + x_span * 0.05;
-
-    let y_values = points
-        .iter()
-        .filter_map(|point| {
+    let plot_data = prepare_scatter_plot_data(
+        points,
+        |point| Some(point.observed_precursor_mz),
+        |point| {
             point
                 .signed_error_da
                 .is_finite()
                 .then_some(point.signed_error_da)
-        })
-        .collect::<Vec<_>>();
-    let max_abs_error = y_values
-        .iter()
-        .copied()
-        .map(|value| value.abs())
-        .fold(0.0, f64::max);
-    let y_limit = max_abs_error.max(1e-4);
+        },
+        1e-4,
+    );
+    let legend_items = plot_data.legend_items;
+    let x_min = plot_data.x_min;
+    let x_max = plot_data.x_max;
+    let y_limit = plot_data.y_limit;
     let y_min = -y_limit;
     let y_max = y_limit;
-
-    let mut points_by_family: BTreeMap<String, Vec<(f64, f64)>> = BTreeMap::new();
-    for point in points {
-        if !point.observed_precursor_mz.is_finite() || !point.signed_error_da.is_finite() {
-            continue;
-        }
-        let family = adduct_class(&point.adduct_type)
-            .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
-        points_by_family
-            .entry(family)
-            .or_default()
-            .push((point.observed_precursor_mz, point.signed_error_da));
-    }
-    let family_count = points_by_family.len().max(1);
-    let max_points_per_family = (1500usize / family_count).max(180usize);
-    for family_points in points_by_family.values_mut() {
-        *family_points =
-            sample_scatter_points(std::mem::take(family_points), max_points_per_family);
-    }
+    let points_by_family = plot_data.series;
 
     {
         let mut chart = ChartBuilder::on(&root)
@@ -2208,57 +2311,27 @@ fn render_absolute_mass_bias_svg(
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
-    let legend_items = adduct_family_legend_items(points);
-    let x_values = points
-        .iter()
-        .map(|point| point.observed_precursor_mz)
-        .filter(|value| value.is_finite())
-        .collect::<Vec<_>>();
-    let x_min = x_values
-        .iter()
-        .copied()
-        .fold(f64::INFINITY, f64::min)
-        .min(1.0);
-    let x_max = x_values
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max)
-        .max(x_min + 1.0);
-    let x_span = (x_max - x_min).max(1.0);
-    let x_min = x_min - x_span * 0.05;
-    let x_max = x_max + x_span * 0.05;
-
-    let mut points_by_family: BTreeMap<String, Vec<(f64, f64)>> = BTreeMap::new();
-    let mut y_values = Vec::new();
-    for point in points {
-        if !point.observed_precursor_mz.is_finite() {
-            continue;
-        }
-        let family = adduct_class(&point.adduct_type)
-            .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
-        let error_value = display_error_value_for_point(point, unit);
-        if error_value.is_finite() {
-            y_values.push(error_value);
-            points_by_family
-                .entry(family)
-                .or_default()
-                .push((point.observed_precursor_mz, error_value));
-        }
-    }
-    let family_count = points_by_family.len().max(1);
-    let max_points_per_family = (1500usize / family_count).max(180usize);
-    for family_points in points_by_family.values_mut() {
-        *family_points =
-            sample_scatter_points(std::mem::take(family_points), max_points_per_family);
-    }
-    let y_limit = y_values
-        .iter()
-        .copied()
-        .map(|value| value.abs())
-        .fold(0.0, f64::max)
-        .max(1e-3);
+    let plot_data = prepare_scatter_plot_data(
+        points,
+        |point| {
+            point
+                .observed_precursor_mz
+                .is_finite()
+                .then_some(point.observed_precursor_mz)
+        },
+        |point| {
+            let error_value = display_error_value_for_point(point, unit);
+            error_value.is_finite().then_some(error_value)
+        },
+        1e-3,
+    );
+    let legend_items = plot_data.legend_items;
+    let x_min = plot_data.x_min;
+    let x_max = plot_data.x_max;
+    let y_limit = plot_data.y_limit;
     let y_min = -y_limit;
     let y_max = y_limit;
+    let points_by_family = plot_data.series;
 
     {
         let mut chart = ChartBuilder::on(&root)
@@ -2522,9 +2595,9 @@ impl<'a> BlobLineReader<'a> {
                 if self.buffer_start >= self.buffer.len() {
                     return Ok(None);
                 }
-                let remaining = self.buffer[self.buffer_start..].to_vec();
+                let remaining = String::from_utf8_lossy(&self.buffer[self.buffer_start..]);
                 self.buffer_start = self.buffer.len();
-                return Ok(Some(String::from_utf8_lossy(&remaining).into_owned()));
+                return Ok(Some(remaining.into_owned()));
             }
 
             self.load_next_chunk().await?;
@@ -2562,7 +2635,10 @@ impl<'a> BlobLineReader<'a> {
         let promise = chunk.array_buffer();
         let bytes = JsFuture::from(promise).await?;
         let array = Uint8Array::new(&bytes);
-        self.buffer.extend_from_slice(&array.to_vec());
+        let chunk_len = array.byte_length() as usize;
+        let mut chunk_bytes = vec![0u8; chunk_len];
+        array.copy_to(&mut chunk_bytes);
+        self.buffer.extend_from_slice(&chunk_bytes);
         self.offset = end;
         self.processed = self.processed.saturating_add((end - start).max(1));
         if self
@@ -2587,6 +2663,7 @@ async fn scan_blob_with_progress(
     let mut current_state = BlockParseState::default();
     let mut current_is_in_block = false;
     let mut metrics = PrecursorMetrics::default();
+    let mut plot_sample = PlotPointSample::default();
     let mut smiles_cache = HashMap::new();
     let mut formula_cache = HashMap::new();
     let mut logged_failures = HashSet::new();
@@ -2610,11 +2687,13 @@ async fn scan_blob_with_progress(
         current_state.consume_line(trimmed);
 
         if trimmed == "END IONS" {
+            let mut block_plot_sample = Some(&mut plot_sample);
             if let Some(result) = process_block_state(
                 &current_state,
                 &mut smiles_cache,
                 &mut formula_cache,
                 &mut logged_failures,
+                &mut block_plot_sample,
             )? {
                 metrics = merge_metrics(metrics, result);
             }
@@ -2623,6 +2702,8 @@ async fn scan_blob_with_progress(
         }
     }
 
+    metrics.plot_points = plot_sample.points;
+    metrics.plot_point_stream_seen = plot_sample.seen;
     Ok(metrics)
 }
 
@@ -2631,10 +2712,30 @@ fn process_block(
     smiles_cache: &mut HashMap<String, Option<f64>>,
     formula_cache: &mut HashMap<String, Option<f64>>,
     logged_failures: &mut HashSet<String>,
+    plot_sample: Option<&mut PlotPointSample>,
 ) -> Result<Option<PrecursorMetrics>, ScanError> {
     let mut state = BlockParseState::default();
     state.consume_block_lines(block_lines);
-    process_block_state(&state, smiles_cache, formula_cache, logged_failures)
+    let use_external_sample = plot_sample.is_some();
+    let mut local_plot_sample = PlotPointSample::default();
+    let mut sample_ref = plot_sample;
+    if !use_external_sample {
+        sample_ref = Some(&mut local_plot_sample);
+    }
+    let result = process_block_state(
+        &state,
+        smiles_cache,
+        formula_cache,
+        logged_failures,
+        &mut sample_ref,
+    )?;
+    Ok(result.map(|mut metrics| {
+        if let Some(plot_sample) = sample_ref.as_ref() {
+            metrics.plot_points = plot_sample.points.clone();
+            metrics.plot_point_stream_seen = plot_sample.seen;
+        }
+        metrics
+    }))
 }
 
 fn process_block_state(
@@ -2642,6 +2743,7 @@ fn process_block_state(
     smiles_cache: &mut HashMap<String, Option<f64>>,
     formula_cache: &mut HashMap<String, Option<f64>>,
     logged_failures: &mut HashSet<String>,
+    plot_sample: &mut Option<&mut PlotPointSample>,
 ) -> Result<Option<PrecursorMetrics>, ScanError> {
     let Some(observed_precursor) = state.observed_precursor else {
         return Ok(None);
@@ -3110,6 +3212,7 @@ mod tests {
             &mut smiles_cache,
             &mut formula_cache,
             &mut logged_failures,
+            None,
         )
         .expect("block should be processed")
         .expect("block should produce metrics");
@@ -3139,6 +3242,7 @@ mod tests {
             &mut smiles_cache,
             &mut formula_cache,
             &mut logged_failures,
+            None,
         )
         .expect("block should be processed")
         .expect("block should produce metrics");
@@ -3398,6 +3502,12 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     }
     current
         .absolute_error_da_values
+        .reserve(next.absolute_error_da_values.len());
+    current
+        .absolute_error_ppm_values
+        .reserve(next.absolute_error_ppm_values.len());
+    current
+        .absolute_error_da_values
         .extend(next.absolute_error_da_values);
     current
         .absolute_error_ppm_values
@@ -3450,25 +3560,6 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
                 }
             })
             .or_insert(detail);
-    }
-
-    let total_points = current.plot_points.len() + next.plot_points.len();
-    if total_points <= MAX_PLOT_POINTS {
-        current.plot_points.extend(next.plot_points);
-    } else {
-        let stride = (total_points / MAX_PLOT_POINTS).max(1);
-        let mut merged = Vec::with_capacity(MAX_PLOT_POINTS);
-        let mut seen = 0usize;
-        for point in current.plot_points.into_iter().chain(next.plot_points) {
-            if seen % stride == 0 {
-                merged.push(point);
-                if merged.len() == MAX_PLOT_POINTS {
-                    break;
-                }
-            }
-            seen += 1;
-        }
-        current.plot_points = merged;
     }
 
     current
