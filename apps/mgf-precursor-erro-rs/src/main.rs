@@ -1220,6 +1220,45 @@ fn scatter_plot(
         })
         .collect::<Vec<_>>();
 
+    let tick_count = 5;
+    let y_ticks = (0..=tick_count)
+        .map(|tick| {
+            let ratio = tick as f64 / tick_count as f64;
+            let value = y_min + ratio * y_span;
+            let y = height - padding - ratio * plot_height;
+            rsx! {
+                line { x1: padding as i32, y1: y as i32, x2: (width - padding) as i32, y2: y as i32, stroke: "#e2e8f0", stroke_width: "0.8" }
+                text { x: (padding - 8.0) as i32, y: (y - 3.0) as i32, fill: "#64748b", font_size: "10", text_anchor: "end", {format_value(value)} }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let category_counts = unique_categories
+        .iter()
+        .map(|label| {
+            let count = points
+                .iter()
+                .filter(|point| {
+                    adduct_class(&point.adduct_type)
+                        .map(|adduct| adduct.display == *label)
+                        .unwrap_or(false)
+                })
+                .count();
+            (label.clone(), count)
+        })
+        .collect::<Vec<_>>();
+
+    let category_count_labels = category_counts
+        .iter()
+        .enumerate()
+        .map(|(index, (_label, count))| {
+            let x = padding + ((index as f64 - x_min) / x_span) * plot_width;
+            rsx! {
+                text { x: x as i32, y: (height - padding + 30.0) as i32, fill: "#64748b", font_size: "9", text_anchor: "middle", "{count}" }
+            }
+        })
+        .collect::<Vec<_>>();
+
     let mut legend_items = unique_categories
         .iter()
         .enumerate()
@@ -1285,6 +1324,12 @@ fn scatter_plot(
                     }
                     for label in category_labels {
                         {label}
+                    }
+                    for tick in y_ticks {
+                        {tick}
+                    }
+                    for count_label in category_count_labels {
+                        {count_label}
                     }
                     text { x: 12, y: (height / 2.0) as i32, fill: "#64748b", font_size: "11", transform: "rotate(-90 12 110)", "Signed error (Da)" }
                     text { x: (width / 2.0) as i32, y: (height - 6.0) as i32, fill: "#64748b", font_size: "11", text_anchor: "middle", "Adduct type" }
