@@ -519,9 +519,7 @@ impl PrecursorMetrics {
 
         let point = PlotPoint {
             adduct_type: adduct_type.to_string(),
-            adduct_family: crate::parser::adduct_class(adduct_type)
-                .map(|adduct| adduct.family)
-                .unwrap_or_else(|| "Other".to_string()),
+            adduct_family: crate::parser::adduct_family(adduct_type),
             observed_precursor_mz,
             signed_error_da,
             signed_error_ppm: ppm_error,

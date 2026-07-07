@@ -167,7 +167,8 @@ fn embed_svg_legend(
     let items_start_x = title_x + title_width + 10.0;
 
     for (index, (family, color)) in legend_items.iter().enumerate() {
-        let item_x = f64::from(u32::try_from(index).unwrap_or(u32::MAX)).mul_add(entry_width, items_start_x);
+        let item_x =
+            f64::from(u32::try_from(index).unwrap_or(u32::MAX)).mul_add(entry_width, items_start_x);
         let marker_x = item_x + 8.0;
         let text_x = item_x + 18.0;
         let text_y = legend_y + 13.0;
@@ -631,7 +632,9 @@ pub fn render_absolute_mass_bias_svg(
             let style = adduct_family_shape_style(&family, 0.3);
             chart
                 .draw_series(PointSeries::of_element(
-                    points.iter().map(|(x, value)| (*x, value.clamp(-y_limit, y_limit))),
+                    points
+                        .iter()
+                        .map(|(x, value)| (*x, value.clamp(-y_limit, y_limit))),
                     1.6,
                     style,
                     &|coord, size, style| Circle::new(coord, size, style.filled()),

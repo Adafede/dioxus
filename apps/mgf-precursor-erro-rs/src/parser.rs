@@ -31,14 +31,14 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Blob, console};
 
-use crate::metrics::{AdductClass, PlotPointSample, PrecursorMetrics, WarningDetail};
 #[cfg(target_arch = "wasm32")]
 use crate::metrics::merge_metrics;
+use crate::metrics::{AdductClass, PlotPointSample, PrecursorMetrics, WarningDetail};
 
 #[cfg(any(target_arch = "wasm32", test))]
-pub const CHUNK_SIZE: usize = 1 << 20;
+pub const CHUNK_SIZE: usize = 2 << 20;
 #[cfg(any(target_arch = "wasm32", test))]
-pub const PROGRESS_INTERVAL: usize = 1 << 20;
+pub const PROGRESS_INTERVAL: usize = 2 << 20;
 
 pub const PROTON_MASS: f64 = 1.007_276_466_621;
 pub const HYDROGEN_MASS: f64 = PROTON_MASS + ELECTRON_MASS;
@@ -50,6 +50,8 @@ pub const AMMONIUM_MASS: f64 = 18.033_823;
 static ADDUCT_SPEC_CACHE: LazyLock<Mutex<HashMap<String, Option<(f64, f64)>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 static ADDUCT_CLASS_CACHE: LazyLock<Mutex<HashMap<String, Option<AdductClass>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static ADDUCT_FAMILY_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[cfg(target_arch = "wasm32")]
@@ -619,11 +621,13 @@ pub fn normalize_adduct_label(adduct: &str) -> String {
     }
 
     let normalized = trimmed.replace(' ', "").to_ascii_uppercase();
-    let (body, suffix) = normalized.find(']').map_or((normalized.as_str(), ""), |idx| {
-        let body = &normalized[1..idx];
-        let suffix = &normalized[idx + 1..];
-        (body, suffix)
-    });
+    let (body, suffix) = normalized
+        .find(']')
+        .map_or((normalized.as_str(), ""), |idx| {
+            let body = &normalized[1..idx];
+            let suffix = &normalized[idx + 1..];
+            (body, suffix)
+        });
     let body = body.trim_matches(|ch| ch == '[' || ch == ']');
     let suffix = suffix.trim();
 
@@ -661,9 +665,29 @@ pub fn is_supported_adduct(adduct: &str) -> bool {
 
 /// # Panics
 /// Panics if the adduct-class cache mutex is poisoned.
+pub fn adduct_family(adduct: &str) -> String {
+    let normalized_key = normalize_adduct_key(adduct);
+    if let Some(cached) = ADDUCT_FAMILY_CACHE.lock().unwrap().get(&normalized_key) {
+        return cached.clone();
+    }
+
+    let family = adduct_class(adduct).map_or_else(|| "Other".to_string(), |adduct| adduct.family);
+    ADDUCT_FAMILY_CACHE
+        .lock()
+        .unwrap()
+        .insert(normalized_key, family.clone());
+    family
+}
+
+/// # Panics
+/// Panics if the adduct-class cache mutex is poisoned.
 pub fn adduct_class(adduct: &str) -> Option<AdductClass> {
     let normalized_key = adduct.trim().replace(' ', "").to_ascii_uppercase();
-    let cached = ADDUCT_CLASS_CACHE.lock().unwrap().get(&normalized_key).cloned();
+    let cached = ADDUCT_CLASS_CACHE
+        .lock()
+        .unwrap()
+        .get(&normalized_key)
+        .cloned();
     if let Some(cached) = cached {
         return cached;
     }
