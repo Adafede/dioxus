@@ -322,10 +322,12 @@ struct PrecursorMetrics {
     within_0_0005_da: usize,
     within_0_001_da: usize,
     within_0_005_da: usize,
+    above_0_005_da: usize,
     within_0_5_ppm: usize,
     within_1_ppm: usize,
     within_5_ppm: usize,
     within_10_ppm: usize,
+    above_10_ppm: usize,
     da_error_histogram: HistogramData,
     ppm_error_histogram: HistogramData,
     plot_points: Vec<PlotPoint>,
@@ -375,10 +377,12 @@ impl Default for PrecursorMetrics {
             within_0_0005_da: 0,
             within_0_001_da: 0,
             within_0_005_da: 0,
+            above_0_005_da: 0,
             within_0_5_ppm: 0,
             within_1_ppm: 0,
             within_5_ppm: 0,
             within_10_ppm: 0,
+            above_10_ppm: 0,
             da_error_histogram: HistogramData::new(48, 0.0, 0.5),
             ppm_error_histogram: HistogramData::new(48, 0.0, 50.0),
             plot_points: Vec::new(),
@@ -446,7 +450,14 @@ impl PrecursorMetrics {
         self.signed_error_da_median = self.signed_error_da_median_tracker.median();
         self.signed_error_ppm_median = self.signed_error_ppm_median_tracker.median();
 
+        if abs_error_da > 0.005 {
+            self.above_0_005_da = self.above_0_005_da.saturating_add(1);
+        }
         if abs_ppm > 10.0 {
+            self.above_10_ppm = self.above_10_ppm.saturating_add(1);
+        }
+
+        if abs_error_da > 0.01 {
             if let Some(smiles) = smiles.filter(|value| !value.trim().is_empty()) {
                 let trimmed = smiles.trim().to_string();
                 self.high_error_smiles
@@ -744,6 +755,26 @@ fn parse_charge_sign(charge: Option<&str>, ion_mode: Option<&str>) -> Option<boo
     }
 }
 
+fn apply_adduct_token(
+    current: &str,
+    sign: f64,
+    uses_double_mg_mass: bool,
+    multiplier: &mut f64,
+    shift: &mut f64,
+    saw_unsupported_token: &mut bool,
+) {
+    if let Some(token_mass) = parse_adduct_term_mass_with_context(current, sign, uses_double_mg_mass)
+    {
+        *shift += sign * token_mass;
+    } else if let Some(token_multiplier) = parse_multiplicity_token(current) {
+        *multiplier = token_multiplier;
+    } else if current.eq_ignore_ascii_case("H") {
+        *shift += sign * HYDROGEN_MASS;
+    } else if !current.is_empty() {
+        *saw_unsupported_token = true;
+    }
+}
+
 fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     let normalized = adduct.trim().replace(' ', "").to_ascii_uppercase();
     let body = if let Some(index) = normalized.find(']') {
@@ -752,7 +783,6 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
         normalized.clone()
     };
     let charge_sign = parse_adduct_charge_sign(Some(adduct));
-    let charge_value = parse_charge_value(None, Some(adduct)).unwrap_or(1.0);
     let uses_double_mg_mass = charge_sign == Some(false);
     let mut multiplier = 1.0f64;
     let mut shift = 0.0f64;
@@ -763,40 +793,26 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     for ch in body.chars() {
         match ch {
             '+' => {
-                if let Some(token_mass) =
-                    parse_adduct_term_mass_with_context(&current, sign, uses_double_mg_mass)
-                {
-                    shift += sign * token_mass;
-                } else if current.eq_ignore_ascii_case("M") {
-                    multiplier = 1.0;
-                } else if current.eq_ignore_ascii_case("2M") {
-                    multiplier = 2.0;
-                } else if current.eq_ignore_ascii_case("3M") {
-                    multiplier = 3.0;
-                } else if current.eq_ignore_ascii_case("H") {
-                    shift += sign * HYDROGEN_MASS;
-                } else if !current.is_empty() {
-                    saw_unsupported_token = true;
-                }
+                apply_adduct_token(
+                    &current,
+                    sign,
+                    uses_double_mg_mass,
+                    &mut multiplier,
+                    &mut shift,
+                    &mut saw_unsupported_token,
+                );
                 current.clear();
                 sign = 1.0;
             }
             '-' => {
-                if let Some(token_mass) =
-                    parse_adduct_term_mass_with_context(&current, sign, uses_double_mg_mass)
-                {
-                    shift += sign * token_mass;
-                } else if current.eq_ignore_ascii_case("M") {
-                    multiplier = 1.0;
-                } else if current.eq_ignore_ascii_case("2M") {
-                    multiplier = 2.0;
-                } else if current.eq_ignore_ascii_case("3M") {
-                    multiplier = 3.0;
-                } else if current.eq_ignore_ascii_case("H") {
-                    shift += sign * HYDROGEN_MASS;
-                } else if !current.is_empty() {
-                    saw_unsupported_token = true;
-                }
+                apply_adduct_token(
+                    &current,
+                    sign,
+                    uses_double_mg_mass,
+                    &mut multiplier,
+                    &mut shift,
+                    &mut saw_unsupported_token,
+                );
                 current.clear();
                 sign = -1.0;
             }
@@ -804,21 +820,14 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
         }
     }
 
-    if let Some(token_mass) =
-        parse_adduct_term_mass_with_context(&current, sign, uses_double_mg_mass)
-    {
-        shift += sign * token_mass;
-    } else if current.eq_ignore_ascii_case("M") {
-        multiplier = 1.0;
-    } else if current.eq_ignore_ascii_case("2M") {
-        multiplier = 2.0;
-    } else if current.eq_ignore_ascii_case("3M") {
-        multiplier = 3.0;
-    } else if current.eq_ignore_ascii_case("H") {
-        shift += sign * HYDROGEN_MASS;
-    } else if !current.is_empty() {
-        saw_unsupported_token = true;
-    }
+    apply_adduct_token(
+        &current,
+        sign,
+        uses_double_mg_mass,
+        &mut multiplier,
+        &mut shift,
+        &mut saw_unsupported_token,
+    );
 
     if saw_unsupported_token {
         None
@@ -828,6 +837,33 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
         None
     } else {
         Some((multiplier, shift))
+    }
+}
+
+fn parse_multiplicity_token(token: &str) -> Option<f64> {
+    let trimmed = token.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if trimmed.eq_ignore_ascii_case("M") {
+        return Some(1.0);
+    }
+
+    let digits_end = trimmed
+        .chars()
+        .position(|ch| !ch.is_ascii_digit())
+        .unwrap_or(trimmed.len());
+    if digits_end == 0 {
+        return None;
+    }
+
+    let multiplier_str = &trimmed[..digits_end];
+    let remainder = &trimmed[digits_end..];
+    if remainder.eq_ignore_ascii_case("M") {
+        multiplier_str.parse::<f64>().ok()
+    } else {
+        None
     }
 }
 
@@ -1201,7 +1237,7 @@ fn app() -> Element {
                             if !metrics.high_error_smiles.is_empty() {
                                 div {
                                     style: "margin-top: 1rem; padding: 0.8rem 0.9rem; border: 1px solid #fecaca; border-radius: 12px; background: #fef2f2; color: #991b1b;",
-                                    p { style: "margin: 0 0 0.35rem; font-weight: 700;", "SMILES for spectra above 10 ppm" }
+                                    p { style: "margin: 0 0 0.35rem; font-weight: 700;", "SMILES for spectra above 0.01 Da" }
                                     ul { style: "margin: 0.25rem 0 0 1.1rem; padding: 0; font-size: 0.88rem; max-height: 240px; overflow: auto;",
                                        {
                                            let mut sorted_high_error = metrics.high_error_smiles.iter().collect::<Vec<_>>();
@@ -1331,6 +1367,12 @@ fn app() -> Element {
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
                                     "5–10 ppm: {format_count_with_percentage(metrics.within_10_ppm, metrics.spectra)}"
                                 }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(190, 18, 60, 0.12);",
+                                    "> 0.005 Da: {format_count_with_percentage(metrics.above_0_005_da, metrics.spectra)}"
+                                }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
+                                    "> 10 ppm: {format_count_with_percentage(metrics.above_10_ppm, metrics.spectra)}"
+                                }
                             }
                         }
                     }
@@ -1400,6 +1442,7 @@ fn normalize_adduct_label(adduct: &str) -> String {
         ("M+2H", "") | ("M+2H", "+") | ("M+2H", "++") | ("M+2H", "2+") => "[M+2H]2+".to_string(),
         ("M-H", "") | ("M-H", "-") | ("M-H", "1-") | ("M-H", "--") => "[M-H]-".to_string(),
         ("M-2H", "") | ("M-2H", "2-") | ("M-2H", "--") => "[M-2H]2-".to_string(),
+        ("4M-H", "") | ("4M-H", "-") | ("4M-H", "1-") | ("4M-H", "--") => "[4M-H]-".to_string(),
         _ => trimmed.to_string(),
     }
 }
@@ -2199,6 +2242,8 @@ fn process_block_state(
         metrics.within_0_001_da = 1;
     } else if abs_error_da <= 0.005 {
         metrics.within_0_005_da = 1;
+    } else {
+        metrics.above_0_005_da = 1;
     }
     if abs_ppm <= 0.5 {
         metrics.within_0_5_ppm = 1;
@@ -2208,6 +2253,8 @@ fn process_block_state(
         metrics.within_5_ppm = 1;
     } else if abs_ppm <= 10.0 {
         metrics.within_10_ppm = 1;
+    } else {
+        metrics.above_10_ppm = 1;
     }
 
     Ok(Some(metrics))
@@ -2246,6 +2293,13 @@ mod tests {
         let mass = expected_precursor_mz(1000.0, None, Some("-1"), None)
             .expect("negative charge should be supported");
         assert!((mass - (1000.0 - PROTON_MASS)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn supports_quaternary_multiplicity_adducts() {
+        let spec = super::parse_adduct_mass_spec("[4M-H]-")
+            .expect("4M-H adduct should be supported");
+        assert_eq!(spec, (4.0, -super::HYDROGEN_MASS));
     }
 
     #[test]
@@ -2330,6 +2384,40 @@ mod tests {
         assert_eq!(detail.max_abs_error_da, Some(10.0));
         assert_eq!(detail.max_abs_error_ppm, Some(12.0));
         assert_eq!(detail.expected_mass, Some(30.0));
+    }
+
+    #[test]
+    fn tracks_above_threshold_counts_and_da_filtered_high_error_smiles() {
+        let mut metrics = super::PrecursorMetrics::default();
+        metrics.record_error(
+            0.009,
+            11.0,
+            "[M+H]+",
+            11.0,
+            0.0,
+            10.0,
+            Some("CCO"),
+            Some(1.0),
+            Some(20.0),
+            Some("C2H6O"),
+        );
+        assert_eq!(metrics.above_0_005_da, 1);
+        assert_eq!(metrics.above_10_ppm, 1);
+        assert!(metrics.high_error_smiles.is_empty());
+
+        metrics.record_error(
+            0.011,
+            11.0,
+            "[M+H]+",
+            11.0,
+            0.0,
+            10.0,
+            Some("CCO"),
+            Some(1.0),
+            Some(20.0),
+            Some("C2H6O"),
+        );
+        assert!(metrics.high_error_smiles.contains_key("CCO"));
     }
 
     #[test]
@@ -2705,8 +2793,9 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     current.within_0_5_ppm += next.within_0_5_ppm;
     current.within_1_ppm += next.within_1_ppm;
     current.within_5_ppm += next.within_5_ppm;
+    current.above_0_005_da += next.above_0_005_da;
     current.within_10_ppm += next.within_10_ppm;
-
+    current.above_10_ppm += next.above_10_ppm;
     for (idx, count) in next.da_error_histogram.bins.iter().enumerate() {
         if let Some(current_count) = current.da_error_histogram.bins.get_mut(idx) {
             *current_count += count;
