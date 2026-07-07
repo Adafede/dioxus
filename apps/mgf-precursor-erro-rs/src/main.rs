@@ -14,9 +14,7 @@ use gloo_timers::future::TimeoutFuture;
 #[cfg(target_arch = "wasm32")]
 use js_sys::Uint8Array;
 use mascot_rs::prelude::*;
-use molecular_formulas::{MolecularFormula, prelude::ChemicalFormula};
-use smiles_parser::chain;
-use smiles_parser::graph::{Atom, MoleculeGraph};
+use molecular_formulas::prelude::MolecularFormula;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
@@ -407,12 +405,7 @@ impl PrecursorMetrics {
 }
 
 fn smiles_is_supported(smiles: &str) -> bool {
-    let trimmed = smiles.trim();
-    if trimmed.is_empty() {
-        return false;
-    }
-
-    !trimmed.contains(['[', ']', '@', '/', '\\', ':', ';'])
+    !smiles.trim().is_empty()
 }
 
 fn exact_mass_from_smiles(smiles: &str) -> Option<f64> {
@@ -456,34 +449,8 @@ fn exact_mass_from_smiles_uncached(
     }
 
     let parsed = catch_unwind(AssertUnwindSafe(|| {
-        let (rest, parsed_chain) = chain(smiles.as_bytes()).ok()?;
-        if !rest.is_empty() {
-            return None;
-        }
-
-        let graph = MoleculeGraph::from_chain(parsed_chain);
-        let mut counts: BTreeMap<&str, u32> = BTreeMap::new();
-        for node_index in graph.node_indices() {
-            let atom = graph.node_weight(node_index)?;
-            let symbol = match atom {
-                Atom::AliphaticOrganic(atom) => atom.element.get_symbol(),
-                Atom::Element(element) => element.get_symbol(),
-            };
-            *counts.entry(symbol).or_default() += 1;
-        }
-
-        let mut formula_parts = counts.into_iter().collect::<Vec<_>>();
-        formula_parts.sort_by(|(left, _), (right, _)| hill_order(left, right));
-
-        let mut formula = String::new();
-        for (symbol, count) in formula_parts {
-            formula.push_str(symbol);
-            if count > 1 {
-                formula.push_str(&count.to_string());
-            }
-        }
-
-        let formula: ChemicalFormula<u32, i32> = ChemicalFormula::from_str(&formula).ok()?;
+        let parsed = Smiles::from_str(smiles).ok()?;
+        let formula: ChemicalFormula<u32, i32> = ChemicalFormula::from(&parsed);
         Some(formula.isotopologue_mass())
     }));
 
@@ -612,7 +579,12 @@ fn expected_precursor_mz(
                 },
             )
         });
+        let uses_mg_charge_correction =
+            normalized_adduct.to_ascii_uppercase().contains("MG") && charge_sign == Some(false);
         let electron_adjustment = match charge_sign {
+            Some(false) if uses_mg_charge_correction => {
+                -ELECTRON_MASS * (charge_value - 1.0).max(0.0)
+            }
             Some(false) => -ELECTRON_MASS * charge_value,
             Some(true) => ELECTRON_MASS * charge_value,
             None => 0.0,
@@ -832,6 +804,26 @@ fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64>
     }
 
     None
+}
+
+fn decimal_precision(value: &str) -> usize {
+    let trimmed = value.trim();
+    let Some((_, fractional)) = trimmed.split_once('.') else {
+        return 0;
+    };
+    fractional
+        .chars()
+        .take_while(|ch| ch.is_ascii_digit())
+        .count()
+}
+
+fn round_to_precision(value: f64, precision: usize) -> f64 {
+    if precision == 0 {
+        return value.round();
+    }
+
+    let factor = 10_f64.powi(precision as i32);
+    (value * factor).round() / factor
 }
 
 #[component]
@@ -1884,7 +1876,6 @@ async fn scan_blob_with_progress(
     let mut smiles_cache = HashMap::new();
     let mut formula_cache = HashMap::new();
     let mut logged_failures = HashSet::new();
-    let mut mascot_builder = MascotGenericFormatBuilder::<usize, f64>::default();
 
     while let Some(line) = reader.next_line().await? {
         let trimmed = line.trim();
@@ -1896,7 +1887,6 @@ async fn scan_blob_with_progress(
             current_block.clear();
             current_is_in_block = true;
             current_block.push(trimmed.to_string());
-            let _ = mascot_builder.digest_line(trimmed);
             continue;
         }
 
@@ -1905,22 +1895,17 @@ async fn scan_blob_with_progress(
         }
 
         current_block.push(trimmed.to_string());
-        if MascotGenericFormatBuilder::<usize, f64>::can_parse_line(trimmed) {
-            let _ = mascot_builder.digest_line(trimmed);
-        }
 
         if trimmed == "END IONS" {
-            let parsed_mascot = std::mem::take(&mut mascot_builder).build().ok();
             if let Some(result) = process_block(
                 &current_block,
-                parsed_mascot.as_ref(),
+                None,
                 &mut smiles_cache,
                 &mut formula_cache,
                 &mut logged_failures,
             )? {
                 metrics = merge_metrics(metrics, result);
             }
-            mascot_builder = MascotGenericFormatBuilder::<usize, f64>::default();
             current_block.clear();
             current_is_in_block = false;
         }
@@ -1931,15 +1916,18 @@ async fn scan_blob_with_progress(
 
 fn process_block(
     block_lines: &[String],
-    parsed_mascot: Option<&MascotGenericFormat<usize, f64>>,
+    parsed_mascot: Option<&MascotGenericFormat<f64>>,
     smiles_cache: &mut HashMap<String, Option<f64>>,
     formula_cache: &mut HashMap<String, Option<f64>>,
     logged_failures: &mut HashSet<String>,
 ) -> Result<Option<PrecursorMetrics>, ScanError> {
-    let mut observed_precursor = parsed_mascot.map(|block| block.parent_ion_mass());
+    let mut observed_precursor = None;
+    let mut observed_precursor_raw = None;
     let mut reference_mass = None;
     let mut reference_mass_source = None;
-    let mut charge = parsed_mascot.map(|block| block.charge().to_string());
+    let mut charge = parsed_mascot
+        .and_then(|block| block.charge())
+        .map(|value| value.to_string());
     let mut adduct = None;
     let mut ion_mode = None;
     let mut smiles = None;
@@ -1954,6 +1942,7 @@ fn process_block(
         }
 
         if let Some(stripped) = trimmed.strip_prefix("PRECURSOR_MZ=") {
+            observed_precursor_raw = Some(stripped.to_string());
             if let Ok(value) = stripped.parse::<f64>() {
                 observed_precursor = Some(value);
             }
@@ -1961,6 +1950,7 @@ fn process_block(
         }
 
         if let Some(stripped) = trimmed.strip_prefix("PEPMASS=") {
+            observed_precursor_raw = Some(stripped.to_string());
             if let Ok(value) = stripped.parse::<f64>() {
                 observed_precursor = Some(value);
             }
@@ -2034,6 +2024,11 @@ fn process_block(
     let Some(observed_precursor) = observed_precursor else {
         return Ok(None);
     };
+
+    let observed_precision = observed_precursor_raw
+        .as_deref()
+        .map(decimal_precision)
+        .unwrap_or(5);
 
     let reference_mass = reference_mass.or_else(|| {
         formula
@@ -2121,6 +2116,7 @@ fn process_block(
         ion_mode.as_deref(),
     )
     .unwrap_or(reference_mass);
+    let expected_precursor_mz = round_to_precision(expected_precursor_mz, observed_precision);
     let error_da = observed_precursor - expected_precursor_mz;
     let abs_error_da = error_da.abs();
     let ppm = if expected_precursor_mz.abs() > f64::EPSILON {
@@ -2195,11 +2191,12 @@ mod tests {
     }
 
     #[test]
-    fn treats_chiral_smiles_as_unavailable_when_parser_cannot_handle_them() {
+    fn parses_chiral_smiles_when_the_upstream_parser_supports_them() {
         let mass = exact_mass_from_smiles(
             "C#C[C@]1(O)C=C[C@H]2[C@@H]3CCC4=CC(=O)CC[C@@H]4[C@H]3CC[C@@]21CC",
         );
-        assert!(mass.is_none());
+        assert!(mass.is_some());
+        assert!((mass.unwrap() - 310.193_280_077_12).abs() < 1e-6);
     }
 
     #[test]
@@ -2404,7 +2401,6 @@ mod tests {
         )
         .expect("block should be processed")
         .expect("block should produce metrics");
-        dbg!(metrics.abs_error_da_max, metrics.abs_error_ppm_max);
         assert_eq!(metrics.spectra, 1);
         assert!(metrics.spectra_with_reference_mass > 0);
         assert!(metrics.abs_error_da_max < 5e-6);
