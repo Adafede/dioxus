@@ -56,6 +56,7 @@ struct HistogramData {
 #[derive(Clone, Debug, PartialEq)]
 struct PlotPoint {
     adduct_type: String,
+    observed_precursor_mz: f64,
     signed_error_da: f64,
     signed_error_ppm: f64,
 }
@@ -509,6 +510,7 @@ impl PrecursorMetrics {
         if self.plot_points.len() < 260 {
             self.plot_points.push(PlotPoint {
                 adduct_type: adduct_type.to_string(),
+                observed_precursor_mz,
                 signed_error_da,
                 signed_error_ppm: ppm_error,
             });
@@ -519,6 +521,7 @@ impl PrecursorMetrics {
                 if let Some(point) = self.plot_points.get_mut(len / 2) {
                     *point = PlotPoint {
                         adduct_type: adduct_type.to_string(),
+                        observed_precursor_mz,
                         signed_error_da,
                         signed_error_ppm: ppm_error,
                     };
@@ -1275,42 +1278,88 @@ fn app() -> Element {
 
                             div {
                                 style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem;",
-                                div { style: "background: white; padding: 0.8rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);",
-                                    h4 { style: "margin: 0 0 0.45rem; font-size: 0.95rem; color: #0f172a;", "Observed precursor m/z" }
-                                    ul { style: "padding-left: 1.1rem; margin: 0.25rem 0 0; color: #475569;",
-                                        li { "min: {format_value(metrics.observed_precursor_min)}" }
-                                        li { "max: {format_value(metrics.observed_precursor_max)}" }
-                                        li { "median: {format_value(metrics.observed_precursor_median)}" }
-                                        li { "mean: {format_value(metrics.observed_precursor_mean)}" }
+                                div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
+                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Observed precursor m/z" }
+                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Surveyed precursor range and central tendency" }
+                                    div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "median {format_value(metrics.observed_precursor_median)}" }
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "mean {format_value(metrics.observed_precursor_mean)}" }
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "range {format_value(metrics.observed_precursor_max - metrics.observed_precursor_min)}" }
                                     }
                                 }
-                                div { style: "background: white; padding: 0.8rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);",
-                                    h4 { style: "margin: 0 0 0.45rem; font-size: 0.95rem; color: #0f172a;", "Absolute error (Da)" }
-                                    ul { style: "padding-left: 1.1rem; margin: 0.25rem 0 0; color: #475569;",
-                                        li { "min: {format_value(metrics.abs_error_da_min)}" }
-                                        li { "median: {format_value(metrics.abs_error_da_median)}" }
-                                        li { "mean: {format_value(metrics.abs_error_da_mean)}" }
-                                        li { "RMS: {format_value(metrics.abs_error_da_rms)}" }
-                                        li { "max: {format_value(metrics.abs_error_da_max)}" }
+                                div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
+                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Absolute error (Da)" }
+                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Robust central tendency and dispersion" }
+                                    div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "median {format_value(metrics.abs_error_da_median)}" }
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "mean {format_value(metrics.abs_error_da_mean)}" }
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "RMS {format_value(metrics.abs_error_da_rms)}" }
                                     }
                                 }
-                                div { style: "background: white; padding: 0.8rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);",
-                                    h4 { style: "margin: 0 0 0.45rem; font-size: 0.95rem; color: #0f172a;", "Absolute error (ppm)" }
-                                    ul { style: "padding-left: 1.1rem; margin: 0.25rem 0 0; color: #475569;",
-                                        li { "min: {format_value(metrics.abs_error_ppm_min)}" }
-                                        li { "median: {format_value(metrics.abs_error_ppm_median)}" }
-                                        li { "mean: {format_value(metrics.abs_error_ppm_mean)}" }
-                                        li { "RMS: {format_value(metrics.abs_error_ppm_rms)}" }
-                                        li { "max: {format_value(metrics.abs_error_ppm_max)}" }
+                                div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
+                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Absolute error (ppm)" }
+                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Relative drift across the precursor mass scale" }
+                                    div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "median {format_value(metrics.abs_error_ppm_median)}" }
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "mean {format_value(metrics.abs_error_ppm_mean)}" }
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "RMS {format_value(metrics.abs_error_ppm_rms)}" }
                                     }
                                 }
-                                div { style: "background: white; padding: 0.8rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);",
-                                    h4 { style: "margin: 0 0 0.45rem; font-size: 0.95rem; color: #0f172a;", "Signed mean" }
-                                    ul { style: "padding-left: 1.1rem; margin: 0.25rem 0 0; color: #475569;",
-                                        li { "Da median: {format_value(metrics.signed_error_da_median)}" }
-                                        li { "Da mean: {format_value(metrics.signed_error_da_mean)}" }
-                                        li { "ppm median: {format_value(metrics.signed_error_ppm_median)}" }
-                                        li { "ppm mean: {format_value(metrics.signed_error_ppm_mean)}" }
+                                div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
+                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Signed bias" }
+                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Directionality of the residual error" }
+                                    div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "Da mean {format_value(metrics.signed_error_da_mean)}" }
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "ppm mean {format_value(metrics.signed_error_ppm_mean)}" }
+                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "max Da {format_value(metrics.abs_error_da_max)}" }
+                                    }
+                                }
+                            }
+
+                            div {
+                                style: "margin-top: 1rem; padding: 0.95rem 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
+                                h4 { style: "margin: 0 0 0.25rem; font-size: 0.95rem; color: #0f172a;", "Tolerance compliance" }
+                                p { style: "margin: 0 0 0.7rem; color: #64748b; font-size: 0.84rem;", "Scientifically relevant mass-error bands for reporting and QC" }
+                                div { style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem;",
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #dcfce7; background: #f0fdf4; color: #166534;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.1 mDa" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_0001_da, metrics.spectra)}" }
+                                    }
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #dcfce7; background: #f0fdf4; color: #166534;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 mDa" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_0005_da, metrics.spectra)}" }
+                                    }
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 mDa" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_001_da, metrics.spectra)}" }
+                                    }
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fed7aa; background: #fff7ed; color: #9a2c00;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 mDa" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}" }
+                                    }
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 5.0 mDa" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.above_0_005_da, metrics.spectra)}" }
+                                    }
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #dcfce7; background: #f0fdf4; color: #166534;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 ppm" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_0_5_ppm, metrics.spectra)}" }
+                                    }
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 ppm" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_1_ppm, metrics.spectra)}" }
+                                    }
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fed7aa; background: #fff7ed; color: #9a2c00;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 ppm" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}" }
+                                    }
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 10.0 ppm" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.within_10_ppm, metrics.spectra)}" }
+                                    }
+                                    div { style: "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;",
+                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 10.0 ppm" }
+                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_count_with_percentage(metrics.above_10_ppm, metrics.spectra)}" }
                                     }
                                 }
                             }
@@ -1318,22 +1367,22 @@ fn app() -> Element {
                             div {
                                 style: "margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;",
                                 histogram_plot {
-                                    title: "Absolute precursor error (Da)".to_string(),
-                                    subtitle: "Distribution across spectra, with tighter tolerance bands highlighted".to_string(),
+                                    title: "Absolute precursor error distribution (Da)".to_string(),
+                                    subtitle: "Empirical error distribution with analytical tolerance bands".to_string(),
                                     histogram: metrics.da_error_histogram.clone(),
                                     thresholds: vec![0.0001, 0.0005, 0.005],
                                     unit: "Da".to_string(),
                                 }
                                 histogram_plot {
-                                    title: "Absolute precursor error (ppm)".to_string(),
-                                    subtitle: "Distribution across spectra, with tighter ppm tolerance bands".to_string(),
+                                    title: "Absolute precursor error distribution (ppm)".to_string(),
+                                    subtitle: "Relative error distribution with reporting-grade ppm thresholds".to_string(),
                                     histogram: metrics.ppm_error_histogram.clone(),
                                     thresholds: vec![0.5, 1.0, 5.0],
                                     unit: "ppm".to_string(),
                                 }
                                 scatter_plot {
-                                    title: "Error versus adduct type".to_string(),
-                                    subtitle: "Signed Da error by adduct family".to_string(),
+                                    title: "Signed error versus precursor m/z".to_string(),
+                                    subtitle: "Mass residuals by adduct family and precursor mass".to_string(),
                                     points: metrics.plot_points.clone(),
                                     other_label: if metrics.skipped_spectra > 0 {
                                         Some(format!("Other ({})", metrics.skipped_spectra))
@@ -1343,39 +1392,6 @@ fn app() -> Element {
                                 }
                             }
 
-                            div {
-                                style: "margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.55rem;",
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f0fdf4; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(22, 101, 52, 0.12);",
-                                    "≤ 0.0001 Da: {format_count_with_percentage(metrics.within_0_0001_da, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #15803d; border: 1px solid #4ade80; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(21, 128, 61, 0.12);",
-                                    "0.0001–0.0005 Da: {format_count_with_percentage(metrics.within_0_0005_da, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(146, 64, 14, 0.12);",
-                                    "0.0005–0.001 Da: {format_count_with_percentage(metrics.within_0_001_da, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ffedd5; color: #9a2c00; border: 1px solid #fdba74; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(154, 44, 0, 0.12);",
-                                    "0.001–0.005 Da: {format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(22, 101, 52, 0.12);",
-                                    "≤ 0.5 ppm: {format_count_with_percentage(metrics.within_0_5_ppm, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(146, 64, 14, 0.12);",
-                                    "0.5–1 ppm: {format_count_with_percentage(metrics.within_1_ppm, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ffedd5; color: #9a2c00; border: 1px solid #fdba74; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(154, 44, 0, 0.12);",
-                                    "1–5 ppm: {format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
-                                    "5–10 ppm: {format_count_with_percentage(metrics.within_10_ppm, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(190, 18, 60, 0.12);",
-                                    "> 0.005 Da: {format_count_with_percentage(metrics.above_0_005_da, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
-                                    "> 10 ppm: {format_count_with_percentage(metrics.above_10_ppm, metrics.spectra)}"
-                                }
-                            }
                         }
                     }
                 }
@@ -1549,26 +1565,30 @@ fn render_histogram_svg(
     unit: &str,
 ) -> String {
     use plotters::prelude::*;
-    use plotters::series::{LineSeries, PointSeries};
+    use plotters::series::LineSeries;
 
-    let width = 720u32;
-    let height = 420u32;
+    let width = 800u32;
+    let height = 460u32;
     let mut buffer = String::new();
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
     let span = (histogram.max - histogram.min).abs().max(1e-9);
-    let x_min = histogram.min - span * 0.035;
+    let x_min = histogram.min.max(0.0) - span * 0.035;
     let x_max = histogram.max + span * 0.035;
     let max_count = histogram.bins.iter().copied().max().unwrap_or(1).max(1) as f64;
+    let y_max = max_count + max_count * 0.12;
 
     {
         let mut chart = ChartBuilder::on(&root)
-            .margin(18)
+            .margin_top(16)
+            .margin_right(20)
+            .margin_bottom(26)
+            .margin_left(24)
             .caption(title, ("sans-serif", 18).into_font())
-            .set_label_area_size(LabelAreaPosition::Left, 48)
-            .set_label_area_size(LabelAreaPosition::Bottom, 44)
-            .build_cartesian_2d(x_min..x_max, 0f64..max_count)
+            .set_label_area_size(LabelAreaPosition::Left, 56)
+            .set_label_area_size(LabelAreaPosition::Bottom, 54)
+            .build_cartesian_2d(x_min..x_max, 0f64..y_max)
             .unwrap();
 
         chart
@@ -1583,21 +1603,34 @@ fn render_histogram_svg(
             .draw()
             .unwrap();
 
+        chart
+            .draw_series(LineSeries::new(
+                vec![(x_min, 0.0f64), (x_max, 0.0f64)],
+                ShapeStyle::from(&RGBColor(203, 213, 225)).stroke_width(1),
+            ))
+            .unwrap();
+
         let bin_width = span / histogram.bins.len().max(1) as f64;
         for (index, count) in histogram.bins.iter().enumerate() {
             let x0 = histogram.min + index as f64 * bin_width;
             let x1 = (x0 + bin_width).min(histogram.max);
             let y0 = 0.0f64;
             let y1 = *count as f64;
-            let color = plotters::style::RGBColor(
-                (59 + (index % 6) * 8) as u8,
-                (130 + (index % 5) * 12) as u8,
-                (246 - (index % 4) * 10) as u8,
-            );
+            let fill = if unit == "Da" {
+                RGBColor(37, 99, 235)
+            } else {
+                RGBColor(14, 116, 144)
+            };
             chart
                 .draw_series(std::iter::once(Rectangle::new(
                     [(x0, y0), (x1, y1)],
-                    ShapeStyle::from(&color).filled(),
+                    ShapeStyle::from(&fill).filled(),
+                )))
+                .unwrap();
+            chart
+                .draw_series(std::iter::once(Rectangle::new(
+                    [(x0, y0), (x1, y1)],
+                    ShapeStyle::from(&RGBColor(30, 64, 175)).stroke_width(1),
                 )))
                 .unwrap();
         }
@@ -1607,8 +1640,8 @@ fn render_histogram_svg(
             let color = tolerance_step_rgb(index, thresholds.len());
             chart
                 .draw_series(LineSeries::new(
-                    vec![(x, 0.0), (x, max_count)],
-                    ShapeStyle::from(&color).stroke_width(1),
+                    vec![(x, 0.0), (x, y_max)],
+                    ShapeStyle::from(&color).stroke_width(2),
                 ))
                 .unwrap();
         }
@@ -1620,12 +1653,12 @@ fn render_histogram_svg(
     buffer
 }
 
-fn render_scatter_svg(title: &str, points: &[PlotPoint], other_label: Option<&str>) -> String {
+fn render_scatter_svg(title: &str, points: &[PlotPoint], _other_label: Option<&str>) -> String {
     use plotters::prelude::*;
     use plotters::series::{LineSeries, PointSeries};
 
-    let width = 720u32;
-    let height = 420u32;
+    let width = 800u32;
+    let height = 460u32;
     let mut buffer = String::new();
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
     root.fill(&WHITE).unwrap();
@@ -1642,6 +1675,24 @@ fn render_scatter_svg(title: &str, points: &[PlotPoint], other_label: Option<&st
         families.push("Other".to_string());
     }
 
+    let x_values = points
+        .iter()
+        .map(|point| point.observed_precursor_mz)
+        .collect::<Vec<_>>();
+    let x_min = x_values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min)
+        .max(1.0);
+    let x_max = x_values
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max)
+        .max(x_min + 1.0);
+    let x_span = (x_max - x_min).max(1.0);
+    let x_min = (x_min - x_span * 0.05).max(1.0);
+    let x_max = x_max + x_span * 0.05;
+
     let y_values = points
         .iter()
         .map(|point| point.signed_error_da)
@@ -1654,11 +1705,14 @@ fn render_scatter_svg(title: &str, points: &[PlotPoint], other_label: Option<&st
 
     {
         let mut chart = ChartBuilder::on(&root)
-            .margin(18)
+            .margin_top(16)
+            .margin_right(20)
+            .margin_bottom(26)
+            .margin_left(24)
             .caption(title, ("sans-serif", 18).into_font())
-            .set_label_area_size(LabelAreaPosition::Left, 48)
-            .set_label_area_size(LabelAreaPosition::Bottom, 64)
-            .build_cartesian_2d(0usize..families.len(), y_min..y_max)
+            .set_label_area_size(LabelAreaPosition::Left, 56)
+            .set_label_area_size(LabelAreaPosition::Bottom, 54)
+            .build_cartesian_2d(x_min..x_max, y_min..y_max)
             .unwrap();
 
         chart
@@ -1666,22 +1720,16 @@ fn render_scatter_svg(title: &str, points: &[PlotPoint], other_label: Option<&st
             .axis_style(ShapeStyle::from(&RGBColor(148, 163, 184)))
             .light_line_style(ShapeStyle::from(&RGBColor(226, 232, 240)))
             .bold_line_style(ShapeStyle::from(&RGBColor(100, 116, 139)))
-            .x_labels(families.len())
-            .x_label_formatter(&|x| {
-                families
-                    .get(*x)
-                    .cloned()
-                    .unwrap_or_else(|| "Other".to_string())
-            })
-            .x_label_style(("sans-serif", 10).into_font())
+            .x_desc("Observed precursor m/z")
             .y_desc("Signed error (Da)")
+            .x_label_style(("sans-serif", 11).into_font())
             .y_label_style(("sans-serif", 11).into_font())
             .draw()
             .unwrap();
 
         chart
             .draw_series(LineSeries::new(
-                vec![(0usize, 0.0f64), (families.len(), 0.0f64)],
+                vec![(x_min, 0.0f64), (x_max, 0.0f64)],
                 ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
             ))
             .unwrap();
@@ -1689,7 +1737,7 @@ fn render_scatter_svg(title: &str, points: &[PlotPoint], other_label: Option<&st
         let family_colors = families
             .iter()
             .enumerate()
-            .map(|(index, family)| {
+            .map(|(_, family)| {
                 let color = match family.as_str() {
                     "Protonated" => RGBColor(30, 64, 175),
                     "Deprotonated" => RGBColor(2, 132, 199),
@@ -1705,19 +1753,17 @@ fn render_scatter_svg(title: &str, points: &[PlotPoint], other_label: Option<&st
         for point in points {
             let family = adduct_class(&point.adduct_type)
                 .map_or_else(|| "Other".to_string(), |adduct| adduct.family.clone());
-            let x_index = families
-                .iter()
-                .position(|candidate| *candidate == family)
-                .unwrap_or(0);
             let color = family_colors
                 .iter()
                 .find(|(candidate, _)| candidate == &family)
                 .map(|(_, color)| *color)
                 .unwrap_or(RGBColor(99, 102, 241));
+            let point_size =
+                ((4.0 + (point.signed_error_ppm.abs() / 1000.0).min(6.0)).round()) as i32;
             chart
                 .draw_series(PointSeries::of_element(
-                    vec![(x_index, point.signed_error_da)],
-                    5,
+                    vec![(point.observed_precursor_mz, point.signed_error_da)],
+                    point_size,
                     &color,
                     &|coord, size, style| Circle::new(coord, size, style.filled()),
                 ))
