@@ -508,9 +508,8 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     let formula = match formula.as_str() {
         "FA" | "FORMATE" | "HCOO" => "CHO2",
         "HCOONA" | "NACHO2" | "NAHCOO" | "NAHCO2" | "CHNAO2" => "CHNaO2",
-        "HCOOH" | "FORMICACID" => "CH2O2",
+        "HCOOH" | "FORMICACID" | "HFA" => "CH2O2",
         "MEOH" | "CH3OH" => "CH4O",
-        "HFA" => "C2HF3O2",
         "H2O" => "H2O",
         "NH3" => "NH3",
         "CO" => "CO",
@@ -1921,6 +1920,18 @@ mod tests {
         )
         .expect("iron hydride dimer adduct should be supported");
         assert!(mass > 2000.0);
+    }
+
+    #[test]
+    fn uses_formate_like_mass_for_hfa_adducts() {
+        let mass = super::expected_precursor_mz(
+            202.131_74,
+            Some("[M+HFA+Ca-H]+"),
+            Some("1+"),
+            Some("positive"),
+        )
+        .expect("HFA calcium-hydride adduct should be supported");
+        assert!((mass - 287.091_44).abs() < 1e-5);
     }
 
     #[test]
