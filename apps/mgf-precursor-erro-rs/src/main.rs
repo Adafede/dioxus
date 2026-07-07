@@ -12,6 +12,7 @@ use dioxus::prelude::*;
 use gloo_timers::future::TimeoutFuture;
 #[cfg(target_arch = "wasm32")]
 use js_sys::Uint8Array;
+use mascot_rs::prelude::*;
 use molecular_formulas::{MolecularFormula, prelude::ChemicalFormula};
 use smiles_parser::chain;
 use smiles_parser::graph::{Atom, MoleculeGraph};
@@ -279,7 +280,9 @@ fn exact_mass_from_smiles_uncached(
         let warning_key = format!("unsupported-smiles:{smiles}");
         if logged_failures.insert(warning_key) {
             #[cfg(target_arch = "wasm32")]
-            console::warn_1(&format!("Skipping unsupported SMILES for mass parsing: {smiles}").into());
+            console::warn_1(
+                &format!("Skipping unsupported SMILES for mass parsing: {smiles}").into(),
+            );
         }
         return None;
     }
@@ -337,7 +340,9 @@ fn exact_mass_from_smiles_uncached(
                         .copied()
                         .or_else(|| panic.downcast_ref::<String>().map(String::as_str))
                         .unwrap_or("unknown panic");
-                    console::warn_1(&format!("SMILES parser panicked for: {smiles} ({panic_message})").into());
+                    console::warn_1(
+                        &format!("SMILES parser panicked for: {smiles} ({panic_message})").into(),
+                    );
                 }
             }
             None
@@ -505,11 +510,9 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     for ch in body.chars() {
         match ch {
             '+' => {
-                if let Some(token_mass) = parse_adduct_term_mass_with_context(
-                    &current,
-                    sign,
-                    uses_single_positive_mg,
-                ) {
+                if let Some(token_mass) =
+                    parse_adduct_term_mass_with_context(&current, sign, uses_single_positive_mg)
+                {
                     shift += sign * token_mass;
                 } else if current.eq_ignore_ascii_case("M") {
                     multiplier = 1.0;
@@ -526,11 +529,9 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
                 sign = 1.0;
             }
             '-' => {
-                if let Some(token_mass) = parse_adduct_term_mass_with_context(
-                    &current,
-                    sign,
-                    uses_single_positive_mg,
-                ) {
+                if let Some(token_mass) =
+                    parse_adduct_term_mass_with_context(&current, sign, uses_single_positive_mg)
+                {
                     shift += sign * token_mass;
                 } else if current.eq_ignore_ascii_case("M") {
                     multiplier = 1.0;
@@ -550,11 +551,9 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
         }
     }
 
-    if let Some(token_mass) = parse_adduct_term_mass_with_context(
-        &current,
-        sign,
-        uses_single_positive_mg,
-    ) {
+    if let Some(token_mass) =
+        parse_adduct_term_mass_with_context(&current, sign, uses_single_positive_mg)
+    {
         shift += sign * token_mass;
     } else if current.eq_ignore_ascii_case("M") {
         multiplier = 1.0;
@@ -1659,6 +1658,7 @@ async fn scan_blob_with_progress(
     let mut smiles_cache = HashMap::new();
     let mut formula_cache = HashMap::new();
     let mut logged_failures = HashSet::new();
+    let mut mascot_builder = MascotGenericFormatBuilder::<usize, f64>::default();
 
     while let Some(line) = reader.next_line().await? {
         let trimmed = line.trim();
@@ -1670,6 +1670,7 @@ async fn scan_blob_with_progress(
             current_block.clear();
             current_is_in_block = true;
             current_block.push(trimmed.to_string());
+            let _ = mascot_builder.digest_line(trimmed);
             continue;
         }
 
@@ -1677,41 +1678,43 @@ async fn scan_blob_with_progress(
             continue;
         }
 
+        current_block.push(trimmed.to_string());
+        if MascotGenericFormatBuilder::<usize, f64>::can_parse_line(trimmed) {
+            let _ = mascot_builder.digest_line(trimmed);
+        }
+
         if trimmed == "END IONS" {
-            current_block.push(trimmed.to_string());
+            let parsed_mascot = std::mem::take(&mut mascot_builder).build().ok();
             if let Some(result) = process_block(
-                &mut current_block,
+                &current_block,
+                parsed_mascot.as_ref(),
                 &mut smiles_cache,
                 &mut formula_cache,
                 &mut logged_failures,
-            )
-            .await?
-            {
+            )? {
                 metrics = merge_metrics(metrics, result);
             }
+            mascot_builder = MascotGenericFormatBuilder::<usize, f64>::default();
             current_block.clear();
             current_is_in_block = false;
-            continue;
         }
-
-        current_block.push(trimmed.to_string());
     }
 
     Ok(metrics)
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn process_block(
-    block_lines: &mut [String],
+fn process_block(
+    block_lines: &[String],
+    parsed_mascot: Option<&MascotGenericFormat<usize, f64>>,
     smiles_cache: &mut HashMap<String, Option<f64>>,
     formula_cache: &mut HashMap<String, Option<f64>>,
     logged_failures: &mut HashSet<String>,
 ) -> Result<Option<PrecursorMetrics>, ScanError> {
-    let mut headers = std::collections::BTreeMap::new();
-    let mut observed_precursor = None;
+    let mut observed_precursor = parsed_mascot.map(|block| block.parent_ion_mass());
     let mut reference_mass = None;
     let mut reference_mass_source = None;
-    let mut charge = None;
+    let mut charge = parsed_mascot.map(|block| block.charge().to_string());
     let mut adduct = None;
     let mut ion_mode = None;
     let mut smiles = None;
@@ -1800,10 +1803,6 @@ async fn process_block(
                 scans = Some(stripped.to_string());
             }
             continue;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("FILENAME=") {
-            headers.insert("FILENAME".to_string(), stripped.to_string());
         }
     }
 
@@ -1994,18 +1993,29 @@ mod tests {
     #[test]
     fn handles_complex_mg_and_meoh_adducts_from_multims2_blocks() {
         let neutral = 343.141_97;
-        let mass = expected_precursor_mz(neutral, Some("[M-C2H4-H+Mg]+"), Some("1+"), Some("positive"))
-            .expect("complex magnesium adduct should be supported");
+        let mass = expected_precursor_mz(
+            neutral,
+            Some("[M-C2H4-H+Mg]+"),
+            Some("1+"),
+            Some("positive"),
+        )
+        .expect("complex magnesium adduct should be supported");
         assert!((mass - 362.072_38).abs() < 1e-3);
 
         let neutral = 228.085_85;
-        let mass = expected_precursor_mz(neutral, Some("[2M+MeOH-H+Mg]+"), Some("1+"), Some("positive"))
-            .expect("dimer methanol magnesium adduct should be supported");
+        let mass = expected_precursor_mz(
+            neutral,
+            Some("[2M+MeOH-H+Mg]+"),
+            Some("1+"),
+            Some("positive"),
+        )
+        .expect("dimer methanol magnesium adduct should be supported");
         assert!((mass - 535.159_62).abs() < 1e-3);
 
         let neutral = 292.103_42;
-        let mass = expected_precursor_mz(neutral, Some("[2M+O+Mg]+2"), Some("2+"), Some("positive"))
-            .expect("dimer oxygen magnesium adduct should be supported");
+        let mass =
+            expected_precursor_mz(neutral, Some("[2M+O+Mg]+2"), Some("2+"), Some("positive"))
+                .expect("dimer oxygen magnesium adduct should be supported");
         assert!((mass - 312.092_8).abs() < 5e-4);
 
         let neutral = 380.165_54;
