@@ -20,7 +20,7 @@ use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
-use web_sys::{console, Blob};
+use web_sys::{Blob, console};
 
 #[cfg(any(target_arch = "wasm32", test))]
 const CHUNK_SIZE: usize = 1 << 20;
@@ -55,10 +55,17 @@ struct PlotPoint {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+struct WarningDetail {
+    count: usize,
+    formula: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 struct HighErrorSmilesDetail {
     count: usize,
     calculated_mass: Option<f64>,
     expected_mass: Option<f64>,
+    formula: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -76,7 +83,7 @@ struct PrecursorMetrics {
     spectra_with_reference_mass: usize,
     reference_mass_source: String,
     unparsed_smiles: usize,
-    unparsed_smiles_warnings: BTreeMap<String, usize>,
+    unparsed_smiles_warnings: BTreeMap<String, WarningDetail>,
     observed_precursor_min: f64,
     observed_precursor_max: f64,
     observed_precursor_mean: f64,
@@ -177,6 +184,7 @@ impl PrecursorMetrics {
         smiles: Option<&str>,
         calculated_mass: Option<f64>,
         expected_mass: Option<f64>,
+        formula: Option<&str>,
     ) {
         self.da_error_histogram.add_value(abs_error_da);
         self.ppm_error_histogram.add_value(abs_ppm);
@@ -184,19 +192,26 @@ impl PrecursorMetrics {
         if abs_ppm > 10.0 {
             if let Some(smiles) = smiles.filter(|value| !value.trim().is_empty()) {
                 let trimmed = smiles.trim().to_string();
-                self.high_error_smiles.entry(trimmed.clone()).and_modify(|entry| {
-                    entry.count = entry.count.saturating_add(1);
-                    if entry.calculated_mass.is_none() && calculated_mass.is_some() {
-                        entry.calculated_mass = calculated_mass;
-                    }
-                    if entry.expected_mass.is_none() && expected_mass.is_some() {
-                        entry.expected_mass = expected_mass;
-                    }
-                }).or_insert(HighErrorSmilesDetail {
-                    count: 1,
-                    calculated_mass,
-                    expected_mass,
-                });
+                self.high_error_smiles
+                    .entry(trimmed.clone())
+                    .and_modify(|entry| {
+                        entry.count = entry.count.saturating_add(1);
+                        if entry.calculated_mass.is_none() && calculated_mass.is_some() {
+                            entry.calculated_mass = calculated_mass;
+                        }
+                        if entry.expected_mass.is_none() && expected_mass.is_some() {
+                            entry.expected_mass = expected_mass;
+                        }
+                        if entry.formula.is_none() {
+                            entry.formula = formula.map(str::to_string);
+                        }
+                    })
+                    .or_insert(HighErrorSmilesDetail {
+                        count: 1,
+                        calculated_mass,
+                        expected_mass,
+                        formula: formula.map(str::to_string),
+                    });
             }
         }
 
@@ -503,7 +518,7 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
         "O" => "O",
         "C2H4" => return Some(28.031_300_128 * multiplier),
         "CHNAO2" | "HCOONA" => {
-            return Some(exact_mass_from_formula("CHNaO2").unwrap_or(67.987_423_942) * multiplier)
+            return Some(exact_mass_from_formula("CHNaO2").unwrap_or(67.987_423_942) * multiplier);
         }
         "H" => return Some(HYDROGEN_MASS * multiplier),
         "NA" => return Some(SODIUM_MASS * multiplier),
@@ -770,12 +785,18 @@ fn app() -> Element {
                                             ul { style: "margin: 0.25rem 0 0 1.05rem; padding: 0; font-size: 0.84rem; max-height: 160px; overflow: auto;",
                                                 {
                                                     let mut sorted_unparsed = metrics.unparsed_smiles_warnings.iter().collect::<Vec<_>>();
-                                                    sorted_unparsed.sort_by(|(left_smiles, left_count), (right_smiles, right_count)| {
-                                                        right_count.cmp(left_count).then_with(|| left_smiles.cmp(right_smiles))
+                                                    sorted_unparsed.sort_by(|(left_smiles, left_detail), (right_smiles, right_detail)| {
+                                                        right_detail.count.cmp(&left_detail.count).then_with(|| left_smiles.cmp(right_smiles))
                                                     });
                                                     rsx! {
-                                                        for (smiles, count) in sorted_unparsed {
-                                                            li { "{smiles} ({count})" }
+                                                        for (smiles, detail) in sorted_unparsed {
+                                                            {
+                                                                let formula_display = detail.formula.as_deref().filter(|value| !value.trim().is_empty()).map_or_else(|| String::new(), |formula| format!(" [formula: {formula}]"));
+                                                                let item_label = format!("{smiles} ({}){formula_display}", detail.count);
+                                                                rsx! {
+                                                                    li { "{item_label}" }
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -816,8 +837,10 @@ fn app() -> Element {
                                                        let suffix = if detail.count > 1 { format!(" (x{})", detail.count) } else { String::new() };
                                                        let calc_value = detail.calculated_mass.map_or_else(|| "n/a".to_string(), format_value);
                                                        let expected_value = detail.expected_mass.map_or_else(|| "n/a".to_string(), format_value);
+                                                       let formula_suffix = detail.formula.as_deref().filter(|value| !value.trim().is_empty()).map_or_else(|| String::new(), |formula| format!("; formula {formula}"));
+                                                       let item_label = format!("{smiles}{suffix} — calc {calc_value}; expected {expected_value}{formula_suffix}");
                                                        rsx! {
-                                                           li { "{smiles}{suffix} — calc {calc_value}; expected {expected_value}" }
+                                                           li { "{item_label}" }
                                                        }
                                                    }
                                                }
@@ -1698,8 +1721,11 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
             metrics
                 .unparsed_smiles_warnings
                 .entry(smiles_text.trim().to_string())
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
+                .and_modify(|detail| detail.count = detail.count.saturating_add(1))
+                .or_insert(WarningDetail {
+                    count: 1,
+                    formula: formula.as_deref().map(str::to_string),
+                });
         }
         return Ok(Some(metrics));
     };
@@ -1770,6 +1796,7 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
         smiles.as_deref(),
         Some(reference_mass),
         Some(expected_precursor_mz),
+        formula.as_deref(),
     );
     if abs_error_da <= 0.0005 {
         metrics.within_0_0005_da = 1;
@@ -1898,8 +1925,9 @@ mod tests {
 
     #[test]
     fn handles_hydrogen_minus_terms_for_metal_adducts() {
-        let protonated_mass = super::expected_precursor_mz(1000.0, Some("[M+H]+"), Some("1+"), Some("positive"))
-            .expect("protonated adduct should be supported");
+        let protonated_mass =
+            super::expected_precursor_mz(1000.0, Some("[M+H]+"), Some("1+"), Some("positive"))
+                .expect("protonated adduct should be supported");
         assert!((protonated_mass - (1000.0 + PROTON_MASS)).abs() < 1e-9);
 
         let calcium_hydride_mass = super::expected_precursor_mz(
@@ -1926,31 +1954,26 @@ mod tests {
             Some("positive"),
         )
         .expect("sodium formate should be supported");
-        let sodium_formate_mass = super::exact_mass_from_formula("CHNaO2")
-            .expect("CHNaO2 mass should be available");
+        let sodium_formate_mass =
+            super::exact_mass_from_formula("CHNaO2").expect("CHNaO2 mass should be available");
         assert!((sodium_formate - (1000.0 + sodium_formate_mass + PROTON_MASS)).abs() < 1e-9);
 
-        let formate_adduct = super::expected_precursor_mz(
-            1000.0,
-            Some("[M+FA]-"),
-            Some("1-"),
-            Some("negative"),
-        )
-        .expect("formate adduct should be supported");
-        let expected_formate_mass = 1000.0 + super::exact_mass_from_formula("CHO2")
-            .expect("CHO2 mass should be available");
+        let formate_adduct =
+            super::expected_precursor_mz(1000.0, Some("[M+FA]-"), Some("1-"), Some("negative"))
+                .expect("formate adduct should be supported");
+        let expected_formate_mass =
+            1000.0 + super::exact_mass_from_formula("CHO2").expect("CHO2 mass should be available");
         assert!((formate_adduct - expected_formate_mass).abs() < 1e-9);
 
-        let sodium_formate_alias = super::expected_precursor_mz(
-            1000.0,
-            Some("[M+NaHCOO]+"),
-            Some("1+"),
-            Some("positive"),
-        )
-        .expect("sodium formate alias should be supported");
-        let sodium_formate_alias_mass = super::exact_mass_from_formula("CHNaO2")
-            .expect("CHNaO2 mass should be available");
-        assert!((sodium_formate_alias - (1000.0 + sodium_formate_alias_mass - ELECTRON_MASS)).abs() < 1e-9);
+        let sodium_formate_alias =
+            super::expected_precursor_mz(1000.0, Some("[M+NaHCOO]+"), Some("1+"), Some("positive"))
+                .expect("sodium formate alias should be supported");
+        let sodium_formate_alias_mass =
+            super::exact_mass_from_formula("CHNaO2").expect("CHNaO2 mass should be available");
+        assert!(
+            (sodium_formate_alias - (1000.0 + sodium_formate_alias_mass - ELECTRON_MASS)).abs()
+                < 1e-9
+        );
     }
 }
 
@@ -1965,12 +1988,17 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     current.skipped_spectra += next.skipped_spectra;
     current.spectra_with_reference_mass += next.spectra_with_reference_mass;
     current.unparsed_smiles += next.unparsed_smiles;
-    for (smiles, count) in next.unparsed_smiles_warnings {
+    for (smiles, detail) in next.unparsed_smiles_warnings {
         current
             .unparsed_smiles_warnings
             .entry(smiles)
-            .and_modify(|existing| *existing += count)
-            .or_insert(count);
+            .and_modify(|existing| {
+                existing.count = existing.count.saturating_add(detail.count);
+                if existing.formula.is_none() {
+                    existing.formula = detail.formula.clone();
+                }
+            })
+            .or_insert(detail);
     }
     if current.reference_mass_source == "none" {
         current.reference_mass_source = next.reference_mass_source;
@@ -2055,6 +2083,9 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
                 }
                 if existing.expected_mass.is_none() && detail.expected_mass.is_some() {
                     existing.expected_mass = detail.expected_mass;
+                }
+                if existing.formula.is_none() {
+                    existing.formula = detail.formula.clone();
                 }
             })
             .or_insert(detail);
