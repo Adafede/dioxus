@@ -12,10 +12,10 @@
     clippy::type_complexity
 )]
 
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
-use std::sync::{LazyLock, Mutex};
 
 use mascot_rs::prelude::*;
 use molecular_formulas_010::molecular_formula::MolecularFormula;
@@ -33,12 +33,12 @@ use web_sys::{Blob, console};
 
 #[cfg(target_arch = "wasm32")]
 use crate::metrics::merge_metrics;
-use crate::metrics::{AdductClass, PlotPointSample, PrecursorMetrics, WarningDetail};
+use crate::metrics::{AdductClass, AdductFamily, PlotPointSample, PrecursorMetrics, WarningDetail};
 
 #[cfg(any(target_arch = "wasm32", test))]
-pub const CHUNK_SIZE: usize = 2 << 20;
+pub const CHUNK_SIZE: usize = 4 << 20;
 #[cfg(any(target_arch = "wasm32", test))]
-pub const PROGRESS_INTERVAL: usize = 2 << 20;
+pub const PROGRESS_INTERVAL: usize = 4 << 20;
 
 pub const PROTON_MASS: f64 = 1.007_276_466_621;
 pub const HYDROGEN_MASS: f64 = PROTON_MASS + ELECTRON_MASS;
@@ -47,12 +47,13 @@ pub const SODIUM_MASS: f64 = 22.989_769_67;
 pub const POTASSIUM_MASS: f64 = 38.963_707;
 pub const AMMONIUM_MASS: f64 = 18.033_823;
 
-static ADDUCT_SPEC_CACHE: LazyLock<Mutex<HashMap<String, Option<(f64, f64)>>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-static ADDUCT_CLASS_CACHE: LazyLock<Mutex<HashMap<String, Option<AdductClass>>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-static ADDUCT_FAMILY_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+thread_local! {
+    static ADDUCT_SPEC_CACHE: RefCell<HashMap<String, Option<(f64, f64)>>> =
+        RefCell::new(HashMap::new());
+    static ADDUCT_CLASS_CACHE: RefCell<HashMap<String, Option<AdductClass>>> =
+        RefCell::new(HashMap::new());
+    static ADDUCT_FAMILY_CACHE: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
+}
 
 #[cfg(target_arch = "wasm32")]
 pub type ScanError = JsValue;
@@ -504,14 +505,16 @@ fn parse_adduct_mass_spec_cached(adduct: &str) -> Option<(f64, f64)> {
         return None;
     }
 
-    let mut cache = ADDUCT_SPEC_CACHE.lock().unwrap();
-    if let Some(mass_spec) = cache.get(&normalized) {
-        return *mass_spec;
-    }
+    ADDUCT_SPEC_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some(mass_spec) = cache.get(&normalized) {
+            return *mass_spec;
+        }
 
-    let mass_spec = parse_adduct_mass_spec(&normalized);
-    cache.insert(normalized, mass_spec);
-    mass_spec
+        let mass_spec = parse_adduct_mass_spec(&normalized);
+        cache.insert(normalized, mass_spec);
+        mass_spec
+    })
 }
 
 fn parse_adduct_term_mass_with_context(
@@ -667,78 +670,78 @@ pub fn is_supported_adduct(adduct: &str) -> bool {
 /// Panics if the adduct-class cache mutex is poisoned.
 pub fn adduct_family(adduct: &str) -> String {
     let normalized_key = normalize_adduct_key(adduct);
-    if let Some(cached) = ADDUCT_FAMILY_CACHE.lock().unwrap().get(&normalized_key) {
-        return cached.clone();
-    }
+    let cached = ADDUCT_FAMILY_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some(cached) = cache.get(&normalized_key) {
+            return Some(cached.clone());
+        }
 
-    let family = adduct_class(adduct).map_or_else(|| "Other".to_string(), |adduct| adduct.family);
-    ADDUCT_FAMILY_CACHE
-        .lock()
-        .unwrap()
-        .insert(normalized_key, family.clone());
-    family
+        let family =
+            adduct_class(adduct).map_or_else(|| "Other".to_string(), |adduct| adduct.family);
+        cache.insert(normalized_key.clone(), family.clone());
+        Some(family)
+    });
+    cached.unwrap_or_else(|| "Other".to_string())
 }
 
 /// # Panics
 /// Panics if the adduct-class cache mutex is poisoned.
 pub fn adduct_class(adduct: &str) -> Option<AdductClass> {
     let normalized_key = adduct.trim().replace(' ', "").to_ascii_uppercase();
-    let cached = ADDUCT_CLASS_CACHE
-        .lock()
-        .unwrap()
-        .get(&normalized_key)
-        .cloned();
-    if let Some(cached) = cached {
-        return cached;
-    }
+    ADDUCT_CLASS_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some(cached) = cache.get(&normalized_key).cloned() {
+            return cached;
+        }
 
-    let normalized = normalize_adduct_label(adduct);
-    let charge = parse_adduct_charge_sign(Some(adduct)).map_or_else(
-        || {
-            if normalized.contains("]-") {
-                -1
-            } else if normalized.contains("]+") || normalized.contains("]2+") {
-                1
-            } else if normalized.contains("]2-") {
-                -2
-            } else {
-                0
-            }
-        },
-        |sign| if sign { -1 } else { 1 },
-    );
-    let family = if normalized.contains("[M+H]")
-        || normalized.contains("[M+2H]")
-        || normalized.contains("[M+NH4]")
-    {
-        "Protonated".to_string()
-    } else if normalized.contains("[M-H]") || normalized.contains("[M-2H]") {
-        "Deprotonated".to_string()
-    } else if normalized.contains("[M+NA]")
-        || normalized.contains("[M+K]")
-        || normalized.contains("[M+NH4]")
-    {
-        "Alkali / ammonium".to_string()
-    } else if normalized.contains("MG") || normalized.contains("CA") || normalized.contains("FE") {
-        "Metal / complex".to_string()
-    } else if normalized.contains("CL") || normalized.contains("BR") {
-        "Halide".to_string()
-    } else {
-        "Other".to_string()
-    };
+        let normalized = normalize_adduct_label(adduct);
+        let charge = parse_adduct_charge_sign(Some(adduct)).map_or_else(
+            || {
+                if normalized.contains("]-") {
+                    -1
+                } else if normalized.contains("]+") || normalized.contains("]2+") {
+                    1
+                } else if normalized.contains("]2-") {
+                    -2
+                } else {
+                    0
+                }
+            },
+            |sign| if sign { -1 } else { 1 },
+        );
+        let family = if normalized.contains("[M+H]")
+            || normalized.contains("[M+2H]")
+            || normalized.contains("[M+NH4]")
+        {
+            "Protonated".to_string()
+        } else if normalized.contains("[M-H]") || normalized.contains("[M-2H]") {
+            "Deprotonated".to_string()
+        } else if normalized.contains("[M+NA]")
+            || normalized.contains("[M+K]")
+            || normalized.contains("[M+NH4]")
+        {
+            "Alkali / ammonium".to_string()
+        } else if normalized.contains("MG")
+            || normalized.contains("CA")
+            || normalized.contains("FE")
+        {
+            "Metal / complex".to_string()
+        } else if normalized.contains("CL") || normalized.contains("BR") {
+            "Halide".to_string()
+        } else {
+            "Other".to_string()
+        };
 
-    let result = Some(AdductClass {
-        label: normalized.clone(),
-        display: normalized,
-        family,
-        charge,
-    });
+        let result = Some(AdductClass {
+            label: normalized.clone(),
+            display: normalized,
+            family,
+            charge,
+        });
 
-    ADDUCT_CLASS_CACHE
-        .lock()
-        .unwrap()
-        .insert(normalized_key, result.clone());
-    result
+        cache.insert(normalized_key, result.clone());
+        result
+    })
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -793,7 +796,7 @@ impl<'a> BlobLineReader<'a> {
         Self {
             blob: blob.clone(),
             offset: 0,
-            buffer: Vec::new(),
+            buffer: Vec::with_capacity(CHUNK_SIZE),
             buffer_start: 0,
             processed: 0,
             progress: ProgressReporter::new(on_progress),
@@ -853,7 +856,8 @@ impl<'a> BlobLineReader<'a> {
         let bytes = JsFuture::from(promise).await?;
         let array = Uint8Array::new(&bytes);
         let chunk_len = array.byte_length() as usize;
-        let mut chunk_bytes = vec![0u8; chunk_len];
+        let mut chunk_bytes = Vec::with_capacity(chunk_len);
+        chunk_bytes.resize(chunk_len, 0);
         array.copy_to(&mut chunk_bytes);
         self.buffer.extend_from_slice(&chunk_bytes);
         self.offset = end;
@@ -1105,7 +1109,7 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
     metrics.record_error_with_plot_sample(
         abs_error_da,
         abs_ppm,
-        &adduct_label,
+        AdductFamily::from_label(&adduct_label),
         ppm,
         error_da,
         observed_precursor,

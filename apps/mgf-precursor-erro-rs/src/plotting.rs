@@ -2,17 +2,16 @@ use std::{collections::HashMap, fmt::Write};
 
 use prismatica::crameri::BATLOW;
 
-use crate::metrics::{PlotPoint, ScatterPlotData};
+use crate::metrics::{AdductFamily, PlotPoint, ScatterPlotData};
 
-fn adduct_family_rank(family: &str) -> usize {
+const fn adduct_family_rank(family: AdductFamily) -> usize {
     match family {
-        "Protonated" => 0,
-        "Deprotonated" => 1,
-        "Alkali / ammonium" => 2,
-        "Metal / complex" => 3,
-        "Halide" => 4,
-        "Other" => 5,
-        _ => 6,
+        AdductFamily::Protonated => 0,
+        AdductFamily::Deprotonated => 1,
+        AdductFamily::AlkaliAmmonium => 2,
+        AdductFamily::MetalComplex => 3,
+        AdductFamily::Halide => 4,
+        AdductFamily::Other => 5,
     }
 }
 
@@ -23,13 +22,13 @@ const fn paul_tol_palette(index: usize) -> &'static str {
 }
 
 #[must_use]
-pub fn adduct_family_color_hex(family: &str) -> String {
+pub fn adduct_family_color_hex(family: AdductFamily) -> String {
     let palette_index = adduct_family_rank(family);
     paul_tol_palette(palette_index).to_string()
 }
 
 #[must_use]
-pub fn adduct_family_color(family: &str) -> plotters::style::RGBColor {
+pub fn adduct_family_color(family: AdductFamily) -> plotters::style::RGBColor {
     let color = adduct_family_color_hex(family);
     let hex = color.trim_start_matches('#');
     let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
@@ -39,7 +38,7 @@ pub fn adduct_family_color(family: &str) -> plotters::style::RGBColor {
 }
 
 #[must_use]
-pub fn adduct_family_shape_style(family: &str, alpha: f32) -> plotters::style::ShapeStyle {
+pub fn adduct_family_shape_style(family: AdductFamily, alpha: f32) -> plotters::style::ShapeStyle {
     let color = adduct_family_color_hex(family);
     let hex = color.trim_start_matches('#');
     let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
@@ -59,7 +58,7 @@ where
     F: Fn(&PlotPoint) -> Option<f64>,
     G: Fn(&PlotPoint) -> Option<f64>,
 {
-    let mut family_points: HashMap<String, Vec<(f64, f64)>> = HashMap::new();
+    let mut family_points: HashMap<AdductFamily, Vec<(f64, f64)>> = HashMap::new();
     let mut x_values = Vec::new();
     let mut y_values = Vec::new();
 
@@ -76,7 +75,7 @@ where
         x_values.push(x_value);
         y_values.push(y_value);
         family_points
-            .entry(point.adduct_family.clone())
+            .entry(point.adduct_family)
             .or_default()
             .push((x_value, y_value));
     }
@@ -102,8 +101,8 @@ where
         .fold(0.0, f64::max)
         .max(fallback_y_limit);
 
-    let mut families = family_points.keys().cloned().collect::<Vec<_>>();
-    families.sort_by_key(|family| adduct_family_rank(family));
+    let mut families = family_points.keys().copied().collect::<Vec<_>>();
+    families.sort_by_key(|family| adduct_family_rank(*family));
     let family_count = families.len().max(1);
     let max_points_per_family = (900usize / family_count).max(120usize);
     let mut series = Vec::with_capacity(families.len());
@@ -117,7 +116,12 @@ where
 
     let legend_items = series
         .iter()
-        .map(|(family, _)| (family.clone(), adduct_family_color_hex(family)))
+        .map(|(family, _)| {
+            (
+                family.as_str().to_string(),
+                adduct_family_color_hex(*family),
+            )
+        })
         .collect();
 
     ScatterPlotData {
@@ -515,7 +519,7 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
             .unwrap();
 
         for (family, points) in points_by_family {
-            let style = adduct_family_shape_style(&family, 0.4);
+            let style = adduct_family_shape_style(family, 0.4);
             chart
                 .draw_series(PointSeries::of_element(
                     points.iter().copied(),
@@ -632,7 +636,7 @@ pub fn render_absolute_mass_bias_svg(
         }
 
         for (family, points) in points_by_family {
-            let style = adduct_family_shape_style(&family, 0.3);
+            let style = adduct_family_shape_style(family, 0.3);
             chart
                 .draw_series(PointSeries::of_element(
                     points

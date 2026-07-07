@@ -56,10 +56,60 @@ impl HistogramData {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum AdductFamily {
+    Protonated,
+    Deprotonated,
+    AlkaliAmmonium,
+    MetalComplex,
+    Halide,
+    Other,
+}
+
+impl AdductFamily {
+    #[must_use]
+    pub fn from_label(label: &str) -> Self {
+        let normalized = label.trim().replace(' ', "").to_ascii_uppercase();
+        if normalized.contains("[M+H]")
+            || normalized.contains("[M+2H]")
+            || normalized.contains("[M+NH4]")
+        {
+            Self::Protonated
+        } else if normalized.contains("[M-H]") || normalized.contains("[M-2H]") {
+            Self::Deprotonated
+        } else if normalized.contains("[M+NA]")
+            || normalized.contains("[M+K]")
+            || normalized.contains("[M+NH4]")
+        {
+            Self::AlkaliAmmonium
+        } else if normalized.contains("MG")
+            || normalized.contains("CA")
+            || normalized.contains("FE")
+        {
+            Self::MetalComplex
+        } else if normalized.contains("CL") || normalized.contains("BR") {
+            Self::Halide
+        } else {
+            Self::Other
+        }
+    }
+
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Protonated => "Protonated",
+            Self::Deprotonated => "Deprotonated",
+            Self::AlkaliAmmonium => "Alkali / ammonium",
+            Self::MetalComplex => "Metal / complex",
+            Self::Halide => "Halide",
+            Self::Other => "Other",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PlotPoint {
-    pub adduct_type: String,
-    pub adduct_family: String,
+    pub adduct_family: AdductFamily,
     pub observed_precursor_mz: f64,
     pub signed_error_da: f64,
     pub signed_error_ppm: f64,
@@ -97,7 +147,7 @@ pub struct ScatterPlotData {
     pub x_min: f64,
     pub x_max: f64,
     pub y_limit: f64,
-    pub series: Vec<(String, Vec<(f64, f64)>)>,
+    pub series: Vec<(AdductFamily, Vec<(f64, f64)>)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -376,7 +426,7 @@ impl PrecursorMetrics {
         &mut self,
         abs_error_da: f64,
         abs_ppm: f64,
-        adduct_type: &str,
+        adduct_family: AdductFamily,
         ppm_error: f64,
         signed_error_da: f64,
         observed_precursor_mz: f64,
@@ -389,7 +439,7 @@ impl PrecursorMetrics {
         self.record_error_with_plot_sample(
             abs_error_da,
             abs_ppm,
-            adduct_type,
+            adduct_family,
             ppm_error,
             signed_error_da,
             observed_precursor_mz,
@@ -405,7 +455,7 @@ impl PrecursorMetrics {
         &mut self,
         abs_error_da: f64,
         abs_ppm: f64,
-        adduct_type: &str,
+        adduct_family: AdductFamily,
         ppm_error: f64,
         signed_error_da: f64,
         observed_precursor_mz: f64,
@@ -518,14 +568,13 @@ impl PrecursorMetrics {
         }
 
         let point = PlotPoint {
-            adduct_type: adduct_type.to_string(),
-            adduct_family: crate::parser::adduct_family(adduct_type),
+            adduct_family,
             observed_precursor_mz,
             signed_error_da,
             signed_error_ppm: ppm_error,
         };
         if let Some(sample) = plot_sample.as_mut() {
-            sample.push(point.clone());
+            sample.push(point);
         } else {
             self.push_plot_point(point);
         }
