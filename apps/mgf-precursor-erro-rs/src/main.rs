@@ -36,6 +36,8 @@ const AMMONIUM_MASS: f64 = 18.033_823;
 
 #[cfg(target_arch = "wasm32")]
 type ScanError = JsValue;
+#[cfg(not(target_arch = "wasm32"))]
+type ScanError = String;
 
 fn main() {
     dioxus::launch(app);
@@ -67,6 +69,9 @@ struct HighErrorSmilesDetail {
     calculated_mass: Option<f64>,
     expected_mass: Option<f64>,
     formula: Option<String>,
+    max_abs_error_da: Option<f64>,
+    max_abs_error_ppm: Option<f64>,
+    observed_precursor_mz: Option<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -189,6 +194,7 @@ impl PrecursorMetrics {
         smiles: Option<&str>,
         calculated_mass: Option<f64>,
         expected_mass: Option<f64>,
+        observed_precursor_mz: Option<f64>,
         formula: Option<&str>,
     ) {
         self.da_error_histogram.add_value(abs_error_da);
@@ -210,12 +216,36 @@ impl PrecursorMetrics {
                         if entry.formula.is_none() {
                             entry.formula = formula.map(str::to_string);
                         }
+                        if entry.observed_precursor_mz.is_none() && observed_precursor_mz.is_some() {
+                            entry.observed_precursor_mz = observed_precursor_mz;
+                        }
+                        let current_error_da = abs_error_da;
+                        let current_error_ppm = abs_ppm;
+                        let should_replace = entry
+                            .max_abs_error_da
+                            .map_or(true, |existing| current_error_da > existing);
+                        if should_replace {
+                            entry.max_abs_error_da = Some(current_error_da);
+                            entry.max_abs_error_ppm = Some(current_error_ppm);
+                            if calculated_mass.is_some() {
+                                entry.calculated_mass = calculated_mass;
+                            }
+                            if expected_mass.is_some() {
+                                entry.expected_mass = expected_mass;
+                            }
+                            if observed_precursor_mz.is_some() {
+                                entry.observed_precursor_mz = observed_precursor_mz;
+                            }
+                        }
                     })
                     .or_insert(HighErrorSmilesDetail {
                         count: 1,
                         calculated_mass,
                         expected_mass,
                         formula: formula.map(str::to_string),
+                        max_abs_error_da: Some(abs_error_da),
+                        max_abs_error_ppm: Some(abs_ppm),
+                       observed_precursor_mz,
                     });
             }
         }
@@ -936,7 +966,12 @@ fn app() -> Element {
                                        {
                                            let mut sorted_high_error = metrics.high_error_smiles.iter().collect::<Vec<_>>();
                                            sorted_high_error.sort_by(|(left_smiles, left_detail), (right_smiles, right_detail)| {
-                                               right_detail.count.cmp(&left_detail.count).then_with(|| left_smiles.cmp(right_smiles))
+                                               right_detail
+                                                   .max_abs_error_da
+                                                   .unwrap_or_default()
+                                                   .total_cmp(&left_detail.max_abs_error_da.unwrap_or_default())
+                                                   .then_with(|| right_detail.count.cmp(&left_detail.count))
+                                                   .then_with(|| left_smiles.cmp(right_smiles))
                                            });
                                            rsx! {
                                                for (smiles, detail) in sorted_high_error {
@@ -944,8 +979,11 @@ fn app() -> Element {
                                                        let suffix = if detail.count > 1 { format!(" (x{})", detail.count) } else { String::new() };
                                                        let calc_value = detail.calculated_mass.map_or_else(|| "n/a".to_string(), format_value);
                                                        let expected_value = detail.expected_mass.map_or_else(|| "n/a".to_string(), format_value);
+                                                       let observed_value = detail.observed_precursor_mz.map_or_else(|| "n/a".to_string(), format_value);
+                                                       let max_error_da = detail.max_abs_error_da.map_or_else(|| "n/a".to_string(), format_value);
+                                                       let max_error_ppm = detail.max_abs_error_ppm.map_or_else(|| "n/a".to_string(), format_value);
                                                        let formula_suffix = detail.formula.as_deref().filter(|value| !value.trim().is_empty()).map_or_else(|| String::new(), |formula| format!("; formula {formula}"));
-                                                       let item_label = format!("{smiles}{suffix} — calc {calc_value}; expected {expected_value}{formula_suffix}");
+                                                       let item_label = format!("{smiles}{suffix} — worst error {max_error_da} Da / {max_error_ppm} ppm (derived expected precursor {expected_value}; observed precursor {observed_value}; reference mass {calc_value}){formula_suffix}");
                                                        rsx! {
                                                            li { "{item_label}" }
                                                        }
@@ -1027,26 +1065,26 @@ fn app() -> Element {
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f0fdf4; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(22, 101, 52, 0.12);",
                                     "≤ 0.0001 Da: {format_count_with_percentage(metrics.within_0_0001_da, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #4ade80; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(21, 128, 61, 0.12);",
-                                    "≤ 0.0005 Da: {format_count_with_percentage(metrics.within_0_0005_da, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(29, 78, 216, 0.12);",
-                                    "≤ 0.001 Da: {format_count_with_percentage(metrics.within_0_001_da, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(109, 40, 217, 0.12);",
-                                    "≤ 0.005 Da: {format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfeff; color: #0f766e; border: 1px solid #5eead4; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(15, 118, 110, 0.12);",
-                                    "≤ 0.5 ppm: {format_count_with_percentage(metrics.within_0_5_ppm, metrics.spectra)}"
-                                }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
-                                    "≤ 1 ppm: {format_count_with_percentage(metrics.within_1_ppm, metrics.spectra)}"
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #15803d; border: 1px solid #4ade80; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(21, 128, 61, 0.12);",
+                                    "0.0001–0.0005 Da: {format_count_with_percentage(metrics.within_0_0005_da, metrics.spectra)}"
                                 }
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(146, 64, 14, 0.12);",
-                                    "≤ 5 ppm: {format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}"
+                                    "0.0005–0.001 Da: {format_count_with_percentage(metrics.within_0_001_da, metrics.spectra)}"
                                 }
-                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
-                                    "≤ 10 ppm: {format_count_with_percentage(metrics.within_10_ppm, metrics.spectra)}"
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ffedd5; color: #9a2c00; border: 1px solid #fdba74; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(154, 44, 0, 0.12);",
+                                    "0.001–0.005 Da: {format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}"
+                                }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ecfdf3; color: #166534; border: 1px solid #86efac; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(22, 101, 52, 0.12);",
+                                    "≤ 0.5 ppm: {format_count_with_percentage(metrics.within_0_5_ppm, metrics.spectra)}"
+                                }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(146, 64, 14, 0.12);",
+                                    "0.5–1 ppm: {format_count_with_percentage(metrics.within_1_ppm, metrics.spectra)}"
+                                }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #ffedd5; color: #9a2c00; border: 1px solid #fdba74; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(154, 44, 0, 0.12);",
+                                    "1–5 ppm: {format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}"
+                                }
+                                span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fda4af; border-radius: 999px; font-weight: 700; box-shadow: 0 1px 2px rgba(185, 28, 28, 0.12);",
+                                    "5–10 ppm: {format_count_with_percentage(metrics.within_10_ppm, metrics.spectra)}"
                                 }
                             }
                         }
@@ -1148,17 +1186,15 @@ fn paul_tol_palette(index: usize) -> &'static str {
     ][index % 8]
 }
 
-fn tolerance_gradient(error: f64, threshold: f64) -> &'static str {
-    if !error.is_finite() {
-        return "#64748B";
+fn tolerance_step_color(index: usize, total_steps: usize) -> &'static str {
+    let palette = ["#16A34A", "#4ADE80", "#F59E0B", "#EA580C"];
+    if total_steps <= 1 {
+        return palette[0];
     }
-    let ratio = (error / threshold).clamp(0.0, 1.0);
-    match ratio {
-        r if r <= 0.25 => "#16A34A",
-        r if r <= 0.5 => "#4ADE80",
-        r if r <= 0.75 => "#F59E0B",
-        _ => "#EF4444",
-    }
+    let normalized = index.min(total_steps.saturating_sub(1));
+    let slot = ((normalized as f64 / (total_steps - 1) as f64) * (palette.len() - 1) as f64).round()
+        as usize;
+    palette[slot.min(palette.len() - 1)]
 }
 
 fn format_threshold_value(value: f64) -> String {
@@ -1218,7 +1254,7 @@ fn histogram_plot(
                 (*count as f64 / max_count as f64) * plot_height
             };
             let y = height - padding - bar_height;
-            let color = tolerance_gradient(bin_center, thresholds.last().copied().unwrap_or(5.0));
+            let color = paul_tol_palette(index);
             rsx! {
                 rect {
                     x: x as i32,
@@ -1246,7 +1282,7 @@ fn histogram_plot(
                     y1: padding as i32,
                     x2: x as i32,
                     y2: (height - padding) as i32,
-                    stroke: paul_tol_palette(index + 2),
+                    stroke: tolerance_step_color(index, thresholds.len()),
                     stroke_width: "1.25",
                     stroke_dasharray: "4 3"
                 }
@@ -1261,7 +1297,7 @@ fn histogram_plot(
             let label = format!("≤ {} {unit}", format_threshold_value(*threshold));
             rsx! {
                 div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
-                    span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", paul_tol_palette(index + 2)) }
+                    span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", tolerance_step_color(index, thresholds.len())) }
                     span { "{label}" }
                 }
             }
@@ -1407,7 +1443,7 @@ fn scatter_plot(
                 .unwrap_or_default();
             let x = padding + ((x_index - x_min) / x_span) * plot_width;
             let y = height - padding - ((point.signed_error_da - y_min) / y_span) * plot_height;
-            let color = tolerance_gradient(point.signed_error_da.abs(), 0.005);
+            let color = category_colors.get(&adduct_class.display).copied().unwrap_or("#64748B");
             rsx! {
                 circle {
                     cx: x as i32,
@@ -1736,7 +1772,6 @@ async fn scan_blob_with_progress(
     Ok(metrics)
 }
 
-#[cfg(target_arch = "wasm32")]
 fn process_block(
     block_lines: &[String],
     parsed_mascot: Option<&MascotGenericFormat<usize, f64>>,
@@ -1965,30 +2000,25 @@ fn process_block(
         smiles.as_deref(),
         Some(reference_mass),
         Some(expected_precursor_mz),
+        Some(observed_precursor),
         formula.as_deref(),
     );
     if abs_error_da <= 0.0001 {
         metrics.within_0_0001_da = 1;
-    }
-    if abs_error_da <= 0.0005 {
+    } else if abs_error_da <= 0.0005 {
         metrics.within_0_0005_da = 1;
-    }
-    if abs_error_da <= 0.001 {
+    } else if abs_error_da <= 0.001 {
         metrics.within_0_001_da = 1;
-    }
-    if abs_error_da <= 0.005 {
+    } else if abs_error_da <= 0.005 {
         metrics.within_0_005_da = 1;
     }
     if abs_ppm <= 0.5 {
         metrics.within_0_5_ppm = 1;
-    }
-    if abs_ppm <= 1.0 {
+    } else if abs_ppm <= 1.0 {
         metrics.within_1_ppm = 1;
-    }
-    if abs_ppm <= 5.0 {
+    } else if abs_ppm <= 5.0 {
         metrics.within_5_ppm = 1;
-    }
-    if abs_ppm <= 10.0 {
+    } else if abs_ppm <= 10.0 {
         metrics.within_10_ppm = 1;
     }
 
@@ -2073,6 +2103,93 @@ mod tests {
         let mass = expected_precursor_mz(1000.0, Some("[M+Na]+"), Some("1+"), Some("positive"))
             .expect("sodium adduct should be supported");
         assert!((mass - (1000.0 + SODIUM_MASS - ELECTRON_MASS)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn tracks_largest_absolute_error_for_high_error_smiles() {
+        let mut metrics = super::PrecursorMetrics::default();
+        metrics.record_error(
+            5.0,
+            12.0,
+            "[M+H]+",
+            12.0,
+            0.0,
+            Some("CCO"),
+            Some(1.0),
+            Some(20.0),
+            Some(25.0),
+            None,
+        );
+        metrics.record_error(
+            10.0,
+            12.0,
+            "[M+H]+",
+            12.0,
+            0.0,
+            Some("CCO"),
+            Some(1.0),
+            Some(30.0),
+            Some(40.0),
+            None,
+        );
+
+        let detail = metrics.high_error_smiles.get("CCO").expect("entry should exist");
+        assert_eq!(detail.count, 2);
+        assert_eq!(detail.max_abs_error_da, Some(10.0));
+        assert_eq!(detail.max_abs_error_ppm, Some(12.0));
+        assert_eq!(detail.expected_mass, Some(30.0));
+    }
+
+    #[test]
+    fn supports_mg_oxygen_dication_adducts() {
+        let mass = expected_precursor_mz(
+            292.103_42,
+            Some("[2M+O+Mg]+2"),
+            Some("2+"),
+            Some("positive"),
+        )
+        .expect("dimer oxygen magnesium dication adduct should be supported");
+        assert!((mass - 312.092_8).abs() < 5e-4);
+
+        let mass = expected_precursor_mz(
+            333.939_62,
+            Some("[M+O+Mg]+2"),
+            Some("2+"),
+            Some("positive"),
+        )
+        .expect("oxygen magnesium dication adduct should be supported");
+        assert!((mass - 186.959_2).abs() < 5e-4);
+    }
+
+    #[test]
+    fn processes_mgf_blocks_with_mg_oxygen_adducts() {
+        let block = vec![
+            "BEGIN IONS".to_string(),
+            "FILENAME=20230914_nexus_plate_1_Q4_pos_B7_CID_60ev.mzML".to_string(),
+            "FORMULA=C18H16N2S".to_string(),
+            "SMILES=c1ccc(-c2csc(N3CCc4ccccc4C3)n2)cc1".to_string(),
+            "CHARGE=2+".to_string(),
+            "IONMODE=positive".to_string(),
+            "ADDUCT=[2M+O+Mg]+2".to_string(),
+            "EXACTMASS=292.10342".to_string(),
+            "PRECURSOR_MZ=324.08564".to_string(),
+            "END IONS".to_string(),
+        ];
+
+        let mut smiles_cache = std::collections::HashMap::new();
+        let mut formula_cache = std::collections::HashMap::new();
+        let mut logged_failures = std::collections::HashSet::new();
+        let metrics = super::process_block(
+            &block,
+            None,
+            &mut smiles_cache,
+            &mut formula_cache,
+            &mut logged_failures,
+        )
+        .expect("block should be processed")
+        .expect("block should produce metrics");
+        assert_eq!(metrics.spectra, 1);
+        assert!(metrics.spectra_with_reference_mass > 0);
     }
 
     #[test]
@@ -2324,6 +2441,25 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
                 }
                 if existing.formula.is_none() {
                     existing.formula = detail.formula.clone();
+                }
+                if existing.observed_precursor_mz.is_none() && detail.observed_precursor_mz.is_some() {
+                    existing.observed_precursor_mz = detail.observed_precursor_mz;
+                }
+                if let Some(detail_error_da) = detail.max_abs_error_da {
+                    let should_replace = existing.max_abs_error_da.map_or(true, |existing_error| detail_error_da > existing_error);
+                    if should_replace {
+                        existing.max_abs_error_da = Some(detail_error_da);
+                        existing.max_abs_error_ppm = detail.max_abs_error_ppm;
+                        if detail.calculated_mass.is_some() {
+                            existing.calculated_mass = detail.calculated_mass;
+                        }
+                        if detail.expected_mass.is_some() {
+                            existing.expected_mass = detail.expected_mass;
+                        }
+                        if detail.observed_precursor_mz.is_some() {
+                            existing.observed_precursor_mz = detail.observed_precursor_mz;
+                        }
+                    }
                 }
             })
             .or_insert(detail);
