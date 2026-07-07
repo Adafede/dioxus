@@ -439,6 +439,7 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     let formula = trimmed[digits_end..].trim().to_ascii_uppercase();
     let formula = match formula.as_str() {
         "FA" | "FORMATE" | "HCOO" => "CHO2",
+        "HCOONA" | "NACHO2" | "NAHCOO" | "NAHCO2" | "CHNAO2" => "CHNaO2",
         "HCOOH" | "FORMICACID" => "CH2O2",
         "MEOH" | "CH3OH" => "CH4O",
         "HFA" => "C2HF3O2",
@@ -1345,6 +1346,7 @@ struct BlobLineReader<'a> {
     blob: Blob,
     offset: u64,
     buffer: Vec<u8>,
+    buffer_start: usize,
     processed: u64,
     progress: ProgressReporter<'a>,
 }
@@ -1359,6 +1361,7 @@ impl<'a> BlobLineReader<'a> {
             blob: blob.clone(),
             offset: 0,
             buffer: Vec::new(),
+            buffer_start: 0,
             processed: 0,
             progress: ProgressReporter::new(on_progress),
         }
@@ -1375,11 +1378,12 @@ impl<'a> BlobLineReader<'a> {
             }
 
             if self.offset >= self.total_bytes() {
-                if self.buffer.is_empty() {
+                if self.buffer_start >= self.buffer.len() {
                     return Ok(None);
                 }
-                let line = std::mem::take(&mut self.buffer);
-                return Ok(Some(String::from_utf8_lossy(&line).into_owned()));
+                let remaining = self.buffer[self.buffer_start..].to_vec();
+                self.buffer_start = self.buffer.len();
+                return Ok(Some(String::from_utf8_lossy(&remaining).into_owned()));
             }
 
             self.load_next_chunk().await?;
@@ -1387,13 +1391,19 @@ impl<'a> BlobLineReader<'a> {
     }
 
     fn take_line_from_buffer(&mut self) -> Option<String> {
-        if let Some(pos) = self.buffer.iter().position(|byte| *byte == b'\n') {
-            let mut line_bytes = self.buffer[..pos].to_vec();
-            self.buffer.drain(..=pos);
-            if line_bytes.last() == Some(&b'\r') {
-                line_bytes.pop();
+        let available = &self.buffer[self.buffer_start..];
+        if let Some(pos) = available.iter().position(|byte| *byte == b'\n') {
+            let line_bytes = &available[..pos];
+            let mut line = String::from_utf8_lossy(line_bytes).into_owned();
+            self.buffer_start += pos + 1;
+            if line.ends_with('\r') {
+                line.pop();
             }
-            Some(String::from_utf8_lossy(&line_bytes).into_owned())
+            if self.buffer_start > self.buffer.len() / 2 {
+                self.buffer.drain(..self.buffer_start);
+                self.buffer_start = 0;
+            }
+            Some(line)
         } else {
             None
         }
@@ -1483,7 +1493,6 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
     let mut formula = None;
     let mut feature_id = None;
     let mut scans = None;
-    let mut spectra_lines = Vec::new();
 
     for line in block_lines.iter() {
         let trimmed = line.trim();
@@ -1570,10 +1579,7 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
 
         if let Some(stripped) = trimmed.strip_prefix("FILENAME=") {
             headers.insert("FILENAME".to_string(), stripped.to_string());
-            continue;
         }
-
-        spectra_lines.push(trimmed.to_string());
     }
 
     let Some(observed_precursor) = observed_precursor else {
@@ -1631,55 +1637,6 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
                 .or_insert(1);
         }
         return Ok(Some(metrics));
-    }
-
-    let mut normalized = Vec::new();
-    normalized.push("BEGIN IONS".to_string());
-
-    if let Some(filename) = headers.get("FILENAME") {
-        normalized.push(format!("FILENAME={filename}"));
-    }
-
-    if let Some(feature_id) = feature_id.as_deref() {
-        normalized.push(format!("FEATURE_ID={feature_id}"));
-    }
-
-    normalized.push(format!("PEPMASS={observed_precursor}"));
-    if let Some(charge) = charge.as_deref() {
-        normalized.push(format!("CHARGE={charge}"));
-    }
-    if let Some(scans) = scans.as_deref() {
-        normalized.push(format!("SCANS={scans}"));
-    }
-    normalized.push("RTINSECONDS=1.0".to_string());
-    normalized.extend(spectra_lines.clone());
-    normalized.push("END IONS".to_string());
-
-    let block_text = normalized.join("\n");
-    let mut parsed_lines = Vec::new();
-    for raw_line in block_text.lines().filter(|line| !line.is_empty()) {
-        let trimmed = raw_line.trim();
-        if trimmed.is_empty() || trimmed == "BEGIN IONS" || trimmed == "END IONS" {
-            continue;
-        }
-
-        if trimmed.starts_with("SCANS=") {
-            parsed_lines.push(trimmed.to_string());
-            continue;
-        }
-
-        if trimmed.starts_with("FEATURE_ID=")
-            || trimmed.starts_with("PEPMASS=")
-            || trimmed.starts_with("CHARGE=")
-            || trimmed.starts_with("RTINSECONDS=")
-            || trimmed.starts_with("FILENAME=")
-        {
-            parsed_lines.push(trimmed.to_string());
-        }
-    }
-
-    if parsed_lines.is_empty() {
-        return Ok(None);
     }
 
     let expected_precursor_mz = expected_precursor_mz(
@@ -1891,6 +1848,15 @@ mod tests {
         let expected_formate_mass = 1000.0 + super::exact_mass_from_formula("CHO2")
             .expect("CHO2 mass should be available");
         assert!((formate_adduct - expected_formate_mass).abs() < 1e-9);
+
+        let sodium_formate_alias = super::expected_precursor_mz(
+            1000.0,
+            Some("[M+NaHCOO]+"),
+            Some("1+"),
+            Some("positive"),
+        )
+        .expect("sodium formate alias should be supported");
+        assert!((sodium_formate_alias - (1000.0 + 67.987_423_942)).abs() < 1e-9);
     }
 }
 
