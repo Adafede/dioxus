@@ -20,7 +20,7 @@ use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
-use web_sys::Blob;
+use web_sys::{console, Blob};
 
 #[cfg(any(target_arch = "wasm32", test))]
 const CHUNK_SIZE: usize = 1 << 20;
@@ -55,6 +55,13 @@ struct PlotPoint {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+struct HighErrorSmilesDetail {
+    count: usize,
+    calculated_mass: Option<f64>,
+    expected_mass: Option<f64>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 struct AdductClass {
     label: String,
     display: String,
@@ -69,6 +76,7 @@ struct PrecursorMetrics {
     spectra_with_reference_mass: usize,
     reference_mass_source: String,
     unparsed_smiles: usize,
+    unparsed_smiles_warnings: BTreeMap<String, usize>,
     observed_precursor_min: f64,
     observed_precursor_max: f64,
     observed_precursor_mean: f64,
@@ -92,7 +100,7 @@ struct PrecursorMetrics {
     ppm_error_histogram: HistogramData,
     plot_points: Vec<PlotPoint>,
     unrecognized_adducts: BTreeMap<String, usize>,
-    high_error_smiles: BTreeMap<String, usize>,
+    high_error_smiles: BTreeMap<String, HighErrorSmilesDetail>,
 }
 
 impl Default for PrecursorMetrics {
@@ -104,6 +112,7 @@ impl Default for PrecursorMetrics {
             spectra_with_reference_mass: 0,
             reference_mass_source: "none".to_string(),
             unparsed_smiles: 0,
+            unparsed_smiles_warnings: BTreeMap::new(),
             observed_precursor_min: 0.0,
             observed_precursor_max: 0.0,
             observed_precursor_mean: 0.0,
@@ -166,16 +175,28 @@ impl PrecursorMetrics {
         ppm_error: f64,
         signed_error_da: f64,
         smiles: Option<&str>,
+        calculated_mass: Option<f64>,
+        expected_mass: Option<f64>,
     ) {
         self.da_error_histogram.add_value(abs_error_da);
         self.ppm_error_histogram.add_value(abs_ppm);
 
         if abs_ppm > 10.0 {
             if let Some(smiles) = smiles.filter(|value| !value.trim().is_empty()) {
-                self.high_error_smiles
-                    .entry(smiles.trim().to_string())
-                    .and_modify(|count| *count += 1)
-                    .or_insert(1);
+                let trimmed = smiles.trim().to_string();
+                self.high_error_smiles.entry(trimmed.clone()).and_modify(|entry| {
+                    entry.count = entry.count.saturating_add(1);
+                    if entry.calculated_mass.is_none() && calculated_mass.is_some() {
+                        entry.calculated_mass = calculated_mass;
+                    }
+                    if entry.expected_mass.is_none() && expected_mass.is_some() {
+                        entry.expected_mass = expected_mass;
+                    }
+                }).or_insert(HighErrorSmilesDetail {
+                    count: 1,
+                    calculated_mass,
+                    expected_mass,
+                });
             }
         }
 
@@ -201,7 +222,22 @@ impl PrecursorMetrics {
     }
 }
 
+fn smiles_is_supported(smiles: &str) -> bool {
+    let trimmed = smiles.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    !trimmed.contains(['[', ']', '@', '/', '\\', ':', ';'])
+}
+
 fn exact_mass_from_smiles(smiles: &str) -> Option<f64> {
+    if !smiles_is_supported(smiles) {
+        #[cfg(target_arch = "wasm32")]
+        console::warn_1(&format!("Skipping unsupported SMILES for mass parsing: {smiles}").into());
+        return None;
+    }
+
     let parsed = catch_unwind(AssertUnwindSafe(|| {
         let (rest, parsed_chain) = chain(smiles.as_bytes()).ok()?;
         if !rest.is_empty() {
@@ -235,14 +271,31 @@ fn exact_mass_from_smiles(smiles: &str) -> Option<f64> {
     }));
 
     match parsed {
-        Ok(mass) => mass,
-        Err(_) => None,
+        Ok(mass) => {
+            if mass.is_none() {
+                #[cfg(target_arch = "wasm32")]
+                console::warn_1(&format!("SMILES parse failed for: {smiles}").into());
+            }
+            mass
+        }
+        Err(_) => {
+            #[cfg(target_arch = "wasm32")]
+            console::warn_1(&format!("SMILES parser panicked for: {smiles}").into());
+            None
+        }
     }
 }
 
 fn exact_mass_from_formula(formula: &str) -> Option<f64> {
-    let formula: ChemicalFormula<u32, i32> = ChemicalFormula::from_str(formula).ok()?;
-    Some(formula.isotopologue_mass())
+    let parsed: Result<ChemicalFormula<u32, i32>, _> = ChemicalFormula::from_str(formula);
+    match parsed {
+        Ok(parsed_formula) => Some(parsed_formula.isotopologue_mass()),
+        Err(_) => {
+            #[cfg(target_arch = "wasm32")]
+            console::warn_1(&format!("Formula parse failed for: {formula}").into());
+            None
+        }
+    }
 }
 
 fn hill_order(left: &str, right: &str) -> std::cmp::Ordering {
@@ -711,6 +764,24 @@ fn app() -> Element {
                                     if metrics.unparsed_smiles > 0 {
                                         p { style: "margin: 0.45rem 0 0; font-size: 0.88rem;", "{metrics.unparsed_smiles} spectra had SMILES that could not be parsed into a reference mass." }
                                     }
+                                    if !metrics.unparsed_smiles_warnings.is_empty() {
+                                        div { style: "margin-top: 0.6rem; padding: 0.7rem 0.8rem; border: 1px solid #fde68a; border-radius: 10px; background: #fffbeb; color: #92400e;",
+                                            p { style: "margin: 0 0 0.35rem; font-weight: 700; font-size: 0.86rem;", "Excluded unparsed SMILES" }
+                                            ul { style: "margin: 0.25rem 0 0 1.05rem; padding: 0; font-size: 0.84rem; max-height: 160px; overflow: auto;",
+                                                {
+                                                    let mut sorted_unparsed = metrics.unparsed_smiles_warnings.iter().collect::<Vec<_>>();
+                                                    sorted_unparsed.sort_by(|(left_smiles, left_count), (right_smiles, right_count)| {
+                                                        right_count.cmp(left_count).then_with(|| left_smiles.cmp(right_smiles))
+                                                    });
+                                                    rsx! {
+                                                        for (smiles, count) in sorted_unparsed {
+                                                            li { "{smiles} ({count})" }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                     if !metrics.unrecognized_adducts.is_empty() {
                                         ul { style: "margin: 0.45rem 0 0 1.1rem; padding: 0; font-size: 0.88rem;",
                                             {
@@ -734,11 +805,21 @@ fn app() -> Element {
                                     style: "margin-top: 1rem; padding: 0.8rem 0.9rem; border: 1px solid #fecaca; border-radius: 12px; background: #fef2f2; color: #991b1b;",
                                     p { style: "margin: 0 0 0.35rem; font-weight: 700;", "SMILES for spectra above 10 ppm" }
                                     ul { style: "margin: 0.25rem 0 0 1.1rem; padding: 0; font-size: 0.88rem; max-height: 240px; overflow: auto;",
-                                        for (smiles, count) in metrics.high_error_smiles.iter() {
-                                           {
-                                               let suffix = if *count > 1 { format!(" (x{count})") } else { String::new() };
-                                               rsx! {
-                                                   li { "{smiles}{suffix}" }
+                                       {
+                                           let mut sorted_high_error = metrics.high_error_smiles.iter().collect::<Vec<_>>();
+                                           sorted_high_error.sort_by(|(left_smiles, left_detail), (right_smiles, right_detail)| {
+                                               right_detail.count.cmp(&left_detail.count).then_with(|| left_smiles.cmp(right_smiles))
+                                           });
+                                           rsx! {
+                                               for (smiles, detail) in sorted_high_error {
+                                                   {
+                                                       let suffix = if detail.count > 1 { format!(" (x{})", detail.count) } else { String::new() };
+                                                       let calc_value = detail.calculated_mass.map_or_else(|| "n/a".to_string(), format_value);
+                                                       let expected_value = detail.expected_mass.map_or_else(|| "n/a".to_string(), format_value);
+                                                       rsx! {
+                                                           li { "{smiles}{suffix} — calc {calc_value}; expected {expected_value}" }
+                                                       }
+                                                   }
                                                }
                                            }
                                        }
@@ -1612,8 +1693,13 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
         let mut metrics = PrecursorMetrics::default();
         metrics.total_spectra = 1;
         metrics.skipped_spectra = 1;
-        if smiles.is_some() {
+        if let Some(smiles_text) = smiles.as_deref().filter(|value| !value.trim().is_empty()) {
             metrics.unparsed_smiles = 1;
+            metrics
+                .unparsed_smiles_warnings
+                .entry(smiles_text.trim().to_string())
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
         }
         return Ok(Some(metrics));
     };
@@ -1682,6 +1768,8 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
         ppm,
         error_da,
         smiles.as_deref(),
+        Some(reference_mass),
+        Some(expected_precursor_mz),
     );
     if abs_error_da <= 0.0005 {
         metrics.within_0_0005_da = 1;
@@ -1877,6 +1965,13 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     current.skipped_spectra += next.skipped_spectra;
     current.spectra_with_reference_mass += next.spectra_with_reference_mass;
     current.unparsed_smiles += next.unparsed_smiles;
+    for (smiles, count) in next.unparsed_smiles_warnings {
+        current
+            .unparsed_smiles_warnings
+            .entry(smiles)
+            .and_modify(|existing| *existing += count)
+            .or_insert(count);
+    }
     if current.reference_mass_source == "none" {
         current.reference_mass_source = next.reference_mass_source;
     } else if current.reference_mass_source != next.reference_mass_source
@@ -1949,12 +2044,20 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
             .and_modify(|existing| *existing += count)
             .or_insert(count);
     }
-    for (smiles, count) in next.high_error_smiles {
+    for (smiles, detail) in next.high_error_smiles {
         current
             .high_error_smiles
             .entry(smiles)
-            .and_modify(|existing| *existing += count)
-            .or_insert(count);
+            .and_modify(|existing| {
+                existing.count = existing.count.saturating_add(detail.count);
+                if existing.calculated_mass.is_none() && detail.calculated_mass.is_some() {
+                    existing.calculated_mass = detail.calculated_mass;
+                }
+                if existing.expected_mass.is_none() && detail.expected_mass.is_some() {
+                    existing.expected_mass = detail.expected_mass;
+                }
+            })
+            .or_insert(detail);
     }
 
     current.plot_points.extend(next.plot_points);
