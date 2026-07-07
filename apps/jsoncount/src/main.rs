@@ -107,6 +107,11 @@ fn app() -> Element {
 
         #[cfg(target_arch = "wasm32")]
         {
+            #[allow(unused_mut)]
+            let mut busy = busy;
+            #[allow(unused_mut)]
+            let mut results = results;
+
             let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
                 status.set("This file type is not supported in the browser.".to_string());
                 return;
@@ -157,6 +162,11 @@ fn app() -> Element {
 
         #[cfg(target_arch = "wasm32")]
         {
+            #[allow(unused_mut)]
+            let mut busy = busy;
+            #[allow(unused_mut)]
+            let mut results = results;
+
             let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
                 status.set("This file type is not supported in the browser.".to_string());
                 return;
