@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
 
-use dioxus::events::{DragData, FormData};
+use dioxus::events::{DragData, FormData, WheelData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
@@ -19,17 +19,17 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Blob;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 const CHUNK_SIZE: usize = 1 << 20;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 const PROGRESS_INTERVAL: usize = 1 << 20;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 const PROTON_MASS: f64 = 1.007_276_466_621;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 const SODIUM_MASS: f64 = 22.989_769_67;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 const POTASSIUM_MASS: f64 = 38.963_707;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 const AMMONIUM_MASS: f64 = 18.033_823;
 
 #[cfg(target_arch = "wasm32")]
@@ -48,14 +48,23 @@ struct HistogramData {
 
 #[derive(Clone, Debug, PartialEq)]
 struct PlotPoint {
-    precursor_mz: f64,
-    ppm_error: f64,
-    da_error: f64,
+    adduct_type: String,
+    signed_error_da: f64,
+    signed_error_ppm: f64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct AdductClass {
+    label: String,
+    display: String,
+    charge: i32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 struct PrecursorMetrics {
     spectra: usize,
+    total_spectra: usize,
+    skipped_spectra: usize,
     spectra_with_reference_mass: usize,
     reference_mass_source: String,
     observed_precursor_min: f64,
@@ -78,12 +87,15 @@ struct PrecursorMetrics {
     da_error_histogram: HistogramData,
     ppm_error_histogram: HistogramData,
     plot_points: Vec<PlotPoint>,
+    unrecognized_adducts: BTreeMap<String, usize>,
 }
 
 impl Default for PrecursorMetrics {
     fn default() -> Self {
         Self {
             spectra: 0,
+            total_spectra: 0,
+            skipped_spectra: 0,
             spectra_with_reference_mass: 0,
             reference_mass_source: "none".to_string(),
             observed_precursor_min: 0.0,
@@ -106,6 +118,7 @@ impl Default for PrecursorMetrics {
             da_error_histogram: HistogramData::new(48, 0.0, 0.5),
             ppm_error_histogram: HistogramData::new(48, 0.0, 50.0),
             plot_points: Vec::new(),
+            unrecognized_adducts: BTreeMap::new(),
         }
     }
 }
@@ -136,15 +149,22 @@ impl HistogramData {
 }
 
 impl PrecursorMetrics {
-    fn record_error(&mut self, abs_error_da: f64, abs_ppm: f64, precursor_mz: f64, ppm_error: f64) {
+    fn record_error(
+        &mut self,
+        abs_error_da: f64,
+        abs_ppm: f64,
+        adduct_type: &str,
+        ppm_error: f64,
+        signed_error_da: f64,
+    ) {
         self.da_error_histogram.add_value(abs_error_da);
         self.ppm_error_histogram.add_value(abs_ppm);
 
         if self.plot_points.len() < 260 {
             self.plot_points.push(PlotPoint {
-                precursor_mz,
-                ppm_error,
-                da_error: abs_error_da,
+                adduct_type: adduct_type.to_string(),
+                signed_error_da,
+                signed_error_ppm: ppm_error,
             });
         } else {
             let len = self.plot_points.len();
@@ -152,9 +172,9 @@ impl PrecursorMetrics {
             if self.spectra % stride == 0 {
                 if let Some(point) = self.plot_points.get_mut(len / 2) {
                     *point = PlotPoint {
-                        precursor_mz,
-                        ppm_error,
-                        da_error: abs_error_da,
+                        adduct_type: adduct_type.to_string(),
+                        signed_error_da,
+                        signed_error_ppm: ppm_error,
                     };
                 }
             }
@@ -218,7 +238,7 @@ fn hill_order(left: &str, right: &str) -> std::cmp::Ordering {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 fn expected_precursor_mz(
     neutral_mass: f64,
     adduct: Option<&str>,
@@ -227,8 +247,9 @@ fn expected_precursor_mz(
 ) -> Option<f64> {
     let normalized_adduct = adduct.unwrap_or("").trim();
     let normalized_ion_mode = ion_mode.unwrap_or("").trim().to_ascii_lowercase();
-    let charge_is_negative = charge.unwrap_or("").trim().ends_with('-');
-    let charge_is_positive = charge.unwrap_or("").trim().ends_with('+');
+    let charge_text = charge.unwrap_or("").trim();
+    let charge_is_negative = charge_text.ends_with('-');
+    let charge_is_positive = charge_text.ends_with('+');
 
     let shift = if normalized_adduct.is_empty() {
         if normalized_ion_mode == "negative" || charge_is_negative {
@@ -239,17 +260,85 @@ fn expected_precursor_mz(
             0.0
         }
     } else {
-        match normalized_adduct {
-            "[M+H]+" => PROTON_MASS,
-            "[M-H]-" => -PROTON_MASS,
-            "[M+Na]+" => SODIUM_MASS,
-            "[M+K]+" => POTASSIUM_MASS,
-            "[M+NH4]+" => AMMONIUM_MASS,
-            _ => 0.0,
-        }
+        parse_adduct_shift(normalized_adduct).unwrap_or_else(|| {
+            if normalized_ion_mode == "negative" || charge_is_negative {
+                -PROTON_MASS
+            } else if normalized_ion_mode == "positive" || charge_is_positive {
+                PROTON_MASS
+            } else {
+                0.0
+            }
+        })
     };
 
-    Some(neutral_mass + shift)
+    let charge_value = parse_charge_value(charge, adduct).unwrap_or_else(|| {
+        if normalized_ion_mode == "negative" || charge_is_negative {
+            1.0
+        } else if normalized_ion_mode == "positive" || charge_is_positive {
+            1.0
+        } else {
+            1.0
+        }
+    });
+
+    Some((neutral_mass + shift) / charge_value.max(1.0))
+}
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn parse_adduct_shift(adduct: &str) -> Option<f64> {
+    let normalized = adduct.trim().replace(' ', "");
+    let normalized = normalized.trim_matches(|ch| ch == '[' || ch == ']');
+    let normalized_upper = normalized.to_ascii_uppercase();
+
+    if normalized_upper.contains("M+NH4") || normalized_upper.contains("M+AMMONIUM") {
+        Some(AMMONIUM_MASS)
+    } else if normalized_upper.contains("M+NA") {
+        Some(SODIUM_MASS)
+    } else if normalized_upper.contains("M+K") {
+        Some(POTASSIUM_MASS)
+    } else if normalized_upper.contains("M+3H") {
+        Some(3.0 * PROTON_MASS)
+    } else if normalized_upper.contains("M+2H") {
+        Some(2.0 * PROTON_MASS)
+    } else if normalized_upper.contains("M+H") {
+        Some(PROTON_MASS)
+    } else if normalized_upper.contains("M-H") {
+        Some(-PROTON_MASS)
+    } else if normalized_upper.contains("M+2NA") {
+        Some(2.0 * SODIUM_MASS)
+    } else if normalized_upper.contains("M+2K") {
+        Some(2.0 * POTASSIUM_MASS)
+    } else {
+        None
+    }
+}
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {
+    if let Some(value) = charge {
+        let cleaned = value.trim();
+        let digits = cleaned
+            .chars()
+            .filter(|ch| ch.is_ascii_digit())
+            .collect::<String>();
+        if let Ok(parsed) = digits.parse::<f64>() {
+            return Some(parsed.max(1.0));
+        }
+    }
+
+    if let Some(adduct) = adduct {
+        let cleaned = adduct.trim();
+        let suffix = cleaned.split(']').nth(1).unwrap_or("").trim();
+        let digits = suffix
+            .chars()
+            .filter(|ch| ch.is_ascii_digit())
+            .collect::<String>();
+        if let Ok(parsed) = digits.parse::<f64>() {
+            return Some(parsed.max(1.0));
+        }
+    }
+
+    None
 }
 
 #[component]
@@ -457,8 +546,23 @@ fn app() -> Element {
                         div {
                             style: "margin-top: 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
                             h3 { style: "margin: 0 0 0.4rem; font-size: 1rem;", "Summary" }
-                            p { style: "margin: 0.35rem 0; color: #475569;", "Processed {metrics.spectra} spectra using {metrics.reference_mass_source} as the reference mass." }
+                            p { style: "margin: 0.35rem 0; color: #475569;", "Processed {metrics.total_spectra} spectra; compared {metrics.spectra} with usable reference masses." }
                             p { style: "margin: 0.35rem 0; color: #475569;", "{metrics.spectra_with_reference_mass} spectra had a usable reference mass." }
+
+                            if metrics.skipped_spectra > 0 || !metrics.unrecognized_adducts.is_empty() {
+                                div {
+                                    style: "margin-top: 0.9rem; padding: 0.8rem 0.9rem; border: 1px solid #fcd34d; border-radius: 12px; background: #fffbeb; color: #92400e;",
+                                    p { style: "margin: 0 0 0.35rem; font-weight: 700;", "Warnings" }
+                                    p { style: "margin: 0; font-size: 0.9rem;", "{metrics.skipped_spectra} spectra were skipped because the adduct or reference mass could not be resolved." }
+                                    if !metrics.unrecognized_adducts.is_empty() {
+                                        ul { style: "margin: 0.45rem 0 0 1.1rem; padding: 0; font-size: 0.88rem;",
+                                            for (adduct, count) in metrics.unrecognized_adducts.iter() {
+                                                li { "{adduct}: {count}" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
                             div {
                                 style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem;",
@@ -503,7 +607,7 @@ fn app() -> Element {
                                     title: "Absolute precursor error (Da)".to_string(),
                                     subtitle: "Distribution across spectra, with tolerance bands highlighted".to_string(),
                                     histogram: metrics.da_error_histogram.clone(),
-                                    thresholds: vec![0.005, 0.01, 0.5],
+                                    thresholds: vec![0.005, 0.01],
                                     unit: "Da".to_string(),
                                 }
                                 histogram_plot {
@@ -514,25 +618,30 @@ fn app() -> Element {
                                     unit: "ppm".to_string(),
                                 }
                                 scatter_plot {
-                                    title: "Error versus precursor mass".to_string(),
-                                    subtitle: "Signed ppm error as a function of precursor m/z".to_string(),
+                                    title: "Error versus adduct type".to_string(),
+                                    subtitle: "Signed Da error by adduct family".to_string(),
                                     points: metrics.plot_points.clone(),
+                                    other_label: if metrics.skipped_spectra > 0 {
+                                        Some(format!("Other ({})", metrics.skipped_spectra))
+                                    } else {
+                                        None
+                                    },
                                 }
                             }
 
                             div {
                                 style: "margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.55rem;",
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #e0f2fe; color: #0369a1; border-radius: 999px; font-weight: 600;",
-                                    "≤ 0.01 Da: {metrics.within_0_01_da}"
+                                    "≤ 0.01 Da: {format_count_with_percentage(metrics.within_0_01_da, metrics.spectra)}"
                                 }
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #f5f3ff; color: #7c3aed; border-radius: 999px; font-weight: 600;",
-                                    "< 0.005 Da: {metrics.within_0_005_da}"
+                                    "< 0.005 Da: {format_count_with_percentage(metrics.within_0_005_da, metrics.spectra)}"
                                 }
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fef3c7; color: #b45309; border-radius: 999px; font-weight: 600;",
-                                    "≤ 5 ppm: {metrics.within_5_ppm}"
+                                    "≤ 5 ppm: {format_count_with_percentage(metrics.within_5_ppm, metrics.spectra)}"
                                 }
                                 span { style: "display: inline-block; padding: 0.4rem 0.7rem; background: #fdf2f8; color: #be185d; border-radius: 999px; font-weight: 600;",
-                                    "≤ 10 ppm: {metrics.within_10_ppm}"
+                                    "≤ 10 ppm: {format_count_with_percentage(metrics.within_10_ppm, metrics.spectra)}"
                                 }
                             }
                         }
@@ -551,6 +660,268 @@ fn format_value(value: f64) -> String {
     }
 }
 
+fn format_count_with_percentage(count: usize, total: usize) -> String {
+    if total == 0 {
+        format!("{count} (0.0%)")
+    } else {
+        let pct = (count as f64 / total as f64) * 100.0;
+        format!("{count} ({pct:.1}%)")
+    }
+}
+
+fn normalize_adduct_label(adduct: &str) -> String {
+    let trimmed = adduct.trim();
+    if trimmed.is_empty() {
+        return "unknown".to_string();
+    }
+
+    let normalized = trimmed.replace(' ', "");
+    let upper = normalized.to_ascii_uppercase();
+
+    if upper.contains("M+NH4") || upper.contains("M+AMMONIUM") {
+        "[M+NH4]+".to_string()
+    } else if upper.contains("M+NA") {
+        "[M+Na]+".to_string()
+    } else if upper.contains("M+K") {
+        "[M+K]+".to_string()
+    } else if upper.contains("M+3H") {
+        "[M+3H]+".to_string()
+    } else if upper.contains("M+2H") {
+        "[M+2H]2+".to_string()
+    } else if upper.contains("M+H") {
+        "[M+H]+".to_string()
+    } else if upper.contains("M-H") {
+        "[M-H]-".to_string()
+    } else if upper.contains("M-2H") {
+        "[M-2H]2-".to_string()
+    } else if upper.contains("M+2NA") {
+        "[M+2Na]2+".to_string()
+    } else if upper.contains("M+2K") {
+        "[M+2K]2+".to_string()
+    } else if upper.contains("M]") {
+        "[M]2+".to_string()
+    } else if upper.contains("M") {
+        "[M]+".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn normalize_adduct_key(adduct: &str) -> String {
+    adduct.trim().replace(' ', "").to_ascii_uppercase()
+}
+
+fn is_excluded_adduct(adduct: &str) -> bool {
+    let key = normalize_adduct_key(adduct);
+    matches!(
+        key.as_str(),
+        "[M+CL]"
+            | "[M+NA-2H]"
+            | "[2M+3H2O+2H]+"
+            | "[2M+ACN+H]+"
+            | "[2M+CA-H]+"
+            | "[2M+FA-H]-"
+            | "[2M+H+CH3CN]+"
+            | "[2M+HAC-H]-"
+            | "[2M+K-2H]-"
+            | "[2M-2H+3NA]+"
+            | "[2M-2H+K]-"
+            | "[2M-2H+NA]-"
+            | "[2M-2H2O+H]+"
+            | "[2M-3H2O+H]+"
+            | "[2M-H+2NA]+"
+            | "[2M-H2O+H]+"
+            | "[3M+CA-H]+"
+            | "[3M+CA]2+"
+            | "[3M+K]+"
+            | "[2M+CA]2+"
+            | "[4M+CA]2+"
+            | "[5M+CA]2+"
+            | "[M+2ACN+2H]+"
+            | "[M+2ACN+2H]2+"
+            | "[M+2NA-H]+"
+            | "[M+2NA]+"
+            | "[M+3ACN+2H]+"
+            | "[M+3ACN+2H]2+"
+            | "[M+3NA]+"
+            | "[M+ACN+2H]2+"
+            | "[M+ACN+H]+"
+            | "[M+ACN+NH4]+"
+            | "[M+ACN+NA]+"
+            | "[M+CH3COOH-H]-"
+            | "[M+CH3COO]-"
+            | "[M+CH3COO]-/[M-CH3]-"
+            | "[M+CH3OH+H]+"
+            | "[M+CH3]+"
+            | "[M+CA-H]+"
+            | "[M+DMSO+H]+"
+            | "[M+FA+H]+"
+            | "[M+FA-H]-"
+            | "[M+H+CH3CN]+"
+            | "[M+H+H2O]+"
+            | "[M+H+HCOOH]+"
+            | "[M+H+K]2+"
+            | "[M+H+NH4]2+"
+            | "[M+H+NA]+"
+            | "[M+H+NA]2+"
+            | "[M+H+O]+"
+            | "[M+H-2CH4]+"
+            | "[M+H-2H2O]+"
+            | "[M+H-3CH4]+"
+            | "[M+H-3H2O]+"
+            | "[M+H-99]+"
+            | "[M+H-C11H12N2O3]+"
+            | "[M+H-C12H20O9]+"
+            | "[M+H-C13H12O9]+"
+            | "[M+H-C24H44O-H2O]+"
+            | "[M+H-C2H5N]+"
+            | "[M+H-C2H6O]+"
+            | "[M+H-C3H8NO6P]+"
+            | "[M+H-C4H6]+"
+            | "[M+H-C5H12N2]+"
+            | "[M+H-C5H14NO4P]+"
+            | "[M+H-C5H9NO4]+"
+            | "[M+H-C6H10O5]+"
+            | "[M+H-C8H10O]+"
+            | "[M+H-C9H10O5]+"
+            | "[M+H-CH3NH2]+"
+            | "[M+H-CH4O]+"
+            | "[M+H-H2O]+"
+            | "[M+H-H2O]-"
+            | "[M+H-NH3]+"
+            | "[M+H2CO2-H]-"
+            | "[M+HCOOH-H]-"
+            | "[M+HCOO]-"
+            | "[M+HOO]-"
+            | "[M+H]2+"
+            | "[M+HAC-H]-"
+            | "[M+ISOPROP+H]+"
+            | "[M+K-2H]-"
+            | "[M+LI]+"
+            | "[M+LI]+*"
+            | "[M+MEOH-H]-"
+            | "[M+NA+CH3CN]+"
+            | "[M+NA-2H]-"
+            | "[M+NA]+*"
+            | "[M+OAC]-"
+            | "[M+OH]+"
+            | "[M+TFA-H]-"
+            | "[M-2H+NA]-"
+            | "[M-2H2O+2H]2+"
+            | "[M-2H2O+H]+"
+            | "[M-2H2O+NH4]+"
+            | "[M-2H]-"
+            | "[M-3H2O+2H]2+"
+            | "[M-3H2O+H]+"
+            | "[M-4H2O+H]+"
+            | "[M-5H2O+H]+"
+            | "[M-C2H3O]-"
+            | "[M-C3H6NO2]-"
+            | "[M-C3H7O2]-"
+            | "[M-C3H8O+H]+"
+            | "[M-C6H10O5+H]+"
+            | "[M-CH3]-"
+            | "[M-CO2-H]-"
+            | "[M-H+C2H2O]-"
+            | "[M-H+CH2O2]-"
+            | "[M-H+CH3OH]-"
+            | "[M-H+H2O]-"
+            | "[M-H+LI]+"
+            | "[M-H+LI]+*"
+            | "[M-H+NA]+*"
+            | "[M-H+2NA]+"
+            | "[M-H+2K]+"
+            | "[M-H-C10H20]-"
+            | "[M-H-C3H5NO2]-"
+            | "[M-H-C6H10O5]-"
+            | "[M-H-C6H9O5SO3H]-"
+            | "[M-H-CO2-2HF]-"
+            | "[M-H-NH3]-"
+            | "[M-H2O+H]+"
+            | "[M-H2O-H]-"
+            | "[M-H]+"
+            | "[M-H]-/[M-C3H6NO2]-"
+            | "[M-H]2-"
+            | "[M-MEOH+H]+"
+            | "[M-OH]+"
+            | "[M]+*"
+        )
+}
+
+fn is_supported_adduct(adduct: &str) -> bool {
+    let normalized = normalize_adduct_label(adduct);
+    matches!(
+        normalized.as_str(),
+        "[M]+"
+            | "[M]2+"
+            | "[M+H]+"
+            | "[M+2H]2+"
+            | "[M+Na]+"
+            | "[M+2Na]2+"
+            | "[M+K]+"
+            | "[M+NH4]+"
+            | "[M-H]-"
+            | "[M-2H]2-"
+    )
+}
+
+fn adduct_class(adduct: &str) -> Option<AdductClass> {
+    let normalized = normalize_adduct_label(adduct);
+    match normalized.as_str() {
+        "[M]+" => Some(AdductClass {
+            label: "[M]+".to_string(),
+            display: "[M]+".to_string(),
+            charge: 1,
+        }),
+        "[M]2+" => Some(AdductClass {
+            label: "[M]2+".to_string(),
+            display: "[M]2+".to_string(),
+            charge: 2,
+        }),
+        "[M+H]+" => Some(AdductClass {
+            label: "[M+H]+".to_string(),
+            display: "[M+H]+".to_string(),
+            charge: 1,
+        }),
+        "[M+2H]2+" => Some(AdductClass {
+            label: "[M+2H]2+".to_string(),
+            display: "[M+2H]2+".to_string(),
+            charge: 2,
+        }),
+        "[M+Na]+" => Some(AdductClass {
+            label: "[M+Na]+".to_string(),
+            display: "[M+Na]+".to_string(),
+            charge: 1,
+        }),
+        "[M+2Na]2+" => Some(AdductClass {
+            label: "[M+2Na]2+".to_string(),
+            display: "[M+2Na]2+".to_string(),
+            charge: 2,
+        }),
+        "[M+K]+" => Some(AdductClass {
+            label: "[M+K]+".to_string(),
+            display: "[M+K]+".to_string(),
+            charge: 1,
+        }),
+        "[M+NH4]+" => Some(AdductClass {
+            label: "[M+NH4]+".to_string(),
+            display: "[M+NH4]+".to_string(),
+            charge: 1,
+        }),
+        "[M-H]-" => Some(AdductClass {
+            label: "[M-H]-".to_string(),
+            display: "[M-H]-".to_string(),
+            charge: -1,
+        }),
+        "[M-2H]2-" => Some(AdductClass {
+            label: "[M-2H]2-".to_string(),
+            display: "[M-2H]2-".to_string(),
+            charge: -2,
+        }),
+        _ => None,
+    }
+}
+
 fn scientific_palette(index: usize) -> &'static str {
     [
         "#4477AA", "#66CCEE", "#228833", "#CCBB44", "#EE6677", "#AA3377", "#BBBBBB", "#004488",
@@ -565,12 +936,30 @@ fn histogram_plot(
     thresholds: Vec<f64>,
     unit: String,
 ) -> Element {
+    let mut zoom = use_signal(|| 1.0f64);
     let max_count = histogram.bins.iter().copied().max().unwrap_or(1).max(1);
     let width = 360.0f64;
     let height = 220.0f64;
     let padding = 24.0f64;
     let plot_width = width - padding * 2.0;
     let plot_height = height - padding * 2.0;
+    let zoom_in = move |_| {
+        let current_zoom = *zoom.read();
+        zoom.set((current_zoom * 1.18).min(8.0));
+    };
+    let zoom_out = move |_| {
+        let current_zoom = *zoom.read();
+        zoom.set((current_zoom / 1.18).max(0.8));
+    };
+    let reset_zoom = move |_| zoom.set(1.0);
+    let zoom_transform = format!(
+        "translate({} {}) scale({}) translate({} {})",
+        width / 2.0,
+        height / 2.0,
+        *zoom.read(),
+        -(width / 2.0),
+        -(height / 2.0)
+    );
     let bars = histogram
         .bins
         .iter()
@@ -619,87 +1008,15 @@ fn histogram_plot(
         })
         .collect::<Vec<_>>();
 
-    rsx! {
-        div {
-            style: "padding: 0.9rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
-            h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
-            p { style: "margin: 0 0 0.65rem; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
-            svg {
-                width: "100%",
-                height: "220px",
-                view_box: "0 0 360 220",
-                role: "img",
-               style: "display: block;",
-               title { "{title}" }
-                rect { x: 0, y: 0, width: 360, height: 220, fill: "#f8fafc" }
-                line { x1: padding as i32, y1: (height - padding) as i32, x2: (width - padding) as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
-                line { x1: padding as i32, y1: padding as i32, x2: padding as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
-                for bar in bars {
-                    {bar}
-                }
-                for line in threshold_lines {
-                    {line}
-                }
-                text { x: (padding + 4.0) as i32, y: (padding + 12.0) as i32, fill: "#64748b", font_size: "11", "0" }
-                text { x: (width - padding - 20.0) as i32, y: (height - padding + 16.0) as i32, fill: "#64748b", font_size: "11", "{unit}" }
-            }
-        }
-    }
-}
-
-#[component]
-fn scatter_plot(title: String, subtitle: String, points: Vec<PlotPoint>) -> Element {
-    let width = 360.0f64;
-    let height = 220.0f64;
-    let padding = 24.0f64;
-    let plot_width = width - padding * 2.0;
-    let plot_height = height - padding * 2.0;
-
-    let (x_min, x_max) = if points.is_empty() {
-        (0.0, 1.0)
-    } else {
-        let min = points
-            .iter()
-            .map(|point| point.precursor_mz)
-            .fold(f64::INFINITY, f64::min);
-        let max = points
-            .iter()
-            .map(|point| point.precursor_mz)
-            .fold(f64::NEG_INFINITY, f64::max);
-        (min, max)
-    };
-    let x_span = (x_max - x_min).max(1e-9);
-
-    let (y_min, y_max) = if points.is_empty() {
-        (-10.0, 10.0)
-    } else {
-        let min = points
-            .iter()
-            .map(|point| point.ppm_error)
-            .fold(f64::INFINITY, f64::min);
-        let max = points
-            .iter()
-            .map(|point| point.ppm_error)
-            .fold(f64::NEG_INFINITY, f64::max);
-        let span = (max - min).max(20.0);
-        (min - span * 0.05, max + span * 0.05)
-    };
-    let y_span = (y_max - y_min).max(1e-9);
-
-    let circles = points
+    let legend_items = thresholds
         .iter()
         .enumerate()
-        .map(|(index, point)| {
-            let x = padding + ((point.precursor_mz - x_min) / x_span) * plot_width;
-            let y = height - padding - ((point.ppm_error - y_min) / y_span) * plot_height;
-            let color_index = ((point.ppm_error.abs() / y_span.max(1.0)) * 7.0) as usize;
+        .map(|(index, threshold)| {
+            let label = format!("≤ {threshold:.3} {unit}");
             rsx! {
-                circle {
-                    cx: x as i32,
-                    cy: y as i32,
-                    r: "2.2",
-                    fill: scientific_palette(index + color_index),
-                    opacity: "0.95"
+                div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
+                    span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", scientific_palette(index + 2)) }
+                    span { "{label}" }
                 }
             }
         })
@@ -710,18 +1027,235 @@ fn scatter_plot(title: String, subtitle: String, points: Vec<PlotPoint>) -> Elem
             style: "padding: 0.9rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
             h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
             p { style: "margin: 0 0 0.65rem; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
+            div { style: "display: flex; justify-content: flex-end; gap: 0.3rem; margin-bottom: 0.45rem;",
+               button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 0.95rem;", onclick: zoom_in, "−" }
+               button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 0.95rem;", onclick: zoom_out, "＋" }
+               button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; padding: 0 0.55rem; height: 28px; cursor: pointer; font-size: 0.8rem; color: #475569;", onclick: reset_zoom, "Reset" }
+            }
+            div { style: "display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.6rem;",
+               for item in legend_items {
+                   {item}
+               }
+            }
+            svg {
+               width: "100%",
+               height: "220px",
+               view_box: "0 0 360 220",
+               role: "img",
+               style: "display: block; overflow: visible;",
+               onwheel: move |evt: Event<WheelData>| {
+                   evt.prevent_default();
+                   let delta = evt.data().delta().strip_units();
+                   if delta.y < 0.0 {
+                       let current_zoom = *zoom.read();
+                       zoom.set((current_zoom * 1.12).min(8.0));
+                   } else {
+                       let current_zoom = *zoom.read();
+                       zoom.set((current_zoom / 1.12).max(0.8));
+                   }
+               },
+               title { "{title}" }
+               rect { x: 0, y: 0, width: 360, height: 220, fill: "#f8fafc" }
+               g { transform: zoom_transform,
+                   line { x1: padding as i32, y1: (height - padding) as i32, x2: (width - padding) as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
+                   line { x1: padding as i32, y1: padding as i32, x2: padding as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
+                   for bar in bars {
+                       {bar}
+                   }
+                   for line in threshold_lines {
+                       {line}
+                   }
+                   text { x: (padding + 4.0) as i32, y: (padding + 12.0) as i32, fill: "#64748b", font_size: "11", "0" }
+                   text { x: (width - padding - 20.0) as i32, y: (height - padding + 16.0) as i32, fill: "#64748b", font_size: "11", "{unit}" }
+               }
+            }
+        }
+    }
+}
+
+#[component]
+fn scatter_plot(
+    title: String,
+    subtitle: String,
+    points: Vec<PlotPoint>,
+    other_label: Option<String>,
+) -> Element {
+    let mut zoom = use_signal(|| 1.0f64);
+    let width = 360.0f64;
+    let height = 220.0f64;
+    let padding = 24.0f64;
+    let plot_width = width - padding * 2.0;
+    let plot_height = height - padding * 2.0;
+    let zoom_in = move |_| {
+        let current_zoom = *zoom.read();
+        zoom.set((current_zoom * 1.18).min(8.0));
+    };
+    let zoom_out = move |_| {
+        let current_zoom = *zoom.read();
+        zoom.set((current_zoom / 1.18).max(0.8));
+    };
+    let reset_zoom = move |_| zoom.set(1.0);
+    let zoom_transform = format!(
+        "translate({} {}) scale({}) translate({} {})",
+        width / 2.0,
+        height / 2.0,
+        *zoom.read(),
+        -(width / 2.0),
+        -(height / 2.0)
+    );
+
+    let categories = points
+        .iter()
+        .filter_map(|point| adduct_class(&point.adduct_type).map(|adduct| adduct.display))
+        .collect::<Vec<_>>();
+    let unique_categories = categories.iter().fold(Vec::new(), |mut acc, category| {
+        if !acc.contains(category) {
+            acc.push(category.clone());
+        }
+        acc
+    });
+
+    let x_positions = unique_categories
+        .iter()
+        .enumerate()
+        .map(|(index, category)| (category.clone(), index as f64))
+        .collect::<Vec<_>>();
+    let x_lookup = x_positions.iter().cloned().collect::<BTreeMap<_, _>>();
+    let x_min = 0.0f64;
+    let x_max = (unique_categories.len().max(1) - 1) as f64;
+    let x_span = (x_max - x_min).max(1e-9);
+
+    let (y_min, y_max) = if points.is_empty() {
+        (-0.02, 0.02)
+    } else {
+        let min = points
+            .iter()
+            .map(|point| point.signed_error_da)
+            .fold(f64::INFINITY, f64::min);
+        let max = points
+            .iter()
+            .map(|point| point.signed_error_da)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let span = (max - min).max(0.02);
+        (min - span * 0.05, max + span * 0.05)
+    };
+    let y_span = (y_max - y_min).max(1e-9);
+
+    let category_colors = unique_categories
+        .iter()
+        .enumerate()
+        .map(|(index, category)| (category.clone(), scientific_palette(index)))
+        .collect::<BTreeMap<_, _>>();
+
+    let circles = points
+        .iter()
+        .map(|point| {
+            let adduct_class = adduct_class(&point.adduct_type).unwrap_or_else(|| AdductClass {
+                label: point.adduct_type.clone(),
+                display: point.adduct_type.clone(),
+                charge: 0,
+            });
+            let x_index = x_lookup
+                .get(&adduct_class.display)
+                .copied()
+                .unwrap_or_default();
+            let x = padding + ((x_index - x_min) / x_span) * plot_width;
+            let y = height - padding - ((point.signed_error_da - y_min) / y_span) * plot_height;
+            let color = category_colors
+                .get(&adduct_class.display)
+                .copied()
+                .unwrap_or(scientific_palette(7));
+            rsx! {
+                circle {
+                    cx: x as i32,
+                    cy: y as i32,
+                    r: "2.2",
+                    fill: color,
+                    opacity: "0.95"
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let category_labels = unique_categories
+        .iter()
+        .enumerate()
+        .map(|(index, label)| {
+            let x = padding + ((index as f64 - x_min) / x_span) * plot_width;
+            rsx! {
+                text { x: x as i32, y: (height - padding + 16.0) as i32, fill: "#64748b", font_size: "10", "{label}" }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mut legend_items = unique_categories
+        .iter()
+        .enumerate()
+        .map(|(index, label)| {
+            let color = category_colors.get(label).copied().unwrap_or(scientific_palette(index));
+            rsx! {
+                div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
+                    span { style: format!("display:inline-block; width:10px; height:10px; border-radius:999px; background:{};", color) }
+                    span { "{label}" }
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+    if let Some(label) = other_label.as_ref() {
+        legend_items.push(rsx! {
+            div { style: "display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #475569;",
+                span { style: "display:inline-block; width:10px; height:10px; border-radius:999px; background:#94a3b8;" }
+                span { "{label}" }
+            }
+        });
+    }
+
+    rsx! {
+        div {
+            style: "padding: 0.9rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
+            h4 { style: "margin: 0 0 0.2rem; font-size: 0.95rem; color: #0f172a;", "{title}" }
+            p { style: "margin: 0 0 0.65rem; color: #64748b; font-size: 0.84rem;", "{subtitle}" }
+            div { style: "display: flex; justify-content: flex-end; gap: 0.3rem; margin-bottom: 0.45rem;",
+                button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 0.95rem;", onclick: zoom_in, "−" }
+                button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 0.95rem;", onclick: zoom_out, "＋" }
+                button { type: "button", style: "border: 1px solid #cbd5e1; background: white; border-radius: 999px; padding: 0 0.55rem; height: 28px; cursor: pointer; font-size: 0.8rem; color: #475569;", onclick: reset_zoom, "Reset" }
+            }
+            div { style: "display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.6rem;",
+                for item in legend_items {
+                    {item}
+                }
+            }
             svg {
                 width: "100%",
                 height: "220px",
                 view_box: "0 0 360 220",
                 role: "img",
-                style: "display: block;",
+                style: "display: block; overflow: visible;",
+                onwheel: move |evt: Event<WheelData>| {
+                    evt.prevent_default();
+                    let delta = evt.data().delta().strip_units();
+                    if delta.y > 0.0 {
+                        let current_zoom = *zoom.read();
+                        zoom.set((current_zoom * 1.12).min(8.0));
+                    } else {
+                        let current_zoom = *zoom.read();
+                        zoom.set((current_zoom / 1.12).max(0.8));
+                    }
+                },
                 title { "{title}" }
                 rect { x: 0, y: 0, width: 360, height: 220, fill: "#f8fafc" }
-                line { x1: padding as i32, y1: (height - padding) as i32, x2: (width - padding) as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
-                line { x1: padding as i32, y1: padding as i32, x2: padding as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
-                for circle in circles {
-                    {circle}
+                g { transform: zoom_transform,
+                    line { x1: padding as i32, y1: (height - padding) as i32, x2: (width - padding) as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
+                    line { x1: padding as i32, y1: padding as i32, x2: padding as i32, y2: (height - padding) as i32, stroke: "#64748b", stroke_width: "1" }
+                    line { x1: padding as i32, y1: (height - padding - ((0.0 - y_min) / y_span) * plot_height) as i32, x2: (width - padding) as i32, y2: (height - padding - ((0.0 - y_min) / y_span) * plot_height) as i32, stroke: "#94a3b8", stroke_width: "1", stroke_dasharray: "4 3" }
+                    for circle in circles {
+                        {circle}
+                    }
+                    for label in category_labels {
+                        {label}
+                    }
+                    text { x: 12, y: (height / 2.0) as i32, fill: "#64748b", font_size: "11", transform: "rotate(-90 12 110)", "Signed error (Da)" }
+                    text { x: (width / 2.0) as i32, y: (height - 6.0) as i32, fill: "#64748b", font_size: "11", text_anchor: "middle", "Adduct type" }
                 }
             }
         }
@@ -1019,7 +1553,10 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
     });
 
     let Some(reference_mass) = reference_mass else {
-        return Ok(None);
+        let mut metrics = PrecursorMetrics::default();
+        metrics.total_spectra = 1;
+        metrics.skipped_spectra = 1;
+        return Ok(Some(metrics));
     };
 
     let reference_mass_source = reference_mass_source.unwrap_or("unknown");
@@ -1027,6 +1564,23 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
         || reference_mass_source.to_string(),
         |adduct| format!("{reference_mass_source} + {adduct}"),
     );
+    let adduct_label = normalize_adduct_label(adduct.as_deref().unwrap_or("unknown"));
+    let adduct_text = adduct.as_deref().unwrap_or("").trim();
+    let adduct_is_excluded = is_excluded_adduct(adduct_text);
+    let adduct_is_supported = adduct_text.is_empty() || is_supported_adduct(adduct_text);
+    if adduct_is_excluded || !adduct_is_supported && !adduct_text.is_empty() {
+        let mut metrics = PrecursorMetrics::default();
+        metrics.total_spectra = 1;
+        metrics.skipped_spectra = 1;
+        if !adduct_is_excluded && !adduct_text.is_empty() {
+            metrics
+                .unrecognized_adducts
+                .entry(adduct_text.to_string())
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+        }
+        return Ok(Some(metrics));
+    }
 
     let mut normalized = Vec::new();
     normalized.push("BEGIN IONS".to_string());
@@ -1094,6 +1648,7 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
     let abs_ppm = ppm.abs();
 
     let mut metrics = PrecursorMetrics::default();
+    metrics.total_spectra = 1;
     metrics.spectra = 1;
     metrics.spectra_with_reference_mass = 1;
     metrics.reference_mass_source = reference_mass_label;
@@ -1110,7 +1665,7 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
     metrics.abs_error_ppm_rms = abs_ppm;
     metrics.signed_error_da_mean = error_da;
     metrics.signed_error_ppm_mean = ppm;
-    metrics.record_error(abs_error_da, abs_ppm, observed_precursor, ppm);
+    metrics.record_error(abs_error_da, abs_ppm, &adduct_label, ppm, error_da);
     if abs_error_da <= 0.01 {
         metrics.within_0_01_da = 1;
     }
@@ -1129,12 +1684,19 @@ async fn process_block(block_lines: &mut [String]) -> Result<Option<PrecursorMet
 
 #[cfg(test)]
 mod tests {
-    use super::exact_mass_from_smiles;
+    use super::{exact_mass_from_smiles, expected_precursor_mz};
 
     #[test]
     fn computes_exact_mass_from_smiles() {
         let mass = exact_mass_from_smiles("CCO").expect("valid SMILES should parse");
         assert!((mass - 46.041864814).abs() < 1e-4);
+    }
+
+    #[test]
+    fn handles_double_protonated_adducts() {
+        let mass = expected_precursor_mz(1000.0, Some("[M+2H]2+"), Some("2+"), Some("positive"))
+            .expect("double protonated adduct should be supported");
+        assert!((mass - 500.0 - 2.0 * 1.007_276_466_621 / 2.0).abs() < 1e-9);
     }
 }
 
@@ -1145,6 +1707,8 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
     let total_spectra = current_spectra + next_spectra;
 
     current.spectra += next.spectra;
+    current.total_spectra += next.total_spectra;
+    current.skipped_spectra += next.skipped_spectra;
     current.spectra_with_reference_mass += next.spectra_with_reference_mass;
     if current.reference_mass_source == "none" {
         current.reference_mass_source = next.reference_mass_source;
@@ -1207,6 +1771,14 @@ fn merge_metrics(mut current: PrecursorMetrics, next: PrecursorMetrics) -> Precu
         if let Some(current_count) = current.ppm_error_histogram.bins.get_mut(idx) {
             *current_count += count;
         }
+    }
+
+    for (adduct, count) in next.unrecognized_adducts {
+        current
+            .unrecognized_adducts
+            .entry(adduct)
+            .and_modify(|existing| *existing += count)
+            .or_insert(count);
     }
 
     current.plot_points.extend(next.plot_points);
