@@ -347,7 +347,8 @@ pub fn expected_precursor_mz(
         (multiplier, shift, electron_adjustment)
     };
 
-    Some((neutral_mass * multiplier + shift + electron_adjustment) / charge_value.max(1.0))
+    let base_mz = neutral_mass.mul_add(multiplier, shift) + electron_adjustment;
+    Some(base_mz / charge_value.max(1.0))
 }
 
 pub fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
@@ -538,6 +539,7 @@ fn parse_adduct_term_mass_with_context(
         "FA" | "FORMAT" | "HCOO" => "CHO2",
         "HCOONA" | "NACHO2" | "NAHCOO" | "NAHCO2" | "CHNAO2" => "CHNaO2",
         "HCOOH" | "FORMICACID" | "HFA" => "CH2O2",
+        "HAC" | "HACETIC" | "ACETICACID" | "CH3COOH" => "C2H4O2",
         "MEOH" | "CH3OH" => "CH4O",
         "H2O" => "H2O",
         "NH3" => "NH3",
@@ -980,11 +982,6 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
         return Ok(None);
     };
 
-    let observed_precision = state
-        .observed_precursor_raw
-        .as_deref()
-        .map_or(5, decimal_precision);
-
     let reference_mass = state
         .reference_mass
         .map(|mass| {
@@ -1077,7 +1074,6 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
         state.ion_mode.as_deref(),
     )
     .unwrap_or(reference_mass);
-    let expected_precursor_mz = round_to_precision(expected_precursor_mz, observed_precision);
     let error_da = observed_precursor - expected_precursor_mz;
     let abs_error_da = error_da.abs();
     let error_milli_da = abs_error_da * 1000.0;
@@ -1143,4 +1139,39 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
     }
 
     Ok(Some(metrics))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keeps_full_precision_when_computing_error() {
+        let state = BlockParseState {
+            observed_precursor_raw: Some("100.1234".to_string()),
+            observed_precursor: Some(100.1234),
+            reference_mass: Some(100.123_456_789),
+            reference_mass_source: Some("EXACTMASS".to_string()),
+            charge: Some("1".to_string()),
+            ..Default::default()
+        };
+
+        let mut smiles_cache = HashMap::new();
+        let mut formula_cache = HashMap::new();
+        let mut logged_failures = HashSet::new();
+        let mut plot_sample = None;
+
+        let metrics = process_block_state(
+            &state,
+            &mut smiles_cache,
+            &mut formula_cache,
+            &mut logged_failures,
+            &mut plot_sample,
+        )
+        .expect("parser should succeed")
+        .expect("metrics should be produced");
+
+        let expected_error = 100.1234_f64 - 100.123_456_789_f64;
+        assert!((metrics.sample_abs_error_da - expected_error.abs()).abs() < 1e-12);
+    }
 }
