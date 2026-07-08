@@ -94,12 +94,16 @@ where
     let x_min = x_min - x_span * 0.05;
     let x_max = x_max + x_span * 0.05;
 
-    let y_limit = y_values
+    let data_max = y_values
         .iter()
         .copied()
         .map(f64::abs)
-        .fold(0.0, f64::max)
-        .max(fallback_y_limit);
+        .fold(0.0, f64::max);
+    let y_limit = if fallback_y_limit > 0.0 {
+        data_max.min(fallback_y_limit)
+    } else {
+        data_max
+    };
 
     let mut families = family_points.keys().copied().collect::<Vec<_>>();
     families.sort_by_key(|family| adduct_family_rank(*family));
@@ -257,6 +261,14 @@ pub fn display_error_value_for_point(point: &PlotPoint, unit: &str) -> f64 {
     match unit {
         "ppm" => point.signed_error_ppm,
         _ => point.signed_error_da * 1000.0,
+    }
+}
+
+#[must_use]
+fn fallback_y_limit_for_unit(unit: &str) -> f64 {
+    match unit {
+        "ppm" => 10.0,
+        _ => 5.0,
     }
 }
 
@@ -477,7 +489,7 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
                 .is_finite()
                 .then_some(point.signed_error_da)
         },
-        1e-4,
+        fallback_y_limit_for_unit("mDa") / 1000.0,
     );
     let legend_items = plot_data.legend_items;
     let x_min = plot_data.x_min;
@@ -570,7 +582,7 @@ pub fn render_absolute_mass_bias_svg(
             let error_value = display_error_value_for_point(point, unit);
             error_value.is_finite().then_some(error_value)
         },
-        1e-3,
+        fallback_y_limit_for_unit(unit),
     );
     let legend_items = plot_data.legend_items;
     let x_min = plot_data.x_min;
