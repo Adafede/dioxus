@@ -94,11 +94,7 @@ where
     let x_min = x_min - x_span * 0.05;
     let x_max = x_max + x_span * 0.05;
 
-    let data_max = y_values
-        .iter()
-        .copied()
-        .map(f64::abs)
-        .fold(0.0, f64::max);
+    let data_max = y_values.iter().copied().map(f64::abs).fold(0.0, f64::max);
     let y_limit = if fallback_y_limit > 0.0 {
         data_max.min(fallback_y_limit)
     } else {

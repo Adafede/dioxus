@@ -99,6 +99,31 @@ fn start_analysis(
 }
 
 #[cfg(target_arch = "wasm32")]
+fn begin_analysis_from_blob(
+    blob: Blob,
+    file_name: String,
+    file_name_signal: Signal<String>,
+    status: Signal<String>,
+    metrics: Signal<Option<PrecursorMetrics>>,
+    busy: Signal<bool>,
+    drag_active: Signal<bool>,
+) {
+    let mut file_name_for_state = file_name_signal;
+    let mut status_for_state = status;
+    let mut metrics_for_state = metrics;
+    let mut busy_for_state = busy;
+    let mut drag_active_for_state = drag_active;
+
+    file_name_for_state.set(file_name);
+    busy_for_state.set(true);
+    drag_active_for_state.set(false);
+    status_for_state.set("Reading MGF...".to_string());
+    metrics_for_state.set(None);
+
+    start_analysis(blob, status_for_state, metrics_for_state, busy_for_state);
+}
+
+#[cfg(target_arch = "wasm32")]
 fn load_example_mgf(
     status: Signal<String>,
     metrics: Signal<Option<PrecursorMetrics>>,
@@ -164,17 +189,21 @@ pub fn app() -> Element {
             return;
         };
 
-        file_name.set(file.name());
-        busy.set(true);
-        drag_active.set(false);
-        status.set("Reading MGF...".to_string());
-        metrics.set(None);
-
         #[cfg(target_arch = "wasm32")]
-        start_analysis(blob, status, metrics, busy);
+        begin_analysis_from_blob(
+            blob,
+            file.name(),
+            file_name,
+            status,
+            metrics,
+            busy,
+            drag_active,
+        );
 
         #[cfg(not(target_arch = "wasm32"))]
         {
+            file_name.set(file.name());
+            metrics.set(None);
             status.set("This app needs to run in a browser.".to_string());
             busy.set(false);
         }
@@ -215,16 +244,21 @@ pub fn app() -> Element {
             return;
         };
 
-        file_name.set(file.name());
-        busy.set(true);
-        status.set("Reading MGF...".to_string());
-        metrics.set(None);
-
         #[cfg(target_arch = "wasm32")]
-        start_analysis(blob, status, metrics, busy);
+        begin_analysis_from_blob(
+            blob,
+            file.name(),
+            file_name,
+            status,
+            metrics,
+            busy,
+            drag_active,
+        );
 
         #[cfg(not(target_arch = "wasm32"))]
         {
+            file_name.set(file.name());
+            metrics.set(None);
             status.set("This app needs to run in a browser.".to_string());
             busy.set(false);
         }
@@ -261,6 +295,7 @@ pub fn app() -> Element {
                         ondrop: on_drop,
                         span { style: "font-size: 1rem;", "Drop an MGF file here or click to browse" }
                         span { style: "font-size: 0.85rem; font-weight: 500; color: #64748b;", ".mgf files only" }
+                        span { style: "font-size: 0.8rem; font-weight: 500; color: #64748b;", "Plots cap at 5 mDa / 10 ppm for the signed-error views" }
                         input {
                             id: "mgf-upload",
                             r#type: "file",

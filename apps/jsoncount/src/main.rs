@@ -52,6 +52,30 @@ struct ColumnResult {
 }
 
 #[cfg(target_arch = "wasm32")]
+fn begin_scan_from_blob(
+    blob: Blob,
+    file_name: String,
+    file_name_signal: Signal<String>,
+    status: Signal<String>,
+    results: Signal<Vec<ColumnResult>>,
+    busy: Signal<bool>,
+    drag_active: Signal<bool>,
+) {
+    let mut file_name_for_state = file_name_signal;
+    let mut status_for_state = status;
+    let mut results_for_state = results;
+    let mut busy_for_state = busy;
+    let mut drag_active_for_state = drag_active;
+
+    file_name_for_state.set(file_name);
+    busy_for_state.set(true);
+    drag_active_for_state.set(false);
+    status_for_state.set("Reading file...".to_string());
+    results_for_state.set(vec![]);
+    spawn_scan(blob, status_for_state, results_for_state, busy_for_state);
+}
+
+#[cfg(target_arch = "wasm32")]
 fn spawn_scan(
     blob: Blob,
     mut status: Signal<String>,
@@ -107,11 +131,6 @@ fn app() -> Element {
 
         #[cfg(target_arch = "wasm32")]
         {
-            #[allow(unused_mut)]
-            let mut busy = busy;
-            #[allow(unused_mut)]
-            let mut results = results;
-
             let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
                 status.set("This file type is not supported in the browser.".to_string());
                 return;
@@ -121,12 +140,15 @@ fn app() -> Element {
                 return;
             };
 
-            file_name.set(file.name());
-            busy.set(true);
-            drag_active.set(false);
-            status.set("Reading file...".to_string());
-            results.set(vec![]);
-            spawn_scan(blob, status, results, busy);
+            begin_scan_from_blob(
+                blob,
+                file.name(),
+                file_name,
+                status,
+                results,
+                busy,
+                drag_active,
+            );
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -162,11 +184,6 @@ fn app() -> Element {
 
         #[cfg(target_arch = "wasm32")]
         {
-            #[allow(unused_mut)]
-            let mut busy = busy;
-            #[allow(unused_mut)]
-            let mut results = results;
-
             let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
                 status.set("This file type is not supported in the browser.".to_string());
                 return;
@@ -176,11 +193,15 @@ fn app() -> Element {
                 return;
             };
 
-            file_name.set(file.name());
-            busy.set(true);
-            status.set("Reading file...".to_string());
-            results.set(vec![]);
-            spawn_scan(blob, status, results, busy);
+            begin_scan_from_blob(
+                blob,
+                file.name(),
+                file_name,
+                status,
+                results,
+                busy,
+                drag_active,
+            );
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -196,7 +217,7 @@ fn app() -> Element {
             div {
                 style: "max-width: 760px; margin: 0 auto; background: rgba(255,255,255,0.92); border: 1px solid rgba(148,163,184,0.22); border-radius: 20px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); padding: 1.4rem; backdrop-filter: blur(12px);",
                 h2 { style: "margin: 0 0 0.35rem; font-size: 1.6rem; letter-spacing: -0.02em;", "JSON Non-Null Field Counter" }
-                p { style: "margin: 0 0 1rem; color: #475569;", "Drop a JSON file into the upload area below or browse for it on disk. Handles multi-gigabyte files directly in the browser without loading them fully into memory." }
+                p { style: "margin: 0 0 1rem; color: #475569;", "Drop a JSON file into the upload area below or browse for it on disk. The scanner streams multi-gigabyte files in the browser while keeping memory bounded." }
 
                 label {
                     r#for: "json-upload",
