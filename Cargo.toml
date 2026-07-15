@@ -19,7 +19,7 @@ license = "AGPL-3.0-only"
 # ── Shared dependency versions ────────────────────────────────────────────────
 [workspace.dependencies]
 bytes = "1"
-console_log = "1.0"
+console_log = "1.1"
 csv = "1"
 dioxus = { version = "=0.7.9", features = ["web"] }
 js-sys = "0.3"
