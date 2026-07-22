@@ -2,7 +2,6 @@
 ///
 /// This module provides tools to compute and visualize precursor error distributions,
 /// allowing users to assess the impact of recalibration on mass accuracy.
-
 use std::collections::BTreeMap;
 
 /// Statistics about precursor errors for diagnostic purposes.
@@ -291,7 +290,8 @@ impl RecalibrationDiagnostics {
     ) {
         // Sample for plotting
         if self.fragment_error_ppm_before.len() < max_samples {
-            self.fragment_error_ppm_before.push(fragment_error_ppm_before);
+            self.fragment_error_ppm_before
+                .push(fragment_error_ppm_before);
             self.fragment_error_ppm_after.push(fragment_error_ppm_after);
             self.fragment_error_da_before.push(fragment_error_da_before);
             self.fragment_error_da_after.push(fragment_error_da_after);

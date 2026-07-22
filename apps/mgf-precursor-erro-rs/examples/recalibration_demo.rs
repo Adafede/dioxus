@@ -6,9 +6,9 @@
 // 3. Track diagnostic metrics
 // 4. Generate visualization plots
 
-use mgf_precursor_erro_rs::recalibration::{CalibrationModel, Peak, recalibrate_fragments};
 use mgf_precursor_erro_rs::diagnostics::RecalibrationDiagnostics;
 use mgf_precursor_erro_rs::plotting::*;
+use mgf_precursor_erro_rs::recalibration::{CalibrationModel, Peak, recalibrate_fragments};
 
 fn main() {
     // =========================================================================
@@ -27,7 +27,10 @@ fn main() {
 
     println!("Before recalibration:");
     for (i, peak) in fragments.iter().enumerate() {
-        println!("  Fragment {}: m/z = {:.6}, intensity = {}", i, peak.mz, peak.intensity);
+        println!(
+            "  Fragment {}: m/z = {:.6}, intensity = {}",
+            i, peak.mz, peak.intensity
+        );
     }
 
     let model = CalibrationModel::TOFDa { lambda: 1.0 };
@@ -35,7 +38,10 @@ fn main() {
 
     println!("\nAfter recalibration (λ = 1.0):");
     for (i, peak) in fragments.iter().enumerate() {
-        println!("  Fragment {}: m/z = {:.6}, intensity = {}", i, peak.mz, peak.intensity);
+        println!(
+            "  Fragment {}: m/z = {:.6}, intensity = {}",
+            i, peak.mz, peak.intensity
+        );
     }
 
     // =========================================================================
@@ -54,7 +60,10 @@ fn main() {
 
     println!("After recalibration (λ = 0.5):");
     for (i, peak) in fragments.iter().enumerate() {
-        println!("  Fragment {}: m/z = {:.6}, intensity = {}", i, peak.mz, peak.intensity);
+        println!(
+            "  Fragment {}: m/z = {:.6}, intensity = {}",
+            i, peak.mz, peak.intensity
+        );
     }
 
     // =========================================================================
@@ -62,10 +71,7 @@ fn main() {
     // =========================================================================
     println!("\n=== Example 3: Orbitrap Recalibration (ppm-based) ===");
 
-    let mut fragments = vec![
-        Peak::new(200.0, 5000.0),
-        Peak::new(400.0, 3000.0),
-    ];
+    let mut fragments = vec![Peak::new(200.0, 5000.0), Peak::new(400.0, 3000.0)];
 
     let precursor_ms1 = 500.0000;
     let precursor_ms2 = 500.0050; // ~10 ppm error
@@ -117,17 +123,23 @@ fn main() {
     println!("  Total scans: {}", diagnostics.total_count);
     println!("  Sampled: {}", diagnostics.sample_count);
     println!("\n  Error (ppm):");
-    println!("    Before: mean = {:.4}, rms = {:.4}, max = {:.4}",
-             diagnostics.mean_error_ppm_before,
-             diagnostics.rms_error_ppm_before,
-             diagnostics.max_abs_error_ppm_before);
-    println!("    After:  mean = {:.4}, rms = {:.4}, max = {:.4}",
-             diagnostics.mean_error_ppm_after,
-             diagnostics.rms_error_ppm_after,
-             diagnostics.max_abs_error_ppm_after);
-    println!("    Improvement: {:.4} ppm (mean), {:.4} ppm (rms)",
-             diagnostics.mean_error_improvement_ppm(),
-             diagnostics.rms_error_improvement_ppm());
+    println!(
+        "    Before: mean = {:.4}, rms = {:.4}, max = {:.4}",
+        diagnostics.mean_error_ppm_before,
+        diagnostics.rms_error_ppm_before,
+        diagnostics.max_abs_error_ppm_before
+    );
+    println!(
+        "    After:  mean = {:.4}, rms = {:.4}, max = {:.4}",
+        diagnostics.mean_error_ppm_after,
+        diagnostics.rms_error_ppm_after,
+        diagnostics.max_abs_error_ppm_after
+    );
+    println!(
+        "    Improvement: {:.4} ppm (mean), {:.4} ppm (rms)",
+        diagnostics.mean_error_improvement_ppm(),
+        diagnostics.rms_error_improvement_ppm()
+    );
 
     println!("\n  By adduct family:");
     for (family, errors) in &diagnostics.error_by_adduct_before {

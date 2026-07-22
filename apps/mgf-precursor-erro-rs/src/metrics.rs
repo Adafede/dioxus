@@ -1,22 +1,3 @@
-#![allow(
-    clippy::assigning_clones,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    clippy::collapsible_if,
-    clippy::derive_partial_eq_without_eq,
-    clippy::manual_midpoint,
-    clippy::map_unwrap_or,
-    clippy::module_name_repetitions,
-    clippy::must_use_candidate,
-    clippy::or_fun_call,
-    clippy::redundant_clone,
-    clippy::suboptimal_flops,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::unnecessary_map_or
-)]
-
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};
 
@@ -110,11 +91,11 @@ impl AdductFamily {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PlotPoint {
     pub adduct_family: AdductFamily,
-    pub pepmass_header: f64,  // PEPMASS from MGF header (metadata block)
-    pub ms2_precursor_peak: Option<f64>,  // Actual MS2 precursor peak observed in fragment list (near PEPMASS)
+    pub pepmass_header: f64, // PEPMASS from MGF header (metadata block)
+    pub ms2_precursor_peak: Option<f64>, // Actual MS2 precursor peak observed in fragment list (near PEPMASS)
     pub signed_error_da: f64,
     pub signed_error_ppm: f64,
-    pub expected_mass: Option<f64>,  // Theoretical precursor mass for error calculation
+    pub expected_mass: Option<f64>, // Theoretical precursor mass for error calculation
 }
 
 #[derive(Clone, Debug, Default)]
@@ -487,8 +468,7 @@ impl PrecursorMetrics {
         self.sample_abs_error_ppm = abs_ppm;
         self.sample_signed_error_da = signed_error_da;
         self.sample_signed_error_ppm = ppm_error;
-        self.observed_precursor_median_tracker
-            .push(pepmass_header);
+        self.observed_precursor_median_tracker.push(pepmass_header);
         self.abs_error_da_median_tracker.push(abs_error_da);
         self.abs_error_ppm_median_tracker.push(abs_ppm);
         self.signed_error_da_median_tracker.push(signed_error_da);

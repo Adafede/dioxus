@@ -1,17 +1,3 @@
-#![allow(
-    clippy::branches_sharing_code,
-    clippy::collapsible_if,
-    clippy::float_cmp,
-    clippy::if_same_then_else,
-    clippy::must_use_candidate,
-    clippy::option_if_let_else,
-    clippy::redundant_closure_for_method_calls,
-    clippy::redundant_clone,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::type_complexity
-)]
-
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -184,14 +170,16 @@ impl BlockParseState {
     /// Returns the closest fragment to PEPMASS if within ~0.02 Da (~100 ppm), otherwise None.
     pub fn get_ms2_precursor_peak(&self, pepmass_header: f64) -> Option<f64> {
         const TOLERANCE_DA: f64 = 0.02;
-        
+
         self.fragment_peaks
             .iter()
             .copied()
             .min_by(|a, b| {
                 let dist_a = (a - pepmass_header).abs();
                 let dist_b = (b - pepmass_header).abs();
-                dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
+                dist_a
+                    .partial_cmp(&dist_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
             .and_then(|closest| {
                 let delta_da = (closest - pepmass_header).abs();
@@ -200,7 +188,7 @@ impl BlockParseState {
                 } else {
                     f64::INFINITY
                 };
-                
+
                 // Return only if within both Da and ppm thresholds
                 if delta_da <= TOLERANCE_DA && delta_ppm <= 100.0 {
                     Some(closest)
@@ -1151,8 +1139,8 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
         AdductFamily::from_label(&adduct_label),
         ppm,
         error_da,
-        observed_precursor,  // PEPMASS from header (metadata block)
-        state.get_ms2_precursor_peak(observed_precursor),  // MS2 precursor peak, closest to PEPMASS within tolerance
+        observed_precursor, // PEPMASS from header (metadata block)
+        state.get_ms2_precursor_peak(observed_precursor), // MS2 precursor peak, closest to PEPMASS within tolerance
         state.smiles.as_deref(),
         Some(reference_mass),
         Some(expected_precursor_mz),
@@ -1221,7 +1209,9 @@ pub fn parse_mgf_from_string(content: &str) -> std::result::Result<PrecursorMetr
                 &mut formula_cache,
                 &mut logged_failures,
                 &mut block_plot_sample,
-            ).map_err(|e| format!("{:?}", e))? {
+            )
+            .map_err(|e| format!("{:?}", e))?
+            {
                 metrics = merge_metrics(metrics, result);
             }
             current_state = BlockParseState::default();

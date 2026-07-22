@@ -159,13 +159,14 @@ fn embed_svg_legend(
     let label_width = f64::from(u32::try_from(label_width).unwrap_or(u32::MAX));
     let content_width = (label_width * 5.6).clamp(72.0, 140.0) + 24.0;
     let entry_width = content_width + 20.0;
-    
+
     // Wrap legend into multiple rows to fit within plot width
     let max_row_width = (width * 0.9) - (title_width + 50.0);
     let items_per_row = ((max_row_width / entry_width).floor()).max(1.0) as usize;
     let num_rows = (legend_items.len() + items_per_row - 1) / items_per_row;
-    
-    let box_width = (items_per_row.min(legend_items.len()) as f64 * entry_width) + (padding_x * 2.0);
+
+    let box_width =
+        (items_per_row.min(legend_items.len()) as f64 * entry_width) + (padding_x * 2.0);
     let box_height = (num_rows as f64 * item_height) + (padding_y * 2.0) + 12.0;
     let legend_x = ((width - box_width) / 2.0)
         .max(inset)
@@ -179,7 +180,8 @@ fn embed_svg_legend(
     for (index, (family, color)) in legend_items.iter().enumerate() {
         let row = index / items_per_row;
         let col = index % items_per_row;
-        let item_x = f64::from(u32::try_from(col).unwrap_or(u32::MAX)).mul_add(entry_width, items_start_x);
+        let item_x =
+            f64::from(u32::try_from(col).unwrap_or(u32::MAX)).mul_add(entry_width, items_start_x);
         let item_y = legend_y + 15.0 + (row as f64 * item_height);
         let marker_x = item_x + 8.0;
         let text_x = item_x + 18.0;
@@ -677,10 +679,7 @@ pub fn render_absolute_mass_bias_svg(
 /// Creates a scatter plot with two overlaid series showing precursor errors in ppm,
 /// allowing visual assessment of recalibration effectiveness.
 #[must_use]
-pub fn render_recalibration_diagnostic_ppm(
-    errors_before: &[f64],
-    errors_after: &[f64],
-) -> String {
+pub fn render_recalibration_diagnostic_ppm(errors_before: &[f64], errors_after: &[f64]) -> String {
     use plotters::prelude::*;
 
     let mut buffer = String::new();
@@ -708,11 +707,17 @@ pub fn render_recalibration_diagnostic_ppm(
         root.fill(&WHITE).unwrap();
 
         let mut chart = ChartBuilder::on(&root)
-            .caption("Precursor Error (ppm) Before and After Recalibration", ("sans-serif", 20))
+            .caption(
+                "Precursor Error (ppm) Before and After Recalibration",
+                ("sans-serif", 20),
+            )
             .margin(15)
             .x_label_area_size(40)
             .y_label_area_size(50)
-            .build_cartesian_2d(0f64..(errors_before.len().max(errors_after.len()) as f64), error_min..error_max)
+            .build_cartesian_2d(
+                0f64..(errors_before.len().max(errors_after.len()) as f64),
+                error_min..error_max,
+            )
             .unwrap();
 
         chart
@@ -724,35 +729,25 @@ pub fn render_recalibration_diagnostic_ppm(
 
         // Plot errors before recalibration
         chart
-            .draw_series(
-                errors_before
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &error)| {
-                        Circle::new(
-                            (i as f64, error),
-                            3,
-                            ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
-                        )
-                    })
-            )
+            .draw_series(errors_before.iter().enumerate().map(|(i, &error)| {
+                Circle::new(
+                    (i as f64, error),
+                    3,
+                    ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
+                )
+            }))
             .unwrap()
             .label("Before");
 
         // Plot errors after recalibration
         chart
-            .draw_series(
-                errors_after
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &error)| {
-                        Circle::new(
-                            (i as f64, error),
-                            2,
-                            ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
-                        )
-                    })
-            )
+            .draw_series(errors_after.iter().enumerate().map(|(i, &error)| {
+                Circle::new(
+                    (i as f64, error),
+                    2,
+                    ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
+                )
+            }))
             .unwrap()
             .label("After");
 
@@ -832,7 +827,10 @@ pub fn render_recalibration_diagnostic_histogram(
         root.fill(&WHITE).unwrap();
 
         let mut chart = ChartBuilder::on(&root)
-            .caption("Error Distribution: Before vs After Recalibration", ("sans-serif", 20))
+            .caption(
+                "Error Distribution: Before vs After Recalibration",
+                ("sans-serif", 20),
+            )
             .margin(15)
             .x_label_area_size(40)
             .y_label_area_size(50)
@@ -921,7 +919,10 @@ pub fn render_recalibration_diagnostic_mz_comparison(
         root.fill(&WHITE).unwrap();
 
         let mut chart = ChartBuilder::on(&root)
-            .caption("Precursor m/z: Before and After Recalibration", ("sans-serif", 20))
+            .caption(
+                "Precursor m/z: Before and After Recalibration",
+                ("sans-serif", 20),
+            )
             .margin(15)
             .x_label_area_size(45)
             .y_label_area_size(60)
@@ -958,7 +959,7 @@ pub fn render_recalibration_diagnostic_mz_comparison(
                             4,
                             ShapeStyle::from(&RGBAColor(68, 119, 170, 0.5)).filled(),
                         )
-                    })
+                    }),
             )
             .unwrap()
             .label("Before recalibration");
@@ -976,7 +977,7 @@ pub fn render_recalibration_diagnostic_mz_comparison(
                             3,
                             ShapeStyle::from(&RGBAColor(34, 136, 51, 0.7)).filled(),
                         )
-                    })
+                    }),
             )
             .unwrap()
             .label("After recalibration");
@@ -1039,22 +1040,33 @@ pub fn render_recalibration_summary_text(
         </div>"#,
         mean_before,
         mean_after,
-        if mean_improvement > 0.0 { "green" } else { "red" },
+        if mean_improvement > 0.0 {
+            "green"
+        } else {
+            "red"
+        },
         mean_improvement,
         rms_before,
         rms_after,
-        if rms_improvement > 0.0 { "green" } else { "red" },
+        if rms_improvement > 0.0 {
+            "green"
+        } else {
+            "red"
+        },
         rms_improvement,
         max_before,
         max_after,
-        if max_improvement > 0.0 { "green" } else { "red" },
+        if max_improvement > 0.0 {
+            "green"
+        } else {
+            "red"
+        },
         max_improvement,
     )
 }
 
-
 /// Four-stage error analysis showing the complete recalibration story.
-/// 
+///
 /// Stage 1 (Blue): MS1 error vs theory
 /// Stage 2 (Orange): MS2 error before recalibration vs theory
 /// Stage 3 (Red): Calibration delta (MS2 - MS1) - the measurement discrepancy
@@ -1093,14 +1105,14 @@ pub fn render_error_quartet(
         root.fill(&WHITE).unwrap();
 
         let mut chart = ChartBuilder::on(&root)
-            .caption("Four-Stage Error Analysis: Complete Recalibration Story", ("sans-serif", 18))
+            .caption(
+                "Four-Stage Error Analysis: Complete Recalibration Story",
+                ("sans-serif", 18),
+            )
             .margin(15)
             .x_label_area_size(60)
             .y_label_area_size(70)
-            .build_cartesian_2d(
-                -0.5f64..4.5f64,
-                (min_val - margin)..(max_val + margin),
-            )
+            .build_cartesian_2d(-0.5f64..4.5f64, (min_val - margin)..(max_val + margin))
             .unwrap();
 
         chart
@@ -1120,7 +1132,11 @@ pub fn render_error_quartet(
 
         // Plot Stage 1: MS1 error (Blue)
         {
-            let filtered: Vec<f64> = error_ms1.iter().copied().filter(|v| v.is_finite()).collect();
+            let filtered: Vec<f64> = error_ms1
+                .iter()
+                .copied()
+                .filter(|v| v.is_finite())
+                .collect();
             if !filtered.is_empty() {
                 let n = filtered.len() as f64;
                 let mean = filtered.iter().sum::<f64>() / n;
@@ -1133,13 +1149,18 @@ pub fn render_error_quartet(
                     vec![(0.8, mean - std_dev), (0.8, mean + std_dev)],
                     style,
                 )));
-                let _ = chart.draw_series(std::iter::once(Circle::new((0.8, mean), 6, style.filled())));
+                let _ =
+                    chart.draw_series(std::iter::once(Circle::new((0.8, mean), 6, style.filled())));
             }
         }
-        
+
         // Plot Stage 2: MS2 before error (Orange)
         {
-            let filtered: Vec<f64> = error_ms2_before.iter().copied().filter(|v| v.is_finite()).collect();
+            let filtered: Vec<f64> = error_ms2_before
+                .iter()
+                .copied()
+                .filter(|v| v.is_finite())
+                .collect();
             if !filtered.is_empty() {
                 let n = filtered.len() as f64;
                 let mean = filtered.iter().sum::<f64>() / n;
@@ -1152,13 +1173,18 @@ pub fn render_error_quartet(
                     vec![(1.8, mean - std_dev), (1.8, mean + std_dev)],
                     style,
                 )));
-                let _ = chart.draw_series(std::iter::once(Circle::new((1.8, mean), 6, style.filled())));
+                let _ =
+                    chart.draw_series(std::iter::once(Circle::new((1.8, mean), 6, style.filled())));
             }
         }
-        
+
         // Plot Stage 3: MS2-MS1 delta (Red/Maroon)
         {
-            let filtered: Vec<f64> = delta_ms2_ms1.iter().copied().filter(|v| v.is_finite()).collect();
+            let filtered: Vec<f64> = delta_ms2_ms1
+                .iter()
+                .copied()
+                .filter(|v| v.is_finite())
+                .collect();
             if !filtered.is_empty() {
                 let n = filtered.len() as f64;
                 let mean = filtered.iter().sum::<f64>() / n;
@@ -1171,13 +1197,18 @@ pub fn render_error_quartet(
                     vec![(2.8, mean - std_dev), (2.8, mean + std_dev)],
                     style,
                 )));
-                let _ = chart.draw_series(std::iter::once(Circle::new((2.8, mean), 6, style.filled())));
+                let _ =
+                    chart.draw_series(std::iter::once(Circle::new((2.8, mean), 6, style.filled())));
             }
         }
-        
+
         // Plot Stage 4: MS2 after error (Green)
         {
-            let filtered: Vec<f64> = error_ms2_after.iter().copied().filter(|v| v.is_finite()).collect();
+            let filtered: Vec<f64> = error_ms2_after
+                .iter()
+                .copied()
+                .filter(|v| v.is_finite())
+                .collect();
             if !filtered.is_empty() {
                 let n = filtered.len() as f64;
                 let mean = filtered.iter().sum::<f64>() / n;
@@ -1190,7 +1221,8 @@ pub fn render_error_quartet(
                     vec![(3.8, mean - std_dev), (3.8, mean + std_dev)],
                     style,
                 )));
-                let _ = chart.draw_series(std::iter::once(Circle::new((3.8, mean), 6, style.filled())));
+                let _ =
+                    chart.draw_series(std::iter::once(Circle::new((3.8, mean), 6, style.filled())));
             }
         }
 
@@ -1205,10 +1237,7 @@ pub fn render_error_quartet(
 /// Shows how many precursors have error magnitude ≤ x ppm, allowing comparison
 /// of MS1 baseline with recalibrated MS2 improvement.
 #[must_use]
-pub fn render_cumulative_error_curves(
-    error_ppm_ms1: &[f64],
-    error_ppm_after: &[f64],
-) -> String {
+pub fn render_cumulative_error_curves(error_ppm_ms1: &[f64], error_ppm_after: &[f64]) -> String {
     use plotters::prelude::*;
 
     let mut buffer = String::new();
@@ -1257,10 +1286,7 @@ pub fn render_cumulative_error_curves(
             .margin(15)
             .x_label_area_size(60)
             .y_label_area_size(70)
-            .build_cartesian_2d(
-                (min_error - margin)..(max_error + margin),
-                0f64..100f64,
-            )
+            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)
             .unwrap();
 
         chart
@@ -1280,9 +1306,19 @@ pub fn render_cumulative_error_curves(
                 .collect();
 
             let style = ShapeStyle::from(&RGBColor(68, 119, 170)).stroke_width(2);
-            let _ = chart.draw_series(points.iter().copied().zip(
-                points.iter().skip(1).copied().chain(std::iter::once(points[0])),
-            ).map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)));
+            let _ = chart.draw_series(
+                points
+                    .iter()
+                    .copied()
+                    .zip(
+                        points
+                            .iter()
+                            .skip(1)
+                            .copied()
+                            .chain(std::iter::once(points[0])),
+                    )
+                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
+            );
         }
 
         // MS2 (recalibrated) cumulative curve (green)
@@ -1295,9 +1331,19 @@ pub fn render_cumulative_error_curves(
                 .collect();
 
             let style = ShapeStyle::from(&RGBColor(51, 153, 51)).stroke_width(2);
-            let _ = chart.draw_series(points.iter().copied().zip(
-                points.iter().skip(1).copied().chain(std::iter::once(points[0])),
-            ).map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)));
+            let _ = chart.draw_series(
+                points
+                    .iter()
+                    .copied()
+                    .zip(
+                        points
+                            .iter()
+                            .skip(1)
+                            .copied()
+                            .chain(std::iter::once(points[0])),
+                    )
+                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
+            );
         }
 
         root.present().unwrap();
@@ -1368,10 +1414,7 @@ pub fn render_cumulative_error_three_curves(
             .margin(15)
             .x_label_area_size(60)
             .y_label_area_size(70)
-            .build_cartesian_2d(
-                (min_error - margin)..(max_error + margin),
-                0f64..100f64,
-            )
+            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)
             .unwrap();
 
         chart
@@ -1391,9 +1434,19 @@ pub fn render_cumulative_error_three_curves(
                 .collect();
 
             let style = ShapeStyle::from(&RGBColor(68, 119, 170)).stroke_width(1);
-            let _ = chart.draw_series(points.iter().copied().zip(
-                points.iter().skip(1).copied().chain(std::iter::once(points[0])),
-            ).map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)));
+            let _ = chart.draw_series(
+                points
+                    .iter()
+                    .copied()
+                    .zip(
+                        points
+                            .iter()
+                            .skip(1)
+                            .copied()
+                            .chain(std::iter::once(points[0])),
+                    )
+                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
+            );
         }
 
         // MS2 before cumulative curve (orange)
@@ -1406,9 +1459,19 @@ pub fn render_cumulative_error_three_curves(
                 .collect();
 
             let style = ShapeStyle::from(&RGBColor(255, 140, 0)).stroke_width(1);
-            let _ = chart.draw_series(points.iter().copied().zip(
-                points.iter().skip(1).copied().chain(std::iter::once(points[0])),
-            ).map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)));
+            let _ = chart.draw_series(
+                points
+                    .iter()
+                    .copied()
+                    .zip(
+                        points
+                            .iter()
+                            .skip(1)
+                            .copied()
+                            .chain(std::iter::once(points[0])),
+                    )
+                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
+            );
         }
 
         // MS2 after cumulative curve (green)
@@ -1421,9 +1484,19 @@ pub fn render_cumulative_error_three_curves(
                 .collect();
 
             let style = ShapeStyle::from(&RGBColor(51, 153, 51)).stroke_width(1);
-            let _ = chart.draw_series(points.iter().copied().zip(
-                points.iter().skip(1).copied().chain(std::iter::once(points[0])),
-            ).map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)));
+            let _ = chart.draw_series(
+                points
+                    .iter()
+                    .copied()
+                    .zip(
+                        points
+                            .iter()
+                            .skip(1)
+                            .copied()
+                            .chain(std::iter::once(points[0])),
+                    )
+                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
+            );
         }
 
         root.present().unwrap();
@@ -1435,24 +1508,30 @@ pub fn render_cumulative_error_three_curves(
         ("MS2 Before Correction", (255u8, 140u8, 0u8)),
         ("MS2 After Correction", (51u8, 153u8, 51u8)),
     ];
-    
+
     let mut legend_svg = String::new();
     legend_svg.push_str(r#"<g id="legend" font-size="12" font-family="sans-serif">"#);
-    
+
     for (idx, (label, (r, g, b))) in legend_items.iter().enumerate() {
         let y = 30 + (idx * 20);
         let x = 1050;
-        
+
         // Color box
         legend_svg.push_str(&format!(
             r#"<rect x="{}" y="{}" width="15" height="15" fill="rgb({},{},{})" stroke="none"/>"#,
-            x, y - 10, r, g, b
+            x,
+            y - 10,
+            r,
+            g,
+            b
         ));
-        
+
         // Label
         legend_svg.push_str(&format!(
             r#"<text x="{}" y="{}" fill="black" font-size="12">{}</text>"#,
-            x + 20, y, label
+            x + 20,
+            y,
+            label
         ));
     }
     legend_svg.push_str("</g>");

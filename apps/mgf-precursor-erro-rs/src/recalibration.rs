@@ -1,5 +1,3 @@
-#![allow(clippy::must_use_candidate)]
-
 /// Represents different calibration models for MS2 fragment recalibration.
 ///
 /// This module provides a generic interface for applying scan-wide calibration corrections
@@ -367,7 +365,12 @@ mod tests {
         let mut fragments = vec![Peak::new(100.0, 1000.0)];
         let original = fragments.clone();
 
-        recalibrate_fragments(&mut fragments, f64::NAN, 500.0, CalibrationModel::TOFDa { lambda: 1.0 });
+        recalibrate_fragments(
+            &mut fragments,
+            f64::NAN,
+            500.0,
+            CalibrationModel::TOFDa { lambda: 1.0 },
+        );
 
         assert_eq!(fragments, original);
     }
@@ -377,7 +380,12 @@ mod tests {
         let mut fragments = vec![Peak::new(100.0, 1000.0)];
         let original = fragments.clone();
 
-        recalibrate_fragments(&mut fragments, 500.0, f64::NAN, CalibrationModel::TOFDa { lambda: 1.0 });
+        recalibrate_fragments(
+            &mut fragments,
+            500.0,
+            f64::NAN,
+            CalibrationModel::TOFDa { lambda: 1.0 },
+        );
 
         assert_eq!(fragments, original);
     }
@@ -402,7 +410,12 @@ mod tests {
         let mut fragments = vec![Peak::new(100.0, 1000.0)];
         let original = fragments.clone();
 
-        recalibrate_fragments(&mut fragments, 0.0, 500.0, CalibrationModel::TOFDa { lambda: 1.0 });
+        recalibrate_fragments(
+            &mut fragments,
+            0.0,
+            500.0,
+            CalibrationModel::TOFDa { lambda: 1.0 },
+        );
 
         assert_eq!(fragments, original);
     }

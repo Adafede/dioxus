@@ -11,16 +11,16 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Blob, HtmlAnchorElement, Response, Url, Window, console};
 
+use crate::diagnostics::RecalibrationDiagnostics;
 use crate::metrics::{PlotPoint, PrecursorMetrics};
 #[cfg(target_arch = "wasm32")]
 use crate::parser::{ScanError, scan_blob_with_progress};
 use crate::plotting::{
-    make_svg_responsive, render_absolute_mass_bias_svg, render_ecdf_svg, render_mass_bias_svg,
-    render_recalibration_diagnostic_ppm, render_recalibration_diagnostic_histogram,
-    render_recalibration_summary_text, render_cumulative_error_three_curves,
+    make_svg_responsive, render_absolute_mass_bias_svg, render_cumulative_error_three_curves,
+    render_ecdf_svg, render_mass_bias_svg, render_recalibration_diagnostic_histogram,
+    render_recalibration_diagnostic_ppm, render_recalibration_summary_text,
 };
 use crate::recalibration::CalibrationModel;
-use crate::diagnostics::RecalibrationDiagnostics;
 
 #[cfg(target_arch = "wasm32")]
 const EXAMPLE_MGF_URL: &str =
@@ -88,18 +88,18 @@ fn start_analysis(
     spawn(async move {
         let total_bytes = blob.size() as u64;
         status_for_progress.set(format!("Scanning {total_bytes} bytes..."));
-        
+
         // Read blob as text (only once)
         let text_result = JsFuture::from(blob.text())
             .await
             .ok()
             .and_then(|v| v.as_string());
-        
+
         match text_result {
             Some(content) => {
                 // Store original content for download
                 original_content_signal.set(content.clone());
-                
+
                 // Parse from the stored content
                 let result = match crate::parser::parse_mgf_from_string(&content) {
                     Ok(metrics) => metrics,
@@ -143,7 +143,13 @@ fn begin_analysis_from_blob(
     status_for_state.set("Reading MGF...".to_string());
     metrics_for_state.set(None);
 
-    start_analysis(blob, status_for_state, metrics_for_state, busy_for_state, original_content_signal);
+    start_analysis(
+        blob,
+        status_for_state,
+        metrics_for_state,
+        busy_for_state,
+        original_content_signal,
+    );
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -191,7 +197,7 @@ fn generate_recalibrated_mgf(
 ) -> String {
     #[cfg(target_arch = "wasm32")]
     use web_sys::console;
-    
+
     if matches!(calibration_model, CalibrationModel::None) {
         #[cfg(target_arch = "wasm32")]
         console::log_1(&"Recalibration: model is None, returning original".into());
@@ -204,12 +210,11 @@ fn generate_recalibrated_mgf(
         _ => 0.0,
     };
 
-
     let mut result = String::new();
     let mut in_spectrum = false;
     let mut pepmass: Option<f64> = None;
     let mut spectrum_frags: Vec<String> = Vec::new();
-    
+
     let mut spec_count = 0;
     let mut spec_with_frags = 0;
     let mut spec_recalibrated = 0;
@@ -229,12 +234,12 @@ fn generate_recalibrated_mgf(
             result.push_str(line);
             result.push('\n');
             idx += 1;
-            
+
             // Read spectrum content until END IONS
             while idx < lines.len() {
                 let spec_line = lines[idx];
                 let spec_trimmed = spec_line.trim();
-                
+
                 if spec_trimmed.eq_ignore_ascii_case("END IONS") {
                     break;
                 }
@@ -259,7 +264,10 @@ fn generate_recalibrated_mgf(
 
                 // Check if fragment line (m/z intensity)
                 let parts: Vec<&str> = spec_trimmed.split_whitespace().collect();
-                if parts.len() >= 2 && parts[0].parse::<f64>().is_ok() && parts[1].parse::<f64>().is_ok() {
+                if parts.len() >= 2
+                    && parts[0].parse::<f64>().is_ok()
+                    && parts[1].parse::<f64>().is_ok()
+                {
                     // Fragment line - collect it
                     spectrum_frags.push(spec_line.to_string());
                 } else {
@@ -274,7 +282,7 @@ fn generate_recalibrated_mgf(
             if !spectrum_frags.is_empty() {
                 spec_with_frags += 1;
             }
-            
+
             if let Some(pm) = pepmass {
                 // Find closest fragment to PEPMASS (MS2 precursor peak)
                 let mut best_mz: Option<f64> = None;
@@ -296,11 +304,13 @@ fn generate_recalibrated_mgf(
                 if let Some(ms2_peak) = best_mz {
                     spec_recalibrated += 1;
                     let delta = ms2_peak - pm;
-                    
+
                     for frag in &spectrum_frags {
                         let parts: Vec<&str> = frag.trim().split_whitespace().collect();
                         if parts.len() >= 2 {
-                            if let (Ok(mz), Ok(intensity)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>()) {
+                            if let (Ok(mz), Ok(intensity)) =
+                                (parts[0].parse::<f64>(), parts[1].parse::<f64>())
+                            {
                                 let corrected_mz = match calibration_model {
                                     CalibrationModel::TOFDa { .. } => mz - lambda * delta,
                                     CalibrationModel::OrbitrapPPM { .. } => {
@@ -350,7 +360,6 @@ fn generate_recalibrated_mgf(
     result
 }
 
-
 #[cfg(target_arch = "wasm32")]
 fn download_recalibrated_mgf(
     file_name: &str,
@@ -359,50 +368,60 @@ fn download_recalibrated_mgf(
     diagnostics: Option<&RecalibrationDiagnostics>,
 ) -> Result<(), String> {
     use web_sys::console;
-    
-    console::log_1(&format!("download_recalibrated_mgf called: file={}, model={:?}, content_len={}", 
-        file_name, calibration_model, original_content.len()).into());
-    
+
+    console::log_1(
+        &format!(
+            "download_recalibrated_mgf called: file={}, model={:?}, content_len={}",
+            file_name,
+            calibration_model,
+            original_content.len()
+        )
+        .into(),
+    );
+
     let recalibrated = generate_recalibrated_mgf(original_content, calibration_model, diagnostics);
-    
-    console::log_1(&format!("After recalibration: original_len={}, recalibrated_len={}", 
-        original_content.len(), recalibrated.len()).into());
-    
+
+    console::log_1(
+        &format!(
+            "After recalibration: original_len={}, recalibrated_len={}",
+            original_content.len(),
+            recalibrated.len()
+        )
+        .into(),
+    );
+
     if original_content == recalibrated {
         console::log_1(&"WARNING: Original and recalibrated are IDENTICAL!".into());
     } else {
         console::log_1(&"OK: Content was modified".into());
     }
-    
+
     let array = Array::new();
     array.push(&JsValue::from(&recalibrated));
-    let blob = Blob::new_with_str_sequence(&array)
-        .map_err(|_| "Failed to create blob")?;
-    
-    let url = Url::create_object_url_with_blob(&blob)
-        .map_err(|_| "Failed to create object URL")?;
-    
+    let blob = Blob::new_with_str_sequence(&array).map_err(|_| "Failed to create blob")?;
+
+    let url = Url::create_object_url_with_blob(&blob).map_err(|_| "Failed to create object URL")?;
+
     let window = web_sys::window().ok_or("No window object")?;
     let document = window.document().ok_or("No document object")?;
-    
+
     let link = document
         .create_element("a")
         .map_err(|_| "Failed to create anchor element")?
         .dyn_into::<HtmlAnchorElement>()
         .map_err(|_| "Failed to cast to HtmlAnchorElement")?;
-    
+
     link.set_href(&url);
     let download_name = if file_name.ends_with(".mgf") {
-        format!("{}_recalibrated.mgf", &file_name[..file_name.len()-4])
+        format!("{}_recalibrated.mgf", &file_name[..file_name.len() - 4])
     } else {
         format!("{}_recalibrated.mgf", file_name)
     };
     link.set_download(&download_name);
     link.click();
-    
-    Url::revoke_object_url(&url)
-        .map_err(|_| "Failed to revoke object URL")?;
-    
+
+    Url::revoke_object_url(&url).map_err(|_| "Failed to revoke object URL")?;
+
     Ok(())
 }
 
@@ -419,7 +438,7 @@ pub fn app() -> Element {
     let mut busy = use_signal(|| false);
     let mut drag_active = use_signal(|| false);
     let original_mgf_content = use_signal(String::new);
-    
+
     // Recalibration control signals
     let mut calibration_model = use_signal(|| CalibrationModel::None);
     let mut lambda_value = use_signal(|| 0.5);
@@ -429,7 +448,11 @@ pub fn app() -> Element {
     // Update diagnostics reactively when metrics, model, or lambda change
     use_effect(move || {
         if let Some(m) = metrics.read().as_ref() {
-            update_recalibration_diagnostics(m, *calibration_model.read(), &mut recalibration_diagnostics);
+            update_recalibration_diagnostics(
+                m,
+                *calibration_model.read(),
+                &mut recalibration_diagnostics,
+            );
         }
     });
 
@@ -764,10 +787,10 @@ pub fn app() -> Element {
                                 style: "margin-top: 1.5rem; padding: 1.2rem; border: 2px solid #3b82f6; border-radius: 16px; background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);",
                                 h3 { style: "margin: 0 0 0.8rem; font-size: 1.1rem; color: #1e40af;", "🔬 MS2 Fragment Recalibration" }
                                 p { style: "margin: 0 0 1rem; color: #1e40af; font-size: 0.95rem;", "Apply precursor-driven recalibration to MS2 fragments using the discrepancy between MS1 and MS2 precursor m/z." }
-                                
+
                                 div {
                                     style: "display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;",
-                                    
+
                                     div {
                                         label { style: "display: block; font-weight: 600; color: #1e40af; margin-bottom: 0.4rem;", "Calibration Model" }
                                         select {
@@ -791,10 +814,10 @@ pub fn app() -> Element {
                                             option { value: "orbitrap", "Orbitrap (ppm)" }
                                         }
                                     }
-                                    
+
                                     if !matches!(*calibration_model.read(), CalibrationModel::None) {
                                         div {
-                                            label { 
+                                            label {
                                                 style: "display: block; font-weight: 600; color: #1e40af; margin-bottom: 0.4rem;",
                                                 "Lambda (λ): {format_lambda(*lambda_value.read())}"
                                             }
@@ -807,7 +830,7 @@ pub fn app() -> Element {
                                                 oninput: move |evt| {
                                                     let val: f64 = evt.value().parse().unwrap_or(0.5);
                                                     lambda_value.set(val);
-                                                    
+
                                                     // Update model with new lambda
                                                     let current_model = *calibration_model.read();
                                                     let new_model = match current_model {
@@ -877,7 +900,7 @@ pub fn app() -> Element {
                                     }
                                 }
                             }
-                            
+
                             // Download recalibrated MGF button
                             if !original_mgf_content.read().is_empty() && !matches!(*calibration_model.read(), CalibrationModel::None) {
                                 button {
@@ -890,7 +913,7 @@ pub fn app() -> Element {
                                             let content = original_mgf_content.read();
                                             let model = *calibration_model.read();
                                             let diag = recalibration_diagnostics.read().clone();
-                                            
+
                                             if let Err(e) = download_recalibrated_mgf(&file_name, &content, model, diag.as_ref()) {
                                                 status.set(format!("Download error: {}", e));
                                             } else {
@@ -906,9 +929,9 @@ pub fn app() -> Element {
                             if let Some(diag) = recalibration_diagnostics.read().as_ref() {
                                 div {
                                     style: "margin-top: 1.5rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
-                                    
+
                                     h4 { style: "margin: 0 0 1rem; font-size: 1rem; color: #1e40af;", "Recalibration Diagnostics" }
-                                    
+
                                     // Summary statistics table
                                     div {
                                         style: "margin-bottom: 1.5rem;",
@@ -921,12 +944,12 @@ pub fn app() -> Element {
                                             diag.max_abs_error_ppm_after,
                                         ),
                                     }
-                                    
+
                                     // Tabbed cumulative error distribution (ms1, ms2_before, ms2_after)
                                     div {
                                         style: "margin-bottom: 1.5rem;",
                                         h5 { style: "margin: 0 0 0.5rem; font-size: 0.95rem; color: #1e40af;", "Cumulative Error Distribution" }
-                                        
+
                                         // Tab buttons
                                         div {
                                             style: "display: flex; gap: 0.5rem; margin-bottom: 0.8rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;",
@@ -953,11 +976,11 @@ pub fn app() -> Element {
                                                 "ppm (Relative)"
                                             }
                                         }
-                                        
+
                                         // Tab content
                                         div {
                                             style: "background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto;",
-                                            p { 
+                                            p {
                                                 style: "margin: 0 0 0.8rem; font-size: 0.9rem; color: #64748b;",
                                                 strong { "Legend: " }
                                                 "🔵 Blue = MS1 precursor (PEPMASS) vs theoretical | "
@@ -987,7 +1010,7 @@ pub fn app() -> Element {
                                             }
                                         }
                                     }
-                                    
+
                                     // Error time series (supporting detail)
                                     div {
                                         style: "margin-bottom: 1.5rem;",
@@ -1004,7 +1027,7 @@ pub fn app() -> Element {
                                             ),
                                         }
                                     }
-                                    
+
                                     // Histogram (supporting detail)
                                     div {
                                         h5 { style: "margin: 0 0 0.5rem; font-size: 0.95rem; color: #1e40af;", "Error distribution" }
@@ -1306,14 +1329,14 @@ fn update_recalibration_diagnostics(
         diagnostics_signal.set(None);
         return;
     }
-    
+
     let mut diag = RecalibrationDiagnostics::new();
     let lambda = match model {
         CalibrationModel::TOFDa { lambda } => lambda,
         CalibrationModel::OrbitrapPPM { lambda } => lambda,
         _ => 0.0,
     };
-    
+
     // Process each plot point
     for point in &metrics.plot_points {
         // Skip if no theoretical mass available
@@ -1323,11 +1346,11 @@ fn update_recalibration_diagnostics(
 
         // Use actual MS2 precursor peak if observed, otherwise fall back to PEPMASS header
         let precursor_ms2 = point.ms2_precursor_peak.unwrap_or(point.pepmass_header);
-        
+
         // MS1 precursor: PEPMASS header is our estimate
         // (When actual MS1 data is available, use that instead)
         let precursor_ms1 = point.pepmass_header;
-        
+
         // Stage 1: error_ms1 = PEPMASS - theoretical
         let error_da_ms1 = precursor_ms1 - theoretical_mass;
         let error_ppm_ms1 = if theoretical_mass > 0.0 {
@@ -1335,7 +1358,7 @@ fn update_recalibration_diagnostics(
         } else {
             0.0
         };
-        
+
         // Stage 2: error_ms2_before = MS2 - theoretical
         let error_da_before = precursor_ms2 - theoretical_mass;
         let error_ppm_before = if theoretical_mass > 0.0 {
@@ -1343,7 +1366,7 @@ fn update_recalibration_diagnostics(
         } else {
             0.0
         };
-        
+
         // Stage 3: delta_ms2_ms1 = MS2 - MS1
         let delta_ms2_ms1_da = precursor_ms2 - precursor_ms1;
         let delta_ppm_ms2_ms1 = if precursor_ms1 > 0.0 {
@@ -1351,18 +1374,16 @@ fn update_recalibration_diagnostics(
         } else {
             0.0
         };
-        
+
         // Apply recalibration: error_ms2_after = (MS2 - λ × delta) - theoretical
         let precursor_ms2_after = match model {
-            CalibrationModel::TOFDa { .. } => {
-                precursor_ms2 - lambda * delta_ms2_ms1_da
-            }
+            CalibrationModel::TOFDa { .. } => precursor_ms2 - lambda * delta_ms2_ms1_da,
             CalibrationModel::OrbitrapPPM { .. } => {
                 precursor_ms2 * (1.0 - lambda * delta_ppm_ms2_ms1 / 1e6)
             }
             _ => precursor_ms2,
         };
-        
+
         // Stage 4: error_ms2_after = (MS2_corrected - theoretical)
         let error_da_after = precursor_ms2_after - theoretical_mass;
         let error_ppm_after = if theoretical_mass > 0.0 {
@@ -1370,7 +1391,7 @@ fn update_recalibration_diagnostics(
         } else {
             0.0
         };
-        
+
         // Push the complete measurement
         let adduct_str = match point.adduct_family {
             crate::metrics::AdductFamily::Protonated => Some("[M+H]+"),
@@ -1380,7 +1401,7 @@ fn update_recalibration_diagnostics(
             crate::metrics::AdductFamily::Halide => Some("[M-Hal]"),
             crate::metrics::AdductFamily::Other => None,
         };
-        
+
         diag.push_measurement(
             error_ppm_ms1,
             delta_ppm_ms2_ms1,
@@ -1397,7 +1418,7 @@ fn update_recalibration_diagnostics(
             5000, // max samples
         );
     }
-    
+
     diag.compute_statistics();
     diagnostics_signal.set(Some(diag));
 }
@@ -1408,7 +1429,8 @@ fn update_recalibration_diagnostics(
     _metrics: &PrecursorMetrics,
     _model: CalibrationModel,
     _diagnostics_signal: &mut Signal<Option<RecalibrationDiagnostics>>,
-) {}
+) {
+}
 
 #[cfg(target_arch = "wasm32")]
 fn download_svg(svg_markup: &str, filename: &str) {
@@ -1460,20 +1482,23 @@ END IONS"#;
 
         let model = CalibrationModel::TOFDa { lambda: 1.0 };
         let output = generate_recalibrated_mgf(input, model, None);
-        
+
         eprintln!("=== INPUT ===");
         eprintln!("{}", input);
         eprintln!("\n=== OUTPUT ===");
         eprintln!("{}", output);
-        
+
         // Delta should be 500.01 - 500.0 = 0.01
         // With lambda=1, fragments should shift by -0.01
         // 100.0 -> 99.99, 200.0 -> 199.99, 500.01 -> 500.0, 250.0 -> 249.99
-        
+
         assert_ne!(input, output, "Output should differ from input!");
-        assert!(output.contains("99.99") || output.contains("199.99"), "Should contain recalibrated values");
+        assert!(
+            output.contains("99.99") || output.contains("199.99"),
+            "Should contain recalibrated values"
+        );
     }
-    
+
     #[test]
     fn test_generate_recalibrated_mgf_no_model() {
         let input = r#"BEGIN IONS
@@ -1485,7 +1510,10 @@ END IONS"#;
 
         let model = CalibrationModel::None;
         let output = generate_recalibrated_mgf(input, model, None);
-        
-        assert_eq!(input, output, "With None model, output should be identical to input");
+
+        assert_eq!(
+            input, output,
+            "With None model, output should be identical to input"
+        );
     }
 }
