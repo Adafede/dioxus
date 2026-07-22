@@ -110,9 +110,11 @@ impl AdductFamily {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PlotPoint {
     pub adduct_family: AdductFamily,
-    pub observed_precursor_mz: f64,
+    pub pepmass_header: f64,  // PEPMASS from MGF header (metadata block)
+    pub ms2_precursor_peak: Option<f64>,  // Actual MS2 precursor peak observed in fragment list (near PEPMASS)
     pub signed_error_da: f64,
     pub signed_error_ppm: f64,
+    pub expected_mass: Option<f64>,  // Theoretical precursor mass for error calculation
 }
 
 #[derive(Clone, Debug, Default)]
@@ -429,7 +431,8 @@ impl PrecursorMetrics {
         adduct_family: AdductFamily,
         ppm_error: f64,
         signed_error_da: f64,
-        observed_precursor_mz: f64,
+        pepmass_header: f64,
+        ms2_precursor_peak: Option<f64>,
         smiles: Option<&str>,
         calculated_mass: Option<f64>,
         expected_mass: Option<f64>,
@@ -442,7 +445,8 @@ impl PrecursorMetrics {
             adduct_family,
             ppm_error,
             signed_error_da,
-            observed_precursor_mz,
+            pepmass_header,
+            ms2_precursor_peak,
             smiles,
             calculated_mass,
             expected_mass,
@@ -458,7 +462,8 @@ impl PrecursorMetrics {
         adduct_family: AdductFamily,
         ppm_error: f64,
         signed_error_da: f64,
-        observed_precursor_mz: f64,
+        pepmass_header: f64,
+        ms2_precursor_peak: Option<f64>,
         smiles: Option<&str>,
         calculated_mass: Option<f64>,
         expected_mass: Option<f64>,
@@ -477,13 +482,13 @@ impl PrecursorMetrics {
             &mut self.absolute_error_ppm_values,
             &mut self.absolute_error_ppm_sample_seen,
         );
-        self.sample_observed_precursor = observed_precursor_mz;
+        self.sample_observed_precursor = pepmass_header;
         self.sample_abs_error_da = abs_error_da;
         self.sample_abs_error_ppm = abs_ppm;
         self.sample_signed_error_da = signed_error_da;
         self.sample_signed_error_ppm = ppm_error;
         self.observed_precursor_median_tracker
-            .push(observed_precursor_mz);
+            .push(pepmass_header);
         self.abs_error_da_median_tracker.push(abs_error_da);
         self.abs_error_ppm_median_tracker.push(abs_ppm);
         self.signed_error_da_median_tracker.push(signed_error_da);
@@ -536,7 +541,7 @@ impl PrecursorMetrics {
                             entry.formula = formula.map(str::to_string);
                         }
                         if entry.observed_precursor_mz.is_none() {
-                            entry.observed_precursor_mz = Some(observed_precursor_mz);
+                            entry.observed_precursor_mz = Some(pepmass_header);
                         }
                         let current_error_da = abs_error_da;
                         let current_error_ppm = abs_ppm;
@@ -552,7 +557,7 @@ impl PrecursorMetrics {
                             if expected_mass.is_some() {
                                 entry.expected_mass = expected_mass;
                             }
-                            entry.observed_precursor_mz = Some(observed_precursor_mz);
+                            entry.observed_precursor_mz = Some(pepmass_header);
                         }
                     })
                     .or_insert(HighErrorSmilesDetail {
@@ -562,16 +567,18 @@ impl PrecursorMetrics {
                         formula: formula.map(str::to_string),
                         max_abs_error_da: Some(abs_error_da),
                         max_abs_error_ppm: Some(abs_ppm),
-                        observed_precursor_mz: Some(observed_precursor_mz),
+                        observed_precursor_mz: Some(pepmass_header),
                     });
             }
         }
 
         let point = PlotPoint {
             adduct_family,
-            observed_precursor_mz,
+            pepmass_header,
+            ms2_precursor_peak,
             signed_error_da,
             signed_error_ppm: ppm_error,
+            expected_mass,
         };
         if let Some(sample) = plot_sample.as_mut() {
             sample.push(point);

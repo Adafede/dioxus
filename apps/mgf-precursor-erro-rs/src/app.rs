@@ -16,7 +16,11 @@ use crate::metrics::{PlotPoint, PrecursorMetrics};
 use crate::parser::{ScanError, scan_blob_with_progress};
 use crate::plotting::{
     make_svg_responsive, render_absolute_mass_bias_svg, render_ecdf_svg, render_mass_bias_svg,
+    render_recalibration_diagnostic_ppm, render_recalibration_diagnostic_histogram,
+    render_recalibration_summary_text, render_cumulative_error_three_curves,
 };
+use crate::recalibration::CalibrationModel;
+use crate::diagnostics::RecalibrationDiagnostics;
 
 #[cfg(target_arch = "wasm32")]
 const EXAMPLE_MGF_URL: &str =
@@ -74,26 +78,43 @@ fn start_analysis(
     status: Signal<String>,
     metrics: Signal<Option<PrecursorMetrics>>,
     busy: Signal<bool>,
+    original_mgf_content: Signal<String>,
 ) {
     let mut status_for_progress = status;
     let mut metrics_for_results = metrics;
     let mut busy_for_results = busy;
+    let mut original_content_signal = original_mgf_content;
 
     spawn(async move {
         let total_bytes = blob.size() as u64;
         status_for_progress.set(format!("Scanning {total_bytes} bytes..."));
-        let result = match scan_blob_with_progress(&blob, move |processed, total| {
-            status_for_progress.set(format_progress_message(processed, total));
-        })
-        .await
-        {
-            Ok(metrics) => metrics,
-            Err(error) => {
-                status_for_progress.set(format!("Error reading file: {error:?}"));
-                PrecursorMetrics::default()
+        
+        // Read blob as text (only once)
+        let text_result = JsFuture::from(blob.text())
+            .await
+            .ok()
+            .and_then(|v| v.as_string());
+        
+        match text_result {
+            Some(content) => {
+                // Store original content for download
+                original_content_signal.set(content.clone());
+                
+                // Parse from the stored content
+                let result = match crate::parser::parse_mgf_from_string(&content) {
+                    Ok(metrics) => metrics,
+                    Err(error) => {
+                        status_for_progress.set(format!("Error parsing MGF: {error:?}"));
+                        PrecursorMetrics::default()
+                    }
+                };
+                metrics_for_results.set(Some(result));
             }
-        };
-        metrics_for_results.set(Some(result));
+            None => {
+                status_for_progress.set("Error reading file content".to_string());
+                metrics_for_results.set(Some(PrecursorMetrics::default()));
+            }
+        }
         busy_for_results.set(false);
     });
 }
@@ -107,12 +128,14 @@ fn begin_analysis_from_blob(
     metrics: Signal<Option<PrecursorMetrics>>,
     busy: Signal<bool>,
     drag_active: Signal<bool>,
+    original_mgf_content: Signal<String>,
 ) {
     let mut file_name_for_state = file_name_signal;
     let mut status_for_state = status;
     let mut metrics_for_state = metrics;
     let mut busy_for_state = busy;
     let mut drag_active_for_state = drag_active;
+    let mut original_content_signal = original_mgf_content;
 
     file_name_for_state.set(file_name);
     busy_for_state.set(true);
@@ -120,7 +143,7 @@ fn begin_analysis_from_blob(
     status_for_state.set("Reading MGF...".to_string());
     metrics_for_state.set(None);
 
-    start_analysis(blob, status_for_state, metrics_for_state, busy_for_state);
+    start_analysis(blob, status_for_state, metrics_for_state, busy_for_state, original_content_signal);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -129,11 +152,13 @@ fn load_example_mgf(
     metrics: Signal<Option<PrecursorMetrics>>,
     busy: Signal<bool>,
     file_name: Signal<String>,
+    original_mgf_content: Signal<String>,
 ) {
     let mut status_for_progress = status;
     let mut metrics_for_results = metrics;
     let mut busy_for_results = busy;
     let mut file_name_for_results = file_name;
+    let mut original_content_signal = original_mgf_content;
 
     spawn(async move {
         status_for_progress.set("Loading example MGF...".to_string());
@@ -148,6 +173,7 @@ fn load_example_mgf(
                     status_for_progress,
                     metrics_for_results,
                     busy_for_results,
+                    original_content_signal,
                 );
             }
             Err(error) => {
@@ -156,6 +182,228 @@ fn load_example_mgf(
             }
         }
     });
+}
+
+fn generate_recalibrated_mgf(
+    original_content: &str,
+    calibration_model: CalibrationModel,
+    _diagnostics: Option<&RecalibrationDiagnostics>,
+) -> String {
+    #[cfg(target_arch = "wasm32")]
+    use web_sys::console;
+    
+    if matches!(calibration_model, CalibrationModel::None) {
+        #[cfg(target_arch = "wasm32")]
+        console::log_1(&"Recalibration: model is None, returning original".into());
+        return original_content.to_string();
+    }
+
+    let lambda = match calibration_model {
+        CalibrationModel::TOFDa { lambda } => lambda,
+        CalibrationModel::OrbitrapPPM { lambda } => lambda,
+        _ => 0.0,
+    };
+
+
+    let mut result = String::new();
+    let mut in_spectrum = false;
+    let mut pepmass: Option<f64> = None;
+    let mut spectrum_frags: Vec<String> = Vec::new();
+    
+    let mut spec_count = 0;
+    let mut spec_with_frags = 0;
+    let mut spec_recalibrated = 0;
+
+    let lines: Vec<&str> = original_content.lines().collect();
+    let mut idx = 0;
+
+    while idx < lines.len() {
+        let line = lines[idx];
+        let trimmed = line.trim();
+
+        if trimmed.eq_ignore_ascii_case("BEGIN IONS") {
+            spec_count += 1;
+            in_spectrum = true;
+            pepmass = None;
+            spectrum_frags.clear();
+            result.push_str(line);
+            result.push('\n');
+            idx += 1;
+            
+            // Read spectrum content until END IONS
+            while idx < lines.len() {
+                let spec_line = lines[idx];
+                let spec_trimmed = spec_line.trim();
+                
+                if spec_trimmed.eq_ignore_ascii_case("END IONS") {
+                    break;
+                }
+
+                // Extract PRECURSOR_MZ or PEPMASS
+                if spec_trimmed.to_uppercase().starts_with("PRECURSOR_MZ=") {
+                    let pep_str = spec_trimmed[13..].split_whitespace().next().unwrap_or("0");
+                    pepmass = pep_str.parse::<f64>().ok();
+                    result.push_str(spec_line);
+                    result.push('\n');
+                    idx += 1;
+                    continue;
+                }
+                if spec_trimmed.to_uppercase().starts_with("PEPMASS=") {
+                    let pep_str = spec_trimmed[8..].split_whitespace().next().unwrap_or("0");
+                    pepmass = pep_str.parse::<f64>().ok();
+                    result.push_str(spec_line);
+                    result.push('\n');
+                    idx += 1;
+                    continue;
+                }
+
+                // Check if fragment line (m/z intensity)
+                let parts: Vec<&str> = spec_trimmed.split_whitespace().collect();
+                if parts.len() >= 2 && parts[0].parse::<f64>().is_ok() && parts[1].parse::<f64>().is_ok() {
+                    // Fragment line - collect it
+                    spectrum_frags.push(spec_line.to_string());
+                } else {
+                    // Metadata line - write immediately
+                    result.push_str(spec_line);
+                    result.push('\n');
+                }
+                idx += 1;
+            }
+
+            // Now process fragments
+            if !spectrum_frags.is_empty() {
+                spec_with_frags += 1;
+            }
+            
+            if let Some(pm) = pepmass {
+                // Find closest fragment to PEPMASS (MS2 precursor peak)
+                let mut best_mz: Option<f64> = None;
+                let mut best_delta = f64::INFINITY;
+
+                for frag in &spectrum_frags {
+                    let parts: Vec<&str> = frag.trim().split_whitespace().collect();
+                    if let Ok(mz) = parts[0].parse::<f64>() {
+                        let da = (mz - pm).abs();
+                        let ppm = da * 1e6 / pm;
+                        if da <= 0.02 && ppm <= 100.0 && da < best_delta {
+                            best_delta = da;
+                            best_mz = Some(mz);
+                        }
+                    }
+                }
+
+                // Recalibrate all fragments if MS2 peak found
+                if let Some(ms2_peak) = best_mz {
+                    spec_recalibrated += 1;
+                    let delta = ms2_peak - pm;
+                    
+                    for frag in &spectrum_frags {
+                        let parts: Vec<&str> = frag.trim().split_whitespace().collect();
+                        if parts.len() >= 2 {
+                            if let (Ok(mz), Ok(intensity)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>()) {
+                                let corrected_mz = match calibration_model {
+                                    CalibrationModel::TOFDa { .. } => mz - lambda * delta,
+                                    CalibrationModel::OrbitrapPPM { .. } => {
+                                        let dppm = delta * 1e6 / pm;
+                                        mz * (1.0 - lambda * dppm / 1e6)
+                                    }
+                                    _ => mz,
+                                };
+                                result.push_str(&format!("{} {}", corrected_mz, intensity));
+                                for p in &parts[2..] {
+                                    result.push(' ');
+                                    result.push_str(p);
+                                }
+                                result.push('\n');
+                                continue;
+                            }
+                        }
+                        result.push_str(frag);
+                        result.push('\n');
+                    }
+                } else {
+                    for frag in &spectrum_frags {
+                        result.push_str(frag);
+                        result.push('\n');
+                    }
+                }
+            } else {
+                // No PEPMASS, write fragments as-is
+                for frag in &spectrum_frags {
+                    result.push_str(frag);
+                    result.push('\n');
+                }
+            }
+
+            // Write END IONS
+            result.push_str("END IONS");
+            result.push('\n');
+            in_spectrum = false;
+            idx += 1;
+        } else {
+            result.push_str(line);
+            result.push('\n');
+            idx += 1;
+        }
+    }
+
+    result
+}
+
+
+#[cfg(target_arch = "wasm32")]
+fn download_recalibrated_mgf(
+    file_name: &str,
+    original_content: &str,
+    calibration_model: CalibrationModel,
+    diagnostics: Option<&RecalibrationDiagnostics>,
+) -> Result<(), String> {
+    use web_sys::console;
+    
+    console::log_1(&format!("download_recalibrated_mgf called: file={}, model={:?}, content_len={}", 
+        file_name, calibration_model, original_content.len()).into());
+    
+    let recalibrated = generate_recalibrated_mgf(original_content, calibration_model, diagnostics);
+    
+    console::log_1(&format!("After recalibration: original_len={}, recalibrated_len={}", 
+        original_content.len(), recalibrated.len()).into());
+    
+    if original_content == recalibrated {
+        console::log_1(&"WARNING: Original and recalibrated are IDENTICAL!".into());
+    } else {
+        console::log_1(&"OK: Content was modified".into());
+    }
+    
+    let array = Array::new();
+    array.push(&JsValue::from(&recalibrated));
+    let blob = Blob::new_with_str_sequence(&array)
+        .map_err(|_| "Failed to create blob")?;
+    
+    let url = Url::create_object_url_with_blob(&blob)
+        .map_err(|_| "Failed to create object URL")?;
+    
+    let window = web_sys::window().ok_or("No window object")?;
+    let document = window.document().ok_or("No document object")?;
+    
+    let link = document
+        .create_element("a")
+        .map_err(|_| "Failed to create anchor element")?
+        .dyn_into::<HtmlAnchorElement>()
+        .map_err(|_| "Failed to cast to HtmlAnchorElement")?;
+    
+    link.set_href(&url);
+    let download_name = if file_name.ends_with(".mgf") {
+        format!("{}_recalibrated.mgf", &file_name[..file_name.len()-4])
+    } else {
+        format!("{}_recalibrated.mgf", file_name)
+    };
+    link.set_download(&download_name);
+    link.click();
+    
+    Url::revoke_object_url(&url)
+        .map_err(|_| "Failed to revoke object URL")?;
+    
+    Ok(())
 }
 
 /// Renders the MGF precursor-error analysis UI.
@@ -170,6 +418,20 @@ pub fn app() -> Element {
     let mut status = use_signal(|| "Drop an MGF file to begin.".to_string());
     let mut busy = use_signal(|| false);
     let mut drag_active = use_signal(|| false);
+    let original_mgf_content = use_signal(String::new);
+    
+    // Recalibration control signals
+    let mut calibration_model = use_signal(|| CalibrationModel::None);
+    let mut lambda_value = use_signal(|| 0.5);
+    let mut recalibration_diagnostics = use_signal(|| None::<RecalibrationDiagnostics>);
+    let mut cumulative_dist_tab = use_signal(|| "mda"); // "mda" or "ppm"
+
+    // Update diagnostics reactively when metrics, model, or lambda change
+    use_effect(move || {
+        if let Some(m) = metrics.read().as_ref() {
+            update_recalibration_diagnostics(m, *calibration_model.read(), &mut recalibration_diagnostics);
+        }
+    });
 
     let on_file_change = move |evt: Event<FormData>| {
         let Some(file) = evt.data().files().into_iter().next() else {
@@ -198,6 +460,7 @@ pub fn app() -> Element {
             metrics,
             busy,
             drag_active,
+            original_mgf_content,
         );
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -253,6 +516,7 @@ pub fn app() -> Element {
             metrics,
             busy,
             drag_active,
+            original_mgf_content,
         );
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -272,10 +536,10 @@ pub fn app() -> Element {
                 div {
                     style: "display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;",
                     div {
-                        h2 { style: "margin: 0; font-size: 1.7rem; letter-spacing: -0.02em;", "MGF Precursor Error Metrics" }
+                        h2 { style: "margin: 0; font-size: 1.7rem; letter-spacing: -0.02em;", "MGF Precursor Error" }
                         p {
                             style: "margin: 0.2rem 0 0; color: #475569; font-size: 0.95rem;",
-                            "Upload an MGF file and summarize precursor mass errors in Da and ppm."
+                            "Upload an MGF file and explore precursor mass errors in Da and ppm."
                         }
                     }
                 }
@@ -312,7 +576,7 @@ pub fn app() -> Element {
                             style: "margin-top: 0.8rem; border: 1px solid #2563eb; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 0.84rem; font-weight: 700; padding: 0.45rem 0.8rem; cursor: pointer;",
                             onclick: move |_| {
                                 #[cfg(target_arch = "wasm32")]
-                                load_example_mgf(status, metrics, busy, file_name);
+                                load_example_mgf(status, metrics, busy, file_name, original_mgf_content);
                                 #[cfg(not(target_arch = "wasm32"))]
                                 {
                                     status.set("This app needs to run in a browser.".to_string());
@@ -495,21 +759,302 @@ pub fn app() -> Element {
                                 }
                             }
 
+                            // Recalibration control panel
                             div {
-                                style: "margin-top: 1rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem;",
-                                ecdf_plot {
-                                    title: "Absolute precursor-error cumulative distribution (mDa)".to_string(),
-                                    subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale".to_string(),
-                                    values: metrics.absolute_error_da_values.iter().map(|value| value * 1000.0).collect::<Vec<_>>(),
-                                    thresholds: vec![0.1, 0.5, 1.0, 5.0],
-                                    unit: "mDa".to_string(),
+                                style: "margin-top: 1.5rem; padding: 1.2rem; border: 2px solid #3b82f6; border-radius: 16px; background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);",
+                                h3 { style: "margin: 0 0 0.8rem; font-size: 1.1rem; color: #1e40af;", "🔬 MS2 Fragment Recalibration" }
+                                p { style: "margin: 0 0 1rem; color: #1e40af; font-size: 0.95rem;", "Apply precursor-driven recalibration to MS2 fragments using the discrepancy between MS1 and MS2 precursor m/z." }
+                                
+                                div {
+                                    style: "display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;",
+                                    
+                                    div {
+                                        label { style: "display: block; font-weight: 600; color: #1e40af; margin-bottom: 0.4rem;", "Calibration Model" }
+                                        select {
+                                            value: match *calibration_model.read() {
+                                                CalibrationModel::None => "none",
+                                                CalibrationModel::TOFDa { .. } => "tof",
+                                                CalibrationModel::OrbitrapPPM { .. } => "orbitrap",
+                                            },
+                                            onchange: move |evt| {
+                                                let value = evt.value();
+                                                let lambda = *lambda_value.read();
+                                                calibration_model.set(match value.as_str() {
+                                                    "tof" => CalibrationModel::TOFDa { lambda },
+                                                    "orbitrap" => CalibrationModel::OrbitrapPPM { lambda },
+                                                    _ => CalibrationModel::None,
+                                                });
+                                            },
+                                            style: "width: 100%; padding: 0.5rem; border: 1px solid #0ea5e9; border-radius: 8px; background: white; color: #1e40af; font-weight: 500; cursor: pointer;",
+                                            option { value: "none", "None (No Correction)" }
+                                            option { value: "tof", "TOF (Absolute Da)" }
+                                            option { value: "orbitrap", "Orbitrap (ppm)" }
+                                        }
+                                    }
+                                    
+                                    if !matches!(*calibration_model.read(), CalibrationModel::None) {
+                                        div {
+                                            label { 
+                                                style: "display: block; font-weight: 600; color: #1e40af; margin-bottom: 0.4rem;",
+                                                "Lambda (λ): {format_lambda(*lambda_value.read())}"
+                                            }
+                                            input {
+                                                r#type: "range",
+                                                min: "0.0",
+                                                max: "1.0",
+                                                step: "0.05",
+                                                value: format!("{}", lambda_value.read()),
+                                                oninput: move |evt| {
+                                                    let val: f64 = evt.value().parse().unwrap_or(0.5);
+                                                    lambda_value.set(val);
+                                                    
+                                                    // Update model with new lambda
+                                                    let current_model = *calibration_model.read();
+                                                    let new_model = match current_model {
+                                                        CalibrationModel::TOFDa { .. } => CalibrationModel::TOFDa { lambda: val },
+                                                        CalibrationModel::OrbitrapPPM { .. } => CalibrationModel::OrbitrapPPM { lambda: val },
+                                                        _ => CalibrationModel::None,
+                                                    };
+                                                    calibration_model.set(new_model);
+                                                },
+                                                style: "width: 100%; cursor: pointer;",
+                                            }
+                                            p { style: "margin: 0.4rem 0 0; font-size: 0.85rem; color: #0ea5e9;", "0 = no correction, 1 = full correction" }
+                                        }
+                                    }
                                 }
-                                ecdf_plot {
-                                    title: "Relative precursor-error cumulative distribution (ppm)".to_string(),
-                                    subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale".to_string(),
-                                    values: metrics.absolute_error_ppm_values.clone(),
-                                    thresholds: vec![0.5, 1.0, 5.0, 10.0],
-                                    unit: "ppm".to_string(),
+                            }
+
+                            // Tolerance-band compliance AFTER recalibration (duplicated)
+                            div {
+                                style: "margin-top: 1rem; padding: 0.95rem 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
+                                h4 { style: "margin: 0 0 0.25rem; font-size: 0.95rem; color: #0f172a;", "Tolerance-band compliance (Recalibrated)" }
+                                p { style: "margin: 0 0 0.7rem; color: #64748b; font-size: 0.84rem;", "Estimated compliance after MS2 fragment recalibration (preview)" }
+                                div { style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem;",
+                                    if let Some(diag) = recalibration_diagnostics.read().as_ref() {
+                                        // mDa after
+                                        div { style: tolerance_card_style(0),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.1 mDa" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_mda(&diag.error_da_after, 0.1))}" }
+                                        }
+                                        div { style: tolerance_card_style(1),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 mDa" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_mda(&diag.error_da_after, 0.5))}" }
+                                        }
+                                        div { style: tolerance_card_style(2),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 mDa" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_mda(&diag.error_da_after, 1.0))}" }
+                                        }
+                                        div { style: tolerance_card_style(3),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 mDa" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_mda(&diag.error_da_after, 5.0))}" }
+                                        }
+                                        div { style: tolerance_card_style(4),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 5.0 mDa" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(100.0 - estimate_compliance_mda(&diag.error_da_after, 5.0))}" }
+                                        }
+                                        // ppm after
+                                        div { style: tolerance_card_style(0),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 ppm" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 0.5))}" }
+                                        }
+                                        div { style: tolerance_card_style(1),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 ppm" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 1.0))}" }
+                                        }
+                                        div { style: tolerance_card_style(2),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 ppm" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 5.0))}" }
+                                        }
+                                        div { style: tolerance_card_style(3),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 10.0 ppm" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 10.0))}" }
+                                        }
+                                        div { style: tolerance_card_style(4),
+                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 10.0 ppm" }
+                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(100.0 - estimate_compliance_ppm(&diag.error_ppm_after, 10.0))}" }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Download recalibrated MGF button
+                            if !original_mgf_content.read().is_empty() && !matches!(*calibration_model.read(), CalibrationModel::None) {
+                                button {
+                                    r#type: "button",
+                                    style: "margin-top: 1rem; width: 100%; padding: 0.75rem 1rem; border: 2px solid #10b981; border-radius: 8px; background: #10b981; color: white; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.2s; hover:background #059669;",
+                                    onclick: move |_| {
+                                        #[cfg(target_arch = "wasm32")]
+                                        {
+                                            let file_name = file_name.read();
+                                            let content = original_mgf_content.read();
+                                            let model = *calibration_model.read();
+                                            let diag = recalibration_diagnostics.read().clone();
+                                            
+                                            if let Err(e) = download_recalibrated_mgf(&file_name, &content, model, diag.as_ref()) {
+                                                status.set(format!("Download error: {}", e));
+                                            } else {
+                                                status.set(format!("Downloaded: {}_recalibrated.mgf", if file_name.ends_with(".mgf") { &file_name[..file_name.len()-4] } else { &file_name }));
+                                            }
+                                        }
+                                    },
+                                    "Download Recalibrated MGF"
+                                }
+                            }
+
+                            // Recalibration diagnostics display
+                            if let Some(diag) = recalibration_diagnostics.read().as_ref() {
+                                div {
+                                    style: "margin-top: 1.5rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
+                                    
+                                    h4 { style: "margin: 0 0 1rem; font-size: 1rem; color: #1e40af;", "Recalibration Diagnostics" }
+                                    
+                                    // Summary statistics table
+                                    div {
+                                        style: "margin-bottom: 1.5rem;",
+                                        dangerous_inner_html: render_recalibration_summary_text(
+                                            diag.mean_error_ppm_before,
+                                            diag.mean_error_ppm_after,
+                                            diag.rms_error_ppm_before,
+                                            diag.rms_error_ppm_after,
+                                            diag.max_abs_error_ppm_before,
+                                            diag.max_abs_error_ppm_after,
+                                        ),
+                                    }
+                                    
+                                    // Tabbed cumulative error distribution (ms1, ms2_before, ms2_after)
+                                    div {
+                                        style: "margin-bottom: 1.5rem;",
+                                        h5 { style: "margin: 0 0 0.5rem; font-size: 0.95rem; color: #1e40af;", "Cumulative Error Distribution" }
+                                        
+                                        // Tab buttons
+                                        div {
+                                            style: "display: flex; gap: 0.5rem; margin-bottom: 0.8rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;",
+                                            button {
+                                                style: if *cumulative_dist_tab.read() == "mda" {
+                                                    "padding: 0.5rem 1rem; border: 2px solid #1e40af; background: #1e40af; color: white; border-radius: 6px; font-weight: 600; cursor: pointer;"
+                                                } else {
+                                                    "padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 6px; cursor: pointer;"
+                                                },
+                                                onclick: move |_| {
+                                                    cumulative_dist_tab.set("mda");
+                                                },
+                                                "mDa (Absolute)"
+                                            }
+                                            button {
+                                                style: if *cumulative_dist_tab.read() == "ppm" {
+                                                    "padding: 0.5rem 1rem; border: 2px solid #1e40af; background: #1e40af; color: white; border-radius: 6px; font-weight: 600; cursor: pointer;"
+                                                } else {
+                                                    "padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 6px; cursor: pointer;"
+                                                },
+                                                onclick: move |_| {
+                                                    cumulative_dist_tab.set("ppm");
+                                                },
+                                                "ppm (Relative)"
+                                            }
+                                        }
+                                        
+                                        // Tab content
+                                        div {
+                                            style: "background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto;",
+                                            p { 
+                                                style: "margin: 0 0 0.8rem; font-size: 0.9rem; color: #64748b;",
+                                                strong { "Legend: " }
+                                                "🔵 Blue = MS1 precursor (PEPMASS) vs theoretical | "
+                                                "🟠 Orange = MS2 precursor before correction vs theoretical | "
+                                                "🟢 Green = MS2 precursor after recalibration vs theoretical"
+                                            }
+                                            if *cumulative_dist_tab.read() == "mda" {
+                                                div {
+                                                    dangerous_inner_html: render_cumulative_error_three_curves(
+                                                        &diag.error_da_ms1,
+                                                        &diag.error_da_before,
+                                                        &diag.error_da_after,
+                                                        "mDa",
+                                                        vec![0.1, 0.5, 1.0, 5.0],
+                                                    ),
+                                                }
+                                            } else {
+                                                div {
+                                                    dangerous_inner_html: render_cumulative_error_three_curves(
+                                                        &diag.error_ppm_ms1,
+                                                        &diag.error_ppm_before,
+                                                        &diag.error_ppm_after,
+                                                        "ppm",
+                                                        vec![0.5, 1.0, 5.0, 10.0],
+                                                    ),
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Error time series (supporting detail)
+                                    div {
+                                        style: "margin-bottom: 1.5rem;",
+                                        h5 { style: "margin: 0 0 0.5rem; font-size: 0.95rem; color: #1e40af;", "Precursor error over time" }
+                                        p { style: "margin: 0 0 0.8rem; font-size: 0.9rem; color: #64748b;",
+                                            strong { "Legend: " }
+                                            "🔵 Blue = MS2 before correction | "
+                                            "🟢 Green = MS2 after correction" }
+                                        div {
+                                            style: "background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto;",
+                                            dangerous_inner_html: render_recalibration_diagnostic_ppm(
+                                                &diag.error_ppm_before,
+                                                &diag.error_ppm_after,
+                                            ),
+                                        }
+                                    }
+                                    
+                                    // Histogram (supporting detail)
+                                    div {
+                                        h5 { style: "margin: 0 0 0.5rem; font-size: 0.95rem; color: #1e40af;", "Error distribution" }
+                                        p { style: "margin: 0 0 0.8rem; font-size: 0.9rem; color: #64748b;",
+                                            strong { "Legend: " }
+                                            "🔵 Blue = MS2 before correction | "
+                                            "🟢 Green = MS2 after correction" }
+                                        div {
+                                            style: "background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto;",
+                                            dangerous_inner_html: render_recalibration_diagnostic_histogram(
+                                                &diag.error_ppm_before,
+                                                &diag.error_ppm_after,
+                                                20,
+                                            ),
+                                        }
+                                    }
+                                }
+                            }
+
+                            div {
+                                if let Some(diag) = recalibration_diagnostics.read().as_ref() {
+                                    ecdf_plot {
+                                        title: "Absolute precursor-error cumulative distribution (mDa)".to_string(),
+                                        subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale".to_string(),
+                                        values: diag.error_da_before.iter().chain(diag.error_da_after.iter()).copied().collect::<Vec<_>>(),
+                                        thresholds: vec![0.1, 0.5, 1.0, 5.0],
+                                        unit: "mDa".to_string(),
+                                    }
+                                    ecdf_plot {
+                                        title: "Relative precursor-error cumulative distribution (ppm)".to_string(),
+                                        subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale".to_string(),
+                                        values: diag.error_ppm_before.iter().chain(diag.error_ppm_after.iter()).copied().collect::<Vec<_>>(),
+                                        thresholds: vec![0.5, 1.0, 5.0, 10.0],
+                                        unit: "ppm".to_string(),
+                                    }
+                                } else {
+                                    ecdf_plot {
+                                        title: "Absolute precursor-error cumulative distribution (mDa)".to_string(),
+                                        subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale".to_string(),
+                                        values: metrics.absolute_error_da_values.iter().map(|value| value * 1000.0).collect::<Vec<_>>(),
+                                        thresholds: vec![0.1, 0.5, 1.0, 5.0],
+                                        unit: "mDa".to_string(),
+                                    }
+                                    ecdf_plot {
+                                        title: "Relative precursor-error cumulative distribution (ppm)".to_string(),
+                                        subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale".to_string(),
+                                        values: metrics.absolute_error_ppm_values.clone(),
+                                        thresholds: vec![0.5, 1.0, 5.0, 10.0],
+                                        unit: "ppm".to_string(),
+                                    }
                                 }
                                 absolute_mass_bias_plot {
                                     title: "Signed error vs. precursor 𝑚/𝑧 (mDa)".to_string(),
@@ -589,6 +1134,23 @@ fn tolerance_card_style(index: usize) -> String {
     format!(
         "padding: 0.6rem 0.7rem; border-radius: 12px; border: 1px solid {color}; background: #f8fafc; color: {color};"
     )
+}
+
+fn estimate_compliance_mda(errors: &[f64], threshold_mda: f64) -> f64 {
+    if errors.is_empty() {
+        return 0.0;
+    }
+    let threshold_da = threshold_mda / 1000.0;
+    let count = errors.iter().filter(|e| e.abs() <= threshold_da).count();
+    (count as f64 / errors.len() as f64) * 100.0
+}
+
+fn estimate_compliance_ppm(errors: &[f64], threshold_ppm: f64) -> f64 {
+    if errors.is_empty() {
+        return 0.0;
+    }
+    let count = errors.iter().filter(|e| e.abs() <= threshold_ppm).count();
+    (count as f64 / errors.len() as f64) * 100.0
 }
 
 #[component]
@@ -730,6 +1292,124 @@ fn absolute_mass_bias_plot(
     }
 }
 
+fn format_lambda(lambda: f64) -> String {
+    format!("{:.2}", lambda)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn update_recalibration_diagnostics(
+    metrics: &PrecursorMetrics,
+    model: CalibrationModel,
+    diagnostics_signal: &mut Signal<Option<RecalibrationDiagnostics>>,
+) {
+    if matches!(model, CalibrationModel::None) {
+        diagnostics_signal.set(None);
+        return;
+    }
+    
+    let mut diag = RecalibrationDiagnostics::new();
+    let lambda = match model {
+        CalibrationModel::TOFDa { lambda } => lambda,
+        CalibrationModel::OrbitrapPPM { lambda } => lambda,
+        _ => 0.0,
+    };
+    
+    // Process each plot point
+    for point in &metrics.plot_points {
+        // Skip if no theoretical mass available
+        let Some(theoretical_mass) = point.expected_mass else {
+            continue;
+        };
+
+        // Use actual MS2 precursor peak if observed, otherwise fall back to PEPMASS header
+        let precursor_ms2 = point.ms2_precursor_peak.unwrap_or(point.pepmass_header);
+        
+        // MS1 precursor: PEPMASS header is our estimate
+        // (When actual MS1 data is available, use that instead)
+        let precursor_ms1 = point.pepmass_header;
+        
+        // Stage 1: error_ms1 = PEPMASS - theoretical
+        let error_da_ms1 = precursor_ms1 - theoretical_mass;
+        let error_ppm_ms1 = if theoretical_mass > 0.0 {
+            error_da_ms1 * 1e6 / theoretical_mass
+        } else {
+            0.0
+        };
+        
+        // Stage 2: error_ms2_before = MS2 - theoretical
+        let error_da_before = precursor_ms2 - theoretical_mass;
+        let error_ppm_before = if theoretical_mass > 0.0 {
+            error_da_before * 1e6 / theoretical_mass
+        } else {
+            0.0
+        };
+        
+        // Stage 3: delta_ms2_ms1 = MS2 - MS1
+        let delta_ms2_ms1_da = precursor_ms2 - precursor_ms1;
+        let delta_ppm_ms2_ms1 = if precursor_ms1 > 0.0 {
+            delta_ms2_ms1_da * 1e6 / precursor_ms1
+        } else {
+            0.0
+        };
+        
+        // Apply recalibration: error_ms2_after = (MS2 - λ × delta) - theoretical
+        let precursor_ms2_after = match model {
+            CalibrationModel::TOFDa { .. } => {
+                precursor_ms2 - lambda * delta_ms2_ms1_da
+            }
+            CalibrationModel::OrbitrapPPM { .. } => {
+                precursor_ms2 * (1.0 - lambda * delta_ppm_ms2_ms1 / 1e6)
+            }
+            _ => precursor_ms2,
+        };
+        
+        // Stage 4: error_ms2_after = (MS2_corrected - theoretical)
+        let error_da_after = precursor_ms2_after - theoretical_mass;
+        let error_ppm_after = if theoretical_mass > 0.0 {
+            error_da_after * 1e6 / theoretical_mass
+        } else {
+            0.0
+        };
+        
+        // Push the complete measurement
+        let adduct_str = match point.adduct_family {
+            crate::metrics::AdductFamily::Protonated => Some("[M+H]+"),
+            crate::metrics::AdductFamily::Deprotonated => Some("[M-H]-"),
+            crate::metrics::AdductFamily::AlkaliAmmonium => Some("[M+NH4]+"),
+            crate::metrics::AdductFamily::MetalComplex => Some("[M+Metal]"),
+            crate::metrics::AdductFamily::Halide => Some("[M-Hal]"),
+            crate::metrics::AdductFamily::Other => None,
+        };
+        
+        diag.push_measurement(
+            error_ppm_ms1,
+            delta_ppm_ms2_ms1,
+            error_ppm_before,
+            error_ppm_after,
+            error_da_ms1,
+            delta_ms2_ms1_da,
+            error_da_before,
+            error_da_after,
+            precursor_ms1,
+            precursor_ms2,
+            precursor_ms2_after,
+            adduct_str,
+            5000, // max samples
+        );
+    }
+    
+    diag.compute_statistics();
+    diagnostics_signal.set(Some(diag));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+fn update_recalibration_diagnostics(
+    _metrics: &PrecursorMetrics,
+    _model: CalibrationModel,
+    _diagnostics_signal: &mut Signal<Option<RecalibrationDiagnostics>>,
+) {}
+
 #[cfg(target_arch = "wasm32")]
 fn download_svg(svg_markup: &str, filename: &str) {
     let safe_name = if filename.ends_with(".svg") {
@@ -761,3 +1441,51 @@ fn download_svg(svg_markup: &str, filename: &str) {
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(dead_code)]
 const fn download_svg(_svg_markup: &str, _filename: &str) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_recalibrated_mgf_with_tof() {
+        let input = r#"BEGIN IONS
+TITLE=test
+PEPMASS=500.0000
+CHARGE=1
+100.0 50
+200.0 100
+500.01 200
+250.0 150
+END IONS"#;
+
+        let model = CalibrationModel::TOFDa { lambda: 1.0 };
+        let output = generate_recalibrated_mgf(input, model, None);
+        
+        eprintln!("=== INPUT ===");
+        eprintln!("{}", input);
+        eprintln!("\n=== OUTPUT ===");
+        eprintln!("{}", output);
+        
+        // Delta should be 500.01 - 500.0 = 0.01
+        // With lambda=1, fragments should shift by -0.01
+        // 100.0 -> 99.99, 200.0 -> 199.99, 500.01 -> 500.0, 250.0 -> 249.99
+        
+        assert_ne!(input, output, "Output should differ from input!");
+        assert!(output.contains("99.99") || output.contains("199.99"), "Should contain recalibrated values");
+    }
+    
+    #[test]
+    fn test_generate_recalibrated_mgf_no_model() {
+        let input = r#"BEGIN IONS
+TITLE=test
+PEPMASS=500.0000
+CHARGE=1
+100.0 50
+END IONS"#;
+
+        let model = CalibrationModel::None;
+        let output = generate_recalibrated_mgf(input, model, None);
+        
+        assert_eq!(input, output, "With None model, output should be identical to input");
+    }
+}

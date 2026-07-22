@@ -34,7 +34,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/crate-ci/typos"
-rev = "v1.45.1"
+rev = "v1.48.0"
 hooks = [
   {
     id = "typos",
@@ -180,7 +180,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/jolars/panache-pre-commit"
-rev = "v2.43.1"
+rev = "v3.0.0"
 hooks = [
   { id = "panache-format" },
   { id = "panache-lint" }

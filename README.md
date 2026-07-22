@@ -41,7 +41,7 @@ dioxus-apps/
 ├── apps/
 │   ├── hello-world/        ← minimal template for new apps
 │   ├── jsoncount/           ← upload a JSON file and count non-null values per field
-│   ├── mgf-precursor-erro-rs/ ← upload an MGF file and summarize precursor mass errors
+│   ├── mgf-precursor-erro-rs/ ← upload an MGF file and explore precursor mass errors
 │   ├── lotus-api/          ← OpenAPI service for LOTUS search and exports
 │   └── lotus-explorer/     ← LOTUS Wikidata natural-product explorer
 ├── crates/

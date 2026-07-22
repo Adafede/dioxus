@@ -4,7 +4,7 @@ default_platform = "web"
 asset_dir = "assets"
 
 [web.app]
-title = "MGF Precursor Error Metrics"
+title = "MGF Precursor Error"
 
 [web.watcher]
 reload_html = true

@@ -100,8 +100,8 @@ jobs:
                 <p class="desc">Upload a JSON file and count non-null values per field</p>
               </li>
               <li>
-                <a href="./mgf-precursor-erro-rs/">📊 MGF Precursor Error Metrics</a>
-                <p class="desc">Upload an MGF file and summarize precursor mass errors in Da and ppm</p>
+                <a href="./mgf-precursor-erro-rs/">📊 MGF Precursor Error</a>
+                <p class="desc">Upload an MGF file and explore precursor mass errors in Da and ppm</p>
               </li>
             </ul>
           </body>

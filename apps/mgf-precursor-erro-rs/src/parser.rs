@@ -31,7 +31,6 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Blob, console};
 
-#[cfg(target_arch = "wasm32")]
 use crate::metrics::merge_metrics;
 use crate::metrics::{AdductClass, AdductFamily, PlotPointSample, PrecursorMetrics, WarningDetail};
 
@@ -73,6 +72,7 @@ pub struct BlockParseState {
     formula: Option<String>,
     feature_id: Option<String>,
     scans: Option<String>,
+    fragment_peaks: Vec<f64>,
 }
 
 impl BlockParseState {
@@ -158,6 +158,19 @@ impl BlockParseState {
             if self.scans.is_none() {
                 self.scans = Some(stripped.to_string());
             }
+            return;
+        }
+
+        // Parse fragment line: "m/z intensity" (not a header)
+        if !trimmed.contains('=') && trimmed.contains(char::is_whitespace) {
+            let parts: Vec<&str> = trimmed.split_whitespace().collect();
+            if parts.len() >= 1 {
+                if let Ok(mz) = parts[0].parse::<f64>() {
+                    if mz > 0.0 {
+                        self.fragment_peaks.push(mz);
+                    }
+                }
+            }
         }
     }
 
@@ -165,6 +178,36 @@ impl BlockParseState {
         for line in block_lines {
             self.consume_line(line);
         }
+    }
+
+    /// Extract MS2 precursor peak from fragment list.
+    /// Returns the closest fragment to PEPMASS if within ~0.02 Da (~100 ppm), otherwise None.
+    pub fn get_ms2_precursor_peak(&self, pepmass_header: f64) -> Option<f64> {
+        const TOLERANCE_DA: f64 = 0.02;
+        
+        self.fragment_peaks
+            .iter()
+            .copied()
+            .min_by(|a, b| {
+                let dist_a = (a - pepmass_header).abs();
+                let dist_b = (b - pepmass_header).abs();
+                dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .and_then(|closest| {
+                let delta_da = (closest - pepmass_header).abs();
+                let delta_ppm = if pepmass_header.abs() > f64::EPSILON {
+                    delta_da * 1e6 / pepmass_header
+                } else {
+                    f64::INFINITY
+                };
+                
+                // Return only if within both Da and ppm thresholds
+                if delta_da <= TOLERANCE_DA && delta_ppm <= 100.0 {
+                    Some(closest)
+                } else {
+                    None
+                }
+            })
     }
 }
 
@@ -1108,7 +1151,8 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
         AdductFamily::from_label(&adduct_label),
         ppm,
         error_da,
-        observed_precursor,
+        observed_precursor,  // PEPMASS from header (metadata block)
+        state.get_ms2_precursor_peak(observed_precursor),  // MS2 precursor peak, closest to PEPMASS within tolerance
         state.smiles.as_deref(),
         Some(reference_mass),
         Some(expected_precursor_mz),
@@ -1139,6 +1183,55 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
     }
 
     Ok(Some(metrics))
+}
+
+/// Parse MGF from a string (for non-async contexts, e.g., browser file reading).
+pub fn parse_mgf_from_string(content: &str) -> std::result::Result<PrecursorMetrics, String> {
+    let mut current_state = BlockParseState::default();
+    let mut current_is_in_block = false;
+    let mut metrics = PrecursorMetrics::default();
+    let mut plot_sample = PlotPointSample::default();
+    let mut smiles_cache = HashMap::new();
+    let mut formula_cache = HashMap::new();
+    let mut logged_failures = HashSet::new();
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        if trimmed == "BEGIN IONS" {
+            current_state = BlockParseState::default();
+            current_is_in_block = true;
+            continue;
+        }
+
+        if !current_is_in_block {
+            continue;
+        }
+
+        current_state.consume_line(trimmed);
+
+        if trimmed == "END IONS" {
+            let mut block_plot_sample = Some(&mut plot_sample);
+            if let Some(result) = process_block_state(
+                &current_state,
+                &mut smiles_cache,
+                &mut formula_cache,
+                &mut logged_failures,
+                &mut block_plot_sample,
+            ).map_err(|e| format!("{:?}", e))? {
+                metrics = merge_metrics(metrics, result);
+            }
+            current_state = BlockParseState::default();
+            current_is_in_block = false;
+        }
+    }
+
+    metrics.plot_points = plot_sample.points;
+    metrics.plot_point_stream_seen = plot_sample.seen;
+    Ok(metrics)
 }
 
 #[cfg(test)]
