@@ -101,7 +101,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
       - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@v2.82.9
+      - uses: taiki-e/install-action@c44f6b046f1c29ae5918b1e0bfdbb2f1813836fd
         with:
           # Pin tool versions for reproducible parser behavior in advisory DB checks.
           tool: cargo-deny@0.19.4,cargo-audit@0.22.1
