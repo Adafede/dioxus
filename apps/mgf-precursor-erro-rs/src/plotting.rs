@@ -4,6 +4,46 @@ use prismatica::crameri::BATLOW;
 
 use crate::metrics::{AdductFamily, PlotPoint, ScatterPlotData};
 
+fn usize_to_f64(value: usize) -> f64 {
+    f64::from(u32::try_from(value).unwrap_or(u32::MAX))
+}
+
+fn floor_to_usize(value: f64) -> usize {
+    if !value.is_finite() || value <= 0.0 {
+        return 0;
+    }
+
+    let mut result = 0usize;
+    let mut remaining = value.floor();
+    loop {
+        if remaining < 1.0 {
+            break result;
+        }
+        result = result.saturating_add(1);
+        remaining -= 1.0;
+    }
+}
+
+fn mean_and_std_dev(values: &[f64]) -> Option<(f64, f64)> {
+    let filtered = values
+        .iter()
+        .copied()
+        .filter(|value| value.is_finite())
+        .collect::<Vec<_>>();
+    if filtered.is_empty() {
+        return None;
+    }
+
+    let n = usize_to_f64(filtered.len());
+    let mean = filtered.iter().sum::<f64>() / n;
+    let variance = filtered
+        .iter()
+        .map(|value| (value - mean).powi(2))
+        .sum::<f64>()
+        / n;
+    Some((mean, variance.sqrt()))
+}
+
 const fn adduct_family_rank(family: AdductFamily) -> usize {
     match family {
         AdductFamily::Protonated => 0,
@@ -161,13 +201,13 @@ fn embed_svg_legend(
     let entry_width = content_width + 20.0;
 
     // Wrap legend into multiple rows to fit within plot width
-    let max_row_width = (width * 0.9) - (title_width + 50.0);
-    let items_per_row = ((max_row_width / entry_width).floor()).max(1.0) as usize;
-    let num_rows = (legend_items.len() + items_per_row - 1) / items_per_row;
+    let max_row_width = width.mul_add(0.9, -(title_width + 50.0));
+    let items_per_row = floor_to_usize((max_row_width / entry_width).floor().max(1.0));
+    let num_rows = legend_items.len().div_ceil(items_per_row);
 
     let box_width =
-        (items_per_row.min(legend_items.len()) as f64 * entry_width) + (padding_x * 2.0);
-    let box_height = (num_rows as f64 * item_height) + (padding_y * 2.0) + 12.0;
+        usize_to_f64(items_per_row.min(legend_items.len())).mul_add(entry_width, padding_x * 2.0);
+    let box_height = usize_to_f64(num_rows).mul_add(item_height, padding_y * 2.0) + 12.0;
     let legend_x = ((width - box_width) / 2.0)
         .max(inset)
         .min(width - box_width - inset);
@@ -180,9 +220,8 @@ fn embed_svg_legend(
     for (index, (family, color)) in legend_items.iter().enumerate() {
         let row = index / items_per_row;
         let col = index % items_per_row;
-        let item_x =
-            f64::from(u32::try_from(col).unwrap_or(u32::MAX)).mul_add(entry_width, items_start_x);
-        let item_y = legend_y + 15.0 + (row as f64 * item_height);
+        let item_x = usize_to_f64(col).mul_add(entry_width, items_start_x);
+        let item_y = usize_to_f64(row).mul_add(item_height, legend_y + 15.0);
         let marker_x = item_x + 8.0;
         let text_x = item_x + 18.0;
         let text_y = item_y + 2.0;
@@ -223,7 +262,7 @@ pub fn tolerance_step_color(index: usize, total_steps: usize) -> String {
         let span = u32::try_from(total.saturating_sub(1)).unwrap_or(u32::MAX);
         let normalized = u32::try_from(normalized).unwrap_or(u32::MAX);
         let inverted = 255_u32.saturating_sub((normalized * 255_u32) / span.max(1));
-        inverted as usize
+        usize::try_from(inverted).unwrap_or(usize::MAX)
     };
     let [r, g, b] = BATLOW.lut[lut_index];
     format!("#{r:02x}{g:02x}{b:02x}")
@@ -240,7 +279,7 @@ pub fn tolerance_step_rgb(index: usize, total_steps: usize) -> plotters::style::
         let span = u32::try_from(total.saturating_sub(1)).unwrap_or(u32::MAX);
         let normalized = u32::try_from(normalized).unwrap_or(u32::MAX);
         let inverted = 255_u32.saturating_sub((normalized * 255_u32) / span.max(1));
-        inverted as usize
+        usize::try_from(inverted).unwrap_or(usize::MAX)
     };
     let [r, g, b] = BATLOW.lut[lut_index];
     plotters::style::RGBColor(r, g, b)
@@ -678,6 +717,10 @@ pub fn render_absolute_mass_bias_svg(
 ///
 /// Creates a scatter plot with two overlaid series showing precursor errors in ppm,
 /// allowing visual assessment of recalibration effectiveness.
+///
+/// # Panics
+///
+/// Panics if the SVG backend cannot fill, build, or present the drawing area.
 #[must_use]
 pub fn render_recalibration_diagnostic_ppm(errors_before: &[f64], errors_after: &[f64]) -> String {
     use plotters::prelude::*;
@@ -715,7 +758,7 @@ pub fn render_recalibration_diagnostic_ppm(errors_before: &[f64], errors_after: 
             .x_label_area_size(40)
             .y_label_area_size(50)
             .build_cartesian_2d(
-                0f64..(errors_before.len().max(errors_after.len()) as f64),
+                0f64..usize_to_f64(errors_before.len().max(errors_after.len())),
                 error_min..error_max,
             )
             .unwrap();
@@ -731,7 +774,7 @@ pub fn render_recalibration_diagnostic_ppm(errors_before: &[f64], errors_after: 
         chart
             .draw_series(errors_before.iter().enumerate().map(|(i, &error)| {
                 Circle::new(
-                    (i as f64, error),
+                    (usize_to_f64(i), error),
                     3,
                     ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
                 )
@@ -743,7 +786,7 @@ pub fn render_recalibration_diagnostic_ppm(errors_before: &[f64], errors_after: 
         chart
             .draw_series(errors_after.iter().enumerate().map(|(i, &error)| {
                 Circle::new(
-                    (i as f64, error),
+                    (usize_to_f64(i), error),
                     2,
                     ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
                 )
@@ -753,7 +796,7 @@ pub fn render_recalibration_diagnostic_ppm(errors_before: &[f64], errors_after: 
 
         chart
             .configure_series_labels()
-            .background_style(&WHITE.mix(0.8))
+            .background_style(WHITE.mix(0.8))
             .draw()
             .unwrap();
 
@@ -763,6 +806,10 @@ pub fn render_recalibration_diagnostic_ppm(errors_before: &[f64], errors_after: 
 }
 
 /// Renders a histogram comparing error distributions before and after recalibration.
+///
+/// # Panics
+///
+/// Panics if the SVG backend cannot fill, build, or present the drawing area.
 #[must_use]
 pub fn render_recalibration_diagnostic_histogram(
     errors_before: &[f64],
@@ -795,7 +842,7 @@ pub fn render_recalibration_diagnostic_histogram(
     for &error in errors_before {
         if error.is_finite() {
             let normalized = (error - error_min) / (error_max - error_min + f64::EPSILON);
-            let bin = (normalized * (bin_count as f64 - 1.0)).floor() as usize;
+            let bin = floor_to_usize((normalized * (usize_to_f64(bin_count) - 1.0)).floor());
             if bin < bin_count {
                 hist_before[bin] += 1;
             }
@@ -805,7 +852,7 @@ pub fn render_recalibration_diagnostic_histogram(
     for &error in errors_after {
         if error.is_finite() {
             let normalized = (error - error_min) / (error_max - error_min + f64::EPSILON);
-            let bin = (normalized * (bin_count as f64 - 1.0)).floor() as usize;
+            let bin = floor_to_usize((normalized * (usize_to_f64(bin_count) - 1.0)).floor());
             if bin < bin_count {
                 hist_after[bin] += 1;
             }
@@ -820,7 +867,7 @@ pub fn render_recalibration_diagnostic_histogram(
         .unwrap_or(1)
         .max(1);
 
-    let bin_width = (error_max - error_min) / (bin_count as f64);
+    let bin_width = (error_max - error_min) / usize_to_f64(bin_count);
 
     {
         let root = SVGBackend::with_string(&mut buffer, (1200, 400)).into_drawing_area();
@@ -846,20 +893,20 @@ pub fn render_recalibration_diagnostic_histogram(
 
         // Draw histogram bars
         for (i, &count) in hist_before.iter().enumerate() {
-            let x = error_min + (i as f64) * bin_width;
+            let x = usize_to_f64(i).mul_add(bin_width, error_min);
             chart
                 .draw_series(std::iter::once(Rectangle::new(
-                    [(x, 0), (x + bin_width * 0.9, count)],
+                    [(x, 0), (bin_width.mul_add(0.9, x), count)],
                     ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
                 )))
                 .unwrap();
         }
 
         for (i, &count) in hist_after.iter().enumerate() {
-            let x = error_min + (i as f64) * bin_width + bin_width * 0.45;
+            let x = bin_width.mul_add(0.45, usize_to_f64(i).mul_add(bin_width, error_min));
             chart
                 .draw_series(std::iter::once(Rectangle::new(
-                    [(x, 0), (x + bin_width * 0.45, count)],
+                    [(x, 0), (bin_width.mul_add(0.45, x), count)],
                     ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
                 )))
                 .unwrap();
@@ -881,6 +928,10 @@ pub fn render_recalibration_diagnostic_histogram(
 ///
 /// This is more informative than error plots because it shows the actual
 /// mass values and how recalibration shifts them toward the diagonal.
+///
+/// # Panics
+///
+/// Panics if the SVG backend cannot fill, build, or present the drawing area.
 #[must_use]
 pub fn render_recalibration_diagnostic_mz_comparison(
     precursor_ms1_values: &[f64],
@@ -984,8 +1035,8 @@ pub fn render_recalibration_diagnostic_mz_comparison(
 
         chart
             .configure_series_labels()
-            .background_style(&WHITE.mix(0.8))
-            .border_style(&BLACK)
+            .background_style(WHITE.mix(0.8))
+            .border_style(BLACK)
             .draw()
             .unwrap();
 
@@ -1065,12 +1116,136 @@ pub fn render_recalibration_summary_text(
     )
 }
 
+fn cumulative_points(values: &[f64]) -> Vec<(f64, f64)> {
+    let mut sorted: Vec<f64> = values
+        .iter()
+        .copied()
+        .filter(|value| value.is_finite())
+        .collect();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    if sorted.is_empty() {
+        return Vec::new();
+    }
+
+    let total = usize_to_f64(sorted.len());
+    sorted
+        .iter()
+        .enumerate()
+        .map(|(index, &value)| (value, usize_to_f64(index.saturating_add(1)) / total * 100.0))
+        .collect()
+}
+
+fn draw_quartet_stage<DB: plotters::prelude::DrawingBackend>(
+    chart: &mut plotters::prelude::ChartContext<
+        '_,
+        DB,
+        plotters::prelude::Cartesian2d<
+            plotters::coord::types::RangedCoordf64,
+            plotters::coord::types::RangedCoordf64,
+        >,
+    >,
+    x: f64,
+    values: &[f64],
+    color: plotters::style::RGBColor,
+) where
+    DB::ErrorType: 'static,
+{
+    if let Some((mean, std_dev)) = mean_and_std_dev(values) {
+        let style = plotters::style::ShapeStyle::from(&color);
+        let _ = chart.draw_series(std::iter::once(plotters::prelude::PathElement::new(
+            vec![(x, mean - std_dev), (x, mean + std_dev)],
+            style,
+        )));
+        let _ = chart.draw_series(std::iter::once(plotters::prelude::Circle::new(
+            (x, mean),
+            6,
+            style.filled(),
+        )));
+    }
+}
+
+fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
+    chart: &mut plotters::prelude::ChartContext<
+        '_,
+        DB,
+        plotters::prelude::Cartesian2d<
+            plotters::coord::types::RangedCoordf64,
+            plotters::coord::types::RangedCoordf64,
+        >,
+    >,
+    values: &[f64],
+    color: plotters::style::RGBColor,
+    stroke_width: u32,
+) where
+    DB::ErrorType: 'static,
+{
+    let points = cumulative_points(values);
+    if points.is_empty() {
+        return;
+    }
+
+    let style = plotters::style::ShapeStyle::from(&color).stroke_width(stroke_width);
+    let _ = chart.draw_series(
+        points
+            .iter()
+            .copied()
+            .zip(
+                points
+                    .iter()
+                    .skip(1)
+                    .copied()
+                    .chain(std::iter::once(points[0])),
+            )
+            .map(|((x1, y1), (x2, y2))| {
+                plotters::prelude::PathElement::new(vec![(x1, y1), (x2, y2)], style)
+            }),
+    );
+}
+
+fn append_cumulative_legend(svg: &str) -> String {
+    let legend_items = [
+        ("MS1 Precursor (PEPMASS)", (68u8, 119u8, 170u8)),
+        ("MS2 Before Correction", (255u8, 140u8, 0u8)),
+        ("MS2 After Correction", (51u8, 153u8, 51u8)),
+    ];
+
+    let mut legend_svg = String::new();
+    legend_svg.push_str(r#"<g id="legend" font-size="12" font-family="sans-serif">"#);
+
+    for (idx, (label, (r, g, b))) in legend_items.iter().enumerate() {
+        let y = 30 + (idx * 20);
+        let x = 1050;
+        let _ = write!(
+            legend_svg,
+            r#"<rect x="{x}" y="{}" width="15" height="15" fill="rgb({r},{g},{b})" stroke="none"/>"#,
+            y - 10
+        );
+        let _ = write!(
+            legend_svg,
+            r#"<text x="{}" y="{y}" fill="black" font-size="12">{label}</text>"#,
+            x + 20
+        );
+    }
+    legend_svg.push_str("</g>");
+
+    if let Some(pos) = svg.rfind("</svg>") {
+        let (before, after) = svg.split_at(pos);
+        return format!("{before}{legend_svg}{after}");
+    }
+
+    svg.to_string()
+}
+
 /// Four-stage error analysis showing the complete recalibration story.
 ///
 /// Stage 1 (Blue): MS1 error vs theory
 /// Stage 2 (Orange): MS2 error before recalibration vs theory
 /// Stage 3 (Red): Calibration delta (MS2 - MS1) - the measurement discrepancy
 /// Stage 4 (Green): MS2 error after recalibration vs theory
+///
+/// # Panics
+///
+/// Panics if the SVG backend cannot fill, build, or present the drawing area.
 #[must_use]
 pub fn render_error_quartet(
     error_ms1: &[f64],
@@ -1082,7 +1257,6 @@ pub fn render_error_quartet(
 
     let mut buffer = String::new();
 
-    // Collect all errors to determine range
     let all_values: Vec<f64> = error_ms1
         .iter()
         .chain(delta_ms2_ms1.iter())
@@ -1123,108 +1297,15 @@ pub fn render_error_quartet(
             .draw()
             .unwrap();
 
-        // Reference line at y=0 (perfect accuracy)
         let red_style = ShapeStyle::from(&RED).stroke_width(1);
         let _ = chart.draw_series(std::iter::once(PathElement::new(
             vec![(-0.5, 0.0), (4.5, 0.0)],
             red_style,
         )));
-
-        // Plot Stage 1: MS1 error (Blue)
-        {
-            let filtered: Vec<f64> = error_ms1
-                .iter()
-                .copied()
-                .filter(|v| v.is_finite())
-                .collect();
-            if !filtered.is_empty() {
-                let n = filtered.len() as f64;
-                let mean = filtered.iter().sum::<f64>() / n;
-                let std_dev = {
-                    let var = filtered.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n;
-                    var.sqrt()
-                };
-                let style = ShapeStyle::from(&RGBColor(68, 119, 170));
-                let _ = chart.draw_series(std::iter::once(PathElement::new(
-                    vec![(0.8, mean - std_dev), (0.8, mean + std_dev)],
-                    style,
-                )));
-                let _ =
-                    chart.draw_series(std::iter::once(Circle::new((0.8, mean), 6, style.filled())));
-            }
-        }
-
-        // Plot Stage 2: MS2 before error (Orange)
-        {
-            let filtered: Vec<f64> = error_ms2_before
-                .iter()
-                .copied()
-                .filter(|v| v.is_finite())
-                .collect();
-            if !filtered.is_empty() {
-                let n = filtered.len() as f64;
-                let mean = filtered.iter().sum::<f64>() / n;
-                let std_dev = {
-                    let var = filtered.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n;
-                    var.sqrt()
-                };
-                let style = ShapeStyle::from(&RGBColor(255, 119, 0));
-                let _ = chart.draw_series(std::iter::once(PathElement::new(
-                    vec![(1.8, mean - std_dev), (1.8, mean + std_dev)],
-                    style,
-                )));
-                let _ =
-                    chart.draw_series(std::iter::once(Circle::new((1.8, mean), 6, style.filled())));
-            }
-        }
-
-        // Plot Stage 3: MS2-MS1 delta (Red/Maroon)
-        {
-            let filtered: Vec<f64> = delta_ms2_ms1
-                .iter()
-                .copied()
-                .filter(|v| v.is_finite())
-                .collect();
-            if !filtered.is_empty() {
-                let n = filtered.len() as f64;
-                let mean = filtered.iter().sum::<f64>() / n;
-                let std_dev = {
-                    let var = filtered.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n;
-                    var.sqrt()
-                };
-                let style = ShapeStyle::from(&RGBColor(204, 51, 51));
-                let _ = chart.draw_series(std::iter::once(PathElement::new(
-                    vec![(2.8, mean - std_dev), (2.8, mean + std_dev)],
-                    style,
-                )));
-                let _ =
-                    chart.draw_series(std::iter::once(Circle::new((2.8, mean), 6, style.filled())));
-            }
-        }
-
-        // Plot Stage 4: MS2 after error (Green)
-        {
-            let filtered: Vec<f64> = error_ms2_after
-                .iter()
-                .copied()
-                .filter(|v| v.is_finite())
-                .collect();
-            if !filtered.is_empty() {
-                let n = filtered.len() as f64;
-                let mean = filtered.iter().sum::<f64>() / n;
-                let std_dev = {
-                    let var = filtered.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n;
-                    var.sqrt()
-                };
-                let style = ShapeStyle::from(&RGBColor(51, 153, 51));
-                let _ = chart.draw_series(std::iter::once(PathElement::new(
-                    vec![(3.8, mean - std_dev), (3.8, mean + std_dev)],
-                    style,
-                )));
-                let _ =
-                    chart.draw_series(std::iter::once(Circle::new((3.8, mean), 6, style.filled())));
-            }
-        }
+        draw_quartet_stage(&mut chart, 0.8, error_ms1, RGBColor(68, 119, 170));
+        draw_quartet_stage(&mut chart, 1.8, error_ms2_before, RGBColor(255, 119, 0));
+        draw_quartet_stage(&mut chart, 2.8, delta_ms2_ms1, RGBColor(204, 51, 51));
+        draw_quartet_stage(&mut chart, 3.8, error_ms2_after, RGBColor(51, 153, 51));
 
         root.present().unwrap();
     }
@@ -1236,6 +1317,10 @@ pub fn render_error_quartet(
 ///
 /// Shows how many precursors have error magnitude ≤ x ppm, allowing comparison
 /// of MS1 baseline with recalibrated MS2 improvement.
+///
+/// # Panics
+///
+/// Panics if the SVG backend cannot fill, build, or present the drawing area.
 #[must_use]
 pub fn render_cumulative_error_curves(error_ppm_ms1: &[f64], error_ppm_after: &[f64]) -> String {
     use plotters::prelude::*;
@@ -1296,55 +1381,8 @@ pub fn render_cumulative_error_curves(error_ppm_ms1: &[f64], error_ppm_after: &[
             .draw()
             .unwrap();
 
-        // MS1 cumulative curve (blue)
-        {
-            let n = ms1_errors.len() as f64;
-            let points: Vec<(f64, f64)> = ms1_errors
-                .iter()
-                .enumerate()
-                .map(|(i, &err)| (err, (i as f64 + 1.0) / n * 100.0))
-                .collect();
-
-            let style = ShapeStyle::from(&RGBColor(68, 119, 170)).stroke_width(2);
-            let _ = chart.draw_series(
-                points
-                    .iter()
-                    .copied()
-                    .zip(
-                        points
-                            .iter()
-                            .skip(1)
-                            .copied()
-                            .chain(std::iter::once(points[0])),
-                    )
-                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
-            );
-        }
-
-        // MS2 (recalibrated) cumulative curve (green)
-        {
-            let n = ms2_errors.len() as f64;
-            let points: Vec<(f64, f64)> = ms2_errors
-                .iter()
-                .enumerate()
-                .map(|(i, &err)| (err, (i as f64 + 1.0) / n * 100.0))
-                .collect();
-
-            let style = ShapeStyle::from(&RGBColor(51, 153, 51)).stroke_width(2);
-            let _ = chart.draw_series(
-                points
-                    .iter()
-                    .copied()
-                    .zip(
-                        points
-                            .iter()
-                            .skip(1)
-                            .copied()
-                            .chain(std::iter::once(points[0])),
-                    )
-                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
-            );
-        }
+        draw_cumulative_curve(&mut chart, &ms1_errors, RGBColor(68, 119, 170), 1);
+        draw_cumulative_curve(&mut chart, &ms2_errors, RGBColor(51, 153, 51), 1);
 
         root.present().unwrap();
     }
@@ -1352,7 +1390,11 @@ pub fn render_cumulative_error_curves(error_ppm_ms1: &[f64], error_ppm_after: &[
     buffer
 }
 
-/// Render cumulative error distribution with three curves: ms1, ms2_before, ms2_after
+/// Render cumulative error distribution with three curves: ms1, `ms2_before`, `ms2_after`
+///
+/// # Panics
+///
+/// Panics if the SVG backend cannot fill, build, or present the drawing area.
 pub fn render_cumulative_error_three_curves(
     error_ms1: &[f64],
     error_before: &[f64],
@@ -1408,7 +1450,7 @@ pub fn render_cumulative_error_three_curves(
         let root = SVGBackend::with_string(&mut buffer, (1200, 600)).into_drawing_area();
         root.fill(&WHITE).unwrap();
 
-        let title = format!("Cumulative Error Distribution ({})", unit);
+        let title = format!("Cumulative Error Distribution ({unit})");
         let mut chart = ChartBuilder::on(&root)
             .caption(&title, ("sans-serif", 18))
             .margin(15)
@@ -1419,128 +1461,17 @@ pub fn render_cumulative_error_three_curves(
 
         chart
             .configure_mesh()
-            .x_desc(format!("Error ({})", unit))
+            .x_desc(format!("Error ({unit})"))
             .y_desc("Cumulative Percentage (%)")
             .draw()
             .unwrap();
 
-        // MS1 cumulative curve (blue)
-        {
-            let n = ms1_errors.len() as f64;
-            let points: Vec<(f64, f64)> = ms1_errors
-                .iter()
-                .enumerate()
-                .map(|(i, &err)| (err, (i as f64 + 1.0) / n * 100.0))
-                .collect();
-
-            let style = ShapeStyle::from(&RGBColor(68, 119, 170)).stroke_width(1);
-            let _ = chart.draw_series(
-                points
-                    .iter()
-                    .copied()
-                    .zip(
-                        points
-                            .iter()
-                            .skip(1)
-                            .copied()
-                            .chain(std::iter::once(points[0])),
-                    )
-                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
-            );
-        }
-
-        // MS2 before cumulative curve (orange)
-        {
-            let n = before_errors.len() as f64;
-            let points: Vec<(f64, f64)> = before_errors
-                .iter()
-                .enumerate()
-                .map(|(i, &err)| (err, (i as f64 + 1.0) / n * 100.0))
-                .collect();
-
-            let style = ShapeStyle::from(&RGBColor(255, 140, 0)).stroke_width(1);
-            let _ = chart.draw_series(
-                points
-                    .iter()
-                    .copied()
-                    .zip(
-                        points
-                            .iter()
-                            .skip(1)
-                            .copied()
-                            .chain(std::iter::once(points[0])),
-                    )
-                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
-            );
-        }
-
-        // MS2 after cumulative curve (green)
-        {
-            let n = after_errors.len() as f64;
-            let points: Vec<(f64, f64)> = after_errors
-                .iter()
-                .enumerate()
-                .map(|(i, &err)| (err, (i as f64 + 1.0) / n * 100.0))
-                .collect();
-
-            let style = ShapeStyle::from(&RGBColor(51, 153, 51)).stroke_width(1);
-            let _ = chart.draw_series(
-                points
-                    .iter()
-                    .copied()
-                    .zip(
-                        points
-                            .iter()
-                            .skip(1)
-                            .copied()
-                            .chain(std::iter::once(points[0])),
-                    )
-                    .map(|((x1, y1), (x2, y2))| PathElement::new(vec![(x1, y1), (x2, y2)], style)),
-            );
-        }
+        draw_cumulative_curve(&mut chart, &ms1_errors, RGBColor(68, 119, 170), 1);
+        draw_cumulative_curve(&mut chart, &before_errors, RGBColor(255, 140, 0), 1);
+        draw_cumulative_curve(&mut chart, &after_errors, RGBColor(51, 153, 51), 1);
 
         root.present().unwrap();
     }
 
-    // Add legend to the SVG
-    let legend_items = vec![
-        ("MS1 Precursor (PEPMASS)", (68u8, 119u8, 170u8)),
-        ("MS2 Before Correction", (255u8, 140u8, 0u8)),
-        ("MS2 After Correction", (51u8, 153u8, 51u8)),
-    ];
-
-    let mut legend_svg = String::new();
-    legend_svg.push_str(r#"<g id="legend" font-size="12" font-family="sans-serif">"#);
-
-    for (idx, (label, (r, g, b))) in legend_items.iter().enumerate() {
-        let y = 30 + (idx * 20);
-        let x = 1050;
-
-        // Color box
-        legend_svg.push_str(&format!(
-            r#"<rect x="{}" y="{}" width="15" height="15" fill="rgb({},{},{})" stroke="none"/>"#,
-            x,
-            y - 10,
-            r,
-            g,
-            b
-        ));
-
-        // Label
-        legend_svg.push_str(&format!(
-            r#"<text x="{}" y="{}" fill="black" font-size="12">{}</text>"#,
-            x + 20,
-            y,
-            label
-        ));
-    }
-    legend_svg.push_str("</g>");
-
-    // Inject legend into SVG
-    if let Some(pos) = buffer.rfind("</svg>") {
-        let (before, after) = buffer.split_at(pos);
-        buffer = format!("{}{}{}", before, legend_svg, after);
-    }
-
-    buffer
+    append_cumulative_legend(&buffer)
 }

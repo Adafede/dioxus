@@ -11,8 +11,10 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Blob, HtmlAnchorElement, Response, Url, Window, console};
 
-use crate::diagnostics::RecalibrationDiagnostics;
-use crate::metrics::{PlotPoint, PrecursorMetrics};
+#[cfg(target_arch = "wasm32")]
+use crate::diagnostics::RecalibrationMeasurement;
+use crate::diagnostics::RecalibrationStats;
+use crate::metrics::{PlotPoint, PrecursorStats};
 #[cfg(target_arch = "wasm32")]
 use crate::parser::{ScanError, scan_blob_with_progress};
 use crate::plotting::{
@@ -76,7 +78,7 @@ async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
 fn start_analysis(
     blob: Blob,
     status: Signal<String>,
-    metrics: Signal<Option<PrecursorMetrics>>,
+    metrics: Signal<Option<PrecursorStats>>,
     busy: Signal<bool>,
     original_mgf_content: Signal<String>,
 ) {
@@ -105,14 +107,14 @@ fn start_analysis(
                     Ok(metrics) => metrics,
                     Err(error) => {
                         status_for_progress.set(format!("Error parsing MGF: {error:?}"));
-                        PrecursorMetrics::default()
+                        PrecursorStats::default()
                     }
                 };
                 metrics_for_results.set(Some(result));
             }
             None => {
                 status_for_progress.set("Error reading file content".to_string());
-                metrics_for_results.set(Some(PrecursorMetrics::default()));
+                metrics_for_results.set(Some(PrecursorStats::default()));
             }
         }
         busy_for_results.set(false);
@@ -125,7 +127,7 @@ fn begin_analysis_from_blob(
     file_name: String,
     file_name_signal: Signal<String>,
     status: Signal<String>,
-    metrics: Signal<Option<PrecursorMetrics>>,
+    metrics: Signal<Option<PrecursorStats>>,
     busy: Signal<bool>,
     drag_active: Signal<bool>,
     original_mgf_content: Signal<String>,
@@ -155,7 +157,7 @@ fn begin_analysis_from_blob(
 #[cfg(target_arch = "wasm32")]
 fn load_example_mgf(
     status: Signal<String>,
-    metrics: Signal<Option<PrecursorMetrics>>,
+    metrics: Signal<Option<PrecursorStats>>,
     busy: Signal<bool>,
     file_name: Signal<String>,
     original_mgf_content: Signal<String>,
@@ -190,10 +192,108 @@ fn load_example_mgf(
     });
 }
 
-fn generate_recalibrated_mgf(
+/// Extract `PEPMASS` or `PRECURSOR_MZ` from a spectrum line
+#[must_use]
+pub fn extract_pepmass_from_line(line: &str) -> Option<f64> {
+    let trimmed = line.trim().to_uppercase();
+    if let Some(stripped) = trimmed.strip_prefix("PRECURSOR_MZ=") {
+        stripped.split_whitespace().next()?.parse().ok()
+    } else if let Some(stripped) = trimmed.strip_prefix("PEPMASS=") {
+        stripped.split_whitespace().next()?.parse().ok()
+    } else {
+        None
+    }
+}
+
+/// Check if a line is a fragment line (m/z intensity)
+#[must_use]
+pub fn is_fragment_line(line: &str) -> bool {
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    parts.len() >= 2 && parts[0].parse::<f64>().is_ok() && parts[1].parse::<f64>().is_ok()
+}
+
+/// Find the MS2 precursor peak closest to the PEPMASS value
+#[must_use]
+pub fn find_ms2_precursor_peak(spectrum_frags: &[String], pepmass: f64) -> Option<f64> {
+    let mut best_mz: Option<f64> = None;
+    let mut best_delta = f64::INFINITY;
+
+    for frag in spectrum_frags {
+        let parts: Vec<&str> = frag.split_whitespace().collect();
+        if let Ok(mz) = parts[0].parse::<f64>() {
+            let da = (mz - pepmass).abs();
+            let ppm = da * 1e6 / pepmass;
+            if da <= 0.02 && ppm <= 100.0 && da < best_delta {
+                best_delta = da;
+                best_mz = Some(mz);
+            }
+        }
+    }
+    best_mz
+}
+
+/// Recalibrate a single fragment m/z value
+#[must_use]
+pub fn recalibrate_fragment_mz(
+    mz: f64,
+    delta: f64,
+    pepmass: f64,
+    lambda: f64,
+    calibration_model: CalibrationModel,
+) -> f64 {
+    match calibration_model {
+        CalibrationModel::TOFDa { .. } => lambda.mul_add(-delta, mz),
+        CalibrationModel::OrbitrapPPM { .. } => {
+            let dppm = delta * 1e6 / pepmass;
+            mz * (1.0 - lambda * dppm / 1e6)
+        }
+        CalibrationModel::None => mz,
+    }
+}
+
+/// Write recalibrated fragments to the result string
+pub fn write_recalibrated_fragments(
+    spectrum_frags: &[String],
+    result: &mut String,
+    delta: f64,
+    pepmass: f64,
+    lambda: f64,
+    calibration_model: CalibrationModel,
+) {
+    use std::fmt::Write;
+    for frag in spectrum_frags {
+        let parts: Vec<&str> = frag.split_whitespace().collect();
+        if parts.len() >= 2
+            && let (Ok(mz), Ok(intensity)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>())
+        {
+            let corrected_mz =
+                recalibrate_fragment_mz(mz, delta, pepmass, lambda, calibration_model);
+            let _ = write!(result, "{corrected_mz} {intensity}");
+            for p in &parts[2..] {
+                result.push(' ');
+                result.push_str(p);
+            }
+            result.push('\n');
+            continue;
+        }
+        result.push_str(frag);
+        result.push('\n');
+    }
+}
+
+/// Write fragments as-is without recalibration
+pub fn write_fragments_as_is(spectrum_frags: &[String], result: &mut String) {
+    for frag in spectrum_frags {
+        result.push_str(frag);
+        result.push('\n');
+    }
+}
+
+#[must_use]
+pub fn generate_recalibrated_mgf(
     original_content: &str,
     calibration_model: CalibrationModel,
-    _diagnostics: Option<&RecalibrationDiagnostics>,
+    _diagnostics: Option<&RecalibrationStats>,
 ) -> String {
     #[cfg(target_arch = "wasm32")]
     use web_sys::console;
@@ -205,19 +305,13 @@ fn generate_recalibrated_mgf(
     }
 
     let lambda = match calibration_model {
-        CalibrationModel::TOFDa { lambda } => lambda,
-        CalibrationModel::OrbitrapPPM { lambda } => lambda,
-        _ => 0.0,
+        CalibrationModel::TOFDa { lambda } | CalibrationModel::OrbitrapPPM { lambda } => lambda,
+        CalibrationModel::None => 0.0,
     };
 
     let mut result = String::new();
-    let mut in_spectrum = false;
-    let mut pepmass: Option<f64> = None;
+    let mut pepmass: Option<f64>;
     let mut spectrum_frags: Vec<String> = Vec::new();
-
-    let mut spec_count = 0;
-    let mut spec_with_frags = 0;
-    let mut spec_recalibrated = 0;
 
     let lines: Vec<&str> = original_content.lines().collect();
     let mut idx = 0;
@@ -227,8 +321,6 @@ fn generate_recalibrated_mgf(
         let trimmed = line.trim();
 
         if trimmed.eq_ignore_ascii_case("BEGIN IONS") {
-            spec_count += 1;
-            in_spectrum = true;
             pepmass = None;
             spectrum_frags.clear();
             result.push_str(line);
@@ -238,24 +330,13 @@ fn generate_recalibrated_mgf(
             // Read spectrum content until END IONS
             while idx < lines.len() {
                 let spec_line = lines[idx];
-                let spec_trimmed = spec_line.trim();
-
-                if spec_trimmed.eq_ignore_ascii_case("END IONS") {
+                if spec_line.trim().eq_ignore_ascii_case("END IONS") {
                     break;
                 }
 
                 // Extract PRECURSOR_MZ or PEPMASS
-                if spec_trimmed.to_uppercase().starts_with("PRECURSOR_MZ=") {
-                    let pep_str = spec_trimmed[13..].split_whitespace().next().unwrap_or("0");
-                    pepmass = pep_str.parse::<f64>().ok();
-                    result.push_str(spec_line);
-                    result.push('\n');
-                    idx += 1;
-                    continue;
-                }
-                if spec_trimmed.to_uppercase().starts_with("PEPMASS=") {
-                    let pep_str = spec_trimmed[8..].split_whitespace().next().unwrap_or("0");
-                    pepmass = pep_str.parse::<f64>().ok();
+                if let Some(pm) = extract_pepmass_from_line(spec_line) {
+                    pepmass = Some(pm);
                     result.push_str(spec_line);
                     result.push('\n');
                     idx += 1;
@@ -263,12 +344,7 @@ fn generate_recalibrated_mgf(
                 }
 
                 // Check if fragment line (m/z intensity)
-                let parts: Vec<&str> = spec_trimmed.split_whitespace().collect();
-                if parts.len() >= 2
-                    && parts[0].parse::<f64>().is_ok()
-                    && parts[1].parse::<f64>().is_ok()
-                {
-                    // Fragment line - collect it
+                if is_fragment_line(spec_line) {
                     spectrum_frags.push(spec_line.to_string());
                 } else {
                     // Metadata line - write immediately
@@ -278,83 +354,34 @@ fn generate_recalibrated_mgf(
                 idx += 1;
             }
 
-            // Now process fragments
-            if !spectrum_frags.is_empty() {
-                spec_with_frags += 1;
-            }
-
+            // Process fragments
             if let Some(pm) = pepmass {
-                // Find closest fragment to PEPMASS (MS2 precursor peak)
-                let mut best_mz: Option<f64> = None;
-                let mut best_delta = f64::INFINITY;
-
-                for frag in &spectrum_frags {
-                    let parts: Vec<&str> = frag.trim().split_whitespace().collect();
-                    if let Ok(mz) = parts[0].parse::<f64>() {
-                        let da = (mz - pm).abs();
-                        let ppm = da * 1e6 / pm;
-                        if da <= 0.02 && ppm <= 100.0 && da < best_delta {
-                            best_delta = da;
-                            best_mz = Some(mz);
-                        }
-                    }
-                }
-
-                // Recalibrate all fragments if MS2 peak found
-                if let Some(ms2_peak) = best_mz {
-                    spec_recalibrated += 1;
+                if let Some(ms2_peak) = find_ms2_precursor_peak(&spectrum_frags, pm) {
                     let delta = ms2_peak - pm;
-
-                    for frag in &spectrum_frags {
-                        let parts: Vec<&str> = frag.trim().split_whitespace().collect();
-                        if parts.len() >= 2 {
-                            if let (Ok(mz), Ok(intensity)) =
-                                (parts[0].parse::<f64>(), parts[1].parse::<f64>())
-                            {
-                                let corrected_mz = match calibration_model {
-                                    CalibrationModel::TOFDa { .. } => mz - lambda * delta,
-                                    CalibrationModel::OrbitrapPPM { .. } => {
-                                        let dppm = delta * 1e6 / pm;
-                                        mz * (1.0 - lambda * dppm / 1e6)
-                                    }
-                                    _ => mz,
-                                };
-                                result.push_str(&format!("{} {}", corrected_mz, intensity));
-                                for p in &parts[2..] {
-                                    result.push(' ');
-                                    result.push_str(p);
-                                }
-                                result.push('\n');
-                                continue;
-                            }
-                        }
-                        result.push_str(frag);
-                        result.push('\n');
-                    }
+                    write_recalibrated_fragments(
+                        &spectrum_frags,
+                        &mut result,
+                        delta,
+                        pm,
+                        lambda,
+                        calibration_model,
+                    );
                 } else {
-                    for frag in &spectrum_frags {
-                        result.push_str(frag);
-                        result.push('\n');
-                    }
+                    write_fragments_as_is(&spectrum_frags, &mut result);
                 }
             } else {
-                // No PEPMASS, write fragments as-is
-                for frag in &spectrum_frags {
-                    result.push_str(frag);
-                    result.push('\n');
-                }
+                write_fragments_as_is(&spectrum_frags, &mut result);
             }
 
             // Write END IONS
             result.push_str("END IONS");
             result.push('\n');
-            in_spectrum = false;
             idx += 1;
         } else {
             result.push_str(line);
-            result.push('\n');
-            idx += 1;
         }
+        result.push('\n');
+        idx += 1;
     }
 
     result
@@ -365,7 +392,7 @@ fn download_recalibrated_mgf(
     file_name: &str,
     original_content: &str,
     calibration_model: CalibrationModel,
-    diagnostics: Option<&RecalibrationDiagnostics>,
+    diagnostics: Option<&RecalibrationStats>,
 ) -> Result<(), String> {
     use web_sys::console;
 
@@ -433,7 +460,7 @@ fn download_recalibrated_mgf(
 #[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
     let mut file_name = use_signal(String::new);
-    let mut metrics = use_signal(|| None::<PrecursorMetrics>);
+    let mut metrics = use_signal(|| None::<PrecursorStats>);
     let mut status = use_signal(|| "Drop an MGF file to begin.".to_string());
     let mut busy = use_signal(|| false);
     let mut drag_active = use_signal(|| false);
@@ -442,7 +469,7 @@ pub fn app() -> Element {
     // Recalibration control signals
     let mut calibration_model = use_signal(|| CalibrationModel::None);
     let mut lambda_value = use_signal(|| 0.5);
-    let mut recalibration_diagnostics = use_signal(|| None::<RecalibrationDiagnostics>);
+    let mut recalibration_diagnostics = use_signal(|| None::<RecalibrationStats>);
     let mut cumulative_dist_tab = use_signal(|| "mda"); // "mda" or "ppm"
 
     // Update diagnostics reactively when metrics, model, or lambda change
@@ -836,7 +863,7 @@ pub fn app() -> Element {
                                                     let new_model = match current_model {
                                                         CalibrationModel::TOFDa { .. } => CalibrationModel::TOFDa { lambda: val },
                                                         CalibrationModel::OrbitrapPPM { .. } => CalibrationModel::OrbitrapPPM { lambda: val },
-                                                        _ => CalibrationModel::None,
+                                                        CalibrationModel::None => CalibrationModel::None,
                                                     };
                                                     calibration_model.set(new_model);
                                                 },
@@ -1121,11 +1148,7 @@ fn format_count_with_percentage(count: usize, total: usize) -> String {
     }
 }
 
-fn format_cumulative_bucket_count(
-    metrics: &PrecursorMetrics,
-    bucket: &str,
-    total: usize,
-) -> String {
+fn format_cumulative_bucket_count(metrics: &PrecursorStats, bucket: &str, total: usize) -> String {
     let count = match bucket {
         "0.1_da" => metrics.within_0_1_da,
         "0.5_da" => metrics.within_0_1_da + metrics.within_0_5_da,
@@ -1163,9 +1186,15 @@ fn estimate_compliance_mda(errors: &[f64], threshold_mda: f64) -> f64 {
     if errors.is_empty() {
         return 0.0;
     }
-    let threshold_da = threshold_mda / 1000.0;
-    let count = errors.iter().filter(|e| e.abs() <= threshold_da).count();
-    (count as f64 / errors.len() as f64) * 100.0
+    let dalton_threshold = threshold_mda / 1000.0;
+    let count = errors
+        .iter()
+        .filter(|e| e.abs() <= dalton_threshold)
+        .count();
+    #[allow(clippy::cast_precision_loss)]
+    {
+        (count as f64 / errors.len() as f64) * 100.0
+    }
 }
 
 fn estimate_compliance_ppm(errors: &[f64], threshold_ppm: f64) -> f64 {
@@ -1173,7 +1202,10 @@ fn estimate_compliance_ppm(errors: &[f64], threshold_ppm: f64) -> f64 {
         return 0.0;
     }
     let count = errors.iter().filter(|e| e.abs() <= threshold_ppm).count();
-    (count as f64 / errors.len() as f64) * 100.0
+    #[allow(clippy::cast_precision_loss)]
+    {
+        (count as f64 / errors.len() as f64) * 100.0
+    }
 }
 
 #[component]
@@ -1316,21 +1348,21 @@ fn absolute_mass_bias_plot(
 }
 
 fn format_lambda(lambda: f64) -> String {
-    format!("{:.2}", lambda)
+    format!("{lambda:.2}")
 }
 
 #[cfg(target_arch = "wasm32")]
 fn update_recalibration_diagnostics(
-    metrics: &PrecursorMetrics,
+    metrics: &PrecursorStats,
     model: CalibrationModel,
-    diagnostics_signal: &mut Signal<Option<RecalibrationDiagnostics>>,
+    diagnostics_signal: &mut Signal<Option<RecalibrationStats>>,
 ) {
     if matches!(model, CalibrationModel::None) {
         diagnostics_signal.set(None);
         return;
     }
 
-    let mut diag = RecalibrationDiagnostics::new();
+    let mut diag = RecalibrationStats::new();
     let lambda = match model {
         CalibrationModel::TOFDa { lambda } => lambda,
         CalibrationModel::OrbitrapPPM { lambda } => lambda,
@@ -1424,11 +1456,10 @@ fn update_recalibration_diagnostics(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-#[allow(dead_code)]
-fn update_recalibration_diagnostics(
-    _metrics: &PrecursorMetrics,
+pub const fn update_recalibration_diagnostics(
+    _metrics: &PrecursorStats,
     _model: CalibrationModel,
-    _diagnostics_signal: &mut Signal<Option<RecalibrationDiagnostics>>,
+    _diagnostics_signal: &mut Signal<Option<RecalibrationStats>>,
 ) {
 }
 
@@ -1460,17 +1491,13 @@ fn download_svg(svg_markup: &str, filename: &str) {
     Url::revoke_object_url(&url).unwrap();
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-#[allow(dead_code)]
-const fn download_svg(_svg_markup: &str, _filename: &str) {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_generate_recalibrated_mgf_with_tof() {
-        let input = r#"BEGIN IONS
+        let input = r"BEGIN IONS
 TITLE=test
 PEPMASS=500.0000
 CHARGE=1
@@ -1478,15 +1505,15 @@ CHARGE=1
 200.0 100
 500.01 200
 250.0 150
-END IONS"#;
+END IONS";
 
         let model = CalibrationModel::TOFDa { lambda: 1.0 };
         let output = generate_recalibrated_mgf(input, model, None);
 
         eprintln!("=== INPUT ===");
-        eprintln!("{}", input);
+        eprintln!("{input}");
         eprintln!("\n=== OUTPUT ===");
-        eprintln!("{}", output);
+        eprintln!("{output}");
 
         // Delta should be 500.01 - 500.0 = 0.01
         // With lambda=1, fragments should shift by -0.01
@@ -1501,12 +1528,12 @@ END IONS"#;
 
     #[test]
     fn test_generate_recalibrated_mgf_no_model() {
-        let input = r#"BEGIN IONS
+        let input = r"BEGIN IONS
 TITLE=test
 PEPMASS=500.0000
 CHARGE=1
 100.0 50
-END IONS"#;
+END IONS";
 
         let model = CalibrationModel::None;
         let output = generate_recalibrated_mgf(input, model, None);

@@ -6,9 +6,10 @@
 ///
 /// The precursor discrepancy is treated as an estimate of a latent scan-wide calibration error,
 /// and a shrinkage parameter λ (lambda) controls what fraction of the error is applied.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum CalibrationModel {
     /// No recalibration is applied.
+    #[default]
     None,
 
     /// Orbitrap-style recalibration using parts-per-million (ppm).
@@ -52,23 +53,18 @@ pub enum CalibrationModel {
 
 impl CalibrationModel {
     /// Returns whether this model applies any correction.
-    pub fn is_active(&self) -> bool {
-        !matches!(self, CalibrationModel::None)
+    #[must_use]
+    pub const fn is_active(&self) -> bool {
+        !matches!(self, Self::None)
     }
 
     /// Returns the lambda parameter if applicable, otherwise None.
-    pub fn lambda(&self) -> Option<f64> {
+    #[must_use]
+    pub const fn lambda(&self) -> Option<f64> {
         match self {
-            CalibrationModel::None => None,
-            CalibrationModel::OrbitrapPPM { lambda } => Some(*lambda),
-            CalibrationModel::TOFDa { lambda } => Some(*lambda),
+            Self::None => None,
+            Self::OrbitrapPPM { lambda } | Self::TOFDa { lambda } => Some(*lambda),
         }
-    }
-}
-
-impl Default for CalibrationModel {
-    fn default() -> Self {
-        Self::None
     }
 }
 
@@ -83,7 +79,8 @@ pub struct Peak {
 
 impl Peak {
     /// Creates a new peak with the given m/z and intensity.
-    pub fn new(mz: f64, intensity: f64) -> Self {
+    #[must_use]
+    pub const fn new(mz: f64, intensity: f64) -> Self {
         Self { mz, intensity }
     }
 }
@@ -281,8 +278,8 @@ mod tests {
         assert!((fragments[1].mz - expected_1).abs() < 1e-10);
 
         // Intensities should be unchanged
-        assert_eq!(fragments[0].intensity, 1000.0);
-        assert_eq!(fragments[1].intensity, 500.0);
+        assert!((fragments[0].intensity - 1000.0).abs() < f64::EPSILON);
+        assert!((fragments[1].intensity - 500.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -301,8 +298,8 @@ mod tests {
         );
 
         // With lambda=0.5, half the correction is applied
-        let expected_0 = 100.000 - 0.5 * delta;
-        let expected_1 = 250.000 - 0.5 * delta;
+        let expected_0 = 0.5f64.mul_add(-delta, 100.000);
+        let expected_1 = 0.5f64.mul_add(-delta, 250.000);
 
         assert!((fragments[0].mz - expected_0).abs() < 1e-10);
         assert!((fragments[1].mz - expected_1).abs() < 1e-10);
@@ -332,8 +329,8 @@ mod tests {
         assert!((fragments[1].mz - expected_1).abs() < 1e-10);
 
         // Intensities should be unchanged
-        assert_eq!(fragments[0].intensity, 1000.0);
-        assert_eq!(fragments[1].intensity, 500.0);
+        assert!((fragments[0].intensity - 1000.0).abs() < f64::EPSILON);
+        assert!((fragments[1].intensity - 500.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -470,7 +467,7 @@ mod tests {
             CalibrationModel::TOFDa { lambda: 2.0 },
         );
 
-        let mut fragments_ref = original.clone();
+        let mut fragments_ref = original;
         recalibrate_fragments(
             &mut fragments_ref,
             500.0,
@@ -526,10 +523,10 @@ mod tests {
         assert!(fragments[1].mz < fragments[3].mz);
 
         // Check that intensities are in their original positions
-        assert_eq!(fragments[0].intensity, 100.0);
-        assert_eq!(fragments[1].intensity, 200.0);
-        assert_eq!(fragments[2].intensity, 150.0);
-        assert_eq!(fragments[3].intensity, 300.0);
+        assert!((fragments[0].intensity - 100.0).abs() < f64::EPSILON);
+        assert!((fragments[1].intensity - 200.0).abs() < f64::EPSILON);
+        assert!((fragments[2].intensity - 150.0).abs() < f64::EPSILON);
+        assert!((fragments[3].intensity - 300.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -563,8 +560,8 @@ mod tests {
         );
 
         // Valid fragments should be corrected
-        assert!(fragments[0].mz != 100.0); // Changed
-        assert!(fragments[2].mz != 200.0); // Changed
+        assert!((fragments[0].mz - 100.0).abs() > f64::EPSILON); // Changed
+        assert!((fragments[2].mz - 200.0).abs() > f64::EPSILON); // Changed
 
         // Invalid fragment should remain NaN
         assert!(fragments[1].mz.is_nan());

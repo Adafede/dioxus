@@ -6,14 +6,29 @@
 // 3. Track diagnostic metrics
 // 4. Generate visualization plots
 
-use mgf_precursor_erro_rs::diagnostics::RecalibrationDiagnostics;
-use mgf_precursor_erro_rs::plotting::*;
+use mgf_precursor_erro_rs::diagnostics::RecalibrationStats;
+use mgf_precursor_erro_rs::plotting::{
+    render_recalibration_diagnostic_histogram, render_recalibration_diagnostic_ppm,
+    render_recalibration_summary_text,
+};
 use mgf_precursor_erro_rs::recalibration::{CalibrationModel, Peak, recalibrate_fragments};
 
-fn main() {
-    // =========================================================================
-    // Example 1: Basic TOF Recalibration with Full Correction (λ = 1.0)
-    // =========================================================================
+fn print_fragments(title: &str, fragments: &[Peak], include_intensity: bool) {
+    println!("{title}");
+    for (i, peak) in fragments.iter().enumerate() {
+        if include_intensity {
+            println!(
+                "  Fragment {i}: m/z = {mz:.6}, intensity = {intensity}",
+                mz = peak.mz,
+                intensity = peak.intensity,
+            );
+        } else {
+            println!("  Fragment {i}: m/z = {mz:.6}", mz = peak.mz);
+        }
+    }
+}
+
+fn run_tof_examples(precursor_ms1: f64, precursor_ms2: f64) {
     println!("\n=== Example 1: TOF Recalibration (Full Correction) ===");
 
     let mut fragments = vec![
@@ -21,84 +36,56 @@ fn main() {
         Peak::new(250.0, 3000.0),
         Peak::new(400.0, 1000.0),
     ];
+    print_fragments("Before recalibration:", &fragments, true);
 
-    let precursor_ms1 = 500.0000;
-    let precursor_ms2 = 500.0120; // +0.0120 Da error
+    recalibrate_fragments(
+        &mut fragments,
+        precursor_ms1,
+        precursor_ms2,
+        CalibrationModel::TOFDa { lambda: 1.0 },
+    );
+    print_fragments("\nAfter recalibration (λ = 1.0):", &fragments, true);
 
-    println!("Before recalibration:");
-    for (i, peak) in fragments.iter().enumerate() {
-        println!(
-            "  Fragment {}: m/z = {:.6}, intensity = {}",
-            i, peak.mz, peak.intensity
-        );
-    }
-
-    let model = CalibrationModel::TOFDa { lambda: 1.0 };
-    recalibrate_fragments(&mut fragments, precursor_ms1, precursor_ms2, model);
-
-    println!("\nAfter recalibration (λ = 1.0):");
-    for (i, peak) in fragments.iter().enumerate() {
-        println!(
-            "  Fragment {}: m/z = {:.6}, intensity = {}",
-            i, peak.mz, peak.intensity
-        );
-    }
-
-    // =========================================================================
-    // Example 2: Partial Correction (Shrinkage Estimator)
-    // =========================================================================
     println!("\n=== Example 2: TOF Recalibration (Partial Correction) ===");
-
     let mut fragments = vec![
         Peak::new(100.0, 5000.0),
         Peak::new(250.0, 3000.0),
         Peak::new(400.0, 1000.0),
     ];
+    recalibrate_fragments(
+        &mut fragments,
+        precursor_ms1,
+        precursor_ms2,
+        CalibrationModel::TOFDa { lambda: 0.5 },
+    );
+    print_fragments("After recalibration (λ = 0.5):", &fragments, true);
+}
 
-    let model = CalibrationModel::TOFDa { lambda: 0.5 }; // Only apply half
-    recalibrate_fragments(&mut fragments, precursor_ms1, precursor_ms2, model);
-
-    println!("After recalibration (λ = 0.5):");
-    for (i, peak) in fragments.iter().enumerate() {
-        println!(
-            "  Fragment {}: m/z = {:.6}, intensity = {}",
-            i, peak.mz, peak.intensity
-        );
-    }
-
-    // =========================================================================
-    // Example 3: Orbitrap (ppm-based) Recalibration
-    // =========================================================================
+fn run_orbitrap_example() {
     println!("\n=== Example 3: Orbitrap Recalibration (ppm-based) ===");
 
     let mut fragments = vec![Peak::new(200.0, 5000.0), Peak::new(400.0, 3000.0)];
-
     let precursor_ms1 = 500.0000;
-    let precursor_ms2 = 500.0050; // ~10 ppm error
+    let precursor_ms2 = 500.0050;
 
     println!("Precursor error: ~10 ppm");
-    println!("Before recalibration:");
-    for (i, peak) in fragments.iter().enumerate() {
-        println!("  Fragment {}: m/z = {:.6}", i, peak.mz);
-    }
+    print_fragments("Before recalibration:", &fragments, false);
 
-    let model = CalibrationModel::OrbitrapPPM { lambda: 1.0 };
-    recalibrate_fragments(&mut fragments, precursor_ms1, precursor_ms2, model);
+    recalibrate_fragments(
+        &mut fragments,
+        precursor_ms1,
+        precursor_ms2,
+        CalibrationModel::OrbitrapPPM { lambda: 1.0 },
+    );
 
-    println!("\nAfter recalibration (λ = 1.0):");
-    for (i, peak) in fragments.iter().enumerate() {
-        println!("  Fragment {}: m/z = {:.6}", i, peak.mz);
-    }
+    print_fragments("\nAfter recalibration (λ = 1.0):", &fragments, false);
+}
 
-    // =========================================================================
-    // Example 4: Diagnostic Metrics Tracking
-    // =========================================================================
+fn run_diagnostics_example() -> RecalibrationStats {
     println!("\n=== Example 4: Diagnostic Metrics Tracking ===");
 
-    let mut diagnostics = RecalibrationDiagnostics::new();
-
-    // Simulate adding errors from multiple scans
-    let errors = vec![
+    let mut diagnostics = RecalibrationStats::new();
+    let errors = [
         (10.5, 5.0, 0.1050, 0.0500, "protonated"),
         (12.0, 6.0, 0.1200, 0.0600, "protonated"),
         (-8.5, -4.0, -0.0850, -0.0400, "deprotonated"),
@@ -113,7 +100,7 @@ fn main() {
             error_da_before,
             error_da_after,
             Some(family),
-            10000,
+            10_000,
         );
     }
 
@@ -127,18 +114,18 @@ fn main() {
         "    Before: mean = {:.4}, rms = {:.4}, max = {:.4}",
         diagnostics.mean_error_ppm_before,
         diagnostics.rms_error_ppm_before,
-        diagnostics.max_abs_error_ppm_before
+        diagnostics.max_abs_error_ppm_before,
     );
     println!(
         "    After:  mean = {:.4}, rms = {:.4}, max = {:.4}",
         diagnostics.mean_error_ppm_after,
         diagnostics.rms_error_ppm_after,
-        diagnostics.max_abs_error_ppm_after
+        diagnostics.max_abs_error_ppm_after,
     );
     println!(
         "    Improvement: {:.4} ppm (mean), {:.4} ppm (rms)",
         diagnostics.mean_error_improvement_ppm(),
-        diagnostics.rms_error_improvement_ppm()
+        diagnostics.rms_error_improvement_ppm(),
     );
 
     println!("\n  By adduct family:");
@@ -146,9 +133,10 @@ fn main() {
         println!("    {}: {} scans", family, errors.len());
     }
 
-    // =========================================================================
-    // Example 5: Diagnostic Visualization
-    // =========================================================================
+    diagnostics
+}
+
+fn run_visualization_example(diagnostics: &RecalibrationStats) {
     println!("\n=== Example 5: Diagnostic Visualization ===");
 
     let errors_before = vec![10.0, 12.0, -8.5, 9.5, 11.0];
@@ -169,38 +157,56 @@ fn main() {
         diagnostics.max_abs_error_ppm_after,
     );
     println!("Generated summary: {} bytes HTML", summary.len());
+}
 
-    // =========================================================================
-    // Example 6: No Correction Scenario
-    // =========================================================================
+fn run_no_correction_example(precursor_ms1: f64, precursor_ms2: f64) {
     println!("\n=== Example 6: No Correction (λ = 0) ===");
 
     let mut fragments = vec![Peak::new(100.0, 5000.0)];
     let original_mz = fragments[0].mz;
 
-    let model = CalibrationModel::TOFDa { lambda: 0.0 };
-    recalibrate_fragments(&mut fragments, precursor_ms1, precursor_ms2, model);
+    recalibrate_fragments(
+        &mut fragments,
+        precursor_ms1,
+        precursor_ms2,
+        CalibrationModel::TOFDa { lambda: 0.0 },
+    );
 
     println!("With λ = 0.0, fragment m/z should be unchanged:");
-    println!("  Before: {:.6}", original_mz);
+    println!("  Before: {original_mz:.6}");
     println!("  After:  {:.6}", fragments[0].mz);
     println!("  Equal: {}", (original_mz - fragments[0].mz).abs() < 1e-10);
+}
 
-    // =========================================================================
-    // Example 7: Disabled Recalibration
-    // =========================================================================
+fn run_disabled_example(precursor_ms1: f64, precursor_ms2: f64) {
     println!("\n=== Example 7: Disabled Recalibration ===");
 
     let mut fragments = vec![Peak::new(100.0, 5000.0)];
     let original_mz = fragments[0].mz;
 
-    let model = CalibrationModel::None;
-    recalibrate_fragments(&mut fragments, precursor_ms1, precursor_ms2, model);
+    recalibrate_fragments(
+        &mut fragments,
+        precursor_ms1,
+        precursor_ms2,
+        CalibrationModel::None,
+    );
 
     println!("With CalibrationModel::None, fragment m/z is unchanged:");
-    println!("  Before: {:.6}", original_mz);
+    println!("  Before: {original_mz:.6}");
     println!("  After:  {:.6}", fragments[0].mz);
     println!("  Equal: {}", (original_mz - fragments[0].mz).abs() < 1e-10);
+}
+
+fn main() {
+    let precursor_ms1 = 500.0000;
+    let precursor_ms2 = 500.0120;
+
+    run_tof_examples(precursor_ms1, precursor_ms2);
+    run_orbitrap_example();
+    let diagnostics = run_diagnostics_example();
+    run_visualization_example(&diagnostics);
+    run_no_correction_example(precursor_ms1, precursor_ms2);
+    run_disabled_example(precursor_ms1, precursor_ms2);
 
     println!("\n=== All Examples Complete ===");
 }

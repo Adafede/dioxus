@@ -17,8 +17,10 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Blob, console};
 
-use crate::metrics::merge_metrics;
-use crate::metrics::{AdductClass, AdductFamily, PlotPointSample, PrecursorMetrics, WarningDetail};
+use crate::metrics::merge_precursor_stats;
+use crate::metrics::{
+    AdductClass, AdductFamily, ErrorMeasurement, PlotPointSample, PrecursorStats, WarningDetail,
+};
 
 #[cfg(any(target_arch = "wasm32", test))]
 pub const CHUNK_SIZE: usize = 4 << 20;
@@ -93,11 +95,11 @@ impl BlockParseState {
         }
 
         if let Some(stripped) = trimmed.strip_prefix("MOLECULEMASS=") {
-            if let Ok(value) = stripped.parse::<f64>() {
-                if self.reference_mass.is_none() {
-                    self.reference_mass = Some(value);
-                    self.reference_mass_source = Some("MOLECULEMASS".to_string());
-                }
+            if let Ok(value) = stripped.parse::<f64>()
+                && self.reference_mass.is_none()
+            {
+                self.reference_mass = Some(value);
+                self.reference_mass_source = Some("MOLECULEMASS".to_string());
             }
             return;
         }
@@ -148,15 +150,15 @@ impl BlockParseState {
         }
 
         // Parse fragment line: "m/z intensity" (not a header)
-        if !trimmed.contains('=') && trimmed.contains(char::is_whitespace) {
-            let parts: Vec<&str> = trimmed.split_whitespace().collect();
-            if parts.len() >= 1 {
-                if let Ok(mz) = parts[0].parse::<f64>() {
-                    if mz > 0.0 {
-                        self.fragment_peaks.push(mz);
-                    }
-                }
-            }
+        if !trimmed.contains('=')
+            && trimmed.contains(char::is_whitespace)
+            && let Some(mz) = trimmed
+                .split_whitespace()
+                .next()
+                .and_then(|value| value.parse::<f64>().ok())
+            && mz > 0.0
+        {
+            self.fragment_peaks.push(mz);
         }
     }
 
@@ -168,6 +170,7 @@ impl BlockParseState {
 
     /// Extract MS2 precursor peak from fragment list.
     /// Returns the closest fragment to PEPMASS if within ~0.02 Da (~100 ppm), otherwise None.
+    #[must_use]
     pub fn get_ms2_precursor_peak(&self, pepmass_header: f64) -> Option<f64> {
         const TOLERANCE_DA: f64 = 0.02;
 
@@ -199,10 +202,12 @@ impl BlockParseState {
     }
 }
 
+#[must_use]
 pub fn smiles_is_supported(smiles: &str) -> bool {
     !smiles.trim().is_empty()
 }
 
+#[must_use]
 pub fn exact_mass_from_smiles(smiles: &str) -> Option<f64> {
     let mut cache = HashMap::new();
     let mut logged_failures = HashSet::new();
@@ -281,6 +286,7 @@ fn exact_mass_from_smiles_uncached(
     }
 }
 
+#[must_use]
 pub fn exact_mass_from_formula(formula: &str) -> Option<f64> {
     let mut cache = HashMap::new();
     let mut logged_failures = HashSet::new();
@@ -303,21 +309,22 @@ fn exact_mass_from_formula_cached<S: ::std::hash::BuildHasher>(
 
     let parsed: std::result::Result<molecular_formulas_010::ChemicalFormula<u32, i32>, _> =
         molecular_formulas_010::ChemicalFormula::<u32, i32>::from_str(trimmed);
-    let mass = match parsed {
-        Ok(parsed_formula) => Some(parsed_formula.isotopologue_mass()),
-        Err(_) => {
+    let mass = parsed.map_or_else(
+        |_| {
             let warning_key = format!("formula-parse-failed:{trimmed}");
             if logged_failures.insert(warning_key) {
                 #[cfg(target_arch = "wasm32")]
                 console::warn_1(&format!("Formula parse failed for: {trimmed}").into());
             }
             None
-        }
-    };
+        },
+        |parsed_formula| Some(parsed_formula.isotopologue_mass()),
+    );
     cache.insert(trimmed.to_string(), mass);
     mass
 }
 
+#[must_use]
 pub fn expected_precursor_mz(
     neutral_mass: f64,
     adduct: Option<&str>,
@@ -329,15 +336,7 @@ pub fn expected_precursor_mz(
     let charge_sign =
         parse_charge_sign(charge, ion_mode).or_else(|| parse_adduct_charge_sign(adduct));
 
-    let charge_value = parse_charge_value(charge, adduct).unwrap_or_else(|| {
-        if charge_sign == Some(true) || normalized_ion_mode == "negative" {
-            1.0
-        } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
-            1.0
-        } else {
-            1.0
-        }
-    });
+    let charge_value = parse_charge_value(charge, adduct).unwrap_or(1.0);
 
     let (multiplier, shift, electron_adjustment) = if normalized_adduct.is_empty() {
         (
@@ -382,6 +381,7 @@ pub fn expected_precursor_mz(
     Some(base_mz / charge_value.max(1.0))
 }
 
+#[must_use]
 pub fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
     let adduct = adduct?.trim();
     let cleaned = adduct.replace(' ', "");
@@ -441,11 +441,10 @@ fn apply_adduct_token(
 
 fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     let normalized = adduct.trim().replace(' ', "").to_ascii_uppercase();
-    let body = if let Some(index) = normalized.find(']') {
-        normalized[1..index].to_string()
-    } else {
-        normalized.clone()
-    };
+    let body = normalized.find(']').map_or_else(
+        || normalized.clone(),
+        |index| normalized[1..index].to_string(),
+    );
     let charge_sign = parse_adduct_charge_sign(Some(adduct));
     let uses_double_mg_mass = charge_sign == Some(false);
     let mut multiplier = 1.0f64;
@@ -495,7 +494,7 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
 
     if saw_unsupported_token {
         None
-    } else if shift == 0.0 && multiplier == 1.0 && body == "M" {
+    } else if shift.abs() < f64::EPSILON && (multiplier - 1.0).abs() < f64::EPSILON && body == "M" {
         Some((1.0, 0.0))
     } else if body.is_empty() || body == "M" {
         None
@@ -584,7 +583,7 @@ fn parse_adduct_term_mass_with_context(
         "MG" => {
             let base = 23.985_041_7 * multiplier;
             if sign > 0.0 && uses_double_mg_mass {
-                return Some(base + 23.985_041_7 * multiplier);
+                return Some(23.985_041_7f64.mul_add(multiplier, base));
             }
             return Some(base);
         }
@@ -605,7 +604,7 @@ fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64>
         let cleaned = value.trim();
         let digits = cleaned
             .chars()
-            .filter(|ch| ch.is_ascii_digit())
+            .filter(char::is_ascii_digit)
             .collect::<String>();
         if let Ok(parsed) = digits.parse::<f64>() {
             return Some(parsed.max(1.0));
@@ -617,7 +616,7 @@ fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64>
         let suffix = cleaned.split(']').nth(1).unwrap_or("").trim();
         let digits = suffix
             .chars()
-            .filter(|ch| ch.is_ascii_digit())
+            .filter(char::is_ascii_digit)
             .collect::<String>();
         if let Ok(parsed) = digits.parse::<f64>() {
             return Some(parsed.max(1.0));
@@ -627,15 +626,13 @@ fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64>
     None
 }
 
+#[must_use]
 pub fn decimal_precision(value: &str) -> usize {
     let trimmed = value.trim();
     let Some((_, fractional)) = trimmed.split_once('.') else {
         return 0;
     };
-    fractional
-        .chars()
-        .take_while(|ch| ch.is_ascii_digit())
-        .count()
+    fractional.chars().take_while(char::is_ascii_digit).count()
 }
 
 #[must_use]
@@ -701,6 +698,7 @@ pub fn is_supported_adduct(adduct: &str) -> bool {
 
 /// # Panics
 /// Panics if the adduct-class cache mutex is poisoned.
+#[must_use]
 pub fn adduct_family(adduct: &str) -> String {
     let normalized_key = normalize_adduct_key(adduct);
     let cached = ADDUCT_FAMILY_CACHE.with(|cache| {
@@ -719,6 +717,7 @@ pub fn adduct_family(adduct: &str) -> String {
 
 /// # Panics
 /// Panics if the adduct-class cache mutex is poisoned.
+#[must_use]
 pub fn adduct_class(adduct: &str) -> Option<AdductClass> {
     let normalized_key = adduct.trim().replace(' ', "").to_ascii_uppercase();
     ADDUCT_CLASS_CACHE.with(|cache| {
@@ -909,14 +908,14 @@ impl<'a> BlobLineReader<'a> {
 pub async fn scan_blob_with_progress(
     blob: &Blob,
     mut on_progress: impl FnMut(u64, u64),
-) -> std::result::Result<PrecursorMetrics, ScanError> {
+) -> std::result::Result<PrecursorStats, ScanError> {
     let mut reader = BlobLineReader::new(blob, move |processed, total| {
         on_progress(processed, total);
     });
 
     let mut current_state = BlockParseState::default();
     let mut current_is_in_block = false;
-    let mut metrics = PrecursorMetrics::default();
+    let mut metrics = PrecursorStats::default();
     let mut plot_sample = PlotPointSample::default();
     let mut smiles_cache = HashMap::new();
     let mut formula_cache = HashMap::new();
@@ -949,7 +948,7 @@ pub async fn scan_blob_with_progress(
                 &mut logged_failures,
                 &mut block_plot_sample,
             )? {
-                metrics = merge_metrics(metrics, result);
+                metrics = merge_precursor_stats(metrics, &result);
             }
             current_state = BlockParseState::default();
             current_is_in_block = false;
@@ -971,7 +970,7 @@ pub fn process_block<S: ::std::hash::BuildHasher>(
     formula_cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
     plot_sample: Option<&mut PlotPointSample>,
-) -> std::result::Result<Option<PrecursorMetrics>, ScanError> {
+) -> std::result::Result<Option<PrecursorStats>, ScanError> {
     let mut state = BlockParseState::default();
     state.consume_block_lines(block_lines);
     let use_external_sample = plot_sample.is_some();
@@ -1008,7 +1007,7 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
     formula_cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
     plot_sample: &mut Option<&mut PlotPointSample>,
-) -> std::result::Result<Option<PrecursorMetrics>, ScanError> {
+) -> std::result::Result<Option<PrecursorStats>, ScanError> {
     let Some(observed_precursor) = state.observed_precursor else {
         return Ok(None);
     };
@@ -1044,7 +1043,7 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
         });
 
     let Some((reference_mass, reference_mass_source)) = reference_mass else {
-        let mut metrics = PrecursorMetrics::default();
+        let mut metrics = PrecursorStats::default();
         metrics.total_spectra = 1;
         metrics.skipped_spectra = 1;
         if let Some(smiles_text) = state
@@ -1085,7 +1084,7 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
     let adduct_is_excluded = is_excluded_adduct(adduct_text);
     let adduct_is_supported = adduct_text.is_empty() || is_supported_adduct(adduct_text);
     if adduct_is_excluded || !adduct_is_supported && !adduct_text.is_empty() {
-        let mut metrics = PrecursorMetrics::default();
+        let mut metrics = PrecursorStats::default();
         metrics.total_spectra = 1;
         metrics.skipped_spectra = 1;
         if !adduct_is_excluded && !adduct_text.is_empty() {
@@ -1115,7 +1114,7 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
     };
     let abs_ppm = ppm.abs();
 
-    let mut metrics = PrecursorMetrics::default();
+    let mut metrics = PrecursorStats::default();
     metrics.total_spectra = 1;
     metrics.spectra = 1;
     metrics.spectra_with_reference_mass = 1;
@@ -1134,17 +1133,19 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
     metrics.signed_error_da_mean = error_da;
     metrics.signed_error_ppm_mean = ppm;
     metrics.record_error_with_plot_sample(
-        abs_error_da,
-        abs_ppm,
-        AdductFamily::from_label(&adduct_label),
-        ppm,
-        error_da,
-        observed_precursor, // PEPMASS from header (metadata block)
-        state.get_ms2_precursor_peak(observed_precursor), // MS2 precursor peak, closest to PEPMASS within tolerance
-        state.smiles.as_deref(),
-        Some(reference_mass),
-        Some(expected_precursor_mz),
-        state.formula.as_deref(),
+        ErrorMeasurement {
+            abs_error_da,
+            abs_ppm,
+            adduct_family: AdductFamily::from_label(&adduct_label),
+            ppm_error: ppm,
+            signed_error_da: error_da,
+            pepmass_header: observed_precursor, // PEPMASS from header (metadata block)
+            ms2_precursor_peak: state.get_ms2_precursor_peak(observed_precursor), // MS2 precursor peak, closest to PEPMASS within tolerance
+            smiles: state.smiles.as_deref(),
+            calculated_mass: Some(reference_mass),
+            expected_mass: Some(expected_precursor_mz),
+            formula: state.formula.as_deref(),
+        },
         plot_sample,
     );
     if error_milli_da <= 0.1 {
@@ -1174,10 +1175,14 @@ fn process_block_state<S: ::std::hash::BuildHasher>(
 }
 
 /// Parse MGF from a string (for non-async contexts, e.g., browser file reading).
-pub fn parse_mgf_from_string(content: &str) -> std::result::Result<PrecursorMetrics, String> {
+///
+/// # Errors
+///
+/// Returns an error if a scan block cannot be parsed into precursor metrics.
+pub fn parse_mgf_from_string(content: &str) -> std::result::Result<PrecursorStats, String> {
     let mut current_state = BlockParseState::default();
     let mut current_is_in_block = false;
-    let mut metrics = PrecursorMetrics::default();
+    let mut metrics = PrecursorStats::default();
     let mut plot_sample = PlotPointSample::default();
     let mut smiles_cache = HashMap::new();
     let mut formula_cache = HashMap::new();
@@ -1210,9 +1215,9 @@ pub fn parse_mgf_from_string(content: &str) -> std::result::Result<PrecursorMetr
                 &mut logged_failures,
                 &mut block_plot_sample,
             )
-            .map_err(|e| format!("{:?}", e))?
+            .map_err(|e| format!("{e:?}"))?
             {
-                metrics = merge_metrics(metrics, result);
+                metrics = merge_precursor_stats(metrics, &result);
             }
             current_state = BlockParseState::default();
             current_is_in_block = false;

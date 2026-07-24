@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 /// Statistics about precursor errors for diagnostic purposes.
 #[derive(Clone, Debug)]
-pub struct RecalibrationDiagnostics {
+pub struct RecalibrationStats {
     /// Precursor errors (in ppm) from PEPMASS vs theoretical.
     pub error_ppm_ms1: Vec<f64>,
 
@@ -119,7 +119,24 @@ pub struct RecalibrationDiagnostics {
     pub fragment_error_ppm_after: Vec<f64>,
 }
 
-impl Default for RecalibrationDiagnostics {
+#[derive(Clone, Copy, Debug)]
+pub struct RecalibrationMeasurement<'a> {
+    pub error_ppm_ms1: f64,
+    pub delta_ppm_ms2_ms1: f64,
+    pub error_ppm_before: f64,
+    pub error_ppm_after: f64,
+    pub error_da_ms1: f64,
+    pub delta_da_ms2_ms1: f64,
+    pub error_da_before: f64,
+    pub error_da_after: f64,
+    pub precursor_ms1: f64,
+    pub precursor_ms2_before: f64,
+    pub precursor_ms2_after: f64,
+    pub adduct_family: Option<&'a str>,
+    pub max_samples: usize,
+}
+
+impl Default for RecalibrationStats {
     fn default() -> Self {
         Self {
             error_ppm_ms1: Vec::new(),
@@ -163,8 +180,9 @@ impl Default for RecalibrationDiagnostics {
     }
 }
 
-impl RecalibrationDiagnostics {
+impl RecalibrationStats {
     /// Creates a new empty diagnostics structure.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -198,7 +216,7 @@ impl RecalibrationDiagnostics {
             self.sample_count += 1;
         } else {
             // Reservoir sampling for additional points
-            let index = (self.total_count as f64).sqrt() as usize % max_samples;
+            let index = reservoir_index(self.total_count, max_samples);
             if index < max_samples {
                 self.error_ppm_before[index] = error_ppm_before;
                 self.error_ppm_after[index] = error_ppm_after;
@@ -211,32 +229,33 @@ impl RecalibrationDiagnostics {
         if let Some(family) = adduct_family {
             self.error_by_adduct_before
                 .entry(family.to_string())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(error_ppm_before);
             self.error_by_adduct_after
                 .entry(family.to_string())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(error_ppm_after);
         }
     }
 
     /// Adds a complete measurement including precursor m/z values.
-    pub fn push_measurement(
-        &mut self,
-        error_ppm_ms1: f64,
-        delta_ppm_ms2_ms1: f64,
-        error_ppm_before: f64,
-        error_ppm_after: f64,
-        error_da_ms1: f64,
-        delta_da_ms2_ms1: f64,
-        error_da_before: f64,
-        error_da_after: f64,
-        precursor_ms1: f64,
-        precursor_ms2_before: f64,
-        precursor_ms2_after: f64,
-        adduct_family: Option<&str>,
-        max_samples: usize,
-    ) {
+    pub fn push_measurement(&mut self, measurement: RecalibrationMeasurement<'_>) {
+        let RecalibrationMeasurement {
+            error_ppm_ms1,
+            delta_ppm_ms2_ms1,
+            error_ppm_before,
+            error_ppm_after,
+            error_da_ms1,
+            delta_da_ms2_ms1,
+            error_da_before,
+            error_da_after,
+            precursor_ms1,
+            precursor_ms2_before,
+            precursor_ms2_after,
+            adduct_family,
+            max_samples,
+        } = measurement;
+
         self.total_count += 1;
 
         // Sample for plotting
@@ -255,7 +274,7 @@ impl RecalibrationDiagnostics {
             self.sample_count += 1;
         } else {
             // Reservoir sampling for additional points
-            let index = (self.total_count as f64).sqrt() as usize % max_samples;
+            let index = reservoir_index(self.total_count, max_samples);
             if index < max_samples {
                 self.error_ppm_ms1[index] = error_ppm_ms1;
                 self.delta_ppm_ms2_ms1[index] = delta_ppm_ms2_ms1;
@@ -270,11 +289,11 @@ impl RecalibrationDiagnostics {
         if let Some(family) = adduct_family {
             self.error_by_adduct_before
                 .entry(family.to_string())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(error_ppm_before);
             self.error_by_adduct_after
                 .entry(family.to_string())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(error_ppm_after);
         }
     }
@@ -323,21 +342,25 @@ impl RecalibrationDiagnostics {
     }
 
     /// Returns the improvement in mean absolute error after recalibration (in ppm).
+    #[must_use]
     pub fn mean_error_improvement_ppm(&self) -> f64 {
         self.mean_error_ppm_before.abs() - self.mean_error_ppm_after.abs()
     }
 
     /// Returns the improvement in RMS error after recalibration (in ppm).
+    #[must_use]
     pub fn rms_error_improvement_ppm(&self) -> f64 {
         self.rms_error_ppm_before - self.rms_error_ppm_after
     }
 
     /// Returns the improvement in mean absolute error after recalibration (in Da).
+    #[must_use]
     pub fn mean_error_improvement_da(&self) -> f64 {
         self.mean_error_da_before.abs() - self.mean_error_da_after.abs()
     }
 
     /// Returns the improvement in RMS error after recalibration (in Da).
+    #[must_use]
     pub fn rms_error_improvement_da(&self) -> f64 {
         self.rms_error_da_before - self.rms_error_da_after
     }
@@ -349,7 +372,7 @@ fn compute_mean(values: &[f64]) -> f64 {
         return 0.0;
     }
     let sum: f64 = values.iter().sum();
-    sum / values.len() as f64
+    sum / usize_to_f64(values.len())
 }
 
 /// Computes the root mean square (RMS) of absolute values.
@@ -358,7 +381,7 @@ fn compute_rms(values: &[f64]) -> f64 {
         return 0.0;
     }
     let sum_sq: f64 = values.iter().map(|v| v * v).sum();
-    (sum_sq / values.len() as f64).sqrt()
+    (sum_sq / usize_to_f64(values.len())).sqrt()
 }
 
 /// Computes the maximum absolute value.
@@ -369,32 +392,49 @@ fn compute_max_abs(values: &[f64]) -> f64 {
     values.iter().map(|v| v.abs()).fold(0.0, f64::max)
 }
 
+fn usize_to_f64(value: usize) -> f64 {
+    f64::from(u32::try_from(value).unwrap_or(u32::MAX))
+}
+
+fn reservoir_index(seen: usize, modulo: usize) -> usize {
+    if modulo == 0 {
+        return 0;
+    }
+
+    let stream_index = u64::try_from(seen).unwrap_or(u64::MAX).max(1);
+    let mixed = stream_index
+        .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+        .wrapping_add(0xbf58_476d_1ce4_e5b9);
+    let modulo_u64 = u64::try_from(modulo).unwrap_or(u64::MAX);
+    usize::try_from(mixed % modulo_u64).unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_empty_diagnostics() {
-        let diag = RecalibrationDiagnostics::new();
+        let diag = RecalibrationStats::new();
         assert_eq!(diag.sample_count, 0);
         assert_eq!(diag.total_count, 0);
-        assert_eq!(diag.mean_error_ppm_before, 0.0);
+        assert!(diag.mean_error_ppm_before.abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_push_error() {
-        let mut diag = RecalibrationDiagnostics::new();
+        let mut diag = RecalibrationStats::new();
         diag.push_error(10.0, 5.0, 0.05, 0.025, Some("protonated"), 100);
 
         assert_eq!(diag.total_count, 1);
         assert_eq!(diag.sample_count, 1);
-        assert_eq!(diag.error_ppm_before[0], 10.0);
-        assert_eq!(diag.error_ppm_after[0], 5.0);
+        assert!((diag.error_ppm_before[0] - 10.0).abs() < f64::EPSILON);
+        assert!((diag.error_ppm_after[0] - 5.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_compute_statistics() {
-        let mut diag = RecalibrationDiagnostics::new();
+        let mut diag = RecalibrationStats::new();
         diag.push_error(10.0, 5.0, 0.05, 0.025, None, 100);
         diag.push_error(20.0, 10.0, 0.1, 0.05, None, 100);
         diag.compute_statistics();
@@ -405,7 +445,7 @@ mod tests {
 
     #[test]
     fn test_improvement_calculation() {
-        let mut diag = RecalibrationDiagnostics::new();
+        let mut diag = RecalibrationStats::new();
         diag.push_error(10.0, 5.0, 0.1, 0.05, None, 100);
         diag.push_error(10.0, 5.0, 0.1, 0.05, None, 100);
         diag.compute_statistics();
@@ -416,20 +456,20 @@ mod tests {
 
     #[test]
     fn test_adduct_categorization() {
-        let mut diag = RecalibrationDiagnostics::new();
+        let mut diag = RecalibrationStats::new();
         diag.push_error(10.0, 5.0, 0.05, 0.025, Some("protonated"), 100);
         diag.push_error(15.0, 8.0, 0.075, 0.04, Some("deprotonated"), 100);
 
         assert_eq!(diag.error_by_adduct_before.len(), 2);
-        assert_eq!(diag.error_by_adduct_before["protonated"][0], 10.0);
-        assert_eq!(diag.error_by_adduct_before["deprotonated"][0], 15.0);
+        assert!((diag.error_by_adduct_before["protonated"][0] - 10.0).abs() < f64::EPSILON);
+        assert!((diag.error_by_adduct_before["deprotonated"][0] - 15.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_max_samples_limit() {
-        let mut diag = RecalibrationDiagnostics::new();
+        let mut diag = RecalibrationStats::new();
         for i in 0..150 {
-            let error = (i as f64) * 0.1;
+            let error = f64::from(i) * 0.1;
             diag.push_error(error, error / 2.0, error / 100.0, error / 200.0, None, 100);
         }
 
