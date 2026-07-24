@@ -9,14 +9,12 @@ use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
-use web_sys::{Blob, HtmlAnchorElement, Response, Url, Window, console};
+use web_sys::{Blob, HtmlAnchorElement, Url};
 
 #[cfg(target_arch = "wasm32")]
 use crate::diagnostics::RecalibrationMeasurement;
 use crate::diagnostics::RecalibrationStats;
 use crate::metrics::{PlotPoint, PrecursorStats};
-#[cfg(target_arch = "wasm32")]
-use crate::parser::{ScanError, scan_blob_with_progress};
 use crate::plotting::{
     make_svg_responsive, render_absolute_mass_bias_svg, render_cumulative_error_three_curves,
     render_ecdf_svg, render_mass_bias_svg, render_recalibration_diagnostic_histogram,
@@ -28,20 +26,12 @@ use crate::recalibration::CalibrationModel;
 const EXAMPLE_MGF_URL: &str =
     "https://raw.githubusercontent.com/zamboni-lab/MultiMS2/main/data/multims2_spectra.mgf";
 
-#[cfg(target_arch = "wasm32")]
-fn format_progress_message(processed: u64, total: u64) -> String {
-    let safe_total = total.max(1);
-    let displayed_processed = processed.min(safe_total);
-    let percent = (displayed_processed * 100 / safe_total).min(100);
-    format!("Scanning {displayed_processed}/{safe_total} bytes ({percent}%)...")
-}
-
-#[cfg(target_arch = "wasm32")]
 /// Fetches an example MGF file from a remote URL and returns it as a browser blob.
 ///
 /// # Errors
 ///
 /// Returns an error if the request fails, the response is not ok, or the body cannot be read.
+#[cfg(target_arch = "wasm32")]
 async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
     let window = web_sys::window().ok_or_else(|| "Browser window unavailable.".to_string())?;
     let response_value = JsFuture::from(window.fetch_with_str(url))
@@ -137,7 +127,7 @@ fn begin_analysis_from_blob(
     let mut metrics_for_state = metrics;
     let mut busy_for_state = busy;
     let mut drag_active_for_state = drag_active;
-    let mut original_content_signal = original_mgf_content;
+    let original_content_signal = original_mgf_content;
 
     file_name_for_state.set(file_name);
     busy_for_state.set(true);
@@ -166,7 +156,7 @@ fn load_example_mgf(
     let mut metrics_for_results = metrics;
     let mut busy_for_results = busy;
     let mut file_name_for_results = file_name;
-    let mut original_content_signal = original_mgf_content;
+    let original_content_signal = original_mgf_content;
 
     spawn(async move {
         status_for_progress.set("Loading example MGF...".to_string());
@@ -459,9 +449,18 @@ fn download_recalibrated_mgf(
 /// Returns an error if the component tree fails to build or render.
 #[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
+    #[cfg(target_arch = "wasm32")]
+    let file_name = use_signal(String::new);
+    #[cfg(not(target_arch = "wasm32"))]
     let mut file_name = use_signal(String::new);
+    #[cfg(target_arch = "wasm32")]
+    let metrics = use_signal(|| None::<PrecursorStats>);
+    #[cfg(not(target_arch = "wasm32"))]
     let mut metrics = use_signal(|| None::<PrecursorStats>);
     let mut status = use_signal(|| "Drop an MGF file to begin.".to_string());
+    #[cfg(target_arch = "wasm32")]
+    let busy = use_signal(|| false);
+    #[cfg(not(target_arch = "wasm32"))]
     let mut busy = use_signal(|| false);
     let mut drag_active = use_signal(|| false);
     let original_mgf_content = use_signal(String::new);
@@ -1434,21 +1433,21 @@ fn update_recalibration_diagnostics(
             crate::metrics::AdductFamily::Other => None,
         };
 
-        diag.push_measurement(
+        diag.push_measurement(RecalibrationMeasurement {
             error_ppm_ms1,
             delta_ppm_ms2_ms1,
             error_ppm_before,
             error_ppm_after,
             error_da_ms1,
-            delta_ms2_ms1_da,
+            delta_da_ms2_ms1: delta_ms2_ms1_da,
             error_da_before,
             error_da_after,
             precursor_ms1,
-            precursor_ms2,
+            precursor_ms2_before: precursor_ms2,
             precursor_ms2_after,
-            adduct_str,
-            5000, // max samples
-        );
+            adduct_family: adduct_str,
+            max_samples: 5000, // max samples
+        });
     }
 
     diag.compute_statistics();
