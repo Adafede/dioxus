@@ -62,6 +62,7 @@ skip = [
   { name = "rand_core" },
   { name = "rustc-hash" },
   { name = "sha2" },
+  { name = "syn" },
   { name = "thiserror" },
   { name = "thiserror-impl" },
   { name = "windows-sys" },
