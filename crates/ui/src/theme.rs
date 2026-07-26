@@ -166,7 +166,8 @@ impl Typography {
 
     /// Font families
     pub const SANS: &'static str = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif";
-    pub const MONO: &'static str = "'Fira Code', ui-monospace, 'SF Mono', 'JetBrains Mono', consolas, monospace";
+    pub const MONO: &'static str =
+        "'Fira Code', ui-monospace, 'SF Mono', 'JetBrains Mono', consolas, monospace";
 }
 
 /// Accessibility and interaction constants
@@ -400,10 +401,6 @@ mod tests {
             .align_items("center")
             .build();
 
-        assert_eq!(
-            style.split("; ").count(),
-            4,
-            "Should have 4 CSS properties"
-        );
+        assert_eq!(style.split("; ").count(), 4, "Should have 4 CSS properties");
     }
 }

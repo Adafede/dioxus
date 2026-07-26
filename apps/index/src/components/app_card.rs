@@ -5,6 +5,7 @@
 
 use super::AppInfo;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 /// Card component for a single application.
 ///
@@ -42,12 +43,48 @@ use dioxus::prelude::*;
 /// ```
 #[component]
 pub fn AppCard(app: AppInfo) -> Element {
+    let colors = ColorScheme::LIGHT;
+
+    let card_style = StyleBuilder::new()
+        .background_color(colors.surface)
+        .border(&format!("1px solid {}", colors.border))
+        .border_radius(Radius::MD)
+        .padding(Spacing::LG)
+        .box_shadow(Shadow::SM)
+        .transition(Interaction::TRANSITION_DEFAULT)
+        .display("flex")
+        .flex_direction("column")
+        .gap(Spacing::MD)
+        .build();
+
+    let title_style = StyleBuilder::new()
+        .font_size(Typography::H2)
+        .font_family(Typography::SANS)
+        .font_weight("600")
+        .color(colors.text)
+        .margin("0")
+        .line_height(Typography::LINE_HEIGHT)
+        .build();
+
+    let link_style = StyleBuilder::new()
+        .color(colors.accent)
+        .text_decoration("none")
+        .build();
+
+    let description_style = StyleBuilder::new()
+        .font_size(Typography::BODY)
+        .font_family(Typography::SANS)
+        .color(colors.text2)
+        .margin("0")
+        .line_height(Typography::LINE_HEIGHT)
+        .build();
+
     rsx! {
-        article { class: "app-card",
-            h2 {
-                a { href: app.path, "{app.title}" }
+        article { style: card_style,
+            h2 { style: title_style,
+                a { href: app.path, style: link_style, "{app.title}" }
             }
-            p { class: "description", "{app.description}" }
+            p { style: description_style, "{app.description}" }
         }
     }
 }

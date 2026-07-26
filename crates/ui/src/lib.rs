@@ -36,12 +36,12 @@
 //! }
 //! ```
 
-pub mod theme;
 pub mod components;
+pub mod theme;
 
 pub mod prelude {
+    pub use crate::components::{Button, Card, Footer, Header};
     pub use crate::theme::{
-        ColorScheme, Spacing, Radius, Shadow, Typography, Interaction, StyleBuilder,
+        ColorScheme, Interaction, Radius, Shadow, Spacing, StyleBuilder, Typography,
     };
-    pub use crate::components::{Header, Footer, Card, Button};
 }

@@ -6,6 +6,7 @@ authors = ["Dioxus Contributors"]
 license = "AGPL-3.0-only"
 description = "Unified UI design system for Dioxus applications using pure Rust styling"
 repository = "https://github.com/adrutz/dioxus"
+publish = false
 
 [dependencies]
 dioxus = { workspace = true }

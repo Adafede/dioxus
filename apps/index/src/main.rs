@@ -7,11 +7,12 @@
 //! - Comprehensive documentation
 
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 mod accessibility;
 mod components;
 
-use components::{AppCard, AppInfo, Footer, Header};
+use components::{AppCard, AppInfo};
 
 /// Root application component.
 ///
@@ -35,17 +36,54 @@ use components::{AppCard, AppInfo, Footer, Header};
 /// ```
 #[component]
 pub fn App() -> Element {
-    rsx! {
-        document::Link { rel: "stylesheet", href: "./assets/styles.css" }
+    let container_style = StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .property("min-height", "100vh")
+        .build();
 
+    let main_style = StyleBuilder::new()
+        .flex("1")
+        .padding(&format!("{} {}", Spacing::XL, Spacing::LG))
+        .build();
+
+    let grid_style = StyleBuilder::new()
+        .display("grid")
+        .property(
+            "grid-template-columns",
+            "repeat(auto-fit, minmax(300px, 1fr))",
+        )
+        .gap(Spacing::LG)
+        .margin(&format!("{} 0", Spacing::XL))
+        .build();
+
+    let disclaimer_style = StyleBuilder::new()
+        .background_color(ColorScheme::LIGHT.surface)
+        .border(&format!("1px solid {}", ColorScheme::LIGHT.border))
+        .border_radius(Radius::MD)
+        .padding(Spacing::LG)
+        .margin(&format!("{} 0 0 0", Spacing::XL))
+        .build();
+
+    let disclaimer_heading_style = StyleBuilder::new()
+        .font_size(Typography::H2)
+        .font_weight("600")
+        .color(ColorScheme::LIGHT.text)
+        .margin("0 0 10px 0")
+        .build();
+
+    rsx! {
         accessibility::SkipLink {}
 
-        div { class: "container",
-            Header {}
+        div { style: container_style,
+            Header {
+                title: "🦀 Dioxus Experiments".to_string(),
+                subtitle: Some("A collection of open-source Rust/WASM applications exploring UI patterns, performance optimization, and data processing.".to_string()),
+            }
 
-            main { id: "main-content", role: "main",
+            main { id: "main-content", role: "main", style: main_style,
                 section { aria_labelledby: "apps-heading",
-                    div { class: "apps-grid",
+                    div { style: grid_style,
                         {APPS.iter().map(|&app| {
                             rsx! {
                                 AppCard { key: "{app.id}", app }
@@ -54,8 +92,8 @@ pub fn App() -> Element {
                     }
                 }
 
-                section { class: "disclaimer", role: "complementary", aria_labelledby: "disclaimer-heading",
-                    h2 { id: "disclaimer-heading", "⚠️ About These Prototypes" }
+                section { role: "complementary", aria_labelledby: "disclaimer-heading", style: disclaimer_style,
+                    h2 { id: "disclaimer-heading", style: disclaimer_heading_style, "⚠️ About These Prototypes" }
                     p {
                         "These are "
                         strong { "experimental applications" }
@@ -65,7 +103,7 @@ pub fn App() -> Element {
                     }
                     p {
                         "If you're interested in hosting or collaborating on any of these projects, please "
-                        a { href: "https://github.com/adafede", target: "_blank", rel: "noopener noreferrer", "reach out on GitHub" }
+                        a { href: "https://github.com/adrutz", target: "_blank", rel: "noopener noreferrer", "reach out on GitHub" }
                         ". I'm always open to feedback and partnership opportunities."
                     }
                 }

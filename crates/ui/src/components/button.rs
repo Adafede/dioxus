@@ -1,7 +1,7 @@
 //! Button component with multiple variants and states.
 
+use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
-use crate::theme::{ColorScheme, Spacing, Typography, Radius, StyleBuilder};
 
 /// Button variant enumeration
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,21 +54,9 @@ pub fn Button(props: ButtonProps) -> Element {
     };
 
     let (bg_color, text_color, _hover_bg) = match props.variant {
-        ButtonVariant::Primary => (
-            colors.accent,
-            colors.bg,
-            colors.accent2,
-        ),
-        ButtonVariant::Secondary => (
-            colors.surface2,
-            colors.accent,
-            colors.border,
-        ),
-        ButtonVariant::Tertiary => (
-            "transparent",
-            colors.accent,
-            colors.surface,
-        ),
+        ButtonVariant::Primary => (colors.accent, colors.bg, colors.accent2),
+        ButtonVariant::Secondary => (colors.surface2, colors.accent, colors.border),
+        ButtonVariant::Tertiary => ("transparent", colors.accent, colors.surface),
     };
 
     let border_value = match props.variant {
@@ -86,7 +74,11 @@ pub fn Button(props: ButtonProps) -> Element {
         .font_size(Typography::UI)
         .font_family(Typography::SANS)
         .font_weight("500")
-        .cursor(if props.disabled { "not-allowed" } else { "pointer" })
+        .cursor(if props.disabled {
+            "not-allowed"
+        } else {
+            "pointer"
+        })
         .opacity(if props.disabled { "0.6" } else { "1" })
         .transition(crate::theme::Interaction::TRANSITION_FAST)
         .build();

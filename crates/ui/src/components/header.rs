@@ -1,7 +1,7 @@
 //! Header component with semantic HTML and proper accessibility.
 
+use crate::theme::{ColorScheme, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
-use crate::theme::{ColorScheme, Spacing, Typography, StyleBuilder, Interaction};
 
 /// Properties for the Header component
 #[derive(Clone, Props, Debug, PartialEq)]
@@ -40,7 +40,13 @@ pub fn Header(props: HeaderProps) -> Element {
 
     let header_style = StyleBuilder::new()
         .background_color(colors.bg)
-        .padding(&format!("{} {} {} {}", Spacing::XL, Spacing::LG, Spacing::XL, Spacing::LG))
+        .padding(&format!(
+            "{} {} {} {}",
+            Spacing::XL,
+            Spacing::LG,
+            Spacing::XL,
+            Spacing::LG
+        ))
         .border(&format!("1px solid {}", colors.border))
         .text_align("center")
         .build();

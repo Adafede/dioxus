@@ -2,12 +2,12 @@
 //!
 //! All components use pure Rust styling via [`crate::theme`], no external CSS files.
 
-pub mod header;
-pub mod footer;
-pub mod card;
 pub mod button;
+pub mod card;
+pub mod footer;
+pub mod header;
 
-pub use header::Header;
-pub use footer::Footer;
-pub use card::Card;
 pub use button::Button;
+pub use card::Card;
+pub use footer::Footer;
+pub use header::Header;

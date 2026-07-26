@@ -1,7 +1,7 @@
 //! Card component for displaying grouped content.
 
+use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
-use crate::theme::{ColorScheme, Spacing, Typography, Radius, Shadow, StyleBuilder, Interaction};
 
 /// Properties for the Card component
 #[derive(Clone, Props, Debug, PartialEq)]
@@ -49,7 +49,11 @@ pub fn Card(props: CardProps) -> Element {
         .border(&format!("1px solid {}", colors.border))
         .border_radius(Radius::MD)
         .padding(Spacing::LG)
-        .box_shadow(if props.dark { Shadow::SM_DARK } else { Shadow::SM })
+        .box_shadow(if props.dark {
+            Shadow::SM_DARK
+        } else {
+            Shadow::SM
+        })
         .transition(crate::theme::Interaction::TRANSITION_DEFAULT)
         .display("flex")
         .flex_direction("column")
@@ -59,7 +63,11 @@ pub fn Card(props: CardProps) -> Element {
     let card_hover_style = if props.href.is_some() {
         StyleBuilder::new()
             .background_color(colors.surface2)
-            .box_shadow(if props.dark { Shadow::MD_DARK } else { Shadow::MD })
+            .box_shadow(if props.dark {
+                Shadow::MD_DARK
+            } else {
+                Shadow::MD
+            })
             .build()
     } else {
         String::new()
@@ -115,7 +123,6 @@ mod tests {
 
     #[test]
     fn card_style_includes_spacing() {
-        let colors = ColorScheme::LIGHT;
         let style = StyleBuilder::new()
             .padding(Spacing::LG)
             .border_radius(Radius::MD)

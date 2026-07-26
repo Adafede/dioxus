@@ -8,12 +8,8 @@
 //! - Comprehensive documentation
 
 pub mod app_card;
-pub mod footer;
-pub mod header;
 
 pub use app_card::AppCard;
-pub use footer::Footer;
-pub use header::Header;
 
 /// Metadata for an application card.
 ///

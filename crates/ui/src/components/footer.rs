@@ -1,7 +1,7 @@
 //! Footer component with semantic HTML and external link security.
 
+use crate::theme::{ColorScheme, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
-use crate::theme::{ColorScheme, Spacing, Typography, StyleBuilder};
 
 /// Properties for the Footer component
 #[derive(Clone, Props, Debug, PartialEq)]
