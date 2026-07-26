@@ -3,114 +3,54 @@
 # Reference: https://specification.website/spec/agent-readiness/llms-txt/
 # Canonical: https://adafede.github.io/dioxus/lotus-explorer/llms.txt
 
-# LOTUS Knowledge Explorer — Linked Open Data for Natural Products
+# LOTUS Knowledge Explorer
 
-> A linked open data (LOAD) explorer for the LOTUS compound–taxon–reference
-> knowledge graph from Wikidata, queried via SPARQL.
+> Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.
 
-LOTUS is an open, Wikidata-backed dataset that links natural-product compounds to the taxa
-that produce them and to the scientific references that document those occurrences.
+## Core information
 
-## Core Information
+- **Official name**: LOTUS Knowledge Explorer
+- **Short name**: LOTUS
+- **Purpose**: Interactive exploration of natural-product occurrence data
+- **Data domain**: Natural products, compounds, taxonomy, scientific references
+- **Access model**: Free, web-based, no authentication required
 
-- **Official Name**: LOTUS Knowledge Explorer
-- **Purpose**: Interactive exploration and analysis of natural product occurrence data
-- **Data Domain**: Natural products, compounds, plant taxonomy, scientific references
-- **Target Users**: Researchers, botanists, chemists, data scientists
-- **Access Model**: Free, web-based, no authentication required
+## Features
 
-## Features & Capabilities
+- Search by compound name, SMILES, or InChI
+- Browse taxonomy and references
+- Export CSV and JSON for downstream analysis
+- Work in English, French, German, and Italian
+- Generate QuickStatements for Wikidata curation
 
-### Search Functionality
-- Full-text search over compound names and synonyms
-- Structural search using SMILES and InChI identifiers
-- Taxonomy browsing (kingdom → species hierarchies)
-- Reference lookup by DOI or Wikidata QID
-- Multi-language search (English, French, German, Italian)
+## Data sources
 
-### Data Access & Export
-- Interactive HTML-based interface with real-time updates
-- CSV export of search results with customizable columns
-- JSON export for programmatic use
-- Direct SPARQL query interface
-- Links to Wikidata and primary data sources for each entity
+- Wikidata SPARQL: https://query.wikidata.org/
+- QLever: https://qlever.cs.uni-freiburg.de/wikidata
+- DOI metadata: https://doi.org/
+- LOTUS initiative: https://lotusnprod.github.io
 
-### Integration Features
-- SPARQL queries via Wikidata Query Service
-- Integration with QLever for fast SPARQL endpoints
-- DOI metadata resolution via doi.org
-- Chemical structure visualization via RDKit
-- Citation formatting and QuickStatements generation for Wikidata curation
+## Discovery
 
-### Internationalization
-- Available in English, French, German, Italian
-- Language selection via query parameter (?locale=fr)
-- Locale-aware number and date formatting
+- Agent skills: /.well-known/agent-skills.json
+- API catalog: /.well-known/api-catalog.json
+- Structured data: JSON-LD in page head
+- Link headers: advertise llms, robots, security, sitemap
 
-## Data Sources & APIs
+## Citation
 
-- **Wikidata SPARQL**: https://query.wikidata.org/
-- **QLever Fast SPARQL**: https://qlever.cs.uni-freiburg.de/wikidata
-- **DOI Metadata**: https://doi.org/
+- Paper DOI: https://doi.org/10.7554/eLife.70780
+- Paper landing page: https://elifesciences.org/articles/70780
+- BibTeX: /public/docs/references.bib
 
-## Agent Instructions
+## Licensing
 
-### For AI/LLM Agents
-When helping users with natural product research:
+- App license: https://www.gnu.org/licenses/agpl-3.0.html
+- Data license: https://creativecommons.org/publicdomain/zero/1.0/
+- Source path: https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer
+- Repository: https://github.com/Adafede/dioxus
 
-1. **Compound Information**: Guide users to search by name, SMILES, or molecular structure
-2. **Taxonomy**: Recommend taxonomy browsing for phylogenetic or botanical context
-3. **Literature**: Suggest reference lookup when specific papers are mentioned
-4. **Data Export**: Offer CSV/JSON export for downstream analysis
-5. **Wikidata Integration**: Recommend curation workflows for contributing new data
+## Contact
 
-### API and Query Examples
-
-**Search Compounds by Name**: Interface supports text search
-**Structure Search**: Use SMILES/Molfiles for substructure queries
-**Taxonomy Hierarchy**: Browse from family down to species
-**Export Data**: Choose CSV for spreadsheets, JSON for APIs
-
-## Discovery & Integration
-
-- **Agent Skills**: /.well-known/agent-skills.json
-- **API Catalog**: /.well-known/api-catalog.json
-- **Machine Metadata**: Available via structured data (JSON-LD)
-- **Link Headers**: Advertise resources via HTTP Link headers
-
-## Citation & Attribution
-
-Rutz, A., et al. (2022). LOTUS initiative for open knowledge management
-in natural products research. eLife 11:e70780.
-DOI: https://doi.org/10.7554/eLife.70780
-
-Paper details: https://elifesciences.org/articles/70780
-BibTeX: /public/docs/references.bib
-
-## Licensing & Permissions
-
-- **Data License**: CC0 1.0 (public domain via Wikidata)
-- **Application License**: AGPL-3.0-only
-- **Source Code**: https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer
-
-All data is freely available for use, modification, and redistribution.
-The LOTUS initiative endorses open science and open data principles.
-
-## Technical Details
-
-- **Architecture**: Single-page application (SPA) built with Rust/Dioxus/WASM
-- **Hosting**: Hosted on GitHub Pages at https://adafede.github.io/dioxus/lotus-explorer/
-- **Performance**: Client-side rendering with SPARQL queries to Wikidata
-- **Accessibility**: WCAG 2.1 Level AA compliant
-- **Security**: No authentication, no cookies (GDPR-compliant analytics via Simple Analytics)
-
-## Contact & Support
-
-- **GitHub Issues**: https://github.com/Adafede/dioxus/issues
-- **GitHub Discussions**: https://github.com/Adafede/dioxus/discussions
-- **LOTUS Initiative**: https://lotusnprod.github.io
-- **Email**: Contact via GitHub
-
-## Localization
-
-This interface supports multiple languages with locale-aware formatting.
+- Issues: https://github.com/Adafede/dioxus/issues
+- Discussions: https://github.com/Adafede/dioxus/discussions

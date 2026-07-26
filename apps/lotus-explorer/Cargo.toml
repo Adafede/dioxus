@@ -3,6 +3,7 @@ name = "lotus-explorer"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
+build = "build.rs"
 description = "LOTUS Knowledge Explorer — natural product occurrence explorer"
 license = "AGPL-3.0-only"
 keywords = ["dioxus", "lotus", "natural-products", "wasm", "wikidata"]
@@ -50,6 +51,11 @@ web-sys = { workspace = true, features = [
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tempfile = { workspace = true }
+
+[build-dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+toml = "0.8"
 
 [lints]
 workspace = true

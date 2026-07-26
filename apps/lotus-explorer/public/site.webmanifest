@@ -1,44 +1,50 @@
 {
-  "name": "LOTUS Knowledge Explorer",
-  "short_name": "LOTUS",
-  "description": "Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
   "background_color": "#f6f8fb",
-  "theme_color": "#0b5cab",
-  "lang": "en",
+  "categories": [
+    "science",
+    "education",
+    "research",
+    "productivity"
+  ],
+  "description": "Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.",
   "dir": "ltr",
-  "screenshots": [],
+  "display": "standalone",
   "icons": [
     {
-      "src": "favicon.svg",
+      "purpose": "any",
       "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "favicon.svg",
+      "type": "image/svg+xml"
     },
     {
-      "src": "favicon.svg",
+      "purpose": "maskable",
       "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "src": "favicon.svg",
+      "type": "image/svg+xml"
     }
   ],
-  "categories": ["science", "education", "research", "productivity"],
+  "lang": "en",
+  "name": "LOTUS Knowledge Explorer",
   "prefer_related_applications": false,
+  "scope": "./",
+  "screenshots": [],
+  "short_name": "LOTUS",
   "shortcuts": [
     {
+      "description": "Search for natural product compounds",
+      "icons": [
+        {
+          "purpose": "any",
+          "sizes": "any",
+          "src": "favicon.svg",
+          "type": "image/svg+xml"
+        }
+      ],
       "name": "Search Compounds",
       "short_name": "Search",
-      "description": "Search for natural product compounds",
-      "url": "/?tab=search",
-      "icons": [
-          {
-            "src": "favicon.svg",
-            "sizes": "any",
-            "type": "image/svg+xml"
-          }
-      ]
+      "url": "./?tab=search"
     }
-  ]
+  ],
+  "start_url": "./",
+  "theme_color": "#0b5cab"
 }
