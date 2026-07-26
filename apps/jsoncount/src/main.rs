@@ -1,8 +1,7 @@
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
-#[cfg(target_arch = "wasm32")]
-use gloo_timers::future::TimeoutFuture;
+use ui::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::Uint8Array;
@@ -218,25 +217,86 @@ fn app() -> Element {
 
     rsx! {
         div {
-            style: "min-height: 100vh; padding: 2rem 1rem 3rem; background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); color: #0f172a; font-family: sans-serif;",
+            style: StyleBuilder::new()
+                .property("min-height", "100vh")
+                .padding(&format!("{} {} 3rem", Spacing::XL, Spacing::LG))
+                .background_color(ColorScheme::LIGHT.bg)
+                .color(ColorScheme::LIGHT.text)
+                .font_family(Typography::SANS)
+                .build(),
+
             div {
-                style: "max-width: 760px; margin: 0 auto; background: rgba(255,255,255,0.92); border: 1px solid rgba(148,163,184,0.22); border-radius: 20px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); padding: 1.4rem; backdrop-filter: blur(12px);",
-                h2 { style: "margin: 0 0 0.35rem; font-size: 1.6rem; letter-spacing: -0.02em;", "JSON Non-Null Field Counter" }
-                p { style: "margin: 0 0 1rem; color: #475569;", "Drop a JSON file into the upload area below or browse for it on disk. The scanner streams multi-gigabyte files in the browser while keeping memory bounded." }
+                style: StyleBuilder::new()
+                    .property("max-width", "760px")
+                    .margin("0 auto")
+                    .background_color(ColorScheme::LIGHT.surface)
+                    .border(&format!("1px solid {}", ColorScheme::LIGHT.border))
+                    .border_radius(Radius::LG)
+                    .box_shadow(Shadow::MD)
+                    .padding(Spacing::LG)
+                    .build(),
+
+                h2 {
+                    style: StyleBuilder::new()
+                        .margin("0 0 0.35rem 0")
+                        .font_size(Typography::H2)
+                        .font_weight("600")
+                        .color(ColorScheme::LIGHT.text)
+                        .build(),
+                    "JSON Non-Null Field Counter"
+                }
+
+                p {
+                    style: StyleBuilder::new()
+                        .margin("0 0 1rem 0")
+                        .color(ColorScheme::LIGHT.text2)
+                        .font_size(Typography::BODY)
+                        .line_height(Typography::LINE_HEIGHT)
+                        .build(),
+                    "Drop a JSON file into the upload area below or browse for it on disk. The scanner streams multi-gigabyte files in the browser while keeping memory bounded."
+                }
 
                 label {
                     r#for: "json-upload",
                     style: format!(
-                        "display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; min-height: 140px; width: 100%; box-sizing: border-box; position: relative; isolation: isolate; border: 2px dashed {}; border-radius: 18px; padding: 1rem; cursor: pointer; background: {}; color: #334155; font-weight: 600; text-align: center; transition: border-color 160ms ease, background 160ms ease;",
-                        if *drag_active.read() { "#2563eb" } else { "#94a3b8" },
-                        if *drag_active.read() { "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(239,246,255,0.94))" } else { "linear-gradient(135deg, rgba(248,250,252,0.95), rgba(239,246,255,0.95))" }
+                        "{}; {}; {}; {}; {}; {}; {}; {}; {}; {}; {}; {}; {}; {}; {}",
+                        StyleBuilder::new().display("flex").build(),
+                        StyleBuilder::new().flex_direction("column").build(),
+                        StyleBuilder::new().align_items("center").build(),
+                        StyleBuilder::new().justify_content("center").build(),
+                        StyleBuilder::new().gap(Spacing::MD).build(),
+                        StyleBuilder::new().property("min-height", "140px").build(),
+                        StyleBuilder::new().width("100%").property("box-sizing", "border-box").build(),
+                        StyleBuilder::new().property("position", "relative").build(),
+                        StyleBuilder::new().border(&format!("2px dashed {}", if *drag_active.read() { ColorScheme::LIGHT.blue } else { ColorScheme::LIGHT.border })).build(),
+                        StyleBuilder::new().border_radius(Radius::MD).build(),
+                        StyleBuilder::new().padding(Spacing::LG).build(),
+                        StyleBuilder::new().cursor("pointer").build(),
+                        StyleBuilder::new().background_color(if *drag_active.read() { ColorScheme::LIGHT.surface2 } else { ColorScheme::LIGHT.surface }).build(),
+                        StyleBuilder::new().color(ColorScheme::LIGHT.text2).build(),
+                        StyleBuilder::new().transition(Interaction::TRANSITION_FAST).build(),
                     ),
                     ondragenter: on_drag_enter,
                     ondragover: on_drag_over,
                     ondragleave: on_drag_leave,
                     ondrop: on_drop,
-                    span { style: "font-size: 1rem;", "Drop a JSON file here or click to browse" }
-                    span { style: "font-size: 0.85rem; font-weight: 500; color: #64748b;", ".json files only" }
+
+                    span {
+                        style: StyleBuilder::new()
+                            .font_size(Typography::BODY)
+                            .font_weight("600")
+                            .build(),
+                        "📁 Drop JSON file here or click to browse"
+                    }
+                    span {
+                        style: StyleBuilder::new()
+                            .font_size(Typography::LABEL)
+                            .font_weight("500")
+                            .color(ColorScheme::LIGHT.text3)
+                            .build(),
+                        ".json files only"
+                    }
+
                     input {
                         id: "json-upload",
                         r#type: "file",
@@ -247,29 +307,79 @@ fn app() -> Element {
                     }
                 }
 
-                p {
-                    style: "margin: 0.8rem 0 0; color: #475569; font-size: 0.9rem;",
-                    if !file_name.read().is_empty() {
-                        "Selected file: {file_name}"
+                if !file_name.read().is_empty() {
+                    p {
+                        style: StyleBuilder::new()
+                            .margin(&format!("{} 0 0", Spacing::MD))
+                            .color(ColorScheme::LIGHT.text2)
+                            .font_size(Typography::BODY)
+                            .build(),
+                        "Selected: {file_name}"
                     }
                 }
 
-                p { style: "margin: 0.7rem 0 0; font-weight: 600; color: #334155;", "{status}" }
+                p {
+                    style: StyleBuilder::new()
+                        .margin(&format!("{} 0 0", Spacing::MD))
+                        .font_weight("600")
+                        .color(if status.read().contains("Error") { ColorScheme::LIGHT.red } else { ColorScheme::LIGHT.text })
+                        .build(),
+                    "{status}"
+                }
 
                 if !results.read().is_empty() {
                     table {
-                        style: "width: 100%; border-collapse: collapse; margin-top: 1rem;",
+                        style: StyleBuilder::new()
+                            .width("100%")
+                            .property("border-collapse", "collapse")
+                            .margin(&format!("{} 0 0", Spacing::LG))
+                            .build(),
+
                         thead {
                             tr {
-                                th { style: "text-align: left; border-bottom: 2px solid #333; padding: 4px;", "Column" }
-                                th { style: "text-align: right; border-bottom: 2px solid #333; padding: 4px;", "Non-null count" }
+                                th {
+                                    style: StyleBuilder::new()
+                                        .text_align("left")
+                                        .border(&format!("2px solid {}", ColorScheme::LIGHT.border))
+                                        .padding(Spacing::SM)
+                                        .font_weight("600")
+                                        .color(ColorScheme::LIGHT.text)
+                                        .build(),
+                                    "Column"
+                                }
+                                th {
+                                    style: StyleBuilder::new()
+                                        .text_align("right")
+                                        .border(&format!("2px solid {}", ColorScheme::LIGHT.border))
+                                        .padding(Spacing::SM)
+                                        .font_weight("600")
+                                        .color(ColorScheme::LIGHT.text)
+                                        .build(),
+                                    "Non-null count"
+                                }
                             }
                         }
+
                         tbody {
                             for col in results.read().iter() {
                                 tr {
-                                    td { style: "padding: 4px; border-bottom: 1px solid #ddd;", "{col.key}" }
-                                    td { style: "padding: 4px; border-bottom: 1px solid #ddd; text-align: right;", "{col.count}" }
+                                    td {
+                                        style: StyleBuilder::new()
+                                            .padding(Spacing::SM)
+                                            .border(&format!("1px solid {}", ColorScheme::LIGHT.border))
+                                            .build(),
+                                        "{col.key}"
+                                    }
+                                    td {
+                                        style: StyleBuilder::new()
+                                            .padding(Spacing::SM)
+                                            .border(&format!("1px solid {}", ColorScheme::LIGHT.border))
+                                            .text_align("right")
+                                            .color(ColorScheme::LIGHT.green)
+                                            .font_weight("600")
+                                            .build(),
+                                        "{col.count}"
+                                    }
                                 }
                             }
                         }

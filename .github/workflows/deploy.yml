@@ -33,6 +33,12 @@ jobs:
       - name: Install dioxus-cli
         run: cargo binstall dioxus-cli --version 0.7.9 --locked --force
 
+      - name: Build index landing page
+        working-directory: apps/index
+        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/"
+        env:
+          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
+
       - name: Build lotus-explorer
         working-directory: apps/lotus-explorer
         run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/lotus-explorer/"
@@ -62,12 +68,15 @@ jobs:
           DX_OUT="target/dx"
           DX_WEB="release/web/public"
           mkdir -p _site
+
+          # Deploy index as root (landing page)
+          cp -r "$DX_OUT/index/$DX_WEB"/* _site/
+
+          # Deploy other apps to subdirectories
           cp -r "$DX_OUT/lotus-explorer/$DX_WEB" _site/lotus-explorer
           cp -r "$DX_OUT/hello-world/$DX_WEB"    _site/hello-world
           cp -r "$DX_OUT/jsoncount/$DX_WEB"      _site/jsoncount
           cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
-          cp .github/workflows/index-template.html _site/index.html
-
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
         with:
