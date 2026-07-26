@@ -14,7 +14,6 @@ name = "lotus-explorer"
 path = "src/main.rs"
 
 [dependencies]
-async-trait = "0.1"
 console_log = { workspace = true }
 dioxus = { workspace = true }
 futures = "0.3"

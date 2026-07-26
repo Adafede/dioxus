@@ -87,7 +87,7 @@ pub async fn compound_has_taxon_with_ref_cached(
 mod tests {
     use super::*;
     use crate::features::curation::domain::WikidataCompound;
-    use async_trait::async_trait;
+    use crate::features::curation::repositories::BoxedFuture;
     use futures::executor::block_on;
 
     #[derive(Default)]
@@ -95,59 +95,63 @@ mod tests {
         ask_calls: Mutex<usize>,
     }
 
-    #[async_trait(?Send)]
     impl CurationKnowledgeRepository for MockRepo {
-        async fn fetch_compound_by_inchikey(
+        fn fetch_compound_by_inchikey(
             &self,
             _inchikey: &str,
-        ) -> Result<Option<WikidataCompound>, CurationError> {
-            Ok(None)
+        ) -> BoxedFuture<Result<Option<WikidataCompound>, CurationError>> {
+            Box::pin(async { Ok(None) })
         }
 
-        async fn resolve_or_create_taxon(
+        fn resolve_or_create_taxon(
             &self,
             _name: &str,
             _pre_resolved_qid: Option<&str>,
-        ) -> Result<(Option<String>, Vec<String>), CurationError> {
-            Ok((None, Vec::new()))
+        ) -> BoxedFuture<Result<(Option<String>, Vec<String>), CurationError>> {
+            Box::pin(async { Ok((None, Vec::new())) })
         }
 
-        async fn resolve_reference_qid(&self, _doi: &str) -> Result<Option<String>, CurationError> {
-            Ok(None)
+        fn resolve_reference_qid(
+            &self,
+            _doi: &str,
+        ) -> BoxedFuture<Result<Option<String>, CurationError>> {
+            Box::pin(async { Ok(None) })
         }
 
-        async fn compound_has_taxon_with_ref(
+        fn compound_has_taxon_with_ref(
             &self,
             _compound_qid: &str,
             _taxon_qid: &str,
             _ref_qid: &str,
-        ) -> Result<bool, CurationError> {
-            Ok(false)
+        ) -> BoxedFuture<Result<bool, CurationError>> {
+            Box::pin(async { Ok(false) })
         }
 
-        async fn compound_has_taxon(
+        fn compound_has_taxon(
             &self,
             _compound_qid: &str,
             _taxon_qid: &str,
-        ) -> Result<bool, CurationError> {
-            if let Ok(mut calls) = self.ask_calls.lock() {
-                *calls += 1;
-            }
-            Ok(false)
+        ) -> BoxedFuture<Result<bool, CurationError>> {
+            Box::pin(async {
+                if let Ok(mut calls) = self.ask_calls.lock() {
+                    *calls += 1;
+                }
+                Ok(false)
+            })
         }
 
-        async fn resolve_taxon_qids_batch(
+        fn resolve_taxon_qids_batch(
             &self,
             _names: &[String],
-        ) -> Result<HashMap<String, String>, CurationError> {
-            Ok(HashMap::new())
+        ) -> BoxedFuture<Result<HashMap<String, String>, CurationError>> {
+            Box::pin(async { Ok(HashMap::new()) })
         }
 
-        async fn resolve_reference_qids_batch(
+        fn resolve_reference_qids_batch(
             &self,
             _dois: &[String],
-        ) -> Result<HashMap<String, String>, CurationError> {
-            Ok(HashMap::new())
+        ) -> BoxedFuture<Result<HashMap<String, String>, CurationError>> {
+            Box::pin(async { Ok(HashMap::new()) })
         }
     }
 

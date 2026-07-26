@@ -51,6 +51,17 @@ struct ColumnResult {
     count: u64,
 }
 
+/// Extract a Blob from the file picker or drag-drop event and start scanning.
+/// Returns `true` if extraction succeeded, `false` otherwise.
+#[cfg(target_arch = "wasm32")]
+fn extract_blob_from_file(
+    file: &dioxus::html::geometry::screen_space::FileEngine,
+) -> Option<Blob> {
+    file.inner()
+        .downcast_ref::<web_sys::File>()
+        .and_then(|web_file| web_file.clone().dyn_into::<Blob>().ok())
+}
+
 #[cfg(target_arch = "wasm32")]
 fn begin_scan_from_blob(
     blob: Blob,
@@ -131,11 +142,7 @@ fn app() -> Element {
 
         #[cfg(target_arch = "wasm32")]
         {
-            let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
-                status.set("This file type is not supported in the browser.".to_string());
-                return;
-            };
-            let Ok(blob) = web_file.clone().dyn_into::<Blob>() else {
+            let Some(blob) = extract_blob_from_file(&file) else {
                 status.set("Unable to read the selected file as a blob.".to_string());
                 return;
             };
@@ -184,11 +191,7 @@ fn app() -> Element {
 
         #[cfg(target_arch = "wasm32")]
         {
-            let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
-                status.set("This file type is not supported in the browser.".to_string());
-                return;
-            };
-            let Ok(blob) = web_file.clone().dyn_into::<Blob>() else {
+            let Some(blob) = extract_blob_from_file(&file) else {
                 status.set("Unable to read the selected file as a blob.".to_string());
                 return;
             };

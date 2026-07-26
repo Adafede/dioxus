@@ -2334,7 +2334,6 @@ dependencies = [
 name = "lotus-explorer"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "console_log",
  "dioxus",
  "futures",
