@@ -8,6 +8,7 @@ members = [
   "apps/lotus-api",
   "apps/lotus-explorer",
   "crates/shared",
+  "crates/ui",
 ]
 
 [workspace.package]
