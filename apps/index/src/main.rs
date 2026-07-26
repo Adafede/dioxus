@@ -28,14 +28,14 @@ use components::{AppCard, AppInfo};
 ///
 /// ```rust,no_run
 /// # use dioxus::prelude::*;
-/// # use index::App;
+/// # use index::app;
 /// #[component]
 /// pub fn MyApp() -> Element {
-///     rsx! { App {} }
+///     rsx! { app {} }
 /// }
 /// ```
 #[component]
-pub fn App() -> Element {
+pub fn app() -> Element {
     let container_style = StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
@@ -73,8 +73,6 @@ pub fn App() -> Element {
         .build();
 
     rsx! {
-        accessibility::SkipLink {}
-
         div { style: container_style,
             Header {
                 title: "🦀 Dioxus Experiments".to_string(),
@@ -103,7 +101,7 @@ pub fn App() -> Element {
                     }
                     p {
                         "If you're interested in hosting or collaborating on any of these projects, please "
-                        a { href: "https://github.com/adrutz", target: "_blank", rel: "noopener noreferrer", "reach out on GitHub" }
+                        a { href: "https://github.com/adafede", target: "_blank", rel: "noopener noreferrer", "reach out on GitHub" }
                         ". I'm always open to feedback and partnership opportunities."
                     }
                 }
@@ -134,14 +132,8 @@ const APPS: &[AppInfo] = &[
         path: "./mgf-precursor-erro-rs/",
         description: "Investigate mass spectrometry data. Upload MGF files and visualize precursor mass errors in both absolute (Da) and relative (ppm) units.",
     },
-    AppInfo {
-        id: "hello-world",
-        title: "👋 Hello World",
-        path: "./hello-world/",
-        description: "Getting started template for building new Dioxus applications. A minimal, clean foundation for your next WASM project.",
-    },
 ];
 
 fn main() {
-    dioxus::launch(App);
+    dioxus::launch(app);
 }

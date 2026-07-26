@@ -70,7 +70,7 @@ pub fn Footer(props: FooterProps) -> Element {
                 }
                 " • "
                 a {
-                    href: "https://github.com/adrutz/dioxus",
+                    href: "https://github.com/adafede/dioxus",
                     target: "_blank",
                     rel: "noopener noreferrer",
                     style: link_style_value(),

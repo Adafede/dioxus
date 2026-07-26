@@ -4,6 +4,8 @@ use dioxus::prelude::*;
 use ui::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
+use gloo_timers::future::sleep;
+#[cfg(target_arch = "wasm32")]
 use js_sys::Uint8Array;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, JsValue};
@@ -489,7 +491,7 @@ where
             // Yield to the event loop only when we actually reported, so we
             // don't stall the UI thread on huge files but also don't yield
             // needlessly on every single chunk.
-            TimeoutFuture::new(0).await;
+            sleep(std::time::Duration::from_millis(0)).await;
         }
 
         Ok(true)
