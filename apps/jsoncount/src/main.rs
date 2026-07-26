@@ -55,11 +55,10 @@ struct ColumnResult {
 }
 
 /// Extract a Blob from the file picker or drag-drop event and start scanning.
-/// Returns `true` if extraction succeeded, `false` otherwise.
 #[cfg(target_arch = "wasm32")]
-fn extract_blob_from_file(file: &dioxus::html::geometry::ScreenSpace) -> Option<Blob> {
-    file.inner()
-        .downcast_ref::<web_sys::File>()
+fn extract_blob_from_file(file: &dioxus::html::geometry::FileData) -> Option<Blob> {
+    file.as_file()
+        .ok()
         .and_then(|web_file| web_file.clone().dyn_into::<Blob>().ok())
 }
 
