@@ -76,7 +76,7 @@ pub fn app() -> Element {
         div { style: container_style,
             Header {
                 title: "🦀 Dioxus Experiments".to_string(),
-                subtitle: Some("A collection of open-source Rust/WASM applications exploring UI patterns, performance optimization, and data processing.".to_string()),
+                subtitle: Some("A collection of open-source Rust/WASM applications testing the boundaries of what's possible on the web. From knowledge graphs to mass spectrometry analysis.".to_string()),
             }
 
             main { id: "main-content", role: "main", style: main_style,
@@ -118,19 +118,19 @@ const APPS: &[AppInfo] = &[
         id: "lotus-explorer",
         title: "🪷 LOTUS Wikidata Explorer",
         path: "./lotus-explorer/",
-        description: "Browse natural product compounds with taxon references and Wikidata integration. Explore chemical data structures in an interactive knowledge graph.",
+        description: "Query the LOTUS knowledge graph powered by Wikidata. Explore natural products, their taxons, and bibliographic references through an interactive search interface.",
     },
     AppInfo {
         id: "jsoncount",
         title: "🧮 JSON Counter",
         path: "./jsoncount/",
-        description: "Analyze JSON files efficiently. Upload any JSON document and get field-by-field statistics on non-null values, with streaming support for large files.",
+        description: "Streaming JSON analysis for large datasets. Upload gigabyte-scale files and get instant statistics on field cardinality and null distributions.",
     },
     AppInfo {
         id: "mgf-precursor-error",
         title: "📊 MGF Precursor Error",
         path: "./mgf-precursor-erro-rs/",
-        description: "Investigate mass spectrometry data. Upload MGF files and visualize precursor mass errors in both absolute (Da) and relative (ppm) units.",
+        description: "Analyze mass spectrometry data. Visualize precursor mass errors from MGF files in absolute (Dalton) and relative (ppm) units with interactive plots.",
     },
 ];
 

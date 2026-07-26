@@ -1,6 +1,6 @@
 //! Header component with semantic HTML and proper accessibility.
 
-use crate::theme::{ColorScheme, Spacing, StyleBuilder, Typography};
+use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Properties for the Header component
@@ -48,6 +48,7 @@ pub fn Header(props: HeaderProps) -> Element {
             Spacing::LG
         ))
         .border(&format!("1px solid {}", colors.border))
+        .border_radius(Radius::LG)
         .text_align("center")
         .build();
 

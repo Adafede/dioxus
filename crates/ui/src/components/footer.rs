@@ -1,6 +1,6 @@
 //! Footer component with semantic HTML and external link security.
 
-use crate::theme::{ColorScheme, Spacing, StyleBuilder, Typography};
+use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Properties for the Footer component
@@ -36,6 +36,7 @@ pub fn Footer(props: FooterProps) -> Element {
     let footer_style = StyleBuilder::new()
         .background_color(colors.bg)
         .border(&format!("1px solid {}", colors.border))
+        .border_radius(Radius::LG)
         .padding(&format!("{} {}", Spacing::LG, Spacing::LG))
         .text_align("center")
         .build();
