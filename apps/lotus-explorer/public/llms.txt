@@ -5,7 +5,7 @@
 
 # LOTUS Knowledge Explorer
 
-> Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.
+> Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.
 
 ## Core information
 
@@ -17,11 +17,12 @@
 
 ## Features
 
-- Search by compound name, SMILES, or InChI
+- Search by taxon filters and structure input (SMILES or Molfile V2000/V3000)
+- Use Ketcher to draw structures, then copy Daylight SMILES or MOL V3000 back into search
+- Filter by mass, year, and formula
 - Browse taxonomy and references
-- Export CSV and JSON for downstream analysis
-- Work in English, French, German, and Italian
-- Generate QuickStatements for Wikidata curation
+- Export CSV, JSON, and SPARQL results for downstream analysis
+- Import TSV rows and generate QuickStatements for Wikidata curation
 
 ## Data sources
 

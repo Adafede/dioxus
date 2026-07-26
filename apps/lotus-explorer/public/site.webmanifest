@@ -6,7 +6,7 @@
     "research",
     "productivity"
   ],
-  "description": "Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.",
+  "description": "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.",
   "dir": "ltr",
   "display": "standalone",
   "icons": [

@@ -1,5 +1,5 @@
 # robots.txt — https://www.rfc-editor.org/rfc/rfc9309
-# Allow all well-behaved crawlers to index the site.
+# Allow all well-behaved crawlers to index public site pages and generated metadata.
 # Reference: https://specification.website/spec/seo/robots-txt/
 # Reference: https://specification.website/spec/agent-readiness/robots-for-ai-crawlers/
 

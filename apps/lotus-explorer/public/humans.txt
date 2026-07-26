@@ -17,13 +17,15 @@
 /* SITE */
   Product: LOTUS Knowledge Explorer
   Short name: LOTUS
-  Description: Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.
+  Description: Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.
   Language: English with French, German, Italian localizations
   Standards: HTML5, CSS3, WebAssembly, WCAG 2.1 AA, JSON-LD
   Components: Rust + Dioxus compiled to WASM
   Infrastructure: GitHub Pages (https://adafede.github.io/dioxus/lotus-explorer/)
   Repository: https://github.com/Adafede/dioxus
-  APIs: Wikidata SPARQL, QLever, DOI, PubChem
+  Search inputs: taxon filters, SMILES, Molfile V2000/V3000
+  Curation: TSV import, QuickStatements generation, structure resolution lookup
+  APIs: Wikidata SPARQL, QLever, DOI, RDKit.js, Citation.js, Ketcher
   License (app): AGPL-3.0 — https://www.gnu.org/licenses/agpl-3.0.html
   License (data): CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/
 

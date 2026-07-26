@@ -2,7 +2,7 @@
   "site": {
     "name": "LOTUS Knowledge Explorer",
     "short_name": "LOTUS",
-    "description": "Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.",
+    "description": "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.",
     "base_url": "https://adafede.github.io/dioxus/lotus-explorer/",
     "repo_url": "https://github.com/Adafede/dioxus",
     "issues_url": "https://github.com/Adafede/dioxus/issues",
