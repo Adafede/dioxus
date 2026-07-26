@@ -24,6 +24,9 @@ pub use wikidata::WikidataKnowledgeRepository;
 /// - Easier to reason about lifetime variance in repository implementations
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
+/// Resolve or create taxon result: (qid, quickstatements_lines).
+pub type ResolveTaxonResult = Result<(Option<String>, Vec<String>), CurationError>;
+
 /// Stable data-access boundary for curation orchestration and enrichment.
 ///
 /// Object-safe repository trait for querying and mutating Wikidata knowledge.
@@ -36,7 +39,7 @@ pub trait CurationKnowledgeRepository: Send + Sync {
     fn fetch_compound_by_inchikey(
         &self,
         inchikey: &str,
-    ) -> BoxedFuture<Result<Option<WikidataCompound>, CurationError>>;
+    ) -> BoxedFuture<'_, Result<Option<WikidataCompound>, CurationError>>;
 
     /// Resolve or create a taxon entity by name.
     ///
@@ -47,11 +50,13 @@ pub trait CurationKnowledgeRepository: Send + Sync {
         &self,
         name: &str,
         pre_resolved_qid: Option<&str>,
-    ) -> BoxedFuture<Result<(Option<String>, Vec<String>), CurationError>>;
+    ) -> BoxedFuture<'_, ResolveTaxonResult>;
 
     /// Resolve a reference (publication) by DOI to a Wikidata QID.
-    fn resolve_reference_qid(&self, doi: &str)
-        -> BoxedFuture<Result<Option<String>, CurationError>>;
+    fn resolve_reference_qid(
+        &self,
+        doi: &str,
+    ) -> BoxedFuture<'_, Result<Option<String>, CurationError>>;
 
     /// Check if a compound has a taxon occurrence with a specific reference (all three linked).
     fn compound_has_taxon_with_ref(
@@ -59,24 +64,24 @@ pub trait CurationKnowledgeRepository: Send + Sync {
         compound_qid: &str,
         taxon_qid: &str,
         ref_qid: &str,
-    ) -> BoxedFuture<Result<bool, CurationError>>;
+    ) -> BoxedFuture<'_, Result<bool, CurationError>>;
 
     /// Check if a compound has a taxon occurrence (any reference).
     fn compound_has_taxon(
         &self,
         compound_qid: &str,
         taxon_qid: &str,
-    ) -> BoxedFuture<Result<bool, CurationError>>;
+    ) -> BoxedFuture<'_, Result<bool, CurationError>>;
 
     /// Batch-resolve multiple taxon names to Wikidata QIDs.
     fn resolve_taxon_qids_batch(
         &self,
         names: &[String],
-    ) -> BoxedFuture<Result<HashMap<String, String>, CurationError>>;
+    ) -> BoxedFuture<'_, Result<HashMap<String, String>, CurationError>>;
 
     /// Batch-resolve multiple DOIs to Wikidata reference QIDs.
     fn resolve_reference_qids_batch(
         &self,
         dois: &[String],
-    ) -> BoxedFuture<Result<HashMap<String, String>, CurationError>>;
+    ) -> BoxedFuture<'_, Result<HashMap<String, String>, CurationError>>;
 }

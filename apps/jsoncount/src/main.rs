@@ -13,6 +13,9 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Blob;
 
+#[cfg(target_arch = "wasm32")]
+use shared::progress::ProgressThrottler;
+
 // ---------------------------------------------------------------------------
 // Performance notes (see accompanying explanation):
 //
@@ -54,9 +57,7 @@ struct ColumnResult {
 /// Extract a Blob from the file picker or drag-drop event and start scanning.
 /// Returns `true` if extraction succeeded, `false` otherwise.
 #[cfg(target_arch = "wasm32")]
-fn extract_blob_from_file(
-    file: &dioxus::html::geometry::screen_space::FileEngine,
-) -> Option<Blob> {
+fn extract_blob_from_file(file: &dioxus::html::geometry::screen_space::FileEngine) -> Option<Blob> {
     file.inner()
         .downcast_ref::<web_sys::File>()
         .and_then(|web_file| web_file.clone().dyn_into::<Blob>().ok())
@@ -282,54 +283,13 @@ fn app() -> Element {
 // Streaming scanner
 // ---------------------------------------------------------------------------
 
-/// Throttles progress callbacks + UI-yield points by both bytes processed
-/// and wall-clock time, so the UI stays responsive without being flooded
-/// with signal updates (which would themselves cost re-renders).
-#[cfg(target_arch = "wasm32")]
-struct ProgressReporter<'a> {
-    last_reported_bytes: u64,
-    last_reported_time: f64,
-    callback: Box<dyn FnMut(u64, u64) + 'a>,
-}
-
-#[cfg(target_arch = "wasm32")]
-impl<'a> ProgressReporter<'a> {
-    fn new<F>(callback: F) -> Self
-    where
-        F: FnMut(u64, u64) + 'a,
-    {
-        Self {
-            last_reported_bytes: 0,
-            last_reported_time: js_sys::Date::now(),
-            callback: Box::new(callback),
-        }
-    }
-
-    /// Reports (and returns true) if enough bytes or enough time has passed
-    /// since the last report.
-    fn maybe_report(&mut self, processed: u64, total: u64) -> bool {
-        let now = js_sys::Date::now();
-        let bytes_delta = processed.saturating_sub(self.last_reported_bytes);
-        if bytes_delta >= PROGRESS_BYTE_INTERVAL
-            || now - self.last_reported_time >= PROGRESS_TIME_INTERVAL_MS
-        {
-            (self.callback)(processed, total);
-            self.last_reported_bytes = processed;
-            self.last_reported_time = now;
-            true
-        } else {
-            false
-        }
-    }
-}
-
 /// Buffered, chunked reader over a `Blob`. Holds a single in-flight chunk
 /// (`buf[pos..]`) and only performs an async Blob read when that chunk is
 /// exhausted. All parsing helpers below scan `buf` synchronously and only
 /// call `fill()` at the buffer boundary, which is the key difference from
 /// a naive byte-at-a-time async reader.
 #[cfg(target_arch = "wasm32")]
-struct Cursor<'a> {
+struct Cursor<F> {
     blob: Blob,
     total_bytes: u64,
     blob_read: u64,
@@ -337,16 +297,16 @@ struct Cursor<'a> {
     pos: usize,
     processed_before_buf: u64,
     eof: bool,
-    progress: ProgressReporter<'a>,
+    progress: ProgressThrottler<F, fn() -> f64>,
 }
 
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::future_not_send)]
-impl<'a> Cursor<'a> {
-    fn new<F>(blob: &Blob, total_bytes: u64, on_progress: F) -> Self
-    where
-        F: FnMut(u64, u64) + 'a,
-    {
+impl<F> Cursor<F>
+where
+    F: FnMut(u64, u64),
+{
+    fn new(blob: &Blob, total_bytes: u64, on_progress: F) -> Self {
         Self {
             blob: blob.clone(),
             total_bytes,
@@ -355,7 +315,12 @@ impl<'a> Cursor<'a> {
             pos: 0,
             processed_before_buf: 0,
             eof: false,
-            progress: ProgressReporter::new(on_progress),
+            progress: ProgressThrottler::new(
+                on_progress,
+                js_sys::Date::now,
+                PROGRESS_BYTE_INTERVAL,
+                PROGRESS_TIME_INTERVAL_MS,
+            ),
         }
     }
 

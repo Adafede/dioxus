@@ -6,6 +6,8 @@ use crate::features::curation::domain::{CurationError, WikidataCompound};
 use crate::features::curation::services::wikidata;
 use std::collections::HashMap;
 
+use super::ResolveTaxonResult;
+
 #[derive(Debug, Default, Clone, Copy)]
 pub struct WikidataKnowledgeRepository;
 
@@ -13,7 +15,7 @@ impl CurationKnowledgeRepository for WikidataKnowledgeRepository {
     fn fetch_compound_by_inchikey(
         &self,
         inchikey: &str,
-    ) -> super::BoxedFuture<Result<Option<WikidataCompound>, CurationError>> {
+    ) -> super::BoxedFuture<'_, Result<Option<WikidataCompound>, CurationError>> {
         let inchikey = inchikey.to_string();
         Box::pin(async move { wikidata::fetch_wikidata_compound_by_inchikey(&inchikey).await })
     }
@@ -22,7 +24,7 @@ impl CurationKnowledgeRepository for WikidataKnowledgeRepository {
         &self,
         name: &str,
         pre_resolved_qid: Option<&str>,
-    ) -> super::BoxedFuture<Result<(Option<String>, Vec<String>), CurationError>> {
+    ) -> super::BoxedFuture<'_, ResolveTaxonResult> {
         let name = name.to_string();
         let pre_resolved_qid = pre_resolved_qid.map(|s| s.to_string());
         Box::pin(async move {
@@ -33,7 +35,7 @@ impl CurationKnowledgeRepository for WikidataKnowledgeRepository {
     fn resolve_reference_qid(
         &self,
         doi: &str,
-    ) -> super::BoxedFuture<Result<Option<String>, CurationError>> {
+    ) -> super::BoxedFuture<'_, Result<Option<String>, CurationError>> {
         let doi = doi.to_string();
         Box::pin(async move { wikidata::resolve_reference_qid(&doi).await })
     }
@@ -43,7 +45,7 @@ impl CurationKnowledgeRepository for WikidataKnowledgeRepository {
         compound_qid: &str,
         taxon_qid: &str,
         ref_qid: &str,
-    ) -> super::BoxedFuture<Result<bool, CurationError>> {
+    ) -> super::BoxedFuture<'_, Result<bool, CurationError>> {
         let compound_qid = compound_qid.to_string();
         let taxon_qid = taxon_qid.to_string();
         let ref_qid = ref_qid.to_string();
@@ -56,18 +58,16 @@ impl CurationKnowledgeRepository for WikidataKnowledgeRepository {
         &self,
         compound_qid: &str,
         taxon_qid: &str,
-    ) -> super::BoxedFuture<Result<bool, CurationError>> {
+    ) -> super::BoxedFuture<'_, Result<bool, CurationError>> {
         let compound_qid = compound_qid.to_string();
         let taxon_qid = taxon_qid.to_string();
-        Box::pin(async move {
-            wikidata::compound_has_taxon(&compound_qid, &taxon_qid).await
-        })
+        Box::pin(async move { wikidata::compound_has_taxon(&compound_qid, &taxon_qid).await })
     }
 
     fn resolve_taxon_qids_batch(
         &self,
         names: &[String],
-    ) -> super::BoxedFuture<Result<HashMap<String, String>, CurationError>> {
+    ) -> super::BoxedFuture<'_, Result<HashMap<String, String>, CurationError>> {
         let names: Vec<String> = names.to_vec();
         Box::pin(async move {
             wikidata::resolve_taxon_qids_batch(names.iter().map(|s| s.as_str())).await
@@ -77,7 +77,7 @@ impl CurationKnowledgeRepository for WikidataKnowledgeRepository {
     fn resolve_reference_qids_batch(
         &self,
         dois: &[String],
-    ) -> super::BoxedFuture<Result<HashMap<String, String>, CurationError>> {
+    ) -> super::BoxedFuture<'_, Result<HashMap<String, String>, CurationError>> {
         let dois: Vec<String> = dois.to_vec();
         Box::pin(async move {
             wikidata::resolve_reference_qids_batch(dois.iter().map(|s| s.as_str())).await

@@ -2,4 +2,5 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 pub mod lotus;
+pub mod progress;
 pub mod sparql;
