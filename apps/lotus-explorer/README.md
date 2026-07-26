@@ -34,4 +34,4 @@ cargo test --locked -p lotus-explorer utils::logging::tests
 `public/llms.txt`, `public/humans.txt`, `public/robots.txt`,
 `public/.well-known/security.txt`, `public/_headers`, and
 `public/site.webmanifest` are generated from
-[`metadata/site-metadata.toml`](./metadata/site-metadata.toml).
+[`metadata/site-metadata.json`](./metadata/site-metadata.json).

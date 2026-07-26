@@ -63,9 +63,9 @@ struct Shortcut {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")?);
-    let metadata_path = manifest_dir.join("metadata/site-metadata.toml");
+    let metadata_path = manifest_dir.join("metadata/site-metadata.json");
     let raw = fs::read_to_string(&metadata_path)?;
-    let metadata: Metadata = toml::from_str(&raw)?;
+    let metadata: Metadata = serde_json::from_str(&raw)?;
 
     let public_dir = manifest_dir.join("public");
     let well_known_dir = public_dir.join(".well-known");
@@ -260,7 +260,7 @@ fn build_security_txt(meta: &Metadata) -> String {
 }
 
 fn build_headers_txt(_meta: &Metadata) -> String {
-    format!(concat!(
+    concat!(
         "# Netlify / Cloudflare Pages / compatible CDN — HTTP security headers\n",
         "# Reference: https://specification.website/spec/security/\n",
         "# Reference: https://specification.website/spec/agent-readiness/link-headers/\n",
@@ -299,7 +299,8 @@ fn build_headers_txt(_meta: &Metadata) -> String {
         "  Cache-Control: public, max-age=604800\n\n",
         "  /index.html\n",
         "  No-Vary-Search: params=(\"locale\"), params_key_order=(\"locale\",\"search\",\"query\")\n",
-    ),)
+    )
+    .to_string()
 }
 
 fn build_manifest_json(meta: &Metadata) -> serde_json::Value {

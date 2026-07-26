@@ -1,0 +1,62 @@
+{
+  "site": {
+    "name": "LOTUS Knowledge Explorer",
+    "short_name": "LOTUS",
+    "description": "Explore the LOTUS linked open data knowledge graph: search natural-product compounds, taxa, and references — all openly queryable via SPARQL on Wikidata.",
+    "base_url": "https://adafede.github.io/dioxus/lotus-explorer/",
+    "repo_url": "https://github.com/Adafede/dioxus",
+    "issues_url": "https://github.com/Adafede/dioxus/issues",
+    "discussions_url": "https://github.com/Adafede/dioxus/discussions",
+    "lotus_home_url": "https://lotusnprod.github.io",
+    "paper_doi_url": "https://doi.org/10.7554/eLife.70780",
+    "paper_landing_url": "https://elifesciences.org/articles/70780",
+    "bibtex_path": "/public/docs/references.bib",
+    "app_license_url": "https://www.gnu.org/licenses/agpl-3.0.html",
+    "data_license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "security_contact_url": "https://github.com/Adafede/dioxus/security/advisories/new",
+    "security_policy_url": "https://github.com/Adafede/dioxus/blob/main/SECURITY.md",
+    "source_path": "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explorer"
+  },
+  "manifest": {
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#f6f8fb",
+    "theme_color": "#0b5cab",
+    "lang": "en",
+    "dir": "ltr",
+    "screenshots": [],
+    "categories": ["science", "education", "research", "productivity"],
+    "prefer_related_applications": false,
+    "icons": [
+      {
+        "src": "favicon.svg",
+        "sizes": "any",
+        "type": "image/svg+xml",
+        "purpose": "any"
+      },
+      {
+        "src": "favicon.svg",
+        "sizes": "any",
+        "type": "image/svg+xml",
+        "purpose": "maskable"
+      }
+    ],
+    "shortcuts": [
+      {
+        "name": "Search Compounds",
+        "short_name": "Search",
+        "description": "Search for natural product compounds",
+        "url": "./?tab=search",
+        "icons": [
+          {
+            "src": "favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+          }
+        ]
+      }
+    ]
+  }
+}
