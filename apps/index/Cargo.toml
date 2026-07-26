@@ -1,0 +1,20 @@
+[package]
+name = "index"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "Landing page for Dioxus experiments — accessible, type-safe, showcasing best practices"
+license = "AGPL-3.0-only"
+keywords = ["dioxus", "landing", "web", "wasm", "accessibility"]
+categories = ["wasm", "web-programming"]
+publish = false
+
+[[bin]]
+name = "index"
+path = "src/main.rs"
+
+[dependencies]
+dioxus = { workspace = true }
+
+[lints]
+workspace = true

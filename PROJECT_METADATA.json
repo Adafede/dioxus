@@ -1,6 +1,5 @@
 {
   "name": "dioxus-apps",
-  "workspace_root": "/Users/adrutz/Git/dioxus",
   "primary_language": "Rust",
   "secondary_languages": ["Markdown", "JSON", "YAML"],
   "packages": [

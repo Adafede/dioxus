@@ -2010,6 +2010,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "index"
+version = "0.1.0"
+dependencies = [
+ "dioxus",
+]
+
+[[package]]
 name = "indexmap"
 version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
