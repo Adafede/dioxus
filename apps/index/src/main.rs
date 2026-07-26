@@ -97,7 +97,7 @@ pub fn app() -> Element {
                         strong { "experimental applications" }
                         " built with "
                         a { href: "https://dioxuslabs.com", target: "_blank", rel: "noopener noreferrer", "Dioxus" }
-                        " to explore UI patterns, performance optimizations, and data processing workflows. They're hosted here at my own discretion."
+                        " to explore a few things I am interested in. They're hosted here at my own discretion."
                     }
                     p {
                         "If you're interested in hosting or collaborating on any of these projects, please "
