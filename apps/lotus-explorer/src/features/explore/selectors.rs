@@ -18,10 +18,9 @@
 //! ## Wired consumers
 //! * [`crate::components::results_viewport::ResultsViewport`] — uses
 //!   `use_lifecycle_selector` and `use_result_selector`
-//! * [`crate::components::results_table::ResultsTable`] — uses
+//! * [`crate::components::results_table::ResultsTable`] — uses both
 //!   `use_result_arc_selector` (entries, ptr equality) and `use_result_selector`
 //!   (sort); this eliminates O(N) deep comparisons on every sort toggle.
-//! * [`crate::components::results_table::toolbar::ResultsToolbar`] — uses both
 //! * [`crate::components::layout::sidebar::Sidebar`] — uses `use_ui_selector`
 //! * [`crate::components::form_sections`] — use `use_criteria_selector`
 

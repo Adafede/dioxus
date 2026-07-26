@@ -22,7 +22,7 @@ use crate::services::search_telemetry as telemetry;
 /// Wall-clock timings accumulated during a single search execution.
 ///
 /// All durations are summed; for WASM parallel fetches
-/// [`add_parallel_network`] accepts an already-overlapped elapsed value so
+/// `add_parallel_network` accepts an already-overlapped elapsed value so
 /// the total reflects wall time, not summed sequential time.
 #[derive(Default, Clone, Copy)]
 pub struct SearchMetrics {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Hook for managing the "add one row" form state in [`DataCurationPage`].
+//! Hook for managing the "add one row" form state in the data curation page.
 //!
 //! Extracting the four input signals and validation logic here keeps the
 //! component body focused on layout and event wiring.

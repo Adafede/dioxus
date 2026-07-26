@@ -3,7 +3,7 @@
 
 //! Retryable search orchestration — integration point for error recovery with the base orchestrator.
 //!
-//! This module demonstrates how to integrate the [`error_recovery_coordinator`] into search
+//! This module demonstrates how to integrate the `error_recovery_coordinator` module into search
 //! orchestration. It provides utilities for determining retry behavior based on error classification.
 //!
 //! ## Usage

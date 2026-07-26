@@ -83,8 +83,8 @@ pub async fn fetch_wikidata_compound_by_inchikey(
     }))
 }
 
-/// Returns (Option<QID>, Vec<creation_QS_lines>).
-/// If the taxon exists, returns (Some(qid), []). Otherwise, returns (None, <minimal CREATE QS>).
+/// Returns `(Option<QID>, Vec<creation_QS_lines>)`.
+/// If the taxon exists, returns `(Some(qid), [])`. Otherwise, returns `(None, minimal_CREATE_QS)`.
 pub async fn resolve_or_create_taxon(
     name: &str,
     pre_resolved_qid: Option<&str>,

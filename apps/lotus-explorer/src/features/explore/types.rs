@@ -6,9 +6,8 @@
 //! ## Error hierarchy
 //!
 //! Internal business logic uses [`DomainError`] — a structured, i18n-free type so
-//! that formatting decisions remain at the UI boundary.  Components call
-//! [`crate::components::layout::notices::format_domain_error`] to produce the
-//! right locale string at render time.
+//! that formatting decisions remain at the UI boundary. Components call a formatting
+//! function to produce the right locale string at render time.
 
 use thiserror::Error;
 
@@ -129,8 +128,7 @@ pub enum ParseFault {
 
 /// Top-level domain error used throughout the Explore feature.
 ///
-/// Contains **no locale-dependent strings**; UI components call
-/// [`crate::components::layout::notices::format_domain_error`] at render time.
+/// Contains **no locale-dependent strings**; UI components format errors at render time.
 #[derive(Clone, Debug, PartialEq, Error)]
 pub enum DomainError {
     #[error("validation: {0}")]
