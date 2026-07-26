@@ -133,6 +133,9 @@ fn spawn_scan(
 
 #[component]
 fn app() -> Element {
+    #[cfg(target_arch = "wasm32")]
+    let file_name = use_signal(String::new);
+    #[cfg(not(target_arch = "wasm32"))]
     let mut file_name = use_signal(String::new);
     let results = use_signal(Vec::<ColumnResult>::new);
     let mut status = use_signal(|| "Choose a JSON file to begin.".to_string());
