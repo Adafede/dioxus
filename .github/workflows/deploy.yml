@@ -66,47 +66,7 @@ jobs:
           cp -r "$DX_OUT/hello-world/$DX_WEB"    _site/hello-world
           cp -r "$DX_OUT/jsoncount/$DX_WEB"      _site/jsoncount
           cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
-
-          cat > _site/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>dioxus-apps</title>
-            <style>
-              body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; padding: 0 1rem; }
-              h1 { font-size: 1.5rem; }
-              ul { list-style: none; padding: 0; }
-              li { margin: 0.75rem 0; }
-              a { color: #58a6ff; text-decoration: none; font-size: 1.1rem; }
-              a:hover { text-decoration: underline; }
-              p.desc { color: #8b949e; font-size: 0.9rem; margin: 0.2rem 0 0 0; }
-            </style>
-          </head>
-          <body>
-            <h1>🦀 dioxus-apps</h1>
-            <ul>
-              <li>
-                <a href="./lotus-explorer/">🪷 LOTUS Wikidata Explorer</a>
-                <p class="desc">Natural product compound  taxon  reference browser</p>
-              </li>
-              <li>
-                <a href="./hello-world/">👋 Hello World</a>
-                <p class="desc">Minimal template for new apps</p>
-              </li>
-              <li>
-                <a href="./jsoncount/">🧮 JSON Counter</a>
-                <p class="desc">Upload a JSON file and count non-null values per field</p>
-              </li>
-              <li>
-                <a href="./mgf-precursor-erro-rs/">📊 MGF Precursor Error</a>
-                <p class="desc">Upload an MGF file and explore precursor mass errors in Da and ppm</p>
-              </li>
-            </ul>
-          </body>
-          </html>
-          EOF
+          cp .github/workflows/index-template.html _site/index.html
 
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
