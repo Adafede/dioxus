@@ -45,12 +45,6 @@ jobs:
         env:
           GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
 
-      - name: Build hello-world
-        working-directory: apps/hello-world
-        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/hello-world/"
-        env:
-          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
-
       - name: Build jsoncount
         working-directory: apps/jsoncount
         run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/jsoncount/"
@@ -74,7 +68,6 @@ jobs:
 
           # Deploy other apps to subdirectories
           cp -r "$DX_OUT/lotus-explorer/$DX_WEB" _site/lotus-explorer
-          cp -r "$DX_OUT/hello-world/$DX_WEB"    _site/hello-world
           cp -r "$DX_OUT/jsoncount/$DX_WEB"      _site/jsoncount
           cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
 

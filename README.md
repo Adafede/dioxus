@@ -45,7 +45,6 @@ dioxus-apps/
 ├── prek.toml                 ← repo hooks and quality gate
 ├── .github/                  ← CI, deploy, governance
 ├── apps/
-│   ├── hello-world/          ← minimal template for new apps
 │   ├── index/                ← accessible landing page
 │   ├── jsoncount/            ← upload a JSON file and count non-null values
 │   ├── mgf-precursor-erro-rs/ ← upload an MGF file and explore mass errors
@@ -162,11 +161,10 @@ LOTUS_API_BASE=https://your-server.example.org \
 
 ## Adding a new app
 
-1. `cp -r apps/hello-world apps/my-new-app`
-2. Edit `apps/my-new-app/Cargo.toml` --- change `name`
-3. Edit `apps/my-new-app/Dioxus.toml` --- change `name` and `title`
-4. Add `"apps/my-new-app"` to `members` in `Cargo.toml`
-5. `dx serve --package my-new-app`
+1. Copy the app directory that best matches your target stack.
+2. Edit `Cargo.toml` and `Dioxus.toml` to set `name` and `title`.
+3. Add `"apps/my-new-app"` to `members` in `Cargo.toml`.
+4. `dx serve --package my-new-app`
 
 ## URL automation
 

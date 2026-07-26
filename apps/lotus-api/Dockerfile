@@ -11,8 +11,6 @@ COPY apps/lotus-api/ apps/lotus-api/
 COPY apps/lotus-explorer/src/models.rs  apps/lotus-explorer/src/models.rs
 COPY apps/lotus-explorer/src/queries.rs apps/lotus-explorer/src/queries.rs
 COPY apps/lotus-explorer/src/sparql.rs  apps/lotus-explorer/src/sparql.rs
-# hello-world and lotus-explorer must be present for the workspace to resolve
-COPY apps/hello-world/  apps/hello-world/
 COPY apps/lotus-explorer/ apps/lotus-explorer/
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

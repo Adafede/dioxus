@@ -27,6 +27,18 @@ use crate::plotting::{
 };
 use crate::recalibration::CalibrationModel;
 
+#[component]
+fn skip_link() -> Element {
+    rsx! {
+        a {
+            href: "#main",
+            class: "skip-link",
+            style: "position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:#1e40af;color:#fff;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:none;",
+            "Skip to main content"
+        }
+    }
+}
+
 fn format_lambda(lambda: f64) -> String {
     format!("{lambda:.2}")
 }
@@ -169,17 +181,15 @@ pub fn app() -> Element {
     rsx! {
         div {
             style: "min-height: 100vh; padding: 2rem 1rem 3rem; background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); color: #0f172a;",
-            div {
+            style { ".skip-link:focus {{ top: 0 !important; }}" }
+            skip_link {}
+
+            main { id: "main",
                 style: "max-width: 960px; margin: 0 auto;",
-                div {
-                    style: "display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;",
-                    div {
-                        h2 { style: "margin: 0; font-size: 1.7rem; letter-spacing: -0.02em;", "MGF Precursor Error" }
-                        p {
-                            style: "margin: 0.2rem 0 0; color: #475569; font-size: 0.95rem;",
-                            "Upload an MGF file and explore precursor mass errors in Da and ppm."
-                        }
-                    }
+                h1 { style: "margin: 0 0 0.35rem; font-size: 1.7rem; letter-spacing: -0.02em;", "MGF Precursor Error" }
+                p {
+                    style: "margin: 0 0 1.25rem; color: #475569; font-size: 0.95rem;",
+                    "Upload an MGF file and explore precursor mass errors in Da and ppm."
                 }
 
                 div {
@@ -204,8 +214,26 @@ pub fn app() -> Element {
                             accept: ".mgf",
                             disabled: *busy.read(),
                             onchange: on_file_change,
+                            aria_describedby: "mgf-upload-help mgf-upload-status",
                             style: "position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;",
                         }
+                    }
+                    p { id: "mgf-upload-help", style: "margin: 0.7rem 0 0; color: #475569; font-size: 0.9rem;", "Accepts .mgf files. Use drag and drop or browse." }
+
+                    if !file_name.read().is_empty() {
+                        p {
+                            style: "margin: 0.35rem 0 0; color: #475569; font-size: 0.9rem;",
+                            "Selected file: {file_name}"
+                        }
+                    }
+
+                    p {
+                        id: "mgf-upload-status",
+                        role: "status",
+                        aria_live: "polite",
+                        aria_atomic: "true",
+                        style: "margin: 0.7rem 0 0; font-weight: 600; color: #334155;",
+                        "{status}"
                     }
 
                     if file_name.read().is_empty() && metrics.read().is_none() && !(*busy.read()) {
@@ -224,19 +252,10 @@ pub fn app() -> Element {
                         }
                     }
 
-                    p {
-                        style: "margin: 0.7rem 0 0; color: #475569; font-size: 0.9rem;",
-                        if !file_name.read().is_empty() {
-                            "Selected file: {file_name}"
-                        }
-                    }
-
-                    p { style: "margin: 0.7rem 0 0; font-weight: 600; color: #334155;", "{status}" }
-
                     if let Some(metrics) = metrics.read().as_ref() {
                         div {
                             style: "margin-top: 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
-                            h3 { style: "margin: 0 0 0.4rem; font-size: 1rem;", "Summary" }
+                            h2 { style: "margin: 0 0 0.4rem; font-size: 1rem;", "Summary" }
                             p { style: "margin: 0.35rem 0; color: #475569;", "Processed {metrics.total_spectra} spectra; compared {metrics.spectra} with usable reference masses." }
                             p { style: "margin: 0.35rem 0; color: #475569;", "{metrics.spectra_with_reference_mass} spectra had a usable reference mass." }
 
@@ -400,7 +419,7 @@ pub fn app() -> Element {
                             // Recalibration control panel
                             div {
                                 style: "margin-top: 1.5rem; padding: 1.2rem; border: 2px solid #3b82f6; border-radius: 16px; background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);",
-                                h3 { style: "margin: 0 0 0.8rem; font-size: 1.1rem; color: #1e40af;", "🔬 MS2 Fragment Recalibration" }
+                                h2 { style: "margin: 0 0 0.8rem; font-size: 1.1rem; color: #1e40af;", "🔬 MS2 Fragment Recalibration" }
                                 p { style: "margin: 0 0 1rem; color: #1e40af; font-size: 0.95rem;", "Apply precursor-driven recalibration to MS2 fragments using the discrepancy between MS1 and MS2 precursor m/z." }
 
                                 div {

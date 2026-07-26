@@ -1,0 +1,10 @@
+[application]
+name = "jsoncount"
+default_platform = "web"
+
+[web.app]
+title = "JSON Non-Null Field Counter"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src"]

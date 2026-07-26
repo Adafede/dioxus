@@ -35,17 +35,14 @@ jobs:
         working-directory: apps/lotus-explorer
         run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lotus-explorer/"
 
-      - name: Build hello-world
-        working-directory: apps/hello-world
-        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/hello-world/"
-
       - name: Assemble site
         run: |
           DX_OUT="target/dx"
           DX_WEB="release/web/public"
           mkdir -p _site
           cp -r "$DX_OUT/lotus-explorer/$DX_WEB" _site/lotus-explorer
-          cp -r "$DX_OUT/hello-world/$DX_WEB"    _site/hello-world
+          cp -r "$DX_OUT/jsoncount/$DX_WEB"      _site/jsoncount
+          cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
 
 
           cat > _site/index.html << 'EOF'
@@ -73,8 +70,12 @@ jobs:
                 <p class="desc">Natural product compound × taxon × reference browser</p>
               </li>
               <li>
-                <a href="./hello-world/">👋 Hello World</a>
-                <p class="desc">Minimal template for new apps</p>
+                <a href="./jsoncount/">🧮 JSON Counter</a>
+                <p class="desc">Upload JSON and count non-null fields</p>
+              </li>
+              <li>
+                <a href="./mgf-precursor-erro-rs/">📊 MGF Precursor Error</a>
+                <p class="desc">Upload MGF and inspect precursor error distributions</p>
               </li>
             </ul>
           </body>

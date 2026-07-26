@@ -45,6 +45,18 @@ fn scan_error(message: &str) -> ScanError {
     JsValue::from_str(message)
 }
 
+#[component]
+fn skip_link() -> Element {
+    rsx! {
+        a {
+            href: "#main-content",
+            class: "skip-link",
+            style: "position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:#0b5cab;color:#fff;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:none;",
+            "Skip to main content"
+        }
+    }
+}
+
 fn main() {
     dioxus::launch(app);
 }
@@ -227,7 +239,11 @@ fn app() -> Element {
                 .font_family(Typography::SANS)
                 .build(),
 
-            div {
+            style { ".skip-link:focus {{ top: 0 !important; }}" }
+            skip_link {}
+
+            main {
+                id: "main-content",
                 style: StyleBuilder::new()
                     .property("max-width", "760px")
                     .margin("0 auto")
@@ -238,10 +254,10 @@ fn app() -> Element {
                     .padding(Spacing::LG)
                     .build(),
 
-                h2 {
+                h1 {
                     style: StyleBuilder::new()
                         .margin("0 0 0.35rem 0")
-                        .font_size(Typography::H2)
+                        .font_size(Typography::H1)
                         .font_weight("600")
                         .color(ColorScheme::LIGHT.text)
                         .build(),
@@ -256,6 +272,17 @@ fn app() -> Element {
                         .line_height(Typography::LINE_HEIGHT)
                         .build(),
                     "Drop a JSON file into the upload area below or browse for it on disk. The scanner streams multi-gigabyte files in the browser while keeping memory bounded."
+                }
+
+                p {
+                    id: "json-upload-help",
+                    style: StyleBuilder::new()
+                        .margin("0 0 1rem 0")
+                        .color(ColorScheme::LIGHT.text3)
+                        .font_size(Typography::LABEL)
+                        .line_height(Typography::LINE_HEIGHT)
+                        .build(),
+                    "Accepts .json files. The upload area is keyboard focusable and supports drag and drop."
                 }
 
                 label {
@@ -305,6 +332,7 @@ fn app() -> Element {
                         accept: ".json",
                         disabled: *busy.read(),
                         onchange: on_file_change,
+                        aria_describedby: "json-upload-help json-upload-status",
                         style: "position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;",
                     }
                 }
@@ -321,6 +349,10 @@ fn app() -> Element {
                 }
 
                 p {
+                    id: "json-upload-status",
+                    role: "status",
+                    aria_live: "polite",
+                    aria_atomic: "true",
                     style: StyleBuilder::new()
                         .margin(&format!("{} 0 0", Spacing::MD))
                         .font_weight("600")
@@ -331,15 +363,28 @@ fn app() -> Element {
 
                 if !results.read().is_empty() {
                     table {
+                        "aria-labelledby": "results-heading",
                         style: StyleBuilder::new()
                             .width("100%")
                             .property("border-collapse", "collapse")
                             .margin(&format!("{} 0 0", Spacing::LG))
                             .build(),
+                        caption {
+                            id: "results-heading",
+                            style: StyleBuilder::new()
+                                .margin("0 0 0.5rem 0")
+                                .font_size(Typography::H2)
+                                .font_weight("600")
+                                .color(ColorScheme::LIGHT.text)
+                                .text_align("left")
+                                .build(),
+                            "Non-null counts by column"
+                        }
 
                         thead {
                             tr {
                                 th {
+                                    scope: "col",
                                     style: StyleBuilder::new()
                                         .text_align("left")
                                         .border(&format!("2px solid {}", ColorScheme::LIGHT.border))
@@ -350,6 +395,7 @@ fn app() -> Element {
                                     "Column"
                                 }
                                 th {
+                                    scope: "col",
                                     style: StyleBuilder::new()
                                         .text_align("right")
                                         .border(&format!("2px solid {}", ColorScheme::LIGHT.border))
