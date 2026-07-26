@@ -70,7 +70,7 @@ pub fn Header(props: HeaderProps) -> Element {
         .build();
 
     rsx! {
-        header { role: "banner", style: header_style,
+        header { style: header_style,
             h1 { style: title_style, "{props.title}" }
             if let Some(subtitle) = props.subtitle {
                 p { style: subtitle_style, "{subtitle}" }

@@ -12,6 +12,7 @@ use ui::prelude::*;
 mod accessibility;
 mod components;
 
+use accessibility::SkipLink;
 use components::{AppCard, AppInfo};
 
 /// Root application component.
@@ -74,13 +75,16 @@ pub fn app() -> Element {
 
     rsx! {
         div { style: container_style,
+            SkipLink {}
+
             Header {
                 title: "🦀 Dioxus Experiments".to_string(),
                 subtitle: Some("A collection of open-source Rust/WASM applications testing the boundaries of what's possible on the web. From knowledge graphs to mass spectrometry analysis.".to_string()),
             }
 
-            main { id: "main-content", role: "main", style: main_style,
+            main { id: "main-content", style: main_style,
                 section { aria_labelledby: "apps-heading",
+                    h2 { id: "apps-heading", "Applications" }
                     div { style: grid_style,
                         {APPS.iter().map(|&app| {
                             rsx! {
@@ -90,8 +94,11 @@ pub fn app() -> Element {
                     }
                 }
 
-                section { role: "complementary", aria_labelledby: "disclaimer-heading", style: disclaimer_style,
-                    h2 { id: "disclaimer-heading", style: disclaimer_heading_style, "⚠️ About These Prototypes" }
+                aside { aria_labelledby: "disclaimer-heading", style: disclaimer_style,
+                    h2 { id: "disclaimer-heading", style: disclaimer_heading_style,
+                        span { aria_hidden: "true", "⚠️ " }
+                        "About These Prototypes"
+                    }
                     p {
                         "These are "
                         strong { "experimental applications" }

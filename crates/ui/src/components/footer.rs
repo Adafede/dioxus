@@ -59,7 +59,7 @@ pub fn Footer(props: FooterProps) -> Element {
     };
 
     rsx! {
-        footer { role: "contentinfo", style: footer_style,
+        footer { style: footer_style,
             p { style: text_style,
                 "Built with "
                 a {
