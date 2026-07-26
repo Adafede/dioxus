@@ -8,10 +8,10 @@ Use this checklist every time you publish a new release to the organization.
 
 ```bash
 # Full CI-equivalent gate — must pass with zero warnings
-make qa
+prek run cargo-qa
 
 # Supply-chain gate — advisories, licenses, bans, sources
-make supply-chain
+prek run cargo-supply-chain
 ```
 
 Both must succeed **on a clean working tree** before continuing.
@@ -97,8 +97,8 @@ After each release, run:
 
 ```bash
 cargo update
-make qa
-make supply-chain
+prek run cargo-qa
+prek run cargo-supply-chain
 ```
 
 Review and commit `Cargo.lock` with any intentional updates. Treat each

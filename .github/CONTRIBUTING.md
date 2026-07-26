@@ -31,13 +31,13 @@ git commit --signoff -m "feat: your change"
 ## Required local checks
 
 ```bash
-make qa
+prek run cargo-qa
 ```
 
 Optional (recommended when touching dependencies):
 
 ```bash
-make supply-chain
+prek run cargo-supply-chain
 ```
 
 ## Commit standards
@@ -49,6 +49,6 @@ make supply-chain
 ## Pull request checklist
 
 - [ ] Tests added/updated for behavior changes
-- [ ] `make qa` passes locally
+- [ ] `prek run cargo-qa` passes locally
 - [ ] New env vars and operational changes documented
 - [ ] API behavior changes reflected in OpenAPI docs

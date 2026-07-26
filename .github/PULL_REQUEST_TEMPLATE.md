@@ -32,7 +32,8 @@ Closes #<!-- issue number, if applicable -->
 - [ ] Existing tests still pass
   (`cargo test --workspace --all-targets --locked`)
 - [ ] New tests added for new or fixed behavior
-- [ ] Manually tested with `dx serve --package <app>` / `cargo run -p lotus-api`
+- [ ] Manually tested with `dx serve --package <app>` /
+  `cargo run --locked -p lotus-api`
 
 --------------------------------------------------------------------------------
 

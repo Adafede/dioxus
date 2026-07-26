@@ -21,7 +21,7 @@ knowledge graph from Wikidata, queried via SPARQL.
 Run logging format tests during telemetry work:
 
 ```bash
-cargo test -p lotus-explorer utils::logging::tests
+cargo test --locked -p lotus-explorer utils::logging::tests
 ```
 
 ## Citation

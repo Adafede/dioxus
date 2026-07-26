@@ -24,6 +24,6 @@ remediation plan within 7 business days.
 
 1. Reproduce and triage the report on a private branch.
 2. Patch with tests.
-3. Run `make qa` and supply-chain checks.
+3. Run `prek run cargo-qa` and `prek run cargo-supply-chain`.
 4. Publish a fixed release and rotate any impacted credentials.
 5. Publish an advisory/changelog note after patch availability.

@@ -16,7 +16,7 @@ intended as a thin API layer for integrations.
 ## Run
 
 ```bash
-cargo run -p lotus-api
+cargo run --locked -p lotus-api
 ```
 
 ### Runtime configuration
@@ -37,7 +37,7 @@ APP_ENV=production \
 CORS_ALLOWED_ORIGINS="https://explorer.example.org" \
 HOST=0.0.0.0 \
 PORT=8787 \
-cargo run -p lotus-api
+cargo run --locked -p lotus-api
 ```
 
 Then open:

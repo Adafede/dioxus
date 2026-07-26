@@ -1,19 +1,24 @@
 # dioxus-apps
 
-A Cargo workspace hosting multi-app web experiences compiled to WASM.
+A Cargo workspace for reproducible Dioxus web apps, pinned by
+`rust-toolchain.toml`.
+
 **lotus-explorer** explores the LOTUS natural products knowledge graph from
 Wikidata via SPARQL. **lotus-api** provides a native HTTP API for advanced
-search and export. **jsoncount** is a small JSON-file counter for browsing
-non-null field counts in uploaded files. **mgf-precursor-erro-rs** analyzes
-uploaded MGF files and reports precursor mass errors in Da and ppm.
+search and export. **index** is the accessible landing page. **jsoncount**
+counts non-null fields in uploaded JSON files. **mgf-precursor-erro-rs**
+analyzes uploaded MGF files and reports precursor mass errors in Da and ppm.
 
 ## Prerequisites
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup toolchain install 1.95.0 --profile minimal
 rustup target add wasm32-unknown-unknown
 cargo install dioxus-cli --version 0.7.9 --locked
 ```
+
+The repo pins Rust 1.95.0, `clippy`, `rustfmt`, and `wasm32-unknown-unknown` in
+`rust-toolchain.toml`.
 
 ## Quick start
 
@@ -24,7 +29,7 @@ dx serve --package lotus-explorer
 To also run the optional API:
 
 ```bash
-cargo run -p lotus-api
+cargo run --locked -p lotus-api
 ```
 
 Then open `http://localhost:8080/?api_base=http://127.0.0.1:8787`.
@@ -35,30 +40,30 @@ Without `lotus-api`, the explorer falls back to direct QLever/SPARQL queries.
 
 ```
 dioxus-apps/
-├── Cargo.toml              ← workspace root
-├── prek.toml               ← repo hooks and quality gate
-├── .github/                ← CI, deploy, governance
+├── Cargo.toml                ← workspace root
+├── rust-toolchain.toml       ← pinned compiler, components, target
+├── prek.toml                 ← repo hooks and quality gate
+├── .github/                  ← CI, deploy, governance
 ├── apps/
-│   ├── hello-world/        ← minimal template for new apps
-│   ├── jsoncount/           ← upload a JSON file and count non-null values per field
-│   ├── mgf-precursor-erro-rs/ ← upload an MGF file and explore precursor mass errors
-│   ├── lotus-api/          ← OpenAPI service for LOTUS search and exports
-│   └── lotus-explorer/     ← LOTUS Wikidata natural-product explorer
-├── crates/
-│   └── shared/             ← SPARQL client, LOTUS models
-└── apps/
-    ├── hello-world/        ← minimal template for new apps
-    ├── jsoncount/           ← upload a JSON file and count non-null values per field
-    ├── lotus-api/          ← OpenAPI service for LOTUS search and exports
-    └── lotus-explorer/     ← LOTUS Wikidata natural-product explorer
+│   ├── hello-world/          ← minimal template for new apps
+│   ├── index/                ← accessible landing page
+│   ├── jsoncount/            ← upload a JSON file and count non-null values
+│   ├── mgf-precursor-erro-rs/ ← upload an MGF file and explore mass errors
+│   ├── lotus-api/            ← OpenAPI service for LOTUS search and exports
+│   └── lotus-explorer/       ← LOTUS Wikidata natural-product explorer
+└── crates/
+    ├── shared/               ← SPARQL client, LOTUS models
+    └── ui/                   ← shared accessibility-focused UI helpers
 ```
 
 ## Running apps locally
 
 ```bash
 dx serve --package lotus-explorer
-cargo run -p lotus-api
+cargo run --locked -p lotus-api
 dx serve --package jsoncount
+dx serve --package index
+dx serve --package mgf-precursor-erro-rs
 ```
 
 The API binds to `127.0.0.1:8787`. Override with `HOST` and `PORT` env vars.
@@ -89,10 +94,11 @@ Open `http://127.0.0.1:8787/docs` for the Swagger UI.
 ```bash
 dx build --release --package lotus-explorer
 dx build --release --package jsoncount
+dx build --release --package index
+dx build --release --package mgf-precursor-erro-rs
 ```
 
-Output: `target/dx/lotus-explorer/release/web/public/` and
-`target/dx/jsoncount/release/web/public/`
+Output lands under `target/dx/<package>/release/web/public/`.
 
 ## Quality gate and local checks
 
@@ -151,7 +157,7 @@ Build-time WASM wiring:
 
 ```bash
 LOTUS_API_BASE=https://your-server.example.org \
-  dx build --release --platform web -p lotus-explorer
+  dx build --release --platform web --package lotus-explorer
 ```
 
 ## Adding a new app
@@ -177,11 +183,11 @@ When both `download` and `execute` are present, `download` takes priority.
 
 On every push to `main`:
 
-- `cargo check --workspace --all-targets`
-- `cargo test --workspace --all-targets`
-- `cargo check -p lotus-explorer --target wasm32-unknown-unknown`
-- `cargo clippy --workspace --all-targets -- -D warnings`
-- `cargo doc --workspace --no-deps`
+- `cargo check --workspace --all-targets --locked`
+- `cargo test --workspace --all-targets --locked`
+- `cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked`
+- `cargo clippy --workspace --all-targets --locked -- -D warnings`
+- `cargo doc --workspace --no-deps --locked`
 - `cargo deny check advisories bans licenses sources`
 - `cargo audit`
 - Docker image build and push for `lotus-api`

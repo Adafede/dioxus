@@ -9,12 +9,6 @@ number of non-null values seen under each top-level field.
 dx serve --package jsoncount
 ```
 
-Or with the workspace convenience target:
-
-```bash
-make serve APP=jsoncount
-```
-
 ## Build for the website
 
 ```bash

@@ -19,7 +19,7 @@ cargo doc --workspace --no-deps --locked
 
 ```bash
 dx serve --package lotus-explorer
-cargo run -p lotus-api
+cargo run --locked -p lotus-api
 ```
 
 ## Change protocol
