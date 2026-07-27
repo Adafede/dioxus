@@ -28,7 +28,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2.9.1
 
-      - uses: cargo-bins/cargo-binstall@v1.20.1
+      - uses: cargo-bins/cargo-binstall@v1.21.0
 
       - name: Install dioxus-cli
         run: cargo binstall dioxus-cli --version 0.7.9 --locked --force
