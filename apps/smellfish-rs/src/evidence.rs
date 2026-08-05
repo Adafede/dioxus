@@ -22,6 +22,7 @@ use crate::model::{ChemistCheck, DatasetMotifContext, MoleculeRow, RdkitDescript
 
 /// Result of assessing a single molecule against the evidence framework.
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct EvidenceAssessment {
     /// Ertl NP-likeness score (range ≈ −5 to +5), or 0.0 when the model
     /// is not available.
@@ -45,6 +46,7 @@ pub struct EvidenceAssessment {
 /// - **0.5–2.0**: Ambiguous NP signals (could be synthetic or semi-synthetic)
 /// - **-1.0–0.5**: Bad/weak signals (predominantly synthetic features)
 /// - **< -1.0**: Highly synthetic (strong negative signals—rare in real NPs)
+#[allow(dead_code)]
 pub fn np_likeness_label(score: f64) -> &'static str {
     if score >= 2.0 {
         "strong natural product"
@@ -66,10 +68,12 @@ pub fn np_likeness_label(score: f64) -> &'static str {
 ///   found in the molecule via substructure matching.
 /// * `dataset_context` carries motif prevalence across the entire uploaded
 ///   set so that per-row notes can flag dataset-common scaffolds.
+#[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 pub fn assess_np_evidence(
     descriptors: &RdkitDescriptors,
     motifs: &[String],
-    substituents: &[String],
+    _substituents: &[String],
     stereo_tags: &[String],
     np_score: Option<f64>,
     np_confidence: Option<f64>,
@@ -105,13 +109,13 @@ pub fn assess_np_evidence(
     // sp³ character — NPs are typically more saturated than synthetic drugs.
     // Threshold 0.4 from "escaping the flatlands" (Ertl 2003, Ertl &
     // Schuppenhauer 2011): compounds below 0.4 are considered "flat".
-    if let Some(csp3) = descriptors.fraction_csp3 {
-        if csp3 > 0.4 {
-            notes.push(format!(
-                "sp³-rich scaffold (fractionCSP₃ = {csp3:.2}) — \
-                 NPs typically surpass flatland threshold of 0.4"
-            ));
-        }
+    if let Some(csp3) = descriptors.fraction_csp3
+        && csp3 > 0.4
+    {
+        notes.push(format!(
+            "sp³-rich scaffold (fractionCSP₃ = {csp3:.2}) — \
+             NPs typically surpass flatland threshold of 0.4"
+        ));
     }
 
     // Stereochemical complexity — stereocentres are hallmarks of enzymatic
@@ -151,7 +155,7 @@ pub fn assess_np_evidence(
             dataset_context
                 .motif_counts
                 .get(*m)
-                .map_or(false, |&c| c >= dataset_context.common_threshold)
+                .is_some_and(|&c| c >= dataset_context.common_threshold)
         })
         .count();
     if dataset_shared > 0 {
@@ -180,6 +184,7 @@ pub fn assess_np_evidence(
 }
 
 /// Verdict string shown prominently in the UI.
+#[allow(dead_code)]
 pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
     if let Some(err) = row.error.as_deref() {
         return format!("⚠ {err}");
@@ -196,17 +201,23 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
         return "⚠ Ertl model not loaded".to_string();
     }
 
-    if has_lotus && has_pubchem && score >= 1.0 {
-        return format!("🌿 Strong evidence — LOTUS + PubChem + Ertl {score:+.2}");
+    if has_lotus && score >= 2.0 {
+        return format!("🌿 LOTUS + strong NP score (Ertl {score:+.2})");
     }
-    if has_lotus && score >= 1.0 {
-        return format!("🌿 Strong evidence — LOTUS + Ertl {score:+.2}");
+    if has_lotus && score >= 0.5 {
+        return format!("🌿 LOTUS hit (Ertl {score:+.2})");
     }
     if has_lotus {
-        return format!("🌿 LOTUS hit (Ertl {score:+.2})");
+        return format!("🌿 LOTUS-backed but weak score (Ertl {score:+.2})");
+    }
+
+    // ── Very weak/synthetic signals always stay yellow/red ──────────────
+    if score <= -1.0 {
+        return format!("⚠ Weak NP signals (Ertl {score:+.2})");
     }
 
     // ── PubChem hit evaluation ──────────────────────────────────────────
+    // PubChem is a WEAK signal on its own; strong structural evidence required
     if has_pubchem {
         let np_motif_count = row.motifs.iter().filter(|m| is_known_np_motif(m)).count();
         let has_np_scaffold = row.ring_family.to_ascii_lowercase().contains("polycyclic")
@@ -219,16 +230,23 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
                 .to_ascii_lowercase()
                 .contains("heteroaromatic");
 
-        // Strong Ertl score + NP structural features
-        if score >= 1.5 && (np_motif_count >= 2 || has_np_scaffold) {
-            return format!("🌿 PubChem + strong NP features (Ertl {score:+.2})");
+        // ONLY go green if score is strong AND structural features present
+        if score >= 2.0 && (np_motif_count >= 2 || has_np_scaffold) {
+            return format!("🌿 PubChem + strong NP evidence (Ertl {score:+.2})");
         }
-        // Moderate Ertl score + any NP signal
-        if score >= 0.8 && (np_motif_count >= 1 || has_np_scaffold) {
-            return format!("📚 PubChem with NP features (Ertl {score:+.2})");
+
+        // Score 1.0-2.0 (ambiguous) with multiple motifs → blue
+        if score >= 1.0 && np_motif_count >= 2 {
+            return format!("📚 PubChem with NP motifs (Ertl {score:+.2})");
         }
-        // Low score or no NP features
-        return format!("📚 PubChem hit (Ertl {score:+.2})");
+
+        // Any PubChem with score 0.5-1.0 → yellow (needs citation)
+        if score >= 0.5 {
+            return format!("👃 Citation needed — PubChem hit (Ertl {score:+.2})");
+        }
+
+        // Score -1.0 to 0.5 → weak signals
+        return format!("📚 PubChem — weak NP signals (Ertl {score:+.2})");
     }
 
     // Not in databases — structural evidence only
@@ -260,6 +278,7 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
 
 /// Machine-readable category for CSV export — strips emojis and
 /// normalises to "likely", "neutral", "caution", "skeptical", or "fishy".
+#[allow(dead_code)]
 pub fn verdict_category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
 
@@ -272,16 +291,16 @@ pub fn verdict_category(verdict: &str) -> &'static str {
     if l.contains("lotus") && !l.contains("weak") {
         return "likely";
     }
-    if l.contains("likely hit") && l.contains("strong np") && !l.contains("weak") {
+    if l.contains("likely hit") {
         return "likely";
     }
     if l.contains("likely novel") {
         return "likely";
     }
-    if l.contains("pubchem + strong natural product") {
+    if l.contains("pubchem + strong") {
         return "likely";
     }
-    if l.contains("pubchem + strong np") {
+    if l.contains("strong np score") && !l.contains("weak") {
         return "likely";
     }
 
@@ -291,10 +310,7 @@ pub fn verdict_category(verdict: &str) -> &'static str {
     }
 
     // BLUE — Moderate NP confidence (PubChem with some NP features)
-    if l.contains("pubchem + np-like")
-        || l.contains("pubchem with np features")
-        || l.contains("pubchem hit with np signals")
-    {
+    if l.contains("pubchem with") || l.contains("pubchem + np") {
         return "neutral";
     }
 
@@ -311,6 +327,7 @@ pub fn verdict_category(verdict: &str) -> &'static str {
 
 /// Classify the core scaffold family using motif SMARTS matches and
 /// descriptor-based heuristics.
+#[allow(dead_code)]
 pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -> String {
     let motif_text = motifs.join(" ").to_ascii_lowercase();
 
@@ -385,13 +402,14 @@ pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -
 /// 3. **Oxygenation** — oxidative biosynthetic enzymes saturate NPs with
 ///    oxygen functions; 4+ heteroatoms is typical of real NPs (Wetzel et al.,
 ///    CHIMIA 2007).
-/// 4. **Database** — presence in LOTUS (curated NP database) or PubChem
+/// 4. **Database** — presence in LOTUS (curated NP database) or `PubChem`
 ///    provides orthogonal evidence.
 ///
 /// **Stereochemistry is deliberately NOT checked** — 2D SMILES from mass
 /// spectrometry annotation pipelines may not preserve stereochemical
 /// information, so the absence of stereo tags is not a reliable negative
 /// signal.
+#[allow(dead_code)]
 pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     let mut checks: Vec<ChemistCheck> = Vec::with_capacity(4);
 
@@ -528,11 +546,13 @@ pub fn is_known_np_motif(label: &str) -> bool {
         || l.contains("hemiacetal")
 }
 
+#[allow(dead_code)]
 fn count_scaffold_motifs(motifs: &[String]) -> usize {
     motifs.iter().filter(|m| is_scaffold_motif(m)).count()
 }
 
 /// Count motif hits that are decoration-type (side-chains / functional groups).
+#[allow(dead_code)]
 fn count_decoration_motifs(motifs: &[String]) -> usize {
     motifs.iter().filter(|m| is_decoration_motif(m)).count()
 }
@@ -568,6 +588,7 @@ pub fn is_scaffold_motif(label: &str) -> bool {
 }
 
 /// Decoration motifs are functional groups or side-chain fragments.
+#[allow(dead_code)]
 fn is_decoration_motif(label: &str) -> bool {
     let l = label.to_ascii_lowercase();
     l.contains("aldehyde")

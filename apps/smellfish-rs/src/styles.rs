@@ -1,4 +1,4 @@
-pub const CSS: &str = r#"
+pub const CSS: &str = r"
 .shell {
   min-height: 100vh;
   padding: 24px;
@@ -266,6 +266,8 @@ a:hover { text-decoration: underline; }
 .small { font-size: 0.82rem; }
 .evidence {
   margin-top: 6px;
+  margin-left: auto;
+  width: fit-content;
 }
 .evidence details summary {
   cursor: pointer;
@@ -346,4 +348,4 @@ a:hover { text-decoration: underline; }
 .footer-link.red { color: #990000; }
 .footer-link.green { color: #339966; }
 .footer-link.blue { color: #006699; }
-"#;
+";

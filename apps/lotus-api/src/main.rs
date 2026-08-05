@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+#![allow(clippy::multiple_crate_versions)]
+
 mod config;
 mod errors;
 mod handlers;

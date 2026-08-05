@@ -407,8 +407,9 @@ WHERE {{
 }
 
 /// Query multiple SMILES at once via Sachem similarity search.
+///
 /// Batches SMILES into a single SPARQL query using VALUES clause.
-/// Each result binding includes ?input_smiles to track which SMILES produced the match.
+/// Each result binding includes `?input_smiles` to track which SMILES produced the match.
 #[must_use]
 pub fn query_sachem_batch(
     smiles_batch: &[&str],
@@ -424,26 +425,15 @@ pub fn query_sachem_batch(
             .map(|s| escape_structure_literal(s))
             .collect::<Vec<_>>()
             .join(" ");
-        format!("VALUES ?input_smiles {{ {} }}", smiles_list)
+        format!("VALUES ?input_smiles {{ {smiles_list} }}")
     };
 
     let sachem_clause = match search_type {
         SmilesSearchType::Similarity => format!(
-            r#"SERVICE idsm:wikidata {{
-    {values_clause}
-    ?c sachem:similarCompoundSearch [
-      sachem:query ?input_smiles;
-      sachem:cutoff "{threshold}"^^xsd:double
-    ].
-  }}"#
+            "SERVICE idsm:wikidata {{\n    {values_clause}\n    ?c sachem:similarCompoundSearch [\n      sachem:query ?input_smiles;\n      sachem:cutoff \"{threshold}\"^^xsd:double\n    ].\n  }}"
         ),
         SmilesSearchType::Substructure => format!(
-            r#"SERVICE idsm:wikidata {{
-    {values_clause}
-    ?c sachem:substructureSearch [
-      sachem:query ?input_smiles
-    ].
-  }}"#
+            "SERVICE idsm:wikidata {{\n    {values_clause}\n    ?c sachem:substructureSearch [\n      sachem:query ?input_smiles\n    ].\n  }}"
         ),
     };
 

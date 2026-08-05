@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub struct LiteratureEntry {
     pub title: &'static str,
     pub doi: &'static str,

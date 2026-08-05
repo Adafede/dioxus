@@ -5,6 +5,7 @@ use crate::styles::CSS;
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
+use std::fmt::Write;
 
 #[cfg(target_arch = "wasm32")]
 use crate::pipeline::begin_import;
@@ -21,7 +22,7 @@ pub fn app() -> Element {
     let mut drag_active = use_signal(|| false);
     let rows = use_signal(Vec::<MoleculeRow>::new);
     let motifs = use_signal(Vec::<MotifSummary>::new);
-    let endpoints = use_signal(Vec::<EndpointStatus>::new);
+    let _endpoints = use_signal(Vec::<EndpointStatus>::new);
     let warnings = use_signal(Vec::<String>::new);
 
     let on_file_change = move |evt: Event<FormData>| {
@@ -466,6 +467,7 @@ fn motif_emoji(label: &str) -> String {
 }
 
 /// Escape a field for CSV output.
+#[allow(dead_code)]
 fn escape_csv(s: &str) -> String {
     if s.contains(',') || s.contains('"') {
         format!("\"{}\"", s.replace('"', "\"\""))
@@ -475,6 +477,7 @@ fn escape_csv(s: &str) -> String {
 }
 
 /// Build a CSV string from molecule rows.
+#[allow(dead_code)]
 fn build_csv(rows: &[MoleculeRow]) -> String {
     let mut csv = String::from(
         "label,smiles,np_score,np_label,np_confidence,ring_family,substituents,locus,verdict_category,chemist_checks\n",
@@ -491,11 +494,12 @@ fn build_csv(rows: &[MoleculeRow]) -> String {
             .lotus_compounds
             .iter()
             .chain(r.pubchem_cids.iter())
-            .map(|s| s.as_str())
+            .map(String::as_str)
             .collect::<Vec<_>>()
             .join(";");
-        csv.push_str(&format!(
-            "{},{},{:.3},{},{}%,{},{},{},{},{}\n",
+        let _ = writeln!(
+            csv,
+            "{},{},{:.3},{},{}%,{},{},{},{},{}",
             escape_csv(&r.label),
             escape_csv(&r.smiles),
             r.np_likeness,
@@ -506,7 +510,7 @@ fn build_csv(rows: &[MoleculeRow]) -> String {
             escape_csv(&locus),
             crate::evidence::verdict_category(&r.verdict),
             escape_csv(&checks),
-        ));
+        );
     }
     csv
 }
@@ -514,6 +518,7 @@ fn build_csv(rows: &[MoleculeRow]) -> String {
 /// Build a CSV string from molecule rows and trigger a download via a
 /// data: URI injected through `eval`.
 #[cfg(target_arch = "wasm32")]
+#[allow(dead_code)]
 fn download_csv(rows: &[MoleculeRow]) {
     let csv = build_csv(rows);
     let url = format!("data:text/csv;charset=utf-8,{}", urlencoding::encode(&csv));
@@ -525,4 +530,5 @@ fn download_csv(rows: &[MoleculeRow]) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn download_csv(_rows: &[MoleculeRow]) {}
+#[allow(dead_code)]
+const fn download_csv(_rows: &[MoleculeRow]) {}

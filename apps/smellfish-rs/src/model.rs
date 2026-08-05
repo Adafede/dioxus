@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::collections::{BTreeSet, HashMap};
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct RawRow {
     pub index: usize,
     pub label: String,
@@ -22,6 +23,7 @@ pub struct ChemistCheck {
 
 /// A single molecule's metadata and evidence assessment.
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct MoleculeRow {
     pub index: usize,
     pub label: String,
@@ -57,6 +59,7 @@ pub struct MoleculeRow {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct MotifSummary {
     pub label: String,
     pub kind: String,
@@ -70,6 +73,7 @@ pub struct MotifSummary {
 /// uploaded set that contain it.  Motifs appearing in ≥ `common_threshold`
 /// molecules are considered "dataset-common".
 #[derive(Clone, Debug, Default)]
+#[allow(dead_code)]
 pub struct DatasetMotifContext {
     pub motif_counts: HashMap<String, usize>,
     pub total_molecules: usize,
@@ -77,6 +81,7 @@ pub struct DatasetMotifContext {
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
+#[allow(dead_code)]
 pub struct RdkitDescriptors {
     pub amw: Option<f64>,
     pub exact_mw: Option<f64>,
@@ -93,6 +98,7 @@ pub struct RdkitDescriptors {
 }
 
 #[derive(Clone, Debug, Default)]
+#[allow(dead_code)]
 pub struct SourceSummary {
     pub taxa: BTreeSet<String>,
     pub compounds: BTreeSet<String>,
@@ -102,12 +108,14 @@ pub struct SourceSummary {
 }
 
 #[derive(Clone, Debug, Default)]
+#[allow(dead_code)]
 pub struct Enrichment {
     pub lotus: HashMap<String, SourceSummary>,
     pub pubchem: HashMap<String, SourceSummary>,
 }
 
 #[derive(Clone, Debug, Default)]
+#[allow(dead_code)]
 pub struct EndpointStatus {
     pub name: String,
     pub endpoint: String,
@@ -116,6 +124,7 @@ pub struct EndpointStatus {
 }
 
 #[derive(Clone, Debug, Default)]
+#[allow(dead_code)]
 pub struct EnrichmentOutcome {
     pub enrichment: Enrichment,
     pub endpoints: Vec<EndpointStatus>,
@@ -123,6 +132,7 @@ pub struct EnrichmentOutcome {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct RdkitInspectResponse {
     pub canonicalsmiles: Option<String>,
     pub inchikey: Option<String>,
@@ -147,6 +157,7 @@ pub struct RdkitInspectResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct RdkitMotifHit {
     pub label: String,
     pub kind: String,

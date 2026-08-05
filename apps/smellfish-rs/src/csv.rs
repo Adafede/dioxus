@@ -1,5 +1,6 @@
 use crate::model::RawRow;
 
+#[allow(dead_code)]
 pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
@@ -31,6 +32,7 @@ pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
     Ok(rows)
 }
 
+#[allow(dead_code)]
 fn detect_column(headers: &csv::StringRecord, names: &[&str]) -> Option<usize> {
     headers.iter().enumerate().find_map(|(idx, header)| {
         let normalized = normalize_column_header(header);
@@ -41,15 +43,17 @@ fn detect_column(headers: &csv::StringRecord, names: &[&str]) -> Option<usize> {
     })
 }
 
+#[allow(dead_code)]
 fn normalize_column_header(header: &str) -> String {
     header
         .trim()
         .trim_start_matches('\u{feff}')
-        .trim_start_matches(|c: char| matches!(c, '>' | '#' | '"' | '\'' | ':' | ';'))
+        .trim_start_matches(|c: char| ['>', '#', '"', '\'', ':', ';'].contains(&c))
         .trim()
         .to_ascii_lowercase()
 }
 
+#[allow(dead_code)]
 fn label_for_record(
     record: &csv::StringRecord,
     label_idx: Option<usize>,
