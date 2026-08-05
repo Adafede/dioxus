@@ -10,7 +10,7 @@ categories = ["wasm", "web-programming"]
 publish = false
 
 [[bin]]
-name = "jsoncount"
+name = "json-count-rs"
 path = "src/main.rs"
 
 [dependencies]
