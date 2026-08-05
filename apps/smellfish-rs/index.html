@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <title>{app_title}</title>
+    <meta name="description" content="Drop a CSV of SMILES, render molecules with RDKit.js, highlight common decorations, and decide whether citation needed.">
+    <link rel="preconnect" href="https://www.rdkitjs.com" crossorigin>
+    <link rel="preconnect" href="https://qlever.dev" crossorigin>
+    <link rel="preconnect" href="https://qlever.cs.uni-freiburg.de" crossorigin>
+    <script defer src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
+    <script>
+      function waitForInitRDKitModule(timeoutMs = 12000) {
+        const start = Date.now();
+        return new Promise((resolve, reject) => {
+          function poll() {
+            if (typeof initRDKitModule === "function") {
+              resolve(initRDKitModule);
+              return;
+            }
+            if (Date.now() - start >= timeoutMs) {
+              reject(new Error("RDKit_minimal.js is not loaded"));
+              return;
+            }
+            setTimeout(poll, 16);
+          }
+          poll();
+        });
+      }
+
+      const MOTIF_LIBRARY = [
+        { label: "Aromatic ring", smarts: "c1ccccc1" },
+        { label: "Carbonyl", smarts: "C=O" },
+        { label: "Carboxylic acid", smarts: "C(=O)[OX2H1]" },
+        { label: "Ester", smarts: "C(=O)O[#6]" },
+        { label: "Amide", smarts: "C(=O)N" },
+        { label: "Ether", smarts: "[OD2]([#6])[#6]" },
+        { label: "Hydroxyl", smarts: "[OX2H]" },
+        { label: "Amine", smarts: "[NX3;H2,H1;!$(NC=O)]" },
+        { label: "Halogen", smarts: "[F,Cl,Br,I]" },
+        { label: "Nitrile", smarts: "C#N" },
+        { label: "Sulfonyl", smarts: "S(=O)(=O)" },
+        { label: "Methoxy", smarts: "CO" },
+        { label: "Phenyl", smarts: "c1ccccc1" },
+      ];
+
+      const rdkitReady = (async () => {
+        const init = await waitForInitRDKitModule();
+        const RDKit = await init();
+        const compiledMotifs = MOTIF_LIBRARY.map((motif) => ({
+          ...motif,
+          qmol: RDKit.get_qmol(motif.smarts),
+        }));
+
+        function withMol(smiles, callback) {
+          const trimmed = String(smiles || "").trim();
+          if (!trimmed) {
+            return { error: "smiles is required" };
+          }
+          let mol = null;
+          try {
+            mol = RDKit.get_mol(trimmed);
+          } catch (_error) {
+            return { error: "rdkit.js could not parse the structure" };
+          }
+          if (!mol) {
+            return { error: "rdkit.js could not parse the structure" };
+          }
+          try {
+            return callback(mol);
+          } finally {
+            if (typeof mol.delete === "function") {
+              mol.delete();
+            }
+          }
+        }
+
+        function uniqueSorted(values) {
+          return [...new Set(values)].sort((a, b) => a - b);
+        }
+
+        return {
+          inspect(smiles) {
+            const result = withMol(smiles, (mol) => {
+              const canonicalsmiles = mol.get_smiles(JSON.stringify({
+                canonical: true,
+                isomericSmiles: false,
+              }));
+              const isomericsmiles = mol.get_smiles(JSON.stringify({
+                canonical: true,
+                isomericSmiles: true,
+              }));
+              const inchi = mol.get_inchi();
+              if (!inchi) {
+                throw new Error("rdkit.js could not generate InChI");
+              }
+              const inchikey = RDKit.get_inchikey_for_inchi(inchi);
+              if (!inchikey) {
+                throw new Error("rdkit.js could not generate InChIKey");
+              }
+
+              const hits = [];
+              const atoms = [];
+              const bonds = [];
+              for (const motif of compiledMotifs) {
+                const raw = mol.get_substruct_match(motif.qmol);
+                if (!raw) {
+                  continue;
+                }
+                const match = JSON.parse(raw);
+                const hitAtoms = Array.isArray(match.atoms) ? match.atoms : [];
+                const hitBonds = Array.isArray(match.bonds) ? match.bonds : [];
+                if (!hitAtoms.length && !hitBonds.length) {
+                  continue;
+                }
+                hits.push({
+                  label: motif.label,
+                  smarts: motif.smarts,
+                  atoms: hitAtoms,
+                  bonds: hitBonds,
+                });
+                atoms.push(...hitAtoms);
+                bonds.push(...hitBonds);
+              }
+
+              const details = {
+                atoms: uniqueSorted(atoms),
+                bonds: uniqueSorted(bonds),
+                highlightColour: [0.12, 0.54, 0.84],
+                continuousHighlight: true,
+                atomHighlightsAreCircles: true,
+                addAtomIndices: false,
+              };
+              const svg = atoms.length || bonds.length
+                ? mol.get_svg_with_highlights(JSON.stringify(details))
+                : mol.get_svg();
+
+              return {
+                canonicalsmiles,
+                isomericsmiles,
+                inchikey,
+                svg,
+                motifs: hits,
+              };
+            });
+            if (result && typeof result.error === "string") {
+              return result;
+            }
+            return result;
+          },
+        };
+      })();
+
+      window.__smilesRdkit = {
+        ready: rdkitReady,
+        async inspect(smiles) {
+          const bridge = await rdkitReady;
+          return bridge.inspect(smiles);
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <main id="main"></main>
+  </body>
+</html>

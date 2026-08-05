@@ -1,0 +1,33 @@
+[package]
+name = "smellfish-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "Smellfish-rs CSV smiles grid with RDKit.js, SPARQL enrichment, InChIKey lookup, and citation-needed verdicts"
+license = "AGPL-3.0-only"
+keywords = ["dioxus", "rdkit", "smiles", "sparql", "qlever"]
+categories = ["science", "wasm", "web-programming"]
+publish = false
+
+[[bin]]
+name = "smellfish-rs"
+path = "src/main.rs"
+
+[dependencies]
+csv = { workspace = true }
+dioxus = { workspace = true }
+futures = "0.3"
+log = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+urlencoding = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = "0.4"
+web-sys = { workspace = true, features = ["Blob", "File", "FileList", "HtmlInputElement", "Window"] }
+
+[lints]
+workspace = true

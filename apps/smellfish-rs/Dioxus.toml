@@ -1,0 +1,11 @@
+[application]
+name = "smellfish-rs"
+default_platform = "web"
+asset_dir = "public"
+
+[web.app]
+title = "🐟 Smellfish-rs"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src", "public"]

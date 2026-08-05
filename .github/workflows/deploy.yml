@@ -31,7 +31,7 @@ jobs:
       - uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
 
       - name: Install dioxus-cli
-        run: cargo binstall dioxus-cli --version 0.7.9 --locked --force
+        run: cargo binstall dioxus-cli --version 0.7.10 --locked --force
 
       - name: Build index landing page
         working-directory: apps/index
