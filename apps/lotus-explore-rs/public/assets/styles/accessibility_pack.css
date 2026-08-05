@@ -9,7 +9,7 @@
   z-index: 9999;
   padding: 0.5rem 1rem;
   background: transparent;
-  color: #fff;
+  color: var(--text);
   font-size: 0.875rem;
   font-weight: 600;
   border-radius: 0 0 4px 4px;
@@ -18,7 +18,7 @@
 }
 .skip-link:focus {
   top: 0;
-  outline: 2px solid #fff;
+  outline: 2px solid var(--text);
   outline-offset: 2px;
 }
 .skip-link:hover {
