@@ -134,7 +134,6 @@ pub fn app() -> Element {
                     div {
                         strong { "Drop CSV here or click to browse" }
                         div { class: "small muted", "Expect a smiles column." }
-                        div { class: "small muted", "Tip: try a known natural product like \"CCC1(C)C2(C)CC(C3=CC(=CC=C3C4=CC=CC5=C4C6=CC=CC7=C6C8=CC=CC9=C8C5C)C)C)C(=O)O2\" (artemisinin)." }
                     }
 
                     input {

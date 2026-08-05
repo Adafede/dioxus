@@ -94,7 +94,9 @@ async fn fetch_lotus_hits(inchikeys: &[String]) -> Result<HashMap<String, Source
             if inchikey.is_empty() {
                 continue;
             }
-            let entry = summary.entry(inchikey).or_default();
+            // Match on the 14-character skeleton hash only
+            let key = inchikey.split('-').next().unwrap_or(&inchikey).to_string();
+            let entry = summary.entry(key).or_default();
             // Extract QID from the Wikidata entity URI, e.g.
             //   http://www.wikidata.org/entity/Q413946  →  Q413946
             let compound_uri = binding_value(&binding, "compound");
@@ -128,7 +130,9 @@ async fn fetch_pubchem_hits(
             if inchikey.is_empty() {
                 continue;
             }
-            let entry = summary.entry(inchikey).or_default();
+            // Match on the 14-character skeleton hash only
+            let key = inchikey.split('-').next().unwrap_or(&inchikey).to_string();
+            let entry = summary.entry(key).or_default();
             let cid = binding_value(&binding, "cid");
             let label = binding_value(&binding, "label");
             let iupac = binding_value(&binding, "iupac");
@@ -186,7 +190,7 @@ fn binding_value(binding: &serde_json::Map<String, Value>, key: &str) -> String 
 fn build_lotus_query(chunk: &[String]) -> String {
     let values = chunk
         .iter()
-        .map(|value| format!("\"{}\"", escape_sparql_literal(value)))
+        .map(|v| format!("\"{}\"", escape_sparql_literal(v)))
         .collect::<Vec<_>>()
         .join(" ");
     format!(
@@ -213,7 +217,7 @@ SELECT DISTINCT ?inchikey ?compound ?compoundLabel ?taxonLabel WHERE {{
 fn build_pubchem_query(chunk: &[String]) -> String {
     let values = chunk
         .iter()
-        .map(|value| format!("\"{}\"", escape_sparql_literal(value)))
+        .map(|v| format!("\"{}\"", escape_sparql_literal(v)))
         .collect::<Vec<_>>()
         .join(" ");
     format!(

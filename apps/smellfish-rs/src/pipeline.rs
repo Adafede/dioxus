@@ -322,11 +322,17 @@ fn merge_enrichment(
         .map(|mut row| {
             let enrichment = &enrichment_outcome.enrichment;
             if !row.inchikey.is_empty() {
-                if let Some(summary) = enrichment.lotus.get(&row.inchikey) {
+                let key = row
+                    .inchikey
+                    .split('-')
+                    .next()
+                    .unwrap_or(&row.inchikey)
+                    .to_string();
+                if let Some(summary) = enrichment.lotus.get(&key) {
                     row.lotus_taxa = summary.taxa.iter().cloned().collect();
                     row.lotus_compounds = summary.compounds.iter().cloned().collect();
                 }
-                if let Some(summary) = enrichment.pubchem.get(&row.inchikey) {
+                if let Some(summary) = enrichment.pubchem.get(&key) {
                     row.pubchem_cids = summary.cids.iter().cloned().collect();
                     row.pubchem_names = summary.names.iter().cloned().collect();
                     row.pubchem_taxa = summary.taxa.iter().cloned().collect();

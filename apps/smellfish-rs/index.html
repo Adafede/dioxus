@@ -470,29 +470,100 @@
               }
 
               /*
-               * Build per-atom and per-bond colour maps. RDKit.js supports
-               * highlightAtomColors / highlightBondColors as either a dense
-               * array (indexed by atom/bond number) or an object map
-               * {"0": [r,g,b], ...}.  We pass the object form which works
-               * across RDKit.js versions.
+               * RDKit.js get_svg_with_highlights() does not reliably
+               * honour per-atom highlight colours via highlightAtomColors
+               * (the field is absent from the official docs at rdkitjs.com).
+               * Instead we render three separate SVGs — one per motif
+               * category — with the correct highlightColour, then splice
+               * the highlight <g> layers into a clean base molecule SVG.
                */
-              if (atoms.length) {
-                primaryColour = atomColors[atoms[0]] || COL_DECO;
+              function extractHighlightG(svgStr) {
+                /*
+                 * In an RDKit SVG the highlight circles/lines are emitted
+                 * inside the last <g> element, just before </svg>.
+                 * We extract that group wholesale.
+                 */
+                var open = svgStr.lastIndexOf("<g");
+                var close = svgStr.lastIndexOf("</g>");
+                if (open >= 0 && close >= 0 && close > open) {
+                  return svgStr.substring(open, close + 4);
+                }
+                return "";
               }
 
-              const details = {
-                atoms: uniqueSorted(atoms),
-                bonds: uniqueSorted(bonds),
-                highlightAtomColors: atomColors,
-                highlightBondColors: bondColors,
-                highlightColour: primaryColour,
-                continuousHighlight: true,
-                atomHighlightsAreCircles: true,
-                addAtomIndices: false,
-              };
-              const svg = atoms.length || bonds.length
-                ? mol.get_svg_with_highlights(JSON.stringify(details))
-                : mol.get_svg();
+              let svg;
+              if (atoms.length || bonds.length) {
+                if (hits.length) {
+                  /*
+                   * Group hit atoms/bonds by colour category, render a
+                   * highlight SVG for each, extract its highlight <g>,
+                   * and composite them onto a clean base molecule.
+                   */
+                  const npHits = hits.filter(h => h.colour === COL_NP);
+                  const scafHits = hits.filter(h => h.colour === COL_SCAFF);
+                  const decoHits = hits.filter(h => h.colour !== COL_NP && h.colour !== COL_SCAFF);
+
+                  function collectHits(hitList) {
+                    const a = uniqueSorted(hitList.flatMap(h => h.atoms));
+                    const b = uniqueSorted(hitList.flatMap(h => h.bonds));
+                    return { a, b };
+                  }
+
+                  const np = collectHits(npHits);
+                  const scaf = collectHits(scafHits);
+                  const deco = collectHits(decoHits);
+
+                  let base = mol.get_svg();
+                  let highlights = "";
+
+                  if (np.a.length || np.b.length) {
+                    const s = mol.get_svg_with_highlights(JSON.stringify({
+                      atoms: np.a, bonds: np.b,
+                      highlightColour: COL_NP,
+                      continuousHighlight: true,
+                      atomHighlightsAreCircles: true,
+                      addAtomIndices: false,
+                    }));
+                    highlights += extractHighlightG(s);
+                  }
+                  if (scaf.a.length || scaf.b.length) {
+                    const s = mol.get_svg_with_highlights(JSON.stringify({
+                      atoms: scaf.a, bonds: scaf.b,
+                      highlightColour: COL_SCAFF,
+                      continuousHighlight: true,
+                      atomHighlightsAreCircles: true,
+                      addAtomIndices: false,
+                    }));
+                    highlights += extractHighlightG(s);
+                  }
+                  if (deco.a.length || deco.b.length) {
+                    const s = mol.get_svg_with_highlights(JSON.stringify({
+                      atoms: deco.a, bonds: deco.b,
+                      highlightColour: COL_DECO,
+                      continuousHighlight: true,
+                      atomHighlightsAreCircles: true,
+                      addAtomIndices: false,
+                    }));
+                    highlights += extractHighlightG(s);
+                  }
+
+                  svg = highlights
+                    ? base.replace(/\s*<\/svg>$/i, highlights + "</svg>")
+                    : base;
+                } else {
+                  const details = {
+                    atoms: uniqueSorted(atoms),
+                    bonds: uniqueSorted(bonds),
+                    highlightColour: primaryColour,
+                    continuousHighlight: true,
+                    atomHighlightsAreCircles: true,
+                    addAtomIndices: false,
+                  };
+                  svg = mol.get_svg_with_highlights(JSON.stringify(details));
+                }
+              } else {
+                svg = mol.get_svg();
+              }
 
               const npResult = computeNpLikeness(mol);
 
