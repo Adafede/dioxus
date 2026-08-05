@@ -40,17 +40,18 @@ pub struct EvidenceAssessment {
 
 /// Classification thresholds for the Ertl NP-likeness score.
 ///
-/// The thresholds reflect the score distributions reported in Ertl et al.
-/// (2008): natural products typically score 0.5–3.0 (mean ≈ 1.5), while
-/// synthetic compounds centre on ≈ 0.  A threshold of 0.5 cleanly separates
-/// the two distributions' means.
+/// Empirically grounded thresholds:
+/// - **≥ 2.0**: Good NP evidence (high confidence natural product)
+/// - **0.5–2.0**: Ambiguous NP signals (could be synthetic or semi-synthetic)
+/// - **-1.0–0.5**: Bad/weak signals (predominantly synthetic features)
+/// - **< -1.0**: Highly synthetic (strong negative signals—rare in real NPs)
 pub fn np_likeness_label(score: f64) -> &'static str {
     if score >= 2.0 {
-        "strongly NP-like"
+        "strong natural product"
     } else if score >= 0.5 {
-        "NP-leaning"
-    } else if score >= -0.5 {
-        "mixed"
+        "NP-ambiguous"
+    } else if score >= -1.0 {
+        "weak NP signals"
     } else {
         "synthetic-leaning"
     }
