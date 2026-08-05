@@ -115,33 +115,31 @@ pub fn assess_np_evidence(
 
     // Stereochemical complexity — stereocentres are hallmarks of enzymatic
     // biosynthesis; synthetic libraries average <1 stereocentre per molecule.
+    // ── Stereochemistry signal ─────────────────────────────────────────
+    // Stereochemistry is enriched in natural products due to enzymatic
+    // biosynthesis. Presence is a positive signal; absence in 2D SMILES is
+    // neutral (MS annotation pipelines often strip stereo).
     if !stereo_tags.is_empty() {
         notes.push(format!(
-            "{} stereochemical feature(s) — \
-             consistent with enzymatic biosynthesis",
+            "✓ {} stereo center(s) — consistent with enzymatic origin",
             stereo_tags.len()
         ));
-    } else {
-        // Note: stereochemistry is NOT a negative signal when absent from
-        // 2D SMILES — mass-spec annotation pipelines may strip stereo.
-        notes.push(
-            "No stereochemistry in 2D SMILES — not penalised (MS annotation \
-             pipelines may not preserve stereo)"
-                .into(),
-        );
     }
 
-    // ── Ertl substituent enrichment ─────────────────────────────────────
-    // Substituents drawn from the top-60 most common natural-product
-    // substituent patterns (Ertl et al., BMC 54, 116562, 2022,
-    // DOI 10.1016/j.bmc.2021.116562).  The number of matches is a
-    // positive indicator — synthetic libraries rarely show this
-    // breadth of NP-typical substitutions.
-    if !substituents.is_empty() {
+    // ── NP scaffold presence ─────────────────────────────────────────
+    // Only count NP-associated scaffold motifs. Don't report non-NP scaffolds.
+    let np_scaffold_hits = motifs.iter().filter(|m| is_known_np_motif(m)).count();
+    if np_scaffold_hits > 0 {
         notes.push(format!(
-            "{} Ertl NP-substituent(s) detected (hydroxyl, methyl ester, \
-             carboxylic acid, etc. — Ertl et al., BMC 2022)",
-            substituents.len()
+            "✓ {} known NP motif(s): {}",
+            np_scaffold_hits,
+            motifs
+                .iter()
+                .filter(|m| is_known_np_motif(m))
+                .take(3)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ")
         ));
     }
 
@@ -157,29 +155,13 @@ pub fn assess_np_evidence(
         .count();
     if dataset_shared > 0 {
         notes.push(format!(
-            "{dataset_shared} motif(s) shared with other molecules in the \
-             dataset — possible structural family",
-        ));
-    }
-
-    // ── Ertl scaffold enrichment ──────────────────────────────────────
-    // Count only NP-associated scaffold motifs. Don't penalize for having
-    // other structural features—only count positive NP signals.
-    let np_scaffold_hits = motifs.iter().filter(|m| is_known_np_motif(m)).count();
-    if np_scaffold_hits > 0 {
-        notes.push(format!(
-            "{np_scaffold_hits} NP-associated scaffold motif(s) \
-             (Ertl & Schuhmann, J. Nat. Prod. 2019)"
+            "✓ {dataset_shared} motif(s) shared with dataset — possible family"
         ));
     }
 
     // ── Motif context summary ──────────────────────────────────────────
-    let scaffold_hits = count_scaffold_motifs(motifs);
-    let decoration_hits = count_decoration_motifs(motifs);
     let motif_context = if np_scaffold_hits > 0 {
         "NP-associated structural features".to_string()
-    } else if scaffold_hits > 0 || decoration_hits > 0 {
-        "structural features (not NP-characteristic)".to_string()
     } else {
         "no structural motifs detected".to_string()
     };
@@ -225,7 +207,6 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
 
     // ── PubChem hit evaluation ──────────────────────────────────────────
     if has_pubchem {
-        let np_substituent_count = row.substituents.len();
         let np_motif_count = row.motifs.iter().filter(|m| is_known_np_motif(m)).count();
         let has_np_scaffold = row.ring_family.to_ascii_lowercase().contains("polycyclic")
             || row.ring_family.to_ascii_lowercase().contains("steroid")
@@ -237,15 +218,15 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
                 .to_ascii_lowercase()
                 .contains("heteroaromatic");
 
-        // High-quality PubChem hit
-        if score >= 2.0 && (np_substituent_count >= 3 || (np_motif_count >= 2 && has_np_scaffold)) {
-            return format!("🌿 PubChem hit with strong NP features (Ertl {score:+.2})");
+        // Strong Ertl score + NP structural features
+        if score >= 1.5 && (np_motif_count >= 2 || has_np_scaffold) {
+            return format!("🌿 PubChem + strong NP features (Ertl {score:+.2})");
         }
-        // Moderate-quality PubChem hit
-        if score >= 1.0 && (np_substituent_count >= 2 || np_motif_count >= 1) {
-            return format!("📚 PubChem hit with some NP features (Ertl {score:+.2})");
+        // Moderate Ertl score + any NP signal
+        if score >= 0.8 && (np_motif_count >= 1 || has_np_scaffold) {
+            return format!("📚 PubChem with NP features (Ertl {score:+.2})");
         }
-        // Weak PubChem hit
+        // Low score or no NP features
         return format!("📚 PubChem hit (Ertl {score:+.2})");
     }
 
@@ -262,16 +243,13 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
     let has_np_motifs = row.motifs.iter().any(|m| is_known_np_motif(m));
 
     if score >= 2.0 && has_np_scaffold {
-        return format!(
-            "🌿 Likely novel NP (Ertl {score:+.2}, {} scaffold)",
-            row.ring_family
-        );
+        return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
     if score >= 1.0 && has_np_motifs && has_np_scaffold {
         return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
     if score >= 2.0 {
-        return format!("Strong NP features (Ertl {score:+.2})");
+        return format!("Strong NP score (Ertl {score:+.2})");
     }
     if score <= -1.0 {
         return format!("⚠ Weak NP signals (Ertl {score:+.2})");
@@ -284,40 +262,28 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
 pub fn verdict_category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
 
-    // High-confidence natural product evidence (GREEN)
-    if l.contains("looks legitimate")
-        || l.contains("strong natural")
-        || l.contains("strong np evidence")
-        || l.contains("lotus-backed")
-        || l.contains("pubchem + strong np")
-        || l.contains("likely hit")
+    // GREEN — High NP confidence
+    if l.contains("strong evidence")
+        || l.contains("lotus")
+        || l.contains("likely novel")
+        || l.contains("pubchem + strong")
     {
         return "likely";
     }
 
-    // Moderate NP evidence from PubChem (BLUE/NEUTRAL)
-    if l.contains("pubchem hit with np signals") {
+    // BLUE — Moderate NP confidence
+    if l.contains("pubchem with np features") {
         return "neutral";
     }
 
-    // Low-quality PubChem hits (RED/CAUTION)
-    if l.contains("pubchem hit") || l.contains("weak np evidence") {
+    // RED — Low NP confidence
+    if l.contains("pubchem") || l.contains("uncertain") || l.contains("strong np score") {
         return "caution";
     }
 
-    // Structural evidence only (RED/CAUTION)
-    if l.contains("not yet in databases") || l.contains("database support") {
-        return "likely";
-    }
-
-    // Negative signals (RED/FISHY)
-    if l.contains("smells fishy") {
+    // RED — Negative signals
+    if l.contains("weak np signals") {
         return "fishy";
-    }
-
-    // Uncertain (BLUE/NEUTRAL)
-    if l.contains("citation needed") {
-        return "caution";
     }
 
     "neutral"

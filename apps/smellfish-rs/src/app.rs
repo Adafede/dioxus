@@ -346,9 +346,11 @@ pub fn app() -> Element {
                             if !row.evidence_notes.is_empty() {
                                 div { class: "evidence",
                                     details { open: true,
-                                        summary { class: "small", "Why this verdict" }
-                                        for note in row.evidence_notes.iter() {
-                                            p { class: "small", "{note}" }
+                                        summary { class: "small", "Evidence" }
+                                        ul { style: "margin: 6px 0; padding-left: 20px; font-size: 0.8rem;",
+                                            for note in row.evidence_notes.iter() {
+                                                li { "{note}" }
+                                            }
                                         }
                                     }
                                 }
