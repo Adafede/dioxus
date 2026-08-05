@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <title>{app_title}</title>
-    <meta name="description" content="Drop a CSV of SMILES, render molecules with RDKit.js, highlight common decorations, and decide whether citation needed.">
+    <meta name="description" content="Drop a CSV of SMILES, render molecules with RDKit.js, highlight common decorations, and inspect same-connectivity hits, scaffolds, and close analogs.">
     <link rel="preconnect" href="https://www.rdkitjs.com" crossorigin>
     <link rel="preconnect" href="https://qlever.dev" crossorigin>
     <link rel="preconnect" href="https://qlever.cs.uni-freiburg.de" crossorigin>
@@ -30,20 +30,74 @@
       }
 
       const MOTIF_LIBRARY = [
-        { label: "Aromatic ring", smarts: "c1ccccc1" },
-        { label: "Carbonyl", smarts: "C=O" },
-        { label: "Carboxylic acid", smarts: "C(=O)[OX2H1]" },
-        { label: "Ester", smarts: "C(=O)O[#6]" },
-        { label: "Amide", smarts: "C(=O)N" },
-        { label: "Ether", smarts: "[OD2]([#6])[#6]" },
-        { label: "Hydroxyl", smarts: "[OX2H]" },
-        { label: "Amine", smarts: "[NX3;H2,H1;!$(NC=O)]" },
-        { label: "Halogen", smarts: "[F,Cl,Br,I]" },
-        { label: "Nitrile", smarts: "C#N" },
-        { label: "Sulfonyl", smarts: "S(=O)(=O)" },
-        { label: "Methoxy", smarts: "CO" },
-        { label: "Phenyl", smarts: "c1ccccc1" },
+        { label: "Benzene ring", kind: "ring", smarts: "c1ccccc1" },
+        { label: "Naphthalene ring", kind: "ring", smarts: "c1ccc2ccccc2c1" },
+        { label: "Pyridine ring", kind: "ring", smarts: "n1ccccc1" },
+        { label: "Pyrimidine ring", kind: "ring", smarts: "n1cnccc1" },
+        { label: "Pyrazine ring", kind: "ring", smarts: "n1ccncc1" },
+        { label: "Imidazole ring", kind: "ring", smarts: "c1ncc[nH]1" },
+        { label: "Pyrrole ring", kind: "ring", smarts: "[nH]1cccc1" },
+        { label: "Furan ring", kind: "ring", smarts: "o1cccc1" },
+        { label: "Thiophene ring", kind: "ring", smarts: "s1cccc1" },
+        { label: "Indole ring", kind: "ring", smarts: "c1ccc2[nH]ccc2c1" },
+        { label: "Quinoline ring", kind: "ring", smarts: "c1ccc2ncccc2c1" },
+        { label: "Isoquinoline ring", kind: "ring", smarts: "c1ccc2cccnc2c1" },
+        { label: "Benzofuran ring", kind: "ring", smarts: "c1ccc2occc2c1" },
+        { label: "Benzothiophene ring", kind: "ring", smarts: "c1ccc2sccc2c1" },
+        { label: "Quinoxaline ring", kind: "ring", smarts: "c1ccc2nccnc2c1" },
+        { label: "Purine ring", kind: "ring", smarts: "n1cnc2ncnc2n1" },
+        { label: "Chromone ring", kind: "ring", smarts: "c1cc2oc(=O)ccc2cc1" },
+        { label: "Coumarin ring", kind: "ring", smarts: "o1ccc2ccccc2c1=O" },
+        { label: "Morpholine ring", kind: "ring", smarts: "O1CCNCC1" },
+        { label: "Piperidine ring", kind: "ring", smarts: "N1CCCCC1" },
+        { label: "Piperazine ring", kind: "ring", smarts: "N1CCNCC1" },
+        { label: "Tetrahydrofuran ring", kind: "ring", smarts: "O1CCCC1" },
+        { label: "Tetrahydropyran ring", kind: "ring", smarts: "O1CCCCC1" },
+        { label: "Cyclohexane ring", kind: "ring", smarts: "C1CCCCC1" },
+        { label: "Steroid-like fused ring", kind: "ring", smarts: "C1CCC2CCCCC2C1" },
+        { label: "Sugar-like oxygen ring", kind: "ring", smarts: "[OX2]1[CX4][CX4][CX4][CX4][CX4]1" },
+        { label: "Aldehyde", kind: "decoration", smarts: "[CX3H1](=O)[#6]" },
+        { label: "Ketone", kind: "decoration", smarts: "[#6][CX3](=O)[#6]" },
+        { label: "Carboxylic acid", kind: "decoration", smarts: "C(=O)[OX2H1]" },
+        { label: "Ester", kind: "decoration", smarts: "C(=O)O[#6]" },
+        { label: "Amide", kind: "decoration", smarts: "C(=O)N" },
+        { label: "Carbamate", kind: "decoration", smarts: "OC(=O)N" },
+        { label: "Urea", kind: "decoration", smarts: "NC(=O)N" },
+        { label: "Sulfonamide", kind: "decoration", smarts: "S(=O)(=O)N" },
+        { label: "Sulfone", kind: "decoration", smarts: "S(=O)(=O)[#6]" },
+        { label: "Sulfoxide", kind: "decoration", smarts: "S(=O)[#6]" },
+        { label: "Alcohol", kind: "decoration", smarts: "[CX4][OX2H]" },
+        { label: "Phenol", kind: "decoration", smarts: "c[OX2H]" },
+        { label: "Ether", kind: "decoration", smarts: "[OD2]([#6])[#6]" },
+        { label: "Methoxy", kind: "decoration", smarts: "CO" },
+        { label: "Amine", kind: "decoration", smarts: "[NX3;H2,H1;!$(NC=O)]" },
+        { label: "Halogen", kind: "decoration", smarts: "[F,Cl,Br,I]" },
+        { label: "Nitrile", kind: "decoration", smarts: "C#N" },
+        { label: "Nitro", kind: "decoration", smarts: "[NX3](=O)=O" },
+        { label: "Thiol", kind: "decoration", smarts: "[SX2H]" },
+        { label: "Phosphate", kind: "decoration", smarts: "P(=O)(O)O" },
+        { label: "Acetal", kind: "decoration", smarts: "[CX4](O)(O)[#6]" },
+        { label: "Lactone", kind: "decoration", smarts: "O=C1O[#6][#6][#6]1" },
+        { label: "Lactam", kind: "decoration", smarts: "O=C1N[#6][#6][#6]1" },
+        { label: "Epoxide", kind: "decoration", smarts: "C1OC1" },
+        { label: "Allyl", kind: "decoration", smarts: "C=CC" },
       ];
+
+      function numericField(descriptors, names) {
+        for (const name of names) {
+          const value = descriptors?.[name];
+          if (typeof value === "number" && Number.isFinite(value)) {
+            return value;
+          }
+          if (typeof value === "string" && value.trim() !== "") {
+            const parsed = Number(value);
+            if (Number.isFinite(parsed)) {
+              return parsed;
+            }
+          }
+        }
+        return null;
+      }
 
       const rdkitReady = (async () => {
         const init = await waitForInitRDKitModule();
@@ -99,6 +153,39 @@
               if (!inchikey) {
                 throw new Error("rdkit.js could not generate InChIKey");
               }
+              const rawDescriptors = JSON.parse(mol.get_descriptors() || "{}");
+              const descriptors = {
+                amw: numericField(rawDescriptors, ["amw", "AMW"]),
+                exact_mw: numericField(rawDescriptors, [
+                  "exactmw",
+                  "exact_mw",
+                  "ExactMolWt",
+                  "exact_molecular_weight",
+                ]),
+                clogp: numericField(rawDescriptors, ["CrippenClogP", "MolLogP", "clogp"]),
+                tpsa: numericField(rawDescriptors, ["tpsa", "TPSA"]),
+                fraction_csp3: numericField(rawDescriptors, ["fractionCSP3", "FractionCSP3"]),
+                ring_count: numericField(rawDescriptors, ["NumRings", "num_rings"]),
+                aromatic_ring_count: numericField(rawDescriptors, [
+                  "NumAromaticRings",
+                  "num_aromatic_rings",
+                ]),
+                aliphatic_ring_count: numericField(rawDescriptors, [
+                  "NumAliphaticRings",
+                  "num_aliphatic_rings",
+                ]),
+                rotatable_bonds: numericField(rawDescriptors, [
+                  "NumRotatableBonds",
+                  "num_rotatable_bonds",
+                ]),
+                hba: numericField(rawDescriptors, ["NumHAcceptors", "lipinskiHBA", "hba"]),
+                hbd: numericField(rawDescriptors, ["NumHDonors", "lipinskiHBD", "hbd"]),
+                hetero_atoms: numericField(rawDescriptors, [
+                  "NumHeteroatoms",
+                  "num_heteroatoms",
+                  "heteroatoms",
+                ]),
+              };
 
               const hits = [];
               const atoms = [];
@@ -116,6 +203,7 @@
                 }
                 hits.push({
                   label: motif.label,
+                  kind: motif.kind,
                   smarts: motif.smarts,
                   atoms: hitAtoms,
                   bonds: hitBonds,
@@ -142,6 +230,7 @@
                 inchikey,
                 svg,
                 motifs: hits,
+                descriptors,
               };
             });
             if (result && typeof result.error === "string") {

@@ -5,13 +5,17 @@
 //! - **Shared decorations**: RDKit SMARTS motifs found across the uploaded
 //!   molecules. These are the recurring substructures used to spot common
 //!   chemical decorations.
-//! - **Result**: a quick source check for each row. `PubChem` and `LOTUS` are
-//!   marked by SPARQL hits; `Natural product` is positive whenever either source
-//!   supports the molecule; `Synthetic score` is a coarse heuristic for rows
-//!   that fail both checks.
+//! - **Connectivity / scaffold / analogs**: `PubChem` and `LOTUS` are grouped
+//!   by the first 14 characters of the InChIKey so same-connectivity hits stay
+//!   together; the scaffold label is a coarse ring-family summary; `Close
+//!   analogs` come from LOTUS similarity/substructure searches through Sachem.
+//! - **Evidence tiers**: `LOTUS` is treated as high evidence because it carries
+//!   organism-level natural-product context; `PubChem` is a lower-evidence
+//!   database hit and mostly serves as a sanity check.
 //! - **Verdict**: the user-facing summary. The app leans toward
 //!   "Looks legitimate" when both sources agree, "Citation available" when one
-//!   source agrees, and "Citation needed" / "Smells fishy" when neither does.
+//!   source agrees or analogs show up, and "Citation needed" / "Smells fishy"
+//!   when neither does.
 
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
@@ -227,6 +231,10 @@ struct MoleculeRow {
     pubchem_cids: Vec<String>,
     pubchem_names: Vec<String>,
     pubchem_taxa: Vec<String>,
+    lotus_similarity_hits: Vec<String>,
+    lotus_substructure_hits: Vec<String>,
+    np_likeness: f64,
+    ring_family: String,
     verdict: String,
     error: Option<String>,
 }
@@ -236,6 +244,23 @@ struct MotifSummary {
     label: String,
     smarts: String,
     count: usize,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug, Default, Deserialize)]
+struct RdkitDescriptors {
+    amw: Option<f64>,
+    exact_mw: Option<f64>,
+    clogp: Option<f64>,
+    tpsa: Option<f64>,
+    fraction_csp3: Option<f64>,
+    ring_count: Option<f64>,
+    aromatic_ring_count: Option<f64>,
+    aliphatic_ring_count: Option<f64>,
+    rotatable_bonds: Option<f64>,
+    hba: Option<f64>,
+    hbd: Option<f64>,
+    hetero_atoms: Option<f64>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -249,9 +274,17 @@ struct SourceSummary {
 
 #[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug, Default)]
+struct AnalogSummary {
+    similarity: BTreeSet<String>,
+    substructure: BTreeSet<String>,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug, Default)]
 struct Enrichment {
     lotus: HashMap<String, SourceSummary>,
     pubchem: HashMap<String, SourceSummary>,
+    analogs: HashMap<String, AnalogSummary>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -261,6 +294,7 @@ struct RdkitInspectResponse {
     inchikey: Option<String>,
     svg: Option<String>,
     motifs: Option<Vec<RdkitMotifHit>>,
+    descriptors: Option<RdkitDescriptors>,
     error: Option<String>,
 }
 
@@ -268,6 +302,7 @@ struct RdkitInspectResponse {
 #[derive(Debug, Deserialize)]
 struct RdkitMotifHit {
     label: String,
+    kind: String,
     smarts: String,
 }
 
@@ -382,12 +417,16 @@ fn app() -> Element {
                         div { class: "small muted", "Common RDKit SMARTS motifs found across the uploaded molecules. These are the recurring substructures that get highlighted in the grid." }
                     }
                     div { class: "summary-item",
-                        h3 { "Result" }
-                        div { class: "small muted", "A quick source check for each row: PubChem and LOTUS show SPARQL hits, Natural product is positive when either source agrees, and Synthetic score is the fallback when both checks fail." }
+                        h3 { "Connectivity" }
+                        div { class: "small muted", "Same-connectivity hits are grouped by the first 14 characters of the InChIKey, so stereoisomers stay together while still exposing the underlying connectivity class." }
+                    }
+                    div { class: "summary-item",
+                        h3 { "Close analogs" }
+                        div { class: "small muted", "LOTUS similarity and substructure searches use Sachem/IDSM, so you also see nearby natural-product-like neighbors and scaffold relatives." }
                     }
                     div { class: "summary-item",
                         h3 { "Verdict" }
-                        div { class: "small muted", "The human-readable call. Both sources agreeing means Looks legitimate; one source gives Citation available; no source means Citation needed or Smells fishy." }
+                        div { class: "small muted", "The human-readable call. LOTUS is the high-evidence natural-product signal; PubChem is a lower-evidence cross-check. Both agreeing means Looks legitimate; LOTUS alone still counts as strong evidence; PubChem alone stays weak." }
                     }
                 }
             }
@@ -488,7 +527,7 @@ fn app() -> Element {
                                         }
                                     }
                                     if !row.lotus_compounds.is_empty() {
-                                        div { class: "small muted", "Compounds: {row.lotus_compounds.len()}" }
+                                        div { class: "small muted", "Same connectivity compounds: {row.lotus_compounds.len()}" }
                                     }
                                 }
                                 div { class: "meta",
@@ -503,30 +542,60 @@ fn app() -> Element {
                                         }
                                     }
                                     if !row.pubchem_names.is_empty() {
-                                        div { class: "small muted", "Names: {row.pubchem_names.len()}" }
+                                        div { class: "small muted", "Same connectivity names: {row.pubchem_names.len()}" }
                                     }
                                     if !row.pubchem_taxa.is_empty() {
                                         div { class: "small muted", "Taxa: {row.pubchem_taxa.len()}" }
+                                    }
+                                }
+                                div { class: "meta",
+                                    strong { "Scaffold" }
+                                    div { "{row.ring_family}" }
+                                    div { class: "chip-list",
+                                        span { class: "chip alt", "{np_likeness_label(row.np_likeness)}" }
+                                    }
+                                }
+                                div { class: "meta",
+                                    strong { "Close analogs" }
+                                    if row.lotus_similarity_hits.is_empty() && row.lotus_substructure_hits.is_empty() {
+                                        div { class: "muted", "No close LOTUS analogs found." }
+                                    } else {
+                                        if !row.lotus_similarity_hits.is_empty() {
+                                            div { class: "small muted", "Similarity" }
+                                            div { class: "chip-list",
+                                                for hit in row.lotus_similarity_hits.iter().take(4) {
+                                                    span { class: "chip", "{hit}" }
+                                                }
+                                            }
+                                        }
+                                        if !row.lotus_substructure_hits.is_empty() {
+                                            div { class: "small muted", "Substructure" }
+                                            div { class: "chip-list",
+                                                for hit in row.lotus_substructure_hits.iter().take(4) {
+                                                    span { class: "chip alt", "{hit}" }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                                 div { class: "result-box",
                                     strong { "Result" }
                                     div { class: "result-grid",
                                         div { class: "result-row",
-                                            span { "PubChem" }
+                                            span { "PubChem low evidence" }
                                             span { class: "result-badge", if row.pubchem_cids.is_empty() { "✗" } else { "✓" } }
                                         }
                                         div { class: "result-row",
-                                            span { "LOTUS" }
+                                            span { "LOTUS high evidence" }
                                             span { class: "result-badge", if row.lotus_taxa.is_empty() { "✗" } else { "✓" } }
                                         }
                                         div { class: "result-row",
-                                            span { "Natural product" }
+                                            span { "Natural product support" }
                                             span { class: "result-badge", if row.lotus_taxa.is_empty() && row.pubchem_cids.is_empty() { "✗" } else { "✓" } }
                                         }
                                         div { class: "result-row",
-                                            span { "Synthetic score" }
-                                            span { class: "result-badge", if row.lotus_taxa.is_empty() && row.pubchem_cids.is_empty() { "high" } else { "low" } }
+                                            span { "Close analogs" }
+                                            span { class: "result-badge", if row.lotus_similarity_hits.is_empty() && row.lotus_substructure_hits.is_empty() { "✗" } else { "✓" } }
                                         }
                                     }
                                     div { class: "verdict", "{row.verdict}" }
@@ -584,6 +653,10 @@ fn begin_import(
                                     pubchem_cids: Vec::new(),
                                     pubchem_names: Vec::new(),
                                     pubchem_taxa: Vec::new(),
+                                    lotus_similarity_hits: Vec::new(),
+                                    lotus_substructure_hits: Vec::new(),
+                                    np_likeness: 0.0,
+                                    ring_family: String::new(),
                                     verdict: String::new(),
                                     error: Some(err),
                                 });
@@ -604,6 +677,9 @@ fn begin_import(
                             if !inchikey.is_empty() {
                                 inchikeys.insert(inchikey.clone());
                             }
+                            let descriptors = inspect.descriptors.unwrap_or_default();
+                            let ring_family = classify_ring_family(&descriptors, &motif_labels);
+                            let np_likeness = score_np_likeness(&descriptors, &ring_family);
                             parsed_rows.push(MoleculeRow {
                                 index: raw.index,
                                 label: raw.label,
@@ -617,6 +693,10 @@ fn begin_import(
                                 pubchem_cids: Vec::new(),
                                 pubchem_names: Vec::new(),
                                 pubchem_taxa: Vec::new(),
+                                lotus_similarity_hits: Vec::new(),
+                                lotus_substructure_hits: Vec::new(),
+                                np_likeness,
+                                ring_family,
                                 verdict: String::new(),
                                 error: None,
                             });
@@ -635,6 +715,10 @@ fn begin_import(
                                 pubchem_cids: Vec::new(),
                                 pubchem_names: Vec::new(),
                                 pubchem_taxa: Vec::new(),
+                                lotus_similarity_hits: Vec::new(),
+                                lotus_substructure_hits: Vec::new(),
+                                np_likeness: 0.0,
+                                ring_family: String::new(),
                                 verdict: String::new(),
                                 error: Some(err),
                             });
@@ -652,15 +736,14 @@ fn begin_import(
                     .collect::<Vec<_>>();
 
                 let unique_keys = inchikeys.into_iter().collect::<Vec<_>>();
-                let mut enrichment_warning = None;
+                let mut warning = None;
                 let enrichment = if unique_keys.is_empty() {
                     Enrichment::default()
                 } else {
-                    match enrich_sources(&unique_keys).await {
+                    match enrich_sources(&unique_keys, &[]).await {
                         Ok(data) => data,
                         Err(err) => {
-                            enrichment_warning =
-                                Some(format!("Parsed CSV, but enrichment failed: {err}"));
+                            warning = Some(format!("Parsed CSV, but enrichment failed: {err}"));
                             Enrichment::default()
                         }
                     }
@@ -671,7 +754,7 @@ fn begin_import(
                     parsed_rows,
                     motif_summary,
                     unique_keys.len(),
-                    enrichment_warning,
+                    warning,
                 ))
             }
             .await;
@@ -690,7 +773,6 @@ fn begin_import(
                 status.set(format!("Error reading CSV: {err}"));
             }
         }
-
         busy.set(false);
     });
 }
@@ -734,8 +816,10 @@ fn verdict_for_row(row: &MoleculeRow) -> String {
     }
     let has_lotus = !row.lotus_taxa.is_empty();
     let has_pubchem = !row.pubchem_cids.is_empty();
+    let has_analogs =
+        !row.lotus_similarity_hits.is_empty() || !row.lotus_substructure_hits.is_empty();
     let is_natural = has_lotus || has_pubchem;
-    let suspicious = !has_lotus && !has_pubchem;
+    let suspicious = !has_lotus && !has_pubchem && !has_analogs;
 
     if suspicious {
         return "👃 Smells fishy. Citation needed.".to_string();
@@ -743,10 +827,121 @@ fn verdict_for_row(row: &MoleculeRow) -> String {
     if has_lotus && has_pubchem {
         return "Looks legitimate.".to_string();
     }
+    if has_lotus {
+        return "🌿 High evidence from LOTUS.".to_string();
+    }
+    if has_analogs {
+        return "🧬 Close analogs found. Citation needed.".to_string();
+    }
     if is_natural {
-        return "📚 Citation available.".to_string();
+        return "📚 Low evidence from PubChem.".to_string();
     }
     "🤨 Citation needed.".to_string()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -> String {
+    let motif_text = motifs.join(" ").to_ascii_lowercase();
+    if motif_text.contains("steroid") {
+        return "steroid-like fused ring system".to_string();
+    }
+    if motif_text.contains("sugar") || motif_text.contains("tetrahydrofuran") {
+        return "sugar-like oxygenated ring system".to_string();
+    }
+    if motif_text.contains("indole")
+        || motif_text.contains("quinoline")
+        || motif_text.contains("isoquinoline")
+        || motif_text.contains("benzofuran")
+        || motif_text.contains("benzothiophene")
+        || motif_text.contains("quinoxaline")
+        || motif_text.contains("purine")
+    {
+        return "fused heteroaromatic scaffold".to_string();
+    }
+
+    let rings = descriptors.ring_count.unwrap_or(0.0);
+    let aromatic = descriptors.aromatic_ring_count.unwrap_or(0.0);
+    let aliphatic = descriptors.aliphatic_ring_count.unwrap_or(0.0);
+    let csp3 = descriptors.fraction_csp3.unwrap_or(0.0);
+
+    if rings <= 0.0 {
+        return "acyclic".to_string();
+    }
+    if aromatic >= 3.0 {
+        return "polyaromatic scaffold".to_string();
+    }
+    if aromatic > 0.0 && aliphatic > 0.0 {
+        return "mixed aromatic/aliphatic scaffold".to_string();
+    }
+    if aliphatic >= 2.0 || csp3 >= 0.5 {
+        return "saturated natural-product-like scaffold".to_string();
+    }
+    "compact ring scaffold".to_string()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn score_np_likeness(descriptors: &RdkitDescriptors, ring_family: &str) -> f64 {
+    let mut score = 0.0;
+    if let Some(csp3) = descriptors.fraction_csp3 {
+        score += (csp3 - 0.35) * 3.5;
+    }
+    if let Some(tpsa) = descriptors.tpsa {
+        score += if (20.0..=180.0).contains(&tpsa) { 0.4 } else { -0.4 };
+    }
+    if let Some(clogp) = descriptors.clogp {
+        score += if (1.0..=6.0).contains(&clogp) { 0.3 } else { -0.2 };
+    }
+    if let Some(rings) = descriptors.ring_count {
+        score += (rings.min(6.0)) * 0.12;
+    }
+    if let Some(hetero) = descriptors.hetero_atoms {
+        score += if hetero >= 2.0 { 0.25 } else { -0.25 };
+    }
+    if ring_family.contains("natural-product-like")
+        || ring_family.contains("fused heteroaromatic")
+        || ring_family.contains("sugar-like")
+    {
+        score += 0.8;
+    }
+    if ring_family.contains("polyaromatic") {
+        score -= 1.1;
+    }
+    score.clamp(-3.0, 3.0)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn np_likeness_label(score: f64) -> &'static str {
+    if score >= 1.5 {
+        "natural-product-like"
+    } else if score >= 0.3 {
+        "borderline"
+    } else if score >= -0.7 {
+        "mixed"
+    } else {
+        "unusual"
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn np_likeness_label(_score: f64) -> &'static str {
+    "—"
+}
+
+#[cfg(target_arch = "wasm32")]
+fn analog_label(binding: &serde_json::Map<String, serde_json::Value>) -> String {
+    let label = binding_value(binding, "compoundLabel");
+    let taxon = binding_value(binding, "taxonLabel");
+    let inchikey = binding_value(binding, "compound_inchikey");
+    match (label.is_empty(), taxon.is_empty(), inchikey.is_empty()) {
+        (false, false, false) => format!("{label} · {taxon} · {inchikey}"),
+        (false, false, true) => format!("{label} · {taxon}"),
+        (false, true, false) => format!("{label} · {inchikey}"),
+        (false, true, true) => label,
+        (true, false, false) => format!("{taxon} · {inchikey}"),
+        (true, false, true) => taxon,
+        (true, true, false) => inchikey,
+        (true, true, true) => String::new(),
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -792,12 +987,22 @@ fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
 #[cfg(target_arch = "wasm32")]
 fn detect_column(headers: &csv::StringRecord, names: &[&str]) -> Option<usize> {
     headers.iter().enumerate().find_map(|(idx, header)| {
-        let normalized = header.trim().to_ascii_lowercase();
+        let normalized = normalize_column_header(header);
         names
             .iter()
-            .any(|needle| normalized == *needle)
+            .any(|needle| normalized == *needle || normalized.contains(needle))
             .then_some(idx)
     })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn normalize_column_header(header: &str) -> String {
+    header
+        .trim()
+        .trim_start_matches('\u{feff}')
+        .trim_start_matches(|c: char| matches!(c, '>' | '#' | '"' | '\'' | ':' | ';'))
+        .trim()
+        .to_ascii_lowercase()
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -884,9 +1089,7 @@ fn js_value_to_json(value: JsValue) -> Result<serde_json::Value, String> {
 fn http_client() -> Result<&'static reqwest::Client, String> {
     static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
     match CLIENT.get_or_init(|| {
-        reqwest::Client::builder()
-            .build()
-            .map_err(|e| e.to_string())
+        reqwest::Client::builder().build().map_err(|e| e.to_string())
     }) {
         Ok(client) => Ok(client),
         Err(message) => Err(format!("failed to initialize HTTP client: {message}")),
@@ -894,13 +1097,14 @@ fn http_client() -> Result<&'static reqwest::Client, String> {
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn enrich_sources(inchikeys: &[String]) -> Result<Enrichment, String> {
+async fn enrich_sources(inchikeys: &[String], smiles: &[String]) -> Result<Enrichment, String> {
     let lotus = fetch_lotus_hits(inchikeys);
     let pubchem = fetch_pubchem_hits(inchikeys);
     let (lotus, pubchem) = join(lotus, pubchem).await;
     Ok(Enrichment {
         lotus: lotus?,
         pubchem: pubchem?,
+        analogs: HashMap::new(),
     })
 }
 
@@ -1045,7 +1249,7 @@ PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 PREFIX p: <http://www.wikidata.org/prop/>
 PREFIX ps: <http://www.wikidata.org/prop/statement/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
+        
 SELECT DISTINCT ?inchikey ?compound ?compoundLabel ?taxonLabel WHERE {{
   VALUES ?inchikey {{ {values} }}
   ?compound wdt:P235 ?inchikey ;
@@ -1071,7 +1275,7 @@ PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX vocab: <http://rdf.ncbi.nlm.nih.gov/pubchem/vocabulary#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
+        
 SELECT DISTINCT ?inchikey ?cid ?label ?iupac ?taxonLabel WHERE {{
   VALUES ?inchikey {{ {values} }}
   ?compound dcterms:identifier ?cid ;

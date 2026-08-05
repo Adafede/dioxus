@@ -21,6 +21,7 @@ log = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+shared = { path = "../../crates/shared", version = "0.1.0" }
 urlencoding = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
