@@ -8,8 +8,8 @@
   left: 0.5rem;
   z-index: 9999;
   padding: 0.5rem 1rem;
-  background: var(--accent, #0b5cab);
-  color: #fff;
+  background: #dbeafe;
+  color: #0b1f33;
   font-size: 0.875rem;
   font-weight: 600;
   border-radius: 0 0 4px 4px;
@@ -18,7 +18,7 @@
 }
 .skip-link:focus {
   top: 0;
-  outline: 3px solid var(--accent2, #084b8a);
+  outline: 3px solid #0b5cab;
   outline-offset: 2px;
 }
 

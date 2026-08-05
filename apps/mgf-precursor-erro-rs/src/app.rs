@@ -33,7 +33,7 @@ fn skip_link() -> Element {
         a {
             href: "#main",
             class: "skip-link",
-            style: "position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:#1e40af;color:#fff;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:none;",
+            style: "position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:#dbeafe;color:#0b1f33;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:none;",
             "Skip to main content"
         }
     }
@@ -181,7 +181,7 @@ pub fn app() -> Element {
     rsx! {
         div {
             style: "min-height: 100vh; padding: 2rem 1rem 3rem; background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); color: #0f172a;",
-            style { ".skip-link:focus {{ top: 0 !important; }}" }
+            style { ".skip-link:focus {{ top: 0 !important; outline: 3px solid #0b5cab; outline-offset: 2px; }}" }
             skip_link {}
 
             main { id: "main",
