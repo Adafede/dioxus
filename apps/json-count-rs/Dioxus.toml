@@ -1,5 +1,5 @@
 [application]
-name = "jsoncount"
+name = "json-count-rs"
 default_platform = "web"
 
 [web.app]
