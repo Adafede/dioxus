@@ -336,8 +336,13 @@ a:hover { text-decoration: underline; }
   padding: 1px 7px;
   border-radius: 999px;
   background: transparent;
-  border: none;
+  border: 1px solid #e2e8f0;
   min-width: 0;
+  transition: border-color .12s, box-shadow .12s;
+}
+.footer-links li:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 .footer-link {
   color: #0f172a;
