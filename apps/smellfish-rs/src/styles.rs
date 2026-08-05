@@ -342,7 +342,6 @@ a:hover { text-decoration: underline; }
 .footer-link {
   color: #0f172a;
   text-decoration: none;
-  font-weight: 600;
 }
 .footer-link:hover { text-decoration: underline; }
 .footer-link.red { color: #990000; }
