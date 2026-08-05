@@ -335,8 +335,8 @@ a:hover { text-decoration: underline; }
   gap: 4px;
   padding: 1px 7px;
   border-radius: 999px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: transparent;
+  border: none;
   min-width: 0;
 }
 .footer-link {
@@ -344,7 +344,7 @@ a:hover { text-decoration: underline; }
   text-decoration: none;
 }
 .footer-link:hover { text-decoration: underline; }
-.footer-link.red { color: #990000; font-weight: normal; }
-.footer-link.green { color: #1a6b4d; font-weight: normal; }
-.footer-link.blue { color: #006699; font-weight: normal; }
+.footer-link.red { color: #990000; }
+.footer-link.green { color: #339966; }
+.footer-link.blue { color: #006699; }
 ";
