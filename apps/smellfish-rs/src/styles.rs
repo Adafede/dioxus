@@ -179,15 +179,15 @@ pub const CSS: &str = r#"
   gap: 4px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: rgba(0, 102, 153, 0.08);
+  color: #006699;
   text-decoration: none;
   font-size: 0.82rem;
   font-weight: 600;
-  border: 1px solid #93c5fd;
+  border: 1px solid rgba(0, 102, 153, 0.3);
 }
 .cid-link:hover {
-  background: #dbeafe;
+  background: rgba(0, 102, 153, 0.15);
   text-decoration: underline;
 }
 .ertl-work-btn {
@@ -197,7 +197,7 @@ pub const CSS: &str = r#"
   padding: 0;
   border: none;
   background: transparent;
-  color: #1e40af;
+  color: #006699;
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
@@ -206,6 +206,9 @@ pub const CSS: &str = r#"
 .ertl-work-btn:hover {
   text-decoration: underline;
 }
+a { color: #006699; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.footer-link.blue { color: #006699; }
 .meta.small { font-size: 0.82rem; }
 .meta.small.muted { color: #94a3b8; }
 .verdict {
@@ -216,10 +219,27 @@ pub const CSS: &str = r#"
   text-align: center;
   font-size: 0.9rem;
 }
-.verdict-likely { background: #dcfce7; color: #15803d; }
-.verdict-neutral { background: #f1f5f9; color: #475569; }
-.verdict-caution { background: #fffbeb; color: #92400e; }
-.verdict-fishy { background: #fee2e2; color: #991b1b; }
+/* Verdict badges use ACTUAL Wikidata colors: #990000 #339966 #006699 #484848 */
+.verdict-likely { 
+  background: rgba(51, 153, 102, 0.12); 
+  color: #339966; 
+  border: 1px solid rgba(51, 153, 102, 0.4);
+}
+.verdict-neutral { 
+  background: rgba(0, 102, 153, 0.12); 
+  color: #006699; 
+  border: 1px solid rgba(0, 102, 153, 0.4);
+}
+.verdict-caution { 
+  background: rgba(153, 0, 0, 0.12); 
+  color: #990000; 
+  border: 1px solid rgba(153, 0, 0, 0.4);
+}
+.verdict-fishy { 
+  background: rgba(153, 0, 0, 0.2); 
+  color: #990000; 
+  border: 1px solid rgba(153, 0, 0, 0.5);
+}
 .muted { color: #64748b; }
 .error { color: #b91c1c; font-weight: 600; }
 .small { font-size: 0.82rem; }
@@ -302,7 +322,7 @@ pub const CSS: &str = r#"
   font-weight: 600;
 }
 .footer-link:hover { text-decoration: underline; }
-.footer-link.red { color: #991b1b; }
-.footer-link.green { color: #15803d; }
-.footer-link.blue { color: #2563eb; }
+.footer-link.red { color: #990000; }
+.footer-link.green { color: #339966; }
+.footer-link.blue { color: #006699; }
 "#;

@@ -131,18 +131,6 @@ pub fn assess_np_evidence(
         );
     }
 
-    // Heteroatom / oxygen content — O-functions (hydroxyl, carbonyl, ether,
-    // ester, etc.) are far more prevalent in NPs than in typical synthetic
-    // libraries.
-    if let Some(hetero) = descriptors.hetero_atoms {
-        if hetero >= 4.0 {
-            notes.push(format!(
-                "{hetero:.0} heteroatoms — oxygenation consistent with \
-                 biosynthetic origin"
-            ));
-        }
-    }
-
     // ── Ertl substituent enrichment ─────────────────────────────────────
     // Substituents drawn from the top-60 most common natural-product
     // substituent patterns (Ertl et al., BMC 54, 116562, 2022,
@@ -241,8 +229,37 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
     if has_lotus {
         return format!("🌿 LOTUS-backed (Ertl score {score:+.2}).");
     }
+
+    // ── PubChem hit evaluation ──────────────────────────────────────────
+    // Don't treat all PubChem hits the same. Evaluate quality based on
+    // Ertl score + NP-like structural features (substituents, motifs, scaffold).
     if has_pubchem {
-        return format!("📚 PubChem hit only — weak evidence (Ertl score {score:+.2}).");
+        let np_substituent_count = row.substituents.len();
+        let np_motif_count = row.motifs.iter().filter(|m| is_known_np_motif(m)).count();
+        let has_np_scaffold = row.ring_family.to_ascii_lowercase().contains("polycyclic")
+            || row.ring_family.to_ascii_lowercase().contains("steroid")
+            || row.ring_family.to_ascii_lowercase().contains("sugar")
+            || row.ring_family.to_ascii_lowercase().contains("macrolide")
+            || row.ring_family.to_ascii_lowercase().contains("flavonoid")
+            || row
+                .ring_family
+                .to_ascii_lowercase()
+                .contains("heteroaromatic");
+
+        // High-quality PubChem hit: strong score + NP-like features.
+        if score >= 1.5 && (np_substituent_count >= 3 || (np_motif_count >= 2 && has_np_scaffold)) {
+            return format!(
+                "🌿 PubChem + strong NP evidence — Ertl score {score:+.2} with {np_substituent_count} NP substituent(s) + {np_motif_count} NP motif(s)."
+            );
+        }
+        // Moderate-quality PubChem hit: decent score + some NP features.
+        if score >= 0.8 && (np_substituent_count >= 2 || np_motif_count >= 1) {
+            return format!(
+                "📚 PubChem hit with NP signals — Ertl score {score:+.2}, {np_substituent_count} substituent(s), {np_motif_count} NP motif(s)."
+            );
+        }
+        // Weak PubChem hit: low score or minimal NP features.
+        return format!("📚 PubChem hit — weak NP evidence (Ertl score {score:+.2}).");
     }
 
     // Not in LOTUS or PubChem — fall back to structural evidence.
@@ -285,23 +302,44 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
 /// normalises to "likely", "neutral", "caution", or "fishy".
 pub fn verdict_category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
-    if l.contains("smells fishy") {
-        "fishy"
-    } else if l.contains("looks legitimate")
+
+    // High-confidence natural product evidence (GREEN)
+    if l.contains("looks legitimate")
         || l.contains("strong natural")
+        || l.contains("strong np evidence")
         || l.contains("lotus-backed")
+        || l.contains("pubchem + strong np")
         || l.contains("likely hit")
     {
-        "likely"
-    } else if l.contains("pubchem hit only")
-        || l.contains("citation needed")
-        || l.contains("not loaded")
-        || l.contains("⚠")
-    {
-        "caution"
-    } else {
-        "neutral"
+        return "likely";
     }
+
+    // Moderate NP evidence from PubChem (BLUE/NEUTRAL)
+    if l.contains("pubchem hit with np signals") {
+        return "neutral";
+    }
+
+    // Low-quality PubChem hits (RED/CAUTION)
+    if l.contains("pubchem hit") || l.contains("weak np evidence") {
+        return "caution";
+    }
+
+    // Structural evidence only (RED/CAUTION)
+    if l.contains("not yet in databases") || l.contains("database support") {
+        return "likely";
+    }
+
+    // Negative signals (RED/FISHY)
+    if l.contains("smells fishy") {
+        return "fishy";
+    }
+
+    // Uncertain (BLUE/NEUTRAL)
+    if l.contains("citation needed") {
+        return "caution";
+    }
+
+    "neutral"
 }
 
 /// Classify the core scaffold family using motif SMARTS matches and
@@ -446,29 +484,7 @@ pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
         });
     }
 
-    // 3 — Oxygenation / heteroatom count
-    let hetero = row.descriptors.hetero_atoms.unwrap_or(0.0);
-    if hetero >= 4.0 {
-        checks.push(ChemistCheck {
-            name: "Oxygenation",
-            status: "pass",
-            detail: format!("{:.0} heteroatoms", hetero),
-        });
-    } else if hetero >= 2.0 {
-        checks.push(ChemistCheck {
-            name: "Oxygenation",
-            status: "warn",
-            detail: format!("{:.0} heteroatoms — low for NP", hetero),
-        });
-    } else {
-        checks.push(ChemistCheck {
-            name: "Oxygenation",
-            status: "fail",
-            detail: format!("{:.0} heteroatoms — very low", hetero),
-        });
-    }
-
-    // 4 — Database presence
+    // Database presence
     let has_lotus = !row.lotus_taxa.is_empty();
     let has_pubchem = !row.pubchem_cids.is_empty();
     if has_lotus && has_pubchem {
@@ -825,5 +841,46 @@ mod tests {
             &["Sugar-like oxygen ring".to_string()],
         );
         assert_eq!(family3, "sugar-like oxygenated ring system");
+    }
+
+    #[test]
+    fn verdict_category_high_quality_pubchem() {
+        // High-quality PubChem hit should be "likely", not "caution"
+        let verdict = "🌿 PubChem + strong NP evidence — Ertl score +1.50 with 3 NP substituent(s) + 2 NP motif(s).";
+        assert_eq!(verdict_category(verdict), "likely");
+    }
+
+    #[test]
+    fn verdict_category_moderate_quality_pubchem() {
+        // Moderate-quality PubChem hit should be "neutral"
+        let verdict =
+            "📚 PubChem hit with NP signals — Ertl score +0.80, 2 substituent(s), 1 NP motif(s).";
+        assert_eq!(verdict_category(verdict), "neutral");
+    }
+
+    #[test]
+    fn verdict_category_weak_pubchem() {
+        // Weak PubChem hit should be "caution"
+        let verdict = "📚 PubChem hit — weak NP evidence (Ertl score +0.26).";
+        assert_eq!(verdict_category(verdict), "caution");
+    }
+
+    #[test]
+    fn verdict_category_lotus_backed() {
+        let verdict = "🌿 LOTUS-backed (Ertl score +1.23).";
+        assert_eq!(verdict_category(verdict), "likely");
+    }
+
+    #[test]
+    fn verdict_category_novel_candidate() {
+        let verdict =
+            "🌿 Likely hit — strong NP-likeness (+3.43) + NP-like scaffold, not yet in databases.";
+        assert_eq!(verdict_category(verdict), "likely");
+    }
+
+    #[test]
+    fn verdict_category_fishy() {
+        let verdict = "👃 Smells fishy (Ertl score -1.23). Citation needed.";
+        assert_eq!(verdict_category(verdict), "fishy");
     }
 }

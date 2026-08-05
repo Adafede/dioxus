@@ -305,7 +305,7 @@ pub fn app() -> Element {
                         span { class: "footer-label", "Citation" }
                         ul { class: "footer-links", role: "list",
                             li {
-                                a { class: "footer-link red", href: "https://doi.org/10.7040/elife.70780", target: "_blank", rel: "noreferrer", "LOTUS paper (eLife)" }
+                                a { class: "footer-link red", href: "https://doi.org/10.7554/eLife.70780", target: "_blank", rel: "noreferrer", "LOTUS paper (eLife)" }
                             }
                         }
                     }

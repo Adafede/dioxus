@@ -38,11 +38,11 @@ pub struct ColorScheme {
     pub accent: &'static str,
     /// Darker accent for hover states
     pub accent2: &'static str,
-    /// Success/taxon state color (Wikidata green: #396)
+    /// Success/taxon state color (Wikidata green: #396 = #339966)
     pub green: &'static str,
-    /// Error/compound/destructive action color (Wikidata red: #900)
+    /// Error/compound/destructive action color (Wikidata red: #900 = #990000)
     pub red: &'static str,
-    /// Info/reference color (Wikidata blue: #069)
+    /// Info/reference color (Wikidata blue: #069 = #006699)
     pub blue: &'static str,
     /// Secondary accent color
     pub purple: &'static str,
@@ -62,9 +62,9 @@ impl ColorScheme {
         text3: "#516274",
         accent: "#0b5cab",
         accent2: "#084b8a",
-        green: "#1f7a4d", // Wikidata taxon #396, darkened for WCAG AAA
-        red: "#b42318",   // Wikidata compound #900, darkened for WCAG AAA
-        blue: "#0052a3",  // Wikidata reference #069, darkened for WCAG AAA
+        green: "#339966", // Wikidata taxon #396
+        red: "#990000",   // Wikidata compound #900
+        blue: "#006699",  // Wikidata reference #069
         purple: "#6941c6",
     };
 
@@ -81,9 +81,9 @@ impl ColorScheme {
         text3: "#a7b4c7",
         accent: "#8cbcff",
         accent2: "#5e98f3",
-        green: "#4cc38a", // Wikidata taxon, lightened for WCAG AAA in dark mode
-        red: "#ff8a80",   // Wikidata compound, lightened for WCAG AAA in dark mode
-        blue: "#7eb3ff",  // Wikidata reference, lightened for WCAG AAA in dark mode
+        green: "#339966", // Wikidata taxon
+        red: "#990000",   // Wikidata compound
+        blue: "#006699",  // Wikidata reference
         purple: "#c3a0ff",
     };
 }

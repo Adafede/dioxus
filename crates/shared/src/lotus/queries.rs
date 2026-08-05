@@ -406,6 +406,120 @@ WHERE {{
     )
 }
 
+/// Query multiple SMILES at once via Sachem similarity search.
+/// Batches SMILES into a single SPARQL query using VALUES clause.
+/// Each result binding includes ?input_smiles to track which SMILES produced the match.
+#[must_use]
+pub fn query_sachem_batch(
+    smiles_batch: &[&str],
+    search_type: SmilesSearchType,
+    threshold: f64,
+    taxon_qid: Option<&str>,
+) -> String {
+    // Build VALUES clause with all SMILES in this batch
+    // For single variable, don't wrap in parentheses
+    let values_clause = {
+        let smiles_list = smiles_batch
+            .iter()
+            .map(|s| escape_structure_literal(s))
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!("VALUES ?input_smiles {{ {} }}", smiles_list)
+    };
+
+    let sachem_clause = match search_type {
+        SmilesSearchType::Similarity => format!(
+            r#"SERVICE idsm:wikidata {{
+    {values_clause}
+    ?c sachem:similarCompoundSearch [
+      sachem:query ?input_smiles;
+      sachem:cutoff "{threshold}"^^xsd:double
+    ].
+  }}"#
+        ),
+        SmilesSearchType::Substructure => format!(
+            r#"SERVICE idsm:wikidata {{
+    {values_clause}
+    ?c sachem:substructureSearch [
+      sachem:query ?input_smiles
+    ].
+  }}"#
+        ),
+    };
+
+    let body = taxon_qid.map_or_else(
+        || {
+            format!(
+                r"
+  {sachem_clause}
+  {COMPOUND_IDENTIFIERS}
+
+  OPTIONAL {{
+    ?c p:P703 ?statement .
+    ?statement ps:P703 ?t ;
+               prov:wasDerivedFrom ?ref .
+    ?ref pr:P248 ?r .
+    ?t wdt:P225 ?taxon_name .
+    {REFERENCE_METADATA_OPTIONAL}
+  }}
+
+  {PROPERTIES_OPTIONAL}
+"
+            )
+        },
+        |qid| {
+            format!(
+                r"
+  {sachem_clause}
+  {COMPOUND_IDENTIFIERS}
+
+  OPTIONAL {{
+    ?c p:P703 ?statement .
+    ?statement ps:P703 ?t ;
+               prov:wasDerivedFrom ?ref .
+    ?ref pr:P248 ?r .
+    ?t wdt:P225 ?taxon_name .
+    ?t wdt:P171* wd:{qid} .
+    {REFERENCE_METADATA_OPTIONAL}
+  }}
+
+  {PROPERTIES_OPTIONAL}
+"
+            )
+        },
+    );
+
+    // Custom SELECT clause that includes ?input_smiles for batch tracking
+    let batch_select = r#"
+SELECT DISTINCT
+  ?input_smiles
+  ?c
+  (xsd:integer(STRAFTER(STR(?c), "Q")) AS ?compound)
+  ?compoundLabel
+  ?compound_inchikey
+  ?compound_smiles_conn
+  ?compound_smiles_iso
+  ?compound_mass
+  ?compound_formula_raw
+  (xsd:integer(STRAFTER(STR(?t), "Q")) AS ?taxon)
+  ?taxon_name
+  (xsd:integer(STRAFTER(STR(?r), "Q")) AS ?ref_qid)
+  ?ref
+  ?ref_title
+  ?ref_doi
+  ?ref_date
+  ?statement
+"#;
+
+    format!(
+        r"{PREFIXES_WITH_STRUCTURE}
+{batch_select}
+WHERE {{
+{body}
+}}"
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StructureKind {
     Empty,

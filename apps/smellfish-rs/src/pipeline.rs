@@ -156,8 +156,28 @@ pub async fn import_csv(
     // ═══════════════════════════════════════════════════════════════════
     status.set("Probing LOTUS and PubChem…".to_string());
     let unique_keys = inchikeys.into_iter().collect::<Vec<_>>();
-    let enrichment_outcome = enrich_sources(&unique_keys, |msg| status.set(msg)).await;
-    let mut rows = merge_enrichment(rows, &enrichment_outcome);
+    let smiles_list: Vec<String> = rows.iter().map(|r| r.canonical_smiles.clone()).collect();
+
+    // Build mapping from InChIKey 14-char skeleton to row indices for matching results
+    let inchikey_to_indices: std::collections::HashMap<String, Vec<usize>> = {
+        let mut map = std::collections::HashMap::new();
+        for (idx, row) in rows.iter().enumerate() {
+            if !row.inchikey.is_empty() {
+                let key = row
+                    .inchikey
+                    .split('-')
+                    .next()
+                    .unwrap_or(&row.inchikey)
+                    .to_string();
+                map.entry(key).or_insert_with(Vec::new).push(idx);
+            }
+        }
+        map
+    };
+
+    let enrichment_outcome =
+        enrich_sources(&unique_keys, &smiles_list, |msg| status.set(msg)).await;
+    let mut rows = merge_enrichment(rows, &enrichment_outcome, &inchikey_to_indices);
 
     // ═══════════════════════════════════════════════════════════════════
     // PASS 2 — Evidence assessment using dataset context + Ertl score
@@ -315,32 +335,71 @@ pub fn begin_import(
 
 #[cfg(target_arch = "wasm32")]
 fn merge_enrichment(
-    rows: Vec<MoleculeRow>,
+    mut rows: Vec<MoleculeRow>,
     enrichment_outcome: &EnrichmentOutcome,
+    inchikey_to_indices: &std::collections::HashMap<String, Vec<usize>>,
 ) -> Vec<MoleculeRow> {
-    rows.into_iter()
-        .map(|mut row| {
-            let enrichment = &enrichment_outcome.enrichment;
-            if !row.inchikey.is_empty() {
-                let key = row
-                    .inchikey
-                    .split('-')
-                    .next()
-                    .unwrap_or(&row.inchikey)
-                    .to_string();
-                if let Some(summary) = enrichment.lotus.get(&key) {
-                    row.lotus_taxa = summary.taxa.iter().cloned().collect();
-                    row.lotus_compounds = summary.compounds.iter().cloned().collect();
-                }
-                if let Some(summary) = enrichment.pubchem.get(&key) {
-                    row.pubchem_cids = summary.cids.iter().cloned().collect();
-                    row.pubchem_names = summary.names.iter().cloned().collect();
-                    row.pubchem_taxa = summary.taxa.iter().cloned().collect();
+    web_sys::console::log_1(
+        &format!(
+            "merge_enrichment: {} inchikeys to process",
+            inchikey_to_indices.len()
+        )
+        .into(),
+    );
+    web_sys::console::log_1(
+        &format!(
+            "LOTUS hits available: {}",
+            enrichment_outcome.enrichment.lotus.len()
+        )
+        .into(),
+    );
+    web_sys::console::log_1(
+        &format!(
+            "PubChem hits available: {}",
+            enrichment_outcome.enrichment.pubchem.len()
+        )
+        .into(),
+    );
+
+    for (inchikey_skeleton, indices) in inchikey_to_indices {
+        // Check lotus by the InChIKey skeleton key
+        if let Some(summary) = enrichment_outcome.enrichment.lotus.get(inchikey_skeleton) {
+            web_sys::console::log_1(
+                &format!(
+                    "Found LOTUS hit for {}: {} compounds",
+                    inchikey_skeleton,
+                    summary.compounds.len()
+                )
+                .into(),
+            );
+            for &idx in indices {
+                if idx < rows.len() {
+                    rows[idx].lotus_taxa = summary.taxa.iter().cloned().collect();
+                    rows[idx].lotus_compounds = summary.compounds.iter().cloned().collect();
                 }
             }
-            row
-        })
-        .collect()
+        }
+        // Check pubchem by the InChIKey skeleton key
+        if let Some(summary) = enrichment_outcome.enrichment.pubchem.get(inchikey_skeleton) {
+            web_sys::console::log_1(
+                &format!(
+                    "Found PubChem hit for {}: {} CIDs",
+                    inchikey_skeleton,
+                    summary.cids.len()
+                )
+                .into(),
+            );
+            for &idx in indices {
+                if idx < rows.len() {
+                    rows[idx].pubchem_cids = summary.cids.iter().cloned().collect();
+                    rows[idx].pubchem_names = summary.names.iter().cloned().collect();
+                    rows[idx].pubchem_taxa = summary.taxa.iter().cloned().collect();
+                }
+            }
+        }
+    }
+    web_sys::console::log_1(&format!("merge_enrichment complete").into());
+    rows
 }
 
 #[cfg(target_arch = "wasm32")]
