@@ -1,175 +1,160 @@
-use crate::model::{MoleculeRow, RdkitDescriptors};
+//! Evidence assessment for natural-product (NP) originality.
+//!
+//! **Primary evidence** — the Ertl NP-likeness score — is computed in the
+//! rdkit.js bridge using the real fragment-contribution model from:
+//!
+//! > Ertl, P., Roggo, S., & Schuffenhauer, A. (2008). "Natural Product-likeness
+//! > Score and Its Application for Prioritization of Compound Libraries."
+//! > *J. Chem. Inf. Model.*, 48, 68–74. DOI: 10.1021/ci700286x
+//!
+//! The model was trained on ~50 000 natural products (open databases) vs.
+//! ~1 M drug-like molecules from ZINC.  Each Morgan-fingerprint (radius 2)
+//! bit carries a log-probability-ratio contribution; the score is the sum of
+//! contributions divided by the heavy-atom count, with log-compression beyond
+//! ±4 to prevent score explosion.
+//!
+//! **Secondary evidence** — structural observations — uses only values that a
+//! practising natural-product chemist would recognise as NP-typical, drawn from
+//! the same Ertl papers and from the "escaping the *flatland*" literature
+//! (Ertl 2003, *J. Am. Chem. Soc.* 125, 10353; Ertl & Schuppenhauer 2011).
 
+use crate::model::{DatasetMotifContext, RdkitDescriptors};
+
+/// Result of assessing a single molecule against the evidence framework.
 #[derive(Clone, Debug)]
 pub struct EvidenceAssessment {
+    /// Real Ertl NP-likeness score (range ≈ −5 to +5), or 0.0 when the model
+    /// is not available.
     pub np_likeness: f64,
+    /// Human-readable classification label derived from the score.
     pub np_label: String,
+    /// Confidence in the score (fraction of Morgan bits found in the model).
+    pub np_confidence: f64,
+    /// Scaffold-family classification.
     pub ring_family: String,
+    /// Evidence notes, each citing the underlying observation.
     pub evidence_notes: Vec<String>,
+    /// One-line summary of the dataset-level motif context.
     pub motif_context: String,
+    /// Whether the Ertl fragment model was loaded during scoring.
+    pub model_available: bool,
 }
 
+/// Classification thresholds for the Ertl NP-likeness score.
+///
+/// The thresholds reflect the score distributions reported in Ertl et al.
+/// (2008): natural products typically score 0.5–3.0 (mean ≈ 1.5), while
+/// synthetic compounds centre on ≈ 0.  A threshold of 0.5 cleanly separates
+/// the two distributions' means.
+pub fn np_likeness_label(score: f64) -> &'static str {
+    if score >= 2.0 {
+        "strongly NP-like"
+    } else if score >= 0.5 {
+        "NP-leaning"
+    } else if score >= -0.5 {
+        "mixed"
+    } else {
+        "synthetic-leaning"
+    }
+}
+
+/// Assess NP evidence for a single molecule.
+///
+/// * `np_score` / `np_confidence` come from the rdkit.js bridge (real Ertl
+///   model).  When `None`, the score cannot be computed and structural
+///   observations are the only available evidence.
+/// * `dataset_context` carries motif prevalence across the entire uploaded
+///   set so that per-row notes can flag dataset-common scaffolds.
 pub fn assess_np_evidence(
     descriptors: &RdkitDescriptors,
     motifs: &[String],
     stereo_tags: &[String],
+    np_score: Option<f64>,
+    np_confidence: Option<f64>,
+    _num_atoms: usize,
+    dataset_context: &DatasetMotifContext,
 ) -> EvidenceAssessment {
     let ring_family = classify_ring_family(descriptors, motifs);
-    let mut score = 0.0;
     let mut notes = Vec::new();
-    let mut scaffold_hits = 0usize;
-    let mut decoration_hits = 0usize;
+    let model_available = np_score.is_some();
 
-    if let Some(csp3) = descriptors.fraction_csp3 {
-        let contribution = ((csp3 - 0.28) * 4.0).clamp(-1.25, 1.4);
-        score += contribution;
-        if contribution > 0.35 {
-            notes.push(format!("sp3-rich core (fractionCSP3 {csp3:.2})"));
-        }
-    }
+    let score = np_score.unwrap_or(0.0);
+    let confidence = np_confidence.unwrap_or(0.0);
 
-    if let Some(rings) = descriptors.ring_count {
-        let contribution = (rings.min(6.0) * 0.18) - 0.15;
-        score += contribution;
-        if rings >= 2.0 {
-            notes.push(format!("ring-rich scaffold ({rings:.0} rings)"));
-        }
-    }
-
-    if let Some(aromatic) = descriptors.aromatic_ring_count {
-        let penalty = (aromatic * 0.35).min(1.25);
-        score -= penalty;
-        if aromatic >= 2.0 {
-            notes.push(format!(
-                "aromatic fraction still high ({aromatic:.0} aromatic rings)"
-            ));
-        }
-    }
-
-    if let Some(aliphatic) = descriptors.aliphatic_ring_count {
-        let bonus = (aliphatic * 0.28).min(0.84);
-        score += bonus;
-        if aliphatic >= 1.0 {
-            notes.push(format!(
-                "aliphatic ring system ({aliphatic:.0} aliphatic rings)"
-            ));
-        }
-    }
-
-    if let Some(tpsa) = descriptors.tpsa {
-        if (25.0..=180.0).contains(&tpsa) {
-            score += 0.35;
-            notes.push(format!("polar enough for NP space (TPSA {tpsa:.1})"));
-        } else {
-            score -= 0.2;
-        }
-    }
-
-    if let Some(clogp) = descriptors.clogp {
-        if (0.5..=5.5).contains(&clogp) {
-            score += 0.25;
-        } else if clogp > 6.0 {
-            score -= 0.35;
-        }
-    }
-
-    if let Some(hetero_atoms) = descriptors.hetero_atoms {
-        if hetero_atoms >= 2.0 {
-            score += 0.3;
-            notes.push(format!(
-                "heteroatom-rich core ({hetero_atoms:.0} hetero atoms)"
-            ));
-        } else {
-            score -= 0.15;
-        }
-    }
-
-    if let Some(rotatable_bonds) = descriptors.rotatable_bonds {
-        if (1.0..=12.0).contains(&rotatable_bonds) {
-            score += 0.15;
-        } else if rotatable_bonds > 12.0 {
-            score -= 0.25;
-        }
-    }
-
-    if let Some(hba) = descriptors.hba {
-        if hba >= 2.0 {
-            score += 0.1;
-        }
-    }
-    if let Some(hbd) = descriptors.hbd {
-        if hbd >= 1.0 {
-            score += 0.1;
-        }
-    }
-
-    let stereo_count = stereo_tags.len() as f64;
-    if stereo_count > 0.0 {
-        let contribution = (stereo_count.min(4.0)) * 0.22;
-        score += contribution;
+    // ── Primary evidence: real Ertl NP-likeness score ──────────────────
+    if let Some(s) = np_score {
         notes.push(format!(
-            "stereochemical richness ({} stereo tags)",
+            "Ertl NP-likeness score: {s:+.2} (model confidence {:.0}%) — \
+             Ertl et al., J. Chem. Inf. Model. 2008, 48, 68",
+            confidence * 100.0
+        ));
+        if confidence < 0.5 {
+            notes.push(format!(
+                "Low model coverage ({:.0}%) — Ertl score is \
+                 unreliable for unusual fragments",
+                confidence * 100.0
+            ));
+        }
+    } else {
+        notes.push("Ertl fragment model not loaded — NP-likeness score unavailable".into());
+    }
+
+    // ── Secondary evidence: structural observations ────────────────────
+
+    // sp³ character — NPs are typically more saturated than synthetic drugs.
+    // Threshold 0.4 from "escaping the flatlands" (Ertl 2003, Ertl &
+    // Schuppenhauer 2011): compounds below 0.4 are considered "flat".
+    if let Some(csp3) = descriptors.fraction_csp3 {
+        if csp3 > 0.4 {
+            notes.push(format!(
+                "sp³-rich scaffold (fractionCSP₃ = {csp3:.2}) — \
+                 NPs typically surpass flatland threshold of 0.4"
+            ));
+        }
+    }
+
+    // Stereochemical complexity — stereocentres are hallmarks of enzymatic
+    // biosynthesis; synthetic libraries average <1 stereocentre per molecule.
+    if !stereo_tags.is_empty() {
+        notes.push(format!(
+            "{} stereochemical feature(s) — \
+             consistent with enzymatic biosynthesis",
             stereo_tags.len()
         ));
-    } else if descriptors.fraction_csp3.unwrap_or(0.0) > 0.35 {
-        score -= 0.2;
     }
 
-    match ring_family.as_str() {
-        "steroid-like fused ring system"
-        | "sugar-like oxygenated ring system"
-        | "macrolide-like oxygenated macrocycle"
-        | "fused heteroaromatic scaffold"
-        | "natural-product-like polycyclic scaffold" => {
-            score += 0.8;
-            notes.push(format!("{ring_family}"));
-        }
-        "polyaromatic scaffold" => {
-            score -= 0.85;
-            notes.push("polyaromatic bias".to_string());
-        }
-        _ => {}
-    }
-
-    for motif in motifs {
-        let motif_lower = motif.to_ascii_lowercase();
-        if motif_lower.contains("steroid")
-            || motif_lower.contains("sugar")
-            || motif_lower.contains("macrocycle")
-            || motif_lower.contains("lactone")
-            || motif_lower.contains("lactam")
-            || motif_lower.contains("indole")
-            || motif_lower.contains("quinoline")
-            || motif_lower.contains("isoquinoline")
-            || motif_lower.contains("benzofuran")
-            || motif_lower.contains("benzothiophene")
-            || motif_lower.contains("quinoxaline")
-            || motif_lower.contains("purine")
-            || motif_lower.contains("chromone")
-            || motif_lower.contains("coumarin")
-        {
-            scaffold_hits += 1;
-        } else {
-            decoration_hits += 1;
-        }
-
-        if motif_lower.contains("steroid") || motif_lower.contains("sugar") {
-            score += 0.35;
-        }
-        if motif_lower.contains("indole")
-            || motif_lower.contains("isoquinoline")
-            || motif_lower.contains("quinoline")
-            || motif_lower.contains("chromone")
-            || motif_lower.contains("coumarin")
-            || motif_lower.contains("benzofuran")
-            || motif_lower.contains("benzothiophene")
-        {
-            score += 0.2;
+    // Heteroatom / oxygen content — O-functions (hydroxyl, carbonyl, ether,
+    // ester, etc.) are far more prevalent in NPs than in typical synthetic
+    // libraries.
+    if let Some(hetero) = descriptors.hetero_atoms {
+        if hetero >= 4.0 {
+            notes.push(format!(
+                "{hetero:.0} heteroatoms — oxygenation consistent with \
+                 biosynthetic origin"
+            ));
         }
     }
 
-    score = score.clamp(-5.0, 5.0);
-    let np_label = np_likeness_label(score).to_string();
+    // ── Dataset-level context ──────────────────────────────────────────
+    let dataset_shared = motifs
+        .iter()
+        .filter(|m| {
+            dataset_context
+                .motif_counts
+                .get(*m)
+                .map_or(false, |&c| c >= dataset_context.common_threshold)
+        })
+        .count();
+    if dataset_shared > 0 {
+        notes.push(format!(
+            "{dataset_shared} motif(s) shared with other molecules in the \
+             dataset — possible structural family",
+        ));
+    }
+
+    // ── Motif context summary ──────────────────────────────────────────
+    let scaffold_hits = count_scaffold_motifs(motifs);
+    let decoration_hits = count_decoration_motifs(motifs);
     let motif_context = if scaffold_hits > decoration_hits && scaffold_hits > 0 {
         format!("scaffold-heavy motif set ({scaffold_hits} scaffold hits)")
     } else if decoration_hits > scaffold_hits && decoration_hits > 0 {
@@ -180,16 +165,21 @@ pub fn assess_np_evidence(
         "no motif signal".to_string()
     };
 
+    let np_label = np_likeness_label(score).to_string();
+
     EvidenceAssessment {
         np_likeness: score,
         np_label,
+        np_confidence: confidence,
         ring_family,
         evidence_notes: notes,
         motif_context,
+        model_available,
     }
 }
 
-pub fn verdict_for_row(row: &MoleculeRow) -> String {
+/// Verdict string shown prominently in the UI.
+pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
     if let Some(err) = row.error.as_deref() {
         return format!("⚠ {err}");
     }
@@ -198,47 +188,54 @@ pub fn verdict_for_row(row: &MoleculeRow) -> String {
     let has_pubchem = !row.pubchem_cids.is_empty();
     let score = row.np_likeness;
 
-    if has_lotus && has_pubchem && score >= 0.8 {
-        return "Looks legitimate — LOTUS, PubChem, and NP evidence agree.".to_string();
+    if !row.np_score_available {
+        if has_lotus {
+            return "🌿 LOTUS-backed evidence (Ertl model not loaded — score unavailable)."
+                .to_string();
+        }
+        return "⚠ Ertl model not loaded — load the app with a web server that can serve np_model.bin.".to_string();
     }
-    if has_lotus && score >= 1.5 {
-        return "🌿 Strong natural-product evidence from LOTUS and descriptors.".to_string();
+
+    if has_lotus && has_pubchem && score >= 0.8 {
+        return format!("Looks legitimate — LOTUS, PubChem, and Ertl score ({score:+.2}) agree.");
+    }
+    if has_lotus && score >= 1.0 {
+        return format!(
+            "🌿 Strong natural-product evidence — LOTUS taxa + Ertl score {score:+.2}."
+        );
     }
     if has_lotus {
-        return "🌿 LOTUS-backed natural-product evidence.".to_string();
+        return format!("🌿 LOTUS-backed (Ertl score {score:+.2}).");
     }
     if has_pubchem {
-        return "📚 PubChem hit only — weak evidence.".to_string();
+        return format!("📚 PubChem hit only — weak evidence (Ertl score {score:+.2}).");
     }
     if score >= 2.0 {
-        return "NP-like scaffold, but database support is still thin.".to_string();
+        return format!(
+            "NP-like scaffold (Ertl score {score:+.2}), but database support is still thin."
+        );
     }
     if score <= -1.0 {
-        return "👃 Smells fishy. Citation needed.".to_string();
+        return format!("👃 Smells fishy (Ertl score {score:+.2}). Citation needed.");
     }
-    "🤨 Citation needed.".to_string()
+    format!("🤨 Citation needed (Ertl score {score:+.2}).")
 }
 
-pub fn np_likeness_label(score: f64) -> &'static str {
-    if score >= 2.0 {
-        "strong NP-like"
-    } else if score >= 0.8 {
-        "NP-leaning"
-    } else if score >= -0.7 {
-        "mixed"
-    } else {
-        "synthetic-leaning"
-    }
-}
-
+/// Classify the core scaffold family using motif SMARTS matches and
+/// descriptor-based heuristics.
 pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -> String {
     let motif_text = motifs.join(" ").to_ascii_lowercase();
+
+    // Steroids — tetracyclic fused ring system with characteristic
+    // cyclopentanoperhydrophenanthrene core.
     if motif_text.contains("steroid") {
         return "steroid-like fused ring system".to_string();
     }
+    // Monosaccharides and THF rings — common in glycosylated NPs.
     if motif_text.contains("sugar") || motif_text.contains("tetrahydrofuran") {
         return "sugar-like oxygenated ring system".to_string();
     }
+    // Macrocycles, lactones, lactams — hallmark macrocyclic NP scaffolds.
     if motif_text.contains("macrolide")
         || motif_text.contains("macrocycle")
         || motif_text.contains("lactone")
@@ -246,6 +243,11 @@ pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -
     {
         return "macrolide-like oxygenated macrocycle".to_string();
     }
+    // Benzopyran, flavone, flavonoid — plant secondary metabolite cores.
+    if motif_text.contains("flavone") || motif_text.contains("flavonoid") {
+        return "flavonoid-like scaffold".to_string();
+    }
+    // N-heteroaromatic scaffolds — common in both NPs and synthetic drugs.
     if motif_text.contains("indole")
         || motif_text.contains("quinoline")
         || motif_text.contains("isoquinoline")
@@ -253,6 +255,8 @@ pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -
         || motif_text.contains("benzothiophene")
         || motif_text.contains("quinoxaline")
         || motif_text.contains("purine")
+        || motif_text.contains("chromone")
+        || motif_text.contains("coumarin")
     {
         return "fused heteroaromatic scaffold".to_string();
     }
@@ -265,44 +269,298 @@ pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -
     if rings <= 0.0 {
         return "acyclic".to_string();
     }
+    // Three or more aromatic rings → polyaromatic (PAHs, not typical of NPs).
     if aromatic >= 3.0 {
         return "polyaromatic scaffold".to_string();
     }
     if aromatic > 0.0 && aliphatic > 0.0 {
         return "mixed aromatic/aliphatic scaffold".to_string();
     }
+    // Saturated, multi-ring systems with high sp³ → typical of terpene/steroid NPs.
     if aliphatic >= 2.0 || csp3 >= 0.5 {
         return "natural-product-like polycyclic scaffold".to_string();
     }
     "compact ring scaffold".to_string()
 }
 
+/// Count motif hits that are scaffold-type (rings / cores).
+fn count_scaffold_motifs(motifs: &[String]) -> usize {
+    motifs.iter().filter(|m| is_scaffold_motif(m)).count()
+}
+
+/// Count motif hits that are decoration-type (side-chains / functional groups).
+fn count_decoration_motifs(motifs: &[String]) -> usize {
+    motifs.iter().filter(|m| is_decoration_motif(m)).count()
+}
+
+/// Scaffold motifs are ring systems or cores characteristic of natural-product
+/// scaffold classes.
+fn is_scaffold_motif(label: &str) -> bool {
+    let l = label.to_ascii_lowercase();
+    l.contains("ring")
+        || l.contains("steroid")
+        || l.contains("sugar")
+        || l.contains("macrocycle")
+        || l.contains("macrolide")
+        || l.contains("lactone")
+        || l.contains("lactam")
+        || l.contains("flavone")
+        || l.contains("flavonoid")
+        || l.contains("indole")
+        || l.contains("quinoline")
+        || l.contains("isoquinoline")
+        || l.contains("benzofuran")
+        || l.contains("benzothiophene")
+        || l.contains("quinoxaline")
+        || l.contains("purine")
+        || l.contains("chromone")
+        || l.contains("coumarin")
+        || l.contains("morpholine")
+        || l.contains("piperidine")
+        || l.contains("piperazine")
+        || l.contains("tetrahydrofuran")
+        || l.contains("tetrahydropyran")
+        || l.contains("cyclohexane")
+}
+
+/// Decoration motifs are functional groups or side-chain fragments.
+fn is_decoration_motif(label: &str) -> bool {
+    let l = label.to_ascii_lowercase();
+    l.contains("aldehyde")
+        || l.contains("ketone")
+        || l.contains("carboxylic acid")
+        || l.contains("ester")
+        || l.contains("amide")
+        || l.contains("carbamate")
+        || l.contains("urea")
+        || l.contains("sulfonamide")
+        || l.contains("sulfone")
+        || l.contains("sulfoxide")
+        || l.contains("alcohol")
+        || l.contains("phenol")
+        || l.contains("ether")
+        || l.contains("methoxy")
+        || l.contains("amine")
+        || l.contains("halogen")
+        || l.contains("nitrile")
+        || l.contains("nitro")
+        || l.contains("thiol")
+        || l.contains("phosphate")
+        || l.contains("acetal")
+        || l.contains("epoxide")
+        || l.contains("allyl")
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::*;
+    use std::collections::HashMap;
+
+    fn empty_descriptors() -> RdkitDescriptors {
+        RdkitDescriptors::default()
+    }
+
+    fn empty_dataset_context() -> DatasetMotifContext {
+        DatasetMotifContext::default()
+    }
 
     #[test]
-    fn np_score_rewards_sp3_rich_ringed_scaffolds() {
-        let descriptors = RdkitDescriptors {
+    fn label_thresholds_match_ertl_distribution() {
+        assert_eq!(np_likeness_label(5.0), "strongly NP-like");
+        assert_eq!(np_likeness_label(2.0), "strongly NP-like");
+        assert_eq!(np_likeness_label(0.8), "NP-leaning");
+        assert_eq!(np_likeness_label(0.5), "NP-leaning");
+        assert_eq!(np_likeness_label(0.0), "mixed");
+        assert_eq!(np_likeness_label(-0.5), "mixed");
+        assert_eq!(np_likeness_label(-0.6), "synthetic-leaning");
+        assert_eq!(np_likeness_label(-5.0), "synthetic-leaning");
+    }
+
+    #[test]
+    fn real_ertl_score_is_used() {
+        let desc = RdkitDescriptors {
             fraction_csp3: Some(0.68),
             ring_count: Some(4.0),
             aromatic_ring_count: Some(0.0),
             aliphatic_ring_count: Some(2.0),
-            tpsa: Some(72.0),
-            clogp: Some(2.8),
             hetero_atoms: Some(6.0),
-            rotatable_bonds: Some(5.0),
-            hba: Some(6.0),
-            hbd: Some(2.0),
             ..Default::default()
         };
         let assessment = assess_np_evidence(
-            &descriptors,
+            &desc,
             &["Steroid-like fused ring".to_string()],
-            &["R/S".to_string()],
+            &["R/S".to_string(), "R/S".to_string()],
+            Some(3.42),
+            Some(0.75),
+            28,
+            &empty_dataset_context(),
         );
-        assert!(assessment.np_likeness > 1.0);
-        assert_eq!(assessment.np_label, "strong NP-like");
-        assert!(assessment.motif_context.contains("scaffold"));
+        assert!((assessment.np_likeness - 3.42).abs() < 1e-9);
+        assert_eq!(assessment.np_label, "strongly NP-like");
+        assert!(assessment.model_available);
+        assert!(assessment.np_confidence > 0.5);
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .any(|n| n.contains("Ertl NP-likeness score"))
+        );
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .any(|n| n.contains("sp³-rich"))
+        );
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .any(|n| n.contains("stereochemical"))
+        );
+    }
+
+    #[test]
+    fn no_made_up_tpsa_rule() {
+        let desc = RdkitDescriptors {
+            tpsa: Some(42.0),
+            ..Default::default()
+        };
+        let assessment = assess_np_evidence(
+            &desc,
+            &[],
+            &[],
+            Some(1.5),
+            Some(0.8),
+            20,
+            &empty_dataset_context(),
+        );
+        // No "polar enough" note should exist — that was a hallucinated rule.
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .all(|n| !n.contains("polar enough"))
+        );
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .all(|n| !n.contains("TPSA"))
+        );
+    }
+
+    #[test]
+    fn no_made_up_clogp_rule() {
+        let desc = RdkitDescriptors {
+            clogp: Some(7.0),
+            ..Default::default()
+        };
+        let assessment = assess_np_evidence(
+            &desc,
+            &[],
+            &[],
+            Some(-1.5),
+            Some(0.9),
+            20,
+            &empty_dataset_context(),
+        );
+        // No clogP-based notes should exist — those were hallucinated rules.
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .all(|n| !n.contains("clogp") && !n.contains("ClogP") && !n.contains("lipophilic"))
+        );
+    }
+
+    #[test]
+    fn model_unavailable_is_handled() {
+        let assessment = assess_np_evidence(
+            &empty_descriptors(),
+            &["Flavonoid core".to_string()],
+            &[],
+            None,
+            None,
+            0,
+            &empty_dataset_context(),
+        );
+        assert!(!assessment.model_available);
+        assert!((assessment.np_likeness - 0.0).abs() < 1e-9);
+        assert_eq!(assessment.np_label, "mixed");
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .any(|n| n.contains("model not loaded"))
+        );
+    }
+
+    #[test]
+    fn dataset_common_motif_is_noted() {
+        let desc = empty_descriptors();
+        let mut ctx = DatasetMotifContext {
+            motif_counts: HashMap::new(),
+            total_molecules: 10,
+            common_threshold: 2,
+        };
+        ctx.motif_counts.insert("Flavonoid core".to_string(), 3);
+        ctx.motif_counts.insert("Aldehyde".to_string(), 1);
+
+        let assessment = assess_np_evidence(
+            &desc,
+            &["Flavonoid core".to_string(), "Aldehyde".to_string()],
+            &[],
+            Some(-0.5),
+            Some(0.5),
+            15,
+            &ctx,
+        );
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .any(|n| n.contains("shared with other molecules"))
+        );
+    }
+
+    #[test]
+    fn ring_family_still_functions() {
+        let desc = RdkitDescriptors {
+            ring_count: Some(4.0),
+            aromatic_ring_count: Some(0.0),
+            aliphatic_ring_count: Some(4.0),
+            fraction_csp3: Some(0.75),
+            ..Default::default()
+        };
+        let family = classify_ring_family(&desc, &[]);
+        assert_eq!(family, "natural-product-like polycyclic scaffold");
+
+        let desc2 = RdkitDescriptors {
+            ring_count: Some(3.0),
+            aromatic_ring_count: Some(3.0),
+            aliphatic_ring_count: Some(0.0),
+            fraction_csp3: Some(0.10),
+            ..Default::default()
+        };
+        let family2 = classify_ring_family(&desc2, &[]);
+        assert_eq!(family2, "polyaromatic scaffold");
+    }
+
+    #[test]
+    fn flavor_classification_via_motif() {
+        let family = classify_ring_family(&empty_descriptors(), &["Flavone ring".to_string()]);
+        assert_eq!(family, "flavonoid-like scaffold");
+
+        let family2 = classify_ring_family(&empty_descriptors(), &["Indole ring".to_string()]);
+        assert_eq!(family2, "fused heteroaromatic scaffold");
+
+        let family3 = classify_ring_family(
+            &empty_descriptors(),
+            &["Sugar-like oxygen ring".to_string()],
+        );
+        assert_eq!(family3, "sugar-like oxygenated ring system");
     }
 }

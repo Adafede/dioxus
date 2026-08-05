@@ -24,10 +24,20 @@ pub struct MoleculeRow {
     pub pubchem_taxa: Vec<String>,
     pub np_likeness: f64,
     pub np_label: String,
+    pub np_confidence: f64,
+    pub np_score_available: bool,
     pub ring_family: String,
     pub evidence_notes: Vec<String>,
+    pub motif_context: String,
     pub verdict: String,
     pub error: Option<String>,
+    /// Stored descriptors so the second-pass evidence assessment can
+    /// re-evaluate structural context alongside dataset-level data.
+    pub descriptors: RdkitDescriptors,
+    /// Stored stereo tags for the same reason.
+    pub stereo_tags: Vec<String>,
+    /// Heavy-atom count (transparency for the Ertl normalisation).
+    pub num_atoms: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -36,6 +46,18 @@ pub struct MotifSummary {
     pub kind: String,
     pub smarts: String,
     pub count: usize,
+}
+
+/// Dataset-level motif prevalence used to enrich individual molecule rows.
+///
+/// `motif_counts` maps each motif label to the number of molecules in the
+/// uploaded set that contain it.  Motifs appearing in ≥ `common_threshold`
+/// molecules are considered "dataset-common".
+#[derive(Clone, Debug, Default)]
+pub struct DatasetMotifContext {
+    pub motif_counts: HashMap<String, usize>,
+    pub total_molecules: usize,
+    pub common_threshold: usize,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -91,6 +113,16 @@ pub struct RdkitInspectResponse {
     pub motifs: Option<Vec<RdkitMotifHit>>,
     pub descriptors: Option<RdkitDescriptors>,
     pub stereo_tags: Option<Vec<String>>,
+    /// Real Ertl NP-likeness score (Ertl et al., J. Chem. Inf. Model. 2008),
+    /// `null` when the fragment model was not loaded.
+    #[serde(default)]
+    pub np_score: Option<f64>,
+    /// Confidence = fraction of Morgan bits found in the model (0–1).
+    #[serde(default)]
+    pub np_confidence: Option<f64>,
+    /// Heavy‑atom count used for the score normalisation.
+    #[serde(default)]
+    pub num_atoms: Option<usize>,
     pub error: Option<String>,
 }
 

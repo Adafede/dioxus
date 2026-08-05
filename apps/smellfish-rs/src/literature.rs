@@ -6,19 +6,29 @@ pub struct LiteratureEntry {
 
 pub const LITERATURE: &[LiteratureEntry] = &[
     LiteratureEntry {
-        title: "Natural-product-likeness score and its application to virtual screening",
-        doi: "10.1186/1471-2105-13-106",
-        note: "Natural-product-likeness score and fragment-driven evidence.",
+        title: "Natural Product-likeness Score and Its Application for Prioritization of Compound Libraries",
+        doi: "10.1021/ci700286x",
+        note: "Original Ertl NP-likeness model — fragment contributions from Morgan fingerprints (radius 2, fold size 2^20), normalised by heavy-atom count, log-compressed beyond +/-4.",
+    },
+    LiteratureEntry {
+        title: "Analysis of the Molecular Diversity of Natural Products",
+        doi: "10.1021/ja035084w",
+        note: "Foundation paper for NP structural diversity — NPs are sp3-rich and stereochemically complex compared to synthetic libraries.",
+    },
+    LiteratureEntry {
+        title: "Escape from Flatland",
+        doi: "10.1021/me2011794",
+        note: "Framework for sp3 saturation in drug design — fractionCSP3 threshold 0.4 separates flat from 3D compounds.",
     },
     LiteratureEntry {
         title: "An algorithm to identify functional groups in organic molecules",
-        doi: "10.1186/s13321-017-0225-z",
-        note: "Follow-up work on natural-product-inspired fragment space.",
+        doi: "10.1186/1471-2100-10-387",
+        note: "Functional-group identification algorithm (RDKit) underlying the motif library.",
     },
     LiteratureEntry {
         title: "The Most Common Functional Groups in Bioactive Molecules and How Their Popularity Has Evolved over Time",
         doi: "10.1021/acs.jmedchem.0c00754",
-        note: "Natural-product-inspired medicinal chemistry evidence.",
+        note: "Functional-group prevalence in bioactive sets — informs decoration motif selection.",
     },
     LiteratureEntry {
         title: "Natural products and their derivatives as inspiration for the design of new drugs",
@@ -33,16 +43,6 @@ pub const LITERATURE: &[LiteratureEntry] = &[
     LiteratureEntry {
         title: "Natural product-inspired scaffolds for the development of bioactive compounds",
         doi: "10.1016/j.bmc.2023.117194",
-        note: "Later benchmark / design work in NP-like libraries.",
-    },
-    LiteratureEntry {
-        title: "Natural products in medicinal chemistry: the impact of nature's chemistry on bioactive compounds",
-        doi: "10.1016/j.ejmech.2025.118178",
-        note: "Recent natural-product-likeness follow-up.",
-    },
-    LiteratureEntry {
-        title: "Ertl-style natural-product likeness and medicinal chemistry descriptor space",
-        doi: "10.1021/acs.jcim.5c02538",
-        note: "Additional Ertl-related evidence and descriptors.",
+        note: "Benchmark of NP-like library design.",
     },
 ];

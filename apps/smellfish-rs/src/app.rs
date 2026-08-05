@@ -137,7 +137,7 @@ pub fn app() -> Element {
                 div { class: "summary-grid",
                     div { class: "summary-item",
                         h3 { "NP-likeness" }
-                        div { class: "small muted", "Ertl-inspired score from ring complexity, sp3 richness, polarity, stereochemistry, and natural-product motifs." }
+                        div { class: "small muted", "Real Ertl NP-likeness score (Ertl et al., J. Chem. Inf. Model. 2008, DOI 10.1021/ci700286x) — computed via Morgan fingerprints (radius 2) matched against a pre-trained fragment-contribution model of ~266 K fragments. The score is normalised by heavy-atom count and log-compressed beyond ±4. Confidence reports the fraction of fingerprint bits that found a match in the model." }
                     }
                     div { class: "summary-item",
                         h3 { "Scaffold family" }
@@ -253,14 +253,14 @@ pub fn app() -> Element {
                                 h3 { "{row.label}" }
                                 div { class: "small muted", "{row.ring_family}" }
                                 div { class: "chip-list",
-                                    span { class: "chip good", "{row.np_label}" }
-                                    if row.evidence_notes.iter().any(|note| note.contains("scaffold-heavy")) {
-                                        span { class: "chip", "scaffold-heavy" }
-                                    }
-                                    if row.evidence_notes.iter().any(|note| note.contains("decoration-heavy")) {
-                                        span { class: "chip alt", "decoration-heavy" }
+                                    span { class: "chip good", "Ertl {format_score(row.np_likeness)}" }
+                                    span { class: "chip alt", "{row.np_label}" }
+                                    span { class: "chip", "conf {format_confidence(row.np_confidence)}" }
+                                    if !row.np_score_available {
+                                        span { class: "chip warn", "model unloaded" }
                                     }
                                 }
+                                div { class: "small muted", "{row.motif_context}" }
                             }
                         }
                     }
@@ -354,8 +354,18 @@ pub fn app() -> Element {
                                 div { class: "meta",
                                     strong { "NP-likeness" }
                                     div { class: "chip-list",
-                                        span { class: "chip good", "{format_score(row.np_likeness)}" }
+                                        if row.np_score_available {
+                                            span { class: "chip good", "Ertl {format_score(row.np_likeness)}" }
+                                        } else {
+                                            span { class: "chip warn", "model not loaded" }
+                                        }
                                         span { class: "chip alt", "{row.np_label}" }
+                                    if row.np_score_available {
+                                            span { class: "chip", "conf {format_confidence(row.np_confidence)}" }
+                                        }
+                                    }
+                                    if row.num_atoms > 0 {
+                                        div { class: "small muted", "{row.num_atoms} heavy atoms" }
                                     }
                                     div { "{row.ring_family}" }
                                     if !row.evidence_notes.is_empty() {
@@ -374,11 +384,11 @@ pub fn app() -> Element {
                                             span { class: "result-badge", if row.lotus_taxa.is_empty() { "✗" } else { "✓" } }
                                         }
                                         div { class: "result-row",
-                                            span { "PubChem low evidence" }
+                                            span { "PubChem records" }
                                             span { class: "result-badge", if row.pubchem_cids.is_empty() { "✗" } else { "✓" } }
                                         }
                                         div { class: "result-row",
-                                            span { "NP-likeness is positive" }
+                                            span { "Ertl score is positive" }
                                             span { class: "result-badge", if row.np_likeness > 0.0 { "✓" } else { "✗" } }
                                         }
                                     }
@@ -395,4 +405,8 @@ pub fn app() -> Element {
 
 fn format_score(score: f64) -> String {
     format!("{score:+.2}")
+}
+
+fn format_confidence(conf: f64) -> String {
+    format!("{:.0}%", conf * 100.0)
 }
