@@ -344,7 +344,7 @@ a:hover { text-decoration: underline; }
   text-decoration: none;
 }
 .footer-link:hover { text-decoration: underline; }
-.footer-link.red { color: #990000; }
-.footer-link.green { color: #339966; }
-.footer-link.blue { color: #006699; }
+.footer-link.red { color: #990000; font-weight: normal; }
+.footer-link.green { color: #1a6b4d; font-weight: normal; }
+.footer-link.blue { color: #006699; font-weight: normal; }
 ";
