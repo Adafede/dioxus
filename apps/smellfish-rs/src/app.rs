@@ -305,7 +305,12 @@ pub fn app() -> Element {
                                         strong { class: "blue", "LOTUS" }
                                         div { class: "chip-list",
                                             for qid in row.lotus_compounds.iter() {
-                                                a { class: "cid-link",
+                                                a { 
+                                                    class: if row.lotus_compounds_with_taxa.contains(qid) {
+                                                        "cid-link green"
+                                                    } else {
+                                                        "cid-link red"
+                                                    },
                                                     href: "https://www.wikidata.org/wiki/{qid}",
                                                     target: "_blank",
                                                     rel: "noreferrer",

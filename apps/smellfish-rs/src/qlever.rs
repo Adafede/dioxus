@@ -128,12 +128,17 @@ async fn fetch_lotus_hits_by_smiles(
                     let entry = summary.entry(inchikey_skeleton).or_default();
 
                     let compound_uri = binding_value(&binding, "c");
-                    if let Some(qid) = compound_uri.strip_prefix("http://www.wikidata.org/entity/")
+                    let qid = if let Some(qid) = compound_uri.strip_prefix("http://www.wikidata.org/entity/")
                     {
                         if !qid.is_empty() {
                             entry.compounds.insert(qid.to_string());
+                            Some(qid.to_string())
+                        } else {
+                            None
                         }
-                    }
+                    } else {
+                        None
+                    };
                     let compound_label = binding_value(&binding, "compoundLabel");
                     if !compound_label.is_empty() {
                         entry.names.insert(compound_label);
@@ -141,6 +146,10 @@ async fn fetch_lotus_hits_by_smiles(
                     let taxon_label = binding_value(&binding, "taxon_name");
                     if !taxon_label.is_empty() {
                         entry.taxa.insert(taxon_label);
+                        // Mark this compound as having taxon info
+                        if let Some(ref qid) = qid {
+                            entry.compounds_with_taxa.insert(qid.clone());
+                        }
                     }
                 }
             }

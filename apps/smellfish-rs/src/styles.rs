@@ -190,6 +190,22 @@ pub const CSS: &str = r#"
   background: rgba(0, 102, 153, 0.15);
   text-decoration: underline;
 }
+.cid-link.green {
+  background: rgba(51, 153, 102, 0.08);
+  color: #339966;
+  border-color: rgba(51, 153, 102, 0.3);
+}
+.cid-link.green:hover {
+  background: rgba(51, 153, 102, 0.15);
+}
+.cid-link.red {
+  background: rgba(153, 0, 0, 0.08);
+  color: #990000;
+  border-color: rgba(153, 0, 0, 0.3);
+}
+.cid-link.red:hover {
+  background: rgba(153, 0, 0, 0.15);
+}
 .ertl-work-btn {
   display: inline-flex;
   align-items: center;

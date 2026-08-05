@@ -20,6 +20,7 @@ pub struct ChemistCheck {
     pub detail: String,
 }
 
+/// A single molecule's metadata and evidence assessment.
 #[derive(Clone, Debug)]
 pub struct MoleculeRow {
     pub index: usize,
@@ -32,6 +33,7 @@ pub struct MoleculeRow {
     pub substituents: Vec<String>,
     pub lotus_taxa: Vec<String>,
     pub lotus_compounds: Vec<String>,
+    pub lotus_compounds_with_taxa: BTreeSet<String>, // Track which LOTUS compounds have taxa
     pub pubchem_cids: Vec<String>,
     pub pubchem_names: Vec<String>,
     pub pubchem_taxa: Vec<String>,
@@ -96,6 +98,7 @@ pub struct SourceSummary {
     pub compounds: BTreeSet<String>,
     pub names: BTreeSet<String>,
     pub cids: BTreeSet<String>,
+    pub compounds_with_taxa: BTreeSet<String>, // Track which compounds have taxon info
 }
 
 #[derive(Clone, Debug, Default)]

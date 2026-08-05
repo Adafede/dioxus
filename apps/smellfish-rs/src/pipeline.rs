@@ -112,6 +112,7 @@ pub async fn import_csv(
                     substituents: Vec::new(),
                     lotus_taxa: Vec::new(),
                     lotus_compounds: Vec::new(),
+                    lotus_compounds_with_taxa: BTreeSet::new(),
                     pubchem_cids: Vec::new(),
                     pubchem_names: Vec::new(),
                     pubchem_taxa: Vec::new(),
@@ -376,6 +377,7 @@ fn merge_enrichment(
                 if idx < rows.len() {
                     rows[idx].lotus_taxa = summary.taxa.iter().cloned().collect();
                     rows[idx].lotus_compounds = summary.compounds.iter().cloned().collect();
+                    rows[idx].lotus_compounds_with_taxa = summary.compounds_with_taxa.clone();
                 }
             }
         }
@@ -427,6 +429,7 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         substituents: Vec::new(),
         lotus_taxa: Vec::new(),
         lotus_compounds: Vec::new(),
+        lotus_compounds_with_taxa: BTreeSet::new(),
         pubchem_cids: Vec::new(),
         pubchem_names: Vec::new(),
         pubchem_taxa: Vec::new(),
