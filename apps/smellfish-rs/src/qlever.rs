@@ -128,7 +128,8 @@ async fn fetch_lotus_hits_by_smiles(
                     let entry = summary.entry(inchikey_skeleton).or_default();
 
                     let compound_uri = binding_value(&binding, "c");
-                    let qid = if let Some(qid) = compound_uri.strip_prefix("http://www.wikidata.org/entity/")
+                    let qid = if let Some(qid) =
+                        compound_uri.strip_prefix("http://www.wikidata.org/entity/")
                     {
                         if !qid.is_empty() {
                             entry.compounds.insert(qid.to_string());

@@ -255,7 +255,7 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
     if score <= -1.0 {
         return format!("⚠ Weak NP signals (Ertl {score:+.2})");
     }
-    format!("Uncertain (Ertl {score:+.2})")
+    format!("📚 Citation needed (Ertl {score:+.2})")
 }
 
 /// Machine-readable category for CSV export — strips emojis and
@@ -263,27 +263,32 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
 pub fn verdict_category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
 
-    // GREEN — High NP confidence
-    if l.contains("strong evidence")
-        || l.contains("lotus")
-        || l.contains("likely novel")
-        || l.contains("pubchem + strong")
+    // GREEN — High NP confidence (LOTUS or strong structural + Ertl score)
+    if (l.contains("lotus") && l.contains("strong np"))
+        || (l.contains("lotus") && !l.contains("weak"))
+        || l.contains("pubchem + strong natural product")
     {
         return "likely";
     }
 
-    // BLUE — Moderate NP confidence
-    if l.contains("pubchem with np features") {
+    // BLUE — Moderate NP confidence (ambiguous signals, needs citation)
+    if l.contains("pubchem + np-like")
+        || l.contains("pubchem with np features")
+        || l.contains("citation needed")
+    {
         return "neutral";
     }
 
-    // RED — Low NP confidence
-    if l.contains("pubchem") || l.contains("uncertain") || l.contains("strong np score") {
+    // RED — Low/weak NP confidence
+    if l.contains("weak np signals")
+        || (l.contains("pubchem") && l.contains("weak"))
+        || (l.contains("ertl") && (l.contains("−1") || l.contains("-1")))
+    {
         return "caution";
     }
 
-    // RED — Negative signals
-    if l.contains("weak np signals") {
+    // RED — Highly synthetic / negative signals
+    if l.contains("highly synthetic") {
         return "fishy";
     }
 

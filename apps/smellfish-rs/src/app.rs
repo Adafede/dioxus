@@ -112,15 +112,15 @@ pub fn app() -> Element {
         file_name.set("demo_dataset.csv".to_string());
 
         // Create a synthetic File object from the CSV data
-        use web_sys::{Blob, File};
         use wasm_bindgen::JsValue;
+        use web_sys::{Blob, File};
 
         // Create blob from string
         match Blob::new_with_str_sequence(&JsValue::from(vec![JsValue::from_str(&csv_data)])) {
             Ok(blob) => {
                 // Convert blob to JsValue array for File constructor
                 let blob_array = JsValue::from(vec![JsValue::from(blob)]);
-                
+
                 // Create file from blob with proper name
                 match File::new_with_blob_sequence(&blob_array, "demo_dataset.csv") {
                     Ok(file) => {
@@ -305,7 +305,7 @@ pub fn app() -> Element {
                                         strong { class: "blue", "LOTUS" }
                                         div { class: "chip-list",
                                             for qid in row.lotus_compounds.iter() {
-                                                a { 
+                                                a {
                                                     class: if row.lotus_compounds_with_taxa.contains(qid) {
                                                         "cid-link green"
                                                     } else {
