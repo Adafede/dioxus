@@ -251,6 +251,11 @@ a:hover { text-decoration: underline; }
   color: #990000; 
   border: 1px solid rgba(153, 0, 0, 0.4);
 }
+.verdict-skeptical { 
+  background: rgba(180, 155, 0, 0.12); 
+  color: #b39b00; 
+  border: 1px solid rgba(180, 155, 0, 0.4);
+}
 .verdict-fishy { 
   background: rgba(153, 0, 0, 0.2); 
   color: #990000; 

@@ -1,4 +1,3 @@
-use crate::demo;
 use crate::evidence::{is_known_np_motif, is_scaffold_motif};
 use crate::literature::LITERATURE;
 use crate::model::{EndpointStatus, MoleculeRow, MotifSummary};
@@ -106,48 +105,6 @@ pub fn app() -> Element {
         }
     };
 
-    #[cfg(target_arch = "wasm32")]
-    let on_load_demo = move |_| {
-        let csv_data = demo::demo_csv();
-        file_name.set("demo_dataset.csv".to_string());
-
-        // Create a synthetic File object from the CSV data
-        use wasm_bindgen::JsValue;
-        use web_sys::{Blob, File};
-
-        // Create blob from string
-        match Blob::new_with_str_sequence(&JsValue::from(vec![JsValue::from_str(&csv_data)])) {
-            Ok(blob) => {
-                // Convert blob to JsValue array for File constructor
-                let blob_array = JsValue::from(vec![JsValue::from(blob)]);
-
-                // Create file from blob with proper name
-                match File::new_with_blob_sequence(&blob_array, "demo_dataset.csv") {
-                    Ok(file) => {
-                        begin_import(
-                            file,
-                            "demo_dataset.csv".to_string(),
-                            file_name,
-                            status,
-                            busy,
-                            drag_active,
-                            rows,
-                            motifs,
-                            endpoints,
-                            warnings,
-                        );
-                    }
-                    Err(_) => {
-                        status.set("Demo loader: could not create File object.".to_string());
-                    }
-                }
-            }
-            Err(_) => {
-                status.set("Demo loader: could not create Blob.".to_string());
-            }
-        }
-    };
-
     let file_name_value = file_name.read().clone();
     let warning_text = warnings.read().join(" • ");
 
@@ -206,14 +163,7 @@ pub fn app() -> Element {
                 {
                     #[cfg(target_arch = "wasm32")]
                     {
-                        rsx! {
-                            button {
-                                disabled: *busy.read(),
-                                onclick: on_load_demo,
-                                style: "margin-top: 12px; padding: 8px 16px; background: rgba(0, 102, 153, 0.1); color: #006699; border: 1px solid rgba(0, 102, 153, 0.3); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;",
-                                "Load demo dataset (100 NP examples)"
-                            }
-                        }
+                        rsx! { }
                     }
                     #[cfg(not(target_arch = "wasm32"))]
                     {
@@ -452,18 +402,13 @@ fn format_confidence(conf: f64) -> String {
 /// CSS-safe verdict color class based on the verdict text.
 fn verdict_color(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
-    if l.contains("smells fishy") {
+    if l.contains("smells fishy") || l.contains("highly synthetic") {
         "verdict-fishy"
-    } else if l.contains("looks legitimate")
-        || l.contains("strong natural")
-        || l.contains("lotus-backed")
-    {
+    } else if l.contains("likely") || l.contains("strong natural") || l.contains("lotus") {
         "verdict-likely"
-    } else if l.contains("pubchem hit only")
-        || l.contains("citation needed")
-        || l.contains("not loaded")
-        || l.contains("⚠")
-    {
+    } else if l.contains("citation needed") {
+        "verdict-skeptical"
+    } else if l.contains("weak np signals") || l.contains("ertl") && l.contains("−1") {
         "verdict-caution"
     } else {
         "verdict-neutral"

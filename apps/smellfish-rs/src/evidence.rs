@@ -53,7 +53,7 @@ pub fn np_likeness_label(score: f64) -> &'static str {
     } else if score >= -1.0 {
         "weak NP signals"
     } else {
-        "synthetic-leaning"
+        "highly synthetic"
     }
 }
 
@@ -122,7 +122,7 @@ pub fn assess_np_evidence(
     // neutral (MS annotation pipelines often strip stereo).
     if !stereo_tags.is_empty() {
         notes.push(format!(
-            "✓ {} stereo center(s) — consistent with enzymatic origin",
+            "✓ {} stereochemical center(s) — consistent with enzymatic origin",
             stereo_tags.len()
         ));
     }
@@ -255,26 +255,45 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
     if score <= -1.0 {
         return format!("⚠ Weak NP signals (Ertl {score:+.2})");
     }
-    format!("📚 Citation needed (Ertl {score:+.2})")
+    format!("👃 Citation needed (Ertl {score:+.2})")
 }
 
 /// Machine-readable category for CSV export — strips emojis and
-/// normalises to "likely", "neutral", "caution", or "fishy".
+/// normalises to "likely", "neutral", "caution", "skeptical", or "fishy".
 pub fn verdict_category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
 
+    // RED — Highly synthetic / negative signals / fishy (check first!)
+    if l.contains("highly synthetic") || l.contains("smells fishy") {
+        return "fishy";
+    }
+
     // GREEN — High NP confidence (LOTUS or strong structural + Ertl score)
-    if (l.contains("lotus") && l.contains("strong np"))
-        || (l.contains("lotus") && !l.contains("weak"))
-        || l.contains("pubchem + strong natural product")
-    {
+    if l.contains("lotus") && !l.contains("weak") {
+        return "likely";
+    }
+    if l.contains("likely hit") && l.contains("strong np") && !l.contains("weak") {
+        return "likely";
+    }
+    if l.contains("likely novel") {
+        return "likely";
+    }
+    if l.contains("pubchem + strong natural product") {
+        return "likely";
+    }
+    if l.contains("pubchem + strong np") {
         return "likely";
     }
 
-    // BLUE — Moderate NP confidence (ambiguous signals, needs citation)
+    // YELLOW — Skeptical / ambiguous (needs citation, uncertain origin)
+    if l.contains("citation needed") {
+        return "skeptical";
+    }
+
+    // BLUE — Moderate NP confidence (PubChem with some NP features)
     if l.contains("pubchem + np-like")
         || l.contains("pubchem with np features")
-        || l.contains("citation needed")
+        || l.contains("pubchem hit with np signals")
     {
         return "neutral";
     }
@@ -285,11 +304,6 @@ pub fn verdict_category(verdict: &str) -> &'static str {
         || (l.contains("ertl") && (l.contains("−1") || l.contains("-1")))
     {
         return "caution";
-    }
-
-    // RED — Highly synthetic / negative signals
-    if l.contains("highly synthetic") {
-        return "fishy";
     }
 
     "neutral"
@@ -598,14 +612,15 @@ mod tests {
 
     #[test]
     fn label_thresholds_match_ertl_distribution() {
-        assert_eq!(np_likeness_label(5.0), "strongly NP-like");
-        assert_eq!(np_likeness_label(2.0), "strongly NP-like");
-        assert_eq!(np_likeness_label(0.8), "NP-leaning");
-        assert_eq!(np_likeness_label(0.5), "NP-leaning");
-        assert_eq!(np_likeness_label(0.0), "mixed");
-        assert_eq!(np_likeness_label(-0.5), "mixed");
-        assert_eq!(np_likeness_label(-0.6), "synthetic-leaning");
-        assert_eq!(np_likeness_label(-5.0), "synthetic-leaning");
+        assert_eq!(np_likeness_label(5.0), "strong natural product");
+        assert_eq!(np_likeness_label(2.0), "strong natural product");
+        assert_eq!(np_likeness_label(0.8), "NP-ambiguous");
+        assert_eq!(np_likeness_label(0.5), "NP-ambiguous");
+        assert_eq!(np_likeness_label(0.0), "weak NP signals");
+        assert_eq!(np_likeness_label(-0.5), "weak NP signals");
+        assert_eq!(np_likeness_label(-1.0), "weak NP signals");
+        assert_eq!(np_likeness_label(-1.5), "highly synthetic");
+        assert_eq!(np_likeness_label(-5.0), "highly synthetic");
     }
 
     #[test]
@@ -629,7 +644,7 @@ mod tests {
             &empty_dataset_context(),
         );
         assert!((assessment.np_likeness - 3.42).abs() < 1e-9);
-        assert_eq!(assessment.np_label, "strongly NP-like");
+        assert_eq!(assessment.np_label, "strong natural product");
         assert!(assessment.np_confidence > 0.5);
         assert!(
             assessment
@@ -720,7 +735,7 @@ mod tests {
             &empty_dataset_context(),
         );
         assert!((assessment.np_likeness - 0.0).abs() < 1e-9);
-        assert_eq!(assessment.np_label, "mixed");
+        assert_eq!(assessment.np_label, "weak NP signals");
         assert!(
             assessment
                 .evidence_notes
@@ -754,7 +769,7 @@ mod tests {
             assessment
                 .evidence_notes
                 .iter()
-                .any(|n| n.contains("shared with other molecules"))
+                .any(|n| n.contains("motif") || n.contains("Flavonoid"))
         );
     }
 
