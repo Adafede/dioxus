@@ -31,56 +31,36 @@ jobs:
       - name: Install dioxus-cli
         run: cargo binstall dioxus-cli --version 0.7.10 --locked --force
 
-      - name: Build lotus-explorer
-        working-directory: apps/lotus-explorer
-        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lotus-explorer/"
+      - name: Build index landing page
+        working-directory: apps/index
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/"
+
+      - name: Build lotus-explore-rs
+        working-directory: apps/lotus-explore-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lotus-explore-rs/"
+
+      - name: Build jsoncount
+        working-directory: apps/jsoncount
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/jsoncount/"
+
+      - name: Build mgf-precursor-erro-rs
+        working-directory: apps/mgf-precursor-erro-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/mgf-precursor-erro-rs/"
+
+      - name: Build smellfish-rs
+        working-directory: apps/smellfish-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/smellfish-rs/"
 
       - name: Assemble site
         run: |
           DX_OUT="target/dx"
           DX_WEB="release/web/public"
           mkdir -p _site
-          cp -r "$DX_OUT/lotus-explorer/$DX_WEB" _site/lotus-explorer
-          cp -r "$DX_OUT/jsoncount/$DX_WEB"      _site/jsoncount
+          cp -r "$DX_OUT/index/$DX_WEB"/* _site/
+          cp -r "$DX_OUT/lotus-explore-rs/$DX_WEB" _site/lotus-explore-rs
+          cp -r "$DX_OUT/jsoncount/$DX_WEB"        _site/jsoncount
           cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
-
-
-          cat > _site/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>dioxus-apps</title>
-            <style>
-              body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; padding: 0 1rem; }
-              h1 { font-size: 1.5rem; }
-              ul { list-style: none; padding: 0; }
-              li { margin: 0.75rem 0; }
-              a { color: #58a6ff; text-decoration: none; font-size: 1.1rem; }
-              a:hover { text-decoration: underline; }
-              p.desc { color: #8b949e; font-size: 0.9rem; margin: 0.2rem 0 0 0; }
-            </style>
-          </head>
-          <body>
-            <h1>🦀 dioxus-apps</h1>
-            <ul>
-              <li>
-                <a href="./lotus-explorer/">🪷 LOTUS Wikidata Explorer</a>
-                <p class="desc">Natural product compound × taxon × reference browser</p>
-              </li>
-              <li>
-                <a href="./jsoncount/">🧮 JSON Counter</a>
-                <p class="desc">Upload JSON and count non-null fields</p>
-              </li>
-              <li>
-                <a href="./mgf-precursor-erro-rs/">📊 MGF Precursor Error</a>
-                <p class="desc">Upload MGF and inspect precursor error distributions</p>
-              </li>
-            </ul>
-          </body>
-          </html>
-          EOF
+          cp -r "$DX_OUT/smellfish-rs/$DX_WEB" _site/smellfish-rs
 
       - uses: actions/git-pages@v2
         with:

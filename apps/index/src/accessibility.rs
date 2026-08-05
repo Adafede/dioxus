@@ -23,7 +23,7 @@ pub fn SkipLink() -> Element {
         a {
             href: "#main-content",
             class: "skip-link",
-            style: "position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:#0b5cab;color:#fff;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:none;",
+            style: "position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:#dbeafe;color:#0b1f33;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:none;",
             "Skip to main content"
         }
     }
