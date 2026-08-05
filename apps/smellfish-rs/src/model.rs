@@ -12,11 +12,11 @@ pub struct RawRow {
 /// audit a natural-product chemist would do when eyeballing a structure.
 #[derive(Clone, Debug)]
 pub struct ChemistCheck {
-    /// Short label, e.g. "NP-likeness", "Stereochemistry".
+    /// Short label, e.g. "NP-likeness", "Skeleton", "Oxygenation".
     pub name: &'static str,
     /// One of "pass", "warn", "fail".
     pub status: &'static str,
-    /// Human-readable detail, e.g. "Ertl score +1.3, 4 stereocentres".
+    /// Human-readable detail, e.g. "Ertl score +1.3, steroid-like scaffold".
     pub detail: String,
 }
 
@@ -51,6 +51,10 @@ pub struct MoleculeRow {
     pub stereo_tags: Vec<String>,
     /// Heavy-atom count (transparency for the Ertl normalisation).
     pub num_atoms: usize,
+    /// Whether a structurally similar compound (Tanimoto ≥ 0.9) exists in LOTUS.
+    /// Set once per dataset via a single Sachem similarity query on the
+    /// most NP-like molecule.
+    pub lotus_similarity_found: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -126,7 +130,7 @@ pub struct RdkitInspectResponse {
     pub motifs: Option<Vec<RdkitMotifHit>>,
     pub descriptors: Option<RdkitDescriptors>,
     pub stereo_tags: Option<Vec<String>>,
-    /// Real Ertl NP-likeness score (Ertl et al., J. Chem. Inf. Model. 2008),
+    /// Ertl NP-likeness score (Ertl et al., J. Chem. Inf. Model. 2008),
     /// `null` when the fragment model was not loaded.
     #[serde(default)]
     pub np_score: Option<f64>,

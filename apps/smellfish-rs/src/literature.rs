@@ -4,26 +4,32 @@ pub struct LiteratureEntry {
     pub note: &'static str,
 }
 
+/// All DOIs below were verified via Crossref as of 2026-08-05.
 pub const LITERATURE: &[LiteratureEntry] = &[
     LiteratureEntry {
         title: "Natural Product-likeness Score and Its Application for Prioritization of Compound Libraries",
         doi: "10.1021/ci700286x",
-        note: "Original Ertl NP-likeness model — fragment contributions from Morgan fingerprints (radius 2, fold size 2^20), normalised by heavy-atom count, log-compressed beyond +/-4.",
+        note: "Ertl, Roggo & Schuffenhauer (2008). Original NP-likeness model — fragment contributions from Morgan fingerprints (radius 2), normalised by heavy-atom count, log-compressed beyond +/-4.",
     },
     LiteratureEntry {
-        title: "Analysis of the Molecular Diversity of Natural Products",
-        doi: "10.1021/ja035084w",
-        note: "Foundation paper for NP structural diversity — NPs are sp3-rich and stereochemically complex compared to synthetic libraries.",
+        title: "Cheminformatic Analysis of Natural Products and their Chemical Space",
+        doi: "10.2533/chimia.2007.355",
+        note: "Wetzel, Schuffenhauer, Roggo, Ertl & Waldmann (2007). NPs are sp3-rich — 57% sp3 carbons vs 42% in drugs.",
     },
     LiteratureEntry {
-        title: "Escape from Flatland",
-        doi: "10.1021/me2011794",
-        note: "Framework for sp3 saturation in drug design — fractionCSP3 threshold 0.4 separates flat from 3D compounds.",
+        title: "10.1021/acs.jnatprod.8b01022",
+        doi: "10.1021/acs.jnatprod.8b01022",
+        note: "Ertl & Schuhmann (2019). Catalogue of functional groups enriched in natural products — used to prioritise motif library.",
+    },
+    LiteratureEntry {
+        title: "Ring systems in medicinal chemistry: A cheminformatics analysis of ring popularity in drug discovery over time",
+        doi: "10.1016/j.ejmech.2025.118178",
+        note: "Ertl, Altmann & Wilcken (2025). Ring-system prevalence — distinguishes NP from synthetic ring architectures.",
     },
     LiteratureEntry {
         title: "An algorithm to identify functional groups in organic molecules",
-        doi: "10.1186/1471-2100-10-387",
-        note: "Functional-group identification algorithm (RDKit) underlying the motif library.",
+        doi: "10.1186/s13321-017-0225-z",
+        note: "RDKit functional-group detection algorithm — powers the motif library.",
     },
     LiteratureEntry {
         title: "The Most Common Functional Groups in Bioactive Molecules and How Their Popularity Has Evolved over Time",
@@ -31,18 +37,18 @@ pub const LITERATURE: &[LiteratureEntry] = &[
         note: "Functional-group prevalence in bioactive sets — informs decoration motif selection.",
     },
     LiteratureEntry {
-        title: "Natural products and their derivatives as inspiration for the design of new drugs",
+        title: "Cheminformatics Analysis of Natural Product Scaffolds: Comparison of Scaffolds Produced by Animals, Plants, Fungi and Bacteria",
         doi: "10.1002/minf.202000017",
-        note: "Scaffold-level natural-product reasoning.",
+        note: "Scaffold-level natural-product reasoning — NP scaffolds differ by biosynthetic origin (animals, plants, fungi, bacteria).",
     },
     LiteratureEntry {
-        title: "Natural product-inspired compound libraries for the investigation of microbiota",
+        title: "Substituents of life: The most common substituent patterns present in natural products",
         doi: "10.1016/j.bmc.2021.116562",
-        note: "Library design and NP-like space coverage.",
+        note: "Substituent patterns in natural products — informs decoration motif selection.",
     },
     LiteratureEntry {
-        title: "Natural product-inspired scaffolds for the development of bioactive compounds",
+        title: "The most common linkers in bioactive molecules and their bioisosteric replacement network",
         doi: "10.1016/j.bmc.2023.117194",
-        note: "Benchmark of NP-like library design.",
+        note: "Linker prevalence in bioactive molecules — NP linkers differ from synthetic ones.",
     },
 ];

@@ -7,6 +7,8 @@ use crate::model::{
 #[cfg(target_arch = "wasm32")]
 use crate::qlever::enrich_sources;
 #[cfg(target_arch = "wasm32")]
+use crate::qlever::lotus_similarity_check;
+#[cfg(target_arch = "wasm32")]
 use crate::rdkit::{rdkit_inspect, read_file_text};
 use dioxus::prelude::{Signal, WritableExt, spawn};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -115,6 +117,7 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
                     descriptors: RdkitDescriptors::default(),
                     stereo_tags: Vec::new(),
                     num_atoms: 0,
+                    lotus_similarity_found: false,
                 });
             }
             Err(err) => rows.push(error_row(raw.index, raw.label, raw.smiles, err)),
@@ -144,6 +147,39 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
     let unique_keys = inchikeys.into_iter().collect::<Vec<_>>();
     let enrichment_outcome = enrich_sources(&unique_keys).await;
     let mut rows = merge_enrichment(rows, &enrichment_outcome);
+
+    // ═══════════════════════════════════════════════════════════════════
+    // LOTUS structural similarity — single efficient query on the
+    // most Ertl-NP-like molecule (highest score).  The result is
+    // propagated to ALL rows as a dataset-level signal.
+    // ═══════════════════════════════════════════════════════════════════
+    #[cfg(target_arch = "wasm32")]
+    {
+        let best_smiles = inspect_rows
+            .iter()
+            .filter(|r| r.np_score.is_some())
+            .max_by(|a, b| {
+                a.np_score
+                    .partial_cmp(&b.np_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .or_else(|| inspect_rows.first())
+            .map(|r| r.canonical_smiles.clone());
+
+        let lotus_similar = if let Some(smiles) = best_smiles {
+            if !smiles.is_empty() {
+                lotus_similarity_check(&smiles).await
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        for row in &mut rows {
+            row.lotus_similarity_found = lotus_similar;
+        }
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // PASS 2 — Evidence assessment using dataset context + Ertl score
@@ -348,5 +384,6 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         descriptors: RdkitDescriptors::default(),
         stereo_tags: Vec::new(),
         num_atoms: 0,
+        lotus_similarity_found: false,
     }
 }

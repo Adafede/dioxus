@@ -11,6 +11,35 @@ pub const PUBCHEM_ENDPOINT: &str = "https://qlever.cs.uni-freiburg.de/api/pubche
 #[cfg(target_arch = "wasm32")]
 const QUERY_CHUNK_SIZE: usize = 40;
 
+/// Single efficient LOTUS structural similarity query.
+///
+/// Uses the IDSM/Sachem service via QLever to check whether any compound
+/// structurally similar (Tanimoto ≥ 0.9) to the given canonical SMILES
+/// exists in the LOTUS/Wikidata index.  Returns `true` if at least one
+/// matching compound is found.
+///
+/// This is a single SPARQL query — no batching, no per-molecule queries.
+#[cfg(target_arch = "wasm32")]
+pub async fn lotus_similarity_check(canonical_smiles: &str) -> bool {
+    use shared::lotus::models::SmilesSearchType;
+    use shared::lotus::queries::query_sachem;
+
+    let query = query_sachem(canonical_smiles, SmilesSearchType::Similarity, 0.9, None);
+    let result =
+        execute_sparql_with_format(&query, LOTUS_ENDPOINT, ResponseFormat::SparqlJson).await;
+    match result {
+        Ok(json_str) => serde_json::from_str::<Value>(&json_str)
+            .map(|json| {
+                json.get("results")
+                    .and_then(|v| v.get("bindings"))
+                    .and_then(Value::as_array)
+                    .map_or(false, |arr| !arr.is_empty())
+            })
+            .unwrap_or(false),
+        Err(_) => false,
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 pub async fn enrich_sources(inchikeys: &[String]) -> EnrichmentOutcome {
     let (lotus_probe, pubchem_probe) = join(

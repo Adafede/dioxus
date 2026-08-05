@@ -23,7 +23,7 @@ use crate::model::{ChemistCheck, DatasetMotifContext, MoleculeRow, RdkitDescript
 /// Result of assessing a single molecule against the evidence framework.
 #[derive(Clone, Debug)]
 pub struct EvidenceAssessment {
-    /// Real Ertl NP-likeness score (range ≈ −5 to +5), or 0.0 when the model
+    /// Ertl NP-likeness score (range ≈ −5 to +5), or 0.0 when the model
     /// is not available.
     pub np_likeness: f64,
     /// Human-readable classification label derived from the score.
@@ -118,6 +118,14 @@ pub fn assess_np_evidence(
              consistent with enzymatic biosynthesis",
             stereo_tags.len()
         ));
+    } else {
+        // Note: stereochemistry is NOT a negative signal when absent from
+        // 2D SMILES — mass-spec annotation pipelines may strip stereo.
+        notes.push(
+            "No stereochemistry in 2D SMILES — not penalised (MS annotation \
+             pipelines may not preserve stereo)"
+                .into(),
+        );
     }
 
     // Heteroatom / oxygen content — O-functions (hydroxyl, carbonyl, ether,
@@ -146,6 +154,19 @@ pub fn assess_np_evidence(
         notes.push(format!(
             "{dataset_shared} motif(s) shared with other molecules in the \
              dataset — possible structural family",
+        ));
+    }
+
+    // ── Ertl scaffold enrichment ──────────────────────────────────────
+    // Compare the molecule's scaffold motifs against the curated list of
+    // scaffolds known to be enriched in natural products (Ertl & Schuhmann,
+    // J. Nat. Prod. 2019, DOI 10.1021/acs.jnatprod.8b01022).
+    let np_scaffold_hits = motifs.iter().filter(|m| is_known_np_motif(m)).count();
+    let total_scaffolds = count_scaffold_motifs(motifs);
+    if total_scaffolds > 0 && np_scaffold_hits > 0 {
+        notes.push(format!(
+            "{np_scaffold_hits}/{total_scaffolds} scaffold motif(s) are \
+             known NP-associated (Ertl & Schuhmann, J. Nat. Prod. 2019)"
         ));
     }
 
@@ -287,16 +308,21 @@ pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -
 ///
 /// 1. **NP-likeness** — the Ertl score is the statistical ground truth;
 ///    scores above 0.5 are supportive of NP origin.
-/// 2. **Stereochemistry** — NPs are biosynthesised enzymatically and
-///    almost always carry stereocentres.  A complex scaffold with *zero*
-///    stereochemistry is a red flag for an artificial or overly simplified
-///    structure.
+/// 2. **Skeleton** — scaffolds that match known natural-product ring systems
+///    (steroids, sugars, macrocycles, flavonoids, etc.) score positively;
+///    pure polyaromatic systems are a red flag.
 /// 3. **Oxygenation** — oxidative biosynthetic enzymes saturate NPs with
-///    oxygen functions; 4+ heteroatoms is typical of real NPs.
-/// 4. **Molecular weight** — NPs occupy a characteristically broad range
-///    (300–900 Da); values outside 200–1 200 Da warrant scrutiny.
-/// 5. **Database** — presence in LOTUS (curated NP database) or PubChem
+///    oxygen functions; 4+ heteroatoms is typical of real NPs (Wetzel et al.,
+///    CHIMIA 2007).
+/// 4. **Database** — presence in LOTUS (curated NP database) or PubChem
 ///    provides orthogonal evidence.
+/// 5. **LOTUS similarity** — a structurally similar compound (Tanimoto ≥ 0.9)
+///    in the LOTUS/Wikidata index, queried via a single Sachem query.
+///
+/// **Stereochemistry is deliberately NOT checked** — 2D SMILES from mass
+/// spectrometry annotation pipelines may not preserve stereochemical
+/// information, so the absence of stereo tags is not a reliable negative
+/// signal.
 pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     let mut checks: Vec<ChemistCheck> = Vec::with_capacity(5);
 
@@ -327,79 +353,58 @@ pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
         });
     }
 
-    // 2 — Stereochemistry
-    let stereo_count = row.stereo_tags.len();
+    // 2 — Skeleton / scaffold classification
     let family = row.ring_family.to_ascii_lowercase();
-    let is_complex_np_family = family.contains("polycyclic")
+    let is_polyaromatic = family.contains("polyaromatic");
+    let is_np_skeleton = family.contains("polycyclic")
         || family.contains("steroid")
         || family.contains("sugar")
-        || family.contains("macrolide");
-    if stereo_count > 0 {
+        || family.contains("macrolide")
+        || family.contains("flavonoid")
+        || family.contains("heteroaromatic");
+    if is_polyaromatic {
         checks.push(ChemistCheck {
-            name: "Stereochemistry",
-            status: "pass",
-            detail: format!("{stereo_count} stereochemical feature(s)"),
-        });
-    } else if is_complex_np_family {
-        checks.push(ChemistCheck {
-            name: "Stereochemistry",
+            name: "Skeleton",
             status: "fail",
-            detail: "No stereochemistry in complex scaffold — suspicious".into(),
+            detail: row.ring_family.clone(),
+        });
+    } else if is_np_skeleton {
+        checks.push(ChemistCheck {
+            name: "Skeleton",
+            status: "pass",
+            detail: row.ring_family.clone(),
         });
     } else {
         checks.push(ChemistCheck {
-            name: "Stereochemistry",
+            name: "Skeleton",
             status: "warn",
-            detail: "No stereochemistry detected".into(),
+            detail: row.ring_family.clone(),
         });
     }
 
     // 3 — Oxygenation / heteroatom count
     let hetero = row.descriptors.hetero_atoms.unwrap_or(0.0);
-    let oxy = hetero; // hetero ≈ oxygen-rich for most NP motifs
-    if oxy >= 4.0 {
+    if hetero >= 4.0 {
         checks.push(ChemistCheck {
             name: "Oxygenation",
             status: "pass",
-            detail: format!("{:.0} heteroatoms", oxy),
+            detail: format!("{:.0} heteroatoms", hetero),
         });
-    } else if oxy >= 2.0 {
+    } else if hetero >= 2.0 {
         checks.push(ChemistCheck {
             name: "Oxygenation",
             status: "warn",
-            detail: format!("{:.0} heteroatoms — low for NP", oxy),
+            detail: format!("{:.0} heteroatoms — low for NP", hetero),
         });
     } else {
         checks.push(ChemistCheck {
             name: "Oxygenation",
             status: "fail",
-            detail: format!("{:.0} heteroatoms — very low", oxy),
+            detail: format!("{:.0} heteroatoms — very low", hetero),
         });
     }
 
-    // 4 — Molecular weight
-    let mw = row.descriptors.amw.unwrap_or(0.0);
-    if mw >= 300.0 && mw <= 900.0 {
-        checks.push(ChemistCheck {
-            name: "Molecular weight",
-            status: "pass",
-            detail: format!("{:.0} Da (NP range 300–900)", mw),
-        });
-    } else if mw >= 200.0 && mw <= 1200.0 {
-        checks.push(ChemistCheck {
-            name: "Molecular weight",
-            status: "warn",
-            detail: format!("{:.0} Da — outside typical NP range", mw),
-        });
-    } else {
-        checks.push(ChemistCheck {
-            name: "Molecular weight",
-            status: "fail",
-            detail: format!("{:.0} Da — extreme", mw),
-        });
-    }
-
-    // 5 — Database presence
+    // 4 — Database presence
     let has_lotus = !row.lotus_taxa.is_empty();
     let has_pubchem = !row.pubchem_cids.is_empty();
     if has_lotus && has_pubchem {
@@ -428,8 +433,69 @@ pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
         });
     }
 
+    // 5 — LOTUS structural similarity (Tanimoto ≥ 0.9)
+    if row.lotus_similarity_found {
+        checks.push(ChemistCheck {
+            name: "LOTUS similarity",
+            status: "pass",
+            detail: "Similar compound (≥0.9) in LOTUS index".into(),
+        });
+    } else if !has_lotus {
+        checks.push(ChemistCheck {
+            name: "LOTUS similarity",
+            status: "warn",
+            detail: "No LOTUS structural analogue detected".into(),
+        });
+    }
+
     checks
 }
+
+/// Motif labels that are known to be enriched in natural products, based on
+/// Ertl & Schuhmann (J. Nat. Prod. 2019, DOI 10.1021/acs.jnatprods.8b01022)
+/// and Wetzel et al. (CHIMIA 2007, DOI 10.2533/chimia.2007.355).
+///
+/// Used to highlight motifs that are characteristic of NP biosynthesis
+/// in the UI.
+pub fn is_known_np_motif(label: &str) -> bool {
+    let l = label.to_ascii_lowercase();
+    // NP scaffold classes
+    l.contains("steroid")
+        || l.contains("sugar")
+        || l.contains("macrolide")
+        || l.contains("macrocycle")
+        || l.contains("lactone")
+        || l.contains("lactam")
+        || l.contains("flavone")
+        || l.contains("flavonoid")
+        || l.contains("indole")
+        || l.contains("quinoline")
+        || l.contains("isoquinoline")
+        || l.contains("benzofuran")
+        || l.contains("benzothiophene")
+        || l.contains("quinoxaline")
+        || l.contains("purine")
+        || l.contains("chromone")
+        || l.contains("coumarin")
+        || l.contains("tetrahydrofuran")
+        || l.contains("tetrahydropyran")
+        || l.contains("piperidine")
+        || l.contains("piperazine")
+        || l.contains("morpholine")
+        // NP-enriched functional groups (Ertl & Schuhmann 2019)
+        || l.contains("alcohol")
+        || l.contains("phenol")
+        || l.contains("ether")
+        || l.contains("methoxy")
+        || l.contains("ester")
+        || l.contains("carboxylic acid")
+        || l.contains("amide")
+        || l.contains("ketone")
+        || l.contains("enol")
+        || l.contains("acetal")
+        || l.contains("hemiacetal")
+}
+
 fn count_scaffold_motifs(motifs: &[String]) -> usize {
     motifs.iter().filter(|m| is_scaffold_motif(m)).count()
 }
@@ -441,7 +507,7 @@ fn count_decoration_motifs(motifs: &[String]) -> usize {
 
 /// Scaffold motifs are ring systems or cores characteristic of natural-product
 /// scaffold classes.
-fn is_scaffold_motif(label: &str) -> bool {
+pub fn is_scaffold_motif(label: &str) -> bool {
     let l = label.to_ascii_lowercase();
     l.contains("ring")
         || l.contains("steroid")
