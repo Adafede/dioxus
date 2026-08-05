@@ -58,7 +58,7 @@ jobs:
           mkdir -p _site
           cp -r "$DX_OUT/index/$DX_WEB"/* _site/
           cp -r "$DX_OUT/lotus-explore-rs/$DX_WEB" _site/lotus-explore-rs
-          cp -r "$DX_OUT/json-count-rs/$DX_WEB"    _site/json-count-rs
+          cp -r "$DX_OUT/jsoncount/$DX_WEB"        _site/json-count-rs
           cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
           cp -r "$DX_OUT/smellfish-rs/$DX_WEB" _site/smellfish-rs
 
