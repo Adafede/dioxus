@@ -1,5 +1,6 @@
 mod app;
 mod csv;
+mod demo;
 mod evidence;
 mod literature;
 mod model;

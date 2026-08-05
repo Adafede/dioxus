@@ -1,3 +1,4 @@
+use crate::demo;
 use crate::evidence::{is_known_np_motif, is_scaffold_motif};
 use crate::literature::LITERATURE;
 use crate::model::{EndpointStatus, MoleculeRow, MotifSummary};
@@ -12,7 +13,7 @@ use crate::pipeline::begin_import;
 #[component]
 pub fn app() -> Element {
     #[cfg(target_arch = "wasm32")]
-    let file_name = use_signal(String::new);
+    let mut file_name = use_signal(String::new);
     #[cfg(not(target_arch = "wasm32"))]
     let mut file_name = use_signal(String::new);
 
@@ -105,6 +106,48 @@ pub fn app() -> Element {
         }
     };
 
+    #[cfg(target_arch = "wasm32")]
+    let on_load_demo = move |_| {
+        let csv_data = demo::demo_csv();
+        file_name.set("demo_dataset.csv".to_string());
+
+        // Create a synthetic File object from the CSV data
+        use web_sys::{Blob, File};
+        use wasm_bindgen::JsValue;
+
+        // Create blob from string
+        match Blob::new_with_str_sequence(&JsValue::from(vec![JsValue::from_str(&csv_data)])) {
+            Ok(blob) => {
+                // Convert blob to JsValue array for File constructor
+                let blob_array = JsValue::from(vec![JsValue::from(blob)]);
+                
+                // Create file from blob with proper name
+                match File::new_with_blob_sequence(&blob_array, "demo_dataset.csv") {
+                    Ok(file) => {
+                        begin_import(
+                            file,
+                            "demo_dataset.csv".to_string(),
+                            file_name,
+                            status,
+                            busy,
+                            drag_active,
+                            rows,
+                            motifs,
+                            endpoints,
+                            warnings,
+                        );
+                    }
+                    Err(_) => {
+                        status.set("Demo loader: could not create File object.".to_string());
+                    }
+                }
+            }
+            Err(_) => {
+                status.set("Demo loader: could not create Blob.".to_string());
+            }
+        }
+    };
+
     let file_name_value = file_name.read().clone();
     let warning_text = warnings.read().join(" • ");
 
@@ -158,6 +201,24 @@ pub fn app() -> Element {
 
                 if !warning_text.is_empty() {
                     div { class: "alert", "{warning_text}" }
+                }
+
+                {
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        rsx! {
+                            button {
+                                disabled: *busy.read(),
+                                onclick: on_load_demo,
+                                style: "margin-top: 12px; padding: 8px 16px; background: rgba(0, 102, 153, 0.1); color: #006699; border: 1px solid rgba(0, 102, 153, 0.3); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;",
+                                "Load demo dataset (100 NP examples)"
+                            }
+                        }
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        rsx! { }
+                    }
                 }
             }
 
@@ -284,8 +345,8 @@ pub fn app() -> Element {
                             }
                             if !row.evidence_notes.is_empty() {
                                 div { class: "evidence",
-                                    details {
-                                        summary { class: "small", "Evidence logic" }
+                                    details { open: true,
+                                        summary { class: "small", "Why this verdict" }
                                         for note in row.evidence_notes.iter() {
                                             p { class: "small", "{note}" }
                                         }

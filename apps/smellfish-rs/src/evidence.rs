@@ -163,29 +163,25 @@ pub fn assess_np_evidence(
     }
 
     // ── Ertl scaffold enrichment ──────────────────────────────────────
-    // Compare the molecule's scaffold motifs against the curated list of
-    // scaffolds known to be enriched in natural products (Ertl & Schuhmann,
-    // J. Nat. Prod. 2019, DOI 10.1021/acs.jnatprod.8b01022).
+    // Count only NP-associated scaffold motifs. Don't penalize for having
+    // other structural features—only count positive NP signals.
     let np_scaffold_hits = motifs.iter().filter(|m| is_known_np_motif(m)).count();
-    let total_scaffolds = count_scaffold_motifs(motifs);
-    if total_scaffolds > 0 && np_scaffold_hits > 0 {
+    if np_scaffold_hits > 0 {
         notes.push(format!(
-            "{np_scaffold_hits}/{total_scaffolds} scaffold motif(s) are \
-             known NP-associated (Ertl & Schuhmann, J. Nat. Prod. 2019)"
+            "{np_scaffold_hits} NP-associated scaffold motif(s) \
+             (Ertl & Schuhmann, J. Nat. Prod. 2019)"
         ));
     }
 
     // ── Motif context summary ──────────────────────────────────────────
     let scaffold_hits = count_scaffold_motifs(motifs);
     let decoration_hits = count_decoration_motifs(motifs);
-    let motif_context = if scaffold_hits > decoration_hits && scaffold_hits > 0 {
-        format!("scaffold-heavy motif set ({scaffold_hits} scaffold hits)")
-    } else if decoration_hits > scaffold_hits && decoration_hits > 0 {
-        format!("decoration-heavy motif set ({decoration_hits} decoration hits)")
+    let motif_context = if np_scaffold_hits > 0 {
+        "NP-associated structural features".to_string()
     } else if scaffold_hits > 0 || decoration_hits > 0 {
-        "balanced motif set".to_string()
+        "structural features (not NP-characteristic)".to_string()
     } else {
-        "no motif signal".to_string()
+        "no structural motifs detected".to_string()
     };
 
     let np_label = np_likeness_label(score).to_string();
@@ -212,27 +208,22 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
 
     if !row.np_score_available {
         if has_lotus {
-            return "🌿 LOTUS-backed evidence (Ertl model not loaded — score unavailable)."
-                .to_string();
+            return "🌿 LOTUS-backed evidence".to_string();
         }
-        return "⚠ Ertl model not loaded — load the app with a web server that can serve np_model.bin.".to_string();
+        return "⚠ Ertl model not loaded".to_string();
     }
 
-    if has_lotus && has_pubchem && score >= 0.8 {
-        return format!("Looks legitimate — LOTUS, PubChem, and Ertl score ({score:+.2}) agree.");
+    if has_lotus && has_pubchem && score >= 1.0 {
+        return format!("🌿 Strong evidence — LOTUS + PubChem + Ertl {score:+.2}");
     }
     if has_lotus && score >= 1.0 {
-        return format!(
-            "🌿 Strong natural-product evidence — LOTUS taxa + Ertl score {score:+.2}."
-        );
+        return format!("🌿 Strong evidence — LOTUS + Ertl {score:+.2}");
     }
     if has_lotus {
-        return format!("🌿 LOTUS-backed (Ertl score {score:+.2}).");
+        return format!("🌿 LOTUS hit (Ertl {score:+.2})");
     }
 
     // ── PubChem hit evaluation ──────────────────────────────────────────
-    // Don't treat all PubChem hits the same. Evaluate quality based on
-    // Ertl score + NP-like structural features (substituents, motifs, scaffold).
     if has_pubchem {
         let np_substituent_count = row.substituents.len();
         let np_motif_count = row.motifs.iter().filter(|m| is_known_np_motif(m)).count();
@@ -246,25 +237,19 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
                 .to_ascii_lowercase()
                 .contains("heteroaromatic");
 
-        // High-quality PubChem hit: strong score + NP-like features.
-        if score >= 1.5 && (np_substituent_count >= 3 || (np_motif_count >= 2 && has_np_scaffold)) {
-            return format!(
-                "🌿 PubChem + strong NP evidence — Ertl score {score:+.2} with {np_substituent_count} NP substituent(s) + {np_motif_count} NP motif(s)."
-            );
+        // High-quality PubChem hit
+        if score >= 2.0 && (np_substituent_count >= 3 || (np_motif_count >= 2 && has_np_scaffold)) {
+            return format!("🌿 PubChem hit with strong NP features (Ertl {score:+.2})");
         }
-        // Moderate-quality PubChem hit: decent score + some NP features.
-        if score >= 0.8 && (np_substituent_count >= 2 || np_motif_count >= 1) {
-            return format!(
-                "📚 PubChem hit with NP signals — Ertl score {score:+.2}, {np_substituent_count} substituent(s), {np_motif_count} NP motif(s)."
-            );
+        // Moderate-quality PubChem hit
+        if score >= 1.0 && (np_substituent_count >= 2 || np_motif_count >= 1) {
+            return format!("📚 PubChem hit with some NP features (Ertl {score:+.2})");
         }
-        // Weak PubChem hit: low score or minimal NP features.
-        return format!("📚 PubChem hit — weak NP evidence (Ertl score {score:+.2}).");
+        // Weak PubChem hit
+        return format!("📚 PubChem hit (Ertl {score:+.2})");
     }
 
-    // Not in LOTUS or PubChem — fall back to structural evidence.
-    // If the Ertl score is strong AND the molecule has NP-like scaffolds,
-    // it may be a novel natural product (not yet curated in databases).
+    // Not in databases — structural evidence only
     let has_np_scaffold = row.ring_family.to_ascii_lowercase().contains("polycyclic")
         || row.ring_family.to_ascii_lowercase().contains("steroid")
         || row.ring_family.to_ascii_lowercase().contains("sugar")
@@ -275,27 +260,23 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
             .to_ascii_lowercase()
             .contains("heteroaromatic");
     let has_np_motifs = row.motifs.iter().any(|m| is_known_np_motif(m));
-    let np_motif_count = row.motifs.iter().filter(|m| is_known_np_motif(m)).count();
 
     if score >= 2.0 && has_np_scaffold {
         return format!(
-            "🌿 Likely hit — strong NP-likeness ({score:+.2}) + NP-like scaffold, not yet in databases."
+            "🌿 Likely novel NP (Ertl {score:+.2}, {} scaffold)",
+            row.ring_family
         );
     }
     if score >= 1.0 && has_np_motifs && has_np_scaffold {
-        return format!(
-            "🌿 Likely hit — NP-likeness {score:+.2} with {np_motif_count} NP-known motif(s), not yet in databases."
-        );
+        return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
     if score >= 2.0 {
-        return format!(
-            "NP-like scaffold (Ertl score {score:+.2}), but database support is still thin."
-        );
+        return format!("Strong NP features (Ertl {score:+.2})");
     }
     if score <= -1.0 {
-        return format!("👃 Smells fishy (Ertl score {score:+.2}). Citation needed.");
+        return format!("⚠ Weak NP signals (Ertl {score:+.2})");
     }
-    format!("🤨 Citation needed (Ertl score {score:+.2}).")
+    format!("Uncertain (Ertl {score:+.2})")
 }
 
 /// Machine-readable category for CSV export — strips emojis and
