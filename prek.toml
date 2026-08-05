@@ -34,11 +34,11 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/crate-ci/typos"
-rev = "v1.48.0"
+rev = "v1.49.0"
 hooks = [
   {
     id = "typos",
-    exclude = "(apps/lotus-explorer/src/i18n/|public/assets/)"
+    exclude = "(apps/lotus-explore-rs/src/i18n/|public/assets/)"
   }
 ]
 
@@ -179,7 +179,7 @@ hooks = [
     id = "cargo-check-wasm-lotus",
     name = "cargo-check-wasm-lotus",
     language = "system",
-    entry = "cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked",
+    entry = "cargo check -p lotus-explore-rs --target wasm32-unknown-unknown --locked",
     pass_filenames = false,
     stages = ["pre-push"]
   }
@@ -187,7 +187,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/jolars/panache-pre-commit"
-rev = "v3.0.2"
+rev = "v3.1.0"
 hooks = [
   { id = "panache-format" },
   { id = "panache-lint" }

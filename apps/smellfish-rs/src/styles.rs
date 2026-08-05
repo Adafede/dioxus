@@ -236,29 +236,29 @@ a:hover { text-decoration: underline; }
   font-size: 0.9rem;
 }
 /* Verdict badges use ACTUAL Wikidata colors: #990000 #339966 #006699 #484848 */
-.verdict-likely { 
-  background: rgba(51, 153, 102, 0.12); 
-  color: #339966; 
+.verdict-likely {
+  background: rgba(51, 153, 102, 0.12);
+  color: #339966;
   border: 1px solid rgba(51, 153, 102, 0.4);
 }
-.verdict-neutral { 
-  background: rgba(0, 102, 153, 0.12); 
-  color: #006699; 
+.verdict-neutral {
+  background: rgba(0, 102, 153, 0.12);
+  color: #006699;
   border: 1px solid rgba(0, 102, 153, 0.4);
 }
-.verdict-caution { 
-  background: rgba(153, 0, 0, 0.12); 
-  color: #990000; 
+.verdict-caution {
+  background: rgba(153, 0, 0, 0.12);
+  color: #990000;
   border: 1px solid rgba(153, 0, 0, 0.4);
 }
-.verdict-skeptical { 
-  background: rgba(180, 155, 0, 0.12); 
-  color: #b39b00; 
+.verdict-skeptical {
+  background: rgba(180, 155, 0, 0.12);
+  color: #b39b00;
   border: 1px solid rgba(180, 155, 0, 0.4);
 }
-.verdict-fishy { 
-  background: rgba(153, 0, 0, 0.2); 
-  color: #990000; 
+.verdict-fishy {
+  background: rgba(153, 0, 0, 0.2);
+  color: #990000;
   border: 1px solid rgba(153, 0, 0, 0.5);
 }
 .muted { color: #64748b; }
