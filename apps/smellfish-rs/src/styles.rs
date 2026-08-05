@@ -290,7 +290,7 @@ a:hover { text-decoration: underline; }
   margin-top: 24px;
   padding: 16px 24px 20px;
   border-top: 1px solid #e2e8f0;
-  background: #f0f4f8;
+  background: #f8fafc;
   color: #475569;
   font-size: 0.84rem;
 }
