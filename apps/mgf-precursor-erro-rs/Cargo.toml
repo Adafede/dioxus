@@ -15,7 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 dioxus = { workspace = true }
-gloo-timers = { version = "0.4", features = ["futures"] }
+gloo-timers = { version = "0.3", features = ["futures"] }
 mascot-rs = { git = "https://github.com/earth-metabolome-initiative/mascot-rs.git", branch = "main", version = "0.1.0", default-features = false }
 molecular-formulas = { version = "0.1", default-features = false }
 plotters = { version = "0.3", default-features = false, features = ["svg_backend", "line_series", "point_series"] }

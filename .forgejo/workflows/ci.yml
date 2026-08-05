@@ -63,8 +63,8 @@ jobs:
       - name: Cache
         uses: https://github.com/Swatinem/rust-cache@v2
 
-      - name: Check lotus-explorer for wasm32
-        run: cargo check -p lotus-explorer --target wasm32-unknown-unknown --locked
+      - name: Check lotus-explore-rs for wasm32
+        run: cargo check -p lotus-explore-rs --target wasm32-unknown-unknown --locked
 
   clippy:
     name: Clippy
