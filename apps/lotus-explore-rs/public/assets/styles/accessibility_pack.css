@@ -8,7 +8,7 @@
   left: 0.5rem;
   z-index: 9999;
   padding: 0.5rem 1rem;
-  background: transparent;
+  background: var(--bg);
   color: #0b5cab;
   font-size: 0.875rem;
   font-weight: 600;
