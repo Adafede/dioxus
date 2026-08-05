@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <title>{app_title}</title>
-    <meta name="description" content="Drop a CSV of SMILES, render molecules with RDKit.js, highlight common decorations, and inspect same-connectivity hits, scaffolds, and close analogs.">
+    <meta name="description" content="Drop a CSV of SMILES, render molecules with RDKit.js, and score natural-product originality with Ertl-style NP-likeness, LOTUS/PubChem evidence, and dataset-derived scaffold and decoration motifs.">
     <link rel="preconnect" href="https://www.rdkitjs.com" crossorigin>
     <link rel="preconnect" href="https://qlever.dev" crossorigin>
     <link rel="preconnect" href="https://qlever.cs.uni-freiburg.de" crossorigin>
@@ -55,7 +55,12 @@
         { label: "Tetrahydropyran ring", kind: "ring", smarts: "O1CCCCC1" },
         { label: "Cyclohexane ring", kind: "ring", smarts: "C1CCCCC1" },
         { label: "Steroid-like fused ring", kind: "ring", smarts: "C1CCC2CCCCC2C1" },
+        { label: "Macrocycle", kind: "ring", smarts: "C1CCCCCCCCCC1" },
         { label: "Sugar-like oxygen ring", kind: "ring", smarts: "[OX2]1[CX4][CX4][CX4][CX4][CX4]1" },
+        { label: "Macrolactone", kind: "ring", smarts: "O=C1OCCCCCCCC1" },
+        { label: "Macrolactam", kind: "ring", smarts: "O=C1NCCCCCCCC1" },
+        { label: "Flavone core", kind: "ring", smarts: "c1cc(=O)oc2ccccc12" },
+        { label: "Flavonoid core", kind: "ring", smarts: "c1ccc2oc(=O)cc(c2c1)" },
         { label: "Aldehyde", kind: "decoration", smarts: "[CX3H1](=O)[#6]" },
         { label: "Ketone", kind: "decoration", smarts: "[#6][CX3](=O)[#6]" },
         { label: "Carboxylic acid", kind: "decoration", smarts: "C(=O)[OX2H1]" },
@@ -154,6 +159,7 @@
                 throw new Error("rdkit.js could not generate InChIKey");
               }
               const rawDescriptors = JSON.parse(mol.get_descriptors() || "{}");
+              const stereoTags = JSON.parse(mol.get_stereo_tags() || "[]");
               const descriptors = {
                 amw: numericField(rawDescriptors, ["amw", "AMW"]),
                 exact_mw: numericField(rawDescriptors, [
@@ -231,6 +237,7 @@
                 svg,
                 motifs: hits,
                 descriptors,
+                stereo_tags: Array.isArray(stereoTags) ? stereoTags : [],
               };
             });
             if (result && typeof result.error === "string") {
