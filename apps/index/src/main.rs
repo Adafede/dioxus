@@ -73,6 +73,17 @@ pub fn app() -> Element {
         .margin("0 0 10px 0")
         .build();
 
+    let disclaimer_text_style = StyleBuilder::new()
+        .color(ColorScheme::LIGHT.text)
+        .margin("0 0 10px 0")
+        .line_height(Typography::LINE_HEIGHT)
+        .build();
+
+    let disclaimer_link_style = StyleBuilder::new()
+        .color(ColorScheme::LIGHT.accent)
+        .text_decoration("underline")
+        .build();
+
     rsx! {
         div { style: container_style,
             SkipLink {}
@@ -99,16 +110,16 @@ pub fn app() -> Element {
                         span { aria_hidden: "true", "⚠️ " }
                         "About These Prototypes"
                     }
-                    p {
+                    p { style: &disclaimer_text_style,
                         "These are "
                         strong { "experimental applications" }
                         " built with "
-                        a { href: "https://dioxuslabs.com", target: "_blank", rel: "noopener noreferrer", "Dioxus" }
+                        a { style: &disclaimer_link_style, href: "https://dioxuslabs.com", target: "_blank", rel: "noopener noreferrer", "Dioxus" }
                         " to explore a few things I am interested in. They're hosted here at my own discretion."
                     }
-                    p {
+                    p { style: &disclaimer_text_style,
                         "If you're interested in hosting or collaborating on any of these projects, please "
-                        a { href: "https://github.com/adafede", target: "_blank", rel: "noopener noreferrer", "reach out on GitHub" }
+                        a { style: &disclaimer_link_style, href: "https://github.com/adafede", target: "_blank", rel: "noopener noreferrer", "reach out on GitHub" }
                         ". I'm always open to feedback and partnership opportunities."
                     }
                 }
