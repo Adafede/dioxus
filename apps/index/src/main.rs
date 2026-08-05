@@ -145,14 +145,14 @@ const APPS: &[AppInfo] = &[
         description: "Drop SMILES CSVs, render molecules with RDKit.js, highlight shared motifs, enrich the results with LOTUS and PubChem SPARQL lookups, and flag citation-needed cases.",
     },
     AppInfo {
-        id: "jsoncount",
-        title: "🧮 JSON Counter",
-        path: "./jsoncount/",
+        id: "json-count-rs",
+        title: "🧮 JSON Count-rs",
+        path: "./json-count-rs/",
         description: "Streaming JSON analysis for large datasets. Upload gigabyte-scale files and get instant statistics on field cardinality and null distributions.",
     },
     AppInfo {
         id: "mgf-precursor-error",
-        title: "📊 MGF Precursor Error",
+        title: "📊 MGF Precursor Erro-rs",
         path: "./mgf-precursor-erro-rs/",
         description: "Analyze mass spectrometry data. Visualize precursor mass errors from MGF files in absolute (Dalton) and relative (ppm) units with interactive plots.",
     },

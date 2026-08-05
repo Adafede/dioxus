@@ -60,7 +60,7 @@ dioxus-apps/
 ```bash
 dx serve --package lotus-explorer
 cargo run --locked -p lotus-api
-dx serve --package jsoncount
+dx serve --package json-count-rs
 dx serve --package index
 dx serve --package mgf-precursor-erro-rs
 ```
@@ -92,7 +92,7 @@ Open `http://127.0.0.1:8787/docs` for the Swagger UI.
 
 ```bash
 dx build --release --package lotus-explorer
-dx build --release --package jsoncount
+dx build --release --package json-count-rs
 dx build --release --package index
 dx build --release --package mgf-precursor-erro-rs
 ```

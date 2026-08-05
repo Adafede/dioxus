@@ -39,9 +39,9 @@ jobs:
         working-directory: apps/lotus-explore-rs
         run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lotus-explore-rs/"
 
-      - name: Build jsoncount
-        working-directory: apps/jsoncount
-        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/jsoncount/"
+      - name: Build json-count-rs
+        working-directory: apps/json-count-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/json-count-rs/"
 
       - name: Build mgf-precursor-erro-rs
         working-directory: apps/mgf-precursor-erro-rs

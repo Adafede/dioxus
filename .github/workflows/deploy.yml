@@ -45,9 +45,9 @@ jobs:
         env:
           GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
 
-      - name: Build jsoncount
-        working-directory: apps/jsoncount
-        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/jsoncount/"
+      - name: Build json-count-rs
+        working-directory: apps/json-count-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/json-count-rs/"
         env:
           GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
 
