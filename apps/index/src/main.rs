@@ -84,6 +84,13 @@ pub fn app() -> Element {
         .text_decoration("underline")
         .build();
 
+    let apps_heading_style = StyleBuilder::new()
+        .font_size(Typography::H2)
+        .font_weight("600")
+        .color(ColorScheme::LIGHT.text)
+        .margin("0 0 10px 0")
+        .build();
+
     rsx! {
         div { style: container_style,
             SkipLink {}
@@ -95,7 +102,7 @@ pub fn app() -> Element {
 
             main { id: "main-content", style: main_style,
                 section { aria_labelledby: "apps-heading",
-                    h2 { id: "apps-heading", "Applications" }
+                    h2 { id: "apps-heading", style: &apps_heading_style, "Applications" }
                     div { style: grid_style,
                         {APPS.iter().map(|&app| {
                             rsx! {
