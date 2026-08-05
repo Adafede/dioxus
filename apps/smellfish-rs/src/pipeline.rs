@@ -7,8 +7,6 @@ use crate::model::{
 #[cfg(target_arch = "wasm32")]
 use crate::qlever::enrich_sources;
 #[cfg(target_arch = "wasm32")]
-use crate::qlever::lotus_similarity_check;
-#[cfg(target_arch = "wasm32")]
 use crate::rdkit::{rdkit_inspect, read_file_text};
 use dioxus::prelude::{Signal, WritableExt, spawn};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -24,6 +22,7 @@ struct RawInspectRow {
     inchikey: String,
     svg: Option<String>,
     motif_labels: Vec<String>,
+    substituents: Vec<String>,
     descriptors: RdkitDescriptors,
     stereo_tags: Vec<String>,
     np_score: Option<f64>,
@@ -32,19 +31,27 @@ struct RawInspectRow {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
+pub async fn import_csv(
+    file: web_sys::File,
+    mut status: Signal<String>,
+) -> Result<ImportOutcome, String> {
+    status.set("Reading CSV file…".to_string());
     let text = read_file_text(&file).await?;
+    status.set(format!("Parsing CSV…"));
     let raw_rows = parse_csv_rows(&text)?;
+    let total = raw_rows.len();
 
-    let mut inspect_rows = Vec::with_capacity(raw_rows.len());
+    let mut inspect_rows = Vec::with_capacity(total);
     let mut motif_counts: HashMap<String, (String, String, HashSet<usize>)> = HashMap::new();
     let mut inchikeys = BTreeSet::new();
-    let mut rows = Vec::with_capacity(raw_rows.len());
+    let mut rows = Vec::with_capacity(total);
 
     // ═══════════════════════════════════════════════════════════════════
     // PASS 1 — RDKit inspection + raw data collection
     // ═══════════════════════════════════════════════════════════════════
-    for raw in raw_rows {
+    status.set("Loading RDKit module…".to_string());
+    for (i, raw) in raw_rows.into_iter().enumerate() {
+        status.set(format!("Inspecting structure {i}/{total}…"));
         match rdkit_inspect(&raw.smiles).await {
             Ok(inspect) => {
                 if let Some(err) = inspect.error {
@@ -52,6 +59,7 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
                     continue;
                 }
 
+                let inspect = inspect; // consume
                 let motifs_list = inspect.motifs.unwrap_or_default();
                 let motif_labels = motifs_list
                     .iter()
@@ -74,6 +82,7 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
                 let canonical = inspect.canonicalsmiles.unwrap_or_default();
                 let descriptors = inspect.descriptors.unwrap_or_default();
                 let stereo_tags = inspect.stereo_tags.unwrap_or_default();
+                let substituents = inspect.substituents;
 
                 inspect_rows.push(RawInspectRow {
                     index: raw.index,
@@ -83,6 +92,7 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
                     inchikey: inchikey.clone(),
                     svg: inspect.svg.clone(),
                     motif_labels: motif_labels.clone(),
+                    substituents,
                     descriptors,
                     stereo_tags,
                     np_score: inspect.np_score,
@@ -99,6 +109,7 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
                     inchikey,
                     svg: inspect.svg,
                     motifs: motif_labels,
+                    substituents: Vec::new(),
                     lotus_taxa: Vec::new(),
                     lotus_compounds: Vec::new(),
                     pubchem_cids: Vec::new(),
@@ -117,7 +128,6 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
                     descriptors: RdkitDescriptors::default(),
                     stereo_tags: Vec::new(),
                     num_atoms: 0,
-                    lotus_similarity_found: false,
                 });
             }
             Err(err) => rows.push(error_row(raw.index, raw.label, raw.smiles, err)),
@@ -144,46 +154,23 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
     // ═══════════════════════════════════════════════════════════════════
     // Database enrichment (LOTUS / PubChem) — batched for all rows
     // ═══════════════════════════════════════════════════════════════════
+    status.set("Probing LOTUS and PubChem…".to_string());
     let unique_keys = inchikeys.into_iter().collect::<Vec<_>>();
-    let enrichment_outcome = enrich_sources(&unique_keys).await;
+    let enrichment_outcome = enrich_sources(&unique_keys, |msg| status.set(msg)).await;
     let mut rows = merge_enrichment(rows, &enrichment_outcome);
-
-    // ═══════════════════════════════════════════════════════════════════
-    // LOTUS structural similarity — single efficient query on the
-    // most Ertl-NP-like molecule (highest score).  The result is
-    // propagated to ALL rows as a dataset-level signal.
-    // ═══════════════════════════════════════════════════════════════════
-    #[cfg(target_arch = "wasm32")]
-    {
-        let best_smiles = inspect_rows
-            .iter()
-            .filter(|r| r.np_score.is_some())
-            .max_by(|a, b| {
-                a.np_score
-                    .partial_cmp(&b.np_score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .or_else(|| inspect_rows.first())
-            .map(|r| r.canonical_smiles.clone());
-
-        let lotus_similar = if let Some(smiles) = best_smiles {
-            if !smiles.is_empty() {
-                lotus_similarity_check(&smiles).await
-            } else {
-                false
-            }
-        } else {
-            false
-        };
-
-        for row in &mut rows {
-            row.lotus_similarity_found = lotus_similar;
-        }
-    }
 
     // ═══════════════════════════════════════════════════════════════════
     // PASS 2 — Evidence assessment using dataset context + Ertl score
     // ═══════════════════════════════════════════════════════════════════
+    status.set("Assessing NP evidence…".to_string());
+
+    // Count unique Ertl substituents found across the dataset.
+    let unique_substituents: usize = inspect_rows
+        .iter()
+        .flat_map(|r| &r.substituents)
+        .collect::<std::collections::HashSet<_>>()
+        .len();
+
     // Merge the stored raw inspect data back onto the rows.
     let mut raw_by_index: HashMap<usize, RawInspectRow> =
         inspect_rows.into_iter().map(|r| (r.index, r)).collect();
@@ -191,6 +178,7 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
     for row in &mut rows {
         if let Some(raw) = raw_by_index.remove(&row.index) {
             row.descriptors = raw.descriptors;
+            row.substituents = raw.substituents;
             row.stereo_tags = raw.stereo_tags;
             row.num_atoms = raw.num_atoms;
             row.np_score_available = raw.np_score.is_some();
@@ -201,6 +189,7 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
             let evidence = assess_np_evidence(
                 &row.descriptors,
                 motif_labels,
+                &row.substituents,
                 &row.stereo_tags,
                 raw.np_score,
                 raw.np_confidence,
@@ -234,6 +223,7 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
         rows,
         motifs: motif_summary,
         unique_inchikeys: unique_keys.len(),
+        unique_substituents,
         endpoints: enrichment_outcome.endpoints,
         warnings: enrichment_outcome.warnings,
     })
@@ -265,6 +255,7 @@ pub struct ImportOutcome {
     pub rows: Vec<MoleculeRow>,
     pub motifs: Vec<MotifSummary>,
     pub unique_inchikeys: usize,
+    pub unique_substituents: usize,
     pub endpoints: Vec<EndpointStatus>,
     pub warnings: Vec<String>,
 }
@@ -285,14 +276,14 @@ pub fn begin_import(
     file_name.set(file_name_value);
     busy.set(true);
     drag_active.set(false);
-    status.set("Reading CSV…".to_string());
+    status.set("Preparing…".to_string());
     rows.set(Vec::new());
     motifs.set(Vec::new());
     endpoints.set(Vec::new());
     warnings.set(Vec::new());
 
     spawn(async move {
-        match import_csv(file).await {
+        match import_csv(file, status).await {
             Ok(outcome) => {
                 let row_count = outcome.rows.len();
                 let motif_count = outcome.motifs.len();
@@ -302,13 +293,15 @@ pub fn begin_import(
                 warnings.set(outcome.warnings.clone());
                 if outcome.warnings.is_empty() {
                     status.set(format!(
-                        "Done — {row_count} rows, {motif_count} motifs, {unique} unique InChIKeys",
-                        unique = outcome.unique_inchikeys
+                        "Done — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys",
+                        unique = outcome.unique_inchikeys,
+                        sub_count = outcome.unique_substituents
                     ));
                 } else {
                     status.set(format!(
-                        "Done with QLever warnings — {row_count} rows, {motif_count} motifs, {unique} unique InChIKeys",
-                        unique = outcome.unique_inchikeys
+                        "Done with QLever warnings — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys",
+                        unique = outcome.unique_inchikeys,
+                        sub_count = outcome.unique_substituents
                     ));
                 }
             }
@@ -366,6 +359,7 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         inchikey: String::new(),
         svg: None,
         motifs: Vec::new(),
+        substituents: Vec::new(),
         lotus_taxa: Vec::new(),
         lotus_compounds: Vec::new(),
         pubchem_cids: Vec::new(),
@@ -384,6 +378,5 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         descriptors: RdkitDescriptors::default(),
         stereo_tags: Vec::new(),
         num_atoms: 0,
-        lotus_similarity_found: false,
     }
 }

@@ -11,45 +11,22 @@ pub const PUBCHEM_ENDPOINT: &str = "https://qlever.cs.uni-freiburg.de/api/pubche
 #[cfg(target_arch = "wasm32")]
 const QUERY_CHUNK_SIZE: usize = 40;
 
-/// Single efficient LOTUS structural similarity query.
-///
-/// Uses the IDSM/Sachem service via QLever to check whether any compound
-/// structurally similar (Tanimoto ≥ 0.9) to the given canonical SMILES
-/// exists in the LOTUS/Wikidata index.  Returns `true` if at least one
-/// matching compound is found.
-///
-/// This is a single SPARQL query — no batching, no per-molecule queries.
 #[cfg(target_arch = "wasm32")]
-pub async fn lotus_similarity_check(canonical_smiles: &str) -> bool {
-    use shared::lotus::models::SmilesSearchType;
-    use shared::lotus::queries::query_sachem;
-
-    let query = query_sachem(canonical_smiles, SmilesSearchType::Similarity, 0.9, None);
-    let result =
-        execute_sparql_with_format(&query, LOTUS_ENDPOINT, ResponseFormat::SparqlJson).await;
-    match result {
-        Ok(json_str) => serde_json::from_str::<Value>(&json_str)
-            .map(|json| {
-                json.get("results")
-                    .and_then(|v| v.get("bindings"))
-                    .and_then(Value::as_array)
-                    .map_or(false, |arr| !arr.is_empty())
-            })
-            .unwrap_or(false),
-        Err(_) => false,
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-pub async fn enrich_sources(inchikeys: &[String]) -> EnrichmentOutcome {
+pub async fn enrich_sources(
+    inchikeys: &[String],
+    set_status: impl FnMut(String),
+) -> EnrichmentOutcome {
+    let mut warnings = Vec::new();
+    let mut set_status = set_status;
     let (lotus_probe, pubchem_probe) = join(
         probe_endpoint("LOTUS", LOTUS_ENDPOINT),
         probe_endpoint("PubChem", PUBCHEM_ENDPOINT),
     )
     .await;
 
-    let mut warnings = Vec::new();
+    let n_chunks = (inchikeys.len() + QUERY_CHUNK_SIZE - 1) / QUERY_CHUNK_SIZE;
     let lotus = if lotus_probe.reachable {
+        set_status(format!("Querying LOTUS ({n_chunks} batches)…"));
         match fetch_lotus_hits(inchikeys).await {
             Ok(data) => data,
             Err(err) => {
@@ -66,6 +43,7 @@ pub async fn enrich_sources(inchikeys: &[String]) -> EnrichmentOutcome {
     };
 
     let pubchem = if pubchem_probe.reachable {
+        set_status(format!("Querying PubChem ({n_chunks} batches)…"));
         match fetch_pubchem_hits(inchikeys).await {
             Ok(data) => data,
             Err(err) => {
@@ -117,11 +95,19 @@ async fn fetch_lotus_hits(inchikeys: &[String]) -> Result<HashMap<String, Source
                 continue;
             }
             let entry = summary.entry(inchikey).or_default();
-            let compound = binding_value(&binding, "compoundLabel");
-            let taxon = binding_value(&binding, "taxonLabel");
-            if !compound.is_empty() {
-                entry.compounds.insert(compound);
+            // Extract QID from the Wikidata entity URI, e.g.
+            //   http://www.wikidata.org/entity/Q413946  →  Q413946
+            let compound_uri = binding_value(&binding, "compound");
+            if let Some(qid) = compound_uri.strip_prefix("http://www.wikidata.org/entity/") {
+                if !qid.is_empty() {
+                    entry.compounds.insert(qid.to_string());
+                }
             }
+            let compound_label = binding_value(&binding, "compoundLabel");
+            if !compound_label.is_empty() {
+                entry.names.insert(compound_label);
+            }
+            let taxon = binding_value(&binding, "taxonLabel");
             if !taxon.is_empty() {
                 entry.taxa.insert(taxon);
             }

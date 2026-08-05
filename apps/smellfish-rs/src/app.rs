@@ -115,7 +115,12 @@ pub fn app() -> Element {
             section { class: "hero",
                 h1 { "🐟 Smellfish-rs" }
                 p { "A natural-product originality screen for SMILES lists." }
-                p { class: "small muted", "Ertl NP-likeness score (Ertl et al., J. Chem. Inf. Model. 2008, DOI 10.1021/ci700286x) + a chemist's checklist of structural red flags." }
+                p { class: "small muted",
+                    "Ertl NP-likeness score (Ertl et al., J. Chem. Inf. Model. 2008) + checklist of structural flags."
+                }
+                p { class: "small",
+                    a { class: "footer-link blue", href: "https://doi.org/10.1021/ci700286x", target: "_blank", rel: "noreferrer", "DOI 10.1021/ci700286x" }
+                }
             }
 
             section { class: "panel",
@@ -235,6 +240,36 @@ pub fn app() -> Element {
                                     }
                                 }
 
+                                if !row.lotus_compounds.is_empty() {
+                                    div { class: "meta small",
+                                        strong { class: "blue", "LOTUS" }
+                                        div { class: "chip-list",
+                                            for qid in row.lotus_compounds.iter() {
+                                                a { class: "cid-link",
+                                                    href: "https://www.wikidata.org/wiki/{qid}",
+                                                    target: "_blank",
+                                                    rel: "noreferrer",
+                                                    "{qid}"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if !row.pubchem_cids.is_empty() {
+                                    div { class: "meta small",
+                                        strong { class: "blue", "PubChem" }
+                                        div { class: "chip-list",
+                                            for cid in row.pubchem_cids.iter() {
+                                                a { class: "cid-link",
+                                                    href: "https://pubchem.ncbi.nlm.nih.gov/compound/{cid}",
+                                                    target: "_blank",
+                                                    rel: "noreferrer",
+                                                    "CID {cid}"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                                 if !row.motifs.is_empty() {
                                     div { class: "meta",
                                         strong { "Motifs" }
@@ -248,21 +283,18 @@ pub fn app() -> Element {
                                     }
                                 }
                             }
+                            if !row.evidence_notes.is_empty() {
+                                div { class: "evidence",
+                                    details {
+                                        summary { class: "small", "Evidence logic" }
+                                        for note in row.evidence_notes.iter() {
+                                            p { class: "small", "{note}" }
+                                        }
+                                    }
+                                }
+                            }
 
                             div { class: "verdict {verdict_color(&row.verdict)}", "{row.verdict}" }
-                        }
-                    }
-                }
-            }
-
-            section { class: "panel details",
-                summary { h2 { "Evidence basis" } }
-                div { class: "literature-list",
-                    for paper in LITERATURE {
-                        div { class: "literature-item",
-                            strong { "{paper.title}" }
-                            div { class: "small muted", "{paper.note}" }
-                            div { class: "small doi", a { href: "https://doi.org/{paper.doi}", target: "_blank", rel: "noreferrer", "{paper.doi}" } }
                         }
                     }
                 }
@@ -292,6 +324,33 @@ pub fn app() -> Element {
                         span { class: "footer-label", "Code" }
                         ul { class: "footer-links", role: "list",
                             li { a { class: "footer-link blue", href: "https://github.com/Adafede/dioxus/tree/main/apps/smellfish-rs", target: "_blank", rel: "noreferrer", "smellfish-rs" } }
+                        }
+                    }
+                }
+                div { class: "footer-line",
+                    div { class: "footer-row",
+                        span { class: "footer-label", "References" }
+                        ul { class: "footer-links", role: "list",
+                            li {
+                                button { class: "ertl-work-btn",
+                                    onclick: move |_| {
+                                        #[cfg(target_arch = "wasm32")]
+                                        {
+                                            for paper in LITERATURE {
+                                                let _ = web_sys::window()
+                                                    .unwrap()
+                                                    .open_with_url_and_target(
+                                                        &format!("https://doi.org/{}", paper.doi),
+                                                        "_blank"
+                                                    );
+                                            }
+                                        }
+                                        #[cfg(not(target_arch = "wasm32"))]
+                                        let _ = LITERATURE;
+                                    },
+                                    "Ertl work"
+                                }
+                            }
                         }
                     }
                 }
@@ -371,7 +430,7 @@ fn dataset_motif_class(label: &str) -> String {
     } else if is_scaffold_motif(label) {
         "chip chip-scaffold".to_string()
     } else {
-        "chip".to_string()
+        "chip alt".to_string()
     }
 }
 
@@ -382,7 +441,7 @@ fn row_motif_class(label: &str) -> String {
     } else if is_scaffold_motif(label) {
         "chip chip-scaffold".to_string()
     } else {
-        "chip alt".to_string()
+        "chip".to_string()
     }
 }
 
@@ -406,7 +465,7 @@ fn escape_csv(s: &str) -> String {
 /// Build a CSV string from molecule rows.
 fn build_csv(rows: &[MoleculeRow]) -> String {
     let mut csv = String::from(
-        "label,smiles,np_score,np_label,np_confidence,ring_family,verdict,chemist_checks\n",
+        "label,smiles,np_score,np_label,np_confidence,ring_family,substituents,locus,verdict_category,chemist_checks\n",
     );
     for r in rows {
         let checks = r
@@ -415,15 +474,25 @@ fn build_csv(rows: &[MoleculeRow]) -> String {
             .map(|c| format!("{}:{}", c.name, c.status))
             .collect::<Vec<_>>()
             .join(";");
+        let substituents = r.substituents.join(";");
+        let locus = r
+            .lotus_compounds
+            .iter()
+            .chain(r.pubchem_cids.iter())
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(";");
         csv.push_str(&format!(
-            "{},{},{:.3},{},{}%,{},{},{}\n",
+            "{},{},{:.3},{},{}%,{},{},{},{},{}\n",
             escape_csv(&r.label),
             escape_csv(&r.smiles),
             r.np_likeness,
             r.np_label,
             (r.np_confidence * 100.0).round(),
             escape_csv(&r.ring_family),
-            escape_csv(&r.verdict),
+            escape_csv(&substituents),
+            escape_csv(&locus),
+            crate::evidence::verdict_category(&r.verdict),
             escape_csv(&checks),
         ));
     }

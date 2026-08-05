@@ -17,9 +17,9 @@ pub const LITERATURE: &[LiteratureEntry] = &[
         note: "Wetzel, Schuffenhauer, Roggo, Ertl & Waldmann (2007). NPs are sp3-rich — 57% sp3 carbons vs 42% in drugs.",
     },
     LiteratureEntry {
-        title: "10.1021/acs.jnatprod.8b01022",
+        title: "Analysis of the Natural-Product Content in Commercial Screening Collections: The Impact of a Natural-Product Clone Database",
         doi: "10.1021/acs.jnatprod.8b01022",
-        note: "Ertl & Schuhmann (2019). Catalogue of functional groups enriched in natural products — used to prioritise motif library.",
+        note: "Ertl & Schuhmann (2019, J. Nat. Prod.). Functional-group and motif catalogue enriched in natural products — used to prioritise the motif library and the top-60 substituent patterns.",
     },
     LiteratureEntry {
         title: "Ring systems in medicinal chemistry: A cheminformatics analysis of ring popularity in drug discovery over time",
@@ -44,7 +44,7 @@ pub const LITERATURE: &[LiteratureEntry] = &[
     LiteratureEntry {
         title: "Substituents of life: The most common substituent patterns present in natural products",
         doi: "10.1016/j.bmc.2021.116562",
-        note: "Substituent patterns in natural products — informs decoration motif selection.",
+        note: "Ertl (2022, BMC 54, 116562). Top-60 most common natural-product substituents — matched via RDKit substructure search to detect biosynthetic fingerprint.",
     },
     LiteratureEntry {
         title: "The most common linkers in bioactive molecules and their bioisosteric replacement network",

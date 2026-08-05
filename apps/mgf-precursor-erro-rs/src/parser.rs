@@ -4,7 +4,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
 
 use mascot_rs::prelude::*;
-use molecular_formulas_010::molecular_formula::MolecularFormula;
+use molecular_formulas::molecular_formula::MolecularFormula;
 
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;

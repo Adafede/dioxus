@@ -89,18 +89,18 @@ pub const CSS: &str = r#"
   align-items: center;
   padding: 5px 9px;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1e40af;
+  background: #eff6ff;
+  color: #2563eb;
   font-size: 0.82rem;
 }
 .chip.alt { background: #f1f5f9; color: #475569; }
-.chip.good { background: #dcfce7; color: #166534; }
+.chip.good { background: #dcfce7; color: #15803d; }
 .chip.warn { background: #fffbeb; color: #92400e; }
-.chip.fail { background: #fee2e2; color: #991c1b; }
+.chip.fail { background: #fee2e2; color: #991b1b; }
 .chip-np,
-.chip.chip-np { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.chip.chip-np { background: #dcfce7; color: #15803d; border: 1px solid #4ade80; }
 .chip-scaffold,
-.chip.chip-scaffold { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+.chip.chip-scaffold { background: #dbeafe; color: #2563eb; border: 1px solid #60a5fa; }
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -170,9 +170,44 @@ pub const CSS: &str = r#"
   font-weight: 600;
   font-size: 0.82rem;
 }
-.check-status.pass { background: #dcfce7; color: #166534; }
+.check-status.pass { background: #dcfce7; color: #15803d; }
 .check-status.warn { background: #fffbeb; color: #92400e; }
-.check-status.fail { background: #fee2e2; color: #991c1b; }
+.check-status.fail { background: #fee2e2; color: #991b1b; }
+.cid-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid #93c5fd;
+}
+.cid-link:hover {
+  background: #dbeafe;
+  text-decoration: underline;
+}
+.ertl-work-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #1e40af;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.ertl-work-btn:hover {
+  text-decoration: underline;
+}
+.meta.small { font-size: 0.82rem; }
+.meta.small.muted { color: #94a3b8; }
 .verdict {
   margin: 8px;
   font-weight: 700;
@@ -181,55 +216,30 @@ pub const CSS: &str = r#"
   text-align: center;
   font-size: 0.9rem;
 }
-.verdict-likely { background: #dcfce7; color: #166534; }
+.verdict-likely { background: #dcfce7; color: #15803d; }
 .verdict-neutral { background: #f1f5f9; color: #475569; }
 .verdict-caution { background: #fffbeb; color: #92400e; }
-.verdict-fishy { background: #fee2e2; color: #991c1b; }
+.verdict-fishy { background: #fee2e2; color: #991b1b; }
 .muted { color: #64748b; }
 .error { color: #b91c1c; font-weight: 600; }
 .small { font-size: 0.82rem; }
-.literature-list {
-  display: grid;
-  gap: 10px;
+.evidence {
+  margin-top: 6px;
 }
-.literature-item {
-  padding: 12px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #fff;
-  transition: border-color .12s, box-shadow .12s;
-}
-.literature-item:hover {
-  border-color: #94a3b8;
-  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05);
-}
-.literature-item strong {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 4px;
-  font-size: 0.9rem;
-}
-.literature-item .doi {
-  font-family: monospace;
-  font-size: 0.8rem;
-  color: #475569;
-}
-.details summary {
+.evidence details summary {
   cursor: pointer;
-  user-select: none;
+  font-weight: 600;
+  color: #475569;
+  list-style: none;
 }
-.details summary::-webkit-details-marker {
-  display: none;
+.evidence details[open] summary {
+  color: #2563eb;
 }
-.details summary::after {
-  content: "▼";
-  margin-left: 8px;
-  font-size: 0.7rem;
-  color: #64748b;
-  transition: transform .15s;
-}
-.details[open] summary::after {
-  transform: rotate(180deg);
+.evidence details p {
+  margin: 4px 0;
+  padding-left: 4px;
+  border-left: 2px solid #cbd5e1;
+  color: #334155;
 }
 
 /* ── Footer (same style as lotus-explore-rs) ────────────────────────── */
@@ -293,6 +303,6 @@ pub const CSS: &str = r#"
 }
 .footer-link:hover { text-decoration: underline; }
 .footer-link.red { color: #991b1b; }
-.footer-link.green { color: #166534; }
-.footer-link.blue { color: #1e40af; }
+.footer-link.green { color: #15803d; }
+.footer-link.blue { color: #2563eb; }
 "#;

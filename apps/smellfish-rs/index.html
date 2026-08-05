@@ -88,6 +88,75 @@
         { label: "Allyl", kind: "decoration", smarts: "C=CC" },
       ];
 
+      /*
+       * Top-60 most common substituents in natural products (Ertl et al.,
+       * Bioorg. Med. Chem. 2022, 54, 116562, DOI 10.1016/j.bmc.2021.116562).
+       * The [R] attachment point is rendered as a SMARTS [*] wildcard so
+       * RDKit can use the pattern for substructure matching.
+       */
+      const ERTL_SUBSTUENTS = [
+        { label: "hydroxyl", smarts: "[*]O" },
+        { label: "methyl", smarts: "[*]C" },
+        { label: "methoxy", smarts: "[*]OC" },
+        { label: "methyl ester", smarts: "[*]OC(C)=O" },
+        { label: "hydroxymethyl", smarts: "[*]CO" },
+        { label: "carboxylic acid", smarts: "[*]C(O)=O" },
+        { label: "isopropyl", smarts: "[*]C(C)C" },
+        { label: "methyl carbonate", smarts: "[*]C(=O)OC" },
+        { label: "primary amine", smarts: "[*]N" },
+        { label: "ethyl", smarts: "[*]CC" },
+        { label: "aldehyde", smarts: "[*]C=O" },
+        { label: "phenyl", smarts: "[*]c1ccccc1" },
+        { label: "2-methylpropenyl", smarts: "[*]CC=C(C)C" },
+        { label: "acetyl", smarts: "[*]C(C)=O" },
+        { label: "chloro", smarts: "[*]Cl" },
+        { label: "methyl carbonate (acetyl)", smarts: "[*]COC(C)=O" },
+        { label: "vinyl", smarts: "[*]C(C)=C" },
+        { label: "phenol", smarts: "[*]c1ccc(O)cc1" },
+        { label: "bromo", smarts: "[*]Br" },
+        { label: "benzyl", smarts: "[*]Cc1ccccc1" },
+        { label: "crotonyl", smarts: "[*]OC(=O)C(C)=CC" },
+        { label: "vinyl (simple)", smarts: "[*]C=C" },
+        { label: "tert-butyl", smarts: "[*]C(C)(C)O" },
+        { label: "furan-2-yl", smarts: "[*]c1ccoc1" },
+        { label: "ethoxy", smarts: "[*]CCO" },
+        { label: "phenyl ester", smarts: "[*]OC(=O)c1ccccc1" },
+        { label: "isopropyl (simple)", smarts: "[*]CC(C)C" },
+        { label: "lactate", smarts: "[*]CC(O)=O" },
+        { label: "propanol", smarts: "[*]CCCO" },
+        { label: "propyl", smarts: "[*]CCC" },
+        { label: "dihydroxyphenyl", smarts: "[*]c1ccc(O)c(O)c1" },
+        { label: "pentyl", smarts: "[*]CCCCC" },
+        { label: "methylamine", smarts: "[*]CNC" },
+        { label: "anisole", smarts: "[*]c1ccc(OC)cc1" },
+        { label: "methylamine (simple)", smarts: "[*]NC" },
+        { label: "isobutyl", smarts: "[*]C(C)CC" },
+        { label: "ethyl carbonate", smarts: "[*]CC(=O)OC" },
+        { label: "isopropanol", smarts: "[*]C(C)O" },
+        { label: "methoxyphenol", smarts: "[*]c1ccc(O)c(OC)c1" },
+        { label: "methoxy (simple)", smarts: "[*]COC" },
+        { label: "methyl propanoate", smarts: "[*]OC(=O)C(C)C" },
+        { label: "sulfate", smarts: "[*]OS(O)(=O)=O" },
+        { label: "ethyl acetate", smarts: "[*]C(=O)OCC" },
+        { label: "cyclohexyl", smarts: "[*]C1CCCCC1" },
+        { label: "methyl isobutyrate", smarts: "[*]OC(=O)C(C)CC" },
+        { label: "lactic acid", smarts: "[*]CCC(O)=O" },
+        { label: "hydroxybenzyl", smarts: "[*]Cc1ccc(O)cc1" },
+        { label: "cyclopentyl", smarts: "[*]C1CCCC1" },
+        { label: "methoxymethane", smarts: "[*]OCC" },
+        { label: "allyl (simple)", smarts: "[*]CC=C" },
+        { label: "butyl", smarts: "[*]CCCC" },
+        { label: "dimethoxybenzene", smarts: "[*]c1ccc(OC)c(OC)c1" },
+        { label: "styrene", smarts: "[*]CCc1ccccc1" },
+        { label: "tetrahydropyranyl", smarts: "[*]OC1CCCC1" },
+        { label: "methylolefin", smarts: "[*]CCC=C(C)C" },
+        { label: "benzofuran", smarts: "[*]c2ccc1OCOc1c2" },
+        { label: "glycerol", smarts: "[*]NCC(C)O" },
+        { label: "ethyl isobutyrate", smarts: "[*]OC(=O)CC(C)C" },
+        { label: "acetamide", smarts: "[*]NC(C)=O" },
+        { label: "2-methylpropene", smarts: "[*]C(C)(C)C=C" },
+      ];
+
       function numericField(descriptors, names) {
         for (const name of names) {
           const value = descriptors?.[name];
@@ -243,6 +312,17 @@
           qmol: RDKit.get_qmol(motif.smarts),
         }));
 
+        /*
+         * Ertl natural-product substituent library (top 60 most common
+         * substituents in natural products, from Ertl 2022, BMC 54, 116562,
+         * DOI 10.1016/j.bmc.2021.116562).  Patterns use [*] as the
+         * attachment-point wildcard.
+         */
+        const compiledSubstituents = ERTL_SUBSTUENTS.map((sub) => ({
+          ...sub,
+          qmol: RDKit.get_qmol(sub.smarts),
+        }));
+
         function withMol(smiles, callback) {
           const trimmed = String(smiles || "").trim();
           if (!trimmed) {
@@ -326,7 +406,40 @@
 
               const hits = [];
               const atoms = [];
+              const atomColors = {};
               const bonds = [];
+              const bondColors = {};
+
+              /* Colour palette (matches the CSS chip colours) */
+              const COL_NP    = [0.09, 0.51, 0.18];  /* green   #16a34a */
+              const COL_SCAFF = [0.15, 0.37, 0.97];  /* blue    #2563eb */
+              const COL_DECO  = [0.56, 0.25, 0.03];  /* amber   #92400e */
+
+              function classifyMotif(label) {
+                const l = label.toLowerCase();
+                /* NP-known scaffold classes + NP-enriched functional groups */
+                const npKnown = [
+                  "steroid","sugar","macrolide","macrocycle","lactone","lactam",
+                  "flavone","flavonoid","indole","quinoline","isoquinoline",
+                  "benzofuran","benzothiophene","quinoxaline","purine",
+                  "chromone","coumarin","tetrahydrofuran","tetrahydropyran",
+                  "piperidine","piperazine","morpholine",
+                  "alcohol","phenol","ether","methoxy","ester","carboxylic acid",
+                  "amide","ketone","enol","acetal","hemiacetal",
+                ];
+                if (npKnown.some(k => l.includes(k))) return COL_NP;
+                const scaffold = [
+                  "ring","steroid","sugar","macrocycle","macrolide","lactone",
+                  "lactam","flavone","flavonoid","indole","quinoline",
+                  "isoquinoline","benzofuran","benzothiophene","quinoxaline",
+                  "purine","chromone","coumarin","morpholine","piperidine",
+                  "piperazine","tetrahydrofuran","tetrahydropyran","cyclohexane",
+                ];
+                if (scaffold.some(k => l.includes(k))) return COL_SCAFF;
+                return COL_DECO;
+              }
+
+              let primaryColour = COL_DECO;
               for (const motif of compiledMotifs) {
                 const raw = mol.get_substruct_match(motif.qmol);
                 if (!raw) {
@@ -338,6 +451,7 @@
                 if (!hitAtoms.length && !hitBonds.length) {
                   continue;
                 }
+                const colour = classifyMotif(motif.label);
                 hits.push({
                   label: motif.label,
                   kind: motif.kind,
@@ -347,12 +461,31 @@
                 });
                 atoms.push(...hitAtoms);
                 bonds.push(...hitBonds);
+                for (const atom of hitAtoms) {
+                  atomColors[atom] = colour;
+                }
+                for (const bond of hitBonds) {
+                  bondColors[bond] = colour;
+                }
+              }
+
+              /*
+               * Build per-atom and per-bond colour maps. RDKit.js supports
+               * highlightAtomColors / highlightBondColors as either a dense
+               * array (indexed by atom/bond number) or an object map
+               * {"0": [r,g,b], ...}.  We pass the object form which works
+               * across RDKit.js versions.
+               */
+              if (atoms.length) {
+                primaryColour = atomColors[atoms[0]] || COL_DECO;
               }
 
               const details = {
                 atoms: uniqueSorted(atoms),
                 bonds: uniqueSorted(bonds),
-                highlightColour: [0.12, 0.54, 0.84],
+                highlightAtomColors: atomColors,
+                highlightBondColors: bondColors,
+                highlightColour: primaryColour,
                 continuousHighlight: true,
                 atomHighlightsAreCircles: true,
                 addAtomIndices: false,
@@ -362,6 +495,20 @@
                 : mol.get_svg();
 
               const npResult = computeNpLikeness(mol);
+
+              // Check Ertl's top-60 most common natural-product substituents
+              const matchedSubstituents = [];
+              for (const sub of compiledSubstituents) {
+                const raw = mol.get_substruct_match(sub.qmol);
+                if (raw) {
+                  const match = JSON.parse(raw);
+                  const hitAtoms = Array.isArray(match.atoms) ? match.atoms : [];
+                  const hitBonds = Array.isArray(match.bonds) ? match.bonds : [];
+                  if (hitAtoms.length || hitBonds.length) {
+                    matchedSubstituents.push(sub.label);
+                  }
+                }
+              }
 
               return {
                 canonicalsmiles,
@@ -374,6 +521,7 @@
                 np_score: npResult.np_score,
                 np_confidence: npResult.np_confidence,
                 num_atoms: npResult.num_atoms,
+                substituents: matchedSubstituents,
               };
             });
             if (result && typeof result.error === "string") {

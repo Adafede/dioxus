@@ -61,11 +61,14 @@ pub fn np_likeness_label(score: f64) -> &'static str {
 /// * `np_score` / `np_confidence` come from the rdkit.js bridge (real Ertl
 ///   model).  When `None`, the score cannot be computed and structural
 ///   observations are the only available evidence.
+/// * `substituents` is the list of Ertl (2022) top-60 NP substituent labels
+///   found in the molecule via substructure matching.
 /// * `dataset_context` carries motif prevalence across the entire uploaded
 ///   set so that per-row notes can flag dataset-common scaffolds.
 pub fn assess_np_evidence(
     descriptors: &RdkitDescriptors,
     motifs: &[String],
+    substituents: &[String],
     stereo_tags: &[String],
     np_score: Option<f64>,
     np_confidence: Option<f64>,
@@ -138,6 +141,20 @@ pub fn assess_np_evidence(
                  biosynthetic origin"
             ));
         }
+    }
+
+    // ── Ertl substituent enrichment ─────────────────────────────────────
+    // Substituents drawn from the top-60 most common natural-product
+    // substituent patterns (Ertl et al., BMC 54, 116562, 2022,
+    // DOI 10.1016/j.bmc.2021.116562).  The number of matches is a
+    // positive indicator — synthetic libraries rarely show this
+    // breadth of NP-typical substitutions.
+    if !substituents.is_empty() {
+        notes.push(format!(
+            "{} Ertl NP-substituent(s) detected (hydroxyl, methyl ester, \
+             carboxylic acid, etc. — Ertl et al., BMC 2022)",
+            substituents.len()
+        ));
     }
 
     // ── Dataset-level context ──────────────────────────────────────────
@@ -227,6 +244,32 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
     if has_pubchem {
         return format!("📚 PubChem hit only — weak evidence (Ertl score {score:+.2}).");
     }
+
+    // Not in LOTUS or PubChem — fall back to structural evidence.
+    // If the Ertl score is strong AND the molecule has NP-like scaffolds,
+    // it may be a novel natural product (not yet curated in databases).
+    let has_np_scaffold = row.ring_family.to_ascii_lowercase().contains("polycyclic")
+        || row.ring_family.to_ascii_lowercase().contains("steroid")
+        || row.ring_family.to_ascii_lowercase().contains("sugar")
+        || row.ring_family.to_ascii_lowercase().contains("macrolide")
+        || row.ring_family.to_ascii_lowercase().contains("flavonoid")
+        || row
+            .ring_family
+            .to_ascii_lowercase()
+            .contains("heteroaromatic");
+    let has_np_motifs = row.motifs.iter().any(|m| is_known_np_motif(m));
+    let np_motif_count = row.motifs.iter().filter(|m| is_known_np_motif(m)).count();
+
+    if score >= 2.0 && has_np_scaffold {
+        return format!(
+            "🌿 Likely hit — strong NP-likeness ({score:+.2}) + NP-like scaffold, not yet in databases."
+        );
+    }
+    if score >= 1.0 && has_np_motifs && has_np_scaffold {
+        return format!(
+            "🌿 Likely hit — NP-likeness {score:+.2} with {np_motif_count} NP-known motif(s), not yet in databases."
+        );
+    }
     if score >= 2.0 {
         return format!(
             "NP-like scaffold (Ertl score {score:+.2}), but database support is still thin."
@@ -236,6 +279,29 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
         return format!("👃 Smells fishy (Ertl score {score:+.2}). Citation needed.");
     }
     format!("🤨 Citation needed (Ertl score {score:+.2}).")
+}
+
+/// Machine-readable category for CSV export — strips emojis and
+/// normalises to "likely", "neutral", "caution", or "fishy".
+pub fn verdict_category(verdict: &str) -> &'static str {
+    let l = verdict.to_ascii_lowercase();
+    if l.contains("smells fishy") {
+        "fishy"
+    } else if l.contains("looks legitimate")
+        || l.contains("strong natural")
+        || l.contains("lotus-backed")
+        || l.contains("likely hit")
+    {
+        "likely"
+    } else if l.contains("pubchem hit only")
+        || l.contains("citation needed")
+        || l.contains("not loaded")
+        || l.contains("⚠")
+    {
+        "caution"
+    } else {
+        "neutral"
+    }
 }
 
 /// Classify the core scaffold family using motif SMARTS matches and
@@ -316,15 +382,13 @@ pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -
 ///    CHIMIA 2007).
 /// 4. **Database** — presence in LOTUS (curated NP database) or PubChem
 ///    provides orthogonal evidence.
-/// 5. **LOTUS similarity** — a structurally similar compound (Tanimoto ≥ 0.9)
-///    in the LOTUS/Wikidata index, queried via a single Sachem query.
 ///
 /// **Stereochemistry is deliberately NOT checked** — 2D SMILES from mass
 /// spectrometry annotation pipelines may not preserve stereochemical
 /// information, so the absence of stereo tags is not a reliable negative
 /// signal.
 pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
-    let mut checks: Vec<ChemistCheck> = Vec::with_capacity(5);
+    let mut checks: Vec<ChemistCheck> = Vec::with_capacity(4);
 
     // 1 — NP-likeness score
     if !row.np_score_available {
@@ -430,21 +494,6 @@ pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
             name: "Database",
             status: "fail",
             detail: "Not in LOTUS or PubChem".into(),
-        });
-    }
-
-    // 5 — LOTUS structural similarity (Tanimoto ≥ 0.9)
-    if row.lotus_similarity_found {
-        checks.push(ChemistCheck {
-            name: "LOTUS similarity",
-            status: "pass",
-            detail: "Similar compound (≥0.9) in LOTUS index".into(),
-        });
-    } else if !has_lotus {
-        checks.push(ChemistCheck {
-            name: "LOTUS similarity",
-            status: "warn",
-            detail: "No LOTUS structural analogue detected".into(),
         });
     }
 
@@ -603,6 +652,7 @@ mod tests {
         let assessment = assess_np_evidence(
             &desc,
             &["Steroid-like fused ring".to_string()],
+            &[],
             &["R/S".to_string(), "R/S".to_string()],
             Some(3.42),
             Some(0.75),
@@ -642,6 +692,7 @@ mod tests {
             &desc,
             &[],
             &[],
+            &[],
             Some(1.5),
             Some(0.8),
             20,
@@ -672,6 +723,7 @@ mod tests {
             &desc,
             &[],
             &[],
+            &[],
             Some(-1.5),
             Some(0.9),
             20,
@@ -691,6 +743,7 @@ mod tests {
         let assessment = assess_np_evidence(
             &empty_descriptors(),
             &["Flavonoid core".to_string()],
+            &[],
             &[],
             None,
             None,
@@ -721,6 +774,7 @@ mod tests {
         let assessment = assess_np_evidence(
             &desc,
             &["Flavonoid core".to_string(), "Aldehyde".to_string()],
+            &[],
             &[],
             Some(-0.5),
             Some(0.5),

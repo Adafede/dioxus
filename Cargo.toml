@@ -137,3 +137,4 @@ codegen-units = 16
 [profile.test]
 opt-level = 1
 lto = "thin"
+

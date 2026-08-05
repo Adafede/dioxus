@@ -29,6 +29,7 @@ pub struct MoleculeRow {
     pub inchikey: String,
     pub svg: Option<String>,
     pub motifs: Vec<String>,
+    pub substituents: Vec<String>,
     pub lotus_taxa: Vec<String>,
     pub lotus_compounds: Vec<String>,
     pub pubchem_cids: Vec<String>,
@@ -51,10 +52,6 @@ pub struct MoleculeRow {
     pub stereo_tags: Vec<String>,
     /// Heavy-atom count (transparency for the Ertl normalisation).
     pub num_atoms: usize,
-    /// Whether a structurally similar compound (Tanimoto ≥ 0.9) exists in LOTUS.
-    /// Set once per dataset via a single Sachem similarity query on the
-    /// most NP-like molecule.
-    pub lotus_similarity_found: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -140,6 +137,9 @@ pub struct RdkitInspectResponse {
     /// Heavy‑atom count used for the score normalisation.
     #[serde(default)]
     pub num_atoms: Option<usize>,
+    /// Ertl natural-product substituent matches (top-60 from Ertl 2022).
+    #[serde(default)]
+    pub substituents: Vec<String>,
     pub error: Option<String>,
 }
 
