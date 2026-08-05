@@ -149,27 +149,57 @@ pub const CSS: &str = r#"
   border-radius: 12px;
   background: #f9fbff;
 }
-.result-grid {
+.checklist {
   display: grid;
   gap: 4px;
-  font-size: 0.88rem;
 }
-.result-row {
+.check-row {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.88rem;
 }
-.result-row span:first-child {
-  overflow-wrap: anywhere;
+.check-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.82rem;
 }
-.result-badge {
-  font-weight: 700;
-  white-space: nowrap;
+.check-status.pass {
+  background: #e9fbef;
+  color: #167345;
+}
+.check-status.warn {
+  background: #fff4e5;
+  color: #8a4b00;
+}
+.check-status.fail {
+  background: #ffe0e6;
+  color: #b02132;
 }
 .verdict {
   margin-top: 4px;
   font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 10px;
+  text-align: center;
+}
+.verdict-likely {
+  background: #e9fbef;
+  color: #167345;
+}
+.verdict-neutral {
+  background: #f3f4f6;
+  color: #374151;
+}
+.verdict-caution {
+  background: #fff4e5;
+  color: #8a4b00;
+}
+.verdict-fishy {
+  background: #fee2e3;
+  color: #991c1b;
 }
 .muted { color: #63738d; }
 .error { color: #b42318; font-weight: 600; }

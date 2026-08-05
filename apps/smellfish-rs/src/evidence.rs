@@ -18,7 +18,7 @@
 //! the same Ertl papers and from the "escaping the *flatland*" literature
 //! (Ertl 2003, *J. Am. Chem. Soc.* 125, 10353; Ertl & Schuppenhauer 2011).
 
-use crate::model::{DatasetMotifContext, RdkitDescriptors};
+use crate::model::{ChemistCheck, DatasetMotifContext, MoleculeRow, RdkitDescriptors};
 
 /// Result of assessing a single molecule against the evidence framework.
 #[derive(Clone, Debug)]
@@ -36,8 +36,6 @@ pub struct EvidenceAssessment {
     pub evidence_notes: Vec<String>,
     /// One-line summary of the dataset-level motif context.
     pub motif_context: String,
-    /// Whether the Ertl fragment model was loaded during scoring.
-    pub model_available: bool,
 }
 
 /// Classification thresholds for the Ertl NP-likeness score.
@@ -76,7 +74,6 @@ pub fn assess_np_evidence(
 ) -> EvidenceAssessment {
     let ring_family = classify_ring_family(descriptors, motifs);
     let mut notes = Vec::new();
-    let model_available = np_score.is_some();
 
     let score = np_score.unwrap_or(0.0);
     let confidence = np_confidence.unwrap_or(0.0);
@@ -174,7 +171,6 @@ pub fn assess_np_evidence(
         ring_family,
         evidence_notes: notes,
         motif_context,
-        model_available,
     }
 }
 
@@ -283,7 +279,157 @@ pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -
     "compact ring scaffold".to_string()
 }
 
-/// Count motif hits that are scaffold-type (rings / cores).
+/// Quick-check audit that a natural-product chemist would run when
+/// eyeballing a structure.
+///
+/// Each check returns a `ChemistCheck` with status `"pass"`, `"warn"`, or
+/// `"fail"`.  The checks are:
+///
+/// 1. **NP-likeness** — the Ertl score is the statistical ground truth;
+///    scores above 0.5 are supportive of NP origin.
+/// 2. **Stereochemistry** — NPs are biosynthesised enzymatically and
+///    almost always carry stereocentres.  A complex scaffold with *zero*
+///    stereochemistry is a red flag for an artificial or overly simplified
+///    structure.
+/// 3. **Oxygenation** — oxidative biosynthetic enzymes saturate NPs with
+///    oxygen functions; 4+ heteroatoms is typical of real NPs.
+/// 4. **Molecular weight** — NPs occupy a characteristically broad range
+///    (300–900 Da); values outside 200–1 200 Da warrant scrutiny.
+/// 5. **Database** — presence in LOTUS (curated NP database) or PubChem
+///    provides orthogonal evidence.
+pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
+    let mut checks: Vec<ChemistCheck> = Vec::with_capacity(5);
+
+    // 1 — NP-likeness score
+    if !row.np_score_available {
+        checks.push(ChemistCheck {
+            name: "NP-likeness",
+            status: "warn",
+            detail: "Ertl model not loaded".into(),
+        });
+    } else if row.np_likeness >= 0.5 {
+        checks.push(ChemistCheck {
+            name: "NP-likeness",
+            status: "pass",
+            detail: format!("Ertl score {:+.2}", row.np_likeness),
+        });
+    } else if row.np_likeness > -0.5 {
+        checks.push(ChemistCheck {
+            name: "NP-likeness",
+            status: "warn",
+            detail: format!("Ertl score {:+.2} — borderline", row.np_likeness),
+        });
+    } else {
+        checks.push(ChemistCheck {
+            name: "NP-likeness",
+            status: "fail",
+            detail: format!("Ertl score {:+.2} — synthetic-leaning", row.np_likeness),
+        });
+    }
+
+    // 2 — Stereochemistry
+    let stereo_count = row.stereo_tags.len();
+    let family = row.ring_family.to_ascii_lowercase();
+    let is_complex_np_family = family.contains("polycyclic")
+        || family.contains("steroid")
+        || family.contains("sugar")
+        || family.contains("macrolide");
+    if stereo_count > 0 {
+        checks.push(ChemistCheck {
+            name: "Stereochemistry",
+            status: "pass",
+            detail: format!("{stereo_count} stereochemical feature(s)"),
+        });
+    } else if is_complex_np_family {
+        checks.push(ChemistCheck {
+            name: "Stereochemistry",
+            status: "fail",
+            detail: "No stereochemistry in complex scaffold — suspicious".into(),
+        });
+    } else {
+        checks.push(ChemistCheck {
+            name: "Stereochemistry",
+            status: "warn",
+            detail: "No stereochemistry detected".into(),
+        });
+    }
+
+    // 3 — Oxygenation / heteroatom count
+    let hetero = row.descriptors.hetero_atoms.unwrap_or(0.0);
+    let oxy = hetero; // hetero ≈ oxygen-rich for most NP motifs
+    if oxy >= 4.0 {
+        checks.push(ChemistCheck {
+            name: "Oxygenation",
+            status: "pass",
+            detail: format!("{:.0} heteroatoms", oxy),
+        });
+    } else if oxy >= 2.0 {
+        checks.push(ChemistCheck {
+            name: "Oxygenation",
+            status: "warn",
+            detail: format!("{:.0} heteroatoms — low for NP", oxy),
+        });
+    } else {
+        checks.push(ChemistCheck {
+            name: "Oxygenation",
+            status: "fail",
+            detail: format!("{:.0} heteroatoms — very low", oxy),
+        });
+    }
+
+    // 4 — Molecular weight
+    let mw = row.descriptors.amw.unwrap_or(0.0);
+    if mw >= 300.0 && mw <= 900.0 {
+        checks.push(ChemistCheck {
+            name: "Molecular weight",
+            status: "pass",
+            detail: format!("{:.0} Da (NP range 300–900)", mw),
+        });
+    } else if mw >= 200.0 && mw <= 1200.0 {
+        checks.push(ChemistCheck {
+            name: "Molecular weight",
+            status: "warn",
+            detail: format!("{:.0} Da — outside typical NP range", mw),
+        });
+    } else {
+        checks.push(ChemistCheck {
+            name: "Molecular weight",
+            status: "fail",
+            detail: format!("{:.0} Da — extreme", mw),
+        });
+    }
+
+    // 5 — Database presence
+    let has_lotus = !row.lotus_taxa.is_empty();
+    let has_pubchem = !row.pubchem_cids.is_empty();
+    if has_lotus && has_pubchem {
+        checks.push(ChemistCheck {
+            name: "Database",
+            status: "pass",
+            detail: "LOTUS + PubChem".into(),
+        });
+    } else if has_lotus {
+        checks.push(ChemistCheck {
+            name: "Database",
+            status: "pass",
+            detail: "LOTUS taxa".into(),
+        });
+    } else if has_pubchem {
+        checks.push(ChemistCheck {
+            name: "Database",
+            status: "warn",
+            detail: "PubChem only".into(),
+        });
+    } else {
+        checks.push(ChemistCheck {
+            name: "Database",
+            status: "fail",
+            detail: "Not in LOTUS or PubChem".into(),
+        });
+    }
+
+    checks
+}
 fn count_scaffold_motifs(motifs: &[String]) -> usize {
     motifs.iter().filter(|m| is_scaffold_motif(m)).count()
 }
@@ -356,7 +502,6 @@ fn is_decoration_motif(label: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::*;
     use std::collections::HashMap;
 
     fn empty_descriptors() -> RdkitDescriptors {
@@ -400,7 +545,6 @@ mod tests {
         );
         assert!((assessment.np_likeness - 3.42).abs() < 1e-9);
         assert_eq!(assessment.np_label, "strongly NP-like");
-        assert!(assessment.model_available);
         assert!(assessment.np_confidence > 0.5);
         assert!(
             assessment
@@ -487,7 +631,6 @@ mod tests {
             0,
             &empty_dataset_context(),
         );
-        assert!(!assessment.model_available);
         assert!((assessment.np_likeness - 0.0).abs() < 1e-9);
         assert_eq!(assessment.np_label, "mixed");
         assert!(

@@ -113,45 +113,8 @@ pub fn app() -> Element {
 
             section { class: "hero",
                 h1 { "🐟 Smellfish-rs" }
-                p { "A literature-backed natural-product originality screen for SMILES lists." }
-                p { "It combines Ertl-style NP-likeness, scaffold complexity, stereo richness, and LOTUS / PubChem evidence." }
-            }
-
-            section { class: "panel",
-                details {
-                    summary { h2 { "Evidence basis" } }
-                    div { class: "literature-list",
-                        for paper in LITERATURE {
-                            div { class: "literature-item",
-                                strong { "{paper.title}" }
-                                div { class: "small muted", "{paper.note}" }
-                                div { class: "small", a { href: "https://doi.org/{paper.doi}", target: "_blank", rel: "noreferrer", "{paper.doi}" } }
-                            }
-                        }
-                    }
-                }
-            }
-
-            section { class: "panel",
-                h2 { "How the labels work" }
-                div { class: "summary-grid",
-                    div { class: "summary-item",
-                        h3 { "NP-likeness" }
-                        div { class: "small muted", "Real Ertl NP-likeness score (Ertl et al., J. Chem. Inf. Model. 2008, DOI 10.1021/ci700286x) — computed via Morgan fingerprints (radius 2) matched against a pre-trained fragment-contribution model of ~266 K fragments. The score is normalised by heavy-atom count and log-compressed beyond ±4. Confidence reports the fraction of fingerprint bits that found a match in the model." }
-                    }
-                    div { class: "summary-item",
-                        h3 { "Scaffold family" }
-                        div { class: "small muted", "Natural-product scaffold classes like steroid-like, sugar-like, fused heteroaromatic, or macrocyclic are called out explicitly." }
-                    }
-                    div { class: "summary-item",
-                        h3 { "QLever connectivity" }
-                        div { class: "small muted", "LOTUS and PubChem are checked independently; QLever problems are surfaced in the UI instead of being hidden." }
-                    }
-                    div { class: "summary-item",
-                        h3 { "Common motifs" }
-                        div { class: "small muted", "The app first finds motifs that recur across the uploaded set, then separates them into scaffold and decoration buckets." }
-                    }
-                }
+                p { "A natural-product originality screen for SMILES lists." }
+                p { class: "small muted", "Real Ertl NP-likeness score (Ertl et al., J. Chem. Inf. Model. 2008, DOI 10.1021/ci700286x) + a chemist's checklist of structural red flags." }
             }
 
             section { class: "panel",
@@ -164,7 +127,7 @@ pub fn app() -> Element {
 
                     div {
                         strong { "Drop CSV here or click to browse" }
-                        div { class: "small muted", "Expect a smiles column (or smile / structure / canonical_smiles)." }
+                        div { class: "small muted", "Expect a smiles column." }
                     }
 
                     input {
@@ -187,81 +150,15 @@ pub fn app() -> Element {
                 }
             }
 
-            if !endpoints.read().is_empty() {
-                section { class: "panel",
-                    h2 { "QLever status" }
-                    div { class: "summary-grid",
-                        for endpoint in endpoints.read().iter() {
-                            div { class: "summary-item",
-                                h3 { "{endpoint.name}" }
-                                div { class: if endpoint.reachable { "chip good" } else { "chip warn" },
-                                    if endpoint.reachable { "reachable" } else { "unreachable" }
-                                }
-                                div { class: "small muted", "{endpoint.endpoint}" }
-                                if endpoint.reachable {
-                                    div { class: "small", "{endpoint.detail}" }
-                                } else {
-                                    div { class: "small error", "{endpoint.detail}" }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             if !motifs.read().is_empty() {
                 section { class: "panel",
                     h2 { "Dataset motifs" }
-                    div { class: "summary-grid",
-                        div { class: "summary-item",
-                            h3 { "Scaffolds" }
-                            div { class: "chip-list",
-                                for motif in motifs.read().iter().filter(|motif| motif.kind == "ring") {
-                                    span { class: "chip", "{motif.label} ({motif.count})" }
-                                    div { class: "small muted", "{motif.smarts}" }
-                                }
-                            }
+                    div { class: "chip-list",
+                        for motif in motifs.read().iter().filter(|m| m.kind == "ring").take(12) {
+                            span { class: "chip", "{motif.label} ({motif.count})" }
                         }
-                        div { class: "summary-item",
-                            h3 { "Decorations" }
-                            div { class: "chip-list",
-                                for motif in motifs.read().iter().filter(|motif| motif.kind == "decoration") {
-                                    span { class: "chip alt", "{motif.label} ({motif.count})" }
-                                    div { class: "small muted", "{motif.smarts}" }
-                                }
-                            }
-                        }
-                        div { class: "summary-item",
-                            h3 { "Other motifs" }
-                            div { class: "chip-list",
-                                for motif in motifs.read().iter().filter(|motif| motif.kind != "ring" && motif.kind != "decoration") {
-                                    span { class: "chip alt", "{motif.label} ({motif.count})" }
-                                    div { class: "small muted", "{motif.smarts}" }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if !rows.read().is_empty() {
-                section { class: "panel",
-                    h2 { "Per-row motif profile" }
-                    div { class: "summary-grid",
-                        for row in rows.read().iter() {
-                            div { class: "summary-item",
-                                h3 { "{row.label}" }
-                                div { class: "small muted", "{row.ring_family}" }
-                                div { class: "chip-list",
-                                    span { class: "chip good", "Ertl {format_score(row.np_likeness)}" }
-                                    span { class: "chip alt", "{row.np_label}" }
-                                    span { class: "chip", "conf {format_confidence(row.np_confidence)}" }
-                                    if !row.np_score_available {
-                                        span { class: "chip warn", "model unloaded" }
-                                    }
-                                }
-                                div { class: "small muted", "{row.motif_context}" }
-                            }
+                        for motif in motifs.read().iter().filter(|m| m.kind == "decoration").take(12) {
+                            span { class: "chip alt", "{motif.label} ({motif.count})" }
                         }
                     }
                 }
@@ -274,7 +171,7 @@ pub fn app() -> Element {
                             div { class: "card-head",
                                 div {
                                     strong { "{row.label}" }
-                                    div { class: "small muted", "Row {row.index}" }
+                                    div { class: "small muted", "Row {row.index} · {row.num_atoms} heavy atoms" }
                                 }
                                 if let Some(err) = row.error.as_deref() {
                                     div { class: "error small", "{err}" }
@@ -285,115 +182,86 @@ pub fn app() -> Element {
                                     if let Some(svg) = row.svg.as_deref() {
                                         div { dangerous_inner_html: "{svg}" }
                                     } else {
-                                        div { class: "small muted", "No SVG available." }
+                                        div { class: "small muted", "No structure." }
                                     }
                                 }
+
                                 div { class: "meta",
-                                    div { "SMILES: " span { class: "muted", "{row.smiles}" } }
-                                    if !row.canonical_smiles.is_empty() {
-                                        div { "Canonical: " span { class: "muted", "{row.canonical_smiles}" } }
+                                    strong { "Ertl NP-likeness" }
+                                    div { class: "chip-list",
+                                        if row.np_score_available {
+                                            span { class: "chip good", "{format_score(row.np_likeness)}" }
+                                        } else {
+                                            span { class: "chip warn", "model unloaded" }
+                                        }
+                                        span { class: "chip alt", "{row.np_label}" }
+                                        if row.np_score_available {
+                                            span { class: "chip", "conf {format_confidence(row.np_confidence)}" }
+                                        }
                                     }
-                                    div { "InChIKey: " span { class: "muted", "{row.inchikey}" } }
+                                    div { class: "small", "{row.ring_family}" }
+                                    if !row.motif_context.is_empty() && row.motif_context != "no motif signal" {
+                                        div { class: "small muted", "{row.motif_context}" }
+                                    }
                                 }
+
                                 div { class: "meta",
-                                    strong { "Motifs" }
-                                    if row.motifs.is_empty() {
-                                        div { class: "muted", "none" }
+                                    strong { "Chemist's checklist" }
+                                    if row.chemist_checks.is_empty() {
+                                        div { class: "small muted", "No checks available." }
                                     } else {
+                                        div { class: "checklist",
+                                            for check in row.chemist_checks.iter() {
+                                                div { class: "check-row",
+                                                    span { class: "check-status {check.status}", "{check.name}" }
+                                                    span { class: "small muted", "{check.detail}" }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if !row.motifs.is_empty() {
+                                    div { class: "meta",
+                                        strong { "Motifs" }
                                         div { class: "chip-list",
                                             for motif in row.motifs.iter() {
                                                 span { class: "chip alt", "{motif}" }
                                             }
                                         }
                                     }
-                                    if !row.evidence_notes.is_empty() {
+                                }
+
+                                if !row.lotus_taxa.is_empty() || !row.pubchem_cids.is_empty() {
+                                    div { class: "meta",
+                                        strong { "Database evidence" }
                                         div { class: "chip-list",
-                                            for note in row.evidence_notes.iter().take(3) {
-                                                span { class: "chip", "{note}" }
+                                            if !row.lotus_taxa.is_empty() {
+                                                span { class: "chip good", "LOTUS" }
+                                            }
+                                            if !row.pubchem_cids.is_empty() {
+                                                span { class: "chip alt", "PubChem" }
                                             }
                                         }
                                     }
                                 }
-                                div { class: "meta",
-                                    strong { "LOTUS" }
-                                    if row.lotus_taxa.is_empty() {
-                                        div { class: "muted", "No taxa found." }
-                                    } else {
-                                        div { class: "chip-list",
-                                            for taxon in row.lotus_taxa.iter().take(4) {
-                                                span { class: "chip", "{taxon}" }
-                                            }
-                                        }
-                                    }
-                                    if !row.lotus_compounds.is_empty() {
-                                        div { class: "small muted", "Same connectivity compounds: {row.lotus_compounds.len()}" }
-                                    }
-                                }
-                                div { class: "meta",
-                                    strong { "PubChem" }
-                                    if row.pubchem_cids.is_empty() {
-                                        div { class: "muted", "No records found." }
-                                    } else {
-                                        div { class: "chip-list",
-                                            for cid in row.pubchem_cids.iter().take(4) {
-                                                span { class: "chip alt", "CID {cid}" }
-                                            }
-                                        }
-                                    }
-                                    if !row.pubchem_names.is_empty() {
-                                        div { class: "small muted", "Same connectivity names: {row.pubchem_names.len()}" }
-                                    }
-                                    if !row.pubchem_taxa.is_empty() {
-                                        div { class: "chip-list",
-                                            for taxon in row.pubchem_taxa.iter().take(4) {
-                                                span { class: "chip", "{taxon}" }
-                                            }
-                                        }
-                                    }
-                                }
-                                div { class: "meta",
-                                    strong { "NP-likeness" }
-                                    div { class: "chip-list",
-                                        if row.np_score_available {
-                                            span { class: "chip good", "Ertl {format_score(row.np_likeness)}" }
-                                        } else {
-                                            span { class: "chip warn", "model not loaded" }
-                                        }
-                                        span { class: "chip alt", "{row.np_label}" }
-                                    if row.np_score_available {
-                                            span { class: "chip", "conf {format_confidence(row.np_confidence)}" }
-                                        }
-                                    }
-                                    if row.num_atoms > 0 {
-                                        div { class: "small muted", "{row.num_atoms} heavy atoms" }
-                                    }
-                                    div { "{row.ring_family}" }
-                                    if !row.evidence_notes.is_empty() {
-                                        div { class: "chip-list",
-                                            for note in row.evidence_notes.iter().take(3) {
-                                                span { class: "chip", "{note}" }
-                                            }
-                                        }
-                                    }
-                                }
-                                div { class: "result-box",
-                                    strong { "Result" }
-                                    div { class: "result-grid",
-                                        div { class: "result-row",
-                                            span { "LOTUS high evidence" }
-                                            span { class: "result-badge", if row.lotus_taxa.is_empty() { "✗" } else { "✓" } }
-                                        }
-                                        div { class: "result-row",
-                                            span { "PubChem records" }
-                                            span { class: "result-badge", if row.pubchem_cids.is_empty() { "✗" } else { "✓" } }
-                                        }
-                                        div { class: "result-row",
-                                            span { "Ertl score is positive" }
-                                            span { class: "result-badge", if row.np_likeness > 0.0 { "✓" } else { "✗" } }
-                                        }
-                                    }
-                                    div { class: "verdict", "{row.verdict}" }
-                                }
+                            }
+
+                            div { class: "verdict {verdict_color(&row.verdict)}", "{row.verdict}" }
+                        }
+                    }
+                }
+            }
+
+            section { class: "panel",
+                details {
+                    summary { h2 { "Evidence basis" } }
+                    div { class: "literature-list",
+                        for paper in LITERATURE {
+                            div { class: "literature-item",
+                                strong { "{paper.title}" }
+                                div { class: "small muted", "{paper.note}" }
+                                div { class: "small", a { href: "https://doi.org/{paper.doi}", target: "_blank", rel: "noreferrer", "{paper.doi}" } }
                             }
                         }
                     }
@@ -409,4 +277,21 @@ fn format_score(score: f64) -> String {
 
 fn format_confidence(conf: f64) -> String {
     format!("{:.0}%", conf * 100.0)
+}
+
+/// CSS-safe verdict color class based on the verdict text.
+fn verdict_color(verdict: &str) -> &'static str {
+    let l = verdict.to_ascii_lowercase();
+    if l.contains("smells fishy") {
+        "verdict-fishy"
+    } else if l.contains("looks legitimate")
+        || l.contains("strong natural")
+        || l.contains("lotus-backed")
+    {
+        "verdict-likely"
+    } else if l.contains("not loaded") || l.contains("warning") || l.contains("⚠") {
+        "verdict-caution"
+    } else {
+        "verdict-neutral"
+    }
 }

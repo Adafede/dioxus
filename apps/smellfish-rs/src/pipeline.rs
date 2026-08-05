@@ -1,5 +1,5 @@
 use crate::csv::parse_csv_rows;
-use crate::evidence::{assess_np_evidence, verdict_for_row};
+use crate::evidence::{assess_np_evidence, chemist_checks, verdict_for_row};
 use crate::model::{
     DatasetMotifContext, EndpointStatus, EnrichmentOutcome, MoleculeRow, MotifSummary,
     RdkitDescriptors,
@@ -109,6 +109,7 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
                     ring_family: String::new(),
                     evidence_notes: Vec::new(),
                     motif_context: String::new(),
+                    chemist_checks: Vec::new(),
                     verdict: String::new(),
                     error: None,
                     descriptors: RdkitDescriptors::default(),
@@ -180,6 +181,12 @@ pub async fn import_csv(file: web_sys::File) -> Result<ImportOutcome, String> {
             notes.push(evidence.motif_context);
             row.evidence_notes = notes;
         }
+    }
+
+    // Compute chemist's checklist — needs database evidence + Ertl score +
+    // structural descriptors, all of which are now available.
+    for row in &mut rows {
+        row.chemist_checks = chemist_checks(row);
     }
 
     // Compute verdicts — needs database evidence + Ertl score + model flag.
@@ -335,6 +342,7 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         ring_family: String::new(),
         evidence_notes: Vec::new(),
         motif_context: String::new(),
+        chemist_checks: Vec::new(),
         verdict: String::new(),
         error: Some(error),
         descriptors: RdkitDescriptors::default(),

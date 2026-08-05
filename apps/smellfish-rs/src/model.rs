@@ -8,6 +8,18 @@ pub struct RawRow {
     pub smiles: String,
 }
 
+/// A single chemist's check on a molecule — the kind of quick visual
+/// audit a natural-product chemist would do when eyeballing a structure.
+#[derive(Clone, Debug)]
+pub struct ChemistCheck {
+    /// Short label, e.g. "NP-likeness", "Stereochemistry".
+    pub name: &'static str,
+    /// One of "pass", "warn", "fail".
+    pub status: &'static str,
+    /// Human-readable detail, e.g. "Ertl score +1.3, 4 stereocentres".
+    pub detail: String,
+}
+
 #[derive(Clone, Debug)]
 pub struct MoleculeRow {
     pub index: usize,
@@ -29,6 +41,7 @@ pub struct MoleculeRow {
     pub ring_family: String,
     pub evidence_notes: Vec<String>,
     pub motif_context: String,
+    pub chemist_checks: Vec<ChemistCheck>,
     pub verdict: String,
     pub error: Option<String>,
     /// Stored descriptors so the second-pass evidence assessment can
