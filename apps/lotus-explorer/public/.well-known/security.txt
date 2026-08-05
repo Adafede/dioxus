@@ -1,8 +1,0 @@
-# security.txt — https://securitytxt.org/ (RFC 9116)
-# Report security vulnerabilities to the project maintainers.
-
-Contact: https://github.com/Adafede/dioxus/security/advisories/new
-Expires: 2027-01-01T00:00:00.000Z
-Preferred-Languages: en, fr
-Canonical: https://adafede.github.io/dioxus/lotus-explorer/.well-known/security.txt
-Policy: https://github.com/Adafede/dioxus/blob/main/SECURITY.md

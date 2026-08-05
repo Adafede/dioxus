@@ -31,7 +31,7 @@ cargo run --locked -p lotus-api
 
 ## Safety rules
 
-- Prefer deterministic behavior over hidden state.
+- Prefer to use deterministic behavior over hidden state.
 - Do not add new dependencies unless required by the architecture.
 - Keep user-facing behavior stable unless a change is explicitly requested.
 - Favor typed contracts, explicit errors, and narrow ownership.

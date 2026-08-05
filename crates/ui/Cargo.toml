@@ -10,7 +10,5 @@ publish = false
 
 [dependencies]
 dioxus = { workspace = true }
-serde = { workspace = true }
 
 [dev-dependencies]
-dioxus-web = { version = "0.7", features = ["hydrate"] }

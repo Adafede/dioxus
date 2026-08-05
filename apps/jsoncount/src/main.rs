@@ -58,7 +58,7 @@ fn skip_link() -> Element {
 }
 
 fn main() {
-    dioxus::launch(app);
+    launch(app);
 }
 
 #[derive(Clone, PartialEq, Eq)]

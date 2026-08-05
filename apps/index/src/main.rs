@@ -122,10 +122,16 @@ pub fn app() -> Element {
 /// Curated list of experiment applications.
 const APPS: &[AppInfo] = &[
     AppInfo {
-        id: "lotus-explorer",
-        title: "🪷 LOTUS Wikidata Explorer",
-        path: "./lotus-explorer/",
+        id: "lotus-explore-rs",
+        title: "🪷 LOTUS Wikidata Explore-rs",
+        path: "./lotus-explore-rs/",
         description: "Query the LOTUS knowledge graph powered by Wikidata. Explore natural products, their taxons, and bibliographic references through an interactive search interface.",
+    },
+    AppInfo {
+        id: "smellfish-rs",
+        title: "🐟 Smellfish-rs",
+        path: "./smellfish-rs/",
+        description: "Drop SMILES CSVs, render molecules with RDKit.js, highlight shared motifs, enrich the results with LOTUS and PubChem SPARQL lookups, and flag citation-needed cases.",
     },
     AppInfo {
         id: "jsoncount",
@@ -142,5 +148,5 @@ const APPS: &[AppInfo] = &[
 ];
 
 fn main() {
-    dioxus::launch(app);
+    launch(app);
 }

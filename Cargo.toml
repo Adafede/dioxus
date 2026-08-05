@@ -5,7 +5,8 @@ members = [
   "apps/jsoncount",
   "apps/mgf-precursor-erro-rs",
   "apps/lotus-api",
-  "apps/lotus-explorer",
+  "apps/lotus-explore-rs",
+  "apps/smellfish-rs",
   "crates/shared",
   "crates/ui",
 ]
@@ -22,7 +23,7 @@ license = "AGPL-3.0-only"
 bytes = "1"
 console_log = "1.1"
 csv = "1"
-dioxus = { version = "=0.7.9", features = ["web"] }
+dioxus = { version = "=0.7.10", features = ["web"] }
 js-sys = "0.3"
 log = "0.4"
 reqwest = { version = "0.13", features = ["gzip"] }

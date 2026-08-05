@@ -61,7 +61,7 @@ where
     ///
     /// Tracks `processed` bytes and wall-clock time; if either threshold is exceeded
     /// since the last report, invokes the callback with `(processed, total)` and
-    /// returns `true`. Otherwise returns `false` without calling the callback.
+    /// returns `true`. Otherwise, returns `false` without calling the callback.
     ///
     /// # Complexity
     /// O(1): Single comparison and possible callback invocation.

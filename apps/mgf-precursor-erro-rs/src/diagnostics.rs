@@ -70,28 +70,28 @@ pub struct RecalibrationStats {
     /// Mean error in Da after recalibration.
     pub mean_error_da_after: f64,
 
-    /// RMS (root mean square) error in ppm (Stage 1: PEPMASS vs theory).
+    /// RMS (root-mean-square) error in ppm (Stage 1: PEPMASS vs theory).
     pub rms_error_ppm_ms1: f64,
 
     /// RMS calibration delta (Stage 3: MS2 - MS1) in ppm.
     pub rms_delta_ppm_ms2_ms1: f64,
 
-    /// RMS (root mean square) error in ppm before recalibration.
+    /// RMS (root-mean-square) error in ppm before recalibration.
     pub rms_error_ppm_before: f64,
 
-    /// RMS (root mean square) error in ppm after recalibration.
+    /// RMS (root-mean-square) error in ppm after recalibration.
     pub rms_error_ppm_after: f64,
 
-    /// RMS (root mean square) error in Da (Stage 1: PEPMASS vs theory).
+    /// RMS (root-mean-square) error in Da (Stage 1: PEPMASS vs theory).
     pub rms_error_da_ms1: f64,
 
     /// RMS calibration delta (Stage 3: MS2 - MS1) in Da.
     pub rms_delta_da_ms2_ms1: f64,
 
-    /// RMS (root mean square) error in Da before recalibration.
+    /// RMS (root-mean-square) error in Da before recalibration.
     pub rms_error_da_before: f64,
 
-    /// RMS (root mean square) error in Da after recalibration.
+    /// RMS (root-mean-square) error in Da after recalibration.
     pub rms_error_da_after: f64,
 
     /// Maximum absolute error in ppm before recalibration.
@@ -375,7 +375,7 @@ fn compute_mean(values: &[f64]) -> f64 {
     sum / usize_to_f64(values.len())
 }
 
-/// Computes the root mean square (RMS) of absolute values.
+/// Computes the root-mean-square (RMS) of absolute values.
 fn compute_rms(values: &[f64]) -> f64 {
     if values.is_empty() {
         return 0.0;

@@ -14,7 +14,7 @@ analyzes uploaded MGF files and reports precursor mass errors in Da and ppm.
 ```bash
 rustup toolchain install 1.95.0 --profile minimal
 rustup target add wasm32-unknown-unknown
-cargo install dioxus-cli --version 0.7.9 --locked
+cargo install dioxus-cli --version 0.7.10 --locked
 ```
 
 The repo pins Rust 1.95.0, `clippy`, `rustfmt`, and `wasm32-unknown-unknown` in
@@ -71,8 +71,8 @@ Open `http://127.0.0.1:8787/docs` for the Swagger UI.
 
 ## Explorer ⇄ API integration
 
-  | Scenario                | `api_base` source                     | API used            |
-  | ----------------------- | ------------------------------------- | ------------------- |
+  | Scenario                | `api_base` source                     | API used             |
+  |-------------------------|---------------------------------------|----------------------|
   | Codeberg Pages (public) | none                                  | ✗ direct SPARQL     |
   | Local dev               | auto-detected `http://127.0.0.1:8787` | ✓ if server running |
   | Build-time              | `LOTUS_API_BASE` env var              | ✓                   |

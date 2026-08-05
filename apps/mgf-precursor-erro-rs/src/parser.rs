@@ -214,7 +214,7 @@ pub fn exact_mass_from_smiles(smiles: &str) -> Option<f64> {
     exact_mass_from_smiles_cached(smiles, &mut cache, &mut logged_failures)
 }
 
-fn exact_mass_from_smiles_cached<S: ::std::hash::BuildHasher>(
+fn exact_mass_from_smiles_cached<S: std::hash::BuildHasher>(
     smiles: &str,
     cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
@@ -293,7 +293,7 @@ pub fn exact_mass_from_formula(formula: &str) -> Option<f64> {
     exact_mass_from_formula_cached(formula, &mut cache, &mut logged_failures)
 }
 
-fn exact_mass_from_formula_cached<S: ::std::hash::BuildHasher>(
+fn exact_mass_from_formula_cached<S: std::hash::BuildHasher>(
     formula: &str,
     cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
@@ -307,8 +307,8 @@ fn exact_mass_from_formula_cached<S: ::std::hash::BuildHasher>(
         return *mass;
     }
 
-    let parsed: std::result::Result<molecular_formulas_010::ChemicalFormula<u32, i32>, _> =
-        molecular_formulas_010::ChemicalFormula::<u32, i32>::from_str(trimmed);
+    let parsed: std::result::Result<ChemicalFormula<u32, i32>, _> =
+        ChemicalFormula::<u32, i32>::from_str(trimmed);
     let mass = parsed.map_or_else(
         |_| {
             let warning_key = format!("formula-parse-failed:{trimmed}");
@@ -964,7 +964,7 @@ pub async fn scan_blob_with_progress(
 ///
 /// # Errors
 /// Returns an error when the parser cannot produce a valid scan result.
-pub fn process_block<S: ::std::hash::BuildHasher>(
+pub fn process_block<S: std::hash::BuildHasher>(
     block_lines: &[String],
     smiles_cache: &mut HashMap<String, Option<f64>, S>,
     formula_cache: &mut HashMap<String, Option<f64>, S>,
@@ -1001,7 +1001,7 @@ pub fn process_block<S: ::std::hash::BuildHasher>(
     clippy::too_many_lines,
     clippy::unnecessary_wraps
 )]
-fn process_block_state<S: ::std::hash::BuildHasher>(
+fn process_block_state<S: std::hash::BuildHasher>(
     state: &BlockParseState,
     smiles_cache: &mut HashMap<String, Option<f64>, S>,
     formula_cache: &mut HashMap<String, Option<f64>, S>,
