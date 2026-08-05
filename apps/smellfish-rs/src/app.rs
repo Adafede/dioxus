@@ -22,6 +22,9 @@ pub fn app() -> Element {
     let mut drag_active = use_signal(|| false);
     let rows = use_signal(Vec::<MoleculeRow>::new);
     let motifs = use_signal(Vec::<MotifSummary>::new);
+    #[cfg(target_arch = "wasm32")]
+    let endpoints = use_signal(Vec::<EndpointStatus>::new);
+    #[cfg(not(target_arch = "wasm32"))]
     let _endpoints = use_signal(Vec::<EndpointStatus>::new);
     let warnings = use_signal(Vec::<String>::new);
 
