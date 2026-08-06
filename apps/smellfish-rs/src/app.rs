@@ -41,6 +41,7 @@ pub fn app() -> Element {
     #[cfg(not(target_arch = "wasm32"))]
     let _endpoints = use_signal(Vec::<EndpointStatus>::new);
     let warnings = use_signal(Vec::<String>::new);
+    let mut pasted_smiles = use_signal(String::new);
 
     let on_file_change = move |evt: Event<FormData>| {
         let Some(file) = evt.data().files().into_iter().next() else {
@@ -123,8 +124,36 @@ pub fn app() -> Element {
         }
     };
 
+    let submit_pasted_smiles = move |_| {
+        let text = pasted_smiles.read().trim().to_string();
+        if text.is_empty() {
+            status.set("Paste one SMILES per line or load a CSV.".to_string());
+            return;
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        begin_import_from_text(
+            text,
+            "pasted-smiles.txt".to_string(),
+            file_name,
+            status,
+            busy,
+            drag_active,
+            rows,
+            motifs,
+            endpoints,
+            warnings,
+        );
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            status.set("This app needs to run in a browser.".to_string());
+        }
+    };
+
     let file_name_value = file_name.read().clone();
     let warning_text = warnings.read().join(" • ");
+    let pasted_smiles_value = pasted_smiles.read().clone();
     let show_demo = rows.read().is_empty() && file_name_value.is_empty();
 
     let load_demo = move |_| {
@@ -172,8 +201,8 @@ pub fn app() -> Element {
                     ondrop: on_drop,
 
                     div {
-                        strong { "Drop CSV here or click to browse" }
-                        div { class: "small muted", "Expect a smiles column." }
+                        strong { "Drop a CSV, click to browse, or paste SMILES below" }
+                        div { class: "small muted", "CSV: expect a smiles column. Paste mode: one SMILES per line." }
                     }
 
                     input {
@@ -182,6 +211,29 @@ pub fn app() -> Element {
                         accept: ".csv,text/csv",
                         disabled: *busy.read(),
                         onchange: on_file_change,
+                    }
+                }
+
+                div { class: "paste-box",
+                    div { class: "paste-head",
+                        strong { "Paste SMILES" }
+                        span { class: "small muted", "One per line" }
+                    }
+                    textarea {
+                        class: "smiles-textarea",
+                        placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
+                        disabled: *busy.read(),
+                        value: "{pasted_smiles_value}",
+                        oninput: move |evt| pasted_smiles.set(evt.value()),
+                    }
+                    div { class: "paste-actions",
+                        button {
+                            class: "demo-btn",
+                            r#type: "button",
+                            disabled: *busy.read(),
+                            onclick: submit_pasted_smiles,
+                            "Analyze pasted SMILES"
+                        }
                     }
                 }
 

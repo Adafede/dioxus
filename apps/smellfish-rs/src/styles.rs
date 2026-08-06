@@ -116,6 +116,9 @@ body {
   gap: 8px;
   place-items: center;
   min-height: 150px;
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
   border: 2px dashed color-mix(in srgb, var(--border) 85%, var(--accent));
   border-radius: 16px;
   padding: 18px;
@@ -129,6 +132,42 @@ body {
   inset: 0;
   opacity: 0;
   cursor: pointer;
+}
+.paste-box {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
+}
+.paste-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.smiles-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  background: var(--bg2);
+  color: var(--text);
+  font: 0.85rem/1.5 var(--mono);
+  resize: vertical;
+}
+.smiles-textarea:focus {
+  outline: none;
+  box-shadow: var(--ring);
+  border-color: var(--accent);
+}
+.paste-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .status {
   margin: 12px 0 0;

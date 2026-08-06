@@ -2,10 +2,19 @@ use crate::model::RawRow;
 
 #[allow(dead_code)]
 pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Input is empty".to_string());
+    }
+
+    if looks_like_smiles_list(trimmed) {
+        return parse_smiles_lines(trimmed);
+    }
+
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true)
         .flexible(true)
-        .from_reader(text.as_bytes());
+        .from_reader(trimmed.as_bytes());
 
     let headers = rdr.headers().map_err(|e| e.to_string())?.clone();
     let smiles_idx = detect_column(
@@ -29,6 +38,41 @@ pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
     if rows.is_empty() {
         return Err("CSV does not contain any data rows".to_string());
     }
+    Ok(rows)
+}
+
+fn looks_like_smiles_list(text: &str) -> bool {
+    let lines = text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>();
+    !lines.is_empty()
+        && lines.iter().all(|line| {
+            !line.contains(',')
+                && !line.contains('\t')
+                && !line.contains(';')
+                && normalize_column_header(line) != "smiles"
+        })
+}
+
+fn parse_smiles_lines(text: &str) -> Result<Vec<RawRow>, String> {
+    let rows = text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .enumerate()
+        .map(|(idx, smiles)| RawRow {
+            index: idx + 1,
+            label: format!("Molecule {}", idx + 1),
+            smiles: smiles.to_string(),
+        })
+        .collect::<Vec<_>>();
+
+    if rows.is_empty() {
+        return Err("Input does not contain any SMILES".to_string());
+    }
+
     Ok(rows)
 }
 
@@ -87,5 +131,13 @@ mod tests {
     fn falls_back_to_generated_labels() {
         let rows = parse_csv_rows("smiles\nCCO\n").expect("rows");
         assert_eq!(rows[0].label, "Molecule 1");
+    }
+
+    #[test]
+    fn parses_plain_smiles_lines() {
+        let rows = parse_csv_rows("CCO\nC1CCCCC1\n").expect("rows");
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].smiles, "CCO");
+        assert_eq!(rows[1].smiles, "C1CCCCC1");
     }
 }
