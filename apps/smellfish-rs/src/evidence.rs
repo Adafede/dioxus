@@ -18,7 +18,7 @@
 //! the same Ertl papers and from the "escaping the *flatland*" literature
 //! (Ertl 2003, *J. Am. Chem. Soc.* 125, 10353; Ertl & Schuppenhauer 2011).
 
-use crate::model::{ChemistCheck, DatasetMotifContext, MoleculeRow, RdkitDescriptors};
+use crate::model::{ChemistCheck, DatasetMotifContext, MoleculeRow, RdkitDescriptors, RdkitMotifHit};
 
 /// Result of assessing a single molecule against the evidence framework.
 #[derive(Clone, Debug)]
@@ -73,6 +73,7 @@ pub fn np_likeness_label(score: f64) -> &'static str {
 pub fn assess_np_evidence(
     descriptors: &RdkitDescriptors,
     motifs: &[String],
+    motif_hits: &[RdkitMotifHit],
     _substituents: &[String],
     stereo_tags: &[String],
     np_score: Option<f64>,
@@ -83,8 +84,11 @@ pub fn assess_np_evidence(
     let ring_family = classify_ring_family(descriptors, motifs);
     let mut notes = Vec::new();
     let np_core_hits = count_core_np_motifs(motifs);
-    let scaffold_hits = count_scaffold_motifs(motifs);
+    let scaffold_hits = count_scaffold_hits(motif_hits);
     let decoration_hits = count_decoration_motifs(motifs);
+    let natural_hits = count_source_hits(motif_hits, "natural");
+    let synthetic_hits = count_source_hits(motif_hits, "synthetic");
+    let unknown_hits = count_source_hits(motif_hits, "unknown");
     let score = np_score.unwrap_or(0.0);
     let confidence = np_confidence.unwrap_or(0.0);
 
@@ -151,6 +155,23 @@ pub fn assess_np_evidence(
         ));
     }
 
+    if natural_hits > 0 || synthetic_hits > 0 || unknown_hits > 0 {
+        let total = natural_hits + synthetic_hits + unknown_hits;
+        let natural_ratio = if total > 0 {
+            natural_hits as f64 / total as f64
+        } else {
+            0.0
+        };
+        let synthetic_ratio = if total > 0 {
+            synthetic_hits as f64 / total as f64
+        } else {
+            0.0
+        };
+        notes.push(format!(
+            "motif balance: {natural_hits} natural / {synthetic_hits} synthetic / {unknown_hits} unclassified ({natural_ratio:.0}% natural, {synthetic_ratio:.0}% synthetic)"
+        ));
+    }
+
     if decoration_hits > 0 && np_core_hits == 0 {
         notes.push(format!(
             "○ {} decoration motif(s) — supportive side-chain chemistry, but weak NP evidence alone",
@@ -175,10 +196,18 @@ pub fn assess_np_evidence(
     }
 
     // ── Motif context summary ──────────────────────────────────────────
-    let motif_context = if np_core_hits > 0 {
+    let motif_context = if np_core_hits > 0 && scaffold_hits > 0 {
+        "Ertl-style NP core with scaffold support".to_string()
+    } else if np_core_hits > 0 {
         "Ertl-style NP core motifs".to_string()
+    } else if scaffold_hits > 0 && natural_hits > 0 {
+        "natural-leaning scaffold motifs".to_string()
     } else if scaffold_hits > 0 {
-        "scaffold motifs without Ertl-enriched core signal".to_string()
+        "scaffold motifs".to_string()
+    } else if natural_hits > synthetic_hits && natural_hits > 0 {
+        "natural-leaning motifs".to_string()
+    } else if synthetic_hits > natural_hits && synthetic_hits > 0 {
+        "synthetic-leaning motifs".to_string()
     } else if decoration_hits > 0 {
         "decoration motifs only".to_string()
     } else {
@@ -279,15 +308,31 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
             .to_ascii_lowercase()
             .contains("fused heteroaromatic");
     let has_np_motifs = count_core_np_motifs(&row.motifs) > 0;
+    let natural_hits = row
+        .motif_hits
+        .iter()
+        .filter(|hit| normalized_source_class(&hit.source_class) == "natural")
+        .count();
+    let synthetic_hits = row
+        .motif_hits
+        .iter()
+        .filter(|hit| normalized_source_class(&hit.source_class) == "synthetic")
+        .count();
     let has_oxygenation = row
         .descriptors
         .hetero_atoms
         .is_some_and(|hetero_atoms| hetero_atoms >= 4.0);
-    if score >= 2.0 && (has_np_scaffold || has_oxygenation) {
+    if score >= 2.0 && (has_np_scaffold || has_oxygenation || natural_hits >= synthetic_hits) {
         return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
     if score >= 1.0 && has_np_motifs && has_np_scaffold {
         return format!("🌿 Likely novel NP (Ertl {score:+.2})");
+    }
+    if score >= 1.0 && natural_hits > synthetic_hits && natural_hits > 0 {
+        return format!("🌿 Natural-leaning motifs (Ertl {score:+.2})");
+    }
+    if score >= 1.0 && synthetic_hits > natural_hits && synthetic_hits > 0 {
+        return format!("⚠ Synthetic-leaning motifs (Ertl {score:+.2})");
     }
     if score >= 2.0 {
         return format!("Strong NP score (Ertl {score:+.2})");
@@ -586,6 +631,16 @@ fn count_scaffold_motifs(motifs: &[String]) -> usize {
     motifs.iter().filter(|m| is_scaffold_motif(m)).count()
 }
 
+fn count_scaffold_hits(hits: &[RdkitMotifHit]) -> usize {
+    hits.iter().filter(|hit| hit.kind == "scaffold").count()
+}
+
+fn count_source_hits(hits: &[RdkitMotifHit], source_class: &str) -> usize {
+    hits.iter()
+        .filter(|hit| normalized_source_class(&hit.source_class) == source_class)
+        .count()
+}
+
 /// Count motif hits that are decoration-type (side-chains / functional groups).
 #[allow(dead_code)]
 fn count_decoration_motifs(motifs: &[String]) -> usize {
@@ -651,6 +706,13 @@ fn is_decoration_motif(label: &str) -> bool {
         || l.contains("allyl")
 }
 
+fn normalized_source_class(source_class: &str) -> &str {
+    match source_class {
+        "natural" | "synthetic" | "unknown" => source_class,
+        _ => "unknown",
+    }
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -664,6 +726,21 @@ mod tests {
 
     fn empty_dataset_context() -> DatasetMotifContext {
         DatasetMotifContext::default()
+    }
+
+    fn motif_hit(label: &str, kind: &str, source_class: &str, kingdom: &str) -> RdkitMotifHit {
+        RdkitMotifHit {
+            label: label.to_string(),
+            kind: kind.to_string(),
+            smarts: label.to_string(),
+            source_class: source_class.to_string(),
+            kingdom: kingdom.to_string(),
+            kingdoms: if kingdom.is_empty() {
+                Vec::new()
+            } else {
+                vec![kingdom.to_string()]
+            },
+        }
     }
 
     #[test]
@@ -692,6 +769,7 @@ mod tests {
         let assessment = assess_np_evidence(
             &desc,
             &["Steroid-like fused ring".to_string()],
+            &[],
             &[],
             &["R/S".to_string(), "R/S".to_string()],
             Some(3.42),
@@ -727,6 +805,7 @@ mod tests {
             &[],
             &[],
             &[],
+            &[],
             Some(1.5),
             Some(0.8),
             20,
@@ -758,6 +837,7 @@ mod tests {
             &[],
             &[],
             &[],
+            &[],
             Some(-1.5),
             Some(0.9),
             20,
@@ -777,6 +857,7 @@ mod tests {
         let assessment = assess_np_evidence(
             &empty_descriptors(),
             &["Flavonoid core".to_string()],
+            &[],
             &[],
             &[],
             None,
@@ -810,6 +891,7 @@ mod tests {
             &["Flavonoid core".to_string(), "Aldehyde".to_string()],
             &[],
             &[],
+            &[],
             Some(-0.5),
             Some(0.5),
             15,
@@ -820,6 +902,28 @@ mod tests {
                 .evidence_notes
                 .iter()
                 .any(|n| n.contains("motif") || n.contains("Flavonoid"))
+        );
+    }
+
+    #[test]
+    fn scaffold_hit_is_counted_as_structure() {
+        let assessment = assess_np_evidence(
+            &empty_descriptors(),
+            &["geminal dimethyl".to_string()],
+            &[motif_hit("geminal dimethyl", "scaffold", "natural", "plants")],
+            &[],
+            &[],
+            Some(0.2),
+            Some(0.9),
+            12,
+            &empty_dataset_context(),
+        );
+        assert_ne!(assessment.motif_context, "no structural motifs detected");
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .any(|n| n.contains("motif balance"))
         );
     }
 

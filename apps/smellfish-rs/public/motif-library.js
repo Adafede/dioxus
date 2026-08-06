@@ -63,7 +63,7 @@ function buildMotifLibrary(ertlSourceRows, ertlKingdomRows, userSourceRows, user
 
     motifs.push({
       label,
-      kind: nameRow ? "scaffold" : classifyKind(label, sourceSplit),
+      kind: classifyKind(label, sourceSplit),
       smarts: nameRow?.smarts || labelToSmarts(label),
       source_class: sourceSplit?.label || "unknown",
       kingdom: kingdomSplit?.label || "unknown",

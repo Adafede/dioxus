@@ -230,6 +230,7 @@ pub async fn import_csv(
             let evidence = assess_np_evidence(
                 &row.descriptors,
                 motif_labels,
+                &row.motif_hits,
                 &row.substituents,
                 &row.stereo_tags,
                 raw.np_score,
