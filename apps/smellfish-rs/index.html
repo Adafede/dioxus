@@ -307,7 +307,15 @@
                 if (motif?.kind === "scaffold") return COL_SCAFF;
                 if (motif?.source_class === "synthetic") return COL_DECO;
                 if (motif?.kind === "ring") return COL_NP;
-                if (motif?.kind === "decoration") return COL_SCAFF;
+                if (motif?.kind === "decoration") {
+                  /* Natural decorations (e.g. aldehydes, esters) are NP-
+                   * like → green.  Unknown-source decorations → amber
+                   * (neutral caution).  Synthetic decorations are already
+                   * caught above as COL_DECO. */
+                  return motif?.source_class === "natural"
+                    ? COL_NP
+                    : COL_DECO;
+                }
                 const l = String(motif?.label || "").toLowerCase();
                 if (l.includes("ring") || l.includes("cycle")) return COL_NP;
                 return COL_DECO;
@@ -353,12 +361,14 @@
               /*
                * RDKit.js supports per-atom and per-bond highlight colours
                * via highlightAtomColors and highlightBondColors options
-               * (confirmed present in RDKit_minimal.wasm).  The atomColors
-               * and bondColors maps were already built during the motif
-               * loop above, so we render all coloured highlights in a single
-               * get_svg_with_highlights call.  Atoms/bonds matched by
-               * multiple motifs inherit the last-seen colour (same behaviour
-               * as the previous compositing approach).
+               * (confirmed working in Node.js test: atom 0 = red,
+               * atom 11 = blue).  The atomColors and bondColors maps
+               * were built during the motif loop above, so we render
+               * all coloured highlights in a single get_svg_with_highlights
+               * call.  Note: RDKit SVG output has no <g> wrapper elements,
+               * so the previous three-pass <g>-extraction compositing
+               * approach cannot work — we rely on highlightAtomColors
+               * instead, which RDKit honours by recolouring atom ellipses.
                */
               let svg;
               if (atoms.length || bonds.length) {
