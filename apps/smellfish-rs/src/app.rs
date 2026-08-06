@@ -12,20 +12,19 @@ use std::fmt::Write;
 #[cfg(target_arch = "wasm32")]
 use crate::pipeline::{begin_import, begin_import_from_text};
 
-#[cfg(target_arch = "wasm32")]
-const DEMO_CSV: &str = concat!(
-    "name,smiles\n",
-    "Demo 1,COC1=CC(=CC2=C1OCO2)C3C4COC(C4CO3)C5=CC(=C(C(=C5)OC)OC)OC\n",
-    "Demo 2,CC1=C(C(CCC1)(C)C)C=CC(=CC=CC(=CC#CC=C(C)C=O)C)C\n",
-    "Demo 3,CC(=CO)C1CCC2(C1C3CCC4C5(CCC(C(C5CCC4(C3(CC2)C)C)(C)C)O)C)C(=O)\n",
-    "Demo 4,CCCCCCCCC=CCCCCCCCCC(=O)N\n",
-    "Demo 5,CC1C(C(C(C(O1)OC2CCC3(C(C2(C)CO)CCC4(C3CC=C5C4(CCC6(C5CC(CC6)(C)C)C(=O)O)C)C)C)O)O)O\n",
-    "Demo 6,CC1=CCCC(=CC2C(C(C1)OC(=O)C(=CCO)CO)C(=C)C(=O)O2)CO\n",
-    "Demo 7,CC1(C2CCC3(C(C2(CCC1O)C)CCC4C3(CCC5(C4C(CC5)C(=C)C=O)C(=O)O)C)C)C\n",
-    "Demo 8,COC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC\n",
-    "Demo 9,C1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O\n",
-    "Demo 10,CCCCCCCC=CCCCCCCCC(N)=O\n"
-);
+/// Ten representative natural-product SMILES, pre-loaded as the default
+/// paste-buffer content so the tool is ready to run out of the box.
+const DEMO_SMILES: &str = "\
+COC1=CC(=CC2=C1OCO2)C3C4COC(C4CO3)C5=CC(=C(C(=C5)OC)OC)OC
+CC1=C(C(CCC1)(C)C)C=CC(=CC=CC(=CC#CC=C(C)C=O)C)C
+CC(=CO)C1CCC2(C1C3CCC4C5(CCC(C(C5CCC4(C3(CC2)C)C)(C)C)O)C)C(=O)
+CCCCCCCCC=CCCCCCCCCC(=O)N
+CC1C(C(C(C(O1)OC2CCC3(C(C2(C)CO)CCC4(C3CC=C5C4(CCC6(C5CC(CC6)(C)C)C(=O)O)C)C)C)O)O)O
+CC1=CCCC(=CC2C(C(C1)OC(=O)C(=CCO)CO)C(=C)C(=O)O2)CO
+CC1(C2CCC3(C(C2(CCC1O)C)CCC4C3(CCC5(C4C(CC5)C(=C)C=O)C(=O)O)C)C)C
+COC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC
+C1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O
+CCCCCCCC=CCCCCCCCC(N)=O";
 
 #[component]
 pub fn app() -> Element {
@@ -34,14 +33,14 @@ pub fn app() -> Element {
     #[cfg(not(target_arch = "wasm32"))]
     let mut file_name = use_signal(String::new);
 
-    let mut status = use_signal(|| "Drop a CSV with a SMILES column to begin.".to_string());
+    let mut status = use_signal(String::new);
     let busy = use_signal(|| false);
     let mut drag_active = use_signal(|| false);
     let rows = use_signal(Vec::<MoleculeRow>::new);
     let motifs = use_signal(Vec::<MotifSummary>::new);
     let endpoints = use_signal(Vec::<EndpointStatus>::new);
     let warnings = use_signal(Vec::<String>::new);
-    let mut pasted_smiles = use_signal(String::new);
+    let mut pasted_smiles = use_signal(|| DEMO_SMILES.to_string());
 
     let on_file_change = move |evt: Event<FormData>| {
         let Some(file) = evt.data().files().into_iter().next() else {
@@ -154,28 +153,6 @@ pub fn app() -> Element {
     let file_name_value = file_name.read().clone();
     let warning_text = warnings.read().join(" • ");
     let pasted_smiles_value = pasted_smiles.read().clone();
-    let show_demo = rows.read().is_empty() && file_name_value.is_empty();
-
-    let load_demo = move |_| {
-        #[cfg(target_arch = "wasm32")]
-        begin_import_from_text(
-            DEMO_CSV.to_string(),
-            "demo-smiles.csv".to_string(),
-            file_name,
-            status,
-            busy,
-            drag_active,
-            rows,
-            motifs,
-            endpoints,
-            warnings,
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            status.set("This app needs to run in a browser.".to_string());
-        }
-    };
 
     let ep_list = endpoints.read().clone();
 
@@ -186,12 +163,6 @@ pub fn app() -> Element {
             section { class: "hero",
                 h1 { "🐟 Smellfish-rs" }
                 p { "A natural-product originality screen for SMILES lists." }
-                p { class: "small muted",
-                    "Ertl NP-likeness score (Ertl et al., J. Chem. Inf. Model. 2008) + checklist of structural flags."
-                }
-                p { class: "small",
-                    a { class: "footer-link blue", href: "https://doi.org/10.1021/ci700286x", target: "_blank", rel: "noreferrer", "DOI 10.1021/ci700286x" }
-                }
             }
 
             section { class: "panel input-panel",
@@ -245,11 +216,13 @@ pub fn app() -> Element {
                     }
                 }
 
-                p { class: "status", role: "status", aria_live: "polite", aria_atomic: "true",
-                    if *busy.read() {
-                        span { class: "spinner" }
+                if !status.read().is_empty() || *busy.read() {
+                    p { class: "status", role: "status", aria_live: "polite", aria_atomic: "true",
+                        if *busy.read() {
+                            span { class: "spinner" }
+                        }
+                        "{status}"
                     }
-                    "{status}"
                 }
                 if !ep_list.is_empty() {
                     div { class: "endpoint-status",
@@ -265,21 +238,6 @@ pub fn app() -> Element {
 
                 if !warning_text.is_empty() {
                     div { class: "alert", "{warning_text}" }
-                }
-
-                if show_demo {
-                    div { class: "demo-callout",
-                        div {
-                            strong { "No CSV yet? Load the demo set." }
-                            div { class: "small muted", "Ten representative SMILES are preloaded for quick exploration." }
-                        }
-                        div { class: "demo-actions",
-                            button { class: "demo-btn", onclick: load_demo, "Load demo SMILES" }
-                        }
-                        pre { class: "demo-smiles",
-                            "COC1=CC(=CC2=C1OCO2)C3C4COC(C4CO3)C5=CC(=C(C(=C5)OC)OC)OC\nCC1=C(C(CCC1)(C)C)C=CC(=CC=CC(=CC#CC=C(C)C=O)C)C\nCC(=CO)C1CCC2(C1C3CCC4C5(CCC(C(C5CCC4(C3(CC2)C)C)(C)C)O)C)C(=O)\nCCCCCCCCC=CCCCCCCCCC(=O)N\nCC1C(C(C(C(O1)OC2CCC3(C(C2(C)CO)CCC4(C3CC=C5C4(CCC6(C5CC(CC6)(C)C)C(=O)O)C)C)C)O)O)O\nCC1=CCCC(=CC2C(C(C1)OC(=O)C(=CCO)CO)C(=C)C(=O)O2)CO\nCC1(C2CCC3(C(C2(CCC1O)C)CCC4C3(CCC5(C4C(CC5)C(=C)C=O)C(=O)O)C)C)C\nCOC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC\nC1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O\nCCCCCCCC=CCCCCCCCC(N)=O"
-                        }
-                    }
                 }
 
                 {

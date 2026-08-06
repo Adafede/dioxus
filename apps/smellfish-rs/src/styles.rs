@@ -56,6 +56,11 @@ pub const CSS: &str = r"
   --wd-entries:   #484848;
 }
 
+/* ── Box model reset ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -170,20 +175,21 @@ body {
 }
 .smiles-textarea {
   width: 100%;
-  min-height: 120px;
+  min-height: 100px;
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid var(--panel-border);
-  background: var(--bg2);
+  background: var(--panel-bg-soft);
   color: var(--text);
   font: 0.85rem/1.5 var(--mono);
   resize: vertical;
-  transition: border-color .15s, box-shadow .15s;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
 }
 .smiles-textarea:focus {
   outline: none;
   box-shadow: var(--ring);
   border-color: var(--accent);
+  background: var(--bg2);
 }
 .paste-actions {
   display: flex;
@@ -218,38 +224,6 @@ body {
   color: color-mix(in srgb, var(--yellow) 88%, var(--text));
   font-weight: 600;
 }
-.demo-callout {
-  margin-top: 14px;
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 14px;
-  background: var(--panel-bg-soft);
-  border: 1px solid var(--panel-border);
-}
-.demo-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.demo-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--tap-target-min);
-  padding: 8px 14px;
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
-  color: var(--accent);
-  font-weight: 700;
-  cursor: pointer;
-  transition: background-color .15s, box-shadow .15s;
-}
-.demo-btn:hover {
-  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
-  box-shadow: var(--shadow-xs);
-}
 .btn {
   display: inline-flex;
   align-items: center;
@@ -278,21 +252,6 @@ body {
   opacity: .5;
   cursor: not-allowed;
   transform: none;
-}
-.demo-smiles {
-  margin: 0;
-  padding: 10px;
-  max-height: 140px;
-  overflow: auto;
-  font-size: 0.78rem;
-  color: var(--text2);
-  font-family: var(--mono);
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-  word-break: break-all;
-  border-radius: 8px;
-  background: var(--bg2);
-  border: 1px solid var(--panel-border);
 }
 .chip-list {
   display: flex;
