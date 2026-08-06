@@ -179,12 +179,35 @@ pub fn app() -> Element {
             if !motifs.read().is_empty() {
                 section { class: "panel",
                     h2 { "Dataset motifs" }
-                    div { class: "chip-list",
-                        for motif in motifs.read().iter().filter(|m| m.kind == "ring").take(12) {
-                            span { class: "{dataset_motif_class(&motif.label)}", "{motif.label} ({motif.count})" }
+                    div { class: "motif-legend",
+                        span { class: "motif-legend-item motif-legend-green", "green = Ertl-enriched core feature" }
+                        span { class: "motif-legend-item motif-legend-blue", "blue = scaffold support" }
+                        span { class: "motif-legend-item motif-legend-neutral", "neutral = decoration / side-chain only" }
+                    }
+                    div { class: "motif-groups",
+                        div { class: "motif-group",
+                            h3 { class: "small", "Core / Ertl-enriched" }
+                            div { class: "chip-list",
+                                for motif in motifs.read().iter().filter(|m| dataset_motif_class(&m.label) == "chip chip-np").take(12) {
+                                    span { class: "{dataset_motif_class(&motif.label)}", title: "Ertl-enriched NP motif", "{motif.label} ({motif.count})" }
+                                }
+                            }
                         }
-                        for motif in motifs.read().iter().filter(|m| m.kind == "decoration").take(12) {
-                            span { class: "chip alt", "{motif.label} ({motif.count})" }
+                        div { class: "motif-group",
+                            h3 { class: "small", "Scaffold / support" }
+                            div { class: "chip-list",
+                                for motif in motifs.read().iter().filter(|m| dataset_motif_class(&m.label) == "chip chip-scaffold").take(12) {
+                                    span { class: "{dataset_motif_class(&motif.label)}", title: "Supportive scaffold motif", "{motif.label} ({motif.count})" }
+                                }
+                            }
+                        }
+                        div { class: "motif-group",
+                            h3 { class: "small", "Decorations / side chains" }
+                            div { class: "chip-list",
+                                for motif in motifs.read().iter().filter(|m| dataset_motif_class(&m.label) == "chip alt").take(12) {
+                                    span { class: "chip alt", title: "Decoration / side-chain motif", "{motif.label} ({motif.count})" }
+                                }
+                            }
                         }
                     }
                 }
@@ -292,10 +315,29 @@ pub fn app() -> Element {
                                 if !row.motifs.is_empty() {
                                     div { class: "meta",
                                         strong { "Motifs" }
-                                        div { class: "chip-list",
-                                            for motif in row.motifs.iter() {
-                                                span { class: "{row_motif_class(motif)}",
-                                                    "{motif_emoji(motif)} {motif}"
+                                        div { class: "motif-groups",
+                                            div { class: "motif-group",
+                                                h4 { class: "small", "Core / Ertl-enriched" }
+                                                div { class: "chip-list",
+                                                    for motif in row.motifs.iter().filter(|m| row_motif_class(m) == "chip chip-np") {
+                                                        span { class: "{row_motif_class(motif)}", title: "Ertl-enriched NP motif", "{motif_emoji(motif)} {motif}" }
+                                                    }
+                                                }
+                                            }
+                                            div { class: "motif-group",
+                                                h4 { class: "small", "Scaffold / support" }
+                                                div { class: "chip-list",
+                                                    for motif in row.motifs.iter().filter(|m| row_motif_class(m) == "chip chip-scaffold") {
+                                                        span { class: "{row_motif_class(motif)}", title: "Supportive scaffold motif", "{motif_emoji(motif)} {motif}" }
+                                                    }
+                                                }
+                                            }
+                                            div { class: "motif-group",
+                                                h4 { class: "small", "Decorations / side chains" }
+                                                div { class: "chip-list",
+                                                    for motif in row.motifs.iter().filter(|m| row_motif_class(m) == "chip") {
+                                                        span { class: "{row_motif_class(motif)}", title: "Decoration / side-chain motif", "{motif_emoji(motif)} {motif}" }
+                                                    }
                                                 }
                                             }
                                         }

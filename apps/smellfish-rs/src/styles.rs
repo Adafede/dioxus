@@ -17,7 +17,6 @@ pub const CSS: &str = r"
   --green:     #1f7a4d;
   --red:       #b42318;
   --yellow:    #8a4b0f;
-  --purple:    #6941c6;
   --radius:    10px;
   --radius-sm: 4px;
   --shadow-xs: 0 1px 2px rgb(15 23 42 / 6%);
@@ -173,15 +172,62 @@ body {
   background: color-mix(in srgb, var(--accent) 10%, var(--surface));
   color: color-mix(in srgb, var(--accent) 88%, var(--text));
   font-size: 0.82rem;
+  border: 1px solid var(--panel-border);
 }
-.chip.alt { background: color-mix(in srgb, var(--panel-bg-soft) 70%, var(--surface)); color: var(--text2); }
-.chip.good { background: color-mix(in srgb, var(--green) 10%, var(--surface)); color: var(--green); }
-.chip.warn { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)); color: color-mix(in srgb, var(--yellow) 88%, var(--text)); }
-.chip.fail { background: color-mix(in srgb, var(--red) 10%, var(--surface)); color: color-mix(in srgb, var(--red) 88%, var(--text)); }
+.chip.alt { background: var(--surface); color: var(--text2); }
+.chip.good { background: color-mix(in srgb, var(--green) 10%, var(--surface)); color: var(--green); border-color: color-mix(in srgb, var(--green) 28%, var(--border)); }
+.chip.warn { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)); color: color-mix(in srgb, var(--yellow) 88%, var(--text)); border-color: color-mix(in srgb, var(--yellow) 28%, var(--border)); }
+.chip.fail { background: color-mix(in srgb, var(--red) 10%, var(--surface)); color: color-mix(in srgb, var(--red) 88%, var(--text)); border-color: color-mix(in srgb, var(--red) 28%, var(--border)); }
 .chip-np,
 .chip.chip-np { background: color-mix(in srgb, var(--green) 10%, var(--surface)); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border)); }
 .chip-scaffold,
 .chip.chip-scaffold { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); }
+.motif-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+.motif-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.motif-legend-green {
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 28%, var(--border));
+}
+.motif-legend-blue {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+.motif-legend-neutral {
+  background: var(--surface);
+  color: var(--text2);
+}
+.motif-groups {
+  display: grid;
+  gap: 10px;
+}
+.motif-group {
+  display: grid;
+  gap: 6px;
+}
+.motif-group h3,
+.motif-group h4 {
+  margin: 0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text3);
+}
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -296,7 +342,7 @@ body {
   background: transparent;
   color: var(--wd-reference);
   font-size: 0.84rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   text-decoration: none;
 }

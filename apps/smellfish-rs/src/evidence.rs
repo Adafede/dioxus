@@ -82,7 +82,9 @@ pub fn assess_np_evidence(
 ) -> EvidenceAssessment {
     let ring_family = classify_ring_family(descriptors, motifs);
     let mut notes = Vec::new();
-
+    let np_core_hits = count_core_np_motifs(motifs);
+    let scaffold_hits = count_scaffold_motifs(motifs);
+    let decoration_hits = count_decoration_motifs(motifs);
     let score = np_score.unwrap_or(0.0);
     let confidence = np_confidence.unwrap_or(0.0);
 
@@ -118,6 +120,14 @@ pub fn assess_np_evidence(
         ));
     }
 
+    if let Some(hetero_atoms) = descriptors.hetero_atoms
+        && hetero_atoms >= 4.0
+    {
+        notes.push(format!(
+            "oxygen-rich composition (hetero atoms = {hetero_atoms:.0}) — consistent with oxidized NP biosynthesis"
+        ));
+    }
+
     // Stereochemical complexity — stereocentres are hallmarks of enzymatic
     // biosynthesis; synthetic libraries average <1 stereocentre per molecule.
     // ── Stereochemistry signal ─────────────────────────────────────────
@@ -131,13 +141,11 @@ pub fn assess_np_evidence(
         ));
     }
 
-    // ── NP scaffold presence ─────────────────────────────────────────
-    // Only count NP-associated scaffold motifs. Don't report non-NP scaffolds.
-    let np_scaffold_hits = motifs.iter().filter(|m| is_known_np_motif(m)).count();
-    if np_scaffold_hits > 0 {
+    // ── NP motif presence ─────────────────────────────────────────────
+    if np_core_hits > 0 {
         notes.push(format!(
-            "✓ {} known NP motif(s): {}",
-            np_scaffold_hits,
+            "✓ {} Ertl-style NP motif(s): {}",
+            np_core_hits,
             motifs
                 .iter()
                 .filter(|m| is_known_np_motif(m))
@@ -145,6 +153,20 @@ pub fn assess_np_evidence(
                 .cloned()
                 .collect::<Vec<_>>()
                 .join(", ")
+        ));
+    }
+
+    if scaffold_hits > 0 && np_core_hits == 0 {
+        notes.push(format!(
+            "○ {} scaffold motif(s) — structural support only, not Ertl-enriched by itself",
+            scaffold_hits
+        ));
+    }
+
+    if decoration_hits > 0 && np_core_hits == 0 {
+        notes.push(format!(
+            "○ {} decoration motif(s) — supportive side-chain chemistry, but weak NP evidence alone",
+            decoration_hits
         ));
     }
 
@@ -165,8 +187,12 @@ pub fn assess_np_evidence(
     }
 
     // ── Motif context summary ──────────────────────────────────────────
-    let motif_context = if np_scaffold_hits > 0 {
-        "NP-associated structural features".to_string()
+    let motif_context = if np_core_hits > 0 {
+        "Ertl-style NP core motifs".to_string()
+    } else if scaffold_hits > 0 {
+        "scaffold motifs without Ertl-enriched core signal".to_string()
+    } else if decoration_hits > 0 {
+        "decoration motifs only".to_string()
     } else {
         "no structural motifs detected".to_string()
     };
@@ -219,7 +245,7 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
     // ── PubChem hit evaluation ──────────────────────────────────────────
     // PubChem is a WEAK signal on its own; strong structural evidence required
     if has_pubchem {
-        let np_motif_count = row.motifs.iter().filter(|m| is_known_np_motif(m)).count();
+        let np_motif_count = count_core_np_motifs(&row.motifs);
         let has_np_scaffold = row.ring_family.to_ascii_lowercase().contains("polycyclic")
             || row.ring_family.to_ascii_lowercase().contains("steroid")
             || row.ring_family.to_ascii_lowercase().contains("sugar")
@@ -228,15 +254,20 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
             || row
                 .ring_family
                 .to_ascii_lowercase()
-                .contains("heteroaromatic");
+                .contains("fused heteroaromatic");
+        let has_oxygenation = row
+            .descriptors
+            .hetero_atoms
+            .is_some_and(|hetero_atoms| hetero_atoms >= 4.0);
+        let structural_support = np_motif_count >= 1 || has_np_scaffold || has_oxygenation;
 
-        // ONLY go green if score is strong AND structural features present
-        if score >= 2.0 && (np_motif_count >= 2 || has_np_scaffold) {
+        // ONLY go green if score is strong AND structure looks chemically NP-like.
+        if score >= 2.0 && structural_support {
             return format!("🌿 PubChem + strong NP evidence (Ertl {score:+.2})");
         }
 
-        // Score 1.0-2.0 (ambiguous) with multiple motifs → blue
-        if score >= 1.0 && np_motif_count >= 2 {
+        // Score 1.0-2.0 (ambiguous) with supporting structural cues → blue
+        if score >= 1.0 && structural_support {
             return format!("📚 PubChem with NP motifs (Ertl {score:+.2})");
         }
 
@@ -258,10 +289,13 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
         || row
             .ring_family
             .to_ascii_lowercase()
-            .contains("heteroaromatic");
-    let has_np_motifs = row.motifs.iter().any(|m| is_known_np_motif(m));
-
-    if score >= 2.0 && has_np_scaffold {
+            .contains("fused heteroaromatic");
+    let has_np_motifs = count_core_np_motifs(&row.motifs) > 0;
+    let has_oxygenation = row
+        .descriptors
+        .hetero_atoms
+        .is_some_and(|hetero_atoms| hetero_atoms >= 4.0);
+    if score >= 2.0 && (has_np_scaffold || has_oxygenation) {
         return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
     if score >= 1.0 && has_np_motifs && has_np_scaffold {
@@ -469,7 +503,29 @@ pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
         });
     }
 
-    // Database presence
+    // 3 — Oxygenation
+    let hetero_atoms = row.descriptors.hetero_atoms.unwrap_or(0.0);
+    if hetero_atoms >= 4.0 {
+        checks.push(ChemistCheck {
+            name: "Oxygenation",
+            status: "pass",
+            detail: format!("{hetero_atoms:.0} hetero atoms"),
+        });
+    } else if hetero_atoms >= 2.0 {
+        checks.push(ChemistCheck {
+            name: "Oxygenation",
+            status: "warn",
+            detail: format!("{hetero_atoms:.0} hetero atoms"),
+        });
+    } else {
+        checks.push(ChemistCheck {
+            name: "Oxygenation",
+            status: "fail",
+            detail: format!("{hetero_atoms:.0} hetero atoms"),
+        });
+    }
+
+    // 4 — Database presence
     let has_lotus = !row.lotus_taxa.is_empty();
     let has_pubchem = !row.pubchem_cids.is_empty();
     if has_lotus && has_pubchem {
@@ -532,18 +588,10 @@ pub fn is_known_np_motif(label: &str) -> bool {
         || l.contains("piperidine")
         || l.contains("piperazine")
         || l.contains("morpholine")
-        // NP-enriched functional groups (Ertl & Schuhmann 2019)
-        || l.contains("alcohol")
-        || l.contains("phenol")
-        || l.contains("ether")
-        || l.contains("methoxy")
-        || l.contains("ester")
-        || l.contains("carboxylic acid")
-        || l.contains("amide")
-        || l.contains("ketone")
-        || l.contains("enol")
-        || l.contains("acetal")
-        || l.contains("hemiacetal")
+}
+
+fn count_core_np_motifs(motifs: &[String]) -> usize {
+    motifs.iter().filter(|m| is_known_np_motif(m)).count()
 }
 
 #[allow(dead_code)]
@@ -830,6 +878,13 @@ mod tests {
             &["Sugar-like oxygen ring".to_string()],
         );
         assert_eq!(family3, "sugar-like oxygenated ring system");
+    }
+
+    #[test]
+    fn decoration_motifs_stay_neutral() {
+        assert!(!is_known_np_motif("Methoxy"));
+        assert!(is_decoration_motif("Methoxy"));
+        assert!(!is_scaffold_motif("Methoxy"));
     }
 
     #[test]
