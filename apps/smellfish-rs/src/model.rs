@@ -56,6 +56,8 @@ pub struct MoleculeRow {
     pub stereo_tags: Vec<String>,
     /// Heavy-atom count (transparency for the Ertl normalisation).
     pub num_atoms: usize,
+    /// Full motif hit metadata for UI grouping.
+    pub motif_hits: Vec<RdkitMotifHit>,
 }
 
 #[derive(Clone, Debug)]
@@ -64,6 +66,9 @@ pub struct MotifSummary {
     pub label: String,
     pub kind: String,
     pub smarts: String,
+    pub source_class: String,
+    pub kingdom: String,
+    pub kingdoms: Vec<String>,
     pub count: usize,
 }
 
@@ -156,10 +161,16 @@ pub struct RdkitInspectResponse {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct RdkitMotifHit {
     pub label: String,
     pub kind: String,
     pub smarts: String,
+    #[serde(default)]
+    pub source_class: String,
+    #[serde(default)]
+    pub kingdom: String,
+    #[serde(default)]
+    pub kingdoms: Vec<String>,
 }

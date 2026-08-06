@@ -108,18 +108,6 @@ pub fn assess_np_evidence(
 
     // ── Secondary evidence: structural observations ────────────────────
 
-    // sp³ character — NPs are typically more saturated than synthetic drugs.
-    // Threshold 0.4 from "escaping the flatlands" (Ertl 2003, Ertl &
-    // Schuppenhauer 2011): compounds below 0.4 are considered "flat".
-    if let Some(csp3) = descriptors.fraction_csp3
-        && csp3 > 0.4
-    {
-        notes.push(format!(
-            "sp³-rich scaffold (fractionCSP₃ = {csp3:.2}) — \
-             NPs typically surpass flatland threshold of 0.4"
-        ));
-    }
-
     if let Some(hetero_atoms) = descriptors.hetero_atoms
         && hetero_atoms >= 4.0
     {
@@ -415,7 +403,6 @@ pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -
     if aromatic > 0.0 && aliphatic > 0.0 {
         return "mixed aromatic/aliphatic scaffold".to_string();
     }
-    // Saturated, multi-ring systems with high sp³ → typical of terpene/steroid NPs.
     if aliphatic >= 2.0 || csp3 >= 0.5 {
         return "natural-product-like polycyclic scaffold".to_string();
     }
@@ -720,12 +707,6 @@ mod tests {
                 .evidence_notes
                 .iter()
                 .any(|n| n.contains("Ertl NP-likeness score"))
-        );
-        assert!(
-            assessment
-                .evidence_notes
-                .iter()
-                .any(|n| n.contains("sp³-rich"))
         );
         assert!(
             assessment

@@ -29,11 +29,6 @@
           poll();
         });
       }
-      const { MOTIF_LIBRARY, ERTL_SUBSTUENTS } = window.__SMELLFISH_MOTIFS || {
-        MOTIF_LIBRARY: [],
-        ERTL_SUBSTUENTS: [],
-      };
-
       function numericField(descriptors, names) {
         for (const name of names) {
           const value = descriptors?.[name];
@@ -184,17 +179,20 @@
           loadNpModel(),
         ]);
         const RDKit = await init();
+        await (window.__SMELLFISH_MOTIFS?.ready ?? Promise.resolve());
+        const { MOTIF_LIBRARY, USER_SCAFFOLDS, ERTL_SUBSTUENTS } = window.__SMELLFISH_MOTIFS || {
+          MOTIF_LIBRARY: [],
+          USER_SCAFFOLDS: [],
+          ERTL_SUBSTUENTS: [],
+        };
         const compiledMotifs = MOTIF_LIBRARY.map((motif) => ({
           ...motif,
           qmol: RDKit.get_qmol(motif.smarts),
         }));
-
-        /*
-         * Ertl natural-product substituent library (top 60 most common
-         * substituents in natural products, from Ertl 2022, BMC 54, 116562,
-         * DOI 10.1016/j.bmc.2021.116562).  Patterns use [*] as the
-         * attachment-point wildcard.
-         */
+        const compiledScaffolds = USER_SCAFFOLDS.map((scaffold) => ({
+          ...scaffold,
+          qmol: RDKit.get_qmol(scaffold.smarts),
+        }));
         const compiledSubstituents = ERTL_SUBSTUENTS.map((sub) => ({
           ...sub,
           qmol: RDKit.get_qmol(sub.smarts),
@@ -292,27 +290,13 @@
               const COL_SCAFF = [0.15, 0.37, 0.97];  /* blue    #2563eb */
               const COL_DECO  = [0.56, 0.25, 0.03];  /* amber   #92400e */
 
-              function classifyMotif(label) {
-                const l = label.toLowerCase();
-                /* NP-known scaffold classes + NP-enriched functional groups */
-                const npKnown = [
-                  "steroid","sugar","macrolide","macrocycle","lactone","lactam",
-                  "flavone","flavonoid","indole","quinoline","isoquinoline",
-                  "benzofuran","benzothiophene","quinoxaline","purine",
-                  "chromone","coumarin","tetrahydrofuran","tetrahydropyran",
-                  "piperidine","piperazine","morpholine",
-                  "alcohol","phenol","ether","methoxy","ester","carboxylic acid",
-                  "amide","ketone","enol","acetal","hemiacetal",
-                ];
-                if (npKnown.some(k => l.includes(k))) return COL_NP;
-                const scaffold = [
-                  "ring","steroid","sugar","macrocycle","macrolide","lactone",
-                  "lactam","flavone","flavonoid","indole","quinoline",
-                  "isoquinoline","benzofuran","benzothiophene","quinoxaline",
-                  "purine","chromone","coumarin","morpholine","piperidine",
-                  "piperazine","tetrahydrofuran","tetrahydropyran","cyclohexane",
-                ];
-                if (scaffold.some(k => l.includes(k))) return COL_SCAFF;
+              function classifyMotif(motif) {
+                if (motif?.kind === "scaffold") return COL_SCAFF;
+                if (motif?.source_class === "synthetic") return COL_DECO;
+                if (motif?.kind === "ring") return COL_NP;
+                if (motif?.kind === "decoration") return COL_SCAFF;
+                const l = String(motif?.label || "").toLowerCase();
+                if (l.includes("ring") || l.includes("cycle")) return COL_NP;
                 return COL_DECO;
               }
 
@@ -328,11 +312,41 @@
                 if (!hitAtoms.length && !hitBonds.length) {
                   continue;
                 }
-                const colour = classifyMotif(motif.label);
+                const colour = classifyMotif(motif);
                 hits.push({
                   label: motif.label,
                   kind: motif.kind,
                   smarts: motif.smarts,
+                  source_class: motif.source_class,
+                  kingdom: motif.kingdom,
+                  kingdoms: Array.isArray(motif.kingdoms) ? motif.kingdoms : [],
+                  atoms: hitAtoms,
+                  bonds: hitBonds,
+                });
+                atoms.push(...hitAtoms);
+                bonds.push(...hitBonds);
+                for (const atom of hitAtoms) {
+                  atomColors[atom] = colour;
+                }
+                for (const bond of hitBonds) {
+                  bondColors[bond] = colour;
+                }
+              }
+              for (const scaffold of compiledScaffolds) {
+                const raw = mol.get_substruct_match(scaffold.qmol);
+                if (!raw) continue;
+                const match = JSON.parse(raw);
+                const hitAtoms = Array.isArray(match.atoms) ? match.atoms : [];
+                const hitBonds = Array.isArray(match.bonds) ? match.bonds : [];
+                if (!hitAtoms.length && !hitBonds.length) continue;
+                const colour = COL_SCAFF;
+                hits.push({
+                  label: scaffold.label,
+                  kind: "scaffold",
+                  smarts: scaffold.smarts,
+                  source_class: "unknown",
+                  kingdom: "unknown",
+                  kingdoms: [],
                   atoms: hitAtoms,
                   bonds: hitBonds,
                 });

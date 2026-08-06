@@ -22,6 +22,7 @@ struct RawInspectRow {
     inchikey: String,
     svg: Option<String>,
     motif_labels: Vec<String>,
+    motif_hits: Vec<crate::model::RdkitMotifHit>,
     substituents: Vec<String>,
     descriptors: RdkitDescriptors,
     stereo_tags: Vec<String>,
@@ -42,7 +43,10 @@ pub async fn import_csv(
     let total = raw_rows.len();
 
     let mut inspect_rows = Vec::with_capacity(total);
-    let mut motif_counts: HashMap<String, (String, String, HashSet<usize>)> = HashMap::new();
+    let mut motif_counts: HashMap<
+        String,
+        (String, String, String, String, std::collections::BTreeSet<String>, HashSet<usize>),
+    > = HashMap::new();
     let mut inchikeys = BTreeSet::new();
     let mut rows = Vec::with_capacity(total);
 
@@ -70,8 +74,18 @@ pub async fn import_csv(
                 for hit in &motifs_list {
                     let entry = motif_counts
                         .entry(hit.label.clone())
-                        .or_insert_with(|| (hit.kind.clone(), hit.smarts.clone(), HashSet::new()));
-                    entry.2.insert(raw.index);
+                        .or_insert_with(|| {
+                            (
+                                hit.kind.clone(),
+                                hit.smarts.clone(),
+                                hit.source_class.clone(),
+                                hit.kingdom.clone(),
+                                hit.kingdoms.iter().cloned().collect(),
+                                HashSet::new(),
+                            )
+                        });
+                    entry.4.extend(hit.kingdoms.iter().cloned());
+                    entry.5.insert(raw.index);
                 }
 
                 let inchikey = inspect.inchikey.unwrap_or_default();
@@ -92,6 +106,7 @@ pub async fn import_csv(
                     inchikey: inchikey.clone(),
                     svg: inspect.svg.clone(),
                     motif_labels: motif_labels.clone(),
+                    motif_hits: motifs_list.clone(),
                     substituents,
                     descriptors,
                     stereo_tags,
@@ -109,6 +124,7 @@ pub async fn import_csv(
                     inchikey,
                     svg: inspect.svg,
                     motifs: motif_labels,
+                    motif_hits: motifs_list,
                     substituents: Vec::new(),
                     lotus_taxa: Vec::new(),
                     lotus_compounds: Vec::new(),
@@ -138,10 +154,13 @@ pub async fn import_csv(
     let motif_summary = sorted_motifs(
         motif_counts
             .into_iter()
-            .map(|(label, (kind, smarts, rows_set))| MotifSummary {
+            .map(|(label, (kind, smarts, source_class, kingdom, kingdoms, rows_set))| MotifSummary {
                 label,
                 kind,
                 smarts,
+                source_class,
+                kingdom,
+                kingdoms: kingdoms.into_iter().collect(),
                 count: rows_set.len(),
             })
             .collect(),
@@ -202,6 +221,7 @@ pub async fn import_csv(
             row.substituents = raw.substituents;
             row.stereo_tags = raw.stereo_tags;
             row.num_atoms = raw.num_atoms;
+            row.motif_hits = raw.motif_hits;
             row.np_score_available = raw.np_score.is_some();
 
             // Build motif label vec for dataset-common detection.
@@ -410,7 +430,9 @@ fn sorted_motifs(mut motifs: Vec<MotifSummary>) -> Vec<MotifSummary> {
         right
             .count
             .cmp(&left.count)
-            .then(left.kind.cmp(&right.kind))
+            .then(left.source_class.cmp(&right.source_class))
+            .then(left.kingdom.cmp(&right.kingdom))
+            .then(left.kingdoms.len().cmp(&right.kingdoms.len()))
             .then(left.label.cmp(&right.label))
     });
     motifs
@@ -446,5 +468,6 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         descriptors: RdkitDescriptors::default(),
         stereo_tags: Vec::new(),
         num_atoms: 0,
+        motif_hits: Vec::new(),
     }
 }

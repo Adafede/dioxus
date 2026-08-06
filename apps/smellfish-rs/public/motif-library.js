@@ -1,122 +1,169 @@
 window.__SMELLFISH_MOTIFS = {
-  MOTIF_LIBRARY: [
-    { label: "Benzene ring", kind: "ring", smarts: "c1ccccc1" },
-    { label: "Naphthalene ring", kind: "ring", smarts: "c1ccc2ccccc2c1" },
-    { label: "Pyridine ring", kind: "ring", smarts: "n1ccccc1" },
-    { label: "Pyrimidine ring", kind: "ring", smarts: "n1cnccc1" },
-    { label: "Pyrazine ring", kind: "ring", smarts: "n1ccncc1" },
-    { label: "Imidazole ring", kind: "ring", smarts: "c1ncc[nH]1" },
-    { label: "Pyrrole ring", kind: "ring", smarts: "[nH]1cccc1" },
-    { label: "Furan ring", kind: "ring", smarts: "o1cccc1" },
-    { label: "Thiophene ring", kind: "ring", smarts: "s1cccc1" },
-    { label: "Indole ring", kind: "ring", smarts: "c1ccc2[nH]ccc2c1" },
-    { label: "Quinoline ring", kind: "ring", smarts: "c1ccc2ncccc2c1" },
-    { label: "Isoquinoline ring", kind: "ring", smarts: "c1ccc2cccnc2c1" },
-    { label: "Benzofuran ring", kind: "ring", smarts: "c1ccc2occc2c1" },
-    { label: "Benzothiophene ring", kind: "ring", smarts: "c1ccc2sccc2c1" },
-    { label: "Quinoxaline ring", kind: "ring", smarts: "c1ccc2nccnc2c1" },
-    { label: "Purine ring", kind: "ring", smarts: "n1cnc2ncnc2n1" },
-    { label: "Chromone ring", kind: "ring", smarts: "c1cc2oc(=O)ccc2cc1" },
-    { label: "Coumarin ring", kind: "ring", smarts: "o1ccc2ccccc2c1=O" },
-    { label: "Morpholine ring", kind: "ring", smarts: "O1CCNCC1" },
-    { label: "Piperidine ring", kind: "ring", smarts: "N1CCCCC1" },
-    { label: "Piperazine ring", kind: "ring", smarts: "N1CCNCC1" },
-    { label: "Tetrahydrofuran ring", kind: "ring", smarts: "O1CCCC1" },
-    { label: "Tetrahydropyran ring", kind: "ring", smarts: "O1CCCCC1" },
-    { label: "Cyclohexane ring", kind: "ring", smarts: "C1CCCCC1" },
-    { label: "Steroid-like fused ring", kind: "ring", smarts: "C1CCC2CCCCC2C1" },
-    { label: "Macrocycle", kind: "ring", smarts: "C1CCCCCCCCCC1" },
-    { label: "Sugar-like oxygen ring", kind: "ring", smarts: "[OX2]1[CX4][CX4][CX4][CX4][CX4]1" },
-    { label: "Macrolactone", kind: "ring", smarts: "O=C1OCCCCCCCC1" },
-    { label: "Macrolactam", kind: "ring", smarts: "O=C1NCCCCCCCC1" },
-    { label: "Flavone core", kind: "ring", smarts: "c1cc(=O)oc2ccccc12" },
-    { label: "Flavonoid core", kind: "ring", smarts: "c1ccc2oc(=O)cc(c2c1)" },
-    { label: "Aldehyde", kind: "decoration", smarts: "[CX3H1](=O)[#6]" },
-    { label: "Ketone", kind: "decoration", smarts: "[#6][CX3](=O)[#6]" },
-    { label: "Carboxylic acid", kind: "decoration", smarts: "C(=O)[OX2H1]" },
-    { label: "Ester", kind: "decoration", smarts: "C(=O)O[#6]" },
-    { label: "Amide", kind: "decoration", smarts: "C(=O)N" },
-    { label: "Carbamate", kind: "decoration", smarts: "OC(=O)N" },
-    { label: "Urea", kind: "decoration", smarts: "NC(=O)N" },
-    { label: "Sulfonamide", kind: "decoration", smarts: "S(=O)(=O)N" },
-    { label: "Sulfone", kind: "decoration", smarts: "S(=O)(=O)[#6]" },
-    { label: "Sulfoxide", kind: "decoration", smarts: "S(=O)[#6]" },
-    { label: "Alcohol", kind: "decoration", smarts: "[CX4][OX2H]" },
-    { label: "Phenol", kind: "decoration", smarts: "c[OX2H]" },
-    { label: "Ether", kind: "decoration", smarts: "[OD2]([#6])[#6]" },
-    { label: "Methoxy", kind: "decoration", smarts: "CO" },
-    { label: "Amine", kind: "decoration", smarts: "[NX3;H2,H1;!$(NC=O)]" },
-    { label: "Halogen", kind: "decoration", smarts: "[F,Cl,Br,I]" },
-    { label: "Nitrile", kind: "decoration", smarts: "C#N" },
-    { label: "Nitro", kind: "decoration", smarts: "[NX3](=O)=O" },
-    { label: "Thiol", kind: "decoration", smarts: "[SX2H]" },
-    { label: "Phosphate", kind: "decoration", smarts: "P(=O)(O)O" },
-    { label: "Acetal", kind: "decoration", smarts: "[CX4](O)(O)[#6]" },
-    { label: "Lactone", kind: "decoration", smarts: "O=C1O[#6][#6][#6]1" },
-    { label: "Lactam", kind: "decoration", smarts: "O=C1N[#6][#6][#6]1" },
-    { label: "Epoxide", kind: "decoration", smarts: "C1OC1" },
-    { label: "Allyl", kind: "decoration", smarts: "C=CC" },
-  ],
-  ERTL_SUBSTUENTS: [
-    { label: "hydroxyl", smarts: "[*]O" },
-    { label: "methyl", smarts: "[*]C" },
-    { label: "methoxy", smarts: "[*]OC" },
-    { label: "methyl ester", smarts: "[*]OC(C)=O" },
-    { label: "hydroxymethyl", smarts: "[*]CO" },
-    { label: "carboxylic acid", smarts: "[*]C(O)=O" },
-    { label: "isopropyl", smarts: "[*]C(C)C" },
-    { label: "methyl carbonate", smarts: "[*]C(=O)OC" },
-    { label: "primary amine", smarts: "[*]N" },
-    { label: "ethyl", smarts: "[*]CC" },
-    { label: "aldehyde", smarts: "[*]C=O" },
-    { label: "phenyl", smarts: "[*]c1ccccc1" },
-    { label: "2-methylpropenyl", smarts: "[*]CC=C(C)C" },
-    { label: "acetyl", smarts: "[*]C(C)=O" },
-    { label: "chloro", smarts: "[*]Cl" },
-    { label: "methyl carbonate (acetyl)", smarts: "[*]COC(C)=O" },
-    { label: "vinyl", smarts: "[*]C(C)=C" },
-    { label: "phenol", smarts: "[*]c1ccc(O)cc1" },
-    { label: "bromo", smarts: "[*]Br" },
-    { label: "benzyl", smarts: "[*]Cc1ccccc1" },
-    { label: "crotonyl", smarts: "[*]OC(=O)C(C)=CC" },
-    { label: "vinyl (simple)", smarts: "[*]C=C" },
-    { label: "tert-butyl", smarts: "[*]C(C)(C)O" },
-    { label: "furan-2-yl", smarts: "[*]c1ccoc1" },
-    { label: "ethoxy", smarts: "[*]CCO" },
-    { label: "phenyl ester", smarts: "[*]OC(=O)c1ccccc1" },
-    { label: "isopropyl (simple)", smarts: "[*]CC(C)C" },
-    { label: "lactate", smarts: "[*]CC(O)=O" },
-    { label: "propanol", smarts: "[*]CCCO" },
-    { label: "propyl", smarts: "[*]CCC" },
-    { label: "dihydroxyphenyl", smarts: "[*]c1ccc(O)c(O)c1" },
-    { label: "pentyl", smarts: "[*]CCCCC" },
-    { label: "methylamine", smarts: "[*]CNC" },
-    { label: "anisole", smarts: "[*]c1ccc(OC)cc1" },
-    { label: "methylamine (simple)", smarts: "[*]NC" },
-    { label: "isobutyl", smarts: "[*]C(C)CC" },
-    { label: "ethyl carbonate", smarts: "[*]CC(=O)OC" },
-    { label: "isopropanol", smarts: "[*]C(C)O" },
-    { label: "methoxyphenol", smarts: "[*]c1ccc(O)c(OC)c1" },
-    { label: "methoxy (simple)", smarts: "[*]COC" },
-    { label: "methyl propanoate", smarts: "[*]OC(=O)C(C)C" },
-    { label: "sulfate", smarts: "[*]OS(O)(=O)=O" },
-    { label: "ethyl acetate", smarts: "[*]C(=O)OCC" },
-    { label: "cyclohexyl", smarts: "[*]C1CCCCC1" },
-    { label: "methyl isobutyrate", smarts: "[*]OC(=O)C(C)CC" },
-    { label: "lactic acid", smarts: "[*]CCC(O)=O" },
-    { label: "hydroxybenzyl", smarts: "[*]Cc1ccc(O)cc1" },
-    { label: "cyclopentyl", smarts: "[*]C1CCCC1" },
-    { label: "methoxymethane", smarts: "[*]OCC" },
-    { label: "allyl (simple)", smarts: "[*]CC=C" },
-    { label: "butyl", smarts: "[*]CCCC" },
-    { label: "dimethoxybenzene", smarts: "[*]c1ccc(OC)c(OC)c1" },
-    { label: "styrene", smarts: "[*]CCc1ccccc1" },
-    { label: "tetrahydropyranyl", smarts: "[*]OC1CCCC1" },
-    { label: "methylolefin", smarts: "[*]CCC=C(C)C" },
-    { label: "benzofuran", smarts: "[*]c2ccc1OCOc1c2" },
-    { label: "glycerol", smarts: "[*]NCC(C)O" },
-    { label: "ethyl isobutyrate", smarts: "[*]OC(=O)CC(C)C" },
-    { label: "acetamide", smarts: "[*]NC(C)=O" },
-    { label: "2-methylpropene", smarts: "[*]C(C)(C)C=C" }
-  ]
+  MOTIF_LIBRARY: [],
+  USER_SCAFFOLDS: [],
+  ERTL_SUBSTUENTS: [],
+  ready: (async () => {
+    const [sourceText, kingdomText, scaffoldText, substText] = await Promise.all([
+      fetch("ertl_source_vs_synthetic.txt").then((r) => r.text()),
+      fetch("ertl_kingdom_enrichment.txt").then((r) => r.text()),
+      fetch("user_scaffolds.txt").then((r) => r.text()),
+      fetch("ertl_npsubstituents.txt").then((r) => r.text()),
+    ]);
+
+    const sourceRows = parseTable(sourceText);
+    const kingdomRows = parseTable(kingdomText);
+    const scaffoldRows = parsePatternList(scaffoldText);
+    const motifs = buildMotifLibrary(sourceRows, kingdomRows, scaffoldRows);
+    const substituents = parseSubstituents(substText);
+
+    window.__SMELLFISH_MOTIFS.MOTIF_LIBRARY = motifs;
+    window.__SMELLFISH_MOTIFS.USER_SCAFFOLDS = scaffoldRows;
+    window.__SMELLFISH_MOTIFS.ERTL_SUBSTUENTS = substituents;
+  })(),
 };
+
+function parseTable(text) {
+  const rows = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const parts = line.split(/\s+/);
+    const label = parts.shift();
+    if (!label || label === "FG") continue;
+    const values = parts.map((part) => Number(part)).filter((n) => Number.isFinite(n));
+    if (!values.length) continue;
+    rows.push({ label, values });
+  }
+  return rows;
+}
+
+function buildMotifLibrary(sourceRows, kingdomRows, scaffoldRows) {
+  const sourceMap = new Map(sourceRows.map((row) => [row.label, row]));
+  const kingdomMap = new Map(kingdomRows.map((row) => [row.label, row]));
+  const scaffoldLabels = new Set(scaffoldRows.map((row) => row.label));
+  const labels = new Set([...sourceMap.keys(), ...kingdomMap.keys()]);
+  const motifs = [];
+
+  for (const label of labels) {
+    const source = sourceMap.get(label);
+    const kingdom = kingdomMap.get(label);
+    const sourceSplit = source ? classifySource(source.values) : null;
+    const kingdomSplit = kingdom ? classifyKingdom(kingdom.values) : null;
+
+    motifs.push({
+      label,
+      kind: classifyKind(label, sourceSplit, scaffoldLabels),
+      smarts: labelToSmarts(label),
+      source_class: sourceSplit?.label || "unknown",
+      kingdom: kingdomSplit?.label || "unknown",
+      kingdoms: kingdomSplit?.kingdoms || [],
+      source_score: sourceSplit?.delta ?? 0,
+      kingdom_score: kingdomSplit?.score ?? 0,
+    });
+  }
+
+  motifs.sort((left, right) => {
+    return (right.source_score || 0) - (left.source_score || 0) ||
+      (right.kingdom_score || 0) - (left.kingdom_score || 0) ||
+      left.kind.localeCompare(right.kind) ||
+      left.label.localeCompare(right.label);
+  });
+  return motifs;
+}
+
+function classifySource(values) {
+  const synthetic = values[values.length - 1] ?? 0;
+  const np = Math.max(...values.slice(0, -1), 0);
+  return {
+    label: np >= synthetic ? "natural" : "synthetic",
+    delta: np - synthetic,
+  };
+}
+
+function classifyKingdom(values) {
+  const labels = ["animals", "plants", "fungi", "bacteria", "synthetic"];
+  const synthetic = values[values.length - 1] ?? 0;
+  const enriched = [];
+  let bestDelta = Number.NEGATIVE_INFINITY;
+
+  for (let i = 0; i < labels.length - 1; i++) {
+    const value = values[i] ?? 0;
+    const delta = value - synthetic;
+    if (delta > bestDelta) {
+      bestDelta = delta;
+    }
+    if (value >= 5 && delta >= 5 && (synthetic === 0 || value >= synthetic * 1.5)) {
+      enriched.push(labels[i]);
+    }
+  }
+
+  if (!enriched.length) {
+    return { label: "unknown", kingdoms: [], score: bestDelta };
+  }
+  if (enriched.length === 1) {
+    return { label: enriched[0], kingdoms: enriched, score: bestDelta };
+  }
+  return { label: "multiple kingdoms", kingdoms: enriched, score: bestDelta };
+}
+
+function classifyKind(label, sourceSplit, scaffoldLabels) {
+  const l = label.toLowerCase();
+  if (scaffoldLabels.has(label)) return "scaffold";
+  if (sourceSplit?.label === "synthetic") return "decoration";
+  if (
+    l.includes("ring") ||
+    l.includes("cycle") ||
+    l.includes("macro") ||
+    l.includes("steroid") ||
+    l.includes("sugar") ||
+    l.includes("flav") ||
+    l.includes("indole") ||
+    l.includes("quin") ||
+    l.includes("pyr") ||
+    l.includes("furan") ||
+    l.includes("thiophene")
+  ) {
+    return "ring";
+  }
+  return "decoration";
+}
+
+function parsePatternList(text) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .map((line) => {
+      const parts = line.split(/\s+/);
+      const label = parts.shift();
+      if (!label) return null;
+      return {
+        label,
+        smarts: parts.length ? parts.join(" ") : label,
+      };
+    })
+    .filter(Boolean);
+}
+
+function labelToSmarts(label) {
+  return label
+    .replaceAll("[R]", "[*]")
+    .replaceAll("[Oar+]", "[o+]")
+    .replaceAll("[Nar+]", "[n+]")
+    .replaceAll("[Oar]", "o")
+    .replaceAll("[Nar]", "n")
+    .replaceAll("[Sar]", "s")
+    .replaceAll("[Car]", "c")
+    .replaceAll("[Cal]", "C");
+}
+
+function parseSubstituents(text) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .map((line) => ({
+      label: line,
+      smarts: line.replaceAll("[R]", "[*]"),
+    }));
+}

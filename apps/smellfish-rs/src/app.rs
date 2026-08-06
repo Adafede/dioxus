@@ -1,6 +1,5 @@
-use crate::evidence::{is_known_np_motif, is_scaffold_motif};
 use crate::literature::LITERATURE;
-use crate::model::{EndpointStatus, MoleculeRow, MotifSummary};
+use crate::model::{EndpointStatus, MoleculeRow, MotifSummary, RdkitMotifHit};
 use crate::styles::CSS;
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
@@ -178,34 +177,74 @@ pub fn app() -> Element {
 
             if !motifs.read().is_empty() {
                 section { class: "panel",
-                    h2 { "Dataset motifs" }
+                    h2 { "Functional groups" }
                     div { class: "motif-legend",
-                        span { class: "motif-legend-item motif-legend-green", "green = Ertl-enriched core feature" }
-                        span { class: "motif-legend-item motif-legend-blue", "blue = scaffold support" }
-                        span { class: "motif-legend-item motif-legend-neutral", "neutral = decoration / side-chain only" }
+                        span { class: "motif-legend-item motif-legend-green", "green = natural" }
+                        span { class: "motif-legend-item motif-legend-blue", "blue = plants / kingdom group" }
+                        span { class: "motif-legend-item motif-legend-neutral", "white = synthetic" }
                     }
                     div { class: "motif-groups",
                         div { class: "motif-group",
-                            h3 { class: "small", "Core / Ertl-enriched" }
+                            h3 { class: "small", "Natural — plants" }
                             div { class: "chip-list",
-                                for motif in motifs.read().iter().filter(|m| dataset_motif_class(&m.label) == "chip chip-np").take(12) {
-                                    span { class: "{dataset_motif_class(&motif.label)}", title: "Ertl-enriched NP motif", "{motif.label} ({motif.count})" }
+                                for motif in motifs.read().iter().filter(|m| summary_is_natural(m) && summary_kingdom_group(m) == "plants").take(12) {
+                                    span { class: "{summary_chip_class(motif)}", title: "Natural-product motif", "{summary_display_label(motif)} ({motif.count})" }
                                 }
                             }
                         }
                         div { class: "motif-group",
-                            h3 { class: "small", "Scaffold / support" }
+                            h3 { class: "small", "Natural — fungi" }
                             div { class: "chip-list",
-                                for motif in motifs.read().iter().filter(|m| dataset_motif_class(&m.label) == "chip chip-scaffold").take(12) {
-                                    span { class: "{dataset_motif_class(&motif.label)}", title: "Supportive scaffold motif", "{motif.label} ({motif.count})" }
+                                for motif in motifs.read().iter().filter(|m| summary_is_natural(m) && summary_kingdom_group(m) == "fungi").take(12) {
+                                    span { class: "{summary_chip_class(motif)}", title: "Natural-product motif", "{summary_display_label(motif)} ({motif.count})" }
                                 }
                             }
                         }
                         div { class: "motif-group",
-                            h3 { class: "small", "Decorations / side chains" }
+                            h3 { class: "small", "Natural — bacteria" }
                             div { class: "chip-list",
-                                for motif in motifs.read().iter().filter(|m| dataset_motif_class(&m.label) == "chip alt").take(12) {
-                                    span { class: "chip alt", title: "Decoration / side-chain motif", "{motif.label} ({motif.count})" }
+                                for motif in motifs.read().iter().filter(|m| summary_is_natural(m) && summary_kingdom_group(m) == "bacteria").take(12) {
+                                    span { class: "{summary_chip_class(motif)}", title: "Natural-product motif", "{summary_display_label(motif)} ({motif.count})" }
+                                }
+                            }
+                        }
+                        div { class: "motif-group",
+                            h3 { class: "small", "Natural — animals" }
+                            div { class: "chip-list",
+                                for motif in motifs.read().iter().filter(|m| summary_is_natural(m) && summary_kingdom_group(m) == "animals").take(12) {
+                                    span { class: "{summary_chip_class(motif)}", title: "Natural-product motif", "{summary_display_label(motif)} ({motif.count})" }
+                                }
+                            }
+                        }
+                        div { class: "motif-group",
+                            h3 { class: "small", "Natural — multiple kingdoms" }
+                            div { class: "chip-list",
+                                for motif in motifs.read().iter().filter(|m| summary_is_natural(m) && summary_kingdom_group(m) == "multiple kingdoms").take(12) {
+                                    span { class: "{summary_chip_class(motif)}", title: "Natural-product motif", "{summary_display_label(motif)} ({motif.count})" }
+                                }
+                            }
+                        }
+                        div { class: "motif-group",
+                            h3 { class: "small", "Custom scaffolds" }
+                            div { class: "chip-list",
+                                for motif in motifs.read().iter().filter(|m| summary_is_scaffold(m)).take(12) {
+                                    span { class: "{summary_chip_class(motif)}", title: "User-defined scaffold", "{summary_display_label(motif)} ({motif.count})" }
+                                }
+                            }
+                        }
+                        div { class: "motif-group",
+                            h3 { class: "small", "Synthetic-leaning" }
+                            div { class: "chip-list",
+                                for motif in motifs.read().iter().filter(|m| summary_is_synthetic(m)).take(12) {
+                                    span { class: "{summary_chip_class(motif)}", title: "Synthetic-leaning functional group", "{summary_display_label(motif)} ({motif.count})" }
+                                }
+                            }
+                        }
+                        div { class: "motif-group",
+                            h3 { class: "small", "Unclassified" }
+                            div { class: "chip-list",
+                                for motif in motifs.read().iter().filter(|m| summary_is_unclassified(m)).take(12) {
+                                    span { class: "{summary_chip_class(motif)}", title: "Unclassified functional group", "{summary_display_label(motif)} ({motif.count})" }
                                 }
                             }
                         }
@@ -251,9 +290,6 @@ pub fn app() -> Element {
                                             span { class: "chip warn", "model unloaded" }
                                         }
                                         span { class: "chip alt", "{row.np_label}" }
-                                        if row.np_score_available {
-                                            span { class: "chip", "conf {format_confidence(row.np_confidence)}" }
-                                        }
                                     }
                                     div { class: "small", "{scaffold_emoji(&row.ring_family)} {row.ring_family}" }
                                     if !row.motif_context.is_empty() && row.motif_context != "no motif signal" {
@@ -314,31 +350,84 @@ pub fn app() -> Element {
                                 }
                                 if !row.motifs.is_empty() {
                                     div { class: "meta",
-                                        strong { "Motifs" }
+                                        strong { "Functional groups" }
                                         div { class: "motif-groups",
                                             div { class: "motif-group",
-                                                h4 { class: "small", "Core / Ertl-enriched" }
+                                                h4 { class: "small", "Natural — plants" }
                                                 div { class: "chip-list",
-                                                    for motif in row.motifs.iter().filter(|m| row_motif_class(m) == "chip chip-np") {
-                                                        span { class: "{row_motif_class(motif)}", title: "Ertl-enriched NP motif", "{motif_emoji(motif)} {motif}" }
+                                                    for motif in row.motif_hits.iter().filter(|m| motif_is_natural(m) && motif_kingdom_group(m) == "plants") {
+                                                        span { class: "{motif_chip_class(motif)}", title: "Natural-product motif", "{motif_display_label(motif)}" }
                                                     }
                                                 }
                                             }
                                             div { class: "motif-group",
-                                                h4 { class: "small", "Scaffold / support" }
+                                                h4 { class: "small", "Natural — fungi" }
                                                 div { class: "chip-list",
-                                                    for motif in row.motifs.iter().filter(|m| row_motif_class(m) == "chip chip-scaffold") {
-                                                        span { class: "{row_motif_class(motif)}", title: "Supportive scaffold motif", "{motif_emoji(motif)} {motif}" }
+                                                    for motif in row.motif_hits.iter().filter(|m| motif_is_natural(m) && motif_kingdom_group(m) == "fungi") {
+                                                        span { class: "{motif_chip_class(motif)}", title: "Natural-product motif", "{motif_display_label(motif)}" }
                                                     }
                                                 }
                                             }
                                             div { class: "motif-group",
-                                                h4 { class: "small", "Decorations / side chains" }
+                                                h4 { class: "small", "Natural — bacteria" }
                                                 div { class: "chip-list",
-                                                    for motif in row.motifs.iter().filter(|m| row_motif_class(m) == "chip") {
-                                                        span { class: "{row_motif_class(motif)}", title: "Decoration / side-chain motif", "{motif_emoji(motif)} {motif}" }
+                                                    for motif in row.motif_hits.iter().filter(|m| motif_is_natural(m) && motif_kingdom_group(m) == "bacteria") {
+                                                        span { class: "{motif_chip_class(motif)}", title: "Natural-product motif", "{motif_display_label(motif)}" }
                                                     }
                                                 }
+                                            }
+                                            div { class: "motif-group",
+                                                h4 { class: "small", "Natural — animals" }
+                                                div { class: "chip-list",
+                                                    for motif in row.motif_hits.iter().filter(|m| motif_is_natural(m) && motif_kingdom_group(m) == "animals") {
+                                                        span { class: "{motif_chip_class(motif)}", title: "Natural-product motif", "{motif_display_label(motif)}" }
+                                                    }
+                                                }
+                                            }
+                                            div { class: "motif-group",
+                                                h4 { class: "small", "Natural — multiple kingdoms" }
+                                                div { class: "chip-list",
+                                                    for motif in row.motif_hits.iter().filter(|m| motif_is_natural(m) && motif_kingdom_group(m) == "multiple kingdoms") {
+                                                        span { class: "{motif_chip_class(motif)}", title: "Natural-product motif", "{motif_display_label(motif)}" }
+                                                    }
+                                                }
+                                            }
+                                            div { class: "motif-group",
+                                                h4 { class: "small", "Custom scaffolds" }
+                                                div { class: "chip-list",
+                                                    for motif in row.motif_hits.iter().filter(|m| motif_is_scaffold(m)) {
+                                                        span { class: "{motif_chip_class(motif)}", title: "User-defined scaffold", "{motif_display_label(motif)}" }
+                                                    }
+                                                }
+                                            }
+                                            div { class: "motif-group",
+                                                h4 { class: "small", "Synthetic-leaning" }
+                                                div { class: "chip-list",
+                                                    for motif in row.motif_hits.iter().filter(|m| motif_is_synthetic(m)) {
+                                                        span { class: "{motif_chip_class(motif)}", title: "Synthetic-leaning functional group", "{motif_display_label(motif)}" }
+                                                    }
+                                                }
+                                            }
+                                            div { class: "motif-group",
+                                                h4 { class: "small", "Unclassified" }
+                                                div { class: "chip-list",
+                                                    for motif in row.motif_hits.iter().filter(|m| motif_is_unclassified(m)) {
+                                                        span { class: "{motif_chip_class(motif)}", title: "Unclassified functional group", "{motif_display_label(motif)}" }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if !row.substituents.is_empty() {
+                                    div { class: "meta",
+                                        strong { "Ertl substituents" }
+                                        div { class: "chip-list",
+                                            for substituent in row.substituents.iter().take(6) {
+                                                span { class: "chip alt", "{substituent}" }
+                                            }
+                                            if row.substituents.len() > 6 {
+                                                span { class: "chip alt", "+{row.substituents.len() - 6} more" }
                                             }
                                         }
                                     }
@@ -441,10 +530,6 @@ fn format_score(score: f64) -> String {
     format!("{score:+.2}")
 }
 
-fn format_confidence(conf: f64) -> String {
-    format!("{:.0}%", conf * 100.0)
-}
-
 /// CSS-safe verdict color class based on the verdict text.
 fn verdict_color(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
@@ -480,34 +565,128 @@ fn scaffold_emoji(family: &str) -> &'static str {
     }
 }
 
-/// Chip CSS class for dataset-level motif labels — NP-known scaffolds get
-/// a green highlight, other scaffolds get blue, decorations are neutral.
-fn dataset_motif_class(label: &str) -> String {
-    if is_known_np_motif(label) {
-        "chip chip-np".to_string()
-    } else if is_scaffold_motif(label) {
-        "chip chip-scaffold".to_string()
+fn summary_is_natural(motif: &MotifSummary) -> bool {
+    normalized_source_class(&motif.source_class) == "natural"
+}
+
+fn summary_is_synthetic(motif: &MotifSummary) -> bool {
+    normalized_source_class(&motif.source_class) == "synthetic"
+}
+
+fn summary_is_unclassified(motif: &MotifSummary) -> bool {
+    normalized_source_class(&motif.source_class) == "unknown"
+}
+
+fn summary_is_scaffold(motif: &MotifSummary) -> bool {
+    motif.kind == "scaffold"
+}
+
+fn summary_kingdom_group(motif: &MotifSummary) -> &str {
+    if summary_is_natural(motif) {
+        match motif.kingdoms.as_slice() {
+            [one] if one == "animals" || one == "plants" || one == "fungi" || one == "bacteria" => one,
+            [] => "natural",
+            _ => "multiple kingdoms",
+        }
+    } else if summary_is_synthetic(motif) {
+        "synthetic"
     } else {
-        "chip alt".to_string()
+        "unknown"
     }
 }
 
-/// Chip CSS class for per-molecule scaffold vs decoration highlights.
-fn row_motif_class(label: &str) -> String {
-    if is_known_np_motif(label) {
-        "chip chip-np".to_string()
-    } else if is_scaffold_motif(label) {
-        "chip chip-scaffold".to_string()
+fn summary_chip_class(motif: &MotifSummary) -> &'static str {
+    if summary_is_scaffold(motif) {
+        "chip chip-scaffold"
+    } else if summary_is_natural(motif) {
+        "chip chip-np"
     } else {
-        "chip".to_string()
+        "chip alt"
     }
 }
 
-fn motif_emoji(label: &str) -> String {
-    if is_known_np_motif(label) {
-        "🌿".to_string()
+fn summary_display_label(motif: &MotifSummary) -> String {
+    if summary_is_scaffold(motif) {
+        format!("custom scaffold · {}", motif.label)
+    } else if summary_is_natural(motif) {
+        let kingdoms = if motif.kingdoms.is_empty() {
+            summary_kingdom_group(motif).to_string()
+        } else if motif.kingdoms.len() == 1 {
+            motif.kingdoms[0].clone()
+        } else {
+            motif.kingdoms.join(" + ")
+        };
+        format!("{} · {}", kingdoms, motif.label)
+    } else if summary_is_synthetic(motif) {
+        format!("synthetic · {}", motif.label)
     } else {
-        String::new()
+        format!("unclassified · {}", motif.label)
+    }
+}
+
+fn motif_is_natural(motif: &RdkitMotifHit) -> bool {
+    normalized_source_class(&motif.source_class) == "natural"
+}
+
+fn motif_is_synthetic(motif: &RdkitMotifHit) -> bool {
+    normalized_source_class(&motif.source_class) == "synthetic"
+}
+
+fn motif_is_unclassified(motif: &RdkitMotifHit) -> bool {
+    normalized_source_class(&motif.source_class) == "unknown"
+}
+
+fn motif_is_scaffold(motif: &RdkitMotifHit) -> bool {
+    motif.kind == "scaffold"
+}
+
+fn normalized_source_class(source_class: &str) -> &str {
+    match source_class {
+        "natural" | "synthetic" | "unknown" => source_class,
+        _ => "unknown",
+    }
+}
+
+fn motif_kingdom_group(motif: &RdkitMotifHit) -> &str {
+    if motif_is_natural(motif) {
+        match motif.kingdoms.as_slice() {
+            [one] if one == "animals" || one == "plants" || one == "fungi" || one == "bacteria" => one,
+            [] => "natural",
+            _ => "multiple kingdoms",
+        }
+    } else if motif_is_synthetic(motif) {
+        "synthetic"
+    } else {
+        "unknown"
+    }
+}
+
+fn motif_chip_class(motif: &RdkitMotifHit) -> &'static str {
+    if motif_is_scaffold(motif) {
+        "chip chip-scaffold"
+    } else if motif_is_natural(motif) {
+        "chip chip-np"
+    } else {
+        "chip alt"
+    }
+}
+
+fn motif_display_label(motif: &RdkitMotifHit) -> String {
+    if motif_is_scaffold(motif) {
+        format!("custom scaffold · {}", motif.label)
+    } else if motif_is_natural(motif) {
+        let kingdoms = if motif.kingdoms.is_empty() {
+            motif_kingdom_group(motif).to_string()
+        } else if motif.kingdoms.len() == 1 {
+            motif.kingdoms[0].clone()
+        } else {
+            motif.kingdoms.join(" + ")
+        };
+        format!("{} · {}", kingdoms, motif.label)
+    } else if motif_is_synthetic(motif) {
+        format!("synthetic · {}", motif.label)
+    } else {
+        format!("unclassified · {}", motif.label)
     }
 }
 

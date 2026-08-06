@@ -15,7 +15,7 @@ pub const LITERATURE: &[LiteratureEntry] = &[
     LiteratureEntry {
         title: "Cheminformatic Analysis of Natural Products and their Chemical Space",
         doi: "10.2533/chimia.2007.355",
-        note: "Wetzel, Schuffenhauer, Roggo, Ertl & Waldmann (2007). NPs are sp3-rich — 57% sp3 carbons vs 42% in drugs.",
+        note: "Wetzel, Schuffenhauer, Roggo, Ertl & Waldmann (2007). Natural products occupy broader chemical space than typical drugs.",
     },
     LiteratureEntry {
         title: "Analysis of the Natural-Product Content in Commercial Screening Collections: The Impact of a Natural-Product Clone Database",

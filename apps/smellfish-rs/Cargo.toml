@@ -3,6 +3,7 @@ name = "smellfish-rs"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
+build = "build.rs"
 description = "Smellfish-rs literature-backed NP-likeness scoring with RDKit.js, QLever enrichment, and explicit endpoint health checks"
 license = "AGPL-3.0-only"
 keywords = ["dioxus", "rdkit", "smiles", "sparql", "qlever"]
