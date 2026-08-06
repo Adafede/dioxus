@@ -234,6 +234,7 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                 raw.np_score,
                 raw.np_confidence,
                 &dataset_context,
+                &row.lotus_scaffolds,
             );
 
             row.np_likeness = evidence.np_likeness;

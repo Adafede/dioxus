@@ -3,11 +3,11 @@
 A Cargo workspace for reproducible Dioxus web apps, pinned by
 `rust-toolchain.toml`.
 
-**lotus-explorer** explores the LOTUS natural products knowledge graph from
-Wikidata via SPARQL. **lotus-api** provides a native HTTP API for advanced
-search and export. **index** is the accessible landing page. **jsoncount**
-counts non-null fields in uploaded JSON files. **mgf-precursor-erro-rs**
-analyzes uploaded MGF files and reports precursor mass errors in Da and ppm.
+**lotus-explorer** explores the LOTUS compounds knowledge graph from Wikidata
+via SPARQL. **lotus-api** provides a native HTTP API for advanced search and
+export. **index** is the accessible landing page. **jsoncount** counts non-null
+fields in uploaded JSON files. **mgf-precursor-erro-rs** analyzes uploaded MGF
+files and reports precursor mass errors in Da and ppm.
 
 ## Prerequisites
 

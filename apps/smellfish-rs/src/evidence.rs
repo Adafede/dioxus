@@ -83,6 +83,7 @@ pub fn assess_np_evidence(
     np_score: Option<f64>,
     np_confidence: Option<f64>,
     dataset_context: &DatasetMotifContext,
+    lotus_scaffolds: &[String],
 ) -> EvidenceAssessment {
     let ring_family = classify_ring_family(descriptors, motifs);
     let mut notes = Vec::new();
@@ -114,6 +115,15 @@ pub fn assess_np_evidence(
         }
     } else {
         notes.push("Ertl fragment model not loaded — NP-likeness score unavailable".into());
+    }
+
+    // ── LOTUS 1-percent scaffold evidence (Rutz et al. mortar fragmentation) ──
+    if !lotus_scaffolds.is_empty() {
+        notes.push(format!(
+            "✓ {} LOTUS 1% scaffold(s) matched — Rutz et al. mortar \
+             fragmentation; scaffolds appearing in >1% of LOTUS compounds",
+            lotus_scaffolds.len()
+        ));
     }
 
     // Stereochemical complexity — stereocentres are hallmarks of enzymatic
@@ -877,6 +887,7 @@ mod tests {
             Some(-0.5),
             Some(0.5),
             &ctx,
+            &[],
         );
         assert!(
             assessment
