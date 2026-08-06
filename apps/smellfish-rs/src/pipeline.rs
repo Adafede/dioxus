@@ -19,6 +19,7 @@ struct RawInspectRow {
     motif_labels: Vec<String>,
     motif_hits: Vec<crate::model::RdkitMotifHit>,
     substituents: Vec<String>,
+    lotus_scaffolds: Vec<String>,
     descriptors: RdkitDescriptors,
     stereo_tags: Vec<String>,
     np_score: Option<f64>,
@@ -98,12 +99,14 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                 let descriptors = inspect.descriptors.unwrap_or_default();
                 let stereo_tags = inspect.stereo_tags.unwrap_or_default();
                 let substituents = inspect.substituents;
+                let lotus_scaffolds = inspect.lotus_scaffolds;
 
                 inspect_rows.push(RawInspectRow {
                     index: raw.index,
                     motif_labels: motif_labels.clone(),
                     motif_hits: motifs_list.clone(),
                     substituents,
+                    lotus_scaffolds,
                     descriptors,
                     stereo_tags,
                     np_score: inspect.np_score,
@@ -122,6 +125,7 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                     motifs: motif_labels,
                     motif_hits: motifs_list,
                     substituents: Vec::new(),
+                    lotus_scaffolds: Vec::new(),
                     lotus_taxa: Vec::new(),
                     lotus_compounds: Vec::new(),
                     lotus_compounds_with_taxa: BTreeSet::new(),
@@ -213,6 +217,7 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
         if let Some(raw) = raw_by_index.remove(&row.index) {
             row.descriptors = raw.descriptors;
             row.substituents = raw.substituents;
+            row.lotus_scaffolds = raw.lotus_scaffolds;
             row.stereo_tags = raw.stereo_tags;
             row.num_atoms = raw.num_atoms;
             row.motif_hits = raw.motif_hits;
@@ -492,6 +497,7 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         svg: None,
         motifs: Vec::new(),
         substituents: Vec::new(),
+        lotus_scaffolds: Vec::new(),
         lotus_taxa: Vec::new(),
         lotus_compounds: Vec::new(),
         lotus_compounds_with_taxa: BTreeSet::new(),

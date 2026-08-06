@@ -38,7 +38,8 @@ pub struct MoleculeRow {
     pub svg: Option<String>,
     pub motifs: Vec<String>,
     pub substituents: Vec<String>,
-    /// LOTUS taxa for this molecule — used in verdict assessment.
+    /// LOTUS 1-percent scaffold matches (Rutz et al.) — displayed as chips.
+    pub lotus_scaffolds: Vec<String>,
     #[cfg(target_arch = "wasm32")]
     pub lotus_taxa: Vec<String>,
     pub lotus_compounds: Vec<String>,
@@ -156,6 +157,11 @@ pub struct RdkitInspectResponse {
     /// Ertl natural-product substituent matches (top-2000 from Ertl 2022).
     #[serde(default)]
     pub substituents: Vec<String>,
+    /// LOTUS 1-percent scaffolds (Rutz et al. mortar fragmentation) —
+    /// scaffold SMILES that this molecule contains as a substructure,
+    /// filtered to those appearing in > 1 % of LOTUS molecules.
+    #[serde(default)]
+    pub lotus_scaffolds: Vec<String>,
     pub error: Option<String>,
 }
 

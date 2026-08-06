@@ -201,6 +201,24 @@
         const compiledMotifs = MOTIF_LIBRARY.map((motif) => compilePattern(motif, "motif")).filter(Boolean);
         const compiledSubstituents = ERTL_SUBSTUENTS.map((sub) => compilePattern(sub, "substituent")).filter(Boolean);
 
+        /* ── LOTUS 1-percent scaffolds (Rutz et al. mortar fragmentation) ──
+         * Fetch and compile the pre-filtered scaffold SMILES (MoleculePercentage
+         * > 1 %) into RDKit query molecules for substructure searching. */
+        let lotusScaffoldQueries = [];
+        try {
+          const lotusText = await fetch("lotus_1percent_scaffolds.txt").then((r) => r.text());
+          for (const rawLine of lotusText.split(/\r?\n/)) {
+            const s = rawLine.trim();
+            if (!s || s.startsWith("#")) continue;
+            try {
+              const qmol = RDKit.get_qmol(s);
+              if (qmol) lotusScaffoldQueries.push({ smiles: s, qmol });
+            } catch (_e) { /* skip invalid SMILES */ }
+          }
+        } catch (e) {
+          console.warn("lotus_1percent_scaffolds.txt could not be loaded:", e);
+        }
+
         function withMol(smiles, callback) {
           const trimmed = String(smiles || "").trim();
           if (!trimmed) {
@@ -302,6 +320,7 @@
               const COL_NP    = [0.09, 0.51, 0.18];  /* green   #16a34a */
               const COL_SCAFF = [0.15, 0.37, 0.97];  /* blue    #2563eb */
               const COL_DECO  = [0.56, 0.25, 0.03];  /* amber   #92400e */
+              const COL_LOTUS = [0.49, 0.19, 0.86];  /* purple  #7c3aed */
 
               function classifyMotif(motif) {
                 if (motif?.kind === "scaffold") return COL_SCAFF;
@@ -358,6 +377,28 @@
                   bondColors[bond] = colour;
                 }
               }
+              /* LOTUS 1-percent scaffold search (Rutz et al. mortar
+               * fragmentation) — substructure match against pre-compiled
+               * scaffold query molecules.  Must run *before* SVG rendering
+               * so the purple highlights are baked into the SVG. */
+              const lotusScaffolds = [];
+              for (const scaff of lotusScaffoldQueries) {
+                const raw = typeof mol.get_substruct_match === "function"
+                  ? mol.get_substruct_match(scaff.qmol)
+                  : null;
+                if (raw) {
+                  const match = JSON.parse(raw);
+                  const hitAtoms = Array.isArray(match.atoms) ? match.atoms : [];
+                  const hitBonds = Array.isArray(match.bonds) ? match.bonds : [];
+                  if (hitAtoms.length || hitBonds.length) {
+                    lotusScaffolds.push(scaff.smiles);
+                    atoms.push(...hitAtoms);
+                    bonds.push(...hitBonds);
+                    for (const atom of hitAtoms) atomColors[atom] = COL_LOTUS;
+                    for (const bond of hitBonds) bondColors[bond] = COL_LOTUS;
+                  }
+                }
+              }
               /*
                * RDKit.js supports per-atom and per-bond highlight colours
                * via highlightAtomColors and highlightBondColors options
@@ -404,12 +445,14 @@
                 }
               }
 
+              /* LOTUS 1-percent scaffold search — moved before SVG render */
               return {
                 canonicalsmiles,
                 isomericsmiles,
                 inchikey,
                 svg,
                 motifs: hits,
+                lotus_scaffolds: lotusScaffolds,
                 descriptors,
                 stereo_tags: Array.isArray(stereoTags) ? stereoTags : [],
                 np_score: npResult.np_score,

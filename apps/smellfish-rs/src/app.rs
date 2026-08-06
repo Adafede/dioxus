@@ -41,6 +41,7 @@ pub fn app() -> Element {
     let endpoints = use_signal(Vec::<EndpointStatus>::new);
     let warnings = use_signal(Vec::<String>::new);
     let mut pasted_smiles = use_signal(|| DEMO_SMILES.to_string());
+    let mut demo_cleared = use_signal(|| false);
 
     let on_file_change = move |evt: Event<FormData>| {
         let Some(file) = evt.data().files().into_iter().next() else {
@@ -201,6 +202,12 @@ pub fn app() -> Element {
                                 placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
                                 disabled: *busy.read(),
                                 value: "{pasted_smiles_value}",
+                                onfocus: move |_| {
+                                    if !*demo_cleared.read() {
+                                        demo_cleared.set(true);
+                                        pasted_smiles.set(String::new());
+                                    }
+                                },
                                 oninput: move |evt| pasted_smiles.set(evt.value()),
                             }
                         }
@@ -238,17 +245,6 @@ pub fn app() -> Element {
 
                 if !warning_text.is_empty() {
                     div { class: "alert", "{warning_text}" }
-                }
-
-                {
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        rsx! { }
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        rsx! { }
-                    }
                 }
             }
 
@@ -424,12 +420,22 @@ pub fn app() -> Element {
                                         }
                                     }
                                 }
+                                if !row.lotus_scaffolds.is_empty() {
+                                    div { class: "meta",
+                                        strong { "LOTUS 1% scaffolds" }
+                                        div { class: "chip-list",
+                                            for scaffold in row.lotus_scaffolds.iter() {
+                                                span { class: "chip lotus", title: "LOTUS scaffold (Rutz et al.) present above 1% frequency", "{scaffold}" }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                             if !row.evidence_notes.is_empty() {
                                 div { class: "evidence",
                                     details { open: true,
                                         summary { class: "small", "Evidence" }
-                                        ul { style: "margin: 6px 0; padding-left: 20px; font-size: 0.8rem;",
+                                        ul { class: "evidence-list",
                                             for note in row.evidence_notes.iter() {
                                                 li { "{note}" }
                                             }

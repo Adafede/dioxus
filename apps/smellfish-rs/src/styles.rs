@@ -54,6 +54,7 @@ pub const CSS: &str = r"
   --wd-taxon:     #396;
   --wd-reference: #069;
   --wd-entries:   #484848;
+  --wd-lotus:     #7c3aed;
 }
 
 /* ── Box model reset ───────────────────────────────────────────────── */
@@ -278,6 +279,7 @@ body {
 .chip.chip-np { background: color-mix(in srgb, var(--green) 10%, var(--surface)); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border)); }
 .chip-scaffold,
 .chip.chip-scaffold { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); }
+.chip.lotus { background: color-mix(in srgb, var(--wd-lotus) 12%, var(--surface)); color: var(--wd-lotus); border: 1px solid color-mix(in srgb, var(--wd-lotus) 40%, var(--border)); }
 .motif-legend {
   display: flex;
   flex-wrap: wrap;
@@ -488,6 +490,11 @@ a:hover { text-decoration: underline; }
   padding-left: 4px;
   border-left: 2px solid var(--border);
   color: var(--text2);
+}
+.evidence-list {
+  margin: 6px 0;
+  padding-left: 20px;
+  font-size: 0.8rem;
 }
 
 /* ── Accessibility ──────────────────────────────────────────────────── */
