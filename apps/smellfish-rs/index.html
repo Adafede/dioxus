@@ -180,16 +180,16 @@
         ]);
         const RDKit = await init();
         await (window.__SMELLFISH_MOTIFS?.ready ?? Promise.resolve());
-        const { MOTIF_LIBRARY, USER_SCAFFOLDS, ERTL_SUBSTUENTS } = window.__SMELLFISH_MOTIFS || {
+        const { MOTIF_LIBRARY, GROUP_NAMES, ERTL_SUBSTUENTS } = window.__SMELLFISH_MOTIFS || {
           MOTIF_LIBRARY: [],
-          USER_SCAFFOLDS: [],
+          GROUP_NAMES: [],
           ERTL_SUBSTUENTS: [],
         };
         const compiledMotifs = MOTIF_LIBRARY.map((motif) => ({
           ...motif,
           qmol: RDKit.get_qmol(motif.smarts),
         }));
-        const compiledScaffolds = USER_SCAFFOLDS.map((scaffold) => ({
+        const compiledScaffolds = GROUP_NAMES.map((scaffold) => ({
           ...scaffold,
           qmol: RDKit.get_qmol(scaffold.smarts),
         }));

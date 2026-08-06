@@ -1,23 +1,33 @@
 window.__SMELLFISH_MOTIFS = {
   MOTIF_LIBRARY: [],
-  USER_SCAFFOLDS: [],
+  GROUP_NAMES: [],
   ERTL_SUBSTUENTS: [],
   ready: (async () => {
-    const [sourceText, kingdomText, scaffoldText, substText] = await Promise.all([
+    const [ertlSourceText, ertlKingdomText, userSourceText, userKingdomText, namesText, substText] = await Promise.all([
       fetch("ertl_source_vs_synthetic.txt").then((r) => r.text()),
       fetch("ertl_kingdom_enrichment.txt").then((r) => r.text()),
-      fetch("user_scaffolds.txt").then((r) => r.text()),
+      fetch("user_source_vs_synthetic.txt").then((r) => r.text()),
+      fetch("user_kingdom_enrichment.txt").then((r) => r.text()),
+      fetch("group_names.txt").then((r) => r.text()),
       fetch("ertl_npsubstituents.txt").then((r) => r.text()),
     ]);
 
-    const sourceRows = parseTable(sourceText);
-    const kingdomRows = parseTable(kingdomText);
-    const scaffoldRows = parsePatternList(scaffoldText);
-    const motifs = buildMotifLibrary(sourceRows, kingdomRows, scaffoldRows);
+    const ertlSourceRows = parseTable(ertlSourceText);
+    const ertlKingdomRows = parseTable(ertlKingdomText);
+    const userSourceRows = parseTable(userSourceText);
+    const userKingdomRows = parseTable(userKingdomText);
+    const nameRows = parseGroupNames(namesText);
+    const motifs = buildMotifLibrary(
+      ertlSourceRows,
+      ertlKingdomRows,
+      userSourceRows,
+      userKingdomRows,
+      nameRows
+    );
     const substituents = parseSubstituents(substText);
 
     window.__SMELLFISH_MOTIFS.MOTIF_LIBRARY = motifs;
-    window.__SMELLFISH_MOTIFS.USER_SCAFFOLDS = scaffoldRows;
+    window.__SMELLFISH_MOTIFS.GROUP_NAMES = nameRows;
     window.__SMELLFISH_MOTIFS.ERTL_SUBSTUENTS = substituents;
   })(),
 };
@@ -37,23 +47,24 @@ function parseTable(text) {
   return rows;
 }
 
-function buildMotifLibrary(sourceRows, kingdomRows, scaffoldRows) {
-  const sourceMap = new Map(sourceRows.map((row) => [row.label, row]));
-  const kingdomMap = new Map(kingdomRows.map((row) => [row.label, row]));
-  const scaffoldLabels = new Set(scaffoldRows.map((row) => row.label));
-  const labels = new Set([...sourceMap.keys(), ...kingdomMap.keys()]);
+function buildMotifLibrary(ertlSourceRows, ertlKingdomRows, userSourceRows, userKingdomRows, nameRows) {
+  const sourceMap = new Map([...ertlSourceRows, ...userSourceRows].map((row) => [row.label, row]));
+  const kingdomMap = new Map([...ertlKingdomRows, ...userKingdomRows].map((row) => [row.label, row]));
+  const nameMap = new Map(nameRows.map((row) => [row.label, row]));
+  const labels = new Set([...sourceMap.keys(), ...kingdomMap.keys(), ...nameMap.keys()]);
   const motifs = [];
 
   for (const label of labels) {
     const source = sourceMap.get(label);
     const kingdom = kingdomMap.get(label);
+    const nameRow = nameMap.get(label);
     const sourceSplit = source ? classifySource(source.values) : null;
     const kingdomSplit = kingdom ? classifyKingdom(kingdom.values) : null;
 
     motifs.push({
       label,
-      kind: classifyKind(label, sourceSplit, scaffoldLabels),
-      smarts: labelToSmarts(label),
+      kind: nameRow ? "scaffold" : classifyKind(label, sourceSplit),
+      smarts: nameRow?.smarts || labelToSmarts(label),
       source_class: sourceSplit?.label || "unknown",
       kingdom: kingdomSplit?.label || "unknown",
       kingdoms: kingdomSplit?.kingdoms || [],
@@ -106,9 +117,8 @@ function classifyKingdom(values) {
   return { label: "multiple kingdoms", kingdoms: enriched, score: bestDelta };
 }
 
-function classifyKind(label, sourceSplit, scaffoldLabels) {
+function classifyKind(label, sourceSplit) {
   const l = label.toLowerCase();
-  if (scaffoldLabels.has(label)) return "scaffold";
   if (sourceSplit?.label === "synthetic") return "decoration";
   if (
     l.includes("ring") ||
@@ -128,18 +138,24 @@ function classifyKind(label, sourceSplit, scaffoldLabels) {
   return "decoration";
 }
 
-function parsePatternList(text) {
+function parseGroupNames(text) {
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"))
     .map((line) => {
       const parts = line.split(/\s+/);
-      const label = parts.shift();
-      if (!label) return null;
+      if (!parts.length) return null;
+      if (parts.length === 1) {
+        return { label: parts[0], smarts: parts[0], group_id: "" };
+      }
+      if (parts.length === 2) {
+        return { label: parts[0], smarts: parts[1], group_id: "" };
+      }
       return {
-        label,
-        smarts: parts.length ? parts.join(" ") : label,
+        label: parts.slice(0, -2).join(" "),
+        smarts: parts[parts.length - 2],
+        group_id: parts[parts.length - 1],
       };
     })
     .filter(Boolean);

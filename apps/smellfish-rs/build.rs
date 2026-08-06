@@ -10,7 +10,9 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=public/ertl_source_vs_synthetic.txt");
     println!("cargo:rerun-if-changed=public/ertl_kingdom_enrichment.txt");
-    println!("cargo:rerun-if-changed=public/user_scaffolds.txt");
+    println!("cargo:rerun-if-changed=public/group_names.txt");
+    println!("cargo:rerun-if-changed=public/user_source_vs_synthetic.txt");
+    println!("cargo:rerun-if-changed=public/user_kingdom_enrichment.txt");
     println!("cargo:rerun-if-changed=public/motif-library.js");
     download_with_header(
         &manifest_dir.join("public/ertl_npsubstituents.txt"),

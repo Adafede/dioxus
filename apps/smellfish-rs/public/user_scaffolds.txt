@@ -1,1 +1,0 @@
-# User-defined scaffold patterns (one SMARTS or label per line).
