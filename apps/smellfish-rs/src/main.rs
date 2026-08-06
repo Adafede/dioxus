@@ -1,5 +1,7 @@
 mod app;
+#[cfg(any(test, target_arch = "wasm32"))]
 mod csv;
+#[cfg(any(test, target_arch = "wasm32"))]
 mod evidence;
 mod literature;
 mod model;

@@ -1,8 +1,8 @@
 use serde::Deserialize;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 
+#[cfg(any(test, target_arch = "wasm32"))]
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct RawRow {
     pub index: usize,
     pub label: String,
@@ -21,26 +21,35 @@ pub struct ChemistCheck {
     pub detail: String,
 }
 
-/// A single molecule's metadata and evidence assessment.
+/// A molecule row displayed in the UI.  Fields marked `#[cfg(...)]` are
+/// only needed during the wasm evidence pipeline; they exist so the struct
+/// can be fully populated and assessed in the browser.
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct MoleculeRow {
     pub index: usize,
     pub label: String,
     pub smiles: String,
+    /// Canonical SMILES — used for InChIKey→row mapping during enrichment.
+    #[cfg(target_arch = "wasm32")]
     pub canonical_smiles: String,
+    /// InChIKey — used for database lookups during enrichment.
+    #[cfg(target_arch = "wasm32")]
     pub inchikey: String,
     pub svg: Option<String>,
     pub motifs: Vec<String>,
     pub substituents: Vec<String>,
+    /// LOTUS taxa for this molecule — used in verdict assessment.
+    #[cfg(target_arch = "wasm32")]
     pub lotus_taxa: Vec<String>,
     pub lotus_compounds: Vec<String>,
-    pub lotus_compounds_with_taxa: BTreeSet<String>, // Track which LOTUS compounds have taxa
+    pub lotus_compounds_with_taxa: BTreeSet<String>,
     pub pubchem_cids: Vec<String>,
-    pub pubchem_names: Vec<String>,
-    pub pubchem_taxa: Vec<String>,
+    /// Ertl NP-likeness score.
     pub np_likeness: f64,
+    /// Human-readable NP-likeness label.
     pub np_label: String,
+    /// Confidence in the NP-likeness score.
+    #[cfg(target_arch = "wasm32")]
     pub np_confidence: f64,
     pub np_score_available: bool,
     pub ring_family: String,
@@ -51,8 +60,10 @@ pub struct MoleculeRow {
     pub error: Option<String>,
     /// Stored descriptors so the second-pass evidence assessment can
     /// re-evaluate structural context alongside dataset-level data.
+    #[cfg(target_arch = "wasm32")]
     pub descriptors: RdkitDescriptors,
     /// Stored stereo tags for the same reason.
+    #[cfg(target_arch = "wasm32")]
     pub stereo_tags: Vec<String>,
     /// Heavy-atom count (transparency for the Ertl normalisation).
     pub num_atoms: usize,
@@ -61,11 +72,8 @@ pub struct MoleculeRow {
 }
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct MotifSummary {
     pub label: String,
-    pub kind: String,
-    pub smarts: String,
     pub source_class: String,
     pub kingdom: String,
     pub kingdoms: Vec<String>,
@@ -78,49 +86,39 @@ pub struct MotifSummary {
 /// uploaded set that contain it.  Motifs appearing in ≥ `common_threshold`
 /// molecules are considered "dataset-common".
 #[derive(Clone, Debug, Default)]
-#[allow(dead_code)]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub struct DatasetMotifContext {
-    pub motif_counts: HashMap<String, usize>,
-    pub total_molecules: usize,
+    pub motif_counts: std::collections::HashMap<String, usize>,
     pub common_threshold: usize,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
-#[allow(dead_code)]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub struct RdkitDescriptors {
-    pub amw: Option<f64>,
-    pub exact_mw: Option<f64>,
-    pub clogp: Option<f64>,
-    pub tpsa: Option<f64>,
     pub fraction_csp3: Option<f64>,
     pub ring_count: Option<f64>,
     pub aromatic_ring_count: Option<f64>,
     pub aliphatic_ring_count: Option<f64>,
-    pub rotatable_bonds: Option<f64>,
-    pub hba: Option<f64>,
-    pub hbd: Option<f64>,
-    pub hetero_atoms: Option<f64>,
 }
 
 #[derive(Clone, Debug, Default)]
-#[allow(dead_code)]
+#[cfg(target_arch = "wasm32")]
 pub struct SourceSummary {
     pub taxa: BTreeSet<String>,
     pub compounds: BTreeSet<String>,
-    pub names: BTreeSet<String>,
     pub cids: BTreeSet<String>,
-    pub compounds_with_taxa: BTreeSet<String>, // Track which compounds have taxon info
+    /// Track which compounds have taxon info.
+    pub compounds_with_taxa: BTreeSet<String>,
 }
 
 #[derive(Clone, Debug, Default)]
-#[allow(dead_code)]
+#[cfg(target_arch = "wasm32")]
 pub struct Enrichment {
-    pub lotus: HashMap<String, SourceSummary>,
-    pub pubchem: HashMap<String, SourceSummary>,
+    pub lotus: std::collections::HashMap<String, SourceSummary>,
+    pub pubchem: std::collections::HashMap<String, SourceSummary>,
 }
 
 #[derive(Clone, Debug, Default)]
-#[allow(dead_code)]
 pub struct EndpointStatus {
     pub name: String,
     pub endpoint: String,
@@ -129,7 +127,7 @@ pub struct EndpointStatus {
 }
 
 #[derive(Clone, Debug, Default)]
-#[allow(dead_code)]
+#[cfg(target_arch = "wasm32")]
 pub struct EnrichmentOutcome {
     pub enrichment: Enrichment,
     pub endpoints: Vec<EndpointStatus>,
@@ -137,7 +135,7 @@ pub struct EnrichmentOutcome {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+#[cfg(target_arch = "wasm32")]
 pub struct RdkitInspectResponse {
     pub canonicalsmiles: Option<String>,
     pub inchikey: Option<String>,
@@ -155,22 +153,29 @@ pub struct RdkitInspectResponse {
     /// Heavy‑atom count used for the score normalisation.
     #[serde(default)]
     pub num_atoms: Option<usize>,
-    /// Ertl natural-product substituent matches (top-60 from Ertl 2022).
+    /// Ertl natural-product substituent matches (top-2000 from Ertl 2022).
     #[serde(default)]
     pub substituents: Vec<String>,
     pub error: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-#[allow(dead_code)]
 pub struct RdkitMotifHit {
     pub label: String,
-    pub kind: String,
-    pub smarts: String,
     #[serde(default)]
     pub source_class: String,
     #[serde(default)]
     pub kingdom: String,
     #[serde(default)]
     pub kingdoms: Vec<String>,
+}
+
+/// Normalize a source-class string to one of the three canonical values;
+/// anything else becomes `"unknown"`.  Duplicated in `app.rs` historically;
+/// consolidated here so all modules share the same logic.
+pub fn normalized_source_class(source_class: &str) -> &str {
+    match source_class {
+        "natural" | "synthetic" | "unknown" => source_class,
+        _ => "unknown",
+    }
 }

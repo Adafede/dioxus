@@ -1,9 +1,12 @@
 use crate::literature::LITERATURE;
-use crate::model::{EndpointStatus, MoleculeRow, MotifSummary, RdkitMotifHit};
+use crate::model::{
+    EndpointStatus, MoleculeRow, MotifSummary, RdkitMotifHit, normalized_source_class,
+};
 use crate::styles::CSS;
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use std::fmt::Write;
 
 #[cfg(target_arch = "wasm32")]
@@ -27,7 +30,7 @@ const DEMO_CSV: &str = concat!(
 #[component]
 pub fn app() -> Element {
     #[cfg(target_arch = "wasm32")]
-    let mut file_name = use_signal(String::new);
+    let file_name = use_signal(String::new);
     #[cfg(not(target_arch = "wasm32"))]
     let mut file_name = use_signal(String::new);
 
@@ -36,10 +39,7 @@ pub fn app() -> Element {
     let mut drag_active = use_signal(|| false);
     let rows = use_signal(Vec::<MoleculeRow>::new);
     let motifs = use_signal(Vec::<MotifSummary>::new);
-    #[cfg(target_arch = "wasm32")]
     let endpoints = use_signal(Vec::<EndpointStatus>::new);
-    #[cfg(not(target_arch = "wasm32"))]
-    let _endpoints = use_signal(Vec::<EndpointStatus>::new);
     let warnings = use_signal(Vec::<String>::new);
     let mut pasted_smiles = use_signal(String::new);
 
@@ -177,6 +177,8 @@ pub fn app() -> Element {
         }
     };
 
+    let ep_list = endpoints.read().clone();
+
     rsx! {
         div { class: "shell",
             style { "{CSS}" }
@@ -219,7 +221,9 @@ pub fn app() -> Element {
                         strong { "Paste SMILES" }
                         span { class: "small muted", "One per line" }
                     }
+                    label { r#for: "smiles-paste", class: "visually-hidden", "SMILES structures, one per line" }
                     textarea {
+                        id: "smiles-paste",
                         class: "smiles-textarea",
                         placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
                         disabled: *busy.read(),
@@ -242,6 +246,13 @@ pub fn app() -> Element {
                         span { class: "spinner" }
                     }
                     "{status}"
+                }
+                if !ep_list.is_empty() {
+                    div { class: "endpoint-status",
+                        for ep in &ep_list {
+                            span { class: "endpoint-chip", class: if ep.reachable { "ok" } else { "down" }, "{ep.name}: {ep.detail} ({ep.endpoint})" }
+                        }
+                    }
                 }
 
                 if !file_name_value.is_empty() {
@@ -334,7 +345,7 @@ pub fn app() -> Element {
                             div { class: "card-head",
                                 div {
                                     strong { "{row.label}" }
-                                    div { class: "small muted", "Row {row.index} · {row.num_atoms} heavy atoms" }
+                                    div { class: "small muted", "Row {row.index} · {row.num_atoms} heavy atoms · SMILES: {row.smiles}" }
                                 }
                                 if let Some(err) = row.error.as_deref() {
                                     div { class: "error small", "{err}" }
@@ -511,24 +522,10 @@ pub fn app() -> Element {
                     div { class: "footer-row",
                         span { class: "footer-label", "References" }
                         ul { class: "footer-links", role: "list",
-                            li {
-                                button { class: "ertl-work-btn",
-                                    onclick: move |_| {
-                                        #[cfg(target_arch = "wasm32")]
-                                        {
-                                            for paper in LITERATURE {
-                                                let _ = web_sys::window()
-                                                    .unwrap()
-                                                    .open_with_url_and_target(
-                                                        &format!("https://doi.org/{}", paper.doi),
-                                                        "_blank"
-                                                    );
-                                            }
-                                        }
-                                        #[cfg(not(target_arch = "wasm32"))]
-                                        let _ = LITERATURE;
-                                    },
-                                    "Ertl work"
+                            for paper in LITERATURE {
+                                li {
+                                    a { class: "footer-link purple", href: "https://doi.org/{paper.doi}", target: "_blank", rel: "noreferrer", "{paper.title}" }
+                                    div { class: "reference-note small", "{paper.note}" }
                                 }
                             }
                         }
@@ -642,13 +639,6 @@ fn motif_is_unclassified(motif: &RdkitMotifHit) -> bool {
     normalized_source_class(&motif.source_class) == "unknown"
 }
 
-fn normalized_source_class(source_class: &str) -> &str {
-    match source_class {
-        "natural" | "synthetic" | "unknown" => source_class,
-        _ => "unknown",
-    }
-}
-
 fn motif_chip_class(motif: &RdkitMotifHit) -> &'static str {
     if motif_is_natural(motif) {
         "chip chip-np"
@@ -675,7 +665,7 @@ fn motif_display_label(motif: &RdkitMotifHit) -> String {
 }
 
 /// Escape a field for CSV output.
-#[allow(dead_code)]
+#[cfg(target_arch = "wasm32")]
 fn escape_csv(s: &str) -> String {
     if s.contains(',') || s.contains('"') {
         format!("\"{}\"", s.replace('"', "\"\""))
@@ -685,7 +675,7 @@ fn escape_csv(s: &str) -> String {
 }
 
 /// Build a CSV string from molecule rows.
-#[allow(dead_code)]
+#[cfg(target_arch = "wasm32")]
 fn build_csv(rows: &[MoleculeRow]) -> String {
     let mut csv = String::from(
         "label,smiles,np_score,np_label,np_confidence,ring_family,substituents,locus,verdict_category,chemist_checks\n",
@@ -726,7 +716,6 @@ fn build_csv(rows: &[MoleculeRow]) -> String {
 /// Build a CSV string from molecule rows and trigger a download via a
 /// data: URI injected through `eval`.
 #[cfg(target_arch = "wasm32")]
-#[allow(dead_code)]
 fn download_csv(rows: &[MoleculeRow]) {
     let csv = build_csv(rows);
     let url = format!("data:text/csv;charset=utf-8,{}", urlencoding::encode(&csv));
@@ -738,5 +727,4 @@ fn download_csv(rows: &[MoleculeRow]) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-#[allow(dead_code)]
 const fn download_csv(_rows: &[MoleculeRow]) {}

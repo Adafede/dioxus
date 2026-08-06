@@ -1,11 +1,18 @@
 //! Evidence assessment for natural-product (NP) originality.
 //!
 //! **Primary evidence** — the Ertl NP-likeness score — is computed in the
-//! rdkit.js bridge using the real fragment-contribution model from:
+//! rdkit.js bridge using the open-data fragment-contribution model from:
 //!
 //! > Ertl, P., Roggo, S., & Schuffenhauer, A. (2008). "Natural Product-likeness
 //! > Score and Its Application for Prioritization of Compound Libraries."
 //! > *J. Chem. Inf. Model.*, 48, 68–74. DOI: 10.1021/ci700286x
+//!
+//! The open-source, open-data implementation and model file (np_model.bin)
+//! are from:
+//!
+//! > Jayaseelan, K. V., Moreno, P., Truszkowski, A., Ertl, P., & Steinbeck, C.
+//! > (2012). "Natural product-likeness score revisited: an open-source, open-data
+//! > implementation." *BMC Bioinformatics*, 13, 106. DOI: 10.1186/1471-2105-13-106
 //!
 //! The model was trained on ~50 000 natural products (open databases) vs.
 //! ~1 M drug-like molecules from ZINC.  Each Morgan-fingerprint (radius 2)
@@ -18,13 +25,12 @@
 //! the same Ertl papers and from the "escaping the *flatland*" literature
 //! (Ertl 2003, *J. Am. Chem. Soc.* 125, 10353; Ertl & Schuppenhauer 2011).
 
-use crate::model::{
-    ChemistCheck, DatasetMotifContext, MoleculeRow, RdkitDescriptors, RdkitMotifHit,
-};
+#[cfg(target_arch = "wasm32")]
+use crate::model::{ChemistCheck, MoleculeRow};
+use crate::model::{DatasetMotifContext, RdkitDescriptors, RdkitMotifHit, normalized_source_class};
 
 /// Result of assessing a single molecule against the evidence framework.
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct EvidenceAssessment {
     /// Ertl NP-likeness score (range ≈ −5 to +5), or 0.0 when the model
     /// is not available.
@@ -48,7 +54,6 @@ pub struct EvidenceAssessment {
 /// - **0.5–2.0**: Ambiguous NP signals (could be synthetic or semi-synthetic)
 /// - **-1.0–0.5**: Bad/weak signals (predominantly synthetic features)
 /// - **< -1.0**: Highly synthetic (strong negative signals—rare in real NPs)
-#[allow(dead_code)]
 pub fn np_likeness_label(score: f64) -> &'static str {
     if score >= 2.0 {
         "strong natural product"
@@ -66,21 +71,17 @@ pub fn np_likeness_label(score: f64) -> &'static str {
 /// * `np_score` / `np_confidence` come from the rdkit.js bridge (real Ertl
 ///   model).  When `None`, the score cannot be computed and structural
 ///   observations are the only available evidence.
-/// * `substituents` is the list of Ertl (2022) top-60 NP substituent labels
+/// * `substituents` is the list of Ertl (2022) top-2000 NP substituent labels
 ///   found in the molecule via substructure matching.
 /// * `dataset_context` carries motif prevalence across the entire uploaded
 ///   set so that per-row notes can flag dataset-common scaffolds.
-#[allow(clippy::too_many_arguments)]
-#[allow(dead_code)]
 pub fn assess_np_evidence(
     descriptors: &RdkitDescriptors,
     motifs: &[String],
     motif_hits: &[RdkitMotifHit],
-    _substituents: &[String],
     stereo_tags: &[String],
     np_score: Option<f64>,
     np_confidence: Option<f64>,
-    _num_atoms: usize,
     dataset_context: &DatasetMotifContext,
 ) -> EvidenceAssessment {
     let ring_family = classify_ring_family(descriptors, motifs);
@@ -113,16 +114,6 @@ pub fn assess_np_evidence(
         }
     } else {
         notes.push("Ertl fragment model not loaded — NP-likeness score unavailable".into());
-    }
-
-    // ── Secondary evidence: structural observations ────────────────────
-
-    if let Some(hetero_atoms) = descriptors.hetero_atoms
-        && hetero_atoms >= 4.0
-    {
-        notes.push(format!(
-            "oxygen-rich composition (hetero atoms = {hetero_atoms:.0}) — consistent with oxidized NP biosynthesis"
-        ));
     }
 
     // Stereochemical complexity — stereocentres are hallmarks of enzymatic
@@ -237,7 +228,7 @@ pub fn assess_np_evidence(
 }
 
 /// Verdict string shown prominently in the UI.
-#[allow(dead_code)]
+#[cfg(target_arch = "wasm32")]
 pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
     if let Some(err) = row.error.as_deref() {
         return format!("⚠ {err}");
@@ -282,11 +273,7 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
                 .ring_family
                 .to_ascii_lowercase()
                 .contains("fused heteroaromatic");
-        let has_oxygenation = row
-            .descriptors
-            .hetero_atoms
-            .is_some_and(|hetero_atoms| hetero_atoms >= 4.0);
-        let structural_support = np_motif_count >= 1 || has_np_scaffold || has_oxygenation;
+        let structural_support = np_motif_count >= 1 || has_np_scaffold;
         let natural_weight = row
             .motif_hits
             .iter()
@@ -361,17 +348,8 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
             .iter()
             .filter(|hit| normalized_source_class(&hit.source_class) == "unknown")
             .count();
-    let has_oxygenation = row
-        .descriptors
-        .hetero_atoms
-        .is_some_and(|hetero_atoms| hetero_atoms >= 4.0);
     let kingdom_support = kingdom_enriched_hits > 0;
-    if score >= 2.0
-        && (has_np_scaffold
-            || has_oxygenation
-            || natural_weight >= synthetic_weight
-            || kingdom_support)
-    {
+    if score >= 2.0 && (has_np_scaffold || natural_weight >= synthetic_weight || kingdom_support) {
         return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
     if score >= 1.0 && has_np_motifs && has_np_scaffold {
@@ -397,7 +375,6 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
 
 /// Machine-readable category for CSV export — strips emojis and
 /// normalises to "likely", "neutral", "caution", "skeptical", or "fishy".
-#[allow(dead_code)]
 pub fn verdict_category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
 
@@ -446,7 +423,6 @@ pub fn verdict_category(verdict: &str) -> &'static str {
 
 /// Classify the core scaffold family using motif SMARTS matches and
 /// descriptor-based heuristics.
-#[allow(dead_code)]
 pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -> String {
     let motif_text = motifs.join(" ").to_ascii_lowercase();
 
@@ -517,19 +493,16 @@ pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -
 /// 2. **Skeleton** — scaffolds that match known natural-product ring systems
 ///    (steroids, sugars, macrocycles, flavonoids, etc.) score positively;
 ///    pure polyaromatic systems are a red flag.
-/// 3. **Oxygenation** — oxidative biosynthetic enzymes saturate NPs with
-///    oxygen functions; 4+ heteroatoms is typical of real NPs (Wetzel et al.,
-///    CHIMIA 2007).
-/// 4. **Database** — presence in LOTUS (curated NP database) or `PubChem`
+/// 3. **Database** — presence in LOTUS (curated NP database) or `PubChem`
 ///    provides orthogonal evidence.
 ///
 /// **Stereochemistry is deliberately NOT checked** — 2D SMILES from mass
 /// spectrometry annotation pipelines may not preserve stereochemical
 /// information, so the absence of stereo tags is not a reliable negative
 /// signal.
-#[allow(dead_code)]
+#[cfg(target_arch = "wasm32")]
 pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
-    let mut checks: Vec<ChemistCheck> = Vec::with_capacity(4);
+    let mut checks: Vec<ChemistCheck> = Vec::with_capacity(3);
 
     // 1 — NP-likeness score
     if !row.np_score_available {
@@ -587,29 +560,7 @@ pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
         });
     }
 
-    // 3 — Oxygenation
-    let hetero_atoms = row.descriptors.hetero_atoms.unwrap_or(0.0);
-    if hetero_atoms >= 4.0 {
-        checks.push(ChemistCheck {
-            name: "Oxygenation",
-            status: "pass",
-            detail: format!("{hetero_atoms:.0} hetero atoms"),
-        });
-    } else if hetero_atoms >= 2.0 {
-        checks.push(ChemistCheck {
-            name: "Oxygenation",
-            status: "warn",
-            detail: format!("{hetero_atoms:.0} hetero atoms"),
-        });
-    } else {
-        checks.push(ChemistCheck {
-            name: "Oxygenation",
-            status: "fail",
-            detail: format!("{hetero_atoms:.0} hetero atoms"),
-        });
-    }
-
-    // 4 — Database presence
+    // 3 — Database presence
     let has_lotus = !row.lotus_taxa.is_empty();
     let has_pubchem = !row.pubchem_cids.is_empty();
     if has_lotus && has_pubchem {
@@ -642,7 +593,8 @@ pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
 }
 
 /// Motif labels that are known to be enriched in natural products, based on
-/// Ertl & Schuhmann (J. Nat. Prod. 2019, DOI 10.1021/acs.jnatprods.8b01022)
+/// Ertl & Schuhmann (J. Nat. Prod. 2019, Vol. 82, 1258-1263,
+/// DOI 10.1021/acs.jnatprod.8b01022)
 /// and Wetzel et al. (CHIMIA 2007, DOI 10.2533/chimia.2007.355).
 ///
 /// Used to highlight motifs that are characteristic of NP biosynthesis
@@ -678,13 +630,10 @@ fn count_core_np_motifs(motifs: &[String]) -> usize {
     motifs.iter().filter(|m| is_known_np_motif(m)).count()
 }
 
-#[allow(dead_code)]
-fn count_scaffold_motifs(motifs: &[String]) -> usize {
-    motifs.iter().filter(|m| is_scaffold_motif(m)).count()
-}
-
 fn count_scaffold_hits(hits: &[RdkitMotifHit]) -> usize {
-    hits.iter().filter(|hit| hit.kind == "scaffold").count()
+    hits.iter()
+        .filter(|hit| is_scaffold_motif(&hit.label))
+        .count()
 }
 
 fn count_source_hits(hits: &[RdkitMotifHit], source_class: &str) -> usize {
@@ -701,8 +650,6 @@ fn count_kingdom_enriched_hits(hits: &[RdkitMotifHit]) -> usize {
         .count()
 }
 
-/// Count motif hits that are decoration-type (side-chains / functional groups).
-#[allow(dead_code)]
 fn count_decoration_motifs(motifs: &[String]) -> usize {
     motifs.iter().filter(|m| is_decoration_motif(m)).count()
 }
@@ -738,7 +685,6 @@ pub fn is_scaffold_motif(label: &str) -> bool {
 }
 
 /// Decoration motifs are functional groups or side-chain fragments.
-#[allow(dead_code)]
 fn is_decoration_motif(label: &str) -> bool {
     let l = label.to_ascii_lowercase();
     l.contains("aldehyde")
@@ -766,13 +712,6 @@ fn is_decoration_motif(label: &str) -> bool {
         || l.contains("allyl")
 }
 
-fn normalized_source_class(source_class: &str) -> &str {
-    match source_class {
-        "natural" | "synthetic" | "unknown" => source_class,
-        _ => "unknown",
-    }
-}
-
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -788,11 +727,9 @@ mod tests {
         DatasetMotifContext::default()
     }
 
-    fn motif_hit(label: &str, kind: &str, source_class: &str, kingdom: &str) -> RdkitMotifHit {
+    fn motif_hit(label: &str, source_class: &str, kingdom: &str) -> RdkitMotifHit {
         RdkitMotifHit {
             label: label.to_string(),
-            kind: kind.to_string(),
-            smarts: label.to_string(),
             source_class: source_class.to_string(),
             kingdom: kingdom.to_string(),
             kingdoms: if kingdom.is_empty() {
@@ -823,22 +760,20 @@ mod tests {
             ring_count: Some(4.0),
             aromatic_ring_count: Some(0.0),
             aliphatic_ring_count: Some(2.0),
-            hetero_atoms: Some(6.0),
             ..Default::default()
         };
         let assessment = assess_np_evidence(
             &desc,
             &["Steroid-like fused ring".to_string()],
             &[],
-            &[],
             &["R/S".to_string(), "R/S".to_string()],
             Some(3.42),
             Some(0.75),
-            28,
             &empty_dataset_context(),
         );
         assert!((assessment.np_likeness - 3.42).abs() < 1e-9);
         assert_eq!(assessment.np_label, "strong natural product");
+        assert!(!assessment.ring_family.is_empty());
         assert!(assessment.np_confidence > 0.5);
         assert!(
             assessment
@@ -856,19 +791,14 @@ mod tests {
 
     #[test]
     fn no_made_up_tpsa_rule() {
-        let desc = RdkitDescriptors {
-            tpsa: Some(42.0),
-            ..Default::default()
-        };
+        let desc = RdkitDescriptors::default();
         let assessment = assess_np_evidence(
             &desc,
             &[],
             &[],
             &[],
-            &[],
             Some(1.5),
             Some(0.8),
-            20,
             &empty_dataset_context(),
         );
         // No "polar enough" note should exist — that was a hallucinated rule.
@@ -888,19 +818,14 @@ mod tests {
 
     #[test]
     fn no_made_up_clogp_rule() {
-        let desc = RdkitDescriptors {
-            clogp: Some(7.0),
-            ..Default::default()
-        };
+        let desc = RdkitDescriptors::default();
         let assessment = assess_np_evidence(
             &desc,
             &[],
             &[],
             &[],
-            &[],
             Some(-1.5),
             Some(0.9),
-            20,
             &empty_dataset_context(),
         );
         // No clogP-based notes should exist — those were hallucinated rules.
@@ -919,14 +844,13 @@ mod tests {
             &["Flavonoid core".to_string()],
             &[],
             &[],
-            &[],
             None,
             None,
-            0,
             &empty_dataset_context(),
         );
         assert!((assessment.np_likeness - 0.0).abs() < 1e-9);
         assert_eq!(assessment.np_label, "weak NP signals");
+        assert!(!assessment.ring_family.is_empty());
         assert!(
             assessment
                 .evidence_notes
@@ -940,7 +864,6 @@ mod tests {
         let desc = empty_descriptors();
         let mut ctx = DatasetMotifContext {
             motif_counts: HashMap::new(),
-            total_molecules: 10,
             common_threshold: 2,
         };
         ctx.motif_counts.insert("Flavonoid core".to_string(), 3);
@@ -951,10 +874,8 @@ mod tests {
             &["Flavonoid core".to_string(), "Aldehyde".to_string()],
             &[],
             &[],
-            &[],
             Some(-0.5),
             Some(0.5),
-            15,
             &ctx,
         );
         assert!(
@@ -970,17 +891,10 @@ mod tests {
         let assessment = assess_np_evidence(
             &empty_descriptors(),
             &["geminal dimethyl".to_string()],
-            &[motif_hit(
-                "geminal dimethyl",
-                "scaffold",
-                "natural",
-                "plants",
-            )],
-            &[],
+            &[motif_hit("geminal dimethyl", "natural", "plants")],
             &[],
             Some(0.2),
             Some(0.9),
-            12,
             &empty_dataset_context(),
         );
         assert_ne!(assessment.motif_context, "no structural motifs detected");
@@ -998,14 +912,12 @@ mod tests {
             &empty_descriptors(),
             &["geminal dimethyl".to_string(), "CC=C".to_string()],
             &[
-                motif_hit("geminal dimethyl", "decoration", "natural", "plants"),
-                motif_hit("CC=C", "decoration", "natural", ""),
+                motif_hit("geminal dimethyl", "natural", "plants"),
+                motif_hit("CC=C", "natural", ""),
             ],
-            &[],
             &[],
             Some(1.1),
             Some(0.9),
-            14,
             &empty_dataset_context(),
         );
         assert!(

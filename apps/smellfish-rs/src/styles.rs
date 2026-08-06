@@ -192,7 +192,7 @@ body {
   padding: 12px 14px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--yellow) 10%, var(--panel-bg-soft));
-  border: 1px solid color-mix(in srgb, var(--yellow) 32%, var(--panel-border));
+  border: 1px solid color-mix(in srgb, var(--yellow) 32%, var(--border));
   color: color-mix(in srgb, var(--yellow) 88%, var(--text));
   font-weight: 600;
 }
@@ -254,9 +254,9 @@ body {
   border: 1px solid var(--panel-border);
 }
 .chip.alt { background: var(--surface); color: var(--text2); }
-.chip.good { background: color-mix(in srgb, var(--green) 10%, var(--surface)); color: var(--green); border-color: color-mix(in srgb, var(--green) 28%, var(--border)); }
-.chip.warn { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)); color: color-mix(in srgb, var(--yellow) 88%, var(--text)); border-color: color-mix(in srgb, var(--yellow) 28%, var(--border)); }
-.chip.fail { background: color-mix(in srgb, var(--red) 10%, var(--surface)); color: color-mix(in srgb, var(--red) 88%, var(--text)); border-color: color-mix(in srgb, var(--red) 28%, var(--border)); }
+.chip.good { background: color-mix(in srgb, var(--green) 10%, var(--surface)); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border)); }
+.chip.warn { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)); color: color-mix(in srgb, var(--yellow) 88%, var(--text)); border: 1px solid color-mix(in srgb, var(--yellow) 28%, var(--border)); }
+.chip.fail { background: color-mix(in srgb, var(--red) 10%, var(--surface)); color: var(--red); border: 1px solid color-mix(in srgb, var(--red) 28%, var(--border)); }
 .chip-np,
 .chip.chip-np { background: color-mix(in srgb, var(--green) 10%, var(--surface)); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border)); }
 .chip-scaffold,
@@ -378,7 +378,7 @@ body {
 }
 .check-status.pass { background: color-mix(in srgb, var(--green) 10%, var(--surface)); color: var(--green); }
 .check-status.warn { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)); color: color-mix(in srgb, var(--yellow) 88%, var(--text)); }
-.check-status.fail { background: color-mix(in srgb, var(--red) 10%, var(--surface)); color: color-mix(in srgb, var(--red) 88%, var(--text)); }
+.check-status.fail { background: color-mix(in srgb, var(--red) 10%, var(--surface)); color: var(--red); }
 .cid-link {
   display: inline-flex;
   align-items: center;
@@ -412,25 +412,18 @@ body {
 .cid-link.red:hover {
   background: color-mix(in srgb, var(--wd-compound) 15%, var(--surface));
 }
-.ertl-work-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--wd-reference);
-  font-size: 0.84rem;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: none;
-}
-.ertl-work-btn:hover {
-  text-decoration: underline;
-}
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
-.footer-link.blue { color: var(--wd-reference); }
+.footer-link {
+  color: var(--text);
+  text-decoration: none;
+}
+.footer-link:hover { text-decoration: underline; }
+.footer-link.red { color: var(--wd-compound); font-weight: 700; }
+.footer-link.green { color: var(--wd-taxon); font-weight: 700; }
+.footer-link.blue { color: var(--wd-reference); font-weight: 700; }
+.footer-link.purple { color: var(--wd-reference); font-weight: 700; }
+.footer-link.muted { color: var(--text2); font-weight: 700; }
 .meta.small { font-size: 0.82rem; }
 .meta.small.muted { color: var(--text3); }
 .verdict {
@@ -477,6 +470,55 @@ a:hover { text-decoration: underline; }
   padding-left: 4px;
   border-left: 2px solid var(--border);
   color: var(--text2);
+}
+
+/* ── Accessibility ──────────────────────────────────────────────────── */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* ── Endpoint status chips ──────────────────────────────────────────── */
+.endpoint-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.endpoint-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid var(--panel-border);
+}
+.endpoint-chip.ok {
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 28%, var(--border));
+}
+.endpoint-chip.down {
+  background: color-mix(in srgb, var(--red) 10%, var(--surface));
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 28%, var(--border));
+}
+
+/* ── Reference notes in footer ──────────────────────────────────────── */
+.reference-note {
+  font-size: 0.72rem;
+  color: var(--text3);
+  margin-top: 2px;
+  line-height: 1.3;
 }
 
 /* ── Footer ─────────────────────────────────────────────────────────── */
@@ -545,13 +587,4 @@ a:hover { text-decoration: underline; }
   border-color: color-mix(in srgb, var(--panel-border) 60%, var(--accent));
   box-shadow: var(--shadow-xs);
 }
-.footer-link {
-  color: var(--text);
-  text-decoration: none;
-}
-.footer-link:hover { text-decoration: underline; }
-.footer-link.red { color: var(--wd-compound); font-weight: 700; }
-.footer-link.green { color: var(--wd-taxon); font-weight: 700; }
-.footer-link.blue { color: var(--wd-reference); font-weight: 700; }
-.footer-link.muted { color: var(--text2); font-weight: 700; }
 ";

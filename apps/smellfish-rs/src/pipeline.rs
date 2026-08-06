@@ -16,11 +16,6 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 /// motif prevalence *before* evaluating each row.
 struct RawInspectRow {
     index: usize,
-    label: String,
-    smiles: String,
-    canonical_smiles: String,
-    inchikey: String,
-    svg: Option<String>,
     motif_labels: Vec<String>,
     motif_hits: Vec<crate::model::RdkitMotifHit>,
     substituents: Vec<String>,
@@ -51,8 +46,6 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
     let mut motif_counts: HashMap<
         String,
         (
-            String,
-            String,
             String,
             String,
             std::collections::BTreeSet<String>,
@@ -86,16 +79,14 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                 for hit in &motifs_list {
                     let entry = motif_counts.entry(hit.label.clone()).or_insert_with(|| {
                         (
-                            hit.kind.clone(),
-                            hit.smarts.clone(),
                             hit.source_class.clone(),
                             hit.kingdom.clone(),
                             hit.kingdoms.iter().cloned().collect(),
                             HashSet::new(),
                         )
                     });
-                    entry.4.extend(hit.kingdoms.iter().cloned());
-                    entry.5.insert(raw.index);
+                    entry.2.extend(hit.kingdoms.iter().cloned());
+                    entry.3.insert(raw.index);
                 }
 
                 let inchikey = inspect.inchikey.unwrap_or_default();
@@ -110,11 +101,6 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
 
                 inspect_rows.push(RawInspectRow {
                     index: raw.index,
-                    label: raw.label.clone(),
-                    smiles: raw.smiles.clone(),
-                    canonical_smiles: canonical.clone(),
-                    inchikey: inchikey.clone(),
-                    svg: inspect.svg.clone(),
                     motif_labels: motif_labels.clone(),
                     motif_hits: motifs_list.clone(),
                     substituents,
@@ -140,8 +126,6 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                     lotus_compounds: Vec::new(),
                     lotus_compounds_with_taxa: BTreeSet::new(),
                     pubchem_cids: Vec::new(),
-                    pubchem_names: Vec::new(),
-                    pubchem_taxa: Vec::new(),
                     np_likeness: 0.0,
                     np_label: String::new(),
                     np_confidence: 0.0,
@@ -165,10 +149,8 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
         motif_counts
             .into_iter()
             .map(
-                |(label, (kind, smarts, source_class, kingdom, kingdoms, rows_set))| MotifSummary {
+                |(label, (source_class, kingdom, kingdoms, rows_set))| MotifSummary {
                     label,
-                    kind,
-                    smarts,
                     source_class,
                     kingdom,
                     kingdoms: kingdoms.into_iter().collect(),
@@ -243,11 +225,9 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                 &row.descriptors,
                 motif_labels,
                 &row.motif_hits,
-                &row.substituents,
                 &row.stereo_tags,
                 raw.np_score,
                 raw.np_confidence,
-                raw.num_atoms,
                 &dataset_context,
             );
 
@@ -299,7 +279,6 @@ fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> Da
 
     DatasetMotifContext {
         motif_counts,
-        total_molecules: total,
         common_threshold,
     }
 }
@@ -480,8 +459,6 @@ fn merge_enrichment(
             for &idx in indices {
                 if idx < rows.len() {
                     rows[idx].pubchem_cids = summary.cids.iter().cloned().collect();
-                    rows[idx].pubchem_names = summary.names.iter().cloned().collect();
-                    rows[idx].pubchem_taxa = summary.taxa.iter().cloned().collect();
                 }
             }
         }
@@ -519,8 +496,6 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         lotus_compounds: Vec::new(),
         lotus_compounds_with_taxa: BTreeSet::new(),
         pubchem_cids: Vec::new(),
-        pubchem_names: Vec::new(),
-        pubchem_taxa: Vec::new(),
         np_likeness: 0.0,
         np_label: "—".to_string(),
         np_confidence: 0.0,

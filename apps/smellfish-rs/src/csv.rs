@@ -1,6 +1,5 @@
 use crate::model::RawRow;
 
-#[allow(dead_code)]
 pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
@@ -76,7 +75,6 @@ fn parse_smiles_lines(text: &str) -> Result<Vec<RawRow>, String> {
     Ok(rows)
 }
 
-#[allow(dead_code)]
 fn detect_column(headers: &csv::StringRecord, names: &[&str]) -> Option<usize> {
     headers.iter().enumerate().find_map(|(idx, header)| {
         let normalized = normalize_column_header(header);
@@ -87,7 +85,6 @@ fn detect_column(headers: &csv::StringRecord, names: &[&str]) -> Option<usize> {
     })
 }
 
-#[allow(dead_code)]
 fn normalize_column_header(header: &str) -> String {
     header
         .trim()
@@ -97,7 +94,6 @@ fn normalize_column_header(header: &str) -> String {
         .to_ascii_lowercase()
 }
 
-#[allow(dead_code)]
 fn label_for_record(
     record: &csv::StringRecord,
     label_idx: Option<usize>,
@@ -123,6 +119,7 @@ mod tests {
     fn detects_smiles_and_label_columns() {
         let rows = parse_csv_rows("name,smiles\nalpha,C1CCCCC1\n").expect("rows");
         assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].index, 1);
         assert_eq!(rows[0].label, "alpha");
         assert_eq!(rows[0].smiles, "C1CCCCC1");
     }

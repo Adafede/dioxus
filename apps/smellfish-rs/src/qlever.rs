@@ -27,16 +27,10 @@ pub async fn enrich_sources(
     )
     .await;
 
-    // Build mapping from row index to InChIKey skeleton for result keying
-    let idx_to_inchikey: Vec<String> = inchikeys
-        .iter()
-        .map(|ik| ik.split('-').next().unwrap_or(ik).to_string())
-        .collect();
-
     // Use SMILES-based similarity search for LOTUS
     let lotus = if lotus_probe.reachable {
         set_status("Querying LOTUS (SMILES similarity search)…".to_string());
-        match fetch_lotus_hits_by_smiles(smiles_list, &idx_to_inchikey).await {
+        match fetch_lotus_hits_by_smiles(smiles_list).await {
             Ok(data) => data,
             Err(err) => {
                 warnings.push(format!("LOTUS SMILES search failed: {err}"));
@@ -97,12 +91,11 @@ async fn probe_endpoint(name: &str, endpoint: &str) -> EndpointStatus {
 #[cfg(target_arch = "wasm32")]
 async fn fetch_lotus_hits_by_smiles(
     smiles_list: &[String],
-    idx_to_inchikey: &[String],
 ) -> Result<HashMap<String, SourceSummary>, String> {
     let mut summary: HashMap<String, SourceSummary> = HashMap::new();
     let threshold = 1.0; // Will be converted to 0.95 by query_sachem_batch
 
-    for (chunk_idx, chunk) in smiles_list.chunks(QUERY_CHUNK_SIZE).enumerate() {
+    for chunk in smiles_list.chunks(QUERY_CHUNK_SIZE) {
         // Convert chunk to &[&str] for query_sachem_batch
         let chunk_refs: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
 
@@ -140,10 +133,6 @@ async fn fetch_lotus_hits_by_smiles(
                     } else {
                         None
                     };
-                    let compound_label = binding_value(&binding, "compoundLabel");
-                    if !compound_label.is_empty() {
-                        entry.names.insert(compound_label);
-                    }
                     let taxon_label = binding_value(&binding, "taxon_name");
                     if !taxon_label.is_empty() {
                         entry.taxa.insert(taxon_label);
@@ -215,19 +204,14 @@ async fn fetch_pubchem_hits(
                 web_sys::console::log_1(&format!("  PubChem: {} -> CID {}", key, cid).into());
             }
 
-            let entry = summary.entry(key).or_default();
-            let label = binding_value(&binding, "label");
-            let iupac = binding_value(&binding, "iupac");
-            let taxon = binding_value(&binding, "taxonLabel");
+            let entry = summary.entry(key.clone()).or_default();
+            let cid = binding_value(&binding, "cid");
+
             if !cid.is_empty() {
+                web_sys::console::log_1(&format!("  PubChem: {} -> CID {}", key, cid).into());
                 entry.cids.insert(cid);
             }
-            if !label.is_empty() {
-                entry.names.insert(label);
-            }
-            if !iupac.is_empty() {
-                entry.names.insert(iupac);
-            }
+            let taxon = binding_value(&binding, "taxonLabel");
             if !taxon.is_empty() {
                 entry.taxa.insert(taxon);
             }
