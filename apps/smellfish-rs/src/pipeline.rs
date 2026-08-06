@@ -38,14 +38,26 @@ pub async fn import_csv(
 ) -> Result<ImportOutcome, String> {
     status.set("Reading CSV file…".to_string());
     let text = read_file_text(&file).await?;
-    status.set(format!("Parsing CSV…"));
-    let raw_rows = parse_csv_rows(&text)?;
+    import_csv_text(&text, status).await
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<ImportOutcome, String> {
+    status.set("Parsing CSV…".to_string());
+    let raw_rows = parse_csv_rows(text)?;
     let total = raw_rows.len();
 
     let mut inspect_rows = Vec::with_capacity(total);
     let mut motif_counts: HashMap<
         String,
-        (String, String, String, String, std::collections::BTreeSet<String>, HashSet<usize>),
+        (
+            String,
+            String,
+            String,
+            String,
+            std::collections::BTreeSet<String>,
+            HashSet<usize>,
+        ),
     > = HashMap::new();
     let mut inchikeys = BTreeSet::new();
     let mut rows = Vec::with_capacity(total);
@@ -72,18 +84,16 @@ pub async fn import_csv(
 
                 // Record per-motif molecule membership for dataset prevalence.
                 for hit in &motifs_list {
-                    let entry = motif_counts
-                        .entry(hit.label.clone())
-                        .or_insert_with(|| {
-                            (
-                                hit.kind.clone(),
-                                hit.smarts.clone(),
-                                hit.source_class.clone(),
-                                hit.kingdom.clone(),
-                                hit.kingdoms.iter().cloned().collect(),
-                                HashSet::new(),
-                            )
-                        });
+                    let entry = motif_counts.entry(hit.label.clone()).or_insert_with(|| {
+                        (
+                            hit.kind.clone(),
+                            hit.smarts.clone(),
+                            hit.source_class.clone(),
+                            hit.kingdom.clone(),
+                            hit.kingdoms.iter().cloned().collect(),
+                            HashSet::new(),
+                        )
+                    });
                     entry.4.extend(hit.kingdoms.iter().cloned());
                     entry.5.insert(raw.index);
                 }
@@ -154,15 +164,17 @@ pub async fn import_csv(
     let motif_summary = sorted_motifs(
         motif_counts
             .into_iter()
-            .map(|(label, (kind, smarts, source_class, kingdom, kingdoms, rows_set))| MotifSummary {
-                label,
-                kind,
-                smarts,
-                source_class,
-                kingdom,
-                kingdoms: kingdoms.into_iter().collect(),
-                count: rows_set.len(),
-            })
+            .map(
+                |(label, (kind, smarts, source_class, kingdom, kingdoms, rows_set))| MotifSummary {
+                    label,
+                    kind,
+                    smarts,
+                    source_class,
+                    kingdom,
+                    kingdoms: kingdoms.into_iter().collect(),
+                    count: rows_set.len(),
+                },
+            )
             .collect(),
     );
 
@@ -349,6 +361,59 @@ pub fn begin_import(
             }
             Err(err) => {
                 status.set(format!("Error reading CSV: {err}"));
+            }
+        }
+        busy.set(false);
+    });
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn begin_import_from_text(
+    text: String,
+    file_name_value: String,
+    mut file_name: Signal<String>,
+    mut status: Signal<String>,
+    mut busy: Signal<bool>,
+    mut drag_active: Signal<bool>,
+    mut rows: Signal<Vec<MoleculeRow>>,
+    mut motifs: Signal<Vec<MotifSummary>>,
+    mut endpoints: Signal<Vec<EndpointStatus>>,
+    mut warnings: Signal<Vec<String>>,
+) {
+    file_name.set(file_name_value);
+    busy.set(true);
+    drag_active.set(false);
+    status.set("Preparing demo…".to_string());
+    rows.set(Vec::new());
+    motifs.set(Vec::new());
+    endpoints.set(Vec::new());
+    warnings.set(Vec::new());
+
+    spawn(async move {
+        match import_csv_text(&text, status).await {
+            Ok(outcome) => {
+                let row_count = outcome.rows.len();
+                let motif_count = outcome.motifs.len();
+                rows.set(outcome.rows);
+                motifs.set(outcome.motifs);
+                endpoints.set(outcome.endpoints);
+                warnings.set(outcome.warnings.clone());
+                if outcome.warnings.is_empty() {
+                    status.set(format!(
+                        "Demo loaded — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys",
+                        unique = outcome.unique_inchikeys,
+                        sub_count = outcome.unique_substituents
+                    ));
+                } else {
+                    status.set(format!(
+                        "Demo loaded with QLever warnings — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys",
+                        unique = outcome.unique_inchikeys,
+                        sub_count = outcome.unique_substituents
+                    ));
+                }
+            }
+            Err(err) => {
+                status.set(format!("Error loading demo data: {err}"));
             }
         }
         busy.set(false);

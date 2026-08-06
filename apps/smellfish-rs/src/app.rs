@@ -7,7 +7,22 @@ use dioxus::prelude::*;
 use std::fmt::Write;
 
 #[cfg(target_arch = "wasm32")]
-use crate::pipeline::begin_import;
+use crate::pipeline::{begin_import, begin_import_from_text};
+
+#[cfg(target_arch = "wasm32")]
+const DEMO_CSV: &str = concat!(
+    "name,smiles\n",
+    "Demo 1,COC1=CC(=CC2=C1OCO2)C3C4COC(C4CO3)C5=CC(=C(C(=C5)OC)OC)OC\n",
+    "Demo 2,CC1=C(C(CCC1)(C)C)C=CC(=CC=CC(=CC#CC=C(C)C=O)C)C\n",
+    "Demo 3,CC(=CO)C1CCC2(C1C3CCC4C5(CCC(C(C5CCC4(C3(CC2)C)C)(C)C)O)C)C(=O)\n",
+    "Demo 4,CCCCCCCCC=CCCCCCCCCC(=O)N\n",
+    "Demo 5,CC1C(C(C(C(O1)OC2CCC3(C(C2(C)CO)CCC4(C3CC=C5C4(CCC6(C5CC(CC6)(C)C)C(=O)O)C)C)C)O)O)O\n",
+    "Demo 6,CC1=CCCC(=CC2C(C(C1)OC(=O)C(=CCO)CO)C(=C)C(=O)O2)CO\n",
+    "Demo 7,CC1(C2CCC3(C(C2(CCC1O)C)CCC4C3(CCC5(C4C(CC5)C(=C)C=O)C(=O)O)C)C)C\n",
+    "Demo 8,COC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC\n",
+    "Demo 9,C1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O\n",
+    "Demo 10,CCCCCCCC=CCCCCCCCC(N)=O\n"
+);
 
 #[component]
 pub fn app() -> Element {
@@ -110,6 +125,28 @@ pub fn app() -> Element {
 
     let file_name_value = file_name.read().clone();
     let warning_text = warnings.read().join(" • ");
+    let show_demo = rows.read().is_empty() && file_name_value.is_empty();
+
+    let load_demo = move |_| {
+        #[cfg(target_arch = "wasm32")]
+        begin_import_from_text(
+            DEMO_CSV.to_string(),
+            "demo-smiles.csv".to_string(),
+            file_name,
+            status,
+            busy,
+            drag_active,
+            rows,
+            motifs,
+            endpoints,
+            warnings,
+        );
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            status.set("This app needs to run in a browser.".to_string());
+        }
+    };
 
     rsx! {
         div { class: "shell",
@@ -161,6 +198,30 @@ pub fn app() -> Element {
 
                 if !warning_text.is_empty() {
                     div { class: "alert", "{warning_text}" }
+                }
+
+                if show_demo {
+                    div { class: "demo-callout",
+                        div {
+                            strong { "No CSV yet? Load the demo set." }
+                            div { class: "small muted", "Ten representative SMILES are preloaded for quick exploration." }
+                        }
+                        div { class: "demo-actions",
+                            button { class: "demo-btn", onclick: load_demo, "Load demo SMILES" }
+                        }
+                        ol { class: "demo-smiles",
+                            li { code { "COC1=CC(=CC2=C1OCO2)C3C4COC(C4CO3)C5=CC(=C(C(=C5)OC)OC)OC" } }
+                            li { code { "CC1=C(C(CCC1)(C)C)C=CC(=CC=CC(=CC#CC=C(C)C=O)C)C" } }
+                            li { code { "CC(=CO)C1CCC2(C1C3CCC4C5(CCC(C(C5CCC4(C3(CC2)C)C)(C)C)O)C)C(=O)" } }
+                            li { code { "CCCCCCCCC=CCCCCCCCCC(=O)N" } }
+                            li { code { "CC1C(C(C(C(O1)OC2CCC3(C(C2(C)CO)CCC4(C3CC=C5C4(CCC6(C5CC(CC6)(C)C)C(=O)O)C)C)C)O)O)O" } }
+                            li { code { "CC1=CCCC(=CC2C(C(C1)OC(=O)C(=CCO)CO)C(=C)C(=O)O2)CO" } }
+                            li { code { "CC1(C2CCC3(C(C2(CCC1O)C)CCC4C3(CCC5(C4C(CC5)C(=C)C=O)C(=O)O)C)C)C" } }
+                            li { code { "COC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC" } }
+                            li { code { "C1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O" } }
+                            li { code { "CCCCCCCC=CCCCCCCCC(N)=O" } }
+                        }
+                    }
                 }
 
                 {

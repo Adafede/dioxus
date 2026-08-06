@@ -18,7 +18,9 @@
 //! the same Ertl papers and from the "escaping the *flatland*" literature
 //! (Ertl 2003, *J. Am. Chem. Soc.* 125, 10353; Ertl & Schuppenhauer 2011).
 
-use crate::model::{ChemistCheck, DatasetMotifContext, MoleculeRow, RdkitDescriptors, RdkitMotifHit};
+use crate::model::{
+    ChemistCheck, DatasetMotifContext, MoleculeRow, RdkitDescriptors, RdkitMotifHit,
+};
 
 /// Result of assessing a single molecule against the evidence framework.
 #[derive(Clone, Debug)]
@@ -91,6 +93,7 @@ pub fn assess_np_evidence(
     let unknown_hits = count_source_hits(motif_hits, "unknown");
     let kingdom_enriched_hits = count_kingdom_enriched_hits(motif_hits);
     let natural_only_hits = natural_hits.saturating_sub(kingdom_enriched_hits);
+    let kingdom_support = kingdom_enriched_hits > 0;
     let score = np_score.unwrap_or(0.0);
     let confidence = np_confidence.unwrap_or(0.0);
 
@@ -152,12 +155,13 @@ pub fn assess_np_evidence(
 
     if scaffold_hits > 0 && np_core_hits == 0 {
         notes.push(format!(
-            "○ {} scaffold motif(s) — structural support only, not Ertl-enriched by itself",
+            "○ {} structural support motif(s) — supportive only, not Ertl-enriched by itself",
             scaffold_hits
         ));
     }
 
-    if kingdom_enriched_hits > 0 || natural_only_hits > 0 || synthetic_hits > 0 || unknown_hits > 0 {
+    if kingdom_enriched_hits > 0 || natural_only_hits > 0 || synthetic_hits > 0 || unknown_hits > 0
+    {
         let total = kingdom_enriched_hits + natural_only_hits + synthetic_hits + unknown_hits;
         let natural_ratio = if total > 0 {
             (kingdom_enriched_hits + natural_only_hits) as f64 / total as f64
@@ -199,16 +203,16 @@ pub fn assess_np_evidence(
 
     // ── Motif context summary ──────────────────────────────────────────
     let motif_context = if np_core_hits > 0 && scaffold_hits > 0 {
-        "Ertl-style NP core with scaffold support".to_string()
+        "Ertl-style NP core with structural support".to_string()
     } else if np_core_hits > 0 {
         "Ertl-style NP core motifs".to_string()
-    } else if scaffold_hits > 0 && kingdom_enriched_hits > 0 {
-        "kingdom-enriched scaffold motifs".to_string()
+    } else if scaffold_hits > 0 && kingdom_support {
+        "kingdom-enriched structural motifs".to_string()
     } else if scaffold_hits > 0 && natural_only_hits > 0 {
-        "natural-only scaffold motifs".to_string()
+        "natural-only structural motifs".to_string()
     } else if scaffold_hits > 0 {
-        "scaffold motifs".to_string()
-    } else if kingdom_enriched_hits > synthetic_hits && kingdom_enriched_hits > 0 {
+        "structural support motifs".to_string()
+    } else if kingdom_support && kingdom_enriched_hits > synthetic_hits {
         "kingdom-enriched motifs".to_string()
     } else if natural_only_hits > synthetic_hits && natural_only_hits > 0 {
         "natural-leaning motifs".to_string()
@@ -288,14 +292,18 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
             .iter()
             .filter(|hit| normalized_source_class(&hit.source_class) == "natural")
             .count();
+        let kingdom_enriched_hits = count_kingdom_enriched_hits(&row.motif_hits);
         let synthetic_weight = row
             .motif_hits
             .iter()
             .filter(|hit| normalized_source_class(&hit.source_class) == "synthetic")
             .count();
+        let kingdom_support = kingdom_enriched_hits > 0;
 
         // ONLY go green if score is strong AND structure looks chemically NP-like.
-        if score >= 2.0 && (structural_support || natural_weight >= synthetic_weight) {
+        if score >= 2.0
+            && (structural_support || natural_weight >= synthetic_weight || kingdom_support)
+        {
             return format!("🌿 PubChem + strong NP evidence (Ertl {score:+.2})");
         }
 
@@ -347,22 +355,29 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
         .filter(|hit| normalized_source_class(&hit.source_class) == "synthetic")
         .count();
     let natural_weight = natural_only_hits + kingdom_enriched_hits * 2;
-    let synthetic_weight = synthetic_hits + row
-        .motif_hits
-        .iter()
-        .filter(|hit| normalized_source_class(&hit.source_class) == "unknown")
-        .count();
+    let synthetic_weight = synthetic_hits
+        + row
+            .motif_hits
+            .iter()
+            .filter(|hit| normalized_source_class(&hit.source_class) == "unknown")
+            .count();
     let has_oxygenation = row
         .descriptors
         .hetero_atoms
         .is_some_and(|hetero_atoms| hetero_atoms >= 4.0);
-    if score >= 2.0 && (has_np_scaffold || has_oxygenation || natural_weight >= synthetic_weight) {
+    let kingdom_support = kingdom_enriched_hits > 0;
+    if score >= 2.0
+        && (has_np_scaffold
+            || has_oxygenation
+            || natural_weight >= synthetic_weight
+            || kingdom_support)
+    {
         return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
     if score >= 1.0 && has_np_motifs && has_np_scaffold {
         return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
-    if score >= 1.0 && kingdom_enriched_hits > synthetic_weight {
+    if score >= 1.0 && kingdom_support && kingdom_enriched_hits >= synthetic_weight {
         return format!("🌿 Kingdom-enriched motifs (Ertl {score:+.2})");
     }
     if score >= 1.0 && natural_only_hits > synthetic_weight && natural_only_hits > 0 {
@@ -955,7 +970,12 @@ mod tests {
         let assessment = assess_np_evidence(
             &empty_descriptors(),
             &["geminal dimethyl".to_string()],
-            &[motif_hit("geminal dimethyl", "scaffold", "natural", "plants")],
+            &[motif_hit(
+                "geminal dimethyl",
+                "scaffold",
+                "natural",
+                "plants",
+            )],
             &[],
             &[],
             Some(0.2),

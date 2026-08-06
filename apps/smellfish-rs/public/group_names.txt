@@ -1,2 +1,2 @@
 # Shared names for Ertl and user-defined groups
-"geminal dimethyl" "CC(C)C" "0000-0003-3389-2191"
+"geminal dimethyl" "C([CH3])([CH3])(*)*" "0000-0003-3389-2191"

@@ -157,6 +157,46 @@ body {
   color: color-mix(in srgb, var(--yellow) 88%, var(--text));
   font-weight: 600;
 }
+.demo-callout {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--panel-bg-soft);
+  border: 1px solid var(--panel-border);
+}
+.demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.demo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-target-min);
+  padding: 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+.demo-btn:hover {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+.demo-smiles {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--text2);
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
 .chip-list {
   display: flex;
   flex-wrap: wrap;
