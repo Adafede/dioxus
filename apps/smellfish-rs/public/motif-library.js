@@ -50,19 +50,20 @@ function parseTable(text) {
 function buildMotifLibrary(ertlSourceRows, ertlKingdomRows, userSourceRows, userKingdomRows, nameRows) {
   const sourceMap = new Map([...ertlSourceRows, ...userSourceRows].map((row) => [row.label, row]));
   const kingdomMap = new Map([...ertlKingdomRows, ...userKingdomRows].map((row) => [row.label, row]));
-  const nameMap = new Map(nameRows.map((row) => [row.label, row]));
-  const labels = new Set([...sourceMap.keys(), ...kingdomMap.keys(), ...nameMap.keys()]);
+  const nameMap = new Map(nameRows.map((row) => [row.smarts, row]));
+  const labels = new Set([...sourceMap.keys(), ...kingdomMap.keys()]);
   const motifs = [];
 
   for (const label of labels) {
     const source = sourceMap.get(label);
     const kingdom = kingdomMap.get(label);
-    const nameRow = nameMap.get(label);
+    const nameRow = nameMap.get(label) || nameMap.get(labelToSmarts(label));
     const sourceSplit = source ? classifySource(source.values) : null;
     const kingdomSplit = kingdom ? classifyKingdom(kingdom.values) : null;
 
     motifs.push({
-      label,
+      label: nameRow?.label || label,
+      source_label: label,
       kind: classifyKind(label, sourceSplit),
       smarts: nameRow?.smarts || labelToSmarts(label),
       source_class: sourceSplit?.label || "unknown",
@@ -144,7 +145,7 @@ function parseGroupNames(text) {
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"))
     .map((line) => {
-      const parts = line.split(/\s+/);
+      const parts = line.split(/\s+/).map(stripQuotes);
       if (!parts.length) return null;
       if (parts.length === 1) {
         return { label: parts[0], smarts: parts[0], group_id: "" };
@@ -159,6 +160,10 @@ function parseGroupNames(text) {
       };
     })
     .filter(Boolean);
+}
+
+function stripQuotes(value) {
+  return value.replace(/^"(.*)"$/, "$1");
 }
 
 function labelToSmarts(label) {

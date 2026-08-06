@@ -89,6 +89,8 @@ pub fn assess_np_evidence(
     let natural_hits = count_source_hits(motif_hits, "natural");
     let synthetic_hits = count_source_hits(motif_hits, "synthetic");
     let unknown_hits = count_source_hits(motif_hits, "unknown");
+    let kingdom_enriched_hits = count_kingdom_enriched_hits(motif_hits);
+    let natural_only_hits = natural_hits.saturating_sub(kingdom_enriched_hits);
     let score = np_score.unwrap_or(0.0);
     let confidence = np_confidence.unwrap_or(0.0);
 
@@ -155,10 +157,10 @@ pub fn assess_np_evidence(
         ));
     }
 
-    if natural_hits > 0 || synthetic_hits > 0 || unknown_hits > 0 {
-        let total = natural_hits + synthetic_hits + unknown_hits;
+    if kingdom_enriched_hits > 0 || natural_only_hits > 0 || synthetic_hits > 0 || unknown_hits > 0 {
+        let total = kingdom_enriched_hits + natural_only_hits + synthetic_hits + unknown_hits;
         let natural_ratio = if total > 0 {
-            natural_hits as f64 / total as f64
+            (kingdom_enriched_hits + natural_only_hits) as f64 / total as f64
         } else {
             0.0
         };
@@ -168,7 +170,7 @@ pub fn assess_np_evidence(
             0.0
         };
         notes.push(format!(
-            "motif balance: {natural_hits} natural / {synthetic_hits} synthetic / {unknown_hits} unclassified ({natural_ratio:.0}% natural, {synthetic_ratio:.0}% synthetic)"
+            "motif balance: {kingdom_enriched_hits} kingdom-enriched / {natural_only_hits} natural-only / {synthetic_hits} synthetic / {unknown_hits} unclassified ({natural_ratio:.0}% natural, {synthetic_ratio:.0}% synthetic)"
         ));
     }
 
@@ -200,11 +202,15 @@ pub fn assess_np_evidence(
         "Ertl-style NP core with scaffold support".to_string()
     } else if np_core_hits > 0 {
         "Ertl-style NP core motifs".to_string()
-    } else if scaffold_hits > 0 && natural_hits > 0 {
-        "natural-leaning scaffold motifs".to_string()
+    } else if scaffold_hits > 0 && kingdom_enriched_hits > 0 {
+        "kingdom-enriched scaffold motifs".to_string()
+    } else if scaffold_hits > 0 && natural_only_hits > 0 {
+        "natural-only scaffold motifs".to_string()
     } else if scaffold_hits > 0 {
         "scaffold motifs".to_string()
-    } else if natural_hits > synthetic_hits && natural_hits > 0 {
+    } else if kingdom_enriched_hits > synthetic_hits && kingdom_enriched_hits > 0 {
+        "kingdom-enriched motifs".to_string()
+    } else if natural_only_hits > synthetic_hits && natural_only_hits > 0 {
         "natural-leaning motifs".to_string()
     } else if synthetic_hits > natural_hits && synthetic_hits > 0 {
         "synthetic-leaning motifs".to_string()
@@ -277,10 +283,24 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
             .hetero_atoms
             .is_some_and(|hetero_atoms| hetero_atoms >= 4.0);
         let structural_support = np_motif_count >= 1 || has_np_scaffold || has_oxygenation;
+        let natural_weight = row
+            .motif_hits
+            .iter()
+            .filter(|hit| normalized_source_class(&hit.source_class) == "natural")
+            .count();
+        let synthetic_weight = row
+            .motif_hits
+            .iter()
+            .filter(|hit| normalized_source_class(&hit.source_class) == "synthetic")
+            .count();
 
         // ONLY go green if score is strong AND structure looks chemically NP-like.
-        if score >= 2.0 && structural_support {
+        if score >= 2.0 && (structural_support || natural_weight >= synthetic_weight) {
             return format!("🌿 PubChem + strong NP evidence (Ertl {score:+.2})");
+        }
+
+        if score >= 2.0 {
+            return format!("🌿 Strong NP score (Ertl {score:+.2})");
         }
 
         // Score 1.0-2.0 (ambiguous) with supporting structural cues → blue
@@ -313,25 +333,42 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
         .iter()
         .filter(|hit| normalized_source_class(&hit.source_class) == "natural")
         .count();
+    let kingdom_enriched_hits = row
+        .motif_hits
+        .iter()
+        .filter(|hit| {
+            normalized_source_class(&hit.source_class) == "natural" && !hit.kingdoms.is_empty()
+        })
+        .count();
+    let natural_only_hits = natural_hits.saturating_sub(kingdom_enriched_hits);
     let synthetic_hits = row
         .motif_hits
         .iter()
         .filter(|hit| normalized_source_class(&hit.source_class) == "synthetic")
         .count();
+    let natural_weight = natural_only_hits + kingdom_enriched_hits * 2;
+    let synthetic_weight = synthetic_hits + row
+        .motif_hits
+        .iter()
+        .filter(|hit| normalized_source_class(&hit.source_class) == "unknown")
+        .count();
     let has_oxygenation = row
         .descriptors
         .hetero_atoms
         .is_some_and(|hetero_atoms| hetero_atoms >= 4.0);
-    if score >= 2.0 && (has_np_scaffold || has_oxygenation || natural_hits >= synthetic_hits) {
+    if score >= 2.0 && (has_np_scaffold || has_oxygenation || natural_weight >= synthetic_weight) {
         return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
     if score >= 1.0 && has_np_motifs && has_np_scaffold {
         return format!("🌿 Likely novel NP (Ertl {score:+.2})");
     }
-    if score >= 1.0 && natural_hits > synthetic_hits && natural_hits > 0 {
+    if score >= 1.0 && kingdom_enriched_hits > synthetic_weight {
+        return format!("🌿 Kingdom-enriched motifs (Ertl {score:+.2})");
+    }
+    if score >= 1.0 && natural_only_hits > synthetic_weight && natural_only_hits > 0 {
         return format!("🌿 Natural-leaning motifs (Ertl {score:+.2})");
     }
-    if score >= 1.0 && synthetic_hits > natural_hits && synthetic_hits > 0 {
+    if score >= 1.0 && synthetic_weight > natural_weight && synthetic_hits > 0 {
         return format!("⚠ Synthetic-leaning motifs (Ertl {score:+.2})");
     }
     if score >= 2.0 {
@@ -641,6 +678,14 @@ fn count_source_hits(hits: &[RdkitMotifHit], source_class: &str) -> usize {
         .count()
 }
 
+fn count_kingdom_enriched_hits(hits: &[RdkitMotifHit]) -> usize {
+    hits.iter()
+        .filter(|hit| {
+            normalized_source_class(&hit.source_class) == "natural" && !hit.kingdoms.is_empty()
+        })
+        .count()
+}
+
 /// Count motif hits that are decoration-type (side-chains / functional groups).
 #[allow(dead_code)]
 fn count_decoration_motifs(motifs: &[String]) -> usize {
@@ -924,6 +969,30 @@ mod tests {
                 .evidence_notes
                 .iter()
                 .any(|n| n.contains("motif balance"))
+        );
+    }
+
+    #[test]
+    fn kingdom_enriched_hits_are_distinct() {
+        let assessment = assess_np_evidence(
+            &empty_descriptors(),
+            &["geminal dimethyl".to_string(), "CC=C".to_string()],
+            &[
+                motif_hit("geminal dimethyl", "decoration", "natural", "plants"),
+                motif_hit("CC=C", "decoration", "natural", ""),
+            ],
+            &[],
+            &[],
+            Some(1.1),
+            Some(0.9),
+            14,
+            &empty_dataset_context(),
+        );
+        assert!(
+            assessment
+                .evidence_notes
+                .iter()
+                .any(|n| n.contains("kingdom-enriched"))
         );
     }
 

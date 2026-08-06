@@ -185,18 +185,22 @@
           GROUP_NAMES: [],
           ERTL_SUBSTUENTS: [],
         };
-        const compiledMotifs = MOTIF_LIBRARY.map((motif) => ({
-          ...motif,
-          qmol: RDKit.get_qmol(motif.smarts),
-        }));
-        const compiledScaffolds = GROUP_NAMES.map((scaffold) => ({
-          ...scaffold,
-          qmol: RDKit.get_qmol(scaffold.smarts),
-        }));
-        const compiledSubstituents = ERTL_SUBSTUENTS.map((sub) => ({
-          ...sub,
-          qmol: RDKit.get_qmol(sub.smarts),
-        }));
+        function compilePattern(pattern, kind) {
+          try {
+            const qmol = RDKit.get_qmol(pattern.smarts);
+            if (!qmol) {
+              console.warn(`Skipping invalid ${kind} pattern:`, pattern.label || pattern.smarts);
+              return null;
+            }
+            return { ...pattern, qmol };
+          } catch (error) {
+            console.warn(`Skipping invalid ${kind} pattern:`, pattern.label || pattern.smarts, error);
+            return null;
+          }
+        }
+        const compiledMotifs = MOTIF_LIBRARY.map((motif) => compilePattern(motif, "motif")).filter(Boolean);
+        const compiledScaffolds = GROUP_NAMES.map((scaffold) => compilePattern(scaffold, "group")).filter(Boolean);
+        const compiledSubstituents = ERTL_SUBSTUENTS.map((sub) => compilePattern(sub, "substituent")).filter(Boolean);
 
         function withMol(smiles, callback) {
           const trimmed = String(smiles || "").trim();

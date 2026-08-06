@@ -170,8 +170,7 @@ C1OC1C2CO2 0.11 0.08 0.02 0.07 0
 [R]OCN([R])C(=N[R])N([R])[R] 0.18 0 0 0.09 0
 [R]OC(=O)C(=C)C([R])=O 0.08 0.01 0.15 0.03 0
 [R]N1CC(=O)N([R])C(=C)C1=O 0.02 0 0.18 0.06 0
-C=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=
-C 0.01 0 0.02 0.23 0
+C=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=C 0.01 0 0.02 0.23 0
 [R]N(O)C(=O)C=C 0 0 0.18 0.08 0
 [R]C(=O)OCOCOC([R])=O 0.24 0.02 0 0 0
 C=CC=CC(=O)C=C 0.19 0.02 0.03 0.01 0
@@ -233,8 +232,7 @@ CC=CC=C 0.02 0 0.01 0.13 0
 BrC=CC(Br)=C 0.12 0 0.01 0.01 0
 [R]SC(=N[R])N([R])C([R])=O 0 0 0 0 0.14
 [R]OC=[Car] 0 0.02 0.11 0.01 0
-[R]C(=O)C=CC=CC=CC=CC=CC=CC=CC=CC=CC=
-CC=C 0.01 0.01 0 0.12 0
+[R]C(=O)C=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=C 0.01 0.01 0 0.12 0
 [R]N([R])C(=O)C(C([R])=O)=C(O)C=C 0 0 0.02 0.11 0
 [R]N([R])C(=O)C(C([R])=O)=C(O)C=CC=C 0 0 0.03 0.1 0
 [R]SC(=NC([R])=O)N([R])[R] 0 0 0 0 0.13
@@ -242,8 +240,7 @@ CC=C 0.01 0.01 0 0.12 0
 [R]SC=C(N([R])C([R])=O)C(O)=O 0 0 0 0.13 0
 C=CC=CC1OC1C=C 0 0 0 0.13 0
 [R]OC(=O)C=CC=CC=CC=C 0.01 0.01 0.01 0.1 0
-C=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=
-CC=C 0 0 0.02 0.1 0
+C=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=CC=C 0 0 0.02 0.1 0
 [R]SC(=N[R])N([R])[R] 0 0 0 0 0.12
 [R]N=N[R] 0 0 0.01 0 0.11
 OC(=O)C=[Car] 0 0 0.12 0 0
@@ -261,5 +258,4 @@ BrC=CC#CC=C 0.11 0 0 0 0
 OC(=O)C#C 0.1 0 0 0 0
 [R]SC#N 0.1 0 0 0 0
 [R]N(C([R])=O)S(O)(=O)=O 0 0 0 0.1 0
-[R]N([R])C(=O)C(=C)N([R])C(=O)C(=C)N([R])C([R])=
-O 0 0 0 0.1 0
+[R]N([R])C(=O)C(=C)N([R])C(=O)C(=C)N([R])C([R])=O 0 0 0 0.1 0
