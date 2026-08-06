@@ -110,36 +110,56 @@ body {
   color: var(--text3);
 }
 
-.dropzone {
-  position: relative;
-  display: grid;
-  gap: 8px;
-  place-items: center;
-  min-height: 150px;
+/* ── Input split: CSV dropzone + SMILES paste, side by side ─────────── */
+.input-split {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
   width: 100%;
   max-width: 56rem;
   margin-inline: auto;
-  border: 2px dashed color-mix(in srgb, var(--border) 85%, var(--accent));
-  border-radius: 16px;
-  padding: 18px;
-  cursor: pointer;
-  background: var(--panel-bg-soft);
-  text-align: center;
+  align-items: stretch;
 }
-.dropzone.dragging { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg-soft)); }
+
+.input-card {
+  flex: 1 1 280px;
+  display: grid;
+  gap: 10px;
+  min-height: 160px;
+  width: 100%;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--panel-bg-soft);
+  box-shadow: var(--shadow-xs);
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+
+.input-card-body {
+  display: grid;
+  gap: 8px;
+}
+
+.dropzone {
+  place-items: center;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  border-style: dashed;
+}
+.dropzone.dragging {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg-soft));
+}
 .dropzone input {
   position: absolute;
   inset: 0;
   opacity: 0;
   cursor: pointer;
 }
-.paste-box {
-  margin-top: 12px;
-  display: grid;
-  gap: 8px;
-  width: 100%;
-  max-width: 56rem;
-  margin-inline: auto;
+
+.paste-card {
+  border-style: solid;
 }
 .paste-head {
   display: flex;
@@ -150,14 +170,15 @@ body {
 }
 .smiles-textarea {
   width: 100%;
-  min-height: 150px;
+  min-height: 120px;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--panel-border);
   background: var(--bg2);
   color: var(--text);
   font: 0.85rem/1.5 var(--mono);
   resize: vertical;
+  transition: border-color .15s, box-shadow .15s;
 }
 .smiles-textarea:focus {
   outline: none;
@@ -168,6 +189,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
 }
 .status {
   margin: 12px 0 0;
@@ -222,19 +244,55 @@ body {
   color: var(--accent);
   font-weight: 700;
   cursor: pointer;
+  transition: background-color .15s, box-shadow .15s;
 }
 .demo-btn:hover {
   background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  box-shadow: var(--shadow-xs);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-target-min);
+  padding: 8px 16px;
+  border: none;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color .15s, box-shadow .15s, transform .05s;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--accent2);
+  box-shadow: var(--shadow-sm);
+}
+.btn-primary:active {
+  transform: scale(0.97);
+}
+.btn:disabled,
+.btn:disabled:hover {
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
 }
 .demo-smiles {
   margin: 0;
-  padding-left: 20px;
-  display: grid;
-  gap: 4px;
+  padding: 10px;
+  max-height: 140px;
+  overflow: auto;
   font-size: 0.78rem;
   color: var(--text2);
   font-family: var(--mono);
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  word-break: break-all;
+  border-radius: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--panel-border);
 }
 .chip-list {
   display: flex;
@@ -417,6 +475,7 @@ a:hover { text-decoration: underline; }
 .footer-link {
   color: var(--text);
   text-decoration: none;
+  transition: color .15s;
 }
 .footer-link:hover { text-decoration: underline; }
 .footer-link.red { color: var(--wd-compound); font-weight: 700; }
@@ -513,14 +572,6 @@ a:hover { text-decoration: underline; }
   border-color: color-mix(in srgb, var(--red) 28%, var(--border));
 }
 
-/* ── Reference notes in footer ──────────────────────────────────────── */
-.reference-note {
-  font-size: 0.72rem;
-  color: var(--text3);
-  margin-top: 2px;
-  line-height: 1.3;
-}
-
 /* ── Footer ─────────────────────────────────────────────────────────── */
 .app-footer {
   margin-top:auto;
@@ -531,7 +582,7 @@ a:hover { text-decoration: underline; }
   display:flex;
   flex-direction:column;
   gap:0;
-  font-size:var(--fs-0);
+  font-size:var(--fs-1);
   box-shadow:var(--panel-shadow);
   border-radius: 16px;
   overflow: hidden;

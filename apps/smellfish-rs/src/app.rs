@@ -194,49 +194,53 @@ pub fn app() -> Element {
                 }
             }
 
-            section { class: "panel",
-                label { class: if *drag_active.read() { "dropzone dragging" } else { "dropzone" },
-                    r#for: "smiles-csv",
-                    ondragenter: on_drag_enter,
-                    ondragover: on_drag_over,
-                    ondragleave: on_drag_leave,
-                    ondrop: on_drop,
+            section { class: "panel input-panel",
+                div { class: "input-split",
+                    label { class: if *drag_active.read() { "input-card dropzone dragging" } else { "input-card dropzone" },
+                        r#for: "smiles-csv",
+                        ondragenter: on_drag_enter,
+                        ondragover: on_drag_over,
+                        ondragleave: on_drag_leave,
+                        ondrop: on_drop,
 
-                    div {
-                        strong { "Drop a CSV, click to browse, or paste SMILES below" }
-                        div { class: "small muted", "CSV: expect a smiles column. Paste mode: one SMILES per line." }
-                    }
+                        div { class: "input-card-body",
+                            strong { "Drop a CSV or click to browse" }
+                            div { class: "small muted", "CSV with a smiles column" }
+                        }
 
-                    input {
-                        id: "smiles-csv",
-                        r#type: "file",
-                        accept: ".csv,text/csv",
-                        disabled: *busy.read(),
-                        onchange: on_file_change,
-                    }
-                }
-
-                div { class: "paste-box",
-                    div { class: "paste-head",
-                        strong { "Paste SMILES" }
-                        span { class: "small muted", "One per line" }
-                    }
-                    label { r#for: "smiles-paste", class: "visually-hidden", "SMILES structures, one per line" }
-                    textarea {
-                        id: "smiles-paste",
-                        class: "smiles-textarea",
-                        placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
-                        disabled: *busy.read(),
-                        value: "{pasted_smiles_value}",
-                        oninput: move |evt| pasted_smiles.set(evt.value()),
-                    }
-                    div { class: "paste-actions",
-                        button {
-                            class: "demo-btn",
-                            r#type: "button",
+                        input {
+                            id: "smiles-csv",
+                            r#type: "file",
+                            accept: ".csv,text/csv",
                             disabled: *busy.read(),
-                            onclick: submit_pasted_smiles,
-                            "Analyze pasted SMILES"
+                            onchange: on_file_change,
+                        }
+                    }
+
+                    div { class: "input-card paste-card",
+                        div { class: "input-card-body",
+                            div { class: "paste-head",
+                                strong { "Paste SMILES" }
+                                span { class: "small muted", "One per line" }
+                            }
+                            label { r#for: "smiles-paste", class: "visually-hidden", "SMILES structures, one per line" }
+                            textarea {
+                                id: "smiles-paste",
+                                class: "smiles-textarea",
+                                placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
+                                disabled: *busy.read(),
+                                value: "{pasted_smiles_value}",
+                                oninput: move |evt| pasted_smiles.set(evt.value()),
+                            }
+                        }
+                        div { class: "paste-actions",
+                            button {
+                                class: "btn btn-primary",
+                                r#type: "button",
+                                disabled: *busy.read(),
+                                onclick: submit_pasted_smiles,
+                                "Analyze pasted SMILES"
+                            }
                         }
                     }
                 }
@@ -272,17 +276,8 @@ pub fn app() -> Element {
                         div { class: "demo-actions",
                             button { class: "demo-btn", onclick: load_demo, "Load demo SMILES" }
                         }
-                        ol { class: "demo-smiles",
-                            li { code { "COC1=CC(=CC2=C1OCO2)C3C4COC(C4CO3)C5=CC(=C(C(=C5)OC)OC)OC" } }
-                            li { code { "CC1=C(C(CCC1)(C)C)C=CC(=CC=CC(=CC#CC=C(C)C=O)C)C" } }
-                            li { code { "CC(=CO)C1CCC2(C1C3CCC4C5(CCC(C(C5CCC4(C3(CC2)C)C)(C)C)O)C)C(=O)" } }
-                            li { code { "CCCCCCCCC=CCCCCCCCCC(=O)N" } }
-                            li { code { "CC1C(C(C(C(O1)OC2CCC3(C(C2(C)CO)CCC4(C3CC=C5C4(CCC6(C5CC(CC6)(C)C)C(=O)O)C)C)C)O)O)O" } }
-                            li { code { "CC1=CCCC(=CC2C(C(C1)OC(=O)C(=CCO)CO)C(=C)C(=O)O2)CO" } }
-                            li { code { "CC1(C2CCC3(C(C2(CCC1O)C)CCC4C3(CCC5(C4C(CC5)C(=C)C=O)C(=O)O)C)C)C" } }
-                            li { code { "COC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC" } }
-                            li { code { "C1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O" } }
-                            li { code { "CCCCCCCC=CCCCCCCCC(N)=O" } }
+                        pre { class: "demo-smiles",
+                            "COC1=CC(=CC2=C1OCO2)C3C4COC(C4CO3)C5=CC(=C(C(=C5)OC)OC)OC\nCC1=C(C(CCC1)(C)C)C=CC(=CC=CC(=CC#CC=C(C)C=O)C)C\nCC(=CO)C1CCC2(C1C3CCC4C5(CCC(C(C5CCC4(C3(CC2)C)C)(C)C)O)C)C(=O)\nCCCCCCCCC=CCCCCCCCCC(=O)N\nCC1C(C(C(C(O1)OC2CCC3(C(C2(C)CO)CCC4(C3CC=C5C4(CCC6(C5CC(CC6)(C)C)C(=O)O)C)C)C)O)O)O\nCC1=CCCC(=CC2C(C(C1)OC(=O)C(=CCO)CO)C(=C)C(=O)O2)CO\nCC1(C2CCC3(C(C2(CCC1O)C)CCC4C3(CCC5(C4C(CC5)C(=C)C=O)C(=O)O)C)C)C\nCOC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC\nC1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O\nCCCCCCCC=CCCCCCCCC(N)=O"
                         }
                     }
                 }
@@ -524,8 +519,7 @@ pub fn app() -> Element {
                         ul { class: "footer-links", role: "list",
                             for paper in LITERATURE {
                                 li {
-                                    a { class: "footer-link purple", href: "https://doi.org/{paper.doi}", target: "_blank", rel: "noreferrer", "{paper.title}" }
-                                    div { class: "reference-note small", "{paper.note}" }
+                                    a { class: "footer-link purple", href: "https://doi.org/{paper.doi}", target: "_blank", rel: "noreferrer", title: "{paper.note}", "{paper.title}" }
                                 }
                             }
                         }
