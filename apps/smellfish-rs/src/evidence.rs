@@ -7,7 +7,7 @@
 //! > Score and Its Application for Prioritization of Compound Libraries."
 //! > *J. Chem. Inf. Model.*, 48, 68–74. DOI: 10.1021/ci700286x
 //!
-//! The open-source, open-data implementation and model file (np_model.bin)
+//! The open-source, open-data implementation and model file (`np_model.bin`)
 //! are from:
 //!
 //! > Jayaseelan, K. V., Moreno, P., Truszkowski, A., Ertl, P., & Steinbeck, C.
@@ -75,6 +75,10 @@ pub fn np_likeness_label(score: f64) -> &'static str {
 ///   found in the molecule via substructure matching.
 /// * `dataset_context` carries motif prevalence across the entire uploaded
 ///   set so that per-row notes can flag dataset-common scaffolds.
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::uninlined_format_args)]
 pub fn assess_np_evidence(
     descriptors: &RdkitDescriptors,
     motifs: &[String],
@@ -156,8 +160,7 @@ pub fn assess_np_evidence(
 
     if scaffold_hits > 0 && np_core_hits == 0 {
         notes.push(format!(
-            "○ {} structural support motif(s) — supportive only, not Ertl-enriched by itself",
-            scaffold_hits
+            "○ {scaffold_hits} structural support motif(s) — supportive only, not Ertl-enriched by itself",
         ));
     }
 
@@ -181,8 +184,7 @@ pub fn assess_np_evidence(
 
     if decoration_hits > 0 && np_core_hits == 0 {
         notes.push(format!(
-            "○ {} decoration motif(s) — supportive side-chain chemistry, but weak NP evidence alone",
-            decoration_hits
+            "○ {decoration_hits} decoration motif(s) — supportive side-chain chemistry, but weak NP evidence alone",
         ));
     }
 
@@ -770,7 +772,6 @@ mod tests {
             ring_count: Some(4.0),
             aromatic_ring_count: Some(0.0),
             aliphatic_ring_count: Some(2.0),
-            ..Default::default()
         };
         let assessment = assess_np_evidence(
             &desc,
@@ -952,7 +953,6 @@ mod tests {
             aromatic_ring_count: Some(0.0),
             aliphatic_ring_count: Some(4.0),
             fraction_csp3: Some(0.75),
-            ..Default::default()
         };
         let family = classify_ring_family(&desc, &[]);
         assert_eq!(family, "natural-product-like polycyclic scaffold");
@@ -962,7 +962,6 @@ mod tests {
             aromatic_ring_count: Some(3.0),
             aliphatic_ring_count: Some(0.0),
             fraction_csp3: Some(0.10),
-            ..Default::default()
         };
         let family2 = classify_ring_family(&desc2, &[]);
         assert_eq!(family2, "polyaromatic scaffold");

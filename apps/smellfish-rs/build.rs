@@ -35,12 +35,11 @@ fn download_with_header(dst: &Path, url: &str, header: &str) {
         .args(["-fsSL", url])
         .output()
         .unwrap_or_else(|err| panic!("failed to run curl for {url}: {err}"));
-    if !output.status.success() {
-        panic!(
-            "failed to download {url}: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
+    assert!(
+        output.status.success(),
+        "failed to download {url}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let mut out = String::new();
     out.push_str(header);
     if !header.ends_with('\n') {
@@ -51,7 +50,7 @@ fn download_with_header(dst: &Path, url: &str, header: &str) {
     fs::write(dst, out).unwrap_or_else(|err| panic!("failed to write {}: {err}", dst.display()));
 }
 
-/// Download the LOTUS *Fragments_Scaffold_Generator.csv* (mortar fragmentation
+/// Download the LOTUS `Fragments_Scaffold_Generator.csv` (mortar fragmentation
 /// by Rutz et al.) and extract scaffold SMILES whose `MoleculePercentage`
 /// column exceeds 1 % (0.01 as a 0–1 fraction).  The result is written as
 /// one SMILES per line to `dst`.
@@ -60,12 +59,11 @@ fn download_and_filter_lotus_scaffolds(dst: &Path, url: &str) {
         .args(["-fsSL", url])
         .output()
         .unwrap_or_else(|err| panic!("failed to run curl for {url}: {err}"));
-    if !output.status.success() {
-        panic!(
-            "failed to download {url}: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
+    assert!(
+        output.status.success(),
+        "failed to download {url}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let text = String::from_utf8_lossy(&output.stdout);
     let mut kept: Vec<String> = Vec::new();
     let mut in_header = true;
