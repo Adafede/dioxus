@@ -54,6 +54,7 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
         ),
     > = HashMap::new();
     let mut inchikeys = BTreeSet::new();
+    let mut smiles_list = Vec::new();
     let mut rows = Vec::with_capacity(total);
 
     // ═══════════════════════════════════════════════════════════════════
@@ -94,18 +95,26 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                 if !inchikey.is_empty() {
                     inchikeys.insert(inchikey.clone());
                 }
+                smiles_list.push(raw.smiles.clone());
 
                 let canonical = inspect.canonicalsmiles.unwrap_or_default();
                 let descriptors = inspect.descriptors.unwrap_or_default();
                 let stereo_tags = inspect.stereo_tags.unwrap_or_default();
-                let substituents = inspect.substituents;
+                // Count substituent occurrences for proper multiplicity display
+                let substituents_counts: std::collections::HashMap<String, usize> = inspect
+                    .substituents
+                    .iter()
+                    .fold(std::collections::HashMap::new(), |mut acc, s| {
+                        *acc.entry(s.clone()).or_insert(0) += 1;
+                        acc
+                    });
                 let lotus_scaffolds = inspect.lotus_scaffolds;
 
                 inspect_rows.push(RawInspectRow {
                     index: raw.index,
                     motif_labels: motif_labels.clone(),
                     motif_hits: motifs_list.clone(),
-                    substituents,
+                    substituents_counts,
                     lotus_scaffolds,
                     descriptors,
                     stereo_tags,
@@ -124,7 +133,7 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                     svg: inspect.svg,
                     motifs: motif_labels,
                     motif_hits: motifs_list,
-                    substituents: Vec::new(),
+                    substituents_counts: std::collections::HashMap::new(),
                     lotus_scaffolds: Vec::new(),
                     lotus_taxa: Vec::new(),
                     lotus_compounds: Vec::new(),
@@ -174,9 +183,8 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
     // ═══════════════════════════════════════════════════════════════════
     status.set("Probing LOTUS and PubChem…".to_string());
     let unique_keys = inchikeys.into_iter().collect::<Vec<_>>();
-    let smiles_list: Vec<String> = rows.iter().map(|r| r.canonical_smiles.clone()).collect();
 
-    // Build mapping from InChIKey 14-char skeleton to row indices for matching results
+    // Build mapping from InChIKey 14-char connectivity layer to row indices for matching results
     let inchikey_to_indices: std::collections::HashMap<String, Vec<usize>> = {
         let mut map = std::collections::HashMap::new();
         for (idx, row) in rows.iter().enumerate() {
@@ -433,13 +441,17 @@ fn merge_enrichment(
         .into(),
     );
 
-    for (inchikey_skeleton, indices) in inchikey_to_indices {
-        // Check lotus by the InChIKey skeleton key
-        if let Some(summary) = enrichment_outcome.enrichment.lotus.get(inchikey_skeleton) {
+    for (inchikey_connectivity, indices) in inchikey_to_indices {
+        // Check lotus by the InChIKey connectivity layer key
+        if let Some(summary) = enrichment_outcome
+            .enrichment
+            .lotus
+            .get(inchikey_connectivity)
+        {
             web_sys::console::log_1(
                 &format!(
-                    "Found LOTUS hit for {}: {} compounds",
-                    inchikey_skeleton,
+                    "Found LOTUS hit for {}: {} QIDs",
+                    inchikey_connectivity,
                     summary.compounds.len()
                 )
                 .into(),
@@ -452,12 +464,16 @@ fn merge_enrichment(
                 }
             }
         }
-        // Check pubchem by the InChIKey skeleton key
-        if let Some(summary) = enrichment_outcome.enrichment.pubchem.get(inchikey_skeleton) {
+        // Check pubchem by the InChIKey connectivity layer key
+        if let Some(summary) = enrichment_outcome
+            .enrichment
+            .pubchem
+            .get(inchikey_connectivity)
+        {
             web_sys::console::log_1(
                 &format!(
                     "Found PubChem hit for {}: {} CIDs",
-                    inchikey_skeleton,
+                    inchikey_connectivity,
                     summary.cids.len()
                 )
                 .into(),

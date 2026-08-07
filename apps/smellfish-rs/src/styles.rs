@@ -497,6 +497,32 @@ a:hover { text-decoration: underline; }
   font-size: 0.8rem;
 }
 
+/* ── SMILES display ───────────────────────────────────────────────────── */
+.smiles-display {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text3);
+  word-break: break-word;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: none;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.smiles-small {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text3);
+  word-break: break-word;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+.small-muted {
+  color: var(--text3);
+  margin-top: 2px;
+}
+
 /* ── Accessibility ──────────────────────────────────────────────────── */
 .visually-hidden {
   position: absolute !important;

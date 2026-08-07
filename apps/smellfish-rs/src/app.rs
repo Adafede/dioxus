@@ -294,8 +294,9 @@ pub fn app() -> Element {
                             div { class: "card-head",
                                 div {
                                     strong { "{row.label}" }
-                                    div { class: "small muted", "Row {row.index} · {row.num_atoms} heavy atoms · SMILES: {row.smiles}" }
                                 }
+                                div { class: "small muted smiles-display", "Row {row.index} · {row.num_atoms} heavy atoms" }
+                                div { class: "small-muted smiles-small", "SMILES: {row.smiles}" }
                                 if let Some(err) = row.error.as_deref() {
                                     div { class: "error small", "{err}" }
                                 }

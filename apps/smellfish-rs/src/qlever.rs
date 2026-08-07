@@ -1,48 +1,65 @@
 use crate::model::{EndpointStatus, Enrichment, EnrichmentOutcome, SourceSummary};
 use futures::future::join;
 use serde_json::Value;
-use shared::lotus::models::SmilesSearchType;
-use shared::lotus::queries;
 use shared::sparql::{ResponseFormat, execute_sparql_with_format};
 use std::collections::HashMap;
 
 #[cfg(target_arch = "wasm32")]
 pub const LOTUS_ENDPOINT: &str = "https://qlever.dev/api/wikidata";
 #[cfg(target_arch = "wasm32")]
+pub const WDQS_ENDPOINT: &str = "https://query.wikidata.org/sparql";
+#[cfg(target_arch = "wasm32")]
 pub const PUBCHEM_ENDPOINT: &str = "https://qlever.cs.uni-freiburg.de/api/pubchem";
 #[cfg(target_arch = "wasm32")]
-const QUERY_CHUNK_SIZE: usize = 40;
+const QUERY_CHUNK_SIZE: usize = 50;
 
 #[cfg(target_arch = "wasm32")]
 pub async fn enrich_sources(
     inchikeys: &[String],
-    smiles_list: &[String],
-    set_status: impl FnMut(String),
+    _smiles_list: &[String],
+    mut set_status: impl FnMut(String),
 ) -> EnrichmentOutcome {
     let mut warnings = Vec::new();
-    let mut set_status = set_status;
-    let (lotus_probe, pubchem_probe) = join(
+
+    // Probe qlever and pubchem endpoints (in parallel)
+    let (qlever_probe, pubchem_probe) = join(
         probe_endpoint("LOTUS", LOTUS_ENDPOINT),
         probe_endpoint("PubChem", PUBCHEM_ENDPOINT),
     )
     .await;
 
-    // Use SMILES-based similarity search for LOTUS
-    let lotus = if lotus_probe.reachable {
-        set_status("Querying LOTUS (SMILES similarity search)…".to_string());
-        match fetch_lotus_hits_by_smiles(smiles_list).await {
-            Ok(data) => data,
-            Err(err) => {
-                warnings.push(format!("LOTUS SMILES search failed: {err}"));
-                HashMap::new()
+    // Try WDQS first (most reliable for complex queries)
+    set_status("Querying data sources…".to_string());
+
+    let lotus_result = fetch_lotus_hits_by_inchikey(WDQS_ENDPOINT, inchikeys).await;
+
+    let lotus = match lotus_result {
+        Ok(data) => data,
+        Err(err) => {
+            warnings.push(format!(
+                "LOTUS WDQS failed, switched to Qlever fallback: {err}"
+            ));
+            // Fall back to qlever with optimized query
+            match fetch_lotus_hits_by_inchikey(LOTUS_ENDPOINT, inchikeys).await {
+                Ok(data) => data,
+                Err(err) => {
+                    warnings.push(format!("LOTUS qlever also failed: {err}"));
+                    HashMap::new()
+                }
             }
         }
-    } else {
-        warnings.push(format!(
-            "LOTUS endpoint unavailable: {}",
-            lotus_probe.detail
-        ));
-        HashMap::new()
+    };
+
+    // Show WDQS as the primary endpoint since that's what we actually queried
+    let lotus_probe = EndpointStatus {
+        name: "LOTUS".to_string(),
+        endpoint: WDQS_ENDPOINT.to_string(),
+        reachable: !lotus.is_empty(), // Reachable if we got results
+        detail: if lotus.is_empty() {
+            "no results".to_string()
+        } else {
+            "online".to_string()
+        },
     };
 
     // Use classical InChIKey lookup for PubChem
@@ -51,7 +68,7 @@ pub async fn enrich_sources(
         match fetch_pubchem_hits(inchikeys).await {
             Ok(data) => data,
             Err(err) => {
-                warnings.push(format!("PubChem InChIKey search failed: {err}"));
+                warnings.push(format!("PubChem search failed: {err}"));
                 HashMap::new()
             }
         }
@@ -65,7 +82,7 @@ pub async fn enrich_sources(
 
     EnrichmentOutcome {
         enrichment: Enrichment { lotus, pubchem },
-        endpoints: vec![lotus_probe, pubchem_probe],
+        endpoints: vec![lotus_probe, qlever_probe, pubchem_probe],
         warnings,
     }
 }
@@ -89,66 +106,141 @@ async fn probe_endpoint(name: &str, endpoint: &str) -> EndpointStatus {
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn fetch_lotus_hits_by_smiles(
-    smiles_list: &[String],
+async fn fetch_lotus_hits_by_inchikey(
+    endpoint: &str,
+    inchikeys: &[String],
 ) -> Result<HashMap<String, SourceSummary>, String> {
+    // Use WDQS query for WDQS, qlever-specific query for qlever
+    let query = if endpoint == WDQS_ENDPOINT {
+        build_lotus_query_wdqs(inchikeys)
+    } else {
+        build_lotus_query_qlever(inchikeys)
+    };
+
+    let bindings = sparql_bindings(endpoint, &query).await?;
+
     let mut summary: HashMap<String, SourceSummary> = HashMap::new();
-    let threshold = 1.0; // Will be converted to 0.95 by query_sachem_batch
 
-    for chunk in smiles_list.chunks(QUERY_CHUNK_SIZE) {
-        // Convert chunk to &[&str] for query_sachem_batch
-        let chunk_refs: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
+    for binding in bindings {
+        // Get the InChIKey we're querying for
+        let inchikey = binding_value(&binding, "inchikey");
+        if inchikey.is_empty() {
+            continue;
+        }
+        let connectivity = inchikey.split('-').next().unwrap_or(&inchikey).to_string();
 
-        let sparql_query =
-            queries::query_sachem_batch(&chunk_refs, SmilesSearchType::Similarity, threshold, None);
+        let entry = summary.entry(connectivity.clone()).or_default();
 
-        match sparql_bindings(LOTUS_ENDPOINT, &sparql_query).await {
-            Ok(bindings) => {
-                for binding in bindings {
-                    // Use the returned InChIKey 14-char skeleton directly as the key
-                    let returned_inchikey = binding_value(&binding, "compound_inchikey");
-                    if returned_inchikey.is_empty() {
-                        continue;
-                    }
+        // Get the related item QID (main compound, or discovered stereoisomer/tautomer/parent)
+        let related_uri = binding_value(&binding, "related_item");
 
-                    // Extract 14-char skeleton from returned InChIKey
-                    let inchikey_skeleton = returned_inchikey
-                        .split('-')
-                        .next()
-                        .unwrap_or(&returned_inchikey)
-                        .to_string();
+        // Get taxon if available - insert BEFORE logging so count is accurate
+        let taxon_name = binding_value(&binding, "taxon_name");
+        let has_taxon = !taxon_name.is_empty();
+        if has_taxon {
+            entry.taxa.insert(taxon_name);
+        }
 
-                    let entry = summary.entry(inchikey_skeleton).or_default();
-
-                    let compound_uri = binding_value(&binding, "c");
-                    let qid = if let Some(qid) =
-                        compound_uri.strip_prefix("http://www.wikidata.org/entity/")
-                    {
-                        if !qid.is_empty() {
-                            entry.compounds.insert(qid.to_string());
-                            Some(qid.to_string())
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
-                    let taxon_label = binding_value(&binding, "taxon_name");
-                    if !taxon_label.is_empty() {
-                        entry.taxa.insert(taxon_label);
-                        // Mark this compound as having taxon info
-                        if let Some(ref qid) = qid {
-                            entry.compounds_with_taxa.insert(qid.clone());
-                        }
-                    }
+        if let Some(qid) = related_uri.strip_prefix("http://www.wikidata.org/entity/") {
+            if !qid.is_empty() {
+                entry.compounds.insert(qid.to_string());
+                // If we have a taxon for this QID, also track it in compounds_with_taxa
+                if has_taxon {
+                    entry.compounds_with_taxa.insert(qid.to_string());
                 }
-            }
-            Err(err) => {
-                return Err(err);
+                // Log to console: taxon count next to QID (after taxon insertion)
+                web_sys::console::log_1(
+                    &format!("LOTUS: QID:{} taxa:{}", qid, entry.taxa.len()).into(),
+                );
             }
         }
     }
+
     Ok(summary)
+}
+
+/// Build Wikidata LOTUS query for WDQS (standard nested SELECT approach).
+fn build_lotus_query_wdqs(inchikeys: &[String]) -> String {
+    let values = inchikeys
+        .iter()
+        .filter(|s| !s.is_empty())
+        .map(|v| format!("\"{}\"", escape_sparql_literal(v)))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if values.is_empty() {
+        return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
+    }
+
+    // Nested SELECT structure for cleaner query
+    format!(
+        r#"PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
+  {{
+    SELECT DISTINCT ?inchikey ?connectivity ?related_item WHERE {{
+      VALUES ?inchikey {{ {values} }}
+      BIND(SUBSTR(?inchikey, 1 , 14 ) AS ?connectivity)
+      ?item wdt:P235 ?inchikey;
+        (wdt:P3364|wdt:P6185|(wdt:P279*)|^(wdt:P279+)) ?related_item.
+      OPTIONAL {{ ?related_item wdt:P235 ?related_inchikey. }}
+      OPTIONAL {{
+        ?item wdt:P6185 ?related_item.
+        BIND("true"^^xsd:boolean AS ?is_tautomer)
+      }}
+      FILTER(((?item = ?related_item) || (BOUND(?is_tautomer))) || (STRSTARTS(?related_inchikey, ?connectivity)))
+    }}
+  }}
+  OPTIONAL {{ ?related_item (wdt:P703/wdt:P225) ?taxon_name. }}
+}}"#
+    )
+}
+
+/// Build Wikidata LOTUS query for qlever (optimized union structure).
+fn build_lotus_query_qlever(inchikeys: &[String]) -> String {
+    let values = inchikeys
+        .iter()
+        .filter(|s| !s.is_empty())
+        .map(|v| format!("\"{}\"", escape_sparql_literal(v)))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if values.is_empty() {
+        return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
+    }
+
+    // Union-based query for qlever optimization
+    format!(
+        r#"PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
+  {{
+    SELECT DISTINCT ?inchikey ?connectivity ?related_item WHERE {{
+      VALUES ?inchikey {{ {values} }}
+      BIND(SUBSTR(?inchikey, 1, 14) AS ?connectivity)
+      ?item wdt:P235 ?inchikey .
+
+      {{
+        ?item (wdt:P3364|wdt:P6185|(wdt:P279*)|^(wdt:P279+)) ?related_item .
+        OPTIONAL {{ ?related_item wdt:P235 ?related_inchikey . }}
+        OPTIONAL {{
+          ?item wdt:P6185 ?related_item .
+          BIND("true"^^xsd:boolean AS ?is_tautomer)
+        }}
+        FILTER(((?item = ?related_item) || (BOUND(?is_tautomer))) || (STRSTARTS(?related_inchikey, ?connectivity)))
+      }}
+      UNION
+      {{
+        # Native QLever compressed dictionary prefix lookup
+        ?related_item wdt:P235 ?prefix_inchikey .
+        FILTER(STRSTARTS(?prefix_inchikey, ?connectivity))
+      }}
+    }}
+  }}
+  OPTIONAL {{ ?related_item (wdt:P703/wdt:P225) ?taxon_name . }}
+}}"#
+    )
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -160,20 +252,26 @@ fn build_pubchem_query(chunk: &[String]) -> String {
         .join(" ");
     format!(
         r#"
+PREFIX cheminf: <http://semanticscience.org/resource/>
 PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX vocab: <http://rdf.ncbi.nlm.nih.gov/pubchem/vocabulary#>
-PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT DISTINCT ?inchikey ?cid ?label ?iupac ?taxonLabel WHERE {{
+SELECT DISTINCT ?inchikey ?related_cid WHERE {{
   VALUES ?inchikey {{ {values} }}
-  ?compound dcterms:identifier ?cid ;
-            vocab:inchikey ?inchikey .
-  OPTIONAL {{ ?compound skos:prefLabel ?label }}
-  OPTIONAL {{ ?compound vocab:preferred_iupac_name ?iupac }}
-  OPTIONAL {{
-    ?compound <http://purl.obolibrary.org/obo/RO_0002162> ?taxon .
-    OPTIONAL {{ ?taxon rdfs:label ?taxonLabel FILTER(LANG(?taxonLabel) = "en") }}
+  ?compound vocab:inchikey ?inchikey .
+  {{
+    ?compound dcterms:identifier ?related_cid .
+  }}
+  UNION
+  {{
+    ?compound cheminf:CHEMINF_000461 ?stereoisomer .
+    ?stereoisomer dcterms:identifier ?related_cid .
+  }}
+  UNION
+  {{
+    ?compound cheminf:CHEMINF_000462 ?same_conn .
+    ?same_conn dcterms:identifier ?related_cid .
   }}
 }}
 "#
@@ -198,22 +296,16 @@ async fn fetch_pubchem_hits(
             }
             // Match on the 14-character skeleton hash only
             let key = inchikey.split('-').next().unwrap_or(&inchikey).to_string();
-            let cid = binding_value(&binding, "cid");
+            let cid = binding_value(&binding, "related_cid");
 
             if !cid.is_empty() {
                 web_sys::console::log_1(&format!("  PubChem: {} -> CID {}", key, cid).into());
             }
 
             let entry = summary.entry(key.clone()).or_default();
-            let cid = binding_value(&binding, "cid");
 
             if !cid.is_empty() {
-                web_sys::console::log_1(&format!("  PubChem: {} -> CID {}", key, cid).into());
                 entry.cids.insert(cid);
-            }
-            let taxon = binding_value(&binding, "taxonLabel");
-            if !taxon.is_empty() {
-                entry.taxa.insert(taxon);
             }
         }
     }

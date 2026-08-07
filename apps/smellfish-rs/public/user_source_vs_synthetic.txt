@@ -1,3 +1,3 @@
 # User-defined source-vs-synthetic table
 FG DNP OpenNP synthetic
-C([CH3])([CH3])(*)* 100 100 0
+[#6]([CH3])[CH3] 100 100 0

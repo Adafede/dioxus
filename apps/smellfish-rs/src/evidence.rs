@@ -780,6 +780,7 @@ mod tests {
             Some(3.42),
             Some(0.75),
             &empty_dataset_context(),
+            &[],
         );
         assert!((assessment.np_likeness - 3.42).abs() < 1e-9);
         assert_eq!(assessment.np_label, "strong natural product");
@@ -810,6 +811,7 @@ mod tests {
             Some(1.5),
             Some(0.8),
             &empty_dataset_context(),
+            &[],
         );
         // No "polar enough" note should exist — that was a hallucinated rule.
         assert!(
@@ -837,6 +839,7 @@ mod tests {
             Some(-1.5),
             Some(0.9),
             &empty_dataset_context(),
+            &[],
         );
         // No clogP-based notes should exist — those were hallucinated rules.
         assert!(
@@ -857,6 +860,7 @@ mod tests {
             None,
             None,
             &empty_dataset_context(),
+            &[],
         );
         assert!((assessment.np_likeness - 0.0).abs() < 1e-9);
         assert_eq!(assessment.np_label, "weak NP signals");
@@ -907,6 +911,7 @@ mod tests {
             Some(0.2),
             Some(0.9),
             &empty_dataset_context(),
+            &[],
         );
         assert_ne!(assessment.motif_context, "no structural motifs detected");
         assert!(
@@ -930,6 +935,7 @@ mod tests {
             Some(1.1),
             Some(0.9),
             &empty_dataset_context(),
+            &[],
         );
         assert!(
             assessment
