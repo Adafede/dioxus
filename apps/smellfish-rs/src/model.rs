@@ -1,11 +1,18 @@
 use serde::Deserialize;
 use std::collections::BTreeSet;
 
+/// Type alias for substituent occurrence tracking.
+/// Maps substituent pattern name to the number of times it appears in a molecule.
+pub type SubstituentCounts = std::collections::HashMap<String, usize>;
+
 #[cfg(any(test, target_arch = "wasm32"))]
 #[derive(Clone, Debug)]
 pub struct RawRow {
+    /// 1-based row index from the input file
     pub index: usize,
+    /// Compound identifier (from name/label column or auto-generated)
     pub label: String,
+    /// SMILES structure string
     pub smiles: String,
 }
 
@@ -37,8 +44,9 @@ pub struct MoleculeRow {
     pub inchikey: String,
     pub svg: Option<String>,
     pub motifs: Vec<String>,
-    /// Substituent pattern -> occurrence count (for multiplicity-aware display)
-    pub substituents_counts: std::collections::HashMap<String, usize>,
+    /// Substituent occurrence counts (pattern name -> count).
+    /// Used to show multiplicity of each substituent type in tooltip.
+    pub substituents_counts: SubstituentCounts,
     /// LOTUS 1-percent scaffold matches (Rutz et al.) — displayed as chips.
     pub lotus_scaffolds: Vec<String>,
     #[cfg(target_arch = "wasm32")]
@@ -85,21 +93,29 @@ pub struct MotifSummary {
 /// Dataset-level motif prevalence used to enrich individual molecule rows.
 ///
 /// `motif_counts` maps each motif label to the number of molecules in the
-/// uploaded set that contain it.  Motifs appearing in ≥ `common_threshold`
+/// uploaded set that contain it. Motifs appearing in ≥ `common_threshold`
 /// molecules are considered "dataset-common".
 #[derive(Clone, Debug, Default)]
 #[cfg(any(test, target_arch = "wasm32"))]
 pub struct DatasetMotifContext {
+    /// Number of molecules containing each motif (for prevalence filtering)
     pub motif_counts: std::collections::HashMap<String, usize>,
+    /// Minimum count threshold for a motif to be considered "common"
     pub common_threshold: usize,
 }
 
+/// `RDKit` molecular descriptors for structure analysis.
+/// These are used for ring family classification and NP-likeness evidence.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[cfg(any(test, target_arch = "wasm32"))]
 pub struct RdkitDescriptors {
+    /// Fraction of sp³-hybridized carbons (0–1). High values indicate aliphatic character.
     pub fraction_csp3: Option<f64>,
+    /// Total number of rings in the molecule.
     pub ring_count: Option<f64>,
+    /// Number of aromatic rings, including fused systems.
     pub aromatic_ring_count: Option<f64>,
+    /// Number of aliphatic (non-aromatic) rings.
     pub aliphatic_ring_count: Option<f64>,
 }
 
@@ -167,12 +183,17 @@ pub struct RdkitInspectResponse {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+/// Response from `RDKit`'s molecule inspection, containing structural analysis results.
 pub struct RdkitMotifHit {
+    /// Human-readable motif label (e.g. "Steroid fused ring", "Flavone ring")
     pub label: String,
+    /// Source classification: "natural", "synthetic", or "unknown"
     #[serde(default)]
     pub source_class: String,
+    /// Primary kingdom association (e.g. "plants", "animals", "fungi")
     #[serde(default)]
     pub kingdom: String,
+    /// All kingdoms where this motif appears
     #[serde(default)]
     pub kingdoms: Vec<String>,
 }
