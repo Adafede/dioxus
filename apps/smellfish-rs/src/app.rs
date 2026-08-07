@@ -408,15 +408,16 @@ pub fn app() -> Element {
                                         }
                                     }
                                 }
-                                if !row.substituents.is_empty() {
+                                if !row.substituents_counts.is_empty() {
                                     div { class: "meta",
                                         strong { "Ertl substituents" }
                                         div { class: "chip-list",
-                                            for substituent in row.substituents.iter().take(6) {
-                                                span { class: "chip alt", "{substituent}" }
+                                            for (substituent, count) in row.substituents_counts.iter().take(6) {
+                                                span { class: "chip alt", title: "Occurrence count: {count}",
+                            "{substituent}" }
                                             }
-                                            if row.substituents.len() > 6 {
-                                                span { class: "chip alt", "+{row.substituents.len() - 6} more" }
+                                            if row.substituents_counts.len() > 6 {
+                                                span { class: "chip alt", "+{row.substituents_counts.len() - 6} more" }
                                             }
                                         }
                                     }
@@ -646,7 +647,13 @@ fn build_csv(rows: &[MoleculeRow]) -> String {
             .map(|c| format!("{}:{}", c.name, c.status))
             .collect::<Vec<_>>()
             .join(";");
-        let substituents = r.substituents.join(";");
+        // Convert substituents counts to "label(count);" format
+        let substituents: String = r
+            .substituents_counts
+            .iter()
+            .map(|(label, count)| format!("{}({})", label, count))
+            .collect::<Vec<_>>()
+            .join(";");
         let locus = r
             .lotus_compounds
             .iter()

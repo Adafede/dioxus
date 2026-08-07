@@ -18,7 +18,7 @@ struct RawInspectRow {
     index: usize,
     motif_labels: Vec<String>,
     motif_hits: Vec<crate::model::RdkitMotifHit>,
-    substituents: Vec<String>,
+    substituents_counts: HashMap<String, usize>,
     lotus_scaffolds: Vec<String>,
     descriptors: RdkitDescriptors,
     stereo_tags: Vec<String>,
@@ -213,7 +213,7 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
     // Count unique Ertl substituents found across the dataset.
     let unique_substituents: usize = inspect_rows
         .iter()
-        .flat_map(|r| &r.substituents)
+        .flat_map(|r| r.substituents_counts.keys())
         .collect::<std::collections::HashSet<_>>()
         .len();
 
@@ -224,7 +224,7 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
     for row in &mut rows {
         if let Some(raw) = raw_by_index.remove(&row.index) {
             row.descriptors = raw.descriptors;
-            row.substituents = raw.substituents;
+            row.substituents_counts = raw.substituents_counts;
             row.lotus_scaffolds = raw.lotus_scaffolds;
             row.stereo_tags = raw.stereo_tags;
             row.num_atoms = raw.num_atoms;
@@ -513,7 +513,7 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         inchikey: String::new(),
         svg: None,
         motifs: Vec::new(),
-        substituents: Vec::new(),
+        substituents_counts: std::collections::HashMap::new(),
         lotus_scaffolds: Vec::new(),
         lotus_taxa: Vec::new(),
         lotus_compounds: Vec::new(),

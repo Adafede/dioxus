@@ -37,7 +37,8 @@ pub struct MoleculeRow {
     pub inchikey: String,
     pub svg: Option<String>,
     pub motifs: Vec<String>,
-    pub substituents: Vec<String>,
+    /// Substituent pattern -> occurrence count (for multiplicity-aware display)
+    pub substituents_counts: std::collections::HashMap<String, usize>,
     /// LOTUS 1-percent scaffold matches (Rutz et al.) — displayed as chips.
     pub lotus_scaffolds: Vec<String>,
     #[cfg(target_arch = "wasm32")]
