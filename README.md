@@ -71,12 +71,12 @@ Open `http://127.0.0.1:8787/docs` for the Swagger UI.
 
 ## Explorer ⇄ API integration
 
-  | Scenario                | `api_base` source                     | API used            |
-  | ----------------------- | ------------------------------------- | ------------------- |
-  | Codeberg Pages (public) | none                                  | ✗ direct SPARQL     |
-  | Local dev               | auto-detected `http://127.0.0.1:8787` | ✓ if server running |
-  | Build-time              | `LOTUS_API_BASE` env var              | ✓                   |
-  | Runtime override        | `?api_base=…` query param             | ✓                   |
+  | Scenario                | `api_base` source                     | API used               |
+  | ----------------------- | ------------------------------------- |------------------------|
+  | Codeberg Pages (public) | none                                  | ✗ direct SPARQL       |
+  | Local dev               | auto-detected `http://127.0.0.1:8787` | ✓ if server running   |
+  | Build-time              | `LOTUS_API_BASE` env var              | ✓                     |
+  | Runtime override        | `?api_base=…` query param             | ✓                     |
 
 ## API endpoints
 
