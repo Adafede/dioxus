@@ -122,10 +122,12 @@ impl SpectrumBlock {
             classify_spectrum(self.psm_smiles.as_deref(), self.formula.as_deref());
     }
 
-    /// `true` when this block was recognized as a lipid.
+    /// `true` when this spectrum has at least one matching chemical class.
     #[must_use]
-    pub const fn is_lipid(&self) -> bool {
-        self.classification.is_some()
+    pub fn is_lipid(&self) -> bool {
+        self.gallery_item_matches
+            .as_ref()
+            .is_some_and(|matches| matches.values().any(|&m| m))
     }
 
     /// Compute and store class matches for this block's SMILES.
@@ -262,7 +264,8 @@ pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
             continue;
         }
 
-        if block.classification.is_some() {
+        // Count based on whether any chemical class matches, not the old classification
+        if block.is_lipid() {
             summary.lipid_spectra += 1;
         } else {
             summary.unclassified += 1;
@@ -448,6 +451,11 @@ pub fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     let mut blocks = extract_blocks(content);
     for block in &mut blocks {
         block.classify();
+    }
+    // Also compute class matches for is_lipid() to work correctly
+    let all_classes = ChemicalClass::defaults();
+    for block in &mut blocks {
+        block.compute_class_matches(&all_classes);
     }
     let summary = summarize(&blocks);
     (blocks, summary)
