@@ -12,8 +12,8 @@ use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 
-use crate::parser::Analysis;
 use crate::chemical_class::ChemicalClass;
+use crate::parser::Analysis;
 
 mod browser;
 
@@ -53,7 +53,7 @@ pub fn app() -> Element {
     #[cfg(not(target_arch = "wasm32"))]
     let mut busy = use_signal(|| false);
     let analysis = use_signal(|| None::<Analysis>);
-    
+
     let selected_classes = use_signal(|| {
         ChemicalClass::defaults()
             .into_iter()
@@ -234,10 +234,10 @@ fn download_bar(
     _all_classes: &[ChemicalClass],
 ) -> Element {
     let download_name = download_filename(source_file);
-    
+
     // The filtered MGF already contains only lipid spectra matching the selected classes
     let filtered_content = filtered_mgf.to_string();
-    
+
     let name = download_name.clone();
     let empty = filtered_content.is_empty();
     rsx! {
@@ -262,16 +262,20 @@ fn download_bar(
 }
 
 /// Renders the per-class summary panel.
-fn summary(summary_data: &crate::parser::Summary, mut selected_classes: Signal<Vec<String>>, all_classes: &[ChemicalClass]) -> Element {
+fn summary(
+    summary_data: &crate::parser::Summary,
+    mut selected_classes: Signal<Vec<String>>,
+    all_classes: &[ChemicalClass],
+) -> Element {
     let all_selected = selected_classes.read().len() == all_classes.len();
     let lipid_spectra = summary_data.lipid_spectra;
     let total_spectra = summary_data.total_spectra;
     let skipped = summary_data.skipped;
     let unclassified = summary_data.unclassified;
-    
+
     // Convert to owned data to avoid lifetime issues in closures
     let all_classes_owned = all_classes.to_vec();
-    
+
     rsx! {
         div {
             style: "margin-top: 1.25rem; padding: 1rem 1.1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
@@ -286,7 +290,7 @@ fn summary(summary_data: &crate::parser::Summary, mut selected_classes: Signal<V
                     span { style: "color: #94a3b8;", "(ignored {unclassified} annotated non-lipid spectra)" }
                 }
             }
-            
+
             if !all_classes_owned.is_empty() {
                 div { style: "margin: 0.8rem 0 0; padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;",
                     div { style: "margin-bottom: 0.6rem;",
@@ -351,7 +355,10 @@ fn summary(summary_data: &crate::parser::Summary, mut selected_classes: Signal<V
 }
 
 /// Renders the structure-diagram gallery, filtered by selected classes.
-fn gallery_with_filter(gallery: &[crate::parser::GalleryItem], selected_classes: &[String]) -> Element {
+fn gallery_with_filter(
+    gallery: &[crate::parser::GalleryItem],
+    selected_classes: &[String],
+) -> Element {
     // Filter gallery to only show items that match at least one selected class
     let filtered: Vec<_> = gallery
         .iter()
@@ -365,7 +372,7 @@ fn gallery_with_filter(gallery: &[crate::parser::GalleryItem], selected_classes:
             }
         })
         .collect();
-    
+
     let count = filtered.len();
     rsx! {
         div {

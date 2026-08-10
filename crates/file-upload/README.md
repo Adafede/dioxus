@@ -4,7 +4,9 @@ Streaming file upload and blob handling primitives for WASM file upload apps.
 
 ## Purpose
 
-Provides reusable, type-safe components for file upload workflows in Dioxus/WASM applications:
+Provides reusable, type-safe components for file upload workflows in Dioxus/WASM
+applications:
+
 - Chunked streaming reads from browser Blobs
 - Drag-and-drop event handling
 - File input parsing

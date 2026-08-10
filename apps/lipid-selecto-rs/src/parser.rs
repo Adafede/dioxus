@@ -14,8 +14,8 @@ use std::collections::HashMap;
 
 use crate::chemical_class::ChemicalClass;
 use crate::lipids::{LipidClassification, classify_spectrum, is_acyclic};
-use chematic::smiles;
 use chematic::chem;
+use chematic::smiles;
 
 /// One `BEGIN IONS ... END IONS` record from the source MGF, together with the
 /// metadata fields relevant to lipid selection.
@@ -290,10 +290,7 @@ pub fn gallery_item(block: &SpectrumBlock, _classes: &[ChemicalClass]) -> Galler
         .unwrap_or(0.0);
 
     // Use precomputed class matches from compute_class_matches
-    let class_matches = block
-        .gallery_item_matches
-        .clone()
-        .unwrap_or_default();
+    let class_matches = block.gallery_item_matches.clone().unwrap_or_default();
 
     let svg = block
         .psm_smiles
@@ -319,7 +316,11 @@ pub fn gallery_item(block: &SpectrumBlock, _classes: &[ChemicalClass]) -> Galler
 /// `limit` caps how many structures are generated (rendering is intentionally
 /// done up-front so the gallery never re-renders diagrams on every frame).
 #[must_use]
-pub fn build_gallery(blocks: &[SpectrumBlock], limit: usize, classes: &[ChemicalClass]) -> Vec<GalleryItem> {
+pub fn build_gallery(
+    blocks: &[SpectrumBlock],
+    limit: usize,
+    classes: &[ChemicalClass],
+) -> Vec<GalleryItem> {
     let mut gallery = Vec::new();
     for block in blocks {
         if gallery.len() >= limit {
@@ -368,12 +369,12 @@ pub struct Analysis {
 #[must_use]
 pub fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
     let all_classes = ChemicalClass::defaults();
-    
+
     // Compute class matches for all blocks
     for block in &mut blocks {
         block.compute_class_matches(&all_classes);
     }
-    
+
     let summary = summarize(&blocks);
     let gallery = build_gallery(&blocks, gallery_limit, &all_classes);
     let filtered_mgf = build_filtered_mgf(&blocks);
@@ -408,7 +409,7 @@ pub fn build_filtered_mgf_with_classes(
         // If no classes selected, include nothing
         return String::new();
     }
-    
+
     let mut out = String::new();
     let mut first = true;
     for block in blocks {
@@ -495,7 +496,11 @@ END IONS
         assert!(!blocks[2].is_lipid());
 
         let analysis = build_analysis(blocks, 16);
-        assert!(analysis.filtered_mgf.contains("BEGIN IONS SMILES=CCCCCCCCCCCCCCCC(=O)O"));
+        assert!(
+            analysis
+                .filtered_mgf
+                .contains("BEGIN IONS SMILES=CCCCCCCCCCCCCCCC(=O)O")
+        );
         assert!(!analysis.filtered_mgf.contains("non_lipid_example"));
         assert!(!analysis.filtered_mgf.contains("missing_annotation"));
     }
@@ -524,13 +529,13 @@ END IONS
     fn gallery_items_have_class_matches() {
         let (blocks, _) = analyze(EXAMPLE_MGF);
         let analysis = build_analysis(blocks, 16);
-        
+
         assert_eq!(analysis.gallery.len(), 1);
         let item = &analysis.gallery[0];
-        
+
         // All gallery items should have class_matches computed
         assert!(!item.class_matches.is_empty());
-        
+
         // At least one class should match (since it's a lipid)
         let has_match = item.class_matches.values().any(|&m| m);
         assert!(has_match);
@@ -539,7 +544,7 @@ END IONS
     #[test]
     fn chemical_classes_have_all_required_fields() {
         let classes = ChemicalClass::defaults();
-        
+
         for class in classes {
             assert!(!class.name.is_empty(), "Class name should not be empty");
             assert!(!class.smarts.is_empty(), "Class SMARTS should not be empty");

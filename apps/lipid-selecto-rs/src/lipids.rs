@@ -97,7 +97,7 @@ pub struct ElementCounts {
 impl ElementCounts {
     /// Double-bond equivalents (a.k.a. the index of hydrogen deficiency).
     ///
-    /// `DBE = C - H/2 - X/2 + N/2 + 1`
+    /// `BE = C - H/2 - X/2 + N/2 + 1`
     #[must_use]
     pub fn double_bond_equivalent(&self) -> f64 {
         let c = f64::from(self.carbon);
@@ -164,7 +164,8 @@ const PATTERN_CHOLINE: &str = "[NX4+]";
 const PATTERN_ETHANOLAMINE: &str = "[NX3][CX4]";
 
 /// Triglyceride: one carbon with 3 ester groups (glycerol backbone)
-const PATTERN_TRIGLYCERIDE: &str = "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])";
+const PATTERN_TRIGLYCERIDE: &str =
+    "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])";
 
 /// Diglyceride: carbon with 2 ester groups
 const PATTERN_DIGLYCERIDE: &str = "[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])";
@@ -174,7 +175,8 @@ const PATTERN_MONOGLYCERIDE: &str = "[CX4][OX2][CX3](=[OX1])[#6]";
 
 /// Long aliphatic chain: 8+ saturated carbons NOT in rings (NO aromatic, NO rings)
 /// Uses [!a] for not aromatic and [!R] for not in ring
-const PATTERN_ALIPHATIC_CHAIN: &str = "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]";
+const PATTERN_ALIPHATIC_CHAIN: &str =
+    "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]";
 
 /// Amide linkage: C(=O)-N (found in ceramides)
 const PATTERN_AMIDE: &str = "[CX3](=[OX1])[NX3]";
@@ -368,7 +370,7 @@ pub fn classify_formula(formula: &str) -> Option<LipidClass> {
         && h <= 2 * c + 2
         && h >= 2 * c - 28
     {
-       return Some(LipidClass::FattyAcyl);
+        return Some(LipidClass::FattyAcyl);
     }
 
     // NOTE: Do NOT classify sterols by formula alone - sterols have 4-ring cores
@@ -526,10 +528,7 @@ mod tests {
             None
         ); // ATP
         assert_eq!(class_of("C[N+](C)(C)CCO"), None); // choline
-        assert_eq!(
-            class_of("CC1=C(C(=CC=C1)S(=O)(=O)O)C(=O)O"),
-            None
-        ); // aromatic sulfonic acid - should NOT be a lipid
+        assert_eq!(class_of("CC1=C(C(=CC=C1)S(=O)(=O)O)C(=O)O"), None); // aromatic sulfonic acid - should NOT be a lipid
         assert_eq!(
             class_of(
                 "CC(C)(COP(=O)(O)OP(=O)(O)OCC1C(C(C(O1)N2C=NC3=C(N=CN=C32)N)O)OP(=O)(O)O)C(C(=O)NCCC(=O)NCCS)O"

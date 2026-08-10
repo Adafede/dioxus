@@ -17,24 +17,24 @@ impl SmartsCores {
         let mut map = HashMap::new();
 
         // === FUNCTIONAL GROUPS ===
-        map.insert("acyl", "[CX3](=[OX1])[#6]");              // C(=O)-R
-        map.insert("ester", "[OX2][CX3](=[OX1])[#6]");        // O-C(=O)-R
-        map.insert("amide", "[NX3][CX3](=[OX1])[#6]");        // N-C(=O)-R
+        map.insert("acyl", "[CX3](=[OX1])[#6]"); // C(=O)-R
+        map.insert("ester", "[OX2][CX3](=[OX1])[#6]"); // O-C(=O)-R
+        map.insert("amide", "[NX3][CX3](=[OX1])[#6]"); // N-C(=O)-R
 
         // === GLYCEROL-BASED BACKBONES ===
-        map.insert("glycerol_3C", "[CH2X4][CHX4][CH2X4]");    // 3-carbon glycerol core
+        map.insert("glycerol_3C", "[CH2X4][CHX4][CH2X4]"); // 3-carbon glycerol core
 
         // === PHOSPHATE ===
-        map.insert("phospho", "[P;X4](=[OX1])");              // P(=O) phosphate core
+        map.insert("phospho", "[P;X4](=[OX1])"); // P(=O) phosphate core
 
         // === HEADGROUPS ===
-        map.insert(
-            "choline",
-            "[CH2X4][CH2X4][N+;X4]([CH3])([CH3])[CH3]",
-        );
+        map.insert("choline", "[CH2X4][CH2X4][N+;X4]([CH3])([CH3])[CH3]");
         map.insert("ethanolamine", "[CH2X4][CH2X4][NX3;H2,H1,H0]");
         map.insert("serine_head", "[CH2X4][CHX4]([CX3](=O)[OX2H,OX1-])[NX3]");
-        map.insert("glycerol_head", "[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]");
+        map.insert(
+            "glycerol_head",
+            "[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]",
+        );
 
         // === RING SYSTEMS (CYCLIZATION) ===
         map.insert("inositol", "[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1");
@@ -82,9 +82,9 @@ pub enum StructuralFamily {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum LipidClass {
     // === FATTY ACYLS ===
-    FA,    // Fatty Acid
-    PUFA,  // Polyunsaturated Fatty Acid (2+ C=C)
-    MUFA,  // Monounsaturated Fatty Acid (1 C=C)
+    FA,   // Fatty Acid
+    PUFA, // Polyunsaturated Fatty Acid (2+ C=C)
+    MUFA, // Monounsaturated Fatty Acid (1 C=C)
 
     // === GLYCEROLIPIDS ===
     MG, // Monoacylglycerol
@@ -103,9 +103,9 @@ pub enum LipidClass {
     LPE, // Lysophosphatidylethanolamine
 
     // === SPHINGOLIPIDS ===
-    Cer,     // Ceramide
-    SM,      // Sphingomyelin
-    HexCer,  // Hexosylceramide
+    Cer,    // Ceramide
+    SM,     // Sphingomyelin
+    HexCer, // Hexosylceramide
 }
 
 /// Lipid subclass: the molecular architecture level.

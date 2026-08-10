@@ -93,7 +93,7 @@ impl ChainComposition {
             .map(|c| format!("{}:{}", c.carbon_count, c.double_bonds))
             .collect::<Vec<_>>()
             .join("/")
-        }
+    }
 }
 
 /// Analyze the fatty acyl chains in a molecule.

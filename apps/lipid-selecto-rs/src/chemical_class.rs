@@ -1,7 +1,7 @@
 //! User-defined chemical classes with SMARTS pattern matching.
 
-use std::collections::HashMap;
 use chematic::smarts;
+use std::collections::HashMap;
 
 /// A chemical class defined by name, SMARTS pattern, and display color.
 #[derive(Clone, Debug)]
@@ -13,7 +13,11 @@ pub struct ChemicalClass {
 
 impl ChemicalClass {
     /// Create a new chemical class.
-    pub fn new(name: impl Into<String>, smarts: impl Into<String>, color: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        smarts: impl Into<String>,
+        color: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             smarts: smarts.into(),
@@ -47,62 +51,62 @@ impl ChemicalClass {
                 // At least 8 carbons: C-C-C-C-C-C-C-C-C(=O)OH
                 // [CX4,CX3]+ chain then carboxylic acid
                 "[CX4][CX4][CX4][CX4][CX4][CX4][CX4][CX4][CX3](=[OX1])[OH]",
-                "#2563eb",  // Blue
+                "#2563eb", // Blue
             ),
             ChemicalClass::new(
                 "TG",
                 // Triglyceride: C with 3 ester groups
                 // Pattern: central glycerol carbon connected to 3 oxygen-ester chains
                 "[CX4]([OX2][CX3](=[OX1])[CX4,CX3])([OX2][CX3](=[OX1])[CX4,CX3])[OX2][CX3](=[OX1])",
-                "#0d9488",  // Teal
+                "#0d9488", // Teal
             ),
             ChemicalClass::new(
                 "DG",
                 // Diglyceride: glycerol with exactly 2 ester groups
                 // C with 2 ester + 1 OH
                 "[CX4]([OX2][CX3](=[OX1])[CX4,CX3])[OX2][CX3](=[OX1])[CX4,CX3]",
-                "#0d9488",  // Teal
+                "#0d9488", // Teal
             ),
             ChemicalClass::new(
                 "PC",
                 // Phosphatidylcholine: has both phosphate AND quaternary N (choline)
                 // Look for P(=O) with ester linkage + N+ (charged nitrogen for choline)
-                "[PX4](=[OX1])([OX2])[OX2]",  // Phosphate with 2+ ester/ether oxygens
-                "#7c3aed",  // Purple
+                "[PX4](=[OX1])([OX2])[OX2]", // Phosphate with 2+ ester/ether oxygens
+                "#7c3aed",                   // Purple
             ),
             ChemicalClass::new(
                 "PE",
                 // Phosphatidylethanolamine: phosphate + primary/secondary amine
                 // P(=O) + ester + amino group
-                "[PX4](=[OX1])([OX2])[OX2]",  // Phosphate
-                "#7c3aed",  // Purple
+                "[PX4](=[OX1])([OX2])[OX2]", // Phosphate
+                "#7c3aed",                   // Purple
             ),
             ChemicalClass::new(
                 "PA",
                 // Phosphatidic acid: just phosphate + glycerol (no headgroup)
                 // Minimal: P(=O) with 2 ester linkages to glycerol
-                "[PX4](=[OX1])([OX2])[OX2]",  // Phosphate with ester bonds
-                "#7c3aed",  // Purple
+                "[PX4](=[OX1])([OX2])[OX2]", // Phosphate with ester bonds
+                "#7c3aed",                   // Purple
             ),
             ChemicalClass::new(
                 "LPC",
                 // Lysophosphatidylcholine: monoglyceride + phosphate + choline
                 // One fatty acid attached to glycerol via ester
-                "[CX4][OX2][CX3](=[OX1])[CX4,CX3]",  // Monoglyceride ester with carbon chain
-                "#7c3aed",  // Purple
+                "[CX4][OX2][CX3](=[OX1])[CX4,CX3]", // Monoglyceride ester with carbon chain
+                "#7c3aed",                          // Purple
             ),
             ChemicalClass::new(
                 "LPE",
                 // Lysophosphatidylethanolamine: monoglyceride + phosphate + amino
-                "[CX4][OX2][CX3](=[OX1])[CX4,CX3]",  // Monoglyceride ester
-                "#7c3aed",  // Purple
+                "[CX4][OX2][CX3](=[OX1])[CX4,CX3]", // Monoglyceride ester
+                "#7c3aed",                          // Purple
             ),
             ChemicalClass::new(
                 "Ceramide",
                 // Ceramide: long chain amino alcohol + fatty acid amide
                 // Secondary amide (N-C(=O)) attached to long aliphatic chain
-                "[NX3][CX3](=[OX1])[CX4]",  // Amide with aliphatic chain
-                "#be185d",  // Pink
+                "[NX3][CX3](=[OX1])[CX4]", // Amide with aliphatic chain
+                "#be185d",                 // Pink
             ),
         ]
     }

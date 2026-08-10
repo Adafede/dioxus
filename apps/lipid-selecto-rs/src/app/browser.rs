@@ -4,9 +4,9 @@
 use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
-use crate::parser::{Analysis, build_filtered_mgf, extract_blocks, gallery_item, summarize};
-#[cfg(target_arch = "wasm32")]
 use crate::chemical_class::ChemicalClass;
+#[cfg(target_arch = "wasm32")]
+use crate::parser::{Analysis, build_filtered_mgf, extract_blocks, gallery_item, summarize};
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
 #[cfg(target_arch = "wasm32")]
