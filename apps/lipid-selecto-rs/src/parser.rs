@@ -1,11 +1,9 @@
-//! MGF parsing and lipid selection.
+//! MGF parsing and chemical class matching.
 //!
 //! The parser walks an MGF file block-by-block (`BEGIN IONS` ... `END IONS`),
 //! preserving each block's verbatim text so that the filtered MGF is a faithful
 //! subset of the input (no re-serialization drift). For every block it extracts
-//! the per-spectrum metadata a lipid classifier needs — chiefly `SMILES=` and the
-//! `FORMULA=` fallback — and tags the block with a [`crate::lipids::LipidClass`]
-//! when it is recognized as a lipid.
+//! SMILES and FORMULA metadata, then matches against user-defined chemical classes.
 
 // Spectrum indices and counts are small, non-negative values sourced from an
 // in-memory parse; the `usize -> u32` casts here cannot truncate for realistic
@@ -14,8 +12,8 @@
 
 use std::collections::HashMap;
 
-use crate::lipids::{LipidClass, LipidClassification, classify_spectrum};
 use crate::chemical_class::ChemicalClass;
+use crate::lipids::{LipidClassification, classify_spectrum};
 use chematic::smiles;
 
 /// One `BEGIN IONS ... END IONS` record from the source MGF, together with the
@@ -38,6 +36,8 @@ pub struct SpectrumBlock {
     pub precursor_mz: Option<f64>,
     /// Result of lipid classification (populated by [`SpectrumBlock::classify`]).
     pub classification: Option<LipidClassification>,
+    /// Maps chemical class name -> bool (does this spectrum match?)
+    pub gallery_item_matches: Option<HashMap<String, bool>>,
     /// Verbatim text of the block, from `BEGIN IONS` through `END IONS`.
     pub raw: String,
 }
@@ -53,6 +53,7 @@ impl SpectrumBlock {
             ion_mode: None,
             precursor_mz: None,
             classification: None,
+            gallery_item_matches: None,
             raw: String::new(),
         }
     }
@@ -125,6 +126,19 @@ impl SpectrumBlock {
     #[must_use]
     pub const fn is_lipid(&self) -> bool {
         self.classification.is_some()
+    }
+
+    /// Compute and store class matches for this block's SMILES.
+    pub fn compute_class_matches(&mut self, classes: &[ChemicalClass]) {
+        let mut matches = HashMap::new();
+        if let Some(smiles_str) = &self.psm_smiles {
+            if let Ok(molecule) = smiles::parse(smiles_str.trim()) {
+                for class in classes {
+                    matches.insert(class.name.clone(), class.matches(&molecule));
+                }
+            }
+        }
+        self.gallery_item_matches = Some(matches);
     }
 }
 
@@ -207,7 +221,6 @@ pub struct Summary {
     pub lipid_spectra: usize,
     pub unclassified: usize,
     pub skipped: usize,
-    pub class_counts: Vec<(LipidClass, usize)>,
 }
 
 impl Summary {
@@ -226,11 +239,10 @@ impl Summary {
     }
 }
 
-/// Tally lipids-vs-not from a parsed block collection.
+/// Tally spectra-vs-not from a parsed block collection.
 #[must_use]
 pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
     let mut summary = Summary::default();
-    let mut class_counts: HashMap<LipidClass, usize> = HashMap::new();
 
     for block in blocks {
         let annotated = block
@@ -246,24 +258,18 @@ pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
             continue;
         }
 
-        if let Some(classification) = &block.classification {
+        if block.classification.is_some() {
             summary.lipid_spectra += 1;
-            *class_counts.entry(classification.class).or_insert(0) += 1;
         } else {
             summary.unclassified += 1;
         }
     }
 
     summary.total_spectra = blocks.len();
-    summary.class_counts = {
-        let mut entries: Vec<(LipidClass, usize)> = class_counts.into_iter().collect();
-        entries.sort_by_key(|(left_class, _)| *left_class);
-        entries
-    };
     summary
 }
 
-/// Project a single lipid-positive block into a gallery card, rendering its
+/// Project a single spectrum block into a gallery card, rendering its
 /// 2D structure up-front.
 #[must_use]
 pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
@@ -273,13 +279,12 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
             title: block.title.clone(),
             smiles: block.psm_smiles.clone(),
             formula: String::new(),
-            class: LipidClass::Other,
             exact_mass: 0.0,
             precursor_mz: block.precursor_mz,
             charge: block.charge.clone(),
             svg: empty_svg(),
-           class_matches: HashMap::new(),
-       };
+            class_matches: HashMap::new(),
+        };
     };
     
     // Compute class matches by parsing SMILES and checking against each class
@@ -295,20 +300,19 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
     let svg = block
        .psm_smiles
        .as_deref()
-     .and_then(crate::depict_simple::render_svg)
+    .and_then(crate::depict_simple::render_svg)
        .unwrap_or_else(empty_svg);
-    GalleryItem {
+   GalleryItem {
        block_index: block.index,
        title: block.title.clone(),
        smiles: block.psm_smiles.clone(),
        formula: classification.formula.clone(),
-       class: classification.class,
        exact_mass: classification.exact_mass,
        precursor_mz: block.precursor_mz,
        charge: block.charge.clone(),
        svg,
        class_matches,
-    }
+   }
 }
 
 /// Build the gallery, rendering a 2D structure for each lipid block.
@@ -330,14 +334,13 @@ pub fn build_gallery(blocks: &[SpectrumBlock], limit: usize, classes: &[Chemical
     gallery
 }
 
-/// A lightweight, owned view of one selected lipid used to render the gallery.
+/// A lightweight, owned view of one spectrum used to render the gallery.
 #[derive(Clone, Debug)]
 pub struct GalleryItem {
     pub block_index: usize,
     pub title: Option<String>,
     pub smiles: Option<String>,
     pub formula: String,
-    pub class: LipidClass,
     pub exact_mass: f64,
     pub precursor_mz: Option<f64>,
     pub charge: Option<String>,
@@ -364,50 +367,63 @@ pub struct Analysis {
 
 /// Full pipeline: extract, classify, summarize, build gallery + filtered MGF.
 #[must_use]
-pub fn build_analysis(blocks: &[SpectrumBlock], gallery_limit: usize) -> Analysis {
+pub fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
     let all_classes = ChemicalClass::defaults();
-    let summary = summarize(blocks);
-    let gallery = build_gallery(blocks, gallery_limit, &all_classes);
-    let filtered_mgf = build_filtered_mgf(blocks);
+    
+    // Compute class matches for all blocks
+    for block in &mut blocks {
+        block.compute_class_matches(&all_classes);
+    }
+    
+    let summary = summarize(&blocks);
+    let gallery = build_gallery(&blocks, gallery_limit, &all_classes);
+    let filtered_mgf = build_filtered_mgf(&blocks);
     Analysis {
         summary,
         gallery,
         filtered_mgf,
-        blocks: blocks.to_vec(),
+        blocks,
         all_classes,
     }
 }
 
-/// Concatenate the verbatim text of lipid-positive blocks into a filtered MGF.
+/// Concatenate the verbatim text of all lipid-positive blocks into a filtered MGF.
+/// This uses all default chemical classes.
 #[must_use]
 pub fn build_filtered_mgf(blocks: &[SpectrumBlock]) -> String {
-    build_filtered_mgf_with_classes(blocks, &[
-        LipidClass::FattyAcyl,
-        LipidClass::Glycerolipid,
-        LipidClass::Glycerophospholipid,
-        LipidClass::Sphingolipid,
-        LipidClass::Sterol,
-        LipidClass::Other,
-    ])
+    // Include all default class names
+    let all_class_names: Vec<String> = ChemicalClass::defaults()
+        .iter()
+        .map(|c| c.name.clone())
+        .collect();
+    build_filtered_mgf_with_classes(blocks, &all_class_names)
 }
 
-/// Concatenate the verbatim text of lipid-positive blocks into a filtered MGF,
-/// including only blocks whose class is in the `selected_classes` list.
+/// Concatenate the verbatim text of blocks matching selected class names.
 #[must_use]
 pub fn build_filtered_mgf_with_classes(
     blocks: &[SpectrumBlock],
-    selected_classes: &[LipidClass],
+    selected_class_names: &[String],
 ) -> String {
+    if selected_class_names.is_empty() {
+        // If no classes selected, include nothing
+        return String::new();
+    }
+    
     let mut out = String::new();
     let mut first = true;
     for block in blocks {
         if !block.is_lipid() {
             continue;
         }
-        let Some(classification) = &block.classification else {
+        let Some(gallery_item) = block.gallery_item_matches.as_ref() else {
             continue;
         };
-        if !selected_classes.contains(&classification.class) {
+        // Include block if it matches at least one selected class
+        let matches_any = selected_class_names
+            .iter()
+            .any(|class_name| gallery_item.get(class_name).copied().unwrap_or(false));
+        if !matches_any {
             continue;
         }
         if !first {
@@ -474,10 +490,10 @@ END IONS
         assert!(!blocks[1].is_lipid());
         assert!(!blocks[2].is_lipid());
 
-        let filtered = build_filtered_mgf(&blocks);
-        assert!(filtered.contains("BEGIN IONS SMILES=CCCCCCCCCCCCCCCC(=O)O"));
-        assert!(!filtered.contains("non_lipid_example"));
-        assert!(!filtered.contains("missing_annotation"));
+        let analysis = build_analysis(blocks, 16);
+        assert!(analysis.filtered_mgf.contains("BEGIN IONS SMILES=CCCCCCCCCCCCCCCC(=O)O"));
+        assert!(!analysis.filtered_mgf.contains("non_lipid_example"));
+        assert!(!analysis.filtered_mgf.contains("missing_annotation"));
     }
 
     #[test]
@@ -492,7 +508,7 @@ END IONS
     #[test]
     fn analysis_builds_gallery_and_filtered_mgf() {
         let (blocks, _summary) = analyze(EXAMPLE_MGF);
-        let analysis = build_analysis(&blocks, 16);
+        let analysis = build_analysis(blocks, 16);
         assert_eq!(analysis.summary.lipid_spectra, 1);
         assert_eq!(analysis.gallery.len(), 1);
         assert!(!analysis.all_classes.is_empty());
@@ -503,7 +519,7 @@ END IONS
     #[test]
     fn gallery_items_have_class_matches() {
         let (blocks, _) = analyze(EXAMPLE_MGF);
-        let analysis = build_analysis(&blocks, 16);
+        let analysis = build_analysis(blocks, 16);
         
         assert_eq!(analysis.gallery.len(), 1);
         let item = &analysis.gallery[0];

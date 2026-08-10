@@ -65,10 +65,15 @@ fn start_analysis(
             }
         }
 
+        // Now that we have classification, compute class matches for all blocks
+        let all_classes = ChemicalClass::defaults();
+        for block in &mut blocks {
+            block.compute_class_matches(&all_classes);
+        }
+
         let lipid_count = blocks.iter().filter(|block| block.is_lipid()).count();
         status.set(format!("Rendering {lipid_count} structures…"));
 
-        let all_classes = ChemicalClass::defaults();
         let mut gallery = Vec::with_capacity(lipid_count.min(MAX_GALLERY_ITEMS));
         for block in blocks.iter().filter(|block| block.is_lipid()) {
             if gallery.len() >= MAX_GALLERY_ITEMS {

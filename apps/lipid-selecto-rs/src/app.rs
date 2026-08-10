@@ -235,8 +235,7 @@ fn download_bar(
 ) -> Element {
     let download_name = download_filename(source_file);
     
-    // For now, use the full MGF since filtering by chemical class names
-    // requires mapping to the legacy LipidClass system
+    // The filtered MGF already contains only lipid spectra matching the selected classes
     let filtered_content = filtered_mgf.to_string();
     
     let name = download_name.clone();
@@ -379,7 +378,6 @@ fn gallery_with_filter(gallery: &[crate::parser::GalleryItem], selected_classes:
                     style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0.75rem;",
                     for item in filtered.iter() {
                         {
-                            let color = item.class.color();
                             let precursor_text = item
                                 .precursor_mz
                                 .map_or_else(|| "—".to_string(), |mz| format!("{mz:.3}"));
@@ -394,7 +392,6 @@ fn gallery_with_filter(gallery: &[crate::parser::GalleryItem], selected_classes:
                                         }
                                         div { style: "flex: 1 1 auto; min-width: 0;",
                                             div { style: "display: flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap;",
-                                                span { style: format!("color: {color}; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.15rem 0.5rem; border-radius: 999px; background: {color}1a;"), "{item.class.label()}" }
                                                 span { style: "color: #0f172a; font-size: 0.82rem; font-weight: 600;", "{item.formula}" }
                                                 span { style: "color: #64748b; font-size: 0.78rem;", "m/z {item.exact_mass:.3}" }
                                             }
