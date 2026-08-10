@@ -325,9 +325,8 @@ fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Ve
                     }
                     ul {
                         style: "margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 0.6rem;",
-                        for (class, count) in class_items.iter() {
+                        for (class, count) in class_items.iter().filter(|(c, _)| selected_classes.read().contains(c)) {
                             {
-                                let is_checked = selected_classes.read().contains(class);
                                 let color = class.color();
                                 let class_copy = *class;
                                 rsx! {
@@ -337,15 +336,10 @@ fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Ve
                                             style: "display: flex; align-items: center; gap: 0.4rem; cursor: pointer;",
                                             input {
                                                 r#type: "checkbox",
-                                                checked: is_checked,
+                                                checked: true,
                                                 onchange: move |_| {
                                                     let mut classes = selected_classes.read().clone();
-                                                    if classes.contains(&class_copy) {
-                                                        classes.retain(|&c| c != class_copy);
-                                                    } else {
-                                                        classes.push(class_copy);
-                                                        classes.sort_by_key(|&c| c);
-                                                    }
+                                                    classes.retain(|&c| c != class_copy);
                                                     selected_classes.set(classes);
                                                 },
                                                 style: "width: 14px; height: 14px; cursor: pointer;",

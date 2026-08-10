@@ -366,13 +366,12 @@ pub fn classify_formula(formula: &str) -> Option<LipidClass> {
         && h <= 2 * c + 2
         && h >= 2 * c - 28
     {
-        return Some(LipidClass::FattyAcyl);
+       return Some(LipidClass::FattyAcyl);
     }
 
-    // Sterol / steroid formula signature.
-    if p == 0 && n == 0 && o <= 4 && (17..=40).contains(&c) && (4.0..=12.0).contains(&db) {
-        return Some(LipidClass::Sterol);
-    }
+    // NOTE: Do NOT classify sterols by formula alone - sterols have 4-ring cores
+    // and are definitionally cyclic. Formula-based classification cannot determine
+    // ring structure, so we reject all sterol-like formulas to be safe.
 
     // Glycerolipid: ester-rich, oxygen-rich but low O/C ratio (excludes sugars).
     if p == 0
@@ -544,8 +543,10 @@ mod tests {
     }
 
     #[test]
-    fn formula_fallback_classifies_cholesterol() {
-        assert_eq!(classify_formula("C27H46O"), Some(LipidClass::Sterol));
+    fn formula_fallback_rejects_cholesterol() {
+        // Sterols have 4-ring cores; formula-based classification cannot determine
+        // ring structure, so sterol formulas are rejected to prevent false positives
+        assert_eq!(classify_formula("C27H46O"), None);
     }
 
     #[test]
