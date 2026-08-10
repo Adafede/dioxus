@@ -1,5 +1,5 @@
-/// Depiction using CDKdepict HTTP API.
-/// Returns HTML with an image that loads from the public CDKdepict service.
+/// Depiction using simolecule CDKdepict API.
+/// Returns HTML img tag that loads from the working simolecule service.
 
 pub fn render_svg(smiles: &str) -> Option<String> {
     // URL encode the SMILES (simple percent encoding for special chars)
@@ -12,14 +12,13 @@ pub fn render_svg(smiles: &str) -> Option<String> {
         .collect::<String>();
 
     let url = format!(
-        "https://cdkdepict.sourceforge.io/depict/bot/{}/svg",
+        "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi={}",
         encoded
     );
 
     // Return HTML with an img tag that loads the remote depiction
-    // This avoids CORS issues with embedded SVG images
     Some(format!(
-        r#"<img src="{}" style="width: 100%; height: 100%; object-fit: contain;" alt="Depiction" />"#,
+        r#"<img src="{}" style="width: 100%; height: 100%; object-fit: contain;" alt="Depiction" loading="lazy" />"#,
         url
     ))
 }
@@ -31,11 +30,12 @@ mod tests {
     #[test]
     fn test_depict_fatty_acid() {
         let smiles = "CCCCCCCCCCCCCCCC(=O)O";
-        let svg = render_svg(smiles);
-        assert!(svg.is_some());
-        let html = svg.unwrap();
-        assert!(html.contains("img"));
-        assert!(html.contains("cdkdepict"));
+        let html = render_svg(smiles);
+        assert!(html.is_some());
+        let content = html.unwrap();
+        assert!(content.contains("img"));
+        assert!(content.contains("simolecule"));
+        assert!(content.contains("cdkdepict"));
     }
 }
 
