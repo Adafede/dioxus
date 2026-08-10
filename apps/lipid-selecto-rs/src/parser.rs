@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use crate::chemical_class::ChemicalClass;
 use crate::lipids::{LipidClassification, classify_spectrum, is_acyclic};
 use chematic::smiles;
+use chematic::chem;
 
 /// One `BEGIN IONS ... END IONS` record from the source MGF, together with the
 /// metadata fields relevant to lipid selection.
@@ -279,47 +280,38 @@ pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
 /// Project a single spectrum block into a gallery card, rendering its
 /// 2D structure up-front.
 #[must_use]
-pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
-    let Some(classification) = &block.classification else {
-        return GalleryItem {
-            block_index: block.index,
-            title: block.title.clone(),
-            smiles: block.psm_smiles.clone(),
-            formula: String::new(),
-            exact_mass: 0.0,
-            precursor_mz: block.precursor_mz,
-            charge: block.charge.clone(),
-            svg: empty_svg(),
-            class_matches: HashMap::new(),
-        };
-    };
-    
-    // Compute class matches by parsing SMILES and checking against each class
-    let mut class_matches = HashMap::new();
-    if let Some(smiles_str) = &block.psm_smiles {
-       if let Ok(molecule) = smiles::parse(smiles_str.trim()) {
-           for class in classes {
-               class_matches.insert(class.name.clone(), class.matches(&molecule));
-           }
-       }
-    }
-    
+pub fn gallery_item(block: &SpectrumBlock, _classes: &[ChemicalClass]) -> GalleryItem {
+    // Compute exact mass from SMILES
+    let exact_mass = block
+        .psm_smiles
+        .as_deref()
+        .and_then(|smiles_str| smiles::parse(smiles_str.trim()).ok())
+        .map(|mol| chem::exact_mass(&mol))
+        .unwrap_or(0.0);
+
+    // Use precomputed class matches from compute_class_matches
+    let class_matches = block
+        .gallery_item_matches
+        .clone()
+        .unwrap_or_default();
+
     let svg = block
-       .psm_smiles
-       .as_deref()
-    .and_then(crate::depict_simple::render_svg)
-       .unwrap_or_else(empty_svg);
-   GalleryItem {
-       block_index: block.index,
-       title: block.title.clone(),
-       smiles: block.psm_smiles.clone(),
-       formula: classification.formula.clone(),
-       exact_mass: classification.exact_mass,
-       precursor_mz: block.precursor_mz,
-       charge: block.charge.clone(),
-       svg,
-       class_matches,
-   }
+        .psm_smiles
+        .as_deref()
+        .and_then(crate::depict_simple::render_svg)
+        .unwrap_or_else(empty_svg);
+
+    GalleryItem {
+        block_index: block.index,
+        title: block.title.clone(),
+        smiles: block.psm_smiles.clone(),
+        formula: block.formula.clone().unwrap_or_default(),
+        exact_mass,
+        precursor_mz: block.precursor_mz,
+        charge: block.charge.clone(),
+        svg,
+        class_matches,
+    }
 }
 
 /// Build the gallery, rendering a 2D structure for each lipid block.
