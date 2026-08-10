@@ -4,58 +4,24 @@ use dioxus::prelude::*;
 use ui::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
-use gloo_timers::future::sleep;
+use file_upload::{BlobCursor, ScanError};
 #[cfg(target_arch = "wasm32")]
-use js_sys::Uint8Array;
+use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::{JsCast, JsValue};
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen::JsValue;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Blob;
 
-#[cfg(target_arch = "wasm32")]
-use shared::progress::ProgressThrottler;
-
 // ---------------------------------------------------------------------------
-// Performance notes (see accompanying explanation):
+// Performance notes:
 //
-// The scanner keeps exactly one chunk of the file buffered in memory and
-// parses it with plain synchronous loops. We only `.await` when the buffer
-// is exhausted and we need to pull the next chunk from the Blob. This means
-// a 10 GB file with 16 MiB chunks needs on the order of ~650 async
-// suspension points total, instead of one per byte (10+ billion). All
-// string/number/literal scanning that would otherwise straddle a chunk
-// boundary carries its parse state (escaped-flag, in-string, in-token,
-// depth) across the refill in local variables, so correctness is preserved.
+// The scanner uses BlobCursor from the file-upload crate to keep exactly
+// one chunk of the file buffered in memory. It parses with plain synchronous
+// loops, only `.await`ing when the buffer is exhausted. This means a 10 GB
+// file with 16 MiB chunks needs ~650 async suspension points total,
+// instead of one per byte (10+ billion). Parse state carries across
+// chunk boundaries in local variables, preserving correctness.
 // ---------------------------------------------------------------------------
-
-#[cfg(target_arch = "wasm32")]
-const CHUNK_SIZE: usize = 16 * 1024 * 1024; // 16 MiB per Blob read
-#[cfg(target_arch = "wasm32")]
-const PROGRESS_BYTE_INTERVAL: u64 = 4 * 1024 * 1024; // report at least every 4 MiB
-#[cfg(target_arch = "wasm32")]
-const PROGRESS_TIME_INTERVAL_MS: f64 = 120.0; // ...or at least every 120ms
-
-#[cfg(target_arch = "wasm32")]
-type ScanError = JsValue;
-
-#[cfg(target_arch = "wasm32")]
-fn scan_error(message: &str) -> ScanError {
-    JsValue::from_str(message)
-}
-
-#[component]
-fn skip_link() -> Element {
-    rsx! {
-        a {
-            href: "#main-content",
-            class: "skip-link",
-            style: "position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:transparent;color:#0b5cab;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:underline;",
-            "Skip to main content"
-        }
-    }
-}
 
 fn main() {
     launch(app);
@@ -71,24 +37,18 @@ struct ColumnResult {
 fn begin_scan_from_blob(
     blob: Blob,
     file_name: String,
-    file_name_signal: Signal<String>,
-    status: Signal<String>,
-    results: Signal<Vec<ColumnResult>>,
-    busy: Signal<bool>,
-    drag_active: Signal<bool>,
+    mut file_name_signal: Signal<String>,
+    mut status: Signal<String>,
+    mut results: Signal<Vec<ColumnResult>>,
+    mut busy: Signal<bool>,
+    mut drag_active: Signal<bool>,
 ) {
-    let mut file_name_for_state = file_name_signal;
-    let mut status_for_state = status;
-    let mut results_for_state = results;
-    let mut busy_for_state = busy;
-    let mut drag_active_for_state = drag_active;
-
-    file_name_for_state.set(file_name);
-    busy_for_state.set(true);
-    drag_active_for_state.set(false);
-    status_for_state.set("Reading file...".to_string());
-    results_for_state.set(vec![]);
-    spawn_scan(blob, status_for_state, results_for_state, busy_for_state);
+    file_name_signal.set(file_name);
+    busy.set(true);
+    drag_active.set(false);
+    status.set("Reading file...".to_string());
+    results.set(vec![]);
+    spawn_scan(blob, status, results, busy);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -137,6 +97,7 @@ fn app() -> Element {
     let file_name = use_signal(String::new);
     #[cfg(not(target_arch = "wasm32"))]
     let mut file_name = use_signal(String::new);
+
     let results = use_signal(Vec::<ColumnResult>::new);
     let mut status = use_signal(|| "Choose a JSON file to begin.".to_string());
     let busy = use_signal(|| false);
@@ -437,353 +398,18 @@ fn app() -> Element {
                     }
                 }
             }
+
+            style { ".skip-link:focus {{ top: 0 !important; outline: 3px solid #0b5cab; outline-offset: 2px; }}" }
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// Streaming scanner
+// Streaming JSON scanner - uses BlobCursor from file-upload crate
 // ---------------------------------------------------------------------------
 
-/// Buffered, chunked reader over a `Blob`. Holds a single in-flight chunk
-/// (`buf[pos..]`) and only performs an async Blob read when that chunk is
-/// exhausted. All parsing helpers below scan `buf` synchronously and only
-/// call `fill()` at the buffer boundary, which is the key difference from
-/// a naive byte-at-a-time async reader.
-#[cfg(target_arch = "wasm32")]
-struct Cursor<F> {
-    blob: Blob,
-    total_bytes: u64,
-    blob_read: u64,
-    buf: Vec<u8>,
-    pos: usize,
-    processed_before_buf: u64,
-    eof: bool,
-    progress: ProgressThrottler<F, fn() -> f64>,
-}
-
-#[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)]
-impl<F> Cursor<F>
-where
-    F: FnMut(u64, u64),
-{
-    fn new(blob: &Blob, total_bytes: u64, on_progress: F) -> Self {
-        Self {
-            blob: blob.clone(),
-            total_bytes,
-            blob_read: 0,
-            buf: Vec::with_capacity(CHUNK_SIZE),
-            pos: 0,
-            processed_before_buf: 0,
-            eof: false,
-            progress: ProgressThrottler::new(
-                on_progress,
-                js_sys::Date::now,
-                PROGRESS_BYTE_INTERVAL,
-                PROGRESS_TIME_INTERVAL_MS,
-            ),
-        }
-    }
-
-    fn processed(&self) -> u64 {
-        self.processed_before_buf + self.pos as u64
-    }
-
-    /// Drops already-consumed bytes and pulls in the next chunk from the
-    /// blob. Returns `Ok(true)` if data is available to read, `Ok(false)`
-    /// once the stream is fully exhausted.
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        clippy::cast_precision_loss
-    )]
-    async fn fill(&mut self) -> Result<bool, ScanError> {
-        if self.pos > 0 {
-            self.buf.drain(0..self.pos);
-            self.processed_before_buf += self.pos as u64;
-            self.pos = 0;
-        }
-
-        if self.eof {
-            return Ok(!self.buf.is_empty());
-        }
-
-        let start = self.blob_read;
-        let end = (self.blob_read + CHUNK_SIZE as u64).min(self.total_bytes);
-        if start >= end {
-            self.eof = true;
-            return Ok(!self.buf.is_empty());
-        }
-
-        let slice = self
-            .blob
-            .slice_with_f64_and_f64(start as f64, end as f64)
-            .map_err(JsValue::from)?;
-        let array_buffer = JsFuture::from(slice.array_buffer()).await?;
-        let array = Uint8Array::new(&array_buffer);
-
-        let old_len = self.buf.len();
-        let add_len = (end - start) as usize;
-        self.buf.resize(old_len + add_len, 0);
-        array.copy_to(&mut self.buf[old_len..old_len + add_len]);
-
-        self.blob_read = end;
-        if self.blob_read >= self.total_bytes {
-            self.eof = true;
-        }
-
-        if self
-            .progress
-            .maybe_report(self.processed(), self.total_bytes)
-        {
-            // Yield to the event loop only when we actually reported, so we
-            // don't stall the UI thread on huge files but also don't yield
-            // needlessly on every single chunk.
-            sleep(std::time::Duration::from_millis(0)).await;
-        }
-
-        Ok(true)
-    }
-
-    async fn ensure_any(&mut self) -> Result<bool, ScanError> {
-        while self.pos >= self.buf.len() {
-            if !self.fill().await? {
-                return Ok(false);
-            }
-        }
-        Ok(true)
-    }
-
-    async fn peek(&mut self) -> Result<Option<u8>, ScanError> {
-        if self.ensure_any().await? {
-            Ok(Some(self.buf[self.pos]))
-        } else {
-            Ok(None)
-        }
-    }
-
-    async fn next_byte(&mut self) -> Result<Option<u8>, ScanError> {
-        if self.ensure_any().await? {
-            let b = self.buf[self.pos];
-            self.pos += 1;
-            Ok(Some(b))
-        } else {
-            Ok(None)
-        }
-    }
-
-    async fn skip_ws(&mut self) -> Result<(), ScanError> {
-        loop {
-            while self.pos < self.buf.len()
-                && matches!(self.buf[self.pos], b' ' | b'\t' | b'\n' | b'\r')
-            {
-                self.pos += 1;
-            }
-            if self.pos < self.buf.len() {
-                return Ok(());
-            }
-            if !self.fill().await? {
-                return Ok(());
-            }
-        }
-    }
-
-    /// Reads a JSON string (consuming the opening and closing quotes) and
-    /// returns its unescaped contents. Used only for object keys, since
-    /// those need to be preserved as text.
-    async fn read_key(&mut self) -> Result<String, ScanError> {
-        if self.next_byte().await? != Some(b'"') {
-            return Err(scan_error("Expected opening quote for string"));
-        }
-
-        let mut raw = Vec::new();
-        let mut escaped = false;
-        loop {
-            let start = self.pos;
-            let len = self.buf.len();
-            let mut i = start;
-            let mut closed = false;
-            while i < len {
-                let b = self.buf[i];
-                if escaped {
-                    escaped = false;
-                } else if b == b'\\' {
-                    escaped = true;
-                } else if b == b'"' {
-                    closed = true;
-                    break;
-                }
-                i += 1;
-            }
-            raw.extend_from_slice(&self.buf[start..i]);
-            self.pos = i;
-            if closed {
-                self.pos += 1;
-                break;
-            }
-            if !self.fill().await? {
-                return Err(scan_error("Unexpected EOF while reading string"));
-            }
-        }
-
-        Ok(unescape_json_string(&raw))
-    }
-
-    /// Skips over a JSON string (consuming opening/closing quotes) and
-    /// reports only whether it had at least one character. No allocation.
-    async fn skip_string_nonempty(&mut self) -> Result<bool, ScanError> {
-        if self.next_byte().await? != Some(b'"') {
-            return Err(scan_error("Expected opening quote for string"));
-        }
-
-        let mut escaped = false;
-        let mut any = false;
-        loop {
-            let start = self.pos;
-            let len = self.buf.len();
-            let mut i = start;
-            let mut closed = false;
-            while i < len {
-                let b = self.buf[i];
-                if escaped {
-                    escaped = false;
-                } else if b == b'\\' {
-                    escaped = true;
-                } else if b == b'"' {
-                    closed = true;
-                    break;
-                }
-                i += 1;
-            }
-            if i > start {
-                any = true;
-            }
-            self.pos = i;
-            if closed {
-                self.pos += 1;
-                break;
-            }
-            if !self.fill().await? {
-                return Err(scan_error("Unexpected EOF while reading string"));
-            }
-        }
-
-        Ok(any)
-    }
-
-    /// Counts the number of non-null "leaf" values inside a JSON value.
-    /// Nested objects/arrays are flattened and counted recursively in a
-    /// single synchronous pass; strings count as 1 if non-empty; numbers
-    /// and booleans count as 1; `null` counts as 0.
-    async fn count_value(&mut self) -> Result<u64, ScanError> {
-        if !self.ensure_any().await? {
-            return Ok(0);
-        }
-        let first = self.buf[self.pos];
-
-        if first == b'"' {
-            return Ok(u64::from(self.skip_string_nonempty().await?));
-        }
-
-        if first == b'{' || first == b'[' {
-            self.pos += 1;
-            let mut depth: i32 = 1;
-            let mut count: u64 = 0;
-            let mut in_string = false;
-            let mut escaped = false;
-            let mut in_token = false;
-            let mut token_first_byte = 0u8;
-
-            loop {
-                while self.pos < self.buf.len() {
-                    let b = self.buf[self.pos];
-
-                    if in_string {
-                        if escaped {
-                            escaped = false;
-                        } else if b == b'\\' {
-                            escaped = true;
-                        } else if b == b'"' {
-                            in_string = false;
-                        }
-                        self.pos += 1;
-                        continue;
-                    }
-
-                    if in_token {
-                        if matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']') {
-                            if token_first_byte != b'n' {
-                                count += 1;
-                            }
-                            in_token = false;
-                            // Fall through: this byte still needs normal handling below.
-                        } else {
-                            self.pos += 1;
-                            continue;
-                        }
-                    }
-
-                    match b {
-                        b'"' => {
-                            in_string = true;
-                            count += 1;
-                            self.pos += 1;
-                        }
-                        b'{' | b'[' => {
-                            depth += 1;
-                            self.pos += 1;
-                        }
-                        b'}' | b']' => {
-                            depth -= 1;
-                            self.pos += 1;
-                            if depth == 0 {
-                                return Ok(count);
-                            }
-                        }
-                        b':' | b',' | b' ' | b'\t' | b'\n' | b'\r' => {
-                            self.pos += 1;
-                        }
-                        _ => {
-                            // Start of a number, `true`, `false`, or `null`.
-                            // We don't need to validate the exact literal —
-                            // just its first byte, to distinguish `null`
-                            // (uncounted) from everything else (counted).
-                            in_token = true;
-                            token_first_byte = b;
-                            self.pos += 1;
-                        }
-                    }
-                }
-                if !self.fill().await? {
-                    return Err(scan_error(
-                        "Unexpected EOF while scanning nested JSON value",
-                    ));
-                }
-            }
-        }
-
-        // Bare scalar at this position: number, true, false, or null.
-        self.pos += 1;
-        loop {
-            while self.pos < self.buf.len() {
-                let b = self.buf[self.pos];
-                if matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']') {
-                    return Ok(u64::from(first != b'n'));
-                }
-                self.pos += 1;
-            }
-            if !self.fill().await? {
-                return Ok(u64::from(first != b'n'));
-            }
-        }
-    }
-}
-
-/// Unescapes a raw (still-escaped) JSON string body, e.g. turning `a\"b`
-/// into `a"b`. Handles the standard JSON escapes plus `\uXXXX` (BMP only;
-/// surrogate pairs are decoded per-unit rather than combined, which is a
-/// reasonable simplification for typical field-name content).
+/// Unescapes a raw (still-escaped) JSON string body.
+/// Handles standard JSON escapes including `\uXXXX` (BMP).
 #[cfg(target_arch = "wasm32")]
 fn unescape_json_string(raw: &[u8]) -> String {
     if !raw.contains(&b'\\') {
@@ -828,12 +454,11 @@ fn unescape_json_string(raw: &[u8]) -> String {
                     i += 2;
                 }
                 b'u' if i + 6 <= raw.len() => {
-                    if let Ok(hex) = std::str::from_utf8(&raw[i + 2..i + 6]) {
-                        if let Ok(code) = u32::from_str_radix(hex, 16) {
-                            if let Some(c) = char::from_u32(code) {
-                                out.push(c);
-                            }
-                        }
+                    if let Ok(hex) = std::str::from_utf8(&raw[i + 2..i + 6])
+                        && let Ok(code) = u32::from_str_radix(hex, 16)
+                        && let Some(c) = char::from_u32(code)
+                    {
+                        out.push(c);
                     }
                     i += 6;
                 }
@@ -854,48 +479,290 @@ fn unescape_json_string(raw: &[u8]) -> String {
     out
 }
 
+/// Reads a JSON string key from the cursor using the shared BlobCursor.
+#[cfg(target_arch = "wasm32")]
+async fn read_json_key<F: FnMut(u64, u64)>(
+    cursor: &mut BlobCursor<F>,
+) -> Result<String, file_upload::ScanError> {
+    use wasm_bindgen::JsValue;
+
+    if cursor.next_byte().await? != Some(b'"') {
+        return Err(file_upload::ScanError(JsValue::from_str(
+            "Expected opening quote for string",
+        )));
+    }
+
+    let mut raw = Vec::new();
+    let mut escaped = false;
+    loop {
+        let start = cursor.pos();
+        let buf = cursor.buffer();
+        let mut i = start;
+        let mut closed = false;
+
+        while i < buf.len() {
+            match buf[i] {
+                _ if escaped => {
+                    escaped = false;
+                    i += 1;
+                    continue;
+                }
+                b'\\' => escaped = true,
+                b'"' => {
+                    closed = true;
+                    break;
+                }
+                _ => {
+                    i += 1;
+                }
+            }
+        }
+
+        raw.extend_from_slice(&buf[start..i]);
+        cursor.advance(i - start);
+
+        if closed {
+            cursor.advance(1); // consume closing quote
+            break;
+        }
+
+        if !cursor.fill().await? {
+            return Err(file_upload::ScanError(JsValue::from_str(
+                "Unexpected EOF while reading string",
+            )));
+        }
+    }
+
+    Ok(unescape_json_string(&raw))
+}
+
+/// Skips over a JSON string (consuming opening/closing quotes) and
+/// reports only whether it had at least one character. No allocation.
+#[cfg(target_arch = "wasm32")]
+async fn skip_string_nonempty<F: FnMut(u64, u64)>(
+    cursor: &mut BlobCursor<F>,
+) -> Result<bool, file_upload::ScanError> {
+    use wasm_bindgen::JsValue;
+
+    if cursor.next_byte().await? != Some(b'"') {
+        return Err(file_upload::ScanError(JsValue::from_str(
+            "Expected opening quote for string",
+        )));
+    }
+
+    let mut escaped = false;
+    let mut any = false;
+    loop {
+        let start = cursor.pos();
+        let buf = cursor.buffer();
+        let mut i = start;
+        let mut closed = false;
+
+        while i < buf.len() {
+            match buf[i] {
+                _ if escaped => {
+                    escaped = false;
+                    i += 1;
+                    continue;
+                }
+                b'\\' => escaped = true,
+                b'"' => {
+                    closed = true;
+                    break;
+                }
+                _ => {
+                    i += 1;
+                }
+            }
+        }
+
+        if i > start {
+            any = true;
+        }
+        cursor.advance(i - start);
+
+        if closed {
+            cursor.advance(1); // consume closing quote
+            break;
+        }
+
+        if !cursor.fill().await? {
+            return Err(file_upload::ScanError(JsValue::from_str(
+                "Unexpected EOF while reading string",
+            )));
+        }
+    }
+
+    Ok(any)
+}
+
+/// Counts the number of non-null "leaf" values inside a JSON value.
+/// Nested objects/arrays are flattened and counted recursively in a
+/// single synchronous pass; strings count as 1 if non-empty; numbers
+/// and booleans count as 1; `null` counts as 0.
+#[cfg(target_arch = "wasm32")]
+async fn count_value<F: FnMut(u64, u64)>(
+    cursor: &mut BlobCursor<F>,
+) -> Result<u64, file_upload::ScanError> {
+    use wasm_bindgen::JsValue;
+
+    if !cursor.ensure_any().await? {
+        return Ok(0);
+    }
+
+    let first = cursor
+        .current_byte()
+        .ok_or_else(|| file_upload::ScanError(JsValue::from_str("Unexpected end of buffer")))?;
+
+    if first == b'"' {
+        return Ok(u64::from(skip_string_nonempty(cursor).await?));
+    }
+
+    if first == b'{' || first == b'[' {
+        cursor.advance(1);
+        let mut depth: i32 = 1;
+        let mut count: u64 = 0;
+        let mut in_string = false;
+        let mut escaped = false;
+        let mut in_token = false;
+        let mut token_first_byte = 0u8;
+
+        loop {
+            let buf = cursor.buffer().to_vec(); // Copy to avoid borrow issues
+            let mut i = cursor.pos();
+
+            while i < buf.len() {
+                let b = buf[i];
+
+                if in_string {
+                    if escaped {
+                        escaped = false;
+                    } else if b == b'\\' {
+                        escaped = true;
+                    } else if b == b'"' {
+                        in_string = false;
+                    }
+                    i += 1;
+                    continue;
+                }
+
+                if in_token {
+                    if matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']') {
+                        if token_first_byte != b'n' {
+                            count += 1;
+                        }
+                        in_token = false;
+                    } else {
+                        i += 1;
+                        continue;
+                    }
+                }
+
+                match b {
+                    b'"' => {
+                        in_string = true;
+                        count += 1;
+                        i += 1;
+                    }
+                    b'{' | b'[' => {
+                        depth += 1;
+                        i += 1;
+                    }
+                    b'}' | b']' => {
+                        depth -= 1;
+                        i += 1;
+                        if depth == 0 {
+                            let advance_by = i - cursor.pos();
+                            cursor.advance(advance_by);
+                            return Ok(count);
+                        }
+                    }
+                    b':' | b',' | b' ' | b'\t' | b'\n' | b'\r' => {
+                        i += 1;
+                    }
+                    _ => {
+                        in_token = true;
+                        token_first_byte = b;
+                        i += 1;
+                    }
+                }
+            }
+
+            let advance_by = i - cursor.pos();
+            cursor.advance(advance_by);
+
+            if !cursor.fill().await? {
+                return Err(file_upload::ScanError(JsValue::from_str(
+                    "Unexpected EOF while scanning nested JSON value",
+                )));
+            }
+        }
+    }
+
+    // Bare scalar at this position: number, true, false, or null.
+    let first = cursor.current_byte().unwrap_or(b'n');
+    cursor.advance(1);
+    loop {
+        let buf = cursor.buffer().to_vec(); // Copy to avoid borrow issues
+        let i = cursor.pos();
+        while i < buf.len() {
+            let b = buf[i];
+            if matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']') {
+                return Ok(u64::from(first != b'n'));
+            }
+            cursor.advance(1);
+        }
+        if !cursor.fill().await? {
+            return Ok(u64::from(first != b'n'));
+        }
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::future_not_send)]
-async fn scan_blob_with_progress<'a>(
-    blob: &'a Blob,
-    on_progress: impl FnMut(u64, u64) + 'a,
-) -> Result<Vec<ColumnResult>, ScanError> {
+async fn scan_blob_with_progress(
+    blob: &Blob,
+    on_progress: impl FnMut(u64, u64),
+) -> Result<Vec<ColumnResult>, String> {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let total_bytes = blob.size() as u64;
-    let mut cur = Cursor::new(blob, total_bytes, on_progress);
+    let mut cur = BlobCursor::new(blob, total_bytes, on_progress);
 
-    cur.skip_ws().await?;
-    let Some(open) = cur.next_byte().await? else {
+    cur.skip_ws().await.map_err(|e| e.to_string())?;
+    let Some(open) = cur.next_byte().await.map_err(|e| e.to_string())? else {
         return Ok(Vec::new());
     };
     if open != b'{' {
-        return Err(scan_error("Expected a top-level JSON object"));
+        return Err("Expected a top-level JSON object".to_string());
     }
 
     let mut fields = Vec::new();
     loop {
-        cur.skip_ws().await?;
-        if cur.peek().await? == Some(b'}') {
-            cur.next_byte().await?;
+        cur.skip_ws().await.map_err(|e| e.to_string())?;
+        if cur.peek().await.map_err(|e| e.to_string())? == Some(b'}') {
+            cur.next_byte().await.map_err(|e| e.to_string())?;
             break;
         }
 
-        let key = cur.read_key().await?;
-        cur.skip_ws().await?;
-        if cur.next_byte().await? != Some(b':') {
-            return Err(scan_error("Expected ':' after object key"));
+        let key = read_json_key(&mut cur).await.map_err(|e| e.to_string())?;
+        cur.skip_ws().await.map_err(|e| e.to_string())?;
+
+        let colon = cur.next_byte().await.map_err(|e| e.to_string())?;
+        if colon != Some(b':') {
+            return Err("Expected ':' after object key".to_string());
         }
-        cur.skip_ws().await?;
-        let count = cur.count_value().await?;
+
+        cur.skip_ws().await.map_err(|e| e.to_string())?;
+        let count = count_value(&mut cur).await.map_err(|e| e.to_string())?;
         fields.push(ColumnResult { key, count });
 
-        cur.skip_ws().await?;
-        match cur.peek().await? {
+        cur.skip_ws().await.map_err(|e| e.to_string())?;
+        match cur.peek().await.map_err(|e| e.to_string())? {
             Some(b',') => {
-                cur.next_byte().await?;
+                cur.next_byte().await.map_err(|e| e.to_string())?;
             }
             Some(b'}') => {
-                cur.next_byte().await?;
+                cur.next_byte().await.map_err(|e| e.to_string())?;
                 break;
             }
             _ => break,

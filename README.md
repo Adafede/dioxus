@@ -194,7 +194,7 @@ On every push to `main`:
 
 - [`AI_AGENT_GUIDE.md`](./AI_AGENT_GUIDE.md)
 - [`PROJECT_METADATA.json`](./PROJECT_METADATA.json)
-- [`apps/lotus-explorer/SKILLS.md`](./apps/lotus-explorer/SKILLS.md)
+- [`apps/lotus-explorer/SKILLS.md`](./apps/lotus-explore-rs/SKILLS.md)
 
 ## Governance
 

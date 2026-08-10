@@ -1,19 +1,29 @@
 {
   "name": "dioxus-apps",
   "primary_language": "Rust",
-  "secondary_languages": ["Markdown", "JSON", "YAML"],
+  "secondary_languages": [
+    "Markdown",
+    "JSON",
+    "YAML"
+  ],
   "packages": [
     {
-      "name": "jsoncount",
+      "name": "index",
       "kind": "wasm app",
-      "path": "apps/jsoncount",
+      "path": "apps/index",
       "entrypoint": "src/main.rs"
     },
     {
-      "name": "lotus-explorer",
+      "name": "json-count-rs",
       "kind": "wasm app",
-      "path": "apps/lotus-explorer",
+      "path": "apps/json-count-rs",
       "entrypoint": "src/main.rs"
+    },
+    {
+      "name": "mgf-precursor-erro-rs",
+      "kind": "wasm app",
+      "path": "apps/mgf-precursor-erro-rs",
+      "entrypoint": "src/lib.rs"
     },
     {
       "name": "lotus-api",
@@ -22,18 +32,36 @@
       "entrypoint": "src/main.rs"
     },
     {
+      "name": "lotus-explore-rs",
+      "kind": "wasm app",
+      "path": "apps/lotus-explore-rs",
+      "entrypoint": "src/main.rs"
+    },
+    {
+      "name": "file-upload",
+      "kind": "shared library",
+      "path": "crates/file-upload",
+      "entrypoint": "src/lib.rs"
+    },
+    {
       "name": "shared",
       "kind": "shared library",
       "path": "crates/shared",
+      "entrypoint": "src/lib.rs"
+    },
+    {
+      "name": "ui",
+      "kind": "shared library",
+      "path": "crates/ui",
       "entrypoint": "src/lib.rs"
     }
   ],
   "agent_docs": {
     "guide": "AI_AGENT_GUIDE.md",
     "contributing": ".github/CONTRIBUTING_AI.md",
-    "skills_index": "apps/lotus-explorer/docs/skills/README.md",
-    "skills_root": "apps/lotus-explorer/SKILLS.md",
-    "architecture": "apps/lotus-explorer/docs/ARCHITECTURE.md"
+    "skills_index": "apps/lotus-explore-rs/docs/skills/README.md",
+    "skills_root": "apps/lotus-explore-rs/SKILLS.md",
+    "architecture": "apps/lotus-explore-rs/docs/ARCHITECTURE.md"
   },
   "validation_commands": [
     "cargo check --workspace --all-targets --locked",

@@ -36,10 +36,12 @@
 //! }
 //! ```
 
+pub mod common;
 pub mod components;
 pub mod theme;
 
 pub mod prelude {
+    pub use crate::common::{SKIP_LINK_STYLE, skip_link, skip_link_main};
     pub use crate::components::{Button, Card, Footer, Header};
     pub use crate::theme::{
         ColorScheme, Interaction, Radius, Shadow, Spacing, StyleBuilder, Typography,
