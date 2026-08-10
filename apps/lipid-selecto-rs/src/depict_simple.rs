@@ -1,8 +1,8 @@
-/// Simple depiction using CDKdepict HTTP API.
-/// No complex layout algorithms - just send SMILES to the service.
+/// Depiction using CDKdepict HTTP API.
+/// Returns an HTML img tag that loads from the public CDKdepict service.
 
 pub fn render_svg(smiles: &str) -> Option<String> {
-    // URL encode the SMILES manually (simple percent encoding)
+    // URL encode the SMILES (simple percent encoding for special chars)
     let encoded = smiles
         .chars()
         .map(|c| match c {
@@ -10,18 +10,20 @@ pub fn render_svg(smiles: &str) -> Option<String> {
             _ => format!("%{:02X}", c as u8),
         })
         .collect::<String>();
-    
+
     let url = format!(
         "https://cdkdepict.sourceforge.io/depict/bot/{}/svg",
         encoded
     );
-    
-    // Return a simple placeholder that shows the SMILES
-    // In a real app, you'd fetch from the URL above, but WASM in browser
-    // would need CORS-enabled server or run in Node.js backend
+
+    // Return an SVG wrapper that embeds the remote image
+    // The browser will fetch and render it asynchronously
     Some(format!(
-        "<!-- CDKdepict URL: {} -->\n<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 300 300\" width=\"100%\" height=\"100%\">\n  <text x=\"150\" y=\"150\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"12\" fill=\"#666\">\n    Depiction for: {}\n  </text>\n</svg>",
-        url, smiles
+        r#"<!-- CDKdepict remote rendering -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="100%" height="100%">
+  <image href="{}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" />
+</svg>"#,
+        url
     ))
 }
 
@@ -36,7 +38,7 @@ mod tests {
         assert!(svg.is_some());
         let svg_text = svg.unwrap();
         assert!(svg_text.contains("svg"));
-        assert!(svg_text.contains(smiles));
+        assert!(svg_text.contains("cdkdepict"));
     }
 }
 
