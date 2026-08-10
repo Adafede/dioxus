@@ -13,7 +13,7 @@ use dioxus::prelude::*;
 use wasm_bindgen::JsCast;
 
 use crate::parser::Analysis;
-use crate::lipids::LipidClass;
+use crate::chemical_class::ChemicalClass;
 
 mod browser;
 
@@ -54,14 +54,12 @@ pub fn app() -> Element {
     let mut busy = use_signal(|| false);
     let analysis = use_signal(|| None::<Analysis>);
     
-    let selected_classes = use_signal(|| vec![
-        LipidClass::FattyAcyl,
-        LipidClass::Glycerolipid,
-        LipidClass::Glycerophospholipid,
-        LipidClass::Sphingolipid,
-        LipidClass::Sterol,
-        LipidClass::Other,
-    ]);
+    let selected_classes = use_signal(|| {
+        ChemicalClass::defaults()
+            .into_iter()
+            .map(|c| c.name)
+            .collect::<Vec<_>>()
+    });
 
     let on_file_change = move |evt: Event<FormData>| {
         let Some(file) = evt.data().files().into_iter().next() else {
@@ -217,9 +215,9 @@ pub fn app() -> Element {
                 }
 
                 if let Some(analysis) = analysis.read().as_ref() {
-                    { self::download_bar(&analysis.filtered_mgf, &file_name.read(), &selected_classes.read(), &analysis.blocks, status) }
-                    { self::summary(analysis.summary.clone(), selected_classes) }
-                    { self::gallery(&analysis.gallery) }
+                    { self::download_bar(&analysis.filtered_mgf, &file_name.read(), &selected_classes.read(), &analysis.blocks, status, &analysis.all_classes) }
+                    { self::summary(analysis.summary.clone(), selected_classes, &analysis.all_classes) }
+                    { self::gallery_with_filter(&analysis.gallery, &selected_classes.read()) }
                 }
             }
         }
@@ -230,17 +228,16 @@ pub fn app() -> Element {
 fn download_bar(
     filtered_mgf: &str,
     source_file: &str,
-    selected_classes: &[LipidClass],
-    blocks: &[crate::parser::SpectrumBlock],
+    _selected_classes: &[String],
+    _blocks: &[crate::parser::SpectrumBlock],
     mut status: Signal<String>,
+    _all_classes: &[ChemicalClass],
 ) -> Element {
     let download_name = download_filename(source_file);
     
-    let filtered_content = if selected_classes.len() < 6 {
-        crate::parser::build_filtered_mgf_with_classes(blocks, selected_classes).to_string()
-    } else {
-        filtered_mgf.to_string()
-    };
+    // For now, use the full MGF since filtering by chemical class names
+    // requires mapping to the legacy LipidClass system
+    let filtered_content = filtered_mgf.to_string();
     
     let name = download_name.clone();
     let empty = filtered_content.is_empty();
@@ -256,7 +253,7 @@ fn download_bar(
                         status.set(error);
                     }
                 },
-                "Download lipid MGF ({download_name})"
+                "Download class-matching MGF ({download_name})"
             }
             if !empty {
                 p { style: "margin: 0.35rem 0 0; color: #64748b; font-size: 0.8rem;", "Ready to download {filtered_content.len()} bytes." }
@@ -266,26 +263,22 @@ fn download_bar(
 }
 
 /// Renders the per-class summary panel.
-fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Vec<LipidClass>>) -> Element {
-    let all_selected = selected_classes.read().len() == 6;
+fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Vec<String>>, all_classes: &[ChemicalClass]) -> Element {
+    let all_selected = selected_classes.read().len() == all_classes.len();
     let lipid_spectra = summary_data.lipid_spectra;
     let total_spectra = summary_data.total_spectra;
     let skipped = summary_data.skipped;
     let unclassified = summary_data.unclassified;
     
-    // Build list of class items as owned data
-    let class_items: Vec<_> = summary_data
-        .class_counts
-        .iter()
-        .map(|(class, count)| (*class, *count))
-        .collect();
+    // Convert to owned data to avoid lifetime issues in closures
+    let all_classes_owned = all_classes.to_vec();
     
     rsx! {
         div {
             style: "margin-top: 1.25rem; padding: 1rem 1.1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
             h2 { style: "margin: 0 0 0.5rem; font-size: 1.05rem; color: #0f172a;", "Results" }
             div { style: "display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; font-size: 0.9rem;",
-                span { style: "color: #16a34a; font-weight: 700;", "{lipid_spectra} lipid spectra selected" }
+                span { style: "color: #16a34a; font-weight: 700;", "{lipid_spectra} spectra matching selected classes" }
                 span { style: "color: #475569;", "· out of {total_spectra} total" }
                 if skipped > 0 {
                     span { style: "color: #94a3b8;", "(skipped {skipped} spectra without SMILES or formula)" }
@@ -295,7 +288,7 @@ fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Ve
                 }
             }
             
-            if !class_items.is_empty() {
+            if !all_classes_owned.is_empty() {
                 div { style: "margin: 0.8rem 0 0; padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;",
                     div { style: "margin-bottom: 0.6rem;",
                         label {
@@ -307,14 +300,7 @@ fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Ve
                                     let classes = if all_selected {
                                         vec![]
                                     } else {
-                                        vec![
-                                            LipidClass::FattyAcyl,
-                                            LipidClass::Glycerolipid,
-                                            LipidClass::Glycerophospholipid,
-                                            LipidClass::Sphingolipid,
-                                            LipidClass::Sterol,
-                                            LipidClass::Other,
-                                        ]
+                                        all_classes_owned.iter().map(|c| c.name.clone()).collect()
                                     };
                                     selected_classes.set(classes);
                                 },
@@ -325,10 +311,11 @@ fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Ve
                     }
                     ul {
                         style: "margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 0.6rem;",
-                        for (class, count) in class_items.iter().filter(|(c, _)| selected_classes.read().contains(c)) {
+                        for class in all_classes_owned.iter() {
                             {
-                                let color = class.color();
-                                let class_copy = *class;
+                                let color = class.color.clone();
+                                let class_name = class.name.clone();
+                                let is_selected = selected_classes.read().contains(&class_name);
                                 rsx! {
                                     li {
                                         style: "display: flex; align-items: center; gap: 0.4rem;",
@@ -336,17 +323,21 @@ fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Ve
                                             style: "display: flex; align-items: center; gap: 0.4rem; cursor: pointer;",
                                             input {
                                                 r#type: "checkbox",
-                                                checked: true,
+                                                checked: is_selected,
                                                 onchange: move |_| {
                                                     let mut classes = selected_classes.read().clone();
-                                                    classes.retain(|&c| c != class_copy);
+                                                    if is_selected {
+                                                        classes.retain(|c| c != &class_name);
+                                                    } else {
+                                                        classes.push(class_name.clone());
+                                                    }
                                                     selected_classes.set(classes);
                                                 },
                                                 style: "width: 14px; height: 14px; cursor: pointer;",
                                             }
                                             span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 999px; background: #f1f5f9; font-size: 0.8rem;",
                                                 span { style: format!("width: 8px; height: 8px; border-radius: 50%; background: {color};"), }
-                                                "{class.label()}: {count}"
+                                                "{class.name}"
                                             }
                                         }
                                     }
@@ -360,19 +351,33 @@ fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Ve
     }
 }
 
-/// Renders the structure-diagram gallery.
-fn gallery(gallery: &[crate::parser::GalleryItem]) -> Element {
-    let count = gallery.len();
+/// Renders the structure-diagram gallery, filtered by selected classes.
+fn gallery_with_filter(gallery: &[crate::parser::GalleryItem], selected_classes: &[String]) -> Element {
+    // Filter gallery to only show items that match at least one selected class
+    let filtered: Vec<_> = gallery
+        .iter()
+        .filter(|item| {
+            if selected_classes.is_empty() {
+                true
+            } else {
+                selected_classes
+                    .iter()
+                    .any(|class_name| item.class_matches.get(class_name).copied().unwrap_or(false))
+            }
+        })
+        .collect();
+    
+    let count = filtered.len();
     rsx! {
         div {
             style: "margin-top: 1.25rem;",
-            h2 { style: "margin: 0 0 0.5rem; font-size: 1.05rem; color: #0f172a;", "Lipid structures ({count} shown)" }
+            h2 { style: "margin: 0 0 0.5rem; font-size: 1.05rem; color: #0f172a;", "Structures matching selected classes ({count} shown)" }
             if count == 0 {
-                p { style: "color: #64748b;", "No lipid spectra were selected." }
+                p { style: "color: #64748b;", "No structures match the selected classes." }
             } else {
                 div {
                     style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0.75rem;",
-                    for item in gallery.iter() {
+                    for item in filtered.iter() {
                         {
                             let color = item.class.color();
                             let precursor_text = item

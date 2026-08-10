@@ -6,6 +6,8 @@ use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use crate::parser::{Analysis, build_filtered_mgf, extract_blocks, gallery_item, summarize};
 #[cfg(target_arch = "wasm32")]
+use crate::chemical_class::ChemicalClass;
+#[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
 #[cfg(target_arch = "wasm32")]
 use js_sys::Array;
@@ -66,12 +68,13 @@ fn start_analysis(
         let lipid_count = blocks.iter().filter(|block| block.is_lipid()).count();
         status.set(format!("Rendering {lipid_count} structures…"));
 
+        let all_classes = ChemicalClass::defaults();
         let mut gallery = Vec::with_capacity(lipid_count.min(MAX_GALLERY_ITEMS));
         for block in blocks.iter().filter(|block| block.is_lipid()) {
             if gallery.len() >= MAX_GALLERY_ITEMS {
                 break;
             }
-            gallery.push(gallery_item(block));
+            gallery.push(gallery_item(block, &all_classes));
             if gallery.len() % 16 == 0 {
                 status.set(format!(
                     "Rendering structures… {}/{}",
@@ -90,6 +93,7 @@ fn start_analysis(
             gallery,
             filtered_mgf,
             blocks,
+            all_classes,
         }));
 
         status.set(format!(

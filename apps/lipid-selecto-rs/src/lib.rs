@@ -1,5 +1,6 @@
 //! `lipid-selecto-rs` — select lipid spectra from an MGF file by SMILES.
 pub mod app;
+pub mod chemical_class;
 pub mod depict_simple;
 pub mod lipids;
 pub mod parser;

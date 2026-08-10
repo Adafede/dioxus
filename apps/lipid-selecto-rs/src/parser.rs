@@ -15,6 +15,8 @@
 use std::collections::HashMap;
 
 use crate::lipids::{LipidClass, LipidClassification, classify_spectrum};
+use crate::chemical_class::ChemicalClass;
+use chematic::smiles;
 
 /// One `BEGIN IONS ... END IONS` record from the source MGF, together with the
 /// metadata fields relevant to lipid selection.
@@ -264,7 +266,7 @@ pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
 /// Project a single lipid-positive block into a gallery card, rendering its
 /// 2D structure up-front.
 #[must_use]
-pub fn gallery_item(block: &SpectrumBlock) -> GalleryItem {
+pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
     let Some(classification) = &block.classification else {
         return GalleryItem {
             block_index: block.index,
@@ -276,23 +278,36 @@ pub fn gallery_item(block: &SpectrumBlock) -> GalleryItem {
             precursor_mz: block.precursor_mz,
             charge: block.charge.clone(),
             svg: empty_svg(),
-        };
+           class_matches: HashMap::new(),
+       };
     };
+    
+    // Compute class matches by parsing SMILES and checking against each class
+    let mut class_matches = HashMap::new();
+    if let Some(smiles_str) = &block.psm_smiles {
+       if let Ok(molecule) = smiles::parse(smiles_str.trim()) {
+           for class in classes {
+               class_matches.insert(class.name.clone(), class.matches(&molecule));
+           }
+       }
+    }
+    
     let svg = block
-        .psm_smiles
-        .as_deref()
+       .psm_smiles
+       .as_deref()
      .and_then(crate::depict_simple::render_svg)
-        .unwrap_or_else(empty_svg);
+       .unwrap_or_else(empty_svg);
     GalleryItem {
-        block_index: block.index,
-        title: block.title.clone(),
-        smiles: block.psm_smiles.clone(),
-        formula: classification.formula.clone(),
-        class: classification.class,
-        exact_mass: classification.exact_mass,
-        precursor_mz: block.precursor_mz,
-        charge: block.charge.clone(),
-        svg,
+       block_index: block.index,
+       title: block.title.clone(),
+       smiles: block.psm_smiles.clone(),
+       formula: classification.formula.clone(),
+       class: classification.class,
+       exact_mass: classification.exact_mass,
+       precursor_mz: block.precursor_mz,
+       charge: block.charge.clone(),
+       svg,
+       class_matches,
     }
 }
 
@@ -301,7 +316,7 @@ pub fn gallery_item(block: &SpectrumBlock) -> GalleryItem {
 /// `limit` caps how many structures are generated (rendering is intentionally
 /// done up-front so the gallery never re-renders diagrams on every frame).
 #[must_use]
-pub fn build_gallery(blocks: &[SpectrumBlock], limit: usize) -> Vec<GalleryItem> {
+pub fn build_gallery(blocks: &[SpectrumBlock], limit: usize, classes: &[ChemicalClass]) -> Vec<GalleryItem> {
     let mut gallery = Vec::new();
     for block in blocks {
         if gallery.len() >= limit {
@@ -310,7 +325,7 @@ pub fn build_gallery(blocks: &[SpectrumBlock], limit: usize) -> Vec<GalleryItem>
         if !block.is_lipid() {
             continue;
         }
-        gallery.push(gallery_item(block));
+        gallery.push(gallery_item(block, classes));
     }
     gallery
 }
@@ -327,6 +342,8 @@ pub struct GalleryItem {
     pub precursor_mz: Option<f64>,
     pub charge: Option<String>,
     pub svg: String,
+    /// Maps chemical class name -> bool (does this molecule match?)
+    pub class_matches: HashMap<String, bool>,
 }
 
 /// Fallback SVG shown when a structure cannot be rendered.
@@ -341,19 +358,23 @@ pub struct Analysis {
     pub gallery: Vec<GalleryItem>,
     pub filtered_mgf: String,
     pub blocks: Vec<SpectrumBlock>,
+    /// All available chemical classes (for UI selection)
+    pub all_classes: Vec<ChemicalClass>,
 }
 
 /// Full pipeline: extract, classify, summarize, build gallery + filtered MGF.
 #[must_use]
 pub fn build_analysis(blocks: &[SpectrumBlock], gallery_limit: usize) -> Analysis {
+    let all_classes = ChemicalClass::defaults();
     let summary = summarize(blocks);
-    let gallery = build_gallery(blocks, gallery_limit);
+    let gallery = build_gallery(blocks, gallery_limit, &all_classes);
     let filtered_mgf = build_filtered_mgf(blocks);
     Analysis {
         summary,
         gallery,
         filtered_mgf,
         blocks: blocks.to_vec(),
+        all_classes,
     }
 }
 
@@ -474,7 +495,37 @@ END IONS
         let analysis = build_analysis(&blocks, 16);
         assert_eq!(analysis.summary.lipid_spectra, 1);
         assert_eq!(analysis.gallery.len(), 1);
+        assert!(!analysis.all_classes.is_empty());
         assert!(analysis.filtered_mgf.contains("palmitic_acid"));
         assert!(!analysis.filtered_mgf.contains("non_lipid_example"));
+    }
+
+    #[test]
+    fn gallery_items_have_class_matches() {
+        let (blocks, _) = analyze(EXAMPLE_MGF);
+        let analysis = build_analysis(&blocks, 16);
+        
+        assert_eq!(analysis.gallery.len(), 1);
+        let item = &analysis.gallery[0];
+        
+        // All gallery items should have class_matches computed
+        assert!(!item.class_matches.is_empty());
+        
+        // At least one class should match (since it's a lipid)
+        let has_match = item.class_matches.values().any(|&m| m);
+        assert!(has_match);
+    }
+
+    #[test]
+    fn chemical_classes_have_all_required_fields() {
+        let classes = ChemicalClass::defaults();
+        
+        for class in classes {
+            assert!(!class.name.is_empty(), "Class name should not be empty");
+            assert!(!class.smarts.is_empty(), "Class SMARTS should not be empty");
+            assert!(!class.color.is_empty(), "Class color should not be empty");
+            // Colors should start with # or be valid CSS
+            assert!(class.color.starts_with('#'), "Color should be hex code");
+        }
     }
 }
