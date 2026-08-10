@@ -1,5 +1,5 @@
 /// Depiction using CDKdepict HTTP API.
-/// Returns an HTML img tag that loads from the public CDKdepict service.
+/// Returns HTML with an image that loads from the public CDKdepict service.
 
 pub fn render_svg(smiles: &str) -> Option<String> {
     // URL encode the SMILES (simple percent encoding for special chars)
@@ -16,13 +16,10 @@ pub fn render_svg(smiles: &str) -> Option<String> {
         encoded
     );
 
-    // Return an SVG wrapper that embeds the remote image
-    // The browser will fetch and render it asynchronously
+    // Return HTML with an img tag that loads the remote depiction
+    // This avoids CORS issues with embedded SVG images
     Some(format!(
-        r#"<!-- CDKdepict remote rendering -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="100%" height="100%">
-  <image href="{}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" />
-</svg>"#,
+        r#"<img src="{}" style="width: 100%; height: 100%; object-fit: contain;" alt="Depiction" />"#,
         url
     ))
 }
@@ -36,9 +33,9 @@ mod tests {
         let smiles = "CCCCCCCCCCCCCCCC(=O)O";
         let svg = render_svg(smiles);
         assert!(svg.is_some());
-        let svg_text = svg.unwrap();
-        assert!(svg_text.contains("svg"));
-        assert!(svg_text.contains("cdkdepict"));
+        let html = svg.unwrap();
+        assert!(html.contains("img"));
+        assert!(html.contains("cdkdepict"));
     }
 }
 
