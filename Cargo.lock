@@ -2421,7 +2421,7 @@ version = "0.1.0"
 source = "git+https://github.com/earth-metabolome-initiative/mascot-rs.git?branch=main#6dda67713ff6224a7497bfe0875038a0eb16ce7e"
 dependencies = [
  "mass_spectrometry",
- "molecular-formulas",
+ "molecular-formulas 0.1.10",
  "smiles-parser",
  "thiserror 2.0.19",
 ]
@@ -2494,7 +2494,7 @@ dependencies = [
  "gloo-timers",
  "js-sys",
  "mascot-rs",
- "molecular-formulas",
+ "molecular-formulas 0.3.0",
  "plotters",
  "prismatica",
  "wasm-bindgen",
@@ -2544,6 +2544,17 @@ name = "molecular-formulas"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2157428e33c26e3e5b856371a3be0c2de365d95f968604be07ca05b4bd690adb"
+dependencies = [
+ "elements_rs",
+ "num-traits",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "molecular-formulas"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64790d746a6d749dd9eb79ed579bf5fce8344a7359ae3647931a4d8cb10418ee"
 dependencies = [
  "elements_rs",
  "num-traits",
@@ -3628,7 +3639,7 @@ dependencies = [
  "elements_rs",
  "geometric-traits 0.1.0 (git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main)",
  "hashbrown",
- "molecular-formulas",
+ "molecular-formulas 0.1.10",
  "smallvec",
  "thiserror 2.0.19",
 ]
