@@ -1,0 +1,11 @@
+[application]
+name = "lipid-selecto-rs"
+default_platform = "web"
+asset_dir = "assets"
+
+[web.app]
+title = "Lipid Selecto-rs"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src", "assets"]

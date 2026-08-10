@@ -1,0 +1,27 @@
+[package]
+name = "lipid-selecto-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "Select lipid spectra from an SMILES-containing MGF and download the filtered file"
+license = "AGPL-3.0-only"
+keywords = ["dioxus", "wasm", "mgf", "lipid", "mass-spectrometry"]
+categories = ["wasm", "web-programming"]
+publish = false
+
+[dependencies]
+chematic = { version = "=0.4.27", default-features = false, features = ["smiles", "smarts", "chem"] }
+dioxus = { workspace = true }
+gloo-timers = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = "0.4"
+web-sys = { workspace = true, features = ["Blob", "File", "FileList", "FileReader", "HtmlAnchorElement", "HtmlInputElement", "Url", "Window", "Document", "console"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true
