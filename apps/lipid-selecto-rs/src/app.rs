@@ -377,7 +377,7 @@ fn gallery(gallery: &[crate::parser::GalleryItem]) -> Element {
                 p { style: "color: #64748b;", "No lipid spectra were selected." }
             } else {
                 div {
-                    style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;",
+                    style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0.75rem;",
                     for item in gallery.iter() {
                         {
                             let color = item.class.color();
@@ -386,7 +386,7 @@ fn gallery(gallery: &[crate::parser::GalleryItem]) -> Element {
                                 .map_or_else(|| "—".to_string(), |mz| format!("{mz:.3}"));
                             let charge_text = item.charge.as_deref().unwrap_or("—");
                             rsx! {
-                                div { style: "background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); padding: 0.6rem 0.7rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);",
+                                div { style: "background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); padding: 0.6rem 0.7rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05); overflow: hidden;",
                                     div { style: "display: flex; gap: 0.55rem; align-items: flex-start;",
                                         div { style: "flex: 0 0 auto; width: 160px; height: 120px; display: grid; place-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;",
                                             div { style: "width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;",
