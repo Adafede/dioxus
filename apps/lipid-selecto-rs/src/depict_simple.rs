@@ -1,5 +1,6 @@
-/// Depiction using simolecule CDKdepict API.
-/// Returns HTML img tag that loads from the working simolecule service.
+//! Depiction using simolecule CDKdepict API.
+//!
+//! Returns HTML img tag that loads from the working simolecule service.
 
 pub fn render_svg(smiles: &str) -> Option<String> {
     // URL encode the SMILES (simple percent encoding for special chars)

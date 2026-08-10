@@ -35,7 +35,8 @@ pub struct AcylChain {
 
 impl AcylChain {
     /// Classify this chain by unsaturation degree.
-    pub fn unsaturation_class(&self) -> ChainType {
+    #[must_use]
+    pub const fn unsaturation_class(&self) -> ChainType {
         match self.double_bonds {
             0 => ChainType::Saturated,
             1 => ChainType::MUFA,
@@ -69,6 +70,7 @@ pub struct ChainComposition {
 
 impl ChainComposition {
     /// Create from a set of chains.
+    #[must_use]
     pub fn from_chains(chains: Vec<AcylChain>) -> Self {
         let saturated_count = chains.iter().filter(|c| c.double_bonds == 0).count();
         let mufa_count = chains.iter().filter(|c| c.double_bonds == 1).count();
@@ -84,6 +86,7 @@ impl ChainComposition {
 
     /// Lipid nomenclature string: chain summaries.
     /// E.g., "16:0/18:1" for a 16:0 and 18:1 acyl chain.
+    #[must_use]
     pub fn nomenclature(&self) -> String {
         self.chains
             .iter()
@@ -102,7 +105,7 @@ impl ChainComposition {
 /// 4. Detect stereochemistry (E/Z, cis/trans)
 /// 5. Identify modifications
 #[must_use]
-pub fn analyze_chains(_molecule: &Molecule) -> Option<ChainComposition> {
+pub const fn analyze_chains(_molecule: &Molecule) -> Option<ChainComposition> {
     // TODO: Implement chain traversal and analysis
     // For now, return None to indicate chains not yet analyzed
     None

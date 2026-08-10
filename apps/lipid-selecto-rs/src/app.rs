@@ -216,7 +216,7 @@ pub fn app() -> Element {
 
                 if let Some(analysis) = analysis.read().as_ref() {
                     { self::download_bar(&analysis.filtered_mgf, &file_name.read(), &selected_classes.read(), &analysis.blocks, status, &analysis.all_classes) }
-                    { self::summary(analysis.summary.clone(), selected_classes, &analysis.all_classes) }
+                    { self::summary(&analysis.summary, selected_classes, &analysis.all_classes) }
                     { self::gallery_with_filter(&analysis.gallery, &selected_classes.read()) }
                 }
             }
@@ -262,7 +262,7 @@ fn download_bar(
 }
 
 /// Renders the per-class summary panel.
-fn summary(summary_data: crate::parser::Summary, mut selected_classes: Signal<Vec<String>>, all_classes: &[ChemicalClass]) -> Element {
+fn summary(summary_data: &crate::parser::Summary, mut selected_classes: Signal<Vec<String>>, all_classes: &[ChemicalClass]) -> Element {
     let all_selected = selected_classes.read().len() == all_classes.len();
     let lipid_spectra = summary_data.lipid_spectra;
     let total_spectra = summary_data.total_spectra;
