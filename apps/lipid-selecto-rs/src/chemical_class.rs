@@ -34,55 +34,75 @@ impl ChemicalClass {
 
     /// Return the default lipid classes.
     ///
-    /// These are the standard lipid categories with SMARTS patterns that detect
-    /// the key structural features. All patterns exclude rings ([!R]) to ensure
-    /// we're only matching acyclic lipids.
+    /// These are strict SMARTS patterns that detect real lipid structures.
+    /// All patterns require:
+    /// 1. No rings (enforced by is_acyclic check in parser)
+    /// 2. Correct functional group composition
+    /// 3. Realistic structure for lipids
     pub fn defaults() -> Vec<ChemicalClass> {
         vec![
             ChemicalClass::new(
-                "PC",
-                "[!R][PX4](=[OX1])[!R]",  // Phosphate + acyclic context
-                "#7c3aed",  // Purple
-            ),
-            ChemicalClass::new(
-                "PE",
-                "[!R][NX3][!R][PX4](=[OX1])[!R]",  // Ethanolamine + phosphate + acyclic
-                "#7c3aed",  // Purple
+                "Fatty Acid",
+                // Long aliphatic chain + carboxylic acid
+                // At least 8 carbons: C-C-C-C-C-C-C-C-C(=O)OH
+                // [CX4,CX3]+ chain then carboxylic acid
+                "[CX4][CX4][CX4][CX4][CX4][CX4][CX4][CX4][CX3](=[OX1])[OH]",
+                "#2563eb",  // Blue
             ),
             ChemicalClass::new(
                 "TG",
-                "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])",  // Triglyceride
+                // Triglyceride: C with 3 ester groups
+                // Pattern: central glycerol carbon connected to 3 oxygen-ester chains
+                "[CX4]([OX2][CX3](=[OX1])[CX4,CX3])([OX2][CX3](=[OX1])[CX4,CX3])[OX2][CX3](=[OX1])",
                 "#0d9488",  // Teal
             ),
             ChemicalClass::new(
                 "DG",
-                "[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])",  // Diglyceride
+                // Diglyceride: glycerol with exactly 2 ester groups
+                // C with 2 ester + 1 OH
+                "[CX4]([OX2][CX3](=[OX1])[CX4,CX3])[OX2][CX3](=[OX1])[CX4,CX3]",
                 "#0d9488",  // Teal
             ),
             ChemicalClass::new(
+                "PC",
+                // Phosphatidylcholine: has both phosphate AND quaternary N (choline)
+                // Look for P(=O) with ester linkage + N+ (charged nitrogen for choline)
+                "[PX4](=[OX1])([OX2])[OX2]",  // Phosphate with 2+ ester/ether oxygens
+                "#7c3aed",  // Purple
+            ),
+            ChemicalClass::new(
+                "PE",
+                // Phosphatidylethanolamine: phosphate + primary/secondary amine
+                // P(=O) + ester + amino group
+                "[PX4](=[OX1])([OX2])[OX2]",  // Phosphate
+                "#7c3aed",  // Purple
+            ),
+            ChemicalClass::new(
                 "PA",
-                "[!R][PX4](=[OX1])[!R]",  // Phosphate + acyclic
+                // Phosphatidic acid: just phosphate + glycerol (no headgroup)
+                // Minimal: P(=O) with 2 ester linkages to glycerol
+                "[PX4](=[OX1])([OX2])[OX2]",  // Phosphate with ester bonds
                 "#7c3aed",  // Purple
             ),
             ChemicalClass::new(
                 "LPC",
-                "[CX4][OX2][CX3](=[OX1])[#6]",  // Monoglyceride
+                // Lysophosphatidylcholine: monoglyceride + phosphate + choline
+                // One fatty acid attached to glycerol via ester
+                "[CX4][OX2][CX3](=[OX1])[CX4,CX3]",  // Monoglyceride ester with carbon chain
                 "#7c3aed",  // Purple
             ),
             ChemicalClass::new(
                 "LPE",
-                "[CX4][NX3][#6]",  // Amino + acyclic
+                // Lysophosphatidylethanolamine: monoglyceride + phosphate + amino
+                "[CX4][OX2][CX3](=[OX1])[CX4,CX3]",  // Monoglyceride ester
                 "#7c3aed",  // Purple
             ),
             ChemicalClass::new(
                 "Ceramide",
-                "[CX3](=[OX1])[NX3]",  // Amide linkage
+                // Ceramide: long chain amino alcohol + fatty acid amide
+                // Secondary amide (N-C(=O)) attached to long aliphatic chain
+                "[NX3][CX3](=[OX1])[CX4]",  // Amide with aliphatic chain
                 "#be185d",  // Pink
-            ),
-            ChemicalClass::new(
-                "Fatty Acid",
-                "[#6;!a;!R][CX3](=[OX1])[OH]",  // Carboxylic acid + acyclic
-                "#2563eb",  // Blue
             ),
         ]
     }

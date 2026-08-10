@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 
 use crate::chemical_class::ChemicalClass;
-use crate::lipids::{LipidClassification, classify_spectrum};
+use crate::lipids::{LipidClassification, classify_spectrum, is_acyclic};
 use chematic::smiles;
 
 /// One `BEGIN IONS ... END IONS` record from the source MGF, together with the
@@ -129,12 +129,16 @@ impl SpectrumBlock {
     }
 
     /// Compute and store class matches for this block's SMILES.
+    /// Only matches classes for acyclic molecules (true lipids).
     pub fn compute_class_matches(&mut self, classes: &[ChemicalClass]) {
         let mut matches = HashMap::new();
         if let Some(smiles_str) = &self.psm_smiles {
             if let Ok(molecule) = smiles::parse(smiles_str.trim()) {
-                for class in classes {
-                    matches.insert(class.name.clone(), class.matches(&molecule));
+                // Only compute matches for acyclic molecules - lipids must have no rings
+                if is_acyclic(&molecule) {
+                    for class in classes {
+                        matches.insert(class.name.clone(), class.matches(&molecule));
+                    }
                 }
             }
         }
