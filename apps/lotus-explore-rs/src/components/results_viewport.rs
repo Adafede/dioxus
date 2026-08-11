@@ -46,13 +46,12 @@ pub fn ResultsViewport() -> Element {
         // Error state: show the SPARQL query that was attempted
         ContentPhase::Error => {
             let query = sparql_query.read();
-            if let Some(q) = query.as_ref() {
-                rsx! {
+            query.as_ref().map_or_else(
+                || rsx! {},
+                |q| rsx! {
                     QueryDisplay { query: (*q).to_string() }
                 }
-            } else {
-                rsx! {}
-            }
+            )
         }
         ContentPhase::Empty => rsx! {
             ResultsTable {}

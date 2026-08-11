@@ -105,11 +105,11 @@ fn dispatch_error(explore: Signal<ExploreState>, error: DomainError, request: &S
 
     // Try to build the query that was being attempted
     let smiles = normalize_smiles(&request.criteria().smiles);
-    let query = if let Some(qid) = explore.peek().result.resolved_qid.as_deref() {
-        Some(build_sparql_query(&smiles, request.criteria(), Some(qid)))
-    } else {
-        Some(build_sparql_query(&smiles, request.criteria(), None))
-    };
+    let query = explore.peek().result.resolved_qid.as_deref()
+        .map_or_else(
+            || Some(build_sparql_query(&smiles, request.criteria(), None)),
+            |qid| Some(build_sparql_query(&smiles, request.criteria(), Some(qid)))
+        );
 
     dispatch_explore_action(explore, ExploreAction::SearchFailed { error, query });
 }
