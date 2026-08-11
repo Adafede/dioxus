@@ -3,12 +3,13 @@
 use chematic::smarts;
 use std::collections::HashMap;
 
-/// A chemical class defined by name, SMARTS pattern, and display color.
+/// A chemical class defined by name, SMARTS pattern, display color, and family.
 #[derive(Clone, Debug)]
 pub struct ChemicalClass {
     pub name: String,
     pub smarts: String,
     pub color: String,
+    pub family: String,
 }
 
 impl ChemicalClass {
@@ -17,11 +18,13 @@ impl ChemicalClass {
         name: impl Into<String>,
         smarts: impl Into<String>,
         color: impl Into<String>,
+        family: impl Into<String>,
     ) -> Self {
         Self {
             name: name.into(),
             smarts: smarts.into(),
             color: color.into(),
+            family: family.into(),
         }
     }
 
@@ -38,75 +41,121 @@ impl ChemicalClass {
 
     /// Return the default lipid classes.
     ///
-    /// These are strict SMARTS patterns that detect real lipid structures.
-    /// All patterns require:
-    /// 1. No rings (enforced by is_acyclic check in parser)
-    /// 2. Correct functional group composition
-    /// 3. Realistic structure for lipids
+    /// These match the LIPID MAPS classification system with proper family and
+    /// architecture designations. Uses CVD-friendly microshades color palette (1-5).
     pub fn defaults() -> Vec<ChemicalClass> {
         vec![
+            // === FATTY ACYLS (FA) - cvd_orange palette ===
             ChemicalClass::new(
-                "Fatty Acid",
-                // Long aliphatic chain + carboxylic acid
-                // At least 8 carbons: C-C-C-C-C-C-C-C-C(=O)OH
-                // [CX4,CX3]+ chain then carboxylic acid
-                "[CX4][CX4][CX4][CX4][CX4][CX4][CX4][CX4][CX3](=[OX1])[OH]",
-                "#2563eb", // Blue
+                "FA",
+                "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R][CX3](=[OX1])[OH]",
+                "#9D654C", // cvd_orange[1]
+                "Fatty Acyls",
             ),
             ChemicalClass::new(
-                "TG",
-                // Triglyceride: C with 3 ester groups
-                // Pattern: central glycerol carbon connected to 3 oxygen-ester chains
-                "[CX4]([OX2][CX3](=[OX1])[CX4,CX3])([OX2][CX3](=[OX1])[CX4,CX3])[OX2][CX3](=[OX1])",
-                "#0d9488", // Teal
+                "MUFA",
+                "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R][CX3](=[OX1])[OH]",
+                "#C17754", // cvd_orange[2]
+                "Fatty Acyls",
             ),
             ChemicalClass::new(
-                "DG",
-                // Diglyceride: glycerol with exactly 2 ester groups
-                // C with 2 ester + 1 OH
-                "[CX4]([OX2][CX3](=[OX1])[CX4,CX3])[OX2][CX3](=[OX1])[CX4,CX3]",
-                "#0d9488", // Teal
+                "PUFA",
+                "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R][CX3](=[OX1])[OH]",
+                "#F09163", // cvd_orange[3]
+                "Fatty Acyls",
+            ),
+            // === GLYCEROLIPIDS (GL) - cvd_blue palette ===
+            ChemicalClass::new(
+                "TG(AAA)",
+                "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]",
+                "#098BD9", // cvd_blue[1]
+                "Glycerolipids",
             ),
             ChemicalClass::new(
-                "PC",
-                // Phosphatidylcholine: has both phosphate AND quaternary N (choline)
-                // Look for P(=O) with ester linkage + N+ (charged nitrogen for choline)
-                "[PX4](=[OX1])([OX2])[OX2]", // Phosphate with 2+ ester/ether oxygens
-                "#7c3aed",                   // Purple
+                "DG(AA)",
+                "[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]",
+                "#56B4E9", // cvd_blue[2]
+                "Glycerolipids",
             ),
             ChemicalClass::new(
-                "PE",
-                // Phosphatidylethanolamine: phosphate + primary/secondary amine
-                // P(=O) + ester + amino group
-                "[PX4](=[OX1])([OX2])[OX2]", // Phosphate
-                "#7c3aed",                   // Purple
+                "MG(A)",
+                "[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]",
+                "#7DCCFF", // cvd_blue[3]
+                "Glycerolipids",
+            ),
+            // === GLYCEROPHOSPHOLIPIDS (GP) - cvd_green and cvd_turquoise palettes ===
+            ChemicalClass::new(
+                "PC(AA)",
+                "[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]",
+                "#4E7705", // cvd_green[1]
+                "Glycerophospholipids",
             ),
             ChemicalClass::new(
-                "PA",
-                // Phosphatidic acid: just phosphate + glycerol (no headgroup)
-                // Minimal: P(=O) with 2 ester linkages to glycerol
-                "[PX4](=[OX1])([OX2])[OX2]", // Phosphate with ester bonds
-                "#7c3aed",                   // Purple
+                "PE(AA)",
+                "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CH2X4][NX3;H2,H1,H0]",
+                "#6D9F06", // cvd_green[2]
+                "Glycerophospholipids",
             ),
             ChemicalClass::new(
-                "LPC",
-                // Lysophosphatidylcholine: monoglyceride + phosphate + choline
-                // One fatty acid attached to glycerol via ester
-                "[CX4][OX2][CX3](=[OX1])[CX4,CX3]", // Monoglyceride ester with carbon chain
-                "#7c3aed",                          // Purple
+                "PS(AA)",
+                "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([CX3](=[OX1])[OX2H,OX1-])[NX3]",
+                "#97CE2F", // cvd_green[3]
+                "Glycerophospholipids",
             ),
             ChemicalClass::new(
-                "LPE",
-                // Lysophosphatidylethanolamine: monoglyceride + phosphate + amino
-                "[CX4][OX2][CX3](=[OX1])[CX4,CX3]", // Monoglyceride ester
-                "#7c3aed",                          // Purple
+                "PG(AA)",
+                "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]",
+                "#BDEC6F", // cvd_green[4]
+                "Glycerophospholipids",
             ),
             ChemicalClass::new(
-                "Ceramide",
-                // Ceramide: long chain amino alcohol + fatty acid amide
-                // Secondary amide (N-C(=O)) attached to long aliphatic chain
-                "[NX3][CX3](=[OX1])[CX4]", // Amide with aliphatic chain
-                "#be185d",                 // Pink
+                "PI(AA)",
+                "[PX4](=[OX1])([OX2])([OX2])[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1",
+                "#DDFFA0", // cvd_green[5]
+                "Glycerophospholipids",
+            ),
+            ChemicalClass::new(
+                "PA(AA)",
+                "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4][CH2X4][OX2H,OX1-]",
+                "#DDFFA0", // cvd_green[5]
+                "Glycerophospholipids",
+            ),
+            ChemicalClass::new(
+                "LPC(A)",
+                "[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]",
+                "#148F77", // cvd_turquoise[1]
+                "Glycerophospholipids",
+            ),
+            ChemicalClass::new(
+                "LPE(A)",
+                "[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]",
+                "#009E73", // cvd_turquoise[2]
+                "Glycerophospholipids",
+            ),
+            ChemicalClass::new(
+                "CL(AAAA)",
+                "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2])[CH2X4][OX2]",
+                "#43BA8F", // cvd_turquoise[3]
+                "Glycerophospholipids",
+            ),
+            // === SPHINGOLIPIDS (SP) - cvd_purple palette ===
+            ChemicalClass::new(
+                "Cer(AS)",
+                "[NX3][CX3](=[OX1])[CX4]",
+                "#7D3560", // cvd_purple[1]
+                "Sphingolipids",
+            ),
+            ChemicalClass::new(
+                "SM(AS)",
+                "[NX4+][CX4][CX4][OX2][PX4](=[OX1])[OX2]",
+                "#A1527F", // cvd_purple[2]
+                "Sphingolipids",
+            ),
+            ChemicalClass::new(
+                "HexCer(AS)",
+                "[NX3][CX3](=[OX1])[CX4][CH1X4][CH1X4][OX2][CH1X4][CH1X4]",
+                "#CC79A7", // cvd_purple[3]
+                "Sphingolipids",
             ),
         ]
     }
@@ -129,8 +178,8 @@ mod tests {
     fn fatty_acid_matches_palmitic_acid() {
         let fa = ChemicalClass::defaults()
             .into_iter()
-            .find(|c| c.name == "Fatty Acid")
-            .expect("Fatty Acid class");
+            .find(|c| c.name == "FA")
+            .expect("FA class");
         let mol = smiles::parse("CCCCCCCCCCCCCCCC(=O)O").expect("valid SMILES");
         assert!(fa.matches(&mol));
     }
@@ -139,17 +188,17 @@ mod tests {
     fn defaults_include_common_lipids() {
         let defaults = ChemicalClass::defaults();
         let names: Vec<_> = defaults.iter().map(|c| c.name.as_str()).collect();
-        assert!(names.contains(&"PC"));
-        assert!(names.contains(&"PE"));
-        assert!(names.contains(&"TG"));
-        assert!(names.contains(&"Fatty Acid"));
-        assert!(names.contains(&"Ceramide"));
+        assert!(names.contains(&"PC(AA)"));
+        assert!(names.contains(&"PE(AA)"));
+        assert!(names.contains(&"TG(AAA)"));
+        assert!(names.contains(&"FA"));
+        assert!(names.contains(&"Cer(AS)"));
     }
 
     #[test]
     fn defaults_map_provides_lookup() {
         let map = ChemicalClass::defaults_map();
-        assert!(map.contains_key("PC"));
-        assert_eq!(map.get("PC").map(|c| c.name.as_str()), Some("PC"));
+        assert!(map.contains_key("PC(AA)"));
+        assert_eq!(map.get("PC(AA)").map(|c| c.name.as_str()), Some("PC(AA)"));
     }
 }

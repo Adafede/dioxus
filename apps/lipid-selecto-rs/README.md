@@ -3,26 +3,35 @@
 **A modern, interactive web application for filtering and visualizing lipid mass
 spectrometry data.**
 
-`lipid-selecto-rs` analyzes mass spectrometry data in MGF format, classifies
-molecules as lipids using chemoinformatics-sound SMARTS patterns, and lets you
-download the lipid-only subset. Built with pure Rust using WebAssembly for
-blazing-fast performance in the browser.
+`lipid-selecto-rs` analyzes mass spectrometry data (MGF or SMILES), classifies
+molecules using LIPID MAPS-aligned SMARTS patterns, and lets you download the
+lipid-only subset in the same format. Built with pure Rust using WebAssembly for
+blazing-fast performance in the browser, with extensible rule configuration.
 
 ## Features
 
-**Smart Lipid Classification**
+**Smart Lipid Classification (LIPID MAPS-aligned)**
 
+- 30+ built-in SMARTS rules covering FA, GL, GP, SP lipid families
 - Backbone-aware detection (glycerol vs sphingoid vs carboxylic acid)
-- Chain-aware unsaturation analysis (distinguishes PUFA from MUFA)
+- Chain-aware architecture analysis (DiAcyl, MonoAcyl, Plasmalogen, Ether)
 - Acyclic-only filtering (rejects aromatic rings, sugars, steroids)
-- Supports 25+ lipid classes: PC, PE, PS, PI, PG, PA, TG, DG, MG, Cer, SM, and
-  more
+- Extensible rule system: add custom SMARTS patterns in YAML config
+- All rules available as SMARTS fragments for custom development
+
+**Flexible Input/Output Formats**
+
+- Auto-detects input format: MGF (Mascot Generic) or SMILES list
+- Auto-detects output format: preserves same format as input
+- MGF in → MGF out \| SMILES in → SMILES list out
+- Supports FORMULA= fallback when SMILES unavailable
 
 **Interactive Analysis**
 
 - Real-time class selection with live gallery/count updates
 - Per-class summary with spectrum counts
 - Checkbox filtering for flexible export
+- Priority-based rule ordering (configure in YAML)
 
 **Structure Visualization**
 
@@ -33,6 +42,7 @@ blazing-fast performance in the browser.
 **Seamless Export**
 
 - Download filtered MGF containing only selected lipid classes
+- Download filtered SMILES list
 - Preserves all original metadata
 - No data loss or re-serialization drift
 
@@ -41,6 +51,12 @@ blazing-fast performance in the browser.
 - Runs entirely in the browser (no server needed)
 - Uses [`chematic`](https://crates.io/crates/chematic) for SMILES parsing
 - Processes large files efficiently with cooperative multitasking
+
+**100 Curated Example Lipids**
+
+- Complete dataset covering all major lipid classes
+- Real structures from LIPID MAPS
+- Available for download, testing, or as reference
 
 ## Usage
 
@@ -62,9 +78,13 @@ Then open `http://localhost:8080` in your browser.
 dx build --release --platform web --package lipid-selecto-rs
 ```
 
-## Input Format
+## Input Formats
 
-Upload an MGF (Mascot Generic Format) file with SMILES or FORMULA annotations:
+The application auto-detects format and preserves it for output.
+
+### MGF (Mascot Generic Format)
+
+Upload an MGF file with SMILES or FORMULA annotations:
 
 ```
 BEGIN IONS
@@ -82,73 +102,58 @@ FORMULA=C38H78O2
 END IONS
 ```
 
-**Requirements:**
+**Requirements:** - Each spectrum must have a `TITLE=` field - Each spectrum
+should have either: - A valid SMILES string in `SMILES=` field (preferred) - A
+molecular formula in `FORMULA=` field (fallback)
 
-- Each spectrum must have a `TITLE=` field
-- Each spectrum should have either:
-  - A valid SMILES string in `SMILES=` field (preferred)
-  - A molecular formula in `FORMULA=` field (fallback)
+**Output:** Filtered MGF with same structure and metadata preserved
+
+### SMILES List
+
+Upload a plain text file with SMILES strings (one per line):
+
+```
+CCCCCCCCCCCCCCCC(=O)O
+CCCCCCCCCCCCCCCC(=O)OC(COP(=O)(O)OCC[N+](C)(C)C)OC(=O)CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCCCC(=O)N[C@H](CO)[C@H](O)[C@H]=C[C@@H](O)CCCCCCCCCCCCCCCC
+```
+
+Optional: Tab-separated ID and description:
+```
+FA_16_0	CCCCCCCCCCCCCCCC(=O)O	Palmitic acid
+PC_32_0	CCCCCCCCCCCCCCCC(=O)OC(COP(=O)(O)OCC[N+](C)(C)C)OC(=O)CCCCCCCCCCCCCCCC	PC 16:0/16:0
+```
+
+**Output:** Filtered SMILES list matching input format
 
 ## Classification Strategy
 
-The classifier uses a three-level hierarchy:
+### Customization
 
-**Level 1 --- Structural Family**
+Classification rules are now **fully configurable**. See
+[`RULES_GUIDE.md`](./RULES_GUIDE.md) for:
 
-- FA (Fatty Acyls)
-- GL (Glycerolipids)
-- GP (Glycerophospholipids)
-- SP (Sphingolipids)
+- How to add custom lipid classes
+- SMARTS pattern syntax and examples
+- Rule priority configuration
+- Troubleshooting matching issues
 
-**Level 2 --- Lipid Class**
+### Built-in Rules (LIPID MAPS-aligned)
 
-- PC, PE, PS, PI, PG, PA (phospholipids)
-- TG, DG, MG (glycerolipids)
-- Cer, SM, HexCer (sphingolipids)
-- FA, PUFA, MUFA (fatty acids)
+The default rule set covers:
 
-**Level 3 --- Architecture**
+  | Family                        | Classes                                           | Count |
+  | ----------------------------- | ------------------------------------------------- | ----- |
+  | **FA** (Fatty Acyls)          | FA, MUFA, PUFA                                    | 3     |
+  | **GL** (Glycerolipids)        | TG(AAA), DG(AA), MG(A)                            | 3     |
+  | **GP** (Glycerophospholipids) | PC, PE, PS, PI, PG, PA, CL, LPC, LPE              | 9+    |
+  | **SP** (Sphingolipids)        | Cer, SM, HexCer                                   | 3+    |
+  | **Architectures**             | DiAcyl, MonoAcyl, Plasmalogen, AlkylAcyl, DiEther | 5     |
 
-- DiAcyl (2 ester groups)
-- Plasmalogen (1Z-alkenyl ether + acyl)
-- MonoAcyl (lyso compounds)
-- AlkylAcyl (ether + acyl)
+For complete reference, see [`RULES_GUIDE.md`](./RULES_GUIDE.md).
 
-### Key Features
-
-✓ **Acyclic-only filtering** --- Rejects any molecule with rings (aromatic,
-sugar, steroid) ✓ **Backbone-aware** --- Distinguishes PC/LPC/SM by backbone
-type + chain count ✓ **Chain-aware PUFA detection** --- Counts unsaturations per
-chain (≥2 = PUFA) ✓ **SMARTS fragment library** --- Modular, maintainable
-patterns aligned with LIPID MAPS
-
-## Technical Details
-
-### Library Architecture
-
-See [`LIPID_ARCHITECTURE.md`](./LIPID_ARCHITECTURE.md) for detailed design
-rationale:
-
-- Modular SMARTS fragment cores
-- Backbone detection strategy
-- Chain analysis approach
-- Production roadmap
-
-### Supported Lipid Classes
-
-The default library includes:
-
-  | Family               | Classes                              |
-  | -------------------- | ------------------------------------ |
-  | Fatty Acyls          | FA, PUFA, MUFA                       |
-  | Glycerolipids        | MG, DG, TG                           |
-  | Glycerophospholipids | PC, PE, PS, PI, PG, PA, CL, LPC, LPE |
-  | Sphingolipids        | Cer, SM, HexCer                      |
-
-### Fallback Classification
-
-When SMILES cannot be parsed, the app falls back to formula-based detection for: -
-Fatty acids - Glycerolipids - Phospholipids
+**Example dataset:** Download 100 curated SMILES from
+`assets/example_lipids.smi`
 
 ### Performance
 

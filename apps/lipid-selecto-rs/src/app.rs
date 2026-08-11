@@ -1,5 +1,6 @@
-//! Dioxus UI for `lipid-selecto-rs`: drag-and-drop MGF upload, a lipid summary,
-//! a "Download lipid MGF" button, and a gallery of structure diagrams.
+//! Dioxus UI for `lipid-selecto-rs`: drag-and-drop file upload (MGF or SMILES),
+//! lipid classification with extensible rules, a "Download" button, and a gallery
+//! of structure diagrams.
 //!
 //! The `app` entry point intentionally is **not** annotated with `#[component]`
 //! so that `dioxus::launch(lipid_selecto_rs::app)` keeps working exactly like the
@@ -13,27 +14,14 @@ use dioxus::prelude::*;
 use wasm_bindgen::JsCast;
 
 use crate::chemical_class::ChemicalClass;
+use crate::format::LipidFormat;
 use crate::parser::Analysis;
+use crate::rules::LipidRuleLibrary;
 
 mod browser;
 
 #[cfg(target_arch = "wasm32")]
 use self::browser::begin_analysis_from_blob;
-
-/// Build the "download as" filename from the uploaded file's name.
-fn download_filename(source: &str) -> String {
-    let trimmed = source.trim();
-    let stem = trimmed
-        .strip_suffix(".mgf")
-        .or_else(|| trimmed.strip_suffix(".MGF"))
-        .unwrap_or(trimmed);
-    let stem = stem.trim();
-    if stem.is_empty() {
-        "lipids_selected.mgf".to_string()
-    } else {
-        format!("lipids_{stem}.mgf")
-    }
-}
 
 /// Renders the lipid selection UI.
 ///
@@ -42,7 +30,7 @@ fn download_filename(source: &str) -> String {
 /// Returns an error if the component tree fails to build or render.
 #[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
-    let mut status = use_signal(|| "Drop an MGF file to begin.".to_string());
+    let mut status = use_signal(|| "Drop an MGF or SMILES file to begin.".to_string());
     let mut drag_active = use_signal(|| false);
     #[cfg(target_arch = "wasm32")]
     let file_name = use_signal(String::new);
@@ -53,14 +41,20 @@ pub fn app() -> Element {
     #[cfg(not(target_arch = "wasm32"))]
     let mut busy = use_signal(|| false);
     let analysis = use_signal(|| None::<Analysis>);
+    let mut input_format = use_signal(|| None::<LipidFormat>);
 
-    let selected_classes = use_signal(|| {
-        ChemicalClass::defaults()
-            .into_iter()
-            .map(|c| c.name)
-            .collect::<Vec<_>>()
-    });
+    let rule_library = LipidRuleLibrary::defaults();
+    
+    // Initialize selected_classes with all ChemicalClass names (ensures Ceramide is included)
+    let all_class_names: Vec<_> = ChemicalClass::defaults()
+        .iter()
+        .map(|c| c.name.clone())
+        .collect();
 
+    // Start with all classes selected for initial load
+    let selected_classes = use_signal(|| all_class_names.clone());
+
+    let _rule_lib_for_file_change = rule_library.clone();
     let on_file_change = move |evt: Event<FormData>| {
         let Some(file) = evt.data().files().into_iter().next() else {
             status.set("No file selected.".to_string());
@@ -79,6 +73,10 @@ pub fn app() -> Element {
             return;
         };
 
+        // Detect format from filename
+        let detected_format = LipidFormat::from_path(&file.name());
+        input_format.set(detected_format);
+
         #[cfg(target_arch = "wasm32")]
         begin_analysis_from_blob(
             blob,
@@ -88,6 +86,8 @@ pub fn app() -> Element {
             busy,
             drag_active,
             analysis,
+            detected_format,
+            _rule_lib_for_file_change.clone(),
         );
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -110,6 +110,8 @@ pub fn app() -> Element {
         evt.prevent_default();
         drag_active.set(false);
     };
+
+    let _rule_lib_for_drop = rule_library.clone();
     let on_drop = move |evt: Event<DragData>| {
         evt.prevent_default();
         drag_active.set(false);
@@ -130,6 +132,10 @@ pub fn app() -> Element {
             return;
         };
 
+        // Detect format from filename
+        let detected_format = LipidFormat::from_path(&file.name());
+        input_format.set(detected_format);
+
         #[cfg(target_arch = "wasm32")]
         begin_analysis_from_blob(
             blob,
@@ -139,6 +145,8 @@ pub fn app() -> Element {
             busy,
             drag_active,
             analysis,
+            detected_format,
+            _rule_lib_for_drop.clone(),
         );
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -149,6 +157,7 @@ pub fn app() -> Element {
         }
     };
 
+    let _rule_lib_for_button = rule_library.clone();
     let upload_border = if *drag_active.read() {
         "#2563eb"
     } else {
@@ -168,7 +177,51 @@ pub fn app() -> Element {
                 h1 { style: "margin: 0 0 0.35rem; font-size: 1.8rem; letter-spacing: -0.02em;", "Lipid Selecto-rs" }
                 p {
                     style: "margin: 0 0 1.25rem; color: #475569; font-size: 0.95rem; max-width: 60rem;",
-                    "Drop an MGF file whose spectra carry a SMILES (or formula) and we'll keep only the ones matching a lipid — fatty acyls, glycerolipids, phospholipids, sphingolipids and sterols — and give you a filtered MGF to download, with structure diagrams."
+                    "Drop an MGF or SMILES file and we'll filter it to keep only lipids matching extensible LIPID MAPS-aligned rules. Download as the same format you uploaded."
+                }
+
+                div {
+                    style: "display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap;",
+                    button {
+                        r#type: "button",
+                        style: "border: 1px solid #10b981; border-radius: 8px; background: #ecfdf5; color: #047857; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 0.9rem; cursor: pointer;",
+                        onclick: move |_| {
+                            let _ = browser::load_example_dataset(
+                                file_name,
+                                status,
+                                busy,
+                                drag_active,
+                                analysis,
+                                input_format,
+                                _rule_lib_for_button.clone(),
+                            );
+                        },
+                        "Load Example SMILES"
+                    }
+                    a {
+                        href: "/RULES_GUIDE.md",
+                        target: "_blank",
+                        style: "border: 1px solid #8b5cf6; border-radius: 8px; background: #faf5ff; color: #7c3aed; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 0.9rem; cursor: pointer; text-decoration: none; display: inline-block;",
+                        "Rules Guide"
+                    }
+                }
+
+                div {
+                    style: "background: rgba(255,255,255,0.9); border: 1px solid rgba(148,163,184,0.22); border-radius: 20px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); padding: 1.25rem; margin-bottom: 1.25rem;",
+                    h2 { style: "margin: 0 0 0.75rem; font-size: 1.1rem;", "Available Lipid Classes" }
+                    div {
+                        style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.75rem; max-height: 300px; overflow-y: auto;",
+                        for rule in rule_library.sorted_by_priority() {
+                            div {
+                                style: "padding: 0.6rem 0.8rem; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem;",
+                                strong { "{rule.name}" }
+                                if !rule.description.is_empty() {
+                                    span { style: "color: #64748b; font-size: 0.8rem; margin-left: 0.3rem;", " - {rule.description}" }
+                                }
+                                span { style: "color: #94a3b8; font-size: 0.75rem; margin-left: 0.5rem;", "({rule.family})" }
+                            }
+                        }
+                    }
                 }
 
                 div {
@@ -182,8 +235,8 @@ pub fn app() -> Element {
                         ondragover: on_drag_over,
                         ondragleave: on_drag_leave,
                         ondrop: on_drop,
-                        span { style: "font-size: 1rem;", "Drop an MGF file here or click to browse" }
-                        span { style: "font-size: 0.85rem; font-weight: 500; color: #64748b;", ".mgf files containing SMILES=/FORMULA= entries" }
+                        span { style: "font-size: 1rem;", "Drop an MGF or SMILES file here or click to browse" }
+                        span { style: "font-size: 0.85rem; font-weight: 500; color: #64748b;", ".mgf or .smi files with SMILES/FORMULA annotations" }
                         input {
                             id: "mgf-upload",
                             r#type: "file",
@@ -215,47 +268,9 @@ pub fn app() -> Element {
                 }
 
                 if let Some(analysis) = analysis.read().as_ref() {
-                    { self::download_bar(&analysis.filtered_mgf, &file_name.read(), &selected_classes.read(), &analysis.blocks, status, &analysis.all_classes) }
                     { self::summary(&analysis.summary, selected_classes, &analysis.all_classes) }
                     { self::gallery_with_filter(&analysis.gallery, &selected_classes.read()) }
                 }
-            }
-        }
-    }
-}
-
-/// Renders the "Download lipid MGF" button.
-fn download_bar(
-    filtered_mgf: &str,
-    source_file: &str,
-    _selected_classes: &[String],
-    _blocks: &[crate::parser::SpectrumBlock],
-    mut status: Signal<String>,
-    _all_classes: &[ChemicalClass],
-) -> Element {
-    let download_name = download_filename(source_file);
-
-    // The filtered MGF already contains only lipid spectra matching the selected classes
-    let filtered_content = filtered_mgf.to_string();
-
-    let name = download_name.clone();
-    let empty = filtered_content.is_empty();
-    rsx! {
-        div {
-            style: "margin-top: 1.25rem; padding: 0.9rem 1rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc;",
-            button {
-                r#type: "button",
-                disabled: empty,
-                style: "border: 1px solid #2563eb; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 0.86rem; font-weight: 700; padding: 0.5rem 1rem; cursor: pointer;",
-                onclick: move |_| {
-                    if let Err(error) = browser::download_mgf(&filtered_content, &name) {
-                        status.set(error);
-                    }
-                },
-                "Download class-matching MGF ({download_name})"
-            }
-            if !empty {
-                p { style: "margin: 0.35rem 0 0; color: #64748b; font-size: 0.8rem;", "Ready to download {filtered_content.len()} bytes." }
             }
         }
     }
@@ -267,80 +282,114 @@ fn summary(
     mut selected_classes: Signal<Vec<String>>,
     all_classes: &[ChemicalClass],
 ) -> Element {
-    let all_selected = selected_classes.read().len() == all_classes.len();
-    let lipid_spectra = summary_data.lipid_spectra;
-    let total_spectra = summary_data.total_spectra;
+    let lipid_spectra = summary_data.lipid_items;
+    let total_spectra = summary_data.total_items;
     let skipped = summary_data.skipped;
     let unclassified = summary_data.unclassified;
 
     // Convert to owned data to avoid lifetime issues in closures
     let all_classes_owned = all_classes.to_vec();
 
+    // Group classes by family, preserving order
+    let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
+    for class in &all_classes_owned {
+        if let Some(entry) = families.iter_mut().find(|(f, _)| f == &class.family) {
+            entry.1.push(class.clone());
+        } else {
+            families.push((class.family.clone(), vec![class.clone()]));
+        }
+    }
+
     rsx! {
         div {
             style: "margin-top: 1.25rem; padding: 1rem 1.1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
             h2 { style: "margin: 0 0 0.5rem; font-size: 1.05rem; color: #0f172a;", "Results" }
             div { style: "display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; font-size: 0.9rem;",
-                span { style: "color: #16a34a; font-weight: 700;", "{lipid_spectra} spectra matching selected classes" }
+                span { style: "color: #16a34a; font-weight: 700;", "{lipid_spectra} items matching selected classes" }
                 span { style: "color: #475569;", "· out of {total_spectra} total" }
                 if skipped > 0 {
-                    span { style: "color: #94a3b8;", "(skipped {skipped} spectra without SMILES or formula)" }
+                    span { style: "color: #94a3b8;", "(skipped {skipped} items without SMILES or formula)" }
                 }
                 if unclassified > 0 {
-                    span { style: "color: #94a3b8;", "(ignored {unclassified} annotated non-lipid spectra)" }
+                    span { style: "color: #94a3b8;", "(ignored {unclassified} annotated non-lipid items)" }
                 }
             }
 
             if !all_classes_owned.is_empty() {
                 div { style: "margin: 0.8rem 0 0; padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;",
-                    div { style: "margin-bottom: 0.6rem;",
-                        label {
-                            style: "display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; color: #334155;",
-                            input {
-                                r#type: "checkbox",
-                                checked: all_selected,
-                                onchange: move |_| {
-                                    let classes = if all_selected {
-                                        vec![]
-                                    } else {
-                                        all_classes_owned.iter().map(|c| c.name.clone()).collect()
-                                    };
-                                    selected_classes.set(classes);
-                                },
-                                style: "width: 16px; height: 16px; cursor: pointer;",
-                            }
-                            "All classes"
-                        }
-                    }
-                    ul {
-                        style: "margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 0.6rem;",
-                        for class in all_classes_owned.iter() {
-                            {
-                                let color = class.color.clone();
-                                let class_name = class.name.clone();
-                                let is_selected = selected_classes.read().contains(&class_name);
-                                rsx! {
-                                    li {
-                                        style: "display: flex; align-items: center; gap: 0.4rem;",
-                                        label {
-                                            style: "display: flex; align-items: center; gap: 0.4rem; cursor: pointer;",
-                                            input {
-                                                r#type: "checkbox",
-                                                checked: is_selected,
-                                                onchange: move |_| {
-                                                    let mut classes = selected_classes.read().clone();
-                                                    if is_selected {
-                                                        classes.retain(|c| c != &class_name);
-                                                    } else {
-                                                        classes.push(class_name.clone());
+                    h3 { style: "margin: 0 0 0.5rem; font-size: 0.85rem; color: #0f172a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;", "Filter by chemical family" }
+                    for (family, family_classes) in families.iter() {
+                        {
+                            let family_clone = family.clone();
+                            let family_classes_clone = family_classes.clone();
+                            
+                            // Check how many children are selected
+                            let selected_count = family_classes_clone.iter()
+                                .filter(|c| selected_classes.read().contains(&c.name))
+                                .count();
+                            let all_family_selected = selected_count == family_classes_clone.len();
+                            let some_family_selected = selected_count > 0 && !all_family_selected;
+                            
+                            rsx! {
+                                div { style: "margin-bottom: 0.6rem;",
+                                    label { style: "display: flex; align-items: center; gap: 0.4rem; cursor: pointer; margin-bottom: 0.3rem;",
+                                        input {
+                                            r#type: "checkbox",
+                                            checked: all_family_selected || some_family_selected,
+                                            onchange: move |_| {
+                                                let mut classes = selected_classes.read().clone();
+                                                if all_family_selected || some_family_selected {
+                                                    // Uncheck all in family
+                                                    for c in &family_classes_clone {
+                                                        classes.retain(|name| name != &c.name);
                                                     }
-                                                    selected_classes.set(classes);
-                                                },
-                                                style: "width: 14px; height: 14px; cursor: pointer;",
-                                            }
-                                            span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 999px; background: #f1f5f9; font-size: 0.8rem;",
-                                                span { style: format!("width: 8px; height: 8px; border-radius: 50%; background: {color};"), }
-                                                "{class.name}"
+                                                } else {
+                                                    // Check all in family
+                                                    for c in &family_classes_clone {
+                                                        if !classes.contains(&c.name) {
+                                                            classes.push(c.name.clone());
+                                                        }
+                                                    }
+                                                }
+                                                selected_classes.set(classes);
+                                            },
+                                            style: "width: 16px; height: 16px; cursor: pointer;",
+                                        }
+                                        span { style: "font-size: 0.85rem; font-weight: 700; color: #0f172a;", "{family_clone}" }
+                                        if some_family_selected {
+                                            span { style: "font-size: 0.7rem; color: #94a3b8;", "({selected_count}/{family_classes.len()})" }
+                                        }
+                                    }
+                                    ul { style: "margin: 0 0 0 1.5rem; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 0.4rem;",
+                                        for class in family_classes.iter() {
+                                            {
+                                                let color = class.color.clone();
+                                                let class_name = class.name.clone();
+                                                let is_selected = selected_classes.read().contains(&class_name);
+                                                rsx! {
+                                                    li { style: "display: flex; align-items: center;",
+                                                        label { style: "display: flex; align-items: center; gap: 0.4rem; cursor: pointer;",
+                                                            input {
+                                                                r#type: "checkbox",
+                                                                checked: is_selected,
+                                                                onchange: move |_| {
+                                                                    let mut classes = selected_classes.read().clone();
+                                                                    if is_selected {
+                                                                        classes.retain(|c| c != &class_name);
+                                                                    } else {
+                                                                        classes.push(class_name.clone());
+                                                                    }
+                                                                    selected_classes.set(classes);
+                                                                },
+                                                                style: "width: 14px; height: 14px; cursor: pointer;",
+                                                            }
+                                                            span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 999px; background: #f1f5f9; font-size: 0.75rem; font-weight: 500;",
+                                                                span { style: format!("width: 8px; height: 8px; border-radius: 50%; background: {color};"), }
+                                                                "{class.name}"
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -364,7 +413,7 @@ fn gallery_with_filter(
         .iter()
         .filter(|item| {
             if selected_classes.is_empty() {
-                true
+                false
             } else {
                 selected_classes
                     .iter()
@@ -375,44 +424,46 @@ fn gallery_with_filter(
 
     let count = filtered.len();
     rsx! {
-        div {
-            style: "margin-top: 1.25rem;",
-            h2 { style: "margin: 0 0 0.5rem; font-size: 1.05rem; color: #0f172a;", "Structures matching selected classes ({count} shown)" }
-            if count == 0 {
-                p { style: "color: #64748b;", "No structures match the selected classes." }
-            } else {
-                div {
-                    style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0.75rem;",
-                    for item in filtered.iter() {
-                        {
-                            let precursor_text = item
-                                .precursor_mz
-                                .map_or_else(|| "—".to_string(), |mz| format!("{mz:.3}"));
-                            let charge_text = item.charge.as_deref().unwrap_or("—");
-                            rsx! {
-                                div { style: "background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); padding: 0.6rem 0.7rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05); overflow: hidden;",
-                                    div { style: "display: flex; gap: 0.55rem; align-items: flex-start;",
-                                        div { style: "flex: 0 0 auto; width: 160px; height: 120px; display: grid; place-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;",
-                                            div { style: "width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;",
-                                                div { dangerous_inner_html: item.svg.as_str() }
+            div {
+                style: "margin-top: 1.25rem;",
+                h2 { style: "margin: 0 0 0.5rem; font-size: 1.05rem; color: #0f172a;", "Structures matching selected classes ({count} shown)" }
+                if count == 0 {
+                    p { style: "color: #64748b;", "Select one or more chemical families to see matching structures." }
+                } else {
+                    div {
+                        style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0.75rem;",
+                        for item in filtered.iter() {
+                            {
+                                let precursor_text = item
+                                    .precursor_mz
+                                    .map_or_else(|| "—".to_string(), |mz| format!("{mz:.3}"));
+                                let charge_text = item.charge.as_deref().unwrap_or("—");
+                                let bg_color = &item.primary_class_color;
+                                rsx! {
+                                    div { style: "background: linear-gradient(180deg, {bg_color}15 0%, {bg_color}08 100%); padding: 0.6rem 0.7rem; border-radius: 14px; border: 1px solid {bg_color}40; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05); overflow: hidden;",
+                                        div { style: "display: flex; gap: 0.55rem; align-items: flex-start;",
+                                            div { style: "flex: 0 0 auto; width: 160px; height: 120px; display: grid; place-items: center; background: {bg_color}10; border: 1px solid {bg_color}30; border-radius: 10px; overflow: hidden;",
+                                                div { style: "width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;",
+                                                    div { dangerous_inner_html: item.svg.as_str() }
+                                                }
                                             }
-                                        }
-                                        div { style: "flex: 1 1 auto; min-width: 0;",
-                                            div { style: "display: flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap;",
-                                                span { style: "color: #0f172a; font-size: 0.82rem; font-weight: 600;", "{item.formula}" }
-                                                span { style: "color: #64748b; font-size: 0.78rem;", "m/z {item.exact_mass:.3}" }
-                                            }
-                                            if let Some(title) = &item.title {
-                                                div { style: "margin-top: 0.25rem; color: #334155; font-size: 0.8rem; font-weight: 500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;", "{title}" }
-                                            }
-                                            if let Some(smiles) = &item.smiles {
-                                                div { style: "margin-top: 0.15rem; color: #64748b; font-size: 0.72rem; font-family: ui-monospace, monospace; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;", "{smiles}" }
-                                            }
-                                            div { style: "margin-top: 0.2rem; color: #64748b; font-size: 0.75rem;",
-                                                "precursor "
-                                                strong { style: "color: #0f172a;", "{precursor_text}" }
-                                                " · charge "
-                                                strong { style: "color: #0f172a;", "{charge_text}" }
+                                            div { style: "flex: 1 1 auto; min-width: 0;",
+                                                div { style: "display: flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap;",
+                                                    span { style: "color: #0f172a; font-size: 0.82rem; font-weight: 600;", "{item.formula}" }
+                                                    span { style: "color: #64748b; font-size: 0.78rem;", "m/z {item.exact_mass:.3}" }
+                                                }
+                                                if let Some(title) = &item.title {
+                                                    div { style: "margin-top: 0.25rem; color: #334155; font-size: 0.8rem; font-weight: 500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;", "{title}" }
+                                                }
+                                                if let Some(smiles) = &item.smiles {
+                                                    div { style: "margin-top: 0.15rem; color: #64748b; font-size: 0.72rem; font-family: ui-monospace, monospace; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;", "{smiles}" }
+                                                }
+                                                div { style: "margin-top: 0.2rem; color: #64748b; font-size: 0.75rem;",
+                                                    "precursor "
+                                                    strong { style: "color: #0f172a;", "{precursor_text}" }
+                                                    " · charge "
+                                                    strong { style: "color: #0f172a;", "{charge_text}" }
+                                                }
                                             }
                                         }
                                     }
@@ -422,6 +473,5 @@ fn gallery_with_filter(
                     }
                 }
             }
-        }
     }
 }

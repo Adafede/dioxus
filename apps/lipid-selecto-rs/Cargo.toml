@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.95"
 description = "Web app for filtering lipid mass spectrometry data by chemical class with interactive structure visualization"
 license = "AGPL-3.0-only"
-keywords = ["dioxus", "wasm", "mgf", "lipid", "mass-spectrometry", "lipidomics"]
+keywords = ["dioxus", "wasm", "lipid", "mass-spectrometry", "lipidomics"]
 categories = ["wasm", "web-programming", "science"]
 publish = false
 

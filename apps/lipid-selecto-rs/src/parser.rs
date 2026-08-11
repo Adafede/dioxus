@@ -171,11 +171,10 @@ fn is_end_ions(line: &str) -> bool {
             && trimmed["END IONS".len()..].starts_with(char::is_whitespace))
 }
 
-/// Split raw MGF text into verbatim [`SpectrumBlock`] records.
+/// Split raw MGF or SMILES text into [`SpectrumBlock`] records.
 ///
-/// Each block's [`SpectrumBlock::raw`] preserves the original lines (normalized
-/// to `\n` line endings) so that a filtered MGF can be reconstructed byte for
-/// byte.
+/// For MGF: Each block's [`SpectrumBlock::raw`] preserves the original lines.
+/// For SMILES: Each line becomes a SpectrumBlock with SMILES in the psm_smiles field.
 ///
 /// # Panics
 ///
@@ -183,6 +182,18 @@ fn is_end_ions(line: &str) -> bool {
 /// block (the in-flight block is `None`); this only happens for malformed input.
 #[must_use]
 pub fn extract_blocks(content: &str) -> Vec<SpectrumBlock> {
+    // Detect if this is MGF format (look for BEGIN IONS markers)
+    let is_mgf = content.lines().any(|line| is_begin_ions(line));
+
+    if is_mgf {
+        extract_blocks_mgf(content)
+    } else {
+        extract_blocks_smiles(content)
+    }
+}
+
+/// Parse MGF format into spectrum blocks.
+fn extract_blocks_mgf(content: &str) -> Vec<SpectrumBlock> {
     let mut blocks = Vec::new();
     let mut current: Option<SpectrumBlock> = None;
     let mut index = 0usize;
@@ -221,32 +232,94 @@ pub fn extract_blocks(content: &str) -> Vec<SpectrumBlock> {
     blocks
 }
 
+/// Parse SMILES format (one SMILES per line) into spectrum blocks.
+fn extract_blocks_smiles(content: &str) -> Vec<SpectrumBlock> {
+    let mut blocks = Vec::new();
+    let mut index = 0usize;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Skip empty lines and comments
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+
+        index += 1;
+        let mut block = SpectrumBlock::new(index);
+
+        // Parse tab-separated format: support both ID\tSMILES\tDESC or SMILES\tID
+        let parts: Vec<&str> = trimmed.split('\t').collect();
+        if parts.is_empty() {
+            continue;
+        }
+
+        // Detect format: if first field contains SMILES-like characters (C, N, O, =, [, ], etc)
+        // and second field is alphanumeric/underscores, then it's SMILES\tID format.
+        // Otherwise assume ID\tSMILES format.
+        let looks_like_smiles = parts[0].contains(|c: char| {
+            matches!(
+                c,
+                'C' | 'N' | 'O' | 'S' | 'P' | '=' | '#' | '[' | ']' | '(' | ')' | '@'
+            )
+        });
+        let looks_like_id = parts.len() > 1
+            && parts[1]
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '_' || c == '-');
+
+        let (smiles_str, id_str) = if looks_like_smiles && looks_like_id {
+            // SMILES\tID format
+            (parts[0], parts[1])
+        } else if parts.len() > 1 {
+            // ID\tSMILES format (default)
+            (parts[1], parts[0])
+        } else {
+            // Single field - assume it's SMILES
+            (parts[0], "")
+        };
+
+        block.psm_smiles = Some(smiles_str.to_string());
+        if !id_str.is_empty() {
+            block.title = Some(id_str.to_string());
+        }
+
+        // Preserve the original line
+        block.raw = line.to_string();
+        block.raw.push('\n');
+
+        blocks.push(block);
+    }
+
+    blocks
+}
+
 /// Aggregated counts produced by [`summarize`] / [`analyze`].
 #[derive(Clone, Debug, Default)]
 pub struct Summary {
-    pub total_spectra: usize,
-    pub lipid_spectra: usize,
+    pub total_items: usize,
+    pub lipid_items: usize,
     pub unclassified: usize,
     pub skipped: usize,
 }
 
 impl Summary {
-    /// Total spectra that had an annotation (SMILES or FORMULA).
+    /// Total items that had an annotation (SMILES or FORMULA).
     #[must_use]
     pub const fn annotated_total(&self) -> usize {
-        self.total_spectra.saturating_sub(self.skipped)
+        self.total_items.saturating_sub(self.skipped)
     }
 
-    /// Spectra that had an annotation but were not recognized as lipids.
+    /// Items that had an annotation but were not recognized as lipids.
     #[must_use]
     pub const fn non_lipid_annotated(&self) -> usize {
         self.annotated_total()
-            .saturating_sub(self.lipid_spectra)
+            .saturating_sub(self.lipid_items)
             .saturating_sub(self.unclassified)
     }
 }
 
-/// Tally spectra-vs-not from a parsed block collection.
+/// Tally items from a parsed block collection.
 #[must_use]
 pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
     let mut summary = Summary::default();
@@ -267,20 +340,20 @@ pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
 
         // Count based on whether any chemical class matches, not the old classification
         if block.is_lipid() {
-            summary.lipid_spectra += 1;
+            summary.lipid_items += 1;
         } else {
             summary.unclassified += 1;
         }
     }
 
-    summary.total_spectra = blocks.len();
+    summary.total_items = blocks.len();
     summary
 }
 
 /// Project a single spectrum block into a gallery card, rendering its
 /// 2D structure up-front.
 #[must_use]
-pub fn gallery_item(block: &SpectrumBlock, _classes: &[ChemicalClass]) -> GalleryItem {
+pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
     // Compute exact mass from SMILES
     let exact_mass = block
         .psm_smiles
@@ -291,6 +364,18 @@ pub fn gallery_item(block: &SpectrumBlock, _classes: &[ChemicalClass]) -> Galler
 
     // Use precomputed class matches from compute_class_matches
     let class_matches = block.gallery_item_matches.clone().unwrap_or_default();
+
+    // Find first matching class color
+    let primary_class_color = class_matches
+        .iter()
+        .find(|(_, matches)| **matches)
+        .and_then(|(class_name, _)| {
+            classes
+                .iter()
+                .find(|c| &c.name == class_name)
+                .map(|c| c.color.clone())
+        })
+        .unwrap_or_else(|| "#f1f5f9".to_string());
 
     let svg = block
         .psm_smiles
@@ -308,6 +393,7 @@ pub fn gallery_item(block: &SpectrumBlock, _classes: &[ChemicalClass]) -> Galler
         charge: block.charge.clone(),
         svg,
         class_matches,
+        primary_class_color,
     }
 }
 
@@ -347,6 +433,8 @@ pub struct GalleryItem {
     pub svg: String,
     /// Maps chemical class name -> bool (does this molecule match?)
     pub class_matches: HashMap<String, bool>,
+    /// Primary class color (from first matching class)
+    pub primary_class_color: String,
 }
 
 /// Fallback SVG shown when a structure cannot be rendered.
@@ -509,8 +597,8 @@ END IONS
     fn summary_counts_lipids() {
         let (blocks, _summary) = analyze(EXAMPLE_MGF);
         let summary = summarize(&blocks);
-        assert_eq!(summary.total_spectra, 3);
-        assert_eq!(summary.lipid_spectra, 1);
+        assert_eq!(summary.total_items, 3);
+        assert_eq!(summary.lipid_items, 1);
         assert_eq!(summary.skipped, 1);
     }
 
@@ -518,7 +606,7 @@ END IONS
     fn analysis_builds_gallery_and_filtered_mgf() {
         let (blocks, _summary) = analyze(EXAMPLE_MGF);
         let analysis = build_analysis(blocks, 16);
-        assert_eq!(analysis.summary.lipid_spectra, 1);
+        assert_eq!(analysis.summary.lipid_items, 1);
         assert_eq!(analysis.gallery.len(), 1);
         assert!(!analysis.all_classes.is_empty());
         assert!(analysis.filtered_mgf.contains("palmitic_acid"));

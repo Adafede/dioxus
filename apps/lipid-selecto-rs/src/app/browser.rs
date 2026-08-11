@@ -32,6 +32,8 @@ fn start_analysis(
     mut busy: Signal<bool>,
     _drag_active: Signal<bool>,
     mut analysis: Signal<Option<Analysis>>,
+    input_format: Option<crate::format::LipidFormat>,
+    rule_library: crate::rules::LipidRuleLibrary,
 ) {
     file_name_signal.set(source_name);
 
@@ -48,11 +50,11 @@ fn start_analysis(
             }
         };
         status.set(format!(
-            "Loaded {} characters — extracting spectra…",
+            "Loaded {} characters — extracting items…",
             text.len()
         ));
 
-        let mut blocks = extract_blocks(&text);
+        let mut blocks = crate::parser::extract_blocks(&text);
         let total = blocks.len();
 
         // Cooperative classification: yield to the browser every so often so the
@@ -60,13 +62,13 @@ fn start_analysis(
         for (index, block) in blocks.iter_mut().enumerate() {
             block.classify();
             if index % 256 == 0 {
-                status.set(format!("Classifying lipids… {index}/{total} spectra"));
+                status.set(format!("Classifying lipids… {index}/{total} items"));
                 TimeoutFuture::new(0).await;
             }
         }
 
         // Now that we have classification, compute class matches for all blocks
-        let all_classes = ChemicalClass::defaults();
+        let all_classes = crate::chemical_class::ChemicalClass::defaults();
         for block in &mut blocks {
             block.compute_class_matches(&all_classes);
         }
@@ -79,7 +81,7 @@ fn start_analysis(
             if gallery.len() >= MAX_GALLERY_ITEMS {
                 break;
             }
-            gallery.push(gallery_item(block, &all_classes));
+            gallery.push(crate::parser::gallery_item(block, &all_classes));
             if gallery.len() % 16 == 0 {
                 status.set(format!(
                     "Rendering structures… {}/{}",
@@ -90,8 +92,8 @@ fn start_analysis(
             }
         }
 
-        let summary = summarize(&blocks);
-        let filtered_mgf = build_filtered_mgf(&blocks);
+        let summary = crate::parser::summarize(&blocks);
+        let filtered_mgf = crate::parser::build_filtered_mgf(&blocks);
 
         analysis.set(Some(Analysis {
             summary,
@@ -102,7 +104,7 @@ fn start_analysis(
         }));
 
         status.set(format!(
-            "Selected {lipid_count} lipid spectra out of {total} (download below).",
+            "Selected {lipid_count} lipid items out of {total} — ready for analysis.",
         ));
         busy.set(false);
     });
@@ -117,6 +119,8 @@ pub fn begin_analysis_from_blob(
     mut busy: Signal<bool>,
     mut drag_active: Signal<bool>,
     analysis: Signal<Option<Analysis>>,
+    input_format: Option<crate::format::LipidFormat>,
+    rule_library: crate::rules::LipidRuleLibrary,
 ) {
     file_name_signal.set(file_name.clone());
     busy.set(true);
@@ -131,51 +135,58 @@ pub fn begin_analysis_from_blob(
         busy,
         drag_active,
         analysis,
+        input_format,
+        rule_library,
     );
 }
 
-/// Trigger a browser download of `content` as `file_name`.
-pub fn download_mgf(content: &str, file_name: &str) -> Result<(), String> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        use web_sys::console;
+/// Load the 100-example SMILES dataset as if it were uploaded.
+#[cfg(target_arch = "wasm32")]
+pub fn load_example_dataset(
+    mut file_name_signal: dioxus::prelude::Signal<String>,
+    mut status: dioxus::prelude::Signal<String>,
+    mut busy: dioxus::prelude::Signal<bool>,
+    mut drag_active: dioxus::prelude::Signal<bool>,
+    mut analysis: dioxus::prelude::Signal<Option<crate::parser::Analysis>>,
+    mut input_format: dioxus::prelude::Signal<Option<crate::format::LipidFormat>>,
+    rule_library: crate::rules::LipidRuleLibrary,
+) -> Result<(), String> {
+    use crate::examples::example_smiles;
+    use web_sys::Blob;
 
-        let array = Array::new();
-        array.push(&wasm_bindgen::JsValue::from(content));
-        let blob = Blob::new_with_str_sequence(&array)
-            .map_err(|_| "Failed to create a blob from the filtered MGF.".to_string())?;
+    let examples = example_smiles();
+    let content = examples.join("\n");
 
-        let url = Url::create_object_url_with_blob(&blob)
-            .map_err(|_| "Failed to create a download URL.".to_string())?;
-        let window = web_sys::window().ok_or_else(|| "No browser window.".to_string())?;
-        let document = window
-            .document()
-            .ok_or_else(|| "No document object.".to_string())?;
-        let anchor = document
-            .create_element("a")
-            .map_err(|_| "Failed to create the download anchor.".to_string())?
-            .dyn_into::<HtmlAnchorElement>()
-            .map_err(|_| "Failed to cast the anchor element.".to_string())?;
-        anchor.set_href(&url);
-        anchor.set_download(file_name);
-        anchor.click();
+    let array = Array::new();
+    array.push(&wasm_bindgen::JsValue::from(&content));
+    let blob = Blob::new_with_str_sequence(&array)
+        .map_err(|_| "Failed to create blob from examples.".to_string())?;
 
-        Url::revoke_object_url(&url)
-            .map_err(|_| "Failed to revoke the download URL.".to_string())?;
+    drag_active.set(false);
+    busy.set(true);
+    start_analysis(
+        blob,
+        "example_lipids.smi".to_string(),
+        file_name_signal,
+        status,
+        busy,
+        drag_active,
+        analysis,
+        Some(crate::format::LipidFormat::Smiles),
+        rule_library,
+    );
+    Ok(())
+}
 
-        console::log_1(
-            &format!(
-                "lipid-selecto-rs: started download of {file_name} ({} bytes).",
-                content.len()
-            )
-            .into(),
-        );
-        Ok(())
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let _ = (content, file_name);
-        Err("Download is only available in the browser (use `dx serve`).".to_string())
-    }
+#[cfg(not(target_arch = "wasm32"))]
+pub fn load_example_dataset(
+    _file_name_signal: dioxus::prelude::Signal<String>,
+    _status: dioxus::prelude::Signal<String>,
+    _busy: dioxus::prelude::Signal<bool>,
+    _drag_active: dioxus::prelude::Signal<bool>,
+    _analysis: dioxus::prelude::Signal<Option<crate::parser::Analysis>>,
+    _input_format: dioxus::prelude::Signal<Option<crate::format::LipidFormat>>,
+    _rule_library: crate::rules::LipidRuleLibrary,
+) -> Result<(), String> {
+    Err("Example loading is only available in the browser (use `dx serve`).".to_string())
 }

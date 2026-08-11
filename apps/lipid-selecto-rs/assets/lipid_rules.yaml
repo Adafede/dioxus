@@ -1,0 +1,176 @@
+# Lipid Classification Rules (LIPID MAPS-aligned)
+# 
+# This file defines lipid classes using SMARTS patterns.
+# Users can add custom rules by adding new entries to this file.
+# Format: name, family, architecture, smarts_pattern, color
+
+families:
+  FA: "Fatty Acyls"
+  GL: "Glycerolipids"
+  GP: "Glycerophospholipids"
+  SP: "Sphingolipids"
+
+architectures:
+  DiAcyl: "Two ester linkages"
+  MonoAcyl: "One ester linkage (lyso)"
+  AlkylAcyl: "Ether + ester"
+  Plasmalogen: "Vinyl ether + ester"
+  DiEther: "Two ether linkages"
+
+lipid_classes:
+  # Fatty Acids (FA)
+  - name: "FA"
+    family: "FA"
+    architecture: ""
+    description: "Saturated or monounsaturated fatty acid"
+    smarts: "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R][CX3](=[OX1])[OH]"
+    color: "#2563eb"
+    priority: 10
+
+  - name: "PUFA"
+    family: "FA"
+    architecture: ""
+    description: "Polyunsaturated fatty acid (≥2 double bonds)"
+    smarts: "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R][CX3](=[OX1])[OH]"
+    color: "#1e40af"
+    priority: 9
+
+  - name: "MUFA"
+    family: "FA"
+    architecture: ""
+    description: "Monounsaturated fatty acid"
+    smarts: "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R][CX3](=[OX1])[OH]"
+    color: "#3b82f6"
+    priority: 10
+
+  # Glycerolipids (GL)
+  - name: "TG(AAA)"
+    family: "GL"
+    architecture: "DiAcyl"
+    description: "Triacylglycerol with three acyl groups"
+    smarts: "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]"
+    color: "#0d9488"
+    priority: 8
+
+  - name: "DG(AA)"
+    family: "GL"
+    architecture: "DiAcyl"
+    description: "Diacylglycerol with two acyl groups"
+    smarts: "[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]"
+    color: "#14b8a6"
+    priority: 7
+
+  - name: "MG(A)"
+    family: "GL"
+    architecture: "MonoAcyl"
+    description: "Monoacylglycerol with one acyl group"
+    smarts: "[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]"
+    color: "#2dd4bf"
+    priority: 6
+
+  # Glycerophospholipids (GP)
+  - name: "PC(AA)"
+    family: "GP"
+    architecture: "DiAcyl"
+    description: "Phosphatidylcholine - diacyl form"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]"
+    color: "#7c3aed"
+    priority: 10
+
+  - name: "PE(AA)"
+    family: "GP"
+    architecture: "DiAcyl"
+    description: "Phosphatidylethanolamine - diacyl form"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CH2X4][NX3;H2,H1,H0]"
+    color: "#9333ea"
+    priority: 9
+
+  - name: "PS(AA)"
+    family: "GP"
+    architecture: "DiAcyl"
+    description: "Phosphatidylserine - diacyl form"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([CX3](=[OX1])[OX2H,OX1-])[NX3]"
+    color: "#a855f7"
+    priority: 8
+
+  - name: "PI(AA)"
+    family: "GP"
+    architecture: "DiAcyl"
+    description: "Phosphatidylinositol - contains inositol headgroup"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1"
+    color: "#b78bea"
+    priority: 7
+
+  - name: "PG(AA)"
+    family: "GP"
+    architecture: "DiAcyl"
+    description: "Phosphatidylglycerol - diacyl form"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]"
+    color: "#cd34b5"
+    priority: 6
+
+  - name: "PA(AA)"
+    family: "GP"
+    architecture: "DiAcyl"
+    description: "Phosphatidic acid - minimal phospholipid"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4][CH2X4][OX2H,OX1-]"
+    color: "#ec4899"
+    priority: 5
+
+  - name: "LPC(A)"
+    family: "GP"
+    architecture: "MonoAcyl"
+    description: "Lysophosphatidylcholine - monoacyl form"
+    smarts: "[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]"
+    color: "#f472b6"
+    priority: 6
+
+  - name: "LPE(A)"
+    family: "GP"
+    architecture: "MonoAcyl"
+    description: "Lysophosphatidylethanolamine - monoacyl form"
+    smarts: "[CH2X4][CHX4][CH2X4][OX2]"
+    color: "#f787c8"
+    priority: 5
+
+  - name: "CL(AAAA)"
+    family: "GP"
+    architecture: "DiAcyl"
+    description: "Cardiolipin - four acyl groups"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[PX4](=[OX1])([OX2])([OX2])"
+    color: "#f8bbd0"
+    priority: 4
+
+  # Sphingolipids (SP)
+  - name: "Cer(AS)"
+    family: "SP"
+    architecture: "DiAcyl"
+    description: "Ceramide - sphingoid base + amide-linked acyl"
+    smarts: "[#6;!a;!R][CHX3]=[CHX3][CHX4]([NX3][CX3](=[OX1])[#6])[CHX4]([OX2H,OX1-])[CH2X4]"
+    color: "#be185d"
+    priority: 9
+
+  - name: "SM(AS)"
+    family: "SP"
+    architecture: "DiAcyl"
+    description: "Sphingomyelin - ceramide + phosphocholine headgroup"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]"
+    color: "#db2777"
+    priority: 8
+
+  - name: "HexCer(AS)"
+    family: "SP"
+    architecture: "DiAcyl"
+    description: "Hexosylceramide - ceramide + hexose headgroup"
+    smarts: "[#6;!a;!R][CHX3]=[CHX3][CHX4]([NX3][CX3](=[OX1])[#6])[CHX4]([OX2H,OX1-])[CH2X4]"
+    color: "#e91e63"
+    priority: 7
+
+# Custom rules can be added below
+# - name: "MyLipid"
+#   family: "GL"
+#   architecture: "DiAcyl"
+#   description: "My custom lipid rule"
+#   smarts: "[your SMARTS pattern here]"
+#   color: "#ff0000"
+#   priority: 1
