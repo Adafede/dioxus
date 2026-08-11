@@ -115,7 +115,8 @@ pub(super) fn trigger_download(filename: &str, mime: &str, content_or_url: &str)
         return;
     }
 
+    log::debug!("download_text_as_blob filename={} mime={} content_len={}", filename, mime, content_or_url.len());
     if let Err(e) = upload::download_text_as_blob(content_or_url, filename, "", mime) {
-        log::warn!("download failed: {e}");
+        log::error!("download failed: filename={} mime={} error={}", filename, mime, e);
     }
 }

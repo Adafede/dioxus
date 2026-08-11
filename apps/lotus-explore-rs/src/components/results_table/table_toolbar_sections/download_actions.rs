@@ -83,8 +83,12 @@ fn dispatch_query_download_spec(
 }
 
 fn dispatch_metadata_download_blob(filename: &str, body: &str) {
-    log::info!("event=download phase=table_dispatch state=started format=metadata");
+    log::info!("event=download phase=table_dispatch state=started format=metadata filename={} size={}", filename, body.len());
     let trigger_timer = perf::start_timer("LOTUS:table_download_meta_trigger");
+    if body.is_empty() {
+        log::error!("event=download phase=table_dispatch state=error format=metadata reason=empty_body");
+        return;
+    }
     trigger_download(filename, DOWNLOAD_METADATA_MIME, body);
     let elapsed_ms =
         perf::end_timer("LOTUS:table_download_meta_trigger", trigger_timer).as_secs_f64() * 1000.0;
