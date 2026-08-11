@@ -228,7 +228,7 @@ pub fn app() -> Element {
                     }
                     button {
                         r#type: "button",
-                        style: "margin-top: 0.75rem; border: 1px solid #10b981; border-radius: 8px; background: #ecfdf5; color: #047857; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 0.9rem; cursor: pointer; width: 100%;",
+                        style: "margin-top: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #334155; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 0.9rem; cursor: pointer; width: 100%;",
                         onclick: move |_| {
                             let _ = browser::load_example_dataset(
                                 file_name,
