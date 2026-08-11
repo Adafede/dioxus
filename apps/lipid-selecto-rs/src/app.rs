@@ -180,31 +180,6 @@ pub fn app() -> Element {
                     "Drop an MGF or SMILES file and we'll filter it to keep only lipids matching extensible LIPID MAPS-aligned rules. Download as the same format you uploaded."
                 }
 
-                div {
-                    style: "display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap;",
-                    button {
-                        r#type: "button",
-                        style: "border: 1px solid #10b981; border-radius: 8px; background: #ecfdf5; color: #047857; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 0.9rem; cursor: pointer;",
-                        onclick: move |_| {
-                            let _ = browser::load_example_dataset(
-                                file_name,
-                                status,
-                                busy,
-                                drag_active,
-                                analysis,
-                                input_format,
-                                _rule_lib_for_button.clone(),
-                            );
-                        },
-                        "Load Example SMILES"
-                    }
-                    a {
-                        href: "/RULES_GUIDE.md",
-                        target: "_blank",
-                        style: "border: 1px solid #8b5cf6; border-radius: 8px; background: #faf5ff; color: #7c3aed; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 0.9rem; cursor: pointer; text-decoration: none; display: inline-block;",
-                        "Rules Guide"
-                    }
-                }
 
                 div {
                     style: "background: rgba(255,255,255,0.9); border: 1px solid rgba(148,163,184,0.22); border-radius: 20px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); padding: 1.25rem; margin-bottom: 1.25rem;",
@@ -249,7 +224,23 @@ pub fn app() -> Element {
                     p {
                         id: "mgf-upload-help",
                         style: "margin: 0.7rem 0 0; color: #475569; font-size: 0.9rem;",
-                        "Accepts .mgf files. Use drag and drop or browse."
+                        "Accepts .mgf or .smi files. Use drag and drop or browse."
+                    }
+                    button {
+                        r#type: "button",
+                        style: "margin-top: 0.75rem; border: 1px solid #10b981; border-radius: 8px; background: #ecfdf5; color: #047857; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 0.9rem; cursor: pointer; width: 100%;",
+                        onclick: move |_| {
+                            let _ = browser::load_example_dataset(
+                                file_name,
+                                status,
+                                busy,
+                                drag_active,
+                                analysis,
+                                input_format,
+                                _rule_lib_for_button.clone(),
+                            );
+                        },
+                        "Load Example SMILES"
                     }
                     if !file_name.read().is_empty() {
                         p {
@@ -448,18 +439,16 @@ fn gallery_with_filter(
                                                 }
                                             }
                                             div { style: "flex: 1 1 auto; min-width: 0;",
-                                                div { style: "display: flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap;",
-                                                    span { style: "color: #0f172a; font-size: 0.82rem; font-weight: 600;", "{item.formula}" }
-                                                    span { style: "color: #64748b; font-size: 0.78rem;", "m/z {item.exact_mass:.3}" }
-                                                }
                                                 if let Some(title) = &item.title {
-                                                    div { style: "margin-top: 0.25rem; color: #334155; font-size: 0.8rem; font-weight: 500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;", "{title}" }
+                                                    div { style: "margin-bottom: 0.25rem; color: #0f172a; font-size: 0.82rem; font-weight: 600;", "{title}" }
                                                 }
                                                 if let Some(smiles) = &item.smiles {
-                                                    div { style: "margin-top: 0.15rem; color: #64748b; font-size: 0.72rem; font-family: ui-monospace, monospace; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;", "{smiles}" }
+                                                    div { style: "margin-bottom: 0.15rem; color: #64748b; font-size: 0.72rem; font-family: ui-monospace, monospace; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;", "{smiles}" }
                                                 }
-                                                div { style: "margin-top: 0.2rem; color: #64748b; font-size: 0.75rem;",
-                                                    "precursor "
+                                                div { style: "color: #64748b; font-size: 0.75rem;",
+                                                    "m/z "
+                                                    strong { style: "color: #0f172a;", "{item.exact_mass:.3}" }
+                                                    " · precursor "
                                                     strong { style: "color: #0f172a;", "{precursor_text}" }
                                                     " · charge "
                                                     strong { style: "color: #0f172a;", "{charge_text}" }
