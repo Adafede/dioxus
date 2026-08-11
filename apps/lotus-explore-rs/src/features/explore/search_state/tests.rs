@@ -106,7 +106,13 @@ fn search_failed_stores_domain_error_and_clears_loading() {
     let mut state = default_state();
     state.lifecycle.loading = true;
     let err = DomainError::Validation(ValidationFault::EmptyInput);
-    let next = reduce(state, ExploreAction::SearchFailed { error: err.clone(), query: None });
+    let next = reduce(
+        state,
+        ExploreAction::SearchFailed {
+            error: err.clone(),
+            query: None,
+        },
+    );
     assert!(!next.lifecycle.loading);
     assert_eq!(next.lifecycle.error, Some(err));
     assert_eq!(next.lifecycle.query_phase, QueryPhase::Idle);
@@ -119,7 +125,13 @@ fn search_failed_clears_results_for_taxon_stage_errors() {
     state.result.total_matches = Some(9);
     let err = DomainError::transport(QueryStage::TaxonSearch, RepositoryError::network("timeout"));
 
-    let next = reduce(state, ExploreAction::SearchFailed { error: err, query: None });
+    let next = reduce(
+        state,
+        ExploreAction::SearchFailed {
+            error: err,
+            query: None,
+        },
+    );
     assert!(next.result.resolved_qid.is_none());
     assert!(next.result.total_matches.is_none());
 }
@@ -134,7 +146,13 @@ fn search_failed_preserves_results_for_results_stage_errors() {
         RepositoryError::network("timeout"),
     );
 
-    let next = reduce(state, ExploreAction::SearchFailed { error: err, query: None });
+    let next = reduce(
+        state,
+        ExploreAction::SearchFailed {
+            error: err,
+            query: None,
+        },
+    );
     assert_eq!(next.result.resolved_qid.as_deref(), Some("Q123"));
     assert_eq!(next.result.total_matches, Some(9));
 }

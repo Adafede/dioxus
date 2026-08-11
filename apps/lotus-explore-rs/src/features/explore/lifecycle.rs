@@ -102,7 +102,7 @@ impl SearchLifecycleCoordinator {
 fn dispatch_error(explore: Signal<ExploreState>, error: DomainError, request: &SearchRequest) {
     use crate::features::explore::service::build_query::build_sparql_query;
     use crate::features::explore::service::build_query::normalize_smiles;
-    
+
     // Try to build the query that was being attempted
     let smiles = normalize_smiles(&request.criteria().smiles);
     let query = if let Some(qid) = explore.peek().result.resolved_qid.as_deref() {
@@ -110,7 +110,7 @@ fn dispatch_error(explore: Signal<ExploreState>, error: DomainError, request: &S
     } else {
         Some(build_sparql_query(&smiles, request.criteria(), None))
     };
-    
+
     dispatch_explore_action(explore, ExploreAction::SearchFailed { error, query });
 }
 

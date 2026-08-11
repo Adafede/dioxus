@@ -53,7 +53,7 @@ pub fn ResultsViewport() -> Element {
             } else {
                 rsx! {}
             }
-        },
+        }
         ContentPhase::Empty => rsx! {
             ResultsTable {}
         },
