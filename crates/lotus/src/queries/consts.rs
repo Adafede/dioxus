@@ -50,7 +50,7 @@ PREFIX pr:     <http://www.wikidata.org/prop/reference/>
 PREFIX wikibase: <http://wikiba.se/ontology#>
 PREFIX schema: <http://schema.org/>
 PREFIX sachem: <http://bioinfo.uochb.cas.cz/rdf/v1.0/sachem#>
-PREFIX idsm:   <https://idsm.elixir-czech.eu/sparql/endpoint/>
+PREFIX idsm:   <https://idsm.elixir-czech.cz/sparql/endpoint/>
 ";
 
 /// Compound identifier retrieval via Wikidata direct properties.
