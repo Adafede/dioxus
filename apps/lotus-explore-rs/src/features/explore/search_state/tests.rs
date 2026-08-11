@@ -78,6 +78,7 @@ fn search_succeeded_clears_loading_and_stores_result() {
     let mut state = default_state();
     state.lifecycle.loading = true;
     let rows: Vec<CompoundEntry> = vec![];
+    let metadata = Arc::<str>::from(r#"{"test":"metadata"}"#);
     let next = reduce(
         state,
         ExploreAction::SearchSucceeded {
@@ -90,7 +91,7 @@ fn search_succeeded_clears_loading_and_stores_result() {
             display_capped_rows: true,
             query_hash: "qh".into(),
             result_hash: "rh".into(),
-            metadata_json: Arc::<str>::from("{}"),
+            metadata_json: metadata.clone(),
         },
     );
     assert!(!next.lifecycle.loading);
@@ -99,6 +100,7 @@ fn search_succeeded_clears_loading_and_stores_result() {
     assert!(next.result.display_capped_rows);
     assert_eq!(next.result.query_hash.as_deref(), Some("qh"));
     assert_eq!(next.result.result_hash.as_deref(), Some("rh"));
+    assert_eq!(next.result.metadata_json, Some(metadata));
 }
 
 #[test]
