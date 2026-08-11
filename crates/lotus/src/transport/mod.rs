@@ -14,9 +14,9 @@
 //!   `https://qlever.dev/api/wikidata?query=<encoded>&action=csv_export`
 
 pub use execute::{
-    execute_query, execute_sparql_body, execute_sparql_bytes,
-    execute_sparql_with_format, execute_sparql_with_format_body, execute_sparql_with_format_bytes,
-    fetch_export_url_bytes, fetch_url_bytes,
+    execute_query, execute_sparql_body, execute_sparql_bytes, execute_sparql_with_format,
+    execute_sparql_with_format_body, execute_sparql_with_format_bytes, fetch_export_url_bytes,
+    fetch_url_bytes,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
