@@ -3,6 +3,8 @@
 //! Detects whether input is MGF (Mascot Generic Format) or SMILES list,
 //! preserves the format, and outputs in the same format as the input.
 
+#![allow(clippy::module_name_repetitions)]
+
 use std::path::Path;
 
 /// Supported input/output formats.
@@ -16,6 +18,7 @@ pub enum LipidFormat {
 
 impl LipidFormat {
     /// Detect format from file extension.
+    #[must_use]
     pub fn from_path<P: AsRef<Path>>(path: P) -> Option<Self> {
         let path = path.as_ref();
         let ext = path.extension()?.to_str()?.to_lowercase();
@@ -27,6 +30,7 @@ impl LipidFormat {
     }
 
     /// Detect format from file contents by examining the first non-empty lines.
+    #[must_use]
     pub fn detect_from_content(content: &str) -> Option<Self> {
         let trimmed = content.trim();
 
@@ -65,7 +69,8 @@ impl LipidFormat {
     }
 
     /// Get the file extension for this format.
-    pub fn extension(self) -> &'static str {
+    #[must_use]
+    pub const fn extension(self) -> &'static str {
         match self {
             Self::Mgf => "mgf",
             Self::Smiles => "smi",
@@ -73,7 +78,8 @@ impl LipidFormat {
     }
 
     /// Get a descriptive label for this format.
-    pub fn label(self) -> &'static str {
+    #[must_use]
+    pub const fn label(self) -> &'static str {
         match self {
             Self::Mgf => "MGF (Mass Spectrometry)",
             Self::Smiles => "SMILES (Text)",

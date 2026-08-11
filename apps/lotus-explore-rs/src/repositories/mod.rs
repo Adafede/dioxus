@@ -135,10 +135,10 @@ pub trait LotusRepository: Clone + 'static {
     async fn sparql_body(
         &self,
         query: &str,
-    ) -> Result<shared::sparql::ResponseBody, RepositoryError> {
+    ) -> Result<lotus::transport::ResponseBody, RepositoryError> {
         self.sparql_bytes(query)
             .await
-            .map(shared::sparql::ResponseBody::from)
+            .map(lotus::transport::ResponseBody::from)
     }
 
     #[cfg(not(target_arch = "wasm32"))]

@@ -5,7 +5,7 @@ use crate::{
     errors::ApiError,
     types::{RowDto, SearchResponse, SearchStats},
 };
-use shared::lotus::{models::DatasetStats, queries, sparql};
+use lotus::{models::DatasetStats, queries, sparql};
 
 pub async fn build_search_response(
     execution_query: &str,

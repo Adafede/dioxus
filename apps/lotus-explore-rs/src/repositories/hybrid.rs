@@ -14,7 +14,7 @@ use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
 use crate::repositories::{LotusRepository, RepositoryError};
 use crate::sparql;
-use shared::sparql::FetchError;
+use lotus::transport::FetchError;
 
 /// Zero-size, `Copy` production repository.
 ///
@@ -52,7 +52,7 @@ impl LotusRepository for HybridRepository {
     async fn sparql_body(
         &self,
         query: &str,
-    ) -> Result<shared::sparql::ResponseBody, RepositoryError> {
+    ) -> Result<lotus::transport::ResponseBody, RepositoryError> {
         sparql::execute_sparql_body(query)
             .await
             .map_err(map_fetch_error)

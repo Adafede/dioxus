@@ -135,14 +135,12 @@ impl SpectrumBlock {
     /// Only matches classes for acyclic molecules (true lipids).
     pub fn compute_class_matches(&mut self, classes: &[ChemicalClass]) {
         let mut matches = HashMap::new();
-        if let Some(smiles_str) = &self.psm_smiles {
-            if let Ok(molecule) = smiles::parse(smiles_str.trim()) {
-                // Only compute matches for acyclic molecules - lipids must have no rings
-                if is_acyclic(&molecule) {
-                    for class in classes {
-                        matches.insert(class.name.clone(), class.matches(&molecule));
-                    }
-                }
+        if let Some(smiles_str) = &self.psm_smiles
+            && let Ok(molecule) = smiles::parse(smiles_str.trim())
+            && is_acyclic(&molecule)
+        {
+            for class in classes {
+                matches.insert(class.name.clone(), class.matches(&molecule));
             }
         }
         self.gallery_item_matches = Some(matches);
@@ -173,32 +171,28 @@ fn is_end_ions(line: &str) -> bool {
 
 /// Split raw MGF or SMILES text into [`SpectrumBlock`] records.
 ///
+/// Accepts any iterator of line-like items so callers can stream from a
+/// `upload::BlobLines` reader without buffering the entire file as a single
+/// string.
+///
 /// For MGF: Each block's [`SpectrumBlock::raw`] preserves the original lines.
-/// For SMILES: Each line becomes a SpectrumBlock with SMILES in the psm_smiles field.
+/// For SMILES: Each line becomes a `SpectrumBlock` with SMILES in the `psm_smiles` field.
 ///
 /// # Panics
 ///
 /// Panics if an `END IONS` marker appears without a matching open `BEGIN IONS`
 /// block (the in-flight block is `None`); this only happens for malformed input.
 #[must_use]
-pub fn extract_blocks(content: &str) -> Vec<SpectrumBlock> {
-    // Detect if this is MGF format (look for BEGIN IONS markers)
-    let is_mgf = content.lines().any(|line| is_begin_ions(line));
-
-    if is_mgf {
-        extract_blocks_mgf(content)
-    } else {
-        extract_blocks_smiles(content)
-    }
-}
-
-/// Parse MGF format into spectrum blocks.
-fn extract_blocks_mgf(content: &str) -> Vec<SpectrumBlock> {
+pub fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> + 'a>>(
+    lines: I,
+) -> Vec<SpectrumBlock> {
     let mut blocks = Vec::new();
-    let mut current: Option<SpectrumBlock> = None;
     let mut index = 0usize;
+    let mut current: Option<SpectrumBlock> = None;
 
-    for line in content.lines() {
+    for line in lines {
+        let line = line.as_ref();
+
         if is_begin_ions(line) {
             if let Some(block) = current.take() {
                 blocks.push(block);
@@ -222,6 +216,16 @@ fn extract_blocks_mgf(content: &str) -> Vec<SpectrumBlock> {
             block.consume_metadata(line);
             block.raw.push_str(line);
             block.raw.push('\n');
+        } else {
+            // SMILES / flat format: each non-empty, non-comment line is a block.
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+            index += 1;
+            if let Some(block) = parse_smiles_line(index, trimmed) {
+                blocks.push(block);
+            }
         }
     }
 
@@ -232,66 +236,49 @@ fn extract_blocks_mgf(content: &str) -> Vec<SpectrumBlock> {
     blocks
 }
 
-/// Parse SMILES format (one SMILES per line) into spectrum blocks.
-fn extract_blocks_smiles(content: &str) -> Vec<SpectrumBlock> {
-    let mut blocks = Vec::new();
-    let mut index = 0usize;
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-
-        // Skip empty lines and comments
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            continue;
-        }
-
-        index += 1;
-        let mut block = SpectrumBlock::new(index);
-
-        // Parse tab-separated format: support both ID\tSMILES\tDESC or SMILES\tID
-        let parts: Vec<&str> = trimmed.split('\t').collect();
-        if parts.is_empty() {
-            continue;
-        }
-
-        // Detect format: if first field contains SMILES-like characters (C, N, O, =, [, ], etc)
-        // and second field is alphanumeric/underscores, then it's SMILES\tID format.
-        // Otherwise assume ID\tSMILES format.
-        let looks_like_smiles = parts[0].contains(|c: char| {
-            matches!(
-                c,
-                'C' | 'N' | 'O' | 'S' | 'P' | '=' | '#' | '[' | ']' | '(' | ')' | '@'
-            )
-        });
-        let looks_like_id = parts.len() > 1
-            && parts[1]
-                .chars()
-                .all(|c| c.is_alphanumeric() || c == '_' || c == '-');
-
-        let (smiles_str, id_str) = if looks_like_smiles && looks_like_id {
-            // SMILES\tID format
-            (parts[0], parts[1])
-        } else if parts.len() > 1 {
-            // ID\tSMILES format (default)
-            (parts[1], parts[0])
-        } else {
-            // Single field - assume it's SMILES
-            (parts[0], "")
-        };
-
-        block.psm_smiles = Some(smiles_str.to_string());
-        if !id_str.is_empty() {
-            block.title = Some(id_str.to_string());
-        }
-
-        // Preserve the original line
-        block.raw = line.to_string();
-        block.raw.push('\n');
-
-        blocks.push(block);
+/// Parse a single SMILES-format line into an optional [`SpectrumBlock`].
+fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
+    let parts: Vec<&str> = trimmed.split('\t').collect();
+    if parts.is_empty() {
+        return None;
     }
 
-    blocks
+    let looks_like_smiles = parts[0].contains(|c: char| {
+        matches!(
+            c,
+            'C' | 'N' | 'O' | 'S' | 'P' | '=' | '#' | '[' | ']' | '(' | ')' | '@'
+        )
+    });
+    let looks_like_id = parts.len() > 1
+        && parts[1]
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-');
+
+    let (smiles_str, id_str) = if looks_like_smiles && looks_like_id {
+        (parts[0], parts[1])
+    } else if parts.len() > 1 {
+        (parts[1], parts[0])
+    } else {
+        (parts[0], "")
+    };
+
+    let mut block = SpectrumBlock::new(index);
+    block.psm_smiles = Some(smiles_str.to_string());
+    if !id_str.is_empty() {
+        block.title = Some(id_str.to_string());
+    }
+    block.raw = trimmed.to_string();
+    block.raw.push('\n');
+    Some(block)
+}
+
+/// Split raw MGF or SMILES text into [`SpectrumBlock`] records.
+///
+/// Convenience wrapper around [`extract_blocks_from_lines`] for callers that
+/// already have the full text in memory (tests, native builds).
+#[must_use]
+pub fn extract_blocks(content: &str) -> Vec<SpectrumBlock> {
+    extract_blocks_from_lines(content.lines())
 }
 
 /// Aggregated counts produced by [`summarize`] / [`analyze`].
@@ -360,7 +347,7 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
         .as_deref()
         .and_then(|smiles_str| smiles::parse(smiles_str.trim()).ok())
         .map(|mol| chem::exact_mass(&mol))
-        .unwrap_or(0.0);
+        .unwrap_or_default();
 
     // Use precomputed class matches from compute_class_matches
     let class_matches = block.gallery_item_matches.clone().unwrap_or_default();

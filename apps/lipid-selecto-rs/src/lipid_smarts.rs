@@ -13,6 +13,7 @@ pub struct SmartsCores;
 
 impl SmartsCores {
     /// Return a map of core structural motifs.
+    #[must_use]
     pub fn cores() -> HashMap<&'static str, &'static str> {
         let mut map = HashMap::new();
 
@@ -151,13 +152,13 @@ mod tests {
 
     #[test]
     fn lipid_classes_include_major_types() {
-        let _classes = vec![
+        let classes = [
             LipidClass::FA,
             LipidClass::PC,
             LipidClass::PE,
             LipidClass::TG,
             LipidClass::Cer,
         ];
-        assert_eq!(_classes.len(), 5);
+        assert_eq!(classes.len(), 5);
     }
 }

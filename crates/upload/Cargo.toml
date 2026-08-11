@@ -1,25 +1,26 @@
 [package]
-name = "file-upload"
+name = "upload"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
-description = "Streaming file upload and blob handling primitives for WASM file upload apps"
+description = "Streaming file upload, blob scanning, progress reporting, and download primitives for WASM apps"
 license = "AGPL-3.0-only"
 keywords = ["wasm", "blob", "file-upload", "streaming", "drag-drop"]
 categories = ["web-programming", "asynchronous"]
 publish = false
 
 [dependencies]
+bytes = { workspace = true }
 dioxus = { workspace = true }
-gloo-timers = { version = "0.3", features = ["futures"] }
+gloo-timers = { workspace = true }
 log = { workspace = true }
-shared = { path = "../shared", version = "0.1" }
+thiserror = "2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = "0.4"
-web-sys = { workspace = true, features = ["Blob", "File", "FileList", "FileReader", "HtmlAnchorElement", "HtmlInputElement", "Url", "Window"] }
+web-sys = { workspace = true, features = ["Blob", "BlobPropertyBag", "File", "FileList", "FileReader", "HtmlAnchorElement", "HtmlFormElement", "HtmlInputElement", "Location", "Url", "Window"] }
 
 [lints]
 workspace = true

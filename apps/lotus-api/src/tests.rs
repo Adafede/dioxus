@@ -14,14 +14,12 @@ use utoipa::OpenApi;
 use crate::{
     ApiDoc, build_router,
     config::AppConfig,
-    query_logic::{
-        apply_request, build_upstream_export_url, normalized_structure_input,
-        sanitize_download_filename,
-    },
+    query_logic::{apply_request, normalized_structure_input},
     state::AppState,
     state::{CachedExportResponse, prune_cache},
-    types::{ExportArchiveFormat, ExportUrlResponse, SearchRequest},
+    types::{ExportUrlResponse, SearchRequest},
 };
+use lotus::export::{self, ExportFormat};
 
 fn map_provider(values: &[(&str, &str)]) -> HashMap<String, String> {
     values
@@ -148,8 +146,8 @@ fn normalized_structure_preserves_multiline_molfile() {
 
 #[test]
 fn rdf_export_url_uses_construct_query_with_normalized_formula_binding() {
-    let select = shared::lotus::queries::query_compounds_by_taxon("Q2382443");
-    let url = build_upstream_export_url(&select, ExportArchiveFormat::Rdf);
+    let select = lotus::queries::query_compounds_by_taxon("Q2382443");
+    let url = export::build_upstream_export_url(&select, ExportFormat::Rdf);
 
     assert!(url.contains("action=turtle_export"));
 
@@ -495,11 +493,11 @@ fn sanitize_filename_replaces_slash_with_underscore() {
     // '/' and '\' are replaced with '_'; leading dots from trim_matches get removed too.
     // "../../etc/passwd" → ".._.._etc_passwd" → trim leading dots → "_.._etc_passwd"
     assert_eq!(
-        sanitize_download_filename("../../etc/passwd"),
+        export::sanitize_download_filename("../../etc/passwd"),
         "_.._etc_passwd"
     );
     assert_eq!(
-        sanitize_download_filename(r"C:\Windows\system32"),
+        export::sanitize_download_filename(r"C:\Windows\system32"),
         "C:_Windows_system32"
     );
 }
@@ -507,7 +505,7 @@ fn sanitize_filename_replaces_slash_with_underscore() {
 #[test]
 fn sanitize_filename_removes_control_chars() {
     let input = "file\x00name\x1f.csv";
-    let result = sanitize_download_filename(input);
+    let result = export::sanitize_download_filename(input);
     assert!(!result.contains('\x00'));
     assert!(!result.contains('\x1f'));
     assert!(result.contains("filename"));
@@ -515,22 +513,22 @@ fn sanitize_filename_removes_control_chars() {
 
 #[test]
 fn sanitize_filename_trims_leading_trailing_dots() {
-    assert_eq!(sanitize_download_filename("...hidden"), "hidden");
-    assert_eq!(sanitize_download_filename("file..."), "file");
+    assert_eq!(export::sanitize_download_filename("...hidden"), "hidden");
+    assert_eq!(export::sanitize_download_filename("file..."), "file");
 }
 
 #[test]
 fn sanitize_filename_preserves_normal_names() {
     assert_eq!(
-        sanitize_download_filename("export_2024-01-15.csv"),
+        export::sanitize_download_filename("export_2024-01-15.csv"),
         "export_2024-01-15.csv"
     );
 }
 
 #[test]
 fn sanitize_filename_empty_or_whitespace_returns_empty() {
-    assert_eq!(sanitize_download_filename(""), "");
-    assert_eq!(sanitize_download_filename("   "), "");
+    assert_eq!(export::sanitize_download_filename(""), "");
+    assert_eq!(export::sanitize_download_filename("   "), "");
 }
 
 // ── element-range validation ──────────────────────────────────────────────────

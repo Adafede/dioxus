@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Generic SPARQL/QLever HTTP utilities shared by all apps.
+//! SPARQL over HTTP transport — the platform-agnostic layer beneath
+//! [`crate::sparql`] (LOTUS wrappers) and [`crate::models`] (domain types).
 //!
-//! `QLever` CSV export URL format:
+//! Provides a thin HTTP client that POSTs a query string to any SPARQL /
+//! `QLever` endpoint, handles retries with exponential backoff,
+//! content-negotiated format selection, and gateway-error detection.  It knows
+//! nothing about LOTUS, Wikidata, or CSV schema — callers supply the endpoint
+//! URL and interpret the returned bytes.
+//!
+//! # `QLever` CSV export URL format
 //!   `https://qlever.dev/api/wikidata?query=<encoded>&action=csv_export`
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -588,9 +595,9 @@ pub fn field(record: &csv::StringRecord, idx: Option<usize>) -> &str {
 ///
 /// Returns an empty string for any unrecognized format.
 ///
-/// [`WIKIDATA_ENTITY_BASE`]: crate::lotus::models::WIKIDATA_ENTITY_BASE
+/// [`WIKIDATA_ENTITY_BASE`]: crate::models::WIKIDATA_ENTITY_BASE
 pub fn extract_qid(s: &str) -> String {
-    use crate::lotus::models::WIKIDATA_ENTITY_BASE;
+    use crate::models::WIKIDATA_ENTITY_BASE;
     const WIKIDATA_ENTITY_BASE_HTTPS: &str = "https://www.wikidata.org/entity/";
 
     let candidate = s

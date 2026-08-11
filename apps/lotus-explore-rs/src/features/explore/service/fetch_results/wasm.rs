@@ -8,7 +8,7 @@ use crate::repositories::RepositoryError;
 use crate::services::search_telemetry as telemetry;
 use crate::sparql;
 use futures::try_join;
-use shared::sparql::ResponseBody;
+use lotus::transport::ResponseBody;
 
 pub(super) async fn fetch_results<R: LotusRepository>(
     repo: &R,
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn wasm_preview_rows_are_bounded() {
-        let csv = shared::sparql::ResponseBody::from_static(
+        let csv = lotus::transport::ResponseBody::from_static(
             b"compound,compoundLabel,taxon,ref_qid\nQ1,One,Q10,Q20\nQ2,Two,Q11,Q21\n",
         );
 

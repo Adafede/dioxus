@@ -8,7 +8,7 @@ use crate::features::explore::selectors::toolbar_snapshot_from_result;
 use crate::ui::ContentPhase;
 
 fn is_supported_download_format(fmt: &str) -> bool {
-    DownloadFormat::from_str(fmt).is_some()
+    DownloadFormat::parse(fmt).is_some()
 }
 
 #[test]

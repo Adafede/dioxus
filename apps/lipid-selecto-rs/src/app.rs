@@ -10,9 +10,6 @@ use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::JsCast;
-
 use crate::chemical_class::ChemicalClass;
 use crate::format::LipidFormat;
 use crate::parser::Analysis;
@@ -54,48 +51,37 @@ pub fn app() -> Element {
     // Start with all classes selected for initial load
     let selected_classes = use_signal(|| all_class_names.clone());
 
-    let _rule_lib_for_file_change = rule_library.clone();
-    let on_file_change = move |evt: Event<FormData>| {
-        let Some(file) = evt.data().files().into_iter().next() else {
-            status.set("No file selected.".to_string());
-            return;
-        };
+    #[cfg(target_arch = "wasm32")]
+    let rule_lib_for_file_change = rule_library.clone();
+    let on_file_change = move |evt: Event<FormData>| match upload::extract_blob_from_file_data(
+        &evt.data().files(),
+    ) {
+        Ok(Some(file)) => {
+            let detected_format = LipidFormat::from_path(&file.name);
+            input_format.set(detected_format);
 
-        #[cfg(target_arch = "wasm32")]
-        let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
-            status.set("This file type is not supported in the browser.".to_string());
-            return;
-        };
+            #[cfg(target_arch = "wasm32")]
+            begin_analysis_from_blob(
+                file.blob,
+                file.name,
+                file_name,
+                status,
+                busy,
+                drag_active,
+                analysis,
+                detected_format,
+                rule_lib_for_file_change.clone(),
+            );
 
-        #[cfg(target_arch = "wasm32")]
-        let Ok(blob) = web_file.clone().dyn_into::<web_sys::Blob>() else {
-            status.set("Unable to read the selected file as a blob.".to_string());
-            return;
-        };
-
-        // Detect format from filename
-        let detected_format = LipidFormat::from_path(&file.name());
-        input_format.set(detected_format);
-
-        #[cfg(target_arch = "wasm32")]
-        begin_analysis_from_blob(
-            blob,
-            file.name(),
-            file_name,
-            status,
-            busy,
-            drag_active,
-            analysis,
-            detected_format,
-            _rule_lib_for_file_change.clone(),
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            file_name.set(file.name());
-            status.set("This app runs in the browser — open it via `dx serve`.".to_string());
-            busy.set(false);
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                file_name.set(file.name);
+                status.set("This app runs in the browser — open it via `dx serve`.".to_string());
+                busy.set(false);
+            }
         }
+        Ok(None) => status.set("No file selected.".to_string()),
+        Err(msg) => status.set(msg),
     };
 
     let on_drag_enter = move |evt: Event<DragData>| {
@@ -111,53 +97,44 @@ pub fn app() -> Element {
         drag_active.set(false);
     };
 
-    let _rule_lib_for_drop = rule_library.clone();
+    #[cfg(target_arch = "wasm32")]
+    let rule_lib_for_drop = rule_library.clone();
     let on_drop = move |evt: Event<DragData>| {
         evt.prevent_default();
         drag_active.set(false);
-        let Some(file) = evt.data().files().into_iter().next() else {
-            status.set("No file selected.".to_string());
-            return;
-        };
+        match upload::extract_blob_from_file_data(&evt.data().files()) {
+            Ok(Some(file)) => {
+                let detected_format = LipidFormat::from_path(&file.name);
+                input_format.set(detected_format);
 
-        #[cfg(target_arch = "wasm32")]
-        let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
-            status.set("This file type is not supported in the browser.".to_string());
-            return;
-        };
+                #[cfg(target_arch = "wasm32")]
+                begin_analysis_from_blob(
+                    file.blob,
+                    file.name,
+                    file_name,
+                    status,
+                    busy,
+                    drag_active,
+                    analysis,
+                    detected_format,
+                    rule_lib_for_drop.clone(),
+                );
 
-        #[cfg(target_arch = "wasm32")]
-        let Ok(blob) = web_file.clone().dyn_into::<web_sys::Blob>() else {
-            status.set("Unable to read the selected file as a blob.".to_string());
-            return;
-        };
-
-        // Detect format from filename
-        let detected_format = LipidFormat::from_path(&file.name());
-        input_format.set(detected_format);
-
-        #[cfg(target_arch = "wasm32")]
-        begin_analysis_from_blob(
-            blob,
-            file.name(),
-            file_name,
-            status,
-            busy,
-            drag_active,
-            analysis,
-            detected_format,
-            _rule_lib_for_drop.clone(),
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            file_name.set(file.name());
-            status.set("This app runs in the browser — open it via `dx serve`.".to_string());
-            busy.set(false);
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    file_name.set(file.name);
+                    status
+                        .set("This app runs in the browser — open it via `dx serve`.".to_string());
+                    busy.set(false);
+                }
+            }
+            Ok(None) => status.set("No file selected.".to_string()),
+            Err(msg) => status.set(msg),
         }
     };
 
-    let _rule_lib_for_button = rule_library.clone();
+    #[cfg(target_arch = "wasm32")]
+    let rule_lib_for_button = rule_library.clone();
     let upload_border = if *drag_active.read() {
         "#2563eb"
     } else {
@@ -230,15 +207,20 @@ pub fn app() -> Element {
                         r#type: "button",
                         style: "margin-top: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #334155; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 0.9rem; cursor: pointer; width: 100%;",
                         onclick: move |_| {
+                            #[cfg(target_arch = "wasm32")]
                             let _ = browser::load_example_dataset(
-                                file_name,
-                                status,
-                                busy,
-                                drag_active,
-                                analysis,
-                                input_format,
-                                _rule_lib_for_button.clone(),
+                                file_name.clone(),
+                                status.clone(),
+                                busy.clone(),
+                                drag_active.clone(),
+                                analysis.clone(),
+                                input_format.clone(),
+                                rule_lib_for_button.clone(),
                             );
+                            #[cfg(not(target_arch = "wasm32"))]
+                            {
+                                status.set("This app runs in the browser — open it via `dx serve`.".to_string());
+                            }
                         },
                         "Load Example SMILES"
                     }
@@ -268,6 +250,7 @@ pub fn app() -> Element {
 }
 
 /// Renders the per-class summary panel.
+#[allow(clippy::too_many_lines)]
 fn summary(
     summary_data: &crate::parser::Summary,
     mut selected_classes: Signal<Vec<String>>,

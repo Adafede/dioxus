@@ -9,7 +9,7 @@ use crate::features::explore::search_metrics::SearchMetrics;
 use crate::perf;
 use crate::repositories::{LotusRepository, RepositoryError};
 use crate::services::search_telemetry as telemetry;
-use shared::lotus::models::runtime_table_row_limit;
+use lotus::models::runtime_table_row_limit;
 
 pub async fn try_execute<R: LotusRepository>(
     request: &SearchRequest,

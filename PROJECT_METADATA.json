@@ -38,15 +38,15 @@
       "entrypoint": "src/main.rs"
     },
     {
-      "name": "file-upload",
+      "name": "lotus",
       "kind": "shared library",
-      "path": "crates/file-upload",
+      "path": "crates/lotus",
       "entrypoint": "src/lib.rs"
     },
     {
-      "name": "shared",
+      "name": "upload",
       "kind": "shared library",
-      "path": "crates/shared",
+      "path": "crates/upload",
       "entrypoint": "src/lib.rs"
     },
     {
@@ -54,6 +54,18 @@
       "kind": "shared library",
       "path": "crates/ui",
       "entrypoint": "src/lib.rs"
+    },
+    {
+      "name": "lipid-selecto-rs",
+      "kind": "wasm app",
+      "path": "apps/lipid-selecto-rs",
+      "entrypoint": "src/main.rs"
+    },
+    {
+      "name": "smellfish-rs",
+      "kind": "wasm app",
+      "path": "apps/smellfish-rs",
+      "entrypoint": "src/main.rs"
     }
   ],
   "agent_docs": {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use super::models::{
+use crate::models::{
     DEFAULT_C_MAX, DEFAULT_H_MAX, DEFAULT_N_MAX, DEFAULT_O_MAX, DEFAULT_P_MAX, DEFAULT_S_MAX,
     ElementState, SearchCriteria, SmilesSearchType,
 };

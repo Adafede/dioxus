@@ -2,12 +2,18 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Shared download helpers for browser/native targets, including format handling & deduplication.
+//!
+//! [`DownloadFormat`] is a re-export of [`lotus::export::ExportFormat`] so
+//! consumers don't need to depend on `lotus` directly just for the enum.
+
+pub use lotus::export::ExportFormat as DownloadFormat;
 
 use std::sync::Arc;
 
+use crate::perf;
+
 #[cfg(target_arch = "wasm32")]
 use crate::models::SearchCriteria;
-use crate::perf;
 
 mod coordinator;
 #[cfg(not(target_arch = "wasm32"))]
@@ -15,59 +21,11 @@ mod native;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DownloadFormat {
-    Csv,
-    Json,
-    Rdf,
-}
-
-impl DownloadFormat {
-    pub fn from_str(s: &str) -> Option<Self> {
-        let normalized = s.trim();
-        if normalized.eq_ignore_ascii_case("csv") {
-            Some(Self::Csv)
-        } else if normalized.eq_ignore_ascii_case("json")
-            || normalized.eq_ignore_ascii_case("ndjson")
-        {
-            Some(Self::Json)
-        } else if normalized.eq_ignore_ascii_case("rdf") {
-            Some(Self::Rdf)
-        } else {
-            None
-        }
-    }
-
-    pub const fn extension(&self) -> &'static str {
-        match self {
-            Self::Csv => "csv",
-            Self::Json => "json",
-            Self::Rdf => "rdf",
-        }
-    }
-
-    pub const fn log_name(&self) -> &'static str {
-        match self {
-            Self::Csv => "csv",
-            Self::Json => "json",
-            Self::Rdf => "rdf",
-        }
-    }
-
-    pub const fn timer_label(&self) -> &'static str {
-        match self {
-            Self::Csv => "LOTUS:download_csv",
-            Self::Json => "LOTUS:download_json",
-            Self::Rdf => "LOTUS:download_rdf",
-        }
-    }
-
-    pub fn trigger_timer_label(&self) -> String {
-        format!("{}_trigger", self.timer_label())
-    }
-}
-
-/// Execute a download in the given format using direct query export.
+/// Execute a download in the given format.
+///
+/// On WASM, tries the `lotus-api` `/v1/export-url` endpoint first, falling back
+/// to a direct QLever browser POST if the API call fails.
+/// On native, executes the query directly against QLever via `lotus::sparql`.
 pub async fn execute_download(
     format: DownloadFormat,
     #[cfg(target_arch = "wasm32")] criteria: std::sync::Arc<SearchCriteria>,
@@ -106,18 +64,12 @@ mod tests {
 
     #[test]
     fn parse_download_format_supports_documented_aliases() {
-        assert_eq!(DownloadFormat::from_str("csv"), Some(DownloadFormat::Csv));
-        assert_eq!(DownloadFormat::from_str("json"), Some(DownloadFormat::Json));
-        assert_eq!(
-            DownloadFormat::from_str("ndjson"),
-            Some(DownloadFormat::Json)
-        );
-        assert_eq!(DownloadFormat::from_str("rdf"), Some(DownloadFormat::Rdf));
-        assert_eq!(
-            DownloadFormat::from_str(" JSON "),
-            Some(DownloadFormat::Json)
-        );
-        assert_eq!(DownloadFormat::from_str("RDF"), Some(DownloadFormat::Rdf));
-        assert_eq!(DownloadFormat::from_str("ttl"), None);
+        assert_eq!(DownloadFormat::parse("csv"), Some(DownloadFormat::Csv));
+        assert_eq!(DownloadFormat::parse("json"), Some(DownloadFormat::Json));
+        assert_eq!(DownloadFormat::parse("ndjson"), Some(DownloadFormat::Json));
+        assert_eq!(DownloadFormat::parse("rdf"), Some(DownloadFormat::Rdf));
+        assert_eq!(DownloadFormat::parse(" JSON "), Some(DownloadFormat::Json));
+        assert_eq!(DownloadFormat::parse("RDF"), Some(DownloadFormat::Rdf));
+        assert_eq!(DownloadFormat::parse("ttl"), None);
     }
 }

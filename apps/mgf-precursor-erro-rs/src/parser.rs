@@ -5,27 +5,18 @@ use std::str::FromStr;
 
 use mascot_rs::prelude::*;
 use molecular_formulas::molecular_formula::MolecularFormula;
+use upload::UploadError;
 
 #[cfg(target_arch = "wasm32")]
-use gloo_timers::future::TimeoutFuture;
+use web_sys::Blob;
 #[cfg(target_arch = "wasm32")]
-use js_sys::Uint8Array;
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::JsValue;
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen_futures::JsFuture;
-#[cfg(target_arch = "wasm32")]
-use web_sys::{Blob, console};
+use web_sys::console;
 
+#[cfg(target_arch = "wasm32")]
 use crate::metrics::merge_precursor_stats;
 use crate::metrics::{
     AdductClass, AdductFamily, ErrorMeasurement, PlotPointSample, PrecursorStats, WarningDetail,
 };
-
-#[cfg(any(target_arch = "wasm32", test))]
-pub const CHUNK_SIZE: usize = 4 << 20;
-#[cfg(any(target_arch = "wasm32", test))]
-pub const PROGRESS_INTERVAL: usize = 4 << 20;
 
 pub const PROTON_MASS: f64 = 1.007_276_466_621;
 pub const HYDROGEN_MASS: f64 = PROTON_MASS + ELECTRON_MASS;
@@ -41,11 +32,6 @@ thread_local! {
         RefCell::new(HashMap::new());
     static ADDUCT_FAMILY_CACHE: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
 }
-
-#[cfg(target_arch = "wasm32")]
-pub type ScanError = JsValue;
-#[cfg(not(target_arch = "wasm32"))]
-pub type ScanError = String;
 
 #[derive(Clone, Debug, Default)]
 pub struct BlockParseState {
@@ -776,140 +762,19 @@ pub fn adduct_class(adduct: &str) -> Option<AdductClass> {
     })
 }
 
-#[cfg(target_arch = "wasm32")]
-struct ProgressReporter<'a> {
-    last_reported: u64,
-    callback: Box<dyn FnMut(u64, u64) + 'a>,
-}
-
-#[cfg(target_arch = "wasm32")]
-impl<'a> ProgressReporter<'a> {
-    fn new<F>(callback: F) -> Self
-    where
-        F: FnMut(u64, u64) + 'a,
-    {
-        Self {
-            last_reported: 0,
-            callback: Box::new(callback),
-        }
-    }
-
-    fn report_now(&mut self, processed: u64, total: u64) {
-        (self.callback)(processed, total);
-        self.last_reported = processed;
-    }
-
-    fn maybe_report(&mut self, processed: u64, total: u64) -> bool {
-        if processed.saturating_sub(self.last_reported) >= PROGRESS_INTERVAL as u64 {
-            self.report_now(processed, total);
-            true
-        } else {
-            false
-        }
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-struct BlobLineReader<'a> {
-    blob: Blob,
-    offset: u64,
-    buffer: Vec<u8>,
-    buffer_start: usize,
-    processed: u64,
-    progress: ProgressReporter<'a>,
-}
-
-#[cfg(target_arch = "wasm32")]
-impl<'a> BlobLineReader<'a> {
-    fn new<F>(blob: &Blob, on_progress: F) -> Self
-    where
-        F: FnMut(u64, u64) + 'a,
-    {
-        Self {
-            blob: blob.clone(),
-            offset: 0,
-            buffer: Vec::with_capacity(CHUNK_SIZE),
-            buffer_start: 0,
-            processed: 0,
-            progress: ProgressReporter::new(on_progress),
-        }
-    }
-
-    fn total_bytes(&self) -> u64 {
-        self.blob.size() as u64
-    }
-
-    async fn next_line(&mut self) -> std::result::Result<Option<String>, ScanError> {
-        loop {
-            if let Some(line) = self.take_line_from_buffer() {
-                return Ok(Some(line));
-            }
-
-            if self.offset >= self.total_bytes() {
-                if self.buffer_start >= self.buffer.len() {
-                    return Ok(None);
-                }
-                let remaining = String::from_utf8_lossy(&self.buffer[self.buffer_start..]);
-                self.buffer_start = self.buffer.len();
-                return Ok(Some(remaining.into_owned()));
-            }
-
-            self.load_next_chunk().await?;
-        }
-    }
-
-    fn take_line_from_buffer(&mut self) -> Option<String> {
-        let available = &self.buffer[self.buffer_start..];
-        if let Some(pos) = available.iter().position(|byte| *byte == b'\n') {
-            let line_bytes = &available[..pos];
-            let mut line = String::from_utf8_lossy(line_bytes).into_owned();
-            self.buffer_start += pos + 1;
-            if line.ends_with('\r') {
-                line.pop();
-            }
-            if self.buffer_start > self.buffer.len() / 2 {
-                self.buffer.drain(..self.buffer_start);
-                self.buffer_start = 0;
-            }
-            Some(line)
-        } else {
-            None
-        }
-    }
-
-    async fn load_next_chunk(&mut self) -> std::result::Result<(), ScanError> {
-        let start = self.offset;
-        let end = (self.offset + CHUNK_SIZE as u64).min(self.total_bytes());
-        let chunk = self
-            .blob
-            .slice_with_f64_and_f64(start as f64, end as f64)
-            .map_err(JsValue::from)?;
-        let promise = chunk.array_buffer();
-        let bytes = JsFuture::from(promise).await?;
-        let array = Uint8Array::new(&bytes);
-        let chunk_len = array.byte_length() as usize;
-        let mut chunk_bytes = Vec::with_capacity(chunk_len);
-        chunk_bytes.resize(chunk_len, 0);
-        array.copy_to(&mut chunk_bytes);
-        self.buffer.extend_from_slice(&chunk_bytes);
-        self.offset = end;
-        self.processed = self.processed.saturating_add((end - start).max(1));
-        if self
-            .progress
-            .maybe_report(self.processed, self.total_bytes())
-        {
-            TimeoutFuture::new(0).await;
-        }
-        Ok(())
-    }
-}
-
+/// Streaming MGF parser that reads the blob in chunks via [`upload::BlobLines`],
+/// yielding one line at a time so memory stays bounded by chunk size (16 MiB)
+/// regardless of file size.
+///
+/// # Errors
+/// Returns an error when the blob cannot be read or a scan block cannot be
+/// processed.
 #[cfg(target_arch = "wasm32")]
 pub async fn scan_blob_with_progress(
     blob: &Blob,
     mut on_progress: impl FnMut(u64, u64),
-) -> std::result::Result<PrecursorStats, ScanError> {
-    let mut reader = BlobLineReader::new(blob, move |processed, total| {
+) -> std::result::Result<PrecursorStats, UploadError> {
+    let mut reader = upload::BlobLines::new(blob, move |processed, total| {
         on_progress(processed, total);
     });
 
@@ -970,7 +835,7 @@ pub fn process_block<S: std::hash::BuildHasher>(
     formula_cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
     plot_sample: Option<&mut PlotPointSample>,
-) -> std::result::Result<Option<PrecursorStats>, ScanError> {
+) -> std::result::Result<Option<PrecursorStats>, UploadError> {
     let mut state = BlockParseState::default();
     state.consume_block_lines(block_lines);
     let use_external_sample = plot_sample.is_some();
@@ -1007,7 +872,7 @@ fn process_block_state<S: std::hash::BuildHasher>(
     formula_cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
     plot_sample: &mut Option<&mut PlotPointSample>,
-) -> std::result::Result<Option<PrecursorStats>, ScanError> {
+) -> std::result::Result<Option<PrecursorStats>, UploadError> {
     let Some(observed_precursor) = state.observed_precursor else {
         return Ok(None);
     };
@@ -1172,61 +1037,6 @@ fn process_block_state<S: std::hash::BuildHasher>(
     }
 
     Ok(Some(metrics))
-}
-
-/// Parse MGF from a string (for non-async contexts, e.g., browser file reading).
-///
-/// # Errors
-///
-/// Returns an error if a scan block cannot be parsed into precursor metrics.
-pub fn parse_mgf_from_string(content: &str) -> std::result::Result<PrecursorStats, String> {
-    let mut current_state = BlockParseState::default();
-    let mut current_is_in_block = false;
-    let mut metrics = PrecursorStats::default();
-    let mut plot_sample = PlotPointSample::default();
-    let mut smiles_cache = HashMap::new();
-    let mut formula_cache = HashMap::new();
-    let mut logged_failures = HashSet::new();
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        if trimmed == "BEGIN IONS" {
-            current_state = BlockParseState::default();
-            current_is_in_block = true;
-            continue;
-        }
-
-        if !current_is_in_block {
-            continue;
-        }
-
-        current_state.consume_line(trimmed);
-
-        if trimmed == "END IONS" {
-            let mut block_plot_sample = Some(&mut plot_sample);
-            if let Some(result) = process_block_state(
-                &current_state,
-                &mut smiles_cache,
-                &mut formula_cache,
-                &mut logged_failures,
-                &mut block_plot_sample,
-            )
-            .map_err(|e| format!("{e:?}"))?
-            {
-                metrics = merge_precursor_stats(metrics, &result);
-            }
-            current_state = BlockParseState::default();
-            current_is_in_block = false;
-        }
-    }
-
-    metrics.plot_points = plot_sample.points;
-    metrics.plot_point_stream_seen = plot_sample.seen;
-    Ok(metrics)
 }
 
 #[cfg(test)]

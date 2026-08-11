@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+use lotus::models::{CompoundEntry, DatasetStats, SmilesSearchType};
 use serde::{Deserialize, Serialize};
-use shared::lotus::models::{CompoundEntry, DatasetStats, SmilesSearchType};
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -45,7 +45,7 @@ pub enum ApiElementState {
     Excluded,
 }
 
-impl From<ApiElementState> for shared::lotus::models::ElementState {
+impl From<ApiElementState> for lotus::models::ElementState {
     fn from(value: ApiElementState) -> Self {
         match value {
             ApiElementState::Allowed => Self::Allowed,
@@ -173,38 +173,4 @@ pub struct ExportUrlResponse {
 #[derive(Debug, Default, Deserialize)]
 pub struct ExportFileQuery {
     pub(crate) filename: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ExportArchiveFormat {
-    Csv,
-    Json,
-    Rdf,
-}
-
-impl ExportArchiveFormat {
-    pub(crate) fn parse(raw: &str) -> Option<Self> {
-        match raw {
-            "csv" => Some(Self::Csv),
-            "json" => Some(Self::Json),
-            "rdf" => Some(Self::Rdf),
-            _ => None,
-        }
-    }
-
-    pub(crate) const fn extension(self) -> &'static str {
-        match self {
-            Self::Csv => "csv",
-            Self::Json => "json",
-            Self::Rdf => "rdf",
-        }
-    }
-
-    pub(crate) const fn content_type(self) -> &'static str {
-        match self {
-            Self::Csv => "text/csv; charset=utf-8",
-            Self::Json => "application/sparql-results+json; charset=utf-8",
-            Self::Rdf => "text/turtle; charset=utf-8",
-        }
-    }
 }

@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use super::coordinator::query_export_plan;
 use crate::download::DownloadFormat;
 use crate::perf;
 use crate::sparql;
-use shared::sparql::ResponseFormat;
+use lotus::transport::ResponseFormat;
 use std::sync::Arc;
 
 pub(super) async fn execute_download_native(
@@ -37,7 +36,7 @@ async fn execute_download_direct(
             );
 
             let trigger_timer = perf::start_timer(&format.trigger_timer_label());
-            trigger_download(&filename, content_type(format), &body);
+            trigger_download(&filename, format.content_type(), &body);
             let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
             perf::log_timing(
                 "download",
@@ -69,30 +68,25 @@ async fn execute_download_direct(
 }
 
 async fn fetch_direct(format: DownloadFormat, query: &str) -> Result<String, String> {
-    let plan = query_export_plan(format, query);
+    let prepared_query = format.prepared_query(query);
     match format {
-        DownloadFormat::Csv => sparql::execute_query(plan.query.as_ref())
+        DownloadFormat::Csv => sparql::execute_query(&prepared_query)
             .await
             .map_err(|e| e.to_string()),
         DownloadFormat::Json => {
-            sparql::execute_sparql_format(plan.query.as_ref(), ResponseFormat::SparqlJson)
+            sparql::execute_sparql_format(&prepared_query, ResponseFormat::SparqlJson)
                 .await
                 .map_err(|e| e.to_string())
         }
         DownloadFormat::Rdf => {
-            sparql::execute_sparql_format(plan.query.as_ref(), ResponseFormat::Turtle)
+            sparql::execute_sparql_format(&prepared_query, ResponseFormat::Turtle)
                 .await
                 .map_err(|e| e.to_string())
         }
     }
 }
 
-const fn content_type(format: DownloadFormat) -> &'static str {
-    match format {
-        DownloadFormat::Csv => "text/csv;charset=utf-8",
-        DownloadFormat::Json => "application/sparql-results+json;charset=utf-8",
-        DownloadFormat::Rdf => "text/turtle;charset=utf-8",
-    }
+pub(super) fn trigger_download(filename: &str, mime: &str, content: &str) {
+    let _ = upload::download_text(content, filename);
+    let _ = mime;
 }
-
-pub(super) const fn trigger_download(_: &str, _: &str, _: &str) {}

@@ -8,8 +8,8 @@ members = [
   "apps/lotus-api",
   "apps/lotus-explore-rs",
   "apps/smellfish-rs",
-  "crates/file-upload",
-  "crates/shared",
+  "crates/lotus",
+  "crates/upload",
   "crates/ui",
 ]
 

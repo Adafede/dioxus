@@ -9,10 +9,10 @@
 
 use crate::errors::ApiError;
 use crate::state::{AppState, taxon_cache_get, taxon_cache_put};
-use crate::types::{ExportArchiveFormat, SearchRequest};
+use crate::types::SearchRequest;
 use flate2::{Compression, write::GzEncoder};
-use shared::lotus::models::{SearchCriteria, TaxonMatch};
-use shared::lotus::{queries, sparql};
+use lotus::models::{SearchCriteria, TaxonMatch};
+use lotus::{queries, sparql};
 
 pub fn apply_request(req: &SearchRequest) -> Result<SearchCriteria, ApiError> {
     let mut c = SearchCriteria {
@@ -245,47 +245,10 @@ fn is_qid(value: &str) -> bool {
     matches!(chars.next(), Some('Q' | 'q')) && !v.is_empty() && chars.all(|c| c.is_ascii_digit())
 }
 
-pub fn qlever_export_url(query: &str, action: &str) -> String {
-    format!(
-        "{}?query={}&action={action}",
-        shared::sparql::QLEVER_WIKIDATA,
-        urlencoding::encode(query)
-    )
-}
-
-pub fn api_export_file_url(cache_key: &str, format: ExportArchiveFormat) -> String {
-    format!("/v1/export-file/{cache_key}/{}", format.extension())
-}
-
-pub fn build_upstream_export_url(query: &str, format: ExportArchiveFormat) -> String {
-    match format {
-        ExportArchiveFormat::Csv => qlever_export_url(query, "csv_export"),
-        ExportArchiveFormat::Json => qlever_export_url(query, "qlever_json_export"),
-        ExportArchiveFormat::Rdf => qlever_export_url(
-            &queries::query_construct_from_select(query),
-            "turtle_export",
-        ),
-    }
-}
-
 pub fn gzip_bytes(input: &[u8]) -> std::io::Result<Vec<u8>> {
     use std::io::Write;
 
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
     encoder.write_all(input)?;
     encoder.finish()
-}
-
-pub fn sanitize_download_filename(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    for c in input.trim().chars() {
-        if c.is_control() {
-            continue;
-        }
-        match c {
-            '/' | '\\' | '"' | '\'' | '\n' | '\r' => out.push('_'),
-            _ => out.push(c),
-        }
-    }
-    out.trim_matches('.').trim().to_string()
 }

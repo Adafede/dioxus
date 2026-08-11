@@ -12,6 +12,7 @@ use chematic::core::Molecule;
 
 /// Properties of a single fatty acyl or radyl chain.
 #[derive(Clone, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct AcylChain {
     /// Total number of carbons in the chain
     pub carbon_count: u32,

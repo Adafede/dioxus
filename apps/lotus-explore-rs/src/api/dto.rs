@@ -11,8 +11,8 @@ use crate::{
     models::{CompoundEntry, DatasetStats, ElementState, SearchCriteria, SmilesSearchType},
     queries,
 };
+use lotus::models::WIKIDATA_STATEMENT_BASE;
 use serde::{Deserialize, Serialize};
-use shared::lotus::models::WIKIDATA_STATEMENT_BASE;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, Serialize)]

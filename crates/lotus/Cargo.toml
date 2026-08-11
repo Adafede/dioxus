@@ -1,11 +1,11 @@
 [package]
-name = "shared"
+name = "lotus"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
-description = "Shared SPARQL utilities for dioxus-apps"
+description = "LOTUS domain models, SPARQL query construction, and result parsing for Wikidata/QLever"
 license = "AGPL-3.0-only"
-keywords = ["csv", "sparql", "wasm", "wikidata"]
+keywords = ["csv", "sparql", "wasm", "wikidata", "lotus", "natural-products"]
 categories = ["science", "web-programming"]
 publish = false
 
@@ -14,6 +14,7 @@ bytes = { workspace = true }
 csv = { workspace = true }
 log = { workspace = true }
 reqwest.workspace = true
+upload = { path = "../upload", version = "0.1" }
 urlencoding = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

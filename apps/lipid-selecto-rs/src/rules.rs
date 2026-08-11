@@ -20,6 +20,7 @@ pub struct LipidRule {
 
 impl LipidRule {
     /// Check if a molecule matches this rule's SMARTS pattern.
+    #[must_use]
     pub fn matches(&self, molecule: &chematic::core::Molecule) -> bool {
         let Ok(query) = chematic::smarts::parse_smarts(&self.smarts) else {
             return false;
@@ -38,6 +39,7 @@ pub struct LipidRuleLibrary {
 
 impl LipidRuleLibrary {
     /// Create an empty rule library.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             rules: HashMap::new(),
@@ -52,27 +54,33 @@ impl LipidRuleLibrary {
     }
 
     /// Get a rule by name.
+    #[must_use]
     pub fn get_rule(&self, name: &str) -> Option<&LipidRule> {
         self.rules.get(name)
     }
 
     /// Get all rules sorted by priority (higher first).
+    #[must_use]
     pub fn sorted_by_priority(&self) -> Vec<&LipidRule> {
         let mut rules: Vec<_> = self.rules.values().collect();
-        rules.sort_by(|a, b| b.priority.cmp(&a.priority));
+        rules.sort_by_key(|r| std::cmp::Reverse(r.priority));
         rules
     }
 
     /// Get all rules for a specific family.
+    #[must_use]
     pub fn rules_for_family(&self, family: &str) -> Vec<&LipidRule> {
         self.rules.values().filter(|r| r.family == family).collect()
     }
 
     /// Return the default LIPID MAPS-aligned rules.
     ///
-    /// These rules are carefully curated to match the LIPID MAPS classification system.
-    /// They include proper backbone detection, chain analysis considerations, and
-    /// support for multiple lipid architectures (DiAcyl, MonoAcyl, Plasmalogen, etc.).
+    /// These rules are carefully curated to match the LIPID MAPS classification
+    /// system.  They include proper backbone detection, chain analysis
+    /// considerations, and support for multiple lipid architectures
+    /// (`DiAcyl`, `MonoAcyl`, `Plasmalogen`, etc.).
+    #[must_use]
+    #[allow(clippy::too_many_lines)]
     pub fn defaults() -> Self {
         let mut library = Self::new();
 

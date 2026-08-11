@@ -15,7 +15,7 @@ use crate::features::explore::search_metrics::SearchMetrics;
 use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
 use crate::models::{CompoundEntry, DatasetStats};
 use crate::repositories::LotusRepository;
-use shared::lotus::models::runtime_table_row_limit;
+use lotus::models::runtime_table_row_limit;
 
 #[derive(Debug)]
 pub struct ResultsPipelineOutcome {

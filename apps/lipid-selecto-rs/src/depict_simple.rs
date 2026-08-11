@@ -1,7 +1,8 @@
-//! Depiction using simolecule CDKdepict API.
+//! Depiction using simolecule `CDKdepict` API.
 //!
-//! Returns HTML img tag that loads from the working simolecule service.
+//! Returns HTML `img` tag that loads from the working simolecule service.
 
+#[must_use]
 pub fn render_svg(smiles: &str) -> Option<String> {
     // URL encode the SMILES (simple percent encoding for special chars)
     let encoded = smiles
@@ -12,15 +13,11 @@ pub fn render_svg(smiles: &str) -> Option<String> {
         })
         .collect::<String>();
 
-    let url = format!(
-        "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi={}",
-        encoded
-    );
+    let url = format!("https://www.simolecule.com/cdkdepict/depict/bow/svg?smi={encoded}");
 
     // Return HTML with an img tag that loads the remote depiction
     Some(format!(
-        r#"<img src="{}" style="width: 100%; height: 100%; object-fit: contain;" alt="Depiction" loading="lazy" />"#,
-        url
+        r#"<img src="{url}" style="width: 100%; height: 100%; object-fit: contain;" alt="Depiction" loading="lazy" />"#,
     ))
 }
 

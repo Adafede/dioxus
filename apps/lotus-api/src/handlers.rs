@@ -7,27 +7,22 @@ use axum::{
     http::{StatusCode, header},
     response::Response,
 };
-use shared::lotus::models;
+use lotus::models;
 use std::{sync::atomic::Ordering, time::Instant};
 use tokio::time::timeout;
 
 use crate::{
     errors::{ApiError, ErrorResponse, SharedApiError},
-    query_logic::{
-        api_export_file_url, apply_request, build_execution_query, build_upstream_export_url,
-        gzip_bytes, qlever_export_url, resolve_taxon_qid_cached, sanitize_download_filename,
-    },
+    query_logic::{apply_request, build_execution_query, gzip_bytes, resolve_taxon_qid_cached},
     services::build_search_response,
     state::{
         AppState, build_export_cache_key, build_search_cache_key, export_cache_get,
         export_cache_put, export_inflight_cell, export_inflight_remove, search_cache_get,
         search_cache_put, search_inflight_cell, search_inflight_remove,
     },
-    types::{
-        ExportArchiveFormat, ExportFileQuery, ExportUrlResponse, HealthResponse, SearchRequest,
-        SearchResponse,
-    },
+    types::{ExportFileQuery, ExportUrlResponse, HealthResponse, SearchRequest, SearchResponse},
 };
+use lotus::export::{self, ExportFormat};
 
 #[utoipa::path(
     get,
@@ -266,15 +261,12 @@ async fn cached_export_urls(
     let response = cell
         .get_or_init(|| async move {
             Ok::<_, SharedApiError>(ExportUrlResponse {
-                csv_url: qlever_export_url(&query, "csv_export"),
-                json_url: qlever_export_url(&query, "qlever_json_export"),
-                rdf_url: qlever_export_url(
-                    &shared::lotus::queries::query_construct_from_select(&query),
-                    "turtle_export",
-                ),
-                csv_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Csv),
-                json_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Json),
-                rdf_gz_url: api_export_file_url(&cache_key, ExportArchiveFormat::Rdf),
+                csv_url: export::qlever_export_url(&query, ExportFormat::Csv),
+                json_url: export::qlever_export_url(&query, ExportFormat::Json),
+                rdf_url: export::qlever_export_url(&query, ExportFormat::Rdf),
+                csv_gz_url: export::api_export_file_url(&cache_key, ExportFormat::Csv),
+                json_gz_url: export::api_export_file_url(&cache_key, ExportFormat::Json),
+                rdf_gz_url: export::api_export_file_url(&cache_key, ExportFormat::Rdf),
                 query,
             })
         })
@@ -429,16 +421,16 @@ pub async fn export_file(
         ApiError::overloaded("Server is busy, retry shortly")
     })?;
 
-    let format = ExportArchiveFormat::parse(&format_raw)
+    let format = ExportFormat::parse(&format_raw)
         .ok_or_else(|| ApiError::bad_request("Unsupported export format"))?;
     let cached = export_cache_get(&state, &cache_key).ok_or_else(|| {
         ApiError::bad_request("Export link expired or is unknown. Regenerate the export URL.")
     })?;
 
-    let upstream_url = build_upstream_export_url(&cached.query, format);
+    let upstream_url = export::build_upstream_export_url(&cached.query, format);
     let raw_bytes = timeout(
         state.request_timeout,
-        shared::sparql::fetch_url_bytes(&upstream_url),
+        lotus::transport::fetch_url_bytes(&upstream_url),
     )
     .await
     .map_err(|_| {
@@ -455,7 +447,7 @@ pub async fn export_file(
     let requested_filename = params
         .filename
         .as_deref()
-        .map(sanitize_download_filename)
+        .map(export::sanitize_download_filename)
         .filter(|name| !name.is_empty());
 
     let (body_bytes, content_type, attachment_name) = if let Some(filename) = requested_filename {

@@ -195,10 +195,11 @@ fn has_substructure(molecule: &Molecule, pattern: &str) -> bool {
     !smarts::find_matches(&query, molecule).is_empty()
 }
 
-/// Check if molecule contains ANY ring atoms (aromatic or alicyclic).
-/// Returns true if the molecule is ACYCLIC (has no rings).
 /// Check if a molecule is acyclic (contains no rings).
+///
+/// Returns `true` if the molecule has no ring atoms (aromatic or alicyclic).
 /// Used to reject aromatic rings, nucleotides, sugars, steroids, etc.
+#[must_use]
 pub fn is_acyclic(molecule: &Molecule) -> bool {
     // Count ring atoms - a lipid should have ZERO
     let ring_pattern = "[R]"; // Any atom in a ring

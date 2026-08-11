@@ -4,18 +4,12 @@ use dioxus::prelude::*;
 use ui::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
-use file_upload::{BlobCursor, ScanError};
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::JsCast;
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::JsValue;
-#[cfg(target_arch = "wasm32")]
-use web_sys::Blob;
+use upload::{Blob, BlobCursor, UploadError};
 
 // ---------------------------------------------------------------------------
 // Performance notes:
 //
-// The scanner uses BlobCursor from the file-upload crate to keep exactly
+// The scanner uses BlobCursor from the upload crate to keep exactly
 // one chunk of the file buffered in memory. It parses with plain synchronous
 // loops, only `.await`ing when the buffer is exhausted. This means a 10 GB
 // file with 16 MiB chunks needs ~650 async suspension points total,
@@ -103,40 +97,29 @@ fn app() -> Element {
     let busy = use_signal(|| false);
     let mut drag_active = use_signal(|| false);
 
-    let on_file_change = move |evt: Event<FormData>| {
-        let Some(file) = evt.data().files().into_iter().next() else {
-            status.set("No file selected.".to_string());
-            return;
-        };
+    let on_file_change = move |evt: Event<FormData>| match upload::extract_blob_from_file_data(
+        &evt.data().files(),
+    ) {
+        Ok(Some(file)) => {
+            #[cfg(target_arch = "wasm32")]
+            begin_scan_from_blob(
+                file.blob,
+                file.name,
+                file_name,
+                status,
+                results,
+                busy,
+                drag_active,
+            );
 
-        #[cfg(target_arch = "wasm32")]
-        let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
-            status.set("This file type is not supported in the browser.".to_string());
-            return;
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        let Ok(blob) = web_file.clone().dyn_into::<Blob>() else {
-            status.set("Unable to read the selected file as a blob.".to_string());
-            return;
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        begin_scan_from_blob(
-            blob,
-            file.name(),
-            file_name,
-            status,
-            results,
-            busy,
-            drag_active,
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            file_name.set(file.name());
-            status.set("This app needs to run in a browser.".to_string());
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                file_name.set(file.name);
+                status.set("This app needs to run in a browser.".to_string());
+            }
         }
+        Ok(None) => status.set("No file selected.".to_string()),
+        Err(msg) => status.set(msg),
     };
 
     let on_drag_enter = move |evt: Event<DragData>| {
@@ -158,38 +141,27 @@ fn app() -> Element {
         evt.prevent_default();
         drag_active.set(false);
 
-        let Some(file) = evt.data().files().into_iter().next() else {
-            status.set("No file selected.".to_string());
-            return;
-        };
+        match upload::extract_blob_from_file_data(&evt.data().files()) {
+            Ok(Some(file)) => {
+                #[cfg(target_arch = "wasm32")]
+                begin_scan_from_blob(
+                    file.blob,
+                    file.name,
+                    file_name,
+                    status,
+                    results,
+                    busy,
+                    drag_active,
+                );
 
-        #[cfg(target_arch = "wasm32")]
-        let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
-            status.set("This file type is not supported in the browser.".to_string());
-            return;
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        let Ok(blob) = web_file.clone().dyn_into::<Blob>() else {
-            status.set("Unable to read the selected file as a blob.".to_string());
-            return;
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        begin_scan_from_blob(
-            blob,
-            file.name(),
-            file_name,
-            status,
-            results,
-            busy,
-            drag_active,
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            file_name.set(file.name());
-            status.set("This app needs to run in a browser.".to_string());
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    file_name.set(file.name);
+                    status.set("This app needs to run in a browser.".to_string());
+                }
+            }
+            Ok(None) => status.set("No file selected.".to_string()),
+            Err(msg) => status.set(msg),
         }
     };
 
@@ -405,7 +377,7 @@ fn app() -> Element {
 }
 
 // ---------------------------------------------------------------------------
-// Streaming JSON scanner - uses BlobCursor from file-upload crate
+// Streaming JSON scanner - uses BlobCursor from upload crate
 // ---------------------------------------------------------------------------
 
 /// Unescapes a raw (still-escaped) JSON string body.
@@ -483,13 +455,9 @@ fn unescape_json_string(raw: &[u8]) -> String {
 #[cfg(target_arch = "wasm32")]
 async fn read_json_key<F: FnMut(u64, u64)>(
     cursor: &mut BlobCursor<F>,
-) -> Result<String, file_upload::ScanError> {
-    use wasm_bindgen::JsValue;
-
+) -> Result<String, UploadError> {
     if cursor.next_byte().await? != Some(b'"') {
-        return Err(file_upload::ScanError(JsValue::from_str(
-            "Expected opening quote for string",
-        )));
+        return Err(UploadError::other("Expected opening quote for string"));
     }
 
     let mut raw = Vec::new();
@@ -527,9 +495,7 @@ async fn read_json_key<F: FnMut(u64, u64)>(
         }
 
         if !cursor.fill().await? {
-            return Err(file_upload::ScanError(JsValue::from_str(
-                "Unexpected EOF while reading string",
-            )));
+            return Err(UploadError::other("Unexpected EOF while reading string"));
         }
     }
 
@@ -541,13 +507,9 @@ async fn read_json_key<F: FnMut(u64, u64)>(
 #[cfg(target_arch = "wasm32")]
 async fn skip_string_nonempty<F: FnMut(u64, u64)>(
     cursor: &mut BlobCursor<F>,
-) -> Result<bool, file_upload::ScanError> {
-    use wasm_bindgen::JsValue;
-
+) -> Result<bool, UploadError> {
     if cursor.next_byte().await? != Some(b'"') {
-        return Err(file_upload::ScanError(JsValue::from_str(
-            "Expected opening quote for string",
-        )));
+        return Err(UploadError::other("Expected opening quote for string"));
     }
 
     let mut escaped = false;
@@ -587,9 +549,7 @@ async fn skip_string_nonempty<F: FnMut(u64, u64)>(
         }
 
         if !cursor.fill().await? {
-            return Err(file_upload::ScanError(JsValue::from_str(
-                "Unexpected EOF while reading string",
-            )));
+            return Err(UploadError::other("Unexpected EOF while reading string"));
         }
     }
 
@@ -601,18 +561,14 @@ async fn skip_string_nonempty<F: FnMut(u64, u64)>(
 /// single synchronous pass; strings count as 1 if non-empty; numbers
 /// and booleans count as 1; `null` counts as 0.
 #[cfg(target_arch = "wasm32")]
-async fn count_value<F: FnMut(u64, u64)>(
-    cursor: &mut BlobCursor<F>,
-) -> Result<u64, file_upload::ScanError> {
-    use wasm_bindgen::JsValue;
-
+async fn count_value<F: FnMut(u64, u64)>(cursor: &mut BlobCursor<F>) -> Result<u64, UploadError> {
     if !cursor.ensure_any().await? {
         return Ok(0);
     }
 
     let first = cursor
         .current_byte()
-        .ok_or_else(|| file_upload::ScanError(JsValue::from_str("Unexpected end of buffer")))?;
+        .ok_or_else(|| UploadError::other("Unexpected end of buffer"))?;
 
     if first == b'"' {
         return Ok(u64::from(skip_string_nonempty(cursor).await?));
@@ -692,9 +648,9 @@ async fn count_value<F: FnMut(u64, u64)>(
             cursor.advance(advance_by);
 
             if !cursor.fill().await? {
-                return Err(file_upload::ScanError(JsValue::from_str(
+                return Err(UploadError::other(
                     "Unexpected EOF while scanning nested JSON value",
-                )));
+                ));
             }
         }
     }

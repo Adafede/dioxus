@@ -21,7 +21,7 @@ log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { version = "0.11", default-features = false }
-shared = { path = "../../crates/shared", version = "0.1.0" }
+lotus = { path = "../../crates/lotus", version = "0.1.0" }
 tokio = { workspace = true, features = [
   "macros",
   "rt-multi-thread",

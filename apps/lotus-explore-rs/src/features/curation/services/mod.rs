@@ -14,9 +14,9 @@ use crate::i18n::{
     curation_pending_taxon,
 };
 use crate::sparql::execute_sparql_format;
+use lotus::transport::ResponseFormat;
 use serde::Deserialize;
 use serde_json::Value;
-use shared::sparql::ResponseFormat;
 
 mod chemical;
 mod enrichment;

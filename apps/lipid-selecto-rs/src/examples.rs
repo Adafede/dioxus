@@ -334,9 +334,10 @@ pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
 ];
 
 /// Convert example list to query format (just SMILES + description lines separated by newlines).
+#[must_use]
 pub fn example_smiles() -> Vec<String> {
     EXAMPLE_LIPIDS
         .iter()
-        .map(|(id, smiles, _)| format!("{}\t{}", id, smiles))
+        .map(|(id, smiles, _)| format!("{id}\t{smiles}"))
         .collect()
 }

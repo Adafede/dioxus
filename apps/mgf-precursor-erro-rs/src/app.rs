@@ -2,11 +2,6 @@ use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::JsCast;
-#[cfg(target_arch = "wasm32")]
-use web_sys::Blob;
-
 mod browser;
 mod diagnostics;
 mod plots;
@@ -83,43 +78,32 @@ pub fn app() -> Element {
         }
     });
 
-    let on_file_change = move |evt: Event<FormData>| {
-        let Some(file) = evt.data().files().into_iter().next() else {
-            status.set("No file selected.".to_string());
-            return;
-        };
+    let on_file_change = move |evt: Event<FormData>| match upload::extract_blob_from_file_data(
+        &evt.data().files(),
+    ) {
+        Ok(Some(file)) => {
+            #[cfg(target_arch = "wasm32")]
+            browser::begin_analysis_from_blob(
+                file.blob,
+                file.name,
+                file_name,
+                status,
+                metrics,
+                busy,
+                drag_active,
+                original_mgf_content,
+            );
 
-        #[cfg(target_arch = "wasm32")]
-        let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
-            status.set("This file type is not supported in the browser.".to_string());
-            return;
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        let Ok(blob) = web_file.clone().dyn_into::<Blob>() else {
-            status.set("Unable to read the selected file as a blob.".to_string());
-            return;
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        browser::begin_analysis_from_blob(
-            blob,
-            file.name(),
-            file_name,
-            status,
-            metrics,
-            busy,
-            drag_active,
-            original_mgf_content,
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            file_name.set(file.name());
-            metrics.set(None);
-            status.set("This app needs to run in a browser.".to_string());
-            busy.set(false);
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                file_name.set(file.name);
+                metrics.set(None);
+                status.set("This app needs to run in a browser.".to_string());
+                busy.set(false);
+            }
         }
+        Ok(None) => status.set("No file selected.".to_string()),
+        Err(msg) => status.set(msg),
     };
 
     let on_drag_enter = move |evt: Event<DragData>| {
@@ -140,41 +124,30 @@ pub fn app() -> Element {
     let on_drop = move |evt: Event<DragData>| {
         evt.prevent_default();
         drag_active.set(false);
-        let Some(file) = evt.data().files().into_iter().next() else {
-            status.set("No file selected.".to_string());
-            return;
-        };
+        match upload::extract_blob_from_file_data(&evt.data().files()) {
+            Ok(Some(file)) => {
+                #[cfg(target_arch = "wasm32")]
+                browser::begin_analysis_from_blob(
+                    file.blob,
+                    file.name,
+                    file_name,
+                    status,
+                    metrics,
+                    busy,
+                    drag_active,
+                    original_mgf_content,
+                );
 
-        #[cfg(target_arch = "wasm32")]
-        let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
-            status.set("This file type is not supported in the browser.".to_string());
-            return;
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        let Ok(blob) = web_file.clone().dyn_into::<Blob>() else {
-            status.set("Unable to read the selected file as a blob.".to_string());
-            return;
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        browser::begin_analysis_from_blob(
-            blob,
-            file.name(),
-            file_name,
-            status,
-            metrics,
-            busy,
-            drag_active,
-            original_mgf_content,
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            file_name.set(file.name());
-            metrics.set(None);
-            status.set("This app needs to run in a browser.".to_string());
-            busy.set(false);
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    file_name.set(file.name);
+                    metrics.set(None);
+                    status.set("This app needs to run in a browser.".to_string());
+                    busy.set(false);
+                }
+            }
+            Ok(None) => status.set("No file selected.".to_string()),
+            Err(msg) => status.set(msg),
         }
     };
 
@@ -542,12 +515,16 @@ pub fn app() -> Element {
                                     style: "margin-top: 1rem; width: 100%; padding: 0.75rem 1rem; border: 2px solid #10b981; border-radius: 8px; background: #10b981; color: white; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.2s; hover:background #059669;",
                                     onclick: move |_| {
                                         let file_name = file_name.read();
-                                        let content = original_mgf_content.read();
+                                        let original = original_mgf_content.read();
                                         let model = *calibration_model.read();
                                         let diag = recalibration_diagnostics.read().clone();
 
+                                        let recalibrated = crate::recalibration::generate_recalibrated_mgf(
+                                            &original, model, diag.as_ref(),
+                                        );
+
                                         if let Err(e) =
-                                            download_recalibrated_mgf(&file_name, &content, model, diag.as_ref())
+                                            download_recalibrated_mgf(&file_name, &recalibrated)
                                         {
                                             status.set(format!("Download error: {e}"));
                                         } else {

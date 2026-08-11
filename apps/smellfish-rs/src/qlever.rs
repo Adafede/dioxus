@@ -1,7 +1,7 @@
 use crate::model::{EndpointStatus, Enrichment, EnrichmentOutcome, SourceSummary};
 use futures::future::join;
+use lotus::transport::{ResponseFormat, execute_sparql_with_format};
 use serde_json::Value;
-use shared::sparql::{ResponseFormat, execute_sparql_with_format};
 use std::collections::HashMap;
 
 #[cfg(target_arch = "wasm32")]

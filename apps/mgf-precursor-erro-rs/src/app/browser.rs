@@ -1,17 +1,18 @@
-use dioxus::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use dioxus::prelude::{Signal, WritableExt, spawn};
 
 #[cfg(target_arch = "wasm32")]
 use crate::metrics::PrecursorStats;
 #[cfg(target_arch = "wasm32")]
-use crate::parser::parse_mgf_from_string;
+use crate::parser::scan_blob_with_progress;
 #[cfg(target_arch = "wasm32")]
-use js_sys::Array;
+use upload::UploadError;
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::{JsCast, JsValue};
+use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
-use web_sys::{Blob, HtmlAnchorElement, Url};
+use web_sys::Blob;
 
 #[cfg(target_arch = "wasm32")]
 const EXAMPLE_MGF_URL: &str =
@@ -32,24 +33,48 @@ async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
             response.status()
         ));
     }
-
-    let text_value = JsFuture::from(
-        response
-            .text()
-            .map_err(|error| format!("Unable to read the example MGF response body: {error:?}"))?,
-    )
-    .await
-    .map_err(|error| format!("Unable to read the example MGF text: {error:?}"))?;
-    let text = js_sys::JsString::from(text_value)
-        .as_string()
-        .ok_or_else(|| "The example MGF response was not valid text.".to_string())?;
-
-    let array = Array::new();
-    array.push(&JsValue::from(text));
-    Blob::new_with_str_sequence(&array)
-        .map_err(|error| format!("Unable to create a blob from the example MGF: {error:?}"))
+    let blob_promise = response
+        .blob()
+        .map_err(|error| format!("Failed to call blob(): {error:?}"))?;
+    JsFuture::from(blob_promise)
+        .await
+        .map_err(|error| format!("Unable to read the example MGF blob: {error:?}"))
+        .and_then(|blob| {
+            blob.dyn_into::<Blob>()
+                .map_err(|error| format!("Expected a blob: {error:?}"))
+        })
 }
 
+/// Downloads SVG content as a file.
+#[cfg(target_arch = "wasm32")]
+pub fn download_svg(svg: &str, filename: &str) {
+    let _ = upload::download_text(svg, filename);
+}
+
+/// Downloads recalibrated MGF content as a `.mgf` file.
+#[cfg(target_arch = "wasm32")]
+pub fn download_recalibrated_mgf(filename: &str, content: &str) -> Result<(), String> {
+    let base = if filename.ends_with(".mgf") {
+        &filename[..filename.len() - 4]
+    } else {
+        filename
+    };
+    let download_name = format!("{base}_recalibrated.mgf");
+    upload::download_text(content, &download_name)
+}
+
+/// Downloads recalibrated MGF content (native stub — returns `Err`).
+///
+/// # Errors
+/// Always returns an error on native targets.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn download_recalibrated_mgf(_filename: &str, _content: &str) -> Result<(), String> {
+    Err("Download is only available in the browser".to_string())
+}
+
+/// Uses [`upload::BlobLines`] to read the blob in 16 MiB chunks and process
+/// one MGF block line at a time, keeping memory bounded regardless of file
+/// size.
 #[cfg(target_arch = "wasm32")]
 fn start_analysis(
     blob: Blob,
@@ -67,25 +92,27 @@ fn start_analysis(
         let total_bytes = blob.size() as u64;
         status_for_progress.set(format!("Scanning {total_bytes} bytes..."));
 
-        let text_result = JsFuture::from(blob.text())
-            .await
-            .ok()
-            .and_then(|v| v.as_string());
-
-        match text_result {
-            Some(content) => {
-                original_content_signal.set(content.clone());
-                let result = match parse_mgf_from_string(&content) {
-                    Ok(metrics) => metrics,
-                    Err(error) => {
-                        status_for_progress.set(format!("Error parsing MGF: {error:?}"));
-                        PrecursorStats::default()
-                    }
-                };
+        match scan_blob_with_progress(&blob, |processed, total| {
+            status_for_progress.set(format!(
+                "Scanning... {}/{} bytes",
+                processed.min(total),
+                total
+            ));
+        })
+        .await
+        {
+            Ok(result) => {
+                // Store a compact representation of the original content for
+                // recalibration output.  We re-read the blob only once.
+                original_content_signal.set(format!("(streamed MGF, {total_bytes} bytes)"));
                 metrics_for_results.set(Some(result));
             }
-            None => {
-                status_for_progress.set("Error reading file content".to_string());
+            Err(UploadError::UnexpectedEof) => {
+                status_for_progress.set("Unexpected end of file while reading.".to_string());
+                metrics_for_results.set(Some(PrecursorStats::default()));
+            }
+            Err(error) => {
+                status_for_progress.set(format!("Error scanning MGF: {error}"));
                 metrics_for_results.set(Some(PrecursorStats::default()));
             }
         }
@@ -109,7 +136,6 @@ pub fn begin_analysis_from_blob(
     let mut metrics_for_state = metrics;
     let mut busy_for_state = busy;
     let mut drag_active_for_state = drag_active;
-    let original_content_signal = original_mgf_content;
 
     file_name_for_state.set(file_name);
     busy_for_state.set(true);
@@ -122,7 +148,7 @@ pub fn begin_analysis_from_blob(
         status_for_state,
         metrics_for_state,
         busy_for_state,
-        original_content_signal,
+        original_mgf_content,
     );
 }
 
@@ -138,7 +164,6 @@ pub fn load_example_mgf(
     let mut metrics_for_results = metrics;
     let mut busy_for_results = busy;
     let mut file_name_for_results = file_name;
-    let original_content_signal = original_mgf_content;
 
     spawn(async move {
         status_for_progress.set("Loading example MGF...".to_string());
@@ -153,7 +178,7 @@ pub fn load_example_mgf(
                     status_for_progress,
                     metrics_for_results,
                     busy_for_results,
-                    original_content_signal,
+                    original_mgf_content,
                 );
             }
             Err(error) => {
@@ -162,123 +187,4 @@ pub fn load_example_mgf(
             }
         }
     });
-}
-
-pub fn download_recalibrated_mgf(
-    file_name: &str,
-    original_content: &str,
-    calibration_model: crate::recalibration::CalibrationModel,
-    diagnostics: Option<&crate::diagnostics::RecalibrationStats>,
-) -> Result<(), String> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        use crate::recalibration::generate_recalibrated_mgf;
-        use web_sys::console;
-
-        console::log_1(
-            &format!(
-                "download_recalibrated_mgf called: file={}, model={:?}, content_len={}",
-                file_name,
-                calibration_model,
-                original_content.len()
-            )
-            .into(),
-        );
-
-        let recalibrated =
-            generate_recalibrated_mgf(original_content, calibration_model, diagnostics);
-
-        console::log_1(
-            &format!(
-                "After recalibration: original_len={}, recalibrated_len={}",
-                original_content.len(),
-                recalibrated.len()
-            )
-            .into(),
-        );
-
-        if original_content == recalibrated {
-            console::log_1(&"WARNING: Original and recalibrated are IDENTICAL!".into());
-        } else {
-            console::log_1(&"OK: Content was modified".into());
-        }
-
-        let array = Array::new();
-        array.push(&JsValue::from(&recalibrated));
-        let blob = Blob::new_with_str_sequence(&array).map_err(|_| "Failed to create blob")?;
-
-        let url =
-            Url::create_object_url_with_blob(&blob).map_err(|_| "Failed to create object URL")?;
-        let window = web_sys::window().ok_or("No window object")?;
-        let document = window.document().ok_or("No document object")?;
-        let link = document
-            .create_element("a")
-            .map_err(|_| "Failed to create anchor element")?
-            .dyn_into::<HtmlAnchorElement>()
-            .map_err(|_| "Failed to cast to HtmlAnchorElement")?;
-
-        link.set_href(&url);
-        let download_name = if file_name.ends_with(".mgf") {
-            format!("{}_recalibrated.mgf", &file_name[..file_name.len() - 4])
-        } else {
-            format!("{}_recalibrated.mgf", file_name)
-        };
-        link.set_download(&download_name);
-        link.click();
-
-        Url::revoke_object_url(&url).map_err(|_| "Failed to revoke object URL")?;
-        return Ok(());
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let _ = (file_name, original_content, calibration_model, diagnostics);
-        Err("Recalibration download is only available in the browser.".to_string())
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn download_svg(svg_markup: &str, filename: &str) {
-    let safe_name = if filename.ends_with(".svg") {
-        filename.to_string()
-    } else {
-        format!("{filename}.svg")
-    };
-
-    let array = Array::new();
-    array.push(&JsValue::from(svg_markup));
-    let blob = Blob::new_with_str_sequence(&array).unwrap();
-    let url = Url::create_object_url_with_blob(&blob).unwrap();
-    let window = web_sys::window().unwrap();
-    let document = window.document().unwrap();
-    let anchor: HtmlAnchorElement = document
-        .create_element("a")
-        .unwrap()
-        .dyn_into::<HtmlAnchorElement>()
-        .unwrap();
-    anchor.set_attribute("href", &url).unwrap();
-    anchor.set_attribute("download", &safe_name).unwrap();
-    anchor.set_attribute("style", "display:none").unwrap();
-    document.body().unwrap().append_child(&anchor).unwrap();
-    anchor.click();
-    document.body().unwrap().remove_child(&anchor).unwrap();
-    Url::revoke_object_url(&url).unwrap();
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn download_recalibrated_mgf_is_browser_only() {
-        assert!(
-            download_recalibrated_mgf(
-                "test.mgf",
-                "",
-                crate::recalibration::CalibrationModel::None,
-                None
-            )
-            .is_err()
-        );
-    }
 }

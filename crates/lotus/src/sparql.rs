@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! SPARQL result parsing and LOTUS-domain HTTP wrappers.
+//!
+//! Re-exports thin wrappers around [`crate::transport`] that target the default
+//! `QLever` Wikidata endpoint, plus the CSV-parsing helpers that turn raw
+//! `QLever` CSV into strongly-typed LOTUS domain objects (`CompoundEntry`,
+//! `DatasetStats`, `TaxonMatch`).
+
 use super::models::{CompoundEntry, DatasetStats, TaxonMatch};
 #[cfg(not(target_arch = "wasm32"))]
-use crate::sparql::execute_sparql_tempfile as shared_execute_tempfile;
-use crate::sparql::{
+use crate::transport::execute_sparql_tempfile as shared_execute_tempfile;
+use crate::transport::{
     FetchError, QLEVER_WIKIDATA, ResponseFormat, col_idx, execute_query as shared_execute,
     execute_sparql_body as shared_execute_body, execute_sparql_bytes as shared_execute_bytes,
     execute_sparql_with_format as shared_execute_with_format, extract_qid,
@@ -269,7 +276,9 @@ pub async fn execute_sparql_bytes(sparql: &str) -> Result<Vec<u8>, FetchError> {
 ///
 /// # Errors
 /// Returns [`FetchError`] for transport/HTTP failures or empty responses.
-pub async fn execute_sparql_body(sparql: &str) -> Result<crate::sparql::ResponseBody, FetchError> {
+pub async fn execute_sparql_body(
+    sparql: &str,
+) -> Result<crate::transport::ResponseBody, FetchError> {
     shared_execute_body(sparql, QLEVER_WIKIDATA).await
 }
 
