@@ -126,6 +126,7 @@ fn click_download_anchor(href: &str, filename: &str, new_tab: bool) -> Result<bo
     let body = document.body().ok_or("no document body")?;
     body.append_child(&anchor)
         .map_err(|e| format!("failed to append anchor: {e:?}"))?;
+    anchor.click();
     let _ = body.remove_child(&anchor);
 
     Ok(true)
