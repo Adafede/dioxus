@@ -13,16 +13,17 @@ publish = false
 bytes = { workspace = true }
 csv = { workspace = true }
 log = { workspace = true }
-reqwest.workspace = true
 upload = { path = "../upload", version = "0.1" }
 urlencoding = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+reqwest = { workspace = true, features = [] }
 js-sys = { workspace = true }
 wasm-bindgen = { workspace = true }
 web-sys = { workspace = true, features = ["Window"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = { workspace = true }
 tempfile = { workspace = true }
 
 [lints]
