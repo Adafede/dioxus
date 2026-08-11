@@ -48,9 +48,11 @@ pub fn ResultsViewport() -> Element {
             let query = sparql_query.read();
             query.as_ref().map_or_else(
                 || rsx! {},
-                |q| rsx! {
-                    QueryDisplay { query: (*q).to_string() }
-                }
+                |q| {
+                    rsx! {
+                        QueryDisplay { query: (*q).to_string() }
+                    }
+                },
             )
         }
         ContentPhase::Empty => rsx! {
