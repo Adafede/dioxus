@@ -13,6 +13,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn ResultsViewport() -> Element {
     use crate::features::explore::ExploreUiState;
+    use crate::features::explore::selectors::use_result_selector;
 
     let state = use_results_context();
     let explore = state.explore;
@@ -32,6 +33,9 @@ pub fn ResultsViewport() -> Element {
         )
     });
 
+    // Get the SPARQL query to show even on error
+    let sparql_query = use_result_selector(explore, |result| result.sparql_query.clone());
+
     match *phase.read() {
         ContentPhase::Welcome => rsx! {
             WelcomeScreen {}
@@ -39,12 +43,17 @@ pub fn ResultsViewport() -> Element {
         ContentPhase::Loading => rsx! {
             LoadingState {}
         },
-        // Error state: `ErrorNotice` (rendered above this viewport in the page
-        // layout) already shows the full typed error with dismiss + retry
-        // actions.  Rendering a second error message here would be redundant
-        // and could clash with localized notice text, so we intentionally yield
-        // an empty fragment and let the notice carry the UX weight.
-        ContentPhase::Error => rsx! {},
+        // Error state: show the SPARQL query that was attempted
+        ContentPhase::Error => {
+            let query = sparql_query.read();
+            if let Some(q) = query.as_ref() {
+                rsx! {
+                    QueryDisplay { query: (*q).to_string() }
+                }
+            } else {
+                rsx! {}
+            }
+        },
         ContentPhase::Empty => rsx! {
             ResultsTable {}
         },
@@ -59,6 +68,22 @@ pub fn ResultsViewport() -> Element {
             } else {
                 rsx! {
                     DownloadOnlyState {}
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn QueryDisplay(query: String) -> Element {
+    rsx! {
+        section {
+            id: "query-display",
+            class: "query-section",
+            h2 { class: "query-title", "SPARQL Query" }
+            div { class: "query-container",
+                pre {
+                    code { class: "query-code", "{query}" }
                 }
             }
         }
