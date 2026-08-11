@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! `lotus-explore-rs` — LOTUS Knowledge Explorer.
+//!
+//! A Dioxus WASM web app for exploring natural-product occurrences across
+//! Wikidata, powered by the `lotus` shared crate and QLever SPARQL endpoint.
+
 #![allow(non_snake_case)] // Dioxus component naming convention
 #![allow(
     // High-noise lints: false positives or antipatterns in WASM web UI context

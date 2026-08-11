@@ -273,6 +273,30 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_replaces_quotes_with_underscore() {
+        assert_eq!(sanitize_filename("file\"name"), "file_name");
+        assert_eq!(sanitize_filename("file'name"), "file_name");
+    }
+
+    #[test]
+    fn sanitize_preserves_safe_names() {
+        assert_eq!(sanitize_filename("lotus_results.csv"), "lotus_results.csv");
+        assert_eq!(sanitize_filename("my_file-01.json"), "my_file-01.json");
+    }
+
+    #[test]
+    fn sanitize_strips_trailing_whitespace() {
+        assert_eq!(sanitize_filename("file.txt "), "file.txt");
+        assert_eq!(sanitize_filename(" file.txt"), "file.txt");
+    }
+
+    #[test]
+    fn sanitize_unicode_passthrough() {
+        assert_eq!(sanitize_filename("résultats.csv"), "résultats.csv");
+        assert_eq!(sanitize_filename("α-β-γ.rdf"), "α-β-γ.rdf");
+    }
+
+    #[test]
     fn download_text_fails_on_native() {
         #[cfg(not(target_arch = "wasm32"))]
         assert!(crate::download_text("test", "test.txt").is_err());

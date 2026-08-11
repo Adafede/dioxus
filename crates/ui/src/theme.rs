@@ -95,11 +95,17 @@ impl ColorScheme {
 pub struct Spacing;
 
 impl Spacing {
+    /// Extra-small spacing (6px)
     pub const XS: &'static str = "6px";
+    /// Small spacing (10px)
     pub const SM: &'static str = "10px";
+    /// Medium spacing (14px)
     pub const MD: &'static str = "14px";
+    /// Large spacing (20px)
     pub const LG: &'static str = "20px";
+    /// Extra-large spacing (28px)
     pub const XL: &'static str = "28px";
+    /// Extra-extra-large spacing (40px)
     pub const XXL: &'static str = "40px";
 }
 
@@ -133,8 +139,11 @@ impl Shadow {
     pub const MD: &'static str = "0 10px 30px rgba(15, 23, 42, 0.09)";
 
     /// Dark mode shadow (higher opacity for contrast)
+    /// Dark-mode small shadow (higher opacity)
     pub const XS_DARK: &'static str = "0 1px 2px rgba(0, 0, 0, 0.45)";
+    /// Dark-mode small shadow (higher opacity)
     pub const SM_DARK: &'static str = "0 4px 14px rgba(0, 0, 0, 0.35)";
+    /// Dark-mode medium shadow (higher opacity)
     pub const MD_DARK: &'static str = "0 10px 30px rgba(0, 0, 0, 0.35)";
 }
 
@@ -168,7 +177,9 @@ impl Typography {
     pub const LINE_HEIGHT: &'static str = "1.5";
 
     /// Font families
+    /// Font family: sans-serif stack with Inter as primary
     pub const SANS: &'static str = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif";
+    /// Font family: monospace stack with Fira Code as primary
     pub const MONO: &'static str =
         "'Fira Code', ui-monospace, 'SF Mono', 'JetBrains Mono', consolas, monospace";
 }

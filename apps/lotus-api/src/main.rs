@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+//! `lotus-api` — native HTTP API for LOTUS explorer search and export.
+//!
+//! Wraps the `lotus` and `upload` shared crates behind Warp endpoints, providing
+//! species/occurrence search, CSV/JSON/RDF export via `Query` or local SPARQL,
+//! and runtime metrics.
+
 #![allow(clippy::multiple_crate_versions)]
 
 mod config;

@@ -19,21 +19,29 @@ use std::sync::OnceLock;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 
+/// Type alias for the raw response body bytes returned by the transport layer.
 pub type ResponseBody = bytes::Bytes;
 
 /// Default `QLever` endpoint for Wikidata (used by lotus-explorer).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
+/// Maximum number of HTTP retry attempts before giving up.
 const MAX_HTTP_ATTEMPTS: u32 = 2;
 
+/// Content-negotiation format for SPARQL responses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResponseFormat {
+    /// `text/csv` — used for bulk result-set download.
     Csv,
+    /// `application/sparql-results+json` — structured JSON results.
     SparqlJson,
+    /// `text/turtle` — RDF triples.
     Turtle,
+    /// `application/n-triples` — RDF triples, one per line.
     NTriples,
 }
 
 impl ResponseFormat {
+    /// Returns the `Accept` header value for this format.
     const fn accept(self) -> &'static str {
         match self {
             Self::Csv => "text/csv",
@@ -43,6 +51,7 @@ impl ResponseFormat {
         }
     }
 
+    /// Returns the `QLever` `action=` parameter for this format, if any.
     const fn action(self) -> Option<&'static str> {
         match self {
             Self::Csv => Some("csv_export"),
@@ -53,13 +62,16 @@ impl ResponseFormat {
     }
 }
 
-// ── Error type ────────────────────────────────────────────────────────────────
-
+/// Error type for SPARQL-over-HTTP fetch operations.
 #[derive(Debug, Clone)]
 pub enum FetchError {
+    /// Network-level failure (DNS, timeout, connection refused).
     Network(String),
+    /// HTTP response with a non-2xx status code.
     Http(u16, String),
+    /// Response body could not be parsed.
     Parse(String),
+    /// Response body was empty.
     Empty,
 }
 

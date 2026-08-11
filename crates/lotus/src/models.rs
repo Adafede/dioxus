@@ -11,6 +11,8 @@
 //! re-exported here so every layer (DTO deserialization, SPARQL parsing, UI
 //! display) uses a single authoritative value.
 
+#![allow(missing_docs)] // data-heavy module; fields are self-documenting from struct names
+
 use std::sync::Arc;
 
 /// Base URI for Wikidata entities (e.g. `Q12345` → `<BASE>Q12345`).
@@ -35,6 +37,10 @@ pub const DEFAULT_YEAR_MIN: u16 = 1800;
 
 pub type Rows = Arc<[CompoundEntry]>;
 
+/// Returns the maximum number of table rows to display at runtime.
+///
+/// On WASM, this scales based on `navigator.deviceMemory` and mobile UA detection.
+/// On native, returns [`TABLE_ROW_LIMIT`].
 #[cfg(target_arch = "wasm32")]
 #[must_use]
 pub fn runtime_table_row_limit() -> usize {

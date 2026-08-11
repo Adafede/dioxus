@@ -1,3 +1,8 @@
+//! `smellfish-rs` — literature-backed NP-likeness scoring.
+//!
+//! Scores natural-product-likeness of SMILES structures using machine-learned
+//! features, `Query` enrichment, and RDKit.js chemistry descriptors.
+
 mod app;
 #[cfg(any(test, target_arch = "wasm32"))]
 mod csv;

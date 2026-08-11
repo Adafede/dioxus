@@ -15,8 +15,13 @@
 /// The three archive formats supported by the LOTUS/QLever export pipeline.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ExportFormat {
+    /// Comma-separated values — the compact, lossless default for bulk export.
     Csv,
+    /// JSON in the [SPARQL Query Results JSON Format](https://www.w3.org/TR/sparql11-results-json/),
+    /// also used for `ndjson` (one JSON object per line).
     Json,
+    /// RDF/Turtle triples via a `CONSTRUCT` query, suitable for ingestion
+    /// into triple stores.
     Rdf,
 }
 
@@ -202,5 +207,88 @@ mod tests {
     fn sanitize_download_filename_strips_path_separators() {
         assert!(!sanitize_download_filename("../../etc/passwd").contains('/'));
         assert!(!sanitize_download_filename("../../etc/passwd").contains('\\'));
+    }
+
+    #[test]
+    fn sanitize_download_filename_preserves_safe_names() {
+        assert_eq!(
+            sanitize_download_filename("lotus_results.csv"),
+            "lotus_results.csv"
+        );
+        assert_eq!(
+            sanitize_download_filename("natural-products.json"),
+            "natural-products.json"
+        );
+    }
+
+    #[test]
+    fn parse_round_trips_through_extension() {
+        for fmt in [ExportFormat::Csv, ExportFormat::Json, ExportFormat::Rdf] {
+            let ext = fmt.extension();
+            assert_eq!(ExportFormat::parse(ext), Some(fmt));
+        }
+    }
+
+    #[test]
+    fn content_types_are_valid_mime() {
+        assert!(ExportFormat::Csv.content_type().starts_with("text/csv"));
+        assert!(
+            ExportFormat::Json
+                .content_type()
+                .starts_with("application/")
+        );
+        assert!(ExportFormat::Rdf.content_type().starts_with("text/turtle"));
+    }
+
+    #[test]
+    fn prepared_query_wraps_rdf_in_construct() {
+        let select = "PREFIX wd: <http://www.wikidata.org/entity/>\nSELECT ?s WHERE { ?s ?p ?o }";
+        let csv_q = ExportFormat::Csv.prepared_query(select);
+        assert_eq!(csv_q, select);
+
+        let rdf_q = ExportFormat::Rdf.prepared_query(select);
+        assert!(
+            rdf_q.contains("CONSTRUCT"),
+            "RDF query should be wrapped in CONSTRUCT"
+        );
+        assert!(
+            rdf_q.contains("WHERE"),
+            "RDF query should preserve WHERE block"
+        );
+    }
+
+    #[test]
+    fn api_export_file_url_includes_extension() {
+        assert_eq!(
+            api_export_file_url("abc123", ExportFormat::Json),
+            "/v1/export-file/abc123/json"
+        );
+        assert_eq!(
+            api_export_file_url("abc123", ExportFormat::Csv),
+            "/v1/export-file/abc123/csv"
+        );
+    }
+
+    #[test]
+    fn timer_labels_are_consistent() {
+        assert_eq!(ExportFormat::Csv.timer_label(), "LOTUS:download_csv");
+        assert_eq!(ExportFormat::Json.timer_label(), "LOTUS:download_json");
+        assert_eq!(ExportFormat::Rdf.timer_label(), "LOTUS:download_rdf");
+    }
+
+    #[test]
+    fn trigger_timer_label_has_suffix() {
+        assert_eq!(
+            ExportFormat::Csv.trigger_timer_label(),
+            "LOTUS:download_csv_trigger"
+        );
+        assert_eq!(
+            ExportFormat::Json.trigger_timer_label(),
+            "LOTUS:download_json_trigger"
+        );
+        assert_eq!(
+            ExportFormat::Rdf.trigger_timer_label(),
+            "LOTUS:download_rdf_trigger"
+        );
     }
 }

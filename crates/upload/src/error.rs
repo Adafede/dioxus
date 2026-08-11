@@ -23,7 +23,10 @@ pub enum UploadError {
 
     /// A structural invariant of the input was violated.
     #[error("expected {expected}")]
-    Expected { expected: &'static str },
+    Expected {
+        /// Human-readable description of what was expected.
+        expected: &'static str,
+    },
 
     /// The operation is only available inside the browser.
     #[error("download is only available in the browser")]

@@ -28,14 +28,21 @@
 //! - SPARQL querying or LOTUS domain modeling → see the `lotus` crate
 
 #![cfg_attr(target_arch = "wasm32", allow(clippy::future_not_send))]
+#![warn(missing_docs)]
 
+/// WASM-only: byte-level chunked reader over a browser `Blob`.
 #[cfg(target_arch = "wasm32")]
 mod blob_cursor;
+/// WASM-only: line-oriented chunked reader over a browser `Blob`.
 #[cfg(target_arch = "wasm32")]
 mod blob_lines;
+/// Download helpers (browser-triggered and native stubs).
 mod download;
+/// Unified error type for all upload operations.
 mod error;
+/// Drag-and-drop / file-input event extraction.
 mod event;
+/// Throttled progress reporting.
 mod progress;
 
 #[cfg(target_arch = "wasm32")]

@@ -40,6 +40,7 @@ pub mod common;
 pub mod components;
 pub mod theme;
 
+/// Convenience re-exports of the most commonly used UI primitives.
 pub mod prelude {
     pub use crate::common::{SKIP_LINK_STYLE, skip_link, skip_link_main};
     pub use crate::components::{Button, Card, Footer, Header};

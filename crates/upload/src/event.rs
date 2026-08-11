@@ -23,10 +23,11 @@ pub struct ExtractedFile {
     pub name: String,
 }
 
-/// The browser `Blob` type.
+/// The browser `Blob` type (alias to `web_sys::Blob` on WASM; `()` on native).
 #[cfg(target_arch = "wasm32")]
 pub type Blob = web_sys::Blob;
 
+/// Placeholder type on non-WASM targets where browser APIs are unavailable.
 #[cfg(not(target_arch = "wasm32"))]
 pub type Blob = ();
 

@@ -28,8 +28,16 @@
 //! [`queries`]: crate::queries
 //! [`sparql`]: crate::sparql
 
+#![warn(missing_docs)]
+
+/// Export-format and download-URL helpers shared by `lotus-api` and
+/// `lotus-explore-rs`.
 pub mod export;
+/// LOTUS domain models: search criteria, compound entries, dataset stats.
 pub mod models;
+/// SPARQL query-string builders — no I/O.
 pub mod queries;
+/// LOTUS-specific wrappers combining transport + models: execute queries, parse CSV results.
 pub mod sparql;
+/// Platform-agnostic SPARQL-over-HTTP transport.
 pub mod transport;

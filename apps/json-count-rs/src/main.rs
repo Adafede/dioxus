@@ -1,3 +1,8 @@
+//! `json-count-rs` — count non-null JSON fields from an uploaded file.
+//!
+//! Drag-and-drop (or browse) a JSON file and see a live count of non-null
+//! values per key, rendered as a sortable table.
+
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
