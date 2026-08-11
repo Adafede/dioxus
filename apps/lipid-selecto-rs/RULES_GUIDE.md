@@ -1,102 +1,208 @@
 # Lipid Classification Rules - User Guide
 
-This document explains how to use and customize the lipid classification rules
-in `lipid-selecto-rs`.
+This document explains the lipid classification rules in `lipid-selecto-rs`
+covering **all 8 LIPID MAPS categories** with 22 chemical classes.
 
 ## Quick Start
 
-The application comes with **30+ pre-configured LIPID MAPS-aligned rules**
-covering:
+The application comes with **22 chemical classes** organized into 8 structural
+families:
 
-- **Fatty Acids (FA)**: Saturated (FA), Monounsaturated (MUFA), Polyunsaturated
+- **Fatty Acyls (FA)**: Saturated (FA), Monounsaturated (MUFA), Polyunsaturated
   (PUFA)
 - **Glycerolipids (GL)**: Triglycerides (TG), Diglycerides (DG), Monoglycerides
   (MG)
-- **Glycerophospholipids (GP)**: PC, PE, PS, PI, PG, PA, CL + Lyso and Ether
-  variants
+- **Glycerophospholipids (GP)**: PC, PE, PS, PI, PG, PA, CL, LPC, LPE
 - **Sphingolipids (SP)**: Ceramides (Cer), Sphingomyelins (SM), Hexosylceramides
   (HexCer)
+- **Sterol Lipids (ST)**: Cholesterol, Steroids, Sterol derivatives
+- **Prenol Lipids (PR)**: Retinoids, Tocopherols, Ubiquinones, Isoprenoids
+- **Saccharipolipids (SL)**: Lipid A, Lipopolysaccharides
+- **Polyketides (PK)**: Statins, Macrolides, Polyketide-derived metabolites
 
 ## Built-in Rules Reference
 
 ### Fatty Acyls (FA)
 
-  | Rule   | Description                       | Example                         |
-  | ------ | --------------------------------- | ------------------------------- |
-  | `FA`   | Saturated or monounsaturated FA   | Palmitic (C16:0), Oleic (C18:1) |
-  | `MUFA` | Monounsaturated (1 double bond)   | Oleic, Palmitoleic              |
-  | `PUFA` | Polyunsaturated (≥2 double bonds) | Arachidonic, EPA, DHA           |
+Characterized by a terminal carboxylic acid (`COOH`) and a long hydrocarbon
+chain. Rules distinguish by degree of unsaturation:
+
+  | Rule     | Criteria                   | SMARTS                                     | Example                        |
+  | -------- | -------------------------- | ------------------------------------------ | ------------------------------ |
+  | **FA**   | Saturated (0 double bonds) | `[#6]...[#6][#6][#6][#6][CX3](=[OX1])[OH]` | Palmitic C16:0, Stearic C18:0  |
+  | **MUFA** | 1 C=C double bond          | `[#6]=[#6]...[CX3](=[OX1])[OH]`            | Oleic C18:1, Palmitoleic C16:1 |
+  | **PUFA** | 2+ C=C double bonds        | `[#6]=[#6][#6]=[#6]...[CX3](=[OX1])[OH]`   | Arachidonic C20:4, EPA C20:5   |
 
 ### Glycerolipids (GL)
 
-  | Rule      | Description                     | Example           |
-  | --------- | ------------------------------- | ----------------- |
-  | `TG(AAA)` | Triacylglycerol (3 acyl groups) | Olein (C54H104O6) |
-  | `DG(AA)`  | Diacylglycerol (2 acyl groups)  | C36H70O5          |
-  | `MG(A)`   | Monoacylglycerol (1 acyl group) | 1-Oleoylglycerol  |
+Fatty acyl esters of glycerol (3-carbon backbone). Rules distinguish by acyl
+ester count:
+
+  | Rule        | Acyl Count | SMARTS Core                                                                   | Example              |
+  | ----------- | ---------- | ----------------------------------------------------------------------------- | -------------------- |
+  | **TG(AAA)** | 3          | `[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]` | Triolein             |
+  | **DG(AA)**  | 2          | `[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]`                         | 1,2-Dioleoylglycerol |
+  | **MG(A)**   | 1          | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]`                                  | 1-Oleoylglycerol     |
 
 ### Glycerophospholipids (GP)
 
-  | Rule       | Description                         | Example                 |
-  | ---------- | ----------------------------------- | ----------------------- |
-  | `PC(AA)`   | Phosphatidylcholine (diacyl)        | DPPC, POPC              |
-  | `PE(AA)`   | Phosphatidylethanolamine (diacyl)   | DPPE, POPE              |
-  | `PS(AA)`   | Phosphatidylserine (diacyl)         | DPPS                    |
-  | `PI(AA)`   | Phosphatidylinositol                | PdfIns                  |
-  | `PG(AA)`   | Phosphatidylglycerol                | DPPG                    |
-  | `PA(AA)`   | Phosphatidic acid                   | PA(16:0/16:0)           |
-  | `LPC(A)`   | Lysophosphatidylcholine (mono)      | LPC(16:0)               |
-  | `LPE(A)`   | Lysophosphatidylethanolamine (mono) | LPE(16:0)               |
-  | `CL(AAAA)` | Cardiolipin (4 acyl groups)         | CL(16:0/16:0/16:0/16:0) |
+Glycerol backbone with phosphate group and variable headgroup. Rules distinguish
+by: - Headgroup type (choline, ethanolamine, serine, inositol, glycerol, none) -
+Acyl ester count (2 = normal, 1 = lyso, 4 = cardiolipin)
+
+  | Rule         | Headgroup      | Acyls | SMARTS Core                                                               | Example                 |
+  | ------------ | -------------- | ----- | ------------------------------------------------------------------------- | ----------------------- |
+  | **PC(AA)**   | Choline        | 2     | `[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]`                    | DPPC, POPC              |
+  | **PE(AA)**   | Ethanolamine   | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CH2X4][NX3;H2,H1,H0]`                 | DPPE, POPE              |
+  | **PS(AA)**   | Serine         | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([CX3](=[OX1])[OX2H,OX1-])[NX3]` | DPPS                    |
+  | **PI(AA)**   | Inositol       | 2     | `[PX4](=[OX1])([OX2])([OX2])[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1`  | PdfIns                  |
+  | **PG(AA)**   | Glycerol       | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]` | DPPG                    |
+  | **PA(AA)**   | None (just P)  | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4][CH2X4][OX2H,OX1-]`              | PA(16:0/16:0)           |
+  | **LPC(A)**   | Choline        | 1     | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]` + phosphate                  | LPC(16:0)               |
+  | **LPE(A)**   | Ethanolamine   | 1     | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]` + phosphate                  | LPE(16:0)               |
+  | **CL(AAAA)** | Diphosphatidyl | 4     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2])[CH2X4][OX2]` × 2         | CL(16:0/16:0/16:0/16:0) |
 
 ### Sphingolipids (SP)
 
-  | Rule         | Description             | Example            |
-  | ------------ | ----------------------- | ------------------ |
-  | `Cer(AS)`    | Ceramide (amide-linked) | Cer(d18:1/16:0)    |
-  | `SM(AS)`     | Sphingomyelin           | SM(d18:1/16:0)     |
-  | `HexCer(AS)` | Hexosylceramide         | GlcCer(d18:1/16:0) |
+Sphingoid base (long-chain amine) with amide-linked fatty acid. Rules
+distinguish by headgroup attachment:
 
-## Understanding Rule Structure
+  | Rule           | Headgroup         | SMARTS Core                                                | Example            |
+  | -------------- | ----------------- | ---------------------------------------------------------- | ------------------ |
+  | **Cer(AS)**    | None (just amide) | `[NX3][CX3](=[OX1])[CX4]`                                  | Cer(d18:1/16:0)    |
+  | **SM(AS)**     | Phosphocholine    | `[NX4+][CX4][CX4][OX2][PX4](=[OX1])[OX2]`                  | SM(d18:1/16:0)     |
+  | **HexCer(AS)** | Hexose sugar      | `[NX3][CX3](=[OX1])[CX4][CH1X4][CH1X4][OX2][CH1X4][CH1X4]` | GlcCer(d18:1/16:0) |
 
-Each rule is defined by:
+### Sterol Lipids (ST)
 
-```yaml
-lipid_classes:
-  - name: "PC(AA)"              # Unique rule identifier
-    family: "GP"                # Structural family (FA/GL/GP/SP)
-    architecture: "DiAcyl"      # Molecular architecture
-    description: "..."          # Human-readable description
-    smarts: "[PX4]......"       # SMARTS pattern for matching
-    color: "#7c3aed"           # Display color in UI
-    priority: 10                # Matching priority (higher = checked first)
-```
+4-Ring steroid core (cholestane skeleton) with lipophilic side chain.
 
-### SMARTS Pattern Explanation
+  | Rule   | Structure      | SMARTS Core                                            | Example                   |
+  | ------ | -------------- | ------------------------------------------------------ | ------------------------- |
+  | **ST** | Steroid/Sterol | `[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6]` | Cholesterol, β-Sitosterol |
 
-SMARTS (Simplified Molecular Input Line Entry System) is a language for
-describing chemical structures.
+### Prenol Lipids (PR)
 
-**Key symbols:**
+Isoprenoid-derived (isoprene repeat units). Pattern: repeating C=C conjugation.
 
-- `[X]` - Atom with specific connectivity
-- `(=[OX1])` - Double bond to oxygen with single connection
-- `[OX2]` - Oxygen with two connections (ester/ether)
-- `[#6]` - Any carbon
-- `[!a]` - Not aromatic
-- `[!R]` - Not in a ring
-- `~` - Any bond type
-- `,` - Logical OR
-- `;` - Logical AND (implicit)
+  | Rule   | Characteristic         | SMARTS Core              | Example                               |
+  | ------ | ---------------------- | ------------------------ | ------------------------------------- |
+  | **PR** | Conjugated isoprenoids | `[#6]=[#6][#6]=[#6][#6]` | Retinol (Vit A), α-Tocopherol (Vit E) |
 
-**Example breakdown:**
+### Saccharipolipids (SL)
 
-```
+Lipids with complex carbohydrate core and phosphate/acyl modifications.
+
+  | Rule   | Structure     | SMARTS Core                       | Example           |
+  | ------ | ------------- | --------------------------------- | ----------------- |
+  | **SL** | Lipid A / LPS | `[#6][OX2][PX4](=[OX1])[OX2][#6]` | Lipid A, LPS core |
+
+### Polyketides (PK)
+
+Large cyclic structures with ketone groups (produced by polyketide synthase).
+
+  | Rule   | Structure      | SMARTS Core                                         | Example                    |
+  | ------ | -------------- | --------------------------------------------------- | -------------------------- |
+  | **PK** | Macrolide ring | `[#6;R]1[#6]([#6](=[OX1])[#6])[#6;R]...(14+ atoms)` | Atorvastatin, Erythromycin |
+
+## Understanding SMARTS Patterns
+
+**SMARTS (Simplified Molecular Input Line Entry System)** describes chemical
+structures and substructures using a simple syntax.
+
+### Common Symbols
+
+  | Symbol     | Meaning                                  |
+  | ---------- | ---------------------------------------- |
+  | `[X]`      | Atom with specific connectivity          |
+  | `[#6]`     | Any carbon atom                          |
+  | `[#7]`     | Any nitrogen atom                        |
+  | `[#8]`     | Any oxygen atom                          |
+  | `[CX3]`    | Carbon with 3 connections                |
+  | `[CX4]`    | Carbon with 4 connections                |
+  | `(=[OX1])` | Double-bonded oxygen (single attachment) |
+  | `[OX2]`    | Oxygen with 2 connections (ether/ester)  |
+  | `[NX3]`    | Nitrogen with 3 connections              |
+  | `[NX4+]`   | Quaternary nitrogen (charged)            |
+  | `~`        | Any bond (single, double, aromatic)      |
+  | `=`        | Double bond                              |
+  | `,`        | OR operator                              |
+  | `;`        | AND operator                             |
+  | `!`        | NOT operator                             |
+  | `[!R]`     | NOT in a ring                            |
+  | `[!a]`     | NOT aromatic                             |
+
+### Example Breakdown
+
+**PC(AA) headgroup:**
+
+```smarts
 [PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]
-└─────────────────────────────┬──────────────────────────┘
-  Phosphate group     Quaternary choline headgroup
-  = Core of PC
+│     │      │      │      │
+│     │      │      │      └─ Quaternary choline: N+(CH3)3
+│     │      │      └─ Two phosphate ester linkages
+│     │      └─ Phosphate P=O
+│     └─ Phosphorus with 4 connections
+└─ Match starts at phosphorus
 ```
+
+**TG(AAA) backbone:**
+
+```smarts
+[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]
+│      │    │       │      │   │    │       │      │   │    │       │      │
+│      └─ 3 × ester linkage to carbonyls ──────────────┘   └─ Each acyl chain
+│         All attached to central carbon (glycerol C)
+└─ Central C with 4 connections (one C, three O)
+```
+
+## Why Rules Matter
+
+The classification depends on precise SMARTS patterns because:
+
+1. **FA vs MUFA vs PUFA**: Must count C=C double bonds correctly
+   - `FA`: No unsaturation
+   - `MUFA`: Exactly 1 C=C
+   - `PUFA`: 2+ C=C in conjugation
+
+2. **PC vs LPC vs SM**: Must count ester linkages AND identify backbone
+   - `PC`: Glycerol + 2 esters + phosphocholine
+   - `LPC`: Glycerol + 1 ester + phosphocholine (lyso)
+   - `SM`: Sphingoid + 1 amide + phosphocholine
+
+3. **TG vs DG vs MG**: Must count ester linkages exactly
+   - Each ester = one acyl group attachment
+   - Remaining OH groups indicate mono vs di vs tri
+
+4. **Cer vs SM vs HexCer**: Must detect headgroup attachment
+   - `Cer`: Just the amide linkage
+   - `SM`: Amide + phosphocholine
+   - `HexCer`: Amide + sugar moiety
+
+## Testing Your Rules
+
+To verify a rule works correctly:
+
+1. **Test Positives**: Load examples of known lipids in that class
+   - Expected: All marked as matching
+
+2. **Test Negatives**: Load examples of similar but different lipids
+   - PC should NOT match SM or LPC
+   - MUFA should NOT match PUFA
+   - TG should NOT match DG
+
+3. **Check False Positives**: Load complex molecules
+   - Steroids should NOT match if using overly broad patterns
+   - All examples should match ONLY their intended class
+
+## References
+
+- **LIPID MAPS**: https://www.lipidmaps.org/
+- **LIPID MAPS Classification**:
+  https://www.lipidmaps.org/databases/lmsd/lipid_groups
+- **SMARTS Documentation**:
+  https://www.daylight.com/dayhtml/doc/theory/theory.smarts.html
+- **Lipid Nomenclature**: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2920091/
 
 ## Adding Custom Rules
 

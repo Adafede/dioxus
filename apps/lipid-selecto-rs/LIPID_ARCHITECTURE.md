@@ -2,250 +2,161 @@
 
 ## Overview
 
-This document describes the three-level hierarchical lipid classification system
-used in lipid-selecto-rs.
+This document describes the hierarchical lipid classification system aligned
+with LIPID MAPS standards, covering **all 8 major structural families** and 22
+chemical classes.
 
-## Three-Level Hierarchy
+## LIPID MAPS Categories (8 Families)
 
-### Level 1: Structural Family
+### Structural Families
 
-Top-level LIPID MAPS categories representing the fundamental chemical structure:
+The top level contains the 8 major LIPID MAPS categories:
 
-- **FA** - Fatty Acyls
-- **GL** - Glycerolipids
-- **GP** - Glycerophospholipids
-- **SP** - Sphingolipids
-- **ST** - Sterol Lipids
-- **PR** - Prenol Lipids
-- **SL** - Saccharolipids
-- **PK** - Polyketides
+  | Code   | Family               | Classes                              | Examples                              |
+  | ------ | -------------------- | ------------------------------------ | ------------------------------------- |
+  | **FA** | Fatty Acyls          | FA, MUFA, PUFA                       | Palmitic, Oleic, Arachidonic          |
+  | **GL** | Glycerolipids        | TG(AAA), DG(AA), MG(A)               | Triglycerides, Diglycerides           |
+  | **GP** | Glycerophospholipids | PC, PE, PS, PG, PI, PA, LPC, LPE, CL | Phosphatidylcholine, Cardiolipin      |
+  | **SP** | Sphingolipids        | Cer(AS), SM(AS), HexCer(AS)          | Ceramides, Sphingomyelins             |
+  | **ST** | Sterol Lipids        | ST                                   | Cholesterol, Progesterone             |
+  | **PR** | Prenol Lipids        | PR                                   | Retinol (Vit A), α-Tocopherol (Vit E) |
+  | **SL** | Saccharipolipids     | SL                                   | Lipid A, LPS Core                     |
+  | **PK** | Polyketides          | PK                                   | Statins, Macrolides                   |
 
-### Level 2: Lipid Class
+## Classification Rules by Family
 
-The main categorical distinction within each family:
+### Fatty Acyls (FA)
 
-**Fatty Acyls:**
+Characterized by a carboxylic acid head and long hydrocarbon chain: - **FA** -
+Saturated (no C=C double bonds) - **MUFA** - Monounsaturated (exactly 1 C=C) -
+**PUFA** - Polyunsaturated (2+ C=C double bonds)
 
-- FA (Fatty Acid)
-- PUFA (Polyunsaturated Fatty Acid)
-- MUFA (Monounsaturated Fatty Acid)
+SMARTS: `[#6][#6][#6][#6][#6][#6][#6][#6][CX3](=[OX1])[OH]`
 
-**Glycerolipids:**
+### Glycerolipids (GL)
 
-- MG (Monoacylglycerol)
-- DG (Diacylglycerol)
-- TG (Triacylglycerol)
+Fatty acyl esters of glycerol (3-carbon backbone): - **TG(AAA)** - Triglyceride
+(3 ester groups) - **DG(AA)** - Diglyceride (2 ester groups) - **MG(A)** -
+Monoglyceride (1 ester group)
 
-**Glycerophospholipids:**
+SMARTS core: `[CX4]([OX2][CX3](=[OX1])[#6])`
 
-- PC (Phosphatidylcholine)
-- PE (Phosphatidylethanolamine)
-- PS (Phosphatidylserine)
-- PI (Phosphatidylinositol)
-- PG (Phosphatidylglycerol)
-- PA (Phosphatidic Acid)
-- CL (Cardiolipin)
-- LPC (Lysophosphatidylcholine)
-- LPE (Lysophosphatidylethanolamine)
+### Glycerophospholipids (GP)
 
-**Sphingolipids:**
+Glycerol backbone with phosphate headgroup and fatty acyl chains: - **PC** -
+Phosphatidylcholine (choline headgroup) - **PE** - Phosphatidylethanolamine
+(amine headgroup) - **PS** - Phosphatidylserine (serine headgroup) - **PG** -
+Phosphatidylglycerol (glycerol headgroup) - **PI** - Phosphatidylinositol
+(inositol headgroup) - **PA** - Phosphatidic Acid (no headgroup) - **LPC** -
+Lysophosphatidylcholine (monoacyl + phosphocholine) - **LPE** -
+Lysophosphatidylethanolamine (monoacyl + phosphoethanolamine) - **CL** -
+Cardiolipin (diphosphatidylglycerol with 4 acyl chains)
 
-- Cer (Ceramide)
-- SM (Sphingomyelin)
-- HexCer (Hexosylceramide)
+SMARTS core: `[PX4](=[OX1])([OX2])([OX2])`
 
-### Level 3: Molecular Architecture
+### Sphingolipids (SP)
 
-The sub-class distinguishing how the radyl groups are attached:
+Sphingoid base backbone with amide-linked fatty acyl: - **Cer(AS)** - Ceramide
+(sphingoid + acyl) - **SM(AS)** - Sphingomyelin (ceramide + phosphocholine) -
+**HexCer(AS)** - Hexosylceramide (ceramide + hexose sugar)
 
-- **DiAcyl** - Two fatty acyl ester groups (standard)
-- **AlkylAcyl** - Ether + acyl (1 ether, 1 ester)
-- **AcylAlkyl** - Acyl + ether (1 ester, 1 ether)
-- **Plasmalogen** - 1Z-alkenyl ether + acyl (plasmalogen)
-- **DiEther** - Two ether-linked chains
-- **MonoAcyl** - Single acyl group (lyso compounds)
+SMARTS core: `[NX3][CX3](=[OX1])[CX4]`
 
-### Examples
+### Sterol Lipids (ST)
 
-```
-PC
-├── PC(AA)      - Diacyl-PC
-├── PC(O-)      - Alkyl-acyl-PC (1 ether, 1 acyl)
-├── PC(P-)      - Plasmalogen-PC
-├── LPC(A)      - Lysophosphatidylcholine
-└── ...
+Cholesterol and steroid-based molecules with 4-ring steroid core: - **ST** -
+Sterols, Steroids, Cholesterol derivatives
 
-PE
-├── PE(AA)      - Diacyl-PE
-├── PE(O-)      - Alkyl-acyl-PE
-├── PE(P-)      - Plasmalogen-PE
-├── LPE(A)      - Lysophosphatidylethanolamine
-└── ...
+SMARTS: `[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6]` (4-ring steroid
+core)
 
-TG
-├── TG(AAA)     - Triacylglycerol
-├── TG(AAB)     - Diacyl + 1 other
-└── ...
-```
+### Prenol Lipids (PR)
 
-## SMARTS Fragment Library
+Isoprenoid-derived lipids (multiples of isoprene units): - **PR** - Carotenoids,
+Retinoids, Tocopherols, Ubiquinones, Dolichols
 
-Rather than hardcoding full patterns, we define reusable SMARTS cores that
-represent actual chemical structures:
+SMARTS: `[#6]=[#6][#6]=[#6][#6]` (conjugated isoprenoid pattern)
 
-### Functional Groups
+### Saccharipolipids (SL)
 
-- `acyl`: `[CX3](=[OX1])[#6]` --- Carbonyl + carbon
-- `ester`: `[OX2][CX3](=[OX1])[#6]` --- Ester linkage (O-C(=O)-R)
-- `amide`: `[NX3][CX3](=[OX1])[#6]` --- Amide linkage (N-C(=O)-R)
+Lipids with complex carbohydrate and phosphate linkages: - **SL** - Lipid A,
+Lipopolysaccharides, Peptidoglycans
 
-### Backbones
+SMARTS: `[#6][OX2][PX4](=[OX1])[OX2][#6]` (phosphoester linkage)
 
-- `glycerol_3C`: `[CH2X4][CHX4][CH2X4]` --- 3-carbon glycerol core
-- `phospho`: `[P;X4](=[OX1])` --- Phosphate group
+### Polyketides (PK)
 
-### Headgroups
+Large cyclic structures from iterative polyketide biosynthesis: - **PK** -
+Statins, Macrolide Antibiotics, Tetracyclines
 
-- `choline`: `[CH2X4][CH2X4][N+;X4]([CH3])([CH3])[CH3]` --- Quaternary choline
-- `ethanolamine`: `[CH2X4][CH2X4][NX3;H2,H1,H0]` --- Primary/secondary amine
+SMARTS: `[#6;R]1[#6]([#6](=[OX1])[#6])[#6;R]...` (large cyclic with ketone)
 
-### Ring Systems
+## Chemical Class Details
 
-- `inositol`: `[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1` --- Cyclohexane ring
-
-### Ether/Plasmalogen
-
-- `ether`: `[#6][OX2][#6]` --- C-O-C ether linkage
-- `plasmalogen_ether`: `[#6][OX2][CHX3]=[CHX3][#6]` --- Vinylether (1Z-alkenyl)
-
-## Classification Strategy
-
-### Step 1: Acyclic Gating
-
-- First check: Does molecule contain rings? → Reject if yes
-- Lipids are acyclic (no aromatic rings, no sugar rings, no steroids)
-
-### Step 2: Backbone Detection
-
-- Identify key structural elements using SMARTS
-- Determine structural family (FA, GL, GP, SP)
-
-### Step 3: Chain Analysis
-
-- For each radyl group attachment (ester/ether/amide):
-  - Traverse the hydrocarbon chain
-  - Count carbons
-  - Count and position unsaturations
-  - Detect modifications (OH, OOH, epoxide)
-  - Distinguish ether vs. plasmalogen
-
-### Step 4: Classification
-
-- Combine backbone type + chain composition
-- Assign class (PC, PE, TG, etc.)
-- Assign architecture (DiAcyl, Plasmalogen, MonoAcyl, etc.)
-
-## Important Distinctions
-
-### FA vs PUFA vs MUFA
-
-**Do NOT** rely solely on SMARTS matching for unsaturation classification.
-
-**Wrong approach:**
-```
-molecule.HasSubstructMatch(PUFA_SMARTS)  // finds 2+ C=C sequence
-→ classified as PUFA
-```
-
-**Correct approach:**
-```
-acyl_chains = analyze_chains(molecule)
-for chain in acyl_chains:
-    if len(chain.double_bonds) >= 2:
-        → PUFA
-    elif len(chain.double_bonds) == 1:
-        → MUFA
-    else:
-        → FA
-```
-
-### PC vs LPC vs SM
-
-**Do NOT** classify based on phosphocholine headgroup alone.
-
-**Wrong approach:**
+### Fatty Acyls - Saturation Levels
 
 ```
-if has_phosphocholine():
-    classify_as(PC)  // Also matches LPC and SM!
+Palmitic acid (FA, C16:0)
+  CCCCCCCCCCCCCCCC(=O)O
+  → 16 carbons, 0 double bonds → FA
+
+Oleic acid (MUFA, C18:1)
+  CCCCCCCC=CCCCCCCCCC(=O)O
+  → 18 carbons, 1 double bond → MUFA
+
+Arachidonic (PUFA, C20:4)
+  CC=CCC=CCC=CCC=CCCCCCCC(=O)O
+  → 20 carbons, 4 double bonds → PUFA
 ```
 
-**Correct approach:** \`\`\` backbone = identify_backbone() // glycerol vs.
-sphingoid acyl_count = count_acyl_esters()
+### Glycerophospholipids - Acyl Count
 
-if backbone == glycerol: if acyl_count == 2: → PC elif acyl_count == 1: → LPC
-elif backbone == sphingoid: → SM \`\`\`
+```
+PC (Phosphatidylcholine)
+  CCCCCCCCCCCCCCCC(=O)O-C(CO-P-OCC[N+(C)(C)C])-OC(=O)CCCCCCCC=C...
+  → Glycerol + Phosphate + Choline + 2 acyl chains → PC
 
-### Ether vs Acyl vs Plasmalogen
+LPC (Lysophosphatidylcholine)
+  CCCCCCCCCCCCCCCC(=O)O-C(CO-P-OCC[N+(C)(C)C])(-CO)-OH
+  → Glycerol + Phosphate + Choline + 1 acyl chain → LPC (lyso)
 
-**Glycerophospholipid with:**
-
-- 2 ester linkages (C-O-C(=O)-R) → DiAcyl-PC, DiAcyl-PE
-- 1 ether (C-O-C) + 1 ester → Alkyl-acyl-PC (O- designation)
-- 1 vinyl-ether (C-O-C=C) + 1 ester → Plasmalogen-PC (P- designation)
-
-## Future Enhancements
-
-### YAML/JSON Specification
-
-For production use, define the classifier as machine-readable specifications:
-
-```yaml
-lipid_classes:
-  - name: PC
-    family: GP
-    smarts_components:
-      backbone:
-        - glycerol_3C
-        - phospho
-      headgroup: choline
-      acyl_count: 2
-    architectures:
-      - DiAcyl
-      - AlkylAcyl
-      - Plasmalogen
-      - DiEther
-      - MonoAcyl
+CL (Cardiolipin)
+  Complex: Two glycerophospholipid units connected by shared glycerol
+  → 4 acyl chains total → CL
 ```
 
-This allows:
+### Sphingolipids - Sugar Modification
 
-- Maintaining patterns without code changes
-- Version control of classification rules
-- Easy addition of new classes/architectures
-- Integration with LIPID MAPS
-- Machine-readable documentation
+```
+Ceramide (Cer)
+  R-NH-CO-R' with sphingoid backbone
+  → Base ceramide
 
-### Chain-Aware Pattern Composition
+Sphingomyelin (SM)
+  Ceramide + Phosphocholine headgroup
 
-Build complex patterns from chain analysis:
-
-```python
-def build_pc_pattern(architecture):
-    backbone = glycerol_3C_with_phosphocholine
-    if architecture == DiAcyl:
-        return f"{backbone}[OX2]{acyl}[OX2]{acyl}"
-    elif architecture == Plasmalogen:
-        return f"{backbone}[OX2]{plasmalogen_ether}[OX2]{acyl}"
-    else:
-        # ...
+Hexosylceramide (HexCer)
+  Ceramide + Hexose (glucose/galactose) sugar
 ```
 
-This keeps SMARTS maintainable while supporting diverse architectures.
+## Color Scheme (CVD-Friendly Microshades)
+
+  | Family                    | Color Palette       | Hex Codes                        |
+  | ------------------------- | ------------------- | -------------------------------- |
+  | Fatty Acyls (FA)          | cvd_orange          | #9D654C, #C17754, #F09163        |
+  | Glycerolipids (GL)        | cvd_blue            | #098BD9, #56B4E9, #7DCCFF        |
+  | Glycerophospholipids (GP) | cvd_green/turquoise | #4E7705–#DDFFA0, #148F77–#43BA8F |
+  | Sphingolipids (SP)        | cvd_purple          | #7D3560, #A1527F, #CC79A7        |
+  | Sterol Lipids (ST)        | purple              | #6a51a3                          |
+  | Prenol Lipids (PR)        | orange              | #ff7f00                          |
+  | Saccharipolipids (SL)     | blue                | #4292c6                          |
+  | Polyketides (PK)          | green               | #238b45                          |
+
+All palettes are colorblind-accessible (CVD-friendly).
 
 ## References
 
 - LIPID MAPS: https://www.lipidmaps.org/
 - LIPID MAPS Classification:
   https://www.lipidmaps.org/databases/lmsd/lipid_groups
-- SMILES/SMARTS: https://www.daylight.com/dayhtml/doc/theory/theory.smarts.html
+- SMARTS: https://www.daylight.com/dayhtml/doc/theory/theory.smarts.html

@@ -308,7 +308,28 @@ fn summary(
 
             if !all_classes_owned.is_empty() {
                 div { style: "margin: 0.8rem 0 0; padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;",
-                    h3 { style: "margin: 0 0 0.5rem; font-size: 0.85rem; color: #0f172a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;", "Filter by chemical family" }
+                    div { style: "display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;",
+                        h3 { style: "margin: 0; font-size: 0.85rem; color: #0f172a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;", "Filter by chemical family" }
+                        label { style: "display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.75rem; color: #475569; font-weight: 600;",
+                            input {
+                                r#type: "checkbox",
+                                checked: selected_classes.read().len() == all_classes_owned.len(),
+                                onchange: move |_| {
+                                    let mut classes = selected_classes.read().clone();
+                                    if classes.len() == all_classes_owned.len() {
+                                        // Uncheck all
+                                        classes.clear();
+                                    } else {
+                                        // Check all
+                                        classes = all_classes_owned.iter().map(|c| c.name.clone()).collect();
+                                    }
+                                    selected_classes.set(classes);
+                                },
+                                style: "width: 14px; height: 14px; cursor: pointer;",
+                            }
+                            "Select All"
+                        }
+                    }
                     for (family, family_classes) in families.iter() {
                         {
                             let family_clone = family.clone();
