@@ -38,6 +38,7 @@ pub enum ExploreAction {
     /// Commit a typed search error (i18n-free; formatted at render time).
     SearchFailed {
         error: DomainError,
+        query: Option<String>,
     },
 
     /// Dismiss the current error notice.

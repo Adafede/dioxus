@@ -7,6 +7,7 @@ mod ui;
 
 use super::ExploreState;
 use crate::features::explore::actions::ExploreAction;
+use std::sync::Arc;
 
 #[cfg(test)]
 pub fn reduce(mut state: ExploreState, action: ExploreAction) -> ExploreState {
@@ -56,9 +57,13 @@ pub fn reduce_mut(state: &mut ExploreState, action: ExploreAction) {
                 },
             );
         }
-        ExploreAction::SearchFailed { error } => {
+        ExploreAction::SearchFailed { error, query } => {
             if lifecycle::search_failed(&mut state.lifecycle, &error) {
                 result_data::clear(&mut state.result);
+            }
+            // Store the query that was attempted even on error
+            if let Some(q) = query {
+                state.result.sparql_query = Some(Arc::from(q));
             }
             lifecycle::record_error(&mut state.lifecycle, error);
         }

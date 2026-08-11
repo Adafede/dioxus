@@ -48,6 +48,7 @@ pub fn use_startup_effect<R: LotusRepository>(
                     error: DomainError::Validation(ValidationFault::UnsupportedFormat {
                         format: fmt,
                     }),
+                    query: None,
                 },
             );
             app_state.with_mut(|state| {

@@ -84,11 +84,11 @@ impl SearchLifecycleCoordinator {
                     retry_plan.error_class.as_key(),
                     attempt_count,
                 );
-                dispatch_error(self.explore, error);
+                dispatch_error(self.explore, error, request);
                 ErrorHandlingOutcome::Finalized
             }
             RetryEligibility::Permanent => {
-                dispatch_error(self.explore, error);
+                dispatch_error(self.explore, error, request);
                 ErrorHandlingOutcome::Finalized
             }
         }
@@ -99,8 +99,19 @@ impl SearchLifecycleCoordinator {
     }
 }
 
-fn dispatch_error(explore: Signal<ExploreState>, error: DomainError) {
-    dispatch_explore_action(explore, ExploreAction::SearchFailed { error });
+fn dispatch_error(explore: Signal<ExploreState>, error: DomainError, request: &SearchRequest) {
+    use crate::features::explore::service::build_query::build_sparql_query;
+    use crate::features::explore::service::build_query::normalize_smiles;
+    
+    // Try to build the query that was being attempted
+    let smiles = normalize_smiles(&request.criteria().smiles);
+    let query = if let Some(qid) = explore.peek().result.resolved_qid.as_deref() {
+        Some(build_sparql_query(&smiles, request.criteria(), Some(qid)))
+    } else {
+        Some(build_sparql_query(&smiles, request.criteria(), None))
+    };
+    
+    dispatch_explore_action(explore, ExploreAction::SearchFailed { error, query });
 }
 
 #[must_use]

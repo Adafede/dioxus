@@ -27,7 +27,7 @@ pub fn start_search<R: LotusRepository>(
     let request = match prepare_search_request(criteria, command, explore) {
         Ok(request) => request,
         Err(error) => {
-            dispatch_explore_action(explore, ExploreAction::SearchFailed { error });
+            dispatch_explore_action(explore, ExploreAction::SearchFailed { error, query: None });
             return;
         }
     };
