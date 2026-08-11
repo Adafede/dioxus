@@ -1,5 +1,5 @@
 # Lipid Classification Rules (LIPID MAPS-aligned)
-# 
+#
 # This file defines lipid classes using SMARTS patterns.
 # Users can add custom rules by adding new entries to this file.
 # Format: name, family, architecture, smarts_pattern, color

@@ -44,7 +44,7 @@ pub fn app() -> Element {
     let mut input_format = use_signal(|| None::<LipidFormat>);
 
     let rule_library = LipidRuleLibrary::defaults();
-    
+
     // Initialize selected_classes with all ChemicalClass names (ensures Ceramide is included)
     let all_class_names: Vec<_> = ChemicalClass::defaults()
         .iter()
@@ -313,14 +313,14 @@ fn summary(
                         {
                             let family_clone = family.clone();
                             let family_classes_clone = family_classes.clone();
-                            
+
                             // Check how many children are selected
                             let selected_count = family_classes_clone.iter()
                                 .filter(|c| selected_classes.read().contains(&c.name))
                                 .count();
                             let all_family_selected = selected_count == family_classes_clone.len();
                             let some_family_selected = selected_count > 0 && !all_family_selected;
-                            
+
                             rsx! {
                                 div { style: "margin-bottom: 0.6rem;",
                                     label { style: "display: flex; align-items: center; gap: 0.4rem; cursor: pointer; margin-bottom: 0.3rem;",

@@ -1,55 +1,61 @@
 # Lipid Classification Rules - User Guide
 
-This document explains how to use and customize the lipid classification rules in `lipid-selecto-rs`.
+This document explains how to use and customize the lipid classification rules
+in `lipid-selecto-rs`.
 
 ## Quick Start
 
-The application comes with **30+ pre-configured LIPID MAPS-aligned rules** covering:
+The application comes with **30+ pre-configured LIPID MAPS-aligned rules**
+covering:
 
-- **Fatty Acids (FA)**: Saturated (FA), Monounsaturated (MUFA), Polyunsaturated (PUFA)
-- **Glycerolipids (GL)**: Triglycerides (TG), Diglycerides (DG), Monoglycerides (MG)
-- **Glycerophospholipids (GP)**: PC, PE, PS, PI, PG, PA, CL + Lyso and Ether variants
-- **Sphingolipids (SP)**: Ceramides (Cer), Sphingomyelins (SM), Hexosylceramides (HexCer)
+- **Fatty Acids (FA)**: Saturated (FA), Monounsaturated (MUFA), Polyunsaturated
+  (PUFA)
+- **Glycerolipids (GL)**: Triglycerides (TG), Diglycerides (DG), Monoglycerides
+  (MG)
+- **Glycerophospholipids (GP)**: PC, PE, PS, PI, PG, PA, CL + Lyso and Ether
+  variants
+- **Sphingolipids (SP)**: Ceramides (Cer), Sphingomyelins (SM), Hexosylceramides
+  (HexCer)
 
 ## Built-in Rules Reference
 
 ### Fatty Acyls (FA)
 
-| Rule | Description | Example |
-|------|-------------|---------|
-| `FA` | Saturated or monounsaturated FA | Palmitic (C16:0), Oleic (C18:1) |
-| `MUFA` | Monounsaturated (1 double bond) | Oleic, Palmitoleic |
-| `PUFA` | Polyunsaturated (≥2 double bonds) | Arachidonic, EPA, DHA |
+  | Rule   | Description                       | Example                         |
+  | ------ | --------------------------------- | ------------------------------- |
+  | `FA`   | Saturated or monounsaturated FA   | Palmitic (C16:0), Oleic (C18:1) |
+  | `MUFA` | Monounsaturated (1 double bond)   | Oleic, Palmitoleic              |
+  | `PUFA` | Polyunsaturated (≥2 double bonds) | Arachidonic, EPA, DHA           |
 
 ### Glycerolipids (GL)
 
-| Rule | Description | Example |
-|------|-------------|---------|
-| `TG(AAA)` | Triacylglycerol (3 acyl groups) | Olein (C54H104O6) |
-| `DG(AA)` | Diacylglycerol (2 acyl groups) | C36H70O5 |
-| `MG(A)` | Monoacylglycerol (1 acyl group) | 1-Oleoylglycerol |
+  | Rule      | Description                     | Example           |
+  | --------- | ------------------------------- | ----------------- |
+  | `TG(AAA)` | Triacylglycerol (3 acyl groups) | Olein (C54H104O6) |
+  | `DG(AA)`  | Diacylglycerol (2 acyl groups)  | C36H70O5          |
+  | `MG(A)`   | Monoacylglycerol (1 acyl group) | 1-Oleoylglycerol  |
 
 ### Glycerophospholipids (GP)
 
-| Rule | Description | Example |
-|------|-------------|---------|
-| `PC(AA)` | Phosphatidylcholine (diacyl) | DPPC, POPC |
-| `PE(AA)` | Phosphatidylethanolamine (diacyl) | DPPE, POPE |
-| `PS(AA)` | Phosphatidylserine (diacyl) | DPPS |
-| `PI(AA)` | Phosphatidylinositol | PtdIns |
-| `PG(AA)` | Phosphatidylglycerol | DPPG |
-| `PA(AA)` | Phosphatidic acid | PA(16:0/16:0) |
-| `LPC(A)` | Lysophosphatidylcholine (mono) | LPC(16:0) |
-| `LPE(A)` | Lysophosphatidylethanolamine (mono) | LPE(16:0) |
-| `CL(AAAA)` | Cardiolipin (4 acyl groups) | CL(16:0/16:0/16:0/16:0) |
+  | Rule       | Description                         | Example                 |
+  | ---------- | ----------------------------------- | ----------------------- |
+  | `PC(AA)`   | Phosphatidylcholine (diacyl)        | DPPC, POPC              |
+  | `PE(AA)`   | Phosphatidylethanolamine (diacyl)   | DPPE, POPE              |
+  | `PS(AA)`   | Phosphatidylserine (diacyl)         | DPPS                    |
+  | `PI(AA)`   | Phosphatidylinositol                | PdfIns                  |
+  | `PG(AA)`   | Phosphatidylglycerol                | DPPG                    |
+  | `PA(AA)`   | Phosphatidic acid                   | PA(16:0/16:0)           |
+  | `LPC(A)`   | Lysophosphatidylcholine (mono)      | LPC(16:0)               |
+  | `LPE(A)`   | Lysophosphatidylethanolamine (mono) | LPE(16:0)               |
+  | `CL(AAAA)` | Cardiolipin (4 acyl groups)         | CL(16:0/16:0/16:0/16:0) |
 
 ### Sphingolipids (SP)
 
-| Rule | Description | Example |
-|------|-------------|---------|
-| `Cer(AS)` | Ceramide (amide-linked) | Cer(d18:1/16:0) |
-| `SM(AS)` | Sphingomyelin | SM(d18:1/16:0) |
-| `HexCer(AS)` | Hexosylceramide | GlcCer(d18:1/16:0) |
+  | Rule         | Description             | Example            |
+  | ------------ | ----------------------- | ------------------ |
+  | `Cer(AS)`    | Ceramide (amide-linked) | Cer(d18:1/16:0)    |
+  | `SM(AS)`     | Sphingomyelin           | SM(d18:1/16:0)     |
+  | `HexCer(AS)` | Hexosylceramide         | GlcCer(d18:1/16:0) |
 
 ## Understanding Rule Structure
 
@@ -68,7 +74,8 @@ lipid_classes:
 
 ### SMARTS Pattern Explanation
 
-SMARTS (Simplified Molecular Input Line Entry System) is a language for describing chemical structures.
+SMARTS (Simplified Molecular Input Line Entry System) is a language for
+describing chemical structures.
 
 **Key symbols:**
 
@@ -129,6 +136,7 @@ CC=CCC=CCCCCCCCC(=O)O  # linoleic acid (exact)
 ```
 
 Generalize to pattern:
+
 ```smarts
 [#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6][CX3](=[OX1])[OH]
 ```
@@ -190,7 +198,8 @@ The application includes **100 curated SMILES** covering all lipid classes:
 - **18 Fatty Acids**: Saturated, MUFA, PUFA variants
 - **14 Triglycerides**: Various chain compositions
 - **10 Diglycerides & Monoglycerides**
-- **16 Phospholipids**: PC, PE, PS, PI, PG, PA + lyso + plasmalogen + ether variants
+- **16 Phospholipids**: PC, PE, PS, PI, PG, PA + lyso + plasmalogen + ether
+  variants
 - **14 Sphingolipids**: Ceramides, sphingomyelins, hexosylceramides
 - **2 Cardiolipins**
 - **Plus additional architectural variants**
@@ -199,7 +208,8 @@ Access via: `lipid_selecto_rs::examples::EXAMPLE_LIPIDS`
 
 ## Performance Tips
 
-1. **Priority ordering**: Higher priority rules are checked first (default: 10→1)
+1. **Priority ordering**: Higher priority rules are checked first (default:
+   10→1)
    - Set `priority: 10` for specific lipids you expect frequently
    - Set `priority: 1` for catch-all or rare classes
 
@@ -217,14 +227,16 @@ Access via: `lipid_selecto_rs::examples::EXAMPLE_LIPIDS`
 
 1. **Check SMARTS syntax**: Use an online SMARTS editor to verify
 2. **Test on known molecules**: Compare with ChemSpider or PubChem
-3. **Check priority**: Lower-priority rules won't match if higher rules match first
+3. **Check priority**: Lower-priority rules won't match if higher rules match
+   first
 4. **Verify acyclic check**: All rules reject molecules with rings
 
 ### False positives
 
 If non-lipids are being matched:
 
-1. **Add stricter headgroup requirement** (e.g., require both phosphate AND choline)
+1. **Add stricter headgroup requirement** (e.g., require both phosphate AND
+   choline)
 2. **Require long aliphatic chains** (≥8 carbons) using `[#6;!a;!R]~...`
 3. **Exclude cyclic/aromatic motifs** using `[!R]` or `[!a]`
 
@@ -242,10 +254,9 @@ Rules are curated to match the **LIPID MAPS classification system**:
 - **Architectures**: DiAcyl, MonoAcyl, Plasmalogen, AlkylAcyl, DiEther
 - **Chain naming**: Fatty acids denoted as `C#:#` (carbons:double bonds)
 
-References:
-- LIPID MAPS: https://www.lipidmaps.org/
-- LIPID MAPS classification: https://www.lipidmaps.org/databases/lmsd/lipid_groups
-- SMARTS tutorial: https://www.daylight.com/dayhtml/doc/theory/theory.smarts.html
+References: - LIPID MAPS: https://www.lipidmaps.org/ - LIPID MAPS
+classification: https://www.lipidmaps.org/databases/lmsd/lipid_groups - SMARTS
+tutorial: https://www.daylight.com/dayhtml/doc/theory/theory.smarts.html
 
 ## Contributing Rule Improvements
 
@@ -256,6 +267,6 @@ If you discover issues or improvements:
 3. Consider adding examples to the `examples.rs` file
 4. File an issue or PR with documentation
 
----
+--------------------------------------------------------------------------------
 
 **Questions?** Check the main README.md for API usage and building instructions.
