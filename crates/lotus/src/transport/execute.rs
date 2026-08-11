@@ -1,99 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! SPARQL over HTTP transport — the platform-agnostic layer beneath
-//! [`crate::sparql`] (LOTUS wrappers) and [`crate::models`] (domain types).
+//! SPARQL query execution: POST, retry, content-negotiation, streaming.
 //!
-//! Provides a thin HTTP client that POSTs a query string to any SPARQL /
-//! `QLever` endpoint, handles retries with exponential backoff,
-//! content-negotiated format selection, and gateway-error detection.  It knows
-//! nothing about LOTUS, Wikidata, or CSV schema — callers supply the endpoint
-//! URL and interpret the returned bytes.
-//!
-//! # `QLever` CSV export URL format
-//!   `https://qlever.dev/api/wikidata?query=<encoded>&action=csv_export`
+//! Every public function follows the same retry pattern: up to
+//! [`MAX_HTTP_ATTEMPTS`] attempts, retrying on transient network failures and
+//! 5xx server errors, failing fast on 4xx client errors.
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::io::{Seek, Write};
-use std::sync::OnceLock;
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::Duration;
 
-/// Type alias for the raw response body bytes returned by the transport layer.
-pub type ResponseBody = bytes::Bytes;
+use super::client::http_client;
+use super::error::{compact_http_error_text, looks_like_gateway_error};
+use super::types::{FetchError, MAX_HTTP_ATTEMPTS, ResponseBody, ResponseFormat};
 
-/// Default `QLever` endpoint for Wikidata (used by lotus-explorer).
-pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
-/// Maximum number of HTTP retry attempts before giving up.
-const MAX_HTTP_ATTEMPTS: u32 = 2;
-
-/// Content-negotiation format for SPARQL responses.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ResponseFormat {
-    /// `text/csv` — used for bulk result-set download.
-    Csv,
-    /// `application/sparql-results+json` — structured JSON results.
-    SparqlJson,
-    /// `text/turtle` — RDF triples.
-    Turtle,
-    /// `application/n-triples` — RDF triples, one per line.
-    NTriples,
-}
-
-impl ResponseFormat {
-    /// Returns the `Accept` header value for this format.
-    const fn accept(self) -> &'static str {
-        match self {
-            Self::Csv => "text/csv",
-            Self::SparqlJson => "application/sparql-results+json",
-            Self::Turtle => "text/turtle",
-            Self::NTriples => "application/n-triples",
-        }
-    }
-
-    /// Returns the `QLever` `action=` parameter for this format, if any.
-    const fn action(self) -> Option<&'static str> {
-        match self {
-            Self::Csv => Some("csv_export"),
-            Self::SparqlJson => Some("sparql_json_export"),
-            Self::Turtle => Some("turtle_export"),
-            Self::NTriples => None,
-        }
-    }
-}
-
-/// Error type for SPARQL-over-HTTP fetch operations.
-#[derive(Debug, Clone)]
-pub enum FetchError {
-    /// Network-level failure (DNS, timeout, connection refused).
-    Network(String),
-    /// HTTP response with a non-2xx status code.
-    Http(u16, String),
-    /// Response body could not be parsed.
-    Parse(String),
-    /// Response body was empty.
-    Empty,
-}
-
-impl std::fmt::Display for FetchError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Network(e) => write!(f, "Network error: {e}"),
-            Self::Http(s, msg) => write!(f, "HTTP {s}: {msg}"),
-            Self::Parse(e) => write!(f, "Parse error: {e}"),
-            Self::Empty => write!(f, "Query returned no results"),
-        }
-    }
-}
-
-// ── HTTP execution ────────────────────────────────────────────────────────────
+// ── Convenience wrappers ──────────────────────────────────────────────────────
 
 /// Execute a SPARQL query against `endpoint` and return the raw CSV body.
 ///
-/// Up to two attempts,
-/// with `Accept: text/csv` so the endpoint can honor content negotiation
-/// even when the `action=csv_export` form parameter is ignored. Retries
-/// transient network / 5xx errors; 4xx errors fail fast.
+/// Up to two attempts, with `Accept: text/csv` so the endpoint can honor
+/// content negotiation even when the `action=csv_export` form parameter is
+/// ignored. Retries transient network / 5xx errors; 4xx errors fail fast.
 ///
 /// # Errors
 /// Returns [`FetchError`] when the request fails, the upstream responds with an
@@ -137,6 +64,8 @@ pub async fn execute_sparql_tempfile(
 ) -> Result<tempfile::NamedTempFile, FetchError> {
     execute_sparql_with_format_tempfile(sparql, endpoint, ResponseFormat::Csv).await
 }
+
+// ── Format-specific wrappers ──────────────────────────────────────────────────
 
 /// Execute a SPARQL query and decode response bytes as UTF-8 text.
 ///
@@ -183,7 +112,7 @@ pub async fn execute_sparql_with_format_body(
         // `Accept` and `Content-Type: application/x-www-form-urlencoded` are
         // both CORS-safelisted, so the request stays simple (no preflight).
         // Do not add `User-Agent` or other custom headers — browsers refuse to
-        // let WASM set them, which causes QLever to reject the preflight.
+        // let WASM set them, which causes `QLever` to reject the preflight.
         let result = client
             .post(endpoint)
             .header("Accept", format.accept())
@@ -341,6 +270,8 @@ pub async fn execute_sparql_with_format_tempfile(
     Err(last_err.unwrap_or_else(|| FetchError::Network("unknown error".into())))
 }
 
+// ── URL-based fetch ─────────────────────────────────────────────────────────
+
 /// Fetch a fully-formed export URL (for example with `action=csv_export`) and
 /// return raw response bytes.
 ///
@@ -368,6 +299,7 @@ pub async fn fetch_url_bytes(url: &str) -> Result<Vec<u8>, FetchError> {
     fetch_url_bytes_with_accept(url, "*/*").await
 }
 
+/// Fetch a URL with a specific `Accept` header and return the response body.
 async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>, FetchError> {
     let client = http_client()?;
     let mut last_err: Option<FetchError> = None;
@@ -424,6 +356,9 @@ async fn fetch_url_bytes_with_accept(url: &str, accept: &str) -> Result<Vec<u8>,
     Err(last_err.unwrap_or_else(|| FetchError::Network("unknown error".into())))
 }
 
+// ── Form body construction ────────────────────────────────────────────────────
+
+/// Build the `query=<encoded>&action=<name>` form body for a SPARQL POST.
 fn build_sparql_form_body(sparql: &str, format: ResponseFormat) -> String {
     let encoded = urlencoding::encode(sparql);
     // "query=" + encoded + optional "&action=<name>"
@@ -437,285 +372,4 @@ fn build_sparql_form_body(sparql: &str, format: ResponseFormat) -> String {
         body.push_str(action);
     }
     body
-}
-
-fn http_client() -> Result<&'static reqwest::Client, FetchError> {
-    static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
-    match CLIENT.get_or_init(build_http_client) {
-        Ok(client) => Ok(client),
-        Err(msg) => Err(FetchError::Network(format!(
-            "failed to initialize SPARQL HTTP client: {msg}"
-        ))),
-    }
-}
-
-fn build_http_client() -> Result<reqwest::Client, String> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        // In the browser, fetch automatically sends `Accept-Encoding: gzip,
-        // deflate, br` and decompresses transparently — no extra configuration
-        // is required.
-        reqwest::Client::builder()
-            .build()
-            .map_err(|e| e.to_string())
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        // Enable automatic gzip decompression so QLever can return compressed
-        // CSV/JSON/Turtle payloads. This adds `Accept-Encoding: gzip` to every
-        // request and decodes the response body with flate2 before handing bytes
-        // to the caller — substantially reducing transfer size for large result
-        // sets without any changes to callers.
-        reqwest::Client::builder()
-            .connect_timeout(Duration::from_secs(8))
-            .timeout(Duration::from_mins(2))
-            .pool_idle_timeout(Duration::from_secs(90))
-            .pool_max_idle_per_host(32)
-            .tcp_keepalive(Duration::from_secs(30))
-            .gzip(true)
-            .build()
-            .map_err(|e| e.to_string())
-    }
-}
-
-fn looks_like_gateway_error(body: &str) -> bool {
-    let cap = body.len().min(2048);
-    let safe_end = (0..=cap)
-        .rev()
-        .find(|&i| body.is_char_boundary(i))
-        .unwrap_or(0);
-    let sample = &body[..safe_end];
-    let html = contains_ci(sample, "<html")
-        || contains_ci(sample, "<!doctype")
-        || contains_ci(sample, "<head")
-        || contains_ci(sample, "<title");
-    let gateway = contains_ci(sample, "bad gateway")
-        || contains_ci(sample, "gateway timeout")
-        || contains_ci(sample, "service unavailable")
-        || contains_ci(sample, "upstream")
-        || contains_ci(sample, "nginx")
-        || contains_ci(sample, "cloudflare");
-    html && gateway
-}
-
-fn contains_ci(h: &str, needle: &str) -> bool {
-    if needle.len() > h.len() {
-        return false;
-    }
-    let nb = needle.as_bytes();
-    let hb = h.as_bytes();
-    for i in 0..=hb.len() - nb.len() {
-        if hb[i..i + nb.len()]
-            .iter()
-            .zip(nb)
-            .all(|(a, b)| a.eq_ignore_ascii_case(b))
-        {
-            return true;
-        }
-    }
-    false
-}
-
-fn compact_http_error_text(body: &str) -> String {
-    const MAX_CHARS: usize = 240;
-    let trimmed = body.trim();
-    if trimmed.is_empty() {
-        return "empty response body".into();
-    }
-
-    if let Some(exception) = parse_json_exception_field(trimmed) {
-        return truncate_chars(exception.trim(), MAX_CHARS);
-    }
-
-    let first_meaningful_line = trimmed
-        .lines()
-        .map(str::trim)
-        .find(|line| !line.is_empty() && *line != "{" && *line != "}")
-        .unwrap_or(trimmed);
-
-    truncate_chars(first_meaningful_line.trim_matches(','), MAX_CHARS)
-}
-
-fn parse_json_exception_field(input: &str) -> Option<String> {
-    let key = "\"exception\"";
-    let key_pos = input.find(key)?;
-    let mut rest = input[key_pos + key.len()..].trim_start();
-    rest = rest.strip_prefix(':')?.trim_start();
-    let quoted = rest.strip_prefix('"')?;
-
-    let mut out = String::new();
-    let mut escaped = false;
-    for ch in quoted.chars() {
-        if escaped {
-            let decoded = match ch {
-                'n' => '\n',
-                'r' => '\r',
-                't' => '\t',
-                '"' => '"',
-                '\\' => '\\',
-                other => other,
-            };
-            out.push(decoded);
-            escaped = false;
-            continue;
-        }
-        match ch {
-            '\\' => escaped = true,
-            '"' => return Some(out),
-            other => out.push(other),
-        }
-    }
-    None
-}
-
-fn truncate_chars(text: &str, max_chars: usize) -> String {
-    // Single forward scan: find the byte position after `max_chars` codepoints.
-    let mut chars = text.char_indices();
-    match chars.nth(max_chars) {
-        // Fewer than max_chars codepoints — no truncation needed.
-        None => text.to_string(),
-        Some((byte_pos, _)) => {
-            let mut out = String::with_capacity(byte_pos + 4); // 4 bytes for '…'
-            out.push_str(&text[..byte_pos]);
-            out.push('…');
-            out
-        }
-    }
-}
-
-// ── CSV helpers ───────────────────────────────────────────────────────────────
-
-/// Index of a named header column (None if absent).
-#[must_use]
-pub fn col_idx(headers: &csv::StringRecord, name: &str) -> Option<usize> {
-    headers.iter().position(|h| h == name)
-}
-
-/// Get a trimmed field value by optional column index.
-#[must_use]
-pub fn field(record: &csv::StringRecord, idx: Option<usize>) -> &str {
-    idx.and_then(|i| record.get(i)).unwrap_or("").trim()
-}
-
-/// Strip the Wikidata entity URI prefix to get a bare QID (e.g. `Q12345`).
-///
-/// Accepts:
-/// * Full canonical URIs:  `http://www.wikidata.org/entity/Q12345`  ([`WIKIDATA_ENTITY_BASE`])
-/// * HTTPS variant:        `https://www.wikidata.org/entity/Q12345`
-/// * Bare QIDs:            `Q12345`
-///
-/// Returns an empty string for any unrecognized format.
-///
-/// [`WIKIDATA_ENTITY_BASE`]: crate::models::WIKIDATA_ENTITY_BASE
-pub fn extract_qid(s: &str) -> String {
-    use crate::models::WIKIDATA_ENTITY_BASE;
-    const WIKIDATA_ENTITY_BASE_HTTPS: &str = "https://www.wikidata.org/entity/";
-
-    let candidate = s
-        .strip_prefix(WIKIDATA_ENTITY_BASE)
-        .or_else(|| s.strip_prefix(WIKIDATA_ENTITY_BASE_HTTPS))
-        .unwrap_or(s)
-        .trim();
-
-    // All QID characters are ASCII — check bytes instead of chars to avoid
-    // the full Unicode iterator overhead.
-    let bytes = candidate.as_bytes();
-    if bytes.first() == Some(&b'Q') && bytes[1..].iter().all(u8::is_ascii_digit) && bytes.len() > 1
-    {
-        candidate.to_string()
-    } else {
-        String::new()
-    }
-}
-
-/// Return `Some(s)` only if `s` is non-empty after trimming.
-#[must_use]
-pub fn non_empty(s: &str) -> Option<&str> {
-    let t = s.trim();
-    if t.is_empty() { None } else { Some(t) }
-}
-
-/// Prefer `a`, fall back to `b`, return None if both empty.
-#[must_use]
-pub fn coalesce<'a>(a: &'a str, b: &'a str) -> Option<&'a str> {
-    non_empty(a).or_else(|| non_empty(b))
-}
-
-/// Parse `2021-04-23T00:00:00Z` or `2021` → year as i32.
-#[must_use]
-pub fn parse_year(s: &str) -> Option<i32> {
-    s.trim().split(['-', 'T']).next()?.trim().parse().ok()
-}
-
-/// Normalise a DOI: strip `https://doi.org/` prefix if present.
-#[must_use]
-pub fn clean_doi(s: &str) -> Option<String> {
-    let t = s.trim();
-    if t.is_empty() {
-        return None;
-    }
-    if let Some(doi) = t.split("doi.org/").last() {
-        let doi = doi.trim();
-        if !doi.is_empty() {
-            return Some(doi.to_string());
-        }
-    }
-    Some(t.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn detects_html_gateway_payloads() {
-        let html = "<html><head><title>502 Bad Gateway</title></head><body>nginx</body></html>";
-        assert!(looks_like_gateway_error(html));
-    }
-
-    #[test]
-    fn does_not_flag_regular_csv_as_gateway_error() {
-        let csv = "compound,taxon\nQ1,Q2\n";
-        assert!(!looks_like_gateway_error(csv));
-    }
-
-    #[test]
-    fn extract_qid_handles_uri_and_plain_qid() {
-        assert_eq!(
-            extract_qid("http://www.wikidata.org/entity/Q12345"),
-            "Q12345"
-        );
-        assert_eq!(extract_qid("Q999"), "Q999");
-        assert_eq!(extract_qid("not-a-qid"), "");
-    }
-
-    #[test]
-    fn clean_doi_normalizes_prefixed_urls() {
-        assert_eq!(
-            clean_doi("https://doi.org/10.1000/xyz"),
-            Some("10.1000/xyz".to_string())
-        );
-        assert_eq!(clean_doi("  "), None);
-    }
-
-    #[test]
-    fn compact_http_error_text_prefers_json_exception_field() {
-        let body = r#"{
-  "exception": "Trying to insert a cache key which was already present",
-  "query": "SELECT ..."
-}"#;
-        assert_eq!(
-            compact_http_error_text(body),
-            "Trying to insert a cache key which was already present"
-        );
-    }
-
-    #[test]
-    fn compact_http_error_text_truncates_long_fallback_line() {
-        let body = format!("{{\n  \"detail\": \"{}\"\n}}", "x".repeat(400));
-        let compact = compact_http_error_text(&body);
-        assert!(compact.chars().count() <= 241);
-        assert!(compact.ends_with('…'));
-    }
 }
