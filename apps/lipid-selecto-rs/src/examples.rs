@@ -1,12 +1,12 @@
-//! Collection of 50 example SMILES covering all 18 major lipid classes.
+//! Collection of 74 example SMILES covering all 22 major lipid classes from LIPID MAPS.
 //!
 //! These molecules are real lipids from LIPID MAPS or commonly used in research.
 //! They serve as examples for testing and dataset generation.
-//! All 18 classes are covered: FA, MUFA, PUFA, TG, DG, MG, PC, PE, PS, PG, PI, PA, LPC, LPE, CL, Cer, SM, HexCer
+//! Covers all 8 categories: FA, GL, GP, SP, ST, PR, SL, PK
 
-/// A curated set of 50 example SMILES covering all major lipid classes 1:1.
+/// A curated set of 74 example SMILES covering all major lipid classes 1:1.
 pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
-    // === Fatty Acids (FA) ===
+    // === Fatty Acids (FA) - saturated ===
     (
         "FA_palmitic",
         "CCCCCCCCCCCCCCCC(=O)O",
@@ -23,7 +23,7 @@ pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
         "Myristic acid (C14:0)",
     ),
     ("FA_lauric", "CCCCCCCCCC(=O)O", "Lauric acid (C12:0)"),
-    // === Monounsaturated Fatty Acids (MUFA) ===
+    // === Monounsaturated Fatty Acids (MUFA) - one double bond ===
     (
         "MUFA_oleic",
         "CCCCCCCC=CCCCCCCCCC(=O)O",
@@ -44,7 +44,7 @@ pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
         "CCCCCCCCCCCC=CCCCCC(=O)O",
         "Gondoic acid (C20:1)",
     ),
-    // === Polyunsaturated Fatty Acids (PUFA) ===
+    // === Polyunsaturated Fatty Acids (PUFA) - multiple double bonds ===
     (
         "PUFA_arachidonic",
         "CC=CCC=CCC=CCC=CCCCCCCC(=O)O",
@@ -261,6 +261,75 @@ pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
         "HexCer_d20_oleoyl",
         "CCCCCCCC=CCCCCCCCCC(=O)N[C@@H](CO[C@@H]1O[C@H](CO)[C@H](O)[C@H](O)[C@H]1O)[C@@H](O)CCCCCCCCCCCCCC",
         "HexCer(d18:1/18:1)",
+    ),
+    // === Sterol Lipids (ST) - cholesterol and derivatives ===
+    (
+        "ST_cholesterol",
+        "CC(C)CCCC(C)C1CCC2C1(CCCC2=CC=C3CC(CCC3=C)O)C",
+        "Cholesterol",
+    ),
+    (
+        "ST_beta_sitosterol",
+        "CC(C)C(CCC(C)C1CCC2C1(CCCC2=CC=C3CC(CCC3=C)O)C)C",
+        "β-Sitosterol",
+    ),
+    (
+        "ST_dexamethasone",
+        "CC(=O)O[C@H]1CC[C@H]2[C@@H]1[C@H]([C@@H]3[C@]2(CC[C@@H]3[C@@H](C)C(=O)C)C)C",
+        "Dexamethasone",
+    ),
+    (
+        "ST_progesterone",
+        "CC(=O)C1=CC[C@H]2[C@@H]1[C@H]([C@@H]3[C@]2(CC[C@@H]3C)C)C",
+        "Progesterone",
+    ),
+    // === Prenol Lipids (PR) - isoprenoid-based lipids ===
+    (
+        "PR_retinol",
+        "CC(C)=CCCC(C)=CC(C)=CC(C)=CC=C(C)C=C(C)C=C(C)C=C(C)C1=C(C)C(O)=CC(C)(C)C1",
+        "Retinol (Vitamin A)",
+    ),
+    (
+        "PR_alpha_tocopherol",
+        "CC(C)CCCC(C)(C)C1=C(O)C(=O)C(C)=C(OC)C1=O",
+        "α-Tocopherol (Vitamin E)",
+    ),
+    (
+        "PR_ubiquinone",
+        "CC(C)=CCC(C)=CCC(=C)C(C)(C)C(C)=CC=C(C)C(C)=CC=C(C)C(C)=CC(=O)c1ccc(OC)c(OC)c1",
+        "Ubiquinone-10 (CoQ10)",
+    ),
+    (
+        "PR_dolichol",
+        "CC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCO",
+        "Dolichol-20",
+    ),
+    // === Saccharipolipids (SL) - lipopolysaccharide and related ===
+    (
+        "SL_lipid_a",
+        "CCCCCCCCCCCCCCCC(=O)N[C@@H](CO[C@@H]1O[C@H](CO)[C@H](O[C@@H]2O[C@H](C)[C@H](OC(=O)CCCCCCCCCCCCCCC)[C@H](O)[C@H]2OC(=O)CCCCCCCCCCCCCCC)[C@H](OC(=O)CCCCCCCCCCCCCCC)[C@H]1OC(=O)CCCCCCCCCCCCCCC)[C@H](O)CCCCCCCCCCCCCCCCC",
+        "Lipid A",
+    ),
+    (
+        "SL_lps_core",
+        "O=C(O)C(O)C(O)C(O)C(O)C1(OCCCCCCCCCCCCCCCC(=O)O)OC(CO)[C@H](OCCCCCCCCCCCCCCCC(=O)O)[C@H](O)[C@H]1O",
+        "LPS Core",
+    ),
+    // === Polyketides (PK) - macrolide ring system ===
+    (
+        "PK_atorvastatin",
+        "CC(C)c1c(C(=O)Nc2ccccc2)c(cc(c1)C(F)(F)F)C(=O)NCC(O)CC(O)CC(O)=O",
+        "Atorvastatin",
+    ),
+    (
+        "PK_simvastatin",
+        "CCC(C)(C)[C@H]1[C@]2(C)C[C@H](O)[C@@H](C=C3C=CC(=O)OC3=C2)C1",
+        "Simvastatin",
+    ),
+    (
+        "PK_erythromycin",
+        "CCC(=O)O[C@@H]1[C@@H](C)C(=O)O[C@H](CC)[C@@H](O)[C@H](C)C(=O)[C@H](C)C[C@@](C)(O)[C@@H](OC)[C@H](OC)C[C@@H](C)C(=O)[C@H](C)[C@@H](O[C@H]2C[N+](C)(C)[C@H](O)[C@H](C)O2)C=C1",
+        "Erythromycin",
     ),
 ];
 
