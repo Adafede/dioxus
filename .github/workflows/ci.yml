@@ -100,33 +100,6 @@ jobs:
           cargo check -p lotus-explore-rs --target wasm32-unknown-unknown --locked
           cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked
 
-  wasm-build:
-    name: WASM build (deploy artifact)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-        with: { targets: wasm32-unknown-unknown }
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-      - name: Install dioxus-cli
-        run: cargo install dioxus-cli --locked
-      - name: Fetch Ketcher (115 MB structure editor — gitignored)
-        if: hashFiles('apps/lotus-explore-rs/scripts/fetch-ketcher.sh') != ''
-        run: |
-          bash scripts/fetch-ketcher.sh
-        working-directory: apps/lotus-explore-rs
-        env:
-          KETCHER_VERSION: ${{ vars.KETCHER_VERSION || '3.17.0' }}
-      - name: Build all WASM apps
-        run: |
-          dx build --package json-count-rs --platform web --out-dir dist/json-count-rs --release
-          dx build --package mgf-precursor-erro-rs --platform web --out-dir dist/mgf-precursor-erro-rs --release
-          dx build --package lipid-selecto-rs --platform web --out-dir dist/lipid-selecto-rs --release
-          dx build --package lotus-explore-rs --platform web --out-dir dist/lotus-explore-rs --release
-          dx build --package smellfish-rs --platform web --out-dir dist/smellfish-rs --release
-
   supply-chain:
     name: Supply-chain
     runs-on: ubuntu-latest
