@@ -498,7 +498,7 @@ pub fn LotusDocumentHead() -> Element {
     let description = "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
     let scripts = vec![
         "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js".to_string(),
-        "https://cdn.jsdelivr.net/npm/citation-js/dist/citation.js".to_string(),
+        "https://cdn.jsdelivr.net/npm/citation-js@0.8.2/build/citation.min.js".to_string(),
         // Privacy-respecting analytics (async, no cookies, GDPR-compliant)
         "https://scripts.simpleanalyticscdn.com/latest.js".to_string(),
     ];

@@ -44,7 +44,7 @@ pub struct DocumentHeadProps {
     /// Light/dark theme colors for the `theme-color` meta tag.
     #[props(default)]
     pub theme_colors: Option<(&'static str, &'static str)>,
-    /// External JS URLs to load via `<script defer src="...">`.
+    /// External JS URLs to load via `<script async src="..." crossorigin>`.
     #[props(default)]
     pub scripts: Vec<String>,
     /// Inline CSS for a `<style>` tag in the head.
@@ -189,14 +189,26 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
             );
         }
 
-        // External scripts (async — `defer` is a no-op / harmful on dynamically
-        // injected scripts: browsers add deferred scripts to a list that is only
-        // flushed after the *parser* finishes, and by the time `use_hook` runs
-        // the document is already parsed, so the script never executes.)
+        // External scripts.
+        //
+        // `async` (not `defer`): `defer` is a no-op on dynamically injected
+        // scripts — browsers queue deferred scripts to run after the *parser*
+        // finishes, but by the time `use_hook` runs the document is already
+        // parsed, so the script never executes.  `async` loads and executes as
+        // soon as the file arrives; the inline bridge JS polls for
+        // `initRDKitModule` so ordering is handled gracefully.
+        //
+        // `crossorigin="anonymous"`: prevents `nosniff` MIME-type errors on CDN
+        // resources that send CORS headers.  Browsers also deduplicate
+        // duplicate `async` script `src` URLs naturally.
         for url in &scripts {
             doc.create_head_element(
                 "script",
-                &[("src", url.clone()), ("async", "".to_string())],
+                &[
+                    ("src", url.clone()),
+                    ("async", "".to_string()),
+                    ("crossorigin", "anonymous".to_string()),
+                ],
                 None,
             );
         }
@@ -206,9 +218,13 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
             doc.create_head_element("style", &[], Some(css.clone()));
         }
 
-        // Inline JavaScript
+        // Inline JavaScript — wrapped in an IIFE so `const`/`let` declarations
+        // don't leak into the global scope (which causes
+        // `SyntaxError: redeclaration` when the component re-renders or
+        // hot-reloads in dev mode and the hook runs again).
         if let Some(js) = &inline_script {
-            doc.create_head_element("script", &[], Some(js.clone()));
+            let wrapped = format!("(function(){{{js}}})();");
+            doc.create_head_element("script", &[], Some(wrapped));
         }
 
         // JSON-LD structured data

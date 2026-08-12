@@ -50,6 +50,7 @@
   }
 }
 
+@supports (media: (prefers-reduced-transparency: reduce)) {
 @media (prefers-reduced-transparency: reduce) {
   .sidebar,
   .main-content,
@@ -57,6 +58,7 @@
     backdrop-filter: none;
     background: var(--bg2);
   }
+}
 }
 
 @media (prefers-contrast: more) {

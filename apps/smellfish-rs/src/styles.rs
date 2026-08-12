@@ -65,10 +65,12 @@ pub const CSS: &str = r"
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--sans);
+  font-family: var(--sans), system-ui, sans-serif;
   font-size: var(--fs-body);
   line-height: 1.52;
   min-height: 100vh;
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -81,7 +83,7 @@ body {
   padding: 24px;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--sans);
+  font-family: var(--sans), system-ui, sans-serif;
 }
 
 .card, .panel {

@@ -163,10 +163,12 @@ img, svg, canvas, video {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--sans);
+  font-family: var(--sans), system-ui, sans-serif;
   font-size: var(--fs-body);
   line-height: 1.52;
   min-height: 100vh;
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -272,7 +274,7 @@ a:hover { text-decoration: underline; }
 /* ── Copy button (used next to QIDs, hashes, share URL, SPARQL queries) ─── */
 .copy-btn {
   margin-left: 6px;
-  font-family: var(--sans);
+  font-family: var(--sans), system-ui, sans-serif;
   font-weight: 500;
   letter-spacing: .02em;
   color: var(--text2);
@@ -341,6 +343,7 @@ a:hover { text-decoration: underline; }
   }
 }
 
+@supports (media: (prefers-reduced-data: reduce)) {
 @media (prefers-reduced-data: reduce) {
   body {
     background: var(--bg);
@@ -359,6 +362,7 @@ a:hover { text-decoration: underline; }
     backdrop-filter: none;
     background-image: none;
   }
+}
 }
 
 /* ── Large-screen refinements (≥ 1440 px) ───────────────────────────────── */

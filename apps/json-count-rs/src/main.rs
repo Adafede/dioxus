@@ -183,6 +183,19 @@ fn app() -> Element {
     };
 
     rsx! {
+        // Document head — replaces static index.html meta tags & styles
+        DocumentHead {
+            title: "JSON Non-Null Field Counter".to_string(),
+            theme_colors: Some(("#f6f8fb", "#10141b")),
+            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
+            inline_style: Some(
+                "body{font-family:var(--sans,system-ui, sans);-webkit-text-size-adjust:100%;\
+                 -moz-text-size-adjust:100%;text-size-adjust:100%;}\
+                 .skip-link:focus{top:0!important;outline:3px solid #0b5cab;outline-offset:2px}"
+                    .to_string()
+            ),
+        }
+
         div {
             style: StyleBuilder::new()
                 .property("min-height", "100vh")
@@ -192,7 +205,6 @@ fn app() -> Element {
                 .font_family(Typography::SANS)
                 .build(),
 
-            style { ".skip-link:focus {{ top: 0 !important; outline: 3px solid #0b5cab; outline-offset: 2px; }}" }
             skip_link {}
 
             main {

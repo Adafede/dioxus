@@ -9,6 +9,7 @@
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 use crate::chemical_class::ChemicalClass;
 use crate::format::LipidFormat;
@@ -147,6 +148,17 @@ pub fn app() -> Element {
     };
 
     rsx! {
+        DocumentHead {
+            title: "Lipid Selecto-rs".to_string(),
+            theme_colors: Some(("#f6f8fb", "#10141b")),
+            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
+            inline_style: Some(
+                ".skip-link:focus{top:0!important;outline:3px solid #0b5cab;outline-offset:2px}\
+                 -webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%"
+                    .to_string()
+            ),
+        }
+
         div {
             style: "min-height: 100vh; padding: 2rem 1rem 3rem; background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); color: #0f172a; font-family: ui-system, system-ui, sans-serif;",
             main { id: "main",

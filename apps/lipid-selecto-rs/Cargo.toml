@@ -14,6 +14,7 @@ chematic = { version = "=0.4.27", default-features = false, features = ["smiles"
 dioxus = { workspace = true }
 gloo-timers = { workspace = true }
 upload = { path = "../../crates/upload", version = "0.1" }
+ui = { path = "../../crates/ui", version = "0.1" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true }

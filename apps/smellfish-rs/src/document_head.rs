@@ -471,7 +471,10 @@ pub fn SmellfishDocumentHead() -> Element {
         natural-product originality with Ertl-style NP-likeness, LOTUS/PubChem evidence, \
         and dataset-derived scaffold and decoration motifs.";
 
-    let scripts = vec!["https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js".to_string()];
+    let scripts = vec![
+        "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js".to_string(),
+        "https://scripts.simpleanalyticscdn.com/latest.js".to_string(),
+    ];
 
     rsx! {
         DocumentHead {
