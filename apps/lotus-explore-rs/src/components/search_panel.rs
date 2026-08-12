@@ -396,7 +396,6 @@ fn button_base_style() -> String {
 
 fn search_panel_style() -> String {
     StyleBuilder::new()
-        .gap("12px")
         .font_size("var(--fs-0)")
         .display("flex")
         .flex_direction("column")
