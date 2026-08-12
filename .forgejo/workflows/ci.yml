@@ -34,7 +34,7 @@ jobs:
         uses: https://github.com/dtolnay/rust-toolchain@stable
 
       - name: Cache
-        uses: https://github.com/Swatinem/rust-cache@v2
+        uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
 
       - name: Check workspace (all targets)
         run: cargo check --workspace --all-targets --locked
@@ -61,7 +61,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Cache
-        uses: https://github.com/Swatinem/rust-cache@v2
+        uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
 
       - name: Check lotus-explore-rs for wasm32
         run: cargo check -p lotus-explore-rs --target wasm32-unknown-unknown --locked
@@ -78,7 +78,7 @@ jobs:
       - uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: https://github.com/Swatinem/rust-cache@v2
+      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   fmt:
