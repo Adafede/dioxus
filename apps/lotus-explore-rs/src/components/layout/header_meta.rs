@@ -10,6 +10,7 @@ use crate::features::explore::use_header_meta_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
+use crate::ui::style_constants::spacing;
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
@@ -21,10 +22,10 @@ fn hash_prefix(value: &str) -> &str {
 #[component]
 fn ResolvedTaxonMetaItem(locale: crate::i18n::Locale, qid: Arc<str>) -> Element {
     rsx! {
-        span { class: "meta-item",
-            span { class: "meta-key", "{t(locale, TextKey::ResolvedTaxon)}" }
-            span { class: "meta-sep", ":" }
-            span { class: "meta-val mono", "{qid}" }
+        span { style: meta_item_style(),
+            span { style: meta_key_style(), "{t(locale, TextKey::ResolvedTaxon)}" }
+            span { style: meta_separator_style(), ":" }
+            span { style: meta_value_monospace_style(), "{qid}" }
             CopyButton {
                 text: qid,
                 title: t(locale, TextKey::CopyTaxonQid),
@@ -37,10 +38,10 @@ fn ResolvedTaxonMetaItem(locale: crate::i18n::Locale, qid: Arc<str>) -> Element 
 #[component]
 fn QueryHashMetaItem(locale: crate::i18n::Locale, full_hash: Arc<str>) -> Element {
     rsx! {
-        span { class: "meta-item",
-            span { class: "meta-key", "{t(locale, TextKey::QueryHash)}" }
-            span { class: "meta-sep", ":" }
-            span { class: "meta-val mono", "{hash_prefix(&full_hash)}" }
+        span { style: meta_item_style(),
+            span { style: meta_key_style(), "{t(locale, TextKey::QueryHash)}" }
+            span { style: meta_separator_style(), ":" }
+            span { style: meta_value_monospace_style(), "{hash_prefix(&full_hash)}" }
             CopyButton {
                 text: full_hash,
                 title: t(locale, TextKey::CopyFullQueryHash),
@@ -53,10 +54,10 @@ fn QueryHashMetaItem(locale: crate::i18n::Locale, full_hash: Arc<str>) -> Elemen
 #[component]
 fn ResultHashMetaItem(locale: crate::i18n::Locale, full_hash: Arc<str>) -> Element {
     rsx! {
-        span { class: "meta-item",
-            span { class: "meta-key", "{t(locale, TextKey::ResultHash)}" }
-            span { class: "meta-sep", ":" }
-            span { class: "meta-val mono", "{hash_prefix(&full_hash)}" }
+        span { style: meta_item_style(),
+            span { style: meta_key_style(), "{t(locale, TextKey::ResultHash)}" }
+            span { style: meta_separator_style(), ":" }
+            span { style: meta_value_monospace_style(), "{hash_prefix(&full_hash)}" }
             CopyButton {
                 text: full_hash,
                 title: t(locale, TextKey::CopyFullResultHash),
@@ -143,7 +144,7 @@ fn page_header_meta_style() -> String {
         .flex_direction("row")
         .property("flex-wrap", "wrap")
         .align_items("center")
-        .gap("12px")
+        .gap(spacing::HEADER_META_GAP)
         .margin("10px 22px 0")
         .padding("10px 12px")
         .border("1px solid var(--panel-border)")
@@ -154,5 +155,42 @@ fn page_header_meta_style() -> String {
             "transition",
             "background .15s ease, border-color .15s ease, box-shadow .15s ease",
         )
+        .build()
+}
+
+fn meta_item_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("row")
+        .align_items("baseline")
+        .gap("2px")
+        .property("min-width", "0")
+        .build()
+}
+
+fn meta_key_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-micro)")
+        .property("white-space", "nowrap")
+        .property("flex-shrink", "0")
+        .build()
+}
+
+fn meta_separator_style() -> String {
+    StyleBuilder::new()
+        .property("white-space", "nowrap")
+        .property("flex-shrink", "0")
+        .build()
+}
+
+fn meta_value_monospace_style() -> String {
+    StyleBuilder::new()
+        .property("white-space", "nowrap")
+        .property("overflow", "hidden")
+        .property("text-overflow", "ellipsis")
+        .property("min-width", "0")
+        .property("max-width", "100%")
+        .property("font-family", "monospace")
+        .font_size("var(--fs-label)")
         .build()
 }

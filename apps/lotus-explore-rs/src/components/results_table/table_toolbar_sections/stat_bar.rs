@@ -5,6 +5,7 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::DatasetStats;
 use crate::state::use_results_context;
+use crate::ui::style_constants::{spacing, text, typography, StatStripe};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -15,7 +16,7 @@ fn StatBadge(
     secondary_label: Option<&'static str>,
     noun: CountNoun,
     plus: bool,
-    stripe_color: &'static str,
+    stripe: StatStripe,
 ) -> Element {
     let locale = crate::hooks::use_locale();
     let mut display_value = format_count(locale, value);
@@ -33,7 +34,7 @@ fn StatBadge(
         )
     });
     rsx! {
-        div { style: stat_badge_style(stripe_color),
+        div { style: stat_badge_style(stripe),
             div { style: stat_value_row_style(),
                 span { style: stat_value_style(), "{display_value}" }
                 if let Some(secondary_text) = secondary_inline.as_ref() {
@@ -71,7 +72,6 @@ pub fn StatBar() -> Element {
         div {
             role: "group",
             aria_label: "{t(locale, TextKey::DatasetStatistics)}",
-            class: "stat-bar",
             style: stat_bar_style(),
             StatBadge {
                 value: stats.n_compounds,
@@ -79,7 +79,7 @@ pub fn StatBar() -> Element {
                 secondary_label: None,
                 noun: CountNoun::Compound,
                 plus: false,
-                stripe_color: "var(--wd-compound-stripe)",
+                stripe: StatStripe::Compound,
             }
             StatBadge {
                 value: stats.n_taxa,
@@ -87,7 +87,7 @@ pub fn StatBar() -> Element {
                 secondary_label: None,
                 noun: CountNoun::Taxon,
                 plus: false,
-                stripe_color: "var(--wd-taxon-stripe)",
+                stripe: StatStripe::Taxon,
             }
             StatBadge {
                 value: stats.n_references,
@@ -95,7 +95,7 @@ pub fn StatBar() -> Element {
                 secondary_label: None,
                 noun: CountNoun::Reference,
                 plus: false,
-                stripe_color: "var(--wd-reference-stripe)",
+                stripe: StatStripe::Reference,
             }
             StatBadge {
                 value: entries_value,
@@ -103,7 +103,7 @@ pub fn StatBar() -> Element {
                 secondary_label: Some(t(locale, TextKey::Unique)),
                 noun: CountNoun::Entry,
                 plus: false,
-                stripe_color: "var(--wd-entries-stripe)",
+                stripe: StatStripe::Entries,
             }
         }
     }
@@ -129,17 +129,18 @@ pub fn CappedRowsNotice() -> Element {
     }
 }
 
-fn stat_badge_style(stripe_color: &str) -> String {
+fn stat_badge_style(stripe: StatStripe) -> String {
+    let stripe_color = stripe.as_color();
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
-        .gap("4px")
+        .gap(spacing::STAT_BADGE_GAP)
         .property("min-width", "0")
-        .padding("10px 12px")
+        .padding(spacing::STAT_BADGE_PAD)
         .border_radius("12px")
-        .border("1px solid var(--results-border)")
-        .background_color("var(--surface)")
-        .box_shadow("var(--shadow-xs)")
+        .property("border", &format!("1px solid {}", crate::ui::style_constants::borders::RESULTS_BORDER))
+        .background_color(crate::ui::style_constants::backgrounds::SURFACE)
+        .box_shadow(crate::ui::style_constants::shadows::SHADOW_XS)
         .property("position", "relative")
         .property("overflow", "hidden")
         .property("flex", "1 1 0")
@@ -149,22 +150,22 @@ fn stat_badge_style(stripe_color: &str) -> String {
 
 fn stat_value_style() -> String {
     StyleBuilder::new()
-        .font_size("var(--fs-stat)")
-        .font_weight("800")
-        .color("var(--text)")
+        .font_size(typography::FONT_SIZE_STAT)
+        .font_weight(typography::FONT_WEIGHT_BOLD)
+        .color(text::PRIMARY)
         .property("font-variant-numeric", "tabular-nums")
-        .property("letter-spacing", "-0.02em")
+        .property("letter-spacing", typography::LETTER_SPACING_STAT)
         .property("min-width", "0")
         .property("flex", "0 1 auto")
-        .property("line-height", "1.2")
+        .property("line-height", typography::LINE_HEIGHT_STAT)
         .build()
 }
 
 fn stat_secondary_style() -> String {
     StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .font_weight("700")
-        .color("var(--text)")
+        .font_size(typography::FONT_SIZE_0)
+        .font_weight(typography::FONT_WEIGHT_SEMIBOLD)
+        .color(text::PRIMARY)
         .property("font-variant-numeric", "tabular-nums")
         .property("min-width", "0")
         .property("max-width", "100%")
@@ -177,7 +178,7 @@ fn stat_bar_style() -> String {
     StyleBuilder::new()
         .display("grid")
         .property("grid-template-columns", "repeat(4, minmax(0, 1fr))")
-        .gap("10px")
+        .gap(spacing::STAT_BAR_GAP)
         .align_items("stretch")
         .property("width", "100%")
         .property("min-width", "0")
@@ -189,7 +190,7 @@ fn stat_value_row_style() -> String {
         .display("flex")
         .property("flex-wrap", "wrap")
         .align_items("baseline")
-        .gap("8px")
+        .gap(spacing::STAT_VALUE_GAP)
         .property("min-width", "0")
         .property("width", "100%")
         .justify_content("center")
@@ -198,11 +199,11 @@ fn stat_value_row_style() -> String {
 
 fn stat_label_style() -> String {
     StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .color("var(--text2)")
+        .font_size(typography::FONT_SIZE_0)
+        .color(text::SECONDARY)
         .property("text-transform", "uppercase")
-        .property("letter-spacing", "0.08em")
-        .font_weight("700")
+        .property("letter-spacing", typography::LETTER_SPACING_TITLE)
+        .font_weight(typography::FONT_WEIGHT_SEMIBOLD)
         .property("width", "100%")
         .text_align("center")
         .build()
@@ -210,7 +211,7 @@ fn stat_label_style() -> String {
 
 fn notice_value_style() -> String {
     StyleBuilder::new()
-        .color("var(--text)")
+        .color(text::PRIMARY)
         .property("word-break", "break-word")
         .property("line-height", "1.4")
         .build()

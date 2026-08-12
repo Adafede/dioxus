@@ -6,8 +6,13 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
+use crate::ui::style_constants::{spacing, transitions};
 use dioxus::prelude::*;
 use ui::prelude::*;
+
+// Chevron rotation angles (degrees)
+const CHEVRON_ANGLE_CLOSED: &str = "0deg";
+const CHEVRON_ANGLE_OPEN: &str = "90deg";
 
 #[component]
 pub fn QueryPanel() -> Element {
@@ -53,11 +58,7 @@ pub fn QueryPanel() -> Element {
                     summary {
                         style: query_summary_style(),
                         span {
-                            style: if *panel_open.read() {
-                                query_summary_open_chevron_style()
-                            } else {
-                                query_summary_chevron_style()
-                            },
+                            style: query_summary_chevron_style(*panel_open.read()),
                             "▶"
                         }
                         "{t(locale, TextKey::SparqlQuery)}"
@@ -80,7 +81,7 @@ pub fn QueryPanel() -> Element {
 fn query_summary_style() -> String {
     StyleBuilder::new()
         .cursor("pointer")
-        .padding("8px 14px 8px 32px")
+        .padding(spacing::QUERY_SUMMARY_PADDING)
         .font_size("var(--fs-0)")
         .color("var(--text2)")
         .property("user-select", "none")
@@ -96,29 +97,24 @@ fn query_summary_style() -> String {
         .build()
 }
 
-fn query_summary_chevron_style() -> String {
-    StyleBuilder::new()
-        .property("position", "absolute")
-        .property("left", "12px")
-        .property("top", "50%")
-        .property("transform", "translateY(-50%) rotate(0deg)")
-        .property("transition", "transform .2s ease")
-        .property("font-size", "14px")
-        .property("line-height", "1")
-        .color("var(--text3)")
-        .build()
-}
+fn query_summary_chevron_style(is_open: bool) -> String {
+    let (rotation_deg, color) = if is_open {
+        ("90deg", "var(--accent)")
+    } else {
+        ("0deg", "var(--text3)")
+    };
 
-fn query_summary_open_chevron_style() -> String {
+    let transform = format!("translateY(-50%) rotate({})", rotation_deg);
+    
     StyleBuilder::new()
         .property("position", "absolute")
         .property("left", "12px")
         .property("top", "50%")
-        .property("transform", "translateY(-50%) rotate(90deg)")
         .property("transition", "transform .2s ease")
         .property("font-size", "14px")
         .property("line-height", "1")
-        .color("var(--accent)")
+        .color(color)
+        .property("transform", &transform)
         .build()
 }
 
