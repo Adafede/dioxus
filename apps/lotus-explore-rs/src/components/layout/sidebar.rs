@@ -35,6 +35,7 @@ pub fn Sidebar() -> Element {
             class: if mobile_filters_open { "mobile-open" } else { "mobile-closed" },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             button {
+                class: "filters-toggle",
                 style: filters_toggle_style(),
                 r#type: "button",
                 aria_controls: SEARCH_PANEL_BODY_ID,
