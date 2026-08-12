@@ -1,22 +1,30 @@
 # lotus
 
-LOTUS domain models, SPARQL query construction, and result parsing for
-Wikidata/QLever --- the single source of truth consumed by `lotus-api` and
-`lotus-explore-rs`.
+[![AGPL-3.0 license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
+[![Coverage](https://img.shields.io/badge/coverage-35%25-orange)](https://github.com/adafede/dioxus/blob/main/crates/lotus/src/queries/tests.rs)
 
-## What belongs here
+## lotus — LOTUS domain & SPARQL shared core
 
-- **Domain types** (`models`): `SearchCriteria`, `CompoundEntry`,
-  `DatasetStats`, `TaxonMatch`, sort state, Wikidata constants.
-- **Query builders** (`queries`): pure functions that produce SPARQL strings. No
-  I/O, no network.
-- **Transport** (`transport`): platform-agnostic HTTP POST to any SPARQL/QLever
-  endpoint with retries, content negotiation, and gateway-error detection.
-- **LOTUS wrappers** (`sparql`): thin wrappers around `transport` that target
-  the default QLever Wikidata endpoint and parse CSV results into typed rows.
+The single source of truth for everything LOTUS/Wikidata/QLever across the
+`dioxus-apps` workspace.  Both the native `lotus-api` service and the WASM
+`lotus-explore-rs` explorer — and any future app — consume this crate rather
+than constructing queries or parsing CSV results themselves.
 
-## What does NOT belong here
+### Module map
 
-- File upload or blob streaming → [`upload` crate](../../upload)
-- UI components or styling → [`ui` crate](../../ui)
-- App routing, state machines, or i18n → each app's own code
+| Module      | Responsibility                                                |
+|-------------|--------------------------------------------------------------|
+| transport   | Platform-agnostic SPARQL-over-HTTP: retries, content-negotiation, gateway-error detection. Accepts any endpoint URL. |
+| models      | LOTUS domain types: `SearchCriteria`, `CompoundEntry`, `DatasetStats`, `TaxonMatch`, sort state, element constants. |
+| queries     | SPARQL query-string builders — `query_all_compounds`, `query_sachem`, `query_with_server_filters`, etc. No I/O. |
+| sparql      | LOTUS-specific wrappers combining transport + models: execute against the default QLever/Wikidata endpoint, parse CSV result sets into typed rows. |
+
+### Design non-goals
+
+- File upload, blob streaming, or progress reporting → see the `upload` crate.
+- UI components or styling → see the `ui` crate.
+- Application routing, Dioxus state machines, or i18n → these live in each app.
+
+## License
+
+`AGPL-3.0-only` — see [`LICENSE`](https://www.gnu.org/licenses/agpl-3.0.html) for details.

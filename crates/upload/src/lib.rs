@@ -12,8 +12,8 @@
 //!   SMILES, CSV).
 //! - **`ProgressThrottler`** — byte+time throttled progress callbacks, shared by
 //!   all upload apps.
-//! - **`extract_blob_from_form_data`** / **`extract_blob_from_web_file`** —
-//!   unified file-input / drag-drop extraction, eliminating the identical inline
+//! - **`extract_blob_from_file_data`** — unified file-input / drag-drop
+//!   extraction over `&[FileData]`, eliminating the identical inline
 //!   boilerplate every app previously copied.
 //!
 //! - **Download helpers** — `download_text`, `download_text_as_blob`,
