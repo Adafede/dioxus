@@ -122,7 +122,7 @@ img, svg, canvas, video {
     --text3:     #a7b4c7;
     --accent:    #8cbcff;
     --accent2:   #5e98f3;
-    --btn-primary-bg: #2f6fed;
+    --btn-primary-bg: #0b5cab;
     --btn-primary-hover-bg: #285fcc;
     --green:     #4cc38a;
     --red:       #ff8a80;
