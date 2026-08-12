@@ -40,6 +40,10 @@ const TABLET_768_AND_BELOW: &str = r"/* Responsive breakpoint pack extracted fro
     padding-right:max(18px, env(safe-area-inset-right));
   }
   .page-header-meta { margin-left:18px; margin-right:18px; }
+  .page-header-meta .meta-item {
+    flex-wrap: wrap;
+    gap: 6px 4px;
+  }
   .notice       { margin-left:18px; margin-right:18px; }
   .draw-wrap { padding-left:18px; padding-right:18px; }
   .ketcher-panel { margin-left:0; margin-right:0; }
@@ -122,6 +126,18 @@ const PHONE_480: &str = r"
     margin-left:12px;
     margin-right:12px;
     font-size: var(--fs-label);
+    flex-direction: column;
+    gap: 8px;
+  }
+  .page-header-meta .meta-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+  }
+  .page-header-meta .meta-item > span:last-child {
+    align-self: flex-end;
   }
   .draw-wrap { padding-left:12px; padding-right:12px; }
   .notice, .ketcher-panel { margin-left:12px; margin-right:12px; }
