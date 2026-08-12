@@ -237,7 +237,7 @@ const SEARCH_PANEL: &str = r#"
 /* Search panel shell */
 .search-panel { padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:0 0 auto; box-sizing:border-box; min-width:240px; overflow-y:auto; max-height:calc(100vh - 200px); margin-top:auto; }
 .search-panel-body { display:flex; flex-direction:column; gap:12px; }
-.filters-toggle { display:flex; }
+.filters-toggle { display:none; }
 .sidebar-logo-wrap { padding:6px 8px 8px; display:flex; justify-content:center; border-top:1px solid var(--border); margin-top:auto; }
 .view-switch { margin-top: 10px; display: flex; gap: 8px; }
 .view-switch .btn { font-weight: 700; }

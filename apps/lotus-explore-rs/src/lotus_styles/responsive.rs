@@ -168,8 +168,8 @@ const PHONE_480: &str = r"
     cursor:pointer;
   }
   .sidebar-logo-wrap { border-top: none; margin-top: 0; }
-  .sidebar.mobile-closed .search-panel-body { display:none !important; }
-  .sidebar.mobile-open .search-panel-body { display:flex !important; }
+  .sidebar.mobile-closed .search-panel .search-panel-body { display:none !important; }
+  .sidebar.mobile-open .search-panel .search-panel-body { display:flex !important; }
 
   .page-title {
     font-size: var(--fs-4);
