@@ -69,6 +69,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
 
 fn compound_cell_style() -> String {
     StyleBuilder::new()
+        .padding("8px 12px")
         .border_radius("10px")
         .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
         .property(

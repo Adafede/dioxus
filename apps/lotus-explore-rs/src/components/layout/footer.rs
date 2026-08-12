@@ -219,5 +219,10 @@ fn footer_link_style(color: &str) -> String {
         .color(color)
         .text_decoration("none")
         .font_weight("700")
+        .border("1px solid var(--border)")
+        .padding("5px 10px")
+        .border_radius("999px")
+        .property("display", "inline-block")
+        .property("transition", "border-color .15s ease, background .15s ease")
         .build()
 }

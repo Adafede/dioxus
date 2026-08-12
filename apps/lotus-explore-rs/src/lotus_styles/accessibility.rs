@@ -3,24 +3,9 @@
 
 //! Lotus CSS pack: accessibility.
 
-pub const CSS: &str = r###"/* Accessibility-specific styles and media queries.
+const SKIP_LINK: &str = r###"/* Accessibility-specific styles and media queries.
    Extracted from style.css for maintainability and cacheable separately. */
 
-/* ── Skip link (WCAG 2.4.1 — Bypass Blocks) ─────────────────────────────── */
-.skip-link {
-  position: absolute;
-  top: -100%;
-  left: 0.5rem;
-  z-index: 9999;
-  padding: 0.5rem 1rem;
-  background: transparent;
-  color: var(--text);
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 0 0 4px 4px;
-  text-decoration: none;
-  transition: top 0.1s;
-}
 .skip-link:focus {
   top: 0;
   outline: 2px solid var(--text);
@@ -29,7 +14,9 @@ pub const CSS: &str = r###"/* Accessibility-specific styles and media queries.
 .skip-link:hover {
   text-decoration: underline;
 }
+"###;
 
+const REDUCED_MOTION: &str = r###"
 @media (prefers-reduced-motion: reduce) {
   .sidebar::before,
   .page-header::before {
@@ -54,7 +41,9 @@ pub const CSS: &str = r###"/* Accessibility-specific styles and media queries.
     backdrop-filter: none;
   }
 }
+"###;
 
+const REDUCED_TRANSPARENCY: &str = r###"
 @media (prefers-reduced-transparency: reduce) {
   .sidebar,
   .main-content,
@@ -63,7 +52,9 @@ pub const CSS: &str = r###"/* Accessibility-specific styles and media queries.
     background: var(--bg2);
   }
 }
+"###;
 
+const HIGH_CONTRAST: &str = r###"
 @media (prefers-contrast: more) {
   :root {
     --border: #7a879a;
@@ -74,8 +65,7 @@ pub const CSS: &str = r###"/* Accessibility-specific styles and media queries.
   .notice,
   .query-panel,
   .table-scroll,
-  .ketcher-panel,
-  .curation-card {
+  .ketcher-panel {
     border-width: 2px;
     box-shadow: none;
   }
@@ -97,7 +87,9 @@ pub const CSS: &str = r###"/* Accessibility-specific styles and media queries.
     color: var(--text);
   }
 }
+"###;
 
+const FORCED_COLORS: &str = r###"
 @media (forced-colors: active) {
   .btn,
   .search-btn,
@@ -122,5 +114,15 @@ pub const CSS: &str = r###"/* Accessibility-specific styles and media queries.
     outline-offset: 2px;
   }
 }
-
 "###;
+
+pub fn css() -> String {
+    [
+        SKIP_LINK,
+        REDUCED_MOTION,
+        REDUCED_TRANSPARENCY,
+        HIGH_CONTRAST,
+        FORCED_COLORS,
+    ]
+    .join("\n\n")
+}

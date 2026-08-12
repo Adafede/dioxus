@@ -11,19 +11,13 @@ pub mod layout_shell;
 pub mod responsive;
 
 pub fn bundled_lotus_styles() -> String {
-    let base_css = base::CSS
-        .lines()
-        .filter(|line| !line.trim_start().starts_with("@import url("))
-        .collect::<Vec<_>>()
-        .join("\n");
-
     [
-        base_css,
-        accessibility::CSS.to_string(),
-        curation::CSS.to_string(),
-        form_controls::CSS.to_string(),
-        layout_shell::CSS.to_string(),
-        responsive::CSS.to_string(),
+        base::css(),
+        accessibility::css(),
+        curation::css(),
+        form_controls::css(),
+        layout_shell::css(),
+        responsive::css(),
     ]
     .join("\n\n")
 }

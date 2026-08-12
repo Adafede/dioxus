@@ -14,10 +14,11 @@ use crate::i18n::{
     placeholder_taxon_optional, t,
 };
 use dioxus::prelude::*;
+use std::sync::Arc;
+use ui::prelude::*;
 
 use crate::components::copy_button::CopyButton;
 use crate::features::explore::absolute_share_url;
-use std::sync::Arc;
 
 #[component]
 pub fn ShareBar(locale: Locale, share: Arc<str>) -> Element {
@@ -76,9 +77,13 @@ mod tests {
 #[component]
 pub fn StatusNotice(locale: Locale, message: Arc<str>) -> Element {
     rsx! {
-        div { class: "notice notice-info", role: "status",
-            span { class: "notice-label", "{t(locale, TextKey::Notice)}" }
-            span { class: "notice-value", "{message}" }
+        NoticeBar {
+            label: t(locale, TextKey::Notice).to_string(),
+            tone: NoticeTone::Info,
+            role: "status",
+            aria_live: "polite",
+            margin: "0",
+            span { style: curation_notice_value_style(), "{message}" }
         }
     }
 }
@@ -92,9 +97,9 @@ pub fn AddRowCard(
     on_load_examples: EventHandler<()>,
 ) -> Element {
     rsx! {
-        div { class: "curation-card",
+        div { style: curation_card_style(),
             h3 { "{heading_add_one_row(locale)}" }
-            div { class: "curation-form-grid",
+            div { style: curation_form_grid_style(),
                 label { class: "form-label", r#for: "curation-name-input",
                     "{placeholder_molecule_name(locale)}"
                 }
@@ -144,7 +149,7 @@ pub fn AddRowCard(
                     oninput: move |e| form.doi.set(e.value()),
                 }
             }
-            div { class: "curation-actions",
+            div { style: curation_actions_style(false),
                 button {
                     class: "btn btn-sm btn-primary",
                     r#type: "button",
@@ -174,13 +179,14 @@ pub fn TsvImportCard(
     on_import_error: EventHandler<String>,
 ) -> Element {
     rsx! {
-        div { class: "curation-card",
+        div { style: curation_card_style(),
             h3 { "{heading_tsv_import(locale)}" }
-            p { class: "curation-hint", "{hint_expected_tsv_headers(locale)}" }
+            p { style: curation_hint_style(), "{hint_expected_tsv_headers(locale)}" }
             label { class: "form-label", r#for: "curation-tsv-input", "TSV" }
             textarea {
                 id: "curation-tsv-input",
-                class: "form-textarea curation-tsv",
+                class: "form-textarea mono",
+                style: curation_textarea_style("130px"),
                 aria_describedby: "curation-tsv-hint",
                 value: "{tsv_input}",
                 oninput: move |e| tsv_input.set(e.value()),
@@ -188,7 +194,7 @@ pub fn TsvImportCard(
             p { id: "curation-tsv-hint", class: "sr-only",
                 "{hint_expected_tsv_headers(locale)}"
             }
-            div { class: "curation-actions",
+            div { style: curation_actions_style(false),
                 button {
                     class: "btn btn-sm",
                     r#type: "button",
@@ -198,6 +204,7 @@ pub fn TsvImportCard(
                 }
                 input {
                     class: "curation-file-input",
+                    style: curation_file_input_style(),
                     aria_label: "TSV file upload",
                     r#type: "file",
                     accept: ".tsv,text/tab-separated-values,text/plain",
@@ -227,9 +234,11 @@ pub fn QueueRowsCard(
     processing: bool,
     on_process: EventHandler<()>,
 ) -> Element {
+    let rows_snapshot = rows.read().clone();
+
     rsx! {
-        div { class: "curation-card",
-            div { class: "curation-actions curation-space-between",
+        div { style: curation_card_style(),
+            div { style: curation_actions_style(true),
                 h3 { "{heading_queued_rows(locale)}" }
                 button {
                     class: "btn btn-sm btn-primary",
@@ -245,25 +254,27 @@ pub fn QueueRowsCard(
             }
             div {
                 class: "curation-table-scroll",
+                style: curation_table_scroll_style(),
                 role: "region",
                 tabindex: "0",
                 aria_label: "{heading_queued_rows(locale)}",
                 table {
                     class: "curation-table curation-queue-table",
+                    style: queue_table_style(),
                     thead {
                         tr {
-                            th { "{col_action(locale)}" }
-                            th { "#" }
+                            th { style: queue_action_col_style(), "{col_action(locale)}" }
+                            th { style: queue_index_col_style(), "#" }
                             th { "{col_name(locale)}" }
-                            th { "SMILES" }
+                            th { style: queue_smiles_col_style(), "SMILES" }
                             th { "{t(locale, TextKey::TaxonCol)}" }
                             th { "DOI" }
                         }
                     }
                     tbody {
-                        for (idx, row) in rows.read().iter().enumerate() {
-                            tr {
-                                td {
+                        for (idx, row) in rows_snapshot.iter().enumerate() {
+                            tr { style: row_stripe_style(idx),
+                                td { style: queue_action_col_style(),
                                     button {
                                         class: "btn btn-xs",
                                         r#type: "button",
@@ -275,9 +286,9 @@ pub fn QueueRowsCard(
                                         "{button_remove(locale)}"
                                     }
                                 }
-                                td { "{idx + 1}" }
+                                td { style: queue_index_col_style(), "{idx + 1}" }
                                 td { "{row.name}" }
-                                td { class: "mono curation-cell-wrap", "{row.smiles}" }
+                                td { style: queue_smiles_col_style(), class: "mono", "{row.smiles}" }
                                 td { "{row.taxon.as_deref().unwrap_or(\"\")}" }
                                 td { class: "mono", "{row.doi.as_deref().unwrap_or(\"\")}" }
                             }
@@ -306,11 +317,11 @@ pub fn QuickStatementsCard(
     let qs_main_link = build_qs_dev_link(&qs_ref.main);
 
     rsx! {
-        div { class: "curation-card",
+        div { style: curation_card_style(),
             if !qs_ref.dependencies.is_empty() {
-                p { class: "curation-hint", "{msg_two_step_hint(locale)}" }
-                p { class: "curation-hint", "{msg_delay_advice(locale)}" }
-                p { class: "curation-hint",
+                p { style: curation_hint_style(), "{msg_two_step_hint(locale)}" }
+                p { style: curation_hint_style(), "{msg_delay_advice(locale)}" }
+                p { style: curation_hint_style(),
                     a {
                         href: "{qs_dependency_link}",
                         target: "_blank",
@@ -319,7 +330,7 @@ pub fn QuickStatementsCard(
                     }
                     " - {curation_qs_dev_prereq_hint(locale)}"
                 }
-                div { class: "curation-actions curation-space-between",
+                div { style: curation_actions_style(true),
                     h3 { "{heading_quickstatements_dependencies(locale)}" }
                     CopyButton {
                         text: qs_ref.dependencies.clone(),
@@ -327,7 +338,8 @@ pub fn QuickStatementsCard(
                     }
                 }
                 textarea {
-                    class: "form-textarea curation-qs",
+                    class: "form-textarea mono",
+                    style: curation_textarea_style("220px"),
                     aria_label: "{heading_quickstatements_dependencies(locale)}",
                     readonly: true,
                     value: "{qs_ref.dependencies}",
@@ -342,7 +354,7 @@ pub fn QuickStatementsCard(
             }
 
             if !awaiting_second_pass && !qs_ref.main.is_empty() {
-                p { class: "curation-hint",
+                p { style: curation_hint_style(),
                     a {
                         href: "{qs_main_link}",
                         target: "_blank",
@@ -351,7 +363,7 @@ pub fn QuickStatementsCard(
                     }
                     " - {curation_qs_dev_main_hint(locale)}"
                 }
-                div { class: "curation-actions curation-space-between",
+                div { style: curation_actions_style(true),
                     h3 { "{heading_quickstatements(locale)}" }
                     CopyButton {
                         text: qs_ref.main.clone(),
@@ -359,7 +371,8 @@ pub fn QuickStatementsCard(
                     }
                 }
                 textarea {
-                    class: "form-textarea curation-qs",
+                    class: "form-textarea mono",
+                    style: curation_textarea_style("220px"),
                     aria_label: "{heading_quickstatements(locale)}",
                     readonly: true,
                     value: "{qs_ref.main}",
@@ -367,4 +380,126 @@ pub fn QuickStatementsCard(
             }
         }
     }
+}
+
+fn curation_card_style() -> String {
+    StyleBuilder::new()
+        .property("display", "flex")
+        .property("flex-direction", "column")
+        .property("gap", "10px")
+        .property("padding", "12px")
+        .property("border", "1px solid var(--panel-border)")
+        .property("border-radius", "var(--radius)")
+        .property("background", "var(--panel-bg-soft)")
+        .property("box-shadow", "var(--panel-shadow)")
+        .build()
+}
+
+fn curation_form_grid_style() -> String {
+    StyleBuilder::new()
+        .property("display", "grid")
+        .property("grid-template-columns", "1fr")
+        .property("gap", "8px")
+        .build()
+}
+
+fn curation_actions_style(space_between: bool) -> String {
+    let mut style = StyleBuilder::new()
+        .property("display", "flex")
+        .property("flex-wrap", "wrap")
+        .property("gap", "8px")
+        .property("align-items", "center");
+    if space_between {
+        style = style.property("justify-content", "space-between");
+    }
+    style.build()
+}
+
+fn curation_hint_style() -> String {
+    StyleBuilder::new()
+        .property("font-size", "var(--fs-0)")
+        .property("color", "var(--text)")
+        .build()
+}
+
+fn curation_textarea_style(min_height: &str) -> String {
+    StyleBuilder::new()
+        .property("min-height", min_height)
+        .property("font-family", "var(--mono)")
+        .property("border-radius", "8px")
+        .property("resize", "none")
+        .build()
+}
+
+fn curation_file_input_style() -> String {
+    StyleBuilder::new()
+        .property("color", "var(--text2)")
+        .property("max-width", "100%")
+        .property("font-size", "var(--fs-0)")
+        .build()
+}
+
+fn curation_notice_value_style() -> String {
+    StyleBuilder::new()
+        .color("var(--text)")
+        .property("word-break", "break-word")
+        .property("line-height", "1.4")
+        .build()
+}
+
+fn curation_table_scroll_style() -> String {
+    StyleBuilder::new()
+        .property("width", "100%")
+        .property("min-width", "0")
+        .property("overflow-x", "auto")
+        .property("overflow-y", "visible")
+        .property("border", "1px solid var(--panel-border)")
+        .property("background", "var(--panel-bg-soft)")
+        .property("box-shadow", "var(--panel-shadow)")
+        .property(
+            "transition",
+            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
+        )
+        .build()
+}
+
+fn queue_table_style() -> String {
+    StyleBuilder::new()
+        .property("width", "100%")
+        .property("border-collapse", "collapse")
+        .property("font-size", "var(--fs-ui)")
+        .property("table-layout", "auto")
+        .property("word-break", "break-word")
+        .build()
+}
+
+fn queue_action_col_style() -> String {
+    StyleBuilder::new()
+        .property("width", "110px")
+        .property("min-width", "110px")
+        .build()
+}
+
+fn queue_index_col_style() -> String {
+    StyleBuilder::new().property("min-width", "3ch").build()
+}
+
+fn queue_smiles_col_style() -> String {
+    StyleBuilder::new()
+        .property("min-width", "220px")
+        .property("max-width", "320px")
+        .build()
+}
+
+fn row_stripe_style(idx: usize) -> String {
+    let background = if idx % 2 == 0 {
+        "color-mix(in srgb, var(--surface) 94%, transparent)"
+    } else {
+        "color-mix(in srgb, var(--surface) 88%, transparent)"
+    };
+
+    StyleBuilder::new()
+        .property("transition", "background .14s ease")
+        .property("--row-bg", background)
+        .build()
 }

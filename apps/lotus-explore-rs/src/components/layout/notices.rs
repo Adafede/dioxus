@@ -31,8 +31,11 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
         return rsx! {};
     };
     rsx! {
-        div { role: "status", style: share_bar_style(),
-            span { style: share_label_style(), "{t(locale, TextKey::Share)}" }
+        NoticeBar {
+            label: t(locale, TextKey::Share).to_string(),
+            tone: NoticeTone::Info,
+            role: "status",
+            aria_live: "polite",
             input {
                 id: share_input_id,
                 r#type: "text",
@@ -62,8 +65,11 @@ pub fn TaxonNotice() -> Element {
     };
     let text = format_taxon_warning(locale, warning);
     rsx! {
-        div { role: "status", style: notice_base_style(),
-            span { style: notice_label_style(), "{t(locale, TextKey::Notice)}" }
+        NoticeBar {
+            label: t(locale, TextKey::Notice).to_string(),
+            tone: NoticeTone::Warning,
+            role: "status",
+            aria_live: "polite",
             span { style: notice_value_style(), "{text}" }
         }
     }
@@ -88,8 +94,11 @@ pub fn ErrorNotice() -> Element {
     let kind: ErrorKind = domain_err.kind();
     let msg = format_domain_error(locale, domain_err);
     rsx! {
-        div { role: "alert", style: notice_base_style(),
-            span { style: notice_label_style(), "{t(locale, TextKey::Error)}" }
+        NoticeBar {
+            label: t(locale, TextKey::Error).to_string(),
+            tone: NoticeTone::Danger,
+            role: "alert",
+            aria_live: "assertive",
             span { style: notice_value_style(), "{msg}" }
             span { style: notice_value_style(), "{error_hint_text(locale, kind)}" }
             if recovery::should_show_retry_button(domain_err) && !*is_loading.read() {
@@ -111,105 +120,11 @@ pub fn ErrorNotice() -> Element {
     }
 }
 
-fn notice_base_style() -> String {
-    StyleBuilder::new()
-        .margin("10px 24px 0")
-        .padding("9px 12px")
-        .display("flex")
-        .align_items("center")
-        .gap("12px")
-        .border_radius("var(--radius)")
-        .font_size("var(--fs-0)")
-        .border("1px solid var(--panel-border)")
-        .background_color("var(--panel-bg-soft)")
-        .box_shadow("var(--panel-shadow)")
-        .property(
-            "transition",
-            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
-        )
-        .build()
-}
-
-fn notice_label_style() -> String {
-    StyleBuilder::new()
-        .display("inline-flex")
-        .align_items("center")
-        .property("text-transform", "uppercase")
-        .property("letter-spacing", "1px")
-        .font_size("var(--fs-label)")
-        .font_weight("700")
-        .property("line-height", "1.4")
-        .padding("2px 6px")
-        .border_radius("3px")
-        .property("flex-shrink", "0")
-        .build()
-}
-
 fn notice_value_style() -> String {
     StyleBuilder::new()
-        .property("flex", "1")
         .color("var(--text)")
         .property("word-break", "break-word")
         .property("line-height", "1.4")
-        .build()
-}
-
-fn notice_dismiss_style() -> String {
-    StyleBuilder::new()
-        .property("margin-left", "auto")
-        .background_color("transparent")
-        .border("0")
-        .color("inherit")
-        .cursor("pointer")
-        .property("font-size", "18px")
-        .property("line-height", "1")
-        .padding("0 4px")
-        .property("opacity", ".7")
-        .build()
-}
-
-fn share_bar_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .property("flex-wrap", "wrap")
-        .align_items("center")
-        .gap("6px 10px")
-        .margin("10px 24px 0")
-        .padding("7px 12px")
-        .border("1px solid var(--panel-border)")
-        .border_radius("12px")
-        .background_color("color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface))")
-        .box_shadow("var(--panel-shadow)")
-        .font_size("var(--fs-0)")
-        .property(
-            "transition",
-            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
-        )
-        .build()
-}
-
-fn share_label_style() -> String {
-    StyleBuilder::new()
-        .property("text-transform", "uppercase")
-        .property("letter-spacing", "0.08em")
-        .font_weight("700")
-        .font_size("var(--fs-0)")
-        .color("var(--text2)")
-        .property("flex-shrink", "0")
-        .property("white-space", "nowrap")
-        .build()
-}
-
-fn share_input_style() -> String {
-    StyleBuilder::new()
-        .property("flex", "1")
-        .property("min-width", "min(200px, 100%)")
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
-        .border_radius("var(--radius-sm)")
-        .color("var(--text)")
-        .padding("4px 8px")
-        .font_size("var(--fs-0)")
         .build()
 }
 
@@ -233,5 +148,32 @@ fn button_base_style() -> String {
             "transition",
             "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
         )
+        .build()
+}
+
+fn notice_dismiss_style() -> String {
+    StyleBuilder::new()
+        .property("margin-left", "auto")
+        .background_color("transparent")
+        .border("0")
+        .color("inherit")
+        .cursor("pointer")
+        .property("font-size", "18px")
+        .property("line-height", "1")
+        .padding("0 4px")
+        .property("opacity", ".7")
+        .build()
+}
+
+fn share_input_style() -> String {
+    StyleBuilder::new()
+        .property("flex", "1 1 200px")
+        .property("min-width", "min(200px, 100%)")
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .border_radius("var(--radius-sm)")
+        .color("var(--text)")
+        .padding("4px 8px")
+        .font_size("var(--fs-0)")
         .build()
 }

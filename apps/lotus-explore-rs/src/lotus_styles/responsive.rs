@@ -3,7 +3,7 @@
 
 //! Lotus CSS pack: responsive.
 
-pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.css for maintainability. */
+const TABLET_768_AND_BELOW: &str = r###"/* Responsive breakpoint pack extracted from style.css for maintainability. */
 
 /* Import enhanced responsive typography tokens */
 :root {
@@ -90,7 +90,9 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
   .btn, .btn-sm { font-size: var(--fs-0); }
   .stat-badge { font-size: var(--fs-stat); }
 }
+"###;
 
+const PHONE_480: &str = r###"
 @media (width <=480px) {
   :root {
     /* Phone-specific responsive sizing */
@@ -205,7 +207,6 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
     gap: 8px;
     padding: 10px 12px;
   }
-  .curation-scroll-hint { display: inline-flex; }
   .curation-table-scroll { border-radius: 8px; }
   .curation-results-table { min-width: 900px; }
 
@@ -329,7 +330,9 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
 
    .ketcher-iframe { height:min(62vh, 420px); min-height:300px; }
 }
+"###;
 
+const PHONE_430_AND_360: &str = r###"
 @media (width <=430px) {
   :root {
     /* Extra small screen (< 430px) optimized sizing */
@@ -598,7 +601,9 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
      background: color-mix(in srgb, var(--surface) 86%, transparent);
    }
 }
+"###;
 
+const TABLET_769_1023: &str = r###"
 /* Medium screens (768px - 1023px) - tablet optimization */
 @media (width >= 769px) and (width <= 1023px) {
   :root {
@@ -666,7 +671,9 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
     max-height: min(72vh, 900px);
   }
 }
+"###;
 
+const DESKTOP_1024: &str = r###"
 /* Large screens (1024px and above) - desktop optimization */
 @media (width >= 1024px) {
   :root {
@@ -740,7 +747,9 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
     border-radius: 3px;
   }
 }
+"###;
 
+const WIDE_1440: &str = r###"
 /* Extra large screens (1440px+) - ensure optimal readability */
 @media (width >= 1440px) {
   .page-header { padding-left: 32px; padding-right: 32px; }
@@ -760,7 +769,9 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
   .curation-wrap { padding-left: 32px; padding-right: 32px; }
   .draw-wrap     { padding-left: 32px; padding-right: 32px; }
 }
+"###;
 
+const MOBILE_HEADING_AND_FIELDS: &str = r###"
 /* Mobile-first heading and typography scaling */
 @media (width <= 768px) {
   /* Ensure all headings are readable and don't overflow */
@@ -802,7 +813,9 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
     overflow-wrap: break-word;
   }
 }
+"###;
 
+const TABLET_FIELDS: &str = r###"
 /* Tablet-specific optimizations (768px - 1023px) */
 @media (width >= 769px) and (width <= 1023px) {
   /* Improve text readability on tablets */
@@ -816,7 +829,9 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
     min-height: 40px;
   }
 }
+"###;
 
+const HIGH_CONTRAST: &str = r###"
 /* Accessibility: Improve font sizing for readability */
 @media (prefers-contrast: more) {
   body { font-size: 18px; }
@@ -835,11 +850,28 @@ pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.cs
     --fs-stat:   clamp(1.24rem, 1.12rem + 0.57vw, 1.51rem);
   }
 }
+"###;
 
+const DARK_MODE_TEXT: &str = r###"
 /* Dark mode: Slightly larger text for better readability */
 @media (prefers-color-scheme: dark) {
   /* Text is perceived as smaller in dark mode, so we can increase it slightly */
   body { letter-spacing: 0.3px; }
 }
-
 "###;
+
+pub fn css() -> String {
+    [
+        TABLET_768_AND_BELOW,
+        PHONE_480,
+        PHONE_430_AND_360,
+        TABLET_769_1023,
+        DESKTOP_1024,
+        WIDE_1440,
+        MOBILE_HEADING_AND_FIELDS,
+        TABLET_FIELDS,
+        HIGH_CONTRAST,
+        DARK_MODE_TEXT,
+    ]
+    .join("\n\n")
+}

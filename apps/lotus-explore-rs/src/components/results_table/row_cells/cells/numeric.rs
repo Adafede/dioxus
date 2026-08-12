@@ -66,7 +66,7 @@ fn formula_style() -> String {
 
 fn table_cell_style() -> String {
     StyleBuilder::new()
-        .padding("8px 10px")
+        .padding("8px 12px")
         .property("vertical-align", "top")
         .property("contain", "layout paint")
         .property("word-break", "break-word")

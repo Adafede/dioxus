@@ -21,95 +21,38 @@ pub fn LangSwitch() -> Element {
     let locale = use_locale();
 
     rsx! {
-        div { role: "group", aria_label: "{t(locale, TextKey::Language)}", style: group_style(),
-            LangBtn {
-                code: "EN",
-                target: Locale::En,
-                current: locale,
-                on_select: move |l| {
-                    if *locale_sig.peek() != l {
-                        *locale_sig.write() = l;
+        div { class: "lang-switch",
+            SegmentedControl {
+                aria_label: t(locale, TextKey::Language).to_string(),
+                selected_value: locale_code(locale).to_string(),
+                items: vec![
+                    SegmentedControlItem { label: "EN".to_string(), value: "en".to_string() },
+                    SegmentedControlItem { label: "FR".to_string(), value: "fr".to_string() },
+                    SegmentedControlItem { label: "DE".to_string(), value: "de".to_string() },
+                    SegmentedControlItem { label: "IT".to_string(), value: "it".to_string() },
+                ],
+                on_select: move |value: String| {
+                    let next = match value.as_str() {
+                        "en" => Locale::En,
+                        "fr" => Locale::Fr,
+                        "de" => Locale::De,
+                        "it" => Locale::It,
+                        _ => Locale::En,
+                    };
+                    if *locale_sig.peek() != next {
+                        *locale_sig.write() = next;
                     }
-                },
-            }
-            LangBtn {
-                code: "FR",
-                target: Locale::Fr,
-                current: locale,
-                on_select: move |l| {
-                    if *locale_sig.peek() != l {
-                        *locale_sig.write() = l;
-                    }
-                },
-            }
-            LangBtn {
-                code: "DE",
-                target: Locale::De,
-                current: locale,
-                on_select: move |l| {
-                    if *locale_sig.peek() != l {
-                        *locale_sig.write() = l;
-                    }
-                },
-            }
-            LangBtn {
-                code: "IT",
-                target: Locale::It,
-                current: locale,
-                on_select: move |l| {
-                    if *locale_sig.peek() != l {
-                        *locale_sig.write() = l;
-                    }
-                },
-            }
+                }
+            },
         }
     }
 }
 
-/// Single language button.
-#[component]
-fn LangBtn(
-    code: &'static str,
-    target: Locale,
-    current: Locale,
-    on_select: EventHandler<Locale>,
-) -> Element {
-    let active = current == target;
-    rsx! {
-        button {
-            r#type: "button",
-            aria_pressed: if active { "true" } else { "false" },
-            aria_current: if active { "true" } else { "false" },
-            style: button_pill_style(active),
-            onclick: move |_| on_select.call(target),
-            "{code}"
-        }
+fn locale_code(locale: Locale) -> &'static str {
+    match locale {
+        Locale::En => "en",
+        Locale::Fr => "fr",
+        Locale::De => "de",
+        Locale::It => "it",
     }
-}
-
-fn group_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .gap("4px")
-        .align_items("center")
-        .build()
-}
-
-fn button_pill_style(active: bool) -> String {
-    let mut style = StyleBuilder::new()
-        .property("min-width", "40px")
-        .padding("3px 8px")
-        .font_size("var(--fs-0)");
-    if active {
-        style = style
-            .background_color("var(--btn-primary-bg)")
-            .border("1px solid var(--btn-primary-bg)")
-            .color("#fff");
-    } else {
-        style = style
-            .color("var(--text2)")
-            .background_color("color-mix(in srgb, var(--panel-bg-soft) 84%, var(--surface))")
-            .border("1px solid var(--panel-border)");
-    }
-    style.build()
 }

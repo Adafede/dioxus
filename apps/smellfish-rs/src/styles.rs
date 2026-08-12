@@ -185,7 +185,6 @@ body {
   background: var(--panel-bg-soft);
   color: var(--text);
   font: 0.85rem/1.5 var(--mono);
-  resize: vertical;
   transition: border-color .15s, box-shadow .15s, background-color .15s;
 }
 .smiles-textarea:focus {

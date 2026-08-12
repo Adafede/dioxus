@@ -44,6 +44,8 @@ pub struct ColorScheme {
     pub red: &'static str,
     /// Info/reference color (Wikidata blue: #069 = #006699)
     pub blue: &'static str,
+    /// Warning color
+    pub yellow: &'static str,
     /// Secondary accent color
     pub purple: &'static str,
 }
@@ -65,6 +67,7 @@ impl ColorScheme {
         green: "#339966", // Wikidata taxon #396
         red: "#990000",   // Wikidata compound #900
         blue: "#006699",  // Wikidata reference #069
+        yellow: "#8a4b0f",
         purple: "#6941c6",
     };
 
@@ -84,6 +87,7 @@ impl ColorScheme {
         green: "#339966", // Wikidata taxon
         red: "#990000",   // Wikidata compound
         blue: "#006699",  // Wikidata reference
+        yellow: "#f0b35e",
         purple: "#c3a0ff",
     };
 }
@@ -312,6 +316,11 @@ impl StyleBuilder {
         self.property("flex-direction", direction)
     }
 
+    /// Set flex wrap
+    pub fn flex_wrap(self, wrap: &str) -> Self {
+        self.property("flex-wrap", wrap)
+    }
+
     /// Set align items
     pub fn align_items(self, align: &str) -> Self {
         self.property("align-items", align)
@@ -367,6 +376,11 @@ impl StyleBuilder {
         self.property("height", height)
     }
 
+    /// Set minimum height
+    pub fn min_height(self, height: &str) -> Self {
+        self.property("min-height", height)
+    }
+
     /// Set box shadow
     pub fn box_shadow(self, shadow: &str) -> Self {
         self.property("box-shadow", shadow)
@@ -395,6 +409,11 @@ impl StyleBuilder {
     /// Set border bottom
     pub fn border_bottom(self, border: &str) -> Self {
         self.property("border-bottom", border)
+    }
+
+    /// Set border left
+    pub fn border_left(self, border: &str) -> Self {
+        self.property("border-left", border)
     }
 
     /// Build the final style string

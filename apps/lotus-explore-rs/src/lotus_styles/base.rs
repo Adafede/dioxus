@@ -3,26 +3,13 @@
 
 //! Lotus CSS pack: base.
 
-pub const CSS: &str = r###"/* ─────────────────────────────────────────────────────────────────────────────
+const RESET_AND_TOKENS: &str = r###"/* ─────────────────────────────────────────────────────────────────────────────
    LOTUS Knowledge Explorer — design tokens + base + app layout
-   Previously injected at runtime via `dangerous_inner_html`. Now shipped as
-   a static asset so the browser caches it and the wasm bundle is smaller.
+   Previously injected at runtime via `dangerous_inner_html`. Now assembled
+   from smaller Rust strings so the browser still caches the result.
    ───────────────────────────────────────────────────────────────────────── */
 
-/* Accessibility and responsive packs are linked from index.html so they can
-   be loaded after this base stylesheet and override it predictably. */
-
-/* Keep feature-specific styling in small packs to avoid a monolithic file. */
-@import url("./styles/query_panel_pack.css");
-@import url("./styles/curation_pack.css");
-@import url("./styles/results_pack.css");
-@import url("./styles/layout_shell_pack.css");
-@import url("./styles/form_controls_pack.css");
-@import url("./styles/welcome_pack.css");
-@import url("./styles/table_cells_pack.css");
-@import url("./styles/footer_pack.css");
-
-/* ── Reset & base ────────────────────────────────────────────────────────── */
+/* Reset & base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 
@@ -37,7 +24,7 @@ img, svg, canvas, video {
   height: auto;
 }
 
-/* ── Design tokens ───────────────────────────────────────────────────────── */
+/* Design tokens */
 :root {
   color-scheme: light dark;
 
@@ -164,7 +151,9 @@ img, svg, canvas, video {
     --stat-total-stripe: color-mix(in srgb, var(--wd-entries) 62%, #fff);
   }
 }
+"###;
 
+const GLOBAL_BASE: &str = r###"
 body {
   background: var(--bg);
   color: var(--text);
@@ -223,8 +212,10 @@ a:hover { text-decoration: underline; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius:3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+"###;
 
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
+const CONTROLS_AND_FORMS: &str = r###"
+/* Buttons */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
   border: 1px solid var(--border); border-radius: var(--radius-sm);
@@ -259,7 +250,7 @@ a:hover { text-decoration: underline; }
 .btn-xs { min-height: 30px; padding: 2px 8px; font-size: var(--fs-label); line-height: 1.2; border-radius: 4px; }
 .btn-block { width: 100%; justify-content: center; text-align: center; }
 
-/* ── Copy button (used next to QIDs, hashes, share URL, SPARQL queries) ─── */
+/* Copy button (used next to QIDs, hashes, share URL, SPARQL queries) */
 .copy-btn {
   margin-left: 6px;
   font-family: var(--sans), system-ui, sans-serif;
@@ -275,8 +266,7 @@ a:hover { text-decoration: underline; }
 .copy-btn:hover { color: var(--text); background: var(--surface2); border-color: var(--text3); }
 .copy-btn:active { transform: translateY(1px); }
 
-
-/* ── Forms ───────────────────────────────────────────────────────────────── */
+/* Forms */
 .form-input, .form-textarea {
   background:var(--surface); border:1px solid var(--border);
   border-radius:var(--radius-sm); color:var(--text);
@@ -286,17 +276,19 @@ a:hover { text-decoration: underline; }
 .form-input:focus, .form-textarea:focus { outline:none; border-color:var(--accent); }
 .form-input.sm { width:90px; }
 
-/* ── Loading ─────────────────────────────────────────────────────────────── */
+/* Loading */
 .spinner-lg { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
 .spinner-sm { width:14px; height:14px; border:2px solid rgb(255 255 255 / 30%); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; }
 .loading-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:48px; color:var(--text2); flex:1; }
 .loading-hint  { font-size:var(--fs-0); color:var(--text3); }
 
-/* ── Pagination / empty ──────────────────────────────────────────────────── */
+/* Pagination / empty */
 .pagination-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; }
 .page-info { font-size:var(--fs-0); color:var(--text2); }
 .empty-state { display:flex; flex-direction:column; align-items:center; gap:12px; padding:64px 24px; color:var(--text2); }
+"###;
 
+const REDUCED_AND_PERF: &str = r###"
 @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
   .sidebar,
   .main-content,
@@ -350,8 +342,10 @@ a:hover { text-decoration: underline; }
     background-image: none;
   }
 }
+"###;
 
-/* ── Large-screen refinements (≥ 1440 px) ───────────────────────────────── */
+const LARGE_SCREEN: &str = r###"
+/* Large-screen refinements (≥ 1440 px) */
 
 /* Give the main panel uniform, more generous horizontal spacing so every
    section — header, notices, meta bar, share bar, results — shares the same gutter. */
@@ -377,3 +371,14 @@ a:hover { text-decoration: underline; }
 /* Removed max-width constraint to allow stats and results to expand freely
    on wide monitors, matching the behavior of share and hashes panels. */
 "###;
+
+pub fn css() -> String {
+    [
+        RESET_AND_TOKENS,
+        GLOBAL_BASE,
+        CONTROLS_AND_FORMS,
+        REDUCED_AND_PERF,
+        LARGE_SCREEN,
+    ]
+    .join("\n\n")
+}

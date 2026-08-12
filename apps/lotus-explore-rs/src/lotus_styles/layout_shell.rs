@@ -3,7 +3,7 @@
 
 //! Lotus CSS pack: layout_shell.
 
-pub const CSS: &str = r###"/* Layout shell pack: app frame, header/meta, notices, share bar, and sidebar shell. */
+const APP_FRAME: &str = r###"/* Layout shell pack: app frame, header/meta, notices, share bar, and sidebar shell. */
 
 .app-layout { display:flex; min-height:100dvh; height:100dvh; overflow:hidden; gap:10px; padding:10px; }
 .app-layout.no-sidebar { display:block; }
@@ -44,9 +44,11 @@ pub const CSS: &str = r###"/* Layout shell pack: app frame, header/meta, notices
   content-visibility: auto;
   contain-intrinsic-size: 900px;
 }
+"###;
 
+const PAGE_HEADER: &str = r###"
 .page-header {
-  padding:14px 24px 10px;
+  padding:14px 22px 10px;
   border-bottom:1px solid var(--panel-border);
   background:color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface));
   box-shadow:var(--shadow-xs);
@@ -56,19 +58,6 @@ pub const CSS: &str = r###"/* Layout shell pack: app frame, header/meta, notices
   overflow: clip;
 }
 
-.page-header-meta {
-  margin: 10px 24px 0;
-  padding: 7px 12px;
-  display: flex;
-  flex-flow: row wrap;
-  align-items: center;
-  gap: 4px 20px;
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface));
-  box-shadow: var(--panel-shadow);
-  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
-}
 
 .page-brand { display:flex; align-items:center; gap:12px; }
 .sidebar-logo-link { display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; text-decoration: none; }
@@ -127,14 +116,16 @@ pub const CSS: &str = r###"/* Layout shell pack: app frame, header/meta, notices
 .page-archive-link { color: var(--accent); font-weight: 500; }
 
 .page-meta { display: contents; }
-.meta-item { display:inline-flex; align-items:center; gap:4px; white-space: normal; overflow-wrap: anywhere; }
+.meta-item { display:inline-flex; align-items:center; gap:4px; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
 .meta-key { text-transform:uppercase; letter-spacing:0.08em; font-weight:700; font-size: var(--fs-0); color: var(--text2); }
-.meta-val.mono { font-family:var(--mono); color:var(--critical-text); font-variant-numeric: tabular-nums; }
+.meta-val.mono { font-family:var(--mono); color:var(--critical-text); font-variant-numeric: tabular-nums; font-size: var(--fs-0); }
 .meta-sep { color:var(--text3); }
+"###;
 
+const NOTICES: &str = r###"
 /* Notices */
 .notice {
-  margin:10px 24px 0;
+  margin:10px 22px 0;
   padding:9px 12px;
   display:flex;
   align-items:center;
@@ -151,8 +142,8 @@ pub const CSS: &str = r###"/* Layout shell pack: app frame, header/meta, notices
 .main-content > .notice {
   margin-left: 0;
   margin-right: 0;
-  padding-left: 24px;
-  padding-right: 24px;
+  padding-left: 22px;
+  padding-right: 22px;
   border-radius: 0;
   border-left: 0;
   border-right: 0;
@@ -194,14 +185,16 @@ pub const CSS: &str = r###"/* Layout shell pack: app frame, header/meta, notices
 .notice-error .notice-label { background:color-mix(in srgb, var(--red) 16%, var(--surface)); color:color-mix(in srgb, var(--red) 88%, var(--text)); }
 .notice-dismiss { margin-left:auto; background:none; border:0; color:inherit; cursor:pointer; font-size:18px; line-height:1; padding:0 4px; opacity:.7; }
 .notice-dismiss:hover { opacity:1; }
+"###;
 
+const SHARE_BAR: &str = r###"
 /* Share bar */
 .share-bar {
   display: flex;
   flex-flow: row wrap;
   align-items: center;
   gap: 6px 10px;
-  margin: 10px 24px 0;
+  margin: 10px 22px 0;
   padding: 7px 12px;
   border: 1px solid var(--panel-border);
   border-radius: 12px;
@@ -238,7 +231,9 @@ pub const CSS: &str = r###"/* Layout shell pack: app frame, header/meta, notices
   outline: none;
   border-color: var(--accent);
 }
+"###;
 
+const SEARCH_PANEL: &str = r###"
 /* Search panel shell */
 .search-panel { padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:1; }
 .search-panel-body { display:flex; flex-direction:column; gap:12px; }
@@ -247,5 +242,25 @@ pub const CSS: &str = r###"/* Layout shell pack: app frame, header/meta, notices
 .view-switch { margin-top: 10px; display: flex; gap: 8px; }
 .view-switch .btn { font-weight: 700; }
 .sidebar-logo { display:block; width:128px; height:128px; }
-
 "###;
+
+const FOOTER: &str = r###"
+/* Footer responsive grid sizing */
+@media (min-width: 640px) {
+  footer > div {
+    grid-template-columns: 1.2fr 1fr !important;
+  }
+}
+"###;
+
+pub fn css() -> String {
+    [
+        APP_FRAME,
+        PAGE_HEADER,
+        NOTICES,
+        SHARE_BAR,
+        SEARCH_PANEL,
+        FOOTER,
+    ]
+    .join("\n\n")
+}

@@ -302,7 +302,7 @@ fn dl_group_style() -> String {
         .gap("8px")
         .property("min-width", "0")
         .property("max-width", "100%")
-        .align_items("center")
+        .align_items("stretch")
         .build()
 }
 
@@ -325,26 +325,41 @@ fn button_base_style() -> String {
         .justify_content("center")
         .gap("6px")
         .border("1px solid var(--border)")
-        .border_radius("4px")
+        .border_radius("8px")
         .property("min-height", "40px")
         .padding("8px 14px")
         .font_size("var(--fs-0)")
         .font_weight("600")
         .cursor("pointer")
-        .background_color("var(--surface)")
+        .background_color("transparent")
         .color("var(--text)")
-        .box_shadow("var(--shadow-xs)")
         .property(
             "transition",
-            "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
+            "border-color .15s, background .15s, box-shadow .15s, transform .12s ease",
         )
         .build()
 }
 
 fn button_small_style() -> String {
     StyleBuilder::new()
-        .property("min-height", "34px")
-        .padding("5px 10px")
+        .display("flex")
+        .align_items("center")
+        .justify_content("center")
+        .gap("6px")
+        .border("1px solid var(--border)")
+        .border_radius("8px")
+        .padding("8px 12px")
         .font_size("var(--fs-0)")
+        .font_weight("600")
+        .cursor("pointer")
+        .background_color("transparent")
+        .color("var(--text)")
+        .property("flex", "1 1 auto")
+        .property("min-width", "0")
+        .property("white-space", "nowrap")
+        .property(
+            "transition",
+            "border-color .15s, background .15s, box-shadow .15s, transform .12s ease",
+        )
         .build()
 }

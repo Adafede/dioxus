@@ -49,13 +49,12 @@ pub fn SearchPanel() -> Element {
 
     rsx! {
         section {
+            class: "search-panel",
             aria_label: "{t(locale, TextKey::SearchFilters)}",
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
-            style: panel_stack_style("18px 16px", "14px"),
+            h2 { id: SEARCH_PANEL_HEADING_ID, class: "sr-only", "{t(locale, TextKey::SearchFilters)}" }
 
-            h2 { id: SEARCH_PANEL_HEADING_ID, style: sr_only_style(), "{t(locale, TextKey::SearchFilters)}" }
-
-            div { id: SEARCH_PANEL_BODY_ID, style: panel_stack_style("0", "12px"),
+            div { id: SEARCH_PANEL_BODY_ID, class: "search-panel-body",
                 // All sections are zero-prop — they read FormCriteriaContext.
                 TaxonInput {}
                 StructureSection {}
@@ -69,6 +68,7 @@ pub fn SearchPanel() -> Element {
                     r#type: "submit",
                     disabled: true,
                     aria_label: "{t(locale, TextKey::RunSearch)}",
+                    class: "search-btn",
                     style: search_button_style(is_dirty),
                     span { class: "spinner-sm", "aria-hidden": "true" }
                     "{t(locale, TextKey::Searching)}"
@@ -393,7 +393,19 @@ fn range_input_style() -> String {
 }
 
 fn textarea_base_style() -> String {
-    input_base_style()
+    StyleBuilder::new()
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .color("var(--text)")
+        .padding("9px 11px")
+        .font_size("var(--fs-ui)")
+        .property("width", "100%")
+        .property("max-width", "100%")
+        .property("resize", "none")
+        .font_family("var(--sans)")
+        .property("transition", "border-color .15s")
+        .build()
 }
 
 fn input_base_style() -> String {

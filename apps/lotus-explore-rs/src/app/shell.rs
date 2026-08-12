@@ -112,14 +112,14 @@ fn ShellScaffold(lang: String) -> Element {
         a { class: "skip-link", href: SKIP_TO_RESULTS_HREF, style: skip_link_style(),
             "{t(locale, TextKey::SkipToResults)}"
         }
-        div { style: app_layout_style(),
+        div { class: "app-layout",
             if current_view == AppView::Explore {
                 Sidebar {}
             }
 
             main {
                 id: MAIN_PANEL_ID,
-                style: main_pane_style(single_pane),
+                class: if single_pane { "main-content single-pane" } else { "main-content" },
                 tabindex: "-1",
                 aria_labelledby: PAGE_TITLE_ID,
                 PageHeader {}
@@ -169,33 +169,4 @@ fn skip_link_style() -> String {
         .text_decoration("none")
         .property("transition", "top 0.1s")
         .build()
-}
-
-fn app_layout_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .property("min-height", "100dvh")
-        .property("height", "100dvh")
-        .property("overflow", "hidden")
-        .gap("10px")
-        .padding("10px")
-        .build()
-}
-
-fn main_pane_style(single_pane: bool) -> String {
-    let mut style = StyleBuilder::new()
-        .property("flex", "1")
-        .property("min-width", "0")
-        .property("height", "100%")
-        .property("overflow-y", "auto")
-        .display("flex")
-        .flex_direction("column")
-        .border("1px solid var(--panel-border)")
-        .border_radius("16px")
-        .background_color("var(--panel-bg)")
-        .box_shadow("var(--shadow-sm)");
-    if single_pane {
-        style = style.property("width", "100%");
-    }
-    style.build()
 }

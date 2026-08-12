@@ -6,6 +6,7 @@ use crate::features::curation::state::page_controller::CurationUiState;
 use crate::features::curation::use_curation_page_controller;
 use dioxus::prelude::*;
 use std::sync::Arc;
+use ui::prelude::*;
 
 use super::curation_results_table::CurationResultsTable;
 
@@ -46,8 +47,8 @@ pub fn DataCurationPage() -> Element {
     let on_import_error = move |message: String| controller.status_message.set(Some(message));
 
     rsx! {
-        section { class: "curation-wrap",
-            div { class: "curation-grid",
+        section { class: "curation-wrap", style: curation_page_style(),
+            div { style: curation_grid_style(),
                 AddRowCard {
                     locale,
                     form: controller.form,
@@ -95,4 +96,24 @@ pub fn DataCurationPage() -> Element {
             }
         }
     }
+}
+
+fn curation_page_style() -> String {
+    StyleBuilder::new()
+        .property("padding", "12px 22px 18px")
+        .property("display", "flex")
+        .property("flex-direction", "column")
+        .property("gap", "10px")
+        .build()
+}
+
+fn curation_grid_style() -> String {
+    StyleBuilder::new()
+        .property("display", "grid")
+        .property(
+            "grid-template-columns",
+            "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+        )
+        .property("gap", "12px")
+        .build()
 }

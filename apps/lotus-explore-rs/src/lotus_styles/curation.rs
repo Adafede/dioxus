@@ -3,54 +3,12 @@
 
 //! Lotus CSS pack: curation.
 
-pub const CSS: &str = r###"/* Curation and structure-editor layout pack extracted from style.css. */
+const CURATION_NOTICE_AND_INPUT: &str = r###"/* Curation surface: only selectors that still need CSS. */
 
-.curation-wrap {
-  padding: 12px 22px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* Notices inside curation-wrap must not add extra horizontal margin -
-   the wrapper already provides horizontal padding. */
 .curation-wrap > .notice {
   margin-left: 0;
   margin-right: 0;
   margin-top: 0;
-}
-
-.curation-title { font-size: var(--fs-3); color: var(--text); }
-.curation-subtitle { color: var(--text); font-size: var(--fs-ui); }
-.curation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
-
-.curation-card {
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius);
-  background: var(--panel-bg-soft);
-  box-shadow: var(--panel-shadow);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.curation-form-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-.curation-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.curation-space-between { justify-content: space-between; }
-.curation-hint { font-size: var(--fs-0); color: var(--text); }
-
-.draw-wrap {
-  padding: 12px 22px 18px;
-}
-
-.curation-tsv { min-height: 130px; font-family: var(--mono); border-radius: 8px; }
-.curation-qs { min-height: 220px; font-family: var(--mono); border-radius: 8px; }
-
-.curation-file-input {
-  color: var(--text2);
-  max-width: 100%;
-  font-size: var(--fs-0);
 }
 
 .curation-file-input::file-selector-button {
@@ -70,8 +28,16 @@ pub const CSS: &str = r###"/* Curation and structure-editor layout pack extracte
   background: color-mix(in srgb, var(--surface2) 68%, var(--surface));
   border-color: color-mix(in srgb, var(--border) 84%, var(--accent));
 }
+"###;
 
-.curation-table { width: 100%; border-collapse: collapse; font-size: var(--fs-ui); table-layout: auto; word-break: break-word; }
+const CURATION_TABLE: &str = r###"
+.curation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-ui);
+  table-layout: auto;
+  word-break: break-word;
+}
 
 .curation-table th,
 .curation-table td {
@@ -81,159 +47,48 @@ pub const CSS: &str = r###"/* Curation and structure-editor layout pack extracte
   padding: 8px 10px;
 }
 
-.curation-table thead { position: sticky; top: 0; z-index: 2; background: var(--bg2); }
+.curation-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg2);
+}
 
-.curation-table tbody tr { transition: background .14s ease; }
-.curation-table tbody tr:hover td { background: color-mix(in srgb, var(--surface2) 84%, var(--bg2)); }
-.curation-table tbody tr:nth-child(odd) td { background: color-mix(in srgb, var(--surface) 94%, transparent); }
-.curation-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface) 88%, transparent); }
+.curation-table tbody tr {
+  transition: background .14s ease;
+  background: var(--row-bg, transparent);
+}
 
+.curation-table tbody tr:hover {
+  background: color-mix(in srgb, var(--surface2) 84%, var(--bg2));
+}
+"###;
+
+const CURATION_SCROLL_AND_TABLES: &str = r###"
 .curation-table-scroll {
-  width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: visible;
-  border: 1px solid var(--panel-border);
   border-radius: 14px;
-  background: var(--panel-bg-soft);
-  box-shadow: var(--panel-shadow);
-  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 
 .curation-table-scroll:focus-visible {
   outline: none;
-  border-color: color-mix(in srgb, var(--accent) 44%, var(--panel-border));
-  box-shadow: var(--ring);
-}
-
-.curation-scroll-hint {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text3);
-  font-size: var(--fs-0);
-  line-height: 1.4;
-}
-
-.curation-scroll-hint::before {
-  /* Use unicode escape to keep this stylesheet ASCII-only. */
-  content: "\2194";
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 1.05em;
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--panel-border)) !important;
+  box-shadow: var(--ring) !important;
 }
 
 .curation-results-table {
   min-width: max-content;
 }
 
-/* col 1 – Status + badges + note */
-.curation-results-table th:nth-child(1),
-.curation-results-table td:nth-child(1) {
-  min-width: 220px;
-}
-
-/* col 2 – Wikidata QID */
-.curation-results-table th:nth-child(2),
-.curation-results-table td:nth-child(2) {
-  min-width: 12ch;
-}
-
-/* col 3 – Name */
-.curation-results-table th:nth-child(3),
-.curation-results-table td:nth-child(3) {
-  min-width: 18ch;
-}
-
-/* col 4 – Original SMILES  /  col 5 – Canonical SMILES */
-.curation-results-table th:nth-child(4),
-.curation-results-table th:nth-child(5),
-.curation-results-table td:nth-child(4),
-.curation-results-table td:nth-child(5) {
-  min-width: 220px;
-  max-width: 320px;
-}
-
-/* col 6 – InChIKey (always 27 chars in mono) */
-.curation-results-table th:nth-child(6),
-.curation-results-table td:nth-child(6) {
-  min-width: 28ch;
-}
-
-/* col 7 – InChI */
-.curation-results-table th:nth-child(7),
-.curation-results-table td:nth-child(7) {
-  min-width: 220px;
-  max-width: 320px;
-}
-
-/* col 8 – Formula */
-.curation-results-table th:nth-child(8),
-.curation-results-table td:nth-child(8) {
-  min-width: 12ch;
-}
-
-/* col 9 – Exact Mass */
-.curation-results-table th:nth-child(9),
-.curation-results-table td:nth-child(9) {
-  min-width: 12ch;
-}
-
-/* Queue rows table column widths */
 .curation-queue-table {
   min-width: max-content;
 }
-
-.curation-queue-table th:nth-child(1),
-.curation-queue-table td:nth-child(1) {
-  width: 110px;
-  min-width: 110px;
-}
-
-.curation-queue-table th:nth-child(4),
-.curation-queue-table td:nth-child(4) {
-  min-width: 220px;
-  max-width: 320px;
-}
-
-.curation-note { font-size: var(--fs-label); color: var(--text); margin-top: 3px; white-space: pre-line; }
-.curation-badges { display: flex; flex-wrap: wrap; gap: 6px; }
-.curation-row-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-
-.curation-cell-wrap {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.curation-status {
-  font-weight: 700;
-  text-transform: uppercase;
-  font-size: var(--fs-micro);
-  letter-spacing: 0.04em;
-  color: var(--text);
-}
-
-.curation-status-badge,
-.curation-table .curation-status {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 4px;
-  border-left: 3px solid transparent;
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-}
-
-/* ok → wd-taxon green (complete/existing) */
-.curation-status.is-ok      { border-left-color: var(--wd-taxon); }
-/* warn → wd-entries neutral (needs updates, not critical) */
-.curation-status.is-warn    { border-left-color: var(--wd-entries); }
-/* new → wd-reference blue (informational: new item to create) */
-.curation-status.is-new     { border-left-color: var(--wd-reference); }
-/* pending → wd-reference blue (waiting on dependencies) */
-.curation-status.is-pending { border-left-color: var(--wd-reference); }
-/* error → wd-compound red (failure) */
-.curation-status.is-error   { border-left-color: var(--wd-compound); }
-
-
 "###;
+
+pub fn css() -> String {
+    [
+        CURATION_NOTICE_AND_INPUT,
+        CURATION_TABLE,
+        CURATION_SCROLL_AND_TABLES,
+    ]
+    .join("\n\n")
+}

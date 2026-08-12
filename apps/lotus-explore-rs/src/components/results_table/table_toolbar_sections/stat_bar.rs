@@ -116,8 +116,12 @@ pub fn CappedRowsNotice() -> Element {
 
     rsx! {
         if toolbar_snapshot.read().display_capped_rows {
-            div { role: "status", style: notice_base_style(),
-                span { style: notice_label_style(), "{t(locale, TextKey::Notice)}" }
+            NoticeBar {
+                label: t(locale, TextKey::Notice).to_string(),
+                tone: NoticeTone::Warning,
+                role: "status",
+                aria_live: "polite",
+                margin: "10px 0 0",
                 span { style: notice_value_style(), "{t(locale, TextKey::DisplayCappedHint)}" }
             }
         }
@@ -203,43 +207,8 @@ fn stat_label_style() -> String {
         .build()
 }
 
-fn notice_base_style() -> String {
-    StyleBuilder::new()
-        .margin("10px 24px 0")
-        .padding("9px 12px")
-        .display("flex")
-        .align_items("center")
-        .gap("12px")
-        .border_radius("var(--radius)")
-        .font_size("var(--fs-0)")
-        .border("1px solid var(--panel-border)")
-        .background_color("var(--panel-bg-soft)")
-        .box_shadow("var(--panel-shadow)")
-        .property(
-            "transition",
-            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
-        )
-        .build()
-}
-
-fn notice_label_style() -> String {
-    StyleBuilder::new()
-        .display("inline-flex")
-        .align_items("center")
-        .property("text-transform", "uppercase")
-        .property("letter-spacing", "1px")
-        .font_size("var(--fs-label)")
-        .font_weight("700")
-        .property("line-height", "1.4")
-        .padding("2px 6px")
-        .border_radius("3px")
-        .property("flex-shrink", "0")
-        .build()
-}
-
 fn notice_value_style() -> String {
     StyleBuilder::new()
-        .property("flex", "1")
         .color("var(--text)")
         .property("word-break", "break-word")
         .property("line-height", "1.4")

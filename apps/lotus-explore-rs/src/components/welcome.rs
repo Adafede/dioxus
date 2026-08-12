@@ -43,9 +43,10 @@ pub fn WelcomeScreen() -> Element {
                         "QLever"
                     }
                     "{t(locale, TextKey::WelcomeLeadE)}"
-                }
-                p { style: support_text_style(),
-                    "{t(locale, TextKey::LabelLanguagePolicy)}"
+                    " "
+                    span { style: support_text_style(),
+                        "{t(locale, TextKey::LabelLanguagePolicy)}"
+                    }
                 }
             }
 
@@ -208,13 +209,16 @@ fn notice_base_style() -> String {
         .margin("10px 24px 0")
         .padding("9px 12px")
         .display("flex")
+        .flex_direction("row")
+        .property("flex-wrap", "wrap")
         .align_items("center")
         .gap("12px")
-        .border_radius("var(--radius)")
+        .border_radius("12px")
         .font_size("var(--fs-0)")
-        .border("1px solid var(--panel-border)")
-        .background_color("var(--panel-bg-soft)")
-        .box_shadow("var(--panel-shadow)")
+        .border("1px solid var(--border)")
+        .background_color("var(--surface)")
+        .box_shadow("var(--shadow-xs)")
+        .property("min-width", "0")
         .property(
             "transition",
             "background .15s ease, border-color .15s ease, box-shadow .15s ease",
@@ -239,13 +243,17 @@ fn notice_label_style() -> String {
 
 fn notice_input_style() -> String {
     StyleBuilder::new()
-        .property("min-width", "min(220px, 100%)")
+        .property("flex", "1 1 auto")
+        .property("min-width", "min(200px, 100%)")
         .property("max-width", "100%")
         .background_color("var(--surface)")
         .border("1px solid var(--border)")
         .border_radius("var(--radius-sm)")
         .color("var(--text2)")
         .padding("4px 8px")
+        .font_size("var(--fs-0)")
+        .property("overflow", "hidden")
+        .property("text-overflow", "ellipsis")
         .build()
 }
 

@@ -43,6 +43,7 @@ pub(in crate::components::results_table::row_cells) fn taxon_cell(
 
 fn taxon_cell_style() -> String {
     StyleBuilder::new()
+        .padding("8px 12px")
         .border_radius("10px")
         .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
         .property(
@@ -54,7 +55,10 @@ fn taxon_cell_style() -> String {
 }
 
 fn cell_primary_style() -> String {
-    StyleBuilder::new().font_weight("500").build()
+    StyleBuilder::new()
+        .font_weight("500")
+        .property("font-style", "italic")
+        .build()
 }
 
 fn id_badge_style() -> String {

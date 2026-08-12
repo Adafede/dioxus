@@ -12,6 +12,7 @@ use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
 use dioxus::prelude::*;
 use std::sync::Arc;
+use ui::prelude::*;
 
 fn hash_prefix(value: &str) -> &str {
     value.get(..12).unwrap_or(value)
@@ -121,7 +122,7 @@ pub fn HeaderMetaSection() -> Element {
 
     rsx! {
         if has_meta {
-            div { class: "page-header-meta",
+            div { style: page_header_meta_style(),
                 if let Some(qid) = resolved_qid_value.as_ref() {
                     ResolvedTaxonMetaItem { locale, qid: qid.clone() }
                 }
@@ -134,4 +135,24 @@ pub fn HeaderMetaSection() -> Element {
             }
         }
     }
+}
+
+fn page_header_meta_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("row")
+        .flex_wrap("wrap")
+        .align_items("center")
+        .gap("12px")
+        .margin("10px 22px 0")
+        .padding("10px 12px")
+        .border("1px solid var(--panel-border)")
+        .border_radius("var(--radius)")
+        .background_color("var(--panel-bg-soft)")
+        .box_shadow("var(--panel-shadow)")
+        .property(
+            "transition",
+            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
+        )
+        .build()
 }

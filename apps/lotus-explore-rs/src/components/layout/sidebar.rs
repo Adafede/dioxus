@@ -14,7 +14,6 @@ use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use dioxus::prelude::*;
-use ui::prelude::*;
 
 const LOTUS_FERRIS_SVG: &str = include_str!("../../../public/assets/lotus_ferris.svg");
 
@@ -30,8 +29,8 @@ pub fn Sidebar() -> Element {
 
     rsx! {
         aside {
+            class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
-            style: sidebar_style(),
             button {
                 class: "filters-toggle",
                 r#type: "button",
@@ -46,48 +45,12 @@ pub fn Sidebar() -> Element {
                 }
             }
             SearchPanel {}
-            div { style: sidebar_logo_wrap_style(),
-                div { style: sidebar_logo_style(),
+            div { class: "sidebar-logo-wrap",
+                div { class: "sidebar-logo",
                     "aria-hidden": "true",
                     dangerous_inner_html: LOTUS_FERRIS_SVG,
                 }
             }
         }
     }
-}
-
-fn sidebar_style() -> String {
-    StyleBuilder::new()
-        .property("width", "332px")
-        .property("min-width", "288px")
-        .property("height", "100%")
-        .property("overflow-y", "auto")
-        .background_color("var(--panel-bg)")
-        .border("1px solid var(--panel-border)")
-        .border_radius("16px")
-        .property("flex-shrink", "0")
-        .box_shadow("var(--shadow-sm)")
-        .display("flex")
-        .flex_direction("column")
-        .property("position", "relative")
-        .property("isolation", "isolate")
-        .build()
-}
-
-fn sidebar_logo_wrap_style() -> String {
-    StyleBuilder::new()
-        .property("margin-top", "auto")
-        .padding("6px 8px 8px")
-        .display("flex")
-        .justify_content("center")
-        .property("border-top", "1px solid var(--border)")
-        .build()
-}
-
-fn sidebar_logo_style() -> String {
-    StyleBuilder::new()
-        .property("display", "block")
-        .property("width", "128px")
-        .property("height", "128px")
-        .build()
 }

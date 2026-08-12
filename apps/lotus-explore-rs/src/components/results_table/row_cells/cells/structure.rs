@@ -46,7 +46,7 @@ fn structure_cell_style() -> String {
     StyleBuilder::new()
         .property("width", "auto")
         .property("min-width", "0")
-        .padding("6px 10px")
+        .padding("8px 12px")
         .build()
 }
 
