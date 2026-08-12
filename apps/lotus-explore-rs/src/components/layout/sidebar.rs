@@ -36,7 +36,6 @@ pub fn Sidebar() -> Element {
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             button {
                 class: "filters-toggle",
-                style: filters_toggle_style(),
                 r#type: "button",
                 aria_controls: SEARCH_PANEL_BODY_ID,
                 aria_expanded: if mobile_filters_open { "true" } else { "false" },
@@ -63,20 +62,6 @@ fn sidebar_style() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
-        .build()
-}
-
-fn filters_toggle_style() -> String {
-    StyleBuilder::new()
-        .cursor("pointer")
-        .border("1px solid var(--border)")
-        .background_color("var(--surface)")
-        .color(text::PRIMARY)
-        .padding("8px 14px")
-        .font_size("var(--fs-0)")
-        .font_weight("600")
-        .property("white-space", "nowrap")
-        .property("transition", "border-color .15s, background .15s")
         .build()
 }
 
