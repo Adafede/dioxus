@@ -243,6 +243,72 @@ pub mod shared {
     }
 }
 
+pub mod primary_buttons {
+    //! Primary action button styles (Search, Add Row, Generate, etc).
+    use ui::prelude::*;
+
+    /// Primary button: medium size with primary background, used for search and main actions.
+    pub fn button_primary_style() -> String {
+        StyleBuilder::new()
+            .display("inline-flex")
+            .align_items("center")
+            .justify_content("center")
+            .gap("6px")
+            .border("1px solid var(--btn-primary-bg)")
+            .border_radius("4px")
+            .property("min-height", "40px")
+            .padding("8px 14px")
+            .font_size("var(--fs-0)")
+            .font_weight("600")
+            .cursor("pointer")
+            .background_color("var(--btn-primary-bg)")
+            .color("var(--text)")
+            .box_shadow("var(--shadow-xs)")
+            .property(
+                "transition",
+                "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
+            )
+            .build()
+    }
+
+    /// Primary button small: compact size for curation actions (Add Row, etc).
+    pub fn button_primary_sm_style() -> String {
+        StyleBuilder::new()
+            .display("inline-flex")
+            .align_items("center")
+            .justify_content("center")
+            .gap("6px")
+            .border("1px solid var(--btn-primary-bg)")
+            .border_radius("4px")
+            .padding("6px 12px")
+            .font_size("var(--fs-0)")
+            .font_weight("600")
+            .cursor("pointer")
+            .background_color("var(--btn-primary-bg)")
+            .color("var(--text)")
+            .build()
+    }
+
+    /// Primary button full width: for block-level actions (Generate QuickStatements, etc).
+    pub fn button_primary_block_style() -> String {
+        StyleBuilder::new()
+            .display("flex")
+            .align_items("center")
+            .justify_content("center")
+            .gap("6px")
+            .border("1px solid var(--btn-primary-bg)")
+            .border_radius("4px")
+            .padding("8px 14px")
+            .font_size("var(--fs-0)")
+            .font_weight("600")
+            .cursor("pointer")
+            .background_color("var(--btn-primary-bg)")
+            .color("var(--text)")
+            .property("width", "100%")
+            .build()
+    }
+}
+
 // ============================================================================
 // ENUM TYPES FOR TYPE-SAFE SELECTION
 // ============================================================================

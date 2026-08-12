@@ -180,24 +180,5 @@ fn range_pair_style() -> String {
 }
 
 fn button_primary_style() -> String {
-    StyleBuilder::new()
-        .display("inline-flex")
-        .align_items("center")
-        .justify_content("center")
-        .gap("6px")
-        .border("1px solid var(--btn-primary-bg)")
-        .border_radius("4px")
-        .property("min-height", "40px")
-        .padding("8px 14px")
-        .font_size("var(--fs-0)")
-        .font_weight("600")
-        .cursor("pointer")
-        .background_color("var(--btn-primary-bg)")
-        .color("var(--text)")
-        .box_shadow("var(--shadow-xs)")
-        .property(
-            "transition",
-            "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
-        )
-        .build()
+    crate::ui::style_constants::primary_buttons::button_primary_style()
 }

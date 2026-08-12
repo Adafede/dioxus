@@ -151,7 +151,7 @@ pub fn AddRowCard(
             }
             div { style: curation_actions_style(false),
                 button {
-                    class: "btn btn-sm btn-primary",
+                    style: button_primary_sm_style(),
                     r#type: "button",
                     onclick: move |_| on_add_row.call(()),
                     "{button_add_row(locale)}"
@@ -241,7 +241,7 @@ pub fn QueueRowsCard(
             div { style: curation_actions_style(true),
                 h3 { "{heading_queued_rows(locale)}" }
                 button {
-                    class: "btn btn-sm btn-primary",
+                style: button_primary_sm_style(),
                     r#type: "button",
                     disabled: processing,
                     onclick: move |_| on_process.call(()),
@@ -345,7 +345,7 @@ pub fn QuickStatementsCard(
                     value: "{qs_ref.dependencies}",
                 }
                 button {
-                    class: "btn btn-sm btn-primary btn-block",
+                    style: button_primary_block_style(),
                     r#type: "button",
                     disabled: processing,
                     onclick: move |_| on_second_pass.call(()),
@@ -502,4 +502,12 @@ fn row_stripe_style(idx: usize) -> String {
         .property("transition", "background .14s ease")
         .property("--row-bg", background)
         .build()
+}
+
+fn button_primary_sm_style() -> String {
+    crate::ui::style_constants::primary_buttons::button_primary_sm_style()
+}
+
+fn button_primary_block_style() -> String {
+    crate::ui::style_constants::primary_buttons::button_primary_block_style()
 }
