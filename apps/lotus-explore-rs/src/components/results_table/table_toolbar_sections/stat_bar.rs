@@ -183,7 +183,10 @@ fn stat_secondary_style() -> String {
 fn stat_bar_style() -> String {
     StyleBuilder::new()
         .display("grid")
-        .property("grid-template-columns", "repeat(auto-fit, minmax(120px, 1fr))")
+        .property(
+            "grid-template-columns",
+            "repeat(auto-fit, minmax(120px, 1fr))",
+        )
         .gap(spacing::STAT_BAR_GAP)
         .align_items("stretch")
         .property("width", "100%")

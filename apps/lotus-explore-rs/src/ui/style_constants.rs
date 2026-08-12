@@ -236,7 +236,7 @@ pub mod shared {
     /// Notice value text: word-break for long content with proper line height.
     pub fn notice_value_style() -> String {
         StyleBuilder::new()
-            .color("var(--text)")
+            .color("var(--text3)")
             .property("word-break", "break-word")
             .property("line-height", "1.4")
             .build()

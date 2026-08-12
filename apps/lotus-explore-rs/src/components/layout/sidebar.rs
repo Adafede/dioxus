@@ -32,6 +32,7 @@ pub fn Sidebar() -> Element {
     rsx! {
         aside {
             style: sidebar_style(),
+            class: if mobile_filters_open { "mobile-open" } else { "mobile-closed" },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             button {
                 style: filters_toggle_style(),
@@ -83,14 +84,16 @@ fn sidebar_logo_wrap_style() -> String {
         .display("flex")
         .justify_content("center")
         .align_items("center")
-        .padding("20px 12px")
+        .property("margin-top", "auto")
+        .padding("6px 8px 8px")
+        .property("border-top", "1px solid var(--border)")
         .build()
 }
 
 fn sidebar_logo_style() -> String {
     StyleBuilder::new()
-        .property("flex-shrink", "0")
-        .property("width", "80px")
-        .property("height", "auto")
+        .display("block")
+        .property("width", "128px")
+        .property("height", "128px")
         .build()
 }

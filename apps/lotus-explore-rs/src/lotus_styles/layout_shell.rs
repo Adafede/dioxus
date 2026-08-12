@@ -165,7 +165,7 @@ const NOTICES: &str = r"
   flex-shrink:0;
 }
 
-.notice-value { flex:1; color:var(--text); word-break:break-word; line-height:1.4; }
+.notice-value { flex:1; color:var(--text3); word-break:break-word; line-height:1.4; }
 
 .notice-copy-field {
   min-width: min(220px, 100%);
