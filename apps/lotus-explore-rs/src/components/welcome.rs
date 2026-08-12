@@ -186,7 +186,8 @@ fn example_list_style() -> String {
     StyleBuilder::new()
         .property("list-style", "none")
         .display("flex")
-        .flex_direction("column")
+        .flex_direction("row")
+        .flex_wrap("wrap")
         .gap("6px")
         .build()
 }
