@@ -55,7 +55,7 @@ pub fn SearchPanel() -> Element {
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             h2 { id: SEARCH_PANEL_HEADING_ID, class: "sr-only", "{t(locale, TextKey::SearchFilters)}" }
 
-            div { id: SEARCH_PANEL_BODY_ID, style: search_panel_body_style(),
+            div { id: SEARCH_PANEL_BODY_ID, class: "search-panel-body",
                 // All sections are zero-prop — they read FormCriteriaContext.
                 TaxonInput {}
                 StructureSection {}

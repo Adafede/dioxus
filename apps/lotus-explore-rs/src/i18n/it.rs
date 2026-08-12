@@ -65,7 +65,9 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::WelcomeLeadC => ", pubblicati come dati aperti collegati su ",
         TextKey::WelcomeLeadD => " e interrogati tramite SPARQL tramite ",
         TextKey::WelcomeLeadE => ".",
-        TextKey::ExampleGentiana => "Inserisci un nome di taxon, un QID Wikidata o * per tutti i taxa",
+        TextKey::ExampleGentiana => {
+            "Inserisci un nome di taxon, un QID Wikidata o * per tutti i taxa"
+        }
         TextKey::ExampleSmilesOnly => "Incolla uno SMILES o un Molfile nel campo struttura",
         TextKey::ExampleQueryExecute => "Esegui",
         TextKey::ExampleQueryTaxon => "Scarica CSV",

@@ -50,7 +50,7 @@ fn NumPair(
     rsx! {
         div { style: formula_num_pair_style(),
             p { style: formula_num_label_style(), "{label}" }
-            div { style: formula_minmax_grid_style(),
+            div { class: "formula-minmax-grid",
                 div { style: range_pair_style(),
                     label { style: form_label_small_style(), "{t(locale, TextKey::MinCount)}" }
                     input {
@@ -144,7 +144,7 @@ pub fn FormulaSection() -> Element {
                     }
                 }
 
-                div { style: formula_grid_pairs_style(),
+                div { class: "formula-grid",
                     NumPair {
                         label: "C",
                         min_value: criteria.c_min,
@@ -188,7 +188,7 @@ pub fn FormulaSection() -> Element {
                         on_max: move |v| ctx.update(FormAction::SMax(v)),
                     }
                 }
-                div { style: formula_grid_halogens_style(),
+                div { class: "formula-grid",
                     ElemStateSelect {
                         label: "F",
                         value: criteria.f_state,
@@ -283,7 +283,6 @@ fn formula_num_label_style() -> String {
 fn formula_minmax_grid_style() -> String {
     StyleBuilder::new()
         .display("grid")
-        .property("grid-template-columns", "repeat(2, minmax(0, 1fr))")
         .gap("8px")
         .build()
 }
@@ -336,7 +335,6 @@ fn formula_exact_input_style() -> String {
 fn formula_grid_pairs_style() -> String {
     StyleBuilder::new()
         .display("grid")
-        .property("grid-template-columns", "repeat(2, minmax(0, 1fr))")
         .gap("10px")
         .build()
 }
@@ -344,7 +342,6 @@ fn formula_grid_pairs_style() -> String {
 fn formula_grid_halogens_style() -> String {
     StyleBuilder::new()
         .display("grid")
-        .property("grid-template-columns", "repeat(2, minmax(0, 1fr))")
         .gap("10px")
         .build()
 }

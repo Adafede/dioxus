@@ -34,10 +34,10 @@ pub fn Sidebar() -> Element {
             style: sidebar_style(),
             class: if mobile_filters_open { "mobile-open" } else { "mobile-closed" },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
-            div { 
+            div {
                 class: "sidebar-logo-wrap",
                 style: sidebar_logo_wrap_style(),
-                div { 
+                div {
                     class: "sidebar-logo",
                     style: sidebar_logo_style(),
                     "aria-hidden": "true",
@@ -79,7 +79,5 @@ fn sidebar_logo_wrap_style() -> String {
 }
 
 fn sidebar_logo_style() -> String {
-    StyleBuilder::new()
-        .display("block")
-        .build()
+    StyleBuilder::new().display("block").build()
 }
