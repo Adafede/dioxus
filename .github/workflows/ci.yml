@@ -157,6 +157,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { persist-credentials: false, fetch-depth: 1 }
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install cargo-machete
-        run: cargo install cargo-machete
-      - run: cargo machete check --workspace
+      - uses: taiki-e/install-action@67729d5c413db75907f0ad1e39bb04b9c868ff60
+        with:
+          tool: |
+            cargo-machete@0.9.2
+      - run: cargo machete
