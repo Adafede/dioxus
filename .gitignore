@@ -26,3 +26,5 @@ apps/*/.dioxus/
 
 # ── Pre-commit cache ──────────────────────────────────────────────────────────
 .pre-commit-cache/
+lcov.info
+*.tarpaulin
