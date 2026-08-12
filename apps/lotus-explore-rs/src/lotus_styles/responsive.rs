@@ -700,7 +700,7 @@ const TABLET_769_1023: &str = r"
     max-height: min(72vh, 900px);
   }
 
-  .search-panel { max-width: 360px; }
+  .search-panel { max-width: 320px; }
   .sidebar-logo-wrap { border-top: none; margin-top: 0; }
 }
 ";
@@ -779,7 +779,7 @@ const DESKTOP_1024: &str = r"
     border-radius: 3px;
   }
 
-  .search-panel { max-width: 400px; }
+  .search-panel { max-width: 340px; }
   .sidebar-logo-wrap { border-top: none; margin-top: 0; }
 }
 ";
@@ -804,7 +804,7 @@ const WIDE_1440: &str = r"
   .curation-wrap { padding-left: 32px; padding-right: 32px; }
   .draw-wrap     { padding-left: 32px; padding-right: 32px; }
 
-  .search-panel { max-width: 420px; }
+  .search-panel { max-width: 360px; }
 }
 ";
 
