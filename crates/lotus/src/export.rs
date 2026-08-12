@@ -241,6 +241,14 @@ mod tests {
     }
 
     #[test]
+    fn parse_empty_and_whitespace_returns_none() {
+        assert_eq!(ExportFormat::parse(""), None);
+        assert_eq!(ExportFormat::parse("   "), None);
+        assert_eq!(ExportFormat::parse("xyz"), None);
+        assert_eq!(ExportFormat::parse("csv\n"), Some(ExportFormat::Csv));
+    }
+
+    #[test]
     fn prepared_query_wraps_rdf_in_construct() {
         let select = "PREFIX wd: <http://www.wikidata.org/entity/>\nSELECT ?s WHERE { ?s ?p ?o }";
         let csv_q = ExportFormat::Csv.prepared_query(select);
@@ -289,6 +297,46 @@ mod tests {
         assert_eq!(
             ExportFormat::Rdf.trigger_timer_label(),
             "LOTUS:download_rdf_trigger"
+        );
+    }
+
+    #[test]
+    fn qlever_export_url_encodes_query_and_appends_action() {
+        let url = qlever_export_url("SELECT ?s WHERE { ?s ?p ?o }", ExportFormat::Csv);
+        assert!(url.starts_with(crate::transport::QLEVER_WIKIDATA));
+        assert!(url.contains("action=csv_export"));
+        assert!(url.contains("query="));
+    }
+
+    #[test]
+    fn qlever_export_url_rdf_uses_construct() {
+        let select = "SELECT ?s WHERE { ?s ?p ?o }";
+        let url = qlever_export_url(select, ExportFormat::Rdf);
+        // RDF should wrap in CONSTRUCT before encoding
+        assert!(url.contains("action=turtle_export"));
+    }
+
+    #[test]
+    fn build_upstream_export_url_delegates_to_qlever_export_url() {
+        let query = "SELECT ?s WHERE { ?s ?p ?o }";
+        assert_eq!(
+            build_upstream_export_url(query, ExportFormat::Csv),
+            qlever_export_url(query, ExportFormat::Csv)
+        );
+    }
+
+    #[test]
+    fn qlever_export_url_with_action_uses_custom_action() {
+        let url = qlever_export_url_with_action("SELECT ?s WHERE { ?s ?p ?o }", "custom_action");
+        assert!(url.starts_with(crate::transport::QLEVER_WIKIDATA));
+        assert!(url.contains("action=custom_action"));
+    }
+
+    #[test]
+    fn api_export_file_url_all_formats() {
+        assert_eq!(
+            api_export_file_url("key123", ExportFormat::Rdf),
+            "/v1/export-file/key123/rdf"
         );
     }
 }

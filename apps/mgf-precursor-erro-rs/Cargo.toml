@@ -6,7 +6,7 @@ rust-version = "1.95"
 description = "Web app for summarizing precursor mass errors from uploaded MGF files"
 license = "AGPL-3.0-only"
 keywords = ["dioxus", "wasm", "mgf", "precursor", "mass-spectrometry"]
-categories = ["wasm", "web-programming"]
+categories = ["science", "wasm", "web-programming"]
 publish = false
 
 [[bin]]

@@ -25,6 +25,10 @@ use std::sync::Arc;
 const WIKIDATA_STATEMENT_PREFIX: &str = "http://www.wikidata.org/entity/statement/";
 
 /// Column indices for the compound CSV format used by all LOTUS SPARQL queries.
+///
+/// Each field is `Some(index)` when the corresponding header is present in the
+/// CSV payload, or `None` otherwise.  `detect` handles the optional nature of
+/// most columns gracefully — callers check for `Some` before accessing.
 struct CompoundColumns {
     compound: Option<usize>,
     label: Option<usize>,
@@ -43,6 +47,9 @@ struct CompoundColumns {
 }
 
 impl CompoundColumns {
+    /// Scan a CSV header row and return the column index for each known field.
+    ///
+    /// Column presence is optional — absent columns map to `None`.
     fn detect(headers: &csv::ByteRecord) -> Self {
         let find =
             |name: &str| -> Option<usize> { headers.iter().position(|h| h == name.as_bytes()) };
@@ -66,6 +73,11 @@ impl CompoundColumns {
 }
 
 /// String interners for all `CompoundEntry` fields.
+///
+/// Interning avoids duplicate `Arc<str>` allocations for repeated values
+/// (e.g. the same taxon name appearing in many rows).  Each field has its
+/// own interner to maximize hit rates — taxon names are far less unique than
+/// compound QIDs, so they get a smaller initial capacity.
 struct CompoundInterners {
     qid: StrInterner,
     label: StrInterner,
@@ -93,6 +105,8 @@ impl CompoundInterners {
         }
     }
 
+    /// Interpolate all fields from a CSV record into a [`CompoundEntry`],
+    /// using the column map and string interners to avoid redundant allocation.
     fn build_entry(
         &mut self,
         cols: &CompoundColumns,
@@ -136,12 +150,19 @@ impl CompoundInterners {
     }
 }
 
+/// A simple FNV-1a string interner — maps `&str` → `Arc<str>`, reusing the
+/// same allocation for identical values.
 #[derive(Default)]
 struct StrInterner {
     map: HashMap<Box<str>, Arc<str>>,
 }
 
 impl StrInterner {
+    /// Construct an `StrInterner` pre-sized for `cap` unique strings.
+    ///
+    /// Sub-field capacities are tuned: taxon names get 64 slots (many rows share
+    /// a few taxa), reference titles get 128 (shared across references), smiles
+    /// get `cap * 2` (ISO + connection variants).
     fn with_capacity(capacity: usize) -> Self {
         Self {
             map: HashMap::with_capacity(capacity),
@@ -171,6 +192,7 @@ impl StrInterner {
     }
 }
 
+/// FNV-1a hash extension: XOR each byte with the accumulator, then multiply.
 #[inline]
 fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
     const FNV_PRIME: Wrapping<u64> = Wrapping(1_099_511_628_211);
@@ -181,11 +203,16 @@ fn fnv1a_extend(mut h: Wrapping<u64>, bytes: &[u8]) -> Wrapping<u64> {
     h
 }
 
+/// FNV-1a hash of a single byte slice (uses the standard offset basis).
 #[inline]
 fn fnv1a_one(bytes: &[u8]) -> u64 {
     fnv1a_extend(Wrapping(14_695_981_039_346_656_037_u64), bytes).0
 }
 
+/// Compute a FNV-1a hash of a (compound, taxon, reference) QID triple.
+///
+/// Used as a deduplication key in [`parse_compounds_csv_display_bytes`] and
+/// [`parse_compounds_csv_capped_reader`].
 fn entry_key_fingerprint(compound_qid: &[u8], taxon_qid: &[u8], reference_qid: &[u8]) -> u64 {
     let mut h = Wrapping(14_695_981_039_346_656_037_u64);
     h = fnv1a_extend(h, compound_qid);
@@ -196,6 +223,14 @@ fn entry_key_fingerprint(compound_qid: &[u8], taxon_qid: &[u8], reference_qid: &
     h.0
 }
 
+/// Parse a Wikidata entity ID from a CSV cell value.
+///
+/// Handles three formats:
+/// 1. Full URI: `http://www.wikidata.org/entity/Q123` → `Q123`
+/// 2. Typed literal: `"456"^^<...integer>` → `Q456`
+/// 3. Bare numeric: `456` → `Q456`
+///
+/// Returns an empty string for non-QID values (e.g. `P123` properties).
 fn parse_entity_id(value: &str) -> String {
     let qid = extract_qid(value);
     if !qid.is_empty() {
@@ -228,6 +263,10 @@ fn parse_entity_id(value: &str) -> String {
     String::new()
 }
 
+/// Strip the Wikidata statement prefix from an optional value.
+///
+/// Returns `None` for empty/whitespace input, otherwise the value with
+/// `http://www.wikidata.org/entity/statement/` stripped if present.
 #[inline]
 fn normalize_statement_value(value: &str) -> Option<&str> {
     let trimmed = value.trim();
@@ -241,6 +280,11 @@ fn normalize_statement_value(value: &str) -> Option<&str> {
     )
 }
 
+/// Normalise a DOI from a CSV cell: strip the `doi.org/` prefix if present.
+///
+/// Returns `None` for empty/whitespace input.  This is the borrowed-string
+/// equivalent of [`crate::transport::clean_doi`], used internally by the
+/// interning layer to avoid allocation before calling [`StrInterner`].
 #[inline]
 fn normalize_doi_value(value: &str) -> Option<&str> {
     let trimmed = value.trim();
@@ -545,12 +589,20 @@ pub fn parse_compounds_csv_capped_reader<R: Read>(
     Ok((entries, stats, was_capped))
 }
 
+/// Read a trimmed UTF-8 string from a CSV byte record at an optional column index.
+///
+/// Returns `""` (not `None`) when the column is absent or non-UTF-8, so
+/// callers can treat all values uniformly via `intern_optional`.
 #[inline]
 fn byte_field_str(rec: &csv::ByteRecord, idx: Option<usize>) -> &str {
     idx.and_then(|i| rec.get(i))
         .map_or("", |bytes| std::str::from_utf8(bytes).unwrap_or("").trim())
 }
 
+/// Write a QID into `out`, parsing from a Wikidata URI, typed literal, or bare number.
+///
+/// Clears nothing — callers are expected to clear `out` before calling.
+/// On invalid/empty input, `out` is left unchanged (not emptied).
 fn fill_qid(out: &mut String, bytes: &[u8]) {
     let s = match std::str::from_utf8(bytes) {
         Ok(s) => s.trim(),
@@ -681,5 +733,108 @@ mod tests {
         assert_eq!(rows_reader.len(), rows_bytes.len());
         assert_eq!(stats_reader, stats_bytes);
         assert_eq!(capped_reader, capped_bytes);
+    }
+
+    #[test]
+    fn fill_qid_handles_various_formats() {
+        let mut out = String::new();
+        fill_qid(&mut out, b"http://www.wikidata.org/entity/Q12345");
+        assert_eq!(out, "Q12345");
+
+        out.clear();
+        fill_qid(
+            &mut out,
+            b"\"456\"^^<http://www.w3.org/2001/XMLSchema#integer>",
+        );
+        assert_eq!(out, "Q456");
+
+        out.clear();
+        fill_qid(&mut out, b"Q789");
+        assert_eq!(out, "Q789");
+
+        out.clear();
+        fill_qid(&mut out, b"");
+        assert_eq!(out, "");
+    }
+
+    #[test]
+    fn parse_entity_id_extracts_bare_or_uri_qids() {
+        assert_eq!(
+            parse_entity_id("http://www.wikidata.org/entity/Q123"),
+            "Q123"
+        );
+        assert_eq!(parse_entity_id("Q456"), "Q456");
+        assert_eq!(
+            parse_entity_id("\"789\"^^<http://www.w3.org/2001/XMLSchema#integer>"),
+            "Q789"
+        );
+        assert_eq!(parse_entity_id("P123"), "");
+        assert_eq!(parse_entity_id(""), "");
+    }
+
+    #[test]
+    fn interner_deduplicates_strings() {
+        let mut interner = StrInterner::with_capacity(4);
+        let a = interner.intern_or_empty("hello");
+        let b = interner.intern_or_empty("hello");
+        assert!(Arc::ptr_eq(&a, &b));
+    }
+
+    #[test]
+    fn interner_returns_empty_for_blank_input() {
+        let mut interner = StrInterner::with_capacity(4);
+        let result = interner.intern_or_empty("   ");
+        assert_eq!(result.as_ref(), "");
+    }
+
+    #[test]
+    fn interner_optional_returns_none_for_empty() {
+        let mut interner = StrInterner::with_capacity(4);
+        assert_eq!(interner.intern_optional("   "), None);
+        assert!(interner.intern_optional("hello").is_some());
+    }
+
+    #[test]
+    fn normalize_statement_strips_prefix() {
+        let with_prefix = "http://www.wikidata.org/entity/statement/S1";
+        assert_eq!(normalize_statement_value(with_prefix), Some("S1"));
+        assert_eq!(normalize_statement_value("S2"), Some("S2"));
+        assert_eq!(normalize_statement_value(""), None);
+    }
+
+    #[test]
+    fn normalize_doi_strips_prefix() {
+        assert_eq!(
+            normalize_doi_value("https://doi.org/10.1/a"),
+            Some("10.1/a")
+        );
+        assert_eq!(normalize_doi_value("10.1/b"), Some("10.1/b"));
+        assert_eq!(normalize_doi_value(""), None);
+        assert_eq!(normalize_doi_value("   "), None);
+    }
+
+    #[test]
+    fn entry_key_fingerprint_is_deterministic() {
+        let key1 = entry_key_fingerprint(b"Q1", b"Q10", b"Q100");
+        let key2 = entry_key_fingerprint(b"Q1", b"Q10", b"Q100");
+        let key3 = entry_key_fingerprint(b"Q2", b"Q10", b"Q100");
+        assert_eq!(key1, key2);
+        assert_ne!(key1, key3);
+    }
+
+    #[test]
+    fn parse_compounds_display_handles_empty_compound_id() {
+        let csv = b"compound,compoundLabel,taxon,taxon_name,ref_qid\n,Q1,cmpd,,Q100\n";
+        let rows = parse_compounds_csv_display_bytes(csv, 50).expect("display parse");
+        // Rows with empty compound_qid should be skipped
+        assert_eq!(rows.len(), 0);
+    }
+
+    #[test]
+    fn parse_counts_csv_falls_back_to_entries_when_unique_is_zero() {
+        let csv = b"n_entries,n_entries_unique,n_compounds,n_taxa,n_references\n10,0,3,2,4\n";
+        let stats = parse_counts_csv_bytes(csv).expect("count parse");
+        assert_eq!(stats.n_entries, 10);
+        assert_eq!(stats.n_entries_unique, 10);
     }
 }
