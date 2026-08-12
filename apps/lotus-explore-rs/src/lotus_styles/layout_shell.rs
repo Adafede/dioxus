@@ -246,7 +246,7 @@ const SEARCH_PANEL: &str = r#"
 .lang-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
 .search-btn { white-space: normal; word-break: break-word; }
 @media (max-width: 768px) {
-  .filters-toggle { display:flex; width:calc(100% - 32px); margin:8px 16px; padding:11px 16px; justify-content:center; align-items:center; border:0; border-radius:var(--radius-sm); background:var(--btn-primary-bg); color:var(--text); font-size:var(--fs-ui); font-weight:700; cursor:pointer; box-shadow:var(--shadow-xs); transition:background .15s, box-shadow .15s, transform .12s ease; }
+  .filters-toggle { display:flex; width:100%; margin:0; padding:11px 16px; justify-content:center; align-items:center; border:0; border-radius:var(--radius-sm); background:var(--btn-primary-bg); color:var(--text); font-size:var(--fs-ui); font-weight:700; cursor:pointer; box-shadow:var(--shadow-xs); transition:background .15s, box-shadow .15s, transform .12s ease; box-sizing:border-box; }
   .filters-toggle:hover { background:var(--btn-primary-hover-bg); box-shadow:var(--shadow-sm); }
   .filters-toggle:active { transform: translateY(1px); }
   .search-panel-body { display:none !important; }
