@@ -244,7 +244,7 @@ const SEARCH_PANEL: &str = r#"
 .sidebar-logo { display:block; width:128px; height:128px; }
 .view-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
 .lang-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
-.search-btn { white-space: nowrap; }
+.search-btn { white-space: normal; word-break: break-word; }
 "#;
 
 const FOOTER: &str = r"
