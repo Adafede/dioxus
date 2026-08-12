@@ -116,6 +116,10 @@ pub fn SearchButton(on_click: EventHandler<()>) -> Element {
     }
 }
 
+/// Helper to construct form section styles.
+/// Note: This function is called from RSX macros which Clippy cannot analyze through
+/// the proc macro expansion, resulting in a false positive "never used" warning.
+#[expect(dead_code)]
 fn form_section_style() -> String {
     StyleBuilder::new()
         .display("flex")
@@ -128,6 +132,10 @@ fn form_section_style() -> String {
         .build()
 }
 
+/// Helper to construct form label styles.
+/// Note: This function is called from RSX macros which Clippy cannot analyze through
+/// the proc macro expansion, resulting in a false positive "never used" warning.
+#[expect(dead_code)]
 fn form_label_style() -> String {
     StyleBuilder::new()
         .font_size("var(--fs-0)")
@@ -138,10 +146,18 @@ fn form_label_style() -> String {
         .build()
 }
 
+/// Helper to construct small form label styles.
+/// Note: This function is called from RSX macros which Clippy cannot analyze through
+/// the proc macro expansion, resulting in a false positive "never used" warning.
+#[expect(dead_code)]
 fn form_label_small_style() -> String {
     crate::ui::style_constants::shared::label_small_style()
 }
 
+/// Helper to construct form input styles.
+/// Note: This function is called from RSX macros which Clippy cannot analyze through
+/// the proc macro expansion, resulting in a false positive "never used" warning.
+#[expect(dead_code)]
 fn form_input_style() -> String {
     StyleBuilder::new()
         .width("100%")
@@ -156,6 +172,10 @@ fn form_input_style() -> String {
         .build()
 }
 
+/// Helper to construct form hint styles.
+/// Note: This function is called from RSX macros which Clippy cannot analyze through
+/// the proc macro expansion, resulting in a false positive "never used" warning.
+#[expect(dead_code)]
 fn form_hint_style() -> String {
     StyleBuilder::new()
         .font_size("var(--fs-0)")
@@ -163,6 +183,10 @@ fn form_hint_style() -> String {
         .build()
 }
 
+/// Helper to construct range inputs styles.
+/// Note: This function is called from RSX macros which Clippy cannot analyze through
+/// the proc macro expansion, resulting in a false positive "never used" warning.
+#[expect(dead_code)]
 fn range_inputs_style() -> String {
     StyleBuilder::new()
         .display("flex")
@@ -171,6 +195,10 @@ fn range_inputs_style() -> String {
         .build()
 }
 
+/// Helper to construct range pair styles.
+/// Note: This function is called from RSX macros which Clippy cannot analyze through
+/// the proc macro expansion, resulting in a false positive "never used" warning.
+#[expect(dead_code)]
 fn range_pair_style() -> String {
     StyleBuilder::new()
         .display("flex")
