@@ -71,6 +71,7 @@ pub fn StatBar() -> Element {
         div {
             role: "group",
             aria_label: "{t(locale, TextKey::DatasetStatistics)}",
+            class: "stat-bar",
             style: stat_bar_style(),
             StatBadge {
                 value: stats.n_compounds,

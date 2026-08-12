@@ -72,7 +72,7 @@ const TABLET_768_AND_BELOW: &str = r"/* Responsive breakpoint pack extracted fro
     flex-wrap: wrap;
     font-size: var(--fs-0);
   }
-  .stat-bar { grid-template-columns:repeat(2, minmax(130px, 1fr)); }
+  .stat-bar { grid-template-columns: repeat(2, 1fr) !important; }
   .view-switch { flex-wrap:wrap; }
   .view-switch .btn { flex:1 1 180px; justify-content:center; font-size: var(--fs-0); }
 
@@ -217,7 +217,7 @@ const PHONE_480: &str = r"
   }
 
   .stat-bar {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 6px;
   }
 
@@ -599,6 +599,11 @@ const PHONE_430_AND_360: &str = r"
 
    .results-table tbody tr:nth-child(even) td {
      background: color-mix(in srgb, var(--surface) 86%, transparent);
+   }
+
+   /* Stat bar: 2 columns on very small screens */
+   .stat-bar {
+     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
    }
 }
 ";
