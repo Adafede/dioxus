@@ -49,6 +49,7 @@ pub fn SearchPanel() -> Element {
 
     rsx! {
         section {
+            class: "search-panel",
             style: search_panel_style(),
             aria_label: "{t(locale, TextKey::SearchFilters)}",
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
