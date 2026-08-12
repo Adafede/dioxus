@@ -238,7 +238,7 @@ const SEARCH_PANEL: &str = r"
 .search-panel { padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:1; }
 .search-panel-body { display:flex; flex-direction:column; gap:12px; }
 .filters-toggle { display:none; }
-.sidebar-logo-wrap { margin-top:auto; padding:6px 8px 8px; display:flex; justify-content:center; border-top:1px solid var(--border); }
+.sidebar-logo-wrap { padding:6px 8px 8px; display:flex; justify-content:center; border-top:1px solid var(--border); margin-top:auto; }
 .view-switch { margin-top: 10px; display: flex; gap: 8px; }
 .view-switch .btn { font-weight: 700; }
 .sidebar-logo { display:block; width:128px; height:128px; }

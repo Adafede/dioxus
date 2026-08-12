@@ -34,6 +34,12 @@ pub fn Sidebar() -> Element {
             style: sidebar_style(),
             class: if mobile_filters_open { "mobile-open" } else { "mobile-closed" },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
+            div { style: sidebar_logo_wrap_style(),
+                div { style: sidebar_logo_style(),
+                    "aria-hidden": "true",
+                    dangerous_inner_html: LOTUS_FERRIS_SVG,
+                }
+            }
             button {
                 class: "filters-toggle",
                 r#type: "button",
@@ -48,12 +54,6 @@ pub fn Sidebar() -> Element {
                 }
             }
             SearchPanel {}
-            div { style: sidebar_logo_wrap_style(),
-                div { style: sidebar_logo_style(),
-                    "aria-hidden": "true",
-                    dangerous_inner_html: LOTUS_FERRIS_SVG,
-                }
-            }
         }
     }
 }
@@ -70,16 +70,12 @@ fn sidebar_logo_wrap_style() -> String {
         .display("flex")
         .justify_content("center")
         .align_items("center")
-        .property("margin-top", "auto")
         .padding("6px 8px 8px")
-        .property("border-top", "1px solid var(--border)")
         .build()
 }
 
 fn sidebar_logo_style() -> String {
     StyleBuilder::new()
         .display("block")
-        .property("width", "128px")
-        .property("height", "128px")
         .build()
 }

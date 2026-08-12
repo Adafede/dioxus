@@ -167,6 +167,7 @@ const PHONE_480: &str = r"
     min-height: 44px;
     cursor:pointer;
   }
+  .sidebar-logo-wrap { border-top: none; margin-top: 0; padding-top: 0; }
   .sidebar.mobile-closed .search-panel .search-panel-body { display:none; }
   .sidebar.mobile-open .search-panel .search-panel-body { display:block; }
 
@@ -774,6 +775,7 @@ const DESKTOP_1024: &str = r"
     padding: 2px 6px;
     border-radius: 3px;
   }
+  .sidebar-logo-wrap { border-top: 1px solid var(--border); margin-top: auto; }
 }
 ";
 
