@@ -18,6 +18,7 @@ pub fn QueryPanel() -> Element {
 
     let mut criteria_effect_ready = use_signal(|| false);
     let mut panel_visible = use_signal(|| toolbar_snapshot.read().sparql_query.is_some());
+    let mut panel_open = use_signal(|| false);
 
     // Parameter changes should remove the tab until a new query is generated.
     // peek() for the guard so this effect only subscribes to `form_ctx.criteria`, not to itself.
@@ -25,6 +26,7 @@ pub fn QueryPanel() -> Element {
         let _ = form_ctx.criteria.read();
         if *criteria_effect_ready.peek() {
             panel_visible.set(false);
+            panel_open.set(false);
         } else {
             criteria_effect_ready.set(true);
         }
@@ -42,8 +44,24 @@ pub fn QueryPanel() -> Element {
     rsx! {
         if *panel_visible.read() {
             if let Some(q) = toolbar_snapshot.read().sparql_query.as_ref() {
-                details { style: query_panel_style(),
-                    summary { style: query_summary_style(), "{t(locale, TextKey::SparqlQuery)}" }
+                details {
+                    style: query_panel_style(),
+                    open: *panel_open.read(),
+                    onchange: move |evt: FormEvent| {
+                        panel_open.set(evt.value() == "true");
+                    },
+                    summary {
+                        style: query_summary_style(),
+                        span {
+                            style: if *panel_open.read() {
+                                query_summary_open_chevron_style()
+                            } else {
+                                query_summary_chevron_style()
+                            },
+                            "▶"
+                        }
+                        "{t(locale, TextKey::SparqlQuery)}"
+                    }
                     div { style: query_body_style(),
                         CopyButton {
                             text: q.clone(),
@@ -62,13 +80,45 @@ pub fn QueryPanel() -> Element {
 fn query_summary_style() -> String {
     StyleBuilder::new()
         .cursor("pointer")
-        .padding("8px 14px")
+        .padding("8px 14px 8px 32px")
         .font_size("var(--fs-0)")
         .color("var(--text2)")
         .property("user-select", "none")
         .property("letter-spacing", "0.04em")
         .font_weight("600")
         .property("list-style", "none")
+        .property("position", "relative")
+        .property("transition", "color .15s ease, background .15s ease")
+        .property(
+            "background",
+            "linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.02) 100%)",
+        )
+        .build()
+}
+
+fn query_summary_chevron_style() -> String {
+    StyleBuilder::new()
+        .property("position", "absolute")
+        .property("left", "12px")
+        .property("top", "50%")
+        .property("transform", "translateY(-50%) rotate(0deg)")
+        .property("transition", "transform .2s ease")
+        .property("font-size", "14px")
+        .property("line-height", "1")
+        .color("var(--text3)")
+        .build()
+}
+
+fn query_summary_open_chevron_style() -> String {
+    StyleBuilder::new()
+        .property("position", "absolute")
+        .property("left", "12px")
+        .property("top", "50%")
+        .property("transform", "translateY(-50%) rotate(90deg)")
+        .property("transition", "transform .2s ease")
+        .property("font-size", "14px")
+        .property("line-height", "1")
+        .color("var(--accent)")
         .build()
 }
 
