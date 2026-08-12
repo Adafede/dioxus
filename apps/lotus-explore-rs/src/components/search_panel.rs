@@ -217,6 +217,7 @@ pub fn KetcherPanel() -> Element {
 fn radio_group_style() -> String {
     StyleBuilder::new()
         .display("flex")
+        .flex_wrap("wrap")
         .gap("14px")
         .property("border", "0")
         .property("padding", "0")
