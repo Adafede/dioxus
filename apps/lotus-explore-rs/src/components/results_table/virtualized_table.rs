@@ -13,6 +13,7 @@ use crate::features::explore::selectors::ArcPtrEq;
 use crate::i18n::{TextKey, t};
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 #[component]
 pub(super) fn VirtualizedResultsTable(
@@ -40,23 +41,23 @@ pub(super) fn VirtualizedResultsTable(
     rsx! {
         div {
             id: virtualization.config.scroll_id,
-            class: "table-scroll",
             role: "region",
             tabindex: "0",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
+            style: table_scroll_style(),
             onscroll: on_scroll,
             table {
-                class: "results-table",
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
+                style: results_table_style(),
+                caption { style: sr_only_style(), "{t(locale, TextKey::TableTriplesAria)}" }
                 colgroup {
-                    col { class: "col-structure" }
-                    col { class: "col-compound" }
-                    col { class: "col-mass" }
-                    col { class: "col-formula" }
-                    col { class: "col-taxon" }
-                    col { class: "col-reference" }
-                    col { class: "col-year" }
+                    col { style: col_style("124px") }
+                    col { style: col_style("38ch") }
+                    col { style: col_style("10ch") }
+                    col { style: col_style("14ch") }
+                    col { style: col_style("28ch") }
+                    col { style: col_style("38ch") }
+                    col { style: col_style("8ch") }
                 }
                 thead {
                     TableHeader {
@@ -66,11 +67,10 @@ pub(super) fn VirtualizedResultsTable(
                 }
                 tbody {
                     if render_model.has_top_spacer() {
-                        tr { class: "virtual-spacer-row", aria_hidden: "true",
+                        tr { aria_hidden: "true",
                             td {
-                                class: "virtual-spacer-cell",
                                 colspan: "7",
-                                style: "height: {render_model.top_spacer_px}px;",
+                                style: spacer_cell_style(render_model.top_spacer_px),
                             }
                         }
                     }
@@ -90,11 +90,10 @@ pub(super) fn VirtualizedResultsTable(
                         }
                     }
                     if render_model.has_bottom_spacer() {
-                        tr { class: "virtual-spacer-row", aria_hidden: "true",
+                        tr { aria_hidden: "true",
                             td {
-                                class: "virtual-spacer-cell",
                                 colspan: "7",
-                                style: "height: {render_model.bottom_spacer_px}px;",
+                                style: spacer_cell_style(render_model.bottom_spacer_px),
                             }
                         }
                     }
@@ -102,4 +101,56 @@ pub(super) fn VirtualizedResultsTable(
             }
         }
     }
+}
+
+fn col_style(width: &str) -> String {
+    StyleBuilder::new().property("width", width).build()
+}
+
+fn spacer_cell_style(height: usize) -> String {
+    StyleBuilder::new()
+        .padding("0")
+        .border("0")
+        .property("height", &format!("{height}px"))
+        .build()
+}
+
+fn table_scroll_style() -> String {
+    StyleBuilder::new()
+        .property("overflow", "auto")
+        .property("max-height", "min(72vh, 980px)")
+        .border("1px solid var(--results-border)")
+        .border_radius("14px")
+        .background_color("var(--panel-bg-soft)")
+        .box_shadow("var(--panel-shadow)")
+        .property(
+            "transition",
+            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
+        )
+        .build()
+}
+
+fn results_table_style() -> String {
+    StyleBuilder::new()
+        .property("width", "100%")
+        .property("min-width", "max-content")
+        .property("border-collapse", "collapse")
+        .font_size("var(--fs-ui)")
+        .property("table-layout", "auto")
+        .property("word-break", "break-word")
+        .build()
+}
+
+fn sr_only_style() -> String {
+    StyleBuilder::new()
+        .property("position", "absolute")
+        .property("width", "1px")
+        .property("height", "1px")
+        .property("padding", "0")
+        .property("margin", "-1px")
+        .property("overflow", "hidden")
+        .property("clip", "rect(0,0,0,0)")
+        .property("white-space", "nowrap")
+        .property("border", "0")
+        .build()
 }

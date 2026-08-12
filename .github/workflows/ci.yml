@@ -136,7 +136,10 @@ jobs:
         with: { persist-credentials: false, fetch-depth: 1 }
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@67729d5c413db75907f0ad1e39bb04b9c868ff60
-        with: { tool: cargo-deny@0.19.4,cargo-audit@0.22.1 }
+        with:
+          tool: |
+            cargo-audit@0.22.2
+            cargo-deny@0.19.4
       - name: Show tool versions
         run: |
           cargo deny --version

@@ -16,6 +16,7 @@ use crate::perf;
 use crate::state::use_results_context;
 use dioxus::prelude::*;
 use std::sync::Arc;
+use ui::prelude::*;
 
 const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
 
@@ -151,26 +152,26 @@ pub fn DownloadActionsGroup() -> Element {
     drop(snapshot);
 
     rsx! {
-        div { class: "toolbar-actions",
+        div { style: toolbar_actions_style(),
             if *download_busy.read() {
                 span {
-                    class: "btn btn-sm",
                     role: "status",
                     aria_live: "polite",
-                    span { class: "spinner-sm", "aria-hidden": "true" }
+                    style: button_base_style(),
+                    span { style: spinner_sm_style(), "aria-hidden": "true" }
                     {download_status_text}
                 }
             }
             if toolbar_model.export_available {
                 div {
-                    class: "dl-group",
                     role: "group",
                     aria_label: "{download_results_label}",
+                    style: dl_group_style(),
                     if let Some(query) = sparql_query_value.as_ref() {
                         button {
-                            class: "btn btn-sm",
                             r#type: "button",
                             disabled: *download_busy.read(),
+                            style: button_small_style(),
                             onclick: {
                                 let q = query.clone();
                                 let filename = toolbar_model.csv_filename.clone();
@@ -195,9 +196,9 @@ pub fn DownloadActionsGroup() -> Element {
                             "{csv_label}"
                         }
                         button {
-                            class: "btn btn-sm",
                             r#type: "button",
                             disabled: *download_busy.read(),
+                            style: button_small_style(),
                             onclick: {
                                 let q = query.clone();
                                 let filename = toolbar_model.json_filename.clone();
@@ -222,9 +223,9 @@ pub fn DownloadActionsGroup() -> Element {
                             "{json_label}"
                         }
                         button {
-                            class: "btn btn-sm",
                             r#type: "button",
                             disabled: *download_busy.read(),
+                            style: button_small_style(),
                             onclick: {
                                 let q = query.clone();
                                 let filename = toolbar_model.rdf_filename.clone();
@@ -251,9 +252,9 @@ pub fn DownloadActionsGroup() -> Element {
                     }
                     if let Some(body) = metadata_json_value.as_ref() {
                         button {
-                            class: "btn btn-sm",
                             r#type: "button",
                             disabled: *download_busy.read(),
+                            style: button_small_style(),
                             onclick: {
                                 let body = body.clone();
                                 let filename = toolbar_model.metadata_filename.clone();
@@ -268,10 +269,10 @@ pub fn DownloadActionsGroup() -> Element {
                     }
                     if let Some(url) = toolbar_model.qlever_ui_url.as_deref() {
                         a {
-                            class: "btn btn-sm",
                             href: "{url}",
                             target: "_blank",
                             rel: "noopener noreferrer",
+                            style: button_small_style(),
                             title: "{qlever_title}",
                             aria_label: "{qlever_title}",
                             "{qlever_label}"
@@ -281,4 +282,69 @@ pub fn DownloadActionsGroup() -> Element {
             }
         }
     }
+}
+
+fn toolbar_actions_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .property("flex-wrap", "wrap")
+        .gap("8px")
+        .align_items("center")
+        .justify_content("space-between")
+        .property("min-width", "0")
+        .build()
+}
+
+fn dl_group_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .property("flex-wrap", "wrap")
+        .gap("8px")
+        .property("min-width", "0")
+        .property("max-width", "100%")
+        .align_items("center")
+        .build()
+}
+
+fn spinner_sm_style() -> String {
+    StyleBuilder::new()
+        .property("width", "14px")
+        .property("height", "14px")
+        .border("2px solid rgb(255 255 255 / 30%)")
+        .property("border-top-color", "#fff")
+        .border_radius("50%")
+        .property("animation", "spin .7s linear infinite")
+        .property("display", "inline-block")
+        .build()
+}
+
+fn button_base_style() -> String {
+    StyleBuilder::new()
+        .display("inline-flex")
+        .align_items("center")
+        .justify_content("center")
+        .gap("6px")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .property("min-height", "40px")
+        .padding("8px 14px")
+        .font_size("var(--fs-0)")
+        .font_weight("600")
+        .cursor("pointer")
+        .background_color("var(--surface)")
+        .color("var(--text)")
+        .box_shadow("var(--shadow-xs)")
+        .property(
+            "transition",
+            "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
+        )
+        .build()
+}
+
+fn button_small_style() -> String {
+    StyleBuilder::new()
+        .property("min-height", "34px")
+        .padding("5px 10px")
+        .font_size("var(--fs-0)")
+        .build()
 }

@@ -6,11 +6,21 @@
 use crate::components::search_panel::KetcherPanel;
 use crate::i18n::view_label_draw;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 #[component]
 pub fn DrawPage() -> Element {
     let locale = crate::hooks::use_locale();
     rsx! {
-        section { class: "draw-wrap", aria_label: "{view_label_draw(locale)}", KetcherPanel {} }
+        section { aria_label: "{view_label_draw(locale)}", style: panel_stack_style("12px 22px 18px", "0"), KetcherPanel {} }
     }
+}
+
+fn panel_stack_style(padding: &str, gap: &str) -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap(gap)
+        .padding(padding)
+        .build()
 }

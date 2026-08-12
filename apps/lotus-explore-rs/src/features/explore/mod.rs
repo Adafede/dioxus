@@ -17,7 +17,6 @@ pub use selectors::{
     ExploreUiState, use_criteria_selector, use_header_meta_snapshot, use_lifecycle_selector,
     use_toolbar_result_snapshot,
 };
-pub use state::controller::classes_for_view;
 pub use types::{DomainError, ErrorKind, ParseFault, QueryStage, TaxonWarning, ValidationFault};
 pub use url_state::{
     InitialUrlState, absolute_current_url_with_query, absolute_share_url, build_shareable_url,

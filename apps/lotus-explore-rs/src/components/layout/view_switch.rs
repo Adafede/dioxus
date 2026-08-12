@@ -13,6 +13,7 @@ use crate::i18n::{
 };
 use crate::state::{use_app_selector, use_app_state_context};
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 /// Three-button view switcher.
 ///
@@ -25,7 +26,7 @@ pub fn ViewSwitch() -> Element {
     let current_view = *use_app_selector(app_state, |state| state.view).read();
 
     rsx! {
-        nav { class: "view-switch", aria_label: "{view_switch_aria(locale)}",
+        nav { aria_label: "{view_switch_aria(locale)}", style: nav_style(),
             ViewBtn {
                 label: view_label_explorer(locale),
                 target: AppView::Explore,
@@ -59,12 +60,39 @@ fn ViewBtn(
     let active = current == target;
     rsx! {
         button {
-            class: if active { "btn btn-sm lang-btn active" } else { "btn btn-sm lang-btn" },
             r#type: "button",
             aria_pressed: if active { "true" } else { "false" },
             aria_current: if active { "page" } else { "false" },
+            style: button_pill_style(active),
             onclick: move |_| on_select.call(target),
             "{label}"
         }
     }
+}
+
+fn nav_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .gap("8px")
+        .property("flex-wrap", "wrap")
+        .build()
+}
+
+fn button_pill_style(active: bool) -> String {
+    let mut style = StyleBuilder::new()
+        .property("min-width", "40px")
+        .padding("3px 8px")
+        .font_size("var(--fs-0)");
+    if active {
+        style = style
+            .background_color("var(--btn-primary-bg)")
+            .border("1px solid var(--btn-primary-bg)")
+            .color("#fff");
+    } else {
+        style = style
+            .color("var(--text2)")
+            .background_color("color-mix(in srgb, var(--panel-bg-soft) 84%, var(--surface))")
+            .border("1px solid var(--panel-border)");
+    }
+    style.build()
 }

@@ -33,6 +33,7 @@ use crate::queries::classify_structure;
 use crate::state::{use_form_criteria_context, use_results_context};
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 #[component]
 pub fn SearchPanel() -> Element {
@@ -48,13 +49,13 @@ pub fn SearchPanel() -> Element {
 
     rsx! {
         section {
-            class: "search-panel",
             aria_label: "{t(locale, TextKey::SearchFilters)}",
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
+            style: panel_stack_style("18px 16px", "14px"),
 
-            h2 { id: SEARCH_PANEL_HEADING_ID, class: "sr-only", "{t(locale, TextKey::SearchFilters)}" }
+            h2 { id: SEARCH_PANEL_HEADING_ID, style: sr_only_style(), "{t(locale, TextKey::SearchFilters)}" }
 
-            div { id: SEARCH_PANEL_BODY_ID, class: "search-panel-body",
+            div { id: SEARCH_PANEL_BODY_ID, style: panel_stack_style("0", "12px"),
                 // All sections are zero-prop — they read FormCriteriaContext.
                 TaxonInput {}
                 StructureSection {}
@@ -65,10 +66,10 @@ pub fn SearchPanel() -> Element {
 
             if loading {
                 button {
-                    class: if is_dirty { "search-btn search-btn--dirty" } else { "search-btn" },
                     r#type: "submit",
                     disabled: true,
                     aria_label: "{t(locale, TextKey::RunSearch)}",
+                    style: search_button_style(is_dirty),
                     span { class: "spinner-sm", "aria-hidden": "true" }
                     "{t(locale, TextKey::Searching)}"
                 }
@@ -103,35 +104,31 @@ fn StructureSection() -> Element {
     let view_model = structure_model::build_structure_section_model(kind_value, smiles_search_type);
 
     rsx! {
-        div { class: "form-section",
-            label { class: "form-label", r#for: "smiles-input",
+        div { style: section_card_style(),
+            label { style: label_base_style(), r#for: "smiles-input",
                 "{t(locale, TextKey::StructureSmilesOrMol)}"
             }
             textarea {
                 id: "smiles-input",
-                class: "form-textarea mono",
                 spellcheck: "false",
                 placeholder: "{t(locale, TextKey::StructurePlaceholder)}",
                 value: "{smiles}",
                 oninput: move |e| ctx.update(FormAction::Smiles(e.value())),
                 rows: "4",
+                style: textarea_base_style(),
             }
             if let Some(note_key) = view_model.note_key {
-                p { class: "form-hint",
-                    span {
-                        class: "kind-pill",
-                        "data-kind": "{view_model.kind_class}",
-                        "{kind_value.label()}"
-                    }
-                    span { class: "kind-note", "{t(locale, note_key)}" }
+                p { style: hint_text_style(),
+                    span { style: kind_pill_style(&view_model.kind_class), "{kind_value.label()}" }
+                    span { "{t(locale, note_key)}" }
                 }
             } else {
-                p { class: "form-hint", "{t(locale, TextKey::StructureHintEmpty)}" }
+                p { style: hint_text_style(), "{t(locale, TextKey::StructureHintEmpty)}" }
             }
 
-            fieldset { class: "radio-group", style: "border:0;padding:0;margin:0;",
-                legend { class: "sr-only", "{t(locale, TextKey::StructureSearchMode)}" }
-                label { class: "radio-label",
+            fieldset { style: radio_group_style(),
+                legend { style: sr_only_style(), "{t(locale, TextKey::StructureSearchMode)}" }
+                label { style: radio_label_style(),
                     input {
                         r#type: "radio",
                         name: "stype",
@@ -142,7 +139,7 @@ fn StructureSection() -> Element {
                     }
                     "{t(locale, TextKey::Substructure)}"
                 }
-                label { class: "radio-label",
+                label { style: radio_label_style(),
                     input {
                         r#type: "radio",
                         name: "stype",
@@ -155,14 +152,13 @@ fn StructureSection() -> Element {
                 }
             }
             if view_model.show_similarity_threshold {
-                div { class: "form-section nested",
-                    label { class: "form-label sm", r#for: "threshold-input",
+                div { style: threshold_section_style(),
+                    label { style: label_small_style(), r#for: "threshold-input",
                         "{threshold_label(locale, smiles_threshold)}"
                     }
                     input {
                         id: "threshold-input",
                         r#type: "range",
-                        class: "range-input",
                         min: "0.0",
                         max: "1.0",
                         step: "0.01",
@@ -175,6 +171,7 @@ fn StructureSection() -> Element {
                                 ctx.update(FormAction::SmilesThreshold(v));
                             }
                         },
+                        style: range_input_style(),
                     }
                 }
             }
@@ -192,10 +189,10 @@ pub fn KetcherPanel() -> Element {
     let locale = crate::hooks::use_locale();
     rsx! {
         section {
-            class: "ketcher-panel",
             aria_label: "{t(locale, TextKey::KetcherSummary)}",
-            div { class: "ketcher-wrap",
-                p { class: "ketcher-hint",
+            style: ketcher_panel_style(),
+            div { style: ketcher_wrap_style(),
+                p { style: hint_text_style(),
                     "{t(locale, TextKey::KetcherHintA)}"
                     strong { "{t(locale, TextKey::KetcherSummary)}" }
                     "{t(locale, TextKey::KetcherHintB)}"
@@ -206,12 +203,232 @@ pub fn KetcherPanel() -> Element {
                 }
                 iframe {
                     src: "{KETCHER_URL}",
-                    class: "ketcher-iframe",
                     title: "{t(locale, TextKey::KetcherIframeTitle)}",
                     "loading": "lazy",
                     "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
+                    style: iframe_style(),
                 }
             }
         }
     }
+}
+
+fn radio_group_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .gap("14px")
+        .property("border", "0")
+        .property("padding", "0")
+        .property("margin", "0")
+        .build()
+}
+
+fn threshold_section_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("5px")
+        .padding("10px")
+        .property("border-left", "1px solid var(--border)")
+        .property("margin-top", "4px")
+        .build()
+}
+
+fn search_button_style(dirty: bool) -> String {
+    let mut style = button_base_style();
+    if dirty {
+        style = StyleBuilder::new()
+            .display("inline-flex")
+            .align_items("center")
+            .justify_content("center")
+            .gap("8px")
+            .border("0")
+            .border_radius("4px")
+            .property("min-height", "40px")
+            .padding("11px 16px")
+            .font_size("var(--fs-ui)")
+            .font_weight("700")
+            .cursor("pointer")
+            .background_color("color-mix(in srgb, var(--btn-primary-bg) 90%, var(--accent))")
+            .color("#fff")
+            .box_shadow("var(--shadow-xs)")
+            .property(
+                "transition",
+                "background .15s, box-shadow .15s, transform .12s ease",
+            )
+            .build();
+    }
+    style
+}
+
+fn panel_stack_style(padding: &str, gap: &str) -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap(gap)
+        .padding(padding)
+        .build()
+}
+
+fn sr_only_style() -> String {
+    StyleBuilder::new()
+        .property("position", "absolute")
+        .property("width", "1px")
+        .property("height", "1px")
+        .property("padding", "0")
+        .property("margin", "-1px")
+        .property("overflow", "hidden")
+        .property("clip", "rect(0,0,0,0)")
+        .property("white-space", "nowrap")
+        .property("border", "0")
+        .build()
+}
+
+fn section_card_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("5px")
+        .padding("10px 12px")
+        .border("1px solid var(--panel-border)")
+        .border_radius("12px")
+        .background_color("var(--panel-bg-soft)")
+        .build()
+}
+
+fn label_base_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-0)")
+        .font_weight("700")
+        .color("var(--critical-text)")
+        .property("text-transform", "uppercase")
+        .property("letter-spacing", "0.08em")
+        .build()
+}
+
+fn label_small_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-0)")
+        .font_weight("700")
+        .color("var(--text)")
+        .property("text-transform", "none")
+        .property("letter-spacing", "0")
+        .build()
+}
+
+fn hint_text_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-0)")
+        .color("var(--text2)")
+        .build()
+}
+
+fn radio_label_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .align_items("center")
+        .gap("6px")
+        .font_size("var(--fs-0)")
+        .cursor("pointer")
+        .color("var(--text2)")
+        .build()
+}
+
+fn ketcher_panel_style() -> String {
+    StyleBuilder::new()
+        .property("margin", "0")
+        .border("1px solid var(--panel-border)")
+        .border_radius("var(--radius)")
+        .background_color("var(--panel-bg-soft)")
+        .box_shadow("var(--panel-shadow)")
+        .property(
+            "transition",
+            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
+        )
+        .build()
+}
+
+fn ketcher_wrap_style() -> String {
+    panel_stack_style("0 14px 14px", "10px")
+}
+
+fn iframe_style() -> String {
+    StyleBuilder::new()
+        .property("width", "100%")
+        .property("height", "min(78vh, 820px)")
+        .property("min-height", "600px")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .background_color("#fff")
+        .build()
+}
+
+fn kind_pill_style(kind: &str) -> String {
+    let background = match kind {
+        "smiles" => "var(--accent2)",
+        "mol2000" => "#c97a2b",
+        "mol3000" => "#2b8f57",
+        _ => "var(--text3)",
+    };
+    StyleBuilder::new()
+        .display("inline-block")
+        .padding("1px 7px")
+        .border_radius("999px")
+        .font_size("var(--fs-micro)")
+        .font_weight("700")
+        .property("letter-spacing", "1px")
+        .property("text-transform", "uppercase")
+        .property("margin-right", "6px")
+        .color("#fff")
+        .background_color(background)
+        .build()
+}
+
+fn range_input_style() -> String {
+    StyleBuilder::new()
+        .property("width", "100%")
+        .property("accent-color", "var(--accent)")
+        .property("margin-top", "4px")
+        .build()
+}
+
+fn textarea_base_style() -> String {
+    input_base_style()
+}
+
+fn input_base_style() -> String {
+    StyleBuilder::new()
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .color("var(--text)")
+        .padding("9px 11px")
+        .font_size("var(--fs-ui)")
+        .property("width", "100%")
+        .font_family("var(--sans)")
+        .property("transition", "border-color .15s")
+        .build()
+}
+
+fn button_base_style() -> String {
+    StyleBuilder::new()
+        .display("inline-flex")
+        .align_items("center")
+        .justify_content("center")
+        .gap("6px")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .property("min-height", "40px")
+        .padding("8px 14px")
+        .font_size("var(--fs-0)")
+        .font_weight("600")
+        .cursor("pointer")
+        .background_color("var(--surface)")
+        .color("var(--text)")
+        .box_shadow("var(--shadow-xs)")
+        .property(
+            "transition",
+            "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
+        )
+        .build()
 }

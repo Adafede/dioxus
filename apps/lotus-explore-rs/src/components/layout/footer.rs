@@ -4,24 +4,25 @@
 use crate::hooks::use_locale;
 use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 #[component]
 pub fn Footer() -> Element {
     let locale = use_locale();
     rsx! {
-        footer { class: "app-footer",
-            div { class: "footer-line",
+        footer { style: footer_style(),
+            div { style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterArchive),
-                    class: "footer-link red",
+                    color: "var(--wd-compound)",
                     links: &[("https://doi.org/10.5281/zenodo.5794106", "Frozen version (Zenodo)"),],
                 }
                 FooterCitationRow { locale }
             }
-            div { class: "footer-line",
+            div { style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterCode),
-                    class: "footer-link green",
+                    color: "var(--wd-taxon)",
                     links: &[
                         (
                             "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explore-rs",
@@ -31,17 +32,17 @@ pub fn Footer() -> Element {
                 }
                 FooterRow {
                     label: t(locale, TextKey::FooterData),
-                    class: "footer-link green",
+                    color: "var(--wd-taxon)",
                     links: &[
                         ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
                         ("https://www.wikidata.org/", "Wikidata"),
                     ],
                 }
             }
-            div { class: "footer-line",
+            div { style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterPrograms),
-                    class: "footer-link blue",
+                    color: "var(--wd-reference)",
                     links: &[
                         ("https://github.com/cdk/depict", "CDK Depict"),
                         ("https://citation.js.org", "Citation.js"),
@@ -57,26 +58,35 @@ pub fn Footer() -> Element {
     }
 }
 
+fn footer_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("0")
+        .padding("16px 28px 20px")
+        .build()
+}
+
 #[component]
 fn FooterCitationRow(locale: Locale) -> Element {
     rsx! {
-        div { class: "footer-row",
-            span { class: "footer-label", "{t(locale, TextKey::FooterCitation)}" }
-            ul { class: "footer-links", role: "list",
+        div { style: footer_row_style(),
+            span { style: footer_label_style(), "{t(locale, TextKey::FooterCitation)}" }
+            ul { role: "list", style: footer_links_style(),
                 li {
                     a {
-                        class: "footer-link red",
                         href: "https://doi.org/10.7554/eLife.70780",
                         target: "_blank",
                         rel: "noopener noreferrer",
+                        style: footer_link_style("var(--wd-compound)"),
                         "LOTUS paper (eLife)"
                     }
                 }
                 li {
                     a {
-                        class: "footer-link red",
                         href: "/docs/references.bib",
                         download: "references.bib",
+                        style: footer_link_style("var(--wd-compound)"),
                         "BibTeX"
                     }
                 }
@@ -88,28 +98,28 @@ fn FooterCitationRow(locale: Locale) -> Element {
 #[component]
 fn FooterLicenseRow(locale: Locale) -> Element {
     rsx! {
-        div { class: "footer-row",
-            span { class: "footer-label", "{t(locale, TextKey::FooterLicense)}" }
-            ul { class: "footer-links", role: "list",
+        div { style: footer_row_style(),
+            span { style: footer_label_style(), "{t(locale, TextKey::FooterLicense)}" }
+            ul { role: "list", style: footer_links_style(),
                 li {
                     a {
-                        class: "footer-link blue",
                         href: "https://creativecommons.org/publicdomain/zero/1.0/",
                         target: "_blank",
                         rel: "noopener noreferrer",
+                        style: footer_link_style("var(--wd-reference)"),
                         "CC0 1.0"
                     }
-                    span { class: "footer-aside", "{t(locale, TextKey::FooterForData)}" }
+                    span { style: footer_aside_style(), "{t(locale, TextKey::FooterForData)}" }
                 }
                 li {
                     a {
-                        class: "footer-link blue",
                         href: "https://www.gnu.org/licenses/agpl-3.0.html",
                         target: "_blank",
                         rel: "noopener noreferrer",
+                        style: footer_link_style("var(--wd-reference)"),
                         "AGPL-3.0"
                     }
-                    span { class: "footer-aside", "{t(locale, TextKey::FooterForCode)}" }
+                    span { style: footer_aside_style(), "{t(locale, TextKey::FooterForCode)}" }
                 }
             }
         }
@@ -119,20 +129,20 @@ fn FooterLicenseRow(locale: Locale) -> Element {
 #[component]
 fn FooterRow(
     label: &'static str,
-    class: &'static str,
+    color: &'static str,
     links: &'static [(&'static str, &'static str)],
 ) -> Element {
     rsx! {
-        div { class: "footer-row",
-            span { class: "footer-label", "{label}" }
-            ul { class: "footer-links", role: "list",
+        div { style: footer_row_style(),
+            span { style: footer_label_style(), "{label}" }
+            ul { role: "list", style: footer_links_style(),
                 for (href, text) in links.iter() {
                     li {
                         a {
-                            class: "{class}",
                             href: "{href}",
                             target: "_blank",
                             rel: "noopener noreferrer",
+                            style: footer_link_style(color),
                             "{text}"
                         }
                     }
@@ -140,4 +150,74 @@ fn FooterRow(
             }
         }
     }
+}
+
+fn footer_line_style() -> String {
+    StyleBuilder::new()
+        .display("grid")
+        .property(
+            "grid-template-columns",
+            "repeat(auto-fit, minmax(300px, 1fr))",
+        )
+        .gap("0 24px")
+        .align_items("start")
+        .padding("10px 0")
+        .border_bottom("1px solid var(--panel-border)")
+        .build()
+}
+
+fn footer_row_style() -> String {
+    StyleBuilder::new()
+        .display("grid")
+        .property(
+            "grid-template-columns",
+            "clamp(7.5rem, 7vw, 9rem) minmax(0, 1fr)",
+        )
+        .gap("4px 6px")
+        .align_items("start")
+        .padding("2px 0")
+        .build()
+}
+
+fn footer_label_style() -> String {
+    StyleBuilder::new()
+        .color("var(--text2)")
+        .font_weight("700")
+        .property("text-transform", "uppercase")
+        .font_size("var(--fs-0)")
+        .property("letter-spacing", "1px")
+        .property("min-width", "0")
+        .property("white-space", "nowrap")
+        .property("padding-top", "4px")
+        .text_align("left")
+        .build()
+}
+
+fn footer_aside_style() -> String {
+    StyleBuilder::new()
+        .color("var(--text2)")
+        .font_size("var(--fs-0)")
+        .build()
+}
+
+fn footer_links_style() -> String {
+    StyleBuilder::new()
+        .property("list-style", "none")
+        .display("flex")
+        .property("flex-wrap", "wrap")
+        .gap("3px 5px")
+        .property("margin", "0")
+        .property("padding", "0")
+        .property("min-width", "0")
+        .justify_content("flex-start")
+        .align_items("flex-start")
+        .build()
+}
+
+fn footer_link_style(color: &str) -> String {
+    StyleBuilder::new()
+        .color(color)
+        .text_decoration("none")
+        .font_weight("700")
+        .build()
 }

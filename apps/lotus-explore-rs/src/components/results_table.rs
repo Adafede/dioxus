@@ -6,6 +6,7 @@ use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
 use crate::ui::a11y_contract::{RESULTS_SECTION_HEADING_ID, RESULTS_SECTION_ID};
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 mod download_model;
 mod header_model;
@@ -69,15 +70,15 @@ pub fn ResultsTable() -> Element {
     rsx! {
         section {
             id: RESULTS_SECTION_ID,
-            class: "results-wrap",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
             aria_labelledby: RESULTS_SECTION_HEADING_ID,
-            h2 { id: RESULTS_SECTION_HEADING_ID, class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
+            style: results_wrap_style(),
+            h2 { id: RESULTS_SECTION_HEADING_ID, style: sr_only_style(), "{t(locale, TextKey::TableTriplesAria)}" }
             ResultsToolbar {}
 
             if total == 0 {
-                div { class: "empty-state",
-                    p { class: "form-hint", "{t(locale, TextKey::NoResults)}" }
+                div { style: empty_state_style(),
+                    p { style: hint_text_style(), "{t(locale, TextKey::NoResults)}" }
                 }
             } else {
                 VirtualizedResultsTable {
@@ -87,4 +88,45 @@ pub fn ResultsTable() -> Element {
             }
         }
     }
+}
+
+fn empty_state_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .align_items("center")
+        .gap("12px")
+        .padding("64px 24px")
+        .color("var(--text2)")
+        .build()
+}
+
+fn results_wrap_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("10px")
+        .padding("12px 22px")
+        .build()
+}
+
+fn sr_only_style() -> String {
+    StyleBuilder::new()
+        .property("position", "absolute")
+        .property("width", "1px")
+        .property("height", "1px")
+        .property("padding", "0")
+        .property("margin", "-1px")
+        .property("overflow", "hidden")
+        .property("clip", "rect(0,0,0,0)")
+        .property("white-space", "nowrap")
+        .property("border", "0")
+        .build()
+}
+
+fn hint_text_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-0)")
+        .color("var(--text2)")
+        .build()
 }

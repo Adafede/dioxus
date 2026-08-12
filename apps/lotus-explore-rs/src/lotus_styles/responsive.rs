@@ -1,0 +1,845 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
+//! Lotus CSS pack: responsive.
+
+pub const CSS: &str = r###"/* Responsive breakpoint pack extracted from style.css for maintainability. */
+
+/* Import enhanced responsive typography tokens */
+:root {
+  /* Enhanced responsive font sizing for better mobile UX */
+
+  /* Tighter scaling for tablets (768px and below) */
+  --fs-title-tablet: clamp(1.2rem, 0.85rem + 1.05vw, 1.5rem);
+  --fs-heading-tablet: clamp(1rem, 0.8rem + 0.6vw, 1.25rem);
+  --fs-body-tablet: clamp(0.85rem, 0.8rem + 0.15vw, 0.9rem);
+  --fs-small-tablet: clamp(0.7rem, 0.68rem + 0.1vw, 0.8rem);
+}
+
+@media (width <=768px) {
+  :root {
+    /* Tablet-specific responsive sizes */
+    --fs-0:      clamp(0.7rem, 0.68rem + 0.12vw, 0.8rem);
+    --fs-1:      clamp(0.8rem, 0.78rem + 0.12vw, 0.85rem);
+    --fs-2:      clamp(0.85rem, 0.83rem + 0.18vw, 0.95rem);
+    --fs-3:      clamp(1rem, 0.92rem + 0.4vw, 1.25rem);
+    --fs-4:      clamp(1.2rem, 0.95rem + 0.65vw, 1.5rem);
+    --fs-body:   clamp(0.8rem, 0.78rem + 0.12vw, 0.85rem);
+    --fs-label:  clamp(0.65rem, 0.63rem + 0.1vw, 0.7rem);
+    --fs-micro:  clamp(0.7rem, 0.68rem + 0.08vw, 0.75rem);
+    --fs-ui:     clamp(0.75rem, 0.73rem + 0.1vw, 0.8rem);
+    --fs-stat:   clamp(1rem, 0.92rem + 0.4vw, 1.2rem);
+  }
+
+  .app-layout   { flex-direction:column; height:auto; min-height:100dvh; overflow:visible; padding:0; gap:0; }
+  .sidebar      { width:100%; height:auto; max-height:none; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }
+  .main-content { height:auto; min-height:0; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }
+
+  .page-header, .welcome, .results-wrap, .app-footer {
+    padding-left:max(18px, env(safe-area-inset-left));
+    padding-right:max(18px, env(safe-area-inset-right));
+  }
+  .page-header-meta { margin-left:18px; margin-right:18px; }
+  .notice       { margin-left:18px; margin-right:18px; }
+  .draw-wrap { padding-left:18px; padding-right:18px; }
+  .ketcher-panel { margin-left:0; margin-right:0; }
+  .ketcher-iframe { height:min(70vh, 560px); min-height:420px; }
+  .app-footer { gap:0; }
+  .app-footer { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .footer-row { row-gap:4px; }
+
+  .page-brand {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 10px;
+  }
+
+  .page-title {
+    min-width: 0;
+    flex: 1 1 260px;
+    font-size: var(--fs-4);
+  }
+
+  .page-home-link {
+    max-width: 100%;
+    gap: 8px;
+  }
+
+  .lang-switch {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    font-size: var(--fs-0);
+  }
+  .stat-bar { grid-template-columns:repeat(2, minmax(130px, 1fr)); }
+  .view-switch { flex-wrap:wrap; }
+  .view-switch .btn { flex:1 1 180px; justify-content:center; font-size: var(--fs-0); }
+
+  /* share-bar: reduce margin to match page-header-meta at this breakpoint */
+  .share-bar { margin-left: 18px; margin-right: 18px; }
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
+
+  /* Typography scaling for tablet */
+  .page-sub { font-size: var(--fs-1); }
+  .meta-key { font-size: var(--fs-label); }
+  .form-label { font-size: var(--fs-0); }
+  .form-hint { font-size: var(--fs-micro); }
+  .radio-label { font-size: var(--fs-0); }
+  .search-btn { font-size: var(--fs-ui); }
+  .btn, .btn-sm { font-size: var(--fs-0); }
+  .stat-badge { font-size: var(--fs-stat); }
+}
+
+@media (width <=480px) {
+  :root {
+    /* Phone-specific responsive sizing */
+    --fs-0:      clamp(0.65rem, 0.63rem + 0.08vw, 0.75rem);
+    --fs-1:      clamp(0.75rem, 0.73rem + 0.08vw, 0.8rem);
+    --fs-2:      clamp(0.8rem, 0.78rem + 0.12vw, 0.9rem);
+    --fs-3:      clamp(0.95rem, 0.87rem + 0.3vw, 1.15rem);
+    --fs-4:      clamp(1.1rem, 0.85rem + 0.6vw, 1.35rem);
+    --fs-body:   clamp(0.75rem, 0.73rem + 0.08vw, 0.8rem);
+    --fs-label:  clamp(0.6rem, 0.58rem + 0.08vw, 0.65rem);
+    --fs-micro:  clamp(0.65rem, 0.63rem + 0.06vw, 0.7rem);
+    --fs-ui:     clamp(0.7rem, 0.68rem + 0.08vw, 0.75rem);
+    --fs-stat:   clamp(0.95rem, 0.87rem + 0.3vw, 1.1rem);
+  }
+
+  .sidebar { padding:0; }
+  .search-panel { padding:14px 12px; gap:12px; font-size: var(--fs-0); }
+  .form-section { padding:8px 10px; border-radius:10px; font-size: var(--fs-body); }
+
+  .page-header, .welcome, .results-wrap, .app-footer {
+    padding-left:12px;
+    padding-right:12px;
+    font-size: var(--fs-body);
+  }
+
+  .page-header-meta {
+    margin-left:12px;
+    margin-right:12px;
+    font-size: var(--fs-label);
+  }
+  .draw-wrap { padding-left:12px; padding-right:12px; }
+  .notice, .ketcher-panel { margin-left:12px; margin-right:12px; }
+  .main-content > .notice { padding-left:12px; padding-right:12px; }
+  .notice { padding:8px 10px; gap:8px; flex-direction:column; align-items:flex-start; font-size: var(--fs-label); }
+  .notice-copy-field { width:100%; min-width:0; }
+  .notice-dismiss { align-self:flex-end; margin-left:0; font-size: var(--fs-0); }
+
+  /* share-bar: match notice margin and stack input */
+  .share-bar { margin-left: 12px; margin-right: 12px; }
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
+  .share-bar-input { width: 100%; min-width: 0; font-size: 16px; }
+
+  .filters-toggle {
+    display:flex;
+    width:calc(100% - 24px);
+    margin:12px;
+    padding:10px 12px;
+    justify-content:center;
+    align-items:center;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    background:var(--bg2);
+    color:var(--text);
+    font-size:var(--fs-ui);
+    font-weight:600;
+    min-height: 44px;
+    cursor:pointer;
+  }
+  .sidebar.mobile-closed .search-panel .search-panel-body { display:none; }
+  .sidebar.mobile-open .search-panel .search-panel-body { display:block; }
+
+  .page-title {
+    font-size: var(--fs-4);
+    line-height: 1.1;
+  }
+  .page-title-text { line-height:1.1; }
+  .page-sub { font-size: var(--fs-1); }
+  .sidebar-logo-wrap { padding-top:10px; padding-bottom:12px; }
+  .sidebar-logo { width:120px; height:120px; }
+  .radio-group, .range-inputs, .toolbar-actions { flex-wrap:wrap; }
+
+  .toolbar-actions > .btn,
+  .toolbar-actions > .dl-group {
+    width:100%;
+    font-size: var(--fs-0);
+  }
+  .footer-line { grid-template-columns:1fr; }
+
+  .footer-row {
+    grid-template-columns:max-content minmax(0,1fr);
+    align-items:flex-start;
+    font-size: var(--fs-micro);
+  }
+  .footer-label { min-width:0; }
+  .footer-links { gap:4px 6px; }
+  .footer-links li { width:auto; }
+
+  .footer-link, .footer-aside, .footer-sep {
+    line-height:1.35;
+    font-size: var(--fs-micro);
+  }
+  .range-pair { min-width:120px; }
+
+  .range-inputs--pair {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .range-sep--pair {
+    display: none;
+  }
+
+  .form-input, .form-textarea, .search-btn, select, input, textarea { font-size:16px; }
+
+  .btn, .search-btn {
+    min-height: 44px;
+    font-size: var(--fs-0);
+  }
+  .search-btn { justify-content:center; text-align:center; }
+
+  .results-wrap {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .curation-scroll-hint { display: inline-flex; }
+  .curation-table-scroll { border-radius: 8px; }
+  .curation-results-table { min-width: 900px; }
+
+  .curation-results-table th,
+  .curation-results-table td {
+    padding: 4px 5px;
+    font-size: var(--fs-micro);
+  }
+
+  .stat-bar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .stat-badge {
+    padding: 6px 8px;
+    gap: 2px;
+    font-size: var(--fs-stat);
+  }
+
+  .results-table {
+    font-size: var(--fs-label);
+    table-layout: auto;
+    word-break: break-word;
+  }
+
+  .sort-th, .th-static {
+    padding: 5px 4px;
+    font-size: var(--fs-micro);
+    letter-spacing: 0.05em;
+    white-space: normal;
+  }
+
+  .data-row td {
+    padding: 4px 5px;
+    font-size: var(--fs-0);
+    vertical-align: middle;
+    word-break: break-word;
+  }
+
+  /* Preserve full names on phones - use auto layout */
+  .td-depict {
+    width: auto;
+    padding: 3px 4px !important;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+
+  .depict-img {
+    width: min(100%, 65px);
+    max-width: 65px;
+    height: auto;
+  }
+
+  /* Allow compound/taxon/ref cells to expand for full names */
+  .td-compound, .td-taxon, .td-ref {
+    min-width: 120px;
+    width: auto;
+    border-radius: 6px;
+    padding: 4px 5px;
+  }
+
+  .cell-primary {
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  .id-badge {
+    font-size: var(--fs-micro);
+    padding: 1px 3px;
+    border-radius: 2px;
+  }
+
+  .badge-row {
+    gap: 2px;
+    margin-top: 2px;
+  }
+
+  /* Reduce table scroll max-height on phones */
+  .table-scroll {
+    max-height: min(60vh, 500px);
+    overflow-x: auto;
+  }
+
+  /* Optimize stat value display */
+  .stat-value-row {
+    gap: 3px;
+  }
+
+  .stat-value {
+    font-size: var(--fs-stat);
+    line-height: 1.1;
+  }
+
+  .stat-label {
+    font-size: var(--fs-micro);
+    margin-top: 1px;
+  }
+
+  .stat-secondary-label {
+    font-size: var(--fs-micro);
+    padding: 0 3px;
+  }
+
+   .td-depict {
+     width: auto;
+     padding:4px 6px !important;
+     min-width: 0;
+   }
+
+   .depict-img {
+     width:88px;
+     height:56px;
+   }
+   .td-compound, .td-taxon, .td-ref { min-width:0; width:auto; }
+
+   .id-badge {
+     font-size: var(--fs-micro);
+     padding:1px 5px;
+   }
+
+   .ketcher-iframe { height:min(62vh, 420px); min-height:300px; }
+}
+
+@media (width <=430px) {
+  :root {
+    /* Extra small screen (< 430px) optimized sizing */
+    --fs-0:      clamp(0.62rem, 0.60rem + 0.06vw, 0.7rem);
+    --fs-1:      clamp(0.7rem, 0.68rem + 0.06vw, 0.75rem);
+    --fs-2:      clamp(0.75rem, 0.73rem + 0.1vw, 0.85rem);
+    --fs-3:      clamp(0.9rem, 0.82rem + 0.25vw, 1.05rem);
+    --fs-4:      clamp(1rem, 0.78rem + 0.55vw, 1.2rem);
+    --fs-body:   clamp(0.7rem, 0.68rem + 0.06vw, 0.75rem);
+    --fs-label:  clamp(0.55rem, 0.53rem + 0.06vw, 0.6rem);
+    --fs-micro:  clamp(0.6rem, 0.58rem + 0.04vw, 0.65rem);
+    --fs-ui:     clamp(0.65rem, 0.63rem + 0.06vw, 0.7rem);
+    --fs-stat:   clamp(0.9rem, 0.82rem + 0.25vw, 1rem);
+  }
+
+  .page-header,
+  .welcome,
+  .results-wrap,
+  .app-footer,
+  .draw-wrap {
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  .notice,
+  .ketcher-panel,
+  .page-header-meta {
+    margin-left:10px;
+    margin-right:10px;
+  }
+  .share-bar { margin-left: 10px; margin-right: 10px; }
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
+
+  /* Stack meta items vertically on very narrow screens */
+  .page-header-meta {
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .page-header-meta .meta-item {
+    white-space: normal;
+    flex-wrap: wrap;
+    min-width: 0;
+    font-size: var(--fs-label);
+  }
+
+  .page-header-meta .meta-key {
+    font-size: var(--fs-micro);
+  }
+
+  .page-header-meta .meta-sep {
+    display: none;
+  }
+
+  .page-header-meta .meta-val {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-size: var(--fs-label);
+  }
+
+  .copy-btn {
+    margin-left:0;
+    font-size: var(--fs-micro);
+  }
+
+  .results-toolbar {
+    gap:8px;
+  }
+
+  .toolbar-actions {
+    width:100%;
+    gap:6px;
+  }
+
+  .toolbar-actions .btn,
+  .toolbar-actions .dl-group {
+    width:100%;
+    font-size: var(--fs-0);
+  }
+
+  .dl-group {
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  .dl-group .btn {
+    flex:1 1 160px;
+    min-width:0;
+    border-right-width:1px;
+    border-radius:var(--radius-sm);
+    font-size: var(--fs-0);
+  }
+
+  .results-table {
+    font-size: var(--fs-label);
+  }
+
+  .curation-results-table {
+    min-width: 900px;
+    font-size: var(--fs-label);
+  }
+
+  .th-static,
+  .sort-th,
+  .sort-btn {
+    font-size: var(--fs-micro);
+    letter-spacing:0.06em;
+  }
+
+  .view-switch .btn {
+    width:100%;
+    flex:1 1 100%;
+    font-size: var(--fs-0);
+  }
+}
+
+@media (width <=360px) {
+  :root {
+    /* Ultra-small screens (< 360px) - extreme minimum sizing */
+    --fs-0:      clamp(0.6rem, 0.58rem + 0.04vw, 0.68rem);
+    --fs-1:      clamp(0.68rem, 0.66rem + 0.04vw, 0.72rem);
+    --fs-2:      clamp(0.72rem, 0.70rem + 0.08vw, 0.8rem);
+    --fs-3:      clamp(0.85rem, 0.77rem + 0.2vw, 1rem);
+    --fs-4:      clamp(0.95rem, 0.73rem + 0.5vw, 1.1rem);
+    --fs-body:   clamp(0.68rem, 0.66rem + 0.04vw, 0.72rem);
+    --fs-label:  clamp(0.52rem, 0.50rem + 0.04vw, 0.58rem);
+    --fs-micro:  clamp(0.58rem, 0.56rem + 0.02vw, 0.62rem);
+    --fs-ui:     clamp(0.62rem, 0.60rem + 0.04vw, 0.68rem);
+    --fs-stat:   clamp(0.85rem, 0.77rem + 0.2vw, 0.95rem);
+  }
+
+  .page-header,
+  .welcome,
+  .results-wrap,
+  .app-footer,
+  .draw-wrap {
+    padding-left:8px;
+    padding-right:8px;
+  }
+
+  .page-header-meta,
+  .notice,
+  .ketcher-panel {
+    margin-left:8px;
+    margin-right:8px;
+  }
+  .share-bar { margin-left: 8px; margin-right: 8px; }
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
+
+  .main-content > .notice {
+    padding-left:8px;
+    padding-right:8px;
+  }
+
+  .filters-toggle {
+    width:calc(100% - 16px);
+    margin:8px;
+  }
+
+  .lang-switch .btn,
+  .view-switch .btn {
+    flex:1 1 100%;
+    font-size: var(--fs-0);
+  }
+
+   .page-title {
+     font-size: var(--fs-4);
+   }
+
+   /* Optimize typography further for ultra-small screens */
+   .page-sub { font-size: var(--fs-1); }
+   .meta-key { font-size: var(--fs-micro); }
+   .form-label { font-size: var(--fs-0); }
+   .form-hint { font-size: var(--fs-micro); }
+   .radio-label { font-size: var(--fs-0); }
+   .search-btn { font-size: var(--fs-0); }
+   .btn { font-size: var(--fs-0); }
+   .stat-badge { font-size: var(--fs-stat); }
+   .footer-link, .footer-aside { font-size: var(--fs-micro); }
+
+    /* Table optimization for ultra-small screens - PRESERVE FULL NAMES */
+    .results-table {
+      font-size: var(--fs-label);
+      table-layout: auto;
+      word-break: break-word;
+    }
+
+    .sort-th, .th-static {
+      padding: 4px 3px;
+      font-size: var(--fs-micro);
+      letter-spacing: 0.04em;
+      white-space: normal;
+    }
+
+    .data-row td {
+      padding: 3px 4px;
+      font-size: var(--fs-0);
+      vertical-align: middle;
+      word-break: break-word;
+    }
+
+    .td-depict {
+      width: auto;
+      padding: 2px 3px !important;
+      min-width: 0;
+      flex-shrink: 0;
+    }
+
+    .depict-img {
+      width: min(100%, 55px);
+      max-width: 55px;
+      height: auto;
+    }
+
+    /* Allow compound/taxon/ref cells space for full names */
+    .td-compound, .td-taxon, .td-ref {
+      min-width: 100px;
+      width: auto;
+      border-radius: 4px;
+      padding: 3px 4px;
+    }
+
+    .cell-primary {
+      font-weight: 500;
+      line-height: 1.3;
+      white-space: normal;
+      overflow-wrap: break-word;
+    }
+
+    .id-badge {
+      font-size: var(--fs-micro);
+      padding: 0 2px;
+      border-radius: 2px;
+      line-height: 1.2;
+    }
+
+
+   .badge-row {
+     gap: 1px;
+     margin-top: 0;
+   }
+
+   .table-scroll {
+     max-height: min(55vh, 400px);
+   }
+
+   .stat-value {
+     font-size: var(--fs-stat);
+     line-height: 1.1;
+   }
+
+   .stat-label {
+     font-size: var(--fs-micro);
+     margin-top: 0;
+   }
+
+   /* Hide non-essential columns on ultra-small screens (optional) */
+   .results-table tbody tr:nth-child(odd) td {
+     background: color-mix(in srgb, var(--surface) 92%, transparent);
+   }
+
+   .results-table tbody tr:nth-child(even) td {
+     background: color-mix(in srgb, var(--surface) 86%, transparent);
+   }
+}
+
+/* Medium screens (768px - 1023px) - tablet optimization */
+@media (width >= 769px) and (width <= 1023px) {
+  :root {
+    /* Tablet-optimized responsive typography */
+    --fs-0:      clamp(0.72rem, 0.68rem + 0.15vw, 0.8rem);
+    --fs-1:      clamp(0.87rem, 0.82rem + 0.18vw, 0.92rem);
+    --fs-2:      clamp(0.94rem, 0.88rem + 0.24vw, 1.02rem);
+    --fs-3:      clamp(1.125rem, 1.02rem + 0.46vw, 1.35rem);
+    --fs-4:      clamp(1.375rem, 1.1rem + 0.7vw, 1.7rem);
+    --fs-body:   clamp(0.87rem, 0.82rem + 0.18vw, 0.92rem);
+    --fs-label:  clamp(0.68rem, 0.64rem + 0.12vw, 0.75rem);
+    --fs-micro:  clamp(0.75rem, 0.71rem + 0.1vw, 0.8rem);
+    --fs-ui:     clamp(0.8125rem, 0.76rem + 0.14vw, 0.87rem);
+    --fs-stat:   clamp(1.125rem, 1.02rem + 0.4vw, 1.3rem);
+  }
+
+  /* Table optimization for tablets - PRESERVE FULL NAMES */
+  .results-table {
+    font-size: var(--fs-ui);
+    table-layout: auto;
+    word-break: break-word;
+  }
+
+  .sort-th, .th-static {
+    padding: 8px;
+    font-size: var(--fs-label);
+    white-space: normal;
+  }
+
+  .data-row td {
+    padding: 6px 8px;
+    vertical-align: middle;
+    word-break: break-word;
+  }
+
+  .td-depict {
+    padding: 4px 5px !important;
+    width: auto !important;
+    flex-shrink: 0;
+  }
+
+  .depict-img {
+    width: min(100%, 95px);
+    max-width: 95px;
+  }
+
+  /* Allow full names in cells */
+  .td-compound, .td-taxon, .td-ref {
+    width: auto;
+    min-width: 150px;
+  }
+
+  .cell-primary {
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: normal;
+  }
+
+  .stat-badge {
+    padding: 10px 12px;
+    gap: 5px;
+  }
+
+  .table-scroll {
+    max-height: min(72vh, 900px);
+  }
+}
+
+/* Large screens (1024px and above) - desktop optimization */
+@media (width >= 1024px) {
+  :root {
+    /* Desktop-optimized responsive typography */
+    --fs-0:      clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);
+    --fs-1:      clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
+    --fs-2:      clamp(0.9375rem, 0.9rem + 0.28vw, 1.0625rem);
+    --fs-3:      clamp(1.125rem, 1.02rem + 0.6vw, 1.5rem);
+    --fs-4:      clamp(1.375rem, 1.1rem + 0.85vw, 1.85rem);
+    --fs-body:   clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
+    --fs-label:  clamp(0.6875rem, 0.66rem + 0.14vw, 0.75rem);
+    --fs-micro:  clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);
+    --fs-ui:     clamp(0.8125rem, 0.785rem + 0.16vw, 0.875rem);
+    --fs-stat:   clamp(1.125rem, 1.02rem + 0.52vw, 1.375rem);
+  }
+
+  /* Table optimization for desktop - PRESERVE FULL NAMES */
+  .results-table {
+    font-size: var(--fs-ui);
+    table-layout: auto;
+    word-break: break-word;
+  }
+
+  .sort-th, .th-static {
+    padding: 10px 12px;
+    font-size: var(--fs-label);
+    white-space: normal;
+  }
+
+  .data-row td {
+    padding: 8px 12px;
+    vertical-align: middle;
+    word-break: break-word;
+  }
+
+  .td-depict {
+    padding: 6px 10px !important;
+    width: auto !important;
+    flex-shrink: 0;
+  }
+
+  .depict-img {
+    width: min(100%, 110px);
+    max-width: 110px;
+  }
+
+  /* Allow full names and references */
+  .td-compound, .td-taxon, .td-ref {
+    width: auto;
+    min-width: 180px;
+  }
+
+  .cell-primary {
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: normal;
+  }
+
+  .stat-badge {
+    padding: 12px 14px;
+    gap: 6px;
+  }
+
+  .table-scroll {
+    max-height: min(72vh, 980px);
+  }
+
+  /* Wider badges on desktop */
+  .id-badge {
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+}
+
+/* Extra large screens (1440px+) - ensure optimal readability */
+@media (width >= 1440px) {
+  .page-header { padding-left: 32px; padding-right: 32px; }
+  .page-header-meta { margin-left: 32px; margin-right: 32px; }
+
+  /* share-bar mirrors page-header-meta margin */
+  .share-bar { margin-left: 32px; margin-right: 32px; }
+
+  /* flex-container children keep their own zero margin */
+  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
+
+  .main-content > .notice {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  .results-wrap { padding-left: 32px; padding-right: 32px; }
+  .curation-wrap { padding-left: 32px; padding-right: 32px; }
+  .draw-wrap     { padding-left: 32px; padding-right: 32px; }
+}
+
+/* Mobile-first heading and typography scaling */
+@media (width <= 768px) {
+  /* Ensure all headings are readable and don't overflow */
+  h1, .page-title { word-break: break-word; overflow-wrap: break-word; }
+  h2, h3, h4, h5, h6 { word-break: break-word; overflow-wrap: break-word; }
+
+  /* Button and form element minimum touch target on mobile */
+  button, .btn, input[type="button"], input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improve link and interactive element sizing on touch devices */
+  a, .copy-btn, .id-badge { padding: 4px 8px; }
+
+  /* Optimize table cell padding for mobile readability */
+  table td, table th {
+    padding: 6px 4px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Improve textarea usability on mobile */
+  textarea {
+    min-height: 120px;
+    font-size: 16px;
+  }
+
+  /* Stack form groups vertically on mobile */
+  .form-group, .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Improve list readability on mobile */
+  ul, ol, li {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+}
+
+/* Tablet-specific optimizations (768px - 1023px) */
+@media (width >= 769px) and (width <= 1023px) {
+  /* Improve text readability on tablets */
+  body { line-height: 1.6; }
+
+  /* Optimize list item spacing */
+  li { margin-bottom: 8px; }
+
+  /* Improve form field spacing */
+  .form-input, .form-textarea, input, textarea, select {
+    min-height: 40px;
+  }
+}
+
+/* Accessibility: Improve font sizing for readability */
+@media (prefers-contrast: more) {
+  body { font-size: 18px; }
+
+  :root {
+    /* Increase all font sizes by ~10% for accessibility */
+    --fs-0:      clamp(0.82rem, 0.80rem + 0.18vw, 0.96rem);
+    --fs-1:      clamp(0.96rem, 0.93rem + 0.22vw, 1.03rem);
+    --fs-2:      clamp(1.03rem, 0.99rem + 0.31vw, 1.17rem);
+    --fs-3:      clamp(1.24rem, 1.12rem + 0.66vw, 1.65rem);
+    --fs-4:      clamp(1.51rem, 1.21rem + 0.94vw, 2.04rem);
+    --fs-body:   clamp(0.96rem, 0.93rem + 0.22vw, 1.03rem);
+    --fs-label:  clamp(0.76rem, 0.73rem + 0.15vw, 0.83rem);
+    --fs-micro:  clamp(0.82rem, 0.80rem + 0.13vw, 0.89rem);
+    --fs-ui:     clamp(0.89rem, 0.86rem + 0.18vw, 0.96rem);
+    --fs-stat:   clamp(1.24rem, 1.12rem + 0.57vw, 1.51rem);
+  }
+}
+
+/* Dark mode: Slightly larger text for better readability */
+@media (prefers-color-scheme: dark) {
+  /* Text is perceived as smaller in dark mode, so we can increase it slightly */
+  body { letter-spacing: 0.3px; }
+}
+
+"###;

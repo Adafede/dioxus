@@ -10,6 +10,7 @@ use crate::i18n::Locale;
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
 use std::sync::Arc;
+use ui::prelude::*;
 
 use super::PreparedRow;
 use super::cells::{
@@ -52,7 +53,7 @@ fn row_view(
     let statement_id = prepared.statement_id.as_deref();
     let name = prepared.display_name.as_ref();
     rsx! {
-        tr { key: "{row_key}", class: "data-row",
+        tr { key: "{row_key}", style: table_row_style(),
             {structure_cell(locale, text, prepared.depict_url.as_deref(), name)}
             {compound_cell(locale, text, entry, prepared, name, compound_qid)}
             {mass_cell(entry.mass)}
@@ -62,4 +63,12 @@ fn row_view(
             {year_cell(entry.pub_year)}
         }
     }
+}
+
+fn table_row_style() -> String {
+    StyleBuilder::new()
+        .border_bottom("1px solid var(--results-border)")
+        .property("transition", "background .14s ease")
+        .property("contain", "layout paint")
+        .build()
 }

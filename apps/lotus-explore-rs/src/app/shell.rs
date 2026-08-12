@@ -14,7 +14,7 @@ use crate::components::layout::sidebar::Sidebar;
 use crate::components::results_viewport::ResultsViewport;
 use crate::document_head::{LotusDocumentHead, ToastTemplate};
 use crate::features::explore::{
-    ExploreInteractions, ExploreState, SearchTaskController, build_shareable_url, classes_for_view,
+    ExploreInteractions, ExploreState, SearchTaskController, build_shareable_url,
     initial_url_state, persist_locale_query_param, persist_view_query_param,
     use_download_dispatch_effect, use_startup_effect,
 };
@@ -29,6 +29,7 @@ use crate::state::{
 use crate::ui::a11y_contract::{MAIN_PANEL_ID, PAGE_TITLE_ID, SKIP_TO_RESULTS_HREF};
 use dioxus::prelude::*;
 use std::sync::Arc;
+use ui::prelude::*;
 
 const fn locale_lang_tag(locale: Locale) -> &'static str {
     match locale {
@@ -103,22 +104,22 @@ fn ShellScaffold(lang: String) -> Element {
     let locale = crate::hooks::use_locale();
     let app_state = use_app_state_context().state;
     let current_view = *use_app_selector(app_state, |state| state.view).read();
-    let layout_classes = classes_for_view(current_view);
+    let single_pane = current_view != AppView::Explore;
 
     rsx! {
         LotusDocumentHead { lang }
         ToastTemplate {}
-        a { class: "skip-link", href: SKIP_TO_RESULTS_HREF,
+        a { class: "skip-link", href: SKIP_TO_RESULTS_HREF, style: skip_link_style(),
             "{t(locale, TextKey::SkipToResults)}"
         }
-        div { class: "{layout_classes.app_layout}",
+        div { style: app_layout_style(),
             if current_view == AppView::Explore {
                 Sidebar {}
             }
 
             main {
                 id: MAIN_PANEL_ID,
-                class: "{layout_classes.main}",
+                style: main_pane_style(single_pane),
                 tabindex: "-1",
                 aria_labelledby: PAGE_TITLE_ID,
                 PageHeader {}
@@ -151,4 +152,50 @@ fn ExplorePage() -> Element {
         HeaderMetaSection {}
         ResultsViewport {}
     }
+}
+
+fn skip_link_style() -> String {
+    StyleBuilder::new()
+        .property("position", "absolute")
+        .property("left", "0.5rem")
+        .property("top", "-100%")
+        .property("z-index", "9999")
+        .padding("0.5rem 1rem")
+        .background_color("transparent")
+        .color("var(--text)")
+        .font_size("0.875rem")
+        .font_weight("600")
+        .border_radius("0 0 4px 4px")
+        .text_decoration("none")
+        .property("transition", "top 0.1s")
+        .build()
+}
+
+fn app_layout_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .property("min-height", "100dvh")
+        .property("height", "100dvh")
+        .property("overflow", "hidden")
+        .gap("10px")
+        .padding("10px")
+        .build()
+}
+
+fn main_pane_style(single_pane: bool) -> String {
+    let mut style = StyleBuilder::new()
+        .property("flex", "1")
+        .property("min-width", "0")
+        .property("height", "100%")
+        .property("overflow-y", "auto")
+        .display("flex")
+        .flex_direction("column")
+        .border("1px solid var(--panel-border)")
+        .border_radius("16px")
+        .background_color("var(--panel-bg)")
+        .box_shadow("var(--shadow-sm)");
+    if single_pane {
+        style = style.property("width", "100%");
+    }
+    style.build()
 }

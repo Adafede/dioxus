@@ -4,6 +4,7 @@
 //! Numeric and simple value cells for results-table rows: mass, formula, year.
 
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 /// Formats a mass value to 4 decimal places for display.
 ///
@@ -15,11 +16,11 @@ pub(in crate::components::results_table) fn format_mass_value(mass: f64) -> Stri
 
 pub(in crate::components::results_table::row_cells) fn mass_cell(mass: Option<f64>) -> Element {
     rsx! {
-        td { class: "td-num",
+        td { style: table_cell_style(),
             if let Some(m) = mass {
                 span { "{format_mass_value(m)}" }
             } else {
-                span { class: "na", "-" }
+                span { style: na_style(), "-" }
             }
         }
     }
@@ -29,11 +30,11 @@ pub(in crate::components::results_table::row_cells) fn formula_cell(
     formula: Option<&str>,
 ) -> Element {
     rsx! {
-        td { class: "td-formula",
+        td { style: table_cell_style(),
             if let Some(f) = formula {
-                span { class: "formula", "{f}" }
+                span { style: formula_style(), "{f}" }
             } else {
-                span { class: "na", "-" }
+                span { style: na_style(), "-" }
             }
         }
     }
@@ -41,14 +42,36 @@ pub(in crate::components::results_table::row_cells) fn formula_cell(
 
 pub(in crate::components::results_table::row_cells) fn year_cell(pub_year: Option<i16>) -> Element {
     rsx! {
-        td { class: "td-year",
+        td { style: table_cell_style(),
             if let Some(y) = pub_year {
                 span { "{y}" }
             } else {
-                span { class: "na", "-" }
+                span { style: na_style(), "-" }
             }
         }
     }
+}
+
+fn na_style() -> String {
+    StyleBuilder::new().color("var(--text3)").build()
+}
+
+fn formula_style() -> String {
+    StyleBuilder::new()
+        .font_family("var(--mono)")
+        .font_size("var(--fs-0)")
+        .color("var(--text)")
+        .build()
+}
+
+fn table_cell_style() -> String {
+    StyleBuilder::new()
+        .padding("8px 10px")
+        .property("vertical-align", "top")
+        .property("contain", "layout paint")
+        .property("word-break", "break-word")
+        .property("min-width", "0")
+        .build()
 }
 
 #[cfg(test)]

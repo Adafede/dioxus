@@ -9,6 +9,7 @@ use crate::components::welcome::WelcomeScreen;
 use crate::state::use_results_context;
 use crate::ui::ContentPhase;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 #[component]
 pub fn ResultsViewport() -> Element {
@@ -80,15 +81,58 @@ fn QueryDisplay(query: String) -> Element {
     rsx! {
         section {
             id: "query-display",
-            class: "query-section",
-            h2 { class: "query-title", "SPARQL Query" }
-            div { class: "query-container",
+            style: query_section_style(),
+            h2 { style: query_title_style(), "SPARQL Query" }
+            div { style: query_container_style(),
                 pre {
-                    code { class: "query-code", "{query}" }
+                    code { style: query_code_style(), "{query}" }
                 }
             }
         }
     }
+}
+
+fn query_section_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("8px")
+        .padding("12px 22px")
+        .build()
+}
+
+fn query_title_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-1)")
+        .font_weight("700")
+        .color("var(--text)")
+        .build()
+}
+
+fn query_container_style() -> String {
+    StyleBuilder::new()
+        .border("1px solid var(--panel-border)")
+        .border_radius("var(--radius)")
+        .background_color("var(--panel-bg-soft)")
+        .box_shadow("var(--panel-shadow)")
+        .build()
+}
+
+fn query_code_style() -> String {
+    StyleBuilder::new()
+        .display("block")
+        .padding("12px 16px")
+        .property("margin", "0")
+        .font_family("var(--mono)")
+        .font_size("var(--fs-0)")
+        .color("var(--text)")
+        .background_color("var(--bg2)")
+        .property("border-left", "3px solid var(--wd-entries)")
+        .property("white-space", "pre-wrap")
+        .property("word-break", "break-word")
+        .property("max-height", "320px")
+        .property("overflow", "auto")
+        .build()
 }
 
 #[cfg(test)]

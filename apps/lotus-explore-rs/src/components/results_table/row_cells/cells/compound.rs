@@ -10,6 +10,7 @@ use crate::components::results_table::row_cells::row_text::RowText;
 use crate::i18n::{Locale, aria_search_inchikey, aria_wikidata_entity};
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 pub(in crate::components::results_table::row_cells) fn compound_cell(
     locale: Locale,
@@ -20,34 +21,34 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
     compound_qid: &str,
 ) -> Element {
     rsx! {
-        td { class: "td-compound",
-            div { class: "cell-primary",
+        td { style: compound_cell_style(),
+            div { style: cell_primary_style(),
                 a {
                     href: "https://www.wikidata.org/entity/{compound_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    class: "primary-link",
                     title: "{name}",
+                    style: primary_link_style(),
                     "{prepared.display_name}"
                 }
             }
-            div { class: "badge-row",
+            div { style: badge_row_style(),
                 a {
                     href: "https://www.wikidata.org/entity/{compound_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    class: "id-badge wd",
                     title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, compound_qid)}",
+                    style: id_badge_style("var(--wd-compound-soft-bg)", "var(--wd-compound)", "var(--wd-compound-soft-border)"),
                     "{compound_qid}"
                 }
                 a {
                     href: "https://scholia.toolforge.org/chemical/{compound_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    class: "id-badge sc",
                     title: "{text.open_in_scholia}",
                     aria_label: "{text.open_in_scholia}",
+                    style: id_badge_style("var(--wd-compound-soft-bg)", "var(--wd-compound)", "var(--wd-compound-soft-border-weak)"),
                     "Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
@@ -55,13 +56,76 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         href: "https://www.wikidata.org/wiki/Special:Search?search={ik}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "id-badge mono inchikey",
                         title: "{ik}",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
+                        style: id_badge_style("var(--wd-compound-soft-bg)", "var(--wd-compound)", "var(--wd-compound-soft-border-weak)"),
                         "{ik}"
                     }
                 }
             }
         }
     }
+}
+
+fn compound_cell_style() -> String {
+    StyleBuilder::new()
+        .border_radius("10px")
+        .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
+        .property(
+            "box-shadow",
+            "inset 3px 0 0 rgb(153 0 0 / 38%), inset 0 0 0 1px var(--results-border)",
+        )
+        .property("min-width", "0")
+        .build()
+}
+
+fn cell_primary_style() -> String {
+    StyleBuilder::new().font_weight("500").build()
+}
+
+fn id_badge_style(bg: &str, fg: &str, border: &str) -> String {
+    StyleBuilder::new()
+        .display("inline-block")
+        .font_size("var(--fs-micro)")
+        .padding("1px 5px")
+        .border_radius("3px")
+        .font_weight("600")
+        .text_decoration("none")
+        .property("line-height", "1.5")
+        .border("1px solid transparent")
+        .font_family("var(--mono)")
+        .property("max-width", "100%")
+        .property("white-space", "normal")
+        .property("overflow-wrap", "anywhere")
+        .property(
+            "transition",
+            "transform .12s ease, box-shadow .12s ease, filter .12s ease",
+        )
+        .background_color(bg)
+        .color(fg)
+        .border("1px solid")
+        .property("border-color", border)
+        .build()
+}
+
+fn primary_link_style() -> String {
+    StyleBuilder::new()
+        .color("var(--text)")
+        .property("display", "block")
+        .property("line-height", "1.4")
+        .property("overflow-wrap", "break-word")
+        .property("word-break", "break-word")
+        .property("white-space", "normal")
+        .build()
+}
+
+fn badge_row_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .property("flex-wrap", "wrap")
+        .gap("4px")
+        .property("margin-top", "4px")
+        .property("overflow", "visible")
+        .property("min-width", "0")
+        .build()
 }

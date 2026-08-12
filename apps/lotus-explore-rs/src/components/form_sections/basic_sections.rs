@@ -7,6 +7,7 @@ use crate::features::explore::selectors::use_criteria_selector;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 use super::shared::{normalized_year_input_max, parse_f64_input, parse_u16_input};
 
@@ -19,12 +20,11 @@ pub fn TaxonInput() -> Element {
     let taxon = use_criteria_selector(ctx.criteria, |c| c.taxon.clone());
 
     rsx! {
-        div { class: "form-section",
-            label { class: "form-label", r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
+        div { style: section_card_style(),
+            label { style: label_base_style(), r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
             input {
                 id: "taxon-input",
                 r#type: "text",
-                class: "form-input",
                 autocomplete: "off",
                 spellcheck: "false",
                 placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
@@ -35,8 +35,9 @@ pub fn TaxonInput() -> Element {
                         interactions.search();
                     }
                 },
+                style: input_base_style(),
             }
-            p { class: "form-hint", "{t(locale, TextKey::TaxonHint)}" }
+            p { style: hint_text_style(), "{t(locale, TextKey::TaxonHint)}" }
         }
     }
 }
@@ -51,17 +52,16 @@ pub fn MassRangeInput() -> Element {
 
     rsx! {
         div {
-            class: "form-section",
             role: "group",
             aria_labelledby: "mass-range-label",
-            p { id: "mass-range-label", class: "form-label", "{t(locale, TextKey::MolecularMass)}" }
-            div { class: "range-inputs range-inputs--pair",
-                div { class: "range-pair",
-                    label { class: "form-label sm", r#for: "mass-min", "{t(locale, TextKey::Min)}" }
+            style: section_card_style(),
+            p { id: "mass-range-label", style: label_base_style(), "{t(locale, TextKey::MolecularMass)}" }
+            div { style: range_inputs_pair_style(),
+                div { style: range_pair_style(),
+                    label { style: label_small_style(), r#for: "mass-min", "{t(locale, TextKey::Min)}" }
                     input {
                         id: "mass-min",
                         r#type: "number",
-                        class: "form-input sm",
                         min: "0",
                         max: "10000",
                         step: "1",
@@ -71,15 +71,15 @@ pub fn MassRangeInput() -> Element {
                                 ctx.update(FormAction::MassMin(v));
                             }
                         },
+                        style: input_base_style(),
                     }
                 }
-                span { class: "range-sep range-sep--pair", "aria-hidden": "true", "-" }
-                div { class: "range-pair",
-                    label { class: "form-label sm", r#for: "mass-max", "{t(locale, TextKey::Max)}" }
+                span { aria_hidden: "true", style: range_separator_style(), "-" }
+                div { style: range_pair_style(),
+                    label { style: label_small_style(), r#for: "mass-max", "{t(locale, TextKey::Max)}" }
                     input {
                         id: "mass-max",
                         r#type: "number",
-                        class: "form-input sm",
                         min: "0",
                         max: "10000",
                         step: "1",
@@ -89,6 +89,7 @@ pub fn MassRangeInput() -> Element {
                                 ctx.update(FormAction::MassMax(v));
                             }
                         },
+                        style: input_base_style(),
                     }
                 }
             }
@@ -109,17 +110,16 @@ pub fn YearRangeInput() -> Element {
 
     rsx! {
         div {
-            class: "form-section",
             role: "group",
             aria_labelledby: "year-range-label",
-            p { id: "year-range-label", class: "form-label", "{t(locale, TextKey::PublicationYear)}" }
-            div { class: "range-inputs range-inputs--pair",
-                div { class: "range-pair",
-                    label { class: "form-label sm", r#for: "year-min", "{t(locale, TextKey::YearFrom)}" }
+            style: section_card_style(),
+            p { id: "year-range-label", style: label_base_style(), "{t(locale, TextKey::PublicationYear)}" }
+            div { style: range_inputs_pair_style(),
+                div { style: range_pair_style(),
+                    label { style: label_small_style(), r#for: "year-min", "{t(locale, TextKey::YearFrom)}" }
                     input {
                         id: "year-min",
                         r#type: "number",
-                        class: "form-input sm",
                         min: "{DEFAULT_YEAR_MIN}",
                         max: "{current}",
                         step: "1",
@@ -129,15 +129,15 @@ pub fn YearRangeInput() -> Element {
                                 ctx.update(FormAction::YearMin(v));
                             }
                         },
+                        style: input_base_style(),
                     }
                 }
-                span { class: "range-sep range-sep--pair", "aria-hidden": "true", "-" }
-                div { class: "range-pair",
-                    label { class: "form-label sm", r#for: "year-max", "{t(locale, TextKey::YearTo)}" }
+                span { aria_hidden: "true", style: range_separator_style(), "-" }
+                div { style: range_pair_style(),
+                    label { style: label_small_style(), r#for: "year-max", "{t(locale, TextKey::YearTo)}" }
                     input {
                         id: "year-max",
                         r#type: "number",
-                        class: "form-input sm",
                         min: "{DEFAULT_YEAR_MIN}",
                         max: "{current}",
                         step: "1",
@@ -147,9 +147,90 @@ pub fn YearRangeInput() -> Element {
                                 ctx.update(FormAction::YearMax(v));
                             }
                         },
+                        style: input_base_style(),
                     }
                 }
             }
         }
     }
+}
+
+fn section_card_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("5px")
+        .padding("10px 12px")
+        .border("1px solid var(--panel-border)")
+        .border_radius("12px")
+        .background_color("var(--panel-bg-soft)")
+        .build()
+}
+
+fn label_base_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-0)")
+        .font_weight("700")
+        .color("var(--critical-text)")
+        .property("text-transform", "uppercase")
+        .property("letter-spacing", "0.08em")
+        .build()
+}
+
+fn label_small_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-0)")
+        .font_weight("700")
+        .color("var(--text)")
+        .property("text-transform", "none")
+        .property("letter-spacing", "0")
+        .build()
+}
+
+fn input_base_style() -> String {
+    StyleBuilder::new()
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .color("var(--text)")
+        .padding("9px 11px")
+        .font_size("var(--fs-ui)")
+        .property("width", "100%")
+        .font_family("var(--sans)")
+        .property("transition", "border-color .15s")
+        .build()
+}
+
+fn hint_text_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-0)")
+        .color("var(--text2)")
+        .build()
+}
+
+fn range_inputs_pair_style() -> String {
+    StyleBuilder::new()
+        .display("grid")
+        .property(
+            "grid-template-columns",
+            "minmax(0, 1fr) auto minmax(0, 1fr)",
+        )
+        .align_items("end")
+        .gap("8px")
+        .build()
+}
+
+fn range_pair_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("3px")
+        .build()
+}
+
+fn range_separator_style() -> String {
+    StyleBuilder::new()
+        .color("var(--text3)")
+        .property("padding-bottom", "8px")
+        .build()
 }

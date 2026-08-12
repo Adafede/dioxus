@@ -9,6 +9,7 @@
 use crate::hooks::{use_locale, use_locale_signal};
 use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 /// Four-button language switcher (EN / FR / DE / IT).
 ///
@@ -20,10 +21,7 @@ pub fn LangSwitch() -> Element {
     let locale = use_locale();
 
     rsx! {
-        div {
-            class: "lang-switch",
-            role: "group",
-            aria_label: "{t(locale, TextKey::Language)}",
+        div { role: "group", aria_label: "{t(locale, TextKey::Language)}", style: group_style(),
             LangBtn {
                 code: "EN",
                 target: Locale::En,
@@ -79,12 +77,39 @@ fn LangBtn(
     let active = current == target;
     rsx! {
         button {
-            class: if active { "btn btn-xs lang-btn active" } else { "btn btn-xs lang-btn" },
             r#type: "button",
             aria_pressed: if active { "true" } else { "false" },
             aria_current: if active { "true" } else { "false" },
+            style: button_pill_style(active),
             onclick: move |_| on_select.call(target),
             "{code}"
         }
     }
+}
+
+fn group_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .gap("4px")
+        .align_items("center")
+        .build()
+}
+
+fn button_pill_style(active: bool) -> String {
+    let mut style = StyleBuilder::new()
+        .property("min-width", "40px")
+        .padding("3px 8px")
+        .font_size("var(--fs-0)");
+    if active {
+        style = style
+            .background_color("var(--btn-primary-bg)")
+            .border("1px solid var(--btn-primary-bg)")
+            .color("#fff");
+    } else {
+        style = style
+            .color("var(--text2)")
+            .background_color("color-mix(in srgb, var(--panel-bg-soft) 84%, var(--surface))")
+            .border("1px solid var(--panel-border)");
+    }
+    style.build()
 }

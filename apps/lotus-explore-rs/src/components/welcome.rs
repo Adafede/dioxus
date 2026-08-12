@@ -8,48 +8,49 @@ use crate::features::explore::absolute_current_url_with_query;
 use crate::i18n::{TextKey, t};
 use dioxus::prelude::*;
 use std::sync::Arc;
+use ui::prelude::*;
 
 #[component]
 pub fn WelcomeScreen() -> Element {
     let locale = crate::hooks::use_locale();
     rsx! {
-        section { class: "welcome",
-            div { class: "welcome-hero",
-                p { class: "welcome-lead",
+        section { style: welcome_style(),
+            div { style: welcome_hero_style(),
+                p { style: welcome_lead_style(),
                     "{t(locale, TextKey::WelcomeLeadA)}"
                     "{t(locale, TextKey::WelcomeLeadB)}"
                     a {
-                        class: "welcome-inline-link",
                         href: "https://www.wikidata.org/wiki/Q104225190",
                         target: "_blank",
                         rel: "noopener noreferrer",
+                        style: inline_link_style(),
                         "LOTUS initiative"
                     }
                     "{t(locale, TextKey::WelcomeLeadC)}"
                     a {
-                        class: "welcome-inline-link",
                         href: "https://www.wikidata.org/",
                         target: "_blank",
                         rel: "noopener noreferrer",
+                        style: inline_link_style(),
                         "Wikidata"
                     }
                     "{t(locale, TextKey::WelcomeLeadD)}"
                     a {
-                        class: "welcome-inline-link",
                         href: "https://qlever.dev/wikidata",
                         target: "_blank",
                         rel: "noopener noreferrer",
+                        style: inline_link_style(),
                         "QLever"
                     }
                     "{t(locale, TextKey::WelcomeLeadE)}"
                 }
-                p { class: "form-hint welcome-support-text welcome-language-note",
+                p { style: support_text_style(),
                     "{t(locale, TextKey::LabelLanguagePolicy)}"
                 }
             }
 
-            div { class: "welcome-examples",
-                ul { class: "example-list",
+            div { style: welcome_examples_style(),
+                ul { style: example_list_style(),
                     ExRow {
                         value: "taxon=<name|QID>",
                         note: t(locale, TextKey::ExampleGentiana),
@@ -63,10 +64,10 @@ pub fn WelcomeScreen() -> Element {
                         note: t(locale, TextKey::ExampleSmilesOnly),
                     }
                 }
-                p { class: "form-hint welcome-support-text welcome-cli-hint",
+                p { style: support_text_style(),
                     "{t(locale, TextKey::WelcomeProgrammaticDownload)}"
                 }
-                div { class: "welcome-cli-list",
+                div { style: cli_list_style(),
                     DownloadExampleRow {
                         locale,
                         format: t(locale, TextKey::ExampleQueryExecute),
@@ -102,14 +103,14 @@ fn DownloadExampleRow(
     let absolute = absolute_current_url_with_query(query.trim_start_matches('?'));
     let absolute = Arc::<str>::from(absolute);
     rsx! {
-        div { class: "notice notice-info", role: "status",
-            span { class: "notice-label", "{format}" }
+        div { role: "status", style: notice_base_style(),
+            span { style: notice_label_style(), "{format}" }
             input {
-                class: "notice-value notice-copy-field mono",
                 r#type: "text",
                 readonly: true,
                 value: "{absolute}",
                 aria_label: "{format}",
+                style: notice_input_style(),
             }
             CopyButton { text: absolute.clone(), locale }
         }
@@ -119,9 +120,140 @@ fn DownloadExampleRow(
 #[component]
 fn ExRow(value: &'static str, note: &'static str) -> Element {
     rsx! {
-        li { class: "notice notice-info", role: "status",
-            span { class: "notice-label mono", "{value}" }
-            span { class: "notice-value", "{note}" }
+        li { role: "status", style: notice_base_style(),
+            span { style: mono_label_style(), "{value}" }
+            span { style: notice_value_style(), "{note}" }
         }
     }
+}
+
+fn welcome_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("12px")
+        .padding("16px 22px")
+        .property("width", "100%")
+        .property("max-width", "none")
+        .build()
+}
+
+fn welcome_hero_style() -> String {
+    StyleBuilder::new()
+        .property("width", "100%")
+        .property("min-width", "0")
+        .build()
+}
+
+fn welcome_lead_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-1)")
+        .color("var(--text2)")
+        .property("margin-top", "6px")
+        .property("line-height", "1.60")
+        .property("max-width", "none")
+        .property("overflow-wrap", "anywhere")
+        .build()
+}
+
+fn inline_link_style() -> String {
+    StyleBuilder::new()
+        .text_decoration("underline")
+        .property("text-underline-offset", "2px")
+        .font_weight("600")
+        .build()
+}
+
+fn support_text_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-1)")
+        .property("line-height", "1.55")
+        .color("var(--text2)")
+        .property("margin-top", "10px")
+        .property("max-width", "72ch")
+        .build()
+}
+
+fn welcome_examples_style() -> String {
+    StyleBuilder::new()
+        .property("width", "100%")
+        .property("min-width", "0")
+        .build()
+}
+
+fn example_list_style() -> String {
+    StyleBuilder::new()
+        .property("list-style", "none")
+        .display("flex")
+        .flex_direction("column")
+        .gap("6px")
+        .build()
+}
+
+fn cli_list_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("8px")
+        .property("margin-top", "3px")
+        .build()
+}
+
+fn mono_label_style() -> String {
+    StyleBuilder::new().font_family("var(--mono)").build()
+}
+
+fn notice_base_style() -> String {
+    StyleBuilder::new()
+        .margin("10px 24px 0")
+        .padding("9px 12px")
+        .display("flex")
+        .align_items("center")
+        .gap("12px")
+        .border_radius("var(--radius)")
+        .font_size("var(--fs-0)")
+        .border("1px solid var(--panel-border)")
+        .background_color("var(--panel-bg-soft)")
+        .box_shadow("var(--panel-shadow)")
+        .property(
+            "transition",
+            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
+        )
+        .build()
+}
+
+fn notice_label_style() -> String {
+    StyleBuilder::new()
+        .display("inline-flex")
+        .align_items("center")
+        .property("text-transform", "uppercase")
+        .property("letter-spacing", "1px")
+        .font_size("var(--fs-label)")
+        .font_weight("700")
+        .property("line-height", "1.4")
+        .padding("2px 6px")
+        .border_radius("3px")
+        .property("flex-shrink", "0")
+        .build()
+}
+
+fn notice_input_style() -> String {
+    StyleBuilder::new()
+        .property("min-width", "min(220px, 100%)")
+        .property("max-width", "100%")
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .border_radius("var(--radius-sm)")
+        .color("var(--text2)")
+        .padding("4px 8px")
+        .build()
+}
+
+fn notice_value_style() -> String {
+    StyleBuilder::new()
+        .property("flex", "1")
+        .color("var(--text)")
+        .property("word-break", "break-word")
+        .property("line-height", "1.4")
+        .build()
 }

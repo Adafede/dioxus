@@ -7,6 +7,7 @@ use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 #[component]
 pub fn QueryPanel() -> Element {
@@ -41,19 +42,69 @@ pub fn QueryPanel() -> Element {
     rsx! {
         if *panel_visible.read() {
             if let Some(q) = toolbar_snapshot.read().sparql_query.as_ref() {
-                details { class: "query-panel",
-                    summary { "{t(locale, TextKey::SparqlQuery)}" }
-                    div { class: "query-body",
+                details { style: query_panel_style(),
+                    summary { style: query_summary_style(), "{t(locale, TextKey::SparqlQuery)}" }
+                    div { style: query_body_style(),
                         CopyButton {
                             text: q.clone(),
                             title: t(locale, TextKey::CopySparqlQuery),
                             locale,
-                            class: "btn btn-xs copy-btn query-copy-btn",
+                            class: "copy-btn",
                         }
-                        pre { class: "query-text", "{q.as_ref()}" }
+                        pre { style: query_text_style(), "{q.as_ref()}" }
                     }
                 }
             }
         }
     }
+}
+
+fn query_summary_style() -> String {
+    StyleBuilder::new()
+        .cursor("pointer")
+        .padding("8px 14px")
+        .font_size("var(--fs-0)")
+        .color("var(--text2)")
+        .property("user-select", "none")
+        .property("letter-spacing", "0.04em")
+        .font_weight("600")
+        .property("list-style", "none")
+        .build()
+}
+
+fn query_panel_style() -> String {
+    StyleBuilder::new()
+        .background_color("var(--panel-bg-soft)")
+        .border("1px solid var(--panel-border)")
+        .border_radius("var(--radius)")
+        .box_shadow("var(--panel-shadow)")
+        .property(
+            "transition",
+            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
+        )
+        .build()
+}
+
+fn query_body_style() -> String {
+    StyleBuilder::new()
+        .property("position", "relative")
+        .border_radius("0 0 var(--radius) var(--radius)")
+        .property("overflow", "hidden")
+        .build()
+}
+
+fn query_text_style() -> String {
+    StyleBuilder::new()
+        .padding("12px 16px")
+        .property("margin", "0")
+        .font_family("var(--mono)")
+        .font_size("var(--fs-0)")
+        .color("var(--text)")
+        .background_color("var(--bg2)")
+        .property("border-left", "3px solid var(--wd-entries)")
+        .property("white-space", "pre-wrap")
+        .property("word-break", "break-word")
+        .property("max-height", "320px")
+        .property("overflow", "auto")
+        .build()
 }
