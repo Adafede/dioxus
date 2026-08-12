@@ -235,7 +235,7 @@ const SHARE_BAR: &str = r"
 
 const SEARCH_PANEL: &str = r#"
 /* Search panel shell */
-.search-panel { padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:1; }
+.search-panel { padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:0 0 auto; }
 .search-panel-body { display:flex; flex-direction:column; gap:12px; }
 .filters-toggle { display:none; }
 .sidebar-logo-wrap { padding:6px 8px 8px; display:flex; justify-content:center; border-top:1px solid var(--border); margin-top:auto; }
