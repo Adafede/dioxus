@@ -76,8 +76,8 @@ const PAGE_HEADER: &str = r"
 .view-switch .lang-btn,
 .lang-switch .lang-btn {
   color: var(--text2);
-  background: color-mix(in srgb, var(--panel-bg-soft) 84%, var(--surface));
-  border-color: var(--panel-border);
+  background: var(--surface);
+  border-color: var(--border);
   box-shadow: none;
 }
 
