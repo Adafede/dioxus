@@ -168,6 +168,9 @@ body {
   font-optical-sizing: auto;
 }
 
+fieldset { background: transparent; border: none; padding: 0; margin: 0; }
+legend { background: transparent; color: var(--text); padding: 0; }
+
 a { color: var(--accent); text-decoration: none; transition: color .15s ease; }
 a:hover { text-decoration: underline; }
 
