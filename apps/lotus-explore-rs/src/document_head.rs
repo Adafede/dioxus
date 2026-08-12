@@ -13,6 +13,18 @@ use ui::prelude::*;
 /// All inline JavaScript for the RDKit, citation-js, and toast bridges.
 /// Stored as a raw string so it survives verbatim in the generated `<script>` tag.
 const INLINE_SCRIPT: &str = r#"
+(function syncDocumentLangFromQuery() {
+    try {
+        const params = new URL(window.location.href).searchParams;
+        const lang = params.get("lang") || params.get("locale");
+        if (lang) {
+            document.documentElement.lang = lang;
+        }
+    } catch (_error) {
+        // Keep the app running if the browser blocks URL parsing for any reason.
+    }
+})();
+
 function waitForInitRDKitModule(timeoutMs = 12000) {
     const start = Date.now();
     return new Promise((resolve, reject) => {
@@ -454,10 +466,10 @@ const LINKS: &[LinkSpec] = &[
 /// Hreflang alternate links.
 const HREFLANGS: &[(&str, &str)] = &[
     ("x-default", ""),
-    ("en", "?locale=en"),
-    ("fr", "?locale=fr"),
-    ("de", "?locale=de"),
-    ("it", "?locale=it"),
+    ("en", "?lang=en"),
+    ("fr", "?lang=fr"),
+    ("de", "?lang=de"),
+    ("it", "?lang=it"),
 ];
 
 /// Base URL for the app (used in hreflang and canonical links).

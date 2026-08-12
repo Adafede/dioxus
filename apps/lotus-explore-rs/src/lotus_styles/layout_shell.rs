@@ -71,10 +71,9 @@ pub const CSS: &str = r###"/* Layout shell pack: app frame, header/meta, notices
 }
 
 .page-brand { display:flex; align-items:center; gap:12px; }
-.sidebar-logo-link { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; text-decoration: none; }
+.sidebar-logo-link { display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; text-decoration: none; }
 .page-home-link { display: inline-flex; align-items: center; gap: 0; min-width: 0; }
 .page-title-text { min-width: 0; overflow-wrap: anywhere; }
-.sidebar-logo-link { border-radius: 14px; }
 .page-title { font-size:var(--fs-4); font-weight:800; letter-spacing:-.028em; line-height:1.06; color:var(--text); }
 
 .page-title-link,

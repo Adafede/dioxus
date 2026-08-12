@@ -179,21 +179,6 @@ body {
   font-optical-sizing: auto;
 }
 
-.skip-link {
-  position: absolute;
-  left: 12px;
-  top: -40px;
-  background: var(--text);
-  color: var(--bg2);
-  border: 1px solid var(--border);
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  z-index: 50;
-}
-
-.skip-link:focus {
-  top: 10px;
-}
 a { color: var(--accent); text-decoration: none; transition: color .15s ease; }
 a:hover { text-decoration: underline; }
 
