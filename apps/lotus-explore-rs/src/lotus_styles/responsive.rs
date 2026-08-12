@@ -16,7 +16,7 @@ const TABLET_768_AND_BELOW: &str = r"/* Responsive breakpoint pack extracted fro
   --fs-small-tablet: clamp(0.7rem, 0.68rem + 0.1vw, 0.8rem);
 }
 
-@media (width <=768px) {
+@media (max-width: 768px) {
   :root {
     /* Tablet-specific responsive sizes */
     --fs-0:      clamp(0.7rem, 0.68rem + 0.12vw, 0.8rem);
@@ -97,7 +97,7 @@ const TABLET_768_AND_BELOW: &str = r"/* Responsive breakpoint pack extracted fro
 ";
 
 const PHONE_480: &str = r"
-@media (width <=480px) {
+@media (max-width: 480px) {
   :root {
     /* Phone-specific responsive sizing */
     --fs-0:      clamp(0.65rem, 0.63rem + 0.08vw, 0.75rem);
@@ -349,7 +349,7 @@ const PHONE_480: &str = r"
 ";
 
 const PHONE_430_AND_360: &str = r"
-@media (width <=430px) {
+@media (max-width: 430px) {
   :root {
     /* Extra small screen (< 430px) optimized sizing */
     --fs-0:      clamp(0.62rem, 0.60rem + 0.06vw, 0.7rem);
@@ -475,7 +475,7 @@ const PHONE_430_AND_360: &str = r"
   }
 }
 
-@media (width <=360px) {
+@media (max-width: 360px) {
   :root {
     /* Ultra-small screens (< 360px) - extreme minimum sizing */
     --fs-0:      clamp(0.6rem, 0.58rem + 0.04vw, 0.68rem);
@@ -633,7 +633,7 @@ const PHONE_430_AND_360: &str = r"
 
 const TABLET_769_1023: &str = r"
 /* Medium screens (768px - 1023px) - tablet optimization */
-@media (width >= 769px) and (width <= 1023px) {
+@media (min-width: 769px) and (max-width: 1023px) {
   :root {
     /* Tablet-optimized responsive typography */
     --fs-0:      clamp(0.72rem, 0.68rem + 0.15vw, 0.8rem);
@@ -703,7 +703,7 @@ const TABLET_769_1023: &str = r"
 
 const DESKTOP_1024: &str = r"
 /* Large screens (1024px and above) - desktop optimization */
-@media (width >= 1024px) {
+@media (min-width: 1024px) {
   :root {
     /* Desktop-optimized responsive typography */
     --fs-0:      clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);
@@ -779,7 +779,7 @@ const DESKTOP_1024: &str = r"
 
 const WIDE_1440: &str = r"
 /* Extra large screens (1440px+) - ensure optimal readability */
-@media (width >= 1440px) {
+@media (min-width: 1440px) {
   .page-header { padding-left: 32px; padding-right: 32px; }
   .page-header-meta { margin-left: 32px; margin-right: 32px; }
 
@@ -801,7 +801,7 @@ const WIDE_1440: &str = r"
 
 const MOBILE_HEADING_AND_FIELDS: &str = r#"
 /* Mobile-first heading and typography scaling */
-@media (width <= 768px) {
+@media (max-width: 768px) {
   /* Ensure all headings are readable and don't overflow */
   h1, .page-title { word-break: break-word; overflow-wrap: break-word; }
   h2, h3, h4, h5, h6 { word-break: break-word; overflow-wrap: break-word; }
@@ -845,7 +845,7 @@ const MOBILE_HEADING_AND_FIELDS: &str = r#"
 
 const TABLET_FIELDS: &str = r"
 /* Tablet-specific optimizations (768px - 1023px) */
-@media (width >= 769px) and (width <= 1023px) {
+@media (min-width: 769px) and (max-width: 1023px) {
   /* Improve text readability on tablets */
   body { line-height: 1.6; }
 
