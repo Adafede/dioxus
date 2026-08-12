@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Document head in Rust**: All static `index.html` files replaced with
+  `ui::document::DocumentHead` (meta tags, scripts, styles, JSON-LD) and
+  `ui::document::DocumentLinks` (link tags, preconnect, favicons). The `index`,
+  `lotus-explore-rs`, and `smellfish-rs` apps now manage their `<head>` from
+  Rust via `dioxus::document`, eliminating 6 static `index.html` files.
+  Smellfish CSS moved from body `<style>` to document head.
 - **Crate consolidation**: Split `crates/shared` into `crates/lotus` (SPARQL,
   models, queries) and `crates/upload` (streaming file I/O, progress, download).
   Removed the old `crates/file-upload` and `crates/shared` crates entirely.
@@ -30,3 +36,8 @@
   endpoint.
 - Simplified the `lotus-explorer` skillbook into plain skill modules with a
   separate suggestions file.
+- **README verification in prek**: Combined `cargo-readme-check` and
+  `panache lint` into a single `cargo-readme-panache` pre-push hook that
+  generates all 10 `README.md` files from `//!` doc comments, lints them with
+  `panache`, and verifies they are in sync with the committed versions. Fixed a
+  `swallowed-list-marker` lint in the `index` crate's doc comments.

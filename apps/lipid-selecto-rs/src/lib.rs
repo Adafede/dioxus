@@ -8,7 +8,7 @@
 //! subset in the same format. Built with pure Rust using WebAssembly for
 //! blazing-fast performance in the browser.
 //!
-//! ## Features
+//! # Features
 //!
 //! - 30+ built-in SMARTS rules covering FA, GL, GP, SP lipid families
 //! - Auto-detects input format: MGF or SMILES list; preserves output format
@@ -17,38 +17,38 @@
 //! - Download filtered output (MGF or SMILES) with all metadata preserved
 //! - 100 curated example lipids from LIPID MAPS
 //!
-//! ## Usage
+//! # Usage
 //!
-//! ### Online
+//! ## Online
 //!
 //! Visit [lipid-selecto-rs.princelab.org](https://lipid-selecto-rs.princelab.org)
 //! to use the web app.
 //!
-//! ### Locally
+//! ## Locally
 //!
 //! ```bash
 //! dx serve --package lipid-selecto-rs
 //! ```
 //!
-//! ### Build for deployment
+//! ## Build for deployment
 //!
 //! ```bash
 //! dx build --release --platform web --package lipid-selecto-rs
 //! ```
 //!
-//! ### Tests
+//! ## Tests
 //!
 //! ```bash
 //! cargo test --lib -p lipid-selecto-rs
 //! ```
 //!
-//! ## Classification strategy
+//! # Classification strategy
 //!
 //! Rules are **fully configurable** in YAML.  See
 //! [`RULES_GUIDE.md`](./RULES_GUIDE.md) for adding custom lipid classes,
 //! SMARTS pattern syntax, and rule priority configuration.
 //!
-//! ## Dependencies
+//! # Dependencies
 //!
 //! - [`chematic`](https://crates.io/crates/chematic) — Pure-Rust SMILES/SMARTS
 //! - [`dioxus`](https://dioxuslabs.com) — UI framework (compiles to WebAssembly)

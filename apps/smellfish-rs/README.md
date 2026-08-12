@@ -9,16 +9,22 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 Scores natural-product-likeness of SMILES structures using machine-learned
 features, `Query` enrichment, and RDKit.js chemistry descriptors.
 
-### Run locally
+## Run locally
 
 ```bash
 dx serve --package smellfish-rs
 ```
 
-### Build for deployment
+## Build for deployment
 
 ```bash
 dx build --release --platform web --package smellfish-rs
+```
+
+## Tests
+
+```bash
+cargo test --lib -p smellfish-rs
 ```
 
 ## License

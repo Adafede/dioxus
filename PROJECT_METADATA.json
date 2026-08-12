@@ -65,7 +65,7 @@
       "name": "smellfish-rs",
       "kind": "wasm app",
       "path": "apps/smellfish-rs",
-      "entrypoint": "src/main.rs"
+      "entrypoint": "src/lib.rs"
     }
   ],
   "agent_docs": {

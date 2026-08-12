@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.95"
 description = "LOTUS domain models, SPARQL query construction, and result parsing for Wikidata/QLever"
 license = "AGPL-3.0-only"
-keywords = ["csv", "sparql", "wasm", "wikidata", "lotus", "natural-products"]
+keywords = ["sparql", "wasm", "wikidata", "lotus", "natural-products"]
 categories = ["science", "web-programming"]
 publish = false
 

@@ -2,18 +2,19 @@
 //!
 //! This module provides the root application component and demonstrates best
 //! practices for:
+//!
 //! - Semantic HTML with ARIA annotations
 //! - Reusable, accessible component patterns
 //! - Clean separation of concerns
 //! - Comprehensive documentation
 //!
-//! ## Run locally
+//! # Run locally
 //!
 //! ```bash
 //! dx serve --package index
 //! ```
 //!
-//! ## Build for deployment
+//! # Build for deployment
 //!
 //! ```bash
 //! dx build --release --platform web --package index
@@ -105,6 +106,13 @@ pub fn app() -> Element {
         .build();
 
     rsx! {
+        // Document head — replaces static index.html meta tags & styles
+        DocumentHead {
+            title: "Dioxus Experiments".to_string(),
+            theme_colors: Some(("#f6f8fb", "#10141b")),
+            inline_style: Some(".skip-link:focus{top:0!important}".to_string()),
+        }
+
         div { style: container_style,
             SkipLink {}
 

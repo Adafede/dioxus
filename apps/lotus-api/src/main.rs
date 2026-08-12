@@ -7,13 +7,13 @@
 //! species/occurrence search, CSV/JSON/RDF export via `Query` or local SPARQL,
 //! and runtime metrics.
 //!
-//! ## Run locally
+//! # Run locally
 //!
 //! ```bash
 //! LOTUS_API_BASE=http://localhost:3030 cargo run -p lotus-api
 //! ```
 //!
-//! ## Endpoints
+//! # Endpoints
 //!
 //! | Method | Path                    | Description                              |
 //! |--------|-------------------------|------------------------------------------|
@@ -22,7 +22,7 @@
 //! | GET    | `/api/stats`            | Dataset statistics                       |
 //! | GET    | `/api/health`           | Health check                             |
 //!
-//! ## Environment variables
+//! # Environment variables
 //!
 //! - `LOTUS_API_BASE` — base URL for the API server
 //! - `HOST` — bind address (default: `0.0.0.0`)

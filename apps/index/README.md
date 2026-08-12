@@ -7,16 +7,20 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 Type-safe, accessible landing page for Dioxus experiments.
 
 This module provides the root application component and demonstrates best
-practices for: - Semantic HTML with ARIA annotations - Reusable, accessible
-component patterns - Clean separation of concerns - Comprehensive documentation
+practices for:
 
-### Run locally
+- Semantic HTML with ARIA annotations
+- Reusable, accessible component patterns
+- Clean separation of concerns
+- Comprehensive documentation
+
+## Run locally
 
 ```bash
 dx serve --package index
 ```
 
-### Build for deployment
+## Build for deployment
 
 ```bash
 dx build --release --platform web --package index

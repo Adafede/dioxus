@@ -3,7 +3,7 @@
 
 //! Search panel and its subsection components.
 //!
-//! ## Architecture
+//! # Architecture
 //!
 //! `SearchPanel` is now extremely thin — it owns only two concerns:
 //! * Presenting the search button (loading state + dirty indicator).

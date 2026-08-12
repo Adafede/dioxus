@@ -12,6 +12,7 @@ use crate::components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
 use crate::components::layout::page_header::PageHeader;
 use crate::components::layout::sidebar::Sidebar;
 use crate::components::results_viewport::ResultsViewport;
+use crate::document_head::{LotusDocumentHead, ToastTemplate};
 use crate::features::explore::{
     ExploreInteractions, ExploreState, SearchTaskController, build_shareable_url, classes_for_view,
     initial_url_state, persist_locale_query_param, persist_view_query_param,
@@ -122,6 +123,8 @@ fn ShellScaffold() -> Element {
     let layout_classes = classes_for_view(current_view);
 
     rsx! {
+        LotusDocumentHead {}
+        ToastTemplate {}
         a { class: "skip-link", href: SKIP_TO_RESULTS_HREF,
             "{t(locale, TextKey::SkipToResults)}"
         }

@@ -3,35 +3,18 @@
 //! Scores natural-product-likeness of SMILES structures using machine-learned
 //! features, `Query` enrichment, and RDKit.js chemistry descriptors.
 //!
-//! ## Run locally
+//! # Run locally
 //!
 //! ```bash
 //! dx serve --package smellfish-rs
 //! ```
 //!
-//! ## Build for deployment
+//! # Build for deployment
 //!
 //! ```bash
 //! dx build --release --platform web --package smellfish-rs
 //! ```
 
-mod app;
-#[cfg(any(test, target_arch = "wasm32"))]
-mod csv;
-#[cfg(any(test, target_arch = "wasm32"))]
-mod evidence;
-mod literature;
-mod model;
-#[cfg(target_arch = "wasm32")]
-mod pipeline;
-#[cfg(target_arch = "wasm32")]
-mod qlever;
-#[cfg(target_arch = "wasm32")]
-mod rdkit;
-mod styles;
-
-use dioxus::prelude::launch;
-
 fn main() {
-    launch(app::app);
+    dioxus::launch(smellfish_rs::app);
 }

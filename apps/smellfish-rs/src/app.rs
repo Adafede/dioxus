@@ -1,8 +1,8 @@
+use crate::document_head::SmellfishDocumentHead;
 use crate::literature::LITERATURE;
 use crate::model::{
     EndpointStatus, MoleculeRow, MotifSummary, RdkitMotifHit, normalized_source_class,
 };
-use crate::styles::CSS;
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
@@ -26,7 +26,14 @@ COC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC
 C1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O
 CCCCCCCC=CCCCCCCCC(N)=O";
 
-#[component]
+/// The `app` entry point is intentionally **not** annotated with `#[component]`
+/// because the function lives in a `pub mod app;` module that is re-exported
+/// via `pub use app::app;` in `lib.rs`.  The `#[component]` macro generates a
+/// type-level binding named `app` that conflicts with the module name in the
+/// type namespace (E0255).  Since `app()` takes no props, `dioxus::launch`
+/// accepts it directly as a plain function — same pattern used by
+/// `lipid-selecto-rs` and `mgf-precursor-erro-rs`.
+#[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
     #[cfg(target_arch = "wasm32")]
     let file_name = use_signal(String::new);
@@ -158,8 +165,8 @@ pub fn app() -> Element {
     let ep_list = endpoints.read().clone();
 
     rsx! {
+        SmellfishDocumentHead {}
         div { class: "shell",
-            style { "{CSS}" }
 
             section { class: "hero",
                 h1 { "🐟 Smellfish-rs" }

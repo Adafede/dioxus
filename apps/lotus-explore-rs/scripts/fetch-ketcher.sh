@@ -6,7 +6,8 @@
 # the bundle in git (which bloats the repo by 115 MB), we download it on
 # demand during development setup and before production builds.
 #
-# RDKit and citation-js are already loaded from CDN — see index.html.
+# RDKit and citation-js are loaded from CDN — see document_head.rs
+# (LotusDocumentHead in apps/lotus-explore-rs/src/document_head.rs).
 #
 # Usage:  ./scripts/fetch-ketcher.sh
 #

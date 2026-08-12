@@ -9,13 +9,13 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 Uploads an MGF file, recalibrates precursor *m/z* values, and visualises the
 resulting mass-error distribution as an interactive histogram.
 
-### Run locally
+## Run locally
 
 ```bash
 dx serve --package mgf-precursor-erro-rs
 ```
 
-### Build for the website
+## Build for the website
 
 ```bash
 dx build --release --platform web --package mgf-precursor-erro-rs
