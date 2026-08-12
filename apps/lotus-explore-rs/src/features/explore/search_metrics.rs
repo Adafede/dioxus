@@ -37,7 +37,7 @@ pub struct SearchMetrics {
 impl SearchMetrics {
     /// Record a completed sequential network call.
     pub fn add_network(&mut self, elapsed: std::time::Duration) {
-        self.network_ms += elapsed.as_secs_f64() * 1000.0;
+        self.network_ms = elapsed.as_secs_f64().mul_add(1000.0, self.network_ms);
         self.sparql_calls += 1;
     }
 
@@ -48,13 +48,13 @@ impl SearchMetrics {
     /// individual durations.
     #[cfg(target_arch = "wasm32")]
     pub fn add_parallel_network(&mut self, elapsed: std::time::Duration, calls: usize) {
-        self.network_ms += elapsed.as_secs_f64() * 1000.0;
+        self.network_ms = elapsed.as_secs_f64().mul_add(1000.0, self.network_ms);
         self.sparql_calls += calls;
     }
 
     /// Record a completed parse phase.
     pub fn add_parse(&mut self, elapsed: std::time::Duration) {
-        self.parse_ms += elapsed.as_secs_f64() * 1000.0;
+        self.parse_ms = elapsed.as_secs_f64().mul_add(1000.0, self.parse_ms);
     }
 }
 

@@ -2,7 +2,7 @@
 name = "mgf-precursor-erro-rs"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.97"
 description = "Web app for summarizing precursor mass errors from uploaded MGF files"
 license = "AGPL-3.0-only"
 keywords = ["dioxus", "wasm", "mgf", "precursor", "mass-spectrometry"]

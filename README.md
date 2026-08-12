@@ -23,12 +23,12 @@ structures with literature-backed features and RDKit.js chemistry descriptors.
 ## Prerequisites
 
 ```bash
-rustup toolchain install 1.95.0 --profile minimal
+rustup toolchain install 1.97 --profile minimal
 rustup target add wasm32-unknown-unknown
 cargo install dioxus-cli --version 0.7.10 --locked
 ```
 
-The repo pins Rust 1.95.0, `clippy`, `rustfmt`, and `wasm32-unknown-unknown` in
+The repo pins Rust 1.97, `clippy`, `rustfmt`, and `wasm32-unknown-unknown` in
 `rust-toolchain.toml`.
 
 ## Quick start

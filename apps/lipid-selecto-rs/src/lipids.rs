@@ -466,7 +466,7 @@ fn exact_mass_from_counts(map: &std::collections::HashMap<String, u32>) -> Optio
     let mut found = false;
     for (symbol, count) in map {
         let element = Element::from_symbol(symbol)?;
-        total += element.atomic_mass() * f64::from(*count);
+        total = element.atomic_mass().mul_add(f64::from(*count), total);
         found = true;
     }
     if found { Some(total) } else { None }

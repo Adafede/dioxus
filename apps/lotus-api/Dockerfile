@@ -1,6 +1,6 @@
 # ── Stage 1: build ────────────────────────────────────────────────────────────
 # Pin to the same channel as rust-toolchain.toml so the build is reproducible.
-FROM rust:1.95.0-slim-bookworm AS builder
+FROM rust:1.97.1-slim-bookworm AS builder
 
 WORKDIR /build
 

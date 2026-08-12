@@ -2,7 +2,7 @@
 name = "lipid-selecto-rs"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.97"
 description = "Web app for filtering lipid mass spectrometry data by chemical class with interactive structure visualization"
 license = "AGPL-3.0-only"
 keywords = ["dioxus", "wasm", "lipid", "mass-spectrometry", "lipidomics"]

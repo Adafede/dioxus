@@ -2,7 +2,7 @@
 name = "json-count-rs"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.97"
 description = "Web app for counting non-null JSON fields from uploaded files"
 license = "AGPL-3.0-only"
 keywords = ["dioxus", "json", "wasm", "web"]

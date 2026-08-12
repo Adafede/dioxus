@@ -2,7 +2,7 @@
 name = "lotus-explore-rs"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.97"
 build = "build.rs"
 description = "LOTUS Knowledge Explorer — natural product occurrence explorer"
 license = "AGPL-3.0-only"

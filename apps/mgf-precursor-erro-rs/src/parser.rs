@@ -415,11 +415,11 @@ fn apply_adduct_token(
     if let Some(token_mass) =
         parse_adduct_term_mass_with_context(current, sign, uses_double_mg_mass)
     {
-        *shift += sign * token_mass;
+        *shift = sign.mul_add(token_mass, *shift);
     } else if let Some(token_multiplier) = parse_multiplicity_token(current) {
         *multiplier = token_multiplier;
     } else if current.eq_ignore_ascii_case("H") {
-        *shift += sign * HYDROGEN_MASS;
+        *shift = sign.mul_add(HYDROGEN_MASS, *shift);
     } else if !current.is_empty() {
         *saw_unsupported_token = true;
     }

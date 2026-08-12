@@ -2,7 +2,7 @@
 name = "lotus"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.97"
 description = "LOTUS domain models, SPARQL query construction, and result parsing for Wikidata/QLever"
 license = "AGPL-3.0-only"
 keywords = ["sparql", "wasm", "wikidata", "lotus", "natural-products"]

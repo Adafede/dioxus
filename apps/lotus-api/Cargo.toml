@@ -2,7 +2,7 @@
 name = "lotus-api"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.97"
 description = "OpenAPI service for LOTUS explorer search and export workflows"
 license = "AGPL-3.0-only"
 keywords = ["api", "lotus", "natural-products", "sparql", "wikidata"]
