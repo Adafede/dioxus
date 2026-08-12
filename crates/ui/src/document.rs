@@ -189,11 +189,14 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
             );
         }
 
-        // External scripts (defer)
+        // External scripts (async — `defer` is a no-op / harmful on dynamically
+        // injected scripts: browsers add deferred scripts to a list that is only
+        // flushed after the *parser* finishes, and by the time `use_hook` runs
+        // the document is already parsed, so the script never executes.)
         for url in &scripts {
             doc.create_head_element(
                 "script",
-                &[("src", url.clone()), ("defer", "".to_string())],
+                &[("src", url.clone()), ("async", "".to_string())],
                 None,
             );
         }
