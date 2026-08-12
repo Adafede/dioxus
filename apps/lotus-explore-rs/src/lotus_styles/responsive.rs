@@ -374,13 +374,16 @@ const PHONE_430_AND_360: &str = r"
   }
 
   .page-header-meta .meta-item {
-    white-space: normal;
-    flex-wrap: wrap;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
     font-size: var(--fs-label);
   }
 
   .page-header-meta .meta-key {
+    white-space: nowrap;
     font-size: var(--fs-micro);
   }
 
