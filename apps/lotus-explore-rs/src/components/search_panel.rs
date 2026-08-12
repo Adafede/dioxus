@@ -49,12 +49,12 @@ pub fn SearchPanel() -> Element {
 
     rsx! {
         section {
-            class: "search-panel",
+            style: search_panel_style(),
             aria_label: "{t(locale, TextKey::SearchFilters)}",
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             h2 { id: SEARCH_PANEL_HEADING_ID, class: "sr-only", "{t(locale, TextKey::SearchFilters)}" }
 
-            div { id: SEARCH_PANEL_BODY_ID, class: "search-panel-body",
+            div { id: SEARCH_PANEL_BODY_ID, style: search_panel_body_style(),
                 // All sections are zero-prop — they read FormCriteriaContext.
                 TaxonInput {}
                 StructureSection {}
@@ -390,4 +390,25 @@ fn input_base_style() -> String {
 
 fn button_base_style() -> String {
     crate::ui::style_constants::buttons::button_base_style()
+}
+
+fn search_panel_style() -> String {
+    StyleBuilder::new()
+        .padding("14px 12px")
+        .gap("12px")
+        .font_size("var(--fs-0)")
+        .display("flex")
+        .flex_direction("column")
+        .border_radius("8px")
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .build()
+}
+
+fn search_panel_body_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("12px")
+        .build()
 }
