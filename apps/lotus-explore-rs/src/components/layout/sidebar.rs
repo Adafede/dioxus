@@ -32,7 +32,7 @@ pub fn Sidebar() -> Element {
     rsx! {
         aside {
             style: sidebar_style(),
-            class: if mobile_filters_open { "mobile-open" } else { "mobile-closed" },
+            class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             div {
                 class: "sidebar-logo-wrap",
