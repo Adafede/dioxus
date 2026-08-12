@@ -15,7 +15,7 @@ pub fn Footer() -> Element {
                 FooterRow {
                     label: t(locale, TextKey::FooterArchive),
                     color: "var(--wd-compound)",
-                    links: &[("https://doi.org/10.5281/zenodo.5794106", "Frozen version (Zenodo)"),],
+                    links: &[("https://doi.org/10.5281/zenodo.5794106", "LOTUS Frozen"),],
                 }
                 FooterCitationRow { locale }
             }
@@ -79,7 +79,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
                         target: "_blank",
                         rel: "noopener noreferrer",
                         style: footer_link_style("var(--wd-compound)"),
-                        "LOTUS paper (eLife)"
+                        "LOTUS Article"
                     }
                 }
                 li {
