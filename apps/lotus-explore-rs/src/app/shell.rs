@@ -73,7 +73,6 @@ pub fn AppRoot() -> Element {
                 app_state,
                 explore,
                 criteria,
-                locale,
             }
             ShellScaffold { lang: locale_lang_tag(*locale.read()).to_string() }
         }
@@ -85,8 +84,8 @@ fn AppRuntimeEffects(
     app_state: Signal<AppState>,
     explore: Signal<ExploreState>,
     criteria: Signal<SearchCriteria>,
-    locale: Signal<Locale>,
 ) -> Element {
+    let locale = crate::hooks::use_locale_signal();
     let search_task_controller = use_context::<SearchTaskController>();
     let repo = use_context::<AppServices>().repository();
 
