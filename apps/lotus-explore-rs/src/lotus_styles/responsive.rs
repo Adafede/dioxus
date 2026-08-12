@@ -699,6 +699,9 @@ const TABLET_769_1023: &str = r"
   .table-scroll {
     max-height: min(72vh, 900px);
   }
+
+  .search-panel { max-width: 360px; }
+  .sidebar-logo-wrap { border-top: none; margin-top: 0; }
 }
 ";
 
@@ -775,6 +778,8 @@ const DESKTOP_1024: &str = r"
     padding: 2px 6px;
     border-radius: 3px;
   }
+
+  .search-panel { max-width: 400px; }
   .sidebar-logo-wrap { border-top: 1px solid var(--border); margin-top: 10px; }
 }
 ";
@@ -798,6 +803,8 @@ const WIDE_1440: &str = r"
   .results-wrap { padding-left: 32px; padding-right: 32px; }
   .curation-wrap { padding-left: 32px; padding-right: 32px; }
   .draw-wrap     { padding-left: 32px; padding-right: 32px; }
+
+  .search-panel { max-width: 420px; }
 }
 ";
 
