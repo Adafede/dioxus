@@ -34,6 +34,9 @@ pub mod text {
     //! Text color tokens.
     pub const PRIMARY: &str = "var(--text)";
     pub const SECONDARY: &str = "var(--text2)";
+    pub const TERTIARY: &str = "var(--text3)";
+    pub const CRITICAL: &str = "var(--critical-text)";
+    pub const ACCENT: &str = "var(--accent)";
 }
 
 pub mod shadows {
@@ -48,6 +51,11 @@ pub mod shadows {
 pub mod spacing {
     //! Spacing values for padding, margins, and gaps.
     pub const FORM_SECTION: &str = "10px 12px";
+    pub const FORM_SECTION_NESTED: &str = "10px";
+    pub const FORM_GAP: &str = "5px";
+    pub const RANGE_INPUTS_GAP: &str = "8px";
+    pub const RANGE_PAIR_GAP: &str = "3px";
+    pub const FORM_SECTION_NESTED_MARGIN_TOP: &str = "4px";
     pub const STAT_BADGE_PAD: &str = "10px 12px";
     pub const STAT_VALUE_GAP: &str = "8px";
     pub const STAT_BADGE_GAP: &str = "4px";
@@ -55,6 +63,7 @@ pub mod spacing {
     pub const BUTTON_XS_PAD: &str = "2px 8px";
     pub const PAGE_HEADER_MARGIN: &str = "10px 22px 0";
     pub const PAGE_HEADER_PAD: &str = "10px 12px";
+    pub const PAGE_BRAND_GAP: &str = "8px 10px";
     pub const NESTED_SECTION: &str = "10px";
     pub const HEADER_META_GAP: &str = "12px";
     pub const HEADER_META_GAP_SMALL: &str = "4px";
@@ -84,6 +93,8 @@ pub mod typography {
     pub const FONT_SIZE_0: &str = "var(--fs-0)";
     pub const FONT_SIZE_LABEL: &str = "var(--fs-label)";
     pub const FONT_SIZE_MICRO: &str = "var(--fs-micro)";
+    pub const FONT_SIZE_UI: &str = "var(--fs-ui)";
+    pub const FONT_SIZE_BODY: &str = "var(--fs-body)";
     pub const FONT_WEIGHT_BOLD: &str = "800";
     pub const FONT_WEIGHT_SEMIBOLD: &str = "700";
     pub const LETTER_SPACING_TITLE: &str = "0.08em";
@@ -99,6 +110,137 @@ pub mod transitions {
     //! Transition timing and easing.
     pub const PANEL_TRANSITION: &str =
         "background .15s ease, border-color .15s ease, box-shadow .15s ease";
+}
+
+// ============================================================================
+// BUTTON STYLE BUILDERS
+// ============================================================================
+
+pub mod buttons {
+    //! Reusable button style functions to avoid duplication across components.
+    use ui::prelude::*;
+
+    /// Standard button style: inline-flex with border, surface background, and text color.
+    /// Used in notices, loading, search panel components.
+    pub fn button_base_style() -> String {
+        StyleBuilder::new()
+            .display("inline-flex")
+            .align_items("center")
+            .justify_content("center")
+            .gap("6px")
+            .border("1px solid var(--border)")
+            .border_radius("4px")
+            .property("min-height", "40px")
+            .padding("8px 14px")
+            .font_size("var(--fs-0)")
+            .font_weight("600")
+            .cursor("pointer")
+            .background_color("var(--surface)")
+            .color("var(--text)")
+            .box_shadow("var(--shadow-xs)")
+            .property(
+                "transition",
+                "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
+            )
+            .build()
+    }
+
+    /// Transparent button variant: used for secondary actions like download status.
+    pub fn button_transparent_style() -> String {
+        StyleBuilder::new()
+            .display("inline-flex")
+            .align_items("center")
+            .justify_content("center")
+            .gap("6px")
+            .border("1px solid var(--border)")
+            .border_radius("8px")
+            .property("min-height", "40px")
+            .padding("8px 14px")
+            .font_size("var(--fs-0)")
+            .font_weight("600")
+            .cursor("pointer")
+            .background_color("transparent")
+            .color("var(--text)")
+            .property(
+                "transition",
+                "border-color .15s, background .15s, box-shadow .15s, transform .12s ease",
+            )
+            .build()
+    }
+}
+
+pub mod shared {
+    //! Shared utility styles used across multiple components.
+    use ui::prelude::*;
+
+    /// Screen-reader only text: hidden from visual display but readable by assistive tech.
+    pub fn sr_only_style() -> String {
+        StyleBuilder::new()
+            .property("position", "absolute")
+            .property("width", "1px")
+            .property("height", "1px")
+            .property("padding", "0")
+            .property("margin", "-1px")
+            .property("overflow", "hidden")
+            .property("clip", "rect(0,0,0,0)")
+            .property("white-space", "nowrap")
+            .property("border", "0")
+            .build()
+    }
+
+    /// Base input field: background, border, text color, padding, sizing.
+    pub fn input_base_style() -> String {
+        StyleBuilder::new()
+            .background_color("var(--surface)")
+            .border("1px solid var(--border)")
+            .border_radius("4px")
+            .color("var(--text)")
+            .padding("9px 11px")
+            .font_size("var(--fs-ui)")
+            .property("width", "100%")
+            .font_family("var(--sans)")
+            .property("transition", "border-color .15s")
+            .build()
+    }
+
+    /// Base form label: uppercase with specific font size and letter spacing.
+    pub fn label_base_style() -> String {
+        StyleBuilder::new()
+            .font_size("var(--fs-0)")
+            .font_weight("700")
+            .color("var(--critical-text)")
+            .property("text-transform", "uppercase")
+            .property("letter-spacing", "0.08em")
+            .build()
+    }
+
+    /// Small label: normal case, regular text color.
+    pub fn label_small_style() -> String {
+        StyleBuilder::new()
+            .font_size("var(--fs-0)")
+            .font_weight("700")
+            .color("var(--text)")
+            .property("text-transform", "none")
+            .property("letter-spacing", "0")
+            .build()
+    }
+
+    /// Hint text: smaller, secondary color.
+    pub fn hint_text_style() -> String {
+        StyleBuilder::new()
+            .font_size("var(--fs-0)")
+            .color("var(--text2)")
+            .build()
+    }
+
+    /// Notice value text: word-break for long content with proper line height.
+    pub fn notice_value_style() -> String {
+        StyleBuilder::new()
+            .color("var(--text)")
+            .property("word-break", "break-word")
+            .property("line-height", "1.4")
+            .build()
+    }
 }
 
 // ============================================================================
@@ -147,9 +289,15 @@ mod tests {
 
     #[test]
     fn stat_stripe_enum_colors_match() {
-        assert_eq!(StatStripe::Compound.as_color(), stat_stripe_colors::COMPOUND);
+        assert_eq!(
+            StatStripe::Compound.as_color(),
+            stat_stripe_colors::COMPOUND
+        );
         assert_eq!(StatStripe::Taxon.as_color(), stat_stripe_colors::TAXON);
-        assert_eq!(StatStripe::Reference.as_color(), stat_stripe_colors::REFERENCE);
+        assert_eq!(
+            StatStripe::Reference.as_color(),
+            stat_stripe_colors::REFERENCE
+        );
         assert_eq!(StatStripe::Entries.as_color(), stat_stripe_colors::ENTRIES);
     }
 }

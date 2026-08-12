@@ -124,34 +124,11 @@ fn loading_state_style() -> String {
 }
 
 fn notice_value_style() -> String {
-    StyleBuilder::new()
-        .color("var(--text)")
-        .property("word-break", "break-word")
-        .property("line-height", "1.4")
-        .build()
+    crate::ui::style_constants::shared::notice_value_style()
 }
 
 fn button_base_style() -> String {
-    StyleBuilder::new()
-        .display("inline-flex")
-        .align_items("center")
-        .justify_content("center")
-        .gap("6px")
-        .border("1px solid var(--border)")
-        .border_radius("4px")
-        .property("min-height", "40px")
-        .padding("8px 14px")
-        .font_size("var(--fs-0)")
-        .font_weight("600")
-        .cursor("pointer")
-        .background_color("var(--surface)")
-        .color("var(--text)")
-        .box_shadow("var(--shadow-xs)")
-        .property(
-            "transition",
-            "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
-        )
-        .build()
+    crate::ui::style_constants::buttons::button_base_style()
 }
 
 #[cfg(test)]

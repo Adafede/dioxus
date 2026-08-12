@@ -7,6 +7,7 @@ use crate::i18n::{TextKey, t};
 use crate::models::ElementState;
 use crate::state::use_form_criteria_context;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 use super::shared::{FormulaSectionState, parse_u16_input};
 
@@ -20,10 +21,10 @@ fn ElemStateSelect(
     let locale = crate::hooks::use_locale();
 
     rsx! {
-        div { class: "range-pair",
-            label { class: "form-label sm", "{label}" }
+        div { style: range_pair_style(),
+            label { style: form_label_small_style(), "{label}" }
             select {
-                class: "form-input sm",
+                style: form_input_small_style(),
                 aria_label: "{label} {t(locale, TextKey::ElementRequirement)}",
                 value: "{value.as_str()}",
                 onchange: move |e| on_change.call(e.value().parse::<ElementState>().unwrap_or_default()),
@@ -47,14 +48,14 @@ fn NumPair(
     let locale = crate::hooks::use_locale();
 
     rsx! {
-        div { class: "formula-num-pair",
-            p { class: "form-label sm formula-num-label", "{label}" }
-            div { class: "formula-minmax-grid",
-                div { class: "range-pair",
-                    label { class: "form-label sm", "{t(locale, TextKey::MinCount)}" }
+        div { style: formula_num_pair_style(),
+            p { style: formula_num_label_style(), "{label}" }
+            div { style: formula_minmax_grid_style(),
+                div { style: range_pair_style(),
+                    label { style: form_label_small_style(), "{t(locale, TextKey::MinCount)}" }
                     input {
                         r#type: "number",
-                        class: "form-input sm",
+                        style: formula_input_small_style(),
                         min: "0",
                         max: "10000",
                         aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
@@ -66,11 +67,11 @@ fn NumPair(
                         },
                     }
                 }
-                div { class: "range-pair",
-                    label { class: "form-label sm", "{t(locale, TextKey::MaxCount)}" }
+                div { style: range_pair_style(),
+                    label { style: form_label_small_style(), "{t(locale, TextKey::MaxCount)}" }
                     input {
                         r#type: "number",
-                        class: "form-input sm",
+                        style: formula_input_small_style(),
                         min: "0",
                         max: "10000",
                         aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",
@@ -116,8 +117,8 @@ pub fn FormulaSection() -> Element {
     let enabled = criteria.formula_enabled;
 
     rsx! {
-        div { class: "form-section",
-            label { class: "radio-label",
+        div { style: form_section_style(),
+            label { style: radio_label_style(),
                 input {
                     r#type: "checkbox",
                     checked: enabled,
@@ -127,14 +128,14 @@ pub fn FormulaSection() -> Element {
             }
 
             if enabled {
-                div { class: "form-section nested formula-exact-row",
-                    label { class: "form-label sm", r#for: "formula-exact",
+                div { style: formula_exact_row_style(),
+                    label { style: form_label_small_style(), r#for: "formula-exact",
                         "{t(locale, TextKey::ExactFormula)}"
                     }
                     input {
                         id: "formula-exact",
                         r#type: "text",
-                        class: "form-input formula-exact-input",
+                        style: formula_exact_input_style(),
                         autocomplete: "off",
                         spellcheck: "false",
                         placeholder: "C15H10O5",
@@ -143,7 +144,7 @@ pub fn FormulaSection() -> Element {
                     }
                 }
 
-                div { class: "formula-grid formula-grid--pairs",
+                div { style: formula_grid_pairs_style(),
                     NumPair {
                         label: "C",
                         min_value: criteria.c_min,
@@ -187,7 +188,7 @@ pub fn FormulaSection() -> Element {
                         on_max: move |v| ctx.update(FormAction::SMax(v)),
                     }
                 }
-                div { class: "formula-grid formula-grid--halogens",
+                div { style: formula_grid_halogens_style(),
                     ElemStateSelect {
                         label: "F",
                         value: criteria.f_state,
@@ -212,4 +213,138 @@ pub fn FormulaSection() -> Element {
             }
         }
     }
+}
+
+fn form_section_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("5px")
+        .padding("10px 12px")
+        .border("1px solid var(--panel-border)")
+        .border_radius("12px")
+        .background_color("var(--panel-bg-soft)")
+        .build()
+}
+
+fn form_label_small_style() -> String {
+    crate::ui::style_constants::shared::label_small_style()
+}
+
+fn radio_label_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .align_items("center")
+        .gap("6px")
+        .font_size("var(--fs-0)")
+        .cursor("pointer")
+        .color("var(--text2)")
+        .build()
+}
+
+fn range_pair_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("3px")
+        .build()
+}
+
+fn form_input_small_style() -> String {
+    StyleBuilder::new()
+        .width("100%")
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .color("var(--text)")
+        .padding("9px 11px")
+        .font_size("var(--fs-ui)")
+        .font_family("var(--sans)")
+        .property("transition", "border-color .15s")
+        .build()
+}
+
+fn formula_num_pair_style() -> String {
+    StyleBuilder::new()
+        .border("1px solid var(--panel-border)")
+        .border_radius("10px")
+        .background_color("var(--panel-bg-soft)")
+        .padding("8px")
+        .display("flex")
+        .flex_direction("column")
+        .gap("6px")
+        .build()
+}
+
+fn formula_num_label_style() -> String {
+    StyleBuilder::new().color("var(--text2)").build()
+}
+
+fn formula_minmax_grid_style() -> String {
+    StyleBuilder::new()
+        .display("grid")
+        .property("grid-template-columns", "repeat(2, minmax(0, 1fr))")
+        .gap("8px")
+        .build()
+}
+
+fn formula_input_small_style() -> String {
+    StyleBuilder::new()
+        .width("100%")
+        .property("min-width", "6ch")
+        .padding("9px 6px")
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .color("var(--text)")
+        .font_size("var(--fs-ui)")
+        .font_family("var(--sans)")
+        .property("font-variant-numeric", "tabular-nums")
+        .property("transition", "border-color .15s")
+        .build()
+}
+
+fn formula_exact_row_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("5px")
+        .padding("10px 12px")
+        .border("1px solid var(--panel-border)")
+        .border_radius("12px")
+        .background_color("var(--panel-bg-soft)")
+        .property("margin-top", "4px")
+        .border_left("1px solid var(--border)")
+        .property("padding-left", "10px")
+        .build()
+}
+
+fn formula_exact_input_style() -> String {
+    StyleBuilder::new()
+        .width("100%")
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .color("var(--text)")
+        .padding("9px 11px")
+        .font_size("var(--fs-ui)")
+        .font_family("var(--sans)")
+        .property("transition", "border-color .15s")
+        .build()
+}
+
+fn formula_grid_pairs_style() -> String {
+    StyleBuilder::new()
+        .display("grid")
+        .property("grid-template-columns", "repeat(2, minmax(0, 1fr))")
+        .gap("10px")
+        .build()
+}
+
+fn formula_grid_halogens_style() -> String {
+    StyleBuilder::new()
+        .display("grid")
+        .property("grid-template-columns", "repeat(2, minmax(0, 1fr))")
+        .gap("10px")
+        .build()
 }

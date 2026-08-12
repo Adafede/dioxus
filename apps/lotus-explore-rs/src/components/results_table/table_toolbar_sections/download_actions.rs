@@ -104,7 +104,110 @@ fn dispatch_metadata_download_blob(filename: &str, body: &str) {
     );
 }
 
-// ── component ─────────────────────────────────────────────────────────────────
+// ── components ───────────────────────────────────────────────────────────────
+
+/// Displays download status with spinning indicator.
+#[component]
+fn DownloadStatusSpinner(
+    download_status: ReadSignal<Option<String>>,
+    locale: crate::i18n::Locale,
+) -> Element {
+    let status_msg = download_status.read().clone();
+    let text = status_msg
+        .as_deref()
+        .unwrap_or_else(|| t(locale, TextKey::PreparingDownload));
+
+    rsx! {
+        span {
+            role: "status",
+            aria_live: "polite",
+            style: button_base_style(),
+            span { style: spinner_sm_style(), "aria-hidden": "true" }
+            {text}
+        }
+    }
+}
+
+/// Download button for query results (CSV, JSON, RDF formats).
+#[component]
+fn DownloadQueryButton(
+    spec: DownloadQuerySpec,
+    toolbar_model: ReadSignal<
+        crate::components::results_table::download_model::DownloadToolbarModel,
+    >,
+    sparql_query: Arc<str>,
+    locale: crate::i18n::Locale,
+    disabled: bool,
+    download_busy: Signal<bool>,
+    download_status: Signal<Option<String>>,
+    criteria: ReadSignal<SearchCriteria>,
+    filename: String,
+) -> Element {
+    let title = t(locale, spec.title_key);
+    let label = t(locale, spec.label_key);
+
+    rsx! {
+        button {
+            r#type: "button",
+            disabled,
+            style: button_small_style(),
+            onclick: {
+                let q = sparql_query.clone();
+                let fname = filename.clone();
+                #[cfg(target_arch = "wasm32")]
+                let criteria_snapshot = Some(Arc::new(criteria.read().clone()));
+                #[cfg(not(target_arch = "wasm32"))]
+                let criteria_snapshot = None;
+                move |_| {
+                    dispatch_query_download_spec(
+                        spec,
+                        locale,
+                        criteria_snapshot.clone(),
+                        fname.clone(),
+                        q.clone(),
+                        download_busy,
+                        download_status,
+                    );
+                }
+            },
+            aria_label: "{title}",
+            title: "{title}",
+            "{label}"
+        }
+    }
+}
+
+/// Download button for metadata JSON file.
+#[component]
+fn DownloadMetadataButton(
+    metadata_json: Arc<str>,
+    toolbar_model: ReadSignal<
+        crate::components::results_table::download_model::DownloadToolbarModel,
+    >,
+    locale: crate::i18n::Locale,
+    disabled: bool,
+) -> Element {
+    let title = t(locale, DOWNLOAD_METADATA_SPEC.title_key);
+    let label = t(locale, DOWNLOAD_METADATA_SPEC.label_key);
+
+    rsx! {
+        button {
+            r#type: "button",
+            disabled,
+            style: button_small_style(),
+            onclick: {
+                let body = metadata_json.clone();
+                let filename = toolbar_model.read().metadata_filename.clone();
+                move |_| {
+                    dispatch_metadata_download_blob(&filename, body.as_ref());
+                }
+            },
+            title: "{title}",
+            aria_label: "{title}",
+            "{label}"
+        }
+    }
+}
 
 #[component]
 pub fn DownloadActionsGroup() -> Element {
@@ -119,155 +222,87 @@ pub fn DownloadActionsGroup() -> Element {
     let toolbar_snapshot = use_toolbar_result_snapshot(explore);
 
     let snapshot = toolbar_snapshot.read();
-    let toolbar_model = build_download_toolbar_model(
-        &criteria.read(),
-        snapshot.sparql_query.as_deref(),
-        snapshot.metadata_json.as_deref(),
-        snapshot.query_hash.as_deref(),
-        snapshot.result_hash.as_deref(),
-    );
+    let toolbar_model = use_signal(|| {
+        build_download_toolbar_model(
+            &criteria.read(),
+            snapshot.sparql_query.as_deref(),
+            snapshot.metadata_json.as_deref(),
+            snapshot.query_hash.as_deref(),
+            snapshot.result_hash.as_deref(),
+        )
+    });
 
     let download_results_label = t(locale, TextKey::DownloadResults);
-    let csv_title = t(locale, DOWNLOAD_QUERY_CSV_SPEC.title_key);
-    let csv_label = t(locale, DOWNLOAD_QUERY_CSV_SPEC.label_key);
-    let json_title = t(locale, DOWNLOAD_QUERY_JSON_SPEC.title_key);
-    let json_label = t(locale, DOWNLOAD_QUERY_JSON_SPEC.label_key);
-    let rdf_title = t(locale, DOWNLOAD_QUERY_RDF_SPEC.title_key);
-    let rdf_label = t(locale, DOWNLOAD_QUERY_RDF_SPEC.label_key);
-    let metadata_title = t(locale, DOWNLOAD_METADATA_SPEC.title_key);
-    let metadata_label = t(locale, DOWNLOAD_METADATA_SPEC.label_key);
     let qlever_title = t(locale, TextKey::OpenInQleverTitle);
     let qlever_label = t(locale, TextKey::OpenInQlever);
 
     // Local download state — busy flag and status text.
     let download_busy = use_signal(|| false);
     let download_status: Signal<Option<String>> = use_signal(|| None);
-    let download_status_ref = download_status.read();
-    let download_status_text = download_status_ref
-        .as_deref()
-        .unwrap_or_else(|| t(locale, TextKey::PreparingDownload));
 
     let sparql_query_value = snapshot.sparql_query.clone();
     let metadata_json_value = snapshot.metadata_json.clone();
+    let export_available = toolbar_model.read().export_available;
+    let qlever_ui_url = toolbar_model.read().qlever_ui_url.clone();
     drop(snapshot);
 
     rsx! {
         div { style: toolbar_actions_style(),
             if *download_busy.read() {
-                span {
-                    role: "status",
-                    aria_live: "polite",
-                    style: button_base_style(),
-                    span { style: spinner_sm_style(), "aria-hidden": "true" }
-                    {download_status_text}
+                DownloadStatusSpinner {
+                    download_status,
+                    locale,
                 }
             }
-            if toolbar_model.export_available {
+            if export_available {
                 div {
                     role: "group",
                     aria_label: "{download_results_label}",
                     style: dl_group_style(),
                     if let Some(query) = sparql_query_value.as_ref() {
-                        button {
-                            r#type: "button",
+                        DownloadQueryButton {
+                            spec: DOWNLOAD_QUERY_CSV_SPEC,
+                            toolbar_model,
+                            sparql_query: query.clone(),
+                            locale,
                             disabled: *download_busy.read(),
-                            style: button_small_style(),
-                            onclick: {
-                                let q = query.clone();
-                                let filename = toolbar_model.csv_filename.clone();
-                                #[cfg(target_arch = "wasm32")]
-                                let criteria_snapshot = Some(Arc::new(criteria.read().clone()));
-                                #[cfg(not(target_arch = "wasm32"))]
-                                let criteria_snapshot = None;
-                                move |_| {
-                                    dispatch_query_download_spec(
-                                        DOWNLOAD_QUERY_CSV_SPEC,
-                                        locale,
-                                        criteria_snapshot.clone(),
-                                        filename.clone(),
-                                        q.clone(),
-                                        download_busy,
-                                        download_status,
-                                    );
-                                }
-                            },
-                            aria_label: "{csv_title}",
-                            title: "{csv_title}",
-                            "{csv_label}"
+                            download_busy,
+                            download_status,
+                            criteria,
+                            filename: toolbar_model.read().csv_filename.clone(),
                         }
-                        button {
-                            r#type: "button",
+                        DownloadQueryButton {
+                            spec: DOWNLOAD_QUERY_JSON_SPEC,
+                            toolbar_model,
+                            sparql_query: query.clone(),
+                            locale,
                             disabled: *download_busy.read(),
-                            style: button_small_style(),
-                            onclick: {
-                                let q = query.clone();
-                                let filename = toolbar_model.json_filename.clone();
-                                #[cfg(target_arch = "wasm32")]
-                                let criteria_snapshot = Some(Arc::new(criteria.read().clone()));
-                                #[cfg(not(target_arch = "wasm32"))]
-                                let criteria_snapshot = None;
-                                move |_| {
-                                    dispatch_query_download_spec(
-                                        DOWNLOAD_QUERY_JSON_SPEC,
-                                        locale,
-                                        criteria_snapshot.clone(),
-                                        filename.clone(),
-                                        q.clone(),
-                                        download_busy,
-                                        download_status,
-                                    );
-                                }
-                            },
-                            aria_label: "{json_title}",
-                            title: "{json_title}",
-                            "{json_label}"
+                            download_busy,
+                            download_status,
+                            criteria,
+                            filename: toolbar_model.read().json_filename.clone(),
                         }
-                        button {
-                            r#type: "button",
+                        DownloadQueryButton {
+                            spec: DOWNLOAD_QUERY_RDF_SPEC,
+                            toolbar_model,
+                            sparql_query: query.clone(),
+                            locale,
                             disabled: *download_busy.read(),
-                            style: button_small_style(),
-                            onclick: {
-                                let q = query.clone();
-                                let filename = toolbar_model.rdf_filename.clone();
-                                #[cfg(target_arch = "wasm32")]
-                                let criteria_snapshot = Some(Arc::new(criteria.read().clone()));
-                                #[cfg(not(target_arch = "wasm32"))]
-                                let criteria_snapshot = None;
-                                move |_| {
-                                    dispatch_query_download_spec(
-                                        DOWNLOAD_QUERY_RDF_SPEC,
-                                        locale,
-                                        criteria_snapshot.clone(),
-                                        filename.clone(),
-                                        q.clone(),
-                                        download_busy,
-                                        download_status,
-                                    );
-                                }
-                            },
-                            aria_label: "{rdf_title}",
-                            title: "{rdf_title}",
-                            "{rdf_label}"
+                            download_busy,
+                            download_status,
+                            criteria,
+                            filename: toolbar_model.read().rdf_filename.clone(),
                         }
                     }
                     if let Some(body) = metadata_json_value.as_ref() {
-                        button {
-                            r#type: "button",
+                        DownloadMetadataButton {
+                            metadata_json: body.clone(),
+                            toolbar_model,
+                            locale,
                             disabled: *download_busy.read(),
-                            style: button_small_style(),
-                            onclick: {
-                                let body = body.clone();
-                                let filename = toolbar_model.metadata_filename.clone();
-                                move |_| {
-                                    dispatch_metadata_download_blob(&filename, body.as_ref());
-                                }
-                            },
-                            title: "{metadata_title}",
-                            aria_label: "{metadata_title}",
-                            "{metadata_label}"
                         }
                     }
-                    if let Some(url) = toolbar_model.qlever_ui_url.as_deref() {
+                    if let Some(url) = qlever_ui_url.as_deref() {
                         a {
                             href: "{url}",
                             target: "_blank",
@@ -283,6 +318,8 @@ pub fn DownloadActionsGroup() -> Element {
         }
     }
 }
+
+// ── Download Action Styles ───────────────────────────────────────────────────
 
 fn toolbar_actions_style() -> String {
     StyleBuilder::new()
@@ -310,8 +347,8 @@ fn spinner_sm_style() -> String {
     StyleBuilder::new()
         .property("width", "14px")
         .property("height", "14px")
-        .border("2px solid rgb(255 255 255 / 30%)")
-        .property("border-top-color", "#fff")
+        .border("2px solid color-mix(in srgb, var(--text) 30%, transparent)")
+        .property("border-top-color", "var(--text)")
         .border_radius("50%")
         .property("animation", "spin .7s linear infinite")
         .property("display", "inline-block")
@@ -319,25 +356,7 @@ fn spinner_sm_style() -> String {
 }
 
 fn button_base_style() -> String {
-    StyleBuilder::new()
-        .display("inline-flex")
-        .align_items("center")
-        .justify_content("center")
-        .gap("6px")
-        .border("1px solid var(--border)")
-        .border_radius("8px")
-        .property("min-height", "40px")
-        .padding("8px 14px")
-        .font_size("var(--fs-0)")
-        .font_weight("600")
-        .cursor("pointer")
-        .background_color("transparent")
-        .color("var(--text)")
-        .property(
-            "transition",
-            "border-color .15s, background .15s, box-shadow .15s, transform .12s ease",
-        )
-        .build()
+    crate::ui::style_constants::buttons::button_transparent_style()
 }
 
 fn button_small_style() -> String {

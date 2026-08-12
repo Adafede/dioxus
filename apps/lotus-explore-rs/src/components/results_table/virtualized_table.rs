@@ -142,15 +142,5 @@ fn results_table_style() -> String {
 }
 
 fn sr_only_style() -> String {
-    StyleBuilder::new()
-        .property("position", "absolute")
-        .property("width", "1px")
-        .property("height", "1px")
-        .property("padding", "0")
-        .property("margin", "-1px")
-        .property("overflow", "hidden")
-        .property("clip", "rect(0,0,0,0)")
-        .property("white-space", "nowrap")
-        .property("border", "0")
-        .build()
+    crate::ui::style_constants::shared::sr_only_style()
 }

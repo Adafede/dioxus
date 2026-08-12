@@ -5,7 +5,7 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::DatasetStats;
 use crate::state::use_results_context;
-use crate::ui::style_constants::{spacing, text, typography, StatStripe};
+use crate::ui::style_constants::{StatStripe, spacing, text, typography};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -138,7 +138,13 @@ fn stat_badge_style(stripe: StatStripe) -> String {
         .property("min-width", "0")
         .padding(spacing::STAT_BADGE_PAD)
         .border_radius("12px")
-        .property("border", &format!("1px solid {}", crate::ui::style_constants::borders::RESULTS_BORDER))
+        .property(
+            "border",
+            &format!(
+                "1px solid {}",
+                crate::ui::style_constants::borders::RESULTS_BORDER
+            ),
+        )
         .background_color(crate::ui::style_constants::backgrounds::SURFACE)
         .box_shadow(crate::ui::style_constants::shadows::SHADOW_XS)
         .property("position", "relative")
@@ -177,7 +183,7 @@ fn stat_secondary_style() -> String {
 fn stat_bar_style() -> String {
     StyleBuilder::new()
         .display("grid")
-        .property("grid-template-columns", "repeat(4, minmax(0, 1fr))")
+        .property("grid-template-columns", "repeat(auto-fit, minmax(120px, 1fr))")
         .gap(spacing::STAT_BAR_GAP)
         .align_items("stretch")
         .property("width", "100%")
@@ -210,9 +216,5 @@ fn stat_label_style() -> String {
 }
 
 fn notice_value_style() -> String {
-    StyleBuilder::new()
-        .color(text::PRIMARY)
-        .property("word-break", "break-word")
-        .property("line-height", "1.4")
-        .build()
+    crate::ui::style_constants::shared::notice_value_style()
 }

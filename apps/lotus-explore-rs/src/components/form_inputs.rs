@@ -30,15 +30,15 @@ pub fn TextInput(
     };
 
     rsx! {
-        div { class: "form-section",
+        div { style: form_section_style(),
             if !label.is_empty() {
-                label { r#for: "{id}", class: "form-label", "{label}" }
+                label { r#for: "{id}", style: form_label_style(), "{label}" }
             }
 
             input {
                 id: "{id}",
                 r#type: "text",
-                class: "form-input",
+                style: form_input_style(),
                 value: "{value}",
                 placeholder: placeholder.unwrap_or_default(),
                 aria_describedby: if !hint_id.is_empty() { "{hint_id}" } else { "" },
@@ -46,7 +46,7 @@ pub fn TextInput(
             }
 
             if let Some(hint_text) = hint {
-                p { id: "{hint_id}", class: "form-hint sr-hint", "{hint_text}" }
+                p { id: "{hint_id}", style: form_hint_style(), "{hint_text}" }
             }
         }
     }
@@ -68,28 +68,28 @@ pub fn RangeInput(
     let max_id = "range-max-input";
 
     rsx! {
-        div { class: "form-section",
-            label { class: "form-label", "{label}" }
+        div { style: form_section_style(),
+            label { style: form_label_style(), "{label}" }
 
-            div { class: "range-inputs",
-                div { class: "range-pair",
-                    label { class: "form-label sm", r#for: "{min_id}", "{min_label}" }
+            div { style: range_inputs_style(),
+                div { style: range_pair_style(),
+                    label { style: form_label_small_style(), r#for: "{min_id}", "{min_label}" }
                     input {
                         id: "{min_id}",
                         r#type: "number",
-                        class: "form-input",
+                        style: form_input_style(),
                         value: "{min_value}",
 
                         oninput: move |e| on_min_change.call(parse_f64(&e.value())),
                     }
                 }
 
-                div { class: "range-pair",
-                    label { class: "form-label sm", r#for: "{max_id}", "{max_label}" }
+                div { style: range_pair_style(),
+                    label { style: form_label_small_style(), r#for: "{max_id}", "{max_label}" }
                     input {
                         id: "{max_id}",
                         r#type: "number",
-                        class: "form-input",
+                        style: form_input_style(),
                         value: "{max_value}",
 
                         oninput: move |e| on_max_change.call(parse_f64(&e.value())),
@@ -116,6 +116,69 @@ pub fn SearchButton(on_click: EventHandler<()>) -> Element {
     }
 }
 
+fn form_section_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("5px")
+        .padding("10px 12px")
+        .border("1px solid var(--panel-border)")
+        .border_radius("12px")
+        .background_color("var(--panel-bg-soft)")
+        .build()
+}
+
+fn form_label_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-0)")
+        .font_weight("700")
+        .color("var(--critical-text)")
+        .property("text-transform", "uppercase")
+        .property("letter-spacing", "0.08em")
+        .build()
+}
+
+fn form_label_small_style() -> String {
+    crate::ui::style_constants::shared::label_small_style()
+}
+
+fn form_input_style() -> String {
+    StyleBuilder::new()
+        .width("100%")
+        .background_color("var(--surface)")
+        .border("1px solid var(--border)")
+        .border_radius("4px")
+        .color("var(--text)")
+        .padding("9px 11px")
+        .font_size("var(--fs-ui)")
+        .font_family("var(--sans)")
+        .property("transition", "border-color .15s")
+        .build()
+}
+
+fn form_hint_style() -> String {
+    StyleBuilder::new()
+        .font_size("var(--fs-0)")
+        .color("var(--text2)")
+        .build()
+}
+
+fn range_inputs_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .align_items("flex-end")
+        .gap("8px")
+        .build()
+}
+
+fn range_pair_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("3px")
+        .build()
+}
+
 fn button_primary_style() -> String {
     StyleBuilder::new()
         .display("inline-flex")
@@ -130,7 +193,7 @@ fn button_primary_style() -> String {
         .font_weight("600")
         .cursor("pointer")
         .background_color("var(--btn-primary-bg)")
-        .color("#fff")
+        .color("var(--text)")
         .box_shadow("var(--shadow-xs)")
         .property(
             "transition",

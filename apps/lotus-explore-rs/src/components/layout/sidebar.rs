@@ -13,7 +13,9 @@ use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
+use crate::ui::style_constants::text;
 use dioxus::prelude::*;
+use ui::prelude::*;
 
 const LOTUS_FERRIS_SVG: &str = include_str!("../../../public/assets/lotus_ferris.svg");
 
@@ -29,10 +31,10 @@ pub fn Sidebar() -> Element {
 
     rsx! {
         aside {
-            class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
+            style: sidebar_style(mobile_filters_open),
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             button {
-                class: "filters-toggle",
+                style: filters_toggle_style(),
                 r#type: "button",
                 aria_controls: SEARCH_PANEL_BODY_ID,
                 aria_expanded: if mobile_filters_open { "true" } else { "false" },
@@ -45,12 +47,56 @@ pub fn Sidebar() -> Element {
                 }
             }
             SearchPanel {}
-            div { class: "sidebar-logo-wrap",
-                div { class: "sidebar-logo",
+            div { style: sidebar_logo_wrap_style(),
+                div { style: sidebar_logo_style(),
                     "aria-hidden": "true",
                     dangerous_inner_html: LOTUS_FERRIS_SVG,
                 }
             }
         }
     }
+}
+
+fn sidebar_style(is_mobile_open: bool) -> String {
+    let visibility = if is_mobile_open { "visible" } else { "hidden" };
+
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .property("max-height", if is_mobile_open { "none" } else { "0" })
+        .property("overflow-y", "auto")
+        .property("visibility", visibility)
+        .property("transition", "max-height .3s ease, visibility .3s ease")
+        .build()
+}
+
+fn filters_toggle_style() -> String {
+    StyleBuilder::new()
+        .cursor("pointer")
+        .border("1px solid var(--border)")
+        .background_color("var(--surface)")
+        .color(text::PRIMARY)
+        .padding("8px 14px")
+        .font_size("var(--fs-0)")
+        .font_weight("600")
+        .property("white-space", "nowrap")
+        .property("transition", "border-color .15s, background .15s")
+        .build()
+}
+
+fn sidebar_logo_wrap_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .justify_content("center")
+        .align_items("center")
+        .padding("20px 12px")
+        .build()
+}
+
+fn sidebar_logo_style() -> String {
+    StyleBuilder::new()
+        .property("flex-shrink", "0")
+        .property("width", "80px")
+        .property("height", "auto")
+        .build()
 }

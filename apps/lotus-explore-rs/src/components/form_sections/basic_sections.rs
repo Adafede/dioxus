@@ -168,44 +168,19 @@ fn section_card_style() -> String {
 }
 
 fn label_base_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .font_weight("700")
-        .color("var(--critical-text)")
-        .property("text-transform", "uppercase")
-        .property("letter-spacing", "0.08em")
-        .build()
+    crate::ui::style_constants::shared::label_base_style()
 }
 
 fn label_small_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .font_weight("700")
-        .color("var(--text)")
-        .property("text-transform", "none")
-        .property("letter-spacing", "0")
-        .build()
+    crate::ui::style_constants::shared::label_small_style()
 }
 
 fn input_base_style() -> String {
-    StyleBuilder::new()
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
-        .border_radius("4px")
-        .color("var(--text)")
-        .padding("9px 11px")
-        .font_size("var(--fs-ui)")
-        .property("width", "100%")
-        .font_family("var(--sans)")
-        .property("transition", "border-color .15s")
-        .build()
+    crate::ui::style_constants::shared::input_base_style()
 }
 
 fn hint_text_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .color("var(--text2)")
-        .build()
+    crate::ui::style_constants::shared::hint_text_style()
 }
 
 fn range_inputs_pair_style() -> String {

@@ -105,7 +105,7 @@ fn query_summary_chevron_style(is_open: bool) -> String {
     };
 
     let transform = format!("translateY(-50%) rotate({})", rotation_deg);
-    
+
     StyleBuilder::new()
         .property("position", "absolute")
         .property("left", "12px")

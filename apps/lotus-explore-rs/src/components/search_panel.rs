@@ -249,7 +249,7 @@ fn search_button_style(dirty: bool) -> String {
             .font_weight("700")
             .cursor("pointer")
             .background_color("color-mix(in srgb, var(--btn-primary-bg) 90%, var(--accent))")
-            .color("#fff")
+            .color("var(--text)")
             .box_shadow("var(--shadow-xs)")
             .property(
                 "transition",
@@ -271,17 +271,7 @@ fn panel_stack_style(padding: &str, gap: &str) -> String {
 }
 
 fn sr_only_style() -> String {
-    StyleBuilder::new()
-        .property("position", "absolute")
-        .property("width", "1px")
-        .property("height", "1px")
-        .property("padding", "0")
-        .property("margin", "-1px")
-        .property("overflow", "hidden")
-        .property("clip", "rect(0,0,0,0)")
-        .property("white-space", "nowrap")
-        .property("border", "0")
-        .build()
+    crate::ui::style_constants::shared::sr_only_style()
 }
 
 fn section_card_style() -> String {
@@ -297,30 +287,15 @@ fn section_card_style() -> String {
 }
 
 fn label_base_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .font_weight("700")
-        .color("var(--critical-text)")
-        .property("text-transform", "uppercase")
-        .property("letter-spacing", "0.08em")
-        .build()
+    crate::ui::style_constants::shared::label_base_style()
 }
 
 fn label_small_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .font_weight("700")
-        .color("var(--text)")
-        .property("text-transform", "none")
-        .property("letter-spacing", "0")
-        .build()
+    crate::ui::style_constants::shared::label_small_style()
 }
 
 fn hint_text_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .color("var(--text2)")
-        .build()
+    crate::ui::style_constants::shared::hint_text_style()
 }
 
 fn radio_label_style() -> String {
@@ -359,7 +334,7 @@ fn iframe_style() -> String {
         .property("min-height", "600px")
         .border("1px solid var(--border)")
         .border_radius("4px")
-        .background_color("#fff")
+        .background_color("var(--surface)")
         .build()
 }
 
@@ -379,7 +354,7 @@ fn kind_pill_style(kind: &str) -> String {
         .property("letter-spacing", "1px")
         .property("text-transform", "uppercase")
         .property("margin-right", "6px")
-        .color("#fff")
+        .color("var(--text)")
         .background_color(background)
         .build()
 }
@@ -410,38 +385,9 @@ fn textarea_base_style() -> String {
 
 #[allow(dead_code)]
 fn input_base_style() -> String {
-    StyleBuilder::new()
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
-        .border_radius("4px")
-        .color("var(--text)")
-        .padding("9px 11px")
-        .font_size("var(--fs-ui)")
-        .property("width", "100%")
-        .font_family("var(--sans)")
-        .property("transition", "border-color .15s")
-        .build()
+    crate::ui::style_constants::shared::input_base_style()
 }
 
 fn button_base_style() -> String {
-    StyleBuilder::new()
-        .display("inline-flex")
-        .align_items("center")
-        .justify_content("center")
-        .gap("6px")
-        .border("1px solid var(--border)")
-        .border_radius("4px")
-        .property("min-height", "40px")
-        .padding("8px 14px")
-        .font_size("var(--fs-0)")
-        .font_weight("600")
-        .cursor("pointer")
-        .background_color("var(--surface)")
-        .color("var(--text)")
-        .box_shadow("var(--shadow-xs)")
-        .property(
-            "transition",
-            "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
-        )
-        .build()
+    crate::ui::style_constants::buttons::button_base_style()
 }

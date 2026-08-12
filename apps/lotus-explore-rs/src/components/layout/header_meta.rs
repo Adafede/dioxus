@@ -162,9 +162,10 @@ fn meta_item_style() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("row")
-        .align_items("baseline")
+        .align_items("center")
         .gap("2px")
         .property("min-width", "0")
+        .property("line-height", "1.4")
         .build()
 }
 
