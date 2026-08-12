@@ -163,12 +163,10 @@ img, svg, canvas, video {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--sans), system-ui, sans-serif;
+  font-family: var(--sans);
   font-size: var(--fs-body);
   line-height: 1.52;
   min-height: 100vh;
-  -webkit-text-size-adjust: 100%;
-  -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -343,7 +341,6 @@ a:hover { text-decoration: underline; }
   }
 }
 
-@supports (media: (prefers-reduced-data: reduce)) {
 @media (prefers-reduced-data: reduce) {
   body {
     background: var(--bg);
@@ -362,7 +359,6 @@ a:hover { text-decoration: underline; }
     backdrop-filter: none;
     background-image: none;
   }
-}
 }
 
 /* ── Large-screen refinements (≥ 1440 px) ───────────────────────────────── */
