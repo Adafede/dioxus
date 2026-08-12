@@ -246,6 +246,7 @@ const SEARCH_PANEL: &str = r#"
 .lang-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
 .search-btn { white-space: normal; word-break: break-word; }
 @media (max-width: 768px) {
+  .filters-toggle { display:flex; width:calc(100% - 24px); margin:8px; }
   .search-panel-body { display:none !important; }
   .sidebar.mobile-open .search-panel-body { display:flex !important; }
 }
