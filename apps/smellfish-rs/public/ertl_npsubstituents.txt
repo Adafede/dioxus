@@ -1,5 +1,5 @@
 # Source: Peter Ertl npsubstituents.txt from https://peter-ertl.com/molecular/data/npsubstituents.txt
-# the most commmon substituents present in natural products
+# the most common substituents present in natural products
 # if you are using the data, please cite:
 # Peter Ertl, Substituents of life: The most common substituent patterns present in natural products
 # Bioorganic & Medicinal Chemistry, 54,116562 (2022)
