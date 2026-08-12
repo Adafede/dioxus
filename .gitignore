@@ -6,6 +6,9 @@ dist/
 apps/*/dist/
 apps/*/.dioxus/
 
+# ── Downloaded assets (Ketcher, etc) ───────────────────────────────────────────
+apps/*/public/assets/ketcher/
+
 # ── macOS ─────────────────────────────────────────────────────────────────────
 .DS_Store
 .AppleDouble

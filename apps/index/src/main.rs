@@ -187,9 +187,15 @@ const APPS: &[AppInfo] = &[
     },
     AppInfo {
         id: "mgf-precursor-error",
-        title: "📊 MGF Precursor Erro-rs",
+        title: "📐 MGF Precursor Erro-rs",
         path: "./mgf-precursor-erro-rs/",
         description: "Analyze mass spectrometry data. Visualize precursor mass errors from MGF files in absolute (Dalton) and relative (ppm) units with interactive plots.",
+    },
+    AppInfo {
+        id: "lipid-selecto-rs",
+        title: "🧀 Lipid Selecto-rs",
+        path: "./lipid-selecto-rs/",
+        description: "Filter and visualize lipid mass spectrometry data by chemical class. Interactive structure viewer for lipidomics analysis with support for SMILES and SMARTS queries.",
     },
 ];
 

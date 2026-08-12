@@ -17,7 +17,7 @@ set -euo pipefail
 
 KETCHER_DIR="public/assets/ketcher"
 KETCHER_VERSION="${KETCHER_VERSION:-3.17.0}"
-KETCHER_URL="https://github.com/petrucci42/ketcher/releases/download/v${KETCHER_VERSION}/ketcher-${KETCHER_VERSION}.zip"
+KETCHER_URL="https://github.com/epam/ketcher/releases/download/v${KETCHER_VERSION}/ketcher-standalone-${KETCHER_VERSION}.zip"
 
 if [ -f "$KETCHER_DIR/index.html" ]; then
     echo "✓ Ketcher v${KETCHER_VERSION} already present in $KETCHER_DIR"
@@ -32,7 +32,17 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 curl -L --fail -o "$TMPDIR/ketcher.zip" "$KETCHER_URL"
 mkdir -p "$KETCHER_DIR"
-unzip -q "$TMPDIR/ketcher.zip" -d "$KETCHER_DIR"
+unzip -q "$TMPDIR/ketcher.zip" -d "$TMPDIR"
+
+# The standalone build extracts to a subdirectory; move its contents to the target directory
+if [ -d "$TMPDIR/standalone" ]; then
+    cp -r "$TMPDIR/standalone/"* "$KETCHER_DIR/"
+elif [ -d "$TMPDIR/ketcher-standalone-${KETCHER_VERSION}" ]; then
+    cp -r "$TMPDIR/ketcher-standalone-${KETCHER_VERSION}/"* "$KETCHER_DIR/"
+else
+    # Fallback: assume root-level extraction
+    cp -r "$TMPDIR/"* "$KETCHER_DIR/"
+fi
 
 echo "✓ Ketcher v${KETCHER_VERSION} extracted to $KETCHER_DIR"
 echo "  Run 'dx serve --package lotus-explore-rs' to use it."

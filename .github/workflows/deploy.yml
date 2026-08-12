@@ -33,6 +33,10 @@ jobs:
       - name: Install dioxus-cli
         run: cargo binstall dioxus-cli --version 0.7.10 --locked --force
 
+      - name: Fetch Ketcher (115 MB structure editor)
+        working-directory: apps/lotus-explore-rs
+        run: bash scripts/fetch-ketcher.sh
+
       - name: Build index landing page
         working-directory: apps/index
         run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/"
@@ -63,6 +67,12 @@ jobs:
         env:
           GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
 
+      - name: Build lipid-selecto-rs
+        working-directory: apps/lipid-selecto-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/lipid-selecto-rs/"
+        env:
+          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
+
       - name: Assemble site
         run: |
           DX_OUT="target/dx"
@@ -77,6 +87,7 @@ jobs:
           cp -r "$DX_OUT/json-count-rs/$DX_WEB"    _site/json-count-rs
           cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
           cp -r "$DX_OUT/smellfish-rs/$DX_WEB" _site/smellfish-rs
+          cp -r "$DX_OUT/lipid-selecto-rs/$DX_WEB" _site/lipid-selecto-rs
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
         with:
