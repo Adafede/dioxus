@@ -375,16 +375,16 @@ const PHONE_430_AND_360: &str = r"
 
   .page-header-meta .meta-item {
     display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 6px;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px;
     min-width: 0;
+    width: 100%;
     font-size: var(--fs-label);
   }
 
   .page-header-meta .meta-key {
-    white-space: nowrap;
-    font-size: var(--fs-micro);
+    display: none;
   }
 
   .page-header-meta .meta-sep {
@@ -392,9 +392,10 @@ const PHONE_430_AND_360: &str = r"
   }
 
   .page-header-meta .meta-val {
+    white-space: nowrap;
+    flex-shrink: 1;
     min-width: 0;
     max-width: 100%;
-    overflow-wrap: anywhere;
     font-size: var(--fs-label);
   }
 
