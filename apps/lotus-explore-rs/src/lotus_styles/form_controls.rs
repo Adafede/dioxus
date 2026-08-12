@@ -114,7 +114,7 @@ const FORM_ACTIONS_AND_RESPONSIVE: &str = r"
   outline-offset: 2px;
 }
 
-@media (width <= 760px) {
+@media (width <= 1023px) {
   .formula-grid,
   .formula-minmax-grid {
     grid-template-columns: 1fr;
