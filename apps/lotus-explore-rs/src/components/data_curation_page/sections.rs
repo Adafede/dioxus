@@ -441,7 +441,7 @@ fn curation_file_input_style() -> String {
 
 fn curation_notice_value_style() -> String {
     StyleBuilder::new()
-        .color("var(--text)")
+        .color("inherit")
         .property("word-break", "break-word")
         .property("line-height", "1.4")
         .build()
