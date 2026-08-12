@@ -53,12 +53,8 @@ pub fn WelcomeScreen() -> Element {
             div { style: welcome_examples_style(),
                 ul { style: example_list_style(),
                     ExRow {
-                        value: "taxon=<name|QID>",
+                        value: "taxon=<name|QID|*>",
                         note: t(locale, TextKey::ExampleGentiana),
-                    }
-                    ExRow {
-                        value: "*",
-                        note: t(locale, TextKey::ExampleAllTriples),
                     }
                     ExRow {
                         value: "structure=<SMILES|Molfile>",

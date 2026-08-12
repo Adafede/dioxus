@@ -139,7 +139,6 @@ pub enum TextKey {
     WelcomeLeadD,
     WelcomeLeadE,
     ExampleGentiana,
-    ExampleAllTriples,
     ExampleSmilesOnly,
     ExampleQueryExecute,
     ExampleQueryTaxon,
