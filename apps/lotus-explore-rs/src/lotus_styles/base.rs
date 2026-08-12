@@ -3,7 +3,7 @@
 
 //! Lotus CSS pack: base.
 
-const RESET_AND_TOKENS: &str = r###"/* ─────────────────────────────────────────────────────────────────────────────
+const RESET_AND_TOKENS: &str = r"/* ─────────────────────────────────────────────────────────────────────────────
    LOTUS Knowledge Explorer — design tokens + base + app layout
    Previously injected at runtime via `dangerous_inner_html`. Now assembled
    from smaller Rust strings so the browser still caches the result.
@@ -151,9 +151,9 @@ img, svg, canvas, video {
     --stat-total-stripe: color-mix(in srgb, var(--wd-entries) 62%, #fff);
   }
 }
-"###;
+";
 
-const GLOBAL_BASE: &str = r###"
+const GLOBAL_BASE: &str = r"
 body {
   background: var(--bg);
   color: var(--text);
@@ -212,9 +212,9 @@ a:hover { text-decoration: underline; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius:3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
-"###;
+";
 
-const CONTROLS_AND_FORMS: &str = r###"
+const CONTROLS_AND_FORMS: &str = r"
 /* Buttons */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -286,9 +286,9 @@ const CONTROLS_AND_FORMS: &str = r###"
 .pagination-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; }
 .page-info { font-size:var(--fs-0); color:var(--text2); }
 .empty-state { display:flex; flex-direction:column; align-items:center; gap:12px; padding:64px 24px; color:var(--text2); }
-"###;
+";
 
-const REDUCED_AND_PERF: &str = r###"
+const REDUCED_AND_PERF: &str = r"
 @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
   .sidebar,
   .main-content,
@@ -342,9 +342,9 @@ const REDUCED_AND_PERF: &str = r###"
     background-image: none;
   }
 }
-"###;
+";
 
-const LARGE_SCREEN: &str = r###"
+const LARGE_SCREEN: &str = r"
 /* Large-screen refinements (≥ 1440 px) */
 
 /* Give the main panel uniform, more generous horizontal spacing so every
@@ -370,7 +370,7 @@ const LARGE_SCREEN: &str = r###"
 
 /* Removed max-width constraint to allow stats and results to expand freely
    on wide monitors, matching the behavior of share and hashes panels. */
-"###;
+";
 
 pub fn css() -> String {
     [

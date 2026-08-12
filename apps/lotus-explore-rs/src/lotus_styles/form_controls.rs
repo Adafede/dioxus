@@ -3,7 +3,7 @@
 
 //! Lotus CSS pack: form_controls.
 
-const FORM_SECTIONS: &str = r###"/* Form controls pack: shared form primitives, structure editor, and search button. */
+const FORM_SECTIONS: &str = r"/* Form controls pack: shared form primitives, structure editor, and search button. */
 
 .form-section { display:flex; flex-direction:column; gap:5px; padding:10px 12px; border:1px solid var(--panel-border); border-radius:12px; background:var(--panel-bg-soft); }
 .form-section.nested { padding-left:10px; border-left:1px solid var(--border); margin-top:4px; }
@@ -17,9 +17,9 @@ const FORM_SECTIONS: &str = r###"/* Form controls pack: shared form primitives, 
 .range-inputs { display:flex; align-items:flex-end; gap:8px; }
 .range-pair { display:flex; flex-direction:column; gap:3px; }
 .range-sep { color:var(--text3); padding-bottom:8px; }
-"###;
+";
 
-const FORM_RANGES: &str = r###"
+const FORM_RANGES: &str = r"
 .formula-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 
 .formula-exact-row,
@@ -60,9 +60,9 @@ const FORM_RANGES: &str = r###"
 
 .range-inputs--pair .range-pair { min-width: 0; }
 .range-inputs--pair .form-input { width: 100%; }
-"###;
+";
 
-const FORM_STRUCTURE: &str = r###"
+const FORM_STRUCTURE: &str = r#"
 /* Normalize number input chrome for consistent borders on Safari/Firefox. */
 input[type="number"].form-input { appearance: textfield; }
 
@@ -94,9 +94,9 @@ input[type="number"].form-input::-webkit-inner-spin-button { appearance: none; m
 .ketcher-wrap { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
 .ketcher-iframe { width:100%; height:min(78vh, 820px); min-height:600px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fff; }
 .ketcher-hint { margin-top:2px; font-size:var(--fs-0); color:var(--text2); }
-"###;
+"#;
 
-const FORM_ACTIONS_AND_RESPONSIVE: &str = r###"
+const FORM_ACTIONS_AND_RESPONSIVE: &str = r"
 .search-btn { display:flex; align-items:center; justify-content:center; gap:8px; background:var(--btn-primary-bg); color:#fff; border:0; border-radius:var(--radius-sm); padding:11px 16px; font-size:var(--fs-ui); font-weight:700; cursor:pointer; box-shadow:var(--shadow-xs); transition:background .15s, box-shadow .15s, transform .12s ease; text-align:center; line-height:1.2; white-space:normal; }
 .search-btn:hover:not(:disabled) { background:var(--btn-primary-hover-bg); box-shadow:var(--shadow-sm); }
 .search-btn:active { transform: translateY(1px); }
@@ -120,7 +120,7 @@ const FORM_ACTIONS_AND_RESPONSIVE: &str = r###"
     grid-template-columns: 1fr;
   }
 }
-"###;
+";
 
 pub fn css() -> String {
     [

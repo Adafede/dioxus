@@ -492,7 +492,7 @@ fn queue_smiles_col_style() -> String {
 }
 
 fn row_stripe_style(idx: usize) -> String {
-    let background = if idx % 2 == 0 {
+    let background = if idx.is_multiple_of(2) {
         "color-mix(in srgb, var(--surface) 94%, transparent)"
     } else {
         "color-mix(in srgb, var(--surface) 88%, transparent)"

@@ -3,7 +3,7 @@
 
 //! Lotus CSS pack: accessibility.
 
-const SKIP_LINK: &str = r###"/* Accessibility-specific styles and media queries.
+const SKIP_LINK: &str = r"/* Accessibility-specific styles and media queries.
    Extracted from style.css for maintainability and cacheable separately. */
 
 .skip-link:focus {
@@ -14,9 +14,9 @@ const SKIP_LINK: &str = r###"/* Accessibility-specific styles and media queries.
 .skip-link:hover {
   text-decoration: underline;
 }
-"###;
+";
 
-const REDUCED_MOTION: &str = r###"
+const REDUCED_MOTION: &str = r"
 @media (prefers-reduced-motion: reduce) {
   .sidebar::before,
   .page-header::before {
@@ -41,9 +41,9 @@ const REDUCED_MOTION: &str = r###"
     backdrop-filter: none;
   }
 }
-"###;
+";
 
-const REDUCED_TRANSPARENCY: &str = r###"
+const REDUCED_TRANSPARENCY: &str = r"
 @media (prefers-reduced-transparency: reduce) {
   .sidebar,
   .main-content,
@@ -52,9 +52,9 @@ const REDUCED_TRANSPARENCY: &str = r###"
     background: var(--bg2);
   }
 }
-"###;
+";
 
-const HIGH_CONTRAST: &str = r###"
+const HIGH_CONTRAST: &str = r"
 @media (prefers-contrast: more) {
   :root {
     --border: #7a879a;
@@ -87,9 +87,9 @@ const HIGH_CONTRAST: &str = r###"
     color: var(--text);
   }
 }
-"###;
+";
 
-const FORCED_COLORS: &str = r###"
+const FORCED_COLORS: &str = r"
 @media (forced-colors: active) {
   .btn,
   .search-btn,
@@ -114,7 +114,7 @@ const FORCED_COLORS: &str = r###"
     outline-offset: 2px;
   }
 }
-"###;
+";
 
 pub fn css() -> String {
     [

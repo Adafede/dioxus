@@ -3,7 +3,7 @@
 
 //! Lotus CSS pack: curation.
 
-const CURATION_NOTICE_AND_INPUT: &str = r###"/* Curation surface: only selectors that still need CSS. */
+const CURATION_NOTICE_AND_INPUT: &str = r"/* Curation surface: only selectors that still need CSS. */
 
 .curation-wrap > .notice {
   margin-left: 0;
@@ -28,9 +28,9 @@ const CURATION_NOTICE_AND_INPUT: &str = r###"/* Curation surface: only selectors
   background: color-mix(in srgb, var(--surface2) 68%, var(--surface));
   border-color: color-mix(in srgb, var(--border) 84%, var(--accent));
 }
-"###;
+";
 
-const CURATION_TABLE: &str = r###"
+const CURATION_TABLE: &str = r"
 .curation-table {
   width: 100%;
   border-collapse: collapse;
@@ -62,9 +62,9 @@ const CURATION_TABLE: &str = r###"
 .curation-table tbody tr:hover {
   background: color-mix(in srgb, var(--surface2) 84%, var(--bg2));
 }
-"###;
+";
 
-const CURATION_SCROLL_AND_TABLES: &str = r###"
+const CURATION_SCROLL_AND_TABLES: &str = r"
 .curation-table-scroll {
   border-radius: 14px;
 }
@@ -82,7 +82,7 @@ const CURATION_SCROLL_AND_TABLES: &str = r###"
 .curation-queue-table {
   min-width: max-content;
 }
-"###;
+";
 
 pub fn css() -> String {
     [

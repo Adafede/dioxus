@@ -119,7 +119,7 @@ fn StructureSection() -> Element {
             }
             if let Some(note_key) = view_model.note_key {
                 p { style: hint_text_style(),
-                    span { style: kind_pill_style(&view_model.kind_class), "{kind_value.label()}" }
+                    span { style: kind_pill_style(view_model.kind_class), "{kind_value.label()}" }
                     span { "{t(locale, note_key)}" }
                 }
             } else {
@@ -235,9 +235,8 @@ fn threshold_section_style() -> String {
 }
 
 fn search_button_style(dirty: bool) -> String {
-    let mut style = button_base_style();
     if dirty {
-        style = StyleBuilder::new()
+        StyleBuilder::new()
             .display("inline-flex")
             .align_items("center")
             .justify_content("center")
@@ -256,9 +255,10 @@ fn search_button_style(dirty: bool) -> String {
                 "transition",
                 "background .15s, box-shadow .15s, transform .12s ease",
             )
-            .build();
+            .build()
+    } else {
+        button_base_style()
     }
-    style
 }
 
 fn panel_stack_style(padding: &str, gap: &str) -> String {
@@ -408,6 +408,7 @@ fn textarea_base_style() -> String {
         .build()
 }
 
+#[allow(dead_code)]
 fn input_base_style() -> String {
     StyleBuilder::new()
         .background_color("var(--surface)")

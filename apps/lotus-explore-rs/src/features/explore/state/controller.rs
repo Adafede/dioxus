@@ -4,11 +4,13 @@
 use crate::app::view::AppView;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub struct AppLayoutClasses {
     pub app_layout: &'static str,
     pub main: &'static str,
 }
 
+#[allow(dead_code)]
 pub fn classes_for_view(view: AppView) -> AppLayoutClasses {
     if view == AppView::Explore {
         AppLayoutClasses {

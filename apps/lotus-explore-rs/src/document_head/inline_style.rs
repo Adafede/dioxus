@@ -3,10 +3,10 @@
 
 //! Inline CSS for the document head, split into a font import and toast styles.
 
-const INTER_FONT_IMPORT: &str = r#"
+const INTER_FONT_IMPORT: &str = r"
 /* Inter Font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap') layer;
-"#;
+";
 
 const TOAST_STYLE: &str = r#"
 #dx-toast-template {

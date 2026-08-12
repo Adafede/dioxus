@@ -3,7 +3,7 @@
 
 //! Lotus CSS pack: layout_shell.
 
-const APP_FRAME: &str = r###"/* Layout shell pack: app frame, header/meta, notices, share bar, and sidebar shell. */
+const APP_FRAME: &str = r"/* Layout shell pack: app frame, header/meta, notices, share bar, and sidebar shell. */
 
 .app-layout { display:flex; min-height:100dvh; height:100dvh; overflow:hidden; gap:10px; padding:10px; }
 .app-layout.no-sidebar { display:block; }
@@ -44,9 +44,9 @@ const APP_FRAME: &str = r###"/* Layout shell pack: app frame, header/meta, notic
   content-visibility: auto;
   contain-intrinsic-size: 900px;
 }
-"###;
+";
 
-const PAGE_HEADER: &str = r###"
+const PAGE_HEADER: &str = r"
 .page-header {
   padding:14px 22px 10px;
   border-bottom:1px solid var(--panel-border);
@@ -120,9 +120,9 @@ const PAGE_HEADER: &str = r###"
 .meta-key { text-transform:uppercase; letter-spacing:0.08em; font-weight:700; font-size: var(--fs-0); color: var(--text2); }
 .meta-val.mono { font-family:var(--mono); color:var(--critical-text); font-variant-numeric: tabular-nums; font-size: var(--fs-0); }
 .meta-sep { color:var(--text3); }
-"###;
+";
 
-const NOTICES: &str = r###"
+const NOTICES: &str = r"
 /* Notices */
 .notice {
   margin:10px 22px 0;
@@ -185,9 +185,9 @@ const NOTICES: &str = r###"
 .notice-error .notice-label { background:color-mix(in srgb, var(--red) 16%, var(--surface)); color:color-mix(in srgb, var(--red) 88%, var(--text)); }
 .notice-dismiss { margin-left:auto; background:none; border:0; color:inherit; cursor:pointer; font-size:18px; line-height:1; padding:0 4px; opacity:.7; }
 .notice-dismiss:hover { opacity:1; }
-"###;
+";
 
-const SHARE_BAR: &str = r###"
+const SHARE_BAR: &str = r"
 /* Share bar */
 .share-bar {
   display: flex;
@@ -231,9 +231,9 @@ const SHARE_BAR: &str = r###"
   outline: none;
   border-color: var(--accent);
 }
-"###;
+";
 
-const SEARCH_PANEL: &str = r###"
+const SEARCH_PANEL: &str = r"
 /* Search panel shell */
 .search-panel { padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:1; }
 .search-panel-body { display:flex; flex-direction:column; gap:12px; }
@@ -242,16 +242,16 @@ const SEARCH_PANEL: &str = r###"
 .view-switch { margin-top: 10px; display: flex; gap: 8px; }
 .view-switch .btn { font-weight: 700; }
 .sidebar-logo { display:block; width:128px; height:128px; }
-"###;
+";
 
-const FOOTER: &str = r###"
+const FOOTER: &str = r"
 /* Footer responsive grid sizing */
 @media (min-width: 640px) {
   footer > div {
     grid-template-columns: 1.2fr 1fr !important;
   }
 }
-"###;
+";
 
 pub fn css() -> String {
     [
