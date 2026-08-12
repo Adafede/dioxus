@@ -2,6 +2,18 @@
 //!
 //! Scores natural-product-likeness of SMILES structures using machine-learned
 //! features, `Query` enrichment, and RDKit.js chemistry descriptors.
+//!
+//! ## Run locally
+//!
+//! ```bash
+//! dx serve --package smellfish-rs
+//! ```
+//!
+//! ## Build for deployment
+//!
+//! ```bash
+//! dx build --release --platform web --package smellfish-rs
+//! ```
 
 mod app;
 #[cfg(any(test, target_arch = "wasm32"))]

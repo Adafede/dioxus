@@ -1,10 +1,23 @@
 //! Type-safe, accessible landing page for Dioxus experiments.
 //!
-//! This module provides the root application component and demonstrates best practices for:
+//! This module provides the root application component and demonstrates best
+//! practices for:
 //! - Semantic HTML with ARIA annotations
 //! - Reusable, accessible component patterns
 //! - Clean separation of concerns
 //! - Comprehensive documentation
+//!
+//! ## Run locally
+//!
+//! ```bash
+//! dx serve --package index
+//! ```
+//!
+//! ## Build for deployment
+//!
+//! ```bash
+//! dx build --release --platform web --package index
+//! ```
 
 use dioxus::prelude::*;
 use ui::prelude::*;

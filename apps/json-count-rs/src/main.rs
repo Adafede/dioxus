@@ -2,6 +2,18 @@
 //!
 //! Drag-and-drop (or browse) a JSON file and see a live count of non-null
 //! values per key, rendered as a sortable table.
+//!
+//! ## Run locally
+//!
+//! ```bash
+//! dx serve --package json-count-rs
+//! ```
+//!
+//! ## Build for the website
+//!
+//! ```bash
+//! dx build --release --platform web --package json-count-rs
+//! ```
 
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;

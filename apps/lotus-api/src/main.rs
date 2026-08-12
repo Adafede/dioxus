@@ -6,6 +6,27 @@
 //! Wraps the `lotus` and `upload` shared crates behind Warp endpoints, providing
 //! species/occurrence search, CSV/JSON/RDF export via `Query` or local SPARQL,
 //! and runtime metrics.
+//!
+//! ## Run locally
+//!
+//! ```bash
+//! LOTUS_API_BASE=http://localhost:3030 cargo run -p lotus-api
+//! ```
+//!
+//! ## Endpoints
+//!
+//! | Method | Path                    | Description                              |
+//! |--------|-------------------------|------------------------------------------|
+//! | GET    | `/api/search`           | Search compounds with pagination         |
+//! | GET    | `/api/export`           | Export results as CSV/JSON/RDF/Turtle  |
+//! | GET    | `/api/stats`            | Dataset statistics                       |
+//! | GET    | `/api/health`           | Health check                             |
+//!
+//! ## Environment variables
+//!
+//! - `LOTUS_API_BASE` — base URL for the API server
+//! - `HOST` — bind address (default: `0.0.0.0`)
+//! - `PORT` — bind port (default: `3030`)
 
 #![allow(clippy::multiple_crate_versions)]
 

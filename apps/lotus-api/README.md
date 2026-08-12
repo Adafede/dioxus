@@ -2,72 +2,36 @@
 
 [![AGPL-3.0
 license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
-[![Tests](https://img.shields.io/badge/tests-34-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-28-brightgreen)](https://github.com/adafede/dioxus/actions)
 
-OpenAPI/Swagger service for programmatic LOTUS explorer access.
+`lotus-api` --- native HTTP API for LOTUS explorer search and export.
 
-## What it provides
+Wraps the `lotus` and `upload` shared crates behind Warp endpoints, providing
+species/occurrence search, CSV/JSON/RDF export via `Query` or local SPARQL, and
+runtime metrics.
 
-- `POST /v1/search`: run a LOTUS search with filters and get JSON rows + stats.
-- `POST /v1/export-url`: generate direct QLever CSV/JSON/RDF export URLs.
-- `GET /openapi.json`: OpenAPI schema.
-- `GET /docs`: Swagger UI.
-- `GET /health`: liveness probe.
-
-This service reuses query and parser logic from `apps/lotus-explorer` and is
-intended as a thin API layer for integrations.
-
-## Run
+### Run locally
 
 ```bash
-cargo run --locked -p lotus-api
+LOTUS_API_BASE=http://localhost:3030 cargo run -p lotus-api
 ```
 
-### Runtime configuration
+### Endpoints
 
-`lotus-api` reads runtime settings from environment variables:
+  | Method | Path          | Description                           |
+  | ------ | ------------- | ------------------------------------- |
+  | GET    | `/api/search` | Search compounds with pagination      |
+  | GET    | `/api/export` | Export results as CSV/JSON/RDF/Turtle |
+  | GET    | `/api/stats`  | Dataset statistics                    |
+  | GET    | `/api/health` | Health check                          |
 
-- `HOST` (default: `127.0.0.1`)
-- `PORT` (default: `8787`)
-- `DEFAULT_LIMIT` (default: `500`, clamped to service max)
-- `APP_ENV` (`development` by default; set to `production` in deployments)
-- `CORS_ALLOWED_ORIGINS` (comma-separated list, required when
-  `APP_ENV=production`)
+### Environment variables
 
-Example production-like run:
+- `LOTUS_API_BASE` --- base URL for the API server
+- `HOST` --- bind address (default: `0.0.0.0`)
+- `PORT` --- bind port (default: `3030`)
 
-```bash
-APP_ENV=production \
-CORS_ALLOWED_ORIGINS="https://explorer.example.org" \
-HOST=0.0.0.0 \
-PORT=8787 \
-cargo run --locked -p lotus-api
-```
+## License
 
-Then open:
-
-- `http://127.0.0.1:8787/docs`
-- `http://127.0.0.1:8787/openapi.json`
-
-## Example request
-
-```bash
-curl -sS http://127.0.0.1:8787/v1/search \
-  -H 'content-type: application/json' \
-  -d '{
-    "taxon": "Gentiana lutea",
-    "formula_exact": "C20H28O2",
-    "c_min": 1,
-    "c_max": 300,
-    "limit": 100
-  }'
-```
-
-## Notes
-
-- In development, CORS allows all origins for easy local integration.
-- In production (`APP_ENV=production`), startup fails unless
-  `CORS_ALLOWED_ORIGINS` is explicitly configured.
-- Responses are content-negotiated and compressed (Brotli/Gzip) when clients
-  send `Accept-Encoding`.
-- Keep this service behind your reverse proxy and TLS termination layer.
+`AGPL-3.0-only` --- see [`LICENSE`](https://www.gnu.org/licenses/agpl-3.0.html)
+for details.
