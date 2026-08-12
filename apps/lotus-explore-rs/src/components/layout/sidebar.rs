@@ -31,7 +31,7 @@ pub fn Sidebar() -> Element {
 
     rsx! {
         aside {
-            style: sidebar_style(mobile_filters_open),
+            style: sidebar_style(),
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             button {
                 style: filters_toggle_style(),
@@ -57,16 +57,10 @@ pub fn Sidebar() -> Element {
     }
 }
 
-fn sidebar_style(is_mobile_open: bool) -> String {
-    let visibility = if is_mobile_open { "visible" } else { "hidden" };
-
+fn sidebar_style() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
-        .property("max-height", if is_mobile_open { "none" } else { "0" })
-        .property("overflow-y", "auto")
-        .property("visibility", visibility)
-        .property("transition", "max-height .3s ease, visibility .3s ease")
         .build()
 }
 
