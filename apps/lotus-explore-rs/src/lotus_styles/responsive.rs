@@ -780,7 +780,7 @@ const DESKTOP_1024: &str = r"
   }
 
   .search-panel { max-width: 400px; }
-  .sidebar-logo-wrap { padding: 0; }
+  .sidebar-logo-wrap { border-top: none; margin-top: 0; }
 }
 ";
 
