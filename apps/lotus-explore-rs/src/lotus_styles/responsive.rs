@@ -392,10 +392,10 @@ const PHONE_430_AND_360: &str = r"
   .page-header-meta .meta-item {
     display: flex;
     flex-direction: row;
+    flex-wrap: nowrap;
     align-items: baseline;
     gap: 2px;
     min-width: 0;
-    font-size: var(--fs-label);
   }
 
   .page-header-meta .meta-key {
