@@ -33,7 +33,7 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
     rsx! {
         NoticeBar {
             label: t(locale, TextKey::Share).to_string(),
-            tone: NoticeTone::Info,
+            tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
             dark: true,
@@ -98,7 +98,7 @@ pub fn ErrorNotice() -> Element {
     rsx! {
         NoticeBar {
             label: t(locale, TextKey::Error).to_string(),
-            tone: NoticeTone::Danger,
+            tone: NoticeTone::Warning,
             role: "alert",
             aria_live: "assertive",
             dark: true,
