@@ -9,8 +9,8 @@ const APP_FRAME: &str = r"/* Layout shell pack: app frame, header/meta, notices,
 .app-layout.no-sidebar { display:block; }
 
 .sidebar {
-  width:332px;
-  min-width:288px;
+  width:300px;
+  min-width:250px;
   height:100%;
   overflow-y:auto;
   background:var(--panel-bg);
