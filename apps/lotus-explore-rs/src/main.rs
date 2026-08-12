@@ -7,6 +7,22 @@
 //! knowledge graph from Wikidata, queried via SPARQL.  Powered by the `lotus`
 //! shared crate and the QLever SPARQL endpoint.
 //!
+//! # Quick start
+//!
+//! ```bash
+//! dx serve --package lotus-explore-rs
+//! ```
+//!
+//! To also run the optional API:
+//!
+//! ```bash
+//! cargo run --locked -p lotus-api
+//! ```
+//!
+//! Then open `http://localhost:8080/?api_base=http://127.0.0.1:8787`.
+//!
+//! Without `lotus-api`, the explorer falls back to direct QLever/SPARQL queries.
+//!
 //! # Architecture
 //!
 //! See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full architectural
@@ -52,6 +68,30 @@
 //! `public/.well-known/security.txt`, `public/_headers`, and
 //! `public/site.webmanifest` are generated from
 //! [`metadata/site-metadata.json`](./metadata/site-metadata.json).
+//!
+//! # Explorer ⇄ API integration
+//!
+//! | Scenario                | `api_base` source                     | API used            |
+//! | ----------------------- | ------------------------------------- | ------------------- |
+//! | Codeberg Pages (public) | none                                  | ✗ direct SPARQL     |
+//! | Local dev               | auto-detected `http://127.0.0.1:8787` | ✓ if server running |
+//! | Build-time              | `LOTUS_API_BASE` env var              | ✓                   |
+//! | Runtime override        | `?api_base=…` query param             | ✓                   |
+//!
+//! # URL automation
+//!
+//! URL-driven execution and exports:
+//!
+//! - `?execute=true` --- run query on load
+//! - `?download=true&format=csv` --- download CSV
+//! - `?download=true&format=json` --- download SPARQL Results JSON
+//! - `?download=true&format=rdf` --- download RDF (Turtle)
+//!
+//! When both `download` and `execute` are present, `download` takes priority.
+//!
+//! # Archive
+//!
+//! A frozen version is archived on Zenodo: <https://doi.org/10.5281/zenodo.5794106>
 
 #![allow(non_snake_case)] // Dioxus component naming convention
 #![allow(

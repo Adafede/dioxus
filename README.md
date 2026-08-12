@@ -11,14 +11,17 @@ deny](https://img.shields.io/badge/cargo%20deny-ok-brightgreen)]()
 A Cargo workspace for reproducible Dioxus web apps, pinned by
 `rust-toolchain.toml`.
 
-**lotus-explore-rs** explores the LOTUS compounds knowledge graph from Wikidata
-via SPARQL. **lotus-api** provides a native HTTP API for advanced search and
-export. **index** is the accessible landing page. **json-count-rs** counts
-non-null fields in uploaded JSON files. **mgf-precursor-erro-rs** analyzes
-uploaded MGF files and reports precursor mass errors in Da and ppm.
-**lipid-selecto-rs** classifies and filters lipid mass-spec data using LIPID
-MAPS-aligned SMARTS rules. **smellfish-rs** scores natural-product-like
-structures with literature-backed features and RDKit.js chemistry descriptors.
+- **index** is the accessible landing page. **json-count-rs** counts non-null
+  fields in uploaded JSON files.
+- **lotus-explore-rs** explores the LOTUS compounds knowledge graph from
+  Wikidata via SPARQL.
+- **lotus-api** provides a native HTTP API for advanced search and export.
+- **mgf-precursor-erro-rs** analyzes uploaded MGF files and reports precursor
+  mass errors in Da and ppm.
+- **lipid-selecto-rs** classifies and filters lipid mass-spec data using LIPID
+  MAPS-aligned SMARTS rules.
+- **smellfish-rs** scores natural-product-like structures with literature-backed
+  features and RDKit.js chemistry descriptors.
 
 ## Prerequisites
 
@@ -30,22 +33,6 @@ cargo install dioxus-cli --version 0.7.10 --locked
 
 The repo pins Rust 1.97, `clippy`, `rustfmt`, and `wasm32-unknown-unknown` in
 `rust-toolchain.toml`.
-
-## Quick start
-
-```bash
-dx serve --package lotus-explore-rs
-```
-
-To also run the optional API:
-
-```bash
-cargo run --locked -p lotus-api
-```
-
-Then open `http://localhost:8080/?api_base=http://127.0.0.1:8787`.
-
-Without `lotus-api`, the explorer falls back to direct QLever/SPARQL queries.
 
 ## Structure
 
@@ -83,29 +70,6 @@ dx serve --package lipid-selecto-rs
 dx serve --package mgf-precursor-erro-rs
 dx serve --package smellfish-rs
 ```
-
-The API binds to `127.0.0.1:8787`. Override with `HOST` and `PORT` env vars.
-
-Open `http://127.0.0.1:8787/docs` for the Swagger UI.
-
-## Explorer ⇄ API integration
-
-  | Scenario                | `api_base` source                     | API used            |
-  | ----------------------- | ------------------------------------- | ------------------- |
-  | Codeberg Pages (public) | none                                  | ✗ direct SPARQL     |
-  | Local dev               | auto-detected `http://127.0.0.1:8787` | ✓ if server running |
-  | Build-time              | `LOTUS_API_BASE` env var              | ✓                   |
-  | Runtime override        | `?api_base=…` query param             | ✓                   |
-
-## API endpoints
-
-- `GET /health`
-- `GET /metrics`
-- `POST /v1/search`
-- `POST /v1/export-url`
-- `GET /v1/export-file/{cache_key}/{format}`
-- `GET /openapi.json`
-- `GET /docs`
 
 ## Building for production
 
@@ -150,32 +114,6 @@ prek run cargo-deny              # cargo deny check advisories bans licenses sou
 prek run cargo-readme-panache    # cargo-readme sync + panache lint
 ```
 
-## Deploying the API
-
-The CI pipeline builds and pushes a container image on every push to `main`:
-
-  | Forge    | Image                                   |
-  | -------- | --------------------------------------- |
-  | Codeberg | `codeberg.org/adafede/lotus-api:latest` |
-  | GitHub   | `ghcr.io/adafede/lotus-api:latest`      |
-
-Self-host:
-
-```bash
-docker run -d --restart unless-stopped \
-  -e APP_ENV=production \
-  -e CORS_ALLOWED_ORIGINS=https://your-origin.example.org \
-  -p 8787:8787 \
-  codeberg.org/adafede/lotus-api:latest
-```
-
-Build-time WASM wiring:
-
-```bash
-LOTUS_API_BASE=https://your-server.example.org \
-  dx build --release --platform web --package lotus-explore-rs
-```
-
 ## Adding a new app
 
 1. Copy an existing app directory (e.g. `apps/index`) as a starting point.
@@ -184,17 +122,6 @@ LOTUS_API_BASE=https://your-server.example.org \
 4. Add a `cargo check` line to the **wasm** job and a `dx build` line to the
    **wasm-build** job in `.github/workflows/ci.yml`.
 5. `dx serve --package my-new-app`
-
-## URL automation
-
-`lotus-explore-rs` supports URL-driven execution and exports:
-
-- `?execute=true` --- run query on load
-- `?download=true&format=csv` --- download CSV
-- `?download=true&format=json` --- download SPARQL Results JSON
-- `?download=true&format=rdf` --- download RDF (Turtle)
-
-When both `download` and `execute` are present, `download` takes priority.
 
 ## Continuous integration
 
@@ -228,7 +155,3 @@ On every push to `main`:
   [`.github/RELEASE_CHECKLIST.md`](./.github/RELEASE_CHECKLIST.md)
 - Change history: [`CHANGELOG.md`](./CHANGELOG.md)
 - License: `LICENSE` (GNU AGPL v3.0)
-
-## Archive
-
-A frozen version is archived on Zenodo: https://doi.org/10.5281/zenodo.5794106

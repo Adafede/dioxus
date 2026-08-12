@@ -15,18 +15,45 @@
 //!
 //! # Endpoints
 //!
-//! | Method | Path                    | Description                              |
-//! |--------|-------------------------|------------------------------------------|
-//! | GET    | `/api/search`           | Search compounds with pagination         |
-//! | GET    | `/api/export`           | Export results as CSV/JSON/RDF/Turtle  |
-//! | GET    | `/api/stats`            | Dataset statistics                       |
-//! | GET    | `/api/health`           | Health check                             |
+//! - `GET /health`
+//! - `GET /metrics`
+//! - `POST /v1/search`
+//! - `POST /v1/export-url`
+//! - `GET /v1/export-file/{cache_key}/{format}`
+//! - `GET /openapi.json`
+//! - `GET /docs`
 //!
 //! # Environment variables
 //!
 //! - `LOTUS_API_BASE` — base URL for the API server
-//! - `HOST` — bind address (default: `0.0.0.0`)
-//! - `PORT` — bind port (default: `3030`)
+//! - `HOST` — bind address (default: `127.0.0.1`)
+//! - `PORT` — bind port (default: `8787`)
+//!
+//! # Deploying the API
+//!
+//! The CI pipeline builds and pushes a container image on every push to `main`:
+//!
+//! | Forge    | Image                                   |
+//! | -------- | --------------------------------------- |
+//! | Codeberg | `codeberg.org/adafede/lotus-api:latest` |
+//! | GitHub   | `ghcr.io/adafede/lotus-api:latest`      |
+//!
+//! Self-host:
+//!
+//! ```bash
+//! docker run -d --restart unless-stopped \
+//!   -e APP_ENV=production \
+//!   -e CORS_ALLOWED_ORIGINS=https://your-origin.example.org \
+//!   -p 8787:8787 \
+//!   codeberg.org/adafede/lotus-api:latest
+//! ```
+//!
+//! Build-time WASM wiring:
+//!
+//! ```bash
+//! LOTUS_API_BASE=https://your-server.example.org \
+//!   dx build --release --platform web --package lotus-explore-rs
+//! ```
 
 #![allow(clippy::multiple_crate_versions)]
 
