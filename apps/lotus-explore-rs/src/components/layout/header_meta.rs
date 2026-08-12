@@ -141,7 +141,7 @@ fn page_header_meta_style() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("row")
-        .flex_wrap("wrap")
+        .property("flex-wrap", "wrap")
         .align_items("center")
         .gap("12px")
         .margin("10px 22px 0")

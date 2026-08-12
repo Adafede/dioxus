@@ -37,7 +37,7 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
     let selected_value = props.selected_value.clone();
     let stretch = props.stretch;
     let wrap = props.wrap;
-    let on_select = props.on_select.clone();
+    let on_select = props.on_select;
 
     let mut group_style = StyleBuilder::new()
         .display("flex")
@@ -82,7 +82,7 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
                     dark: props.dark,
                     stretch,
                     active_aria_current: props.active_aria_current,
-                    on_select: on_select.clone(),
+                   on_select,
                     base_style: button_base_style.clone(),
                 }
             }
@@ -115,7 +115,7 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
     let active = props.value == props.selected_value;
     let style = segmented_button_style(&colors, active, props.stretch, &props.base_style);
     let value = props.value.clone();
-    let on_select = props.on_select.clone();
+    let on_select = props.on_select;
 
     rsx! {
         button {
