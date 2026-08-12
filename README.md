@@ -1,8 +1,9 @@
 # dioxus-apps
 
-[![AGPL-3.0 license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
-[![Tests](https://img.shields.io/badge/tests-503-brightgreen)]()
-[![clippy: 0 warnings](https://img.shields.io/badge/clippy-0%20warnings-brightgreen)]()
+[![AGPL-3.0
+license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
+[![Tests](https://img.shields.io/badge/tests-503-brightgreen)]() [![clippy: 0
+warnings](https://img.shields.io/badge/clippy-0%20warnings-brightgreen)]()
 
 A Cargo workspace for reproducible Dioxus web apps, pinned by
 `rust-toolchain.toml`.
