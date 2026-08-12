@@ -128,6 +128,7 @@ mod i18n;
 mod models;
 mod perf;
 mod queries;
+mod lotus_styles;
 mod repositories;
 mod services;
 mod sparql;

@@ -6,6 +6,7 @@
 //! Replaces the static `index.html` with Rust code that sets meta tags,
 //! bundled styles, scripts (CDN + inline bridge code), and structured data.
 
+use crate::lotus_styles::bundled_lotus_styles;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -344,42 +345,6 @@ const INLINE_STYLE: &str = r#"
 }
 "#;
 
-const LOTUS_BASE_CSS: &str = include_str!("../public/assets/style.css");
-const LOTUS_ACCESSIBILITY_CSS: &str = include_str!("../public/assets/styles/accessibility_pack.css");
-const LOTUS_CURATION_CSS: &str = include_str!("../public/assets/styles/curation_pack.css");
-const LOTUS_FOOTER_CSS: &str = include_str!("../public/assets/styles/footer_pack.css");
-const LOTUS_FORM_CONTROLS_CSS: &str = include_str!("../public/assets/styles/form_controls_pack.css");
-const LOTUS_LAYOUT_SHELL_CSS: &str = include_str!("../public/assets/styles/layout_shell_pack.css");
-const LOTUS_QUERY_PANEL_CSS: &str = include_str!("../public/assets/styles/query_panel_pack.css");
-const LOTUS_RESULTS_CSS: &str = include_str!("../public/assets/styles/results_pack.css");
-const LOTUS_RESPONSIVE_CSS: &str = include_str!("../public/assets/styles/responsive_pack.css");
-const LOTUS_TABLE_CELLS_CSS: &str = include_str!("../public/assets/styles/table_cells_pack.css");
-const LOTUS_WELCOME_CSS: &str = include_str!("../public/assets/styles/welcome_pack.css");
-
-fn bundled_lotus_styles() -> String {
-    let base_css = LOTUS_BASE_CSS
-        .lines()
-        .filter(|line| !line.trim_start().starts_with("@import url("))
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    [
-        base_css,
-        LOTUS_ACCESSIBILITY_CSS.to_string(),
-        LOTUS_CURATION_CSS.to_string(),
-        LOTUS_FOOTER_CSS.to_string(),
-        LOTUS_FORM_CONTROLS_CSS.to_string(),
-        LOTUS_LAYOUT_SHELL_CSS.to_string(),
-        LOTUS_QUERY_PANEL_CSS.to_string(),
-        LOTUS_RESULTS_CSS.to_string(),
-        LOTUS_RESPONSIVE_CSS.to_string(),
-        LOTUS_TABLE_CELLS_CSS.to_string(),
-        LOTUS_WELCOME_CSS.to_string(),
-        INLINE_STYLE.to_string(),
-    ]
-    .join("\n\n")
-}
-
 /// JSON-LD structured data for the LOTUS Knowledge Explorer.
 const JSON_LD: &str = r#"{
   "@context": "https://schema.org",
@@ -534,7 +499,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             hreflang: Some(*lang),
         });
     }
-    let inline_style = bundled_lotus_styles();
+    let inline_style = format!("{}\n\n{}", bundled_lotus_styles(), INLINE_STYLE);
 
     rsx! {
         DocumentHead {
