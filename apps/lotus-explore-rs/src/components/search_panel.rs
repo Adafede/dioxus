@@ -404,11 +404,3 @@ fn search_panel_style() -> String {
         .border("1px solid var(--border)")
         .build()
 }
-
-fn search_panel_body_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("12px")
-        .build()
-}

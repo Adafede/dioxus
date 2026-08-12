@@ -6,13 +6,9 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
-use crate::ui::style_constants::{spacing, transitions};
+use crate::ui::style_constants::spacing;
 use dioxus::prelude::*;
 use ui::prelude::*;
-
-// Chevron rotation angles (degrees)
-const CHEVRON_ANGLE_CLOSED: &str = "0deg";
-const CHEVRON_ANGLE_OPEN: &str = "90deg";
 
 #[component]
 pub fn QueryPanel() -> Element {

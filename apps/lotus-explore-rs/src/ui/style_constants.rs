@@ -20,22 +20,18 @@ pub mod stat_stripe_colors {
 
 pub mod borders {
     //! Border colors and styles used across components.
-    pub const PANEL_BORDER: &str = "var(--panel-border)";
     pub const RESULTS_BORDER: &str = "var(--results-border)";
 }
 
 pub mod backgrounds {
     //! Background color tokens.
     pub const SURFACE: &str = "var(--surface)";
-    pub const PANEL_BG_SOFT: &str = "var(--panel-bg-soft)";
 }
 
 pub mod text {
     //! Text color tokens.
     pub const PRIMARY: &str = "var(--text)";
     pub const SECONDARY: &str = "var(--text2)";
-    pub const TERTIARY: &str = "var(--text3)";
-    pub const CRITICAL: &str = "var(--critical-text)";
     pub const ACCENT: &str = "var(--accent)";
 }
 
@@ -50,37 +46,13 @@ pub mod shadows {
 
 pub mod spacing {
     //! Spacing values for padding, margins, and gaps.
-    pub const FORM_SECTION: &str = "10px 12px";
-    pub const FORM_SECTION_NESTED: &str = "10px";
-    pub const FORM_GAP: &str = "5px";
-    pub const RANGE_INPUTS_GAP: &str = "8px";
-    pub const RANGE_PAIR_GAP: &str = "3px";
-    pub const FORM_SECTION_NESTED_MARGIN_TOP: &str = "4px";
     pub const STAT_BADGE_PAD: &str = "10px 12px";
     pub const STAT_VALUE_GAP: &str = "8px";
     pub const STAT_BADGE_GAP: &str = "4px";
     pub const STAT_BAR_GAP: &str = "10px";
-    pub const BUTTON_XS_PAD: &str = "2px 8px";
-    pub const PAGE_HEADER_MARGIN: &str = "10px 22px 0";
-    pub const PAGE_HEADER_PAD: &str = "10px 12px";
     pub const PAGE_BRAND_GAP: &str = "8px 10px";
-    pub const NESTED_SECTION: &str = "10px";
     pub const HEADER_META_GAP: &str = "12px";
-    pub const HEADER_META_GAP_SMALL: &str = "4px";
     pub const QUERY_SUMMARY_PADDING: &str = "8px 14px 8px 32px";
-}
-
-// ============================================================================
-// SIZE TOKENS
-// ============================================================================
-
-pub mod sizes {
-    //! Size tokens for borders, corners, and dimensions.
-    pub const BORDER_RADIUS: &str = "var(--radius)";
-    pub const BORDER_RADIUS_SM: &str = "var(--radius-sm)";
-    pub const BORDER_RADIUS_LG: &str = "12px";
-    pub const BORDER_WIDTH: &str = "1px";
-    pub const BORDER_WIDTH_STRIPE: &str = "3px";
 }
 
 // ============================================================================
@@ -91,25 +63,11 @@ pub mod typography {
     //! Font size and weight tokens.
     pub const FONT_SIZE_STAT: &str = "var(--fs-stat)";
     pub const FONT_SIZE_0: &str = "var(--fs-0)";
-    pub const FONT_SIZE_LABEL: &str = "var(--fs-label)";
-    pub const FONT_SIZE_MICRO: &str = "var(--fs-micro)";
-    pub const FONT_SIZE_UI: &str = "var(--fs-ui)";
-    pub const FONT_SIZE_BODY: &str = "var(--fs-body)";
     pub const FONT_WEIGHT_BOLD: &str = "800";
     pub const FONT_WEIGHT_SEMIBOLD: &str = "700";
     pub const LETTER_SPACING_TITLE: &str = "0.08em";
     pub const LETTER_SPACING_STAT: &str = "-0.02em";
     pub const LINE_HEIGHT_STAT: &str = "1.2";
-}
-
-// ============================================================================
-// TRANSITION TOKENS
-// ============================================================================
-
-pub mod transitions {
-    //! Transition timing and easing.
-    pub const PANEL_TRANSITION: &str =
-        "background .15s ease, border-color .15s ease, box-shadow .15s ease";
 }
 
 // ============================================================================
@@ -349,7 +307,6 @@ mod tests {
     #[test]
     fn spacing_tokens_parse() {
         // Verify format is valid for CSS
-        assert!(spacing::FORM_SECTION.contains("px"));
         assert!(spacing::STAT_BADGE_GAP.contains("px"));
     }
 

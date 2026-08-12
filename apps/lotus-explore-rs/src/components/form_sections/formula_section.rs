@@ -280,13 +280,6 @@ fn formula_num_label_style() -> String {
     StyleBuilder::new().color("var(--text2)").build()
 }
 
-fn formula_minmax_grid_style() -> String {
-    StyleBuilder::new()
-        .display("grid")
-        .gap("8px")
-        .build()
-}
-
 fn formula_input_small_style() -> String {
     StyleBuilder::new()
         .width("100%")
@@ -329,19 +322,5 @@ fn formula_exact_input_style() -> String {
         .font_size("var(--fs-ui)")
         .font_family("var(--sans)")
         .property("transition", "border-color .15s")
-        .build()
-}
-
-fn formula_grid_pairs_style() -> String {
-    StyleBuilder::new()
-        .display("grid")
-        .gap("10px")
-        .build()
-}
-
-fn formula_grid_halogens_style() -> String {
-    StyleBuilder::new()
-        .display("grid")
-        .gap("10px")
         .build()
 }
