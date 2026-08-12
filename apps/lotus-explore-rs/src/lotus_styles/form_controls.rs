@@ -20,23 +20,8 @@ const FORM_SECTIONS: &str = r"/* Form controls pack: shared form primitives, str
 ";
 
 const FORM_RANGES: &str = r"
-.formula-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-
-.formula-exact-row,
-.formula-exact-input { width: 100%; max-width: none; }
-
-.formula-num-pair {
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  background: var(--panel-bg-soft);
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.formula-num-label { color: var(--text2); }
-.formula-minmax-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.formula-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.formula-minmax-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
 
 .formula-minmax-grid .range-pair,
 .formula-grid .range-pair { min-width: 0; }
@@ -112,13 +97,6 @@ const FORM_ACTIONS_AND_RESPONSIVE: &str = r"
 .copy-btn:focus-visible {
   outline: 3px solid var(--accent2);
   outline-offset: 2px;
-}
-
-@media (width <= 1023px) {
-  .formula-grid,
-  .formula-minmax-grid {
-    grid-template-columns: 1fr;
-  }
 }
 ";
 
