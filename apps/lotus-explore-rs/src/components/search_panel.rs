@@ -401,6 +401,5 @@ fn search_panel_style() -> String {
         .flex_direction("column")
         .border_radius("8px")
         .background_color("var(--surface)")
-        .border("1px solid var(--border)")
         .build()
 }
