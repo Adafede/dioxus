@@ -71,7 +71,7 @@ const PAGE_HEADER: &str = r"
 
 .lang-switch { margin-left:auto; display:flex; gap:4px; align-items:center; }
 .lang-btn { min-width:40px; padding:3px 8px; }
-.lang-btn.active { background:var(--btn-primary-bg); color:#fff; border-color:var(--btn-primary-bg); }
+.lang-btn.active { background:var(--btn-primary-bg); color:var(--text); border-color:var(--btn-primary-bg); }
 
 .view-switch .lang-btn,
 .lang-switch .lang-btn {
@@ -90,7 +90,7 @@ const PAGE_HEADER: &str = r"
 
 .view-switch .lang-btn.active,
 .lang-switch .lang-btn.active {
-  color: #fff;
+  color: var(--text);
   background: var(--btn-primary-bg);
   border-color: var(--btn-primary-bg);
   box-shadow: var(--shadow-xs);
