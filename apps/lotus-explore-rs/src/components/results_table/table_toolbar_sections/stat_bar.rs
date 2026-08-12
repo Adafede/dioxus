@@ -122,6 +122,7 @@ pub fn CappedRowsNotice() -> Element {
                 tone: NoticeTone::Warning,
                 role: "status",
                 aria_live: "polite",
+                dark: true,
                 margin: "10px 0 0",
                 span { style: notice_value_style(), "{t(locale, TextKey::DisplayCappedHint)}" }
             }
