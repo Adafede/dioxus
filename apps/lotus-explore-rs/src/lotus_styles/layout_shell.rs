@@ -235,7 +235,7 @@ const SHARE_BAR: &str = r"
 
 const SEARCH_PANEL: &str = r#"
 /* Search panel shell */
-.search-panel { padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:0 0 auto; box-sizing:border-box; }
+.search-panel { padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:0 0 auto; box-sizing:border-box; min-width:220px; overflow-y:auto; max-height:calc(100vh - 200px); }
 .search-panel-body { display:flex; flex-direction:column; gap:12px; }
 .filters-toggle { display:none; }
 .sidebar-logo-wrap { padding:6px 8px 8px; display:flex; justify-content:center; border-top:1px solid var(--border); margin-top:auto; }
@@ -244,6 +244,7 @@ const SEARCH_PANEL: &str = r#"
 .sidebar-logo { display:block; width:128px; height:128px; }
 .view-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
 .lang-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
+.search-btn { white-space: nowrap; }
 "#;
 
 const FOOTER: &str = r"
