@@ -820,6 +820,9 @@ const MOBILE_HEADING_AND_FIELDS: &str = r#"
     min-width: 44px;
   }
 
+  /* Remove search panel width constraints on mobile */
+  .search-panel { max-width: none; width: 100%; }
+
   /* Improve link and interactive element sizing on touch devices */
   a, .copy-btn, .id-badge { padding: 4px 8px; }
 

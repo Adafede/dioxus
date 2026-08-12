@@ -74,7 +74,6 @@ fn sidebar_logo_wrap_style() -> String {
         .display("flex")
         .justify_content("center")
         .align_items("center")
-        .padding("6px 8px 8px")
         .build()
 }
 
