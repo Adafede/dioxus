@@ -233,7 +233,7 @@ const SHARE_BAR: &str = r"
 }
 ";
 
-const SEARCH_PANEL: &str = r"
+const SEARCH_PANEL: &str = r#"
 /* Search panel shell */
 .search-panel { padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:1; }
 .search-panel-body { display:flex; flex-direction:column; gap:12px; }
@@ -242,9 +242,9 @@ const SEARCH_PANEL: &str = r"
 .view-switch { margin-top: 10px; display: flex; gap: 8px; }
 .view-switch .btn { font-weight: 700; }
 .sidebar-logo { display:block; width:128px; height:128px; }
-.view-switch [role="group"],
+.view-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
 .lang-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
-";
+"#;
 
 const FOOTER: &str = r"
 /* Footer responsive grid sizing */
