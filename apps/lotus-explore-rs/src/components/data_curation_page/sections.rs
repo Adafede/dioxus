@@ -79,9 +79,10 @@ pub fn StatusNotice(locale: Locale, message: Arc<str>) -> Element {
     rsx! {
         NoticeBar {
             label: t(locale, TextKey::Notice).to_string(),
-            tone: NoticeTone::Info,
+            tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
+            dark: true,
             margin: "0",
             span { style: curation_notice_value_style(), "{message}" }
         }
