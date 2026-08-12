@@ -92,19 +92,6 @@ pub fn query_phase_text(locale: Locale, phase: QueryPhase) -> &'static str {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn preparing_phase_uses_generic_loading_title() {
-        assert_eq!(
-            query_phase_text(Locale::En, QueryPhase::PreparingQuery),
-            query_phase_text(Locale::En, QueryPhase::Idle)
-        );
-    }
-}
-
 fn spinner_lg_style() -> String {
     StyleBuilder::new()
         .property("width", "40px")
@@ -165,4 +152,17 @@ fn button_base_style() -> String {
             "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
         )
         .build()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preparing_phase_uses_generic_loading_title() {
+        assert_eq!(
+            query_phase_text(Locale::En, QueryPhase::PreparingQuery),
+            query_phase_text(Locale::En, QueryPhase::Idle)
+        );
+    }
 }
