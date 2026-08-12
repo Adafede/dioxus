@@ -67,17 +67,18 @@
         <link rel="preconnect" href="https://qlever.dev" crossorigin>
         <link rel="preconnect" href="https://www.simolecule.com" crossorigin>
         <link rel="dns-prefetch" href="https://idsm.elixir-czech.cz">
-        <link rel="prefetch" href="assets/rdkit/RDKit_minimal.js">
-        <link rel="prefetch" href="assets/citation-js/citation.js">
+        <link rel="preconnect" href="https://unpkg.com" crossorigin>
 
         <!-- ── Stylesheets ──────────────────────────────────────────────────── -->
         <link rel="stylesheet" href="assets/style.css">
         <link rel="stylesheet" href="assets/styles/accessibility_pack.css">
         <link rel="stylesheet" href="assets/styles/responsive_pack.css">
 
-        <!-- ── Deferred scripts ─────────────────────────────────────────────── -->
-        <script defer src="assets/rdkit/RDKit_minimal.js"></script>
-        <script defer src="assets/citation-js/citation.js"></script>
+        <!-- ── Deferred scripts (CDN-sourced) ──────────────────────────────── -->
+        <!-- RDKit from npm CDN (same as smellfish-rs) -->
+        <script defer src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
+        <!-- citation-js from jsDelivr CDN -->
+        <script defer src="https://cdn.jsdelivr.net/npm/citation-js/dist/citation.js"></script>
         <style>
             /* Inter Font */
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap') layer;

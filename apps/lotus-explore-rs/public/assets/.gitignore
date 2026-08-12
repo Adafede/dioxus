@@ -1,0 +1,4 @@
+# Vendored third-party JavaScript bundles — download with:
+#   ./scripts/fetch-ketcher.sh   (Ketcher editor, 115 MB)
+# RDKit and citation-js are loaded from CDN, not vendored.
+assets/ketcher/

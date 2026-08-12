@@ -29,6 +29,15 @@
 //! cargo test --locked -p lotus-explore-rs utils::logging::tests
 //! ```
 //!
+//! ## Setup: external assets
+//!
+//! RDKit.js and citation-js are loaded from CDN (no local download needed).
+//! Ketcher (115 MB) must be fetched before serving:
+//!
+//! ```bash
+//! ./scripts/fetch-ketcher.sh
+//! ```
+//!
 //! ## Citation
 //!
 //! - Paper (DOI): <https://doi.org/10.7554/eLife.70780>

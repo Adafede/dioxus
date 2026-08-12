@@ -1,14 +1,13 @@
 # lotus-explore-rs
 
-[![AGPL-3.0
-license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
+[![AGPL-3.0 license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![Tests](https://img.shields.io/badge/tests-315-brightgreen)](https://github.com/adafede/dioxus/actions)
 
-`lotus-explore-rs` --- LOTUS Knowledge Explorer.
+`lotus-explore-rs` — LOTUS Knowledge Explorer.
 
 A linked open data (LOAD) explorer for the LOTUS compound-taxon-reference
-knowledge graph from Wikidata, queried via SPARQL. Powered by the `lotus` shared
-crate and the QLever SPARQL endpoint.
+knowledge graph from Wikidata, queried via SPARQL.  Powered by the `lotus`
+shared crate and the QLever SPARQL endpoint.
 
 ### Architecture
 
@@ -32,6 +31,15 @@ Run logging format tests during telemetry work:
 cargo test --locked -p lotus-explore-rs utils::logging::tests
 ```
 
+### Setup: external assets
+
+RDKit.js and citation-js are loaded from CDN (no local download needed).
+Ketcher (115 MB) must be fetched before serving:
+
+```bash
+./scripts/fetch-ketcher.sh
+```
+
 ### Citation
 
 - Paper (DOI): <https://doi.org/10.7554/eLife.70780>
@@ -46,5 +54,4 @@ cargo test --locked -p lotus-explore-rs utils::logging::tests
 
 ## License
 
-`AGPL-3.0-only` --- see [`LICENSE`](https://www.gnu.org/licenses/agpl-3.0.html)
-for details.
+`AGPL-3.0-only` — see [`LICENSE`](https://www.gnu.org/licenses/agpl-3.0.html) for details.
