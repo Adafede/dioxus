@@ -34,8 +34,12 @@ pub fn Sidebar() -> Element {
             style: sidebar_style(),
             class: if mobile_filters_open { "mobile-open" } else { "mobile-closed" },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
-            div { style: sidebar_logo_wrap_style(),
-                div { style: sidebar_logo_style(),
+            div { 
+                class: "sidebar-logo-wrap",
+                style: sidebar_logo_wrap_style(),
+                div { 
+                    class: "sidebar-logo",
+                    style: sidebar_logo_style(),
                     "aria-hidden": "true",
                     dangerous_inner_html: LOTUS_FERRIS_SVG,
                 }

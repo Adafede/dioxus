@@ -242,6 +242,8 @@ const SEARCH_PANEL: &str = r"
 .view-switch { margin-top: 10px; display: flex; gap: 8px; }
 .view-switch .btn { font-weight: 700; }
 .sidebar-logo { display:block; width:128px; height:128px; }
+.view-switch [role="group"],
+.lang-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
 ";
 
 const FOOTER: &str = r"
