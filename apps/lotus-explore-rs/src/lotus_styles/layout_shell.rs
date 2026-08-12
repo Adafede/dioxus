@@ -76,7 +76,7 @@ const PAGE_HEADER: &str = r"
 .view-switch .lang-btn,
 .lang-switch .lang-btn {
   color: var(--text2);
-  background: var(--surface);
+  background: transparent;
   border-color: var(--border);
   box-shadow: none;
 }
