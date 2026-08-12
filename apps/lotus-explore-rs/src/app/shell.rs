@@ -39,21 +39,6 @@ const fn locale_lang_tag(locale: Locale) -> &'static str {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-fn sync_document_lang(locale: Locale) {
-    if let Some(window) = web_sys::window()
-        && let Some(document) = window.document()
-        && let Some(root) = document.document_element()
-    {
-        let _ = root.set_attribute("lang", locale_lang_tag(locale));
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn sync_document_lang(locale: Locale) {
-    let _ = locale_lang_tag(locale);
-}
-
 #[component]
 pub fn AppRoot() -> Element {
     let AppBootstrap {
@@ -90,7 +75,7 @@ pub fn AppRoot() -> Element {
                 criteria,
                 locale,
             }
-            ShellScaffold {}
+            ShellScaffold { lang: locale_lang_tag(*locale.read()).to_string() }
         }
     }
 }
@@ -107,7 +92,6 @@ fn AppRuntimeEffects(
 
     use_effect(move || persist_locale_query_param(*locale.read()));
     use_effect(move || persist_view_query_param(app_state.read().view));
-    use_effect(move || sync_document_lang(*locale.read()));
 
     use_startup_effect(app_state, explore, criteria, search_task_controller, repo);
     use_download_dispatch_effect(app_state, explore);
@@ -116,14 +100,14 @@ fn AppRuntimeEffects(
 }
 
 #[component]
-fn ShellScaffold() -> Element {
+fn ShellScaffold(lang: String) -> Element {
     let locale = crate::hooks::use_locale();
     let app_state = use_app_state_context().state;
     let current_view = *use_app_selector(app_state, |state| state.view).read();
     let layout_classes = classes_for_view(current_view);
 
     rsx! {
-        LotusDocumentHead {}
+        LotusDocumentHead { lang }
         ToastTemplate {}
         a { class: "skip-link", href: SKIP_TO_RESULTS_HREF,
             "{t(locale, TextKey::SkipToResults)}"

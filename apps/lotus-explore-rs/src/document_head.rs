@@ -494,7 +494,7 @@ const BASE_URL: &str = "https://adafede.github.io/dioxus/lotus-explore-rs/";
 /// a static `index.html`.  Includes SEO meta tags, OG tags, JSON-LD, CDN scripts,
 /// inline bridge JS, toast CSS, and resource hint `<link>`s.
 #[component]
-pub fn LotusDocumentHead() -> Element {
+pub fn LotusDocumentHead(lang: String) -> Element {
     let description = "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
     let scripts = vec![
         "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js".to_string(),
@@ -530,6 +530,7 @@ pub fn LotusDocumentHead() -> Element {
     rsx! {
         DocumentHead {
             title: "LOTUS Knowledge Explorer".to_string(),
+            lang,
             description: Some(description.to_string()),
             og_type: Some("website".to_string()),
             og_url: Some(BASE_URL.to_string()),

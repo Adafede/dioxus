@@ -479,6 +479,7 @@ pub fn SmellfishDocumentHead() -> Element {
     rsx! {
         DocumentHead {
             title: "smellfish-rs".to_string(),
+            lang: "en".to_string(),
             description: Some(description.to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts,

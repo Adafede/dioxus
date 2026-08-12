@@ -109,6 +109,7 @@ pub fn app() -> Element {
         // Document head — replaces static index.html meta tags & styles
         DocumentHead {
             title: "Dioxus Experiments".to_string(),
+            lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
             inline_style: Some(

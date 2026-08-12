@@ -25,6 +25,8 @@ mod en;
 mod fr;
 mod it;
 
+use dioxus_i18n::unic_langid::LanguageIdentifier;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Locale {
     En,
@@ -34,16 +36,27 @@ pub enum Locale {
 }
 
 impl Locale {
-    pub fn detect(lang_hint: &str) -> Self {
-        let normalized = lang_hint.trim().to_ascii_lowercase();
+    fn from_lang_tag(lang_tag: &str) -> Option<Self> {
+        let identifier = lang_tag.trim().parse::<LanguageIdentifier>().ok()?;
+        let normalized = identifier.to_string().to_ascii_lowercase();
         if normalized.starts_with("fr") {
-            return Self::Fr;
+            return Some(Self::Fr);
         }
         if normalized.starts_with("de") {
-            return Self::De;
+            return Some(Self::De);
         }
         if normalized.starts_with("it") {
-            return Self::It;
+            return Some(Self::It);
+        }
+        if normalized.starts_with("en") {
+            return Some(Self::En);
+        }
+        None
+    }
+
+    pub fn detect(lang_hint: &str) -> Self {
+        if let Some(locale) = Self::from_lang_tag(lang_hint) {
+            return locale;
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -57,15 +70,8 @@ impl Locale {
                         js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("language"))
                     {
                         if let Some(code) = lang.as_string() {
-                            let code = code.to_ascii_lowercase();
-                            if code.starts_with("fr") {
-                                return Self::Fr;
-                            }
-                            if code.starts_with("de") {
-                                return Self::De;
-                            }
-                            if code.starts_with("it") {
-                                return Self::It;
+                            if let Some(locale) = Self::from_lang_tag(&code) {
+                                return locale;
                             }
                         }
                     }
