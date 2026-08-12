@@ -111,7 +111,7 @@ jobs:
         with: { targets: wasm32-unknown-unknown }
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - name: Install dioxus-cli
-        run: cargo install dioxus-cli
+        run: cargo install dioxus-cli --locked
       - name: Fetch Ketcher (115 MB structure editor — gitignored)
         if: hashFiles('apps/lotus-explore-rs/scripts/fetch-ketcher.sh') != ''
         run: |
