@@ -28,6 +28,7 @@ pub fn PageHeader() -> Element {
                 h1 { id: PAGE_TITLE_ID, style: page_title_style(),
                     a {
                         href: "?",
+                        class: "page-title-link page-home-link",
                         aria_label: "{t(locale, TextKey::GoToHomepage)}",
                         style: page_title_link_style(),
                         span { style: page_title_text_style(), "{t(locale, TextKey::PageTitle)}" }
