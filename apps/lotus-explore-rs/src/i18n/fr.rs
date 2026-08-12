@@ -63,7 +63,7 @@ pub const fn fr_t(key: TextKey) -> &'static str {
         TextKey::WelcomeLeadC => ", publiées en tant que données ouvertes liées sur ",
         TextKey::WelcomeLeadD => " et interrogées via SPARQL par ",
         TextKey::WelcomeLeadE => ".",
-        TextKey::ExampleGentiana => "Saisir un nom de taxon, un QID Wikidata ou * pour tous les triplets",
+        TextKey::ExampleGentiana => "Saisir un nom de taxon, un QID Wikidata ou * pour tous les taxa",
         TextKey::ExampleSmilesOnly => "Collez un SMILES ou un Molfile dans la zone structure",
         TextKey::ExampleQueryExecute => "Exécuter",
         TextKey::ExampleQueryTaxon => "Télécharger CSV",

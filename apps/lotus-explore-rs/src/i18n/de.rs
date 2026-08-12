@@ -63,7 +63,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::WelcomeLeadC => ", veröffentlicht als verknüpfte offene Daten auf ",
         TextKey::WelcomeLeadD => " und abgefragt via SPARQL durch ",
         TextKey::WelcomeLeadE => ".",
-        TextKey::ExampleGentiana => "Taxonname, Wikidata-QID oder * für alle Tripel eingeben",
+        TextKey::ExampleGentiana => "Taxonname, Wikidata-QID oder * für alle Taxa eingeben",
         TextKey::ExampleSmilesOnly => "SMILES oder Molfile in das Strukturfeld einfügen",
         TextKey::ExampleQueryExecute => "Ausführen",
         TextKey::ExampleQueryTaxon => "CSV herunterladen",

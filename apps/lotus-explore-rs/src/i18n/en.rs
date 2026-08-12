@@ -61,7 +61,7 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::WelcomeLeadC => ", published as linked data on ",
         TextKey::WelcomeLeadD => ", and queried via SPARQL through ",
         TextKey::WelcomeLeadE => ".",
-        TextKey::ExampleGentiana => "Enter a taxon name, Wikidata QID, or * for all triples",
+        TextKey::ExampleGentiana => "Enter a taxon name, Wikidata QID, or * for all taxa",
         TextKey::ExampleSmilesOnly => "Paste a SMILES or Molfile in the structure box",
         TextKey::ExampleQueryExecute => "Execute",
         TextKey::ExampleQueryTaxon => "Download CSV",
