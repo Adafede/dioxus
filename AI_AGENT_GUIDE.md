@@ -17,11 +17,10 @@ the apps:
   theme primitives (`theme::*`). All apps depend on `ui`; prefer it over
   inlining styles.
 - `crates/ui::signals` --- the `shared_signal!` / `shared_signals!` macros
-  collapse the repeated
-  `#[cfg(target_arch = "wasm32")] let x = use_signal(...)` /
-  `#[cfg(not(...))] let mut x = use_signal(...)`
-  pair into a single declaration that preserves per-platform `mut` semantics.
-  New components should declare signals through these macros.
+  collapse the repeated `#[cfg(target_arch = "wasm32")] let x = use_signal(...)`
+  / `#[cfg(not(...))] let mut x = use_signal(...)` pair into a single
+  declaration that preserves per-platform `mut` semantics. New components should
+  declare signals through these macros.
 - `crates/upload` --- WASM streaming file I/O (`BlobCursor`, `BlobLines`),
   throttled progress, and unified download helpers. The shared upload/download
   crate for every upload-based WASM app.
