@@ -195,7 +195,7 @@ pub fn lotus_sort_button_style() -> String {
         .property("margin", "0")
         .cursor("pointer")
         .display("grid")
-        .align_items("start")
+        .align_items("center")
         .property("grid-template-columns", "auto auto")
         .property("column-gap", "6px")
         .property("width", "100%")
