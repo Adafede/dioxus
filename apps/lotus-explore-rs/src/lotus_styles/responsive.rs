@@ -497,7 +497,6 @@ const PHONE_430_AND_360: &str = r"
   }
 
   .filters-toggle {
-    max-width: fit-content;
     min-height: 44px;
   }
 

@@ -271,26 +271,23 @@ pub mod primary_buttons {
     pub fn button_filters_toggle_style() -> String {
         StyleBuilder::new()
             .display("inline-flex")
-            .flex_wrap("wrap")
             .align_items("center")
             .justify_content("center")
+            .gap("6px")
+            .border("1px solid var(--border)")
+            .border_radius("4px")
+            .property("min-height", "40px")
+            .padding("8px 14px")
+            .font_size("var(--fs-0)")
+            .font_weight("600")
+            .cursor("pointer")
             .background_color("var(--btn-primary-bg)")
             .color("#fff")
-            .border("0")
-            .border_radius("var(--radius-sm)")
-            .padding("11px 16px")
-            .font_size("var(--fs-ui)")
-            .font_weight("700")
-            .cursor("pointer")
             .box_shadow("var(--shadow-xs)")
             .property(
                 "transition",
                 "background .15s, box-shadow .15s, transform .12s ease",
             )
-            .property("text-align", "center")
-            .property("line-height", "1.2")
-            .property("white-space", "normal")
-            .property("box-sizing", "border-box")
             .build()
     }
 
