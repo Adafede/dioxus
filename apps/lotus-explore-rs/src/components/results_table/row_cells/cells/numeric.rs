@@ -3,7 +3,6 @@
 
 //! Numeric and simple value cells for results-table rows: mass, formula, year.
 
-use crate::ui::style_constants::table_cells;
 use dioxus::prelude::*;
 use ui::prelude::*;
 

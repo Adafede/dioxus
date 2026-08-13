@@ -8,7 +8,6 @@ use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
 use crate::ui::style_constants;
 use dioxus::prelude::*;
-use ui::prelude::*;
 
 #[component]
 pub fn QueryPanel() -> Element {

@@ -17,8 +17,6 @@ use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
 
-use crate::ui::style_constants::primary_buttons;
-
 use crate::components::copy_button::CopyButton;
 use crate::features::explore::absolute_share_url;
 

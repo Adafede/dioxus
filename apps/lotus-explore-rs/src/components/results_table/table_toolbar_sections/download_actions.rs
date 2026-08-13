@@ -14,10 +14,8 @@ use crate::i18n::{TextKey, t};
 use crate::models::SearchCriteria;
 use crate::perf;
 use crate::state::use_results_context;
-use crate::ui::style_constants::{buttons, downloads};
 use dioxus::prelude::*;
 use std::sync::Arc;
-use ui::prelude::*;
 
 const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
 

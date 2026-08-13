@@ -17,8 +17,6 @@ use crate::services::error_presenter::{
     error_hint_text, format_domain_error, format_taxon_warning,
 };
 use crate::state::use_results_context;
-use crate::ui::style_constants::notices as notice_styles;
-use crate::ui::style_constants::theme;
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;

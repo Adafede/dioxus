@@ -6,9 +6,7 @@
 use crate::components::results_table::row_cells::row_text::RowText;
 use crate::i18n::{Locale, aria_wikidata_entity};
 use crate::models::CompoundEntry;
-use crate::ui::style_constants::table_cells;
 use dioxus::prelude::*;
-use ui::prelude::*;
 
 pub(in crate::components::results_table::row_cells) fn taxon_cell(
     locale: Locale,

@@ -10,9 +10,7 @@
 
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
-use crate::ui::style_constants::{forms, primary_buttons};
 use dioxus::prelude::*;
-use ui::prelude::*;
 
 /// Generic reusable text input component
 #[component]

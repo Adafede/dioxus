@@ -34,7 +34,6 @@ use crate::state::{use_form_criteria_context, use_results_context};
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use crate::ui::style_constants;
 use dioxus::prelude::*;
-use ui::prelude::*;
 pub fn SearchPanel() -> Element {
     let state = use_results_context();
     let form_ctx = use_form_criteria_context();
