@@ -7,7 +7,6 @@
 //! Naming hierarchy: `button_<type>_lotus_<context>()`
 //! Examples: `button_primary_lotus_search()`, `button_small_lotus_filter()`
 
-use ui::prelude::*;
 use ui::styles::buttons;
 
 /// Download group buttons: compact styled buttons in action toolbar.
@@ -21,6 +20,7 @@ pub fn button_primary_lotus_search() -> String {
 }
 
 /// Primary button for filter actions (compact).
+#[allow(dead_code)]
 pub fn button_small_lotus_filter() -> String {
     buttons::button_sm_style()
 }

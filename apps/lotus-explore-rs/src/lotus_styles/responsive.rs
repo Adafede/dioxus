@@ -3,7 +3,7 @@
 
 //! Lotus CSS pack: responsive.
 
-use super::tokens::*;
+// use super::tokens::*;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RESPONSIVE BREAKPOINT STYLES - Media queries for different screen sizes

@@ -13,6 +13,8 @@
 //! - **Padding**: Vertical/horizontal padding for buttons, cells, and form elements
 //! - **Responsive Values**: CSS clamp() values for fluid scaling
 //! - **Table/Grid**: Table-specific dimensions
+
+#![allow(dead_code)]
 //! - **Borders & Radius**: Border widths and border-radius values
 //! - **Colors**: CSS variable references to design system colors
 

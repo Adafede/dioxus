@@ -31,7 +31,7 @@ pub mod search;
 pub mod table;
 pub mod tokens;
 
-// Re-export commonly used items for convenience
+#[allow(unused_imports)]
 pub use buttons::{button_primary_lotus_search, button_small_lotus, button_xs_lotus_table};
 
 #[allow(unused_imports)]
