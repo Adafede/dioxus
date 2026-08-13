@@ -111,7 +111,6 @@ pub fn lotus_page_title_link_style() -> String {
         .property("max-width", "100%")
         .gap("8px")
         .text_decoration("none")
-        .color("inherit")
         .build()
 }
 
@@ -196,9 +195,6 @@ pub fn lotus_header_label_style() -> String {
 pub fn lotus_sort_button_style() -> String {
     StyleBuilder::new()
         .property("appearance", "none")
-        .background_color("transparent")
-        .border("0")
-        .color("inherit")
         .font_family("inherit")
         .padding("0")
         .property("margin", "0")
@@ -233,7 +229,6 @@ pub fn lotus_search_button_dirty_style() -> String {
         .align_items("center")
         .justify_content("center")
         .gap("8px")
-        .border("0")
         .border_radius("4px")
         .property("min-height", "40px")
         .padding("11px 16px")

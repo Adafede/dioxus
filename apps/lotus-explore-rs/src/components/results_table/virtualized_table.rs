@@ -109,8 +109,6 @@ fn col_style(width: &str) -> String {
 
 fn spacer_cell_style(height: usize) -> String {
     StyleBuilder::new()
-        .padding("0")
-        .border("0")
         .property("height", &format!("{height}px"))
         .build()
 }

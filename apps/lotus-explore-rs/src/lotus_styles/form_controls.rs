@@ -3,80 +3,116 @@
 
 //! Lotus CSS pack: form_controls.
 
-const FORM_SECTIONS: &str = r"/* Form controls pack: shared form primitives, structure editor, and search button. */
+use super::tokens::*;
 
-.form-section { display:flex; flex-direction:column; gap:5px; padding:10px 12px; border:1px solid var(--panel-border); border-radius:12px; background:var(--panel-bg-soft); }
-.form-section.nested { padding-left:10px; border-left:1px solid var(--border); margin-top:4px; }
-.form-label { font-size:var(--fs-0); font-weight:700; color:var(--critical-text); text-transform:uppercase; letter-spacing:0.08em; }
-.form-label.sm { font-size:var(--fs-0); font-weight:700; color:var(--text); text-transform:none; letter-spacing:0; }
-.form-hint { font-size:var(--fs-0); color:var(--text2); }
-.radio-group { display:flex; gap:14px; }
-.radio-label { display:flex; align-items:center; gap:6px; font-size:var(--fs-0); cursor:pointer; color:var(--text2); }
-.radio-label input { accent-color:var(--accent); }
-.range-input { width:100%; accent-color:var(--accent); margin-top:4px; }
-.range-inputs { display:flex; align-items:flex-end; gap:8px; }
-.range-pair { display:flex; flex-direction:column; gap:3px; }
-.range-sep { color:var(--text3); padding-bottom:8px; }
-";
-
-const FORM_RANGES: &str = r"
-.formula-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.formula-minmax-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-
-.formula-minmax-grid .range-pair,
-.formula-grid .range-pair { min-width: 0; }
-
-.formula-minmax-grid .form-input.sm,
-.formula-grid .form-input.sm {
-  width: 100%;
-  min-width: 6ch;
-  padding-left: 6px;
-  padding-right: 6px;
-  font-variant-numeric: tabular-nums;
+fn form_sections() -> String {
+    format!(
+        "/* Form controls pack: shared form primitives, structure editor, and search button. */\n\
+         \n\
+         .form-section {{ display:flex; flex-direction:column; gap:{}; padding:{} {}; border:1px solid {}; border-radius:{}; background:{}; }}\n\
+         .form-section.nested {{ padding-left:{}; border-left:1px solid {}; margin-top:4px; }}\n\
+         .form-label {{ font-size:{}; font-weight:700; color:{}; text-transform:uppercase; letter-spacing:0.08em; }}\n\
+         .form-label.sm {{ font-size:{}; font-weight:700; color:{}; text-transform:none; letter-spacing:0; }}\n\
+         .form-hint {{ font-size:{}; color:{}; }}\n\
+         .radio-group {{ display:flex; gap:{}; }}\n\
+         .radio-label {{ display:flex; align-items:center; gap:{}; font-size:{}; cursor:pointer; color:{}; }}\n\
+         .radio-label input {{ accent-color:{}; }}\n\
+         .range-input {{ width:100%; accent-color:{}; margin-top:4px; }}\n\
+         .range-inputs {{ display:flex; align-items:flex-end; gap:{}; }}\n\
+         .range-pair {{ display:flex; flex-direction:column; gap:3px; }}\n\
+         .range-sep {{ color:{}; padding-bottom:8px; }}",
+        SPACE_1,
+        FORM_SECTION_PADDING_V,
+        FORM_SECTION_PADDING_H,
+        PANEL_BORDER,
+        RADIUS_MD,
+        PANEL_BG_SOFT,
+        FORM_SECTION_PADDING_V,
+        BORDER,
+        FS_0,
+        CRITICAL_TEXT,
+        FS_0,
+        TEXT,
+        FS_0,
+        TEXT2,
+        GAP_LG,
+        GAP_XXS,
+        FS_0,
+        TEXT2,
+        ACCENT,
+        ACCENT,
+        GAP_SM,
+        TEXT3,
+    )
 }
 
-/* Make two-ended range filters responsive without affecting formula rows. */
-.range-inputs--pair {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: end;
-  gap: 8px;
+fn form_ranges() -> String {
+    format!(
+        ".formula-grid {{ display: grid; grid-template-columns: 1fr; gap: {}; }}\n\
+         .formula-minmax-grid {{ display: grid; grid-template-columns: 1fr; gap: {}; }}\n\
+         \n\
+         .formula-minmax-grid .range-pair,\n\
+         .formula-grid .range-pair {{ min-width: 0; }}\n\
+         \n\
+         .formula-minmax-grid .form-input.sm,\n\
+         .formula-grid .form-input.sm {{\n\
+           width: 100%;\n\
+           min-width: 6ch;\n\
+           padding-left: 6px;\n\
+           padding-right: 6px;\n\
+           font-variant-numeric: tabular-nums;\n\
+         }}\n\
+         \n\
+         /* Make two-ended range filters responsive without affecting formula rows. */\n\
+         .range-inputs--pair {{\n\
+           display: grid;\n\
+           grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);\n\
+           align-items: end;\n\
+           gap: {};\n\
+         }}\n\
+         \n\
+         .range-inputs--pair .range-pair {{ min-width: 0; }}\n\
+         .range-inputs--pair .form-input {{ width: 100%; }}",
+        GAP_SM, GAP_XS, GAP_XS,
+    )
 }
 
-.range-inputs--pair .range-pair { min-width: 0; }
-.range-inputs--pair .form-input { width: 100%; }
-";
-
-const FORM_STRUCTURE: &str = r#"
-/* Normalize number input chrome for consistent borders on Safari/Firefox. */
-input[type="number"].form-input { appearance: textfield; }
-
-input[type="number"].form-input::-webkit-outer-spin-button,
-input[type="number"].form-input::-webkit-inner-spin-button { appearance: none; margin: 0; }
-
-/* Structure section */
-.form-textarea.mono, .mono { font-family: var(--mono); }
-"#;
-
-const FORM_ACTIONS_AND_RESPONSIVE: &str = r"
-/* Focus-visible styles for interactive elements */
-button:focus-visible,
-.sort-btn:focus-visible,
-.notice-dismiss:focus-visible,
-.primary-link:focus-visible,
-.id-badge:focus-visible,
-.filters-toggle:focus-visible {
-  outline: 3px solid var(--accent2);
-  outline-offset: 2px;
+fn form_structure() -> String {
+    format!(
+        "/* Normalize number input chrome for consistent borders on Safari/Firefox. */\n\
+         input[type=\"number\"].form-input {{ appearance: textfield; }}\n\
+         \n\
+         input[type=\"number\"].form-input::-webkit-outer-spin-button,\n\
+         input[type=\"number\"].form-input::-webkit-inner-spin-button {{ appearance: none; margin: 0; }}\n\
+         \n\
+         /* Structure section */\n\
+         .form-textarea.mono, .mono {{ font-family: {}; }}",
+        FONT_MONO,
+    )
 }
-";
+
+fn form_actions_and_responsive() -> String {
+    format!(
+        "/* Focus-visible styles for interactive elements */\n\
+         button:focus-visible,\n\
+         .sort-btn:focus-visible,\n\
+         .notice-dismiss:focus-visible,\n\
+         .primary-link:focus-visible,\n\
+         .id-badge:focus-visible,\n\
+         .filters-toggle:focus-visible {{\n\
+           outline: 3px solid {};\n\
+           outline-offset: 2px;\n\
+         }}",
+        ACCENT2,
+    )
+}
 
 pub fn css() -> String {
     [
-        FORM_SECTIONS,
-        FORM_RANGES,
-        FORM_STRUCTURE,
-        FORM_ACTIONS_AND_RESPONSIVE,
+        form_sections(),
+        form_ranges(),
+        form_structure(),
+        form_actions_and_responsive(),
     ]
     .join("\n\n")
 }

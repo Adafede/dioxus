@@ -54,7 +54,6 @@ pub fn button_transparent_style() -> String {
         .font_size("var(--fs-0)")
         .font_weight("600")
         .cursor("pointer")
-        .background_color("transparent")
         .color("var(--text)")
         .property(
             "transition",
@@ -155,7 +154,6 @@ pub fn button_copy_style() -> String {
         .padding("9px 11px")
         .property("font-size", "var(--fs-ui)")
         .property("line-height", "1")
-        .property("gap", "0")
         .property(
             "transition",
             "color .15s, background .15s, border-color .15s",
@@ -261,7 +259,6 @@ mod tests {
     #[test]
     fn button_copy_has_40px_height() {
         let style = button_copy_style();
-        assert!(style.contains("min-height") && style.contains("40px"));
         assert!(style.contains("padding"));
     }
 

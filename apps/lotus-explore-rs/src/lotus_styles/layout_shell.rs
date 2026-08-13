@@ -3,221 +3,341 @@
 
 //! Lotus CSS pack: layout_shell.
 
-const APP_FRAME: &str = r"/* Layout shell pack: app frame, header/meta, notices, share bar, and sidebar shell. */
+use super::tokens::*;
 
-.app-layout { display:flex; min-height:100dvh; height:100dvh; overflow:hidden; gap:10px; padding:10px; }
-.app-layout.no-sidebar { display:block; }
-
-.sidebar {
-  width:300px;
-  min-width:250px;
-  height:100%;
-  overflow-y:auto;
-  background:var(--panel-bg);
-  border:1px solid var(--panel-border);
-  border-radius:16px;
-  flex-shrink:0;
-  box-shadow:var(--shadow-sm);
-  display:flex;
-  flex-direction:column;
-  position: relative;
-  isolation: isolate;
+fn app_frame() -> String {
+    format!(
+        "/* Layout shell pack: app frame, header/meta, notices, share bar, and sidebar shell. */\n\
+         \n\
+         .app-layout {{ display:flex; min-height:100dvh; height:100dvh; overflow:hidden; gap:{}; padding:{}; }}\n\
+         .app-layout.no-sidebar {{ display:block; }}\n\
+         \n\
+         .sidebar {{\n\
+           width:300px;\n\
+           min-width:250px;\n\
+           height:100%;\n\
+           overflow-y:auto;\n\
+           background:{};\n\
+           border:1px solid {};\n\
+           border-radius:{};\n\
+           flex-shrink:0;\n\
+           box-shadow:{};\n\
+           display:flex;\n\
+           flex-direction:column;\n\
+           position: relative;\n\
+           isolation: isolate;\n\
+         }}\n\
+         \n\
+         .main-content {{\n\
+           flex:1;\n\
+           min-width:0;\n\
+           height:100%;\n\
+           overflow-y:auto;\n\
+           display:flex;\n\
+           flex-direction:column;\n\
+           border:1px solid {};\n\
+           border-radius:{};\n\
+           background:{};\n\
+           box-shadow:{};\n\
+         }}\n\
+         \n\
+         .main-content.single-pane {{ width:100%; }}\n\
+         \n\
+         /* Perceived perf: skip off-screen paint work */\n\
+         .welcome, .results-wrap, .query-panel, .ketcher-panel, .table-scroll {{\n\
+           content-visibility: auto;\n\
+           contain-intrinsic-size: 900px;\n\
+         }}",
+        LAYOUT_GAP,
+        LAYOUT_GAP,
+        PANEL_BG,
+        PANEL_BORDER,
+        RADIUS_LG,
+        SHADOW_SM,
+        PANEL_BORDER,
+        RADIUS_LG,
+        PANEL_BG,
+        SHADOW_SM,
+    )
 }
 
-.main-content {
-  flex:1;
-  min-width:0;
-  height:100%;
-  overflow-y:auto;
-  display:flex;
-  flex-direction:column;
-  border:1px solid var(--panel-border);
-  border-radius:16px;
-  background:var(--panel-bg);
-  box-shadow:var(--shadow-sm);
+fn page_header() -> String {
+    format!(
+        ".page-header {{\n\
+           padding:{} {} {};\n\
+           border-bottom:1px solid {};\n\
+           background:color-mix(in srgb, {} 92%, {});\n\
+           box-shadow:{};\n\
+           position: sticky;\n\
+           top: 0;\n\
+           z-index: 3;\n\
+           overflow: clip;\n\
+         }}\n\
+         \n\
+         \n\
+         .page-title-link,\n\
+         .page-title-link:visited {{ color: inherit; text-decoration: none; }}\n\
+         .page-title-link:hover {{ text-decoration: none; }}\n\
+         \n\
+         .lang-switch {{ margin-left:auto; display:flex; gap:{}; align-items:center; }}\n\
+         .page-home-link {{ display: inline-flex; align-items: center; gap: 0; min-width: 0; }}\n\
+         \n\
+         .page-sub {{ font-size:{}; color:{}; margin-top:4px; }}\n\
+         \n\
+         .page-meta {{ display: contents; }}\n\
+         .meta-item {{ display:inline-flex; align-items:center; gap:{}; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }}\n\
+         .meta-key {{ text-transform:uppercase; letter-spacing:0.08em; font-weight:700; font-size: {}; color: {}; }}\n\
+         .meta-val.mono {{ font-family:{}; color:{}; font-variant-numeric: tabular-nums; font-size: {}; }}\n\
+         .meta-sep {{ color:{}; }}",
+        PAGE_HEADER_PADDING_T,
+        PAGE_HEADER_PADDING_H,
+        PAGE_HEADER_PADDING_B,
+        PANEL_BORDER,
+        PANEL_BG_SOFT,
+        SURFACE,
+        SHADOW_XS,
+        GAP_XS,
+        FS_1,
+        CRITICAL_MUTED,
+        GAP_XS,
+        FS_0,
+        TEXT2,
+        FONT_MONO,
+        CRITICAL_TEXT,
+        FS_0,
+        TEXT3,
+    )
 }
 
-.main-content.single-pane { width:100%; }
-
-/* Perceived perf: skip off-screen paint work */
-.welcome, .results-wrap, .query-panel, .ketcher-panel, .table-scroll {
-  content-visibility: auto;
-  contain-intrinsic-size: 900px;
-}
-";
-
-const PAGE_HEADER: &str = r"
-.page-header {
-  padding:14px 22px 10px;
-  border-bottom:1px solid var(--panel-border);
-  background:color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface));
-  box-shadow:var(--shadow-xs);
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  overflow: clip;
-}
-
-
-.page-title-link,
-.page-title-link:visited { color: inherit; text-decoration: none; }
-.page-title-link:hover { text-decoration: none; }
-
-.lang-switch { margin-left:auto; display:flex; gap:4px; align-items:center; }
-.page-home-link { display: inline-flex; align-items: center; gap: 0; min-width: 0; }
-
-.page-sub { font-size:var(--fs-1); color:var(--critical-muted); margin-top:4px; }
-
-.page-meta { display: contents; }
-.meta-item { display:inline-flex; align-items:center; gap:4px; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
-.meta-key { text-transform:uppercase; letter-spacing:0.08em; font-weight:700; font-size: var(--fs-0); color: var(--text2); }
-.meta-val.mono { font-family:var(--mono); color:var(--critical-text); font-variant-numeric: tabular-nums; font-size: var(--fs-0); }
-.meta-sep { color:var(--text3); }
-";
-
-const NOTICES: &str = r"
-/* Notices */
-.notice {
-  margin:10px 22px 0;
-  padding:9px 12px;
-  display:flex;
-  align-items:center;
-  gap:12px;
-  border-radius:var(--radius);
-  font-size:var(--fs-0);
-  border:1px solid var(--panel-border);
-  background:var(--panel-bg-soft);
-  box-shadow:var(--panel-shadow);
-  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
-}
-
-/* Notices that are direct children of the results pane span full width. */
-.main-content > .notice {
-  margin-left: 0;
-  margin-right: 0;
-  padding-left: 22px;
-  padding-right: 22px;
-  border-radius: 0;
-  border-left: 0;
-  border-right: 0;
-}
-
-.results-wrap > .notice { margin: 0; }
-.notice:hover { box-shadow: var(--shadow-sm); }
-
-.notice-label {
-  display:inline-flex;
-  align-items:center;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  font-size:var(--fs-label);
-  font-weight:700;
-  line-height:1.4;
-  padding:2px 6px;
-  border-radius:3px;
-  flex-shrink:0;
-}
-
-.notice-value { flex:1; color:inherit; word-break:break-word; line-height:1.4; }
-
-.notice-copy-field {
-  min-width: min(220px, 100%);
-  max-width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text2);
-  padding: 4px 8px;
-}
-
-.notice-info { border-color:color-mix(in srgb, var(--accent) 34%, var(--results-border)); background:color-mix(in srgb, var(--accent) 9%, var(--panel-bg-soft)); }
-.notice-info .notice-label { background:color-mix(in srgb, var(--accent) 16%, var(--surface)); color:color-mix(in srgb, var(--accent2) 86%, var(--text)); }
-.notice-warn { border-color:color-mix(in srgb, var(--yellow) 34%, var(--results-border)); background:color-mix(in srgb, var(--yellow) 8%, var(--panel-bg-soft)); }
-.notice-warn .notice-label { background:color-mix(in srgb, var(--yellow) 16%, var(--surface)); color:color-mix(in srgb, var(--yellow) 88%, var(--text)); }
-.notice-error { border-color:color-mix(in srgb, var(--red) 34%, var(--results-border)); background:color-mix(in srgb, var(--red) 8%, var(--panel-bg-soft)); }
-.notice-error .notice-label { background:color-mix(in srgb, var(--red) 16%, var(--surface)); color:color-mix(in srgb, var(--red) 88%, var(--text)); }
-";
-
-const SHARE_BAR: &str = r"
-/* Share bar */
-.share-bar {
-  display: flex;
-  flex-flow: row wrap;
-  align-items: center;
-  gap: 6px 10px;
-  margin: 10px 22px 0;
-  padding: 7px 12px;
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface));
-  box-shadow: var(--panel-shadow);
-  font-size: var(--fs-0);
-  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+fn notices() -> String {
+    format!(
+        "/* Notices */\n\
+         .notice {{\n\
+           margin:{} {} 0;\n\
+           padding:{} {};\n\
+           display:flex;\n\
+           align-items:center;\n\
+           gap:{};\n\
+           border-radius:{};\n\
+           font-size:{};\n\
+           border:1px solid {};\n\
+           background:{};\n\
+           box-shadow:{};\n\
+           transition: background {} ease, border-color {} ease, box-shadow {} ease;\n\
+         }}\n\
+         \n\
+         /* Notices that are direct children of the results pane span full width. */\n\
+         .main-content > .notice {{\n\
+           margin-left: 0;\n\
+           margin-right: 0;\n\
+           padding-left: {};\n\
+           padding-right: {};\n\
+           border-radius: 0;\n\
+           border-left: 0;\n\
+           border-right: 0;\n\
+         }}\n\
+         \n\
+         .results-wrap > .notice {{ margin: 0; }}\n\
+         .notice:hover {{ box-shadow: {}; }}\n\
+         \n\
+         .notice-label {{\n\
+           display:inline-flex;\n\
+           align-items:center;\n\
+           text-transform:uppercase;\n\
+           letter-spacing:1px;\n\
+           font-size:{};\n\
+           font-weight:700;\n\
+           line-height:1.4;\n\
+           padding:2px 6px;\n\
+           border-radius:3px;\n\
+           flex-shrink:0;\n\
+         }}\n\
+         \n\
+         .notice-value {{ flex:1; color:inherit; word-break:break-word; line-height:1.4; }}\n\
+         \n\
+         .notice-copy-field {{\n\
+           min-width: min(220px, 100%);\n\
+           max-width: 100%;\n\
+           background: {};\n\
+           border: 1px solid {};\n\
+           border-radius: {};\n\
+           color: {};\n\
+           padding: 4px 8px;\n\
+         }}\n\
+         \n\
+         .notice-info {{ border-color:color-mix(in srgb, {} 34%, {}); background:color-mix(in srgb, {} 9%, {}); }}\n\
+         .notice-info .notice-label {{ background:color-mix(in srgb, {} 16%, {}); color:color-mix(in srgb, {} 86%, {}); }}\n\
+         .notice-warn {{ border-color:color-mix(in srgb, {} 34%, {}); background:color-mix(in srgb, {} 8%, {}); }}\n\
+         .notice-warn .notice-label {{ background:color-mix(in srgb, {} 16%, {}); color:color-mix(in srgb, {} 88%, {}); }}\n\
+         .notice-error {{ border-color:color-mix(in srgb, {} 34%, {}); background:color-mix(in srgb, {} 8%, {}); }}\n\
+         .notice-error .notice-label {{ background:color-mix(in srgb, {} 16%, {}); color:color-mix(in srgb, {} 88%, {}); }}",
+        MARGIN_NOTICE_V,
+        MARGIN_NOTICE_H,
+        NOTICE_PADDING_V,
+        NOTICE_PADDING_H,
+        GAP_MD,
+        RADIUS,
+        FS_0,
+        PANEL_BORDER,
+        PANEL_BG_SOFT,
+        PANEL_SHADOW,
+        TRANSITION_TIMING,
+        TRANSITION_TIMING,
+        TRANSITION_TIMING,
+        MARGIN_NOTICE_H,
+        MARGIN_NOTICE_H,
+        SHADOW_SM,
+        FS_LABEL,
+        SURFACE,
+        BORDER,
+        RADIUS_SM,
+        TEXT,
+        ACCENT,
+        RESULTS_BORDER,
+        ACCENT,
+        PANEL_BG_SOFT,
+        ACCENT,
+        SURFACE,
+        ACCENT,
+        TEXT,
+        YELLOW,
+        RESULTS_BORDER,
+        YELLOW,
+        PANEL_BG_SOFT,
+        YELLOW,
+        SURFACE,
+        YELLOW,
+        TEXT,
+        RED,
+        RESULTS_BORDER,
+        RED,
+        PANEL_BG_SOFT,
+        RED,
+        SURFACE,
+        RED,
+        TEXT,
+    )
 }
 
-.curation-wrap .share-bar { margin: 0; }
-
-.share-bar-label {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 700;
-  font-size: var(--fs-0);
-  color: var(--text2);
-  flex-shrink: 0;
-  white-space: nowrap;
+fn share_bar() -> String {
+    format!(
+        "/* Share bar */\n\
+         .share-bar {{\n\
+           display: flex;\n\
+           flex-flow: row wrap;\n\
+           align-items: center;\n\
+           gap: {} {};\n\
+           margin: {} {} 0;\n\
+           padding: {} {};\n\
+           border: 1px solid {};\n\
+           border-radius: {};\n\
+           background: color-mix(in srgb, {} 92%, {});\n\
+           box-shadow: {};\n\
+           font-size: {};\n\
+           transition: background {} ease, border-color {} ease, box-shadow {} ease;\n\
+         }}\n\
+         \n\
+         .curation-wrap .share-bar {{ margin: 0; }}\n\
+         \n\
+         .share-bar-label {{\n\
+           text-transform: uppercase;\n\
+           letter-spacing: 0.08em;\n\
+           font-weight: 700;\n\
+           font-size: {};\n\
+           color: {};\n\
+           flex-shrink: 0;\n\
+           white-space: nowrap;\n\
+         }}\n\
+         \n\
+         .share-bar-input {{\n\
+           flex: 1;\n\
+           min-width: min(200px, 100%);\n\
+           background: {};\n\
+           border: 1px solid {};\n\
+           border-radius: {};\n\
+           color: {};\n\
+           padding: {} {};\n\
+           font-size: {};\n\
+         }}\n\
+         \n\
+         .share-bar-input:focus {{\n\
+           outline: none;\n\
+           border-color: {};\n\
+         }}",
+        GAP_XXS,
+        GAP_SM,
+        MARGIN_NOTICE_V,
+        MARGIN_NOTICE_H,
+        SHARE_BAR_PADDING_V,
+        SHARE_BAR_PADDING_H,
+        PANEL_BORDER,
+        RADIUS_MD,
+        PANEL_BG_SOFT,
+        SURFACE,
+        PANEL_SHADOW,
+        FS_0,
+        TRANSITION_TIMING,
+        TRANSITION_TIMING,
+        TRANSITION_TIMING,
+        FS_0,
+        TEXT2,
+        SURFACE,
+        BORDER,
+        RADIUS_SM,
+        TEXT,
+        SHARE_BAR_INPUT_PADDING_V,
+        SHARE_BAR_INPUT_PADDING_H,
+        FS_0,
+        ACCENT,
+    )
 }
 
-.share-bar-input {
-  flex: 1;
-  min-width: min(200px, 100%);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  padding: 4px 8px;
-  font-size: var(--fs-0);
+fn search_panel() -> String {
+    format!(
+        "/* Search panel shell */\n\
+         .search-panel {{ align-self:stretch; padding:{} {}; display:flex; flex-direction:column; gap:{}; background:{}; flex:0 0 auto; box-sizing:border-box; min-width:240px; overflow-y:auto; max-height:calc(100vh - 200px); margin-top:auto; }}\n\
+         .search-panel-body {{ display:flex; flex-direction:column; gap:{}; }}\n\
+         .filters-toggle {{ display:none !important; }}\n\
+         .sidebar-logo-wrap {{ padding:{} 8px 8px; display:flex; justify-content:center; border-top:1px solid {}; margin-top:auto; }}\n\
+         \n\
+         .sidebar-logo {{ display:block; width:128px; height:128px; }}\n\
+         .view-switch [role=\"group\"] {{ background: transparent !important; border-color: {} !important; }}\n\
+         .lang-switch [role=\"group\"] {{ background: transparent !important; border-color: {} !important; }}\n\
+         @media (max-width: 768px) {{\n\
+           .filters-toggle {{ display:inline-flex !important; min-height: 40px; }}\n\
+           .search-panel-body {{ display:none !important; }}\n\
+           .sidebar.mobile-open .search-panel-body {{ display:flex !important; }}\n\
+         }}",
+        SEARCH_PANEL_PADDING_V,
+        SEARCH_PANEL_PADDING_H,
+        GAP_LG,
+        PANEL_BG,
+        GAP_MD,
+        SPACE_1,
+        BORDER,
+        BORDER,
+        BORDER,
+    )
 }
 
-.share-bar-input:focus {
-  outline: none;
-  border-color: var(--accent);
+fn footer() -> String {
+    "/* Footer responsive grid sizing */\n\
+     @media (min-width: 640px) {\n\
+       footer > div {\n\
+         grid-template-columns: 1.2fr 1fr !important;\n\
+       }\n\
+     }"
+    .to_string()
 }
-";
-
-const SEARCH_PANEL: &str = r#"
-/* Search panel shell */
-.search-panel { align-self:stretch; padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:0 0 auto; box-sizing:border-box; min-width:240px; overflow-y:auto; max-height:calc(100vh - 200px); margin-top:auto; }
-.search-panel-body { display:flex; flex-direction:column; gap:12px; }
-.filters-toggle { display:none !important; }
-.sidebar-logo-wrap { padding:6px 8px 8px; display:flex; justify-content:center; border-top:1px solid var(--border); margin-top:auto; }
-
-.sidebar-logo { display:block; width:128px; height:128px; }
-.view-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
-.lang-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
-@media (max-width: 768px) {
-  .filters-toggle { display:inline-flex !important; min-height: 40px; }
-  .search-panel-body { display:none !important; }
-  .sidebar.mobile-open .search-panel-body { display:flex !important; }
-}
-"#;
-
-const FOOTER: &str = r"
-/* Footer responsive grid sizing */
-@media (min-width: 640px) {
-  footer > div {
-    grid-template-columns: 1.2fr 1fr !important;
-  }
-}
-";
 
 pub fn css() -> String {
     [
-        APP_FRAME,
-        PAGE_HEADER,
-        NOTICES,
-        SHARE_BAR,
-        SEARCH_PANEL,
-        FOOTER,
+        app_frame(),
+        page_header(),
+        notices(),
+        share_bar(),
+        search_panel(),
+        footer(),
     ]
     .join("\n\n")
 }

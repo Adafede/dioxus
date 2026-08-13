@@ -62,7 +62,6 @@ fn footer_style() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
-        .gap("0")
         .padding("16px 28px 20px")
         .build()
 }

@@ -9,6 +9,7 @@ pub mod curation;
 pub mod form_controls;
 pub mod layout_shell;
 pub mod responsive;
+pub mod tokens;
 
 pub fn bundled_lotus_styles() -> String {
     [

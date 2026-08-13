@@ -35,7 +35,6 @@ pub fn panel_ketcher() -> String {
     StyleBuilder::new()
         .property("width", "100%")
         .property("height", "400px")
-        .border("none")
         .build()
 }
 
@@ -44,7 +43,6 @@ pub fn panel_iframe() -> String {
     StyleBuilder::new()
         .property("width", "100%")
         .property("height", "100%")
-        .border("none")
         .build()
 }
 

@@ -3,92 +3,117 @@
 
 //! Lotus CSS pack: curation.
 
-const CURATION_NOTICE_AND_INPUT: &str = r"/* Curation surface: only selectors that still need CSS. */
+use super::tokens::*;
 
-.curation-wrap > .notice {
-  margin-left: 0;
-  margin-right: 0;
-  margin-top: 0;
+fn curation_notice_and_input() -> String {
+    format!(
+        "/* Curation surface: only selectors that still need CSS. */\n\
+         \n\
+         .curation-wrap > .notice {{\n\
+           margin-left: 0;\n\
+           margin-right: 0;\n\
+           margin-top: 0;\n\
+         }}\n\
+         \n\
+         .curation-file-input::file-selector-button {{\n\
+           margin-right: {};\n\
+           border: 1px solid {};\n\
+           border-radius: {};\n\
+           padding: {} {};\n\
+           min-height: 34px;\n\
+           background: color-mix(in srgb, {} 44%, {});\n\
+           color: {};\n\
+           font-weight: 600;\n\
+           cursor: pointer;\n\
+           transition: background {} ease, border-color {} ease;\n\
+         }}\n\
+         \n\
+         .curation-file-input::file-selector-button:hover {{\n\
+           background: color-mix(in srgb, {} 68%, {});\n\
+           border-color: color-mix(in srgb, {} 84%, {});\n\
+         }}",
+        FILE_BUTTON_PADDING_H,
+        PANEL_BORDER,
+        RADIUS_SM,
+        FILE_BUTTON_PADDING_V,
+        FILE_BUTTON_PADDING_H,
+        SURFACE2,
+        SURFACE,
+        TEXT,
+        TRANSITION_TIMING,
+        TRANSITION_TIMING,
+        SURFACE2,
+        SURFACE,
+        BORDER,
+        ACCENT,
+    )
 }
 
-.curation-file-input::file-selector-button {
-  margin-right: 10px;
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius-sm);
-  padding: 6px 10px;
-  min-height: 34px;
-  background: color-mix(in srgb, var(--surface2) 44%, var(--surface));
-  color: var(--text);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .15s ease, border-color .15s ease;
+fn curation_table() -> String {
+    format!(
+        ".curation-table {{\n\
+           width: 100%;\n\
+           border-collapse: collapse;\n\
+           font-size: {};\n\
+           table-layout: auto;\n\
+           word-break: break-word;\n\
+         }}\n\
+         \n\
+         .curation-table th,\n\
+         .curation-table td {{\n\
+           border-bottom: 1px solid {};\n\
+           text-align: left;\n\
+           vertical-align: top;\n\
+           padding: {} {};\n\
+         }}\n\
+         \n\
+         .curation-table thead {{\n\
+           position: sticky;\n\
+           top: 0;\n\
+           z-index: 2;\n\
+           background: {};\n\
+         }}\n\
+         \n\
+         .curation-table tbody tr {{\n\
+           transition: background .14s ease;\n\
+           background: var(--row-bg, transparent);\n\
+         }}\n\
+         \n\
+         .curation-table tbody tr:hover {{\n\
+           background: color-mix(in srgb, {} 84%, {});\n\
+         }}",
+        FS_UI, BORDER, TABLE_CELL_PADDING_V, TABLE_CELL_PADDING_H, BG2, SURFACE2, BG2,
+    )
 }
 
-.curation-file-input::file-selector-button:hover {
-  background: color-mix(in srgb, var(--surface2) 68%, var(--surface));
-  border-color: color-mix(in srgb, var(--border) 84%, var(--accent));
+fn curation_scroll_and_tables() -> String {
+    format!(
+        ".curation-table-scroll {{\n\
+           border-radius: {};\n\
+         }}\n\
+         \n\
+         .curation-table-scroll:focus-visible {{\n\
+           outline: none;\n\
+           border-color: color-mix(in srgb, {} 44%, {}) !important;\n\
+           box-shadow: {} !important;\n\
+         }}\n\
+         \n\
+         .curation-results-table {{\n\
+           min-width: max-content;\n\
+         }}\n\
+         \n\
+         .curation-queue-table {{\n\
+           min-width: max-content;\n\
+         }}",
+        RADIUS_XL, ACCENT, PANEL_BORDER, RING,
+    )
 }
-";
-
-const CURATION_TABLE: &str = r"
-.curation-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--fs-ui);
-  table-layout: auto;
-  word-break: break-word;
-}
-
-.curation-table th,
-.curation-table td {
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  vertical-align: top;
-  padding: 8px 10px;
-}
-
-.curation-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--bg2);
-}
-
-.curation-table tbody tr {
-  transition: background .14s ease;
-  background: var(--row-bg, transparent);
-}
-
-.curation-table tbody tr:hover {
-  background: color-mix(in srgb, var(--surface2) 84%, var(--bg2));
-}
-";
-
-const CURATION_SCROLL_AND_TABLES: &str = r"
-.curation-table-scroll {
-  border-radius: 14px;
-}
-
-.curation-table-scroll:focus-visible {
-  outline: none;
-  border-color: color-mix(in srgb, var(--accent) 44%, var(--panel-border)) !important;
-  box-shadow: var(--ring) !important;
-}
-
-.curation-results-table {
-  min-width: max-content;
-}
-
-.curation-queue-table {
-  min-width: max-content;
-}
-";
 
 pub fn css() -> String {
     [
-        CURATION_NOTICE_AND_INPUT,
-        CURATION_TABLE,
-        CURATION_SCROLL_AND_TABLES,
+        curation_notice_and_input(),
+        curation_table(),
+        curation_scroll_and_tables(),
     ]
     .join("\n\n")
 }

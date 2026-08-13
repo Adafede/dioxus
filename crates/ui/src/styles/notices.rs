@@ -37,7 +37,6 @@ pub fn notice_dark_style() -> String {
 /// Notice value text: word-break for long content with proper line height.
 pub fn notice_value_style() -> String {
     StyleBuilder::new()
-        .color("inherit")
         .property("word-break", "break-word")
         .property("line-height", "1.4")
         .build()
@@ -47,9 +46,6 @@ pub fn notice_value_style() -> String {
 pub fn notice_dismiss_style() -> String {
     StyleBuilder::new()
         .property("margin-left", "auto")
-        .background_color("transparent")
-        .border("0")
-        .color("inherit")
         .cursor("pointer")
         .property("font-size", "18px")
         .property("line-height", "1")
@@ -75,8 +71,8 @@ mod tests {
     }
 
     #[test]
-    fn notice_dismiss_has_no_border() {
+    fn notice_dismiss_has_transparency() {
         let style = notice_dismiss_style();
-        assert!(style.contains("border") && style.contains("0"));
+        assert!(style.contains("opacity"));
     }
 }

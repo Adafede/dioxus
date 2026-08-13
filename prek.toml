@@ -36,10 +36,7 @@ hooks = [
 repo = "https://github.com/crate-ci/typos"
 rev = "v1.49.0"
 hooks = [
-  {
-    id = "typos",
-    exclude = "(apps/lotus-explore-rs/src/i18n/|public/assets/)"
-  }
+  { id = "typos" }
 ]
 
 [[repos]]

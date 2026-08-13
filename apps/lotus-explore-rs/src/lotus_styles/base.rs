@@ -3,328 +3,383 @@
 
 //! Lotus CSS pack: base.
 
-const RESET_AND_TOKENS: &str = r"/* ─────────────────────────────────────────────────────────────────────────────
-   LOTUS Knowledge Explorer — design tokens + base + app layout
-   Previously injected at runtime via `dangerous_inner_html`. Now assembled
-   from smaller Rust strings so the browser still caches the result.
-   ───────────────────────────────────────────────────────────────────────── */
+use super::tokens::*;
 
-/* Reset & base */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+// ─────────────────────────────────────────────────────────────────────────────
+// RESET & DESIGN TOKENS - CSS variables and base styles
+// ─────────────────────────────────────────────────────────────────────────────
 
-html, body, #main {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
+fn reset_and_tokens() -> String {
+    format!(
+        "/* ─────────────────────────────────────────────────────────────────────────────\n\
+           LOTUS Knowledge Explorer — design tokens + base + app layout\n\
+           Previously injected at runtime via `dangerous_inner_html`. Now assembled\n\
+           from smaller Rust strings so the browser still caches the result.\n\
+           ───────────────────────────────────────────────────────────────────────── */\n\
+         \n\
+         /* Reset & base */\n\
+         *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}\n\
+         html, body {{ height: 100%; }}\n\
+         \n\
+         html, body, #main {{\n\
+           width: 100%;\n\
+           max-width: 100%;\n\
+           overflow-x: hidden;\n\
+         }}\n\
+         \n\
+         img, svg, canvas, video {{\n\
+           max-width: 100%;\n\
+           height: auto;\n\
+         }}\n\
+         \n\
+         /* Design tokens */\n\
+         :root {{\n\
+           color-scheme: light dark;\n\
+         \n\
+           --bg:        #f6f8fb;\n\
+           --bg2:       #fff;\n\
+           --surface:   #fbfcfe;\n\
+           --surface2:  #e7edf5;\n\
+           --border:    #c3cfdd;\n\
+           --text:      #111827;\n\
+           --text2:     #233548;\n\
+           --text3:     #516274;\n\
+           --accent:    #0b5cab;\n\
+           --accent2:   #084b8a;\n\
+           --btn-primary-bg: #0b5cab;\n\
+           --btn-primary-hover-bg: #084b8a;\n\
+           --green:     #1f7a4d;\n\
+           --red:       #b42318;\n\
+           --yellow:    #8a4b0f;\n\
+           --purple:    #6941c6;\n\
+           --radius:    {};\n\
+           --radius-sm: {};\n\
+           --shadow-xs: 0 1px 2px rgb(15 23 42 / 6%);\n\
+           --shadow-sm: 0 4px 14px rgb(15 23 42 / 6%);\n\
+           --shadow-md: 0 10px 30px rgb(15 23 42 / 9%);\n\
+           --mono:      'Fira Code', ui-monospace, sfmono-regular, 'JetBrains Mono', consolas, monospace;\n\
+           --sans:      'Inter', -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;\n\
+           --fs-0:      clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);\n\
+           --fs-1:      clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);\n\
+           --fs-2:      clamp(0.9375rem, 0.9rem + 0.28vw, 1.0625rem);\n\
+           --fs-3:      clamp(1.125rem, 1.02rem + 0.6vw, 1.5rem);\n\
+           --fs-4:      clamp(1.375rem, 1.1rem + 0.85vw, 1.85rem);\n\
+           --fs-body:   clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);\n\
+           --fs-label:  clamp(0.6875rem, 0.66rem + 0.14vw, 0.75rem);\n\
+           --fs-micro:  clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);\n\
+           --fs-ui:     clamp(0.8125rem, 0.785rem + 0.16vw, 0.875rem);\n\
+           --fs-stat:   clamp(1.125rem, 1.02rem + 0.52vw, 1.375rem);\n\
+           --tap-target-min: 40px;\n\
+           --space-1:   6px;\n\
+           --space-2:   10px;\n\
+           --space-3:   14px;\n\
+           --space-4:   20px;\n\
+           --space-5:   28px;\n\
+           --glass:     rgb(255 255 255 / 82%);\n\
+           --ring:      0 0 0 3px rgb(11 92 171 / 22%);\n\
+           --critical-text: #172535;\n\
+           --critical-muted: #33475c;\n\
+           --panel-bg: color-mix(in srgb, var(--surface) 92%, var(--bg2));\n\
+           --panel-bg-soft: color-mix(in srgb, var(--surface) 88%, var(--bg2));\n\
+           --panel-border: color-mix(in srgb, var(--border) 82%, transparent);\n\
+           --results-border: var(--panel-border);\n\
+           --panel-shadow: var(--shadow-xs);\n\
+         \n\
+           /* Wikidata colour palette */\n\
+           --wd-compound:  #900;\n\
+           --wd-taxon:     #396;\n\
+           --wd-reference: #069;\n\
+           --wd-entries:   #484848;\n\
+           --wd-compound-stripe: color-mix(in srgb, var(--wd-compound) 78%, #fff);\n\
+           --wd-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 78%, #fff);\n\
+           --wd-reference-stripe: color-mix(in srgb, var(--wd-reference) 78%, #fff);\n\
+           --wd-entries-stripe: color-mix(in srgb, var(--wd-entries) 74%, #fff);\n\
+           --wd-compound-soft-bg: color-mix(in srgb, var(--wd-compound) 12%, var(--surface));\n\
+           --wd-compound-soft-border: color-mix(in srgb, var(--wd-compound) 34%, var(--results-border));\n\
+           --wd-compound-soft-border-weak: color-mix(in srgb, var(--wd-compound) 30%, var(--results-border));\n\
+           --wd-taxon-soft-bg: color-mix(in srgb, var(--wd-taxon) 12%, var(--surface));\n\
+           --wd-taxon-soft-border: color-mix(in srgb, var(--wd-taxon) 34%, var(--results-border));\n\
+           --wd-reference-soft-bg: color-mix(in srgb, var(--wd-reference) 14%, var(--surface));\n\
+           --wd-reference-soft-border: color-mix(in srgb, var(--wd-reference) 34%, var(--results-border));\n\
+           --wd-reference-soft-border-weak: color-mix(in srgb, var(--wd-reference) 30%, var(--results-border));\n\
+         \n\
+           /* Stats palette tuned for readable contrast in light mode. */\n\
+           --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 10%, var(--surface));\n\
+           --stat-compound-border: color-mix(in srgb, var(--wd-compound) 30%, var(--border));\n\
+           --stat-compound-stripe: color-mix(in srgb, var(--wd-compound) 78%, #fff);\n\
+           --stat-taxon-bg: color-mix(in srgb, var(--wd-taxon) 11%, var(--surface));\n\
+           --stat-taxon-border: color-mix(in srgb, var(--wd-taxon) 30%, var(--border));\n\
+           --stat-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 78%, #fff);\n\
+           --stat-reference-bg: color-mix(in srgb, var(--wd-reference) 10%, var(--surface));\n\
+           --stat-reference-border: color-mix(in srgb, var(--wd-reference) 30%, var(--border));\n\
+           --stat-reference-stripe: color-mix(in srgb, var(--wd-reference) 78%, #fff);\n\
+           --stat-total-bg: color-mix(in srgb, var(--wd-entries) 8%, var(--surface));\n\
+           --stat-total-border: color-mix(in srgb, var(--wd-entries) 28%, var(--border));\n\
+           --stat-total-stripe: color-mix(in srgb, var(--wd-entries) 74%, #fff);\n\
+         }}\n\
+         \n\
+         @media (prefers-color-scheme: dark) {{\n\
+           :root {{\n\
+             --bg:        #10141b;\n\
+             --bg2:       #171d26;\n\
+             --surface:   #1f2733;\n\
+             --surface2:  #2a3443;\n\
+             --border:    #38475a;\n\
+             --text:      #eef4fb;\n\
+             --text2:     #d5deea;\n\
+             --text3:     #a7b4c7;\n\
+             --accent:    #8cbcff;\n\
+             --accent2:   #5e98f3;\n\
+             --btn-primary-bg: #0b5cab;\n\
+             --btn-primary-hover-bg: #285fcc;\n\
+             --green:     #4cc38a;\n\
+             --red:       #ff8a80;\n\
+             --yellow:    #f0b35e;\n\
+             --purple:    #c3a0ff;\n\
+             --shadow-xs: 0 1px 2px rgb(0 0 0 / 45%);\n\
+             --shadow-sm: 0 4px 14px rgb(0 0 0 / 35%);\n\
+             --shadow-md: 0 10px 30px rgb(0 0 0 / 35%);\n\
+             --glass:     rgb(22 27 34 / 78%);\n\
+             --ring:      0 0 0 3px rgb(140 188 255 / 28%);\n\
+             --critical-text: #e8edf5;\n\
+             --critical-muted: #d0d9e5;\n\
+         \n\
+             /* Slightly stronger fills/stripes in dark mode to preserve distinction. */\n\
+             --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 24%, var(--surface));\n\
+             --stat-compound-border: color-mix(in srgb, var(--wd-compound) 42%, var(--border));\n\
+             --stat-compound-stripe: color-mix(in srgb, var(--wd-compound) 64%, #fff);\n\
+             --stat-taxon-bg: color-mix(in srgb, var(--wd-taxon) 24%, var(--surface));\n\
+             --stat-taxon-border: color-mix(in srgb, var(--wd-taxon) 42%, var(--border));\n\
+             --stat-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 64%, #fff);\n\
+             --stat-reference-bg: color-mix(in srgb, var(--wd-reference) 24%, var(--surface));\n\
+             --stat-reference-border: color-mix(in srgb, var(--wd-reference) 42%, var(--border));\n\
+             --stat-reference-stripe: color-mix(in srgb, var(--wd-reference) 64%, #fff);\n\
+             --stat-total-bg: color-mix(in srgb, var(--wd-entries) 20%, var(--surface));\n\
+             --stat-total-border: color-mix(in srgb, var(--wd-entries) 40%, var(--border));\n\
+             --stat-total-stripe: color-mix(in srgb, var(--wd-entries) 62%, #fff);\n\
+           }}\n\
+         }}",
+        RADIUS, RADIUS_SM,
+    )
 }
 
-img, svg, canvas, video {
-  max-width: 100%;
-  height: auto;
+fn global_base() -> String {
+    format!(
+        "body {{\n\
+           background: {};\n\
+           color: {};\n\
+           font-family: {};\n\
+           font-size: {};\n\
+           line-height: 1.52;\n\
+           min-height: 100vh;\n\
+           text-size-adjust: 100%;\n\
+           -webkit-font-smoothing: antialiased;\n\
+           -moz-osx-font-smoothing: grayscale;\n\
+           font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';\n\
+           font-optical-sizing: auto;\n\
+         }}\n\
+         \n\
+         fieldset {{ background: transparent; border: none; padding: 0; margin: 0; }}\n\
+         legend {{ background: transparent; color: {}; padding: 0; }}\n\
+         \n\
+         a {{ color: {}; text-decoration: none; transition: color {} ease; }}\n\
+         a:hover {{ text-decoration: underline; }}\n\
+         \n\
+         .page-archive-link,\n\
+         .notice a:not(.copy-btn),\n\
+         .curation-hint a,\n\
+         .footer-link,\n\
+         .welcome-inline-link {{\n\
+           text-decoration: underline;\n\
+           text-decoration-thickness: 0.08em;\n\
+           text-underline-offset: 0.14em;\n\
+         }}\n\
+         \n\
+         .page-archive-link:hover,\n\
+         .notice a:not(.copy-btn):hover,\n\
+         .curation-hint a:hover,\n\
+         .footer-link:hover,\n\
+         .welcome-inline-link:hover {{\n\
+           text-decoration-thickness: 0.11em;\n\
+         }}\n\
+         ::selection {{ background: color-mix(in srgb, {} 22%, transparent); color: {}; }}\n\
+         \n\
+         :focus-visible {{\n\
+           outline: {} solid {};\n\
+           outline-offset: {};\n\
+           border-radius: {};\n\
+         }}\n\
+         \n\
+         .sr-only {{\n\
+           position: absolute !important;\n\
+           width: 1px; height: 1px;\n\
+           padding: 0; margin: -1px;\n\
+           overflow: hidden; clip: rect(0,0,0,0);\n\
+           white-space: nowrap; border: 0;\n\
+         }}\n\
+         \n\
+         @keyframes spin    {{ to {{ transform: rotate(360deg); }} }}\n\
+         \n\
+         @keyframes fadeIn  {{ from {{ opacity:0; transform:translateY(4px) }} to {{ opacity:1; transform:none }} }}\n\
+         \n\
+         ::-webkit-scrollbar {{ width:6px; height:6px; }}\n\
+         ::-webkit-scrollbar-track {{ background: transparent; }}\n\
+         ::-webkit-scrollbar-thumb {{ background: {}; border-radius:3px; }}\n\
+         ::-webkit-scrollbar-thumb:hover {{ background: {}; }}",
+        BG,
+        TEXT,
+        FONT_SANS,
+        FS_BODY,
+        TEXT,
+        ACCENT,
+        TRANSITION_TIMING,
+        ACCENT,
+        TEXT,
+        FOCUS_OUTLINE_WIDTH,
+        ACCENT,
+        FOCUS_OUTLINE_OFFSET,
+        RADIUS_SM,
+        BORDER,
+        TEXT3,
+    )
 }
 
-/* Design tokens */
-:root {
-  color-scheme: light dark;
-
-  --bg:        #f6f8fb;
-  --bg2:       #fff;
-  --surface:   #fbfcfe;
-  --surface2:  #e7edf5;
-  --border:    #c3cfdd;
-  --text:      #111827;
-  --text2:     #233548;
-  --text3:     #516274;
-  --accent:    #0b5cab;
-  --accent2:   #084b8a;
-  --btn-primary-bg: #0b5cab;
-  --btn-primary-hover-bg: #084b8a;
-  --green:     #1f7a4d;
-  --red:       #b42318;
-  --yellow:    #8a4b0f;
-  --purple:    #6941c6;
-  --radius:    10px;
-  --radius-sm: 4px;
-  --shadow-xs: 0 1px 2px rgb(15 23 42 / 6%);
-  --shadow-sm: 0 4px 14px rgb(15 23 42 / 6%);
-  --shadow-md: 0 10px 30px rgb(15 23 42 / 9%);
-  --mono:      'Fira Code', ui-monospace, sfmono-regular, 'JetBrains Mono', consolas, monospace;
-  --sans:      'Inter', -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
-  --fs-0:      clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);
-  --fs-1:      clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
-  --fs-2:      clamp(0.9375rem, 0.9rem + 0.28vw, 1.0625rem);
-  --fs-3:      clamp(1.125rem, 1.02rem + 0.6vw, 1.5rem);
-  --fs-4:      clamp(1.375rem, 1.1rem + 0.85vw, 1.85rem);
-  --fs-body:   clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
-  --fs-label:  clamp(0.6875rem, 0.66rem + 0.14vw, 0.75rem);
-  --fs-micro:  clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);
-  --fs-ui:     clamp(0.8125rem, 0.785rem + 0.16vw, 0.875rem);
-  --fs-stat:   clamp(1.125rem, 1.02rem + 0.52vw, 1.375rem);
-  --tap-target-min: 40px;
-  --space-1:   6px;
-  --space-2:   10px;
-  --space-3:   14px;
-  --space-4:   20px;
-  --space-5:   28px;
-  --glass:     rgb(255 255 255 / 82%);
-  --ring:      0 0 0 3px rgb(11 92 171 / 22%);
-  --critical-text: #172535;
-  --critical-muted: #33475c;
-  --panel-bg: color-mix(in srgb, var(--surface) 92%, var(--bg2));
-  --panel-bg-soft: color-mix(in srgb, var(--surface) 88%, var(--bg2));
-  --panel-border: color-mix(in srgb, var(--border) 82%, transparent);
-  --results-border: var(--panel-border);
-  --panel-shadow: var(--shadow-xs);
-
-  /* Wikidata colour palette */
-  --wd-compound:  #900;
-  --wd-taxon:     #396;
-  --wd-reference: #069;
-  --wd-entries:   #484848;
-  --wd-compound-stripe: color-mix(in srgb, var(--wd-compound) 78%, #fff);
-  --wd-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 78%, #fff);
-  --wd-reference-stripe: color-mix(in srgb, var(--wd-reference) 78%, #fff);
-  --wd-entries-stripe: color-mix(in srgb, var(--wd-entries) 74%, #fff);
-  --wd-compound-soft-bg: color-mix(in srgb, var(--wd-compound) 12%, var(--surface));
-  --wd-compound-soft-border: color-mix(in srgb, var(--wd-compound) 34%, var(--results-border));
-  --wd-compound-soft-border-weak: color-mix(in srgb, var(--wd-compound) 30%, var(--results-border));
-  --wd-taxon-soft-bg: color-mix(in srgb, var(--wd-taxon) 12%, var(--surface));
-  --wd-taxon-soft-border: color-mix(in srgb, var(--wd-taxon) 34%, var(--results-border));
-  --wd-reference-soft-bg: color-mix(in srgb, var(--wd-reference) 14%, var(--surface));
-  --wd-reference-soft-border: color-mix(in srgb, var(--wd-reference) 34%, var(--results-border));
-  --wd-reference-soft-border-weak: color-mix(in srgb, var(--wd-reference) 30%, var(--results-border));
-
-  /* Stats palette tuned for readable contrast in light mode. */
-  --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 10%, var(--surface));
-  --stat-compound-border: color-mix(in srgb, var(--wd-compound) 30%, var(--border));
-  --stat-compound-stripe: color-mix(in srgb, var(--wd-compound) 78%, #fff);
-  --stat-taxon-bg: color-mix(in srgb, var(--wd-taxon) 11%, var(--surface));
-  --stat-taxon-border: color-mix(in srgb, var(--wd-taxon) 30%, var(--border));
-  --stat-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 78%, #fff);
-  --stat-reference-bg: color-mix(in srgb, var(--wd-reference) 10%, var(--surface));
-  --stat-reference-border: color-mix(in srgb, var(--wd-reference) 30%, var(--border));
-  --stat-reference-stripe: color-mix(in srgb, var(--wd-reference) 78%, #fff);
-  --stat-total-bg: color-mix(in srgb, var(--wd-entries) 8%, var(--surface));
-  --stat-total-border: color-mix(in srgb, var(--wd-entries) 28%, var(--border));
-  --stat-total-stripe: color-mix(in srgb, var(--wd-entries) 74%, #fff);
+fn controls_and_forms() -> String {
+    format!(
+        "/* Forms */\n\
+         .form-input, .form-textarea {{\n\
+           background:{}; border:1px solid {};\n\
+           border-radius:{}; color:{};\n\
+           padding:{} {}; font-size:{}; width:100%;\n\
+           font-family:{}; transition:border-color {};\n\
+         }}\n\
+         .form-input:focus, .form-textarea:focus {{ outline:none; border-color:{}; }}\n\
+         .form-input.sm {{ width:90px; }}\n\
+         \n\
+         /* Loading */\n\
+         .spinner-lg {{ width:40px; height:40px; border:3px solid {}; border-top-color:{}; border-radius:50%; animation:spin .8s linear infinite; }}\n\
+         .spinner-sm {{ width:14px; height:14px; border:2px solid rgb(255 255 255 / 30%); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; }}\n\
+         .loading-state {{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:{}; padding:{}; color:{}; flex:1; }}\n\
+         .loading-hint  {{ font-size:{}; color:{}; }}\n\
+         \n\
+         /* Pagination / empty */\n\
+         .pagination-bar {{ display:flex; align-items:center; justify-content:space-between; gap:{}; padding:8px 0; }}\n\
+         .page-info {{ font-size:{}; color:{}; }}\n\
+         .empty-state {{ display:flex; flex-direction:column; align-items:center; gap:{}; padding:{} {}; color:{}; }}",
+        SURFACE,
+        BORDER,
+        RADIUS_SM,
+        TEXT,
+        FORM_INPUT_PADDING_V,
+        FORM_INPUT_PADDING_H,
+        FS_UI,
+        FONT_SANS,
+        TRANSITION_TIMING,
+        ACCENT,
+        BORDER,
+        ACCENT,
+        GAP_LG,
+        LOADING_STATE_PADDING,
+        TEXT2,
+        FS_0,
+        TEXT3,
+        GAP_MD,
+        FS_0,
+        TEXT2,
+        GAP_MD,
+        EMPTY_STATE_PADDING_V,
+        EMPTY_STATE_PADDING_H,
+        TEXT2,
+    )
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg:        #10141b;
-    --bg2:       #171d26;
-    --surface:   #1f2733;
-    --surface2:  #2a3443;
-    --border:    #38475a;
-    --text:      #eef4fb;
-    --text2:     #d5deea;
-    --text3:     #a7b4c7;
-    --accent:    #8cbcff;
-    --accent2:   #5e98f3;
-    --btn-primary-bg: #0b5cab;
-    --btn-primary-hover-bg: #285fcc;
-    --green:     #4cc38a;
-    --red:       #ff8a80;
-    --yellow:    #f0b35e;
-    --purple:    #c3a0ff;
-    --shadow-xs: 0 1px 2px rgb(0 0 0 / 45%);
-    --shadow-sm: 0 4px 14px rgb(0 0 0 / 35%);
-    --shadow-md: 0 10px 30px rgb(0 0 0 / 35%);
-    --glass:     rgb(22 27 34 / 78%);
-    --ring:      0 0 0 3px rgb(140 188 255 / 28%);
-    --critical-text: #e8edf5;
-    --critical-muted: #d0d9e5;
-
-    /* Slightly stronger fills/stripes in dark mode to preserve distinction. */
-    --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 24%, var(--surface));
-    --stat-compound-border: color-mix(in srgb, var(--wd-compound) 42%, var(--border));
-    --stat-compound-stripe: color-mix(in srgb, var(--wd-compound) 64%, #fff);
-    --stat-taxon-bg: color-mix(in srgb, var(--wd-taxon) 24%, var(--surface));
-    --stat-taxon-border: color-mix(in srgb, var(--wd-taxon) 42%, var(--border));
-    --stat-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 64%, #fff);
-    --stat-reference-bg: color-mix(in srgb, var(--wd-reference) 24%, var(--surface));
-    --stat-reference-border: color-mix(in srgb, var(--wd-reference) 42%, var(--border));
-    --stat-reference-stripe: color-mix(in srgb, var(--wd-reference) 64%, #fff);
-    --stat-total-bg: color-mix(in srgb, var(--wd-entries) 20%, var(--surface));
-    --stat-total-border: color-mix(in srgb, var(--wd-entries) 40%, var(--border));
-    --stat-total-stripe: color-mix(in srgb, var(--wd-entries) 62%, #fff);
-  }
-}
-";
-
-const GLOBAL_BASE: &str = r"
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: var(--fs-body);
-  line-height: 1.52;
-  min-height: 100vh;
-  text-size-adjust: 100%;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  font-optical-sizing: auto;
+fn reduced_motion_and_perf() -> String {
+    "@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {\n\
+     .sidebar,\n\
+     .main-content,\n\
+     .page-header {\n\
+       background: var(--bg2);\n\
+     }\n\
+   }\n\
+   \n\
+   @media (prefers-reduced-motion: reduce), (update: slow) {\n\
+     .data-row:hover,\n\
+     .id-badge:hover {\n\
+       transform: none;\n\
+     }\n\
+     \n\
+     /* Always show copy button at full opacity — no hover-fade when motion is reduced */\n\
+     .query-copy-btn { opacity: 1; }\n\
+     \n\
+     .data-row,\n\
+     .id-badge,\n\
+     .page-header-meta,\n\
+     .query-panel,\n\
+     .ketcher-panel,\n\
+     .table-scroll,\n\
+     .notice {\n\
+       transition: none;\n\
+     }\n\
+   }\n\
+   \n\
+   @media (prefers-reduced-data: reduce) {\n\
+     body {\n\
+       background: var(--bg);\n\
+     }\n\
+     \n\
+     .sidebar,\n\
+     .main-content,\n\
+     .page-header,\n\
+     .results-toolbar,\n\
+     .stat-badge,\n\
+     .query-panel,\n\
+     .table-scroll,\n\
+     .ketcher-panel,\n\
+     .notice {\n\
+       box-shadow: none;\n\
+       backdrop-filter: none;\n\
+       background-image: none;\n\
+     }\n\
+   }"
+    .to_string()
 }
 
-fieldset { background: transparent; border: none; padding: 0; margin: 0; }
-legend { background: transparent; color: var(--text); padding: 0; }
-
-a { color: var(--accent); text-decoration: none; transition: color .15s ease; }
-a:hover { text-decoration: underline; }
-
-.page-archive-link,
-.notice a:not(.copy-btn),
-.curation-hint a,
-.footer-link,
-.welcome-inline-link {
-  text-decoration: underline;
-  text-decoration-thickness: 0.08em;
-  text-underline-offset: 0.14em;
+fn large_screen() -> String {
+    "/* Large-screen refinements (≥ 1440 px) */\n\
+     \n\
+     /* Give the main panel uniform, more generous horizontal spacing so every\n\
+        section — header, notices, meta bar, share bar, results — shares the same gutter. */\n\
+     @media (width >= 1440px) {\n\
+       .page-header { padding-left: 32px; padding-right: 32px; }\n\
+       .page-header-meta { margin-left: 32px; margin-right: 32px; }\n\
+       \n\
+       /* share-bar mirrors page-header-meta margin */\n\
+       .share-bar { margin-left: 32px; margin-right: 32px; }\n\
+       \n\
+       /* flex-container children keep their own zero margin */\n\
+       .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }\n\
+       \n\
+       .main-content > .notice {\n\
+         padding-left: 32px;\n\
+         padding-right: 32px;\n\
+       }\n\
+       .results-wrap { padding-left: 32px; padding-right: 32px; }\n\
+       .curation-wrap { padding-left: 32px; padding-right: 32px; }\n\
+       .draw-wrap     { padding-left: 32px; padding-right: 32px; }\n\
+     }\n\
+     \n\
+     /* Removed max-width constraint to allow stats and results to expand freely\n\
+        on wide monitors, matching the behavior of share and hashes panels. */"
+        .to_string()
 }
-
-.page-archive-link:hover,
-.notice a:not(.copy-btn):hover,
-.curation-hint a:hover,
-.footer-link:hover,
-.welcome-inline-link:hover {
-  text-decoration-thickness: 0.11em;
-}
-::selection { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); }
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-.sr-only {
-  position: absolute !important;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0);
-  white-space: nowrap; border: 0;
-}
-
-@keyframes spin    { to { transform: rotate(360deg); } }
-
-@keyframes fadeIn  { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:none } }
-
-::-webkit-scrollbar { width:6px; height:6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius:3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text3); }
-";
-
-const CONTROLS_AND_FORMS: &str = r"
-/* Forms */
-.form-input, .form-textarea {
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:var(--radius-sm); color:var(--text);
-  padding:9px 11px; font-size:var(--fs-ui); width:100%;
-  font-family:var(--sans); transition:border-color .15s;
-}
-.form-input:focus, .form-textarea:focus { outline:none; border-color:var(--accent); }
-.form-input.sm { width:90px; }
-
-/* Loading */
-.spinner-lg { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
-.spinner-sm { width:14px; height:14px; border:2px solid rgb(255 255 255 / 30%); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; }
-.loading-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:48px; color:var(--text2); flex:1; }
-.loading-hint  { font-size:var(--fs-0); color:var(--text3); }
-
-/* Pagination / empty */
-.pagination-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; }
-.page-info { font-size:var(--fs-0); color:var(--text2); }
-.empty-state { display:flex; flex-direction:column; align-items:center; gap:12px; padding:64px 24px; color:var(--text2); }
-";
-
-const REDUCED_AND_PERF: &str = r"
-@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
-  .sidebar,
-  .main-content,
-  .page-header {
-    background: var(--bg2);
-  }
-}
-
-@media (prefers-reduced-motion: reduce), (update: slow) {
-  .data-row:hover,
-  .id-badge:hover {
-    transform: none;
-  }
-
-  /* Always show copy button at full opacity — no hover-fade when motion is reduced */
-  .query-copy-btn { opacity: 1; }
-
-  .data-row,
-  .id-badge,
-  .page-header-meta,
-  .query-panel,
-  .ketcher-panel,
-  .table-scroll,
-  .notice {
-    transition: none;
-  }
-}
-
-@media (prefers-reduced-data: reduce) {
-  body {
-    background: var(--bg);
-  }
-
-  .sidebar,
-  .main-content,
-  .page-header,
-  .results-toolbar,
-  .stat-badge,
-  .query-panel,
-  .table-scroll,
-  .ketcher-panel,
-  .notice {
-    box-shadow: none;
-    backdrop-filter: none;
-    background-image: none;
-  }
-}
-";
-
-const LARGE_SCREEN: &str = r"
-/* Large-screen refinements (≥ 1440 px) */
-
-/* Give the main panel uniform, more generous horizontal spacing so every
-   section — header, notices, meta bar, share bar, results — shares the same gutter. */
-@media (width >= 1440px) {
-  .page-header { padding-left: 32px; padding-right: 32px; }
-  .page-header-meta { margin-left: 32px; margin-right: 32px; }
-
-  /* share-bar mirrors page-header-meta margin */
-  .share-bar { margin-left: 32px; margin-right: 32px; }
-
-  /* flex-container children keep their own zero margin */
-  .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
-
-  .main-content > .notice {
-    padding-left: 32px;
-    padding-right: 32px;
-  }
-  .results-wrap { padding-left: 32px; padding-right: 32px; }
-  .curation-wrap { padding-left: 32px; padding-right: 32px; }
-  .draw-wrap     { padding-left: 32px; padding-right: 32px; }
-}
-
-/* Removed max-width constraint to allow stats and results to expand freely
-   on wide monitors, matching the behavior of share and hashes panels. */
-";
 
 pub fn css() -> String {
     [
-        RESET_AND_TOKENS,
-        GLOBAL_BASE,
-        CONTROLS_AND_FORMS,
-        REDUCED_AND_PERF,
-        LARGE_SCREEN,
+        reset_and_tokens(),
+        global_base(),
+        controls_and_forms(),
+        reduced_motion_and_perf(),
+        large_screen(),
     ]
     .join("\n\n")
 }

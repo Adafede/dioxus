@@ -33,12 +33,10 @@ pub fn table_sort_button() -> String {
         .display("inline-flex")
         .align_items("center")
         .gap(tokens::GAP_XS)
-        .background_color("transparent")
-        .border("none")
         .cursor("pointer")
         .font_weight("700")
         .padding("0")
-        .color("inherit")
+        .border("none")
         .build()
 }
 
