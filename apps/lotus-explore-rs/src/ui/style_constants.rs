@@ -284,6 +284,7 @@ pub mod primary_buttons {
             .background_color("var(--btn-primary-bg)")
             .color("#fff")
             .box_shadow("var(--shadow-xs)")
+            .property("max-width", "240px")
             .property(
                 "transition",
                 "background .15s, box-shadow .15s, transform .12s ease",
