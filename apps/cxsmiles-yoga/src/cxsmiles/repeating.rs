@@ -21,7 +21,9 @@ pub fn build_repeating(group: &[Molecule]) -> CxResult_ {
     let mut ordered = group.to_vec();
     ordered.sort_by_key(Molecule::atom_count);
     let shortest = &ordered[0];
-    let longest = ordered.last().unwrap();
+    let longest = ordered
+        .last()
+        .expect("build_repeating: group is non-empty by the caller invariant");
 
     let scaffold_smiles = write(shortest);
     let scaffold =
@@ -145,7 +147,9 @@ pub fn locate_repeat_in_scaffold(
                 }
                 continue;
             }
-            let cur = *frag.last().unwrap();
+            let cur = *frag
+                .last()
+                .expect("frag is non-empty: the stack only holds fragments with ≥1 atom");
             for (nbr, _) in scaffold.neighbors(AtomIdx(cur)) {
                 if !frag.contains(&nbr.0) {
                     let mut nf = frag.clone();
@@ -226,7 +230,11 @@ pub fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> M
             }
         })
         .collect();
-    let pos_in_unit = |x: u32| -> usize { unit.iter().position(|&v| v == x).unwrap() };
+    let pos_in_unit = |x: u32| -> usize {
+        unit.iter()
+            .position(|&v| v == x)
+            .expect("endpoint atom must occur within the repeat unit")
+    };
     let rpos_a = pos_in_unit(ep_a);
     let rpos_b = pos_in_unit(ep_b);
 

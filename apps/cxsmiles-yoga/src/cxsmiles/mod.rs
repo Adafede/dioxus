@@ -103,7 +103,10 @@ pub fn generate_cxsmiles(smiles: &[String]) -> CxResult_ {
 
     let clusters = cluster(&mols, CLUSTER_TANIMOTO);
     let group: Vec<Molecule> = if clusters.iter().map(Vec::len).max().unwrap_or(0) >= 2 {
-        clusters.into_iter().max_by_key(Vec::len).unwrap()
+        clusters
+            .into_iter()
+            .max_by_key(Vec::len)
+            .expect("cluster selection: non-empty by the ≥2-cluster guard")
     } else {
         mols
     };

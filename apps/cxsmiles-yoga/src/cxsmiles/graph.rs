@@ -73,7 +73,11 @@ pub fn subgraph(mol: &Molecule, keep: &[bool]) -> Molecule {
     for (_, be) in mol.bonds() {
         let (a, c) = (be.atom1.0 as usize, be.atom2.0 as usize);
         if keep[a] && keep[c] {
-            let _ = b.add_bond(map[a].unwrap(), map[c].unwrap(), be.order);
+            let _ = b.add_bond(
+                map[a].expect("keep[a] guarantees the atom was mapped"),
+                map[c].expect("keep[c] guarantees the atom was mapped"),
+                be.order,
+            );
         }
     }
     b.build()
@@ -116,7 +120,7 @@ pub fn best_match(q: &QueryMolecule, mol: &Molecule) -> Result<Match, CxError> {
         .iter()
         .min_by_key(|h| mol.atom_count() - h.len())
         .cloned()
-        .unwrap())
+        .expect("hits non-empty: the empty case returns Err early above"))
 }
 
 pub fn unmatched_count(h: &Match, mol: &Molecule) -> usize {
