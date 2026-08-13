@@ -122,12 +122,27 @@ pub fn CappedRowsNotice() -> Element {
                 tone: NoticeTone::Warning,
                 role: "status",
                 aria_live: "polite",
-                dark: true,
+                dark: is_dark_mode(),
                 margin: "10px 0 0",
                 span { style: notice_value_style(), "{t(locale, TextKey::DisplayCappedHint)}" }
             }
         }
     }
+}
+
+/// Detect if the system is in dark mode.
+fn is_dark_mode() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(window) = web_sys::window() {
+            if let Ok(media) = window.match_media("(prefers-color-scheme: dark)") {
+                if let Some(media_query) = media {
+                    return media_query.matches();
+                }
+            }
+        }
+    }
+    false
 }
 
 fn stat_badge_style(stripe: StatStripe) -> String {

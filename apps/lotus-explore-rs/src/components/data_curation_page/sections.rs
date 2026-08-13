@@ -82,11 +82,26 @@ pub fn StatusNotice(locale: Locale, message: Arc<str>) -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            dark: true,
+            dark: is_dark_mode(),
             margin: "0",
             span { style: curation_notice_value_style(), "{message}" }
         }
     }
+}
+
+/// Detect if the system is in dark mode.
+fn is_dark_mode() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(window) = web_sys::window() {
+            if let Ok(media) = window.match_media("(prefers-color-scheme: dark)") {
+                if let Some(media_query) = media {
+                    return media_query.matches();
+                }
+            }
+        }
+    }
+    false
 }
 
 #[component]
@@ -158,7 +173,7 @@ pub fn AddRowCard(
                     "{button_add_row(locale)}"
                 }
                 button {
-                    class: "btn btn-sm btn-soft-accent",
+                    style: button_primary_sm_style(),
                     r#type: "button",
                     disabled: processing,
                     onclick: move |_| on_load_examples.call(()),

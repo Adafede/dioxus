@@ -220,7 +220,7 @@ pub mod primary_buttons {
             .font_weight("600")
             .cursor("pointer")
             .background_color("var(--btn-primary-bg)")
-            .color("var(--text)")
+            .color("#fff")
             .box_shadow("var(--shadow-xs)")
             .property(
                 "transition",
@@ -243,7 +243,7 @@ pub mod primary_buttons {
             .font_weight("600")
             .cursor("pointer")
             .background_color("var(--btn-primary-bg)")
-            .color("var(--text)")
+            .color("#fff")
             .build()
     }
 
@@ -261,7 +261,7 @@ pub mod primary_buttons {
             .font_weight("600")
             .cursor("pointer")
             .background_color("var(--btn-primary-bg)")
-            .color("var(--text)")
+            .color("#fff")
             .property("width", "100%")
             .build()
     }

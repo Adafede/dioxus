@@ -235,7 +235,7 @@ const CONTROLS_AND_FORMS: &str = r"
   box-shadow: var(--shadow-sm);
 }
 .btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--btn-primary-bg); border-color: var(--btn-primary-bg); color: var(--text); }
+.btn-primary { background: var(--btn-primary-bg); border-color: var(--btn-primary-bg); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--btn-primary-hover-bg); border-color: var(--btn-primary-hover-bg); }
 
 .btn-soft-accent {

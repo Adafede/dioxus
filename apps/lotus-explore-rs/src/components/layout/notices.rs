@@ -21,6 +21,21 @@ use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
 
+/// Detect if the system is in dark mode.
+fn is_dark_mode() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(window) = web_sys::window() {
+            if let Ok(media) = window.match_media("(prefers-color-scheme: dark)") {
+                if let Some(media_query) = media {
+                    return media_query.matches();
+                }
+            }
+        }
+    }
+    false
+}
+
 /// Share URL notice — shows the current shareable URL with a copy button.
 #[component]
 pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
@@ -36,7 +51,7 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            dark: true,
+            dark: is_dark_mode(),
             input {
                 id: share_input_id,
                 r#type: "text",
@@ -71,7 +86,7 @@ pub fn TaxonNotice() -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            dark: true,
+            dark: is_dark_mode(),
             span { style: notice_value_style(), "{text}" }
         }
     }
@@ -101,7 +116,7 @@ pub fn ErrorNotice() -> Element {
             tone: NoticeTone::Warning,
             role: "alert",
             aria_live: "assertive",
-            dark: true,
+            dark: is_dark_mode(),
             span { style: notice_value_style(), "{msg}" }
             span { style: notice_value_style(), "{error_hint_text(locale, kind)}" }
             if recovery::should_show_retry_button(domain_err) && !*is_loading.read() {
