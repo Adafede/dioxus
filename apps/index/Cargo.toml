@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.97"
 description = "Landing page for Dioxus experiments — accessible, type-safe, showcasing best practices"
 license = "AGPL-3.0-only"
-keywords = ["dioxus", "landing", "web", "wasm", "accessibility"]
+keywords = ["accessibility", "dioxus", "landing", "wasm", "web"]
 categories = ["wasm", "web-programming"]
 publish = false
 

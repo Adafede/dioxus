@@ -5,15 +5,15 @@ edition = "2024"
 rust-version = "1.97"
 description = "Web app for generating CX-SMILES from lists of related structures — collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n: blocks) via maximum common substructure"
 license = "AGPL-3.0-only"
-keywords = ["dioxus", "wasm", "cheminformatics", "smiles", "cxsmiles"]
-categories = ["wasm", "web-programming", "science"]
+keywords = ["cheminformatics", "cxsmiles", "dioxus", "smiles", "wasm"]
+categories = ["science", "wasm", "web-programming"]
 publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-chematic = { version = "=0.4.27", default-features = false, features = ["smiles", "smarts", "chem", "fp", "depict"] }
+chematic = { version = "=0.4.27", default-features = false, features = ["chem", "depict", "fp", "smarts", "smiles"] }
 dioxus = { workspace = true }
 gloo-timers = { workspace = true }
 rustc-hash = "2"
@@ -22,7 +22,7 @@ ui = { path = "../../crates/ui", version = "0.1" }
 upload = { path = "../../crates/upload", version = "0.1" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { workspace = true, features = ["Window", "Navigator", "Clipboard"] }
+web-sys = { workspace = true, features = ["Clipboard", "Navigator", "Window"] }
 
 [lints]
 workspace = true

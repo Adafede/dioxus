@@ -8,7 +8,7 @@ license = "AGPL-3.0-only"
 description = "Unified UI design system for Dioxus applications using pure Rust styling"
 repository = "https://github.com/adafede/dioxus"
 publish = false
-keywords = ["dioxus", "ui", "design-system", "accessibility", "components"]
+keywords = ["accessibility", "components", "design-system", "dioxus", "ui"]
 categories = ["gui", "web-programming"]
 
 [dependencies]

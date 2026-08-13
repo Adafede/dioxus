@@ -2,8 +2,8 @@
 # Prevent typos from flagging project-specific tokens and acronyms
 [files]
 extend-exclude = [
-"apps/**/public/assets/",
-"**/i18n/**",
+  "apps/**/public/assets/",
+  "**/i18n/**",
 ]
 
 [default.extend-words]

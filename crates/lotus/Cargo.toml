@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.97"
 description = "LOTUS domain models, SPARQL query construction, and result parsing for Wikidata/QLever"
 license = "AGPL-3.0-only"
-keywords = ["sparql", "wasm", "wikidata", "lotus", "natural-products"]
+keywords = ["lotus", "natural-products", "sparql", "wasm", "wikidata"]
 categories = ["science", "web-programming"]
 publish = false
 
@@ -16,15 +16,15 @@ log = { workspace = true }
 upload = { path = "../upload", version = "0.1" }
 urlencoding = { workspace = true }
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-reqwest = { workspace = true, features = [] }
-js-sys = { workspace = true }
-wasm-bindgen = { workspace = true }
-web-sys = { workspace = true, features = ["Window"] }
-
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 reqwest = { workspace = true }
 tempfile = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }
+reqwest = { workspace = true, features = [] }
+wasm-bindgen = { workspace = true }
+web-sys = { workspace = true, features = ["Window"] }
 
 [lints]
 workspace = true
