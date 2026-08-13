@@ -88,7 +88,7 @@ pub fn lotus_reference_cell_style() -> String {
         .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
         .property(
             "box-shadow",
-            "inset 3px 0 0 rgb(185 65 104 / 42%), inset 0 0 0 1px var(--results-border)",
+            "inset 3px 0 0 rgb(0 102 153 / 42%), inset 0 0 0 1px var(--results-border)",
         )
         .property("min-width", "0")
         .build()

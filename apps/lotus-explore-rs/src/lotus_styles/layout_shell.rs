@@ -301,6 +301,8 @@ fn search_panel() -> String {
          .sidebar-logo-wrap {{ padding:{} 8px 8px; display:flex; justify-content:center; border-top:1px solid {}; margin-top:auto; }}\n\
          \n\
          .sidebar-logo {{ display:block; width:128px; height:128px; }}\n\
+         .view-switch {{ margin-top: 10px; display: flex; gap: 8px; }}\n\
+         .view-switch .btn {{ font-weight: 700; }}\n\
          .view-switch [role=\"group\"] {{ background: transparent !important; border-color: {} !important; }}\n\
          .lang-switch [role=\"group\"] {{ background: transparent !important; border-color: {} !important; }}\n\
          @media (max-width: 768px) {{\n\
