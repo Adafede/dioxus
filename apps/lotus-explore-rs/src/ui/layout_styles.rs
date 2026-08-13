@@ -202,6 +202,7 @@ pub fn lotus_sort_button_style() -> String {
         .property("min-width", "max-content")
         .background_color("transparent")
         .border("none")
+        .color("inherit")
         .build()
 }
 
