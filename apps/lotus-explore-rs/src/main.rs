@@ -158,7 +158,6 @@ mod app_state;
 mod components;
 mod core;
 mod curation;
-mod data;
 mod document_head;
 mod download;
 mod export;

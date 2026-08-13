@@ -8,7 +8,7 @@
 /// Type alias for the raw response body bytes returned by the transport layer.
 pub type ResponseBody = bytes::Bytes;
 
-/// Default `QLever` endpoint for Wikidata (used by lotus-explorer).
+/// Default `QLever` endpoint for Wikidata (used by lotus-explore-rs).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
 /// Maximum number of HTTP retry attempts before giving up.
 pub(super) const MAX_HTTP_ATTEMPTS: u32 = 2;

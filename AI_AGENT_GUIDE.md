@@ -2,11 +2,40 @@
 
 ## Workspace map
 
-- `apps/lotus-explorer` --- Dioxus WASM explorer for LOTUS linked-open-data
-  workflows.
-- `apps/lotus-api` --- native Axum API for search execution, export URLs, and
-  exports.
-- `crates/shared` --- shared SPARQL and LOTUS data helpers.
+The workspace is a Cargo monorepo with two top-level groups plus the crates that
+back them.
+
+**Shared crates (`crates/`)** --- consumed by the apps; the source of truth, not
+the apps:
+
+- `crates/lotus` --- LOTUS domain models, SPARQL query builders, and
+  platform-agnostic SPARQL-over-HTTP transport. The single shared data core for
+  `lotus-api` and `lotus-explore-rs`.
+- `crates/ui` --- unified, type-safe Dioxus design system: reusable components
+  (`Button`, `Card`, `Footer`, `Header`, `NoticeBar`, `SegmentedControl`),
+  `DocumentHead`/`DocumentLinks`, pure-Rust style builders (`styles::*`), and
+  theme primitives (`theme::*`). All apps depend on `ui`; prefer it over
+  inlining styles.
+- `crates/upload` --- WASM streaming file I/O (`BlobCursor`, `BlobLines`),
+  throttled progress, and unified download helpers. The shared upload/download
+  crate for every upload-based WASM app.
+
+**Applications (`apps/`)** --- thin shells over the shared crates:
+
+- `apps/index` --- accessible landing page (WASM).
+- `apps/json-count-rs` --- count non-null fields in uploaded JSON (WASM).
+- `apps/lipid-selecto-rs` --- lipid classification & filtering via SMARTS
+  (WASM).
+- `apps/cxsmiles-yoga` --- CX-SMILES generation from related structures (WASM).
+- `apps/smellfish-rs` --- NP-likeness scoring with RDKit.js + QLever (WASM).
+- `apps/lotus-explore-rs` --- LOTUS Knowledge Explorer, LOTUS/Wikidata/QLever
+  SPARQL explorer (WASM). Its `src/` is layered: `main.rs` (facades: `api`,
+  `models`, `queries`, `sparql`, `state`, `repositories`, `services`,
+  `curation`, `ui`) wires up `src/features/` (`explore` engine, `curation`
+  workflow) and `src/components/`/`src/pages/` (UI).
+- `apps/mgf-precursor-erro-rs` --- MGF precursor mass-error analysis (WASM +
+  lib).
+- `apps/lotus-api` --- native Axum API for LOTUS search and exports.
 
 ## Stable commands
 
@@ -18,7 +47,7 @@ cargo doc --workspace --no-deps --locked
 ```
 
 ```bash
-dx serve --package lotus-explorer
+dx serve --package lotus-explore-rs
 cargo run --locked -p lotus-api
 ```
 
@@ -31,13 +60,15 @@ cargo run --locked -p lotus-api
 
 ## Safety rules
 
-- Prefer to use deterministic behavior over hidden state.
+- Prefer deterministic behavior over hidden state.
 - Do not add new dependencies unless required by the architecture.
 - Keep user-facing behavior stable unless a change is explicitly requested.
 - Favor typed contracts, explicit errors, and narrow ownership.
+- Prefer `crates/ui` components/styles and `crates/upload`/`crates/lotus` over
+  reimplementing the same concern in an app.
 
 ## References
 
-- Architecture: `apps/lotus-explorer/docs/ARCHITECTURE.md`
-- Skills: `apps/lotus-explorer/SKILLS.md`
+- Architecture: `apps/lotus-explore-rs/docs/ARCHITECTURE.md`
+- Skills: `apps/lotus-explore-rs/SKILLS.md`
 - AI contribution guide: `.github/CONTRIBUTING_AI.md`

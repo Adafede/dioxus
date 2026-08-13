@@ -12,7 +12,8 @@ Please do not open public issues for vulnerabilities.
 Report privately by email to the maintainers listed in the organization profile,
 including:
 
-- affected crate/app (`lotus-api`, `lotus-explorer`, `shared`, etc.)
+- affected crate/app (`lotus-api`, `lotus-explore-rs`, `crates/lotus`,
+  `crates/ui`, `crates/upload`, etc.)
 - reproduction steps or proof-of-concept
 - expected impact and scope
 - suggested fix (if available)

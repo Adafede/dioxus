@@ -20,7 +20,7 @@ pub struct AppInfo {
     pub id: &'static str,
     /// Emoji and title (e.g., "🪷 LOTUS Wikidata Explorer").
     pub title: &'static str,
-    /// Relative path to application (e.g., "./lotus-explorer/").
+    /// Relative path to application (e.g., "./lotus-explore-rs/").
     pub path: &'static str,
     /// Short, clear description of functionality.
     pub description: &'static str,

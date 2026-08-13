@@ -20,6 +20,9 @@ A Cargo workspace for reproducible Dioxus web apps, pinned by
   mass errors in Da and ppm.
 - **lipid-selecto-rs** classifies and filters lipid mass-spec data using LIPID
   MAPS-aligned SMARTS rules.
+- **cxsmiles-yoga** generates CX-SMILES from lists of related structures by
+  collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n:
+  blocks).
 - **smellfish-rs** scores natural-product-like structures with literature-backed
   features and RDKit.js chemistry descriptors.
 
@@ -49,7 +52,8 @@ dioxus-apps/
 │   ├── mgf-precursor-erro-rs/← MGF precursor mass-error analysis (WASM + lib)
 │   ├── lotus-api/            ← OpenAPI service for LOTUS search and exports (native)
 │   ├── lotus-explore-rs/     ← LOTUS Wikidata natural-product explorer (WASM)
-│   └── smellfish-rs/         ← NP-likeness scoring, RDKit.js integration (WASM + lib)
+│   ├── smellfish-rs/         ← NP-likeness scoring, RDKit.js integration (WASM + lib)
+│   └── cxsmiles-yoga/        ← CX-SMILES generation from related structures (WASM + lib)
 └── crates/
     ├── lotus/                ← SPARQL client, LOTUS models, transport, export
     ├── upload/               ← shared file-upload, progress, and blob utilities
@@ -63,6 +67,7 @@ Apps marked **(WASM + lib)** have a `lib.rs` alongside `main.rs` to enable
 
 ```bash
 dx serve --package lotus-explore-rs
+dx serve --package cxsmiles-yoga
 cargo run --locked -p lotus-api
 dx serve --package json-count-rs
 dx serve --package index
@@ -75,6 +80,7 @@ dx serve --package smellfish-rs
 
 ```bash
 dx build --release --package lotus-explore-rs
+dx build --release --package cxsmiles-yoga
 dx build --release --package json-count-rs
 dx build --release --package index
 dx build --release --package lipid-selecto-rs

@@ -8,7 +8,7 @@
 //! - **No external CSS files**: All styling defined as Rust constants via [`theme`]
 //! - **Type-safe theming**: Compile-time checked colors, spacing, typography
 //! - **Accessible components**: WCAG AAA contrast, keyboard navigation, semantic HTML
-//! - **Lotus aesthetic**: Clean, professional design inspired by lotus-explorer
+//! - **Lotus aesthetic**: Clean, professional design inspired by lotus-explore-rs
 //! - **Zero runtime overhead**: All styles inline, no dynamic CSS generation
 //!
 //! # Example
