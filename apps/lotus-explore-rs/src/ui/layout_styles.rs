@@ -157,21 +157,16 @@ pub fn lotus_page_archive_link_style() -> String {
 // TABLE HEADER STYLES
 // ============================================================================
 
-/// Table header cell: uppercase label with border and padding.
+/// Table header cell: simple styling with padding and border.
 pub fn lotus_table_header_cell_style() -> String {
     StyleBuilder::new()
         .padding("9px 10px")
         .text_align("left")
         .font_size("var(--fs-label)")
         .font_weight("700")
-        .color("var(--critical-muted)")
         .border_bottom("1px solid var(--results-border)")
         .property("white-space", "nowrap")
         .property("user-select", "none")
-        .property("text-transform", "uppercase")
-        .property("letter-spacing", "0.08em")
-        .property("width", "auto")
-        .property("min-width", "max-content")
         .build()
 }
 

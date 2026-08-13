@@ -21,31 +21,27 @@ fn curation_notice_and_input() -> String {
            border-radius: {};\n\
            padding: {} {};\n\
            min-height: 34px;\n\
-           background: color-mix(in srgb, {} 44%, {});\n\
+           background: {};\n\
            color: {};\n\
            font-weight: 600;\n\
            cursor: pointer;\n\
-           transition: background {} ease, border-color {} ease;\n\
+           box-shadow: var(--shadow-xs);\n\
+           transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;\n\
          }}\n\
          \n\
          .curation-file-input::file-selector-button:hover {{\n\
-           background: color-mix(in srgb, {} 68%, {});\n\
-           border-color: color-mix(in srgb, {} 84%, {});\n\
+           background: color-mix(in srgb, {} 12%, var(--accent));\n\
+           border-color: {};\n\
          }}",
         FILE_BUTTON_PADDING_H,
         PANEL_BORDER,
         RADIUS_SM,
         FILE_BUTTON_PADDING_V,
         FILE_BUTTON_PADDING_H,
-        SURFACE2,
         SURFACE,
         TEXT,
-        TRANSITION_TIMING,
-        TRANSITION_TIMING,
-        SURFACE2,
         SURFACE,
         BORDER,
-        ACCENT,
     )
 }
 
