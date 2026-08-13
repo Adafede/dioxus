@@ -275,6 +275,10 @@ pub fn export_cache_put(state: &AppState, key: String, value: ExportUrlResponse)
 }
 
 pub fn search_inflight_cell(state: &AppState, key: &str) -> (InFlightSearch, bool) {
+    // `Mutex::lock` errors only on poison (a holder thread panicked while
+    // holding the guard). These critical sections are infallible, so a poisoned
+    // lock is treated as a hard failure — `into_inner()` recovery would mask
+    // the underlying panic.
     let existing = state
         .search_inflight
         .lock()
@@ -307,6 +311,7 @@ pub fn search_inflight_remove(state: &AppState, key: &str, cell: &InFlightSearch
 }
 
 pub fn export_inflight_cell(state: &AppState, key: &str) -> (InFlightExport, bool) {
+    // As in `search_inflight_cell`: a poisoned lock is a hard failure.
     let existing = state
         .export_inflight
         .lock()

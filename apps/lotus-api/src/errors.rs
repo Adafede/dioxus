@@ -68,6 +68,19 @@ impl From<SharedApiError> for ApiError {
     }
 }
 
+// `http::response::Builder::body` returns `Result<_, http::Error>`. The only
+// ways it can fail are invalid header names/values or a body that fails to
+// encode — both impossible with the static literals used in handlers.rs, but
+// propagating the typed `ApiError` (500) is strictly safer than `.expect`.
+impl From<axum::http::Error> for ApiError {
+    fn from(err: axum::http::Error) -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            message: format!("response builder: {err}"),
+        }
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let body = Json(ErrorResponse {

@@ -38,13 +38,15 @@ pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     path = "/metrics",
     responses((status = 200, description = "Prometheus-style runtime metrics", body = String))
 )]
-pub async fn metrics(State(state): State<AppState>) -> Response {
-    Response::builder()
+pub async fn metrics(State(state): State<AppState>) -> Result<Response, ApiError> {
+    // `Builder::body` only fails on an invalid header value or an unencodable
+    // body; the headers below are static literals, so this is unreachable in
+    // practice, but propagating a typed 500 `ApiError` is safer than panicking.
+    Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
         .header(header::CACHE_CONTROL, "no-store")
-        .body(axum::body::Body::from(state.metrics.render_prometheus()))
-        .expect("metrics response")
+        .body(axum::body::Body::from(state.metrics.render_prometheus()))?)
 }
 
 struct PreparedSearchRequest {
