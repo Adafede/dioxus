@@ -5,7 +5,7 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::DatasetStats;
 use crate::state::use_results_context;
-use crate::ui::style_constants::{StatStripe, spacing, stats, text, typography};
+use crate::ui::style_constants::{self, StatStripe};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -34,16 +34,16 @@ fn StatBadge(
         )
     });
     rsx! {
-        div { style: stat_badge_style(stripe),
-            div { style: crate::ui::style_constants::stats::stat_value_row_style(),
-                span { style: crate::ui::style_constants::stats::stat_value_style(), "{display_value}" }
+        div { style: style_constants::stats::stat_badge_style(stripe),
+            div { style: style_constants::stats::stat_value_row_style(),
+                span { style: style_constants::stats::stat_value_style(), "{display_value}" }
                 if let Some(secondary_text) = secondary_inline.as_ref() {
-                    span { style: crate::ui::style_constants::stats::stat_secondary_style(),
+                    span { style: style_constants::stats::stat_secondary_style(),
                         "{secondary_text}"
                     }
                 }
             }
-            span { style: crate::ui::style_constants::stats::stat_label_style(), "{label}" }
+            span { style: style_constants::stats::stat_label_style(), "{label}" }
         }
     }
 }
@@ -128,7 +128,4 @@ pub fn CappedRowsNotice() -> Element {
             }
         }
     }
-}
-fn stat_badge_style(stripe: StatStripe) -> String {
-    stats::stat_badge_style(stripe)
 }

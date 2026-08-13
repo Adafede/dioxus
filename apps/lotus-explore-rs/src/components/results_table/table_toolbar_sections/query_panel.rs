@@ -6,7 +6,7 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
-use crate::ui::style_constants::{query, spacing};
+use crate::ui::style_constants;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -46,49 +46,29 @@ pub fn QueryPanel() -> Element {
         if *panel_visible.read() {
             if let Some(q) = toolbar_snapshot.read().sparql_query.as_ref() {
                 details {
-                    style: query_panel_style(),
+                    style: style_constants::query::query_panel_style(),
                     open: *panel_open.read(),
                     onchange: move |evt: FormEvent| {
                         panel_open.set(evt.value() == "true");
                     },
                     summary {
-                        style: query_summary_style(),
+                        style: style_constants::query::query_summary_style(),
                         span {
-                            style: query_summary_chevron_style(*panel_open.read()),
+                            style: style_constants::query::query_summary_chevron_style(*panel_open.read()),
                             "▶"
                         }
                         "{t(locale, TextKey::SparqlQuery)}"
                     }
-                    div { style: query_body_style(),
+                    div { style: style_constants::query::query_body_style(),
                         CopyButton {
                             text: q.clone(),
                             title: t(locale, TextKey::CopySparqlQuery),
                             locale,
                         }
-                        pre { style: query_text_style(), "{q.as_ref()}" }
+                        pre { style: style_constants::query::query_text_style(), "{q.as_ref()}" }
                     }
                 }
             }
         }
     }
-}
-
-fn query_summary_style() -> String {
-    query::query_summary_style()
-}
-
-fn query_summary_chevron_style(is_open: bool) -> String {
-    query::query_summary_chevron_style(is_open)
-}
-
-fn query_panel_style() -> String {
-    query::query_panel_style()
-}
-
-fn query_body_style() -> String {
-    query::query_body_style()
-}
-
-fn query_text_style() -> String {
-    query::query_text_style()
 }

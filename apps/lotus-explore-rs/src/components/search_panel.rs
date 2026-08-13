@@ -32,9 +32,7 @@ use crate::models::*;
 use crate::queries::classify_structure;
 use crate::state::{use_form_criteria_context, use_results_context};
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
-use crate::ui::style_constants::{
-    buttons, forms, panel_containers, panels, search_buttons, search_controls, utilities,
-};
+use crate::ui::style_constants;
 use dioxus::prelude::*;
 use ui::prelude::*;
 pub fn SearchPanel() -> Element {
@@ -70,7 +68,7 @@ pub fn SearchPanel() -> Element {
                     r#type: "submit",
                     disabled: true,
                     aria_label: "{t(locale, TextKey::RunSearch)}",
-                    style: search_button_style(is_dirty),
+                    style: style_constants::search_buttons::search_button_state(is_dirty),
                     span { class: "spinner-sm", "aria-hidden": "true" }
                     "{t(locale, TextKey::Searching)}"
                 }
@@ -120,7 +118,7 @@ fn StructureSection() -> Element {
             }
             if let Some(note_key) = view_model.note_key {
                 p { style: crate::ui::style_constants::forms::hint_text_style(),
-                    span { style: kind_pill_style(view_model.kind_class), "{kind_value.label()}" }
+                    span { style: style_constants::search_controls::kind_pill_style(view_model.kind_class), "{kind_value.label()}" }
                     span { "{t(locale, note_key)}" }
                 }
             } else {
@@ -212,14 +210,4 @@ pub fn KetcherPanel() -> Element {
             }
         }
     }
-}
-fn search_button_style(dirty: bool) -> String {
-    search_buttons::search_button_state(dirty)
-}
-
-fn panel_stack_style(padding: &str, gap: &str) -> String {
-    panel_containers::panel_stack_style(padding, gap)
-}
-fn kind_pill_style(kind: &str) -> String {
-    search_controls::kind_pill_style(kind)
 }
