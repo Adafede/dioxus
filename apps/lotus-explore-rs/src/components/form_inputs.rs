@@ -10,6 +10,7 @@
 
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
+use crate::ui::style_constants::{forms, primary_buttons};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -137,13 +138,7 @@ fn form_section_style() -> String {
 /// the proc macro expansion, resulting in a false positive "never used" warning.
 #[expect(dead_code)]
 fn form_label_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .font_weight("700")
-        .color("var(--critical-text)")
-        .property("text-transform", "uppercase")
-        .property("letter-spacing", "0.08em")
-        .build()
+    forms::label_base_style()
 }
 
 /// Helper to construct small form label styles.
@@ -151,7 +146,7 @@ fn form_label_style() -> String {
 /// the proc macro expansion, resulting in a false positive "never used" warning.
 #[expect(dead_code)]
 fn form_label_small_style() -> String {
-    crate::ui::style_constants::shared::label_small_style()
+    forms::label_small_style()
 }
 
 /// Helper to construct form input styles.
@@ -159,17 +154,7 @@ fn form_label_small_style() -> String {
 /// the proc macro expansion, resulting in a false positive "never used" warning.
 #[expect(dead_code)]
 fn form_input_style() -> String {
-    StyleBuilder::new()
-        .width("100%")
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
-        .border_radius("4px")
-        .color("var(--text)")
-        .padding("9px 11px")
-        .font_size("var(--fs-ui)")
-        .font_family("var(--sans)")
-        .property("transition", "border-color .15s")
-        .build()
+    forms::input_base_style()
 }
 
 /// Helper to construct form hint styles.
@@ -177,10 +162,7 @@ fn form_input_style() -> String {
 /// the proc macro expansion, resulting in a false positive "never used" warning.
 #[expect(dead_code)]
 fn form_hint_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .color("var(--text2)")
-        .build()
+    forms::hint_text_style()
 }
 
 /// Helper to construct range inputs styles.
@@ -208,5 +190,5 @@ fn range_pair_style() -> String {
 }
 
 fn button_primary_style() -> String {
-    crate::ui::style_constants::primary_buttons::button_primary_style()
+    primary_buttons::button_primary_style()
 }

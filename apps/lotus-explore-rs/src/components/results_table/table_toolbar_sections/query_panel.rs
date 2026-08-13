@@ -64,7 +64,6 @@ pub fn QueryPanel() -> Element {
                             text: q.clone(),
                             title: t(locale, TextKey::CopySparqlQuery),
                             locale,
-                            class: "copy-btn",
                         }
                         pre { style: query_text_style(), "{q.as_ref()}" }
                     }

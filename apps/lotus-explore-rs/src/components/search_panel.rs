@@ -32,10 +32,9 @@ use crate::models::*;
 use crate::queries::classify_structure;
 use crate::state::{use_form_criteria_context, use_results_context};
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
+use crate::ui::style_constants::{buttons, forms, panels, utilities};
 use dioxus::prelude::*;
 use ui::prelude::*;
-
-#[component]
 pub fn SearchPanel() -> Element {
     let state = use_results_context();
     let form_ctx = use_form_criteria_context();
@@ -69,7 +68,6 @@ pub fn SearchPanel() -> Element {
                     r#type: "submit",
                     disabled: true,
                     aria_label: "{t(locale, TextKey::RunSearch)}",
-                    class: "search-btn",
                     style: search_button_style(is_dirty),
                     span { class: "spinner-sm", "aria-hidden": "true" }
                     "{t(locale, TextKey::Searching)}"
@@ -273,7 +271,7 @@ fn panel_stack_style(padding: &str, gap: &str) -> String {
 }
 
 fn sr_only_style() -> String {
-    crate::ui::style_constants::shared::sr_only_style()
+    utilities::sr_only_style()
 }
 
 fn section_card_style() -> String {
@@ -289,15 +287,15 @@ fn section_card_style() -> String {
 }
 
 fn label_base_style() -> String {
-    crate::ui::style_constants::shared::label_base_style()
+    forms::label_base_style()
 }
 
 fn label_small_style() -> String {
-    crate::ui::style_constants::shared::label_small_style()
+    forms::label_small_style()
 }
 
 fn hint_text_style() -> String {
-    crate::ui::style_constants::shared::hint_text_style()
+    forms::hint_text_style()
 }
 
 fn radio_label_style() -> String {
@@ -387,19 +385,13 @@ fn textarea_base_style() -> String {
 
 #[allow(dead_code)]
 fn input_base_style() -> String {
-    crate::ui::style_constants::shared::input_base_style()
+    forms::input_base_style()
 }
 
 fn button_base_style() -> String {
-    crate::ui::style_constants::buttons::button_base_style()
+    buttons::button_base_style()
 }
 
 fn search_panel_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .display("flex")
-        .flex_direction("column")
-        .border_radius("8px")
-        .background_color("var(--surface)")
-        .build()
+    panels::search_panel_style()
 }

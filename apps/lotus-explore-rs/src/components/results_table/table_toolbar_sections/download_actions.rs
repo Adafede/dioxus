@@ -14,6 +14,7 @@ use crate::i18n::{TextKey, t};
 use crate::models::SearchCriteria;
 use crate::perf;
 use crate::state::use_results_context;
+use crate::ui::style_constants::buttons;
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
@@ -356,7 +357,7 @@ fn spinner_sm_style() -> String {
 }
 
 fn button_base_style() -> String {
-    crate::ui::style_constants::buttons::button_transparent_style()
+    buttons::button_transparent_style()
 }
 
 fn button_small_style() -> String {

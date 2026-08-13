@@ -17,6 +17,8 @@ use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
 
+use crate::ui::style_constants::primary_buttons;
+
 use crate::components::copy_button::CopyButton;
 use crate::features::explore::absolute_share_url;
 
@@ -212,10 +214,10 @@ pub fn TsvImportCard(
             }
             div { style: curation_actions_style(false),
                 button {
-                    class: "btn btn-sm",
                     r#type: "button",
                     disabled: processing || !has_tsv_input,
                     onclick: move |_| on_parse_tsv.call(()),
+                    style: button_sm_style(),
                     "{button_append_tsv_rows(locale)}"
                 }
                 input {
@@ -292,8 +294,8 @@ pub fn QueueRowsCard(
                             tr { style: row_stripe_style(idx),
                                 td { style: queue_action_col_style(),
                                     button {
-                                        class: "btn btn-xs",
                                         r#type: "button",
+                                        style: button_xs_style(),
                                         onclick: move |_| {
                                             if idx < rows.read().len() {
                                                 rows.write().remove(idx);
@@ -521,9 +523,17 @@ fn row_stripe_style(idx: usize) -> String {
 }
 
 fn button_primary_sm_style() -> String {
-    crate::ui::style_constants::primary_buttons::button_primary_sm_style()
+    primary_buttons::button_primary_sm_style()
 }
 
 fn button_primary_block_style() -> String {
-    crate::ui::style_constants::primary_buttons::button_primary_block_style()
+    primary_buttons::button_primary_block_style()
+}
+
+fn button_sm_style() -> String {
+    primary_buttons::button_sm_style()
+}
+
+fn button_xs_style() -> String {
+    primary_buttons::button_xs_style()
 }

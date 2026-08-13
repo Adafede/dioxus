@@ -16,6 +16,8 @@ use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
+use crate::ui::style_constants::primary_buttons;
+
 const LOTUS_FERRIS_SVG: &str = include_str!("../../../public/assets/lotus_ferris.svg");
 
 /// Sidebar: filter toggle + `SearchPanel` + logo.
@@ -44,8 +46,8 @@ pub fn Sidebar() -> Element {
                 }
             }
             button {
-                class: "filters-toggle",
                 r#type: "button",
+                style: primary_buttons::button_filters_toggle_style(),
                 aria_controls: SEARCH_PANEL_BODY_ID,
                 aria_expanded: if mobile_filters_open { "true" } else { "false" },
                 aria_pressed: if mobile_filters_open { "true" } else { "false" },

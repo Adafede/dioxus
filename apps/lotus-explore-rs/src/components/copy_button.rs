@@ -8,9 +8,9 @@
 //! contexts. Shows a brief "Copied!" state for user feedback.
 
 use crate::i18n::{Locale, TextKey, t};
+use crate::ui::style_constants::primary_buttons;
 use dioxus::prelude::*;
 use std::sync::Arc;
-use ui::prelude::*;
 
 /// A compact button that copies `text` to the system clipboard on click.
 ///
@@ -21,7 +21,7 @@ pub fn CopyButton(
     text: Arc<str>,
     #[props(default = "")] label: &'static str,
     #[props(default = "")] title: &'static str,
-    #[props(default = "btn btn-xs copy-btn")] class: &'static str,
+    #[props(default = "")] class: &'static str,
     #[props(default = Locale::En)] locale: Locale,
 ) -> Element {
     let mut copied = use_signal(|| false);
@@ -38,11 +38,10 @@ pub fn CopyButton(
 
     rsx! {
         button {
-            class: "{class}",
             r#type: "button",
             title: "{title_attr}",
             aria_label: "{title_attr}",
-            style: button_xs_style(),
+            style: button_copy_style(),
             onclick: move |_| {
                 copy_to_clipboard(text.as_ref());
                 *copied.write() = true;
@@ -86,14 +85,8 @@ async fn gloo_timer_sleep_ms(ms: u32) {
     }
 }
 
-fn button_xs_style() -> String {
-    StyleBuilder::new()
-        .property("min-height", "30px")
-        .padding("2px 8px")
-        .font_size("var(--fs-label)")
-        .property("line-height", "1.2")
-        .border_radius("4px")
-        .build()
+fn button_copy_style() -> String {
+    primary_buttons::button_copy_style()
 }
 
 /// Write `text` to the system clipboard. Tries `navigator.clipboard` first,

@@ -1,10 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Centralized UI style constants for colors, spacing, sizing, and typography.
+//! Comprehensive Design System for lotus-explore-rs
 //!
-//! This module consolidates all magic values used across components, making it
-//! easier to maintain consistency and update design tokens in one place.
+//! Consolidates all UI element styling (buttons, forms, panels, notices, etc.) into a
+//! centralized, reusable system. Eliminates duplication and ensures consistency across
+//! the application.
+//!
+//! ## Architecture
+//! - Color tokens (semantic, not literal)
+//! - Spacing and sizing utilities
+//! - Typography tokens
+//! - Component style builders (buttons, forms, panels, notices, etc)
+//! - Utility functions for dynamic styling (dark mode, etc)
+//!
+//! ## Philosophy
+//! Rust-first approach using StyleBuilder for maintainability and type safety.
+//! CSS in lotus_styles/ is reserved for global resets/utilities only.
 
 // ============================================================================
 // COLOR TOKENS
@@ -128,77 +140,16 @@ pub mod buttons {
 }
 
 pub mod shared {
-    //! Shared utility styles used across multiple components.
-    use ui::prelude::*;
+    //! Legacy module - functions have been moved to more organized modules.
+    //! Left for backward compatibility with imports in other files.
+    use super::*;
 
-    /// Screen-reader only text: hidden from visual display but readable by assistive tech.
-    pub fn sr_only_style() -> String {
-        StyleBuilder::new()
-            .property("position", "absolute")
-            .property("width", "1px")
-            .property("height", "1px")
-            .property("padding", "0")
-            .property("margin", "-1px")
-            .property("overflow", "hidden")
-            .property("clip", "rect(0,0,0,0)")
-            .property("white-space", "nowrap")
-            .property("border", "0")
-            .build()
-    }
-
-    /// Base input field: background, border, text color, padding, sizing.
-    pub fn input_base_style() -> String {
-        StyleBuilder::new()
-            .background_color("var(--surface)")
-            .border("1px solid var(--border)")
-            .border_radius("4px")
-            .color("var(--text)")
-            .padding("9px 11px")
-            .font_size("var(--fs-ui)")
-            .property("width", "100%")
-            .font_family("var(--sans)")
-            .property("transition", "border-color .15s")
-            .build()
-    }
-
-    /// Base form label: uppercase with specific font size and letter spacing.
-    pub fn label_base_style() -> String {
-        StyleBuilder::new()
-            .font_size("var(--fs-0)")
-            .font_weight("700")
-            .color("var(--critical-text)")
-            .property("text-transform", "uppercase")
-            .property("letter-spacing", "0.08em")
-            .build()
-    }
-
-    /// Small label: normal case, regular text color.
-    pub fn label_small_style() -> String {
-        StyleBuilder::new()
-            .font_size("var(--fs-0)")
-            .font_weight("700")
-            .color("var(--text)")
-            .property("text-transform", "none")
-            .property("letter-spacing", "0")
-            .build()
-    }
-
-    /// Hint text: smaller, secondary color.
-    pub fn hint_text_style() -> String {
-        StyleBuilder::new()
-            .font_size("var(--fs-0)")
-            .color("var(--text2)")
-            .build()
-    }
-
-    /// Notice value text: word-break for long content with proper line height.
-    pub fn notice_value_style() -> String {
-        StyleBuilder::new()
-            .color("inherit")
-            .property("word-break", "break-word")
-            .property("line-height", "1.4")
-            .build()
-    }
+    pub use super::forms::input_base_style;
+    pub use super::forms::label_base_style;
+    pub use super::forms::label_small_style;
+    pub use super::forms::hint_text_style;
+    pub use super::notices::notice_value_style;
+    pub use super::utilities::sr_only_style;
 }
 
 pub mod primary_buttons {
@@ -264,6 +215,285 @@ pub mod primary_buttons {
             .color("#fff")
             .property("width", "100%")
             .build()
+    }
+
+    /// Base button with standard surface background (used for secondary/general actions).
+    pub fn button_sm_style() -> String {
+        StyleBuilder::new()
+            .display("inline-flex")
+            .align_items("center")
+            .justify_content("center")
+            .gap("6px")
+            .border("1px solid var(--border)")
+            .border_radius("4px")
+            .property("min-height", "34px")
+            .padding("5px 10px")
+            .font_size("var(--fs-0)")
+            .font_weight("600")
+            .cursor("pointer")
+            .background_color("var(--surface)")
+            .color("var(--text)")
+            .box_shadow("var(--shadow-xs)")
+            .property(
+                "transition",
+                "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
+            )
+            .build()
+    }
+
+    /// Extra-small button for compact UI elements (delete buttons in tables, etc).
+    pub fn button_xs_style() -> String {
+        StyleBuilder::new()
+            .display("inline-flex")
+            .align_items("center")
+            .justify_content("center")
+            .gap("6px")
+            .border("1px solid var(--border)")
+            .border_radius("4px")
+            .property("min-height", "30px")
+            .padding("2px 8px")
+            .font_size("var(--fs-label)")
+            .font_weight("600")
+            .cursor("pointer")
+            .background_color("var(--surface)")
+            .color("var(--text)")
+            .property("line-height", "1.2")
+            .box_shadow("var(--shadow-xs)")
+            .property(
+                "transition",
+                "background .15s, border-color .15s, box-shadow .15s, transform .12s ease",
+            )
+            .build()
+    }
+
+    /// Filters toggle button: mobile-specific full-width primary button for showing/hiding filters.
+    pub fn button_filters_toggle_style() -> String {
+        StyleBuilder::new()
+            .display("flex")
+            .flex_wrap("wrap")
+            .align_items("center")
+            .justify_content("center")
+            .background_color("var(--btn-primary-bg)")
+            .color("#fff")
+            .border("0")
+            .border_radius("var(--radius-sm)")
+            .padding("11px 16px")
+            .font_size("var(--fs-ui)")
+            .font_weight("700")
+            .cursor("pointer")
+            .box_shadow("var(--shadow-xs)")
+            .property(
+                "transition",
+                "background .15s, box-shadow .15s, transform .12s ease",
+            )
+            .property("text-align", "center")
+            .property("line-height", "1.2")
+            .property("white-space", "normal")
+            .property("width", "calc(100% - 32px)")
+            .property("margin", "0 16px")
+            .property("box-sizing", "border-box")
+            .build()
+    }
+
+    /// Copy button: small secondary button for copying content to clipboard.
+    pub fn button_copy_style() -> String {
+        StyleBuilder::new()
+            .property("margin-left", "6px")
+            .font_family("var(--sans), system-ui, sans-serif")
+            .font_weight("500")
+            .property("letter-spacing", ".02em")
+            .color("var(--text2)")
+            .background_color("var(--surface)")
+            .border("1px solid var(--border)")
+            .cursor("pointer")
+            .property(
+                "transition",
+                "color .15s, background .15s, border-color .15s",
+            )
+            .property("vertical-align", "baseline")
+            .build()
+    }
+}
+
+// ============================================================================
+// PANEL & CONTAINER STYLES
+// ============================================================================
+
+pub mod panels {
+    //! Panel, card, and container styling for search panels, results, etc.
+    use ui::prelude::*;
+
+    /// Search panel container: border with subtle background.
+    pub fn search_panel_style() -> String {
+        StyleBuilder::new()
+            .display("flex")
+            .flex_direction("column")
+            .gap("12px")
+            .padding("12px")
+            .background_color("var(--surface)")
+            .border_radius("4px")
+            .build()
+    }
+
+    /// Query summary inline: small font with padding and icon space.
+    pub fn query_summary_style() -> String {
+        StyleBuilder::new()
+            .font_size("var(--fs-0)")
+            .padding("8px 14px 8px 32px")
+            .property("position", "relative")
+            .build()
+    }
+}
+
+// ============================================================================
+// NOTICE & ALERT STYLES
+// ============================================================================
+
+pub mod notices {
+    //! Notice, alert, and status message styling.
+    use ui::prelude::*;
+
+    /// Base notice: flex container with border, padding, and gap.
+    pub fn notice_base_style() -> String {
+        StyleBuilder::new()
+            .display("flex")
+            .align_items("flex-start")
+            .gap("8px")
+            .padding("10px 12px")
+            .border_radius("4px")
+            .border("1px solid")
+            .font_size("var(--fs-0)")
+            .build()
+    }
+
+    /// Notice in dark mode: dark background with light border and text.
+    pub fn notice_dark_style() -> String {
+        StyleBuilder::new()
+            .display("flex")
+            .align_items("flex-start")
+            .gap("8px")
+            .padding("10px 12px")
+            .border_radius("4px")
+            .border("1px solid #444")
+            .background_color("#1a1a1a")
+            .color("#fff")
+            .font_size("var(--fs-0)")
+            .build()
+    }
+
+    /// Notice value text: word-break for long content with proper line height.
+    pub fn notice_value_style() -> String {
+        StyleBuilder::new()
+            .color("inherit")
+            .property("word-break", "break-word")
+            .property("line-height", "1.4")
+            .build()
+    }
+}
+
+// ============================================================================
+// FORM ELEMENT STYLES
+// ============================================================================
+
+pub mod forms {
+    //! Form input, label, and control styling.
+    use ui::prelude::*;
+
+    /// Base input field: background, border, text color, padding, sizing.
+    pub fn input_base_style() -> String {
+        StyleBuilder::new()
+            .background_color("var(--surface)")
+            .border("1px solid var(--border)")
+            .border_radius("4px")
+            .color("var(--text)")
+            .padding("9px 11px")
+            .font_size("var(--fs-ui)")
+            .property("width", "100%")
+            .font_family("var(--sans)")
+            .property("transition", "border-color .15s")
+            .build()
+    }
+
+    /// Base form label: uppercase with specific font size and letter spacing.
+    pub fn label_base_style() -> String {
+        StyleBuilder::new()
+            .font_size("var(--fs-0)")
+            .font_weight("700")
+            .color("var(--critical-text)")
+            .property("text-transform", "uppercase")
+            .property("letter-spacing", "0.08em")
+            .build()
+    }
+
+    /// Small label: normal case, regular text color.
+    pub fn label_small_style() -> String {
+        StyleBuilder::new()
+            .font_size("var(--fs-0)")
+            .font_weight("700")
+            .color("var(--text)")
+            .property("text-transform", "none")
+            .property("letter-spacing", "0")
+            .build()
+    }
+
+    /// Hint text: smaller, secondary color.
+    pub fn hint_text_style() -> String {
+        StyleBuilder::new()
+            .font_size("var(--fs-0)")
+            .color("var(--text2)")
+            .build()
+    }
+}
+
+// ============================================================================
+// UTILITY & ACCESSIBILITY STYLES
+// ============================================================================
+
+pub mod utilities {
+    //! Utility styles for common patterns and accessibility needs.
+    use ui::prelude::*;
+
+    /// Screen-reader only text: hidden from visual display but readable by assistive tech.
+    pub fn sr_only_style() -> String {
+        StyleBuilder::new()
+            .property("position", "absolute")
+            .property("width", "1px")
+            .property("height", "1px")
+            .property("padding", "0")
+            .property("margin", "-1px")
+            .property("overflow", "hidden")
+            .property("clip", "rect(0,0,0,0)")
+            .property("white-space", "nowrap")
+            .property("border", "0")
+            .build()
+    }
+}
+
+// ============================================================================
+// DYNAMIC STYLING UTILITIES
+// ============================================================================
+
+pub mod theme {
+    //! Theme and dynamic styling utilities (dark mode detection, etc).
+
+    /// Detect if dark mode is active based on system preferences.
+    /// Must be called at component render time to detect changes.
+    #[cfg(target_arch = "wasm32")]
+    pub fn is_dark_mode() -> bool {
+        if let Ok(window) = web_sys::window().ok_or("no window") {
+            if let Ok(media) = window.match_media("(prefers-color-scheme: dark)") {
+                if let Some(media_query) = media {
+                    return media_query.matches();
+                }
+            }
+        }
+        false
+    }
+
+    /// Fallback for non-WASM builds (always returns false).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn is_dark_mode() -> bool {
+        false
     }
 }
 
