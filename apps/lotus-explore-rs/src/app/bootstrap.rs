@@ -32,6 +32,7 @@ pub fn bootstrap_app(startup: InitialUrlState) -> AppBootstrap {
                 pending_invalid_format: startup.download.pending_invalid_format,
                 direct_execute: startup.download.direct_execute,
             },
+            dark_mode: startup.dark_mode,
             ..AppState::default()
         },
         criteria,
@@ -59,6 +60,7 @@ mod tests {
                 pending_invalid_format: Some("ttl".into()),
                 direct_execute: true,
             },
+            dark_mode: false,
         };
 
         let bootstrap = bootstrap_app(startup);
@@ -89,6 +91,7 @@ mod tests {
             view: AppView::Explore,
             locale: Locale::En,
             download: InitialDownloadState::default(),
+            dark_mode: false,
         };
 
         let bootstrap = bootstrap_app(startup);

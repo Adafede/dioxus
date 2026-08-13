@@ -49,6 +49,9 @@ pub struct AppState {
 
     /// One-shot logging guards used by the download-dispatch hook.
     pub metrics: MetricsState,
+
+    /// Dark mode enabled (undocumented debug flag).
+    pub dark_mode: bool,
 }
 
 impl Default for AppState {
@@ -57,6 +60,7 @@ impl Default for AppState {
             view: AppView::Explore,
             download: DownloadState::default(),
             metrics: MetricsState::default(),
+            dark_mode: false,
         }
     }
 }

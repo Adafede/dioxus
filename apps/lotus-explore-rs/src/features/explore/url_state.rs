@@ -8,7 +8,7 @@ use crate::i18n::Locale;
 use std::collections::BTreeMap;
 
 pub use super::url_codec::{
-    InitialUrlState, build_shareable_url, parse_criteria_from_params,
+    InitialUrlState, build_shareable_url, is_true_flag, parse_criteria_from_params,
     parse_startup_action_from_params,
 };
 
@@ -22,6 +22,7 @@ pub fn initial_url_state() -> InitialUrlState {
         view: AppView::from_query_value(params.get("view").map(String::as_str)),
         locale: Locale::detect(params.get("lang").map_or("", String::as_str)),
         download: parse_startup_action_from_params(&params),
+        dark_mode: params.get("dark_mode").is_some_and(|v| is_true_flag(v)),
     }
 }
 

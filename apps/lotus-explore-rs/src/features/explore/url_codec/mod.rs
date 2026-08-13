@@ -30,6 +30,7 @@ pub struct InitialUrlState {
     pub view: AppView,
     pub locale: Locale,
     pub download: InitialDownloadState,
+    pub dark_mode: bool,
 }
 
 /// Test whether a URL query-parameter value represents a boolean true flag.

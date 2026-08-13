@@ -92,6 +92,25 @@ fn AppRuntimeEffects(
 
     use_effect(move || persist_locale_query_param(*locale.read()));
     use_effect(move || persist_view_query_param(app_state.read().view));
+    use_effect(move || {
+        let dark_mode = app_state.read().dark_mode;
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+                if let Some(html) = doc.document_element() {
+                    if dark_mode {
+                        let _ = html.set_attribute("data-theme", "dark");
+                    } else {
+                        let _ = html.remove_attribute("data-theme");
+                    }
+                }
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _ = dark_mode;
+        }
+    });
 
     use_startup_effect(app_state, explore, criteria, search_task_controller, repo);
     use_download_dispatch_effect(app_state, explore);
