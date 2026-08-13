@@ -17,11 +17,7 @@ use super::repeating::splice_repeat;
 use super::types::{Coverage, RepeatUnit};
 
 /// Enumerate every distinct molecule implied by a positional CX-SMILES.
-pub fn enumerate(
-    scaffold: &Molecule,
-    defs: &[FloatingDef],
-    targets: &[Target],
-) -> Vec<String> {
+pub fn enumerate(scaffold: &Molecule, defs: &[FloatingDef], targets: &[Target]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let var: Vec<usize> = targets
         .iter()
