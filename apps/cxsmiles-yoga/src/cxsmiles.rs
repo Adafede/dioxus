@@ -17,7 +17,7 @@
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
     clippy::cast_possible_wrap,
-    clippy::cast_lossless,
+    clippy::cast_lossless
 )]
 
 use chematic::core::{Atom, AtomIdx, BondOrder, Molecule, MoleculeBuilder};
@@ -980,11 +980,7 @@ fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> Molec
     if n <= 1 {
         return scaffold.clone();
     }
-    let set: HashSet<u32> = repeat_atoms
-        .iter()
-        .copied()
-        .map(|a| a as u32)
-        .collect();
+    let set: HashSet<u32> = repeat_atoms.iter().copied().map(|a| a as u32).collect();
     let unit: Vec<u32> = repeat_atoms.iter().map(|&a| a as u32).collect();
     let anchors: Vec<u32> = repeat_atoms
         .iter()
