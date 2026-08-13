@@ -14,6 +14,7 @@ use molecular_formulas::molecular_formula::MolecularFormula;
 #[cfg(target_arch = "wasm32")]
 use web_sys::console;
 
+#[must_use]
 pub fn smiles_is_supported(smiles: &str) -> bool {
     !smiles.trim().is_empty()
 }
