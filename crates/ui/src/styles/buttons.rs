@@ -136,7 +136,8 @@ pub fn button_filters_toggle_style() -> String {
 }
 
 /// Copy button: small secondary button for copying content to clipboard.
-/// NOW CONSISTENT WITH OTHER BUTTONS: min-height 40px | Padding: 8px 14px
+/// Responsive sizing: uses clamp() to scale with font-size and viewport.
+/// Min-height: 40px | Padding: responsive via clamp()
 pub fn button_copy_style() -> String {
     StyleBuilder::new()
         .display("inline-flex")
@@ -153,7 +154,9 @@ pub fn button_copy_style() -> String {
         .border_radius("4px")
         .cursor("pointer")
         .property("min-height", "40px")
-        .padding("8px 14px")
+        .property("font-size", "clamp(0.75rem, 0.7rem + 0.5vw, 0.95rem)")
+        .property("padding", "clamp(6px, 4px + 1vw, 12px) clamp(10px, 8px + 1vw, 16px)")
+        .property("line-height", "1.4")
         .property(
             "transition",
             "color .15s, background .15s, border-color .15s",

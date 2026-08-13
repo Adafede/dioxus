@@ -4,8 +4,6 @@
 //! Curation UI styles: specific to data curation workflows in lotus.
 //! Shared re-export module for backward compatibility.
 
-pub use ui::styles::button_primary_sm_style;
-
 #[cfg(test)]
 mod tests {
     use ui::styles::button_primary_sm_style;
