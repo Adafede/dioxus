@@ -155,7 +155,10 @@ pub fn button_copy_style() -> String {
         .cursor("pointer")
         .property("min-height", "40px")
         .property("font-size", "clamp(0.75rem, 0.7rem + 0.5vw, 0.95rem)")
-        .property("padding", "clamp(6px, 4px + 1vw, 12px) clamp(10px, 8px + 1vw, 16px)")
+        .property(
+            "padding",
+            "clamp(6px, 4px + 1vw, 12px) clamp(10px, 8px + 1vw, 16px)",
+        )
         .property("line-height", "1.4")
         .property(
             "transition",

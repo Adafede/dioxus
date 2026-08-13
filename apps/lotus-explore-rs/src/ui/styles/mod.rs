@@ -40,8 +40,8 @@ pub use cells::{
 pub use panels::{panel_iframe, panel_ketcher, panel_ketcher_wrap, panel_section_card};
 
 pub use search::{
-    search_kind_pill, search_radio_group, search_radio_label, search_range_input,
-    search_textarea, search_threshold_section,
+    search_kind_pill, search_radio_group, search_radio_label, search_range_input, search_textarea,
+    search_threshold_section,
 };
 
 pub use table::{table_header_cell, table_header_label, table_sort_button, table_sort_icon};
