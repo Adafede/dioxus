@@ -292,8 +292,13 @@ pub mod primary_buttons {
     }
 
     /// Copy button: small secondary button for copying content to clipboard.
+    /// FIXED: Now consistent with other buttons - min-height: 40px, padding: 8px 14px
     pub fn button_copy_style() -> String {
         StyleBuilder::new()
+            .display("inline-flex")
+            .align_items("center")
+            .justify_content("center")
+            .gap("6px")
             .property("margin-left", "6px")
             .font_family("var(--sans), system-ui, sans-serif")
             .font_weight("500")
@@ -303,6 +308,8 @@ pub mod primary_buttons {
             .border("1px solid var(--border)")
             .border_radius("4px")
             .cursor("pointer")
+            .property("min-height", "40px")
+            .padding("8px 14px")
             .property(
                 "transition",
                 "color .15s, background .15s, border-color .15s",

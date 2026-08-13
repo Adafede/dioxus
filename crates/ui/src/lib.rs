@@ -39,6 +39,7 @@
 pub mod common;
 pub mod components;
 pub mod document;
+pub mod styles;
 pub mod theme;
 
 /// Convenience re-exports of the most commonly used UI primitives.

@@ -8,9 +8,9 @@
 //! contexts. Shows a brief "Copied!" state for user feedback.
 
 use crate::i18n::{Locale, TextKey, t};
-use crate::ui::style_constants::primary_buttons;
 use dioxus::prelude::*;
 use std::sync::Arc;
+use ui::styles::buttons;
 
 /// A compact button that copies `text` to the system clipboard on click.
 ///
@@ -41,7 +41,7 @@ pub fn CopyButton(
             r#type: "button",
             title: "{title_attr}",
             aria_label: "{title_attr}",
-            style: crate::ui::style_constants::primary_buttons::button_copy_style(),
+            style: buttons::button_copy_style(),
             onclick: move |_| {
                 copy_to_clipboard(text.as_ref());
                 *copied.write() = true;
