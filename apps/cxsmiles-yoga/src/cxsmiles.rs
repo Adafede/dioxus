@@ -663,10 +663,10 @@ fn equiv_positions(_comp: &[u32], group: &[Molecule], scaffold_q: &QueryMolecule
         let unf = unmatched_atoms(&matched);
         for u in &unf {
             for (nbr, _) in mol.neighbors(AtomIdx(*u)) {
-                if let Some((&qi, _)) = hit.iter().find(|(_, t)| t.0 == nbr.0) {
-                    if !positions.contains(&qi) {
-                        positions.push(qi);
-                    }
+                if let Some((&qi, _)) = hit.iter().find(|(_, t)| t.0 == nbr.0)
+                    && !positions.contains(&qi)
+                {
+                    positions.push(qi);
                 }
             }
         }
