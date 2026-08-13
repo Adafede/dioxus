@@ -11,6 +11,13 @@
 //! - [`cumulative`] — four-stage error analysis + cumulative CDF curve renderers.
 //!
 //! The flat `crate::plotting::<name>` public API is preserved via re-exports.
+//!
+//! All rendering uses plotters' SVG backend, whose `DrawingError` is
+//! `Infallible`; consequently every `root.fill(...)` / `.draw(...)` /
+//! `root.present()` result is statically guaranteed to be `Ok`, so the
+//! `.unwrap()` calls on those results are intentional and cannot panic. (The
+//! two `#[cfg(test)]` unwraps in `[`diagnostics`]`'s tests follow the same
+//! rule.)
 
 pub(crate) mod color;
 pub(crate) mod cumulative;
