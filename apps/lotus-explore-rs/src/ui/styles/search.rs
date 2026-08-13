@@ -7,6 +7,7 @@ use super::tokens;
 use ui::prelude::*;
 
 /// Search button state indicator: color-coded status.
+#[allow(dead_code)]
 pub fn search_button_state() -> String {
     StyleBuilder::new()
         .property("font-weight", "600")
@@ -15,6 +16,7 @@ pub fn search_button_state() -> String {
 }
 
 /// Radio group container: flex column with gap.
+#[allow(dead_code)]
 pub fn search_radio_group() -> String {
     StyleBuilder::new()
         .display("flex")
@@ -24,6 +26,7 @@ pub fn search_radio_group() -> String {
 }
 
 /// Radio label: inline-flex with cursor pointer.
+#[allow(dead_code)]
 pub fn search_radio_label() -> String {
     StyleBuilder::new()
         .display("inline-flex")
@@ -35,6 +38,7 @@ pub fn search_radio_label() -> String {
 }
 
 /// Range input: standard input with consistent styling.
+#[allow(dead_code)]
 pub fn search_range_input() -> String {
     StyleBuilder::new()
         .property("width", "100%")
@@ -48,6 +52,7 @@ pub fn search_range_input() -> String {
 }
 
 /// Textarea base: search textarea with consistent styling.
+#[allow(dead_code)]
 pub fn search_textarea() -> String {
     StyleBuilder::new()
         .property("width", "100%")
@@ -63,6 +68,7 @@ pub fn search_textarea() -> String {
 }
 
 /// Kind pill: inline-block badge for filter kinds.
+#[allow(dead_code)]
 pub fn search_kind_pill() -> String {
     StyleBuilder::new()
         .display("inline-block")
@@ -76,6 +82,7 @@ pub fn search_kind_pill() -> String {
 }
 
 /// Threshold section: container for threshold controls.
+#[allow(dead_code)]
 pub fn search_threshold_section() -> String {
     StyleBuilder::new()
         .display("flex")

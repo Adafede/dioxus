@@ -19,11 +19,6 @@ rev = "v1.49.0"
 hooks = [{ id = "typos" }]
 
 [[repos]]
-repo = "https://github.com/doublify/pre-commit-rust"
-rev = "v1.0"
-hooks = [{ id = "fmt" }]
-
-[[repos]]
 repo = "local"
 hooks = [
   # ── Fast Rust checks (pre-commit) ──────────────────────────────────────────

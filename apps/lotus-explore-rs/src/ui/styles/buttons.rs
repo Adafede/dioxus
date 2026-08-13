@@ -10,11 +10,13 @@
 use ui::styles::buttons;
 
 /// Download group buttons: compact styled buttons in action toolbar.
+#[allow(dead_code)]
 pub fn button_small_lotus() -> String {
     buttons::button_sm_style()
 }
 
 /// Primary button for search actions.
+#[allow(dead_code)]
 pub fn button_primary_lotus_search() -> String {
     buttons::button_primary_style()
 }
@@ -26,6 +28,7 @@ pub fn button_small_lotus_filter() -> String {
 }
 
 /// Extra-small button for table actions (delete, etc).
+#[allow(dead_code)]
 pub fn button_xs_lotus_table() -> String {
     buttons::button_xs_style()
 }

@@ -16,6 +16,7 @@ use ui::prelude::*;
 
 /// Taxon cell container: extends base cell with green inset border.
 /// Naming: cell (WHAT) taxon (VARIANT)
+#[allow(dead_code)]
 pub fn cell_taxon() -> String {
     StyleBuilder::new()
         .padding(&tokens::cell_padding())
@@ -30,6 +31,7 @@ pub fn cell_taxon() -> String {
 }
 
 /// Taxon cell primary text: italic font weight 500.
+#[allow(dead_code)]
 pub fn cell_taxon_primary() -> String {
     StyleBuilder::new()
         .font_weight("500")
@@ -38,6 +40,7 @@ pub fn cell_taxon_primary() -> String {
 }
 
 /// Taxon ID badge: monospace with green background.
+#[allow(dead_code)]
 pub fn cell_taxon_id() -> String {
     StyleBuilder::new()
         .display("inline-block")
@@ -60,6 +63,7 @@ pub fn cell_taxon_id() -> String {
 
 /// Reference cell container: extends base cell with pink inset border.
 /// Naming: cell (WHAT) reference (VARIANT)
+#[allow(dead_code)]
 pub fn cell_reference() -> String {
     StyleBuilder::new()
         .display("flex")
@@ -77,6 +81,7 @@ pub fn cell_reference() -> String {
 }
 
 /// Reference ID badge: inline-block with reference styling.
+#[allow(dead_code)]
 pub fn cell_reference_id() -> String {
     StyleBuilder::new()
         .display("inline-block")
@@ -94,6 +99,7 @@ pub fn cell_reference_id() -> String {
 }
 
 /// Cell reference badge row: flex wrap with gap.
+#[allow(dead_code)]
 pub fn cell_reference_badges() -> String {
     StyleBuilder::new()
         .display("flex")
@@ -109,6 +115,7 @@ pub fn cell_reference_badges() -> String {
 // ============================================================================
 
 /// Generic table cell: base cell styling for any column.
+#[allow(dead_code)]
 pub fn cell_default() -> String {
     StyleBuilder::new()
         .padding(&tokens::cell_padding())
@@ -120,6 +127,7 @@ pub fn cell_default() -> String {
 }
 
 /// Cell primary text link: block display with word break.
+#[allow(dead_code)]
 pub fn cell_link() -> String {
     StyleBuilder::new()
         .color("var(--text)")
@@ -132,6 +140,7 @@ pub fn cell_link() -> String {
 }
 
 /// Cell badge row: flex wrap with gap.
+#[allow(dead_code)]
 pub fn cell_badges() -> String {
     StyleBuilder::new()
         .display("flex")
@@ -143,6 +152,7 @@ pub fn cell_badges() -> String {
 }
 
 /// N/A placeholder: italic secondary text.
+#[allow(dead_code)]
 pub fn cell_na() -> String {
     StyleBuilder::new()
         .property("font-style", "italic")

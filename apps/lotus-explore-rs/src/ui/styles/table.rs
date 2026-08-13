@@ -7,6 +7,7 @@ use super::tokens;
 use ui::prelude::*;
 
 /// Table header cell: bold with bottom border.
+#[allow(dead_code)]
 pub fn table_header_cell() -> String {
     StyleBuilder::new()
         .font_weight("700")
@@ -19,6 +20,7 @@ pub fn table_header_cell() -> String {
 }
 
 /// Header label: left-aligned with text overflow handling.
+#[allow(dead_code)]
 pub fn table_header_label() -> String {
     StyleBuilder::new()
         .font_weight("700")
@@ -28,6 +30,7 @@ pub fn table_header_label() -> String {
 }
 
 /// Sort button: transparent button for column sorting.
+#[allow(dead_code)]
 pub fn table_sort_button() -> String {
     StyleBuilder::new()
         .display("inline-flex")
@@ -41,6 +44,7 @@ pub fn table_sort_button() -> String {
 }
 
 /// Sort icon: arrow indicator for sort direction.
+#[allow(dead_code)]
 pub fn table_sort_icon() -> String {
     StyleBuilder::new()
         .display("inline-flex")

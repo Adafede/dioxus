@@ -7,6 +7,7 @@ use super::tokens;
 use ui::prelude::*;
 
 /// Section card container: flex column with padding and border.
+#[allow(dead_code)]
 pub fn panel_section_card() -> String {
     StyleBuilder::new()
         .display("flex")
@@ -20,6 +21,7 @@ pub fn panel_section_card() -> String {
 }
 
 /// Ketcher panel wrapper: container for chemical structure editor.
+#[allow(dead_code)]
 pub fn panel_ketcher_wrap() -> String {
     StyleBuilder::new()
         .display("flex")
@@ -31,6 +33,7 @@ pub fn panel_ketcher_wrap() -> String {
 }
 
 /// Ketcher panel style: embeds Ketcher editor with proper sizing.
+#[allow(dead_code)]
 pub fn panel_ketcher() -> String {
     StyleBuilder::new()
         .property("width", "100%")
@@ -39,6 +42,7 @@ pub fn panel_ketcher() -> String {
 }
 
 /// iframe style: full width and height.
+#[allow(dead_code)]
 pub fn panel_iframe() -> String {
     StyleBuilder::new()
         .property("width", "100%")
