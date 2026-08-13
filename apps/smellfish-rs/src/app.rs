@@ -35,10 +35,7 @@ CCCCCCCC=CCCCCCCCC(N)=O";
 /// `lipid-selecto-rs` and `mgf-precursor-erro-rs`.
 #[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
-    #[cfg(target_arch = "wasm32")]
-    let file_name = use_signal(String::new);
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut file_name = use_signal(String::new);
+    ui::shared_signal!(file_name, String::new);
 
     let mut status = use_signal(String::new);
     let busy = use_signal(|| false);

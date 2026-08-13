@@ -30,14 +30,10 @@ use self::browser::begin_analysis_from_blob;
 pub fn app() -> Element {
     let mut status = use_signal(|| "Drop an MGF or SMILES file to begin.".to_string());
     let mut drag_active = use_signal(|| false);
-    #[cfg(target_arch = "wasm32")]
-    let file_name = use_signal(String::new);
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut file_name = use_signal(String::new);
-    #[cfg(target_arch = "wasm32")]
-    let busy = use_signal(|| false);
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut busy = use_signal(|| false);
+    ui::shared_signals! {
+        file_name: String::new,
+        busy: || false,
+    }
     let analysis = use_signal(|| None::<Analysis>);
     let mut input_format = use_signal(|| None::<LipidFormat>);
 

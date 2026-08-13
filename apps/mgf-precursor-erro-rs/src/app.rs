@@ -46,19 +46,12 @@ fn format_lambda(lambda: f64) -> String {
 /// Returns an error if the component tree fails to build or render.
 #[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
-    #[cfg(target_arch = "wasm32")]
-    let file_name = use_signal(String::new);
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut file_name = use_signal(String::new);
-    #[cfg(target_arch = "wasm32")]
-    let metrics = use_signal(|| None::<PrecursorStats>);
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut metrics = use_signal(|| None::<PrecursorStats>);
+    ui::shared_signals! {
+        file_name: String::new,
+        metrics: || None::<PrecursorStats>,
+    }
     let mut status = use_signal(|| "Drop an MGF file to begin.".to_string());
-    #[cfg(target_arch = "wasm32")]
-    let busy = use_signal(|| false);
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut busy = use_signal(|| false);
+    ui::shared_signal!(busy, || false);
     let mut drag_active = use_signal(|| false);
     let original_mgf_content = use_signal(String::new);
 

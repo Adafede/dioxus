@@ -39,6 +39,7 @@
 pub mod common;
 pub mod components;
 pub mod document;
+pub mod signals;
 pub mod styles;
 pub mod theme;
 
