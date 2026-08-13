@@ -192,11 +192,17 @@ const APPS: &[AppInfo] = &[
         description: "Analyze mass spectrometry data. Visualize precursor mass errors from MGF files in absolute (Dalton) and relative (ppm) units with interactive plots.",
     },
     AppInfo {
-    id: "lipid-selecto-rs",
-    title: "🧀 Lipid Selecto-rs",
-    path: "./lipid-selecto-rs/",
-    description: "Filter and visualize lipid mass spectrometry data by chemical class. Interactive structure viewer for lipidomics analysis with support for SMILES and SMARTS queries.",
+        id: "lipid-selecto-rs",
+        title: "🧀 Lipid Selecto-rs",
+        path: "./lipid-selecto-rs/",
+        description: "Filter and visualize lipid mass spectrometry data by chemical class. Interactive structure viewer for lipidomics analysis with support for SMILES and SMARTS queries.",
     },
+    // AppInfo {
+    //     id: "cxsmiles-yoga",
+    //     title: "🧘 CX-SMILES Yoga",
+    //     path: "./cxsmiles-yoga/",
+    //     description: "Generate a single CX-SMILES from a list of related structures by collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n:) via maximum common substructure, with round-trip confidence.",
+    // },
 ];
 
 fn main() {
