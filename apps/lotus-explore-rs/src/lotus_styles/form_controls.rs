@@ -56,29 +56,6 @@ input[type="number"].form-input::-webkit-inner-spin-button { appearance: none; m
 
 /* Structure section */
 .form-textarea.mono, .mono { font-family: var(--mono); }
-
-.kind-pill {
-  display:inline-block;
-  padding:1px 7px;
-  border-radius:999px;
-  font-size:var(--fs-micro);
-  font-weight:700;
-  letter-spacing:1px;
-  text-transform:uppercase;
-  margin-right:6px;
-  color:#fff;
-  background:var(--text3);
-}
-
-.kind-pill[data-kind="smiles"] { background:var(--accent2, #5b6cff); }
-.kind-pill[data-kind="mol2000"] { background:#c97a2b; }
-.kind-pill[data-kind="mol3000"] { background:#2b8f57; }
-.kind-note { color:var(--text2); }
-
-.ketcher-panel { margin:0; border:1px solid var(--panel-border); border-radius:var(--radius); background:var(--panel-bg-soft); box-shadow:var(--panel-shadow); transition: background .15s ease, border-color .15s ease, box-shadow .15s ease; }
-.ketcher-wrap { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
-.ketcher-iframe { width:100%; height:min(78vh, 820px); min-height:600px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fff; }
-.ketcher-hint { margin-top:2px; font-size:var(--fs-0); color:var(--text2); }
 "#;
 
 const FORM_ACTIONS_AND_RESPONSIVE: &str = r"
