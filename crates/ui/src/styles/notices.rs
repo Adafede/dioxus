@@ -4,34 +4,41 @@
 //! Shared notice and alert styling system for notifications, warnings, etc.
 //! Provides consistent styling across all apps for maximum reuse.
 
+use super::primitives::*;
 use crate::theme::StyleBuilder;
 
 /// Base notice: flex container with border, padding, and gap.
 pub fn notice_base_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .align_items("flex-start")
-        .gap("8px")
-        .padding("10px 12px")
-        .border_radius("4px")
-        .border("1px solid")
-        .font_size("var(--fs-0)")
-        .build()
+    format!(
+        "{}; {}; {}; {}; {}",
+        flex_row(),
+        gap_md(),
+        padding_md(),
+        border_radius_sm(),
+        StyleBuilder::new()
+            .align_items("flex-start")
+            .border("1px solid")
+            .font_size("var(--fs-0)")
+            .build()
+    )
 }
 
 /// Notice in dark mode: dark background with light border and text.
 pub fn notice_dark_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .align_items("flex-start")
-        .gap("8px")
-        .padding("10px 12px")
-        .border_radius("4px")
-        .border("1px solid #444")
-        .background_color("#1a1a1a")
-        .color("#fff")
-        .font_size("var(--fs-0)")
-        .build()
+    format!(
+        "{}; {}; {}; {}; {}",
+        flex_row(),
+        gap_md(),
+        padding_md(),
+        border_radius_sm(),
+        StyleBuilder::new()
+            .align_items("flex-start")
+            .border("1px solid #444")
+            .background_color("#1a1a1a")
+            .color("#fff")
+            .font_size("var(--fs-0)")
+            .build()
+    )
 }
 
 /// Notice value text: word-break for long content with proper line height.
@@ -44,14 +51,17 @@ pub fn notice_value_style() -> String {
 
 /// Notice dismiss button: close icon with opacity and no border.
 pub fn notice_dismiss_style() -> String {
-    StyleBuilder::new()
-        .property("margin-left", "auto")
-        .cursor("pointer")
-        .property("font-size", "18px")
-        .property("line-height", "1")
-        .padding("0 4px")
-        .property("opacity", ".7")
-        .build()
+    format!(
+        "{}; {}",
+        cursor_pointer(),
+        StyleBuilder::new()
+            .property("margin-left", "auto")
+            .property("font-size", "18px")
+            .property("line-height", "1")
+            .padding("0 4px")
+            .property("opacity", ".7")
+            .build()
+    )
 }
 
 #[cfg(test)]

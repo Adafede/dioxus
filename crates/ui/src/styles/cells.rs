@@ -6,18 +6,18 @@
 //! Provides base cell styles that can be extended with app-specific variants.
 //! All cells use consistent padding, borders, and flex layout.
 
+use super::primitives::*;
 use crate::theme::StyleBuilder;
 
 /// Base table cell: flex container with standard padding and border.
 /// Used as foundation for all cell variants.
 pub fn cell_default() -> String {
-    StyleBuilder::new()
-        .padding("8px 12px")
-        .border_radius("4px")
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
-        .property("min-width", "0")
-        .build()
+    format!(
+        "{}; {}; {}",
+        padding_input(),
+        border_default(),
+        border_radius_sm()
+    )
 }
 
 /// Cell text: block display with word wrapping for content overflow.
@@ -33,27 +33,33 @@ pub fn cell_text() -> String {
 
 /// Cell badge: inline-block with monospace font for IDs.
 pub fn cell_badge() -> String {
-    StyleBuilder::new()
-        .display("inline-block")
-        .font_size("var(--fs-micro)")
-        .padding("1px 5px")
-        .border_radius("3px")
-        .font_weight("600")
-        .font_family("var(--mono)")
-        .property("line-height", "1.5")
-        .property("white-space", "nowrap")
-        .build()
+    format!(
+        "{}; {}; {}",
+        font_size_micro(),
+        font_weight_semibold(),
+        StyleBuilder::new()
+            .display("inline-block")
+            .padding("1px 5px")
+            .border_radius("3px")
+            .font_family("var(--mono)")
+            .property("line-height", "1.5")
+            .property("white-space", "nowrap")
+            .build()
+    )
 }
 
 /// Cell row with badges: flex wrap with gap for multiple badges.
 pub fn cell_badge_row() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .property("flex-wrap", "wrap")
-        .gap("4px")
-        .property("margin-top", "4px")
-        .property("min-width", "0")
-        .build()
+    format!(
+        "{}; {}; {}",
+        flex_row(),
+        gap_xs(),
+        StyleBuilder::new()
+            .property("flex-wrap", "wrap")
+            .property("margin-top", "4px")
+            .property("min-width", "0")
+            .build()
+    )
 }
 
 #[cfg(test)]
