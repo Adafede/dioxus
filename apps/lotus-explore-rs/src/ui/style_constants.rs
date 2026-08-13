@@ -301,6 +301,7 @@ pub mod primary_buttons {
             .color("var(--text2)")
             .background_color("var(--surface)")
             .border("1px solid var(--border)")
+            .border_radius("4px")
             .cursor("pointer")
             .property(
                 "transition",
