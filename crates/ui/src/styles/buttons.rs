@@ -143,7 +143,7 @@ pub fn button_copy_style() -> String {
         .display("inline-flex")
         .align_items("center")
         .justify_content("center")
-        .gap("6px")
+        .gap("4px")
         .property("margin-left", "6px")
         .font_family("var(--sans), system-ui, sans-serif")
         .font_weight("500")
@@ -154,9 +154,9 @@ pub fn button_copy_style() -> String {
         .border_radius("4px")
         .cursor("pointer")
         .height("auto")
-        .padding("9px 11px")
+        .padding("6px 8px")
         .property("font-size", "var(--fs-ui)")
-        .property("line-height", "1")
+        .property("line-height", "1.2")
         .property(
             "transition",
             "color .15s, background .15s, border-color .15s",
