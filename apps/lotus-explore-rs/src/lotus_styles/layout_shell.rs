@@ -245,7 +245,7 @@ const SEARCH_PANEL: &str = r#"
 .view-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
 .lang-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
 @media (max-width: 768px) {
-  .filters-toggle { display:flex !important; width: 100%; margin: 0; min-height: 40px; }
+  .filters-toggle { display:flex !important; min-height: 40px; }
   .search-panel-body { display:none !important; }
   .sidebar.mobile-open .search-panel-body { display:flex !important; }
 }

@@ -266,10 +266,11 @@ pub mod primary_buttons {
     }
 
     /// Filters toggle button: mobile-only button for showing/hiding filters.
-    /// Display and width are controlled entirely by CSS media queries (filters-toggle class).
-    /// Rust styles handle appearance (colors, sizing, etc) but NOT visibility or width.
+    /// Display controlled by CSS media queries (filters-toggle class).
+    /// Rust styles handle appearance (colors, sizing, etc) — display is inline-flex like search button.
     pub fn button_filters_toggle_style() -> String {
         StyleBuilder::new()
+            .display("inline-flex")
             .flex_wrap("wrap")
             .align_items("center")
             .justify_content("center")
