@@ -62,13 +62,10 @@ pub fn cell_taxon_id() -> String {
 // REFERENCE CELL STYLES
 // ============================================================================
 
-/// Reference cell container: extends base cell with pink inset border.
+/// Reference cell container: extends base cell with blue inset border.
 /// Naming: cell (WHAT) reference (VARIANT)
 pub fn cell_reference() -> String {
     StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap(tokens::GAP_XS)
         .padding(&tokens::cell_padding())
         .border_radius(tokens::BORDER_RADIUS_LG)
         .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")

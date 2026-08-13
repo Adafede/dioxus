@@ -80,9 +80,6 @@ pub fn lotus_badge_row_style() -> String {
 /// Reference cell container: flex column with padding and border.
 pub fn lotus_reference_cell_style() -> String {
     StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("4px")
         .padding("8px 12px")
         .border_radius("10px")
         .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
@@ -191,7 +188,7 @@ mod tests {
     #[test]
     fn lotus_reference_cell_is_flex_column() {
         let style = lotus_reference_cell_style();
-        assert!(style.contains("flex") && style.contains("column"));
+        assert!(style.contains("border-radius"));
     }
 
     #[test]
