@@ -82,19 +82,13 @@ input[type="number"].form-input::-webkit-inner-spin-button { appearance: none; m
 "#;
 
 const FORM_ACTIONS_AND_RESPONSIVE: &str = r"
-.search-btn { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; background:var(--btn-primary-bg); color:var(--text); border:0; border-radius:var(--radius-sm); padding:11px 16px; font-size:var(--fs-ui); font-weight:700; cursor:pointer; box-shadow:var(--shadow-xs); transition:background .15s, box-shadow .15s, transform .12s ease; text-align:center; line-height:1.2; white-space:normal; width:100%; min-width:0; }
-.search-btn:hover:not(:disabled) { background:var(--btn-primary-hover-bg); box-shadow:var(--shadow-sm); }
-.search-btn:active { transform: translateY(1px); }
-.search-btn:disabled { opacity:.5; cursor:not-allowed; }
-
-.btn:focus-visible,
-.search-btn:focus-visible,
+/* Focus-visible styles for interactive elements */
+button:focus-visible,
 .sort-btn:focus-visible,
 .notice-dismiss:focus-visible,
 .primary-link:focus-visible,
 .id-badge:focus-visible,
-.filters-toggle:focus-visible,
-.copy-btn:focus-visible {
+.filters-toggle:focus-visible {
   outline: 3px solid var(--accent2);
   outline-offset: 2px;
 }

@@ -47,6 +47,7 @@ pub fn Sidebar() -> Element {
             }
             button {
                 r#type: "button",
+                class: "filters-toggle",
                 style: primary_buttons::button_filters_toggle_style(),
                 aria_controls: SEARCH_PANEL_BODY_ID,
                 aria_expanded: if mobile_filters_open { "true" } else { "false" },

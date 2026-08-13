@@ -142,7 +142,6 @@ pub mod buttons {
 pub mod shared {
     //! Legacy module - functions have been moved to more organized modules.
     //! Left for backward compatibility with imports in other files.
-    use super::*;
 
     pub use super::forms::input_base_style;
     pub use super::forms::label_base_style;
@@ -266,10 +265,11 @@ pub mod primary_buttons {
             .build()
     }
 
-    /// Filters toggle button: mobile-specific full-width primary button for showing/hiding filters.
+    /// Filters toggle button: mobile-only button for showing/hiding filters.
+    /// Display and width are controlled entirely by CSS media queries (filters-toggle class).
+    /// Rust styles handle appearance (colors, sizing, etc) but NOT visibility or width.
     pub fn button_filters_toggle_style() -> String {
         StyleBuilder::new()
-            .display("flex")
             .flex_wrap("wrap")
             .align_items("center")
             .justify_content("center")
@@ -289,8 +289,6 @@ pub mod primary_buttons {
             .property("text-align", "center")
             .property("line-height", "1.2")
             .property("white-space", "normal")
-            .property("width", "calc(100% - 32px)")
-            .property("margin", "0 16px")
             .property("box-sizing", "border-box")
             .build()
     }
@@ -473,6 +471,164 @@ pub mod utilities {
 // DYNAMIC STYLING UTILITIES
 // ============================================================================
 
+pub mod header {
+    //! Header and page title styling.
+    use ui::prelude::*;
+
+    /// Page header container with sticky positioning and bottom border.
+    pub fn page_header_style() -> String {
+        StyleBuilder::new()
+            .display("flex")
+            .flex_direction("column")
+            .gap("8px")
+            .property("padding-left", "max(18px, env(safe-area-inset-left))")
+            .property("padding-right", "max(18px, env(safe-area-inset-right))")
+            .build()
+    }
+
+    /// Page brand section: flex row with title and language switcher.
+    pub fn page_brand_style() -> String {
+        StyleBuilder::new()
+            .display("flex")
+            .flex_direction("row")
+            .flex_wrap("wrap")
+            .align_items("flex-start")
+            .gap("8px 10px")
+            .build()
+    }
+
+    /// Page title: main heading with min-width constraint.
+    pub fn page_title_style() -> String {
+        StyleBuilder::new()
+            .property("min-width", "0")
+            .property("flex", "1 1 260px")
+            .font_size("var(--fs-4)")
+            .property("margin", "0")
+            .build()
+    }
+
+    /// Page title link: inline-flex with text overflow handling.
+    pub fn page_title_link_style() -> String {
+        StyleBuilder::new()
+            .display("inline-flex")
+            .property("max-width", "100%")
+            .gap("8px")
+            .text_decoration("none")
+            .color("inherit")
+            .build()
+    }
+
+    /// Page title text: proper wrapping and line height.
+    pub fn page_title_text_style() -> String {
+        StyleBuilder::new()
+            .property("line-height", "1.1")
+            .property("word-break", "break-word")
+            .build()
+    }
+
+    /// Page subtitle: secondary color with smaller font.
+    pub fn page_subtitle_style() -> String {
+        StyleBuilder::new()
+            .font_size("var(--fs-1)")
+            .property("margin", "0")
+            .color("var(--text2)")
+            .build()
+    }
+
+    /// Archive note section: inline display.
+    pub fn page_archive_note_style() -> String {
+        StyleBuilder::new()
+            .display("inline")
+            .build()
+    }
+
+    /// Archive label: bold small-caps label.
+    pub fn page_archive_label_style() -> String {
+        StyleBuilder::new()
+            .font_weight("700")
+            .property("font-variant", "small-caps")
+            .build()
+    }
+
+    /// Archive link: accent color, no wrap.
+    pub fn page_archive_link_style() -> String {
+        StyleBuilder::new()
+            .text_decoration("none")
+            .color("var(--accent)")
+            .property("white-space", "nowrap")
+            .build()
+    }
+}
+
+pub mod table {
+    //! Table header and sorting controls.
+    use ui::prelude::*;
+
+    /// Table header cell: uppercase label with border and padding.
+    pub fn table_header_cell_style() -> String {
+        StyleBuilder::new()
+            .padding("9px 10px")
+            .text_align("left")
+            .font_size("var(--fs-label)")
+            .font_weight("700")
+            .color("var(--critical-muted)")
+            .border_bottom("1px solid var(--results-border)")
+            .property("white-space", "nowrap")
+            .property("user-select", "none")
+            .property("text-transform", "uppercase")
+            .property("letter-spacing", "0.08em")
+            .property("width", "auto")
+            .property("min-width", "max-content")
+            .build()
+    }
+
+    /// Header label text: block display with no-break constraint.
+    pub fn header_label_style() -> String {
+        StyleBuilder::new()
+            .display("block")
+            .property("min-width", "max-content")
+            .property("white-space", "nowrap")
+            .property("overflow", "visible")
+            .property("text-overflow", "clip")
+            .property("line-height", "1.2")
+            .font_weight("inherit")
+            .font_size("inherit")
+            .property("text-transform", "inherit")
+            .property("letter-spacing", "inherit")
+            .build()
+    }
+
+    /// Sort button: transparent grid-based layout for label + icon.
+    pub fn sort_button_style() -> String {
+        StyleBuilder::new()
+            .property("appearance", "none")
+            .background_color("transparent")
+            .border("0")
+            .color("inherit")
+            .font_family("inherit")
+            .padding("0")
+            .property("margin", "0")
+            .cursor("pointer")
+            .display("grid")
+            .align_items("start")
+            .property("grid-template-columns", "auto auto")
+            .property("column-gap", "6px")
+            .property("width", "100%")
+            .property("min-width", "max-content")
+            .build()
+    }
+
+    /// Sort icon: muted color, smaller font.
+    pub fn sort_icon_style() -> String {
+        StyleBuilder::new()
+            .color("var(--text3)")
+            .font_size("var(--fs-0)")
+            .font_weight("700")
+            .property("line-height", "1")
+            .build()
+    }
+}
+
 pub mod theme {
     //! Theme and dynamic styling utilities (dark mode detection, etc).
 
@@ -524,7 +680,8 @@ impl StatStripe {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::StatStripe;
+    use crate::ui::style_constants::{stat_stripe_colors, spacing};
 
     #[test]
     fn stat_stripe_colors_are_nonempty() {

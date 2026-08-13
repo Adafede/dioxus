@@ -218,57 +218,6 @@ a:hover { text-decoration: underline; }
 ";
 
 const CONTROLS_AND_FORMS: &str = r"
-/* Buttons */
-.btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  min-height: var(--tap-target-min);
-  padding: 8px 14px; font-size: var(--fs-0); font-weight: 600;
-  cursor: pointer; background: var(--surface); color: var(--text);
-  box-shadow: var(--shadow-xs);
-  transition: background .15s, border-color .15s, box-shadow .15s, transform .12s ease;
-}
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-
-.btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--surface2) 82%, var(--bg2));
-  box-shadow: var(--shadow-sm);
-}
-.btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--btn-primary-bg); border-color: var(--btn-primary-bg); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--btn-primary-hover-bg); border-color: var(--btn-primary-hover-bg); }
-
-.btn-soft-accent {
-  color: var(--text);
-  border-color: color-mix(in srgb, var(--accent2) 52%, var(--border));
-  background: color-mix(in srgb, var(--accent) 20%, var(--surface));
-}
-
-.btn-soft-accent:hover:not(:disabled) {
-  color: var(--text);
-  border-color: color-mix(in srgb, var(--accent2) 66%, var(--border));
-  background: color-mix(in srgb, var(--accent) 28%, var(--surface));
-}
-.btn-sm { min-height: 34px; padding: 5px 10px; font-size: var(--fs-0); }
-.btn-xs { min-height: 30px; padding: 2px 8px; font-size: var(--fs-label); line-height: 1.2; border-radius: 4px; }
-.btn-block { width: 100%; justify-content: center; text-align: center; }
-
-/* Copy button (used next to QIDs, hashes, share URL, SPARQL queries) */
-.copy-btn {
-  margin-left: 6px;
-  font-family: var(--sans), system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: .02em;
-  color: var(--text2);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: color .15s, background .15s, border-color .15s;
-  vertical-align: baseline;
-}
-.copy-btn:hover { color: var(--text); background: var(--surface2); border-color: var(--text3); }
-.copy-btn:active { transform: translateY(1px); }
-
 /* Forms */
 .form-input, .form-textarea {
   background:var(--surface); border:1px solid var(--border);
@@ -302,19 +251,13 @@ const REDUCED_AND_PERF: &str = r"
 
 @media (prefers-reduced-motion: reduce), (update: slow) {
   .data-row:hover,
-  .id-badge:hover,
-  .btn:active,
-  .search-btn:active {
+  .id-badge:hover {
     transform: none;
   }
 
   /* Always show copy button at full opacity — no hover-fade when motion is reduced */
   .query-copy-btn { opacity: 1; }
 
-  .btn,
-  .search-btn,
-  .copy-btn,
-  .query-copy-btn,
   .data-row,
   .id-badge,
   .page-header-meta,
