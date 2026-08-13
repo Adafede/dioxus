@@ -15,7 +15,10 @@ the apps:
   (`Button`, `Card`, `Footer`, `Header`, `NoticeBar`, `SegmentedControl`),
   `DocumentHead`/`DocumentLinks`, pure-Rust style builders (`styles::*`), and
   theme primitives (`theme::*`). All apps depend on `ui`; prefer it over
-  inlining styles.
+  inlining raw CSS. **Inline-style convention:** every inline `style:` must be a
+  `StyleBuilder::new()...build()` value (or a `styles::*` helper), never a raw
+  `style: "..."` string; reused sub-patterns should be extracted as local style
+  fns rather than copy-pasted. Reference: `apps/cxsmiles-yoga/src/app.rs`.
 - `crates/ui::signals` --- the `shared_signal!` / `shared_signals!` macros
   collapse the repeated `#[cfg(target_arch = "wasm32")] let x = use_signal(...)`
   / `#[cfg(not(...))] let mut x = use_signal(...)` pair into a single

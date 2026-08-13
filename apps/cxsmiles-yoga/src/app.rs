@@ -7,6 +7,12 @@
 //! The `app` entry point intentionally is **not** annotated with `#[component]`
 //! so that `dioxus::launch(cxsmiles_yoga::app)` works exactly like the sibling
 //! `lipid-selecto-rs` app.
+//!
+//! Style convention: every inline style flows through `StyleBuilder`
+//! (re-exported by `ui::prelude`) rather than raw `style: "..."` CSS strings,
+//! mirroring the pattern used in `crates/ui/src/styles`. Reused sub-patterns
+//! are extracted into the local style fns below instead of being copy-pasted as
+//! raw CSS at each call site.
 
 use std::sync::Arc;
 
@@ -80,7 +86,44 @@ struct CopyCellProps {
     text: Arc<str>,
 }
 
+/// Shared card surface used by the scaffold and enumerated-candidate panels.
+///
+/// The `flex` variant extends the base surface with a flex column layout. Kept
+/// as a fns (the `crates/ui` convention) rather than a repeated raw CSS
+/// string so the surface style has a single source of truth within the app.
+fn card_surface(flex: bool) -> String {
+    let b = StyleBuilder::new()
+        .background_color("#fff")
+        .border("1px solid #e2e8f0")
+        .border_radius("12px")
+        .padding("0.5rem")
+        .min_height("120px");
+    if flex {
+        b.display("flex")
+            .flex_direction("column")
+            .gap("0.5rem")
+            .build()
+    } else {
+        b.build()
+    }
+}
+
+/// Reused field-label typography; `with_margin` appends the scaffold bottom
+/// margin so the two label sites share one definition.
+fn field_label(with_margin: bool) -> String {
+    let b = StyleBuilder::new()
+        .font_size("0.72rem")
+        .font_weight("600")
+        .color("#475569");
+    if with_margin {
+        b.property("margin-bottom", "0.25rem").build()
+    } else {
+        b.build()
+    }
+}
+
 /// Renders the shared scaffold with its floating groups drawn alongside.
+#[allow(clippy::too_many_lines)]
 fn results(res: &CxResult) -> Element {
     let frac = res.confidence.coverage.fraction() * 100.0;
     let coverage_pct = format!("{frac:.0}%");
@@ -101,15 +144,33 @@ fn results(res: &CxResult) -> Element {
     rsx! {
         Card {
             title: "Generated CX-SMILES".to_string(),
-            div { style: "display: flex; flex-direction: column; gap: 0.75rem;",
+            div { style: StyleBuilder::new()
+                .display("flex")
+                .flex_direction("column")
+                .gap("0.75rem")
+                .build(),
                 div {
-                    style: "padding: 0.6rem 0.7rem; background: #0f172a0d; border-radius: 10px; border: 1px solid #e2e8f0; font-family: ui-monospace, monospace; font-size: 0.85rem; word-break: break-all; color: #0f172a;",
+                    style: StyleBuilder::new()
+                        .padding("0.6rem 0.7rem")
+                        .background_color("#0f172a0d")
+                        .border_radius("10px")
+                        .border("1px solid #e2e8f0")
+                        .font_family("ui-monospace, monospace")
+                        .font_size("0.85rem")
+                        .property("word-break", "break-all")
+                        .color("#0f172a")
+                        .build(),
                     "{res.cx_smiles}"
                 }
 
-                div { style: "display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;",
+                div { style: StyleBuilder::new()
+                    .display("flex")
+                    .align_items("center")
+                    .gap("0.5rem")
+                    .flex_wrap("wrap")
+                    .build(),
                     CopyCell { text: Arc::<str>::from(res.cx_smiles.as_str()) }
-                    span { style: "font-size: 0.8rem; color: #64748b;", "{construct_label}" }
+                    span { style: StyleBuilder::new().font_size("0.8rem").color("#64748b").build(), "{construct_label}" }
                 }
 
                 NoticeBar {
@@ -121,24 +182,48 @@ fn results(res: &CxResult) -> Element {
                     tone,
                 }
 
-                div { style: "display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;",
-                    div { style: "background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0.5rem; min-height: 120px;",
-                        div { style: "font-size: 0.72rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;", "Shared scaffold" }
-                        div { style: "width: 100%; display: flex; justify-content: center; align-items: center;",
+                div { style: StyleBuilder::new()
+                    .display("grid")
+                    .property("grid-template-columns", "1fr 1fr")
+                    .gap("0.75rem")
+                    .build(),
+                    div { style: card_surface(false),
+                        div { style: field_label(true), "Shared scaffold" }
+                        div { style: StyleBuilder::new()
+                            .width("100%")
+                            .display("flex")
+                            .justify_content("center")
+                            .align_items("center")
+                            .build(),
                             div { dangerous_inner_html: "{scaffold_svg}" }
                         }
                     }
 
                     if !res.enumerated.is_empty() {
-                        div { style: "background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0.5rem; min-height: 120px; display: flex; flex-direction: column; gap: 0.5rem;",
-                            div { style: "font-size: 0.72rem; font-weight: 600; color: #475569;", "Enumerated candidates ({n_enum})" }
-                            div { style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.4rem; width: 100%; overflow-y: auto;",
+                        div { style: card_surface(true),
+                            div { style: field_label(false), "Enumerated candidates ({n_enum})" }
+                            div { style: StyleBuilder::new()
+                                .display("grid")
+                                .property("grid-template-columns", "repeat(auto-fill, minmax(110px, 1fr))")
+                                .gap("0.4rem")
+                                .width("100%")
+                                .property("overflow-y", "auto")
+                                .build(),
                                 for smi in &res.enumerated {
                                     {
                                         let s = smi.clone();
                                         let svg = depict::render_smiles_svg(&s);
                                         rsx! {
-                                            div { style: "width: 100%; height: 90px; display: grid; place-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;",
+                                            div { style: StyleBuilder::new()
+                                                .width("100%")
+                                                .height("90px")
+                                                .display("grid")
+                                                .property("place-items", "center")
+                                                .background_color("#f8fafc")
+                                                .border("1px solid #e2e8f0")
+                                                .border_radius("8px")
+                                                .property("overflow", "hidden")
+                                                .build(),
                                                 div { dangerous_inner_html: "{svg}" }
                                             }
                                         }
@@ -209,8 +294,12 @@ pub fn app() -> Element {
             subtitle: Some("Generate CX-SMILES from a list of related structures".to_string()),
         }
 
-        main { style: "max-width: 1000px; margin: 0 auto; padding: 1.5rem 1rem 3rem;",
-            p { style: "color: #475569; font-size: 0.95rem; max-width: 60rem;",
+        main { style: StyleBuilder::new()
+            .property("max-width", "1000px")
+            .margin("0 auto")
+            .padding("1.5rem 1rem 3rem")
+            .build(),
+            p { style: StyleBuilder::new().color("#475569").font_size("0.95rem").property("max-width", "60rem").build(),
                 "Paste a list of related SMILES (one per line). The tool finds the shared scaffold, "
                 "classifies each variable region as a positional isomer (m:) or a variable-length "
                 "repeat (Sg:n:), and emits a single CX-SMILES. It then re-expands the result and "
@@ -218,7 +307,7 @@ pub fn app() -> Element {
                 "confident the output."
             }
 
-            div { style: "margin: 1rem 0;",
+            div { style: StyleBuilder::new().margin("1rem 0").build(),
                 SegmentedControl {
                     aria_label: "Pick an example".to_string(),
                     selected_value: "{selected.read()}",
@@ -227,19 +316,48 @@ pub fn app() -> Element {
                 }
             }
 
-            div { style: "background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 12px 40px rgba(15,23,42,0.06); padding: 1.25rem; margin-bottom: 1.25rem;",
-                div { style: "display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;",
-                    label { style: "font-size: 0.85rem; font-weight: 600; color: #0f172a;", "SMILES list" }
-                    span { style: "font-size: 0.72rem; color: #94a3b8;", "{input.read().lines().count()} line(s)" }
+            div { style: StyleBuilder::new()
+                .background_color("#fff")
+                .border("1px solid #e2e8f0")
+                .border_radius("20px")
+                .box_shadow("0 12px 40px rgba(15,23,42,0.06)")
+                .padding("1.25rem")
+                .property("margin-bottom", "1.25rem")
+                .build(),
+                div { style: StyleBuilder::new()
+                    .display("flex")
+                    .justify_content("space-between")
+                    .align_items("baseline")
+                    .property("margin-bottom", "0.5rem")
+                    .build(),
+                    label { style: StyleBuilder::new().font_size("0.85rem").font_weight("600").color("#0f172a").build(), "SMILES list" }
+                    span { style: StyleBuilder::new().font_size("0.72rem").color("#94a3b8").build(), "{input.read().lines().count()} line(s)" }
                 }
                 textarea {
-                    style: "width: 100%; min-height: 140px; font-family: ui-monospace, monospace; font-size: 0.85rem; padding: 0.6rem 0.7rem; border: 1px solid #cbd5e1; border-radius: 12px; resize: vertical; color: #0f172a;",
+                    style: StyleBuilder::new()
+                        .width("100%")
+                        .property("min-height", "140px")
+                        .font_family("ui-monospace, monospace")
+                        .font_size("0.85rem")
+                        .padding("0.6rem 0.7rem")
+                        .border("1px solid #cbd5e1")
+                        .border_radius("12px")
+                        .property("resize", "vertical")
+                        .color("#0f172a")
+                        .build(),
                     value: "{input.read()}",
                     placeholder: "Clc1ccccc1-c2ccccc2\nClc1cccc(-c2ccccc2)c1\nClc1ccc(-c2ccccc2)cc1",
                     oninput: move |e| input.set(e.value()),
                 }
 
-                div { style: "display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; font-size: 0.82rem; color: #64748b;",
+                div { style: StyleBuilder::new()
+                    .display("flex")
+                    .align_items("center")
+                    .gap("0.5rem")
+                    .property("margin-top", "0.6rem")
+                    .font_size("0.82rem")
+                    .color("#64748b")
+                    .build(),
                     input {
                         r#type: "checkbox",
                         id: "aromatic-equiv",
@@ -253,7 +371,7 @@ pub fn app() -> Element {
                 }
             }
 
-            div { style: "margin-bottom: 1rem;",
+            div { style: StyleBuilder::new().property("margin-bottom", "1rem").build(),
                 button {
                     r#type: "button",
                     disabled: input.read().trim().is_empty(),
