@@ -1,6 +1,8 @@
-//! Dioxus UI for `cxsmiles-yoga`: a textarea, a "generate" button, and a results
-//! panel that shows the produced CX-SMILES, the detected construct type, a
-//! round-trip confidence indicator, and 2D depiction of the shared scaffold.
+//! Dioxus UI for `cxsmiles-yoga`.
+//!
+//! A textarea, a "generate" button, and a results panel show the produced
+//! CX-SMILES, the detected construct type, a round-trip confidence indicator,
+//! and 2D depiction of the shared scaffold.
 //!
 //! The `app` entry point intentionally is **not** annotated with `#[component]`
 //! so that `dioxus::launch(cxsmiles_yoga::app)` works exactly like the sibling
@@ -32,7 +34,7 @@ fn copy_to_clipboard(text: &str) -> bool {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn copy_to_clipboard(_text: &str) -> bool {
+const fn copy_to_clipboard(_text: &str) -> bool {
     false
 }
 
@@ -40,7 +42,7 @@ fn copy_to_clipboard(_text: &str) -> bool {
 #[component]
 fn CopyCell(props: CopyCellProps) -> Element {
     let mut copied = use_signal(|| false);
-    let text = props.text.clone();
+    let text = props.text;
     rsx! {
         button {
             r#type: "button",
@@ -49,7 +51,7 @@ fn CopyCell(props: CopyCellProps) -> Element {
                 copied.set(ok);
                 if ok {
                     spawn(async move {
-                        let _ = TimeoutFuture::new(1200).await;
+                        TimeoutFuture::new(1200).await;
                         copied.set(false);
                     });
                 }
@@ -81,7 +83,7 @@ struct CopyCellProps {
 /// Renders the shared scaffold with its floating groups drawn alongside.
 fn results(res: &CxResult) -> Element {
     let frac = res.confidence.coverage.fraction() * 100.0;
-    let coverage_pct = format!("{:.0}%", frac);
+    let coverage_pct = format!("{frac:.0}%");
     let tone = if res.confidence.clean {
         NoticeTone::Success
     } else {
@@ -152,13 +154,18 @@ fn results(res: &CxResult) -> Element {
 }
 
 /// The main `cxsmiles-yoga` UI. Entry point for `dioxus::launch(cxsmiles_yoga::app)`.
+///
+/// # Errors
+///
+/// Returns an `Element` (`Result<VNode, RenderError>`); a render error from
+/// `rsx!` propagates to the nearest error boundary.
 #[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
     let colors = ColorScheme::LIGHT;
-    let mut input = use_signal(|| String::new());
+    let mut input = use_signal(String::new);
     let mut result = use_signal(|| None::<CxResult>);
     let mut error = use_signal(|| None::<String>);
-    let mut selected = use_signal(|| String::new());
+    let mut selected = use_signal(String::new);
     let mut aromatic = use_signal(|| false); // NYI: "enumerate equivalent aromatic positions"
 
     let on_generate = move |_| {

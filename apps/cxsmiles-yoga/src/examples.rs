@@ -63,11 +63,13 @@ COCCC",
 ];
 
 /// Look up an example set by `id`.
+#[must_use]
 pub fn example_smiles(id: &str) -> Option<&'static str> {
     EXAMPLE_SETS.iter().find(|e| e.id == id).map(|e| e.smiles)
 }
 
 /// The `SegmentedControl` items for the example picker.
+#[must_use]
 pub fn example_items() -> Vec<ui::components::SegmentedControlItem> {
     EXAMPLE_SETS
         .iter()

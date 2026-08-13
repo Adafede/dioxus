@@ -13,7 +13,7 @@
 //! 2. **Cluster** candidates by ECFP4/Tanimoto similarity so unrelated
 //!    structures are never forced into one nonsensical CX-SMILES.
 //! 3. **Maximum common substructure** across each cluster (via `chematic`'s
-//!    McGregor search).
+//![`McGregor`] search).
 //! 4. **Diff** each member against the MCS to isolate variable fragments and
 //!    classify them as positional-isomer (`m:`) or variable-length repeat
 //!    (`Sg:n:`) construct.

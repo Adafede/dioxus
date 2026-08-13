@@ -10,25 +10,23 @@ use chematic::smiles::parse;
 use std::collections::HashSet;
 
 /// Render a SMILES string to an inline SVG, parsing it with chematic.
+#[must_use]
 pub fn render_smiles_svg(smiles: &str) -> String {
-    match parse(smiles) {
-        Ok(mol) => depict_svg(&mol),
-        Err(_) => empty_svg(),
-    }
+    parse(smiles).map_or_else(|_| empty_svg(), |mol| depict_svg(&mol))
 }
 
 /// Render a `Molecule` to an inline SVG.
+#[must_use]
 pub fn render_molecule_svg(mol: &Molecule) -> String {
     depict_svg(mol)
 }
 
 /// Render a SMILES string with the given `atom_indices` (0-based, in the
 /// molecule's write order) highlighted.
+#[must_use]
+#[allow(clippy::cast_possible_truncation)]
 pub fn render_smiles_svg_highlighted(smiles: &str, atom_indices: &[usize]) -> String {
-    let mol = match parse(smiles) {
-        Ok(m) => m,
-        Err(_) => return empty_svg(),
-    };
+    let Ok(mol) = parse(smiles) else { return empty_svg() };
     let highlight: HashSet<AtomIdx> = atom_indices.iter().map(|&i| AtomIdx(i as u32)).collect();
     let bonds: HashSet<BondIdx> = HashSet::new();
     depict_svg_highlighted(&mol, &highlight, &bonds)
