@@ -153,18 +153,18 @@ pub fn button_copy_style() -> String {
         .border("1px solid var(--border)")
         .border_radius("4px")
         .cursor("pointer")
-        .property("min-height", "40px")
-        .property("font-size", "clamp(0.75rem, 0.7rem + 0.5vw, 0.95rem)")
+        .property("height", "clamp(32px, 28px + 0.5vw, 42px)")
+        .property("font-size", "clamp(0.75rem, 0.7rem + 0.5vw, 0.85rem)")
         .property(
             "padding",
-            "clamp(6px, 4px + 1vw, 12px) clamp(10px, 8px + 1vw, 16px)",
+            "clamp(4px, 2px + 0.5vw, 8px) clamp(8px, 6px + 0.5vw, 12px)",
         )
-        .property("line-height", "1.4")
+        .property("line-height", "1")
         .property(
             "transition",
             "color .15s, background .15s, border-color .15s",
         )
-        .property("vertical-align", "baseline")
+        .property("vertical-align", "middle")
         .build()
 }
 
