@@ -13,6 +13,13 @@
 //! hand: `scaffold_smiles` followed by `.[*]<frag>` for each floating group.
 //! This keeps atom indices fully under our control.
 
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap,
+    clippy::cast_lossless,
+)]
+
 use chematic::core::{Atom, AtomIdx, BondOrder, Molecule, MoleculeBuilder};
 use chematic::fp::{BitVec2048, ecfp4};
 use chematic::smarts::{
@@ -20,7 +27,7 @@ use chematic::smarts::{
     find_matches, find_mcs,
 };
 use rustc_hash::FxHashMap;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub use chematic::smiles::{canonical_smiles, parse, write};
 
@@ -48,6 +55,7 @@ pub struct Coverage {
 }
 
 impl Coverage {
+    #[must_use]
     pub fn fraction(&self) -> f64 {
         if self.total == 0 {
             0.0
@@ -122,6 +130,16 @@ const CLUSTER_TANIMOTO: f64 = 0.3;
 // ---------------------------------------------------------------------------
 
 /// Generate a CX-SMILES from a list of related SMILES (one per entry).
+///
+/// # Panics
+///
+/// Panics if clustering discards every group (unreachable: at least one
+/// cluster is always retained).
+///
+/// # Errors
+///
+/// Returns a [`CxError`] if any input fails to parse as SMILES.
+#[allow(clippy::module_name_repetitions)]
 pub fn generate_cxsmiles(smiles: &[String]) -> CxResult_ {
     let mols = parse_list(smiles)?;
     if mols.is_empty() {
@@ -149,13 +167,13 @@ pub fn generate_cxsmiles(smiles: &[String]) -> CxResult_ {
     }
 
     let clusters = cluster(&mols, CLUSTER_TANIMOTO);
-    let group: Vec<Molecule> = if clusters.iter().map(|c| c.len()).max().unwrap_or(0) >= 2 {
-        clusters.into_iter().max_by_key(|c| c.len()).unwrap()
+    let group: Vec<Molecule> = if clusters.iter().map(Vec::len).max().unwrap_or(0) >= 2 {
+        clusters.into_iter().max_by_key(Vec::len).unwrap()
     } else {
-        mols.clone()
+        mols
     };
 
-    let counts: Vec<usize> = group.iter().map(|m| m.atom_count()).collect();
+    let counts: Vec<usize> = group.iter().map(Molecule::atom_count).collect();
     if counts.iter().all(|c| *c == counts[0]) {
         build_positional(&group)
     } else {
@@ -268,7 +286,7 @@ fn molecule_to_query(mol: &Molecule) -> QueryMolecule {
     QueryMolecule { atoms, bonds, adj }
 }
 
-fn bond_to_primitive(order: BondOrder) -> BondPrimitive {
+const fn bond_to_primitive(order: BondOrder) -> BondPrimitive {
     match order {
         BondOrder::Single => BondPrimitive::Single,
         BondOrder::Double => BondPrimitive::Double,
@@ -299,21 +317,21 @@ fn subgraph(mol: &Molecule, keep: &[bool]) -> Molecule {
 
 /// Connected components of `atoms` (u32 indices) using `mol`'s internal edges.
 fn components(atoms: &[u32], mol: &Molecule) -> Vec<Vec<u32>> {
-    let set: HashMap<u32, ()> = atoms.iter().copied().map(|a| (a, ())).collect();
-    let mut seen: HashMap<u32, ()> = HashMap::new();
+    let set: HashSet<u32> = atoms.iter().copied().collect();
+    let mut seen: HashSet<u32> = HashSet::new();
     let mut comps: Vec<Vec<u32>> = Vec::new();
     for &start in atoms {
-        if seen.contains_key(&start) {
+        if seen.contains(&start) {
             continue;
         }
         let mut comp: Vec<u32> = Vec::new();
         let mut stack = vec![start];
-        seen.insert(start, ());
+        seen.insert(start);
         while let Some(cur) = stack.pop() {
             comp.push(cur);
             for (nbr, _) in mol.neighbors(AtomIdx(cur)) {
-                if set.contains_key(&nbr.0) && !seen.contains_key(&nbr.0) {
-                    seen.insert(nbr.0, ());
+                if set.contains(&nbr.0) && !seen.contains(&nbr.0) {
+                    seen.insert(nbr.0);
                     stack.push(nbr.0);
                 }
             }
@@ -386,7 +404,7 @@ fn build_positional(group: &[Molecule]) -> CxResult_ {
     let (floating_comps, recovered) = split_floating_and_recovered(&comps, &matched, rep);
 
     // Scaffold = rep minus floating atoms, plus recovered scaffold atoms.
-    let mut keep = matched.clone();
+    let mut keep = matched;
     for r in &recovered {
         keep[*r as usize] = true;
     }
@@ -413,20 +431,17 @@ fn build_positional(group: &[Molecule]) -> CxResult_ {
 
     // Targets per flat def.
     let mut targets: Vec<Target> = Vec::with_capacity(defs.len());
-    let mut ci = 0usize;
     let mut di = 0usize;
-    for cdefs in &comp_defs {
+    for (ci, cdefs) in comp_defs.iter().enumerate() {
         let positions = comp_positions[ci].clone();
+        targets.push(Target::Variable(positions));
         if cdefs.len() == 1 {
-            targets.push(Target::Variable(positions));
             di += 1;
         } else {
-            targets.push(Target::Variable(positions)); // group1 (O*)
             let g1 = di;
             targets.push(Target::Fixed(g1)); // group2 attaches to group1's O
             di += 2;
         }
-        ci += 1;
     }
 
     // Assemble the base SMILES string (hand-built because chematic's writer
@@ -440,7 +455,7 @@ fn build_positional(group: &[Molecule]) -> CxResult_ {
             let pos = match &targets[j] {
                 Target::Variable(p) => p
                     .iter()
-                    .map(|x| x.to_string())
+                    .map(ToString::to_string)
                     .collect::<Vec<_>>()
                     .join("."),
                 Target::Fixed(other) => attach_idx[*other].to_string(),
@@ -659,7 +674,7 @@ fn equiv_positions(_comp: &[u32], group: &[Molecule], scaffold_q: &QueryMolecule
     positions.sort_unstable();
     positions.dedup();
     if positions.is_empty() {
-        positions = (0..scaffold_q.atoms.len() as usize).collect();
+        positions = (0..scaffold_q.atoms.len()).collect();
     }
     positions
 }
@@ -670,7 +685,7 @@ fn equiv_positions(_comp: &[u32], group: &[Molecule], scaffold_q: &QueryMolecule
 
 fn build_repeating(group: &[Molecule]) -> CxResult_ {
     let mut ordered = group.to_vec();
-    ordered.sort_by_key(|m| m.atom_count());
+    ordered.sort_by_key(Molecule::atom_count);
     let shortest = &ordered[0];
     let longest = ordered.last().unwrap();
 
@@ -704,7 +719,7 @@ fn build_repeating(group: &[Molecule]) -> CxResult_ {
     let atoms_field = repeat_unit
         .atoms
         .iter()
-        .map(|a| a.to_string())
+        .map(ToString::to_string)
         .collect::<Vec<_>>()
         .join(",");
     let ext = format!("Sg:n:{atoms_field}:n:ht");
@@ -765,7 +780,7 @@ fn unit_multiset(pattern: &[u32], longest: &Molecule, unit_size: usize) -> Vec<u
     }
     let mut v: Vec<u8> = counts
         .iter()
-        .flat_map(|(el, &c)| std::iter::repeat(*el).take(c / k))
+        .flat_map(|(el, &c)| std::iter::repeat_n(*el, c / k))
         .collect();
     v.sort_unstable();
     v
@@ -786,13 +801,13 @@ fn locate_repeat_in_scaffold(
             if frag.len() == unit_size {
                 let mut f = frag.clone();
                 f.sort_unstable();
-                if is_internal(&f, scaffold) && multiset(&f, scaffold) == target {
-                    if best
+                if is_internal(&f, scaffold)
+                    && multiset(&f, scaffold) == target
+                    && best
                         .as_ref()
-                        .map_or(true, |b| center_dist(&f, n) < center_dist(b, n))
-                    {
-                        best = Some(f);
-                    }
+                        .is_none_or(|b| center_dist(&f, n) < center_dist(b, n))
+                {
+                    best = Some(f);
                 }
                 continue;
             }
@@ -820,11 +835,11 @@ fn multiset(atoms: &[u32], mol: &Molecule) -> Vec<u8> {
 }
 
 fn is_internal(atoms: &[u32], mol: &Molecule) -> bool {
-    let set: HashMap<u32, ()> = atoms.iter().copied().map(|a| (a, ())).collect();
+    let set: HashSet<u32> = atoms.iter().copied().collect();
     let mut ext = 0usize;
     for &a in atoms {
         for (nbr, _) in mol.neighbors(AtomIdx(a)) {
-            if !set.contains_key(&nbr.0) && nbr.0 != a {
+            if !set.contains(&nbr.0) && nbr.0 != a {
                 ext += 1;
             }
         }
@@ -965,11 +980,10 @@ fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> Molec
     if n <= 1 {
         return scaffold.clone();
     }
-    let set: HashMap<u32, ()> = repeat_atoms
+    let set: HashSet<u32> = repeat_atoms
         .iter()
         .copied()
         .map(|a| a as u32)
-        .map(|a| (a, ()))
         .collect();
     let unit: Vec<u32> = repeat_atoms.iter().map(|&a| a as u32).collect();
     let anchors: Vec<u32> = repeat_atoms
@@ -977,7 +991,7 @@ fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> Molec
         .flat_map(|&a| {
             scaffold
                 .neighbors(AtomIdx(a as u32))
-                .filter(|(nb, _)| !set.contains_key(&nb.0))
+                .filter(|(nb, _)| !set.contains(&nb.0))
                 .map(|(nb, _)| nb.0)
         })
         .collect::<std::collections::HashSet<_>>()
@@ -990,7 +1004,7 @@ fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> Molec
     let unit_internal: Vec<(u32, u32, BondOrder)> = scaffold
         .bonds()
         .filter_map(|(_, be)| {
-            if set.contains_key(&be.atom1.0) && set.contains_key(&be.atom2.0) {
+            if set.contains(&be.atom1.0) && set.contains(&be.atom2.0) {
                 Some((be.atom1.0, be.atom2.0, be.order))
             } else {
                 None
@@ -1045,9 +1059,9 @@ fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> Molec
 }
 
 fn endpoint_for(scaffold: &Molecule, unit: &[u32], anchor: u32) -> u32 {
-    let uset: HashMap<u32, ()> = unit.iter().copied().map(|a| (a, ())).collect();
+    let uset: HashSet<u32> = unit.iter().copied().collect();
     for (nbr, _) in scaffold.neighbors(AtomIdx(anchor)) {
-        if uset.contains_key(&nbr.0) {
+        if uset.contains(&nbr.0) {
             return nbr.0;
         }
     }
@@ -1074,11 +1088,11 @@ fn split_floating_and_recovered(
 }
 
 fn boundary_edges(comp: &[u32], matched: &[bool], mol: &Molecule) -> usize {
-    let set: HashMap<u32, ()> = comp.iter().copied().map(|a| (a, ())).collect();
+    let set: HashSet<u32> = comp.iter().copied().collect();
     let mut count = 0;
     for &a in comp {
         for (nbr, _) in mol.neighbors(AtomIdx(a)) {
-            if !set.contains_key(&nbr.0) && matched[nbr.0 as usize] {
+            if !set.contains(&nbr.0) && matched[nbr.0 as usize] {
                 count += 1;
             }
         }
