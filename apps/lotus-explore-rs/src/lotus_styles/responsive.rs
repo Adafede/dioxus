@@ -151,20 +151,6 @@ const PHONE_480: &str = r"
   .curation-wrap .share-bar { margin-left: 0; margin-right: 0; }
   .share-bar-input { width: 100%; min-width: 0; font-size: 16px; }
 
-  .filters-toggle {
-    display:flex;
-    padding:10px 12px;
-    justify-content:center;
-    align-items:center;
-    border:1px solid var(--border);
-    border-radius:var(--radius-sm);
-    background:var(--bg2);
-    color:var(--text);
-    font-size:var(--fs-ui);
-    font-weight:600;
-    min-height: 44px;
-    cursor:pointer;
-  }
   .sidebar-logo-wrap { border-top: none; margin-top: 0; }
 
   .page-title {
@@ -511,6 +497,7 @@ const PHONE_430_AND_360: &str = r"
   }
 
   .filters-toggle {
+    max-width: fit-content;
     min-height: 44px;
   }
 

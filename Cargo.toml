@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "apps/index",
+  "apps/cxsmiles-yoga",
   "apps/json-count-rs",
   "apps/lipid-selecto-rs",
   "apps/mgf-precursor-erro-rs",
