@@ -17,17 +17,11 @@ use crate::services::error_presenter::{
     error_hint_text, format_domain_error, format_taxon_warning,
 };
 use crate::state::use_results_context;
-use crate::ui::style_constants::theme;
 use crate::ui::style_constants::notices as notice_styles;
+use crate::ui::style_constants::theme;
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
-
-/// Detect if the system is in dark mode.
-fn is_dark_mode() -> bool {
-    theme::is_dark_mode()
-}
-
 /// Share URL notice — shows the current shareable URL with a copy button.
 #[component]
 pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
@@ -43,14 +37,14 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            dark: is_dark_mode(),
+            dark: crate::ui::style_constants::theme::is_dark_mode(),
             input {
                 id: share_input_id,
                 r#type: "text",
                 readonly: true,
                 value: "{share}",
                 aria_label: "{t(locale, TextKey::CopyShareableLink)}",
-                style: share_input_style(),
+                style: crate::ui::style_constants::notices::share_input_style(),
             }
             CopyButton {
                 text: Arc::<str>::from(absolute_share_url(share)),
@@ -78,8 +72,8 @@ pub fn TaxonNotice() -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            dark: is_dark_mode(),
-            span { style: notice_value_style(), "{text}" }
+            dark: crate::ui::style_constants::theme::is_dark_mode(),
+            span { style: crate::ui::style_constants::notices::notice_value_style(), "{text}" }
         }
     }
 }
@@ -108,13 +102,13 @@ pub fn ErrorNotice() -> Element {
             tone: NoticeTone::Warning,
             role: "alert",
             aria_live: "assertive",
-            dark: is_dark_mode(),
-            span { style: notice_value_style(), "{msg}" }
-            span { style: notice_value_style(), "{error_hint_text(locale, kind)}" }
+            dark: crate::ui::style_constants::theme::is_dark_mode(),
+            span { style: crate::ui::style_constants::notices::notice_value_style(), "{msg}" }
+            span { style: crate::ui::style_constants::notices::notice_value_style(), "{error_hint_text(locale, kind)}" }
             if recovery::should_show_retry_button(domain_err) && !*is_loading.read() {
                 button {
                     r#type: "button",
-                    style: button_base_style(),
+                    style: crate::ui::style_constants::buttons::button_base_style(),
                     onclick: move |_| retry_interactions.retry(),
                     "{t(locale, TextKey::Retry)}"
                 }
@@ -122,26 +116,10 @@ pub fn ErrorNotice() -> Element {
             button {
                 r#type: "button",
                 aria_label: "{t(locale, TextKey::DismissError)}",
-                style: notice_dismiss_style(),
+                style: crate::ui::style_constants::notices::notice_dismiss_style(),
                 onclick: move |_| interactions.dismiss_error(),
                 "×"
             }
         }
     }
-}
-
-fn notice_value_style() -> String {
-    notice_styles::notice_value_style()
-}
-
-fn button_base_style() -> String {
-    crate::ui::style_constants::buttons::button_base_style()
-}
-
-fn notice_dismiss_style() -> String {
-    notice_styles::notice_dismiss_style()
-}
-
-fn share_input_style() -> String {
-    notice_styles::share_input_style()
 }

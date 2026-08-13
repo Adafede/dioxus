@@ -5,7 +5,7 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::DatasetStats;
 use crate::state::use_results_context;
-use crate::ui::style_constants::{StatStripe, spacing, text, typography, stats};
+use crate::ui::style_constants::{StatStripe, spacing, stats, text, typography};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -35,15 +35,15 @@ fn StatBadge(
     });
     rsx! {
         div { style: stat_badge_style(stripe),
-            div { style: stat_value_row_style(),
-                span { style: stat_value_style(), "{display_value}" }
+            div { style: crate::ui::style_constants::stats::stat_value_row_style(),
+                span { style: crate::ui::style_constants::stats::stat_value_style(), "{display_value}" }
                 if let Some(secondary_text) = secondary_inline.as_ref() {
-                    span { style: stat_secondary_style(),
+                    span { style: crate::ui::style_constants::stats::stat_secondary_style(),
                         "{secondary_text}"
                     }
                 }
             }
-            span { style: stat_label_style(), "{label}" }
+            span { style: crate::ui::style_constants::stats::stat_label_style(), "{label}" }
         }
     }
 }
@@ -72,7 +72,7 @@ pub fn StatBar() -> Element {
         div {
             role: "group",
             aria_label: "{t(locale, TextKey::DatasetStatistics)}",
-            style: stat_bar_style(),
+            style: crate::ui::style_constants::stats::stat_bar_style(),
             StatBadge {
                 value: stats.n_compounds,
                 secondary_value: None,
@@ -122,43 +122,13 @@ pub fn CappedRowsNotice() -> Element {
                 tone: NoticeTone::Warning,
                 role: "status",
                 aria_live: "polite",
-                dark: is_dark_mode(),
+                dark: crate::ui::style_constants::theme::is_dark_mode(),
                 margin: "10px 0 0",
-                span { style: notice_value_style(), "{t(locale, TextKey::DisplayCappedHint)}" }
+                span { style: crate::ui::style_constants::shared::notice_value_style(), "{t(locale, TextKey::DisplayCappedHint)}" }
             }
         }
     }
 }
-
-/// Detect if the system is in dark mode.
-fn is_dark_mode() -> bool {
-    crate::ui::style_constants::theme::is_dark_mode()
-}
-
 fn stat_badge_style(stripe: StatStripe) -> String {
     stats::stat_badge_style(stripe)
-}
-
-fn stat_value_style() -> String {
-    stats::stat_value_style()
-}
-
-fn stat_secondary_style() -> String {
-    stats::stat_secondary_style()
-}
-
-fn stat_bar_style() -> String {
-    stats::stat_bar_style()
-}
-
-fn stat_value_row_style() -> String {
-    stats::stat_value_row_style()
-}
-
-fn stat_label_style() -> String {
-    stats::stat_label_style()
-}
-
-fn notice_value_style() -> String {
-    crate::ui::style_constants::shared::notice_value_style()
 }

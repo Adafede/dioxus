@@ -41,7 +41,7 @@ pub fn CopyButton(
             r#type: "button",
             title: "{title_attr}",
             aria_label: "{title_attr}",
-            style: button_copy_style(),
+            style: crate::ui::style_constants::primary_buttons::button_copy_style(),
             onclick: move |_| {
                 copy_to_clipboard(text.as_ref());
                 *copied.write() = true;
@@ -84,11 +84,6 @@ async fn gloo_timer_sleep_ms(ms: u32) {
         std::thread::sleep(std::time::Duration::from_millis(ms as u64));
     }
 }
-
-fn button_copy_style() -> String {
-    primary_buttons::button_copy_style()
-}
-
 /// Write `text` to the system clipboard. Tries `navigator.clipboard` first,
 /// falls back to a hidden-textarea + `document.execCommand('copy')` for
 /// older browsers or non-secure (http://) contexts where `clipboard` is

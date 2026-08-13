@@ -22,7 +22,7 @@ fn ElemStateSelect(
 
     rsx! {
         div { style: range_pair_style(),
-            label { style: form_label_small_style(), "{label}" }
+            label { style: crate::ui::style_constants::shared::label_small_style(), "{label}" }
             select {
                 style: form_input_small_style(),
                 aria_label: "{label} {t(locale, TextKey::ElementRequirement)}",
@@ -52,7 +52,7 @@ fn NumPair(
             p { style: formula_num_label_style(), "{label}" }
             div { class: "formula-minmax-grid",
                 div { style: range_pair_style(),
-                    label { style: form_label_small_style(), "{t(locale, TextKey::MinCount)}" }
+                    label { style: crate::ui::style_constants::shared::label_small_style(), "{t(locale, TextKey::MinCount)}" }
                     input {
                         r#type: "number",
                         style: formula_input_small_style(),
@@ -68,7 +68,7 @@ fn NumPair(
                     }
                 }
                 div { style: range_pair_style(),
-                    label { style: form_label_small_style(), "{t(locale, TextKey::MaxCount)}" }
+                    label { style: crate::ui::style_constants::shared::label_small_style(), "{t(locale, TextKey::MaxCount)}" }
                     input {
                         r#type: "number",
                         style: formula_input_small_style(),
@@ -129,7 +129,7 @@ pub fn FormulaSection() -> Element {
 
             if enabled {
                 div { style: formula_exact_row_style(),
-                    label { style: form_label_small_style(), r#for: "formula-exact",
+                    label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "formula-exact",
                         "{t(locale, TextKey::ExactFormula)}"
                     }
                     input {
@@ -226,11 +226,6 @@ fn form_section_style() -> String {
         .background_color("var(--panel-bg-soft)")
         .build()
 }
-
-fn form_label_small_style() -> String {
-    crate::ui::style_constants::shared::label_small_style()
-}
-
 fn radio_label_style() -> String {
     StyleBuilder::new()
         .display("flex")

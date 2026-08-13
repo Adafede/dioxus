@@ -23,7 +23,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
     statement_id: Option<&str>,
 ) -> Element {
     rsx! {
-    td { style: reference_cell_style(),
+    td { style: crate::ui::style_constants::table_cells::reference_cell_style(),
         div { style: cell_primary_style(),
                 if let Some(full_title) = entry.ref_title.as_deref()
                 {
@@ -31,7 +31,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                    style: primary_link_style(),
+                    style: crate::ui::style_constants::table_cells::primary_link_style(),
                         title: "{full_title}",
                         "{full_title}"
                     }
@@ -40,12 +40,12 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                    style: primary_link_style(),
+                    style: crate::ui::style_constants::table_cells::primary_link_style(),
                         "{reference_qid}"
                     }
                 }
             }
-        div { style: badge_row_style(),
+        div { style: crate::ui::style_constants::table_cells::badge_row_style(),
                 a {
                     href: "https://www.wikidata.org/entity/{reference_qid}",
                     target: "_blank",
@@ -81,23 +81,9 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
         }
     }
 }
-
-fn reference_cell_style() -> String {
-    table_cells::reference_cell_style()
-}
-
 fn cell_primary_style() -> String {
     StyleBuilder::new().font_weight("500").build()
 }
-
-fn primary_link_style() -> String {
-    table_cells::primary_link_style()
-}
-
-fn badge_row_style() -> String {
-    table_cells::badge_row_style()
-}
-
 fn id_badge_style(bg: &str, fg: &str, border: &str) -> String {
     StyleBuilder::new()
         .display("inline-block")

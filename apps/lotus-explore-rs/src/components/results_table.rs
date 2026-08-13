@@ -73,12 +73,12 @@ pub fn ResultsTable() -> Element {
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
             aria_labelledby: RESULTS_SECTION_HEADING_ID,
             style: results_wrap_style(),
-            h2 { id: RESULTS_SECTION_HEADING_ID, style: sr_only_style(), "{t(locale, TextKey::TableTriplesAria)}" }
+            h2 { id: RESULTS_SECTION_HEADING_ID, style: crate::ui::style_constants::shared::sr_only_style(), "{t(locale, TextKey::TableTriplesAria)}" }
             ResultsToolbar {}
 
             if total == 0 {
                 div { style: empty_state_style(),
-                    p { style: hint_text_style(), "{t(locale, TextKey::NoResults)}" }
+                    p { style: crate::ui::style_constants::shared::hint_text_style(), "{t(locale, TextKey::NoResults)}" }
                 }
             } else {
                 VirtualizedResultsTable {
@@ -108,12 +108,4 @@ fn results_wrap_style() -> String {
         .gap("10px")
         .padding("12px 22px")
         .build()
-}
-
-fn sr_only_style() -> String {
-    crate::ui::style_constants::shared::sr_only_style()
-}
-
-fn hint_text_style() -> String {
-    crate::ui::style_constants::shared::hint_text_style()
 }

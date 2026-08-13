@@ -31,15 +31,15 @@ pub fn TextInput(
     };
 
     rsx! {
-        div { style: form_section_style(),
+        div { style: crate::ui::style_constants::forms::form_section_style(),
             if !label.is_empty() {
-                label { r#for: "{id}", style: form_label_style(), "{label}" }
+                label { r#for: "{id}", style: crate::ui::style_constants::forms::label_base_style(), "{label}" }
             }
 
             input {
                 id: "{id}",
                 r#type: "text",
-                style: form_input_style(),
+                style: crate::ui::style_constants::forms::input_base_style(),
                 value: "{value}",
                 placeholder: placeholder.unwrap_or_default(),
                 aria_describedby: if !hint_id.is_empty() { "{hint_id}" } else { "" },
@@ -47,7 +47,7 @@ pub fn TextInput(
             }
 
             if let Some(hint_text) = hint {
-                p { id: "{hint_id}", style: form_hint_style(), "{hint_text}" }
+                p { id: "{hint_id}", style: crate::ui::style_constants::forms::hint_text_style(), "{hint_text}" }
             }
         }
     }
@@ -69,28 +69,28 @@ pub fn RangeInput(
     let max_id = "range-max-input";
 
     rsx! {
-        div { style: form_section_style(),
-            label { style: form_label_style(), "{label}" }
+        div { style: crate::ui::style_constants::forms::form_section_style(),
+            label { style: crate::ui::style_constants::forms::label_base_style(), "{label}" }
 
-            div { style: range_inputs_style(),
-                div { style: range_pair_style(),
-                    label { style: form_label_small_style(), r#for: "{min_id}", "{min_label}" }
+            div { style: crate::ui::style_constants::forms::range_inputs_style(),
+                div { style: crate::ui::style_constants::forms::range_pair_style(),
+                    label { style: crate::ui::style_constants::forms::label_small_style(), r#for: "{min_id}", "{min_label}" }
                     input {
                         id: "{min_id}",
                         r#type: "number",
-                        style: form_input_style(),
+                        style: crate::ui::style_constants::forms::input_base_style(),
                         value: "{min_value}",
 
                         oninput: move |e| on_min_change.call(parse_f64(&e.value())),
                     }
                 }
 
-                div { style: range_pair_style(),
-                    label { style: form_label_small_style(), r#for: "{max_id}", "{max_label}" }
+                div { style: crate::ui::style_constants::forms::range_pair_style(),
+                    label { style: crate::ui::style_constants::forms::label_small_style(), r#for: "{max_id}", "{max_label}" }
                     input {
                         id: "{max_id}",
                         r#type: "number",
-                        style: form_input_style(),
+                        style: crate::ui::style_constants::forms::input_base_style(),
                         value: "{max_value}",
 
                         oninput: move |e| on_max_change.call(parse_f64(&e.value())),
@@ -110,69 +110,9 @@ pub fn SearchButton(on_click: EventHandler<()>) -> Element {
         button {
             r#type: "button",
             aria_label: "{t(locale, TextKey::RunSearch)}",
-            style: button_primary_style(),
+            style: crate::ui::style_constants::primary_buttons::button_primary_style(),
             onclick: move |_| on_click.call(()),
             "{t(locale, TextKey::Search)}"
         }
     }
-}
-
-/// Helper to construct form section styles.
-/// Note: This function is called from RSX macros which Clippy cannot analyze through
-/// the proc macro expansion, resulting in a false positive "never used" warning.
-#[expect(dead_code)]
-fn form_section_style() -> String {
-    forms::form_section_style()
-}
-
-/// Helper to construct form label styles.
-/// Note: This function is called from RSX macros which Clippy cannot analyze through
-/// the proc macro expansion, resulting in a false positive "never used" warning.
-#[expect(dead_code)]
-fn form_label_style() -> String {
-    forms::label_base_style()
-}
-
-/// Helper to construct small form label styles.
-/// Note: This function is called from RSX macros which Clippy cannot analyze through
-/// the proc macro expansion, resulting in a false positive "never used" warning.
-#[expect(dead_code)]
-fn form_label_small_style() -> String {
-    forms::label_small_style()
-}
-
-/// Helper to construct form input styles.
-/// Note: This function is called from RSX macros which Clippy cannot analyze through
-/// the proc macro expansion, resulting in a false positive "never used" warning.
-#[expect(dead_code)]
-fn form_input_style() -> String {
-    forms::input_base_style()
-}
-
-/// Helper to construct form hint styles.
-/// Note: This function is called from RSX macros which Clippy cannot analyze through
-/// the proc macro expansion, resulting in a false positive "never used" warning.
-#[expect(dead_code)]
-fn form_hint_style() -> String {
-    forms::hint_text_style()
-}
-
-/// Helper to construct range inputs styles.
-/// Note: This function is called from RSX macros which Clippy cannot analyze through
-/// the proc macro expansion, resulting in a false positive "never used" warning.
-#[expect(dead_code)]
-fn range_inputs_style() -> String {
-    forms::range_inputs_style()
-}
-
-/// Helper to construct range pair styles.
-/// Note: This function is called from RSX macros which Clippy cannot analyze through
-/// the proc macro expansion, resulting in a false positive "never used" warning.
-#[expect(dead_code)]
-fn range_pair_style() -> String {
-    forms::range_pair_style()
-}
-
-fn button_primary_style() -> String {
-    primary_buttons::button_primary_style()
 }

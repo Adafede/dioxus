@@ -122,8 +122,8 @@ fn DownloadStatusSpinner(
         span {
             role: "status",
             aria_live: "polite",
-            style: button_base_style(),
-            span { style: spinner_sm_style(), "aria-hidden": "true" }
+            style: crate::ui::style_constants::buttons::button_transparent_style(),
+            span { style: crate::ui::style_constants::downloads::spinner_sm_style(), "aria-hidden": "true" }
             {text}
         }
     }
@@ -151,7 +151,7 @@ fn DownloadQueryButton(
         button {
             r#type: "button",
             disabled,
-            style: button_small_style(),
+            style: crate::ui::style_constants::downloads::button_small_style(),
             onclick: {
                 let q = sparql_query.clone();
                 let fname = filename.clone();
@@ -195,7 +195,7 @@ fn DownloadMetadataButton(
         button {
             r#type: "button",
             disabled,
-            style: button_small_style(),
+            style: crate::ui::style_constants::downloads::button_small_style(),
             onclick: {
                 let body = metadata_json.clone();
                 let filename = toolbar_model.read().metadata_filename.clone();
@@ -248,7 +248,7 @@ pub fn DownloadActionsGroup() -> Element {
     drop(snapshot);
 
     rsx! {
-        div { style: toolbar_actions_style(),
+        div { style: crate::ui::style_constants::downloads::toolbar_actions_style(),
             if *download_busy.read() {
                 DownloadStatusSpinner {
                     download_status,
@@ -259,7 +259,7 @@ pub fn DownloadActionsGroup() -> Element {
                 div {
                     role: "group",
                     aria_label: "{download_results_label}",
-                    style: dl_group_style(),
+                    style: crate::ui::style_constants::downloads::dl_group_style(),
                     if let Some(query) = sparql_query_value.as_ref() {
                         DownloadQueryButton {
                             spec: DOWNLOAD_QUERY_CSV_SPEC,
@@ -308,7 +308,7 @@ pub fn DownloadActionsGroup() -> Element {
                             href: "{url}",
                             target: "_blank",
                             rel: "noopener noreferrer",
-                            style: button_small_style(),
+                            style: crate::ui::style_constants::downloads::button_small_style(),
                             title: "{qlever_title}",
                             aria_label: "{qlever_title}",
                             "{qlever_label}"
@@ -318,26 +318,4 @@ pub fn DownloadActionsGroup() -> Element {
             }
         }
     }
-}
-
-// ── Download Action Styles ───────────────────────────────────────────────────
-
-fn toolbar_actions_style() -> String {
-    downloads::toolbar_actions_style()
-}
-
-fn dl_group_style() -> String {
-    downloads::dl_group_style()
-}
-
-fn spinner_sm_style() -> String {
-    downloads::spinner_sm_style()
-}
-
-fn button_base_style() -> String {
-    buttons::button_transparent_style()
-}
-
-fn button_small_style() -> String {
-    downloads::button_small_style()
 }

@@ -143,10 +143,10 @@ pub mod shared {
     //! Legacy module - functions have been moved to more organized modules.
     //! Left for backward compatibility with imports in other files.
 
+    pub use super::forms::hint_text_style;
     pub use super::forms::input_base_style;
     pub use super::forms::label_base_style;
     pub use super::forms::label_small_style;
-    pub use super::forms::hint_text_style;
     pub use super::notices::notice_value_style;
     pub use super::utilities::sr_only_style;
 }
@@ -416,8 +416,6 @@ pub mod notices {
     }
 }
 
-
-
 // ============================================================================
 // FORM ELEMENT STYLES
 // ============================================================================
@@ -597,9 +595,7 @@ pub mod header {
 
     /// Archive note section: inline display.
     pub fn page_archive_note_style() -> String {
-        StyleBuilder::new()
-            .display("inline")
-            .build()
+        StyleBuilder::new().display("inline").build()
     }
 
     /// Archive label: bold small-caps label.
@@ -878,8 +874,8 @@ pub mod panel_containers {
 
 pub mod stats {
     //! Statistic badge, bar, and value styling for dataset statistics.
-    use ui::prelude::*;
     use super::{StatStripe, spacing, text, typography};
+    use ui::prelude::*;
 
     /// Stat badge container: flex column with border, stripe, and shadow.
     pub fn stat_badge_style(stripe: StatStripe) -> String {
@@ -893,10 +889,7 @@ pub mod stats {
             .border_radius("12px")
             .property(
                 "border",
-                &format!(
-                    "1px solid {}",
-                    super::borders::RESULTS_BORDER
-                ),
+                &format!("1px solid {}", super::borders::RESULTS_BORDER),
             )
             .background_color(super::backgrounds::SURFACE)
             .box_shadow(super::shadows::SHADOW_XS)
@@ -1104,9 +1097,7 @@ pub mod table_cells {
 
     /// N/A text for missing values: muted color.
     pub fn na_style() -> String {
-        StyleBuilder::new()
-            .color("var(--text3)")
-            .build()
+        StyleBuilder::new().color("var(--text3)").build()
     }
 
     /// Formula text: monospace font.
@@ -1221,8 +1212,8 @@ pub mod downloads {
 
 pub mod query {
     //! Query panel and query display styling.
-    use ui::prelude::*;
     use super::spacing;
+    use ui::prelude::*;
 
     /// Query summary toggle: cursor pointer with gradient background.
     pub fn query_summary_style() -> String {
@@ -1359,7 +1350,7 @@ impl StatStripe {
 #[cfg(test)]
 mod tests {
     use super::StatStripe;
-    use crate::ui::style_constants::{stat_stripe_colors, spacing};
+    use crate::ui::style_constants::{spacing, stat_stripe_colors};
 
     #[test]
     fn stat_stripe_colors_are_nonempty() {

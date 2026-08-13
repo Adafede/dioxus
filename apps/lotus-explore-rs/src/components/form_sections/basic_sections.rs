@@ -21,7 +21,7 @@ pub fn TaxonInput() -> Element {
 
     rsx! {
         div { style: section_card_style(),
-            label { style: label_base_style(), r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
+            label { style: crate::ui::style_constants::shared::label_base_style(), r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
             input {
                 id: "taxon-input",
                 r#type: "text",
@@ -35,9 +35,9 @@ pub fn TaxonInput() -> Element {
                         interactions.search();
                     }
                 },
-                style: input_base_style(),
+                style: crate::ui::style_constants::shared::input_base_style(),
             }
-            p { style: hint_text_style(), "{t(locale, TextKey::TaxonHint)}" }
+            p { style: crate::ui::style_constants::shared::hint_text_style(), "{t(locale, TextKey::TaxonHint)}" }
         }
     }
 }
@@ -55,10 +55,10 @@ pub fn MassRangeInput() -> Element {
             role: "group",
             aria_labelledby: "mass-range-label",
             style: section_card_style(),
-            p { id: "mass-range-label", style: label_base_style(), "{t(locale, TextKey::MolecularMass)}" }
+            p { id: "mass-range-label", style: crate::ui::style_constants::shared::label_base_style(), "{t(locale, TextKey::MolecularMass)}" }
             div { style: range_inputs_pair_style(),
                 div { style: range_pair_style(),
-                    label { style: label_small_style(), r#for: "mass-min", "{t(locale, TextKey::Min)}" }
+                    label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "mass-min", "{t(locale, TextKey::Min)}" }
                     input {
                         id: "mass-min",
                         r#type: "number",
@@ -71,12 +71,12 @@ pub fn MassRangeInput() -> Element {
                                 ctx.update(FormAction::MassMin(v));
                             }
                         },
-                        style: input_base_style(),
+                        style: crate::ui::style_constants::shared::input_base_style(),
                     }
                 }
                 span { aria_hidden: "true", style: range_separator_style(), "-" }
                 div { style: range_pair_style(),
-                    label { style: label_small_style(), r#for: "mass-max", "{t(locale, TextKey::Max)}" }
+                    label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "mass-max", "{t(locale, TextKey::Max)}" }
                     input {
                         id: "mass-max",
                         r#type: "number",
@@ -89,7 +89,7 @@ pub fn MassRangeInput() -> Element {
                                 ctx.update(FormAction::MassMax(v));
                             }
                         },
-                        style: input_base_style(),
+                        style: crate::ui::style_constants::shared::input_base_style(),
                     }
                 }
             }
@@ -113,10 +113,10 @@ pub fn YearRangeInput() -> Element {
             role: "group",
             aria_labelledby: "year-range-label",
             style: section_card_style(),
-            p { id: "year-range-label", style: label_base_style(), "{t(locale, TextKey::PublicationYear)}" }
+            p { id: "year-range-label", style: crate::ui::style_constants::shared::label_base_style(), "{t(locale, TextKey::PublicationYear)}" }
             div { style: range_inputs_pair_style(),
                 div { style: range_pair_style(),
-                    label { style: label_small_style(), r#for: "year-min", "{t(locale, TextKey::YearFrom)}" }
+                    label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "year-min", "{t(locale, TextKey::YearFrom)}" }
                     input {
                         id: "year-min",
                         r#type: "number",
@@ -129,12 +129,12 @@ pub fn YearRangeInput() -> Element {
                                 ctx.update(FormAction::YearMin(v));
                             }
                         },
-                        style: input_base_style(),
+                        style: crate::ui::style_constants::shared::input_base_style(),
                     }
                 }
                 span { aria_hidden: "true", style: range_separator_style(), "-" }
                 div { style: range_pair_style(),
-                    label { style: label_small_style(), r#for: "year-max", "{t(locale, TextKey::YearTo)}" }
+                    label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "year-max", "{t(locale, TextKey::YearTo)}" }
                     input {
                         id: "year-max",
                         r#type: "number",
@@ -147,7 +147,7 @@ pub fn YearRangeInput() -> Element {
                                 ctx.update(FormAction::YearMax(v));
                             }
                         },
-                        style: input_base_style(),
+                        style: crate::ui::style_constants::shared::input_base_style(),
                     }
                 }
             }
@@ -166,23 +166,6 @@ fn section_card_style() -> String {
         .background_color("var(--panel-bg-soft)")
         .build()
 }
-
-fn label_base_style() -> String {
-    crate::ui::style_constants::shared::label_base_style()
-}
-
-fn label_small_style() -> String {
-    crate::ui::style_constants::shared::label_small_style()
-}
-
-fn input_base_style() -> String {
-    crate::ui::style_constants::shared::input_base_style()
-}
-
-fn hint_text_style() -> String {
-    crate::ui::style_constants::shared::hint_text_style()
-}
-
 fn range_inputs_pair_style() -> String {
     StyleBuilder::new()
         .display("grid")

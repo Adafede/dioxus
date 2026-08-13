@@ -49,7 +49,7 @@ pub(super) fn VirtualizedResultsTable(
             table {
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",
                 style: results_table_style(),
-                caption { style: sr_only_style(), "{t(locale, TextKey::TableTriplesAria)}" }
+                caption { style: crate::ui::style_constants::shared::sr_only_style(), "{t(locale, TextKey::TableTriplesAria)}" }
                 colgroup {
                     col { style: col_style("124px") }
                     col { style: col_style("38ch") }
@@ -139,8 +139,4 @@ fn results_table_style() -> String {
         .property("table-layout", "auto")
         .property("word-break", "break-word")
         .build()
-}
-
-fn sr_only_style() -> String {
-    crate::ui::style_constants::shared::sr_only_style()
 }

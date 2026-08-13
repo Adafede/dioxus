@@ -67,10 +67,10 @@ pub fn DownloadOnlyState() -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            span { style: notice_value_style(), "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
+            span { style: crate::ui::style_constants::shared::notice_value_style(), "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
             button {
                 r#type: "button",
-                style: button_base_style(),
+                style: crate::ui::style_constants::buttons::button_base_style(),
                 onclick: move |_| interactions.preview(),
                 "{t(locale, TextKey::RunSearch)}"
             }
@@ -122,15 +122,6 @@ fn loading_state_style() -> String {
         .property("flex", "1")
         .build()
 }
-
-fn notice_value_style() -> String {
-    crate::ui::style_constants::shared::notice_value_style()
-}
-
-fn button_base_style() -> String {
-    crate::ui::style_constants::buttons::button_base_style()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

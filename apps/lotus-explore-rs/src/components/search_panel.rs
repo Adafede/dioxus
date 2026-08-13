@@ -32,7 +32,9 @@ use crate::models::*;
 use crate::queries::classify_structure;
 use crate::state::{use_form_criteria_context, use_results_context};
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
-use crate::ui::style_constants::{buttons, forms, panels, utilities, search_controls, search_buttons, panel_containers};
+use crate::ui::style_constants::{
+    buttons, forms, panel_containers, panels, search_buttons, search_controls, utilities,
+};
 use dioxus::prelude::*;
 use ui::prelude::*;
 pub fn SearchPanel() -> Element {
@@ -49,7 +51,7 @@ pub fn SearchPanel() -> Element {
     rsx! {
         section {
             class: "search-panel",
-            style: search_panel_style(),
+            style: crate::ui::style_constants::panels::search_panel_style(),
             aria_label: "{t(locale, TextKey::SearchFilters)}",
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             h2 { id: SEARCH_PANEL_HEADING_ID, class: "sr-only", "{t(locale, TextKey::SearchFilters)}" }
@@ -103,8 +105,8 @@ fn StructureSection() -> Element {
     let view_model = structure_model::build_structure_section_model(kind_value, smiles_search_type);
 
     rsx! {
-        div { style: section_card_style(),
-            label { style: label_base_style(), r#for: "smiles-input",
+        div { style: crate::ui::style_constants::panel_containers::section_card_style(),
+            label { style: crate::ui::style_constants::forms::label_base_style(), r#for: "smiles-input",
                 "{t(locale, TextKey::StructureSmilesOrMol)}"
             }
             textarea {
@@ -114,20 +116,20 @@ fn StructureSection() -> Element {
                 value: "{smiles}",
                 oninput: move |e| ctx.update(FormAction::Smiles(e.value())),
                 rows: "4",
-                style: textarea_base_style(),
+                style: crate::ui::style_constants::search_controls::textarea_base_style(),
             }
             if let Some(note_key) = view_model.note_key {
-                p { style: hint_text_style(),
+                p { style: crate::ui::style_constants::forms::hint_text_style(),
                     span { style: kind_pill_style(view_model.kind_class), "{kind_value.label()}" }
                     span { "{t(locale, note_key)}" }
                 }
             } else {
-                p { style: hint_text_style(), "{t(locale, TextKey::StructureHintEmpty)}" }
+                p { style: crate::ui::style_constants::forms::hint_text_style(), "{t(locale, TextKey::StructureHintEmpty)}" }
             }
 
-            fieldset { style: radio_group_style(),
-                legend { style: sr_only_style(), "{t(locale, TextKey::StructureSearchMode)}" }
-                label { style: radio_label_style(),
+            fieldset { style: crate::ui::style_constants::search_controls::radio_group_style(),
+                legend { style: crate::ui::style_constants::utilities::sr_only_style(), "{t(locale, TextKey::StructureSearchMode)}" }
+                label { style: crate::ui::style_constants::search_controls::radio_label_style(),
                     input {
                         r#type: "radio",
                         name: "stype",
@@ -138,7 +140,7 @@ fn StructureSection() -> Element {
                     }
                     "{t(locale, TextKey::Substructure)}"
                 }
-                label { style: radio_label_style(),
+                label { style: crate::ui::style_constants::search_controls::radio_label_style(),
                     input {
                         r#type: "radio",
                         name: "stype",
@@ -151,8 +153,8 @@ fn StructureSection() -> Element {
                 }
             }
             if view_model.show_similarity_threshold {
-                div { style: threshold_section_style(),
-                    label { style: label_small_style(), r#for: "threshold-input",
+                div { style: crate::ui::style_constants::search_controls::threshold_section_style(),
+                    label { style: crate::ui::style_constants::forms::label_small_style(), r#for: "threshold-input",
                         "{threshold_label(locale, smiles_threshold)}"
                     }
                     input {
@@ -170,7 +172,7 @@ fn StructureSection() -> Element {
                                 ctx.update(FormAction::SmilesThreshold(v));
                             }
                         },
-                        style: range_input_style(),
+                        style: crate::ui::style_constants::search_controls::range_input_style(),
                     }
                 }
             }
@@ -189,9 +191,9 @@ pub fn KetcherPanel() -> Element {
     rsx! {
         section {
             aria_label: "{t(locale, TextKey::KetcherSummary)}",
-            style: ketcher_panel_style(),
-            div { style: ketcher_wrap_style(),
-                p { style: hint_text_style(),
+            style: crate::ui::style_constants::panel_containers::ketcher_panel_style(),
+            div { style: crate::ui::style_constants::panel_containers::ketcher_wrap_style(),
+                p { style: crate::ui::style_constants::forms::hint_text_style(),
                     "{t(locale, TextKey::KetcherHintA)}"
                     strong { "{t(locale, TextKey::KetcherSummary)}" }
                     "{t(locale, TextKey::KetcherHintB)}"
@@ -205,21 +207,12 @@ pub fn KetcherPanel() -> Element {
                     title: "{t(locale, TextKey::KetcherIframeTitle)}",
                     "loading": "lazy",
                     "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
-                    style: iframe_style(),
+                    style: crate::ui::style_constants::panel_containers::iframe_style(),
                 }
             }
         }
     }
 }
-
-fn radio_group_style() -> String {
-    search_controls::radio_group_style()
-}
-
-fn threshold_section_style() -> String {
-    search_controls::threshold_section_style()
-}
-
 fn search_button_style(dirty: bool) -> String {
     search_buttons::search_button_state(dirty)
 }
@@ -227,64 +220,6 @@ fn search_button_style(dirty: bool) -> String {
 fn panel_stack_style(padding: &str, gap: &str) -> String {
     panel_containers::panel_stack_style(padding, gap)
 }
-
-fn sr_only_style() -> String {
-    utilities::sr_only_style()
-}
-
-fn section_card_style() -> String {
-    panel_containers::section_card_style()
-}
-
-fn label_base_style() -> String {
-    forms::label_base_style()
-}
-
-fn label_small_style() -> String {
-    forms::label_small_style()
-}
-
-fn hint_text_style() -> String {
-    forms::hint_text_style()
-}
-
-fn radio_label_style() -> String {
-    search_controls::radio_label_style()
-}
-
-fn ketcher_panel_style() -> String {
-    panel_containers::ketcher_panel_style()
-}
-
-fn ketcher_wrap_style() -> String {
-    panel_containers::ketcher_wrap_style()
-}
-
-fn iframe_style() -> String {
-    panel_containers::iframe_style()
-}
-
 fn kind_pill_style(kind: &str) -> String {
     search_controls::kind_pill_style(kind)
-}
-
-fn range_input_style() -> String {
-    search_controls::range_input_style()
-}
-
-fn textarea_base_style() -> String {
-    search_controls::textarea_base_style()
-}
-
-#[allow(dead_code)]
-fn input_base_style() -> String {
-    forms::input_base_style()
-}
-
-fn button_base_style() -> String {
-    buttons::button_base_style()
-}
-
-fn search_panel_style() -> String {
-    panels::search_panel_style()
 }

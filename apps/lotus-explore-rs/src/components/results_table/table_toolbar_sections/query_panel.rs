@@ -6,7 +6,7 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
-use crate::ui::style_constants::{spacing, query};
+use crate::ui::style_constants::{query, spacing};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
