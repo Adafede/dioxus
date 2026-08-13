@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::bootstrap::{AppBootstrap, bootstrap_app};
-use super::draw_page::DrawPage;
 use super::view::AppView;
 use crate::app_state::AppState;
 use crate::components::data_curation_page::DataCurationPage;
@@ -21,6 +20,7 @@ use crate::features::explore::{
 use crate::hooks::LocaleProvider;
 use crate::i18n::{Locale, TextKey, t};
 use crate::models::SearchCriteria;
+use crate::pages::DrawPage;
 use crate::services::AppServices;
 use crate::state::{
     AppStateContext, FormCriteriaContext, ResultsContext, use_app_selector, use_app_state_context,

@@ -3,6 +3,7 @@
 
 //! Lotus-specific table styling.
 
+use super::tokens;
 use ui::prelude::*;
 
 /// Table header cell: bold with bottom border.
@@ -10,7 +11,7 @@ pub fn table_header_cell() -> String {
     StyleBuilder::new()
         .font_weight("700")
         .font_size("var(--fs-0)")
-        .padding("10px 12px")
+        .padding(&format!("{} {}", "10px", tokens::CELL_PADDING_X))
         .border("1px solid var(--border)")
         .border_bottom("2px solid var(--border)")
         .background_color("var(--surface-soft)")
@@ -31,7 +32,7 @@ pub fn table_sort_button() -> String {
     StyleBuilder::new()
         .display("inline-flex")
         .align_items("center")
-        .gap("4px")
+        .gap(tokens::GAP_XS)
         .background_color("transparent")
         .border("none")
         .cursor("pointer")

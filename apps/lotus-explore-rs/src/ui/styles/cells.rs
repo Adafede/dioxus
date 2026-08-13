@@ -7,6 +7,7 @@
 //! Naming hierarchy: `cell_<type>()` where type describes the cell variant.
 //! Examples: `cell_taxon()`, `cell_reference()`, `cell_numeric()`
 
+use super::tokens;
 use ui::prelude::*;
 
 // ============================================================================
@@ -17,8 +18,8 @@ use ui::prelude::*;
 /// Naming: cell (WHAT) taxon (VARIANT)
 pub fn cell_taxon() -> String {
     StyleBuilder::new()
-        .padding("8px 12px")
-        .border_radius("10px")
+        .padding(&tokens::cell_padding())
+        .border_radius(tokens::BORDER_RADIUS_LG)
         .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
         .property(
             "box-shadow",
@@ -63,9 +64,9 @@ pub fn cell_reference() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
-        .gap("4px")
-        .padding("8px 12px")
-        .border_radius("10px")
+        .gap(tokens::GAP_XS)
+        .padding(&tokens::cell_padding())
+        .border_radius(tokens::BORDER_RADIUS_LG)
         .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
         .property(
             "box-shadow",
@@ -92,13 +93,13 @@ pub fn cell_reference_id() -> String {
         .build()
 }
 
-/// Reference badge row: flex wrap with gap.
+/// Cell reference badge row: flex wrap with gap.
 pub fn cell_reference_badges() -> String {
     StyleBuilder::new()
         .display("flex")
         .property("flex-wrap", "wrap")
-        .gap("4px")
-        .property("margin-top", "4px")
+        .gap(tokens::GAP_XS)
+        .property("margin-top", tokens::GAP_XS)
         .property("min-width", "0")
         .build()
 }
@@ -110,8 +111,8 @@ pub fn cell_reference_badges() -> String {
 /// Generic table cell: base cell styling for any column.
 pub fn cell_default() -> String {
     StyleBuilder::new()
-        .padding("8px 12px")
-        .border_radius("10px")
+        .padding(&tokens::cell_padding())
+        .border_radius(tokens::BORDER_RADIUS_LG)
         .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
         .border("1px solid var(--results-border)")
         .property("min-width", "0")
@@ -135,8 +136,8 @@ pub fn cell_badges() -> String {
     StyleBuilder::new()
         .display("flex")
         .property("flex-wrap", "wrap")
-        .gap("4px")
-        .property("margin-top", "4px")
+        .gap(tokens::GAP_XS)
+        .property("margin-top", tokens::GAP_XS)
         .property("min-width", "0")
         .build()
 }

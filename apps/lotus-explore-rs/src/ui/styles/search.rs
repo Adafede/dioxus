@@ -3,6 +3,7 @@
 
 //! Lotus-specific search form and control styling.
 
+use super::tokens;
 use ui::prelude::*;
 
 /// Search button state indicator: color-coded status.
@@ -18,7 +19,7 @@ pub fn search_radio_group() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
-        .gap("8px")
+        .gap(tokens::SPACING_SM)
         .build()
 }
 
@@ -27,7 +28,7 @@ pub fn search_radio_label() -> String {
     StyleBuilder::new()
         .display("inline-flex")
         .align_items("center")
-        .gap("8px")
+        .gap(tokens::SPACING_SM)
         .cursor("pointer")
         .font_size("var(--fs-0)")
         .build()
@@ -40,8 +41,8 @@ pub fn search_range_input() -> String {
         .property("max-width", "120px")
         .background_color("var(--surface)")
         .border("1px solid var(--border)")
-        .border_radius("4px")
-        .padding("6px 8px")
+        .border_radius(tokens::BORDER_RADIUS_SM)
+        .padding(&format!("{} {}", tokens::SPACING_XS, tokens::SPACING_SM))
         .font_size("var(--fs-0)")
         .build()
 }
@@ -52,8 +53,8 @@ pub fn search_textarea() -> String {
         .property("width", "100%")
         .background_color("var(--surface)")
         .border("1px solid var(--border)")
-        .border_radius("4px")
-        .padding("8px 10px")
+        .border_radius(tokens::BORDER_RADIUS_SM)
+        .padding(&format!("{} {}", tokens::SPACING_SM, "10px"))
         .font_size("var(--fs-0)")
         .property("font-family", "var(--mono)")
         .property("line-height", "1.4")
@@ -65,7 +66,7 @@ pub fn search_textarea() -> String {
 pub fn search_kind_pill() -> String {
     StyleBuilder::new()
         .display("inline-block")
-        .padding("4px 8px")
+        .padding(&format!("{} {}", tokens::SPACING_XS, tokens::SPACING_SM))
         .border_radius("12px")
         .background_color("var(--surface)")
         .border("1px solid var(--border)")
@@ -79,8 +80,8 @@ pub fn search_threshold_section() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
-        .gap("8px")
-        .padding("10px 0")
+        .gap(tokens::SPACING_SM)
+        .padding(&format!("{} 0", "10px"))
         .build()
 }
 

@@ -3,6 +3,7 @@
 
 //! Lotus-specific panel and container styling.
 
+use super::tokens;
 use ui::prelude::*;
 
 /// Section card container: flex column with padding and border.
@@ -10,8 +11,8 @@ pub fn panel_section_card() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
-        .gap("12px")
-        .padding("12px 14px")
+        .gap(tokens::SPACING_MD)
+        .padding(&format!("{} {}", tokens::SPACING_MD, "14px"))
         .border("1px solid var(--panel-border)")
         .border_radius("8px")
         .background_color("var(--panel-bg-soft)")
@@ -24,7 +25,7 @@ pub fn panel_ketcher_wrap() -> String {
         .display("flex")
         .flex_direction("column")
         .border("1px solid var(--border)")
-        .border_radius("4px")
+        .border_radius(tokens::BORDER_RADIUS_SM)
         .property("overflow", "hidden")
         .build()
 }

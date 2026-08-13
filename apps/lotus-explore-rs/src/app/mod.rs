@@ -2,6 +2,5 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 pub mod bootstrap;
-pub mod draw_page;
 pub mod shell;
 pub mod view;

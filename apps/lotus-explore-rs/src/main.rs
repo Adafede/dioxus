@@ -167,6 +167,7 @@ mod hooks;
 mod i18n;
 mod lotus_styles;
 mod models;
+mod pages;
 mod perf;
 mod queries;
 mod repositories;
