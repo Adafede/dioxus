@@ -31,4 +31,3 @@ apps/*/public/assets/ketcher/
 .pre-commit-cache/
 lcov.info
 *.tarpaulin
-apps/cxsmiles-yoga/
