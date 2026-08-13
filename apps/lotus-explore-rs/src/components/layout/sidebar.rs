@@ -45,18 +45,21 @@ pub fn Sidebar() -> Element {
                     dangerous_inner_html: LOTUS_FERRIS_SVG,
                 }
             }
-            button {
-                r#type: "button",
-                class: "filters-toggle",
-                style: primary_buttons::button_filters_toggle_style(),
-                aria_controls: SEARCH_PANEL_BODY_ID,
-                aria_expanded: if mobile_filters_open { "true" } else { "false" },
-                aria_pressed: if mobile_filters_open { "true" } else { "false" },
-                onclick: move |_| interactions.toggle_mobile_filters(),
-                if mobile_filters_open {
-                    "{t(locale, TextKey::FiltersHide)}"
-                } else {
-                    "{t(locale, TextKey::FiltersShow)}"
+            div {
+                style: button_wrapper_style(),
+                button {
+                    r#type: "button",
+                    class: "filters-toggle",
+                    style: primary_buttons::button_filters_toggle_style(),
+                    aria_controls: SEARCH_PANEL_BODY_ID,
+                    aria_expanded: if mobile_filters_open { "true" } else { "false" },
+                    aria_pressed: if mobile_filters_open { "true" } else { "false" },
+                    onclick: move |_| interactions.toggle_mobile_filters(),
+                    if mobile_filters_open {
+                        "{t(locale, TextKey::FiltersHide)}"
+                    } else {
+                        "{t(locale, TextKey::FiltersShow)}"
+                    }
                 }
             }
             SearchPanel {}
@@ -68,6 +71,14 @@ fn sidebar_style() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
+        .build()
+}
+
+fn button_wrapper_style() -> String {
+    StyleBuilder::new()
+        .padding("18px 16px")
+        .display("flex")
+        .justify_content("center")
         .build()
 }
 
