@@ -163,6 +163,55 @@ fn reset_and_tokens() -> String {
     )
 }
 
+fn data_theme_dark() -> String {
+    format!(
+        "/* Dark mode override via data-theme attribute */\n\
+         [data-theme=\"dark\"] {{\n\
+           --bg:        #10141b;\n\
+           --bg2:       #171d26;\n\
+           --surface:   #1f2733;\n\
+           --surface2:  #2a3443;\n\
+           --border:    #38475a;\n\
+           --text:      #eef4fb;\n\
+           --text2:     #d5deea;\n\
+           --text3:     #a7b4c7;\n\
+           --accent:    #8cbcff;\n\
+           --accent2:   #5e98f3;\n\
+           --btn-primary-bg: #0b5cab;\n\
+           --btn-primary-hover-bg: #285fcc;\n\
+           --green:     #4cc38a;\n\
+           --red:       #ff8a80;\n\
+           --yellow:    #f0b35e;\n\
+           --purple:    #c3a0ff;\n\
+           --shadow-xs: 0 1px 2px rgb(0 0 0 / 45%);\n\
+           --shadow-sm: 0 4px 14px rgb(0 0 0 / 35%);\n\
+           --shadow-md: 0 10px 30px rgb(0 0 0 / 35%);\n\
+           --glass:     rgb(22 27 34 / 78%);\n\
+           --ring:      0 0 0 3px rgb(140 188 255 / 28%);\n\
+           --critical-text: #e8edf5;\n\
+           --critical-muted: #d0d9e5;\n\
+           \n\
+           /* Slightly stronger fills/stripes in dark mode to preserve distinction. */\n\
+           --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 24%, var(--surface));\n\
+           --stat-compound-border: color-mix(in srgb, var(--wd-compound) 42%, var(--border));\n\
+           --stat-compound-stripe: color-mix(in srgb, var(--wd-compound) 64%, #fff);\n\
+           --stat-taxon-bg: color-mix(in srgb, var(--wd-taxon) 24%, var(--surface));\n\
+           --stat-taxon-border: color-mix(in srgb, var(--wd-taxon) 42%, var(--border));\n\
+           --stat-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 64%, #fff);\n\
+           --stat-reference-bg: color-mix(in srgb, var(--wd-reference) 24%, var(--surface));\n\
+           --stat-reference-border: color-mix(in srgb, var(--wd-reference) 42%, var(--border));\n\
+           --stat-reference-stripe: color-mix(in srgb, var(--wd-reference) 64%, #fff);\n\
+           --stat-total-bg: color-mix(in srgb, var(--wd-entries) 20%, var(--surface));\n\
+           --stat-total-border: color-mix(in srgb, var(--wd-entries) 40%, var(--border));\n\
+           --stat-total-stripe: color-mix(in srgb, var(--wd-entries) 62%, #fff);\n\
+         }}\n\
+         [data-theme=\"dark\"] body {{\n\
+           background: var(--bg);\n\
+           color: var(--text);\n\
+         }}",
+    )
+}
+
 fn global_base() -> String {
     format!(
         "body {{\n\
@@ -376,6 +425,7 @@ fn large_screen() -> String {
 pub fn css() -> String {
     [
         reset_and_tokens(),
+        data_theme_dark(),
         global_base(),
         controls_and_forms(),
         reduced_motion_and_perf(),
