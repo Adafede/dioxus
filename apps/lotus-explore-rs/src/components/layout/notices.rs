@@ -17,23 +17,15 @@ use crate::services::error_presenter::{
     error_hint_text, format_domain_error, format_taxon_warning,
 };
 use crate::state::use_results_context;
+use crate::ui::style_constants::theme;
+use crate::ui::style_constants::notices as notice_styles;
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
 
 /// Detect if the system is in dark mode.
 fn is_dark_mode() -> bool {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(window) = web_sys::window() {
-            if let Ok(media) = window.match_media("(prefers-color-scheme: dark)") {
-                if let Some(media_query) = media {
-                    return media_query.matches();
-                }
-            }
-        }
-    }
-    false
+    theme::is_dark_mode()
 }
 
 /// Share URL notice — shows the current shareable URL with a copy button.
@@ -139,7 +131,7 @@ pub fn ErrorNotice() -> Element {
 }
 
 fn notice_value_style() -> String {
-    crate::ui::style_constants::shared::notice_value_style()
+    notice_styles::notice_value_style()
 }
 
 fn button_base_style() -> String {
@@ -147,28 +139,9 @@ fn button_base_style() -> String {
 }
 
 fn notice_dismiss_style() -> String {
-    StyleBuilder::new()
-        .property("margin-left", "auto")
-        .background_color("transparent")
-        .border("0")
-        .color("inherit")
-        .cursor("pointer")
-        .property("font-size", "18px")
-        .property("line-height", "1")
-        .padding("0 4px")
-        .property("opacity", ".7")
-        .build()
+    notice_styles::notice_dismiss_style()
 }
 
 fn share_input_style() -> String {
-    StyleBuilder::new()
-        .property("flex", "1 1 200px")
-        .property("min-width", "min(200px, 100%)")
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
-        .border_radius("var(--radius-sm)")
-        .color("var(--text)")
-        .padding("4px 8px")
-        .font_size("var(--fs-0)")
-        .build()
+    notice_styles::share_input_style()
 }

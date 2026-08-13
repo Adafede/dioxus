@@ -32,7 +32,7 @@ use crate::models::*;
 use crate::queries::classify_structure;
 use crate::state::{use_form_criteria_context, use_results_context};
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
-use crate::ui::style_constants::{buttons, forms, panels, utilities};
+use crate::ui::style_constants::{buttons, forms, panels, utilities, search_controls, search_buttons, panel_containers};
 use dioxus::prelude::*;
 use ui::prelude::*;
 pub fn SearchPanel() -> Element {
@@ -213,61 +213,19 @@ pub fn KetcherPanel() -> Element {
 }
 
 fn radio_group_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_wrap("wrap")
-        .gap("14px")
-        .property("border", "0")
-        .property("padding", "0")
-        .property("margin", "0")
-        .build()
+    search_controls::radio_group_style()
 }
 
 fn threshold_section_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("5px")
-        .padding("10px")
-        .property("border-left", "1px solid var(--border)")
-        .property("margin-top", "4px")
-        .build()
+    search_controls::threshold_section_style()
 }
 
 fn search_button_style(dirty: bool) -> String {
-    if dirty {
-        StyleBuilder::new()
-            .display("inline-flex")
-            .align_items("center")
-            .justify_content("center")
-            .gap("8px")
-            .border("0")
-            .border_radius("4px")
-            .property("min-height", "40px")
-            .padding("11px 16px")
-            .font_size("var(--fs-ui)")
-            .font_weight("700")
-            .cursor("pointer")
-            .background_color("color-mix(in srgb, var(--btn-primary-bg) 90%, var(--accent))")
-            .color("var(--text)")
-            .box_shadow("var(--shadow-xs)")
-            .property(
-                "transition",
-                "background .15s, box-shadow .15s, transform .12s ease",
-            )
-            .build()
-    } else {
-        button_base_style()
-    }
+    search_buttons::search_button_state(dirty)
 }
 
 fn panel_stack_style(padding: &str, gap: &str) -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap(gap)
-        .padding(padding)
-        .build()
+    panel_containers::panel_stack_style(padding, gap)
 }
 
 fn sr_only_style() -> String {
@@ -275,15 +233,7 @@ fn sr_only_style() -> String {
 }
 
 fn section_card_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("5px")
-        .padding("10px 12px")
-        .border("1px solid var(--panel-border)")
-        .border_radius("12px")
-        .background_color("var(--panel-bg-soft)")
-        .build()
+    panel_containers::section_card_style()
 }
 
 fn label_base_style() -> String {
@@ -299,88 +249,31 @@ fn hint_text_style() -> String {
 }
 
 fn radio_label_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .align_items("center")
-        .gap("6px")
-        .font_size("var(--fs-0)")
-        .cursor("pointer")
-        .color("var(--text2)")
-        .build()
+    search_controls::radio_label_style()
 }
 
 fn ketcher_panel_style() -> String {
-    StyleBuilder::new()
-        .property("margin", "0")
-        .border("1px solid var(--panel-border)")
-        .border_radius("var(--radius)")
-        .background_color("var(--panel-bg-soft)")
-        .box_shadow("var(--panel-shadow)")
-        .property(
-            "transition",
-            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
-        )
-        .build()
+    panel_containers::ketcher_panel_style()
 }
 
 fn ketcher_wrap_style() -> String {
-    panel_stack_style("0 14px 14px", "10px")
+    panel_containers::ketcher_wrap_style()
 }
 
 fn iframe_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("height", "min(78vh, 820px)")
-        .property("min-height", "600px")
-        .border("1px solid var(--border)")
-        .border_radius("4px")
-        .background_color("var(--surface)")
-        .build()
+    panel_containers::iframe_style()
 }
 
 fn kind_pill_style(kind: &str) -> String {
-    let background = match kind {
-        "smiles" => "var(--accent2)",
-        "mol2000" => "#c97a2b",
-        "mol3000" => "#2b8f57",
-        _ => "var(--text3)",
-    };
-    StyleBuilder::new()
-        .display("inline-block")
-        .padding("1px 7px")
-        .border_radius("999px")
-        .font_size("var(--fs-micro)")
-        .font_weight("700")
-        .property("letter-spacing", "1px")
-        .property("text-transform", "uppercase")
-        .property("margin-right", "6px")
-        .color("var(--text)")
-        .background_color(background)
-        .build()
+    search_controls::kind_pill_style(kind)
 }
 
 fn range_input_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("accent-color", "var(--accent)")
-        .property("margin-top", "4px")
-        .build()
+    search_controls::range_input_style()
 }
 
 fn textarea_base_style() -> String {
-    StyleBuilder::new()
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
-        .border_radius("4px")
-        .color("var(--text)")
-        .padding("9px 11px")
-        .font_size("var(--fs-ui)")
-        .property("width", "100%")
-        .property("max-width", "100%")
-        .property("resize", "none")
-        .font_family("var(--sans)")
-        .property("transition", "border-color .15s")
-        .build()
+    search_controls::textarea_base_style()
 }
 
 #[allow(dead_code)]

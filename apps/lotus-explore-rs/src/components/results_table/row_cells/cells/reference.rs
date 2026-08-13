@@ -9,6 +9,7 @@ use crate::components::results_table::row_cells::prepared::PreparedRow;
 use crate::components::results_table::row_cells::row_text::RowText;
 use crate::i18n::{Locale, aria_wikidata_entity, aria_wikidata_statement};
 use crate::models::CompoundEntry;
+use crate::ui::style_constants::table_cells;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -82,16 +83,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
 }
 
 fn reference_cell_style() -> String {
-    StyleBuilder::new()
-        .padding("8px 12px")
-        .border_radius("10px")
-        .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
-        .property(
-            "box-shadow",
-            "inset 3px 0 0 rgb(0 102 153 / 38%), inset 0 0 0 1px var(--results-border)",
-        )
-        .property("min-width", "0")
-        .build()
+    table_cells::reference_cell_style()
 }
 
 fn cell_primary_style() -> String {
@@ -99,25 +91,11 @@ fn cell_primary_style() -> String {
 }
 
 fn primary_link_style() -> String {
-    StyleBuilder::new()
-        .color("var(--text)")
-        .property("display", "block")
-        .property("line-height", "1.4")
-        .property("overflow-wrap", "break-word")
-        .property("word-break", "break-word")
-        .property("white-space", "normal")
-        .build()
+    table_cells::primary_link_style()
 }
 
 fn badge_row_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .property("flex-wrap", "wrap")
-        .gap("4px")
-        .property("margin-top", "4px")
-        .property("overflow", "visible")
-        .property("min-width", "0")
-        .build()
+    table_cells::badge_row_style()
 }
 
 fn id_badge_style(bg: &str, fg: &str, border: &str) -> String {

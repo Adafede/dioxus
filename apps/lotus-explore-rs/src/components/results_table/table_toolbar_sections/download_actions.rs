@@ -14,7 +14,7 @@ use crate::i18n::{TextKey, t};
 use crate::models::SearchCriteria;
 use crate::perf;
 use crate::state::use_results_context;
-use crate::ui::style_constants::buttons;
+use crate::ui::style_constants::{buttons, downloads};
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
@@ -323,37 +323,15 @@ pub fn DownloadActionsGroup() -> Element {
 // ── Download Action Styles ───────────────────────────────────────────────────
 
 fn toolbar_actions_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .property("flex-wrap", "wrap")
-        .gap("8px")
-        .align_items("center")
-        .justify_content("space-between")
-        .property("min-width", "0")
-        .build()
+    downloads::toolbar_actions_style()
 }
 
 fn dl_group_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .property("flex-wrap", "wrap")
-        .gap("8px")
-        .property("min-width", "0")
-        .property("max-width", "100%")
-        .align_items("stretch")
-        .build()
+    downloads::dl_group_style()
 }
 
 fn spinner_sm_style() -> String {
-    StyleBuilder::new()
-        .property("width", "14px")
-        .property("height", "14px")
-        .border("2px solid color-mix(in srgb, var(--text) 30%, transparent)")
-        .property("border-top-color", "var(--text)")
-        .border_radius("50%")
-        .property("animation", "spin .7s linear infinite")
-        .property("display", "inline-block")
-        .build()
+    downloads::spinner_sm_style()
 }
 
 fn button_base_style() -> String {
@@ -361,25 +339,5 @@ fn button_base_style() -> String {
 }
 
 fn button_small_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .align_items("center")
-        .justify_content("center")
-        .gap("6px")
-        .border("1px solid var(--border)")
-        .border_radius("8px")
-        .padding("8px 12px")
-        .font_size("var(--fs-0)")
-        .font_weight("600")
-        .cursor("pointer")
-        .background_color("transparent")
-        .color("var(--text)")
-        .property("flex", "1 1 auto")
-        .property("min-width", "0")
-        .property("white-space", "nowrap")
-        .property(
-            "transition",
-            "border-color .15s, background .15s, box-shadow .15s, transform .12s ease",
-        )
-        .build()
+    downloads::button_small_style()
 }

@@ -6,7 +6,7 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
-use crate::ui::style_constants::spacing;
+use crate::ui::style_constants::{spacing, query};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -74,78 +74,21 @@ pub fn QueryPanel() -> Element {
 }
 
 fn query_summary_style() -> String {
-    StyleBuilder::new()
-        .cursor("pointer")
-        .padding(spacing::QUERY_SUMMARY_PADDING)
-        .font_size("var(--fs-0)")
-        .color("var(--text2)")
-        .property("user-select", "none")
-        .property("letter-spacing", "0.04em")
-        .font_weight("600")
-        .property("list-style", "none")
-        .property("position", "relative")
-        .property("transition", "color .15s ease, background .15s ease")
-        .property(
-            "background",
-            "linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.02) 100%)",
-        )
-        .build()
+    query::query_summary_style()
 }
 
 fn query_summary_chevron_style(is_open: bool) -> String {
-    let (rotation_deg, color) = if is_open {
-        ("90deg", "var(--accent)")
-    } else {
-        ("0deg", "var(--text3)")
-    };
-
-    let transform = format!("translateY(-50%) rotate({})", rotation_deg);
-
-    StyleBuilder::new()
-        .property("position", "absolute")
-        .property("left", "12px")
-        .property("top", "50%")
-        .property("transition", "transform .2s ease")
-        .property("font-size", "14px")
-        .property("line-height", "1")
-        .color(color)
-        .property("transform", &transform)
-        .build()
+    query::query_summary_chevron_style(is_open)
 }
 
 fn query_panel_style() -> String {
-    StyleBuilder::new()
-        .background_color("var(--panel-bg-soft)")
-        .border("1px solid var(--panel-border)")
-        .border_radius("var(--radius)")
-        .box_shadow("var(--panel-shadow)")
-        .property(
-            "transition",
-            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
-        )
-        .build()
+    query::query_panel_style()
 }
 
 fn query_body_style() -> String {
-    StyleBuilder::new()
-        .property("position", "relative")
-        .border_radius("0 0 var(--radius) var(--radius)")
-        .property("overflow", "hidden")
-        .build()
+    query::query_body_style()
 }
 
 fn query_text_style() -> String {
-    StyleBuilder::new()
-        .padding("12px 16px")
-        .property("margin", "0")
-        .font_family("var(--mono)")
-        .font_size("var(--fs-0)")
-        .color("var(--text)")
-        .background_color("var(--bg2)")
-        .property("border-left", "3px solid var(--wd-entries)")
-        .property("white-space", "pre-wrap")
-        .property("word-break", "break-word")
-        .property("max-height", "320px")
-        .property("overflow", "auto")
-        .build()
+    query::query_text_style()
 }

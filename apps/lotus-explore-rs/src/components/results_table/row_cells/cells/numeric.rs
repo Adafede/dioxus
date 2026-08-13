@@ -3,6 +3,7 @@
 
 //! Numeric and simple value cells for results-table rows: mass, formula, year.
 
+use crate::ui::style_constants::table_cells;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -53,7 +54,7 @@ pub(in crate::components::results_table::row_cells) fn year_cell(pub_year: Optio
 }
 
 fn na_style() -> String {
-    StyleBuilder::new().color("var(--text3)").build()
+    table_cells::na_style()
 }
 
 fn formula_style() -> String {
@@ -65,13 +66,7 @@ fn formula_style() -> String {
 }
 
 fn table_cell_style() -> String {
-    StyleBuilder::new()
-        .padding("8px 12px")
-        .property("vertical-align", "top")
-        .property("contain", "layout paint")
-        .property("word-break", "break-word")
-        .property("min-width", "0")
-        .build()
+    table_cells::table_cell_style()
 }
 
 #[cfg(test)]

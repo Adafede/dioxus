@@ -5,7 +5,7 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::DatasetStats;
 use crate::state::use_results_context;
-use crate::ui::style_constants::{StatStripe, spacing, text, typography};
+use crate::ui::style_constants::{StatStripe, spacing, text, typography, stats};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -132,106 +132,31 @@ pub fn CappedRowsNotice() -> Element {
 
 /// Detect if the system is in dark mode.
 fn is_dark_mode() -> bool {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(window) = web_sys::window() {
-            if let Ok(media) = window.match_media("(prefers-color-scheme: dark)") {
-                if let Some(media_query) = media {
-                    return media_query.matches();
-                }
-            }
-        }
-    }
-    false
+    crate::ui::style_constants::theme::is_dark_mode()
 }
 
 fn stat_badge_style(stripe: StatStripe) -> String {
-    let stripe_color = stripe.as_color();
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap(spacing::STAT_BADGE_GAP)
-        .property("min-width", "0")
-        .padding(spacing::STAT_BADGE_PAD)
-        .border_radius("12px")
-        .property(
-            "border",
-            &format!(
-                "1px solid {}",
-                crate::ui::style_constants::borders::RESULTS_BORDER
-            ),
-        )
-        .background_color(crate::ui::style_constants::backgrounds::SURFACE)
-        .box_shadow(crate::ui::style_constants::shadows::SHADOW_XS)
-        .property("position", "relative")
-        .property("overflow", "hidden")
-        .property("flex", "1 1 0")
-        .property("border-left", &format!("3px solid {stripe_color}"))
-        .build()
+    stats::stat_badge_style(stripe)
 }
 
 fn stat_value_style() -> String {
-    StyleBuilder::new()
-        .font_size(typography::FONT_SIZE_STAT)
-        .font_weight(typography::FONT_WEIGHT_BOLD)
-        .color(text::PRIMARY)
-        .property("font-variant-numeric", "tabular-nums")
-        .property("letter-spacing", typography::LETTER_SPACING_STAT)
-        .property("min-width", "0")
-        .property("flex", "0 1 auto")
-        .property("line-height", typography::LINE_HEIGHT_STAT)
-        .build()
+    stats::stat_value_style()
 }
 
 fn stat_secondary_style() -> String {
-    StyleBuilder::new()
-        .font_size(typography::FONT_SIZE_0)
-        .font_weight(typography::FONT_WEIGHT_SEMIBOLD)
-        .color(text::PRIMARY)
-        .property("font-variant-numeric", "tabular-nums")
-        .property("min-width", "0")
-        .property("max-width", "100%")
-        .property("overflow-wrap", "anywhere")
-        .property("flex", "0 0 auto")
-        .build()
+    stats::stat_secondary_style()
 }
 
 fn stat_bar_style() -> String {
-    StyleBuilder::new()
-        .display("grid")
-        .property(
-            "grid-template-columns",
-            "repeat(auto-fit, minmax(120px, 1fr))",
-        )
-        .gap(spacing::STAT_BAR_GAP)
-        .align_items("stretch")
-        .property("width", "100%")
-        .property("min-width", "0")
-        .build()
+    stats::stat_bar_style()
 }
 
 fn stat_value_row_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .property("flex-wrap", "wrap")
-        .align_items("baseline")
-        .gap(spacing::STAT_VALUE_GAP)
-        .property("min-width", "0")
-        .property("width", "100%")
-        .justify_content("center")
-        .build()
+    stats::stat_value_row_style()
 }
 
 fn stat_label_style() -> String {
-    StyleBuilder::new()
-        .font_size(typography::FONT_SIZE_0)
-        .color(text::SECONDARY)
-        .property("text-transform", "uppercase")
-        .property("letter-spacing", typography::LETTER_SPACING_TITLE)
-        .font_weight(typography::FONT_WEIGHT_SEMIBOLD)
-        .property("width", "100%")
-        .text_align("center")
-        .build()
+    stats::stat_label_style()
 }
 
 fn notice_value_style() -> String {

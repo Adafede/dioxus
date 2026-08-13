@@ -122,15 +122,7 @@ pub fn SearchButton(on_click: EventHandler<()>) -> Element {
 /// the proc macro expansion, resulting in a false positive "never used" warning.
 #[expect(dead_code)]
 fn form_section_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("5px")
-        .padding("10px 12px")
-        .border("1px solid var(--panel-border)")
-        .border_radius("12px")
-        .background_color("var(--panel-bg-soft)")
-        .build()
+    forms::form_section_style()
 }
 
 /// Helper to construct form label styles.
@@ -170,11 +162,7 @@ fn form_hint_style() -> String {
 /// the proc macro expansion, resulting in a false positive "never used" warning.
 #[expect(dead_code)]
 fn range_inputs_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .align_items("flex-end")
-        .gap("8px")
-        .build()
+    forms::range_inputs_style()
 }
 
 /// Helper to construct range pair styles.
@@ -182,11 +170,7 @@ fn range_inputs_style() -> String {
 /// the proc macro expansion, resulting in a false positive "never used" warning.
 #[expect(dead_code)]
 fn range_pair_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("3px")
-        .build()
+    forms::range_pair_style()
 }
 
 fn button_primary_style() -> String {
