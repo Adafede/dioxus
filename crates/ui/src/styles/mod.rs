@@ -32,10 +32,17 @@
 
 pub mod buttons;
 pub mod forms;
+pub mod lotus;
 pub mod notices;
 pub mod panels;
 pub mod primitives;
 pub mod theme;
+
+// Re-export the consolidated LOTUS CSS bundle (design tokens + base + layout +
+// form controls + curation + accessibility + responsive). Previously this lived
+// in `apps/lotus-explore-rs/src/lotus_styles/` — a per-app parallel to this
+// crate. It now lives here so every app can share a single bundle.
+pub use lotus::bundled_lotus_styles;
 
 // Re-export commonly used items for convenience
 pub use buttons::{

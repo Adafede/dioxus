@@ -6,7 +6,6 @@
 //! Replaces the static `index.html` with Rust code that sets meta tags,
 //! bundled styles, scripts (CDN + inline bridge code), and structured data.
 
-use crate::lotus_styles::bundled_lotus_styles;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -169,7 +168,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
     }
     let inline_style = format!(
         "{}\n\n{}",
-        bundled_lotus_styles(),
+        ui::styles::bundled_lotus_styles(),
         inline_style::build_inline_style()
     );
 
