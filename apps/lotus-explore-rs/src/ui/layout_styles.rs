@@ -200,6 +200,8 @@ pub fn lotus_sort_button_style() -> String {
         .property("column-gap", "6px")
         .property("width", "100%")
         .property("min-width", "max-content")
+        .background_color("transparent")
+        .border("none")
         .build()
 }
 
