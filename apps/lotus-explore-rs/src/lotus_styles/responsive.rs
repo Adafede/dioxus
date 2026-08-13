@@ -153,8 +153,6 @@ const PHONE_480: &str = r"
 
   .filters-toggle {
     display:flex;
-    width:calc(100% - 24px);
-    margin:12px;
     padding:10px 12px;
     justify-content:center;
     align-items:center;
@@ -513,8 +511,7 @@ const PHONE_430_AND_360: &str = r"
   }
 
   .filters-toggle {
-    width:calc(100% - 16px);
-    margin:8px;
+    min-height: 44px;
   }
 
   .lang-switch .btn,
