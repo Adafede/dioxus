@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 
 #[cfg(target_arch = "wasm32")]
 use crate::metrics::merge_precursor_stats;
+#[cfg(target_arch = "wasm32")]
 use upload::UploadError;
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Blob, console};
@@ -227,7 +228,7 @@ pub async fn scan_blob_with_progress(
                 &mut formula_cache,
                 &mut logged_failures,
                 &mut block_plot_sample,
-            )? {
+            ) {
                 metrics = merge_precursor_stats(metrics, &result);
             }
             current_state = BlockParseState::default();
@@ -250,7 +251,7 @@ pub fn process_block<S: std::hash::BuildHasher>(
     formula_cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
     plot_sample: Option<&mut PlotPointSample>,
-) -> std::result::Result<Option<PrecursorStats>, UploadError> {
+) -> Option<PrecursorStats> {
     let mut state = BlockParseState::default();
     state.consume_block_lines(block_lines);
     let use_external_sample = plot_sample.is_some();
@@ -266,33 +267,23 @@ pub fn process_block<S: std::hash::BuildHasher>(
         formula_cache,
         logged_failures,
         &mut sample_ref,
-    )?;
-    Ok(result.map(|mut metrics| {
+    );
+    result.map(|mut metrics| {
         if let Some(plot_sample) = sample_ref.as_ref() {
             metrics.plot_points.clone_from(&plot_sample.points);
             metrics.plot_point_stream_seen = plot_sample.seen;
         }
         metrics
-    }))
+    })
 }
 
-#[allow(
-    clippy::field_reassign_with_default,
-    clippy::too_many_lines,
-    clippy::unnecessary_wraps
-)]
-fn process_block_state<S: std::hash::BuildHasher>(
+fn compute_reference_mass<S: std::hash::BuildHasher>(
     state: &BlockParseState,
     smiles_cache: &mut HashMap<String, Option<f64>, S>,
     formula_cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
-    plot_sample: &mut Option<&mut PlotPointSample>,
-) -> std::result::Result<Option<PrecursorStats>, UploadError> {
-    let Some(observed_precursor) = state.observed_precursor else {
-        return Ok(None);
-    };
-
-    let reference_mass = state
+) -> Option<(f64, Option<String>)> {
+    state
         .reference_mass
         .map(|mass| {
             (
@@ -320,63 +311,57 @@ fn process_block_state<S: std::hash::BuildHasher>(
                 return None;
             }
             parsed_smiles.map(|mass| (mass, Some("SMILES".to_string())))
-        });
+        })
+}
 
-    let Some((reference_mass, reference_mass_source)) = reference_mass else {
-        let mut metrics = PrecursorStats::default();
-        metrics.total_spectra = 1;
-        metrics.skipped_spectra = 1;
-        if let Some(smiles_text) = state
-            .smiles
-            .as_deref()
-            .filter(|value| !value.trim().is_empty())
-        {
-            let trimmed_smiles = smiles_text.trim();
-            metrics.unparsed_smiles = 1;
-            metrics
-                .unparsed_smiles_warnings
-                .entry(trimmed_smiles.to_string())
-                .and_modify(|detail| detail.count = detail.count.saturating_add(1))
-                .or_insert_with(|| WarningDetail {
-                    count: 1,
-                    formula: state.formula.as_deref().map(str::to_string),
-                });
-            let warning_key = format!(
-                "missing-reference-mass:{}|{}",
-                trimmed_smiles,
-                state.formula.as_deref().unwrap_or("n/a")
-            );
-            if logged_failures.insert(warning_key) {
-                #[cfg(target_arch = "wasm32")]
-                console::warn_1(&format!("Unable to derive reference mass from SMILES/formula for: {trimmed_smiles} (formula: {})", state.formula.as_deref().unwrap_or("n/a")).into());
-            }
-        }
-        return Ok(Some(metrics));
+/// Build metrics for a block whose reference mass could not be derived from the
+/// precursor's SMILES or formula.
+fn unparseable_smiles_metrics(
+    state: &BlockParseState,
+    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
+) -> PrecursorStats {
+    let mut metrics = PrecursorStats {
+        total_spectra: 1,
+        skipped_spectra: 1,
+        unparsed_smiles: 1,
+        ..PrecursorStats::default()
     };
-
-    let reference_mass_source = reference_mass_source.unwrap_or_else(|| "unknown".to_string());
-    let reference_mass_label = state.adduct.as_deref().map_or_else(
-        || reference_mass_source.clone(),
-        |adduct| format!("{reference_mass_source} + {adduct}"),
-    );
-    let adduct_label = normalize_adduct_label(state.adduct.as_deref().unwrap_or("unknown"));
-    let adduct_text = state.adduct.as_deref().unwrap_or("").trim();
-    let adduct_is_excluded = is_excluded_adduct(adduct_text);
-    let adduct_is_supported = adduct_text.is_empty() || is_supported_adduct(adduct_text);
-    if adduct_is_excluded || !adduct_is_supported && !adduct_text.is_empty() {
-        let mut metrics = PrecursorStats::default();
-        metrics.total_spectra = 1;
-        metrics.skipped_spectra = 1;
-        if !adduct_is_excluded && !adduct_text.is_empty() {
-            metrics
-                .unrecognized_adducts
-                .entry(adduct_text.to_string())
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
+    if let Some(smiles_text) = state
+        .smiles
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+    {
+        let trimmed_smiles = smiles_text.trim();
+        metrics
+            .unparsed_smiles_warnings
+            .entry(trimmed_smiles.to_string())
+            .and_modify(|detail| detail.count = detail.count.saturating_add(1))
+            .or_insert_with(|| WarningDetail {
+                count: 1,
+                formula: state.formula.as_deref().map(str::to_string),
+            });
+        let warning_key = format!(
+            "missing-reference-mass:{}|{}",
+            trimmed_smiles,
+            state.formula.as_deref().unwrap_or("n/a")
+        );
+        if logged_failures.insert(warning_key) {
+            #[cfg(target_arch = "wasm32")]
+            console::warn_1(&format!("Unable to derive reference mass from SMILES/formula for: {trimmed_smiles} (formula: {})", state.formula.as_deref().unwrap_or("n/a")).into());
         }
-        return Ok(Some(metrics));
     }
+    metrics
+}
 
+/// Build metrics for an observed precursor that has a usable reference mass.
+fn observed_metrics(
+    observed_precursor: f64,
+    reference_mass: f64,
+    reference_mass_label: String,
+    adduct_label: &str,
+    state: &BlockParseState,
+    plot_sample: &mut Option<&mut PlotPointSample>,
+) -> PrecursorStats {
     let expected_precursor_mz = expected_precursor_mz(
         reference_mass,
         state.adduct.as_deref(),
@@ -394,33 +379,35 @@ fn process_block_state<S: std::hash::BuildHasher>(
     };
     let abs_ppm = ppm.abs();
 
-    let mut metrics = PrecursorStats::default();
-    metrics.total_spectra = 1;
-    metrics.spectra = 1;
-    metrics.spectra_with_reference_mass = 1;
-    metrics.reference_mass_source = reference_mass_label;
-    metrics.observed_precursor_min = observed_precursor;
-    metrics.observed_precursor_max = observed_precursor;
-    metrics.observed_precursor_mean = observed_precursor;
-    metrics.abs_error_da_min = abs_error_da;
-    metrics.abs_error_da_max = abs_error_da;
-    metrics.abs_error_da_mean = abs_error_da;
-    metrics.abs_error_da_rms = abs_error_da;
-    metrics.abs_error_ppm_min = abs_ppm;
-    metrics.abs_error_ppm_max = abs_ppm;
-    metrics.abs_error_ppm_mean = abs_ppm;
-    metrics.abs_error_ppm_rms = abs_ppm;
-    metrics.signed_error_da_mean = error_da;
-    metrics.signed_error_ppm_mean = ppm;
+    let mut metrics = PrecursorStats {
+        total_spectra: 1,
+        spectra: 1,
+        spectra_with_reference_mass: 1,
+        reference_mass_source: reference_mass_label,
+        observed_precursor_min: observed_precursor,
+        observed_precursor_max: observed_precursor,
+        observed_precursor_mean: observed_precursor,
+        abs_error_da_min: abs_error_da,
+        abs_error_da_max: abs_error_da,
+        abs_error_da_mean: abs_error_da,
+        abs_error_da_rms: abs_error_da,
+        abs_error_ppm_min: abs_ppm,
+        abs_error_ppm_max: abs_ppm,
+        abs_error_ppm_mean: abs_ppm,
+        abs_error_ppm_rms: abs_ppm,
+        signed_error_da_mean: error_da,
+        signed_error_ppm_mean: ppm,
+        ..PrecursorStats::default()
+    };
     metrics.record_error_with_plot_sample(
         ErrorMeasurement {
             abs_error_da,
             abs_ppm,
-            adduct_family: AdductFamily::from_label(&adduct_label),
+            adduct_family: AdductFamily::from_label(adduct_label),
             ppm_error: ppm,
             signed_error_da: error_da,
-            pepmass_header: observed_precursor, // PEPMASS from header (metadata block)
-            ms2_precursor_peak: state.get_ms2_precursor_peak(observed_precursor), // MS2 precursor peak, closest to PEPMASS within tolerance
+            pepmass_header: observed_precursor,
+            ms2_precursor_peak: state.get_ms2_precursor_peak(observed_precursor),
             smiles: state.smiles.as_deref(),
             calculated_mass: Some(reference_mass),
             expected_mass: Some(expected_precursor_mz),
@@ -450,8 +437,57 @@ fn process_block_state<S: std::hash::BuildHasher>(
     } else {
         metrics.above_10_ppm = 1;
     }
+    metrics
+}
 
-    Ok(Some(metrics))
+fn process_block_state<S: std::hash::BuildHasher>(
+    state: &BlockParseState,
+    smiles_cache: &mut HashMap<String, Option<f64>, S>,
+    formula_cache: &mut HashMap<String, Option<f64>, S>,
+    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
+    plot_sample: &mut Option<&mut PlotPointSample>,
+) -> Option<PrecursorStats> {
+    let observed_precursor = state.observed_precursor?;
+
+    let Some((reference_mass, reference_mass_source)) =
+        compute_reference_mass(state, smiles_cache, formula_cache, logged_failures)
+    else {
+        return Some(unparseable_smiles_metrics(state, logged_failures));
+    };
+
+    let reference_mass_source = reference_mass_source.unwrap_or_else(|| "unknown".to_string());
+    let reference_mass_label = state.adduct.as_deref().map_or_else(
+        || reference_mass_source.clone(),
+        |adduct| format!("{reference_mass_source} + {adduct}"),
+    );
+    let adduct_label = normalize_adduct_label(state.adduct.as_deref().unwrap_or("unknown"));
+    let adduct_text = state.adduct.as_deref().unwrap_or("").trim();
+    let adduct_is_excluded = is_excluded_adduct(adduct_text);
+    let adduct_is_supported = adduct_text.is_empty() || is_supported_adduct(adduct_text);
+    if adduct_is_excluded || !adduct_is_supported && !adduct_text.is_empty() {
+        let mut metrics = PrecursorStats {
+            total_spectra: 1,
+            skipped_spectra: 1,
+            ..PrecursorStats::default()
+        };
+        if !adduct_is_excluded && !adduct_text.is_empty() {
+            metrics
+                .unrecognized_adducts
+                .entry(adduct_text.to_string())
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+        }
+        return Some(metrics);
+    }
+
+    Some(observed_metrics(
+        observed_precursor,
+        reference_mass,
+        reference_mass_label,
+        &adduct_label,
+        state,
+        plot_sample,
+    ))
 }
 
 #[cfg(test)]
@@ -481,7 +517,6 @@ mod tests {
             &mut logged_failures,
             &mut plot_sample,
         )
-        .expect("parser should succeed")
         .expect("metrics should be produced");
 
         let expected_error = 100.1234_f64 - 100.123_456_789_f64;
