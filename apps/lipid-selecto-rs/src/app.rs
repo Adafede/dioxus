@@ -42,16 +42,13 @@ fn checkbox_sm() -> String {
 /// # Errors
 ///
 /// Returns an error if the component tree fails to build or render.
-#[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
-    let mut status = use_signal(|| "Drop an MGF or SMILES file to begin.".to_string());
-    let mut drag_active = use_signal(|| false);
-    ui::shared_signals! {
-        file_name: String::new,
-        busy: || false,
-    }
+    let status = use_signal(|| "Drop an MGF or SMILES file to begin.".to_string());
+    let drag_active = use_signal(|| false);
+    let file_name = use_signal(String::new);
+    let busy = use_signal(|| false);
     let analysis = use_signal(|| None::<Analysis>);
-    let mut input_format = use_signal(|| None::<LipidFormat>);
+    let input_format = use_signal(|| None::<LipidFormat>);
 
     let rule_library = LipidRuleLibrary::defaults();
 
@@ -64,99 +61,13 @@ pub fn app() -> Element {
     // Start with all classes selected for initial load
     let selected_classes = use_signal(|| all_class_names.clone());
 
-    #[cfg(target_arch = "wasm32")]
-    let rule_lib_for_file_change = rule_library.clone();
-    let on_file_change = move |evt: Event<FormData>| match upload::extract_blob_from_file_data(
-        &evt.data().files(),
-    ) {
-        Ok(Some(file)) => {
-            let detected_format = LipidFormat::from_path(&file.name);
-            input_format.set(detected_format);
-
-            #[cfg(target_arch = "wasm32")]
-            begin_analysis_from_blob(
-                file.blob,
-                file.name,
-                file_name,
-                status,
-                busy,
-                drag_active,
-                analysis,
-                detected_format,
-                rule_lib_for_file_change.clone(),
-            );
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                file_name.set(file.name);
-                status.set("This app runs in the browser — open it via `dx serve`.".to_string());
-                busy.set(false);
-            }
-        }
-        Ok(None) => status.set("No file selected.".to_string()),
-        Err(msg) => status.set(msg),
-    };
-
-    let on_drag_enter = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(true);
-    };
-    let on_drag_over = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(true);
-    };
-    let on_drag_leave = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(false);
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let rule_lib_for_drop = rule_library.clone();
-    let on_drop = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(false);
-        match upload::extract_blob_from_file_data(&evt.data().files()) {
-            Ok(Some(file)) => {
-                let detected_format = LipidFormat::from_path(&file.name);
-                input_format.set(detected_format);
-
-                #[cfg(target_arch = "wasm32")]
-                begin_analysis_from_blob(
-                    file.blob,
-                    file.name,
-                    file_name,
-                    status,
-                    busy,
-                    drag_active,
-                    analysis,
-                    detected_format,
-                    rule_lib_for_drop.clone(),
-                );
-
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    file_name.set(file.name);
-                    status
-                        .set("This app runs in the browser — open it via `dx serve`.".to_string());
-                    busy.set(false);
-                }
-            }
-            Ok(None) => status.set("No file selected.".to_string()),
-            Err(msg) => status.set(msg),
-        }
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let rule_lib_for_button = rule_library.clone();
-    let upload_border = if *drag_active.read() {
-        "#2563eb"
-    } else {
-        "#94a3b8"
-    };
-    let upload_background = if *drag_active.read() {
-        "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(239,246,255,0.94))"
-    } else {
-        "linear-gradient(135deg, rgba(248,250,252,0.95), rgba(239,246,255,0.95))"
+    let ctx = UploadCtx {
+        file_name,
+        status,
+        busy,
+        drag_active,
+        analysis,
+        input_format,
     };
 
     rsx! {
@@ -182,7 +93,86 @@ pub fn app() -> Element {
                     "Drop an MGF or SMILES file and we'll filter it to keep only lipids matching extensible LIPID MAPS-aligned rules. Download as the same format you uploaded."
                 }
 
+                { lipid_classes_card(&rule_library) }
+                { upload_zone(ctx, &rule_library) }
+                if let Some(analysis) = ctx.analysis.read().as_ref() {
+                    { self::summary(&analysis.summary, selected_classes, &analysis.all_classes) }
+                    { self::gallery_with_filter(&analysis.gallery, &selected_classes.read()) }
+                }
+            }
+        }
+    }
+}
+/// Shared upload-related `Signal`s, passed by value (`Signal` is `Copy`, so this
+/// is a cheap snapshot of the live handles). Collapses the repeated
+/// `#[cfg(target_arch = "wasm32")]` signal-declaration duplication: each drag/drop
+/// handler owns its own snapshot and mutates the shared signal state.
+#[derive(Clone, Copy)]
+struct UploadCtx {
+    file_name: Signal<String>,
+    status: Signal<String>,
+    busy: Signal<bool>,
+    drag_active: Signal<bool>,
+    analysis: Signal<Option<Analysis>>,
+    input_format: Signal<Option<LipidFormat>>,
+}
 
+/// Drag/drop event handlers.
+///
+/// Stored as generic closure types (not `EventHandler`) so the drop-zone renderer
+/// can take the struct by value and move each bare `move |...|` closure straight
+/// into the `on*` rsx props: a bare closure coerces into the rsx event prop,
+/// whereas an `EventHandler` value stored in a struct does not.
+struct UploadHandlers<Fc, Fe, Fo, Fl, Fd> {
+    file_change: Fc,
+    drag_enter: Fe,
+    drag_over: Fo,
+    drag_leave: Fl,
+    on_drop: Fd,
+}
+
+/// Shared WASM/native branch previously inlined in both `file_change` and
+/// `on_drop`; collapses the duplicated `#[cfg(target_arch = "wasm32")]` block.
+/// `ctx` is taken by value (`Signal`s are `Copy` handles, so `.set` mutates the
+/// shared state the snapshot points at).
+#[cfg(target_arch = "wasm32")]
+fn process_file_upload(
+    mut ctx: UploadCtx,
+    rule_library: &LipidRuleLibrary,
+    file: upload::ExtractedFile,
+    format: Option<LipidFormat>,
+) {
+    ctx.input_format.set(format);
+    begin_analysis_from_blob(
+        file.blob,
+        file.name,
+        ctx.file_name,
+        ctx.status,
+        ctx.busy,
+        ctx.drag_active,
+        ctx.analysis,
+        format,
+        rule_library.clone(),
+    );
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn process_file_upload(
+    mut ctx: UploadCtx,
+    _rule_library: &LipidRuleLibrary,
+    file: upload::ExtractedFile,
+    format: Option<LipidFormat>,
+) {
+    ctx.input_format.set(format);
+    ctx.file_name.set(file.name);
+    ctx.status
+        .set("This app runs in the browser — open it via `dx serve`.".to_string());
+    ctx.busy.set(false);
+}
+
+/// Renders the "Available Lipid Classes" card, sorted by priority.
+fn lipid_classes_card(rule_library: &LipidRuleLibrary) -> Element {
+    rsx! {
                 div {
                     style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").property("margin-bottom", "1.25rem").build(),
                     h2 { style: StyleBuilder::new().margin("0 0 0.75rem").font_size("1.1rem").build(), "Available Lipid Classes" }
@@ -200,7 +190,28 @@ pub fn app() -> Element {
                         }
                     }
                 }
+    }
+}
 
+/// Renders the file-drop zone card, reading its mutable signals from `ctx` and
+/// its event closures from `handlers`.
+fn upload_drop_zone<Fc, Fe, Fo, Fl, Fd>(
+    mut ctx: UploadCtx,
+    handlers: UploadHandlers<Fc, Fe, Fo, Fl, Fd>,
+    _rule_library: &LipidRuleLibrary,
+    upload_border: &str,
+    upload_background: &str,
+) -> Element
+where
+    Fc: FnMut(Event<FormData>) + 'static,
+    Fe: FnMut(Event<DragData>) + 'static,
+    Fo: FnMut(Event<DragData>) + 'static,
+    Fl: FnMut(Event<DragData>) + 'static,
+    Fd: FnMut(Event<DragData>) + 'static,
+{
+    #[cfg(target_arch = "wasm32")]
+    let rule_lib = _rule_library.clone();
+    rsx! {
                 div {
                     style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").build(),
                     label {
@@ -226,18 +237,18 @@ pub fn app() -> Element {
                             .text_align("center")
                             .transition("border-color 160ms ease, background 160ms ease, transform 160ms ease")
                             .build(),
-                        ondragenter: on_drag_enter,
-                        ondragover: on_drag_over,
-                        ondragleave: on_drag_leave,
-                        ondrop: on_drop,
+                        ondragenter: handlers.drag_enter,
+                        ondragover: handlers.drag_over,
+                        ondragleave: handlers.drag_leave,
+                        ondrop: handlers.on_drop,
                         span { style: StyleBuilder::new().font_size("1rem").build(), "Drop an MGF or SMILES file here or click to browse" }
                         span { style: StyleBuilder::new().font_size("0.85rem").font_weight("500").color("#64748b").build(), ".mgf or .smi files with SMILES/FORMULA annotations" }
                         input {
                             id: "mgf-upload",
                             r#type: "file",
                             accept: ".mgf,text/plain,*",
-                            disabled: *busy.read(),
-                            onchange: on_file_change,
+                            disabled: *ctx.busy.read(),
+                            onchange: handlers.file_change,
                             style: StyleBuilder::new().property("position", "absolute").property("inset", "0").width("100%").height("100%").opacity("0").cursor("pointer").build(),
                         }
                     }
@@ -252,25 +263,25 @@ pub fn app() -> Element {
                         onclick: move |_| {
                             #[cfg(target_arch = "wasm32")]
                             let _ = browser::load_example_dataset(
-                                file_name.clone(),
-                                status.clone(),
-                                busy.clone(),
-                                drag_active.clone(),
-                                analysis.clone(),
-                                input_format.clone(),
-                                rule_lib_for_button.clone(),
+                                ctx.file_name,
+                                ctx.status,
+                                ctx.busy,
+                                ctx.drag_active,
+                                ctx.analysis,
+                                ctx.input_format,
+                                rule_lib.clone(),
                             );
                             #[cfg(not(target_arch = "wasm32"))]
                             {
-                                status.set("This app runs in the browser — open it via `dx serve`.".to_string());
+                                ctx.status.set("This app runs in the browser — open it via `dx serve`.".to_string());
                             }
                         },
                         "Load Example SMILES"
                     }
-                    if !file_name.read().is_empty() {
+                    if !ctx.file_name.read().is_empty() {
                         p {
                             style: StyleBuilder::new().margin("0.35rem 0 0").color("#475569").font_size("0.9rem").build(),
-                            "Selected file: {file_name}"
+                            "Selected file: {ctx.file_name}"
                         }
                     }
                     p {
@@ -279,21 +290,75 @@ pub fn app() -> Element {
                         aria_live: "polite",
                         aria_atomic: "true",
                         style: StyleBuilder::new().margin("0.7rem 0 0").font_weight("600").color("#334155").build(),
-                        "{status}"
+                        "{ctx.status}"
                     }
                 }
-
-                if let Some(analysis) = analysis.read().as_ref() {
-                    { self::summary(&analysis.summary, selected_classes, &analysis.all_classes) }
-                    { self::gallery_with_filter(&analysis.gallery, &selected_classes.read()) }
-                }
-            }
-        }
     }
 }
 
+/// Builds the drag/drop handlers (one `EventHandler` per event) and delegates
+/// rendering to [`upload_drop_zone`]. Each handler owns a `ctx` snapshot and a
+/// cloned rule library, so the closures are `'static`.
+fn upload_zone(mut ctx: UploadCtx, rule_library: &LipidRuleLibrary) -> Element {
+    let upload_border = if *ctx.drag_active.read() {
+        "#2563eb"
+    } else {
+        "#94a3b8"
+    };
+    let upload_background = if *ctx.drag_active.read() {
+        "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(239,246,255,0.94))"
+    } else {
+        "linear-gradient(135deg, rgba(248,250,252,0.95), rgba(239,246,255,0.95))"
+    };
+
+    let rule_lib_for_change = rule_library.clone();
+    let rule_lib_for_drop = rule_library.clone();
+    let handlers = UploadHandlers {
+        file_change: move |evt: Event<FormData>| match upload::extract_blob_from_file_data(
+            &evt.data().files(),
+        ) {
+            Ok(Some(file)) => {
+                let detected_format = LipidFormat::from_path(&file.name);
+                process_file_upload(ctx, &rule_lib_for_change, file, detected_format);
+            }
+            Ok(None) => ctx.status.set("No file selected.".to_string()),
+            Err(msg) => ctx.status.set(msg),
+        },
+        drag_enter: move |evt: Event<DragData>| {
+            evt.prevent_default();
+            ctx.drag_active.set(true);
+        },
+        drag_over: move |evt: Event<DragData>| {
+            evt.prevent_default();
+            ctx.drag_active.set(true);
+        },
+        drag_leave: move |evt: Event<DragData>| {
+            evt.prevent_default();
+            ctx.drag_active.set(false);
+        },
+        on_drop: move |evt: Event<DragData>| {
+            evt.prevent_default();
+            ctx.drag_active.set(false);
+            match upload::extract_blob_from_file_data(&evt.data().files()) {
+                Ok(Some(file)) => {
+                    let detected_format = LipidFormat::from_path(&file.name);
+                    process_file_upload(ctx, &rule_lib_for_drop, file, detected_format);
+                }
+                Ok(None) => ctx.status.set("No file selected.".to_string()),
+                Err(msg) => ctx.status.set(msg),
+            }
+        },
+    };
+    upload_drop_zone(
+        ctx,
+        handlers,
+        rule_library,
+        upload_border,
+        upload_background,
+    )
+}
+
 /// Renders the per-class summary panel.
-#[allow(clippy::too_many_lines)]
 fn summary(
     summary_data: &crate::parser::Summary,
     mut selected_classes: Signal<Vec<String>>,
@@ -357,79 +422,86 @@ fn summary(
                         }
                     }
                     for (family, family_classes) in families.iter() {
-                        {
-                            let family_clone = family.clone();
-                            let family_classes_clone = family_classes.clone();
+                        { family_entry(family, family_classes, selected_classes) }
+                    }
+                }
+            }
+        }
+    }
+}
 
-                            // Check how many children are selected
-                            let selected_count = family_classes_clone.iter()
-                                .filter(|c| selected_classes.read().contains(&c.name))
-                                .count();
-                            let all_family_selected = selected_count == family_classes_clone.len();
-                            let some_family_selected = selected_count > 0 && !all_family_selected;
+fn family_entry(
+    family: &str,
+    family_classes: &[ChemicalClass],
+    mut selected_classes: Signal<Vec<String>>,
+) -> Element {
+    let family_clone = family.to_string();
+    let family_classes_clone = family_classes.to_vec();
 
-                            rsx! {
-                                div { style: StyleBuilder::new().property("margin-bottom", "0.6rem").build(),
-                                    label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").property("margin-bottom", "0.3rem").build(),
-                                        input {
-                                            r#type: "checkbox",
-                                            checked: all_family_selected || some_family_selected,
-                                            onchange: move |_| {
-                                                let mut classes = selected_classes.read().clone();
-                                                if all_family_selected || some_family_selected {
-                                                    // Uncheck all in family
-                                                    for c in &family_classes_clone {
-                                                        classes.retain(|name| name != &c.name);
-                                                    }
-                                                } else {
-                                                    // Check all in family
-                                                    for c in &family_classes_clone {
-                                                        if !classes.contains(&c.name) {
-                                                            classes.push(c.name.clone());
-                                                        }
-                                                    }
-                                                }
-                                                selected_classes.set(classes);
-                                            },
-                                            style: StyleBuilder::new().width("16px").height("16px").cursor("pointer").build(),
-                                        }
-                                        span { style: StyleBuilder::new().font_size("0.85rem").font_weight("700").color("#0f172a").build(), "{family_clone}" }
-                                        if some_family_selected {
-                                            span { style: StyleBuilder::new().font_size("0.7rem").color("#94a3b8").build(), "({selected_count}/{family_classes.len()})" }
-                                        }
-                                    }
-                                    ul { style: StyleBuilder::new().property("margin", "0 0 0 1.5rem").padding("0").property("list-style", "none").display("flex").flex_wrap("wrap").gap("0.4rem").build(),
-                                        for class in family_classes.iter() {
-                                            {
-                                                let color = class.color.clone();
-                                                let class_name = class.name.clone();
-                                                let is_selected = selected_classes.read().contains(&class_name);
-                                                rsx! {
-                                                    li { style: StyleBuilder::new().display("flex").align_items("center").build(),
-                                                        label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").build(),
-                                                            input {
-                                                                r#type: "checkbox",
-                                                                checked: is_selected,
-                                                                onchange: move |_| {
-                                                                    let mut classes = selected_classes.read().clone();
-                                                                    if is_selected {
-                                                                        classes.retain(|c| c != &class_name);
-                                                                    } else {
-                                                                        classes.push(class_name.clone());
-                                                                    }
-                                                                    selected_classes.set(classes);
-                                                                },
-                                                                style: checkbox_sm(),
-                                                            }
-                                                            span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.2rem 0.5rem").border_radius("999px").property("background", "#f1f5f9").font_size("0.75rem").font_weight("500").build(),
-                                                                span { style: StyleBuilder::new().width("8px").height("8px").border_radius("50%").property("background", &color).build(), }
-                                                                "{class.name}"
-                                                            }
-                                                        }
-                                                    }
-                                                }
+    // Check how many children are selected
+    let selected_count = family_classes_clone
+        .iter()
+        .filter(|c| selected_classes.read().contains(&c.name))
+        .count();
+    let all_family_selected = selected_count == family_classes_clone.len();
+    let some_family_selected = selected_count > 0 && !all_family_selected;
+
+    rsx! {
+        div { style: StyleBuilder::new().property("margin-bottom", "0.6rem").build(),
+            label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").property("margin-bottom", "0.3rem").build(),
+                input {
+                    r#type: "checkbox",
+                    checked: all_family_selected || some_family_selected,
+                    onchange: move |_| {
+                        let mut classes = selected_classes.read().clone();
+                        if all_family_selected || some_family_selected {
+                            // Uncheck all in family
+                            for c in &family_classes_clone {
+                                classes.retain(|name| name != &c.name);
+                            }
+                        } else {
+                            // Check all in family
+                            for c in &family_classes_clone {
+                                if !classes.contains(&c.name) {
+                                    classes.push(c.name.clone());
+                                }
+                            }
+                        }
+                        selected_classes.set(classes);
+                    },
+                    style: StyleBuilder::new().width("16px").height("16px").cursor("pointer").build(),
+                }
+                span { style: StyleBuilder::new().font_size("0.85rem").font_weight("700").color("#0f172a").build(), "{family_clone}" }
+                if some_family_selected {
+                    span { style: StyleBuilder::new().font_size("0.7rem").color("#94a3b8").build(), "({selected_count}/{family_classes.len()})" }
+                }
+            }
+            ul { style: StyleBuilder::new().property("margin", "0 0 0 1.5rem").padding("0").property("list-style", "none").display("flex").flex_wrap("wrap").gap("0.4rem").build(),
+                for class in family_classes.iter() {
+                    {
+                        let color = class.color.clone();
+                        let class_name = class.name.clone();
+                        let is_selected = selected_classes.read().contains(&class_name);
+                        rsx! {
+                            li { style: StyleBuilder::new().display("flex").align_items("center").build(),
+                                label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").build(),
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: is_selected,
+                                        onchange: move |_| {
+                                            let mut classes = selected_classes.read().clone();
+                                            if is_selected {
+                                                classes.retain(|c| c != &class_name);
+                                            } else {
+                                                classes.push(class_name.clone());
                                             }
-                                        }
+                                            selected_classes.set(classes);
+                                        },
+                                        style: checkbox_sm(),
+                                    }
+                                    span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.2rem 0.5rem").border_radius("999px").property("background", "#f1f5f9").font_size("0.75rem").font_weight("500").build(),
+                                        span { style: StyleBuilder::new().width("8px").height("8px").border_radius("50%").property("background", &color).build(), }
+                                        "{class.name}"
                                     }
                                 }
                             }
