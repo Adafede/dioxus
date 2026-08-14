@@ -80,44 +80,41 @@ impl LipidRuleLibrary {
     /// considerations, and support for multiple lipid architectures
     /// (`DiAcyl`, `MonoAcyl`, `Plasmalogen`, etc.).
     #[must_use]
-    #[allow(clippy::too_many_lines)]
     pub fn defaults() -> Self {
         let mut library = Self::new();
+        library.insert_default_taxonomy();
+        library.add_default_fatty_acyl_rules();
+        library.add_default_glycerolipid_rules();
+        library.add_default_glycerophospholipid_rules();
+        library.add_default_sphingolipid_rules();
+        library
+    }
 
-        // === FAMILIES ===
-        library
-            .families
+    fn insert_default_taxonomy(&mut self) {
+        self.families
             .insert("FA".to_string(), "Fatty Acyls".to_string());
-        library
-            .families
+        self.families
             .insert("GL".to_string(), "Glycerolipids".to_string());
-        library
-            .families
+        self.families
             .insert("GP".to_string(), "Glycerophospholipids".to_string());
-        library
-            .families
+        self.families
             .insert("SP".to_string(), "Sphingolipids".to_string());
 
-        // === ARCHITECTURES ===
-        library
-            .architectures
+        self.architectures
             .insert("DiAcyl".to_string(), "Two ester linkages".to_string());
-        library.architectures.insert(
+        self.architectures.insert(
             "MonoAcyl".to_string(),
             "One ester linkage (lyso)".to_string(),
         );
-        library
-            .architectures
+        self.architectures
             .insert("AlkylAcyl".to_string(), "Ether + ester".to_string());
-        library
-            .architectures
+        self.architectures
             .insert("Plasmalogen".to_string(), "Vinyl ether + ester".to_string());
-        library
-            .architectures
+        self.architectures
             .insert("DiEther".to_string(), "Two ether linkages".to_string());
-
-        // === FATTY ACIDS ===
-        library.add_rule(LipidRule {
+    }
+    fn add_default_fatty_acyl_rules(&mut self) {
+        self.add_rule(LipidRule {
             name: "FA".to_string(),
             family: "FA".to_string(),
             architecture: String::new(),
@@ -127,7 +124,7 @@ impl LipidRuleLibrary {
             priority: 10,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "PUFA".to_string(),
             family: "FA".to_string(),
             architecture: String::new(),
@@ -137,7 +134,7 @@ impl LipidRuleLibrary {
             priority: 9,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "MUFA".to_string(),
             family: "FA".to_string(),
             architecture: String::new(),
@@ -146,9 +143,9 @@ impl LipidRuleLibrary {
             color: "#3b82f6".to_string(),
             priority: 10,
         });
-
-        // === GLYCEROLIPIDS ===
-        library.add_rule(LipidRule {
+    }
+    fn add_default_glycerolipid_rules(&mut self) {
+        self.add_rule(LipidRule {
             name: "TG(AAA)".to_string(),
             family: "GL".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -159,7 +156,7 @@ impl LipidRuleLibrary {
             priority: 8,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "DG(AA)".to_string(),
             family: "GL".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -169,7 +166,7 @@ impl LipidRuleLibrary {
             priority: 7,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "MG(A)".to_string(),
             family: "GL".to_string(),
             architecture: "MonoAcyl".to_string(),
@@ -178,9 +175,9 @@ impl LipidRuleLibrary {
             color: "#2dd4bf".to_string(),
             priority: 6,
         });
-
-        // === GLYCEROPHOSPHOLIPIDS ===
-        library.add_rule(LipidRule {
+    }
+    fn add_default_glycerophospholipid_rules(&mut self) {
+        self.add_rule(LipidRule {
             name: "PC(AA)".to_string(),
             family: "GP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -190,7 +187,7 @@ impl LipidRuleLibrary {
             priority: 10,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "PE(AA)".to_string(),
             family: "GP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -200,7 +197,7 @@ impl LipidRuleLibrary {
             priority: 9,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "PS(AA)".to_string(),
             family: "GP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -211,7 +208,7 @@ impl LipidRuleLibrary {
             priority: 8,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "PI(AA)".to_string(),
             family: "GP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -222,7 +219,7 @@ impl LipidRuleLibrary {
             priority: 7,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "PG(AA)".to_string(),
             family: "GP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -233,7 +230,7 @@ impl LipidRuleLibrary {
             priority: 6,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "PA(AA)".to_string(),
             family: "GP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -243,7 +240,7 @@ impl LipidRuleLibrary {
             priority: 5,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "LPC(A)".to_string(),
             family: "GP".to_string(),
             architecture: "MonoAcyl".to_string(),
@@ -253,7 +250,7 @@ impl LipidRuleLibrary {
             priority: 6,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "LPE(A)".to_string(),
             family: "GP".to_string(),
             architecture: "MonoAcyl".to_string(),
@@ -263,7 +260,7 @@ impl LipidRuleLibrary {
             priority: 5,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "CL(AAAA)".to_string(),
             family: "GP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -272,9 +269,9 @@ impl LipidRuleLibrary {
             color: "#f8bbd0".to_string(),
             priority: 4,
         });
-
-        // === SPHINGOLIPIDS ===
-        library.add_rule(LipidRule {
+    }
+    fn add_default_sphingolipid_rules(&mut self) {
+        self.add_rule(LipidRule {
             name: "Cer(AS)".to_string(),
             family: "SP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -286,7 +283,7 @@ impl LipidRuleLibrary {
             priority: 9,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "SM(AS)".to_string(),
             family: "SP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -296,7 +293,7 @@ impl LipidRuleLibrary {
             priority: 8,
         });
 
-        library.add_rule(LipidRule {
+        self.add_rule(LipidRule {
             name: "HexCer(AS)".to_string(),
             family: "SP".to_string(),
             architecture: "DiAcyl".to_string(),
@@ -307,8 +304,6 @@ impl LipidRuleLibrary {
             color: "#e91e63".to_string(),
             priority: 7,
         });
-
-        library
     }
 }
 

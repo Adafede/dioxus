@@ -12,7 +12,6 @@ use chematic::core::Molecule;
 
 /// Properties of a single fatty acyl or radyl chain.
 #[derive(Clone, Debug)]
-#[allow(clippy::struct_excessive_bools)]
 pub struct AcylChain {
     /// Total number of carbons in the chain
     pub carbon_count: u32,
@@ -22,16 +21,6 @@ pub struct AcylChain {
     pub triple_bonds: u32,
     /// Positions of double bonds (0-indexed from carboxyl)
     pub double_bond_positions: Vec<u32>,
-    /// Does this chain have a hydroxyl group?
-    pub has_hydroxyl: bool,
-    /// Does this chain have a hydroperoxide?
-    pub has_hydroperoxide: bool,
-    /// Does this chain have an epoxide?
-    pub has_epoxide: bool,
-    /// Is this chain part of an ether linkage (not ester)?
-    pub is_ether_linked: bool,
-    /// Is this a plasmalogen (1Z-alkenyl ether)?
-    pub is_plasmalogen: bool,
 }
 
 impl AcylChain {
@@ -123,11 +112,6 @@ mod tests {
             double_bonds: 0,
             triple_bonds: 0,
             double_bond_positions: vec![],
-            has_hydroxyl: false,
-            has_hydroperoxide: false,
-            has_epoxide: false,
-            is_ether_linked: false,
-            is_plasmalogen: false,
         };
 
         assert_eq!(saturated.unsaturation_class(), ChainType::Saturated);
@@ -141,22 +125,12 @@ mod tests {
                 double_bonds: 0,
                 triple_bonds: 0,
                 double_bond_positions: vec![],
-                has_hydroxyl: false,
-                has_hydroperoxide: false,
-                has_epoxide: false,
-                is_ether_linked: false,
-                is_plasmalogen: false,
             },
             AcylChain {
                 carbon_count: 18,
                 double_bonds: 1,
                 triple_bonds: 0,
                 double_bond_positions: vec![9],
-                has_hydroxyl: false,
-                has_hydroperoxide: false,
-                has_epoxide: false,
-                is_ether_linked: false,
-                is_plasmalogen: false,
             },
         ];
 
