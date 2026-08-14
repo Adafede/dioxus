@@ -1,5 +1,5 @@
 use crate::csv::parse_csv_rows;
-use crate::evidence::{assess_np_evidence, run_checks, row_verdict, EvidenceInputs};
+use crate::evidence::{EvidenceInputs, assess_np_evidence, row_verdict, run_checks};
 use crate::model::{
     DatasetMotifContext, EndpointStatus, EnrichmentOutcome, MoleculeRow, MotifSummary,
     RdkitDescriptors,

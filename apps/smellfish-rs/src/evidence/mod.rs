@@ -38,7 +38,7 @@ pub use chemist::run_checks;
 pub use chemist::{is_known_np_motif, is_scaffold_motif};
 #[cfg(target_arch = "wasm32")]
 pub use verdict::row_verdict;
-pub use verdict::{classify_ring_family, category};
+pub use verdict::{category, classify_ring_family};
 
 #[cfg(test)]
 mod tests {
