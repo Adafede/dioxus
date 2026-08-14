@@ -29,7 +29,7 @@ fn skip_link() -> Element {
         a {
             href: "#main",
             class: "skip-link",
-            style: "position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:transparent;color:#0b5cab;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:underline;",
+            style: StyleBuilder::new().property("position", "absolute").property("top", "-100%").property("left", "0.5rem").property("z-index", "9999").padding("0.5rem 1rem").property("background", "transparent").color("#0b5cab").font_size("0.875rem").font_weight("600").border_radius("0 0 4px 4px").text_decoration("underline").build(),
             "Skip to main content"
         }
     }
@@ -160,33 +160,59 @@ pub fn app() -> Element {
         }
 
         div {
-            style: "min-height: 100vh; padding: 2rem 1rem 3rem; background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); color: #0f172a;",
+            style: StyleBuilder::new().min_height("100vh").padding("2rem 1rem 3rem").property("background", "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)").color("#0f172a").build(),
             skip_link {}
 
             main { id: "main",
-                style: "max-width: 960px; margin: 0 auto;",
-                h1 { style: "margin: 0 0 0.35rem; font-size: 1.7rem; letter-spacing: -0.02em;", "MGF Precursor Error" }
+                style: StyleBuilder::new().property("max-width", "960px").margin("0 auto").build(),
+                h1 { style: StyleBuilder::new().margin("0 0 0.35rem").font_size("1.7rem").property("letter-spacing", "-0.02em").build(), "MGF Precursor Error" }
                 p {
-                    style: "margin: 0 0 1.25rem; color: #475569; font-size: 0.95rem;",
+                    style: StyleBuilder::new().margin("0 0 1.25rem").color("#475569").font_size("0.95rem").build(),
                     "Upload an MGF file and explore precursor mass errors in Da and ppm."
                 }
 
                 div {
-                    style: "background: rgba(255,255,255,0.9); border: 1px solid rgba(148,163,184,0.22); border-radius: 20px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); padding: 1.25rem; backdrop-filter: blur(12px);",
+                    style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").property("backdrop-filter", "blur(12px)").build(),
                     label {
                         r#for: "mgf-upload",
-                        style: format!(
-                            "display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; min-height: 140px; width: 100%; box-sizing: border-box; position: relative; isolation: isolate; border: 2px dashed {}; border-radius: 18px; padding: 1.1rem; cursor: pointer; background: {}; color: #334155; font-weight: 600; text-align: center; transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;",
-                            if *drag_active.read() { "#2563eb" } else { "#94a3b8" },
-                            if *drag_active.read() { "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(239,246,255,0.94))" } else { "linear-gradient(135deg, rgba(248,250,252,0.95), rgba(239,246,255,0.95))" }
-                        ),
+                        style: StyleBuilder::new()
+                            .display("flex")
+                            .flex_direction("column")
+                            .align_items("center")
+                            .justify_content("center")
+                            .gap("0.6rem")
+                            .min_height("140px")
+                            .width("100%")
+                            .property("box-sizing", "border-box")
+                            .property("position", "relative")
+                            .property("isolation", "isolate")
+                            .border(&format!("2px dashed {}", if *drag_active.read() { "#2563eb" } else { "#94a3b8" }))
+                            .border_radius("18px")
+                            .padding("1.1rem")
+                            .cursor("pointer")
+                            .property(
+                                "background",
+                                if *drag_active.read() {
+                                    "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(239,246,255,0.94))"
+                                } else {
+                                    "linear-gradient(135deg, rgba(248,250,252,0.95), rgba(239,246,255,0.95))"
+                                },
+                            )
+                            .color("#334155")
+                            .font_weight("600")
+                            .text_align("center")
+                            .property(
+                                "transition",
+                                "border-color 160ms ease, background 160ms ease, transform 160ms ease",
+                            )
+                            .build(),
                         ondragenter: on_drag_enter,
                         ondragover: on_drag_over,
                         ondragleave: on_drag_leave,
                         ondrop: on_drop,
-                        span { style: "font-size: 1rem;", "Drop an MGF file here or click to browse" }
-                        span { style: "font-size: 0.85rem; font-weight: 500; color: #64748b;", ".mgf files only" }
-                        span { style: "font-size: 0.8rem; font-weight: 500; color: #64748b;", "Plots cap at 5 mDa / 10 ppm for the signed-error views" }
+                        span { style: StyleBuilder::new().font_size("1rem").build(), "Drop an MGF file here or click to browse" }
+                        span { style: StyleBuilder::new().font_size("0.85rem").font_weight("500").color("#64748b").build(), ".mgf files only" }
+                        span { style: StyleBuilder::new().font_size("0.8rem").font_weight("500").color("#64748b").build(), "Plots cap at 5 mDa / 10 ppm for the signed-error views" }
                         input {
                             id: "mgf-upload",
                             r#type: "file",
@@ -194,14 +220,14 @@ pub fn app() -> Element {
                             disabled: *busy.read(),
                             onchange: on_file_change,
                             aria_describedby: "mgf-upload-help mgf-upload-status",
-                            style: "position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;",
+                            style: StyleBuilder::new().property("position", "absolute").property("inset", "0").width("100%").height("100%").opacity("0").cursor("pointer").build(),
                         }
                     }
-                    p { id: "mgf-upload-help", style: "margin: 0.7rem 0 0; color: #475569; font-size: 0.9rem;", "Accepts .mgf files. Use drag and drop or browse." }
+                    p { id: "mgf-upload-help", style: StyleBuilder::new().margin("0.7rem 0 0").color("#475569").font_size("0.9rem").build(), "Accepts .mgf files. Use drag and drop or browse." }
 
                     if !file_name.read().is_empty() {
                         p {
-                            style: "margin: 0.35rem 0 0; color: #475569; font-size: 0.9rem;",
+                            style: StyleBuilder::new().margin("0.35rem 0 0").color("#475569").font_size("0.9rem").build(),
                             "Selected file: {file_name}"
                         }
                     }
@@ -211,14 +237,14 @@ pub fn app() -> Element {
                         role: "status",
                         aria_live: "polite",
                         aria_atomic: "true",
-                        style: "margin: 0.7rem 0 0; font-weight: 600; color: #334155;",
+                        style: StyleBuilder::new().margin("0.7rem 0 0").font_weight("600").color("#334155").build(),
                         "{status}"
                     }
 
                     if file_name.read().is_empty() && metrics.read().is_none() && !(*busy.read()) {
                         button {
                             r#type: "button",
-                            style: "margin-top: 0.8rem; border: 1px solid #2563eb; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 0.84rem; font-weight: 700; padding: 0.45rem 0.8rem; cursor: pointer;",
+                            style: StyleBuilder::new().property("margin-top", "0.8rem").border("1px solid #2563eb").border_radius("999px").property("background", "#eff6ff").color("#1d4ed8").font_size("0.84rem").font_weight("700").padding("0.45rem 0.8rem").cursor("pointer").build(),
                             onclick: move |_| {
                                 #[cfg(target_arch = "wasm32")]
                                 browser::load_example_mgf(status, metrics, busy, file_name, original_mgf_content);
@@ -233,23 +259,23 @@ pub fn app() -> Element {
 
                     if let Some(metrics) = metrics.read().as_ref() {
                         div {
-                            style: "margin-top: 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
-                            h2 { style: "margin: 0 0 0.4rem; font-size: 1rem;", "Summary" }
-                            p { style: "margin: 0.35rem 0; color: #475569;", "Processed {metrics.total_spectra} spectra; compared {metrics.spectra} with usable reference masses." }
-                            p { style: "margin: 0.35rem 0; color: #475569;", "{metrics.spectra_with_reference_mass} spectra had a usable reference mass." }
+                            style: StyleBuilder::new().property("margin-top", "1rem").padding("1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").build(),
+                            h2 { style: StyleBuilder::new().margin("0 0 0.4rem").font_size("1rem").build(), "Summary" }
+                            p { style: StyleBuilder::new().margin("0.35rem 0").color("#475569").build(), "Processed {metrics.total_spectra} spectra; compared {metrics.spectra} with usable reference masses." }
+                            p { style: StyleBuilder::new().margin("0.35rem 0").color("#475569").build(), "{metrics.spectra_with_reference_mass} spectra had a usable reference mass." }
 
                             if metrics.skipped_spectra > 0 || !metrics.unrecognized_adducts.is_empty() {
                                 div {
-                                    style: "margin-top: 0.9rem; padding: 0.8rem 0.9rem; border: 1px solid #fcd34d; border-radius: 12px; background: #fffbeb; color: #92400e;",
-                                    p { style: "margin: 0 0 0.35rem; font-weight: 700;", "Warnings" }
-                                    p { style: "margin: 0; font-size: 0.9rem;", "{metrics.skipped_spectra} spectra were skipped because the adduct or reference mass could not be resolved." }
+                                    style: StyleBuilder::new().property("margin-top", "0.9rem").padding("0.8rem 0.9rem").border("1px solid #fcd34d").border_radius("12px").property("background", "#fffbeb").color("#92400e").build(),
+                                    p { style: StyleBuilder::new().margin("0 0 0.35rem").font_weight("700").build(), "Warnings" }
+                                    p { style: StyleBuilder::new().margin("0").font_size("0.9rem").build(), "{metrics.skipped_spectra} spectra were skipped because the adduct or reference mass could not be resolved." }
                                     if metrics.unparsed_smiles > 0 {
-                                        p { style: "margin: 0.45rem 0 0; font-size: 0.88rem;", "{metrics.unparsed_smiles} spectra had SMILES that could not be parsed into a reference mass." }
+                                        p { style: StyleBuilder::new().margin("0.45rem 0 0").font_size("0.88rem").build(), "{metrics.unparsed_smiles} spectra had SMILES that could not be parsed into a reference mass." }
                                     }
                                     if !metrics.unparsed_smiles_warnings.is_empty() {
-                                        div { style: "margin-top: 0.6rem; padding: 0.7rem 0.8rem; border: 1px solid #fde68a; border-radius: 10px; background: #fffbeb; color: #92400e;",
-                                            p { style: "margin: 0 0 0.35rem; font-weight: 700; font-size: 0.86rem;", "Excluded unparsed SMILES" }
-                                            ul { style: "margin: 0.25rem 0 0 1.05rem; padding: 0; font-size: 0.84rem; max-height: 160px; overflow: auto;",
+                                        div { style: StyleBuilder::new().property("margin-top", "0.6rem").padding("0.7rem 0.8rem").border("1px solid #fde68a").border_radius("10px").property("background", "#fffbeb").color("#92400e").build(),
+                                            p { style: StyleBuilder::new().margin("0 0 0.35rem").font_weight("700").font_size("0.86rem").build(), "Excluded unparsed SMILES" }
+                                            ul { style: StyleBuilder::new().margin("0.25rem 0 0 1.05rem").padding("0").font_size("0.84rem").property("max-height", "160px").property("overflow", "auto").build(),
                                                 {
                                                     let mut sorted_unparsed = metrics.unparsed_smiles_warnings.iter().collect::<Vec<_>>();
                                                     sorted_unparsed.sort_by(|(left_smiles, left_detail), (right_smiles, right_detail)| {
@@ -269,7 +295,7 @@ pub fn app() -> Element {
                                         }
                                     }
                                     if !metrics.unrecognized_adducts.is_empty() {
-                                        ul { style: "margin: 0.45rem 0 0 1.1rem; padding: 0; font-size: 0.88rem;",
+                                        ul { style: StyleBuilder::new().margin("0.45rem 0 0 1.1rem").padding("0").font_size("0.88rem").build(),
                                             {
                                                 let mut sorted_adducts = metrics.unrecognized_adducts.iter().collect::<Vec<_>>();
                                                 sorted_adducts.sort_by(|(left_adduct, left_count), (right_adduct, right_count)| {
@@ -288,9 +314,9 @@ pub fn app() -> Element {
 
                             if !metrics.high_error_smiles.is_empty() {
                                 div {
-                                    style: "margin-top: 1rem; padding: 0.8rem 0.9rem; border: 1px solid #fecaca; border-radius: 12px; background: #fef2f2; color: #991b1b;",
-                                    p { style: "margin: 0 0 0.35rem; font-weight: 700;", "SMILES for spectra above 0.01 Da" }
-                                    ul { style: "margin: 0.25rem 0 0 1.1rem; padding: 0; font-size: 0.88rem; max-height: 240px; overflow: auto;",
+                                    style: StyleBuilder::new().property("margin-top", "1rem").padding("0.8rem 0.9rem").border("1px solid #fecaca").border_radius("12px").property("background", "#fef2f2").color("#991b1b").build(),
+                                    p { style: StyleBuilder::new().margin("0 0 0.35rem").font_weight("700").build(), "SMILES for spectra above 0.01 Da" }
+                                    ul { style: StyleBuilder::new().margin("0.25rem 0 0 1.1rem").padding("0").font_size("0.88rem").property("max-height", "240px").property("overflow", "auto").build(),
                                         {
                                             let mut sorted_high_error = metrics.high_error_smiles.iter().collect::<Vec<_>>();
                                             sorted_high_error.sort_by(|(left_smiles, left_detail), (right_smiles, right_detail)| {
@@ -317,95 +343,95 @@ pub fn app() -> Element {
                             }
 
                             div {
-                                style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem;",
-                                div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Observed precursor 𝑚/𝑧 distribution" }
-                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Range, mean, and median of the observed precursor 𝑚/𝑧 values" }
-                                    div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "median {format_value(metrics.observed_precursor_median)}" }
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "mean {format_value(metrics.observed_precursor_mean)}" }
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "range {format_value(metrics.observed_precursor_max - metrics.observed_precursor_min)}" }
+                                style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(220px, 1fr))").gap("1rem").property("margin-top", "1rem").build(),
+                                div { style: StyleBuilder::new().property("background", "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)").padding("0.9rem").border_radius("14px").border("1px solid #e2e8f0").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
+                                    h4 { style: StyleBuilder::new().margin("0 0 0.35rem").font_size("0.95rem").color("#0f172a").build(), "Observed precursor 𝑚/𝑧 distribution" }
+                                    p { style: StyleBuilder::new().margin("0").color("#64748b").font_size("0.8rem").build(), "Range, mean, and median of the observed precursor 𝑚/𝑧 values" }
+                                    div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.45rem").property("margin-top", "0.6rem").build(),
+                                        span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#eff6ff").color("#1d4ed8").border("1px solid #bfdbfe").font_size("0.78rem").font_weight("700").build(), "median {format_value(metrics.observed_precursor_median)}" }
+                                        span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "mean {format_value(metrics.observed_precursor_mean)}" }
+                                        span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "range {format_value(metrics.observed_precursor_max - metrics.observed_precursor_min)}" }
                                     }
                                 }
-                                div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Absolute precursor error (Da)" }
-                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Median absolute deviation, mean absolute deviation, and RMS in daltons" }
-                                    div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "median {format_value(metrics.abs_error_da_median)}" }
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "mean {format_value(metrics.abs_error_da_mean)}" }
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "RMS {format_value(metrics.abs_error_da_rms)}" }
+                                div { style: StyleBuilder::new().property("background", "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)").padding("0.9rem").border_radius("14px").border("1px solid #e2e8f0").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
+                                    h4 { style: StyleBuilder::new().margin("0 0 0.35rem").font_size("0.95rem").color("#0f172a").build(), "Absolute precursor error (Da)" }
+                                    p { style: StyleBuilder::new().margin("0").color("#64748b").font_size("0.8rem").build(), "Median absolute deviation, mean absolute deviation, and RMS in daltons" }
+                                    div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.45rem").property("margin-top", "0.6rem").build(),
+                                        span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#eff6ff").color("#1d4ed8").border("1px solid #bfdbfe").font_size("0.78rem").font_weight("700").build(), "median {format_value(metrics.abs_error_da_median)}" }
+                                        span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "mean {format_value(metrics.abs_error_da_mean)}" }
+                                        span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "RMS {format_value(metrics.abs_error_da_rms)}" }
                                     }
                                 }
-                                div { style: "background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 0.9rem; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                    h4 { style: "margin: 0 0 0.35rem; font-size: 0.95rem; color: #0f172a;", "Relative precursor error (ppm)" }
-                                    p { style: "margin: 0; color: #64748b; font-size: 0.8rem;", "Median relative deviation, mean relative deviation, and RMS of the ppm error" }
-                                    div { style: "display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem;",
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.78rem; font-weight: 700;", "median {format_value(metrics.abs_error_ppm_median)}" }
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "mean {format_value(metrics.abs_error_ppm_mean)}" }
-                                        span { style: "display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; border-radius: 999px; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.78rem; font-weight: 700;", "RMS {format_value(metrics.abs_error_ppm_rms)}" }
+                                div { style: StyleBuilder::new().property("background", "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)").padding("0.9rem").border_radius("14px").border("1px solid #e2e8f0").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
+                                    h4 { style: StyleBuilder::new().margin("0 0 0.35rem").font_size("0.95rem").color("#0f172a").build(), "Relative precursor error (ppm)" }
+                                    p { style: StyleBuilder::new().margin("0").color("#64748b").font_size("0.8rem").build(), "Median relative deviation, mean relative deviation, and RMS of the ppm error" }
+                                    div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.45rem").property("margin-top", "0.6rem").build(),
+                                        span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#eff6ff").color("#1d4ed8").border("1px solid #bfdbfe").font_size("0.78rem").font_weight("700").build(), "median {format_value(metrics.abs_error_ppm_median)}" }
+                                        span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "mean {format_value(metrics.abs_error_ppm_mean)}" }
+                                        span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.35rem 0.6rem").border_radius("999px").property("background", "#f8fafc").color("#334155").border("1px solid #e2e8f0").font_size("0.78rem").font_weight("700").build(), "RMS {format_value(metrics.abs_error_ppm_rms)}" }
                                     }
                                 }
                             }
 
                             div {
-                                style: "margin-top: 1rem; padding: 0.95rem 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                h4 { style: "margin: 0 0 0.25rem; font-size: 0.95rem; color: #0f172a;", "Tolerance-band compliance" }
-                                p { style: "margin: 0 0 0.7rem; color: #64748b; font-size: 0.84rem;", "Counts of spectra up to each reported mass-error cutoff (cumulative)" }
-                                div { style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem;",
+                                style: StyleBuilder::new().property("margin-top", "1rem").padding("0.95rem 1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
+                                h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "Tolerance-band compliance" }
+                                p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Counts of spectra up to each reported mass-error cutoff (cumulative)" }
+                                div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
                                     div { style: tolerance_card_style(0),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.1 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"0.1_da\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.1 mDa" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"0.1_da\", metrics.spectra)}" }
                                     }
                                     div { style: tolerance_card_style(1),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"0.5_da\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 mDa" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"0.5_da\", metrics.spectra)}" }
                                     }
                                     div { style: tolerance_card_style(2),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"1.0_da\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 mDa" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"1.0_da\", metrics.spectra)}" }
                                     }
                                     div { style: tolerance_card_style(3),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"5.0_da\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 mDa" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"5.0_da\", metrics.spectra)}" }
                                     }
                                     div { style: tolerance_card_style(4),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 5.0 mDa" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \">5.0_da\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 5.0 mDa" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \">5.0_da\", metrics.spectra)}" }
                                     }
                                     div { style: tolerance_card_style(0),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"0.5_ppm\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 ppm" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"0.5_ppm\", metrics.spectra)}" }
                                     }
                                     div { style: tolerance_card_style(1),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"1.0_ppm\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 ppm" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"1.0_ppm\", metrics.spectra)}" }
                                     }
                                     div { style: tolerance_card_style(2),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"5.0_ppm\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 ppm" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"5.0_ppm\", metrics.spectra)}" }
                                     }
                                     div { style: tolerance_card_style(3),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 10.0 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \"10.0_ppm\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 10.0 ppm" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \"10.0_ppm\", metrics.spectra)}" }
                                     }
                                     div { style: tolerance_card_style(4),
-                                        strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 10.0 ppm" }
-                                        span { style: "font-size: 0.88rem; font-weight: 700;", "{format_cumulative_bucket_count(metrics, \">10.0_ppm\", metrics.spectra)}" }
+                                        strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 10.0 ppm" }
+                                        span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_cumulative_bucket_count(metrics, \">10.0_ppm\", metrics.spectra)}" }
                                     }
                                 }
                             }
 
                             // Recalibration control panel
                             div {
-                                style: "margin-top: 1.5rem; padding: 1.2rem; border: 2px solid #3b82f6; border-radius: 16px; background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);",
-                                h2 { style: "margin: 0 0 0.8rem; font-size: 1.1rem; color: #1e40af;", "🔬 MS2 Fragment Recalibration" }
-                                p { style: "margin: 0 0 1rem; color: #1e40af; font-size: 0.95rem;", "Apply precursor-driven recalibration to MS2 fragments using the discrepancy between MS1 and MS2 precursor m/z." }
+                                style: StyleBuilder::new().property("margin-top", "1.5rem").padding("1.2rem").border("2px solid #3b82f6").border_radius("16px").property("background", "linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%)").build(),
+                                h2 { style: StyleBuilder::new().margin("0 0 0.8rem").font_size("1.1rem").color("#1e40af").build(), "🔬 MS2 Fragment Recalibration" }
+                                p { style: StyleBuilder::new().margin("0 0 1rem").color("#1e40af").font_size("0.95rem").build(), "Apply precursor-driven recalibration to MS2 fragments using the discrepancy between MS1 and MS2 precursor m/z." }
 
                                 div {
-                                    style: "display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;",
+                                    style: StyleBuilder::new().display("grid").property("grid-template-columns", "1fr 1fr").gap("1rem").property("margin-bottom", "1rem").build(),
 
                                     div {
-                                        label { style: "display: block; font-weight: 600; color: #1e40af; margin-bottom: 0.4rem;", "Calibration Model" }
+                                        label { style: StyleBuilder::new().display("block").font_weight("600").color("#1e40af").property("margin-bottom", "0.4rem").build(), "Calibration Model" }
                                         select {
                                             value: match *calibration_model.read() {
                                                 CalibrationModel::None => "none",
@@ -421,7 +447,7 @@ pub fn app() -> Element {
                                                     _ => CalibrationModel::None,
                                                 });
                                             },
-                                            style: "width: 100%; padding: 0.5rem; border: 1px solid #0ea5e9; border-radius: 8px; background: white; color: #1e40af; font-weight: 500; cursor: pointer;",
+                                            style: StyleBuilder::new().width("100%").padding("0.5rem").border("1px solid #0ea5e9").border_radius("8px").property("background", "white").color("#1e40af").font_weight("500").cursor("pointer").build(),
                                             option { value: "none", "None (No Correction)" }
                                             option { value: "tof", "TOF (Absolute Da)" }
                                             option { value: "orbitrap", "Orbitrap (ppm)" }
@@ -431,7 +457,7 @@ pub fn app() -> Element {
                                     if !matches!(*calibration_model.read(), CalibrationModel::None) {
                                         div {
                                             label {
-                                                style: "display: block; font-weight: 600; color: #1e40af; margin-bottom: 0.4rem;",
+                                                style: StyleBuilder::new().display("block").font_weight("600").color("#1e40af").property("margin-bottom", "0.4rem").build(),
                                                 "Lambda (λ): {format_lambda(*lambda_value.read())}"
                                             }
                                             input {
@@ -453,9 +479,9 @@ pub fn app() -> Element {
                                                     };
                                                     calibration_model.set(new_model);
                                                 },
-                                                style: "width: 100%; cursor: pointer;",
+                                                style: StyleBuilder::new().width("100%").cursor("pointer").build(),
                                             }
-                                            p { style: "margin: 0.4rem 0 0; font-size: 0.85rem; color: #0ea5e9;", "0 = no correction, 1 = full correction" }
+                                            p { style: StyleBuilder::new().margin("0.4rem 0 0").font_size("0.85rem").color("#0ea5e9").build(), "0 = no correction, 1 = full correction" }
                                         }
                                     }
                                 }
@@ -463,52 +489,52 @@ pub fn app() -> Element {
 
                             // Tolerance-band compliance AFTER recalibration (duplicated)
                             div {
-                                style: "margin-top: 1rem; padding: 0.95rem 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);",
-                                h4 { style: "margin: 0 0 0.25rem; font-size: 0.95rem; color: #0f172a;", "Tolerance-band compliance (Recalibrated)" }
-                                p { style: "margin: 0 0 0.7rem; color: #64748b; font-size: 0.84rem;", "Estimated compliance after MS2 fragment recalibration (preview)" }
-                                div { style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem;",
+                                style: StyleBuilder::new().property("margin-top", "1rem").padding("0.95rem 1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
+                                h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "Tolerance-band compliance (Recalibrated)" }
+                                p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Estimated compliance after MS2 fragment recalibration (preview)" }
+                                div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
                                     if let Some(diag) = recalibration_diagnostics.read().as_ref() {
                                         // mDa after
                                         div { style: tolerance_card_style(0),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.1 mDa" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_mda(&diag.error_da_after, 0.1))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.1 mDa" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_mda(&diag.error_da_after, 0.1))}" }
                                         }
                                         div { style: tolerance_card_style(1),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 mDa" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_mda(&diag.error_da_after, 0.5))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 mDa" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_mda(&diag.error_da_after, 0.5))}" }
                                         }
                                         div { style: tolerance_card_style(2),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 mDa" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_mda(&diag.error_da_after, 1.0))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 mDa" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_mda(&diag.error_da_after, 1.0))}" }
                                         }
                                         div { style: tolerance_card_style(3),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 mDa" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_mda(&diag.error_da_after, 5.0))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 mDa" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_mda(&diag.error_da_after, 5.0))}" }
                                         }
                                         div { style: tolerance_card_style(4),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 5.0 mDa" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(100.0 - estimate_compliance_mda(&diag.error_da_after, 5.0))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 5.0 mDa" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(100.0 - estimate_compliance_mda(&diag.error_da_after, 5.0))}" }
                                         }
                                         // ppm after
                                         div { style: tolerance_card_style(0),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 0.5 ppm" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 0.5))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 ppm" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 0.5))}" }
                                         }
                                         div { style: tolerance_card_style(1),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 1.0 ppm" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 1.0))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 ppm" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 1.0))}" }
                                         }
                                         div { style: tolerance_card_style(2),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 5.0 ppm" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 5.0))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 ppm" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 5.0))}" }
                                         }
                                         div { style: tolerance_card_style(3),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "≤ 10.0 ppm" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 10.0))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 10.0 ppm" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 10.0))}" }
                                         }
                                         div { style: tolerance_card_style(4),
-                                            strong { style: "display:block; font-size: 0.8rem; margin-bottom: 0.25rem;", "> 10.0 ppm" }
-                                            span { style: "font-size: 0.88rem; font-weight: 700;", "{format_value(100.0 - estimate_compliance_ppm(&diag.error_ppm_after, 10.0))}" }
+                                            strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 10.0 ppm" }
+                                            span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(100.0 - estimate_compliance_ppm(&diag.error_ppm_after, 10.0))}" }
                                         }
                                     }
                                 }
@@ -518,7 +544,7 @@ pub fn app() -> Element {
                             if !original_mgf_content.read().is_empty() && !matches!(*calibration_model.read(), CalibrationModel::None) {
                                 button {
                                     r#type: "button",
-                                    style: "margin-top: 1rem; width: 100%; padding: 0.75rem 1rem; border: 2px solid #10b981; border-radius: 8px; background: #10b981; color: white; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.2s; hover:background #059669;",
+                                    style: StyleBuilder::new().property("margin-top", "1rem").width("100%").padding("0.75rem 1rem").border("2px solid #10b981").border_radius("8px").property("background", "#10b981").color("white").font_size("0.95rem").font_weight("700").cursor("pointer").transition("background 0.2s").property("hover", "background #059669").build(),
                                     onclick: move |_| {
                                         let file_name = file_name.read();
                                         let original = original_mgf_content.read();
@@ -551,13 +577,13 @@ pub fn app() -> Element {
                             // Recalibration diagnostics display
                             if let Some(diag) = recalibration_diagnostics.read().as_ref() {
                                 div {
-                                    style: "margin-top: 1.5rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);",
+                                    style: StyleBuilder::new().property("margin-top", "1.5rem").padding("1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").build(),
 
-                                    h4 { style: "margin: 0 0 1rem; font-size: 1rem; color: #1e40af;", "Recalibration Diagnostics" }
+                                    h4 { style: StyleBuilder::new().margin("0 0 1rem").font_size("1rem").color("#1e40af").build(), "Recalibration Diagnostics" }
 
                                     // Summary statistics table
                                     div {
-                                        style: "margin-bottom: 1.5rem;",
+                                        style: StyleBuilder::new().property("margin-bottom", "1.5rem").build(),
                                         dangerous_inner_html: render_recalibration_summary_text(
                                             diag.mean_error_ppm_before,
                                             diag.mean_error_ppm_after,
@@ -570,12 +596,12 @@ pub fn app() -> Element {
 
                                     // Tabbed cumulative error distribution (ms1, ms2_before, ms2_after)
                                     div {
-                                        style: "margin-bottom: 1.5rem;",
-                                        h5 { style: "margin: 0 0 0.5rem; font-size: 0.95rem; color: #1e40af;", "Cumulative Error Distribution" }
+                                        style: StyleBuilder::new().property("margin-bottom", "1.5rem").build(),
+                                        h5 { style: StyleBuilder::new().margin("0 0 0.5rem").font_size("0.95rem").color("#1e40af").build(), "Cumulative Error Distribution" }
 
                                         // Tab buttons
                                         div {
-                                            style: "display: flex; gap: 0.5rem; margin-bottom: 0.8rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;",
+                                            style: StyleBuilder::new().display("flex").gap("0.5rem").property("margin-bottom", "0.8rem").border_bottom("1px solid #e2e8f0").property("padding-bottom", "0.5rem").build(),
                                             button {
                                                 style: if *cumulative_dist_tab.read() == "mda" {
                                                     "padding: 0.5rem 1rem; border: 2px solid #1e40af; background: #1e40af; color: white; border-radius: 6px; font-weight: 600; cursor: pointer;"
@@ -602,9 +628,9 @@ pub fn app() -> Element {
 
                                         // Tab content
                                         div {
-                                            style: "background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto;",
+                                            style: StyleBuilder::new().property("background", "white").padding("1rem").border("1px solid #e2e8f0").border_radius("12px").property("overflow-x", "auto").build(),
                                             p {
-                                                style: "margin: 0 0 0.8rem; font-size: 0.9rem; color: #64748b;",
+                                                style: StyleBuilder::new().margin("0 0 0.8rem").font_size("0.9rem").color("#64748b").build(),
                                                 strong { "Legend: " }
                                                 "🔵 Blue = MS1 precursor (PEPMASS) vs theoretical | "
                                                 "🟠 Orange = MS2 precursor before correction vs theoretical | "
@@ -636,14 +662,14 @@ pub fn app() -> Element {
 
                                     // Error time series (supporting detail)
                                     div {
-                                        style: "margin-bottom: 1.5rem;",
-                                        h5 { style: "margin: 0 0 0.5rem; font-size: 0.95rem; color: #1e40af;", "Precursor error over time" }
-                                        p { style: "margin: 0 0 0.8rem; font-size: 0.9rem; color: #64748b;",
+                                        style: StyleBuilder::new().property("margin-bottom", "1.5rem").build(),
+                                        h5 { style: StyleBuilder::new().margin("0 0 0.5rem").font_size("0.95rem").color("#1e40af").build(), "Precursor error over time" }
+                                        p { style: StyleBuilder::new().margin("0 0 0.8rem").font_size("0.9rem").color("#64748b").build(),
                                             strong { "Legend: " }
                                             "🔵 Blue = MS2 before correction | "
                                             "🟢 Green = MS2 after correction" }
                                         div {
-                                            style: "background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto;",
+                                            style: StyleBuilder::new().property("background", "white").padding("1rem").border("1px solid #e2e8f0").border_radius("12px").property("overflow-x", "auto").build(),
                                             dangerous_inner_html: render_recalibration_diagnostic_ppm(
                                                 &diag.error_ppm_before,
                                                 &diag.error_ppm_after,
@@ -653,13 +679,13 @@ pub fn app() -> Element {
 
                                     // Histogram (supporting detail)
                                     div {
-                                        h5 { style: "margin: 0 0 0.5rem; font-size: 0.95rem; color: #1e40af;", "Error distribution" }
-                                        p { style: "margin: 0 0 0.8rem; font-size: 0.9rem; color: #64748b;",
+                                        h5 { style: StyleBuilder::new().margin("0 0 0.5rem").font_size("0.95rem").color("#1e40af").build(), "Error distribution" }
+                                        p { style: StyleBuilder::new().margin("0 0 0.8rem").font_size("0.9rem").color("#64748b").build(),
                                             strong { "Legend: " }
                                             "🔵 Blue = MS2 before correction | "
                                             "🟢 Green = MS2 after correction" }
                                         div {
-                                            style: "background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto;",
+                                            style: StyleBuilder::new().property("background", "white").padding("1rem").border("1px solid #e2e8f0").border_radius("12px").property("overflow-x", "auto").build(),
                                             dangerous_inner_html: render_recalibration_diagnostic_histogram(
                                                 &diag.error_ppm_before,
                                                 &diag.error_ppm_after,
