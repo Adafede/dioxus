@@ -268,7 +268,7 @@ pub fn classify_np_evidence(signals: &EvidenceSignals) -> String {
 /// normalises to "likely", "neutral", "caution", "skeptical", or "fishy".
 ///
 /// Order matters: `"citation needed"` is matched *before* `"lotus"` so that a
-/// LOTUS-backenced molecule that still reads "citation needed" is not mis-filed
+/// LOTUS-backenced molecule that still reads "citation needed" is not misfiled
 /// as "likely"; `"synthetic-leaning"` is matched before both so a structural
 /// warning is an orange `caution`, not green.
 pub fn category(verdict: &str) -> &'static str {

@@ -359,7 +359,7 @@ mod tests {
     #[test]
     fn verdict_category_lotus_scaffold_hint_is_caution_not_likely() {
         // The scaffold hint alone (insufficient corroboration) is a citation
-        // (skeptical), never mis-filed as "likely".
+        // (skeptical), never misfiled as "likely".
         let verdict =
             "👃 Citation needed — LOTUS scaffold hint, insufficient corroboration (Ertl +2.50).";
         assert_eq!(category(verdict), "skeptical");
