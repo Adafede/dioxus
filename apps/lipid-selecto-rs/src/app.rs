@@ -123,12 +123,12 @@ struct UploadCtx {
 /// can take the struct by value and move each bare `move |...|` closure straight
 /// into the `on*` rsx props: a bare closure coerces into the rsx event prop,
 /// whereas an `EventHandler` value stored in a struct does not.
-struct UploadHandlers<Fc, Fe, Fo, Fl, Fd> {
-    file_change: Fc,
-    drag_enter: Fe,
-    drag_over: Fo,
-    drag_leave: Fl,
-    on_drop: Fd,
+struct UploadHandlers<FileChange, DragEnter, DragOver, DragLeave, OnDrop> {
+    file_change: FileChange,
+    drag_enter: DragEnter,
+    drag_over: DragOver,
+    drag_leave: DragLeave,
+    on_drop: OnDrop,
 }
 
 /// Shared WASM/native branch previously inlined in both `file_change` and
@@ -195,19 +195,19 @@ fn lipid_classes_card(rule_library: &LipidRuleLibrary) -> Element {
 
 /// Renders the file-drop zone card, reading its mutable signals from `ctx` and
 /// its event closures from `handlers`.
-fn upload_drop_zone<Fc, Fe, Fo, Fl, Fd>(
+fn upload_drop_zone<FileChange, DragEnter, DragOver, DragLeave, OnDrop>(
     mut ctx: UploadCtx,
-    handlers: UploadHandlers<Fc, Fe, Fo, Fl, Fd>,
+    handlers: UploadHandlers<FileChange, DragEnter, DragOver, DragLeave, OnDrop>,
     _rule_library: &LipidRuleLibrary,
     upload_border: &str,
     upload_background: &str,
 ) -> Element
 where
-    Fc: FnMut(Event<FormData>) + 'static,
-    Fe: FnMut(Event<DragData>) + 'static,
-    Fo: FnMut(Event<DragData>) + 'static,
-    Fl: FnMut(Event<DragData>) + 'static,
-    Fd: FnMut(Event<DragData>) + 'static,
+    FileChange: FnMut(Event<FormData>) + 'static,
+    DragEnter: FnMut(Event<DragData>) + 'static,
+    DragOver: FnMut(Event<DragData>) + 'static,
+    DragLeave: FnMut(Event<DragData>) + 'static,
+    OnDrop: FnMut(Event<DragData>) + 'static,
 {
     #[cfg(target_arch = "wasm32")]
     let rule_lib = _rule_library.clone();
