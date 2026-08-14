@@ -52,7 +52,7 @@ pub fn app() -> Element {
     }
     let mut status = use_signal(|| "Drop an MGF file to begin.".to_string());
     ui::shared_signal!(busy, || false);
-    let mut drag_active = use_signal(|| false);
+    let drag_active = use_signal(|| false);
     let original_mgf_content = use_signal(String::new);
 
     // Recalibration control signals
@@ -100,49 +100,32 @@ pub fn app() -> Element {
         Err(msg) => status.set(msg),
     };
 
-    let on_drag_enter = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(true);
-    };
+    let on_drop = move |evt: Event<DragData>| match upload::extract_blob_from_file_data(
+        &evt.data().files(),
+    ) {
+        Ok(Some(file)) => {
+            #[cfg(target_arch = "wasm32")]
+            browser::begin_analysis_from_blob(
+                file.blob,
+                file.name,
+                file_name,
+                status,
+                metrics,
+                busy,
+                drag_active,
+                original_mgf_content,
+            );
 
-    let on_drag_over = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(true);
-    };
-
-    let on_drag_leave = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(false);
-    };
-
-    let on_drop = move |evt: Event<DragData>| {
-        evt.prevent_default();
-        drag_active.set(false);
-        match upload::extract_blob_from_file_data(&evt.data().files()) {
-            Ok(Some(file)) => {
-                #[cfg(target_arch = "wasm32")]
-                browser::begin_analysis_from_blob(
-                    file.blob,
-                    file.name,
-                    file_name,
-                    status,
-                    metrics,
-                    busy,
-                    drag_active,
-                    original_mgf_content,
-                );
-
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    file_name.set(file.name);
-                    metrics.set(None);
-                    status.set("This app needs to run in a browser.".to_string());
-                    busy.set(false);
-                }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                file_name.set(file.name);
+                metrics.set(None);
+                status.set("This app needs to run in a browser.".to_string());
+                busy.set(false);
             }
-            Ok(None) => status.set("No file selected.".to_string()),
-            Err(msg) => status.set(msg),
         }
+        Ok(None) => status.set("No file selected.".to_string()),
+        Err(msg) => status.set(msg),
     };
 
     rsx! {
@@ -173,72 +156,21 @@ pub fn app() -> Element {
 
                 div {
                     style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").property("backdrop-filter", "blur(12px)").build(),
-                    label {
-                        r#for: "mgf-upload",
-                        style: StyleBuilder::new()
-                            .display("flex")
-                            .flex_direction("column")
-                            .align_items("center")
-                            .justify_content("center")
-                            .gap("0.6rem")
-                            .min_height("140px")
-                            .width("100%")
-                            .property("box-sizing", "border-box")
-                            .property("position", "relative")
-                            .property("isolation", "isolate")
-                            .border(&format!("2px dashed {}", if *drag_active.read() { "#2563eb" } else { "#94a3b8" }))
-                            .border_radius("18px")
-                            .padding("1.1rem")
-                            .cursor("pointer")
-                            .property(
-                                "background",
-                                if *drag_active.read() {
-                                    "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(239,246,255,0.94))"
-                                } else {
-                                    "linear-gradient(135deg, rgba(248,250,252,0.95), rgba(239,246,255,0.95))"
-                                },
-                            )
-                            .color("#334155")
-                            .font_weight("600")
-                            .text_align("center")
-                            .property(
-                                "transition",
-                                "border-color 160ms ease, background 160ms ease, transform 160ms ease",
-                            )
-                            .build(),
-                        ondragenter: on_drag_enter,
-                        ondragover: on_drag_over,
-                        ondragleave: on_drag_leave,
-                        ondrop: on_drop,
-                        span { style: StyleBuilder::new().font_size("1rem").build(), "Drop an MGF file here or click to browse" }
-                        span { style: StyleBuilder::new().font_size("0.85rem").font_weight("500").color("#64748b").build(), ".mgf files only" }
-                        span { style: StyleBuilder::new().font_size("0.8rem").font_weight("500").color("#64748b").build(), "Plots cap at 5 mDa / 10 ppm for the signed-error views" }
-                        input {
-                            id: "mgf-upload",
-                            r#type: "file",
-                            accept: ".mgf",
-                            disabled: *busy.read(),
-                            onchange: on_file_change,
-                            aria_describedby: "mgf-upload-help mgf-upload-status",
-                            style: StyleBuilder::new().property("position", "absolute").property("inset", "0").width("100%").height("100%").opacity("0").cursor("pointer").build(),
-                        }
+                    UploadZone {
+                        file_name,
+                        status,
+                        busy,
+                        drag_active,
+                        on_file_change,
+                        on_drop,
+                        accept: ".mgf",
+                        label: "Drop an MGF file here or click to browse",
+                        hint: "Accepts .mgf files. Use drag and drop or browse.",
+                        icon: "📁",
                     }
-                    p { id: "mgf-upload-help", style: StyleBuilder::new().margin("0.7rem 0 0").color("#475569").font_size("0.9rem").build(), "Accepts .mgf files. Use drag and drop or browse." }
-
-                    if !file_name.read().is_empty() {
-                        p {
-                            style: StyleBuilder::new().margin("0.35rem 0 0").color("#475569").font_size("0.9rem").build(),
-                            "Selected file: {file_name}"
-                        }
-                    }
-
                     p {
-                        id: "mgf-upload-status",
-                        role: "status",
-                        aria_live: "polite",
-                        aria_atomic: "true",
-                        style: StyleBuilder::new().margin("0.7rem 0 0").font_weight("600").color("#334155").build(),
-                        "{status}"
+                        style: StyleBuilder::new().margin("0.5rem 0 0").color("#475569").font_size("0.85rem").build(),
+                        "Plots cap at 5 mDa / 10 ppm for the signed-error views"
                     }
 
                     if file_name.read().is_empty() && metrics.read().is_none() && !(*busy.read()) {

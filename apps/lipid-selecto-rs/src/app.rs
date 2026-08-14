@@ -65,9 +65,29 @@ pub fn app() -> Element {
         file_name,
         status,
         busy,
-        drag_active,
         analysis,
         input_format,
+    };
+
+    let rule_lib_for_change = rule_library.clone();
+    let rule_lib_for_drop = rule_library.clone();
+
+    let on_file_change = move |evt: Event<FormData>| {
+        handle_uploaded_files(
+            ctx,
+            &rule_lib_for_change,
+            upload::extract_blob_from_file_data(&evt.data().files()),
+            drag_active,
+        );
+    };
+
+    let on_drop = move |evt: Event<DragData>| {
+        handle_uploaded_files(
+            ctx,
+            &rule_lib_for_drop,
+            upload::extract_blob_from_file_data(&evt.data().files()),
+            drag_active,
+        );
     };
 
     rsx! {
@@ -94,7 +114,38 @@ pub fn app() -> Element {
                 }
 
                 { lipid_classes_card(&rule_library) }
-                { upload_zone(ctx, &rule_library) }
+                div {
+                    style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").build(),
+                    UploadZone {
+                        file_name,
+                        status,
+                        busy,
+                        drag_active,
+                        on_file_change,
+                        on_drop,
+                        accept: ".mgf,text/plain,*",
+                        label: "Drop an MGF or SMILES file here or click to browse",
+                        hint: ".mgf or .smi files with SMILES/FORMULA annotations",
+                        icon: "📁",
+                    }
+                    button {
+                        r#type: "button",
+                        style: StyleBuilder::new().property("margin-top", "0.75rem").border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.5rem 0.9rem").cursor("pointer").width("100%").build(),
+                        onclick: move |_| {
+                            #[cfg(target_arch = "wasm32")]
+                            let _ = browser::load_example_dataset(
+                                ctx.file_name,
+                                ctx.status,
+                                ctx.busy,
+                                drag_active,
+                                ctx.analysis,
+                                ctx.input_format,
+                                rule_library.clone(),
+                            );
+                        },
+                        "Load Example SMILES"
+                    }
+                }
                 if let Some(analysis) = ctx.analysis.read().as_ref() {
                     { self::summary(&analysis.summary, selected_classes, &analysis.all_classes) }
                     { self::gallery_with_filter(&analysis.gallery, &selected_classes.read()) }
@@ -112,35 +163,41 @@ struct UploadCtx {
     file_name: Signal<String>,
     status: Signal<String>,
     busy: Signal<bool>,
-    drag_active: Signal<bool>,
     analysis: Signal<Option<Analysis>>,
     input_format: Signal<Option<LipidFormat>>,
-}
-
-/// Drag/drop event handlers.
-///
-/// Stored as generic closure types (not `EventHandler`) so the drop-zone renderer
-/// can take the struct by value and move each bare `move |...|` closure straight
-/// into the `on*` rsx props: a bare closure coerces into the rsx event prop,
-/// whereas an `EventHandler` value stored in a struct does not.
-struct UploadHandlers<FileChange, DragEnter, DragOver, DragLeave, OnDrop> {
-    file_change: FileChange,
-    drag_enter: DragEnter,
-    drag_over: DragOver,
-    drag_leave: DragLeave,
-    on_drop: OnDrop,
 }
 
 /// Shared WASM/native branch previously inlined in both `file_change` and
 /// `on_drop`; collapses the duplicated `#[cfg(target_arch = "wasm32")]` block.
 /// `ctx` is taken by value (`Signal`s are `Copy` handles, so `.set` mutates the
 /// shared state the snapshot points at).
+/// Resolves a dropped or browsed file: extracts its blob and delegates to the
+/// wasm/native `process_file_upload` branch, reporting status on empty/failed
+/// extraction. Collapses the match previously duplicated in both the `file_change`
+/// and `drop` handlers.
+fn handle_uploaded_files(
+    mut ctx: UploadCtx,
+    rule_library: &LipidRuleLibrary,
+    result: Result<Option<upload::ExtractedFile>, String>,
+    drag_active: Signal<bool>,
+) {
+    match result {
+        Ok(Some(file)) => {
+            let detected_format = LipidFormat::from_path(&file.name);
+            process_file_upload(ctx, rule_library, file, detected_format, drag_active);
+        }
+        Ok(None) => ctx.status.set("No file selected.".to_string()),
+        Err(msg) => ctx.status.set(msg),
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 fn process_file_upload(
     mut ctx: UploadCtx,
     rule_library: &LipidRuleLibrary,
     file: upload::ExtractedFile,
     format: Option<LipidFormat>,
+    drag_active: Signal<bool>,
 ) {
     ctx.input_format.set(format);
     begin_analysis_from_blob(
@@ -149,7 +206,7 @@ fn process_file_upload(
         ctx.file_name,
         ctx.status,
         ctx.busy,
-        ctx.drag_active,
+        drag_active,
         ctx.analysis,
         format,
         rule_library.clone(),
@@ -162,6 +219,7 @@ fn process_file_upload(
     _rule_library: &LipidRuleLibrary,
     file: upload::ExtractedFile,
     format: Option<LipidFormat>,
+    _drag_active: Signal<bool>,
 ) {
     ctx.input_format.set(format);
     ctx.file_name.set(file.name);
@@ -191,167 +249,6 @@ fn lipid_classes_card(rule_library: &LipidRuleLibrary) -> Element {
                     }
                 }
     }
-}
-
-/// Renders the file-drop zone card, reading its signals from `ctx` and
-/// its event closures from `handlers`.
-fn upload_drop_zone<FileChange, DragEnter, DragOver, DragLeave, OnDrop>(
-    ctx: UploadCtx,
-    handlers: UploadHandlers<FileChange, DragEnter, DragOver, DragLeave, OnDrop>,
-    _rule_library: &LipidRuleLibrary,
-    upload_border: &str,
-    upload_background: &str,
-) -> Element
-where
-    FileChange: FnMut(Event<FormData>) + 'static,
-    DragEnter: FnMut(Event<DragData>) + 'static,
-    DragOver: FnMut(Event<DragData>) + 'static,
-    DragLeave: FnMut(Event<DragData>) + 'static,
-    OnDrop: FnMut(Event<DragData>) + 'static,
-{
-    #[cfg(target_arch = "wasm32")]
-    let rule_lib = _rule_library.clone();
-    rsx! {
-                div {
-                    style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").build(),
-                    label {
-                        r#for: "mgf-upload",
-                        style: StyleBuilder::new()
-                            .display("flex")
-                            .flex_direction("column")
-                            .align_items("center")
-                            .justify_content("center")
-                            .gap("0.6rem")
-                            .min_height("140px")
-                            .width("100%")
-                            .property("box-sizing", "border-box")
-                            .property("position", "relative")
-                            .property("isolation", "isolate")
-                            .property("border", &format!("2px dashed {upload_border}"))
-                            .border_radius("18px")
-                            .padding("1.1rem")
-                            .cursor("pointer")
-                            .property("background", upload_background)
-                            .color("#334155")
-                            .font_weight("600")
-                            .text_align("center")
-                            .transition("border-color 160ms ease, background 160ms ease, transform 160ms ease")
-                            .build(),
-                        ondragenter: handlers.drag_enter,
-                        ondragover: handlers.drag_over,
-                        ondragleave: handlers.drag_leave,
-                        ondrop: handlers.on_drop,
-                        span { style: StyleBuilder::new().font_size("1rem").build(), "Drop an MGF or SMILES file here or click to browse" }
-                        span { style: StyleBuilder::new().font_size("0.85rem").font_weight("500").color("#64748b").build(), ".mgf or .smi files with SMILES/FORMULA annotations" }
-                        input {
-                            id: "mgf-upload",
-                            r#type: "file",
-                            accept: ".mgf,text/plain,*",
-                            disabled: *ctx.busy.read(),
-                            onchange: handlers.file_change,
-                            style: StyleBuilder::new().property("position", "absolute").property("inset", "0").width("100%").height("100%").opacity("0").cursor("pointer").build(),
-                        }
-                    }
-                    p {
-                        id: "mgf-upload-help",
-                        style: StyleBuilder::new().margin("0.7rem 0 0").color("#475569").font_size("0.9rem").build(),
-                        "Accepts .mgf or .smi files. Use drag and drop or browse."
-                    }
-                    button {
-                        r#type: "button",
-                        style: StyleBuilder::new().property("margin-top", "0.75rem").border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.5rem 0.9rem").cursor("pointer").width("100%").build(),
-                        onclick: move |_| {
-                            #[cfg(target_arch = "wasm32")]
-                            let _ = browser::load_example_dataset(
-                                ctx.file_name,
-                                ctx.status,
-                                ctx.busy,
-                                ctx.drag_active,
-                                ctx.analysis,
-                                ctx.input_format,
-                                rule_lib.clone(),
-                            );
-                        },
-                        "Load Example SMILES"
-                    }
-                    if !ctx.file_name.read().is_empty() {
-                        p {
-                            style: StyleBuilder::new().margin("0.35rem 0 0").color("#475569").font_size("0.9rem").build(),
-                            "Selected file: {ctx.file_name}"
-                        }
-                    }
-                    p {
-                        id: "mgf-upload-status",
-                        role: "status",
-                        aria_live: "polite",
-                        aria_atomic: "true",
-                        style: StyleBuilder::new().margin("0.7rem 0 0").font_weight("600").color("#334155").build(),
-                        "{ctx.status}"
-                    }
-                }
-    }
-}
-
-/// Builds the drag/drop handlers (one `EventHandler` per event) and delegates
-/// rendering to [`upload_drop_zone`]. Each handler owns a `ctx` snapshot and a
-/// cloned rule library, so the closures are `'static`.
-fn upload_zone(mut ctx: UploadCtx, rule_library: &LipidRuleLibrary) -> Element {
-    let upload_border = if *ctx.drag_active.read() {
-        "#2563eb"
-    } else {
-        "#94a3b8"
-    };
-    let upload_background = if *ctx.drag_active.read() {
-        "linear-gradient(135deg, rgba(219,234,254,0.96), rgba(239,246,255,0.94))"
-    } else {
-        "linear-gradient(135deg, rgba(248,250,252,0.95), rgba(239,246,255,0.95))"
-    };
-
-    let rule_lib_for_change = rule_library.clone();
-    let rule_lib_for_drop = rule_library.clone();
-    let handlers = UploadHandlers {
-        file_change: move |evt: Event<FormData>| match upload::extract_blob_from_file_data(
-            &evt.data().files(),
-        ) {
-            Ok(Some(file)) => {
-                let detected_format = LipidFormat::from_path(&file.name);
-                process_file_upload(ctx, &rule_lib_for_change, file, detected_format);
-            }
-            Ok(None) => ctx.status.set("No file selected.".to_string()),
-            Err(msg) => ctx.status.set(msg),
-        },
-        drag_enter: move |evt: Event<DragData>| {
-            evt.prevent_default();
-            ctx.drag_active.set(true);
-        },
-        drag_over: move |evt: Event<DragData>| {
-            evt.prevent_default();
-            ctx.drag_active.set(true);
-        },
-        drag_leave: move |evt: Event<DragData>| {
-            evt.prevent_default();
-            ctx.drag_active.set(false);
-        },
-        on_drop: move |evt: Event<DragData>| {
-            evt.prevent_default();
-            ctx.drag_active.set(false);
-            match upload::extract_blob_from_file_data(&evt.data().files()) {
-                Ok(Some(file)) => {
-                    let detected_format = LipidFormat::from_path(&file.name);
-                    process_file_upload(ctx, &rule_lib_for_drop, file, detected_format);
-                }
-                Ok(None) => ctx.status.set("No file selected.".to_string()),
-                Err(msg) => ctx.status.set(msg),
-            }
-        },
-    };
-    upload_drop_zone(
-        ctx,
-        handlers,
-        rule_library,
-        upload_border,
-        upload_background,
-    )
 }
 
 /// Renders the per-class summary panel.
