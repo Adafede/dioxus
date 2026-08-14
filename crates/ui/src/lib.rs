@@ -16,7 +16,7 @@
 //! ```ignore
 //! use dioxus::prelude::*;
 //! use ui::prelude::*;
-//! use ui::theme::{ColorScheme, Spacing};
+//! use ui::theme::{ColorScheme, Spacing, StyleBuilder};
 //!
 //! fn app() -> Element {
 //!     let colors = ColorScheme::LIGHT;
@@ -25,7 +25,7 @@
 //!         Header {
 //!             title: "My App".to_string(),
 //!         }
-//!         div { style: "padding: {}", Spacing::LG,
+//!         div { style: StyleBuilder::new().padding(Spacing::LG).build(),
 //!             Card {
 //!                 title: "Content".to_string(),
 //!                 "Body text here"

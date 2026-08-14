@@ -97,7 +97,12 @@ pub fn Card(props: CardProps) -> Element {
                 class: if !card_hover_style.is_empty() { "card-hover" } else { "" },
                 a {
                     href: href,
-                    style: "text-decoration: none; color: inherit; display: block; cursor: pointer;".to_string(),
+                    style: StyleBuilder::new()
+                        .text_decoration("none")
+                        .color("inherit")
+                        .display("block")
+                        .cursor("pointer")
+                        .build(),
                     h2 { style: title_style, "{props.title}" }
                 }
                 if let Some(children) = props.children {
