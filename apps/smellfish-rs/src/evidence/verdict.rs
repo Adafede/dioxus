@@ -11,9 +11,8 @@ use super::chemist::{count_core_np_motifs, count_kingdom_enriched_hits};
 
 /// Verdict string shown prominently in the UI.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::module_name_repetitions)]
 #[must_use]
-pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
+pub fn row_verdict(row: &crate::model::MoleculeRow) -> String {
     if let Some(err) = row.error.as_deref() {
         return format!("⚠ {err}");
     }
@@ -159,8 +158,7 @@ pub fn verdict_for_row(row: &crate::model::MoleculeRow) -> String {
 
 /// Machine-readable category for CSV export — strips emojis and
 /// normalises to "likely", "neutral", "caution", "skeptical", or "fishy".
-#[allow(clippy::module_name_repetitions)]
-pub fn verdict_category(verdict: &str) -> &'static str {
+pub fn category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
 
     // RED — Highly synthetic / negative signals / fishy (check first!)

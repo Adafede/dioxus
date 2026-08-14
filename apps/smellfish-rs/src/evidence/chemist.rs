@@ -28,8 +28,7 @@ use crate::model::{ChemistCheck, MoleculeRow, RdkitMotifHit, normalized_source_c
 /// information, so the absence of stereo tags is not a reliable negative
 /// signal.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::module_name_repetitions)]
-pub fn chemist_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
+pub fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     let mut checks: Vec<ChemistCheck> = Vec::with_capacity(3);
 
     // 1 — NP-likeness score

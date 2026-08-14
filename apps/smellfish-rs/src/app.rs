@@ -676,7 +676,7 @@ fn build_csv(rows: &[MoleculeRow]) -> String {
             escape_csv(&r.ring_family),
             escape_csv(&substituents),
             escape_csv(&locus),
-            crate::evidence::verdict_category(&r.verdict),
+            crate::evidence::category(&r.verdict),
             escape_csv(&checks),
         );
     }

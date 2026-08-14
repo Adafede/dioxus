@@ -32,13 +32,13 @@ pub(crate) mod assessment;
 pub(crate) mod chemist;
 pub(crate) mod verdict;
 
-pub use assessment::{EvidenceAssessment, assess_np_evidence, np_likeness_label};
+pub use assessment::{EvidenceAssessment, EvidenceInputs, assess_np_evidence, np_likeness_label};
 #[cfg(target_arch = "wasm32")]
-pub use chemist::chemist_checks;
+pub use chemist::run_checks;
 pub use chemist::{is_known_np_motif, is_scaffold_motif};
 #[cfg(target_arch = "wasm32")]
-pub use verdict::verdict_for_row;
-pub use verdict::{classify_ring_family, verdict_category};
+pub use verdict::row_verdict;
+pub use verdict::{classify_ring_family, category};
 
 #[cfg(test)]
 mod tests {
@@ -89,16 +89,16 @@ mod tests {
             aromatic_ring_count: Some(0.0),
             aliphatic_ring_count: Some(2.0),
         };
-        let assessment = assess_np_evidence(
-            &desc,
-            &["Steroid-like fused ring".to_string()],
-            &[],
-            &["R/S".to_string(), "R/S".to_string()],
-            Some(3.42),
-            Some(0.75),
-            &empty_dataset_context(),
-            &[],
-        );
+        let assessment = assess_np_evidence(EvidenceInputs {
+            descriptors: &desc,
+            motifs: &["Steroid-like fused ring".to_string()],
+            motif_hits: &[],
+            stereo_tags: &["R/S".to_string(), "R/S".to_string()],
+            np_score: Some(3.42),
+            np_confidence: Some(0.75),
+            dataset_context: &empty_dataset_context(),
+            lotus_scaffolds: &[],
+        });
         assert!((assessment.np_likeness - 3.42).abs() < 1e-9);
         assert_eq!(assessment.np_label, "strong natural product");
         assert!(!assessment.ring_family.is_empty());
@@ -120,16 +120,16 @@ mod tests {
     #[test]
     fn no_made_up_tpsa_rule() {
         let desc = RdkitDescriptors::default();
-        let assessment = assess_np_evidence(
-            &desc,
-            &[],
-            &[],
-            &[],
-            Some(1.5),
-            Some(0.8),
-            &empty_dataset_context(),
-            &[],
-        );
+        let assessment = assess_np_evidence(EvidenceInputs {
+            descriptors: &desc,
+            motifs: &[],
+            motif_hits: &[],
+            stereo_tags: &[],
+            np_score: Some(1.5),
+            np_confidence: Some(0.8),
+            dataset_context: &empty_dataset_context(),
+            lotus_scaffolds: &[],
+        });
         // No "polar enough" note should exist — that was a hallucinated rule.
         assert!(
             assessment
@@ -148,16 +148,16 @@ mod tests {
     #[test]
     fn no_made_up_clogp_rule() {
         let desc = RdkitDescriptors::default();
-        let assessment = assess_np_evidence(
-            &desc,
-            &[],
-            &[],
-            &[],
-            Some(-1.5),
-            Some(0.9),
-            &empty_dataset_context(),
-            &[],
-        );
+        let assessment = assess_np_evidence(EvidenceInputs {
+            descriptors: &desc,
+            motifs: &[],
+            motif_hits: &[],
+            stereo_tags: &[],
+            np_score: Some(-1.5),
+            np_confidence: Some(0.9),
+            dataset_context: &empty_dataset_context(),
+            lotus_scaffolds: &[],
+        });
         // No clogP-based notes should exist — those were hallucinated rules.
         assert!(
             assessment
@@ -169,16 +169,16 @@ mod tests {
 
     #[test]
     fn model_unavailable_is_handled() {
-        let assessment = assess_np_evidence(
-            &empty_descriptors(),
-            &["Flavonoid core".to_string()],
-            &[],
-            &[],
-            None,
-            None,
-            &empty_dataset_context(),
-            &[],
-        );
+        let assessment = assess_np_evidence(EvidenceInputs {
+            descriptors: &empty_descriptors(),
+            motifs: &["Flavonoid core".to_string()],
+            motif_hits: &[],
+            stereo_tags: &[],
+            np_score: None,
+            np_confidence: None,
+            dataset_context: &empty_dataset_context(),
+            lotus_scaffolds: &[],
+        });
         assert!((assessment.np_likeness - 0.0).abs() < 1e-9);
         assert_eq!(assessment.np_label, "weak NP signals");
         assert!(!assessment.ring_family.is_empty());
@@ -200,16 +200,16 @@ mod tests {
         ctx.motif_counts.insert("Flavonoid core".to_string(), 3);
         ctx.motif_counts.insert("Aldehyde".to_string(), 1);
 
-        let assessment = assess_np_evidence(
-            &desc,
-            &["Flavonoid core".to_string(), "Aldehyde".to_string()],
-            &[],
-            &[],
-            Some(-0.5),
-            Some(0.5),
-            &ctx,
-            &[],
-        );
+        let assessment = assess_np_evidence(EvidenceInputs {
+            descriptors: &desc,
+            motifs: &["Flavonoid core".to_string(), "Aldehyde".to_string()],
+            motif_hits: &[],
+            stereo_tags: &[],
+            np_score: Some(-0.5),
+            np_confidence: Some(0.5),
+            dataset_context: &ctx,
+            lotus_scaffolds: &[],
+        });
         assert!(
             assessment
                 .evidence_notes
@@ -220,16 +220,16 @@ mod tests {
 
     #[test]
     fn scaffold_hit_is_counted_as_structure() {
-        let assessment = assess_np_evidence(
-            &empty_descriptors(),
-            &["geminal dimethyl".to_string()],
-            &[motif_hit("geminal dimethyl", "natural", "plants")],
-            &[],
-            Some(0.2),
-            Some(0.9),
-            &empty_dataset_context(),
-            &[],
-        );
+        let assessment = assess_np_evidence(EvidenceInputs {
+            descriptors: &empty_descriptors(),
+            motifs: &["geminal dimethyl".to_string()],
+            motif_hits: &[motif_hit("geminal dimethyl", "natural", "plants")],
+            stereo_tags: &[],
+            np_score: Some(0.2),
+            np_confidence: Some(0.9),
+            dataset_context: &empty_dataset_context(),
+            lotus_scaffolds: &[],
+        });
         assert_ne!(assessment.motif_context, "no structural motifs detected");
         assert!(
             assessment
@@ -241,19 +241,19 @@ mod tests {
 
     #[test]
     fn kingdom_enriched_hits_are_distinct() {
-        let assessment = assess_np_evidence(
-            &empty_descriptors(),
-            &["geminal dimethyl".to_string(), "CC=C".to_string()],
-            &[
+        let assessment = assess_np_evidence(EvidenceInputs {
+            descriptors: &empty_descriptors(),
+            motifs: &["geminal dimethyl".to_string(), "CC=C".to_string()],
+            motif_hits: &[
                 motif_hit("geminal dimethyl", "natural", "plants"),
                 motif_hit("CC=C", "natural", ""),
             ],
-            &[],
-            Some(1.1),
-            Some(0.9),
-            &empty_dataset_context(),
-            &[],
-        );
+            stereo_tags: &[],
+            np_score: Some(1.1),
+            np_confidence: Some(0.9),
+            dataset_context: &empty_dataset_context(),
+            lotus_scaffolds: &[],
+        });
         assert!(
             assessment
                 .evidence_notes
@@ -309,7 +309,7 @@ mod tests {
     fn verdict_category_high_quality_pubchem() {
         // High-quality PubChem hit should be "likely", not "caution"
         let verdict = "🌿 PubChem + strong NP evidence — Ertl score +1.50 with 3 NP substituent(s) + 2 NP motif(s).";
-        assert_eq!(verdict_category(verdict), "likely");
+        assert_eq!(category(verdict), "likely");
     }
 
     #[test]
@@ -317,32 +317,32 @@ mod tests {
         // Moderate-quality PubChem hit should be "neutral"
         let verdict =
             "📚 PubChem hit with NP signals — Ertl score +0.80, 2 substituent(s), 1 NP motif(s).";
-        assert_eq!(verdict_category(verdict), "neutral");
+        assert_eq!(category(verdict), "neutral");
     }
 
     #[test]
     fn verdict_category_weak_pubchem() {
         // Weak PubChem hit should be "caution"
         let verdict = "📚 PubChem hit — weak NP evidence (Ertl score +0.26).";
-        assert_eq!(verdict_category(verdict), "caution");
+        assert_eq!(category(verdict), "caution");
     }
 
     #[test]
     fn verdict_category_lotus_backed() {
         let verdict = "🌿 LOTUS-backed (Ertl score +1.23).";
-        assert_eq!(verdict_category(verdict), "likely");
+        assert_eq!(category(verdict), "likely");
     }
 
     #[test]
     fn verdict_category_novel_candidate() {
         let verdict =
             "🌿 Likely hit — strong NP-likeness (+3.43) + NP-like scaffold, not yet in databases.";
-        assert_eq!(verdict_category(verdict), "likely");
+        assert_eq!(category(verdict), "likely");
     }
 
     #[test]
     fn verdict_category_fishy() {
         let verdict = "👃 Smells fishy (Ertl score -1.23). Citation needed.";
-        assert_eq!(verdict_category(verdict), "fishy");
+        assert_eq!(category(verdict), "fishy");
     }
 }

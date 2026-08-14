@@ -1,5 +1,5 @@
 use crate::csv::parse_csv_rows;
-use crate::evidence::{assess_np_evidence, chemist_checks, verdict_for_row};
+use crate::evidence::{assess_np_evidence, run_checks, row_verdict, EvidenceInputs};
 use crate::model::{
     DatasetMotifContext, EndpointStatus, EnrichmentOutcome, MoleculeRow, MotifSummary,
     RdkitDescriptors,
@@ -234,16 +234,16 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
             // Build motif label vec for dataset-common detection.
             let motif_labels = &raw.motif_labels;
 
-            let evidence = assess_np_evidence(
-                &row.descriptors,
-                motif_labels,
-                &row.motif_hits,
-                &row.stereo_tags,
-                raw.np_score,
-                raw.np_confidence,
-                &dataset_context,
-                &row.lotus_scaffolds,
-            );
+            let evidence = assess_np_evidence(EvidenceInputs {
+                descriptors: &row.descriptors,
+                motifs: motif_labels,
+                motif_hits: &row.motif_hits,
+                stereo_tags: &row.stereo_tags,
+                np_score: raw.np_score,
+                np_confidence: raw.np_confidence,
+                dataset_context: &dataset_context,
+                lotus_scaffolds: &row.lotus_scaffolds,
+            });
 
             row.np_likeness = evidence.np_likeness;
             row.np_label = evidence.np_label;
@@ -259,12 +259,12 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
     // Compute chemist's checklist — needs database evidence + Ertl score +
     // structural descriptors, all of which are now available.
     for row in &mut rows {
-        row.chemist_checks = chemist_checks(row);
+        row.chemist_checks = run_checks(row);
     }
 
     // Compute verdicts — needs database evidence + Ertl score + model flag.
     for row in &mut rows {
-        row.verdict = verdict_for_row(row);
+        row.verdict = row_verdict(row);
     }
 
     Ok(ImportOutcome {
