@@ -193,10 +193,10 @@ fn lipid_classes_card(rule_library: &LipidRuleLibrary) -> Element {
     }
 }
 
-/// Renders the file-drop zone card, reading its mutable signals from `ctx` and
+/// Renders the file-drop zone card, reading its signals from `ctx` and
 /// its event closures from `handlers`.
 fn upload_drop_zone<FileChange, DragEnter, DragOver, DragLeave, OnDrop>(
-    mut ctx: UploadCtx,
+    ctx: UploadCtx,
     handlers: UploadHandlers<FileChange, DragEnter, DragOver, DragLeave, OnDrop>,
     _rule_library: &LipidRuleLibrary,
     upload_border: &str,
@@ -271,10 +271,6 @@ where
                                 ctx.input_format,
                                 rule_lib.clone(),
                             );
-                            #[cfg(not(target_arch = "wasm32"))]
-                            {
-                                ctx.status.set("This app runs in the browser — open it via `dx serve`.".to_string());
-                            }
                         },
                         "Load Example SMILES"
                     }
