@@ -345,4 +345,23 @@ mod tests {
         let verdict = "👃 Smells fishy (Ertl score -1.23). Citation needed.";
         assert_eq!(category(verdict), "fishy");
     }
+
+    #[test]
+    fn verdict_category_synthetic_leaning() {
+        // Synthetic-leaning structure is an orange CAUTION (not fishy/red,
+        // not likely) — exactly the "needs more evidence" tier.
+        let verdict = "🟧 Synthetic-leaning structure (Ertl score +2.50).";
+        assert_eq!(category(verdict), "caution");
+        assert_ne!(category(verdict), "likely");
+        assert_ne!(category(verdict), "fishy");
+    }
+
+    #[test]
+    fn verdict_category_lotus_scaffold_hint_is_caution_not_likely() {
+        // The scaffold hint alone (insufficient corroboration) is a citation
+        // (skeptical), never mis-filed as "likely".
+        let verdict =
+            "👃 Citation needed — LOTUS scaffold hint, insufficient corroboration (Ertl +2.50).";
+        assert_eq!(category(verdict), "skeptical");
+    }
 }

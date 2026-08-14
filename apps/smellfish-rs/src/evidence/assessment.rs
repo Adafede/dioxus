@@ -8,10 +8,7 @@
 
 use crate::model::{DatasetMotifContext, RdkitDescriptors, RdkitMotifHit};
 
-use super::chemist::{
-    count_core_np_motifs, count_decoration_motifs, count_kingdom_enriched_hits,
-    count_scaffold_hits, count_source_hits, is_known_np_motif,
-};
+use super::chemist::{EvidenceCounts, count_evidence, is_known_np_motif};
 use super::verdict::classify_ring_family;
 
 /// Result of assessing a single molecule against the evidence framework.
@@ -75,18 +72,8 @@ pub struct EvidenceInputs<'a> {
     pub lotus_scaffolds: &'a [String],
 }
 
-/// Per-molecule structural evidence counts, computed once and reused by the
-/// note builders so each helper stays small.
-#[derive(Clone, Copy)]
-struct EvidenceCounts {
-    np_core_hits: usize,
-    scaffold_hits: usize,
-    decoration_hits: usize,
-    natural_hits: usize,
-    synthetic_hits: usize,
-    unknown_hits: usize,
-    kingdom_enriched_hits: usize,
-}
+// Structural evidence counts now live in `chemist::EvidenceCounts` (cfg-free
+// leaf module), shared by `assess_np_evidence` and the verdict classifier.
 
 /// Assess NP evidence for a single molecule.
 ///
@@ -99,7 +86,7 @@ struct EvidenceCounts {
 ///   uploaded set so that per-row notes can flag dataset-common scaffolds.
 pub fn assess_np_evidence(inputs: EvidenceInputs<'_>) -> EvidenceAssessment {
     let ring_family = classify_ring_family(inputs.descriptors, inputs.motifs);
-    let counts = count_evidence(inputs);
+    let counts = count_evidence(inputs.motifs, inputs.motif_hits);
     let natural_only_hits = counts
         .natural_hits
         .saturating_sub(counts.kingdom_enriched_hits);
@@ -128,20 +115,6 @@ pub fn assess_np_evidence(inputs: EvidenceInputs<'_>) -> EvidenceAssessment {
         ring_family,
         evidence_notes: notes,
         motif_context: motif_context_label(counts, natural_only_hits, kingdom_support),
-    }
-}
-
-/// Counts the structural evidence signals once, so the note builders stay
-/// side-effect free and small enough to read top-to-bottom.
-fn count_evidence(inputs: EvidenceInputs<'_>) -> EvidenceCounts {
-    EvidenceCounts {
-        np_core_hits: count_core_np_motifs(inputs.motifs),
-        scaffold_hits: count_scaffold_hits(inputs.motif_hits),
-        decoration_hits: count_decoration_motifs(inputs.motifs),
-        natural_hits: count_source_hits(inputs.motif_hits, "natural"),
-        synthetic_hits: count_source_hits(inputs.motif_hits, "synthetic"),
-        unknown_hits: count_source_hits(inputs.motif_hits, "unknown"),
-        kingdom_enriched_hits: count_kingdom_enriched_hits(inputs.motif_hits),
     }
 }
 

@@ -240,3 +240,48 @@ pub fn is_decoration_motif(label: &str) -> bool {
         || l.contains("epoxide")
         || l.contains("allyl")
 }
+
+/// Per-molecule structural evidence counts, computed once from the Ertl motif
+/// labels and the motif hits and reused by both the verdict classifier and the
+/// assessment note builders.
+///
+/// Centralised in `chemist` (a cfg-free leaf module) so the verdict threshold
+/// logic is unit-testable on native *without* the rdkit.js bridge: the original
+/// smellfish smell was that `row_verdict` and `assess_np_evidence` each
+/// re-derived the natural/synthetic/kingdom split independently.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EvidenceCounts {
+    /// Ertl NP-typical substituent motifs found (Ertl & Schuhmann 2019 et al.).
+    pub np_core_hits: usize,
+    /// Structural scaffold motif hits (ring cores characteristic of NP scaffolds).
+    pub scaffold_hits: usize,
+    /// Decoration / side-chain motifs (synthetic-typical functional groups).
+    pub decoration_hits: usize,
+    /// Motif hits whose source is classified "natural".
+    pub natural_hits: usize,
+    /// Motif hits whose source is classified "synthetic".
+    pub synthetic_hits: usize,
+    /// Motif hits whose source is "unknown".
+    pub unknown_hits: usize,
+    /// Motif hits with a natural source AND ≥1 kingdom (taxonomy support).
+    pub kingdom_enriched_hits: usize,
+}
+
+/// Compute the structural evidence counts once, so the verdict classifier and
+/// the assessment note builders share a single source of truth.
+///
+/// Mirrors the Ertl "secondary evidence" hierarchy (Ertl 2003, *J. Am. Chem.
+/// Soc.* 125, 10353; Ertl & Schuppenhauer 2011): scaffold cores vs. decoration
+/// side-chains, and the natural/synthetic/unknown source split with kingdom
+/// taxonomy.
+pub fn count_evidence(motifs: &[String], motif_hits: &[RdkitMotifHit]) -> EvidenceCounts {
+    EvidenceCounts {
+        np_core_hits: count_core_np_motifs(motifs),
+        scaffold_hits: count_scaffold_hits(motif_hits),
+        decoration_hits: count_decoration_motifs(motifs),
+        natural_hits: count_source_hits(motif_hits, "natural"),
+        synthetic_hits: count_source_hits(motif_hits, "synthetic"),
+        unknown_hits: count_source_hits(motif_hits, "unknown"),
+        kingdom_enriched_hits: count_kingdom_enriched_hits(motif_hits),
+    }
+}
