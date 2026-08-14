@@ -316,7 +316,7 @@ fn compute_reference_mass<S: std::hash::BuildHasher>(
 
 /// Build metrics for a block whose reference mass could not be derived from the
 /// precursor's SMILES or formula.
-fn unparseable_smiles_metrics(
+fn unparsable_smiles_metrics(
     state: &BlockParseState,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
 ) -> PrecursorStats {
@@ -452,7 +452,7 @@ fn process_block_state<S: std::hash::BuildHasher>(
     let Some((reference_mass, reference_mass_source)) =
         compute_reference_mass(state, smiles_cache, formula_cache, logged_failures)
     else {
-        return Some(unparseable_smiles_metrics(state, logged_failures));
+        return Some(unparsable_smiles_metrics(state, logged_failures));
     };
 
     let reference_mass_source = reference_mass_source.unwrap_or_else(|| "unknown".to_string());
