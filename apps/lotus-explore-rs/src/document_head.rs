@@ -197,7 +197,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
 #[component]
 pub fn ToastTemplate() -> Element {
     rsx! {
-        div { id: "dx-toast-template", style: "display:none;visibility:hidden" }
+        div { id: "dx-toast-template", style: StyleBuilder::new().display("none").property("visibility", "hidden").build() }
         div {
             id: "__dx-toast",
             class: "dx-toast",
@@ -205,7 +205,7 @@ pub fn ToastTemplate() -> Element {
             div {
                 id: "__dx-toast-inner",
                 class: "dx-toast-inner",
-                style: "right:-1000px;",
+                style: StyleBuilder::new().property("right", "-1000px").build(),
                 div { class: "dx-toast-level-bar-container",
                     div { id: "__dx-toast-decor", class: "dx-toast-level-bar __info" }
                 }

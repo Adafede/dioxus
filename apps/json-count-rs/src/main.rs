@@ -296,7 +296,7 @@ fn app() -> Element {
                         disabled: *busy.read(),
                         onchange: on_file_change,
                         aria_describedby: "json-upload-help json-upload-status",
-                        style: "position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;",
+                        style: StyleBuilder::new().property("position", "absolute").property("inset", "0").width("100%").height("100%").opacity("0").cursor("pointer").build(),
                     }
                 }
 
