@@ -3,7 +3,7 @@
 
 //! CX-SMILES generation core (UI-free, unit-testable).
 //!
-//! Pipeline (`generate_cxsmiles`): parse → cluster → maximum-common
+//! Pipeline (`generate`): parse → cluster → maximum-common
 //! substructure → diff & classify → serialise → round-trip confidence.
 //!
 //! `chematic::cx` only handles atom-level CX fields (labels/props/radicals/
@@ -74,8 +74,7 @@ const CLUSTER_TANIMOTO: f64 = 0.3;
 /// # Errors
 ///
 /// Returns a [`CxError`] if any input fails to parse as SMILES.
-#[allow(clippy::module_name_repetitions)]
-pub fn generate_cxsmiles(smiles: &[String]) -> CxResult_ {
+pub fn generate(smiles: &[String]) -> CxResult_ {
     let mols = parse_list(smiles)?;
     if mols.is_empty() {
         return Err(CxError("no parseable SMILES in input".into()));
@@ -157,7 +156,7 @@ mod tests {
         // Reference (RDKit-indexed): C1=CC=CC=C1C2=...Cl* |m:13:0.2.3|
         let input = "Clc1ccccc1-c2ccccc2\nClc1cccc(-c2ccccc2)c1\nClc1ccc(-c2ccccc2)cc1";
         let mols = parse_list(&lines(input)).unwrap();
-        let r = generate_cxsmiles(&lines(input)).unwrap();
+        let r = generate(&lines(input)).unwrap();
         assert_eq!(r.construct, Construct::Positional);
         assert_roundtrip(&r, &mols);
         assert!(r.confidence.clean);
@@ -173,7 +172,7 @@ mod tests {
         // Reference: OC1=C(O)C=C(O)C=C1.C* |m:10:0.3.6|
         let input = "COc1c(O)cc(O)cc1\nOc1c(OC)cc(O)cc1\nOc1c(O)cc(OC)cc1";
         let mols = parse_list(&lines(input)).unwrap();
-        let r = generate_cxsmiles(&lines(input)).unwrap();
+        let r = generate(&lines(input)).unwrap();
         assert_eq!(r.construct, Construct::Positional);
         assert_roundtrip(&r, &mols);
         assert!(r.confidence.clean);
@@ -188,7 +187,7 @@ mod tests {
         let input =
             "CC(=O)Oc1ccccc1-c2ccccc2\nCC(=O)Oc1cccc(-c2ccccc2)c1\nCC(=O)Oc1ccc(-c2ccccc2)cc1";
         let mols = parse_list(&lines(input)).unwrap();
-        let r = generate_cxsmiles(&lines(input)).unwrap();
+        let r = generate(&lines(input)).unwrap();
         assert_eq!(r.construct, Construct::Positional);
         assert_roundtrip(&r, &mols);
         assert!(r.confidence.clean);
@@ -215,7 +214,7 @@ mod tests {
         let input =
             "OC(=O)C(F)(F)C(F)F\nOC(=O)C(F)(F)C(F)(F)C(F)F\nOC(=O)C(F)(F)C(F)(F)C(F)(F)C(F)F";
         let mols = parse_list(&lines(input)).unwrap();
-        let r = generate_cxsmiles(&lines(input)).unwrap();
+        let r = generate(&lines(input)).unwrap();
         assert_eq!(r.construct, Construct::Repeating);
         assert_roundtrip(&r, &mols);
         assert!(r.confidence.clean);
@@ -228,7 +227,7 @@ mod tests {
         // Reference: CCCCCCC |Sg:n:3:n:ht|
         let input = "CCCCCCC\nCCCCCCCC\nCCCCCCCCC";
         let mols = parse_list(&lines(input)).unwrap();
-        let r = generate_cxsmiles(&lines(input)).unwrap();
+        let r = generate(&lines(input)).unwrap();
         assert_eq!(r.construct, Construct::Repeating);
         assert_roundtrip(&r, &mols);
         assert_eq!(r.scaffold_smiles, "CCCCCCC");
@@ -246,7 +245,7 @@ CC(O)CC
 OCCCC
 CCOCC
 COCCC";
-        let r = generate_cxsmiles(&lines(input)).unwrap();
+        let r = generate(&lines(input)).unwrap();
         assert!(
             r.confidence.coverage.fraction() < 1.0,
             "expected sub-100% coverage, got {:?}; cx={}",

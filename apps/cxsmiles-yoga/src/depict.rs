@@ -24,12 +24,14 @@ pub fn render_molecule_svg(mol: &Molecule) -> String {
 /// Render a SMILES string with the given `atom_indices` (0-based, in the
 /// molecule's write order) highlighted.
 #[must_use]
-#[allow(clippy::cast_possible_truncation)]
 pub fn render_smiles_svg_highlighted(smiles: &str, atom_indices: &[usize]) -> String {
     let Ok(mol) = parse(smiles) else {
         return empty_svg();
     };
-    let highlight: HashSet<AtomIdx> = atom_indices.iter().map(|&i| AtomIdx(i as u32)).collect();
+    let highlight: HashSet<AtomIdx> = atom_indices
+        .iter()
+        .map(|&i| AtomIdx(u32::try_from(i).unwrap_or(u32::MAX)))
+        .collect();
     let bonds: HashSet<BondIdx> = HashSet::new();
     depict_svg_highlighted(&mol, &highlight, &bonds)
 }
