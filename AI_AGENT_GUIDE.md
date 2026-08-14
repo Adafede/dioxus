@@ -37,10 +37,18 @@ the apps:
 - `apps/cxsmiles-yoga` --- CX-SMILES generation from related structures (WASM).
 - `apps/smellfish-rs` --- NP-likeness scoring with RDKit.js + QLever (WASM).
 - `apps/lotus-explore-rs` --- LOTUS Knowledge Explorer, LOTUS/Wikidata/QLever
-  SPARQL explorer (WASM). Its `src/` is layered: `main.rs` (facades: `api`,
-  `models`, `queries`, `sparql`, `state`, `repositories`, `services`,
-  `curation`, `ui`) wires up `src/features/` (`explore` engine, `curation`
-  workflow) and `src/components/`/`src/pages/` (UI).
+  SPARQL explorer (WASM). Its `src/` is layered: `main.rs` exposes top-level
+  *canonical* facades (`api`, `models`, `queries`, `sparql`, `state`,
+  `repositories`, `services`) that are shared app-wide, while `src/features/`
+  holds *feature-scoped* modules (`explore` engine, `curation` workflow) --- the
+  `features/*/state|repositories|services` trees are **not** dead duplicates of
+  the top-level ones; they are curation/explore specific. The `src/ui/` module
+  holds LOTUS-specific style constants (`layout_styles`, `table_styles`,
+  `search_controls`, `style_constants`, a11y contracts); the dead triplicate
+  style-directory tree (`src/styles/`, `src/lotus_styles/`, `src/ui/styles/`)
+  was consolidated in phase 6f --- only the LOTUS-specific helpers above remain
+  (generics belong in `crates/ui`). `src/components/` and `src/pages/` are the
+  UI layer.
 - `apps/mgf-precursor-erro-rs` --- MGF precursor mass-error analysis (WASM +
   lib).
 - `apps/lotus-api` --- native Axum API for LOTUS search and exports.
