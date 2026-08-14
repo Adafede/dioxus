@@ -8,6 +8,7 @@ pub mod footer;
 pub mod header;
 pub mod notice;
 pub mod segmented_control;
+pub mod upload_zone;
 
 pub use button::Button;
 pub use card::Card;
@@ -15,3 +16,4 @@ pub use footer::Footer;
 pub use header::Header;
 pub use notice::{NoticeBar, NoticeTone};
 pub use segmented_control::{SegmentedControl, SegmentedControlItem};
+pub use upload_zone::UploadZone;

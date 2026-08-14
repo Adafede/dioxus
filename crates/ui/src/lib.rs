@@ -47,7 +47,8 @@ pub mod theme;
 pub mod prelude {
     pub use crate::common::{SKIP_LINK_STYLE, skip_link, skip_link_main};
     pub use crate::components::{
-        Button, Card, Footer, Header, NoticeBar, NoticeTone, SegmentedControl, SegmentedControlItem,
+        Button, Card, Footer, Header, NoticeBar, NoticeTone, SegmentedControl,
+        SegmentedControlItem, UploadZone,
     };
     pub use crate::document::{DocumentHead, DocumentLinks, LinkSpec};
     pub use crate::theme::{
