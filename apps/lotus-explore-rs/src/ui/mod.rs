@@ -4,7 +4,6 @@
 //! UI composition primitives used by live components.
 //!
 //! ## Style Organization
-//! - `styles` - Lotus-specific styles (tokens, buttons, cells, panels, etc.)
 //! - `style_constants` - Legacy module, kept for backward compatibility
 //! - `layout_styles` - Lotus-specific layout, headers, tables, stats, queries
 //! - `table_styles` - Lotus-specific table cell and row formatting
@@ -15,7 +14,6 @@ mod a11y_smoke;
 pub mod layout_styles;
 pub mod search_controls;
 pub mod style_constants;
-pub mod styles;
 pub mod table_styles;
 
 /// A content-phase enumeration for better state-driven UI rendering.

@@ -91,32 +91,6 @@ pub fn lotus_reference_cell_style() -> String {
         .build()
 }
 
-/// Reference ID badge: inline-block with reference styling.
-#[allow(dead_code)]
-pub fn lotus_reference_id_badge_style() -> String {
-    StyleBuilder::new()
-        .display("inline-block")
-        .font_size("var(--fs-micro)")
-        .padding("1px 5px")
-        .border_radius("3px")
-        .font_weight("600")
-        .text_decoration("none")
-        .property("line-height", "1.5")
-        .border("1px solid transparent")
-        .font_family("var(--mono)")
-        .property("max-width", "100%")
-        .property("white-space", "normal")
-        .property("overflow-wrap", "anywhere")
-        .property(
-            "transition",
-            "transform .12s ease, box-shadow .12s ease, filter .12s ease",
-        )
-        .background_color("var(--wd-reference-soft-bg)")
-        .color("var(--wd-reference)")
-        .property("border-color", "var(--wd-reference-soft-border)")
-        .build()
-}
-
 /// Numeric value cell: standard table cell styling.
 pub fn lotus_table_cell_style() -> String {
     StyleBuilder::new()
@@ -128,51 +102,6 @@ pub fn lotus_table_cell_style() -> String {
 /// N/A text for missing values: muted color.
 pub fn lotus_na_style() -> String {
     StyleBuilder::new().color("var(--text3)").build()
-}
-
-/// Formula text: monospace font.
-#[allow(dead_code)]
-pub fn lotus_formula_style() -> String {
-    StyleBuilder::new()
-        .font_family("var(--mono)")
-        .font_size("var(--fs-0)")
-        .build()
-}
-
-/// Structure cell container: flex column with padding.
-#[allow(dead_code)]
-pub fn lotus_structure_cell_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("4px")
-        .padding("8px 12px")
-        .border_radius("10px")
-        .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
-        .property(
-            "box-shadow",
-            "inset 3px 0 0 rgb(102 102 153 / 42%), inset 0 0 0 1px var(--results-border)",
-        )
-        .property("min-width", "0")
-        .build()
-}
-
-/// Compound cell container: flex column with padding and border.
-#[allow(dead_code)]
-pub fn lotus_compound_cell_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("4px")
-        .padding("8px 12px")
-        .border_radius("10px")
-        .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
-        .property(
-            "box-shadow",
-            "inset 3px 0 0 rgb(201 122 43 / 42%), inset 0 0 0 1px var(--results-border)",
-        )
-        .property("min-width", "0")
-        .build()
 }
 
 #[cfg(test)]

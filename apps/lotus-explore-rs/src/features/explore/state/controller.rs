@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+#[cfg(test)]
 use crate::app::view::AppView;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[allow(dead_code)]
+#[cfg(test)]
 pub struct AppLayoutClasses {
     pub app_layout: &'static str,
     pub main: &'static str,
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn classes_for_view(view: AppView) -> AppLayoutClasses {
     if view == AppView::Explore {
         AppLayoutClasses {
