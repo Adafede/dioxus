@@ -8,12 +8,24 @@
 //! - [`adduct`] — adduct-token parsing/normalization + `expected_precursor_mz`.
 //! - [`block`] — streaming MGF `BEGIN IONS` block parser → [`PrecursorStats`].
 
-pub const PROTON_MASS: f64 = 1.007_276_466_621;
-pub const HYDROGEN_MASS: f64 = PROTON_MASS + ELECTRON_MASS;
-pub const ELECTRON_MASS: f64 = 0.000_548_579_909_065;
-pub const SODIUM_MASS: f64 = 22.989_769_67;
-pub const POTASSIUM_MASS: f64 = 38.963_707;
-pub const AMMONIUM_MASS: f64 = 18.033_823;
+// 2022 CODATA
+pub const ELECTRON_MASS: f64 = 0.000_548_579_909_044_1;
+// 2022 CODATA
+pub const PROTON_MASS: f64 = 1.007_276_466_578_9;
+// 2022 CODATA
+pub const NEUTRON_MASS: f64 = 1.008_664_916_06;
+// CIAAW
+pub const HYDROGEN_MASS: f64 = 1.007_825_032_2;
+// CIAAW
+pub const HELIUM_MASS: f64 = 4.002_603_254_5;
+// CIAAW
+pub const NITROGEN_MASS: f64 = 14.003_074_004;
+// calculated
+pub const AMMONIUM_MASS: f64 = NITROGEN_MASS + (4_f64 * HYDROGEN_MASS) - ELECTRON_MASS;
+// CIAAW
+pub const SODIUM_MASS: f64 = 22.989_769_28;
+// CIAAW
+pub const POTASSIUM_MASS: f64 = 38.963_706_49;
 
 pub(crate) mod adduct;
 pub(crate) mod block;
