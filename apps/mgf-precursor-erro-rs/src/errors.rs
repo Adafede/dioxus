@@ -19,7 +19,7 @@ pub enum MgfError {
 impl fmt::Display for MgfError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MgfError::Drawing(msg) => write!(f, "SVG rendering failed: {msg}"),
+            Self::Drawing(msg) => write!(f, "SVG rendering failed: {msg}"),
         }
     }
 }
@@ -33,7 +33,7 @@ where
     E: std::error::Error + Send + Sync,
 {
     fn from(error: DrawingAreaErrorKind<E>) -> Self {
-        MgfError::Drawing(error.to_string())
+        Self::Drawing(error.to_string())
     }
 }
 

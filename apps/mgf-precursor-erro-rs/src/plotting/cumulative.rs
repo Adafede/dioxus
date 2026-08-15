@@ -5,6 +5,7 @@
 //! produce the "complete recalibration story" SVGs (quartet + cumulative CDF
 //! curves) and share a small set of private drawing helpers.
 
+use crate::errors::MgfError;
 use std::fmt::Write;
 
 use super::data::{mean_and_std_dev, usize_to_f64};
@@ -136,16 +137,15 @@ fn append_cumulative_legend(svg: &str) -> String {
 /// Stage 3 (Red): Calibration delta (MS2 - MS1) - the measurement discrepancy
 /// Stage 4 (Green): MS2 error after recalibration vs theory
 ///
-/// # Panics
+/// # Errors
 ///
-/// Panics if the SVG backend cannot fill, build, or present the drawing area.
-#[must_use]
+/// Returns an error if the SVG backend cannot fill, build, or present the drawing area.
 pub fn render_error_quartet(
     error_ms1: &[f64],
     delta_ms2_ms1: &[f64],
     error_ms2_before: &[f64],
     error_ms2_after: &[f64],
-) -> String {
+) -> Result<String, MgfError> {
     use plotters::prelude::*;
 
     let mut buffer = String::new();
@@ -160,7 +160,7 @@ pub fn render_error_quartet(
         .collect();
 
     if all_values.is_empty() {
-        return buffer;
+        return Ok(buffer);
     }
 
     let min_val = all_values.iter().copied().fold(f64::INFINITY, f64::min);
@@ -169,7 +169,7 @@ pub fn render_error_quartet(
 
     {
         let root = SVGBackend::with_string(&mut buffer, (1200, 400)).into_drawing_area();
-        root.fill(&WHITE).unwrap();
+        root.fill(&WHITE)?;
 
         let mut chart = ChartBuilder::on(&root)
             .caption(
@@ -179,16 +179,14 @@ pub fn render_error_quartet(
             .margin(15)
             .x_label_area_size(60)
             .y_label_area_size(70)
-            .build_cartesian_2d(-0.5f64..4.5f64, (min_val - margin)..(max_val + margin))
-            .unwrap();
+            .build_cartesian_2d(-0.5f64..4.5f64, (min_val - margin)..(max_val + margin))?;
 
         chart
             .configure_mesh()
             .x_labels(4)
             .x_desc("Analysis Stage")
             .y_desc("Error (ppm)")
-            .draw()
-            .unwrap();
+            .draw()?;
 
         let red_style = ShapeStyle::from(&RED).stroke_width(1);
         let _ = chart.draw_series(std::iter::once(PathElement::new(
@@ -200,10 +198,10 @@ pub fn render_error_quartet(
         draw_quartet_stage(&mut chart, 2.8, delta_ms2_ms1, RGBColor(204, 51, 51));
         draw_quartet_stage(&mut chart, 3.8, error_ms2_after, RGBColor(51, 153, 51));
 
-        root.present().unwrap();
+        root.present()?;
     }
 
-    buffer
+    Ok(buffer)
 }
 
 /// Cumulative error distribution curves comparing MS1 and recalibrated MS2 errors.
@@ -211,11 +209,13 @@ pub fn render_error_quartet(
 /// Shows how many precursors have error magnitude ≤ x ppm, allowing comparison
 /// of MS1 baseline with recalibrated MS2 improvement.
 ///
-/// # Panics
+/// # Errors
 ///
-/// Panics if the SVG backend cannot fill, build, or present the drawing area.
-#[must_use]
-pub fn render_cumulative_error_curves(error_ppm_ms1: &[f64], error_ppm_after: &[f64]) -> String {
+/// Returns an error if the SVG backend cannot fill, build, or present the drawing area.
+pub fn render_cumulative_error_curves(
+    error_ppm_ms1: &[f64],
+    error_ppm_after: &[f64],
+) -> Result<String, MgfError> {
     use plotters::prelude::*;
 
     let mut buffer = String::new();
@@ -233,7 +233,7 @@ pub fn render_cumulative_error_curves(error_ppm_ms1: &[f64], error_ppm_after: &[
         .collect();
 
     if ms1_errors.is_empty() || ms2_errors.is_empty() {
-        return buffer;
+        return Ok(buffer);
     }
 
     ms1_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -254,7 +254,7 @@ pub fn render_cumulative_error_curves(error_ppm_ms1: &[f64], error_ppm_after: &[
 
     {
         let root = SVGBackend::with_string(&mut buffer, (1200, 600)).into_drawing_area();
-        root.fill(&WHITE).unwrap();
+        root.fill(&WHITE)?;
 
         let mut chart = ChartBuilder::on(&root)
             .caption(
@@ -264,38 +264,35 @@ pub fn render_cumulative_error_curves(error_ppm_ms1: &[f64], error_ppm_after: &[
             .margin(15)
             .x_label_area_size(60)
             .y_label_area_size(70)
-            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)
-            .unwrap();
+            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)?;
 
         chart
             .configure_mesh()
             .x_desc("Absolute Error (ppm)")
             .y_desc("Cumulative Percentage (%)")
-            .draw()
-            .unwrap();
+            .draw()?;
 
         draw_cumulative_curve(&mut chart, &ms1_errors, RGBColor(68, 119, 170), 1);
         draw_cumulative_curve(&mut chart, &ms2_errors, RGBColor(51, 153, 51), 1);
 
-        root.present().unwrap();
+        root.present()?;
     }
 
-    buffer
+    Ok(buffer)
 }
 
 /// Render cumulative error distribution with three curves: ms1, `ms2_before`, `ms2_after`
 ///
-/// # Panics
+/// # Errors
 ///
-/// Panics if the SVG backend cannot fill, build, or present the drawing area.
-#[must_use]
+/// Returns an error if the SVG backend cannot fill, build, or present the drawing area.
 pub fn render_cumulative_error_three_curves(
     error_ms1: &[f64],
     error_before: &[f64],
     error_after: &[f64],
     unit: &str,
     _thresholds: Vec<f64>,
-) -> String {
+) -> Result<String, MgfError> {
     use plotters::prelude::*;
 
     let mut buffer = String::new();
@@ -318,7 +315,7 @@ pub fn render_cumulative_error_three_curves(
         .collect();
 
     if ms1_errors.is_empty() || before_errors.is_empty() || after_errors.is_empty() {
-        return buffer;
+        return Ok(buffer);
     }
 
     ms1_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -342,7 +339,7 @@ pub fn render_cumulative_error_three_curves(
 
     {
         let root = SVGBackend::with_string(&mut buffer, (1200, 600)).into_drawing_area();
-        root.fill(&WHITE).unwrap();
+        root.fill(&WHITE)?;
 
         let title = format!("Cumulative Error Distribution ({unit})");
         let mut chart = ChartBuilder::on(&root)
@@ -350,22 +347,20 @@ pub fn render_cumulative_error_three_curves(
             .margin(15)
             .x_label_area_size(60)
             .y_label_area_size(70)
-            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)
-            .unwrap();
+            .build_cartesian_2d((min_error - margin)..(max_error + margin), 0f64..100f64)?;
 
         chart
             .configure_mesh()
             .x_desc(format!("Error ({unit})"))
             .y_desc("Cumulative Percentage (%)")
-            .draw()
-            .unwrap();
+            .draw()?;
 
         draw_cumulative_curve(&mut chart, &ms1_errors, RGBColor(68, 119, 170), 1);
         draw_cumulative_curve(&mut chart, &before_errors, RGBColor(255, 140, 0), 1);
         draw_cumulative_curve(&mut chart, &after_errors, RGBColor(51, 153, 51), 1);
 
-        root.present().unwrap();
+        root.present()?;
     }
 
-    append_cumulative_legend(&buffer)
+    Ok(append_cumulative_legend(&buffer))
 }

@@ -17,9 +17,11 @@
 
 pub mod app;
 pub mod diagnostics;
+pub mod errors;
 pub mod metrics;
 pub mod parser;
 pub mod plotting;
 pub mod recalibration;
 
 pub use app::app;
+pub use errors::MgfError;

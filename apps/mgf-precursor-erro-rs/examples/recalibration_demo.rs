@@ -142,10 +142,12 @@ fn run_visualization_example(diagnostics: &RecalibrationStats) {
     let errors_before = vec![10.0, 12.0, -8.5, 9.5, 11.0];
     let errors_after = vec![5.0, 6.0, -4.0, 4.5, 5.5];
 
-    let scatter_plot = render_recalibration_diagnostic_ppm(&errors_before, &errors_after);
+    let scatter_plot =
+        render_recalibration_diagnostic_ppm(&errors_before, &errors_after).unwrap_or_default();
     println!("Generated scatter plot: {} bytes SVG", scatter_plot.len());
 
-    let histogram = render_recalibration_diagnostic_histogram(&errors_before, &errors_after, 10);
+    let histogram = render_recalibration_diagnostic_histogram(&errors_before, &errors_after, 10)
+        .unwrap_or_default();
     println!("Generated histogram: {} bytes SVG", histogram.len());
 
     let summary = render_recalibration_summary_text(
@@ -155,7 +157,8 @@ fn run_visualization_example(diagnostics: &RecalibrationStats) {
         diagnostics.rms_error_ppm_after,
         diagnostics.max_abs_error_ppm_before,
         diagnostics.max_abs_error_ppm_after,
-    );
+    )
+    .unwrap_or_default();
     println!("Generated summary: {} bytes HTML", summary.len());
 }
 

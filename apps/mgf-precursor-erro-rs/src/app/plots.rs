@@ -146,12 +146,15 @@ pub fn ecdf_plot(
     let thresholds_for_svg = thresholds;
     let unit_for_svg = unit;
     let svg_markup = use_memo(move || {
-        make_svg_responsive(render_ecdf_svg(
-            &title_for_svg,
-            &values_for_svg,
-            &thresholds_for_svg,
-            &unit_for_svg,
-        ))
+        make_svg_responsive(
+            render_ecdf_svg(
+                &title_for_svg,
+                &values_for_svg,
+                &thresholds_for_svg,
+                &unit_for_svg,
+            )
+            .unwrap_or_default(),
+        )
     });
     let svg_markup = svg_markup.read().clone();
     let download_markup = Some(svg_markup.clone());
@@ -168,7 +171,9 @@ pub fn mass_bias_plot(
     let title_for_svg = title.clone();
     let points_for_svg = points;
     let svg_markup = use_memo(move || {
-        make_svg_responsive(render_mass_bias_svg(&title_for_svg, &points_for_svg))
+        make_svg_responsive(
+            render_mass_bias_svg(&title_for_svg, &points_for_svg).unwrap_or_default(),
+        )
     });
     let svg_markup = svg_markup.read().clone();
     let _ = other_label;
@@ -189,12 +194,15 @@ pub fn absolute_mass_bias_plot(
     let unit_for_svg = unit;
     let ticks_for_svg = ticks;
     let svg_markup = use_memo(move || {
-        make_svg_responsive(render_absolute_mass_bias_svg(
-            &title_for_svg,
-            &points_for_svg,
-            &unit_for_svg,
-            &ticks_for_svg,
-        ))
+        make_svg_responsive(
+            render_absolute_mass_bias_svg(
+                &title_for_svg,
+                &points_for_svg,
+                &unit_for_svg,
+                &ticks_for_svg,
+            )
+            .unwrap_or_default(),
+        )
     });
     let svg_markup = svg_markup.read().clone();
     let download_markup = Some(svg_markup.clone());

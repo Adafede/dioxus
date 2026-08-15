@@ -4,6 +4,7 @@
 //! Scatter/ECDF chart renderers. These compose data helpers (prep + legend +
 //! points) with colour helpers and `plotters` to emit SVG strings.
 
+use crate::errors::MgfError;
 use crate::metrics::PlotPoint;
 
 use super::color::{adduct_family_shape_style, tolerance_step_color, tolerance_step_rgb};
@@ -14,11 +15,15 @@ use super::data::{
 
 /// Renders an ECDF SVG for the observed error values.
 ///
-/// # Panics
+/// # Errors
 ///
-/// Panics if the SVG backend cannot fill or present the drawing area.
-#[must_use]
-pub fn render_ecdf_svg(title: &str, values: &[f64], thresholds: &[f64], unit: &str) -> String {
+/// Returns an error if the SVG backend cannot fill or present the drawing area.
+pub fn render_ecdf_svg(
+    title: &str,
+    values: &[f64],
+    thresholds: &[f64],
+    unit: &str,
+) -> Result<String, MgfError> {
     use plotters::prelude::*;
     use plotters::series::LineSeries;
 
@@ -26,7 +31,7 @@ pub fn render_ecdf_svg(title: &str, values: &[f64], thresholds: &[f64], unit: &s
     let height = 520u32;
     let mut buffer = String::new();
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
+    root.fill(&WHITE)?;
 
     let legend_items = thresholds
         .iter()
@@ -73,8 +78,7 @@ pub fn render_ecdf_svg(title: &str, values: &[f64], thresholds: &[f64], unit: &s
             .caption(title, ("sans-serif", 18).into_font())
             .set_label_area_size(LabelAreaPosition::Left, 72)
             .set_label_area_size(LabelAreaPosition::Bottom, 64)
-            .build_cartesian_2d((x_min..x_max).log_scale(), y_min..y_max)
-            .unwrap();
+            .build_cartesian_2d((x_min..x_max).log_scale(), y_min..y_max)?;
 
         chart
             .configure_mesh()
@@ -89,49 +93,47 @@ pub fn render_ecdf_svg(title: &str, values: &[f64], thresholds: &[f64], unit: &s
             .y_desc("cumulative fraction")
             .x_label_style(("sans-serif", 11).into_font())
             .y_label_style(("sans-serif", 11).into_font())
-            .draw()
-            .unwrap();
+            .draw()?;
 
-        chart
-            .draw_series(LineSeries::new(
-                vec![(x_min, y_min), (x_max, y_min)],
-                ShapeStyle::from(&RGBColor(203, 213, 225)).stroke_width(1),
-            ))
-            .unwrap();
+        chart.draw_series(LineSeries::new(
+            vec![(x_min, y_min), (x_max, y_min)],
+            ShapeStyle::from(&RGBColor(203, 213, 225)).stroke_width(1),
+        ))?;
 
         let plot_points = build_ecdf_points(values, x_min, x_max);
-        chart
-            .draw_series(LineSeries::new(
-                plot_points,
-                ShapeStyle::from(&RGBColor(37, 99, 235)).stroke_width(2),
-            ))
-            .unwrap();
+        chart.draw_series(LineSeries::new(
+            plot_points,
+            ShapeStyle::from(&RGBColor(37, 99, 235)).stroke_width(2),
+        ))?;
 
         for (index, threshold) in thresholds.iter().enumerate() {
             let x = threshold.clamp(x_min, x_max);
             let color = tolerance_step_rgb(index, thresholds.len());
-            chart
-                .draw_series(LineSeries::new(
-                    vec![(x, y_min), (x, y_max)],
-                    ShapeStyle::from(&color).stroke_width(1),
-                ))
-                .unwrap();
+            chart.draw_series(LineSeries::new(
+                vec![(x, y_min), (x, y_max)],
+                ShapeStyle::from(&color).stroke_width(1),
+            ))?;
         }
 
-        root.present().unwrap();
+        root.present()?;
     }
 
     drop(root);
-    embed_svg_legend(&buffer, &legend_items, "Thresholds", 900.0, 520.0)
+    Ok(embed_svg_legend(
+        &buffer,
+        &legend_items,
+        "Thresholds",
+        900.0,
+        520.0,
+    ))
 }
 
 /// Renders a scatter plot of signed mass-bias errors by adduct family.
 ///
-/// # Panics
+/// # Errors
 ///
-/// Panics if the SVG backend cannot fill or present the drawing area.
-#[must_use]
-pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
+/// Returns an error if the SVG backend cannot fill or present the drawing area.
+pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String, MgfError> {
     use plotters::prelude::*;
     use plotters::series::{LineSeries, PointSeries};
 
@@ -139,7 +141,7 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
     let height = 520u32;
     let mut buffer = String::new();
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
+    root.fill(&WHITE)?;
 
     let plot_data = prepare_scatter_plot_data(
         points,
@@ -169,8 +171,7 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
             .caption(title, ("sans-serif", 18).into_font())
             .set_label_area_size(LabelAreaPosition::Left, 72)
             .set_label_area_size(LabelAreaPosition::Bottom, 64)
-            .build_cartesian_2d(x_min..x_max, y_min..y_max)
-            .unwrap();
+            .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
 
         chart
             .configure_mesh()
@@ -181,47 +182,47 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> String {
             .y_desc("Signed error (Da)")
             .x_label_style(("sans-serif", 11).into_font())
             .y_label_style(("sans-serif", 11).into_font())
-            .draw()
-            .unwrap();
+            .draw()?;
 
-        chart
-            .draw_series(LineSeries::new(
-                vec![(x_min, 0.0f64), (x_max, 0.0f64)],
-                ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
-            ))
-            .unwrap();
+        chart.draw_series(LineSeries::new(
+            vec![(x_min, 0.0f64), (x_max, 0.0f64)],
+            ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
+        ))?;
 
         for (family, points) in points_by_family {
             let style = adduct_family_shape_style(family, 0.4);
-            chart
-                .draw_series(PointSeries::of_element(
-                    points.iter().copied(),
-                    1.6,
-                    style,
-                    &|coord, size, style| Circle::new(coord, size, style.filled()),
-                ))
-                .unwrap();
+            chart.draw_series(PointSeries::of_element(
+                points.iter().copied(),
+                1.6,
+                style,
+                &|coord, size, style| Circle::new(coord, size, style.filled()),
+            ))?;
         }
 
-        root.present().unwrap();
+        root.present()?;
     }
 
     drop(root);
-    embed_svg_legend(&buffer, &legend_items, "Adducts", 900.0, 520.0)
+    Ok(embed_svg_legend(
+        &buffer,
+        &legend_items,
+        "Adducts",
+        900.0,
+        520.0,
+    ))
 }
 
 /// Renders a scatter plot of signed mass-bias errors using the requested display unit.
 ///
-/// # Panics
+/// # Errors
 ///
-/// Panics if the SVG backend cannot fill or present the drawing area.
-#[must_use]
+/// Returns an error if the SVG backend cannot fill or present the drawing area.
 pub fn render_absolute_mass_bias_svg(
     title: &str,
     points: &[PlotPoint],
     unit: &str,
     ticks: &[f64],
-) -> String {
+) -> Result<String, MgfError> {
     use plotters::prelude::*;
     use plotters::series::{LineSeries, PointSeries};
 
@@ -229,7 +230,7 @@ pub fn render_absolute_mass_bias_svg(
     let height = 520u32;
     let mut buffer = String::new();
     let root = SVGBackend::with_string(&mut buffer, (width, height)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
+    root.fill(&WHITE)?;
 
     let plot_data = prepare_scatter_plot_data(
         points,
@@ -263,8 +264,7 @@ pub fn render_absolute_mass_bias_svg(
             .caption(title, ("sans-serif", 18).into_font())
             .set_label_area_size(LabelAreaPosition::Left, 72)
             .set_label_area_size(LabelAreaPosition::Bottom, 64)
-            .build_cartesian_2d(x_min..x_max, y_min..y_max)
-            .unwrap();
+            .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
 
         chart
             .configure_mesh()
@@ -275,15 +275,12 @@ pub fn render_absolute_mass_bias_svg(
             .y_desc(signed_error_label)
             .x_label_style(("sans-serif", 11).into_font())
             .y_label_style(("sans-serif", 11).into_font())
-            .draw()
-            .unwrap();
+            .draw()?;
 
-        chart
-            .draw_series(LineSeries::new(
-                vec![(x_min, 0.0), (x_max, 0.0)],
-                ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
-            ))
-            .unwrap();
+        chart.draw_series(LineSeries::new(
+            vec![(x_min, 0.0), (x_max, 0.0)],
+            ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
+        ))?;
 
         for tick in ticks {
             if *tick <= 0.0 {
@@ -294,37 +291,37 @@ pub fn render_absolute_mass_bias_svg(
             if !(y_min..=y_max).contains(&positive_tick) {
                 continue;
             }
-            chart
-                .draw_series(LineSeries::new(
-                    vec![(x_min, positive_tick), (x_max, positive_tick)],
-                    ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
-                ))
-                .unwrap();
-            chart
-                .draw_series(LineSeries::new(
-                    vec![(x_min, negative_tick), (x_max, negative_tick)],
-                    ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
-                ))
-                .unwrap();
+            chart.draw_series(LineSeries::new(
+                vec![(x_min, positive_tick), (x_max, positive_tick)],
+                ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
+            ))?;
+            chart.draw_series(LineSeries::new(
+                vec![(x_min, negative_tick), (x_max, negative_tick)],
+                ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
+            ))?;
         }
 
         for (family, points) in points_by_family {
             let style = adduct_family_shape_style(family, 0.3);
-            chart
-                .draw_series(PointSeries::of_element(
-                    points
-                        .iter()
-                        .map(|(x, value)| (*x, value.clamp(-y_limit, y_limit))),
-                    1.6,
-                    style,
-                    &|coord, size, style| Circle::new(coord, size, style.filled()),
-                ))
-                .unwrap();
+            chart.draw_series(PointSeries::of_element(
+                points
+                    .iter()
+                    .map(|(x, value)| (*x, value.clamp(-y_limit, y_limit))),
+                1.6,
+                style,
+                &|coord, size, style| Circle::new(coord, size, style.filled()),
+            ))?;
         }
 
-        root.present().unwrap();
+        root.present()?;
     }
 
     drop(root);
-    embed_svg_legend(&buffer, &legend_items, "Adducts", 900.0, 520.0)
+    Ok(embed_svg_legend(
+        &buffer,
+        &legend_items,
+        "Adducts",
+        900.0,
+        520.0,
+    ))
 }

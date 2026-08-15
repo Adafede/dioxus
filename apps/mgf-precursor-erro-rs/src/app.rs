@@ -523,7 +523,7 @@ pub fn app() -> Element {
                                             diag.rms_error_ppm_after,
                                             diag.max_abs_error_ppm_before,
                                             diag.max_abs_error_ppm_after,
-                                        ),
+                                        ).unwrap_or_default(),
                                     }
 
                                     // Tabbed cumulative error distribution (ms1, ms2_before, ms2_after)
@@ -576,7 +576,7 @@ pub fn app() -> Element {
                                                         &diag.error_da_after,
                                                         "mDa",
                                                         vec![0.1, 0.5, 1.0, 5.0],
-                                                    ),
+                                                    ).unwrap_or_default(),
                                                 }
                                             } else {
                                                 div {
@@ -586,7 +586,7 @@ pub fn app() -> Element {
                                                         &diag.error_ppm_after,
                                                         "ppm",
                                                         vec![0.5, 1.0, 5.0, 10.0],
-                                                    ),
+                                                    ).unwrap_or_default(),
                                                 }
                                             }
                                         }
@@ -605,7 +605,7 @@ pub fn app() -> Element {
                                             dangerous_inner_html: render_recalibration_diagnostic_ppm(
                                                 &diag.error_ppm_before,
                                                 &diag.error_ppm_after,
-                                            ),
+                                            ).unwrap_or_default(),
                                         }
                                     }
 
@@ -622,7 +622,7 @@ pub fn app() -> Element {
                                                 &diag.error_ppm_before,
                                                 &diag.error_ppm_after,
                                                 20,
-                                            ),
+                                            ).unwrap_or_default(),
                                         }
                                     }
                                 }
