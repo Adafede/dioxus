@@ -65,7 +65,16 @@ pub struct RetryPlan {
 /// Compute a complete retry plan from a domain error and attempt counts.
 pub fn plan_retry(error: &DomainError, attempt_count: u32, max_retries: u32) -> RetryPlan {
     let recovery = classify_error_recovery(error, attempt_count);
-    let eligibility = if attempt_count >= max_retries {
+    // 429s are throttled over a longer window and amplify into a permanent IP
+    // block when retried aggressively: each retry re-runs the entire pipeline
+    // (taxon resolution + COUNT + display queries). Cap rate-limit retries far
+    // below the generic budget so the endpoint is respected instead of hammered.
+    let effective_max = if recovery.error_class == ErrorClass::RateLimit {
+        1
+    } else {
+        max_retries
+    };
+    let eligibility = if attempt_count >= effective_max {
         RetryEligibility::MaxRetriesExceeded
     } else if recovery.should_retry {
         RetryEligibility::Retryable {
@@ -207,6 +216,28 @@ mod tests {
 
         let plan = plan_retry(&error, 3, 3);
         assert_eq!(plan.error_class.as_key(), "network");
+        assert_eq!(plan.eligibility, RetryEligibility::MaxRetriesExceeded);
+    }
+
+    #[test]
+    fn plan_retry_caps_rate_limit_retries() {
+        let error = DomainError::Transport {
+            stage: QueryStage::ResultsQuery,
+            source: RepositoryError::parse("Too many queries in queue"),
+        };
+
+        // attempt 0: RateLimit is retryable with the long 1s backoff.
+        let plan = plan_retry(&error, 0, 3);
+        assert!(matches!(
+            plan.eligibility,
+            RetryEligibility::Retryable {
+                backoff_ms: Some(1000),
+                next_attempt_number: 1,
+            }
+        ));
+
+        // attempt 1: capped (effective_max = 1) -> stop hammering Qlever.
+        let plan = plan_retry(&error, 1, 3);
         assert_eq!(plan.eligibility, RetryEligibility::MaxRetriesExceeded);
     }
 }

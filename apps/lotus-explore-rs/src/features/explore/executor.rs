@@ -41,20 +41,30 @@ where
         let mut metrics = SearchMetrics::default();
         telemetry::search_start();
 
-        let strategy = ExecutionStrategy::resolve(request.direct_download());
+        // The REST API fast-path is opt-in: it only runs when the user has
+        // explicitly enabled it (non-empty base URL). Otherwise we go direct to
+        // SPARQL so a misconfigured/absent API never wastes a request on every
+        // search (and never triggers the "builder error" fallback storm).
+        let api_enabled = crate::api::api_base_url().is_some_and(|b| !b.is_empty());
+        let strategy = ExecutionStrategy::resolve(request.direct_download(), api_enabled);
         let smiles = normalize_smiles(&request.criteria().smiles);
 
-        // API fast path.
-        if strategy == ExecutionStrategy::ApiFirst {
-            if let Some(outcome) =
-                api_pipeline::try_execute(request, &smiles, &self.repo, &mut metrics).await
-            {
-                let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
-                emit_search_summary(total_elapsed, metrics);
-                return Ok(outcome);
+        match strategy {
+            ExecutionStrategy::ApiFirst => {
+                if let Some(outcome) =
+                    api_pipeline::try_execute(request, &smiles, &self.repo, &mut metrics).await
+                {
+                    let total_elapsed = perf::end_timer("LOTUS:search_total", search_timer);
+                    emit_search_summary(total_elapsed, metrics);
+                    return Ok(outcome);
+                }
             }
-        } else {
-            telemetry::api_path_not_available("reason=download_only_mode");
+            ExecutionStrategy::Direct => {
+                telemetry::api_path_not_available("reason=api_disabled");
+            }
+            ExecutionStrategy::DownloadOnly => {
+                telemetry::api_path_not_available("reason=download_only_mode");
+            }
         }
 
         let pipeline_outcome = results_pipeline::execute(

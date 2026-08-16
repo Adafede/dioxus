@@ -30,7 +30,9 @@ impl LotusRepository for HybridRepository {
         limit: usize,
         include_counts: bool,
     ) -> Option<Result<SearchResponse, RepositoryError>> {
-        if api::api_base_url().is_none() {
+        // The API fast-path is opt-in: treat an empty (auto-detected dev) base URL
+        // the same as "not configured" so we never build a malformed relative URL.
+        if api::api_base_url().is_none_or(|b| b.is_empty()) {
             return Some(Err(RepositoryError::NotConfigured));
         }
         // Call the transport client directly, mapping ApiClientError → RepositoryError

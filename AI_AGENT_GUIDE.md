@@ -136,5 +136,40 @@ cargo run --locked -p lotus-api
   `# Errors` (summary_text got a new `# Errors` block); redundant `#[must_use]`
   dropped from the `Result`-returning renderers; workspace
   `cargo clippy`/`cargo test`/`cargo check` + 3-app wasm all green.
-- **Phase 6f (lotus-explore styles/services consolidation):** complete
+- **Phase 6f (lotus-sparql styles/services consolidation):** complete
   (triplicate style dir removed; only LOTUS-specific helpers remain).
+
+## Incident: lotus-explore Qlever 429 storm (FIXED)
+
+**Symptom:** a single Explore search hammered `https://qlever.dev/api/wikidata`
+with ~2 SPARQL POSTs × 4 retries (plus a dead lotus-API "builder error" attempt
+each time) = ~16 requests in ~1.4s, producing a permanent IP 429. The search
+"copy query" button also vanished because the results panel never rendered.
+
+**Root cause:** (1) the lotus-API fast-path was ON by default
+(`ExecutionStrategy` defaulted to `ApiFirst`), so every search — and every 429
+retry — first tried the absent/misconfigured API before falling back to direct
+SPARQL; (2) the 429 retry re-ran the *entire* pipeline (`do_search`: api attempt +
+taxon + display + COUNT) with a 200/400/800 ms backoff, amplifying the burst;
+(3) the COUNT query (the "dumb pagination" request) fired concurrently with the
+display query, so a 429 on either failed and retried the whole search.
+
+**Fix:**
+- **API off by default.** `ExecutionStrategy::Direct` is now the default for
+  interactive searches; `ApiFirst` only runs when a non-empty base URL is
+  explicitly configured (`crate::api::api_base_url().is_some_and(|b| !b.is_empty())`).
+  The empty dev-auto-detect base and `HybridRepository::api_search` both treat an
+  empty base as `NotConfigured`, so no "builder error" waste.
+- **Respect the endpoint on 429.** RateLimit uses `rate_limit_backoff_ms`
+  (1 s base, doubling, capped at 10 s) instead of the 100 ms base, and `plan_retry`
+  caps 429 retries at **1** (`effective_max = 1` for `ErrorClass::RateLimit`)
+  instead of the generic 3. A transient 429 gets one long-backoff retry; a
+  persistent one surfaces immediately so Qlever's window can reset.
+- **COUNT query is best-effort.** `fetch_results/wasm.rs` no longer fails the
+  search when the COUNT POST 429s: the display query is authoritative and the
+  COUNT is best-effort (`None` → `total_matches` falls back to `rows.len()` in
+  `finalize`). Only a display 429 retries, and only per the capped policy above.
+
+> Do not lower the 429 backoff or remove the retry cap to "be more resilient" —
+> that is exactly what re-triggers the permanent throttle. If Qlever throughput
+> must improve, add a client-side results cache, not more concurrent POSTs.

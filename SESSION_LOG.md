@@ -107,3 +107,29 @@ One line per recommendation; append completion entries as work proceeds.
   load buttons (neutral/non-accent: button_sm/xs_style, #f8fafc/#cbd5e1),
   and download_actions + lotus copy_button (title/aria_label/title +
   CopyButton clipboard state-swap widget). (commit next)
+
+## §2 --- Incident: lotus-explore Qlever 429 storm (FIXED)
+
+User reported a single `Gentiana lutea` search producing a permanent IP 429 from
+`https://qlever.dev/api/wikidata`. Logs showed ~2 SPARQL POSTs × 4 retries **plus
+a dead lotus-API "builder error" attempt per retry** = ~16 requests in ~1.4s; the
+query/copy button vanished because results never rendered.
+
+**Fix (3 parts), all gated green:**
+1. **API off by default** — `ExecutionStrategy::Direct` is now the default for
+   interactive searches; `ApiFirst` only when a non-empty base URL is explicitly
+   configured. Removes the dead "builder error" api attempt on every search/retry.
+   (`strategy.rs`, `executor.rs`, `repositories/hybrid.rs`)
+2. **Respect the 429** — `rate_limit_backoff_ms` (1 s base) + `plan_retry` caps
+   RateLimit retries at 1 (vs the generic 3). A transient 429 gets one long-backoff
+   retry; a persistent one surfaces immediately so Qlever's window can reset.
+   (`error_recovery_coordinator.rs`, `retryable_orchestrator.rs`)
+3. **COUNT query best-effort** — `fetch_results/wasm.rs` no longer fails/retries
+   the whole search on a COUNT 429 (display query is authoritative; COUNT → `None`
+   → `total_matches` falls back to `rows.len()` via `finalize`). The expensive
+   "dumb pagination" COUNT POST no longer amplifies the storm.
+
+**Verification:** `cargo fmt --all -- --check` + `cargo clippy --workspace
+--all-targets --locked -- -D warnings` + `cargo test --workspace --all-targets
+--locked` (all crates pass; lotus-explore 330) + 7 per-app
+`cargo check --target wasm32-unknown-unknown --locked` all green.

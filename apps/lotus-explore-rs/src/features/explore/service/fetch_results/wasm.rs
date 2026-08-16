@@ -9,6 +9,7 @@ use crate::services::search_telemetry as telemetry;
 use crate::sparql;
 use futures::try_join;
 use lotus::transport::ResponseBody;
+use std::time::Duration;
 
 pub(super) async fn fetch_results<R: LotusRepository>(
     repo: &R,
@@ -21,11 +22,14 @@ pub(super) async fn fetch_results<R: LotusRepository>(
 
     let count_timer = perf::start_timer("LOTUS:results_count_query");
     let results_timer = perf::start_timer("LOTUS:results_page_query");
-    let (counts_csv, results_csv): (ResponseBody, ResponseBody) = try_join!(
+    // The display query is authoritative: its failure fails the search (and is
+    // subject to backoff). The COUNT query is the expensive "dumb pagination"
+    // request — it is best-effort, so a 429 on it must NOT fail/retry the whole
+    // search, which is what storms Qlever into a permanent throttle.
+    let (counts_csv, results_csv): (Option<ResponseBody>, ResponseBody) = try_join!(
         async {
-            repo.sparql_body(&count_query)
-                .await
-                .map_err(DomainError::transport_at(QueryStage::ResultsQuery))
+            // Count transport errors are swallowed: `None` means "no count".
+            Ok::<_, DomainError>(repo.sparql_body(&count_query).await.ok())
         },
         async {
             repo.sparql_body(&results_query)
@@ -40,11 +44,15 @@ pub(super) async fn fetch_results<R: LotusRepository>(
 
     on_processing();
 
-    let count_parse_timer = perf::start_timer("LOTUS:results_count_parse");
-    let total_stats =
-        sparql::parse_counts_csv_bytes(&counts_csv).map_err(results_csv_parse_error)?;
-    let count_parse_elapsed = perf::end_timer("LOTUS:results_count_parse", count_parse_timer);
-    metrics.add_parse(count_parse_elapsed);
+    let (total_stats, count_parse_elapsed) = counts_csv.map_or((None, Duration::ZERO), |c| {
+        let count_parse_timer = perf::start_timer("LOTUS:results_count_parse");
+        let parsed = sparql::parse_counts_csv_bytes(&c).ok();
+        let elapsed = perf::end_timer("LOTUS:results_count_parse", count_parse_timer);
+        if parsed.is_some() {
+            metrics.add_parse(elapsed);
+        }
+        (parsed, elapsed)
+    });
 
     let results_parse_timer = perf::start_timer("LOTUS:results_page_parse");
     let rows = sparql::parse_compounds_csv_display_bytes(&results_csv, plan.display_limit)
@@ -52,20 +60,21 @@ pub(super) async fn fetch_results<R: LotusRepository>(
     let results_parse_elapsed = perf::end_timer("LOTUS:results_page_parse", results_parse_timer);
     metrics.add_parse(results_parse_elapsed);
 
-    let total_matches = total_stats.n_entries;
-    let display_capped_rows = total_matches > rows.len();
+    let total_matches = total_stats.as_ref().map(|s| s.n_entries);
+    let display_capped_rows =
+        total_matches.map_or(rows.len() >= plan.display_limit, |t| t > rows.len());
     telemetry::results_fetch_done(
         overlapped_network_elapsed
             .saturating_add(count_parse_elapsed)
             .saturating_add(results_parse_elapsed),
         rows.len(),
-        total_matches,
+        total_matches.unwrap_or(rows.len()),
     );
 
     Ok(FetchResult {
         rows,
-        total_stats: Some(total_stats),
-        total_matches: Some(total_matches),
+        total_stats,
+        total_matches,
         display_capped_rows,
     })
 }

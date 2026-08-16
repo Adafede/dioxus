@@ -132,7 +132,12 @@ fn classify_transport_error_recovery(
 
         TransportFailureKind::RateLimit => ErrorRecoveryDecision {
             should_retry: true,
-            backoff_ms: Some(backoff_delay_ms(attempt)),
+            // Qlever throttles over a short window and is pushed into a
+            // *permanent* IP block when hammered with the default 100 ms base
+            // backoff (which retries the whole pipeline ~4x in ~1.4s). Use a
+            // longer, capped backoff so the endpoint's window can reset between
+            // retries, and cap the number of retries in `plan_retry`.
+            backoff_ms: Some(rate_limit_backoff_ms(attempt)),
             error_class: ErrorClass::RateLimit,
         },
 
@@ -170,6 +175,25 @@ fn backoff_delay_ms(attempt: u32) -> u64 {
     const BASE_MS: u64 = 100;
     const MAX_MS: u64 = 10_000;
     let exponent = (attempt + 1).min(7); // 100 * 2^7 = 12_800, rounded down to cap
+    (BASE_MS << exponent).min(MAX_MS)
+}
+
+/// Backoff for 429 / rate-limit retries.
+///
+/// Longer base than [`backoff_delay_ms`] so Qlever's rate-limit window can reset
+/// between retries instead of being hammered into a permanent throttle.
+///
+/// | attempt | backoff |
+/// |---------|---------|
+/// | 0       | 1 000 ms |
+/// | 1       | 2 000 ms |
+/// | 2       | 4 000 ms |
+/// | 6+      | 10 000 ms (cap) |
+fn rate_limit_backoff_ms(attempt: u32) -> u64 {
+    const BASE_MS: u64 = 1_000;
+    const MAX_MS: u64 = 10_000;
+    // 1 000 * 2^attempt, capped at 10s.
+    let exponent = attempt.min(4);
     (BASE_MS << exponent).min(MAX_MS)
 }
 
@@ -226,10 +250,19 @@ mod tests {
             stage: QueryStage::ResultsQuery,
             source: RepositoryError::parse("Too many queries in queue"),
         };
+        // Rate-limit backoff starts at 1s (not 400ms) to let Qlever's window reset.
         let decision = classify_error_recovery(&err, 1);
         assert!(decision.should_retry);
-        assert_eq!(decision.backoff_ms, Some(400)); // 100 * 2^2
+        assert_eq!(decision.backoff_ms, Some(2000)); // 1_000 * 2^1
         assert_eq!(decision.error_class, ErrorClass::RateLimit);
+    }
+
+    #[test]
+    fn rate_limit_backoff_grows_longer_capped() {
+        assert_eq!(rate_limit_backoff_ms(0), 1_000);
+        assert_eq!(rate_limit_backoff_ms(1), 2_000);
+        assert_eq!(rate_limit_backoff_ms(2), 4_000);
+        assert_eq!(rate_limit_backoff_ms(6), 10_000); // capped at 10s
     }
 
     #[test]
