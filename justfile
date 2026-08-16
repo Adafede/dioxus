@@ -2,8 +2,8 @@
 # Run `just --list` to see available recipes.
 #
 # Web apps (use `just serve`/`just build` with one of these):
-#   cxsmiles-yoga  index  json-count-rs  lipid-selecto-rs
-#   mgf-precursor-erro-rs  lotus-explore-rs  smellfish-rs
+#	cxsmiles-yoga  index  json-count-rs  lipid-selecto-rs
+#	mgf-precursor-erro-rs  lotus-explore-rs  smellfish-rs
 
 # ── Workspace gate (mirrors .github/workflows/ci.yml) ─────────────────────────
 
@@ -21,6 +21,21 @@ test:
 
 doc:
 	cargo doc --workspace --no-deps --locked
+
+# ── Full CI gate (every check the pipeline runs, in order) ────────────────────
+# `just ci`. Each step reuses a recipe above (single source of truth). Supply-chain
+# tools that may be absent locally are skipped by their own recipes.
+
+ci:
+	just fmt
+	just check
+	just clippy
+	just test
+	just doc
+	just wasm
+	just machete
+	just audit
+	just deny
 
 # WASM apps only — never `--workspace --target wasm32` (lotus-api/axum is
 # non-wasm, and crates/upload has wasm-incompatible unit patterns in
@@ -68,5 +83,5 @@ readme:
 	@command -v cargo-readme >/dev/null 2>&1 || { echo "cargo-readme not installed; skipping"; exit 0; }
 	@command -v panache >/dev/null 2>&1 || { echo "panache not installed; skipping"; exit 0; }
 	@for d in crates/lotus crates/ui crates/upload apps/cxsmiles-yoga apps/index apps/lotus-api apps/lotus-explore-rs apps/json-count-rs apps/lipid-selecto-rs apps/mgf-precursor-erro-rs apps/smellfish-rs; do \
-	  (cd $$d && cargo readme -t README.tpl -o /tmp/readme_panache.md 2>/dev/null && panache lint /tmp/readme_panache.md && diff -q /tmp/readme_panache.md README.md > /dev/null 2>&1 || { echo "README.md out of date for $$d — run: (cd $$d && cargo readme -t README.tpl -o README.md)"; exit 1; }) || exit 1; \
+	(cd $$d && cargo readme -t README.tpl -o /tmp/readme_panache.md 2>/dev/null && panache lint /tmp/readme_panache.md && diff -q /tmp/readme_panache.md README.md > /dev/null 2>&1 || { echo "README.md out of date for $$d — run: (cd $$d && cargo readme -t README.tpl -o README.md)"; exit 1; }) || exit 1; \
 	done

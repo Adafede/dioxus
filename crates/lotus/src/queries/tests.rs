@@ -120,6 +120,38 @@ fn count_query_uses_distinct_entry_triples_not_raw_rows() {
     assert!(q.contains("COALESCE(STR(?ref_qid), \"\")"));
 }
 
+/// The count query must NOT carry the display-only `OPTIONAL` blocks
+/// (`REFERENCE_METADATA_OPTIONAL` / `PROPERTIES_OPTIONAL`) — they only supply
+/// titles / DOIs / dates / ISO-SMILES / mass / formula / labels, none of which
+/// feed the `COUNT(DISTINCT …)` metrics.  Carrying them forces `QLever` to
+/// materialize the `rdfs:label` scans just to derive a count, which is what
+/// made the WASM count "SUPER SLOW" / RAM-heavy on mobile.
+#[test]
+fn count_query_strips_display_optionals_but_keeps_core_triples() {
+    // Compound browser (three-level SELECT, REQUIRED p:P703 association).
+    let compound_count = query_counts_from_base(&query_compounds_by_taxon("Q158572"));
+    assert!(
+        !compound_count.contains("OPTIONAL {"),
+        "count query must strip OPTIONAL blocks: {compound_count}"
+    );
+    // ...while keeping the counted compound-taxon-reference triples.
+    assert!(compound_count.contains("?c p:P703 ?statement"));
+
+    // Structure search without a taxon (p:P703 lives inside an OPTIONAL).
+    let sachem_count = query_counts_from_base(&query_sachem(
+        "CCO",
+        SmilesSearchType::Substructure,
+        1.0,
+        None,
+    ));
+    assert!(
+        sachem_count.contains("OPTIONAL {"),
+        "sachem no-taxon count must KEEP the p:P703 OPTIONAL (only display metadata stripped)"
+    );
+    assert!(!sachem_count.contains("rdfs:label"));
+    assert!(sachem_count.contains("?c p:P703 ?statement"));
+}
+
 #[test]
 fn subscript_digit_normalizers_stay_in_sync() {
     assert_eq!(normalize_formula_digits("C₆H₁₂O₆"), "C6H12O6");
