@@ -14,6 +14,10 @@ fn main() {
     println!("cargo:rerun-if-changed=public/user_source_vs_synthetic.txt");
     println!("cargo:rerun-if-changed=public/user_kingdom_enrichment.txt");
     println!("cargo:rerun-if-changed=public/motif-library.js");
+    // Add rerun-if-changed for downloaded files so Cargo does not re-trigger
+    // the build script (and thus the curl download) when they haven't changed.
+    println!("cargo:rerun-if-changed=public/ertl_npsubstituents.txt");
+    println!("cargo:rerun-if-changed=public/lotus_1percent_scaffolds.txt");
     download_with_header(
         &manifest_dir.join("public/ertl_npsubstituents.txt"),
         "https://peter-ertl.com/molecular/data/npsubstituents.txt",
@@ -31,6 +35,12 @@ fn main() {
 }
 
 fn download_with_header(dst: &Path, url: &str, header: &str) {
+    // Skip download if the file already exists and is non-empty. The data
+    // files are committed to the repo, so a fresh clone does not need network
+    // access to build. This also avoids re-running curl on every build.
+    if fs::metadata(dst).is_ok_and(|m| m.len() > 0) {
+        return;
+    }
     let output = Command::new("curl")
         .args(["-fsSL", url])
         .output()
@@ -55,6 +65,15 @@ fn download_with_header(dst: &Path, url: &str, header: &str) {
 /// column exceeds 1 % (0.01 as a 0–1 fraction).  The result is written as
 /// one SMILES per line to `dst`.
 fn download_and_filter_lotus_scaffolds(dst: &Path, url: &str) {
+    // Skip download if the file already exists and is non-empty. See
+    // `download_with_header` for rationale.
+    if fs::metadata(dst).is_ok_and(|m| m.len() > 0) {
+        eprintln!(
+            "lotus_scaffolds: {} already exists, skipping download",
+            dst.display()
+        );
+        return;
+    }
     let output = Command::new("curl")
         .args(["-fsSL", url])
         .output()
