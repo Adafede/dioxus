@@ -22,13 +22,17 @@ use crate::ColumnResult;
 /// - objects/arrays → sum of all contained values recursively
 ///
 /// which counts every `"` occurrence as a leaf value).
-#[cfg_attr(not(test), allow(dead_code))]
+///
+/// Only compiled under `#[cfg(test)]` — the production wasm scanner has its
+/// own `count_value` implementation; this pure function exists solely as a
+/// reference for native unit testing.
+#[cfg(test)]
 fn count_non_null_leaves(input: &str) -> u64 {
     let (count, _) = scan_json_value(input.as_bytes(), 0);
     count
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 fn skip_ws(input: &[u8], mut pos: usize) -> usize {
     while pos < input.len() && matches!(input[pos], b' ' | b'\t' | b'\n' | b'\r') {
         pos += 1;
@@ -38,7 +42,7 @@ fn skip_ws(input: &[u8], mut pos: usize) -> usize {
 
 /// Scans a JSON value from `input` starting at `pos`, returning the count of
 /// non-null leaf values and the index past the value's final byte.
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 fn scan_json_value(input: &[u8], start: usize) -> (u64, usize) {
     let mut pos = skip_ws(input, start);
     if pos >= input.len() {

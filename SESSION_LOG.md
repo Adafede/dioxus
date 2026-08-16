@@ -264,3 +264,14 @@ poisoned mutexes. The call sites in `handlers.rs` use `?` to propagate. A poison
 mutex now returns HTTP 500 (Internal Server Error) instead of crashing the handler
 thread. The new `ApiError::internal()` constructor in `errors.rs` follows the same
 pattern as the existing `bad_request`, `upstream`, and `overloaded` constructors.
+
+### Best-practice cleanup (post-session)
+
+- **`json-count-rs/src/processing.rs`**: Replaced `#[cfg_attr(not(test), allow(dead_code))]`
+  with `#[cfg(test)]` on the three pure counting functions. These are reference implementations
+  for native unit testing only; `#[cfg(test)]` is cleaner than suppressing dead-code warnings.
+- **`lotus-api/src/errors.rs`**: Added `#[must_use]` to all four `ApiError` constructors
+  (`bad_request`, `upstream`, `overloaded`, `internal`) — standard Rust best practice for
+  functions returning `Self`.
+
+Committed as `13cff6e`.

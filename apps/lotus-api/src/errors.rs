@@ -28,6 +28,7 @@ pub struct SharedApiError {
 }
 
 impl ApiError {
+    #[must_use]
     pub(crate) fn bad_request(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::BAD_REQUEST,
@@ -35,6 +36,7 @@ impl ApiError {
         }
     }
 
+    #[must_use]
     pub(crate) fn upstream(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::BAD_GATEWAY,
@@ -42,6 +44,7 @@ impl ApiError {
         }
     }
 
+    #[must_use]
     pub(crate) fn overloaded(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::SERVICE_UNAVAILABLE,
@@ -49,6 +52,7 @@ impl ApiError {
         }
     }
 
+    #[must_use]
     pub(crate) fn internal(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
