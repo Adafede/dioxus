@@ -188,3 +188,99 @@ pub fn build_cors_layer(config: &AppConfig) -> CorsLayer {
         None => layer.allow_origin(Any),
     }
 }
+
+// ── Tests for the clap CLI layer ─────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── Cli flag resolution (tested via clap's try_parse_from) ───────
+    //
+    // clap's `#[arg(env = "...")]` attribute guarantees flag > env > default
+    // priority. These tests verify flag resolution and defaults directly.
+    // Env-var-only override behavior cannot be tested here because the
+    // workspace enforces `#![forbid(unsafe_code)]` and
+    // `std::env::set_var` / `remove_var` are unsafe in Rust 1.97+. The
+    // existing `from_provider` tests in tests.rs cover the env-value parsing
+    // layer with mock closures.
+
+    #[test]
+    fn cli_port_flag_overrides_default() {
+        let cli = Cli::try_parse_from(["lotus-api", "--port", "1234"]).unwrap();
+        assert_eq!(cli.get("PORT"), Some("1234".to_string()));
+    }
+
+    #[test]
+    fn cli_port_default_when_no_flag() {
+        // Assumes PORT is not set in the test environment (typical for CI).
+        let cli = Cli::try_parse_from(["lotus-api"]).unwrap();
+        assert_eq!(cli.get("PORT"), Some("8787".to_string()));
+    }
+
+    #[test]
+    fn cli_host_flag_overrides_default() {
+        let cli = Cli::try_parse_from(["lotus-api", "--host", "0.0.0.0"]).unwrap();
+        assert_eq!(cli.get("HOST"), Some("0.0.0.0".to_string()));
+    }
+
+    // ── Invalid port values error cleanly through from_provider ───────
+
+    #[test]
+    fn from_provider_invalid_port_string_returns_error() {
+        let result = AppConfig::from_provider(|name| {
+            if name == "PORT" {
+                Some("not-a-port".to_string())
+            } else {
+                None
+            }
+        });
+        let err = result.expect_err("non-numeric port should error");
+        assert!(err.contains("PORT"));
+    }
+
+    #[test]
+    fn from_provider_negative_port_returns_error() {
+        let result = AppConfig::from_provider(|name| {
+            if name == "PORT" {
+                Some("-1".to_string())
+            } else {
+                None
+            }
+        });
+        let err = result.expect_err("negative port should error");
+        assert!(err.contains("PORT"));
+    }
+
+    #[test]
+    fn from_provider_port_overflow_returns_error() {
+        let result = AppConfig::from_provider(|name| {
+            if name == "PORT" {
+                Some("70000".to_string())
+            } else {
+                None
+            }
+        });
+        let err = result.expect_err("port > u16::MAX should error");
+        assert!(err.contains("PORT"));
+    }
+
+    // ── Integration: Cli flag → from_provider ──────────────────────────
+
+    #[test]
+    fn flag_port_through_full_flow() {
+        let cli = Cli::try_parse_from(["lotus-api", "--port", "1234"]).unwrap();
+        let cfg =
+            AppConfig::from_provider(|name| cli.get(name)).expect("flag port 1234 should parse");
+        assert_eq!(cfg.port, 1234);
+    }
+
+    #[test]
+    fn default_port_through_full_flow() {
+        // Assumes PORT is not set in the test environment.
+        let cli = Cli::try_parse_from(["lotus-api"]).unwrap();
+        let cfg =
+            AppConfig::from_provider(|name| cli.get(name)).expect("default port should parse");
+        assert_eq!(cfg.port, 8787);
+    }
+}
