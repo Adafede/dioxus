@@ -1,7 +1,8 @@
+use dioxus::html::FileData;
 #[cfg(target_arch = "wasm32")]
-use dioxus::prelude::{Signal, WritableExt, spawn};
+use dioxus::prelude::spawn;
+use dioxus::prelude::{Signal, WritableExt};
 
-#[cfg(target_arch = "wasm32")]
 use crate::metrics::PrecursorStats;
 #[cfg(target_arch = "wasm32")]
 use crate::parser::scan_blob_with_progress;
@@ -150,6 +151,50 @@ pub fn begin_analysis_from_blob(
         busy_for_state,
         original_mgf_content,
     );
+}
+
+/// Extracts a blob from the given file data and dispatches it to the analysis
+/// pipeline on wasm32, or reports that a browser is required on native.
+/// Consolidates the near-duplicate `on_file_change`/`on_drop` handlers.
+#[allow(unused_mut, unused_variables)]
+// cfg-mut foot-gun: the native arm calls `.set` on these bindings, while the
+// wasm32 arm only forwards the handles to `begin_analysis_from_blob`, so the
+// `mut` qualifiers (and `drag_active`/`original_mgf_content`) look unused on
+// one target or the other.
+pub fn attempt_analysis_from_files(
+    files: &[FileData],
+    mut file_name: Signal<String>,
+    mut status: Signal<String>,
+    mut metrics: Signal<Option<PrecursorStats>>,
+    mut busy: Signal<bool>,
+    drag_active: Signal<bool>,
+    original_mgf_content: Signal<String>,
+) {
+    match upload::extract_blob_from_file_data(files) {
+        Ok(Some(file)) => {
+            #[cfg(target_arch = "wasm32")]
+            begin_analysis_from_blob(
+                file.blob,
+                file.name,
+                file_name,
+                status,
+                metrics,
+                busy,
+                drag_active,
+                original_mgf_content,
+            );
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                file_name.set(file.name);
+                metrics.set(None);
+                status.set("This app needs to run in a browser.".to_string());
+                busy.set(false);
+            }
+        }
+        Ok(None) => status.set("No file selected.".to_string()),
+        Err(msg) => status.set(msg),
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
