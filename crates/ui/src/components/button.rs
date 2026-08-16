@@ -28,6 +28,10 @@ pub struct ButtonProps {
     /// Whether to use dark theme
     #[props(default)]
     pub dark: bool,
+    /// Optional click handler. When `None` (the default), no `onclick`
+    /// attribute is emitted — backward-compatible with call sites that omit it.
+    #[props(default)]
+    pub onclick: Option<EventHandler<Event<MouseData>>>,
 }
 
 /// Button component with multiple variants.
@@ -83,10 +87,16 @@ pub fn Button(props: ButtonProps) -> Element {
         .transition(crate::theme::Interaction::TRANSITION_FAST)
         .build();
 
+    let on_click = props.onclick;
     rsx! {
         button {
             style: button_style,
             disabled: props.disabled,
+            onclick: move |evt: Event<MouseData>| {
+                if let Some(handler) = on_click.as_ref() {
+                    handler.call(evt);
+                }
+            },
             "{props.label}"
         }
     }

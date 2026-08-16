@@ -10,7 +10,7 @@ pub mod notice;
 pub mod segmented_control;
 pub mod upload_zone;
 
-pub use button::Button;
+pub use button::{Button, ButtonVariant};
 pub use card::Card;
 pub use footer::Footer;
 pub use header::Header;

@@ -12,6 +12,7 @@ use crate::model::{EndpointStatus, MoleculeRow, MotifSummary};
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
+use ui::prelude::{Button, ButtonVariant};
 
 mod browser;
 mod results;
@@ -165,12 +166,11 @@ pub fn app() -> Element {
                             }
                         }
                         div { class: "paste-actions",
-                            button {
-                                class: "btn btn-primary",
-                                r#type: "button",
+                            Button {
+                                label: "Analyze pasted SMILES",
+                                variant: ButtonVariant::Primary,
                                 disabled: *busy.read(),
-                                onclick: submit_pasted_smiles,
-                                "Analyze pasted SMILES"
+                                onclick: Some(EventHandler::new(submit_pasted_smiles)),
                             }
                         }
                     }
