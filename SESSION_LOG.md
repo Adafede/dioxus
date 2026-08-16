@@ -124,12 +124,27 @@ query/copy button vanished because results never rendered.
    RateLimit retries at 1 (vs the generic 3). A transient 429 gets one long-backoff
    retry; a persistent one surfaces immediately so Qlever's window can reset.
    (`error_recovery_coordinator.rs`, `retryable_orchestrator.rs`)
-3. **COUNT query best-effort** — `fetch_results/wasm.rs` no longer fails/retries
-   the whole search on a COUNT 429 (display query is authoritative; COUNT → `None`
-   → `total_matches` falls back to `rows.len()` via `finalize`). The expensive
-   "dumb pagination" COUNT POST no longer amplifies the storm.
+3. **COUNT POST removed (local total)** — `fetch_results/wasm.rs` now issues ONE
+   sequential Qlever POST per search (the display query) and derives the total
+   locally from `rows.len()` — the native path and pre-regression behavior
+   ("kept the results of the query and counted them"). The separate
+   `COUNT(DISTINCT …)` over the full base is removed entirely (not merely
+   best-effort), so there is no second POST to 429 or to race the display.
 
-**Verification:** `cargo fmt --all -- --check` + `cargo clippy --workspace
---all-targets --locked -- -D warnings` + `cargo test --workspace --all-targets
---locked` (all crates pass; lotus-explore 330) + 7 per-app
-`cargo check --target wasm32-unknown-unknown --locked` all green.
+4. **Curation serialized** — `features/curation/services/pipeline.rs`
+   `CURATION_CONCURRENCY` `8 → 1`. The 15:00 logs (5 Qlever POSTs in ~150 ms:
+   3×200 cheap + 2×429) showed curation's `buffer_unordered(8)` firing up to 8
+   rows' Qlever POSTs at once — the second burst source. One row at a time ⇒ no
+   burst; this also unblocks the mass/RDKit step (`resolve_exact_mass`), which
+   was being aborted mid-row before its Qlever POST 429'd.
+
+> Note: Fix C (committed 55353eb) made the COUNT *best-effort* but still fired it
+> **concurrently** with the display query (`try_join!`), and curation still ran
+> `buffer_unordered(8)` — so the anonymous quota was still burst (the 15:00
+> storm). Part 3 (remove COUNT) + part 4 (curation=1) remove the concurrency
+> entirely. No API key is available or was required.
+
+**Verification (d433668):** `cargo fmt --all -- --check` ✓ + `cargo check
+--workspace --all-targets --locked` ✓ + `cargo test --workspace --all-targets
+--locked` ✓ + `cargo clippy --workspace --all-targets --locked -- -D warnings` ✓
++ all 7 per-app `cargo check --target wasm32-unknown-unknown --locked` ✓.

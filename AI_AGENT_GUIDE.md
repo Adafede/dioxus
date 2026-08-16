@@ -141,35 +141,42 @@ cargo run --locked -p lotus-api
 
 ## Incident: lotus-explore Qlever 429 storm (FIXED)
 
-**Symptom:** a single Explore search hammered `https://qlever.dev/api/wikidata`
-with ~2 SPARQL POSTs × 4 retries (plus a dead lotus-API "builder error" attempt
-each time) = ~16 requests in ~1.4s, producing a permanent IP 429. The search
-"copy query" button also vanished because the results panel never rendered.
+**Symptom:** a single `Gentiana lutea` search (and curation) produced a permanent
+IP 429 from `https://qlever.dev/api/wikidata`. Captured logs (15:00:06–07) showed
+5 SPARQL POSTs within ~150 ms (3×200 in 30–135 ms + 2×429 in 24–25 ms).
 
-**Root cause:** (1) the lotus-API fast-path was ON by default
-(`ExecutionStrategy` defaulted to `ApiFirst`), so every search — and every 429
-retry — first tried the absent/misconfigured API before falling back to direct
-SPARQL; (2) the 429 retry re-ran the *entire* pipeline (`do_search`: api attempt +
-taxon + display + COUNT) with a 200/400/800 ms backoff, amplifying the burst;
-(3) the COUNT query (the "dumb pagination" request) fired concurrently with the
-display query, so a 429 on either failed and retried the whole search.
+**Root cause:** an anonymous-quota *burst*, not heavy queries — the 200s returned
+in 30–135 ms. Two sites fired Qlever POSTs concurrently:
+1. **search** — `try_join!(count, display)` ran the COUNT(DISTINCT …) over the full
+   base ("dumb pagination" request) *concurrently* with the display query, and the
+   429 retry re-ran the whole pipeline with only a short backoff, amplifying it.
+2. **curation** — `buffer_unordered(CURATION_CONCURRENCY = 8)` fired up to 8 rows'
+   Qlever POSTs at the same time (compound fetch + ASK per row).
+(The lotus-API fast-path was ALSO on by default — `ExecutionStrategy` defaulted to
+`ApiFirst` — so every search/429-retry wasted a request on the absent API
+"builder error" path. That is why "it was working 48 h ago".)
 
-**Fix:**
-- **API off by default.** `ExecutionStrategy::Direct` is now the default for
+**Fix (all gated green):**
+- **API off by default.** `ExecutionStrategy::Direct` is the default for
   interactive searches; `ApiFirst` only runs when a non-empty base URL is
   explicitly configured (`crate::api::api_base_url().is_some_and(|b| !b.is_empty())`).
-  The empty dev-auto-detect base and `HybridRepository::api_search` both treat an
-  empty base as `NotConfigured`, so no "builder error" waste.
-- **Respect the endpoint on 429.** RateLimit uses `rate_limit_backoff_ms`
-  (1 s base, doubling, capped at 10 s) instead of the 100 ms base, and `plan_retry`
-  caps 429 retries at **1** (`effective_max = 1` for `ErrorClass::RateLimit`)
-  instead of the generic 3. A transient 429 gets one long-backoff retry; a
-  persistent one surfaces immediately so Qlever's window can reset.
-- **COUNT query is best-effort.** `fetch_results/wasm.rs` no longer fails the
-  search when the COUNT POST 429s: the display query is authoritative and the
-  COUNT is best-effort (`None` → `total_matches` falls back to `rows.len()` in
-  `finalize`). Only a display 429 retries, and only per the capped policy above.
+  No dead "builder error" waste.
+- **Respect the endpoint on 429.** `rate_limit_backoff_ms` (1 s base, doubling,
+  capped at 10 s) + `plan_retry` caps 429 retries at **1**
+  (`effective_max = 1` for `ErrorClass::RateLimit`) instead of the generic 3.
+- **COUNT POST removed.** The total is now local: `rows.len()` of the display
+  page, matching the native path and the pre-regression behavior ("kept the
+  results of the query and counted them"). Exactly ONE sequential Qlever POST per
+  search — the concurrent COUNT/display pair no longer exists, so there is no
+  second POST to race or 429.
+- **Curation serialized.** `CURATION_CONCURRENCY` `8 → 1` in
+  `features/curation/services/pipeline.rs`: rows are curated one at a time so
+  Qlever POSTs never overlap. (This also unblocks the mass/RDKit step, which was
+  being aborted mid-row when the row's Qlever POST 429'd.)
 
-> Do not lower the 429 backoff or remove the retry cap to "be more resilient" —
-> that is exactly what re-triggers the permanent throttle. If Qlever throughput
+No API key is available or required — the throttle is beaten by staying under the
+anonymous quota (one POST at a time), never by retrying harder.
+
+> Do not lower the 429 backoff or raise curation concurrency to "speed things up"
+> — that is exactly what re-triggers the permanent throttle. If Qlever throughput
 > must improve, add a client-side results cache, not more concurrent POSTs.
