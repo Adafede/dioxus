@@ -23,8 +23,6 @@
 
 ## Repository conventions
 
-- `apps/lotus-explore-rs/docs/skills/*.md` contains plain skill contracts.
-- `apps/lotus-explore-rs/docs/skills/SUGGESTIONS.md` is reserved for
-  non-normative improvement notes.
-- `AI_AGENT_GUIDE.md` at the repository root is the entry point for autonomous
-  work.
+- `docs/skills/` held plain skill contracts (consolidated into this `ai/`
+  directory alongside the collaboration guides).
+- `.github/ai/AI_AGENT_GUIDE.md` is the entry point for autonomous work.

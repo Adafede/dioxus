@@ -86,9 +86,8 @@ cargo run --locked -p lotus-api
 ## References
 
 - Architecture: `apps/lotus-explore-rs/docs/ARCHITECTURE.md`
-- Skills: `apps/lotus-explore-rs/SKILLS.md`
-- AI contribution guide: `.github/CONTRIBUTING_AI.md`
-- Agent efficiency guide: `.github/AI_EFFICIENCY_GUIDE.md`
+- AI contribution guide: `.github/ai/CONTRIBUTING_AI.md`
+- Agent efficiency guide: `.github/ai/AI_EFFICIENCY_GUIDE.md`
 
 ## Phase status
 
@@ -112,7 +111,7 @@ cargo run --locked -p lotus-api
   `# Errors` doc added. `cxsmiles/app.rs`,
   `mgf plotting.rs`→`plotting/{mod,data,scatter,diagnostics,cumulative,color}`,
   `mgf parser.rs`→`parser/{mod,adduct,mass,block}`, `mgf metrics.rs`
-  (850→`metrics/{mod,merge}`) splits also complete. Completed this session:
+  (850→`metrics/{mod,merge}`) splits also complete, as well as
   `recalibration.rs` (833→`calibration/{types,parsing,calibration,generator}` +
   re-export `mod.rs`) and `apps/lotus-explore-rs` `sections.rs`
   (521→`sections/{mod,styles}`); the `plotting/diagnostics.rs` histogram
@@ -164,11 +163,10 @@ in 30–135 ms. Two sites fired Qlever POSTs concurrently:
 - **Respect the endpoint on 429.** `rate_limit_backoff_ms` (1 s base, doubling,
   capped at 10 s) + `plan_retry` caps 429 retries at **1**
   (`effective_max = 1` for `ErrorClass::RateLimit`) instead of the generic 3.
-- **COUNT POST removed.** The total is now local: `rows.len()` of the display
-  page, matching the native path and the pre-regression behavior ("kept the
-  results of the query and counted them"). Exactly ONE sequential Qlever POST per
-  search — the concurrent COUNT/display pair no longer exists, so there is no
-  second POST to race or 429.
+- **COUNT restored, but serialized + best-effort** (no `try_join!`): the display
+  query runs first; the COUNT (`query_counts_from_base`) fires strictly *after*,
+  sequentially, and a 429 on it is swallowed → `None` (falls back to `rows.len()`).
+  Rationale inline in `apps/lotus-explore-rs/src/features/explore/service/fetch_results/wasm.rs`.
 - **Curation serialized.** `CURATION_CONCURRENCY` `8 → 1` in
   `features/curation/services/pipeline.rs`: rows are curated one at a time so
   Qlever POSTs never overlap. (This also unblocks the mass/RDKit step, which was

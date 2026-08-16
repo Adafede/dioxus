@@ -137,25 +137,19 @@ On every push to `main`:
 - `cargo check --workspace --all-targets --locked`
 - `cargo clippy --workspace --all-targets --locked -- -D warnings`
 - `cargo test --workspace --all-targets --locked`
-- `cargo check` for all 5 WASM apps (`json-count-rs`, `mgf-precursor-erro-rs`,
-  `lipid-selecto-rs`, `lotus-explore-rs`, `smellfish-rs`)
+- `cargo check` for all 7 WASM apps (`cxsmiles-yoga`, `index`, `json-count-rs`,
+  `lipid-selecto-rs`, `lotus-explore-rs`, `mgf-precursor-erro-rs`, `smellfish-rs`)
 - `cargo doc --workspace --no-deps --locked`
 - `cargo machete check --workspace`
 - `cargo audit`
 - `cargo deny check advisories bans licenses sources`
-- WASM build and deploy artifact for all 5 WASM apps (with Ketcher fetch for
+- WASM build and deploy artifact for all 7 WASM apps (with Ketcher fetch for
   `lotus-explore-rs`)
-
-## AI and agent docs
-
-- [`AI_AGENT_GUIDE.md`](./AI_AGENT_GUIDE.md)
-- [`PROJECT_METADATA.json`](./PROJECT_METADATA.json)
-- [`apps/lotus-explore-rs/SKILLS.md`](./apps/lotus-explore-rs/SKILLS.md)
 
 ## Governance
 
 - Contributing: [`.github/CONTRIBUTING.md`](./.github/CONTRIBUTING.md)
-- AI contributions: [`.github/CONTRIBUTING_AI.md`](./.github/CONTRIBUTING_AI.md)
+- AI contributions: [`.github/ai/CONTRIBUTING_AI.md`](./.github/ai/CONTRIBUTING_AI.md)
 - Security: [`.github/SECURITY.md`](./.github/SECURITY.md)
 - Release process:
   [`.github/RELEASE_CHECKLIST.md`](./.github/RELEASE_CHECKLIST.md)

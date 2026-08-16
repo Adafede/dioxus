@@ -22,7 +22,9 @@ test:
 doc:
 	cargo doc --workspace --no-deps --locked
 
-# WASM apps only — never `--workspace` (lotus-api/axum is non-wasm).
+# WASM apps only — never `--workspace --target wasm32` (lotus-api/axum is
+# non-wasm, and crates/upload has wasm-incompatible unit patterns in
+# download.rs). One `cargo check -p <app>` per app keeps the wasm build green.
 wasm:
 	cargo check -p cxsmiles-yoga --target wasm32-unknown-unknown --locked
 	cargo check -p index --target wasm32-unknown-unknown --locked
@@ -45,13 +47,26 @@ build app:
 lotus-api:
 	cargo run --locked -p lotus-api
 
-# ── Supply-chain hygiene ──────────────────────────────────────────────────────
+# ── Supply-chain hygiene (skip gracefully if a tool is not installed) ─────────
 
 machete:
-	cargo machete
-
-deny:
-	cargo deny check advisories bans licenses sources
+	@command -v cargo-machete >/dev/null 2>&1 && cargo machete check --workspace || echo "cargo-machete not installed; skipping"
 
 audit:
-	cargo audit
+	@command -v cargo-audit >/dev/null 2>&1 && cargo audit || echo "cargo-audit not installed; skipping"
+
+deny:
+	@command -v cargo-deny >/dev/null 2>&1 && cargo deny check advisories bans licenses sources || echo "cargo-deny not installed; skipping"
+
+outdated:
+	@command -v cargo-outdated >/dev/null 2>&1 && cargo outdated --workspace --exit-code 1 || echo "cargo-outdated not installed; skipping"
+
+# README sync: regenerate each app/crate README from README.tpl + source `//!`
+# doc comments, lint, and diff against the checked-in README.md. If it reports
+# "out of date", fix the source doc comments, then `just readme` to regenerate.
+readme:
+	@command -v cargo-readme >/dev/null 2>&1 || { echo "cargo-readme not installed; skipping"; exit 0; }
+	@command -v panache >/dev/null 2>&1 || { echo "panache not installed; skipping"; exit 0; }
+	@for d in crates/lotus crates/ui crates/upload apps/cxsmiles-yoga apps/index apps/lotus-api apps/lotus-explore-rs apps/json-count-rs apps/lipid-selecto-rs apps/mgf-precursor-erro-rs apps/smellfish-rs; do \
+	  (cd $$d && cargo readme -t README.tpl -o /tmp/readme_panache.md 2>/dev/null && panache lint /tmp/readme_panache.md && diff -q /tmp/readme_panache.md README.md > /dev/null 2>&1 || { echo "README.md out of date for $$d — run: (cd $$d && cargo readme -t README.tpl -o README.md)"; exit 1; }) || exit 1; \
+	done
