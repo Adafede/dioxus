@@ -88,3 +88,51 @@ cargo run --locked -p lotus-api
 - Architecture: `apps/lotus-explore-rs/docs/ARCHITECTURE.md`
 - Skills: `apps/lotus-explore-rs/SKILLS.md`
 - AI contribution guide: `.github/CONTRIBUTING_AI.md`
+- Agent efficiency guide: `.github/AI_EFFICIENCY_GUIDE.md`
+
+## Phase status
+
+- **Phase 1 (inventory + docs):** complete. Workspace map above revised;
+  `apps/lotus-explore-rs` dead triplicate style tree removed; `crates/ui` =
+  shared design system, `crates/upload` = shared upload crate, `crates/lotus` =
+  shared SPARQL core.
+- **Phase 2 (shared UI --- upload):** complete. `ui::UploadZone` extracted into
+  `crates/ui`; `json-count-rs`, `mgf-precursor-erro-rs`, and `lipid-selecto-rs`
+  migrated to it (the `StyleBuilder` inline drop-zone pattern is now deduped to
+  one place). `smellfish-rs` keeps its CSS-class CSV drop zone (different
+  aesthetic --- flagged for a class-based `UploadZone` variant if desired).
+- **Phase 2/6e (Footer/Card):** `ui::Footer` + `ui::Card` rich surface extracted
+  into `crates/ui`; migrating lotus-explore and remaining apps off local
+  reimplementations.
+- **Phase 3 (god-file splitting):** `mgf app.rs` (684→137) split complete —
+  `app/results.rs` (`ResultsPanel`), `app/browser.rs` (shared
+  `attempt_analysis_from_files` + `begin_analysis_from_blob`/`load_example_mgf`),
+  `app::example_load_button`; `app()` body < 100 lines,
+  `#[allow(clippy::too_many_lines)]` removed, `# Errors` doc added. `cxsmiles/app.rs`,
+  `mgf plotting.rs`→`plotting/{mod,data,scatter,diagnostics,cumulative,color}`,
+  `mgf parser.rs`→`parser/{mod,adduct,mass,block}`, `mgf metrics.rs`
+  (850→`metrics/{mod,merge}`) splits also complete. Completed this session:
+  `recalibration.rs` (833→`calibration/{types,parsing,calibration,generator}` + re-export
+  `mod.rs`) and `apps/lotus-explore-rs` `sections.rs` (521→`sections/{mod,styles}`); the
+  `plotting/diagnostics.rs` histogram `bin_count==0` div-by-zero is guarded. Remaining
+  larger god-files: `crates/lotus/src/sparql.rs` (840), `crates/ui/styles/lotus/responsive.rs`
+  (910), smellfish `app.rs`/`verdict.rs`, lotus-api `tests.rs` (tests only).
+- **Phase 4 (shared signals):** complete (verified) --- `mgf-precursor-erro-rs` +
+  `json-count-rs` declare signals via `ui::shared_signal!` / `shared_signals!`;
+  `cxsmiles-yoga`, `lipid-selecto-rs`, and `lotus-explore-rs` use plain
+  `let`/`let mut use_signal` (a workspace-wide grep confirms no
+  `#[cfg(target_arch = "wasm32")]` signal-declaration duplication remains in any
+  app).
+- **Phase 5 (typed errors):** complete (verified) --- `MgfError` +
+  `MgfErrorKind::Drawing` introduced in `apps/mgf-precursor-erro-rs/src/errors.rs`
+  and wired into the module tree; the 10 `render_*` SVG helpers in
+  `plotting/{scatter,diagnostics,cumulative}.rs` now return
+  `Result<String, MgfError>` (54 plotters `.unwrap()` → `?`); all early/final
+  returns wrapped in `Ok(...)`; all call sites in `app.rs`, `app/plots.rs`, and
+  `recalibration_demo.rs` degrade with `.unwrap_or_default()`; the 9 stale
+  `# Panics` doc blocks converted to `# Errors` (summary_text got a new
+  `# Errors` block); redundant `#[must_use]` dropped from the `Result`-returning
+  renderers; workspace `cargo clippy`/`cargo test`/`cargo check` + 3-app wasm all
+  green.
+- **Phase 6f (lotus-explore styles/services consolidation):** complete
+  (triplicate style dir removed; only LOTUS-specific helpers remain).
