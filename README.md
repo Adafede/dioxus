@@ -138,7 +138,8 @@ On every push to `main`:
 - `cargo clippy --workspace --all-targets --locked -- -D warnings`
 - `cargo test --workspace --all-targets --locked`
 - `cargo check` for all 7 WASM apps (`cxsmiles-yoga`, `index`, `json-count-rs`,
-  `lipid-selecto-rs`, `lotus-explore-rs`, `mgf-precursor-erro-rs`, `smellfish-rs`)
+  `lipid-selecto-rs`, `lotus-explore-rs`, `mgf-precursor-erro-rs`,
+  `smellfish-rs`)
 - `cargo doc --workspace --no-deps --locked`
 - `cargo machete check --workspace`
 - `cargo audit`
@@ -148,7 +149,7 @@ On every push to `main`:
 
 ## MCP
 
-A project-level MCP config lives at `.mcp/mcp.json` — the canonical
+A project-level MCP config lives at `.mcp/mcp.json` --- the canonical
 `mcpServers` convention (read by Claude Code / Cline). It registers a read-only
 filesystem MCP server exposing the AI collaboration guides (`.github/ai/`) and
 the lotus-explore architecture docs (`apps/lotus-explore-rs/docs/`) as MCP
@@ -159,7 +160,8 @@ discovery.
 ## Governance
 
 - Contributing: [`.github/CONTRIBUTING.md`](./.github/CONTRIBUTING.md)
-- AI contributions: [`.github/ai/CONTRIBUTING_AI.md`](./.github/ai/CONTRIBUTING_AI.md)
+- AI contributions:
+  [`.github/ai/CONTRIBUTING_AI.md`](./.github/ai/CONTRIBUTING_AI.md)
 - Security: [`.github/SECURITY.md`](./.github/SECURITY.md)
 - Release process:
   [`.github/RELEASE_CHECKLIST.md`](./.github/RELEASE_CHECKLIST.md)

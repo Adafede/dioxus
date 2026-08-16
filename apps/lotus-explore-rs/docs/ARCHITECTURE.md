@@ -43,5 +43,5 @@ api client → dto mapper → repository → service → state controller → co
 
 ## Agent tooling
 
-- `.github/ai/` — AI collaboration guides, the contribution protocol, and the
+- `.github/ai/` --- AI collaboration guides, the contribution protocol, and the
   incident postmortem for the lotus-explore Qlever 429-storm fix.

@@ -140,41 +140,43 @@ cargo run --locked -p lotus-api
 
 ## Incident: lotus-explore Qlever 429 storm (FIXED)
 
-**Symptom:** a single `Gentiana lutea` search (and curation) produced a permanent
-IP 429 from `https://qlever.dev/api/wikidata`. Captured logs (15:00:06–07) showed
-5 SPARQL POSTs within ~150 ms (3×200 in 30–135 ms + 2×429 in 24–25 ms).
+**Symptom:** a single `Gentiana lutea` search (and curation) produced a
+permanent IP 429 from `https://qlever.dev/api/wikidata`. Captured logs
+(15:00:06--07) showed 5 SPARQL POSTs within \~150 ms (3×200 in 30--135 ms +
+2×429 in 24--25 ms).
 
-**Root cause:** an anonymous-quota *burst*, not heavy queries — the 200s returned
-in 30–135 ms. Two sites fired Qlever POSTs concurrently:
-1. **search** — `try_join!(count, display)` ran the COUNT(DISTINCT …) over the full
-   base ("dumb pagination" request) *concurrently* with the display query, and the
-   429 retry re-ran the whole pipeline with only a short backoff, amplifying it.
-2. **curation** — `buffer_unordered(CURATION_CONCURRENCY = 8)` fired up to 8 rows'
-   Qlever POSTs at the same time (compound fetch + ASK per row).
-(The lotus-API fast-path was ALSO on by default — `ExecutionStrategy` defaulted to
-`ApiFirst` — so every search/429-retry wasted a request on the absent API
+**Root cause:** an anonymous-quota *burst*, not heavy queries --- the 200s
+returned in 30--135 ms. Two sites fired Qlever POSTs concurrently: 1. **search** ---
+`try_join!(count, display)` ran the COUNT(DISTINCT ...) over the full base
+("dumb pagination" request) *concurrently* with the display query, and the 429
+retry re-ran the whole pipeline with only a short backoff, amplifying it. 2.
+**curation** --- `buffer_unordered(CURATION_CONCURRENCY = 8)` fired up to 8
+rows' Qlever POSTs at the same time (compound fetch + ASK per row). (The
+lotus-API fast-path was ALSO on by default --- `ExecutionStrategy` defaulted to
+`ApiFirst` --- so every search/429-retry wasted a request on the absent API
 "builder error" path. That is why "it was working 48 h ago".)
 
-**Fix (all gated green):**
-- **API off by default.** `ExecutionStrategy::Direct` is the default for
-  interactive searches; `ApiFirst` only runs when a non-empty base URL is
-  explicitly configured (`crate::api::api_base_url().is_some_and(|b| !b.is_empty())`).
-  No dead "builder error" waste.
-- **Respect the endpoint on 429.** `rate_limit_backoff_ms` (1 s base, doubling,
-  capped at 10 s) + `plan_retry` caps 429 retries at **1**
-  (`effective_max = 1` for `ErrorClass::RateLimit`) instead of the generic 3.
-- **COUNT restored, but serialized + best-effort** (no `try_join!`): the display
-  query runs first; the COUNT (`query_counts_from_base`) fires strictly *after*,
-  sequentially, and a 429 on it is swallowed → `None` (falls back to `rows.len()`).
-  Rationale inline in `apps/lotus-explore-rs/src/features/explore/service/fetch_results/wasm.rs`.
-- **Curation serialized.** `CURATION_CONCURRENCY` `8 → 1` in
-  `features/curation/services/pipeline.rs`: rows are curated one at a time so
-  Qlever POSTs never overlap. (This also unblocks the mass/RDKit step, which was
-  being aborted mid-row when the row's Qlever POST 429'd.)
+**Fix (all gated green):** - **API off by default.** `ExecutionStrategy::Direct`
+is the default for interactive searches; `ApiFirst` only runs when a non-empty
+base URL is explicitly configured
+(`crate::api::api_base_url().is_some_and(|b| !b.is_empty())`). No dead "builder
+error" waste. - **Respect the endpoint on 429.** `rate_limit_backoff_ms` (1 s
+base, doubling, capped at 10 s) + `plan_retry` caps 429 retries at **1**
+(`effective_max = 1` for `ErrorClass::RateLimit`) instead of the generic 3. -
+**COUNT restored, but serialized + best-effort** (no `try_join!`): the display
+query runs first; the COUNT (`query_counts_from_base`) fires strictly *after*,
+sequentially, and a 429 on it is swallowed → `None` (falls back to
+`rows.len()`). Rationale inline in
+`apps/lotus-explore-rs/src/features/explore/service/fetch_results/wasm.rs`. -
+**Curation serialized.** `CURATION_CONCURRENCY` `8 → 1` in
+`features/curation/services/pipeline.rs`: rows are curated one at a time so
+Qlever POSTs never overlap. (This also unblocks the mass/RDKit step, which was
+being aborted mid-row when the row's Qlever POST 429'd.)
 
-No API key is available or required — the throttle is beaten by staying under the
-anonymous quota (one POST at a time), never by retrying harder.
+No API key is available or required --- the throttle is beaten by staying under
+the anonymous quota (one POST at a time), never by retrying harder.
 
-> Do not lower the 429 backoff or raise curation concurrency to "speed things up"
-> — that is exactly what re-triggers the permanent throttle. If Qlever throughput
-> must improve, add a client-side results cache, not more concurrent POSTs.
+> Do not lower the 429 backoff or raise curation concurrency to "speed things
+> up" --- that is exactly what re-triggers the permanent throttle. If Qlever
+> throughput must improve, add a client-side results cache, not more concurrent
+> POSTs.
