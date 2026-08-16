@@ -146,6 +146,16 @@ On every push to `main`:
 - WASM build and deploy artifact for all 7 WASM apps (with Ketcher fetch for
   `lotus-explore-rs`)
 
+## MCP
+
+A project-level MCP config lives at `.mcp/mcp.json` — the canonical
+`mcpServers` convention (read by Claude Code / Cline). It registers a read-only
+filesystem MCP server exposing the AI collaboration guides (`.github/ai/`) and
+the lotus-explore architecture docs (`apps/lotus-explore-rs/docs/`) as MCP
+resources, so agent tooling can read them through the Model Context Protocol.
+In-page web agents instead use the page's JSON-LD / `llms.txt` / `.well-known/`
+discovery.
+
 ## Governance
 
 - Contributing: [`.github/CONTRIBUTING.md`](./.github/CONTRIBUTING.md)

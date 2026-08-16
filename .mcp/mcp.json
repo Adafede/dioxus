@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "lotus-explore-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "apps/lotus-explore-rs/docs",
+        ".github/ai"
+      ],
+      "description": "Read-only MCP filesystem access to the LOTUS Explore architecture docs and the AI collaboration guides under .github/ai/.",
+      "disabled": false
+    }
+  }
+}
