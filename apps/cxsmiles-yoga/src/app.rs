@@ -225,7 +225,6 @@ fn results(res: &CxResult) -> Element {
 /// Returns an `Element` (`Result<VNode, RenderError>`); a render error from
 /// `rsx!` propagates to the nearest error boundary.
 pub fn app() -> Element {
-    let colors = ColorScheme::LIGHT;
     let mut input = use_signal(String::new);
     let mut result = use_signal(|| None::<CxResult>);
     let mut error = use_signal(|| None::<String>);
@@ -291,12 +290,11 @@ pub fn app() -> Element {
             { input_card(input, aromatic) }
 
             div { style: StyleBuilder::new().property("margin-bottom", "1rem").build(),
-                button {
-                    r#type: "button",
+                Button {
+                    label: "Generate",
+                    variant: ButtonVariant::Primary,
                     disabled: input.read().trim().is_empty(),
-                    onclick: on_generate,
-                    style: StyleBuilder::new().background_color(colors.accent).color(colors.bg).border("none").border_radius(Radius::LG).padding(&format!("{} {} {} {}", Spacing::SM, Spacing::MD, Spacing::SM, Spacing::MD)).font_size(Typography::UI).font_weight("600").cursor("pointer").build(),
-                    "Generate"
+                    onclick: Some(EventHandler::new(on_generate)),
                 }
             }
 

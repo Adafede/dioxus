@@ -85,3 +85,13 @@ One line per recommendation; append completion entries as work proceeds.
   btn-primary">` onto `ui::Button`. Theme stays consistent (smellfish already
   injects `ui::styles::bundled_lotus_styles`). Full gate green: fmt + clippy
   --workspace (11 crates) + test + 7 per-app wasm32 checks. (commit e87b395)
+- Phase 2, continued: migrated cxsmiles-yoga "Generate" button (app.rs) onto
+  `ui::Button` (Primary; its `background_color(colors.accent).color(colors.bg)`
+  equals ui::Button Primary) and dropped the now-unused `colors` local.
+  Combined with the smellish primary-button migration (commit e87b395) and the
+  `ui::Button` `onclick` enabler, 2 clean, color-consistent button dedups are
+  done. Remaining local buttons are not 1:1 ui::Button targets: cxsmiles
+  CopyCell (clipboard + "Copied!" state-swap widget), lipid & mgf "Load
+  example" buttons (neutral/non-accent colors #f8fafc, #2563eb).
+  lotus-explore still has ~11 local onclick buttons (sidebar/notice/loading/
+  form_inputs/sections/download_actions) to migrate; pending user scope call.
