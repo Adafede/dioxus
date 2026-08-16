@@ -20,7 +20,6 @@ use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
-#[cfg(target_arch = "wasm32")]
 mod processing;
 
 #[cfg(target_arch = "wasm32")]

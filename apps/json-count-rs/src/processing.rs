@@ -1,10 +1,131 @@
-//! Streaming JSON field scanner — wasm-only.
+//! Streaming JSON field scanner.
 //!
 //! Counts non-null values per top-level key of an uploaded JSON object using a
-//! streaming `BlobCursor`, keeping memory bounded for multi-gigabyte files.
+//! streaming `BlobCursor` (wasm), keeping memory bounded for multi-gigabyte
+//! files.
+//!
+//! The platform-agnostic counting core ([`count_non_null_leaves`]) is separated
+//! from the wasm-only streaming glue so it can be unit-tested natively.
 
+#[cfg(target_arch = "wasm32")]
 use crate::ColumnResult;
+
+// ── Pure, platform-agnostic JSON value counter ───────────────────────
+
+/// Counts the non-null leaf values inside a JSON value.
+///
+/// Mirrors the counting semantics of the wasm-only `count_value` function but
+/// operates on a complete `&str` rather than a streaming `BlobCursor`:
+/// - non-empty strings → 1
+/// - numbers, `true`, `false` → 1
+/// - `null` → 0
+/// - objects/arrays → sum of all contained values recursively
+///
+/// which counts every `"` occurrence as a leaf value).
+#[cfg_attr(not(test), allow(dead_code))]
+fn count_non_null_leaves(input: &str) -> u64 {
+    let (count, _) = scan_json_value(input.as_bytes(), 0);
+    count
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+fn skip_ws(input: &[u8], mut pos: usize) -> usize {
+    while pos < input.len() && matches!(input[pos], b' ' | b'\t' | b'\n' | b'\r') {
+        pos += 1;
+    }
+    pos
+}
+
+/// Scans a JSON value from `input` starting at `pos`, returning the count of
+/// non-null leaf values and the index past the value's final byte.
+#[cfg_attr(not(test), allow(dead_code))]
+fn scan_json_value(input: &[u8], start: usize) -> (u64, usize) {
+    let mut pos = skip_ws(input, start);
+    if pos >= input.len() {
+        return (0, pos);
+    }
+
+    match input[pos] {
+        b'"' => {
+            // String — count 1 if it has at least one character (or escape).
+            pos += 1; // consume opening quote
+            let mut non_empty = false;
+            let mut escaped = false;
+            while pos < input.len() {
+                let b = input[pos];
+                if escaped {
+                    escaped = false;
+                    non_empty = true;
+                    pos += 1;
+                } else if b == b'\\' {
+                    escaped = true;
+                    non_empty = true;
+                    pos += 1;
+                } else if b == b'"' {
+                    pos += 1;
+                    break;
+                } else {
+                    non_empty = true;
+                    pos += 1;
+                }
+            }
+            (u64::from(non_empty), pos)
+        }
+        b'{' | b'[' => {
+            let opener = input[pos];
+            let closer = if opener == b'{' { b'}' } else { b']' };
+            pos += 1;
+            let mut count = 0u64;
+
+            loop {
+                pos = skip_ws(input, pos);
+                if pos >= input.len() {
+                    break; // truncated — return what we have
+                }
+                if input[pos] == closer {
+                    pos += 1;
+                    break;
+                }
+                if input[pos] == b',' || input[pos] == b':' {
+                    pos += 1;
+                    continue;
+                }
+
+                let (child_count, consumed) = scan_json_value(input, pos);
+                count += child_count;
+                // Guard against infinite loop if scan_json_value fails to
+                // advance (e.g. on unexpected input that isn't a valid JSON
+                // value).
+                if consumed == pos {
+                    pos += 1;
+                } else {
+                    pos = consumed;
+                }
+            }
+            (count, pos)
+        }
+        _ => {
+            // Bare scalar: number, true, false, or null.
+            let token_start = pos;
+            while pos < input.len()
+                && !matches!(
+                    input[pos],
+                    b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']'
+                )
+            {
+                pos += 1;
+            }
+            let token = &input[token_start..pos];
+            if token == b"null" { (0, pos) } else { (1, pos) }
+        }
+    }
+}
+
+// ── Wasm-only streaming scanner ──────────────────────────────────────
+
+#[cfg(target_arch = "wasm32")]
 use dioxus::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use upload::{Blob, BlobCursor, UploadError};
 
 #[cfg(target_arch = "wasm32")]
@@ -414,4 +535,135 @@ async fn scan_blob_with_progress(
     }
 
     Ok(fields)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_string_counts_zero() {
+        assert_eq!(count_non_null_leaves(""), 0);
+    }
+
+    #[test]
+    fn empty_object_counts_zero() {
+        assert_eq!(count_non_null_leaves("{}"), 0);
+    }
+
+    #[test]
+    fn empty_array_counts_zero() {
+        assert_eq!(count_non_null_leaves("[]"), 0);
+    }
+
+    #[test]
+    fn flat_object_counts_values_and_keys() {
+        // Keys ("a", "b") count as 1 each; non-null value 1 counts as 1;
+        // null value counts as 0. Total: 3.
+        assert_eq!(count_non_null_leaves(r#"{"a":1,"b":null}"#), 3);
+    }
+
+    #[test]
+    fn all_null_object_counts_zero() {
+        // Keys are counted but null values are not.
+        assert_eq!(count_non_null_leaves(r#"{"a":null,"b":null}"#), 2);
+    }
+
+    #[test]
+    fn string_values_counted() {
+        // "a" (key), "hello" (value) → 2.
+        assert_eq!(count_non_null_leaves(r#"{"a":"hello"}"#), 2);
+    }
+
+    #[test]
+    fn empty_string_value_not_counted() {
+        // "a" (key) → 1; "" (empty value) → 0.
+        assert_eq!(count_non_null_leaves(r#"{"a":""}"#), 1);
+    }
+
+    #[test]
+    fn boolean_and_numbers_counted() {
+        // "a"(1), true(1), "b"(1), 42(1), "c"(1), false(1) → 6
+        assert_eq!(count_non_null_leaves(r#"{"a":true,"b":42,"c":false}"#), 6);
+    }
+
+    #[test]
+    fn null_counted_as_zero() {
+        // "a"(1), null(0) → 1
+        assert_eq!(count_non_null_leaves(r#"{"a":null}"#), 1);
+    }
+
+    #[test]
+    fn nested_object_counts_recursively() {
+        // "a"(1), 1(1), "e"(1), "f"(1), 42(1) → 5
+        assert_eq!(count_non_null_leaves(r#"{"a":1,"e":{"f":42}}"#), 5);
+    }
+
+    #[test]
+    fn array_values_counted() {
+        // "items"(1), 1(1), 2(1), 3(1) → 4
+        assert_eq!(count_non_null_leaves(r#"{"items":[1,2,3]}"#), 4);
+    }
+
+    #[test]
+    fn nested_arrays_counted() {
+        // "a"(1), "b"(1), 1(1), 2(1), 3(1) → 5
+        assert_eq!(count_non_null_leaves(r#"{"a":[1,2,"b":3]}"#), 5);
+    }
+
+    #[test]
+    fn deeply_nested_structure() {
+        // "a"(1), "b"(1), "c"(1), 1(1), null(0), "d"(1), true(1) → 6
+        let json = r#"{"a":{"b":{"c":[1,null]}},"d":true}"#;
+        assert_eq!(count_non_null_leaves(json), 6);
+    }
+
+    #[test]
+    fn escaped_strings_are_non_empty() {
+        // "a"(1), "hello\nworld"(1) → 2
+        assert_eq!(count_non_null_leaves(r#"{"a":"hello\nworld"}"#), 2);
+    }
+
+    #[test]
+    fn whitespace_between_tokens() {
+        let json = r#"{ "a" : 1 , "b" : null , "c" : true }"#;
+        // "a"(1), 1(1), "b"(1), null(0), "c"(1), true(1) → 5
+        assert_eq!(count_non_null_leaves(json), 5);
+    }
+
+    #[test]
+    fn top_level_scalar_counts() {
+        assert_eq!(count_non_null_leaves("42"), 1);
+        assert_eq!(count_non_null_leaves("true"), 1);
+        assert_eq!(count_non_null_leaves("false"), 1);
+        assert_eq!(count_non_null_leaves("null"), 0);
+    }
+
+    #[test]
+    fn top_level_empty_string_counts_zero() {
+        assert_eq!(count_non_null_leaves(r#"""#), 0);
+    }
+
+    #[test]
+    fn top_level_string_counts_one() {
+        assert_eq!(count_non_null_leaves(r#""hello""#), 1);
+    }
+
+    #[test]
+    fn trailing_whitespace_ignored() {
+        assert_eq!(count_non_null_leaves(r#"{"a":1}  "#), 2);
+    }
+
+    #[test]
+    fn truncated_container_returns_partial() {
+        // No closing brace — scanner reaches EOF and returns what it has.
+        // "a"(1), 1(1) → 2
+        assert_eq!(count_non_null_leaves(r#"{"a":1"#), 2);
+    }
+
+    #[test]
+    fn deeply_nested_array() {
+        // "a"(1) + [[1]] → "a"(1), inner value 1(1) = 2 (arrays themselves don't count)
+        assert_eq!(count_non_null_leaves(r#"{"a":[[1]]}"#), 2);
+    }
 }
