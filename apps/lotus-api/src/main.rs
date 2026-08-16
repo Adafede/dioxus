@@ -3,14 +3,15 @@
 
 //! `lotus-api` — native HTTP API for LOTUS explorer search and export.
 //!
-//! Wraps the `lotus` and `upload` shared crates behind Warp endpoints, providing
+//! Wraps the `lotus` and `upload` shared crates behind Axum endpoints, providing
 //! species/occurrence search, CSV/JSON/RDF export via `Query` or local SPARQL,
 //! and runtime metrics.
 //!
 //! # Run locally
 //!
 //! ```bash
-//! LOTUS_API_BASE=http://localhost:3030 cargo run -p lotus-api
+//! cargo run -p lotus-api -- --help                       # list flags; each falls back to $VAR
+//! cargo run -p lotus-api -- --host 0.0.0.0 --port 8787
 //! ```
 //!
 //! # Endpoints

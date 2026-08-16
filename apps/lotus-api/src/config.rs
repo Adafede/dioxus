@@ -7,6 +7,7 @@
 //! with sensible defaults and validation.
 
 use axum::http::HeaderValue;
+use clap::Parser;
 use std::{net::SocketAddr, time::Duration};
 use tower_http::cors::{Any, CorsLayer};
 
@@ -21,9 +22,67 @@ pub struct AppConfig {
     pub(crate) cors_allowed_origins: Option<Vec<HeaderValue>>,
 }
 
+/// Command-line and environment configuration for `lotus-api`.
+///
+/// Each field is resolved by clap in priority order: an explicit `--flag`, then
+/// the matching `VAR` environment variable, then a default value. `from_env`
+/// then hands the resolved strings straight to `from_provider`, so parsing,
+/// clamping and CORS validation live in exactly one place and the unit tests
+/// (which call `from_provider` directly) are unaffected.
+#[derive(Debug, Clone, Parser)]
+#[command(
+    name = "lotus-api",
+    version,
+    about = "OpenAPI service for LOTUS explorer search and export workflows",
+    long_about = None,
+)]
+struct Cli {
+    #[arg(long, env = "HOST", default_value = "127.0.0.1")]
+    host: String,
+    #[arg(long, env = "PORT", default_value = "8787")]
+    port: String,
+    #[arg(long, env = "DEFAULT_LIMIT", default_value = "500")]
+    default_limit: String,
+    #[arg(long, env = "REQUEST_TIMEOUT_MS", default_value = "45000")]
+    request_timeout_ms: String,
+    #[arg(long, env = "MAX_CONCURRENCY", default_value = "256")]
+    max_concurrency: String,
+    #[arg(long, env = "MAX_BODY_BYTES", default_value = "1048576")]
+    max_body_bytes: String,
+    #[arg(long, env = "APP_ENV", default_value = "development")]
+    app_env: String,
+    #[arg(long, env = "CORS_ALLOWED_ORIGINS")]
+    cors_allowed_origins: Option<String>,
+}
+
+impl Cli {
+    /// Adapter that lets `AppConfig::from_provider` read the clap-resolved value
+    /// for a given env-var name (`HOST`, `PORT`, ...), so the existing
+    /// validation path is reused verbatim.
+    fn get(&self, name: &str) -> Option<String> {
+        match name {
+            "HOST" => Some(self.host.clone()),
+            "PORT" => Some(self.port.clone()),
+            "DEFAULT_LIMIT" => Some(self.default_limit.clone()),
+            "REQUEST_TIMEOUT_MS" => Some(self.request_timeout_ms.clone()),
+            "MAX_CONCURRENCY" => Some(self.max_concurrency.clone()),
+            "MAX_BODY_BYTES" => Some(self.max_body_bytes.clone()),
+            "APP_ENV" => Some(self.app_env.clone()),
+            "CORS_ALLOWED_ORIGINS" => self.cors_allowed_origins.clone(),
+            _ => None,
+        }
+    }
+}
+
 impl AppConfig {
+    /// Build configuration from the process command line and environment.
+    ///
+    /// Each value is resolved by clap (explicit `--flag`, then `VAR` env, then
+    /// a default) and then passed to `from_provider` for parsing, clamping and
+    /// CORS validation — unchanged from the env-only behaviour.
     pub(crate) fn from_env() -> Result<Self, String> {
-        Self::from_provider(|name| std::env::var(name).ok())
+        let cli = Cli::parse();
+        Self::from_provider(|name| cli.get(name))
     }
 
     pub(crate) fn from_provider<F>(mut get: F) -> Result<Self, String>
