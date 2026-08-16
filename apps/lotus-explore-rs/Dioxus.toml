@@ -13,7 +13,7 @@ title = "LOTUS Linked Open Data Explorer"
 
 [web.watcher]
 reload_html = true
-watch_path = ["src", "public", "../../crates/shared/src"]
+watch_path = ["src", "public", "../../crates/lotus/src", "../../crates/ui/src", "../../crates/upload/src"]
 
 [[web.proxy]]
 # Proxy API requests to the lotus-api backend to avoid CORS issues in development
