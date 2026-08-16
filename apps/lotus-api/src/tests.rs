@@ -15,8 +15,9 @@ use crate::{
     ApiDoc, build_router,
     config::AppConfig,
     query_logic::{apply_request, normalized_structure_input},
-    state::AppState,
-    state::{CachedExportResponse, prune_cache},
+    state::{
+        AppState, CachedExportResponse, export_inflight_cell, prune_cache, search_inflight_cell,
+    },
     types::{ExportUrlResponse, SearchRequest},
 };
 use lotus::export::{self, ExportFormat};
@@ -619,4 +620,102 @@ fn apply_request_clamps_similarity_threshold() {
     // threshold = 0.5 is within range
     let c = apply_request(&make_req(0.5)).expect("valid threshold");
     assert!((c.smiles_threshold - 0.5).abs() < f64::EPSILON);
+}
+
+// ── lotus-api .expect() audit (#8) ─────────────────────────────────────────────
+//
+// The four production `.expect("... inflight mutex")` calls in `state.rs` were
+// converted to `Result<(…, ApiError)>` with `.map_err(|_| ApiError::upstream(...))`.
+// These tests verify that a poisoned mutex now yields a typed 500 error instead
+// of a panic.
+
+/// Helper: poison a `Mutex` by spawning a thread that locks it and panics.
+fn poison_inflight_mutex<T: std::marker::Send + 'static>(
+    mutex: &std::sync::Arc<std::sync::Mutex<T>>,
+) {
+    let mutex_clone = std::sync::Arc::clone(mutex);
+    std::thread::spawn(move || {
+        let _guard = mutex_clone.lock().unwrap();
+        panic!("intentional poison for test");
+    })
+    .join()
+    .expect_err("poisoning thread should panic");
+}
+
+#[test]
+fn search_inflight_cell_returns_error_on_poisoned_mutex() {
+    let config = test_config();
+    let state = AppState::new(&config);
+    poison_inflight_mutex(&state.search_inflight);
+
+    let result = search_inflight_cell(&state, "test-key");
+    let err = result.expect_err("poisoned mutex should return Err, not panic");
+    assert_eq!(err.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(err.message.contains("inflight"));
+}
+
+#[test]
+fn export_inflight_cell_returns_error_on_poisoned_mutex() {
+    let config = test_config();
+    let state = AppState::new(&config);
+    poison_inflight_mutex(&state.export_inflight);
+
+    let result = export_inflight_cell(&state, "test-key");
+    let err = result.expect_err("poisoned mutex should return Err, not panic");
+    assert_eq!(err.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(err.message.contains("inflight"));
+}
+
+#[tokio::test]
+async fn search_handler_returns_500_on_poisoned_inflight_mutex() {
+    let config = test_config();
+    let state = AppState::new(&config);
+    poison_inflight_mutex(&state.search_inflight);
+
+    let app = build_router(config.max_body_bytes, &config, state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/search")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"taxon":"*"}"#))
+                .expect("request"),
+        )
+        .await
+        .expect("response");
+
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(content_type_header(&response).starts_with("application/json"));
+    let json = body_json(response).await;
+    let msg = json["error"].as_str().expect("error message");
+    assert!(msg.contains("inflight"));
+}
+
+#[tokio::test]
+async fn export_handler_returns_500_on_poisoned_inflight_mutex() {
+    let config = test_config();
+    let state = AppState::new(&config);
+    poison_inflight_mutex(&state.export_inflight);
+
+    let app = build_router(config.max_body_bytes, &config, state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/export-url")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"taxon":"*"}"#))
+                .expect("request"),
+        )
+        .await
+        .expect("response");
+
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(content_type_header(&response).starts_with("application/json"));
+    let json = body_json(response).await;
+    let msg = json["error"].as_str().expect("error message");
+    assert!(msg.contains("inflight"));
 }

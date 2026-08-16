@@ -123,7 +123,7 @@ async fn cached_search_response(
         .fetch_add(1, Ordering::Relaxed);
     log::debug!("event=search state=cache_miss");
 
-    let (cell, is_leader) = search_inflight_cell(state, &cache_key);
+    let (cell, is_leader) = search_inflight_cell(state, &cache_key)?;
     if is_leader {
         state
             .metrics
@@ -243,7 +243,7 @@ async fn cached_export_urls(
         .fetch_add(1, Ordering::Relaxed);
     log::debug!("event=export state=cache_miss");
 
-    let (cell, is_leader) = export_inflight_cell(state, &prepared.cache_key);
+    let (cell, is_leader) = export_inflight_cell(state, &prepared.cache_key)?;
     if is_leader {
         state
             .metrics

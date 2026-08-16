@@ -3,6 +3,7 @@
 
 use crate::{
     config::AppConfig,
+    errors::ApiError,
     types::{ExportUrlResponse, HealthResponse, SearchResponse},
 };
 use sha2::{Digest, Sha256};
@@ -274,27 +275,30 @@ pub fn export_cache_put(state: &AppState, key: String, value: ExportUrlResponse)
     }
 }
 
-pub fn search_inflight_cell(state: &AppState, key: &str) -> (InFlightSearch, bool) {
+pub fn search_inflight_cell(
+    state: &AppState,
+    key: &str,
+) -> Result<(InFlightSearch, bool), ApiError> {
     // `Mutex::lock` errors only on poison (a holder thread panicked while
-    // holding the guard). These critical sections are infallible, so a poisoned
-    // lock is treated as a hard failure — `into_inner()` recovery would mask
-    // the underlying panic.
+    // holding the guard). Previously these were `.expect(...)` calls which
+    // would abort the request thread. Now they are converted to a typed
+    // `ApiError` (500) so the request fails gracefully instead of crashing.
     let existing = state
         .search_inflight
         .lock()
-        .expect("search inflight mutex")
+        .map_err(|_| ApiError::internal("search inflight mutex poisoned"))?
         .get(key)
         .cloned();
     if let Some(existing) = existing {
-        return (existing, false);
+        return Ok((existing, false));
     }
     let cell = Arc::new(OnceCell::new());
     state
         .search_inflight
         .lock()
-        .expect("search inflight mutex")
+        .map_err(|_| ApiError::internal("search inflight mutex poisoned"))?
         .insert(key.to_string(), cell.clone());
-    (cell, true)
+    Ok((cell, true))
 }
 
 pub fn search_inflight_remove(state: &AppState, key: &str, cell: &InFlightSearch, is_leader: bool) {
@@ -310,24 +314,27 @@ pub fn search_inflight_remove(state: &AppState, key: &str, cell: &InFlightSearch
     }
 }
 
-pub fn export_inflight_cell(state: &AppState, key: &str) -> (InFlightExport, bool) {
-    // As in `search_inflight_cell`: a poisoned lock is a hard failure.
+pub fn export_inflight_cell(
+    state: &AppState,
+    key: &str,
+) -> Result<(InFlightExport, bool), ApiError> {
+    // As in `search_inflight_cell`: a poisoned lock becomes a typed error.
     let existing = state
         .export_inflight
         .lock()
-        .expect("export inflight mutex")
+        .map_err(|_| ApiError::internal("export inflight mutex poisoned"))?
         .get(key)
         .cloned();
     if let Some(existing) = existing {
-        return (existing, false);
+        return Ok((existing, false));
     }
     let cell = Arc::new(OnceCell::new());
     state
         .export_inflight
         .lock()
-        .expect("export inflight mutex")
+        .map_err(|_| ApiError::internal("export inflight mutex poisoned"))?
         .insert(key.to_string(), cell.clone());
-    (cell, true)
+    Ok((cell, true))
 }
 
 pub fn export_inflight_remove(state: &AppState, key: &str, cell: &InFlightExport, is_leader: bool) {
