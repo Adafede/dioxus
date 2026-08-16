@@ -175,18 +175,16 @@ pub fn AddRowCard(
                 }
             }
             div { style: curation_actions_style(false),
-                button {
-                    style: crate::ui::style_constants::primary_buttons::button_primary_sm_style(),
-                    r#type: "button",
-                    onclick: move |_| on_add_row.call(()),
-                    "{button_add_row(locale)}"
+                Button {
+                    label: button_add_row(locale).to_string(),
+                    variant: ButtonVariant::Primary,
+                    onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_add_row.call(()))),
                 }
-                button {
-                    style: crate::ui::style_constants::primary_buttons::button_primary_sm_style(),
-                    r#type: "button",
+                Button {
+                    label: button_load_example_rows(locale).to_string(),
+                    variant: ButtonVariant::Primary,
                     disabled: processing,
-                    onclick: move |_| on_load_examples.call(()),
-                    "{button_load_example_rows(locale)}"
+                    onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_load_examples.call(()))),
                 }
             }
         }
@@ -369,12 +367,11 @@ pub fn QuickStatementsCard(
                     readonly: true,
                     value: "{qs_ref.dependencies}",
                 }
-                button {
-                    style: crate::ui::style_constants::primary_buttons::button_primary_block_style(),
-                    r#type: "button",
+                Button {
+                    label: button_second_pass(locale).to_string(),
+                    variant: ButtonVariant::Primary,
                     disabled: processing,
-                    onclick: move |_| on_second_pass.call(()),
-                    "{button_second_pass(locale)}"
+                    onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_second_pass.call(()))),
                 }
             }
 

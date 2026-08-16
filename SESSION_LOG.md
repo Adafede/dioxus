@@ -95,3 +95,15 @@ One line per recommendation; append completion entries as work proceeds.
   example" buttons (neutral/non-accent colors #f8fafc, #2563eb).
   lotus-explore still has ~11 local onclick buttons (sidebar/notice/loading/
   form_inputs/sections/download_actions) to migrate; pending user scope call.
+
+- Phase 2, lotus-explore: migrated 4 accent "Primary" buttons onto ui::Button —
+  SearchButton (form_inputs.rs) and add-row / load-examples / second-pass
+  (sections/mod.rs). All used lotus --btn-primary-bg = #0b5cab = ui::Button
+  Primary accent (color-consistent). Removed now-unused primary_buttons
+  re-exports (button_primary_style, button_primary_block_style) from
+  ui/style_constants.rs. Remaining lotus-explore locals correctly NOT migrated:
+  sidebar toggle (ARIA aria_controls/expanded/pressed + dynamic label), the
+  "generate" button (dynamic processing label), parse-tsv / remove-row /
+  load buttons (neutral/non-accent: button_sm/xs_style, #f8fafc/#cbd5e1),
+  and download_actions + lotus copy_button (title/aria_label/title +
+  CopyButton clipboard state-swap widget). (commit next)

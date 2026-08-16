@@ -11,6 +11,7 @@
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use dioxus::prelude::*;
+use ui::prelude::{Button, ButtonVariant};
 
 /// Generic reusable text input component
 #[component]
@@ -105,12 +106,10 @@ pub fn SearchButton(on_click: EventHandler<()>) -> Element {
     let locale = use_locale();
 
     rsx! {
-        button {
-            r#type: "button",
-            aria_label: "{t(locale, TextKey::RunSearch)}",
-            style: crate::ui::style_constants::primary_buttons::button_primary_style(),
-            onclick: move |_| on_click.call(()),
-            "{t(locale, TextKey::Search)}"
+        Button {
+            label: t(locale, TextKey::Search).to_string(),
+            variant: ButtonVariant::Primary,
+            onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_click.call(()))),
         }
     }
 }

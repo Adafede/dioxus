@@ -173,8 +173,7 @@ pub mod notices {
 /// Backward compat: Primary buttons (generic UI)
 pub mod primary_buttons {
     pub use ui::styles::{
-        button_filters_toggle_style, button_primary_block_style, button_primary_sm_style,
-        button_primary_style, button_sm_style, button_xs_style,
+        button_filters_toggle_style, button_primary_sm_style, button_sm_style, button_xs_style,
     };
 }
 
