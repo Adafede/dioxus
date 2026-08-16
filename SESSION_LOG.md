@@ -78,3 +78,10 @@ One line per recommendation; append completion entries as work proceeds.
   and `app()` is a plain `pub fn app() -> Element` (no `#[component]`, to avoid
   E0255 with `pub mod app;` + `pub use app::app`).
 - Native `Signal` storage type used (`Signal<T, UnsyncStorage>`).
+- Phase 2 enabler: `crates/ui::Button` gained an optional `onclick` prop
+  (`Option<EventHandler<Event<MouseData>>>`, default None) and `ButtonVariant`
+  was re-exported from `ui::components`/`ui::prelude`. `smellfish-rs` primary
+  "Analyze pasted SMILES" button migrated off its local `<button class="btn
+  btn-primary">` onto `ui::Button`. Theme stays consistent (smellfish already
+  injects `ui::styles::bundled_lotus_styles`). Full gate green: fmt + clippy
+  --workspace (11 crates) + test + 7 per-app wasm32 checks. (commit e87b395)
