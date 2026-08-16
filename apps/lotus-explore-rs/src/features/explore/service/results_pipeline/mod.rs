@@ -112,8 +112,10 @@ mod tests {
                 .expect("interactive pipeline should fetch results");
 
             assert_eq!(outcome.rows.len(), 2);
+            // Count is now local (rows.len()), not a separate COUNT POST, so
+            // total_stats is None and total_matches reflects the rows fetched.
             assert_eq!(outcome.total_matches, Some(2));
-            assert!(outcome.total_stats.is_some());
+            assert!(outcome.total_stats.is_none());
         });
     }
 }

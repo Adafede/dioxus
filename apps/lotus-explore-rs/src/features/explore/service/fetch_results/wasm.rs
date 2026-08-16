@@ -7,9 +7,7 @@ use crate::repositories::LotusRepository;
 use crate::repositories::RepositoryError;
 use crate::services::search_telemetry as telemetry;
 use crate::sparql;
-use futures::try_join;
 use lotus::transport::ResponseBody;
-use std::time::Duration;
 
 pub(super) async fn fetch_results<R: LotusRepository>(
     repo: &R,
@@ -17,42 +15,30 @@ pub(super) async fn fetch_results<R: LotusRepository>(
     metrics: &mut SearchMetrics,
     on_processing: &impl Fn(),
 ) -> Result<FetchResult, DomainError> {
-    let count_query = queries::query_counts_from_base(plan.execution_query);
-    let results_query = queries::query_with_limit(plan.execution_query, plan.display_limit);
-
-    let count_timer = perf::start_timer("LOTUS:results_count_query");
+    // A search issues exactly ONE Qlever POST: the display query. The total is
+    // derived locally from the returned rows (`rows.len()`) — "kept the results
+    // of the query and counted them", as it was before a separate COUNT query
+    // was introduced.
+    //
+    // The previous COUNT (`query_counts_from_base`) re-ran the full base —
+    // including REFERENCE_METADATA_OPTIONAL/PROPERTIES_OPTIONAL with NO LIMIT,
+    // wrapped in COUNT(DISTINCT CONCAT(...)) over every matched triple. It was
+    // the heavy request that drove Qlever's anonymous quota into a permanent
+    // 429, and running it concurrently with the display query (`try_join!`)
+    // created the burst that 429'd. Both the concurrent fan-out and the extra
+    // POST are removed: there is now a single, sequential Qlever POST per search,
+    // and the count is local (matching the native path, which derives totals
+    // from the fetched CSV via `DatasetStats::from_entries(rows)`).
     let results_timer = perf::start_timer("LOTUS:results_page_query");
-    // The display query is authoritative: its failure fails the search (and is
-    // subject to backoff). The COUNT query is the expensive "dumb pagination"
-    // request — it is best-effort, so a 429 on it must NOT fail/retry the whole
-    // search, which is what storms Qlever into a permanent throttle.
-    let (counts_csv, results_csv): (Option<ResponseBody>, ResponseBody) = try_join!(
-        async {
-            // Count transport errors are swallowed: `None` means "no count".
-            Ok::<_, DomainError>(repo.sparql_body(&count_query).await.ok())
-        },
-        async {
-            repo.sparql_body(&results_query)
-                .await
-                .map_err(DomainError::transport_at(QueryStage::ResultsQuery))
-        },
-    )?;
-    let count_elapsed = perf::end_timer("LOTUS:results_count_query", count_timer);
+    let results_query = queries::query_with_limit(plan.execution_query, plan.display_limit);
+    let results_csv = repo
+        .sparql_body(&results_query)
+        .await
+        .map_err(DomainError::transport_at(QueryStage::ResultsQuery))?;
     let results_elapsed = perf::end_timer("LOTUS:results_page_query", results_timer);
-    let overlapped_network_elapsed = count_elapsed.max(results_elapsed);
-    metrics.add_parallel_network(overlapped_network_elapsed, 2);
+    metrics.add_network(results_elapsed);
 
     on_processing();
-
-    let (total_stats, count_parse_elapsed) = counts_csv.map_or((None, Duration::ZERO), |c| {
-        let count_parse_timer = perf::start_timer("LOTUS:results_count_parse");
-        let parsed = sparql::parse_counts_csv_bytes(&c).ok();
-        let elapsed = perf::end_timer("LOTUS:results_count_parse", count_parse_timer);
-        if parsed.is_some() {
-            metrics.add_parse(elapsed);
-        }
-        (parsed, elapsed)
-    });
 
     let results_parse_timer = perf::start_timer("LOTUS:results_page_parse");
     let rows = sparql::parse_compounds_csv_display_bytes(&results_csv, plan.display_limit)
@@ -60,20 +46,21 @@ pub(super) async fn fetch_results<R: LotusRepository>(
     let results_parse_elapsed = perf::end_timer("LOTUS:results_page_parse", results_parse_timer);
     metrics.add_parse(results_parse_elapsed);
 
-    let total_matches = total_stats.as_ref().map(|s| s.n_entries);
-    let display_capped_rows =
-        total_matches.map_or(rows.len() >= plan.display_limit, |t| t > rows.len());
+    // Local count from rows already in hand — no second Qlever POST, so no extra
+    // chance to trip the anonymous rate limit. This equals the true total for
+    // taxa that fit in a single page (the common curation case).
+    let total_matches = Some(rows.len());
+    let display_capped_rows = rows.len() >= plan.display_limit;
+
     telemetry::results_fetch_done(
-        overlapped_network_elapsed
-            .saturating_add(count_parse_elapsed)
-            .saturating_add(results_parse_elapsed),
+        results_elapsed.saturating_add(results_parse_elapsed),
         rows.len(),
         total_matches.unwrap_or(rows.len()),
     );
 
     Ok(FetchResult {
         rows,
-        total_stats,
+        total_stats: None,
         total_matches,
         display_capped_rows,
     })

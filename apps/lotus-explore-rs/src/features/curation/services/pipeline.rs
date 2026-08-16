@@ -9,7 +9,13 @@ use crate::i18n::Locale;
 use futures::stream::{self, StreamExt};
 use std::future::Future;
 
-const CURATION_CONCURRENCY: usize = 8;
+// Curation drives Qlever with several POSTs per row (compound fetch, ASK, ...).
+// QLever's *anonymous* quota rejects bursts (the 15:00 storm was 5 POSTs in
+// ~150ms → two 429s), so rows are curated strictly ONE AT A TIME: each row's
+// Qlever POSTs are serialized, which is the only way to stay under the quota
+// without an API key. Non-Qlever work per row (RDKit SMILES handling) still
+// pipelines naturally within the single in-flight row.
+const CURATION_CONCURRENCY: usize = 1;
 
 pub async fn curate_rows<F, Fut>(
     locale: Locale,
