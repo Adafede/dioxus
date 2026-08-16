@@ -18,7 +18,7 @@ pub struct RawRow {
 
 /// A single chemist's check on a molecule — the kind of quick visual
 /// audit a natural-product chemist would do when eyeballing a structure.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChemistCheck {
     /// Short label, e.g. "NP-likeness", "Skeleton", "Oxygenation".
     pub name: &'static str,
@@ -31,7 +31,7 @@ pub struct ChemistCheck {
 /// A molecule row displayed in the UI.  Fields marked `#[cfg(...)]` are
 /// only needed during the wasm evidence pipeline; they exist so the struct
 /// can be fully populated and assessed in the browser.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MoleculeRow {
     pub index: usize,
     pub label: String,
@@ -106,7 +106,7 @@ pub struct DatasetMotifContext {
 
 /// `RDKit` molecular descriptors for structure analysis.
 /// These are used for ring family classification and NP-likeness evidence.
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[cfg(any(test, target_arch = "wasm32"))]
 pub struct RdkitDescriptors {
     /// Fraction of sp³-hybridized carbons (0–1). High values indicate aliphatic character.
@@ -182,7 +182,7 @@ pub struct RdkitInspectResponse {
     pub error: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 /// Response from `RDKit`'s molecule inspection, containing structural analysis results.
 pub struct RdkitMotifHit {
     /// Human-readable motif label (e.g. "Steroid fused ring", "Flavone ring")
