@@ -94,6 +94,8 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - name: Check all WASM apps
         run: |
+          cargo check -p cxsmiles-yoga --target wasm32-unknown-unknown --locked
+          cargo check -p index --target wasm32-unknown-unknown --locked
           cargo check -p json-count-rs --target wasm32-unknown-unknown --locked
           cargo check -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --locked
           cargo check -p lipid-selecto-rs --target wasm32-unknown-unknown --locked
