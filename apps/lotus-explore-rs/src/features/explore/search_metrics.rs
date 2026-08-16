@@ -41,17 +41,6 @@ impl SearchMetrics {
         self.sparql_calls += 1;
     }
 
-    /// Record `calls` concurrent network calls whose wall time was `elapsed`.
-    ///
-    /// Use this when two requests ran in parallel via `futures::try_join!` so
-    /// that `network_ms` reflects wall time rather than the sum of both
-    /// individual durations.
-    #[cfg(target_arch = "wasm32")]
-    pub fn add_parallel_network(&mut self, elapsed: std::time::Duration, calls: usize) {
-        self.network_ms = elapsed.as_secs_f64().mul_add(1000.0, self.network_ms);
-        self.sparql_calls += calls;
-    }
-
     /// Record a completed parse phase.
     pub fn add_parse(&mut self, elapsed: std::time::Duration) {
         self.parse_ms = elapsed.as_secs_f64().mul_add(1000.0, self.parse_ms);

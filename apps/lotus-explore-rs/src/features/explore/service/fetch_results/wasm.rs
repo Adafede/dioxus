@@ -7,7 +7,6 @@ use crate::repositories::LotusRepository;
 use crate::repositories::RepositoryError;
 use crate::services::search_telemetry as telemetry;
 use crate::sparql;
-use lotus::transport::ResponseBody;
 
 pub(super) async fn fetch_results<R: LotusRepository>(
     repo: &R,
