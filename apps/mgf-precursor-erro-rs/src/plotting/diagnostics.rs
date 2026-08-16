@@ -118,7 +118,10 @@ pub fn render_recalibration_diagnostic_histogram(
         .filter(|v| v.is_finite())
         .collect();
 
-    if all_errors.is_empty() {
+    if all_errors.is_empty() || bin_count == 0 {
+        // `bin_count == 0` would make `usize_to_f64(bin_count)` zero at the
+        // `bin_width` division below, yielding `NaN` rectangle coordinates and a
+        // garbage SVG — bail out with an empty canvas instead.
         return Ok(buffer);
     }
 
