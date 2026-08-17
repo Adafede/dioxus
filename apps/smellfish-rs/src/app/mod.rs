@@ -1,8 +1,8 @@
 //! Smellfish app shell — signal wiring + composition.
 //!
-//! The heavy rendering subtrees live in [`results`] (`Hero`, `MotifPanel`,
+//! The heavy rendering subtrees live in `results` (`Hero`, `MotifPanel`,
 //! `ResultsView`, `MoleculeCard`, `Footer`) and the upload dispatch lives in
-//! [`browser`] (`attempt_import` / `attempt_import_from_text`), mirroring the
+//! `browser` (`attempt_import` / `attempt_import_from_text`), mirroring the
 //! `mgf-precursor-erro-rs` `app/` layout. `app()` keeps only signal declaration,
 //! a handful of 2-line handler closures, and the inline `InputPanel` block
 //! (kept inline because its `oninput`/`onfocus` closures need the local

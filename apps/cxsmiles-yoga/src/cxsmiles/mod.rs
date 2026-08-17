@@ -17,12 +17,12 @@
 //! This keeps atom indices fully under our control.
 //!
 //! This module is split by responsibility:
-//! - [`types`] — public result types.
+//! - `types` — public result types.
 //! - [`parse`] — SMILES input parsing and ECFP4/Tanimoto clustering.
-//! - [`graph`] — Molecule↔Query conversion and graph matching primitives.
-//! - [`positional`] — `m:` (positional equivalence) construction.
-//! - [`repeating`] — `Sg:n:` (repeating) construction.
-//! - [`roundtrip`] — enumeration & round-trip coverage used for confidence.
+//! - `graph` — Molecule↔Query conversion and graph matching primitives.
+//! - `positional` — `m:` (positional equivalence) construction.
+//! - `repeating` — `Sg:n:` (repeating) construction.
+//! - `roundtrip` — enumeration & round-trip coverage used for confidence.
 
 #![allow(
     clippy::cast_possible_truncation,

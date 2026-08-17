@@ -7,7 +7,7 @@
 //! Both apps independently defined an enum for CSV/JSON/RDF export and a
 //! mapping from that enum to `action=` strings ("`csv_export`", "`qlever_json_export`",
 //! "`turtle_export`").  This module is the single source of truth — apps import
-//! [`ExportFormat`] and call [`qlever_export_url`] / [`build_upstream_export_url`]
+//! `ExportFormat` and call `qlever_export_url` / `build_upstream_export_url`
 //! instead of re-implementing the mapping.
 
 #![allow(clippy::module_name_repetitions)]

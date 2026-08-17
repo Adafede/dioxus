@@ -12,7 +12,7 @@
 //! by `ui::prelude`) — never a raw CSS string — and reused sub-patterns are
 //! extracted as module-level style fns (`card_surface`, `field_label`). No
 //! `clippy::too_many_lines` allows are patched around: the input card is split
-//! into [`input_card`] and `StyleBuilder` chains are kept on single lines so
+//! into `input_card` and `StyleBuilder` chains are kept on single lines so
 //! both `results` and `app` stay within the lint threshold.
 
 use std::sync::Arc;

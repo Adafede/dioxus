@@ -4,10 +4,10 @@
 //! MS2 fragment recalibration over MGF content.
 //!
 //! Split by responsibility (previously a single 833-line file):
-//! - [`types`] — `CalibrationModel` / `Peak` definitions.
-//! - [`parsing`] — MGF line parsing (pepmass directives + fragment lines).
-//! - [`calibration`] — per-fragment calibration math.
-//! - [`generator`] — MGF round-tripping + bulk recalibration orchestration.
+//! - `types` — `CalibrationModel` / `Peak` definitions.
+//! - `parsing` — MGF line parsing (pepmass directives + fragment lines).
+//! - `calibration` — per-fragment calibration math.
+//! - `generator` — MGF round-tripping + bulk recalibration orchestration.
 
 mod calibration;
 mod generator;

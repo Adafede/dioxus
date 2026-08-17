@@ -4,9 +4,9 @@
 //! MGF parsing for mgf-precursor-erro-rs.
 //!
 //! Split from one 1075-line file into responsibility modules:
-//! - [`mass`] — exact-mass lookups (SMILES/formula → neutral mass) + numeric helpers.
-//! - [`adduct`] — adduct-token parsing/normalization + `expected_precursor_mz`.
-//! - [`block`] — streaming MGF `BEGIN IONS` block parser → [`PrecursorStats`].
+//! - `mass` — exact-mass lookups (SMILES/formula → neutral mass) + numeric helpers.
+//! - `adduct` — adduct-token parsing/normalization + `expected_precursor_mz`.
+//! - `block` — streaming MGF `BEGIN IONS` block parser → `PrecursorStats`.
 
 // 2022 CODATA
 pub const ELECTRON_MASS: f64 = 0.000_548_579_909_044_1;

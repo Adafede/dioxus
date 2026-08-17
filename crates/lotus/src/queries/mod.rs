@@ -11,14 +11,14 @@
 //!
 //! | Submodule   | Responsibility                                              |
 //! |-------------|-------------------------------------------------------------|
-//! | [`consts`]  | Shared SPARQL prefix blocks and Wikidata property fragments |
-//! | [`compound`] | Compound / taxon lookup queries (`query_all_compounds`, etc.)|
-//! | [`sachem`]  | Structure similarity & substructure search via IDSM        |
-//! | [`structure`] | Structure-string classification & escaping               |
-//! | [`pagination`] | Pagination helpers (LIMIT, COUNT)                       |
-//! | [`filters`] | Server-side filter injection (mass, year, formula)          |
-//! | [`rdf`]     | CONSTRUCT query generation for Turtle/RDF export            |
-//! | [`formula`] | Subscript-digit normalization and formula BIND expressions  |
+//! | `consts`     | Shared SPARQL prefix blocks and Wikidata property fragments |
+//! | `compound`   | Compound / taxon lookup queries (`query_all_compounds`, etc.)|
+//! | `sachem`     | Structure similarity & substructure search via IDSM        |
+//! | `structure`  | Structure-string classification & escaping               |
+//! | `pagination` | Pagination helpers (LIMIT, COUNT)                       |
+//! | `filters`    | Server-side filter injection (mass, year, formula)          |
+//! | `rdf`        | CONSTRUCT query generation for Turtle/RDF export            |
+//! | `formula`    | Subscript-digit normalization and formula BIND expressions  |
 
 mod compound;
 mod consts;

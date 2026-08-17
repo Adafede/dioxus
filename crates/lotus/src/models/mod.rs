@@ -6,8 +6,8 @@
 //! ## Linked Open Data / Wikidata
 //!
 //! All entity identifiers in the LOTUS dataset follow the Wikidata entity URI
-//! scheme.  The canonical prefix is [`WIKIDATA_ENTITY_BASE`].  Statement
-//! identifiers use [`WIKIDATA_STATEMENT_BASE`].  These constants are
+//! scheme.  The canonical prefix is `WIKIDATA_ENTITY_BASE`.  Statement
+//! identifiers use `WIKIDATA_STATEMENT_BASE`.  These constants are
 //! re-exported here so every layer (DTO deserialization, SPARQL parsing, UI
 //! display) uses a single authoritative value.
 

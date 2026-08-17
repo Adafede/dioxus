@@ -18,7 +18,7 @@
 //! `mut`; the native build calls `.set` on the same signals, requiring `mut`.
 //! Duplicating this pair at every call site is purely mechanical repetition.
 //!
-//! The [`shared_signal!`] / [`shared_signals!`] macros collapse the pair into a
+//! The `shared_signal!` / `shared_signals!` macros collapse the pair into a
 //! single declaration, emitting the identical cfg-gated arms so that
 //! mutability-per-platform behaviour is preserved exactly. Usage:
 //!
@@ -47,7 +47,7 @@ macro_rules! shared_signal {
 }
 
 /// Declare several local signals in one call, collapsing each into its
-/// wasm/native `#[cfg]` pair (see [`shared_signal!`]).
+/// wasm/native `#[cfg]` pair (see `shared_signal!`).
 #[macro_export]
 macro_rules! shared_signals {
     ( $( $name:ident : $init:expr ),* $(,)? ) => {
