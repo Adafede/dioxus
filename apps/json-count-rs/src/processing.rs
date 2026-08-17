@@ -4,7 +4,7 @@
 //! streaming `BlobCursor` (wasm), keeping memory bounded for multi-gigabyte
 //! files.
 //!
-//! The platform-agnostic counting core ([`count_non_null_leaves`]) is separated
+//! The platform-agnostic counting core (`count_non_null_leaves`) is separated
 //! from the wasm-only streaming glue so it can be unit-tested natively.
 
 #[cfg(target_arch = "wasm32")]
