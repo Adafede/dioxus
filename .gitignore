@@ -31,3 +31,5 @@ apps/*/public/assets/ketcher/
 .pre-commit-cache/
 lcov.info
 *.tarpaulin
+
+SESSION_LOG.md
