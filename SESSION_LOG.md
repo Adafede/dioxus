@@ -273,5 +273,20 @@ pattern as the existing `bad_request`, `upstream`, and `overloaded` constructors
 - **`lotus-api/src/errors.rs`**: Added `#[must_use]` to all four `ApiError` constructors
   (`bad_request`, `upstream`, `overloaded`, `internal`) — standard Rust best practice for
   functions returning `Self`.
+- **`json-count-rs/src/processing.rs`**: Fixed broken rustdoc intra-doc link — changed
+  `` [`count_non_null_leaves`] `` to `` `count_non_null_leaves` `` in the module doc comment,
+  since the function is `#[cfg(test)]` and won't resolve during `--no-deps` doc builds.
 
-Committed as `13cff6e`.
+Committed as `5e59f6d` (best-practice cleanup) and `171cecd` (rustdoc link fix).
+
+## Final status
+
+| Check | Result |
+|-------|--------|
+| `cargo test` (3 apps) | 130 pass, 0 fail |
+| `cargo clippy -p {5 apps} --all-targets` | 0 warnings |
+| `cargo fmt --check {5 apps}` | clean |
+| `cargo wasm` (7 apps) | all compile |
+| `cargo doc -p json-count-rs --no-deps` | 0 warnings from session changes |
+| `#![forbid(unsafe_code)]` | satisfied (no unsafe blocks added) |
+| `git status` | clean working tree |
