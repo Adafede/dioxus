@@ -10,8 +10,8 @@ use ui::prelude::*;
 pub fn Footer() -> Element {
     let locale = use_locale();
     rsx! {
-        footer { style: footer_style(),
-            div { style: footer_line_style(),
+        footer { class: "app-footer", style: footer_style(),
+            div { class: "footer-line", style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterArchive),
                     color: "var(--wd-compound)",
@@ -19,7 +19,7 @@ pub fn Footer() -> Element {
                 }
                 FooterCitationRow { locale }
             }
-            div { style: footer_line_style(),
+            div { class: "footer-line", style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterCode),
                     color: "var(--wd-taxon)",
@@ -39,7 +39,7 @@ pub fn Footer() -> Element {
                     ],
                 }
             }
-            div { style: footer_line_style(),
+            div { class: "footer-line", style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterPrograms),
                     color: "var(--wd-reference)",
@@ -69,11 +69,12 @@ fn footer_style() -> String {
 #[component]
 fn FooterCitationRow(locale: Locale) -> Element {
     rsx! {
-        div { style: footer_row_style(),
-            span { style: footer_label_style(), "{t(locale, TextKey::FooterCitation)}" }
-            ul { role: "list", style: footer_links_style(),
+        div { class: "footer-row", style: footer_row_style(),
+            span { class: "footer-label", style: footer_label_style(), "{t(locale, TextKey::FooterCitation)}" }
+            ul { class: "footer-links", role: "list", style: footer_links_style(),
                 li {
                     a {
+                        class: "footer-link",
                         href: "https://doi.org/10.7554/eLife.70780",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -83,6 +84,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
                 }
                 li {
                     a {
+                        class: "footer-link",
                         href: "/docs/references.bib",
                         download: "references.bib",
                         style: footer_link_style("var(--wd-compound)"),
@@ -97,28 +99,30 @@ fn FooterCitationRow(locale: Locale) -> Element {
 #[component]
 fn FooterLicenseRow(locale: Locale) -> Element {
     rsx! {
-        div { style: footer_row_style(),
-            span { style: footer_label_style(), "{t(locale, TextKey::FooterLicense)}" }
-            ul { role: "list", style: footer_links_style(),
+        div { class: "footer-row", style: footer_row_style(),
+            span { class: "footer-label", style: footer_label_style(), "{t(locale, TextKey::FooterLicense)}" }
+            ul { class: "footer-links", role: "list", style: footer_links_style(),
                 li {
                     a {
+                        class: "footer-link",
                         href: "https://creativecommons.org/publicdomain/zero/1.0/",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         style: footer_link_style("var(--wd-reference)"),
                         "CC0 1.0"
                     }
-                    span { style: footer_aside_style(), "{t(locale, TextKey::FooterForData)}" }
+                    span { class: "footer-aside", style: footer_aside_style(), "{t(locale, TextKey::FooterForData)}" }
                 }
                 li {
                     a {
+                        class: "footer-link",
                         href: "https://www.gnu.org/licenses/agpl-3.0.html",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         style: footer_link_style("var(--wd-reference)"),
                         "AGPL-3.0"
                     }
-                    span { style: footer_aside_style(), "{t(locale, TextKey::FooterForCode)}" }
+                    span { class: "footer-aside", style: footer_aside_style(), "{t(locale, TextKey::FooterForCode)}" }
                 }
             }
         }
@@ -132,12 +136,13 @@ fn FooterRow(
     links: &'static [(&'static str, &'static str)],
 ) -> Element {
     rsx! {
-        div { style: footer_row_style(),
-            span { style: footer_label_style(), "{label}" }
-            ul { role: "list", style: footer_links_style(),
+        div { class: "footer-row", style: footer_row_style(),
+            span { class: "footer-label", style: footer_label_style(), "{label}" }
+            ul { class: "footer-links", role: "list", style: footer_links_style(),
                 for (href, text) in links.iter() {
                     li {
                         a {
+                            class: "footer-link",
                             href: "{href}",
                             target: "_blank",
                             rel: "noopener noreferrer",
