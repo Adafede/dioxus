@@ -119,7 +119,7 @@ fn table_scroll_style() -> String {
         .property("max-height", "min(72vh, 980px)")
         .border("1px solid var(--results-border)")
         .border_radius("14px")
-        .background_color("var(--panel-bg-soft)")
+        .background_color("transparent")
         .box_shadow("var(--panel-shadow)")
         .property(
             "transition",

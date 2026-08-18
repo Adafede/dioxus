@@ -106,6 +106,7 @@ pub mod search_buttons {
 }
 
 /// Backward compat: Re-exports from layout_styles for panel containers
+#[allow(unused_imports)]
 pub mod panel_containers {
     pub use crate::ui::layout_styles::{
         lotus_iframe_style as iframe_style, lotus_ketcher_panel_style as ketcher_panel_style,

@@ -173,7 +173,7 @@ fn curation_card_style() -> String {
         .property("padding", "12px")
         .property("border", "1px solid var(--panel-border)")
         .property("border-radius", "var(--radius)")
-        .property("background", "var(--panel-bg-soft)")
+        .property("background", "transparent")
         .property("box-shadow", "var(--panel-shadow)")
         .build()
 }
@@ -267,7 +267,7 @@ fn results_table_style() -> String {
 fn status_pill_style(status: &CurationStatus) -> String {
     let border_color = match status {
         CurationStatus::ExistingComplete => "var(--wd-taxon)",
-        CurationStatus::ExistingNeedsUpdates => "var(--wd-entries)",
+        CurationStatus::ExistingNeedsUpdates => "var(--footer-wd-entries)",
         CurationStatus::NewCompound => "var(--wd-reference)",
         CurationStatus::PendingDependencies => "var(--wd-reference)",
         CurationStatus::Error => "var(--wd-compound)",
@@ -299,7 +299,7 @@ fn status_warning_pill_style() -> String {
         .property("padding", "2px 8px")
         .property("border-radius", "4px")
         .property("border-left", "3px solid transparent")
-        .property("border-left-color", "var(--wd-entries)")
+        .property("border-left-color", "var(--footer-wd-entries)")
         .property(
             "background",
             "color-mix(in srgb, var(--surface) 90%, transparent)",

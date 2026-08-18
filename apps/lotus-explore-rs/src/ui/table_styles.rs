@@ -6,16 +6,14 @@
 
 use ui::prelude::*;
 
-/// Taxon cell container: soft background with inset shadow border.
+/// Taxon cell container: transparent, color-driven text with a side band.
 pub fn lotus_taxon_cell_style() -> String {
     StyleBuilder::new()
         .padding("8px 12px")
         .border_radius("10px")
-        .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
-        .property(
-            "box-shadow",
-            "inset 3px 0 0 rgb(51 153 102 / 42%), inset 0 0 0 1px var(--results-border)",
-        )
+        .background_color("transparent")
+        .color("var(--footer-wd-taxon)")
+        .property("box-shadow", "inset 3px 0 0 var(--footer-wd-taxon)")
         .property("min-width", "0")
         .build()
 }
@@ -28,7 +26,7 @@ pub fn lotus_cell_primary_style() -> String {
         .build()
 }
 
-/// ID badge: inline-block with monospace font and soft background.
+/// ID badge: inline-block with monospace font and transparent background.
 pub fn lotus_id_badge_style() -> String {
     StyleBuilder::new()
         .display("inline-block")
@@ -47,16 +45,16 @@ pub fn lotus_id_badge_style() -> String {
             "transition",
             "transform .12s ease, box-shadow .12s ease, filter .12s ease",
         )
-        .background_color("var(--wd-taxon-soft-bg)")
-        .color("var(--wd-taxon)")
-        .property("border-color", "var(--wd-taxon-soft-border)")
+        .background_color("transparent")
+        .color("var(--footer-wd-taxon)")
+        .property("border-color", "var(--footer-wd-taxon)")
         .build()
 }
 
-/// Primary link in cell: block display with word break.
+/// Primary link in cell: block display with word break and inherited category color.
 pub fn lotus_primary_link_style() -> String {
     StyleBuilder::new()
-        .color("var(--text)")
+        .color("inherit")
         .property("display", "block")
         .property("line-height", "1.4")
         .property("overflow-wrap", "break-word")
@@ -77,16 +75,14 @@ pub fn lotus_badge_row_style() -> String {
         .build()
 }
 
-/// Reference cell container: flex column with padding and border.
+/// Reference cell container: transparent, color-driven text with a side band.
 pub fn lotus_reference_cell_style() -> String {
     StyleBuilder::new()
         .padding("8px 12px")
         .border_radius("10px")
-        .background_color("color-mix(in srgb, var(--surface) 90%, transparent)")
-        .property(
-            "box-shadow",
-            "inset 3px 0 0 rgb(0 102 153 / 42%), inset 0 0 0 1px var(--results-border)",
-        )
+        .background_color("transparent")
+        .color("var(--footer-wd-reference)")
+        .property("box-shadow", "inset 3px 0 0 var(--footer-wd-reference)")
         .property("min-width", "0")
         .build()
 }

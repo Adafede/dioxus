@@ -12,10 +12,11 @@ use ui::prelude::*;
 
 pub mod stat_stripe_colors {
     //! Stripe colors for statistic badges (compounds, taxa, references, entries).
-    pub const COMPOUND: &str = "var(--wd-compound-stripe)";
-    pub const TAXON: &str = "var(--wd-taxon-stripe)";
-    pub const REFERENCE: &str = "var(--wd-reference-stripe)";
-    pub const ENTRIES: &str = "var(--wd-entries-stripe)";
+    //! Keep stats aligned with the footer palette so they track light/dark mode.
+    pub const COMPOUND: &str = "var(--footer-wd-compound)";
+    pub const TAXON: &str = "var(--footer-wd-taxon)";
+    pub const REFERENCE: &str = "var(--footer-wd-reference)";
+    pub const ENTRIES: &str = "var(--footer-wd-entries)";
 }
 
 pub mod borders {
@@ -277,7 +278,8 @@ pub fn lotus_panel_stack_style(padding: &str, gap: &str) -> String {
         .build()
 }
 
-/// Section card: bordered container with soft background and rounded corners.
+/// Section card: bordered container with a color-led side band and transparent background.
+#[allow(dead_code)]
 pub fn lotus_section_card_style() -> String {
     StyleBuilder::new()
         .display("flex")
@@ -286,7 +288,7 @@ pub fn lotus_section_card_style() -> String {
         .padding("10px 12px")
         .border("1px solid var(--panel-border)")
         .border_radius("12px")
-        .background_color("var(--panel-bg-soft)")
+        .background_color("transparent")
         .build()
 }
 
@@ -529,7 +531,7 @@ pub fn lotus_query_summary_chevron_style(is_open: bool) -> String {
 /// Query panel container: soft background with border and shadow.
 pub fn lotus_query_panel_style() -> String {
     StyleBuilder::new()
-        .background_color("var(--panel-bg-soft)")
+        .background_color("transparent")
         .border("1px solid var(--panel-border)")
         .border_radius("var(--radius)")
         .box_shadow("var(--panel-shadow)")
@@ -558,7 +560,6 @@ pub fn lotus_query_text_style() -> String {
         .font_size("var(--fs-0)")
         .color("var(--text)")
         .background_color("var(--bg2)")
-        .property("border-left", "3px solid var(--wd-entries)")
         .property("white-space", "pre-wrap")
         .property("word-break", "break-word")
         .property("max-height", "320px")

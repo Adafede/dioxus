@@ -113,7 +113,7 @@ fn query_container_style() -> String {
     StyleBuilder::new()
         .border("1px solid var(--panel-border)")
         .border_radius("var(--radius)")
-        .background_color("var(--panel-bg-soft)")
+        .background_color("transparent")
         .box_shadow("var(--panel-shadow)")
         .build()
 }
@@ -127,7 +127,6 @@ fn query_code_style() -> String {
         .font_size("var(--fs-0)")
         .color("var(--text)")
         .background_color("var(--bg2)")
-        .property("border-left", "3px solid var(--wd-entries)")
         .property("white-space", "pre-wrap")
         .property("word-break", "break-word")
         .property("max-height", "320px")

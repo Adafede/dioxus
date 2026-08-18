@@ -33,7 +33,7 @@ fn toolbar_panel_style() -> String {
         .border("1px solid var(--results-border)")
         .border_radius("12px")
         .padding("10px 12px")
-        .background_color("var(--panel-bg-soft)")
+        .background_color("transparent")
         .box_shadow("var(--panel-shadow)")
         .property("width", "100%")
         .property("min-width", "0")

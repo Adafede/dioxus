@@ -241,39 +241,6 @@ pub const WD_TAXON: &str = "var(--wd-taxon)";
 pub const WD_REFERENCE: &str = "var(--wd-reference)";
 pub const WD_ENTRIES: &str = "var(--wd-entries)";
 
-pub const WD_COMPOUND_STRIPE: &str = "var(--wd-compound-stripe)";
-pub const WD_TAXON_STRIPE: &str = "var(--wd-taxon-stripe)";
-pub const WD_REFERENCE_STRIPE: &str = "var(--wd-reference-stripe)";
-pub const WD_ENTRIES_STRIPE: &str = "var(--wd-entries-stripe)";
-
-pub const WD_COMPOUND_SOFT_BG: &str = "var(--wd-compound-soft-bg)";
-pub const WD_COMPOUND_SOFT_BORDER: &str = "var(--wd-compound-soft-border)";
-pub const WD_COMPOUND_SOFT_BORDER_WEAK: &str = "var(--wd-compound-soft-border-weak)";
-
-pub const WD_TAXON_SOFT_BG: &str = "var(--wd-taxon-soft-bg)";
-pub const WD_TAXON_SOFT_BORDER: &str = "var(--wd-taxon-soft-border)";
-
-pub const WD_REFERENCE_SOFT_BG: &str = "var(--wd-reference-soft-bg)";
-pub const WD_REFERENCE_SOFT_BORDER: &str = "var(--wd-reference-soft-border)";
-pub const WD_REFERENCE_SOFT_BORDER_WEAK: &str = "var(--wd-reference-soft-border-weak)";
-
-// Statistics palette
-pub const STAT_COMPOUND_BG: &str = "var(--stat-compound-bg)";
-pub const STAT_COMPOUND_BORDER: &str = "var(--stat-compound-border)";
-pub const STAT_COMPOUND_STRIPE: &str = "var(--stat-compound-stripe)";
-
-pub const STAT_TAXON_BG: &str = "var(--stat-taxon-bg)";
-pub const STAT_TAXON_BORDER: &str = "var(--stat-taxon-border)";
-pub const STAT_TAXON_STRIPE: &str = "var(--stat-taxon-stripe)";
-
-pub const STAT_REFERENCE_BG: &str = "var(--stat-reference-bg)";
-pub const STAT_REFERENCE_BORDER: &str = "var(--stat-reference-border)";
-pub const STAT_REFERENCE_STRIPE: &str = "var(--stat-reference-stripe)";
-
-pub const STAT_TOTAL_BG: &str = "var(--stat-total-bg)";
-pub const STAT_TOTAL_BORDER: &str = "var(--stat-total-border)";
-pub const STAT_TOTAL_STRIPE: &str = "var(--stat-total-stripe)";
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SHADOW TOKENS
 // ─────────────────────────────────────────────────────────────────────────────

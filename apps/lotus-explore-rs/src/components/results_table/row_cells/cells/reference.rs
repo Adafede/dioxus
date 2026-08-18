@@ -49,7 +49,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                     href: "https://www.wikidata.org/entity/{reference_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                style: id_badge_style("var(--wd-reference-soft-bg)", "var(--wd-reference)", "var(--wd-reference-soft-border)"),
+                style: id_badge_style("transparent", "var(--footer-wd-reference)", "var(--footer-wd-reference)"),
                     title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, reference_qid)}",
                     "{reference_qid}"
@@ -59,7 +59,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://doi.org/{d}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                    style: id_badge_style("var(--wd-reference-soft-bg)", "var(--wd-reference)", "var(--wd-reference-soft-border-weak)"),
+                    style: id_badge_style("transparent", "var(--footer-wd-reference)", "var(--footer-wd-reference)"),
                         title: "{text.open_doi}",
                         aria_label: "{text.open_doi}",
                         "DOI"
@@ -70,7 +70,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/statement/{stmt}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        style: id_badge_style("var(--wd-reference-soft-bg)", "var(--wd-reference)", "var(--wd-reference-soft-border-weak)"),
+                        style: id_badge_style("transparent", "var(--footer-wd-reference)", "var(--footer-wd-reference)"),
                         title: "{stmt}",
                         aria_label: "{aria_wikidata_statement(locale, stmt)}",
                         "{text.statement}"
@@ -83,7 +83,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
 fn cell_primary_style() -> String {
     StyleBuilder::new().font_weight("500").build()
 }
-fn id_badge_style(bg: &str, fg: &str, border: &str) -> String {
+fn id_badge_style(_bg: &str, fg: &str, border: &str) -> String {
     StyleBuilder::new()
         .display("inline-block")
         .font_size("var(--fs-micro)")
@@ -101,7 +101,7 @@ fn id_badge_style(bg: &str, fg: &str, border: &str) -> String {
             "transition",
             "transform .12s ease, box-shadow .12s ease, filter .12s ease",
         )
-        .background_color(bg)
+        .background_color("transparent")
         .color(fg)
         .border("1px solid")
         .property("border-color", border)

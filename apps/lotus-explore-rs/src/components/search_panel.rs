@@ -34,6 +34,7 @@ use crate::state::{use_form_criteria_context, use_results_context};
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
 use crate::ui::style_constants;
 use dioxus::prelude::*;
+use ui::prelude::*;
 pub fn SearchPanel() -> Element {
     let state = use_results_context();
     let form_ctx = use_form_criteria_context();
@@ -121,7 +122,7 @@ fn StructureSection() -> Element {
     let view_model = structure_model::build_structure_section_model(kind_value, smiles_search_type);
 
     rsx! {
-        div { style: crate::ui::style_constants::panel_containers::section_card_style(),
+        div { style: structure_section_style(),
             label { style: crate::ui::style_constants::forms::label_base_style(), r#for: "smiles-input",
                 "{t(locale, TextKey::StructureSmilesOrMol)}"
             }
@@ -193,6 +194,18 @@ fn StructureSection() -> Element {
             }
         }
     }
+}
+
+fn structure_section_style() -> String {
+    StyleBuilder::new()
+        .display("flex")
+        .flex_direction("column")
+        .gap("5px")
+        .padding("10px 12px")
+        .border("1px solid var(--panel-border)")
+        .border_radius("12px")
+        .background_color("transparent")
+        .build()
 }
 
 // ── Ketcher editor panel (full-width, rendered in the main content area) ─────

@@ -18,7 +18,7 @@ pub(in crate::components::results_table::row_cells) fn mass_cell(mass: Option<f6
     rsx! {
         td { style: crate::ui::style_constants::table_cells::table_cell_style(),
             if let Some(m) = mass {
-                span { "{format_mass_value(m)}" }
+                span { style: mass_style(), "{format_mass_value(m)}" }
             } else {
                 span { style: crate::ui::style_constants::table_cells::na_style(), "-" }
             }
@@ -44,18 +44,34 @@ pub(in crate::components::results_table::row_cells) fn year_cell(pub_year: Optio
     rsx! {
         td { style: crate::ui::style_constants::table_cells::table_cell_style(),
             if let Some(y) = pub_year {
-                span { "{y}" }
+                span { style: year_style(), "{y}" }
             } else {
                 span { style: crate::ui::style_constants::table_cells::na_style(), "-" }
             }
         }
     }
 }
+fn mass_style() -> String {
+    StyleBuilder::new()
+        .font_family("var(--sans)")
+        .font_size("var(--fs-0)")
+        .color("var(--footer-wd-compound)")
+        .font_weight("500")
+        .build()
+}
+
 fn formula_style() -> String {
     StyleBuilder::new()
-        .font_family("var(--mono)")
+        .font_family("var(--sans)")
         .font_size("var(--fs-0)")
-        .color("var(--text)")
+        .color("var(--footer-wd-compound)")
+        .font_weight("500")
+        .build()
+}
+
+fn year_style() -> String {
+    StyleBuilder::new()
+        .color("var(--footer-wd-reference)")
         .build()
 }
 #[cfg(test)]

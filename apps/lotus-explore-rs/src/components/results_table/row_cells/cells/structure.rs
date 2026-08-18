@@ -53,13 +53,13 @@ fn structure_cell_style() -> String {
 fn depict_img_style() -> String {
     StyleBuilder::new()
         .property("display", "block")
-        .background_color("var(--bg2)")
-        .border("1px solid var(--border)")
+        .background_color("transparent")
+        .border("none")
         .border_radius("6px")
         .property("width", "min(100%, 108px)")
         .property("max-width", "108px")
         .property("height", "auto")
         .property("object-fit", "contain")
-        .box_shadow("var(--shadow-xs)")
+        .box_shadow("none")
         .build()
 }
