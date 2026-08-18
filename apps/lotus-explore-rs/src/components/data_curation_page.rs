@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::curation::build_curation_share_url;
+use crate::document_head::CurationScripts;
 use crate::features::curation::state::page_controller::CurationUiState;
 use crate::features::curation::use_curation_page_controller;
 use dioxus::prelude::*;
@@ -47,6 +48,7 @@ pub fn DataCurationPage() -> Element {
     let on_import_error = move |message: String| controller.status_message.set(Some(message));
 
     rsx! {
+        CurationScripts {}
         section { class: "curation-wrap", style: curation_page_style(),
             div { style: curation_grid_style(),
                 AddRowCard {
