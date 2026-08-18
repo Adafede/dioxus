@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn parse_canonical_write_roundtrip() {
         let m = parse("Clc1ccccc1-c2ccccc2").unwrap();
-        assert_eq!(canonical_smiles(&m), "c1ccc(-c2ccccc2)c(c1)Cl");
+        assert_eq!(canonical_smiles(&m), "c1(-c2ccccc2Cl)ccccc1");
         assert_eq!(write(&m), "Clc1ccccc1-c2ccccc2");
     }
 
