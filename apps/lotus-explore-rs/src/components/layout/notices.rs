@@ -16,7 +16,7 @@ use crate::i18n::{TextKey, t};
 use crate::services::error_presenter::{
     error_hint_text, format_domain_error, format_taxon_warning,
 };
-use crate::state::use_results_context;
+use crate::state::{use_app_state_context, use_results_context};
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
@@ -24,6 +24,7 @@ use ui::prelude::*;
 #[component]
 pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
     let locale = crate::hooks::use_locale();
+    let dark_mode = use_app_state_context().state.read().dark_mode;
     let share_input_id = "share-url-field";
     let share = shareable_url.read();
     let Some(share) = share.as_deref() else {
@@ -35,7 +36,7 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            dark: crate::ui::style_constants::theme::is_dark_mode(),
+            dark: dark_mode,
             input {
                 id: share_input_id,
                 r#type: "text",
@@ -57,6 +58,7 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
 #[component]
 pub fn TaxonNotice() -> Element {
     let locale = crate::hooks::use_locale();
+    let dark_mode = use_app_state_context().state.read().dark_mode;
     let explore = use_results_context().explore;
     let notice = use_result_selector(explore, |result| result.taxon_notice.clone());
     let notice = notice.read();
@@ -70,7 +72,7 @@ pub fn TaxonNotice() -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            dark: crate::ui::style_constants::theme::is_dark_mode(),
+            dark: dark_mode,
             span { style: crate::ui::style_constants::notices::notice_value_style(), "{text}" }
         }
     }
@@ -83,6 +85,7 @@ pub fn TaxonNotice() -> Element {
 #[component]
 pub fn ErrorNotice() -> Element {
     let locale = crate::hooks::use_locale();
+    let dark_mode = use_app_state_context().state.read().dark_mode;
     let explore = use_results_context().explore;
     let interactions = use_explore_interactions();
     let retry_interactions = interactions.clone();
@@ -100,7 +103,7 @@ pub fn ErrorNotice() -> Element {
             tone: NoticeTone::Warning,
             role: "alert",
             aria_live: "assertive",
-            dark: crate::ui::style_constants::theme::is_dark_mode(),
+            dark: dark_mode,
             span { style: crate::ui::style_constants::notices::notice_value_style(), "{msg}" }
             span { style: crate::ui::style_constants::notices::notice_value_style(), "{error_hint_text(locale, kind)}" }
             if recovery::should_show_retry_button(domain_err) && !*is_loading.read() {

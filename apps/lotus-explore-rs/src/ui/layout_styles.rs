@@ -570,10 +570,22 @@ pub fn lotus_query_text_style() -> String {
 // THEME UTILITIES
 // ============================================================================
 
-/// Detect if dark mode is active based on system preferences.
-/// Must be called at component render time to detect changes.
+/// Detect if dark mode is active.
+///
+/// Explicit theme overrides from the document attribute (`data-theme="dark"` /
+/// `data-theme="light"`) take precedence over the system preference, so URL
+/// toggles and in-app theme state stay consistent for notices and controls.
 #[cfg(target_arch = "wasm32")]
 pub fn is_dark_mode() -> bool {
+    if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+        if let Some(html) = doc.document_element() {
+            let theme = html.get_attribute("data-theme");
+            if let Some(theme) = theme {
+                return theme.eq_ignore_ascii_case("dark");
+            }
+        }
+    }
+
     if let Ok(window) = web_sys::window().ok_or("no window") {
         if let Ok(media) = window.match_media("(prefers-color-scheme: dark)") {
             if let Some(media_query) = media {

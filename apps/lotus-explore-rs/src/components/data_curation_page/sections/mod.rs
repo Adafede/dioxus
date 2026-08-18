@@ -25,6 +25,7 @@ use ui::prelude::*;
 
 use crate::components::copy_button::CopyButton;
 use crate::features::explore::absolute_share_url;
+use crate::state::use_app_state_context;
 
 mod styles;
 use styles::*;
@@ -85,32 +86,18 @@ mod tests {
 
 #[component]
 pub fn StatusNotice(locale: Locale, message: Arc<str>) -> Element {
+    let dark_mode = use_app_state_context().state.read().dark_mode;
     rsx! {
         NoticeBar {
             label: t(locale, TextKey::Notice).to_string(),
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            dark: is_dark_mode(),
+            dark: dark_mode,
             margin: "0",
             span { style: curation_notice_value_style(), "{message}" }
         }
     }
-}
-
-/// Detect if the system is in dark mode.
-fn is_dark_mode() -> bool {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(window) = web_sys::window() {
-            if let Ok(media) = window.match_media("(prefers-color-scheme: dark)") {
-                if let Some(media_query) = media {
-                    return media_query.matches();
-                }
-            }
-        }
-    }
-    false
 }
 
 #[component]

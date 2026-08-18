@@ -4,7 +4,7 @@
 use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::DatasetStats;
-use crate::state::use_results_context;
+use crate::state::{use_app_state_context, use_results_context};
 use crate::ui::style_constants::{self, StatStripe};
 use dioxus::prelude::*;
 use ui::prelude::*;
@@ -112,6 +112,7 @@ pub fn StatBar() -> Element {
 #[component]
 pub fn CappedRowsNotice() -> Element {
     let locale = crate::hooks::use_locale();
+    let dark_mode = use_app_state_context().state.read().dark_mode;
     let explore = use_results_context().explore;
     let toolbar_snapshot = use_toolbar_result_snapshot(explore);
 
@@ -122,7 +123,7 @@ pub fn CappedRowsNotice() -> Element {
                 tone: NoticeTone::Warning,
                 role: "status",
                 aria_live: "polite",
-                dark: crate::ui::style_constants::theme::is_dark_mode(),
+                dark: dark_mode,
                 margin: "10px 0 0",
                 span { style: crate::ui::style_constants::shared::notice_value_style(), "{t(locale, TextKey::DisplayCappedHint)}" }
             }
