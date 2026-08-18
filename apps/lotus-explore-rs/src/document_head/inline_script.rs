@@ -5,16 +5,19 @@
 
 const LANG_BOOTSTRAP_SCRIPT: &str = r#"
 (function installTrustedTypesPolicy() {
-    if (!window.trustedTypes || window.trustedTypes.getPolicy("default")) {
+    const trusted = window.trustedTypes;
+    if (!trusted || typeof trusted.getPolicy !== "function" || typeof trusted.createPolicy !== "function") {
         return;
     }
     try {
-        window.trustedTypes.createPolicy("default", {
-            createHTML: (value) => String(value),
-            createScript: (value) => String(value),
-            createScriptURL: (value) => String(value),
-            createURL: (value) => String(value),
-        });
+        if (!trusted.getPolicy("default")) {
+            trusted.createPolicy("default", {
+                createHTML: (value) => String(value),
+                createScript: (value) => String(value),
+                createScriptURL: (value) => String(value),
+                createURL: (value) => String(value),
+            });
+        }
     } catch (_error) {
         // Browsers without Trusted Types support will ignore the policy registration.
     }
