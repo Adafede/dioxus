@@ -6,6 +6,9 @@ use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
+// Else too low contrast
+const FOOTER_TAXON_COLOR: &str = "color-mix(in srgb, var(--wd-taxon) 88%, #000)";
+
 #[component]
 pub fn Footer() -> Element {
     let locale = use_locale();
@@ -22,7 +25,7 @@ pub fn Footer() -> Element {
             div { class: "footer-line", style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterCode),
-                    color: "var(--wd-taxon)",
+                    color: FOOTER_TAXON_COLOR,
                     links: &[
                         (
                             "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explore-rs",
@@ -32,7 +35,7 @@ pub fn Footer() -> Element {
                 }
                 FooterRow {
                     label: t(locale, TextKey::FooterData),
-                    color: "var(--wd-taxon)",
+                    color: FOOTER_TAXON_COLOR,
                     links: &[
                         ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
                         ("https://www.wikidata.org/", "Wikidata"),
