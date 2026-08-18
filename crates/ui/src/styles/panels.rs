@@ -15,7 +15,7 @@ pub fn search_panel_style() -> String {
         gap_md(),
         StyleBuilder::new()
             .padding("12px")
-            .background_color("var(--surface)")
+            .background_color("var(--panel-bg-soft)")
             .border_radius("4px")
             .build()
     )
