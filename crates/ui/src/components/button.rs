@@ -57,7 +57,11 @@ pub fn Button(props: ButtonProps) -> Element {
     let _ = props.dark;
 
     let (bg_color, text_color, _hover_bg) = match props.variant {
-        ButtonVariant::Primary => ("var(--btn-primary-bg)", "#fff", "var(--btn-primary-hover-bg)"),
+        ButtonVariant::Primary => (
+            "var(--btn-primary-bg)",
+            "#fff",
+            "var(--btn-primary-hover-bg)",
+        ),
         ButtonVariant::Secondary => ("var(--surface)", "var(--text)", "var(--surface2)"),
         ButtonVariant::Tertiary => ("transparent", "var(--accent)", "var(--surface)"),
     };

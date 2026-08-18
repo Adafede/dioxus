@@ -149,9 +149,7 @@ pub mod query {
 }
 
 /// Backward compat: Re-exports from layout_styles for theme
-pub mod theme {
-    pub use crate::ui::layout_styles::is_dark_mode;
-}
+pub mod theme {}
 
 /// Backward compat: Shared utilities
 pub mod shared {

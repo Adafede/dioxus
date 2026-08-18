@@ -576,6 +576,7 @@ pub fn lotus_query_text_style() -> String {
 /// `data-theme="light"`) take precedence over the system preference, so URL
 /// toggles and in-app theme state stay consistent for notices and controls.
 #[cfg(target_arch = "wasm32")]
+#[allow(dead_code)]
 pub fn is_dark_mode() -> bool {
     if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
         if let Some(html) = doc.document_element() {
@@ -598,6 +599,7 @@ pub fn is_dark_mode() -> bool {
 
 /// Fallback for non-WASM builds (always returns false).
 #[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
 pub fn is_dark_mode() -> bool {
     false
 }
