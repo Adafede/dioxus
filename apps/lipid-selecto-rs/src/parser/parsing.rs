@@ -11,6 +11,7 @@
 
 use crate::chemical_class::ChemicalClass;
 use crate::lipids::{LipidClassification, classify_spectrum, is_acyclic};
+use chematic::chem;
 use chematic::smiles;
 use std::collections::HashMap;
 
@@ -36,6 +37,9 @@ pub struct SpectrumBlock {
     pub classification: Option<LipidClassification>,
     /// Maps chemical class name -> bool (does this spectrum match?)
     pub gallery_item_matches: Option<HashMap<String, bool>>,
+    /// Pre-computed exact mass from the parsed SMILES (avoids re-parsing
+    /// the SMILES in gallery rendering — the dominant cost for large files).
+    pub exact_mass: f64,
     /// Verbatim text of the block, from `BEGIN IONS` through `END IONS`.
     pub raw: String,
 }
@@ -53,6 +57,7 @@ impl SpectrumBlock {
             precursor_mz: None,
             classification: None,
             gallery_item_matches: None,
+            exact_mass: 0.0,
             raw: String::new(),
         }
     }
@@ -130,18 +135,27 @@ impl SpectrumBlock {
     }
 
     /// Compute and store class matches for this block's SMILES.
-    /// Only matches classes for acyclic molecules (true lipids).
+    ///
+    /// Parses the SMILES once, caches the exact mass, and matches against all
+    /// chemical classes. Downstream code (e.g.
+    /// [`gallery_item`](super::analysis::gallery_item)) reuses the cached
+    /// `exact_mass` instead of re-parsing the SMILES. Only matches classes for
+    /// acyclic molecules (true lipids).
     pub fn compute_class_matches(&mut self, classes: &[ChemicalClass]) {
-        let mut matches = HashMap::new();
         if let Some(smiles_str) = &self.psm_smiles
             && let Ok(molecule) = smiles::parse(smiles_str.trim())
-            && is_acyclic(&molecule)
         {
-            for class in classes {
-                matches.insert(class.name.clone(), class.matches(&molecule));
+            self.exact_mass = chem::exact_mass(&molecule);
+            let mut matches = HashMap::new();
+            if is_acyclic(&molecule) {
+                for class in classes {
+                    matches.insert(class.name.clone(), class.matches(&molecule));
+                }
             }
+            self.gallery_item_matches = Some(matches);
+            return;
         }
-        self.gallery_item_matches = Some(matches);
+        self.gallery_item_matches = Some(HashMap::new());
     }
 }
 

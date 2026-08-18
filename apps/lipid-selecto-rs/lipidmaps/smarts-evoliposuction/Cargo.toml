@@ -1,0 +1,43 @@
+[package]
+name = "smarts-evoliposuction"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Batch SMARTS evolution runner for lipid class classification using smarts-evolution by Luca Cappelletti"
+license.workspace = true
+publish = false
+repository = "https://github.com/earth-metabolome-initiative/smarts-evolution"
+documentation = "https://docs.rs/smarts-evoliposuction"
+
+[[bin]]
+name = "smarts-evoliposuction"
+path = "src/main.rs"
+
+[features]
+default = []
+
+[dependencies]
+lipidsdl = { path = "../../../../crates/lipidsdl" }
+
+csv.workspace = true
+serde.workspace = true
+rayon = { workspace = true }
+rand.workspace = true
+clap = { workspace = true }
+
+# External crates by Luca Cappelletti (@LucaCappelletti94) / Earth Metabolome Initiative
+# See README.md for full credit and links.
+smarts-evolution = { git = "https://github.com/earth-metabolome-initiative/smarts-evolution", branch = "main" }
+smarts-rs = { git = "https://github.com/earth-metabolome-initiative/smarts-rs", branch = "main" }
+smiles-parser = { git = "https://github.com/earth-metabolome-initiative/smiles-parser", branch = "main" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+thiserror.workspace = true
+zip.workspace = true
+reqwest = { version = "0.12", features = ["blocking"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

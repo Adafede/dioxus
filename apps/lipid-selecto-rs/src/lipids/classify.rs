@@ -9,6 +9,7 @@ use chematic::chem;
 use chematic::core::{Element, Molecule};
 use chematic::smarts;
 use chematic::smiles;
+use std::sync::LazyLock;
 
 // REAL LIPID SIGNATURES - only actual lipid backbone structures
 // NO RINGS. Just the chemistry that defines each lipid class.
@@ -58,14 +59,19 @@ fn has_substructure(molecule: &Molecule, pattern: &str) -> bool {
 ///
 /// Returns `true` if the molecule has no ring atoms (aromatic or alicyclic).
 /// Used to reject aromatic rings, nucleotides, sugars, steroids, etc.
+///
+/// The `[R]` ring-detect SMARTS pattern is pre-compiled once via `LazyLock`
+/// instead of being re-parsed on every call — this is called per-block in
+/// `compute_class_matches`, so avoiding re-parsing is significant for large
+/// datasets.
 #[must_use]
 pub fn is_acyclic(molecule: &Molecule) -> bool {
-    // Count ring atoms - a lipid should have ZERO
-    let ring_pattern = "[R]"; // Any atom in a ring
-    let Ok(query) = smarts::parse_smarts(ring_pattern) else {
+    static RING_QUERY: LazyLock<Option<smarts::QueryMolecule>> =
+        LazyLock::new(|| smarts::parse_smarts("[R]").ok());
+    let Some(query) = &*RING_QUERY else {
         return true; // If we can't parse, assume acyclic
     };
-    smarts::find_matches(&query, molecule).is_empty()
+    smarts::find_matches(query, molecule).is_empty()
 }
 
 /// Extract elemental counts from a parsed molecule using chematic's own

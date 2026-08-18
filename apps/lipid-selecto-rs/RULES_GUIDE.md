@@ -17,7 +17,7 @@ families:
   (HexCer)
 - **Sterol Lipids (ST)**: Cholesterol, Steroids, Sterol derivatives
 - **Prenol Lipids (PR)**: Retinoids, Tocopherols, Ubiquinones, Isoprenoids
-- **Saccharipolipids (SL)**: Lipid A, Lipopolysaccharides
+- **Saccharolipids (SL)**: Lipid A, Lipopolysaccharides
 - **Polyketides (PK)**: Statins, Macrolides, Polyketide-derived metabolites
 
 ## Built-in Rules Reference
@@ -89,7 +89,7 @@ Isoprenoid-derived (isoprene repeat units). Pattern: repeating C=C conjugation.
   | ------ | ---------------------- | ------------------------ | ------------------------------------- |
   | **PR** | Conjugated isoprenoids | `[#6]=[#6][#6]=[#6][#6]` | Retinol (Vit A), α-Tocopherol (Vit E) |
 
-### Saccharipolipids (SL)
+### Saccharolipids (SL)
 
 Lipids with complex carbohydrate core and phosphate/acyl modifications.
 

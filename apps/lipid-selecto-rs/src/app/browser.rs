@@ -6,11 +6,15 @@
 use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
+use crate::chemical_class::ChemicalClass;
+#[cfg(target_arch = "wasm32")]
 use crate::examples::example_smiles;
 #[cfg(target_arch = "wasm32")]
 use crate::format::LipidFormat;
 #[cfg(target_arch = "wasm32")]
-use crate::parser::{Analysis, build_analysis, extract_blocks_from_lines};
+use crate::parser::{
+    Analysis, build_analysis_from_classified, classify_blocks, extract_blocks_from_lines,
+};
 #[cfg(target_arch = "wasm32")]
 use crate::rules::LipidRuleLibrary;
 #[cfg(target_arch = "wasm32")]
@@ -84,7 +88,22 @@ fn start_analysis(
             return;
         }
 
-        let result = build_analysis(blocks, MAX_GALLERY_ITEMS);
+        // Classify blocks in chunks, yielding to the event loop between chunks
+        // so the UI stays responsive for large MGF files (thousands of entries).
+        let all_classes = ChemicalClass::defaults();
+        let mut blocks = blocks;
+        let chunk_size = 500;
+        let total = blocks.len();
+        let mut processed = 0;
+        for chunk in blocks.chunks_mut(chunk_size) {
+            classify_blocks(chunk, &all_classes);
+            processed += chunk.len();
+            status.set(format!("Classifying… {processed}/{total} entries"));
+            TimeoutFuture::new(0).await;
+        }
+        status.set(format!("Classified {total} entries — building gallery…"));
+
+        let result = build_analysis_from_classified(blocks, MAX_GALLERY_ITEMS, all_classes);
         let block_count = result.blocks.len();
         let gallery_count = result.gallery.len();
         analysis.set(Some(result));

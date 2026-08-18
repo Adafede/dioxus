@@ -1,43 +1,53 @@
 //! User-defined chemical classes with SMARTS pattern matching.
 
-use chematic::smarts;
 use std::collections::HashMap;
 
+use chematic::smarts;
+
 /// A chemical class defined by name, SMARTS pattern, display color, and family.
+///
+/// SMARTS patterns are pre-compiled once at construction time to avoid
+/// re-parsing the pattern string on every `matches` call — critical for large
+/// datasets where thousands of molecules are matched against dozens of classes.
 #[derive(Clone, Debug)]
 pub struct ChemicalClass {
     pub name: String,
     pub smarts: String,
     pub color: String,
     pub family: String,
+    /// Pre-compiled SMARTS query (parsed once in `new`).
+    compiled: Option<smarts::QueryMolecule>,
 }
 
 impl ChemicalClass {
-    /// Create a new chemical class.
+    /// Create a new chemical class, pre-compiling the SMARTS pattern.
     pub fn new(
         name: impl Into<String>,
-        smarts: impl Into<String>,
+        smarts_str: impl Into<String>,
         color: impl Into<String>,
         family: impl Into<String>,
     ) -> Self {
+        let smarts_str = smarts_str.into();
+        let compiled = smarts::parse_smarts(&smarts_str).ok();
         Self {
             name: name.into(),
-            smarts: smarts.into(),
+            smarts: smarts_str,
             color: color.into(),
             family: family.into(),
+            compiled,
         }
     }
 
-    /// Check if a molecule matches this class's SMARTS pattern.
+    /// Check if a molecule matches this class's pre-compiled SMARTS pattern.
     ///
     /// Returns `true` if the molecule contains at least one match, `false` otherwise
     /// or if the SMARTS pattern cannot be parsed.
     #[must_use]
     pub fn matches(&self, molecule: &chematic::core::Molecule) -> bool {
-        let Ok(query) = smarts::parse_smarts(&self.smarts) else {
+        let Some(query) = &self.compiled else {
             return false;
         };
-        !smarts::find_matches(&query, molecule).is_empty()
+        !smarts::find_matches(query, molecule).is_empty()
     }
 
     /// Return the default lipid classes.
@@ -53,7 +63,7 @@ impl ChemicalClass {
             sphingolipids(),
             sterol_lipids(),
             prenol_lipids(),
-            saccharipolipids(),
+            saccharolipids(),
             polyketides(),
         ]
         .into_iter()
@@ -138,15 +148,15 @@ fn glycerophospholipids() -> Vec<ChemicalClass> {
             "Glycerophospholipids",
         ),
         ChemicalClass::new(
-            "PG(AA)",
-            "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]",
-            "#BDEC6F",
-            "Glycerophospholipids",
-        ),
-        ChemicalClass::new(
             "PI(AA)",
             "[PX4](=[OX1])([OX2])([OX2])[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1",
             "#DDFFA0",
+            "Glycerophospholipids",
+        ),
+        ChemicalClass::new(
+            "PG(AA)",
+            "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]",
+            "#BDEC6F",
             "Glycerophospholipids",
         ),
         ChemicalClass::new(
@@ -217,12 +227,12 @@ fn prenol_lipids() -> Vec<ChemicalClass> {
     )]
 }
 
-fn saccharipolipids() -> Vec<ChemicalClass> {
+fn saccharolipids() -> Vec<ChemicalClass> {
     vec![ChemicalClass::new(
         "SL",
         "[#6][OX2][PX4](=[OX1])[OX2][#6]",
         "#4292c6",
-        "Saccharipolipids",
+        "Saccharolipids",
     )]
 }
 
@@ -282,5 +292,62 @@ mod tests {
         let map = ChemicalClass::defaults_map();
         assert!(map.contains_key("PC(AA)"));
         assert_eq!(map.get("PC(AA)").map(|c| c.name.as_str()), Some("PC(AA)"));
+    }
+
+    #[test]
+    fn gp_class_order_matches_architecture_priority() {
+        let gp: Vec<_> = ChemicalClass::defaults()
+            .into_iter()
+            .filter(|c| c.family == "Glycerophospholipids")
+            .collect();
+        let gp_names: Vec<_> = gp.iter().map(|c| c.name.as_str()).collect();
+        // PI(AA) (priority 7) must come before PG(AA) (priority 6) —
+        // matches the ordering in `rules::LipidRuleLibrary::add_default_glycerophospholipid_rules`
+        let pi_pos = gp_names.iter().position(|&n| n == "PI(AA)").unwrap();
+        let pg_idx = gp_names.iter().position(|&n| n == "PG(AA)").unwrap();
+        assert!(
+            pi_pos < pg_idx,
+            "PI(AA) should appear before PG(AA) in the class ordering"
+        );
+    }
+
+    #[test]
+    fn family_order_follows_lipid_maps_hierarchy() {
+        let defaults = ChemicalClass::defaults();
+        let families: Vec<&str> = defaults
+            .iter()
+            .map(|c| c.family.as_str())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        // Families should appear in LIPID MAPS order: FA, GL, GP, SP, ST, PR, SL, PK
+        let expected = [
+            "Fatty Acyls",
+            "Glycerolipids",
+            "Glycerophospholipids",
+            "Sphingolipids",
+            "Sterol Lipids",
+            "Prenol Lipids",
+            "Saccharolipids",
+            "Polyketides",
+        ];
+        for (i, fam) in expected.iter().enumerate() {
+            assert!(
+                families.contains(fam),
+                "Expected family {fam} at position {i}"
+            );
+        }
+        // Verify the first occurrence order matches expected
+        let mut seen: Vec<&str> = Vec::new();
+        for class in &defaults {
+            if !seen.contains(&class.family.as_str()) {
+                seen.push(class.family.as_str());
+            }
+        }
+        let expected_order: Vec<&str> = expected.to_vec();
+        assert_eq!(
+            seen, expected_order,
+            "Family order should follow LIPID MAPS hierarchy"
+        );
     }
 }

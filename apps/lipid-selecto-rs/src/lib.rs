@@ -10,7 +10,8 @@
 //!
 //! # Features
 //!
-//! - 30+ built-in SMARTS rules covering FA, GL, GP, SP lipid families
+//! - 30+ built-in SMARTS rules covering all 8 LIPID MAPS families (FA, GL, GP, SP, ST, PR, SL, PK)
+//! - Supports evolved SMARTS rules from smarts-evoliposuction
 //! - Auto-detects input format: MGF or SMILES list; preserves output format
 //! - Real-time class selection with live gallery/count updates
 //! - 2D molecular structure rendering (no external rendering service)

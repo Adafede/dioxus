@@ -111,7 +111,7 @@ pub fn app() -> Element {
                         on_drop,
                         accept: ".mgf,text/plain,*",
                         label: "Drop an MGF or SMILES file here or click to browse",
-                        hint: ".mgf or .smi files with SMILES/FORMULA annotations",
+                        hint: ".mgf or .smi files (SMILES annotation recommended for classification)",
                         icon: "📁",
                     }
                     button {

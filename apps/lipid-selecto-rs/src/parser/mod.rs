@@ -17,7 +17,8 @@ mod analysis;
 mod parsing;
 
 pub use analysis::{
-    Analysis, GalleryItem, Summary, analyze, build_analysis, build_filtered_mgf,
-    build_filtered_mgf_with_classes, build_gallery, gallery_item, summarize,
+    Analysis, GalleryItem, Summary, analyze, build_analysis, build_analysis_from_classified,
+    build_filtered_mgf, build_filtered_mgf_with_classes, build_gallery, classify_blocks,
+    gallery_item, summarize,
 };
 pub use parsing::{SpectrumBlock, extract_blocks, extract_blocks_from_lines};

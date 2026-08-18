@@ -7,7 +7,6 @@
 
 use super::parsing::{SpectrumBlock, extract_blocks};
 use crate::chemical_class::ChemicalClass;
-use chematic::{chem, smiles};
 use std::collections::HashMap;
 
 /// Aggregated counts produced by [`summarize`] / [`analyze`].
@@ -68,15 +67,14 @@ pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
 
 /// Project a single spectrum block into a gallery card, rendering its
 /// 2D structure up-front.
+///
+/// Reuses the `exact_mass` cached during
+/// [`SpectrumBlock::compute_class_matches`](super::parsing::SpectrumBlock::compute_class_matches)
+/// to avoid re-parsing the SMILES — this is the dominant cost for large files.
 #[must_use]
 pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
-    // Compute exact mass from SMILES
-    let exact_mass = block
-        .psm_smiles
-        .as_deref()
-        .and_then(|smiles_str| smiles::parse(smiles_str.trim()).ok())
-        .map(|mol| chem::exact_mass(&mol))
-        .unwrap_or_default();
+    // Reuse pre-computed exact mass (no SMILES re-parsing)
+    let exact_mass = block.exact_mass;
 
     // Use precomputed class matches from compute_class_matches
     let class_matches = block.gallery_item_matches.clone().unwrap_or_default();
@@ -173,12 +171,31 @@ pub struct Analysis {
 #[must_use]
 pub fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
     let all_classes = ChemicalClass::defaults();
+    classify_blocks(&mut blocks, &all_classes);
+    build_analysis_from_classified(blocks, gallery_limit, all_classes)
+}
 
-    // Compute class matches for all blocks
-    for block in &mut blocks {
-        block.compute_class_matches(&all_classes);
+/// Classify all blocks by computing chemical-class matches.
+///
+/// Extracted as a separate function so the wasm worker can process blocks in
+/// chunks and yield to the event loop between chunks, keeping the UI responsive
+/// for large files.
+pub fn classify_blocks(blocks: &mut [SpectrumBlock], classes: &[ChemicalClass]) {
+    for block in blocks {
+        block.compute_class_matches(classes);
     }
+}
 
+/// Assemble the [`Analysis`] from already-classified blocks + class set.
+///
+/// Used by both [`build_analysis`] (single-call convenience) and the wasm
+/// worker (which classifies in chunks with periodic yields).
+#[must_use]
+pub fn build_analysis_from_classified(
+    blocks: Vec<SpectrumBlock>,
+    gallery_limit: usize,
+    all_classes: Vec<ChemicalClass>,
+) -> Analysis {
     let summary = summarize(&blocks);
     let gallery = build_gallery(&blocks, gallery_limit, &all_classes);
     let filtered_mgf = build_filtered_mgf(&blocks);

@@ -304,7 +304,7 @@ pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
         "CC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCCC(C)=CCO",
         "Dolichol-20",
     ),
-    // === Saccharipolipids (SL) - lipopolysaccharide and related ===
+    // === Saccharolipids (SL) - lipopolysaccharide and related ===
     (
         "SL_lipid_a",
         "CCCCCCCCCCCCCCCC(=O)N[C@@H](CO[C@@H]1O[C@H](CO)[C@H](O[C@@H]2O[C@H](C)[C@H](OC(=O)CCCCCCCCCCCCCCC)[C@H](O)[C@H]2OC(=O)CCCCCCCCCCCCCCC)[C@H](OC(=O)CCCCCCCCCCCCCCC)[C@H]1OC(=O)CCCCCCCCCCCCCCC)[C@H](O)CCCCCCCCCCCCCCCCC",

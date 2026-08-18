@@ -10,6 +10,29 @@ use ui::prelude::*;
 use crate::chemical_class::ChemicalClass;
 use crate::rules::LipidRuleLibrary;
 
+/// LIPID MAPS family rank order (FA → GL → GP → SP → ST → PR → SL → PK).
+/// Used to sort the "Filter by chemical family" groups in the Results UI
+/// so they display in the standard LIPID MAPS classification hierarchy,
+/// consistent with the colour-attribution architecture in `rules::colors`.
+static LIPID_MAPS_FAMILY_RANK: [(&str, usize); 8] = [
+    ("Fatty Acyls", 0),
+    ("Glycerolipids", 1),
+    ("Glycerophospholipids", 2),
+    ("Sphingolipids", 3),
+    ("Sterol Lipids", 4),
+    ("Prenol Lipids", 5),
+    ("Saccharolipids", 6),
+    ("Polyketides", 7),
+];
+
+/// Lookup helper for [`LIPID_MAPS_FAMILY_RANK`].
+fn family_rank(family: &str) -> usize {
+    LIPID_MAPS_FAMILY_RANK
+        .iter()
+        .find(|(name, _)| *name == family)
+        .map_or(99, |(_, rank)| *rank)
+}
+
 pub(super) fn section_subheading() -> String {
     StyleBuilder::new()
         .margin("0 0 0.5rem")
@@ -63,7 +86,9 @@ pub(super) fn summary(
     // Convert to owned data to avoid lifetime issues in closures
     let all_classes_owned = all_classes.to_vec();
 
-    // Group classes by family, preserving order
+    // Group classes by family, then sort families by LIPID MAPS rank order.
+    // The rank order follows the standard LIPID MAPS classification hierarchy:
+    // FA → GL → GP → SP → ST → PR → SL → PK.
     let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
     for class in &all_classes_owned {
         if let Some(entry) = families.iter_mut().find(|(f, _)| f == &class.family) {
@@ -72,6 +97,8 @@ pub(super) fn summary(
             families.push((class.family.clone(), vec![class.clone()]));
         }
     }
+    // Sort families by LIPID MAPS rank (stable — preserves original class order).
+    families.sort_by_key(|(f, _)| family_rank(f));
 
     rsx! {
         div {
