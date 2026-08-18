@@ -36,10 +36,10 @@ fn reset_and_tokens() -> String {
          :root {{\n\
            color-scheme: light dark;\n\
          \n\
-           --bg:        #f6f8fb;\n\
-           --bg2:       #fff;\n\
-           --surface:   #fbfcfe;\n\
-           --surface2:  #e7edf5;\n\
+           --bg:        #f7fafc;\n\
+           --bg2:       #f7fafc;\n\
+           --surface:   #ffffff;\n\
+           --surface2:  #ffffff;\n\
            --border:    #c3cfdd;\n\
            --text:      #111827;\n\
            --text2:     #233548;\n\
@@ -79,8 +79,8 @@ fn reset_and_tokens() -> String {
            --ring:      0 0 0 3px rgb(11 92 171 / 22%);\n\
            --critical-text: #172535;\n\
            --critical-muted: #33475c;\n\
-           --panel-bg: color-mix(in srgb, var(--surface) 92%, var(--bg2));\n\
-           --panel-bg-soft: color-mix(in srgb, var(--surface) 88%, var(--bg2));\n\
+           --panel-bg: var(--surface);\n\
+           --panel-bg-soft: var(--surface);\n\
            --panel-border: color-mix(in srgb, var(--border) 82%, transparent);\n\
            --results-border: var(--panel-border);\n\
            --panel-shadow: var(--shadow-xs);\n\
@@ -120,10 +120,10 @@ fn reset_and_tokens() -> String {
          \n\
          @media (prefers-color-scheme: dark) {{\n\
            :root {{\n\
-             --bg:        #10141b;\n\
-             --bg2:       #171d26;\n\
-             --surface:   #1f2733;\n\
-             --surface2:  #2a3443;\n\
+             --bg:        #0f172a;\n\
+             --bg2:       #0f172a;\n\
+             --surface:   #111827;\n\
+             --surface2:  #111827;\n\
              --border:    #38475a;\n\
              --text:      #eef4fb;\n\
              --text2:     #d5deea;\n\
@@ -166,10 +166,10 @@ fn reset_and_tokens() -> String {
 fn data_theme_dark() -> String {
     "/* Dark mode override via data-theme attribute */\n\
      [data-theme=\"dark\"] {\n\
-       --bg:        #10141b;\n\
-       --bg2:       #171d26;\n\
-       --surface:   #1f2733;\n\
-       --surface2:  #2a3443;\n\
+       --bg:        #0f172a;\n\
+       --bg2:       #0f172a;\n\
+       --surface:   #111827;\n\
+       --surface2:  #111827;\n\
        --border:    #38475a;\n\
        --text:      #eef4fb;\n\
        --text2:     #d5deea;\n\

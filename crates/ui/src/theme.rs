@@ -54,10 +54,10 @@ impl ColorScheme {
     /// Light theme colors optimized for daytime viewing.
     /// All text/background pairs meet WCAG AAA 7:1 contrast ratio.
     pub const LIGHT: Self = ColorScheme {
-        bg: "#f6f8fb",
-        bg2: "#fff",
-        surface: "#fbfcfe",
-        surface2: "#e7edf5",
+        bg: "#f7fafc",
+        bg2: "#f7fafc",
+        surface: "#ffffff",
+        surface2: "#ffffff",
         border: "#c3cfdd",
         text: "#111827",
         text2: "#233548",
@@ -74,10 +74,10 @@ impl ColorScheme {
     /// Dark theme colors optimized for low-light viewing.
     /// All text/background pairs meet WCAG AAA 7:1 contrast ratio.
     pub const DARK: Self = ColorScheme {
-        bg: "#10141b",
-        bg2: "#171d26",
-        surface: "#1f2733",
-        surface2: "#2a3443",
+        bg: "#0f172a",
+        bg2: "#0f172a",
+        surface: "#111827",
+        surface2: "#111827",
         border: "#38475a",
         text: "#eef4fb",
         text2: "#d5deea",

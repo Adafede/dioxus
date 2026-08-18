@@ -2,10 +2,10 @@ pub const CSS: &str = r"
 :root {
   color-scheme: light dark;
 
-  --bg:        #f6f8fb;
-  --bg2:       #fff;
-  --surface:   #fbfcfe;
-  --surface2:  #e7edf5;
+  --bg:        #f7fafc;
+  --bg2:       var(--bg);
+  --surface:   #ffffff;
+  --surface2:  var(--surface);
   --border:    #c3cfdd;
   --text:      #111827;
   --text2:     #233548;
@@ -44,8 +44,8 @@ pub const CSS: &str = r"
   --ring:      0 0 0 3px rgb(11 92 171 / 22%);
   --critical-text: #172535;
   --critical-muted: #33475c;
-  --panel-bg: color-mix(in srgb, var(--surface) 92%, var(--bg2));
-  --panel-bg-soft: color-mix(in srgb, var(--surface) 88%, var(--bg2));
+  --panel-bg: var(--surface);
+  --panel-bg-soft: var(--surface);
   --panel-border: color-mix(in srgb, var(--border) 82%, transparent);
   --results-border: var(--panel-border);
   --panel-shadow: var(--shadow-xs);
