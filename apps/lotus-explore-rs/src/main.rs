@@ -47,7 +47,9 @@
 //!
 //! # Setup: external assets
 //!
-//! RDKit.js and citation-js are loaded from CDN (no local download needed).
+//! RDKit.js and citation-js are loaded from CDN on demand by the curation
+//! workflow when their respective operations first need them (no local
+//! download needed).
 //! All document `<head>` metadata, scripts, and styles are managed in Rust
 //! via `ui::document::DocumentHead` — see `src/document_head.rs`.
 //!

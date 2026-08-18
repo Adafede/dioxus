@@ -37,6 +37,10 @@ const LANG_BOOTSTRAP_SCRIPT: &str = r#"
 "#;
 
 const RDKIT_BRIDGE_SCRIPT: &str = r#"
+const RDKIT_JS_SRC = "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js";
+let rdkitScriptLoadPromise = null;
+let rdkitReadyPromise = null;
+
 function waitForInitRDKitModule(timeoutMs = 12000) {
     const start = Date.now();
     return new Promise((resolve, reject) => {
@@ -55,116 +59,220 @@ function waitForInitRDKitModule(timeoutMs = 12000) {
     });
 }
 
-const rdkitReady = (async () => {
-    const init = await waitForInitRDKitModule();
-    const RDKit = await init();
+function loadRdkitJs() {
+    if (typeof initRDKitModule === "function") {
+        return Promise.resolve(initRDKitModule);
+    }
+    if (rdkitScriptLoadPromise) {
+        return rdkitScriptLoadPromise;
+    }
 
-    function withMol(smiles, callback) {
-        const trimmed = String(smiles || "").trim();
-        if (!trimmed) {
-            throw new Error("smiles is required");
+    rdkitScriptLoadPromise = new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[src="${RDKIT_JS_SRC}"]`);
+        const complete = () => {
+            waitForInitRDKitModule().then(resolve, reject);
+        };
+
+        if (existing) {
+            complete();
+            return;
         }
-        const mol = RDKit.get_mol(trimmed);
-        if (!mol) {
-            throw new Error("rdkit.js could not parse the structure");
-        }
-        try {
-            return callback(mol);
-        } finally {
-            if (typeof mol.delete === "function") {
-                mol.delete();
+
+        const script = document.createElement("script");
+        script.src = RDKIT_JS_SRC;
+        script.async = true;
+        script.crossOrigin = "anonymous";
+        script.addEventListener("load", complete, { once: true });
+        script.addEventListener(
+            "error",
+            () => reject(new Error("RDKit_minimal.js failed to load")),
+            { once: true }
+        );
+        document.head.appendChild(script);
+    }).catch((error) => {
+        rdkitScriptLoadPromise = null;
+        throw error;
+    });
+
+    return rdkitScriptLoadPromise;
+}
+
+function ensureRdkitReady() {
+    if (rdkitReadyPromise) {
+        return rdkitReadyPromise;
+    }
+
+    rdkitReadyPromise = (async () => {
+        const init = await loadRdkitJs();
+        const RDKit = await init();
+
+        function withMol(smiles, callback) {
+            const trimmed = String(smiles || "").trim();
+            if (!trimmed) {
+                throw new Error("smiles is required");
+            }
+            const mol = RDKit.get_mol(trimmed);
+            if (!mol) {
+                throw new Error("rdkit.js could not parse the structure");
+            }
+            try {
+                return callback(mol);
+            } finally {
+                if (typeof mol.delete === "function") {
+                    mol.delete();
+                }
             }
         }
-    }
 
-    function descriptorExactMass(descriptors) {
-        const keys = [
-            "exact_molecular_weight",
-            "ExactMolWt",
-            "exactmw",
-            "exact_mw",
-        ];
-        for (const key of keys) {
-            const value = descriptors?.[key];
-            if (typeof value === "number" && Number.isFinite(value)) {
-                return value;
+        function descriptorExactMass(descriptors) {
+            const keys = [
+                "exact_molecular_weight",
+                "ExactMolWt",
+                "exactmw",
+                "exact_mw",
+            ];
+            for (const key of keys) {
+                const value = descriptors?.[key];
+                if (typeof value === "number" && Number.isFinite(value)) {
+                    return value;
+                }
             }
+            throw new Error("rdkit.js descriptors did not include exact mass");
         }
-        throw new Error("rdkit.js descriptors did not include exact mass");
-    }
 
-    function stripStereoFromSmiles(smiles) {
-        return smiles.replace(/@{1,2}/g, "").replace(/[/\\]/g, "");
-    }
+        function stripStereoFromSmiles(smiles) {
+            return smiles.replace(/@{1,2}/g, "").replace(/[/\\]/g, "");
+        }
 
-    return {
-        convert(smiles) {
-            return withMol(smiles, (mol) => {
-                const isomericsmiles = mol.get_smiles(
-                    JSON.stringify({ canonical: true, isomericSmiles: true })
-                );
-                let canonicalsmiles = mol.get_smiles(
-                    JSON.stringify({ canonical: true, isomericSmiles: false })
-                );
-                if (
-                    canonicalsmiles.includes("@") ||
-                    canonicalsmiles.includes("/") ||
-                    canonicalsmiles.includes("\\")
-                ) {
-                    canonicalsmiles = stripStereoFromSmiles(canonicalsmiles);
-                }
-                const inchi = mol.get_inchi();
-                if (!inchi) {
-                    throw new Error("rdkit.js could not generate InChI");
-                }
-                const inchikey = RDKit.get_inchikey_for_inchi(inchi);
-                if (!inchikey) {
-                    throw new Error("rdkit.js could not generate InChIKey");
-                }
-                return { canonicalsmiles, isomericsmiles, inchi, inchikey };
-            });
-        },
-        exactMass(smiles) {
-            return withMol(smiles, (mol) => {
-                const descriptors = JSON.parse(mol.get_descriptors());
-                return descriptorExactMass(descriptors);
-            });
-        },
-        hasUndefinedStereo(smiles) {
-            return withMol(smiles, (mol) => {
-                const tags = JSON.parse(mol.get_stereo_tags() || "[]");
-                if (!Array.isArray(tags)) {
-                    return false;
-                }
-                return tags.some((tag) => {
-                    const text = String(tag || "").toLowerCase();
-                    return text.includes("unspecified") || text.includes("unknown");
+        return {
+            convert(smiles) {
+                return withMol(smiles, (mol) => {
+                    const isomericsmiles = mol.get_smiles(
+                        JSON.stringify({ canonical: true, isomericSmiles: true })
+                    );
+                    let canonicalsmiles = mol.get_smiles(
+                        JSON.stringify({ canonical: true, isomericSmiles: false })
+                    );
+                    if (
+                        canonicalsmiles.includes("@") ||
+                        canonicalsmiles.includes("/") ||
+                        canonicalsmiles.includes("\\")
+                    ) {
+                        canonicalsmiles = stripStereoFromSmiles(canonicalsmiles);
+                    }
+                    const inchi = mol.get_inchi();
+                    if (!inchi) {
+                        throw new Error("rdkit.js could not generate InChI");
+                    }
+                    const inchikey = RDKit.get_inchikey_for_inchi(inchi);
+                    if (!inchikey) {
+                        throw new Error("rdkit.js could not generate InChIKey");
+                    }
+                    return { canonicalsmiles, isomericsmiles, inchi, inchikey };
                 });
-            });
-        },
-    };
-})();
+            },
+            exactMass(smiles) {
+                return withMol(smiles, (mol) => {
+                    const descriptors = JSON.parse(mol.get_descriptors());
+                    return descriptorExactMass(descriptors);
+                });
+            },
+            hasUndefinedStereo(smiles) {
+                return withMol(smiles, (mol) => {
+                    const tags = JSON.parse(mol.get_stereo_tags() || "[]");
+                    if (!Array.isArray(tags)) {
+                        return false;
+                    }
+                    return tags.some((tag) => {
+                        const text = String(tag || "").toLowerCase();
+                        return text.includes("unspecified") || text.includes("unknown");
+                    });
+                });
+            },
+        };
+    })().catch((error) => {
+        rdkitReadyPromise = null;
+        throw error;
+    });
+
+    return rdkitReadyPromise;
+}
 
 window.__lotusRdkit = {
-    ready: rdkitReady,
+    ready() {
+        return ensureRdkitReady();
+    },
     async convert(smiles) {
-        const bridge = await rdkitReady;
+        const bridge = await ensureRdkitReady();
         return bridge.convert(smiles);
     },
     async exactMass(smiles) {
-        const bridge = await rdkitReady;
+        const bridge = await ensureRdkitReady();
         return bridge.exactMass(smiles);
     },
     async hasUndefinedStereo(smiles) {
-        const bridge = await rdkitReady;
+        const bridge = await ensureRdkitReady();
         return bridge.hasUndefinedStereo(smiles);
     },
 };
 "#;
 
 const CITATION_BRIDGE_SCRIPT: &str = r#"
+const CITATION_JS_SRC = "https://cdn.jsdelivr.net/npm/citation-js@0.8.2/build/citation.min.js";
+let citationJsLoadPromise = null;
+
+function loadCitationJs() {
+    if (typeof globalThis.Cite === "function") {
+        return Promise.resolve(globalThis.Cite);
+    }
+    if (citationJsLoadPromise) {
+        return citationJsLoadPromise;
+    }
+
+    citationJsLoadPromise = new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[src="${CITATION_JS_SRC}"]`);
+        const complete = () => {
+            if (typeof globalThis.Cite === "function") {
+                resolve(globalThis.Cite);
+            } else {
+                reject(new Error("citation.js loaded but did not expose a Cite constructor"));
+            }
+        };
+
+        if (existing) {
+            existing.addEventListener("load", complete, { once: true });
+            existing.addEventListener(
+                "error",
+                () => reject(new Error("citation.js failed to load")),
+                { once: true }
+            );
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src = CITATION_JS_SRC;
+        script.async = true;
+        script.crossOrigin = "anonymous";
+        script.addEventListener("load", complete, { once: true });
+        script.addEventListener(
+            "error",
+            () => reject(new Error("citation.js failed to load")),
+            { once: true }
+        );
+        document.head.appendChild(script);
+    }).catch((error) => {
+        citationJsLoadPromise = null;
+        throw error;
+    });
+
+    return citationJsLoadPromise;
+}
+
 async function resolveCitationBridge() {
     let CiteCtor = globalThis.Cite;
+    if (typeof CiteCtor !== "function") {
+        CiteCtor = await loadCitationJs();
+    }
     if (typeof CiteCtor !== "function" && typeof require === "function") {
         for (const moduleId of ["citation-js", "@citation-js/core"]) {
             try {
@@ -286,11 +394,10 @@ pub fn build_core_inline_script() -> String {
     [LANG_BOOTSTRAP_SCRIPT, TOAST_BRIDGE_SCRIPT].join("\n\n")
 }
 
-/// Inline scripts only required on the curation page: the RDKit and
-/// citation.js bridges. Loaded lazily via [`ui::document::DocumentScripts`]
-/// (mounted inside the curation view) so the bridge code — and, by extension,
-/// the heavy `RDKit_minimal.js` / `citation.min.js` CDN payloads — are never
-/// downloaded by visitors who only explore results or draw structures.
+/// Inline scripts only required on the curation page: the RDKit bridge and the
+/// citation.js bridge/loader. Loaded lazily via [`ui::document::DocumentScripts`]
+/// (mounted inside the curation view) so the bridge code stays off other views,
+/// and both RDKit and citation.js only load on first use.
 pub fn build_curation_inline_script() -> String {
     [RDKIT_BRIDGE_SCRIPT, CITATION_BRIDGE_SCRIPT].join("\n\n")
 }

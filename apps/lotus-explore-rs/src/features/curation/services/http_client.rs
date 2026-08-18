@@ -59,7 +59,13 @@ pub(super) async fn rdkit_bridge_call(
     }
 
     let ready = Reflect::get(&bridge, &JsValue::from_str("ready"))
-        .map_err(|_| CurationError::Http("rdkit.js readiness promise missing".into()))?;
+        .map_err(|_| CurationError::Http("rdkit.js readiness hook missing".into()))?;
+    let ready = match ready.dyn_into::<Function>() {
+        Ok(function) => function.call0(&bridge).map_err(|err| {
+            CurationError::Http(format!("rdkit.js readiness call failed: {err:?}"))
+        })?,
+        Err(ready) => ready,
+    };
     if let Ok(promise) = ready.dyn_into::<Promise>() {
         JsFuture::from(promise).await.map_err(|err| {
             CurationError::Http(format!("rdkit.js failed to initialize: {err:?}"))
