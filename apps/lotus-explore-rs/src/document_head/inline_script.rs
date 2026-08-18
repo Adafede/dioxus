@@ -4,6 +4,22 @@
 //! Inline JavaScript for the document head, split into small bridge snippets.
 
 const LANG_BOOTSTRAP_SCRIPT: &str = r#"
+(function installTrustedTypesPolicy() {
+    if (!window.trustedTypes || window.trustedTypes.getPolicy("default")) {
+        return;
+    }
+    try {
+        window.trustedTypes.createPolicy("default", {
+            createHTML: (value) => String(value),
+            createScript: (value) => String(value),
+            createScriptURL: (value) => String(value),
+            createURL: (value) => String(value),
+        });
+    } catch (_error) {
+        // Browsers without Trusted Types support will ignore the policy registration.
+    }
+})();
+
 (function syncDocumentLangFromQuery() {
     try {
         const params = new URL(window.location.href).searchParams;
