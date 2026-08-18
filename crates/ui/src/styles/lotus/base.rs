@@ -86,9 +86,9 @@ fn reset_and_tokens() -> String {
            --panel-shadow: var(--shadow-xs);\n\
          \n\
            /* Wikidata colour palette */\n\
-           --wd-compound:  #900;\n\
-           --wd-taxon:     #396;\n\
-           --wd-reference: #069;\n\
+           --wd-compound:  #990000;\n\
+           --wd-taxon:     #339966;\n\
+           --wd-reference: #006699;\n\
            --wd-entries:   #484848;\n\
            --wd-compound-stripe: color-mix(in srgb, var(--wd-compound) 78%, #fff);\n\
            --wd-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 78%, #fff);\n\
