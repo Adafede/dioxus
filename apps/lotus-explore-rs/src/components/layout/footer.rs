@@ -62,6 +62,8 @@ fn footer_style() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
+        .background_color("var(--panel-bg)")
+        .property("border-top", "1px solid var(--panel-border)")
         .property("margin-top", "auto")
         .padding("16px 28px 20px")
         .build()
