@@ -50,9 +50,9 @@ pub const CSS: &str = r"
   --results-border: var(--panel-border);
   --panel-shadow: var(--shadow-xs);
 
-  --wd-compound:  #900;
-  --wd-taxon:     #396;
-  --wd-reference: #069;
+  --wd-compound:  #990000;
+  --wd-taxon:     #339966;
+  --wd-reference: #006699;
   --wd-entries:   #484848;
   --wd-lotus:     #7c3aed;
 }
@@ -443,8 +443,6 @@ a:hover { text-decoration: underline; }
 .footer-link.red { color: var(--wd-compound); font-weight: 700; }
 .footer-link.green { color: var(--wd-taxon); font-weight: 700; }
 .footer-link.blue { color: var(--wd-reference); font-weight: 700; }
-.footer-link.purple { color: var(--wd-reference); font-weight: 700; }
-.footer-link.muted { color: var(--text2); font-weight: 700; }
 .meta.small { font-size: 0.82rem; }
 .meta.small.muted { color: var(--text3); }
 .verdict {
