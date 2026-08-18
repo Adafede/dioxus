@@ -76,7 +76,6 @@ fn sidebar_style() -> String {
 
 fn button_wrapper_style() -> String {
     StyleBuilder::new()
-        .padding("18px 16px")
         .display("flex")
         .justify_content("center")
         .build()

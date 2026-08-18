@@ -76,12 +76,9 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::SearchFilters => "Search filters",
         TextKey::Taxon => "Taxon",
         TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
-        TextKey::TaxonHint => "Name, Wikidata QID or * for the full dataset.",
-        TextKey::StructureSmilesOrMol => "Structure - SMILES or Molfile",
+        TextKey::TaxonHint => "Name, Wikidata QID or * for all taxa.",
+        TextKey::StructureSmilesOrMol => "SMILES or Molfile",
         TextKey::StructurePlaceholder => "c1ccccc1   - or paste a Molfile (V2000 / V3000) block",
-        TextKey::StructureHintEmpty => {
-            "Optional. One-line SMILES or a full Molfile - paste with trailing \"M  END\"."
-        }
         TextKey::Substructure => "Substructure",
         TextKey::Similarity => "Similarity",
         TextKey::StructureSearchMode => "Structure search mode",

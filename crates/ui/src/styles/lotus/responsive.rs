@@ -38,9 +38,10 @@ fn tablet_768_and_below() -> String {
          --fs-stat:   clamp(1rem, 0.92rem + 0.4vw, 1.2rem);\n\
        }\n\
        \n\
-       .app-layout   { flex-direction:column; height:auto; min-height:100dvh; overflow:visible; padding:0; gap:0; }\n\
-       .sidebar      { width:100%; height:auto; max-height:none; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }\n\
-       .main-content { height:auto; min-height:0; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }\n\
+       .app-shell    { min-height:100dvh; }
+       .app-layout   { flex-direction:column; flex:0 0 auto; min-height:0; overflow:visible; padding:0; gap:0; align-items:flex-start; }\n\
+       .sidebar      { width:100%; max-height:none; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }\n\
+       .main-content { min-height:0; overflow-y:visible; border-radius:0; border-left:0; border-right:0; }\n\
        \n\
        .page-header, .welcome, .results-wrap, .app-footer {\n\
          padding-left:max(18px, env(safe-area-inset-left));\n\

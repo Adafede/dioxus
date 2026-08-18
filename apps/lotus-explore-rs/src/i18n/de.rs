@@ -78,13 +78,10 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::SearchFilters => "Suchfilter",
         TextKey::Taxon => "Taxon",
         TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
-        TextKey::TaxonHint => "Name, Wikidata-QID oder * für den gesamten Datensatz.",
-        TextKey::StructureSmilesOrMol => "Struktur - SMILES oder Molfile",
+        TextKey::TaxonHint => "Name, Wikidata-QID oder * für alle Taxa.",
+        TextKey::StructureSmilesOrMol => "SMILES oder Molfile",
         TextKey::StructurePlaceholder => {
             "c1ccccc1   - oder einen Molfile-Block (V2000 / V3000) einfügen"
-        }
-        TextKey::StructureHintEmpty => {
-            "Optional. Einzeiliges SMILES oder vollständiges Molfile - mit \"M  END\" abschließen."
         }
         TextKey::Substructure => "Substruktur",
         TextKey::Similarity => "Ähnlichkeit",

@@ -82,13 +82,10 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::SearchFilters => "Filtri di ricerca",
         TextKey::Taxon => "Taxon",
         TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
-        TextKey::TaxonHint => "Nome, QID Wikidata oppure * per l'intero dataset.",
-        TextKey::StructureSmilesOrMol => "Struttura - SMILES o Molfile",
+        TextKey::TaxonHint => "Nome, QID Wikidata oppure * per tutti i taxa.",
+        TextKey::StructureSmilesOrMol => "SMILES o Molfile",
         TextKey::StructurePlaceholder => {
             "c1ccccc1   - oppure incolla un blocco Molfile (V2000 / V3000)"
-        }
-        TextKey::StructureHintEmpty => {
-            "Opzionale. SMILES su una riga oppure Molfile completo - termina con \"M  END\"."
         }
         TextKey::Substructure => "Sottostruttura",
         TextKey::Similarity => "Somiglianza",

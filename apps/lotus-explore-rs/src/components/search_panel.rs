@@ -132,7 +132,7 @@ fn StructureSection() -> Element {
                 placeholder: "{t(locale, TextKey::StructurePlaceholder)}",
                 value: "{smiles}",
                 oninput: move |e| ctx.update(FormAction::Smiles(e.value())),
-                rows: "4",
+                rows: "2",
                 style: crate::ui::style_constants::search_controls::textarea_base_style(),
             }
             if let Some(note_key) = view_model.note_key {
@@ -140,8 +140,6 @@ fn StructureSection() -> Element {
                     span { style: style_constants::search_controls::kind_pill_style(view_model.kind_class), "{kind_value.label()}" }
                     span { "{t(locale, note_key)}" }
                 }
-            } else {
-                p { style: crate::ui::style_constants::forms::hint_text_style(), "{t(locale, TextKey::StructureHintEmpty)}" }
             }
 
             fieldset { style: crate::ui::style_constants::search_controls::radio_group_style(),

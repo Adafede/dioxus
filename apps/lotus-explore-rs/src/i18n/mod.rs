@@ -153,7 +153,6 @@ pub enum TextKey {
     TaxonHint,
     StructureSmilesOrMol,
     StructurePlaceholder,
-    StructureHintEmpty,
     Substructure,
     Similarity,
     StructureSearchMode,

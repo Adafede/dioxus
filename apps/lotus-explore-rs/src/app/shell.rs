@@ -131,20 +131,22 @@ fn ShellScaffold(lang: String) -> Element {
         a { class: "skip-link", href: SKIP_TO_RESULTS_HREF, style: skip_link_style(),
             "{t(locale, TextKey::SkipToResults)}"
         }
-        div { class: "app-layout",
-            if current_view == AppView::Explore {
-                Sidebar {}
-            }
+        div { class: "app-shell",
+            div { class: "app-layout",
+                if current_view == AppView::Explore {
+                    Sidebar {}
+                }
 
-            main {
-                id: MAIN_PANEL_ID,
-                class: if single_pane { "main-content single-pane" } else { "main-content" },
-                tabindex: "-1",
-                aria_labelledby: PAGE_TITLE_ID,
-                PageHeader {}
-                RouteContent { current_view }
-                Footer {}
+                main {
+                    id: MAIN_PANEL_ID,
+                    class: if single_pane { "main-content single-pane" } else { "main-content" },
+                    tabindex: "-1",
+                    aria_labelledby: PAGE_TITLE_ID,
+                    PageHeader {}
+                    RouteContent { current_view }
+                }
             }
+            Footer {}
         }
     }
 }

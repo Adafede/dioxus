@@ -7,20 +7,22 @@ use super::tokens::*;
 
 fn app_frame() -> String {
     format!(
-        "/* Layout shell pack: app frame, header/meta, notices, share bar, and sidebar shell. */\n\
+        "/* Layout shell pack: app frame, header/meta, notices, share bar, sidebar shell, and app footer. */\n\
          \n\
-         .app-layout {{ display:flex; min-height:100dvh; height:100dvh; overflow:hidden; gap:{}; padding:{}; }}\n\
+         .app-shell {{ display:flex; flex-direction:column; min-height:100dvh; }}\n\
+         .app-layout {{ display:flex; flex:0 0 auto; min-height:0; overflow:hidden; gap:{}; padding:{}; align-items:stretch; }}\n\
          .app-layout.no-sidebar {{ display:block; }}\n\
          \n\
          .sidebar {{\n\
            width:300px;\n\
            min-width:250px;\n\
-           height:100%;\n\
            overflow-y:auto;\n\
            background:{};\n\
            border:1px solid {};\n\
            border-radius:{};\n\
            flex-shrink:0;\n\
+           align-self:stretch;\n\
+           min-height:0;\n\
            box-shadow:{};\n\
            display:flex;\n\
            flex-direction:column;\n\
@@ -31,7 +33,6 @@ fn app_frame() -> String {
          .main-content {{\n\
            flex:1;\n\
            min-width:0;\n\
-           height:100%;\n\
            overflow-y:auto;\n\
            display:flex;\n\
            flex-direction:column;\n\
@@ -39,6 +40,8 @@ fn app_frame() -> String {
            border-radius:{};\n\
            background:{};\n\
            box-shadow:{};\n\
+           align-self:stretch;\n\
+           min-height:0;\n\
          }}\n\
          \n\
          .main-content.single-pane {{ width:100%; }}\n\
@@ -295,12 +298,12 @@ fn share_bar() -> String {
 fn search_panel() -> String {
     format!(
         "/* Search panel shell */\n\
-         .search-panel {{ align-self:stretch; padding:{} {}; display:flex; flex-direction:column; gap:{}; background:{}; flex:0 0 auto; box-sizing:border-box; min-width:240px; overflow-y:auto; max-height:calc(100vh - 200px); margin-top:auto; }}\n\
+         .search-panel {{ align-self:stretch; padding:{} {}; display:flex; flex-direction:column; gap:{}; background:{}; flex:0 0 auto; box-sizing:border-box; min-width:240px; overflow-y:auto; max-height:calc(100vh - 200px); }}\n\
          .search-panel-body {{ display:flex; flex-direction:column; gap:{}; }}\n\
          .filters-toggle {{ display:none !important; }}\n\
-         .sidebar-logo-wrap {{ padding:{} 8px 8px; display:flex; justify-content:center; border-top:1px solid {}; margin-top:auto; }}\n\
+         .sidebar-logo-wrap {{ padding:4px 0 0; display:flex; justify-content:center; border-top:1px solid {}; }}\n\
          \n\
-         .sidebar-logo {{ display:block; width:128px; height:128px; }}\n\
+         .sidebar-logo {{ display:block; width:120px; height:120px; }}\n\
          .view-switch {{ margin-top: 10px; display: flex; gap: 8px; }}\n\
          .view-switch .btn {{ font-weight: 700; }}\n\
          .view-switch [role=\"group\"] {{ background: transparent !important; border-color: {} !important; }}\n\
@@ -315,7 +318,6 @@ fn search_panel() -> String {
         GAP_LG,
         PANEL_BG,
         GAP_MD,
-        SPACE_1,
         BORDER,
         BORDER,
         BORDER,
