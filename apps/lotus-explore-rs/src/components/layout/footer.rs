@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 use ui::prelude::*;
 
 // Else too low contrast
-const FOOTER_TAXON_COLOR: &str = "color-mix(in srgb, var(--wd-taxon) 88%, #000)";
+const FOOTER_TAXON_COLOR: &str = "color-mix(in srgb, var(--wd-taxon) 77%, #000)";
 
 #[component]
 pub fn Footer() -> Element {
