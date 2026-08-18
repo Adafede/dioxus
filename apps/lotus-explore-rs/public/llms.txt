@@ -1,8 +1,3 @@
-# llms.txt — Machine-readable site summary for AI agents and LLMs
-# See: https://llmstxt.org/
-# Reference: https://specification.website/spec/agent-readiness/llms-txt/
-# Canonical: https://adafede.github.io/dioxus/lotus-explore-rs/llms.txt
-
 # LOTUS Explore-rs
 
 > Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.
@@ -24,34 +19,45 @@
 - Export CSV, JSON, and SPARQL results for downstream analysis
 - Import TSV rows and generate QuickStatements for Wikidata curation
 
+## Links
+
+- [Home page](https://adafede.github.io/dioxus/lotus-explore-rs/)
+- [Repository](https://github.com/Adafede/dioxus)
+- [Source path](https://github.com/Adafede/dioxus/tree/main/apps/lotus-explore-rs)
+- [Paper landing page](https://elifesciences.org/articles/70780)
+- [Paper DOI](https://doi.org/10.7554/eLife.70780)
+- [BibTeX references](/public/docs/references.bib)
+- [LOTUS initiative](https://lotusnprod.github.io)
+- [Agent skills](/.well-known/agent-skills.json)
+- [API catalog](/.well-known/api-catalog.json)
+
 ## Data sources
 
-- Wikidata SPARQL: https://query.wikidata.org/
-- QLever: https://qlever.cs.uni-freiburg.de/wikidata
-- DOI metadata: https://doi.org/
-- LOTUS initiative: https://lotusnprod.github.io
+- [Wikidata SPARQL](https://query.wikidata.org/)
+- [QLever](https://qlever.cs.uni-freiburg.de/wikidata)
+- [DOI metadata](https://doi.org/)
+- [LOTUS initiative](https://lotusnprod.github.io)
 
 ## Discovery
 
-- Agent skills: /.well-known/agent-skills.json
-- API catalog: /.well-known/api-catalog.json
+- [Agent skills](/.well-known/agent-skills.json)
+- [API catalog](/.well-known/api-catalog.json)
 - Structured data: JSON-LD in page head
 - Link headers: advertise llms, robots, security, sitemap
 
 ## Citation
 
-- Paper DOI: https://doi.org/10.7554/eLife.70780
-- Paper landing page: https://elifesciences.org/articles/70780
-- BibTeX: /public/docs/references.bib
+- [Paper DOI](https://doi.org/10.7554/eLife.70780)
+- [Paper landing page](https://elifesciences.org/articles/70780)
+- [BibTeX](/public/docs/references.bib)
 
 ## Licensing
 
-- App license: https://www.gnu.org/licenses/agpl-3.0.html
-- Data license: https://creativecommons.org/publicdomain/zero/1.0/
-- Source path: https://github.com/Adafede/dioxus/tree/main/apps/lotus-explore-rs
-- Repository: https://github.com/Adafede/dioxus
+- [App license](https://www.gnu.org/licenses/agpl-3.0.html) (AGPL-3.0)
+- [Data license](https://creativecommons.org/publicdomain/zero/1.0/) (CC0 1.0)
+- [Source path](https://github.com/Adafede/dioxus/tree/main/apps/lotus-explore-rs)
 
 ## Contact
 
-- Issues: https://github.com/Adafede/dioxus/issues
-- Discussions: https://github.com/Adafede/dioxus/discussions
+- [Issues](https://github.com/Adafede/dioxus/issues)
+- [Discussions](https://github.com/Adafede/dioxus/discussions)
