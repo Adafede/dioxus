@@ -40,17 +40,46 @@ const fn locale_lang_tag(locale: Locale) -> &'static str {
     }
 }
 
+fn resolve_startup_dark_mode(startup: &crate::features::explore::InitialUrlState) -> bool {
+    if startup.dark_mode {
+        return true;
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        let params = crate::features::explore::url_state::read_url_query_params();
+        if let Some(raw) = params.get("dark_mode") {
+            return crate::features::explore::url_state::is_true_flag(raw);
+        }
+
+        if let Some(win) = web_sys::window() {
+            if let Ok(media) = win.match_media("(prefers-color-scheme: dark)") {
+                if let Some(media_query) = media {
+                    return media_query.matches();
+                }
+            }
+        }
+    }
+
+    false
+}
+
 #[component]
 pub fn AppRoot() -> Element {
+    let startup_url_state = initial_url_state();
+    let startup_dark_mode = resolve_startup_dark_mode(&startup_url_state);
     let AppBootstrap {
         app_state: initial_app_state,
         criteria: initial_criteria,
         criteria_baseline: initial_criteria_baseline,
         locale: initial_locale,
         explore: initial_explore,
-    } = bootstrap_app(initial_url_state());
+    } = bootstrap_app(startup_url_state);
 
-    let app_state: Signal<AppState> = use_signal(move || initial_app_state);
+    let app_state: Signal<AppState> = use_signal(move || AppState {
+        dark_mode: startup_dark_mode,
+        ..initial_app_state.clone()
+    });
     let criteria: Signal<SearchCriteria> = use_signal(move || initial_criteria);
     let criteria_baseline: Signal<SearchCriteria> = use_signal(move || initial_criteria_baseline);
     let locale: Signal<Locale> = use_signal(move || initial_locale);
@@ -97,9 +126,15 @@ fn AppRuntimeEffects(
         let dark_mode = app_state.read().dark_mode;
         #[cfg(target_arch = "wasm32")]
         {
+            let params = crate::features::explore::url_state::read_url_query_params();
+            let effective_dark_mode = params
+                .get("dark_mode")
+                .map(|raw| crate::features::explore::url_state::is_true_flag(raw))
+                .unwrap_or(dark_mode);
+
             if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
                 if let Some(html) = doc.document_element() {
-                    if dark_mode {
+                    if effective_dark_mode {
                         let _ = html.set_attribute("data-theme", "dark");
                     } else {
                         let _ = html.set_attribute("data-theme", "light");

@@ -113,8 +113,14 @@ pub fn persist_view_query_param(view: AppView) {
 pub fn persist_dark_mode_query_param(dark_mode: bool) {
     #[cfg(target_arch = "wasm32")]
     {
+        if !dark_mode {
+            // Leave a user-specified `?dark_mode=false` untouched, but do not
+            // persist a false override back into the URL from app state.
+            return;
+        }
+
         let mut params = read_url_query_params();
-        params.insert("dark_mode".into(), if dark_mode { "true".into() } else { "false".into() });
+        params.insert("dark_mode".into(), "true".into());
         let query = build_query_string(&params);
         let url = absolute_current_url_with_query(&query);
         if let Some(win) = web_sys::window()

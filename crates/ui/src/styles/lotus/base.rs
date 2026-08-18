@@ -90,6 +90,9 @@ fn reset_and_tokens() -> String {
            --wd-taxon:     #339966;\n\
            --wd-reference: #006699;\n\
            --wd-entries:   #484848;\n\
+           --footer-wd-taxon: color-mix(in srgb, var(--wd-taxon) 77%, #000);\n\
+           --footer-wd-compound: var(--wd-compound);\n\
+           --footer-wd-reference: var(--wd-reference);\n\
            --wd-compound-stripe: color-mix(in srgb, var(--wd-compound) 78%, #fff);\n\
            --wd-taxon-stripe: color-mix(in srgb, var(--wd-taxon) 78%, #fff);\n\
            --wd-reference-stripe: color-mix(in srgb, var(--wd-reference) 78%, #fff);\n\
@@ -143,6 +146,9 @@ fn reset_and_tokens() -> String {
              --ring:      0 0 0 3px rgb(140 188 255 / 28%);\n\
              --critical-text: #e8edf5;\n\
              --critical-muted: #d0d9e5;\n\
+             --footer-wd-taxon: var(--wd-taxon);\n\
+             --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 77%, #fff);\n\
+             --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 77%, #fff);\n\
          \n\
              /* Slightly stronger fills/stripes in dark mode to preserve distinction. */\n\
              --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 24%, var(--surface));\n\
@@ -237,6 +243,9 @@ fn data_theme_dark() -> String {
        --ring:      0 0 0 3px rgb(140 188 255 / 28%);\n\
        --critical-text: #e8edf5;\n\
        --critical-muted: #d0d9e5;\n\
+       --footer-wd-taxon: var(--wd-taxon);\n\
+       --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 77%, #fff);\n\
+       --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 77%, #fff);\n\
        \n\
        /* Slightly stronger fills/stripes in dark mode to preserve distinction. */\n\
        --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 24%, var(--surface));\n\

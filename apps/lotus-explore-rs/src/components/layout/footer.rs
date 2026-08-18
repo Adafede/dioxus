@@ -6,9 +6,6 @@ use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
 use ui::prelude::*;
 
-// Else too low contrast
-const FOOTER_TAXON_COLOR: &str = "color-mix(in srgb, var(--wd-taxon) 77%, #000)";
-
 #[component]
 pub fn Footer() -> Element {
     let locale = use_locale();
@@ -17,7 +14,7 @@ pub fn Footer() -> Element {
             div { class: "footer-line", style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterArchive),
-                    color: "var(--wd-compound)",
+                    color: "var(--footer-wd-compound)",
                     links: &[("https://doi.org/10.5281/zenodo.5794106", "LOTUS Frozen"),],
                 }
                 FooterCitationRow { locale }
@@ -25,7 +22,7 @@ pub fn Footer() -> Element {
             div { class: "footer-line", style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterCode),
-                    color: FOOTER_TAXON_COLOR,
+                    color: "var(--footer-wd-taxon)",
                     links: &[
                         (
                             "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explore-rs",
@@ -35,7 +32,7 @@ pub fn Footer() -> Element {
                 }
                 FooterRow {
                     label: t(locale, TextKey::FooterData),
-                    color: FOOTER_TAXON_COLOR,
+                    color: "var(--footer-wd-taxon)",
                     links: &[
                         ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
                         ("https://www.wikidata.org/", "Wikidata"),
@@ -45,7 +42,7 @@ pub fn Footer() -> Element {
             div { class: "footer-line", style: footer_line_style(),
                 FooterRow {
                     label: t(locale, TextKey::FooterPrograms),
-                    color: "var(--wd-reference)",
+                    color: "var(--footer-wd-reference)",
                     links: &[
                         ("https://github.com/cdk/depict", "CDK Depict"),
                         ("https://citation.js.org", "Citation.js"),
@@ -84,7 +81,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
                         href: "https://doi.org/10.7554/eLife.70780",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        style: footer_link_style("var(--wd-compound)"),
+                        style: footer_link_style("var(--footer-wd-compound)"),
                         "LOTUS Article"
                     }
                 }
@@ -93,7 +90,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
                         class: "footer-link",
                         href: "/docs/references.bib",
                         download: "references.bib",
-                        style: footer_link_style("var(--wd-compound)"),
+                        style: footer_link_style("var(--footer-wd-compound)"),
                         "BibTeX"
                     }
                 }
@@ -114,7 +111,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                         href: "https://creativecommons.org/publicdomain/zero/1.0/",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        style: footer_link_style("var(--wd-reference)"),
+                        style: footer_link_style("var(--footer-wd-reference)"),
                         "CC0 1.0"
                     }
                     span { class: "footer-aside", style: footer_aside_style(), "{t(locale, TextKey::FooterForData)}" }
@@ -125,7 +122,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                         href: "https://www.gnu.org/licenses/agpl-3.0.html",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        style: footer_link_style("var(--wd-reference)"),
+                        style: footer_link_style("var(--footer-wd-reference)"),
                         "AGPL-3.0"
                     }
                     span { class: "footer-aside", style: footer_aside_style(), "{t(locale, TextKey::FooterForCode)}" }
