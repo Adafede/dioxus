@@ -118,6 +118,7 @@ fn table_scroll_style() -> String {
         .property("overflow", "auto")
         .property("max-height", "min(72vh, 980px)")
         .border("1px solid var(--results-border)")
+        .property("border-left", "4px solid var(--footer-wd-entries)")
         .border_radius("14px")
         .background_color("transparent")
         .box_shadow("var(--panel-shadow)")
