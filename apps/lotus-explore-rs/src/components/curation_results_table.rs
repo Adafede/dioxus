@@ -12,6 +12,7 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use ui::prelude::*;
+use ui::styles::lotus::tokens::{FOOTER_WD_ENTRIES, WD_COMPOUND, WD_REFERENCE, WD_TAXON};
 
 const NA_TEXT: &str = "n/a";
 
@@ -266,11 +267,11 @@ fn results_table_style() -> String {
 
 fn status_pill_style(status: &CurationStatus) -> String {
     let border_color = match status {
-        CurationStatus::ExistingComplete => "var(--wd-taxon)",
-        CurationStatus::ExistingNeedsUpdates => "var(--footer-wd-entries)",
-        CurationStatus::NewCompound => "var(--wd-reference)",
-        CurationStatus::PendingDependencies => "var(--wd-reference)",
-        CurationStatus::Error => "var(--wd-compound)",
+        CurationStatus::ExistingComplete => WD_TAXON,
+        CurationStatus::ExistingNeedsUpdates => FOOTER_WD_ENTRIES,
+        CurationStatus::NewCompound => WD_REFERENCE,
+        CurationStatus::PendingDependencies => WD_REFERENCE,
+        CurationStatus::Error => WD_COMPOUND,
     };
 
     StyleBuilder::new()
@@ -299,7 +300,7 @@ fn status_warning_pill_style() -> String {
         .property("padding", "2px 8px")
         .property("border-radius", "4px")
         .property("border-left", "3px solid transparent")
-        .property("border-left-color", "var(--footer-wd-entries)")
+        .property("border-left-color", FOOTER_WD_ENTRIES)
         .property(
             "background",
             "color-mix(in srgb, var(--surface) 90%, transparent)",

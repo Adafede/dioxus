@@ -14,6 +14,7 @@ use crate::i18n::{TextKey, t};
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
 use ui::prelude::*;
+use ui::styles::lotus::tokens::FOOTER_WD_ENTRIES;
 
 #[component]
 pub(super) fn VirtualizedResultsTable(
@@ -52,12 +53,12 @@ pub(super) fn VirtualizedResultsTable(
                 caption { style: crate::ui::style_constants::shared::sr_only_style(), "{t(locale, TextKey::TableTriplesAria)}" }
                 colgroup {
                     col { style: col_style("124px") }
-                    col { style: col_style("38ch") }
-                    col { style: col_style("10ch") }
-                    col { style: col_style("14ch") }
-                    col { style: col_style("28ch") }
-                    col { style: col_style("38ch") }
-                    col { style: col_style("8ch") }
+                    col { style: col_style("31ch") }
+                    col { style: col_style("12ch") }
+                    col { style: col_style("12ch") }
+                    col { style: col_style("20ch") }
+                    col { style: col_style("45ch") }
+                    col { style: col_style("4ch") }
                 }
                 thead {
                     TableHeader {
@@ -118,7 +119,7 @@ fn table_scroll_style() -> String {
         .property("overflow", "auto")
         .property("max-height", "min(72vh, 980px)")
         .border("1px solid var(--results-border)")
-        .property("border-left", "4px solid var(--footer-wd-entries)")
+        .property("border-left", &format!("4px solid {}", FOOTER_WD_ENTRIES))
         .border_radius("14px")
         .background_color("transparent")
         .box_shadow("var(--panel-shadow)")

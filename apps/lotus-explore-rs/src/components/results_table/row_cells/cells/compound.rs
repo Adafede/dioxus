@@ -11,6 +11,7 @@ use crate::i18n::{Locale, aria_search_inchikey, aria_wikidata_entity};
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
 use ui::prelude::*;
+use ui::styles::lotus::tokens::FOOTER_WD_COMPOUND;
 
 pub(in crate::components::results_table::row_cells) fn compound_cell(
     locale: Locale,
@@ -39,7 +40,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     rel: "noopener noreferrer",
                     title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, compound_qid)}",
-                    style: id_badge_style("transparent", "var(--footer-wd-compound)", "var(--footer-wd-compound)"),
+                    style: id_badge_style("transparent", FOOTER_WD_COMPOUND, FOOTER_WD_COMPOUND),
                     "{compound_qid}"
                 }
                 a {
@@ -48,7 +49,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     rel: "noopener noreferrer",
                     title: "{text.open_in_scholia}",
                     aria_label: "{text.open_in_scholia}",
-                    style: id_badge_style("transparent", "var(--footer-wd-compound)", "var(--footer-wd-compound)"),
+                    style: id_badge_style("transparent", FOOTER_WD_COMPOUND, FOOTER_WD_COMPOUND),
                     "Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
@@ -58,7 +59,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         rel: "noopener noreferrer",
                         title: "{ik}",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                        style: id_badge_style("transparent", "var(--footer-wd-compound)", "var(--footer-wd-compound)"),
+                        style: id_badge_style("transparent", FOOTER_WD_COMPOUND, FOOTER_WD_COMPOUND),
                         "{ik}"
                     }
                 }
@@ -72,8 +73,8 @@ fn compound_cell_style() -> String {
         .padding("8px 12px")
         .border_radius("10px")
         .background_color("transparent")
-        .color("var(--footer-wd-compound)")
-        .property("box-shadow", "inset 3px 0 0 var(--footer-wd-compound)")
+        .color(FOOTER_WD_COMPOUND)
+        .property("box-shadow", &format!("inset 3px 0 0 {}", FOOTER_WD_COMPOUND))
         .property("min-width", "0")
         .build()
 }

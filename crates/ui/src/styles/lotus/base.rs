@@ -94,18 +94,6 @@ fn reset_and_tokens() -> String {
            --footer-wd-compound: var(--wd-compound);\n\
            --footer-wd-reference: var(--wd-reference);\n\
            --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #000);\n\
-           --wd-compound-footer: var(--footer-wd-compound);\n\
-           --wd-taxon-footer: var(--footer-wd-taxon);\n\
-           --wd-reference-footer: var(--footer-wd-reference);\n\
-           --wd-entries-footer: var(--footer-wd-entries);\n\
-           --wd-compound-soft-bg: color-mix(in srgb, var(--wd-compound) 12%, var(--surface));\n\
-           --wd-compound-soft-border: color-mix(in srgb, var(--wd-compound) 34%, var(--results-border));\n\
-           --wd-compound-soft-border-weak: color-mix(in srgb, var(--wd-compound) 30%, var(--results-border));\n\
-           --wd-taxon-soft-bg: color-mix(in srgb, var(--wd-taxon) 12%, var(--surface));\n\
-           --wd-taxon-soft-border: color-mix(in srgb, var(--wd-taxon) 34%, var(--results-border));\n\
-           --wd-reference-soft-bg: color-mix(in srgb, var(--wd-reference) 14%, var(--surface));\n\
-           --wd-reference-soft-border: color-mix(in srgb, var(--wd-reference) 34%, var(--results-border));\n\
-           --wd-reference-soft-border-weak: color-mix(in srgb, var(--wd-reference) 30%, var(--results-border));\n\
          \n\
            /* Stats palette follows the footer color logic so it stays aligned with the theme. */\n\
            --stat-compound-bg: color-mix(in srgb, var(--footer-wd-compound) 12%, var(--surface));\n\
@@ -148,23 +136,9 @@ fn reset_and_tokens() -> String {
              --critical-text: #e8edf5;\n\
              --critical-muted: #d0d9e5;\n\
              --footer-wd-taxon: var(--wd-taxon);\n\
-             --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 67%, #fff);\n\
+             --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 60%, #fff);\n\
              --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 77%, #fff);\n\
              --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #fff);\n\
-         \n\
-             /* Same footer-driven palette in dark mode so stats stay aligned with the app theme. */\n\
-             --stat-compound-bg: color-mix(in srgb, var(--footer-wd-compound) 18%, var(--surface));\n\
-             --stat-compound-border: color-mix(in srgb, var(--footer-wd-compound) 38%, var(--border));\n\
-             --stat-compound-stripe: var(--footer-wd-compound);\n\
-             --stat-taxon-bg: color-mix(in srgb, var(--footer-wd-taxon) 18%, var(--surface));\n\
-             --stat-taxon-border: color-mix(in srgb, var(--footer-wd-taxon) 38%, var(--border));\n\
-             --stat-taxon-stripe: var(--footer-wd-taxon);\n\
-             --stat-reference-bg: color-mix(in srgb, var(--footer-wd-reference) 18%, var(--surface));\n\
-             --stat-reference-border: color-mix(in srgb, var(--footer-wd-reference) 38%, var(--border));\n\
-             --stat-reference-stripe: var(--footer-wd-reference);\n\
-             --stat-total-bg: color-mix(in srgb, var(--footer-wd-entries) 20%, var(--surface));\n\
-             --stat-total-border: color-mix(in srgb, var(--footer-wd-entries) 40%, var(--border));\n\
-             --stat-total-stripe: var(--footer-wd-entries);\n\
            }}\n\
          }}",
         RADIUS, RADIUS_SM,
@@ -202,18 +176,6 @@ fn data_theme_light() -> String {
        --footer-wd-compound: var(--wd-compound);\n\
        --footer-wd-reference: var(--wd-reference);\n\
        --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #000);\n\
-       --stat-compound-bg: color-mix(in srgb, var(--footer-wd-compound) 12%, var(--surface));\n\
-       --stat-compound-border: color-mix(in srgb, var(--footer-wd-compound) 34%, var(--border));\n\
-       --stat-compound-stripe: var(--footer-wd-compound);\n\
-       --stat-taxon-bg: color-mix(in srgb, var(--footer-wd-taxon) 12%, var(--surface));\n\
-       --stat-taxon-border: color-mix(in srgb, var(--footer-wd-taxon) 34%, var(--border));\n\
-       --stat-taxon-stripe: var(--footer-wd-taxon);\n\
-       --stat-reference-bg: color-mix(in srgb, var(--footer-wd-reference) 12%, var(--surface));\n\
-       --stat-reference-border: color-mix(in srgb, var(--footer-wd-reference) 34%, var(--border));\n\
-       --stat-reference-stripe: var(--footer-wd-reference);\n\
-       --stat-total-bg: color-mix(in srgb, var(--footer-wd-entries) 12%, var(--surface));\n\
-       --stat-total-border: color-mix(in srgb, var(--footer-wd-entries) 34%, var(--border));\n\
-       --stat-total-stripe: var(--footer-wd-entries);\n\
      }\n\
      [data-theme=\"light\"] body {\n\
        background: var(--bg);\n\
@@ -250,23 +212,9 @@ fn data_theme_dark() -> String {
        --critical-text: #e8edf5;\n\
        --critical-muted: #d0d9e5;\n\
        --footer-wd-taxon: var(--wd-taxon);\n\
-       --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 67%, #fff);\n\
+       --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 60%, #fff);\n\
        --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 77%, #fff);\n\
        --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #fff);\n\
-       \n\
-       /* Same footer-driven palette in dark mode so stats stay aligned with the app theme. */\n\
-       --stat-compound-bg: color-mix(in srgb, var(--footer-wd-compound) 18%, var(--surface));\n\
-       --stat-compound-border: color-mix(in srgb, var(--footer-wd-compound) 38%, var(--border));\n\
-       --stat-compound-stripe: var(--footer-wd-compound);\n\
-       --stat-taxon-bg: color-mix(in srgb, var(--footer-wd-taxon) 18%, var(--surface));\n\
-       --stat-taxon-border: color-mix(in srgb, var(--footer-wd-taxon) 38%, var(--border));\n\
-       --stat-taxon-stripe: var(--footer-wd-taxon);\n\
-       --stat-reference-bg: color-mix(in srgb, var(--footer-wd-reference) 18%, var(--surface));\n\
-       --stat-reference-border: color-mix(in srgb, var(--footer-wd-reference) 38%, var(--border));\n\
-       --stat-reference-stripe: var(--footer-wd-reference);\n\
-       --stat-total-bg: color-mix(in srgb, var(--footer-wd-entries) 20%, var(--surface));\n\
-       --stat-total-border: color-mix(in srgb, var(--footer-wd-entries) 40%, var(--border));\n\
-       --stat-total-stripe: var(--footer-wd-entries);\n\
      }\n\
      [data-theme=\"dark\"] body {\n\
        background: var(--bg);\n\

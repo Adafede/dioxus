@@ -5,6 +5,7 @@
 
 use dioxus::prelude::*;
 use ui::prelude::*;
+use ui::styles::lotus::tokens::{FOOTER_WD_COMPOUND, FOOTER_WD_REFERENCE};
 
 /// Formats a mass value to 4 decimal places for display.
 ///
@@ -55,7 +56,7 @@ fn mass_style() -> String {
     StyleBuilder::new()
         .font_family("var(--sans)")
         .font_size("var(--fs-0)")
-        .color("var(--footer-wd-compound)")
+        .color(FOOTER_WD_COMPOUND)
         .font_weight("500")
         .build()
 }
@@ -64,15 +65,13 @@ fn formula_style() -> String {
     StyleBuilder::new()
         .font_family("var(--sans)")
         .font_size("var(--fs-0)")
-        .color("var(--footer-wd-compound)")
+        .color(FOOTER_WD_COMPOUND)
         .font_weight("500")
         .build()
 }
 
 fn year_style() -> String {
-    StyleBuilder::new()
-        .color("var(--footer-wd-reference)")
-        .build()
+    StyleBuilder::new().color(FOOTER_WD_REFERENCE).build()
 }
 #[cfg(test)]
 mod tests {

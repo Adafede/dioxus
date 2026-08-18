@@ -5,6 +5,7 @@
 //! Lotus-specific cell and row formatting.
 
 use ui::prelude::*;
+use ui::styles::lotus::tokens::{FOOTER_WD_REFERENCE, FOOTER_WD_TAXON};
 
 /// Taxon cell container: transparent, color-driven text with a side band.
 pub fn lotus_taxon_cell_style() -> String {
@@ -12,8 +13,8 @@ pub fn lotus_taxon_cell_style() -> String {
         .padding("8px 12px")
         .border_radius("10px")
         .background_color("transparent")
-        .color("var(--footer-wd-taxon)")
-        .property("box-shadow", "inset 3px 0 0 var(--footer-wd-taxon)")
+        .color(FOOTER_WD_TAXON)
+        .property("box-shadow", &format!("inset 3px 0 0 {}", FOOTER_WD_TAXON))
         .property("min-width", "0")
         .build()
 }
@@ -46,8 +47,8 @@ pub fn lotus_id_badge_style() -> String {
             "transform .12s ease, box-shadow .12s ease, filter .12s ease",
         )
         .background_color("transparent")
-        .color("var(--footer-wd-taxon)")
-        .property("border-color", "var(--footer-wd-taxon)")
+        .color(FOOTER_WD_TAXON)
+        .property("border-color", FOOTER_WD_TAXON)
         .build()
 }
 
@@ -81,8 +82,8 @@ pub fn lotus_reference_cell_style() -> String {
         .padding("8px 12px")
         .border_radius("10px")
         .background_color("transparent")
-        .color("var(--footer-wd-reference)")
-        .property("box-shadow", "inset 3px 0 0 var(--footer-wd-reference)")
+        .color(FOOTER_WD_REFERENCE)
+        .property("box-shadow", &format!("inset 3px 0 0 {}", FOOTER_WD_REFERENCE))
         .property("min-width", "0")
         .build()
 }

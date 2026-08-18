@@ -241,6 +241,26 @@ pub const WD_TAXON: &str = "var(--wd-taxon)";
 pub const WD_REFERENCE: &str = "var(--wd-reference)";
 pub const WD_ENTRIES: &str = "var(--wd-entries)";
 
+/// Footer/interactive colors: theme-aware versions used for labels, links, and row accents.
+pub const FOOTER_WD_COMPOUND: &str = "var(--footer-wd-compound)";
+pub const FOOTER_WD_TAXON: &str = "var(--footer-wd-taxon)";
+pub const FOOTER_WD_REFERENCE: &str = "var(--footer-wd-reference)";
+pub const FOOTER_WD_ENTRIES: &str = "var(--footer-wd-entries)";
+
+/// Statistics panel colors, derived from the footer palette to stay in sync with theme.
+pub const STAT_COMPOUND_BG: &str = "var(--stat-compound-bg)";
+pub const STAT_COMPOUND_BORDER: &str = "var(--stat-compound-border)";
+pub const STAT_COMPOUND_STRIPE: &str = "var(--stat-compound-stripe)";
+pub const STAT_TAXON_BG: &str = "var(--stat-taxon-bg)";
+pub const STAT_TAXON_BORDER: &str = "var(--stat-taxon-border)";
+pub const STAT_TAXON_STRIPE: &str = "var(--stat-taxon-stripe)";
+pub const STAT_REFERENCE_BG: &str = "var(--stat-reference-bg)";
+pub const STAT_REFERENCE_BORDER: &str = "var(--stat-reference-border)";
+pub const STAT_REFERENCE_STRIPE: &str = "var(--stat-reference-stripe)";
+pub const STAT_TOTAL_BG: &str = "var(--stat-total-bg)";
+pub const STAT_TOTAL_BORDER: &str = "var(--stat-total-border)";
+pub const STAT_TOTAL_STRIPE: &str = "var(--stat-total-stripe)";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SHADOW TOKENS
 // ─────────────────────────────────────────────────────────────────────────────

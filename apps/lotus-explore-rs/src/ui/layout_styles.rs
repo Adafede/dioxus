@@ -13,10 +13,10 @@ use ui::prelude::*;
 pub mod stat_stripe_colors {
     //! Stripe colors for statistic badges (compounds, taxa, references, entries).
     //! Keep stats aligned with the footer palette so they track light/dark mode.
-    pub const COMPOUND: &str = "var(--footer-wd-compound)";
-    pub const TAXON: &str = "var(--footer-wd-taxon)";
-    pub const REFERENCE: &str = "var(--footer-wd-reference)";
-    pub const ENTRIES: &str = "var(--footer-wd-entries)";
+    pub const COMPOUND: &str = ui::styles::lotus::tokens::FOOTER_WD_COMPOUND;
+    pub const TAXON: &str = ui::styles::lotus::tokens::FOOTER_WD_TAXON;
+    pub const REFERENCE: &str = ui::styles::lotus::tokens::FOOTER_WD_REFERENCE;
+    pub const ENTRIES: &str = ui::styles::lotus::tokens::FOOTER_WD_ENTRIES;
 }
 
 pub mod borders {
