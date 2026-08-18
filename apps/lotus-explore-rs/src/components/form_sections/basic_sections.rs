@@ -24,6 +24,7 @@ pub fn TaxonInput() -> Element {
             label { style: crate::ui::style_constants::shared::label_base_style(), r#for: "taxon-input", "{t(locale, TextKey::Taxon)}" }
             input {
                 id: "taxon-input",
+                name: "taxon",
                 r#type: "text",
                 autocomplete: "off",
                 spellcheck: "false",
@@ -61,6 +62,7 @@ pub fn MassRangeInput() -> Element {
                     label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "mass-min", "{t(locale, TextKey::Min)}" }
                     input {
                         id: "mass-min",
+                        name: "mass_min",
                         r#type: "number",
                         min: "0",
                         max: "10000",
@@ -79,6 +81,7 @@ pub fn MassRangeInput() -> Element {
                     label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "mass-max", "{t(locale, TextKey::Max)}" }
                     input {
                         id: "mass-max",
+                        name: "mass_max",
                         r#type: "number",
                         min: "0",
                         max: "10000",
@@ -119,6 +122,7 @@ pub fn YearRangeInput() -> Element {
                     label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "year-min", "{t(locale, TextKey::YearFrom)}" }
                     input {
                         id: "year-min",
+                        name: "year_min",
                         r#type: "number",
                         min: "{DEFAULT_YEAR_MIN}",
                         max: "{current}",
@@ -137,6 +141,7 @@ pub fn YearRangeInput() -> Element {
                     label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "year-max", "{t(locale, TextKey::YearTo)}" }
                     input {
                         id: "year-max",
+                        name: "year_max",
                         r#type: "number",
                         min: "{DEFAULT_YEAR_MIN}",
                         max: "{current}",

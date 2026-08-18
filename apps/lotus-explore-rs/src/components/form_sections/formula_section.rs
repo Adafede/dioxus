@@ -134,6 +134,7 @@ pub fn FormulaSection() -> Element {
                     }
                     input {
                         id: "formula-exact",
+                        name: "formula_exact",
                         r#type: "text",
                         style: formula_exact_input_style(),
                         autocomplete: "off",

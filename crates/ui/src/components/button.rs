@@ -22,12 +22,15 @@ pub struct ButtonProps {
     /// Button variant
     #[props(default = ButtonVariant::Primary)]
     pub variant: ButtonVariant,
-    /// Whether button is disabled
+    /// Whether the button is disabled
     #[props(default)]
     pub disabled: bool,
     /// Whether to use dark theme
     #[props(default)]
     pub dark: bool,
+    /// HTML button type. Default to `button` to avoid accidental form submission.
+    #[props(default = "button")]
+    pub r#type: &'static str,
     /// Optional click handler. When `None` (the default), no `onclick`
     /// attribute is emitted — backward-compatible with call sites that omit it.
     #[props(default)]
@@ -90,6 +93,7 @@ pub fn Button(props: ButtonProps) -> Element {
     let on_click = props.onclick;
     rsx! {
         button {
+            r#type: props.r#type,
             style: button_style,
             disabled: props.disabled,
             onclick: move |evt: Event<MouseData>| {

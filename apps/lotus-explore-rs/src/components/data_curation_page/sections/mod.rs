@@ -121,8 +121,26 @@ pub fn AddRowCard(
     on_add_row: EventHandler<()>,
     on_load_examples: EventHandler<()>,
 ) -> Element {
+    let schema = r#"{"type":"object","properties":{"name":{"type":"string","description":"Compound name"},"smiles":{"type":"string","description":"SMILES representation"},"taxon":{"type":"string","description":"Taxon name or identifier"},"doi":{"type":"string","description":"Optional DOI"}},"additionalProperties":true}"#;
+
     rsx! {
-        div { style: curation_card_style(),
+        form {
+            id: "lotus-curation-add-row-form",
+            "data-webmcp-id": "lotus-curation-add-row-form",
+            "data-webmcp-type": "form",
+            "data-webmcp-name": "LOTUS curation add-row form",
+            "data-webmcp-description": "Add a single curated natural-product record with a name, SMILES, taxon, and DOI.",
+            "data-webmcp-schema": "{schema}",
+            "data-mcp-id": "lotus-curation-add-row-form",
+            "data-mcp-type": "form",
+            "data-mcp-name": "LOTUS curation add-row form",
+            "data-mcp-description": "Add a single curated natural-product record with a name, SMILES, taxon, and DOI.",
+            "data-mcp-schema": "{schema}",
+            onsubmit: move |evt: Event<FormData>| {
+                evt.prevent_default();
+                on_add_row.call(());
+            },
+            style: curation_card_style(),
             h3 { "{heading_add_one_row(locale)}" }
             div { style: curation_form_grid_style(),
                 label { class: "form-label", r#for: "curation-name-input",
@@ -130,6 +148,7 @@ pub fn AddRowCard(
                 }
                 input {
                     id: "curation-name-input",
+                    name: "name",
                     class: "form-input",
                     r#type: "text",
                     placeholder: "{placeholder_molecule_name(locale)}",
@@ -143,6 +162,7 @@ pub fn AddRowCard(
                 }
                 input {
                     id: "curation-smiles-input",
+                    name: "smiles",
                     class: "form-input",
                     r#type: "text",
                     placeholder: "SMILES",
@@ -156,6 +176,7 @@ pub fn AddRowCard(
                 }
                 input {
                     id: "curation-taxon-input",
+                    name: "taxon",
                     class: "form-input",
                     r#type: "text",
                     placeholder: "{placeholder_taxon_optional(locale)}",
@@ -167,6 +188,7 @@ pub fn AddRowCard(
                 }
                 input {
                     id: "curation-doi-input",
+                    name: "doi",
                     class: "form-input",
                     r#type: "text",
                     placeholder: "{placeholder_doi_optional(locale)}",
@@ -201,13 +223,34 @@ pub fn TsvImportCard(
     on_import_uploaded_tsv: EventHandler<String>,
     on_import_error: EventHandler<String>,
 ) -> Element {
+    let tsv_schema = r#"{"type":"object","properties":{"tsv":{"type":"string","description":"TSV rows with name, SMILES, taxon, and DOI columns"}},"additionalProperties":true}"#;
+
     rsx! {
-        div { style: curation_card_style(),
+        form {
+            id: "lotus-curation-tsv-form",
+            "data-webmcp-id": "lotus-curation-tsv-form",
+            "data-webmcp-type": "form",
+            "data-webmcp-name": "LOTUS TSV import form",
+            "data-webmcp-description": "Paste or upload a TSV file of curated compound rows to import into the queue.",
+            "data-webmcp-schema": "{tsv_schema}",
+            "data-mcp-id": "lotus-curation-tsv-form",
+            "data-mcp-type": "form",
+            "data-mcp-name": "LOTUS TSV import form",
+            "data-mcp-description": "Paste or upload a TSV file of curated compound rows to import into the queue.",
+            "data-mcp-schema": "{tsv_schema}",
+            onsubmit: move |evt: Event<FormData>| {
+                evt.prevent_default();
+                if has_tsv_input {
+                    on_parse_tsv.call(());
+                }
+            },
+            style: curation_card_style(),
             h3 { "{heading_tsv_import(locale)}" }
             p { style: curation_hint_style(), "{hint_expected_tsv_headers(locale)}" }
             label { class: "form-label", r#for: "curation-tsv-input", "TSV" }
             textarea {
                 id: "curation-tsv-input",
+                name: "tsv",
                 class: "form-textarea mono",
                 style: curation_textarea_style("130px"),
                 aria_describedby: "curation-tsv-hint",
