@@ -1,6 +1,6 @@
 //! Button component with multiple variants and states.
 
-use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
+use crate::theme::{Radius, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Button variant enumeration
@@ -54,21 +54,17 @@ pub struct ButtonProps {
 /// ```
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
-    let colors = if props.dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
-    };
+    let _ = props.dark;
 
     let (bg_color, text_color, _hover_bg) = match props.variant {
-        ButtonVariant::Primary => (colors.accent, colors.bg, colors.accent2),
-        ButtonVariant::Secondary => (colors.surface2, colors.accent, colors.border),
-        ButtonVariant::Tertiary => ("transparent", colors.accent, colors.surface),
+        ButtonVariant::Primary => ("var(--btn-primary-bg)", "#fff", "var(--btn-primary-hover-bg)"),
+        ButtonVariant::Secondary => ("var(--surface)", "var(--text)", "var(--surface2)"),
+        ButtonVariant::Tertiary => ("transparent", "var(--accent)", "var(--surface)"),
     };
 
     let border_value = match props.variant {
-        ButtonVariant::Primary => format!("1px solid {}", colors.border),
-        ButtonVariant::Secondary => format!("1px solid {}", colors.border),
+        ButtonVariant::Primary => "1px solid var(--border)".to_string(),
+        ButtonVariant::Secondary => "1px solid var(--border)".to_string(),
         ButtonVariant::Tertiary => "none".to_string(),
     };
 
@@ -76,6 +72,10 @@ pub fn Button(props: ButtonProps) -> Element {
         .background_color(bg_color)
         .color(text_color)
         .border(&border_value)
+        .box_shadow(match props.variant {
+            ButtonVariant::Primary | ButtonVariant::Secondary => "var(--shadow-xs)",
+            ButtonVariant::Tertiary => "none",
+        })
         .padding(&format!("{} {}", Spacing::MD, Spacing::LG))
         .border_radius(Radius::SM)
         .font_size(Typography::UI)
