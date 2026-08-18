@@ -117,7 +117,7 @@ fn DownloadExampleRow(
 #[component]
 fn ExRow(value: &'static str, note: &'static str) -> Element {
     rsx! {
-        li { role: "status", style: notice_base_style(),
+        li { style: notice_base_style(),
             span { style: mono_label_style(), "{value}" }
             span { style: notice_value_style(), "{note}" }
         }
