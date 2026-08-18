@@ -83,7 +83,10 @@ pub fn lotus_reference_cell_style() -> String {
         .border_radius("10px")
         .background_color("transparent")
         .color(FOOTER_WD_REFERENCE)
-        .property("box-shadow", &format!("inset 3px 0 0 {}", FOOTER_WD_REFERENCE))
+        .property(
+            "box-shadow",
+            &format!("inset 3px 0 0 {}", FOOTER_WD_REFERENCE),
+        )
         .property("min-width", "0")
         .build()
 }

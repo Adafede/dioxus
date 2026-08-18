@@ -5,9 +5,7 @@ use crate::hooks::use_locale;
 use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
 use ui::prelude::*;
-use ui::styles::lotus::tokens::{
-    FOOTER_WD_COMPOUND, FOOTER_WD_REFERENCE, FOOTER_WD_TAXON,
-};
+use ui::styles::lotus::tokens::{FOOTER_WD_COMPOUND, FOOTER_WD_REFERENCE, FOOTER_WD_TAXON};
 
 #[component]
 pub fn Footer() -> Element {

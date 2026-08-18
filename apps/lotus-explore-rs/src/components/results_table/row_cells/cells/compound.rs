@@ -74,7 +74,10 @@ fn compound_cell_style() -> String {
         .border_radius("10px")
         .background_color("transparent")
         .color(FOOTER_WD_COMPOUND)
-        .property("box-shadow", &format!("inset 3px 0 0 {}", FOOTER_WD_COMPOUND))
+        .property(
+            "box-shadow",
+            &format!("inset 3px 0 0 {}", FOOTER_WD_COMPOUND),
+        )
         .property("min-width", "0")
         .build()
 }
