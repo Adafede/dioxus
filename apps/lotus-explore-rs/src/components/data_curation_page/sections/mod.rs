@@ -338,25 +338,36 @@ pub fn QueueRowsCard(
                         }
                     }
                     tbody {
-                        for (idx, row) in rows_snapshot.iter().enumerate() {
-                            tr { style: row_stripe_style(idx),
-                                td { style: queue_action_col_style(),
-                                    button {
-                                        r#type: "button",
-                                        style: crate::ui::style_constants::primary_buttons::button_xs_style(),
-                                        onclick: move |_| {
-                                            if idx < rows.read().len() {
-                                                rows.write().remove(idx);
-                                            }
-                                        },
-                                        "{button_remove(locale)}"
+                        if rows_snapshot.is_empty() {
+                            tr {
+                                td { style: queue_action_col_style(), class: "mono", "-" }
+                                td { style: queue_index_col_style(), class: "mono", "-" }
+                                td { class: "mono", "{t(locale, TextKey::NoResults)}" }
+                                td { style: queue_smiles_col_style(), class: "mono", "-" }
+                                td { class: "mono", "-" }
+                                td { class: "mono", "-" }
+                            }
+                        } else {
+                            for (idx, row) in rows_snapshot.iter().enumerate() {
+                                tr { style: row_stripe_style(idx),
+                                    td { style: queue_action_col_style(),
+                                        button {
+                                            r#type: "button",
+                                            style: crate::ui::style_constants::primary_buttons::button_xs_style(),
+                                            onclick: move |_| {
+                                                if idx < rows.read().len() {
+                                                    rows.write().remove(idx);
+                                                }
+                                            },
+                                            "{button_remove(locale)}"
+                                        }
                                     }
+                                    td { style: queue_index_col_style(), "{idx + 1}" }
+                                    td { "{row.name}" }
+                                    td { style: queue_smiles_col_style(), class: "mono", "{row.smiles}" }
+                                    td { "{row.taxon.as_deref().unwrap_or(\"\")}" }
+                                    td { class: "mono", "{row.doi.as_deref().unwrap_or(\"\")}" }
                                 }
-                                td { style: queue_index_col_style(), "{idx + 1}" }
-                                td { "{row.name}" }
-                                td { style: queue_smiles_col_style(), class: "mono", "{row.smiles}" }
-                                td { "{row.taxon.as_deref().unwrap_or(\"\")}" }
-                                td { class: "mono", "{row.doi.as_deref().unwrap_or(\"\")}" }
                             }
                         }
                     }
