@@ -147,7 +147,7 @@ fn reset_and_tokens() -> String {
              --critical-text: #e8edf5;\n\
              --critical-muted: #d0d9e5;\n\
              --footer-wd-taxon: var(--wd-taxon);\n\
-             --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 77%, #fff);\n\
+             --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 67%, #fff);\n\
              --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 77%, #fff);\n\
          \n\
              /* Slightly stronger fills/stripes in dark mode to preserve distinction. */\n\
@@ -247,7 +247,7 @@ fn data_theme_dark() -> String {
        --critical-text: #e8edf5;\n\
        --critical-muted: #d0d9e5;\n\
        --footer-wd-taxon: var(--wd-taxon);\n\
-       --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 77%, #fff);\n\
+       --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 67%, #fff);\n\
        --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 77%, #fff);\n\
        \n\
        /* Slightly stronger fills/stripes in dark mode to preserve distinction. */\n\
