@@ -67,7 +67,7 @@ pub fn Button(props: ButtonProps) -> Element {
     };
 
     let border_value = match props.variant {
-        ButtonVariant::Primary => "none".to_string(),
+        ButtonVariant::Primary => format!("1px solid {}", colors.border),
         ButtonVariant::Secondary => format!("1px solid {}", colors.border),
         ButtonVariant::Tertiary => "none".to_string(),
     };

@@ -238,6 +238,7 @@ pub fn lotus_search_button_dirty_style() -> String {
         .justify_content("center")
         .gap("8px")
         .border_radius("4px")
+        .border("1px solid var(--border)")
         .property("min-height", "40px")
         .padding("11px 16px")
         .font_size("var(--fs-ui)")

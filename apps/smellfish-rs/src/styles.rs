@@ -239,6 +239,7 @@ body {
   transition: background-color .15s, box-shadow .15s, transform .05s;
 }
 .btn-primary {
+  border: 1px solid var(--border);
   background: var(--accent);
   color: #fff;
 }

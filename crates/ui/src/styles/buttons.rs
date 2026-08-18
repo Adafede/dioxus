@@ -76,7 +76,7 @@ pub fn button_primary_style() -> String {
         text_color_white(),
         StyleBuilder::new()
             .property("min-height", "40px")
-            .border("1px solid var(--btn-primary-bg)")
+            .border("1px solid var(--border)")
             .font_size("var(--fs-0)")
             .font_weight("600")
             .cursor("pointer")
@@ -98,7 +98,7 @@ pub fn button_primary_block_style() -> String {
         .align_items("center")
         .justify_content("center")
         .gap("6px")
-        .border("1px solid var(--btn-primary-bg)")
+        .border("1px solid var(--border)")
         .border_radius("4px")
         .padding("8px 14px")
         .font_size("var(--fs-0)")
@@ -180,7 +180,7 @@ pub fn button_primary_sm_style() -> String {
         border_radius_sm(),
         StyleBuilder::new()
             .gap("6px")
-            .border("1px solid var(--btn-primary-bg)")
+            .border("1px solid var(--border)")
             .padding("6px 12px")
             .font_size("var(--fs-0)")
             .font_weight("600")
