@@ -263,12 +263,15 @@ window.showDXToast = showDXToast;
 window.closeDXToast = closeDXToast;
 "#;
 
-pub fn build_inline_script() -> String {
-    [
-        LANG_BOOTSTRAP_SCRIPT,
-        RDKIT_BRIDGE_SCRIPT,
-        CITATION_BRIDGE_SCRIPT,
-        TOAST_BRIDGE_SCRIPT,
-    ]
-    .join("\n\n")
+pub fn build_core_inline_script() -> String {
+    [LANG_BOOTSTRAP_SCRIPT, TOAST_BRIDGE_SCRIPT].join("\n\n")
+}
+
+/// Inline scripts only required on the curation page: the RDKit and
+/// citation.js bridges. Loaded lazily via [`ui::document::DocumentScripts`]
+/// (mounted inside the curation view) so the bridge code — and, by extension,
+/// the heavy `RDKit_minimal.js` / `citation.min.js` CDN payloads — are never
+/// downloaded by visitors who only explore results or draw structures.
+pub fn build_curation_inline_script() -> String {
+    [RDKIT_BRIDGE_SCRIPT, CITATION_BRIDGE_SCRIPT].join("\n\n")
 }

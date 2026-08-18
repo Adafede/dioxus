@@ -254,6 +254,62 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
     VNode::empty()
 }
 
+/// Properties for [`DocumentScripts`].
+#[derive(Clone, Props, PartialEq)]
+pub struct DocumentScriptsProps {
+    /// External JS URLs loaded via `<script async src="..." crossorigin>`.
+    #[props(default)]
+    pub scripts: Vec<String>,
+    /// Inline JavaScript, wrapped in an IIFE so declarations don't leak across
+    /// re-mounts (avoids `SyntaxError: redeclaration` on navigation/hot-reload).
+    #[props(default)]
+    pub inline_script: Option<String>,
+}
+
+/// Inject external `<script>` tags and inline JS into the document `<head>` when
+/// this component is mounted.
+///
+/// Unlike [`DocumentHead`], which runs once at the app root, this component can
+/// live inside a page/route so that heavy third-party scripts (e.g. RDKit,
+/// citation-js) are only fetched when the view that needs them is rendered —
+/// reducing the bytes consumed by network activity on every other page.
+#[component]
+pub fn DocumentScripts(props: DocumentScriptsProps) -> Element {
+    let scripts = props.scripts.clone();
+    let inline_script = props.inline_script.clone();
+
+    use_hook(move || {
+        let doc = document();
+        // `async` (not `defer`): `defer` is a no-op on dynamically injected
+        // scripts — the parser has already finished by the time `use_hook`
+        // runs, so a `defer` script would never execute.  `async` loads and
+        // executes as soon as the file arrives; bridge code that depends on
+        // these globals polls for their availability.
+        //
+        // `crossorigin="anonymous"`: prevents `nosniff` MIME-type errors on CDN
+        // resources that send CORS headers.  Browsers also deduplicate
+        // duplicate `async` script `src` URLs naturally.
+        for url in &scripts {
+            doc.create_head_element(
+                "script",
+                &[
+                    ("src", url.clone()),
+                    ("async", "".to_string()),
+                    ("crossorigin", "anonymous".to_string()),
+                ],
+                None,
+            );
+        }
+
+        if let Some(js) = &inline_script {
+            let wrapped = format!("(function(){{{js}}})();");
+            doc.create_head_element("script", &[], Some(wrapped));
+        }
+    });
+
+    VNode::empty()
+}
+
 /// Add `<link>` tags to the document head (favicons, preconnect, manifests, etc.).
 #[derive(Clone, Props, PartialEq)]
 pub struct DocumentLinksProps {

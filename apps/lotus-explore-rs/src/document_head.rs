@@ -130,32 +130,44 @@ const HREFLANGS: &[(&str, &str)] = &[
 /// Base URL for the app (used in hreflang and canonical links).
 const BASE_URL: &str = "https://adafede.github.io/dioxus/lotus-explore-rs/";
 
+/// External scripts loaded on every page. Kept to the privacy-respecting
+/// analytics loader (a few KB) — RDKit and citation-js are deferred to the
+/// curation page (see [`CurationScripts`]).
+const ALWAYS_SCRIPTS: &[&str] = &[
+    // Privacy-respecting analytics (async, no cookies, GDPR-compliant)
+    "https://scripts.simpleanalyticscdn.com/latest.js",
+];
+
+/// External scripts only required by the curation page. Loaded lazily via
+/// [`CurationScripts`] so the ~2 MB RDKit chemistry stack and citation-js
+/// payloads are never downloaded by visitors who only explore results or
+/// draw structures.
+const CURATION_SCRIPTS: &[&str] = &[
+    "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js",
+    "https://cdn.jsdelivr.net/npm/citation-js@0.8.2/build/citation.min.js",
+];
+
 /// Renders the complete document `<head>` using `dioxus::document` instead of
-/// a static `index.html`.  Includes SEO meta tags, OG tags, JSON-LD, CDN scripts,
-/// inline bridge JS, toast CSS, and resource hint `<link>`s.
+/// a static `index.html`.  Includes SEO meta tags, OG tags, JSON-LD, the
+/// analytics script, inline bridge JS (language bootstrap + toast), and
+/// resource hint `<link>`s.
+///
+/// Heavy scripts that are only needed on a single view (RDKit, citation-js)
+/// are intentionally *not* injected here; they are mounted lazily by
+/// [`CurationScripts`] when the curation page is rendered.
 #[component]
 pub fn LotusDocumentHead(lang: String) -> Element {
     let description = "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
-    let scripts = vec![
-        "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js".to_string(),
-        "https://cdn.jsdelivr.net/npm/citation-js@0.8.2/build/citation.min.js".to_string(),
-        // Privacy-respecting analytics (async, no cookies, GDPR-compliant)
-        "https://scripts.simpleanalyticscdn.com/latest.js".to_string(),
-    ];
+    // Only the universal, low-byte analytics loader is fetched on every visit.
+    let scripts = ALWAYS_SCRIPTS.iter().map(|s| s.to_string()).collect();
 
     let mut links: Vec<LinkSpec> = LINKS.to_vec();
-    // Canonical
-    links.push(LinkSpec {
-        rel: "canonical",
-        href: BASE_URL,
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: None,
-    });
-    // Hreflang alternates — need owned strings for formatted URLs
-    for (lang, suffix) in HREFLANGS {
+    // Hreflang alternates — need owned strings for formatted URLs.
+    // Note: the canonical `<link>` is emitted below via `DocumentHead`'s
+    // `canonical` prop so there is a single, self-referential canonical per
+    // locale (deduplicating the previous double-canonical that confused
+    // search-console hreflang validation).
+    for (lang_code, suffix) in HREFLANGS {
         links.push(LinkSpec {
             rel: "alternate",
             href: Box::leak(format!("{BASE_URL}{suffix}").into_boxed_str()),
@@ -163,9 +175,16 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             media: None,
             crossorigin: None,
             sizes: None,
-            hreflang: Some(*lang),
+            hreflang: Some(*lang_code),
         });
     }
+
+    // Self-referential canonical + og:url: each locale resolves to its own
+    // language-variant URL (matching its hreflang alternate), which is the
+    // pattern Google recommends alongside hreflang. Using the actual locale
+    // (rather than the x-default base URL) prevents the canonical from
+    // colliding with a *different* hreflang location.
+    let canonical = format!("{BASE_URL}?lang={lang}");
     let inline_style = format!(
         "{}\n\n{}",
         ui::styles::bundled_lotus_styles(),
@@ -178,14 +197,14 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             lang,
             description: Some(description.to_string()),
             og_type: Some("website".to_string()),
-            og_url: Some(BASE_URL.to_string()),
+            og_url: Some(canonical.clone()),
             og_site_name: Some("LOTUS Knowledge Explorer".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts,
             inline_style: Some(inline_style),
-            inline_script: Some(inline_script::build_inline_script()),
+            inline_script: Some(inline_script::build_core_inline_script()),
             json_ld: Some(JSON_LD.to_string()),
-            canonical: Some(BASE_URL.to_string()),
+            canonical: Some(canonical),
         }
 
         DocumentLinks { links }
@@ -221,5 +240,24 @@ pub fn ToastTemplate() -> Element {
                 p { id: "__dx-toast-msg", class: "dx-toast-msg", "A non-hot-reloadable change occurred and we must rebuild." }
             }
         }
+    }
+}
+
+/// Lazily inject the RDKit + citation.js CDN scripts and their inline JS
+/// bridges into the document `<head>`.
+///
+/// These assets are only consumed by the curation workflow (see
+/// `features::curation::services::http_client` and `reference_metadata`):
+/// RDKit normalizes/validates SMILES and computes descriptors, while
+/// citation-js turns DOIs into QuickStatements. Mounting this component inside
+/// [`crate::components::data_curation_page::DataCurationPage`] keeps the
+/// ~2 MB chemistry/Linting payload off the explore and draw pages, which is
+/// what the "reduce unused JavaScript" audit targets.
+#[component]
+pub fn CurationScripts() -> Element {
+    let scripts = CURATION_SCRIPTS.iter().map(|s| s.to_string()).collect();
+    let inline_script = Some(inline_script::build_curation_inline_script());
+    rsx! {
+        DocumentScripts { scripts, inline_script }
     }
 }
