@@ -122,18 +122,25 @@ pub fn lotus_page_title_text_style() -> String {
         .build()
 }
 
-/// Page subtitle: secondary color with smaller font.
+/// Page subtitle: match the welcome-lead typography for consistent landing-page hierarchy.
 pub fn lotus_page_subtitle_style() -> String {
     StyleBuilder::new()
         .font_size("var(--fs-1)")
+        .font_weight("400")
+        .property("line-height", "1.60")
         .property("margin", "0")
         .color("var(--text2)")
         .build()
 }
 
-/// Archive note section: inline display.
+/// Archive note section: keep the label and DOI visually aligned without odd spacing artifacts.
 pub fn lotus_page_archive_note_style() -> String {
-    StyleBuilder::new().display("inline").build()
+    StyleBuilder::new()
+        .display("inline-flex")
+        .align_items("baseline")
+        .flex_wrap("wrap")
+        .gap("0.35em")
+        .build()
 }
 
 /// Archive label: bold small-caps label.
@@ -144,10 +151,13 @@ pub fn lotus_page_archive_label_style() -> String {
         .build()
 }
 
-/// Archive link: accent color, no wrap.
+/// Archive link: match inline link typography used elsewhere in the landing page.
 pub fn lotus_page_archive_link_style() -> String {
     StyleBuilder::new()
-        .text_decoration("none")
+        .font_size("inherit")
+        .font_weight("600")
+        .text_decoration("underline")
+        .property("text-underline-offset", "2px")
         .color("var(--accent)")
         .property("white-space", "nowrap")
         .build()

@@ -39,7 +39,6 @@ pub fn PageHeader() -> Element {
             p { style: header::page_subtitle_style(),
                 "{t(locale, TextKey::PageSubtitle)}"
                 span { style: header::page_archive_note_style(),
-                    " "
                     span { style: header::page_archive_label_style(), "{t(locale, TextKey::ArchiveNotice)}" }
                     a {
                         href: "https://doi.org/10.5281/zenodo.5794106",
