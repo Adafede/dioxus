@@ -196,6 +196,9 @@ fn data_theme_light() -> String {
        --ring:      0 0 0 3px rgb(11 92 171 / 22%);\n\
        --critical-text: #172535;\n\
        --critical-muted: #33475c;\n\
+       --footer-wd-taxon: color-mix(in srgb, var(--wd-taxon) 77%, #000);\n\
+       --footer-wd-compound: var(--wd-compound);\n\
+       --footer-wd-reference: var(--wd-reference);\n\
        --stat-compound-bg: color-mix(in srgb, var(--wd-compound) 10%, var(--surface));\n\
        --stat-compound-border: color-mix(in srgb, var(--wd-compound) 30%, var(--border));\n\
        --stat-compound-stripe: color-mix(in srgb, var(--wd-compound) 78%, #fff);\n\
