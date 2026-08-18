@@ -329,12 +329,12 @@ pub fn QueueRowsCard(
                     style: queue_table_style(),
                     thead {
                         tr {
-                            th { style: queue_action_col_style(), "{col_action(locale)}" }
-                            th { style: queue_index_col_style(), "#" }
-                            th { "{col_name(locale)}" }
-                            th { style: queue_smiles_col_style(), "SMILES" }
-                            th { "{t(locale, TextKey::TaxonCol)}" }
-                            th { "DOI" }
+                            th { scope: "col", style: queue_action_col_style(), "{col_action(locale)}" }
+                            th { scope: "col", style: queue_index_col_style(), "#" }
+                            th { scope: "col", "{col_name(locale)}" }
+                            th { scope: "col", style: queue_smiles_col_style(), "SMILES" }
+                            th { scope: "col", "{t(locale, TextKey::TaxonCol)}" }
+                            th { scope: "col", "DOI" }
                         }
                     }
                     tbody {

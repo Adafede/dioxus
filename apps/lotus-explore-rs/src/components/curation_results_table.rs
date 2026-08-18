@@ -106,15 +106,15 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     style: results_table_style(),
                     thead {
                         tr {
-                            th { style: status_column_style(), "{col_status(locale)}" }
-                            th { style: wikidata_column_style(), "Wikidata" }
-                            th { style: name_column_style(), "{col_name(locale)}" }
-                            th { style: smiles_column_style(), "{col_original_smiles(locale)}" }
-                            th { style: smiles_column_style(), "{col_canonical_smiles(locale)}" }
-                            th { style: inchikey_column_style(), "InChIKey" }
-                            th { style: smiles_column_style(), "InChI" }
-                            th { style: formula_column_style(), "{t(locale, TextKey::Formula)}" }
-                            th { style: formula_column_style(), "{col_exact_mass(locale)}" }
+                            th { scope: "col", style: status_column_style(), "{col_status(locale)}" }
+                            th { scope: "col", style: wikidata_column_style(), "Wikidata" }
+                            th { scope: "col", style: name_column_style(), "{col_name(locale)}" }
+                            th { scope: "col", style: smiles_column_style(), "{col_original_smiles(locale)}" }
+                            th { scope: "col", style: smiles_column_style(), "{col_canonical_smiles(locale)}" }
+                            th { scope: "col", style: inchikey_column_style(), "InChIKey" }
+                            th { scope: "col", style: smiles_column_style(), "InChI" }
+                            th { scope: "col", style: formula_column_style(), "{t(locale, TextKey::Formula)}" }
+                            th { scope: "col", style: formula_column_style(), "{col_exact_mass(locale)}" }
                         }
                     }
                     tbody {

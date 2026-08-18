@@ -49,7 +49,15 @@ pub fn DataCurationPage() -> Element {
 
     rsx! {
         CurationScripts {}
-        section { class: "curation-wrap", style: curation_page_style(),
+        section {
+            class: "curation-wrap",
+            style: curation_page_style(),
+            aria_labelledby: "curation-page-heading",
+            h2 {
+                id: "curation-page-heading",
+                class: "sr-only",
+                "{crate::i18n::view_label_curation_explorer(locale)}"
+            }
             div { style: curation_grid_style(),
                 AddRowCard {
                     locale,
