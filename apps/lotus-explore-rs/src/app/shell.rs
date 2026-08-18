@@ -14,8 +14,8 @@ use crate::components::results_viewport::ResultsViewport;
 use crate::document_head::{LotusDocumentHead, ToastTemplate};
 use crate::features::explore::{
     ExploreInteractions, ExploreState, SearchTaskController, build_shareable_url,
-    initial_url_state, persist_locale_query_param, persist_view_query_param,
-    use_download_dispatch_effect, use_startup_effect,
+    initial_url_state, persist_dark_mode_query_param, persist_locale_query_param,
+    persist_view_query_param, use_download_dispatch_effect, use_startup_effect,
 };
 use crate::hooks::LocaleProvider;
 use crate::i18n::{Locale, TextKey, t};
@@ -92,6 +92,7 @@ fn AppRuntimeEffects(
 
     use_effect(move || persist_locale_query_param(*locale.read()));
     use_effect(move || persist_view_query_param(app_state.read().view));
+    use_effect(move || persist_dark_mode_query_param(app_state.read().dark_mode));
     use_effect(move || {
         let dark_mode = app_state.read().dark_mode;
         #[cfg(target_arch = "wasm32")]
@@ -101,7 +102,7 @@ fn AppRuntimeEffects(
                     if dark_mode {
                         let _ = html.set_attribute("data-theme", "dark");
                     } else {
-                        let _ = html.remove_attribute("data-theme");
+                        let _ = html.set_attribute("data-theme", "light");
                     }
                 }
             }
