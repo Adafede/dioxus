@@ -16,10 +16,12 @@ performance in the browser.
 
 ## Features
 
-- 30+ built-in SMARTS rules covering all 8 LIPID MAPS families (FA, GL, GP, SP, ST, PR, SL, PK)
+- 30+ built-in SMARTS rules covering all 8 LIPID MAPS families (FA, GL, GP, SP,
+  ST, PR, SL, PK)
 - Supports evolved SMARTS rules from
-  [`smarts-evoliposuction`](./lipidmaps/smarts-evoliposuction/) — load high-precision
-  GA-evolved patterns from `smarts_results.csv` via `LipidRuleLibrary::add_evolved_rules_from_csv()`
+  [`smarts-evoliposuction`](./lipidmaps/smarts-evoliposuction/) --- load
+  high-precision GA-evolved patterns from `smarts_results.csv` via
+  `LipidRuleLibrary::add_evolved_rules_from_csv()`
 - Auto-detects input format: MGF or SMILES list; preserves output format
 - Real-time class selection with live gallery/count updates
 - 2D molecular structure rendering (no external rendering service)
@@ -59,9 +61,8 @@ pattern syntax, and rule priority configuration.
 
 ### Evolved SMARTS rules
 
-In addition to the built-in rules, you can load
-[GA-evolved SMARTS patterns](./lipidmaps/README.md) produced by the
-`smarts-evoliposuction` binary:
+In addition to the built-in rules, you can load [GA-evolved SMARTS
+patterns](./lipidmaps/README.md) produced by the `smarts-evoliposuction` binary:
 
 ```rust
 use lipid_selecto_rs::rules::LipidRuleLibrary;

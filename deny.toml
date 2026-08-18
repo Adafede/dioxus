@@ -24,6 +24,8 @@ allow = [
   "Unicode-3.0",
   "CDLA-Permissive-2.0",
   "GPL-3.0-only",
+  "BSL-1.0",
+  "bzip2-1.0.6",
 ]
 
 [licenses.private]
@@ -61,11 +63,32 @@ skip = [
   { name = "rand" },
   { name = "rand_core" },
   { name = "rustc-hash" },
+  { name = "convert_case" },
+  { name = "darling" },
+  { name = "darling_core" },
+  { name = "darling_macro" },
+  { name = "hashbrown" },
+  { name = "sha1" },
+  { name = "smiles-parser" },
+  { name = "tower-http" },
+  { name = "windows-targets" },
+  { name = "windows_aarch64_gnullvm" },
+  { name = "windows_aarch64_msvc" },
+  { name = "windows_i686_gnu" },
+  { name = "windows_i686_msvc" },
+  { name = "windows_x86_64_gnu" },
+  { name = "windows_x86_64_gnullvm" },
+  { name = "windows_x86_64_msvc" },
+  { name = "zip" },
   { name = "sha2" },
   { name = "syn" },
   { name = "thiserror" },
   { name = "thiserror-impl" },
   { name = "windows-sys" },
+  { name = "windows_i686_msvc" },
+  { name = "windows_x86_64_gnu" },
+  { name = "windows_x86_64_gnullvm" },
+  { name = "windows_x86_64_msvc" },
   { name = "winnow" },
 ]
 
@@ -80,4 +103,6 @@ allow-git = [
   "https://github.com/earth-metabolome-initiative/mascot-rs.git",
   "https://github.com/earth-metabolome-initiative/mass-spectrometry-traits",
   "https://github.com/earth-metabolome-initiative/smiles-parser",
+  "https://github.com/earth-metabolome-initiative/smarts-evolution",
+  "https://github.com/earth-metabolome-initiative/smarts-rs",
 ]

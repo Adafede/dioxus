@@ -20,7 +20,7 @@ The top level contains the 8 major LIPID MAPS categories:
   | **SP** | Sphingolipids        | Cer(AS), SM(AS), HexCer(AS)          | Ceramides, Sphingomyelins             |
   | **ST** | Sterol Lipids        | ST                                   | Cholesterol, Progesterone             |
   | **PR** | Prenol Lipids        | PR                                   | Retinol (Vit A), α-Tocopherol (Vit E) |
-  | **SL** | Saccharolipids     | SL                                   | Lipid A, LPS Core                     |
+  | **SL** | Saccharolipids       | SL                                   | Lipid A, LPS Core                     |
   | **PK** | Polyketides          | PK                                   | Statins, Macrolides                   |
 
 ## Classification Rules by Family
@@ -149,7 +149,7 @@ Hexosylceramide (HexCer)
   | Sphingolipids (SP)        | cvd_purple          | #7D3560, #A1527F, #CC79A7        |
   | Sterol Lipids (ST)        | purple              | #6a51a3                          |
   | Prenol Lipids (PR)        | orange              | #ff7f00                          |
-  | Saccharolipids (SL)     | blue                | #4292c6                          |
+  | Saccharolipids (SL)       | blue                | #4292c6                          |
   | Polyketides (PK)          | green               | #238b45                          |
 
 All palettes are colorblind-accessible (CVD-friendly).
