@@ -233,11 +233,14 @@ pub fn KetcherPanel() -> Element {
                 iframe {
                     src: "{KETCHER_URL}",
                     title: "{t(locale, TextKey::KetcherIframeTitle)}",
-                    // Eager: the structure editor is the Draw page's primary
-                    // content — lazy-loading a ~29MB bundle in an SPA defers the
-                    // fetch and can get aborted (ERR_CONNECTION_FAILED) when the
-                    // iframe is torn down on navigation.
-                    "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
+                    // The editor is the Draw page's primary content, and the
+                    // Ketcher bundle is the app's own vendored same-origin static
+                    // asset (fetched at build by fetch-ketcher.sh). Sandboxed
+                    // iframes are force-routed to a separate renderer process, and
+                    // a 29MB script compile in that process is what Chrome aborts
+                    // as ERR_CONNECTION_FAILED — so we load it eagerly without a
+                    // sandbox. (Re-add `sandbox="allow-scripts allow-same-origin
+                    // allow-popups allow-forms allow-downloads"` to restore isolation.)
                     style: crate::ui::style_constants::panel_containers::iframe_style(),
                 }
             }
