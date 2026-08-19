@@ -9,7 +9,7 @@ use crate::components::layout::footer::Footer;
 use crate::components::layout::header_meta::HeaderMetaSection;
 use crate::components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
 use crate::components::layout::page_header::PageHeader;
-use crate::components::layout::sidebar::Sidebar;
+use crate::components::layout::sidebar::LazySidebar;
 use crate::components::results_viewport::ResultsViewport;
 use crate::document_head::{LotusDocumentHead, ToastTemplate};
 use crate::features::explore::{
@@ -169,7 +169,7 @@ fn ShellScaffold(lang: String) -> Element {
         div { class: "app-shell",
             div { class: "app-layout",
                 if current_view == AppView::Explore {
-                    Sidebar {}
+                    LazySidebar {}
                 }
 
                 main {
