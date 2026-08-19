@@ -15,41 +15,14 @@ pub fn WelcomeScreen() -> Element {
     let locale = crate::hooks::use_locale();
     rsx! {
         section { style: welcome_style(),
-            div { style: welcome_hero_style(),
-                p { style: welcome_lead_style(),
-                    "{t(locale, TextKey::WelcomeLeadA)}"
-                    "{t(locale, TextKey::WelcomeLeadB)}"
-                    a {
-                        href: "https://www.wikidata.org/wiki/Q104225190",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        style: inline_link_style(),
-                        "LOTUS initiative"
-                    }
-                    "{t(locale, TextKey::WelcomeLeadC)}"
-                    a {
-                        href: "https://www.wikidata.org/",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        style: inline_link_style(),
-                        "Wikidata"
-                    }
-                    "{t(locale, TextKey::WelcomeLeadD)}"
-                    a {
-                        href: "https://qlever.dev/wikidata",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        style: inline_link_style(),
-                        "QLever"
-                    }
-                    "{t(locale, TextKey::WelcomeLeadE)}"
-                    " "
-                    span { style: support_text_style(),
-                        "{t(locale, TextKey::LabelLanguagePolicy)}"
-                    }
-                }
-            }
-
+            // NOTE: the hero lead (the value-proposition copy + Wikidata/QLever
+            // links) is no longer rendered here. It is pre-baked into the
+            // static shell by the deploy-time `bake-lang` pass
+            // (crates/lotus-deploy/src/bake_lang.rs, LOTUS_HERO_LANGS) so it
+            // paints on first paint instead of waiting for the ~1.7 MB wasm,
+            // fixing the mobile LCP. The examples remain CSR. The hero text now
+            // lives in LOTUS_HERO_LANGS (single source of truth) — do not
+            // re-introduce it here.
             div { style: welcome_examples_style(),
                 ul { style: example_list_style(),
                     ExRow {
@@ -136,32 +109,6 @@ fn welcome_style() -> String {
         .padding("16px 22px")
         .property("width", "100%")
         .property("max-width", "none")
-        .build()
-}
-
-fn welcome_hero_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("min-width", "0")
-        .build()
-}
-
-fn welcome_lead_style() -> String {
-    StyleBuilder::new()
-        .font_size(FS_1)
-        .color(TEXT2)
-        .property("margin-top", "6px")
-        .property("line-height", "1.60")
-        .property("max-width", "none")
-        .property("overflow-wrap", "anywhere")
-        .build()
-}
-
-fn inline_link_style() -> String {
-    StyleBuilder::new()
-        .text_decoration("underline")
-        .property("text-underline-offset", "2px")
-        .font_weight("600")
         .build()
 }
 

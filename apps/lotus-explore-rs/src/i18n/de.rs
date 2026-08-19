@@ -54,15 +54,6 @@ pub const fn de_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintUnknown => "Unerwarteter Fehler. Ein erneuter Versuch kann helfen.",
         TextKey::SkipToResults => "Zu den Ergebnissen springen",
-        TextKey::WelcomeLeadA => {
-            "Diese Anwendung demonstriert die Leistungsfähigkeit verknüpfter offener Daten durch Verbindung natürlicher Produkte mit Organismen und wissenschaftlicher Literatur. "
-        }
-        TextKey::WelcomeLeadB => {
-            "Das Datenmodell verknüpft Verbindungen, Taxa und Referenzen—aus der "
-        }
-        TextKey::WelcomeLeadC => ", veröffentlicht als verknüpfte offene Daten auf ",
-        TextKey::WelcomeLeadD => " und abgefragt via SPARQL durch ",
-        TextKey::WelcomeLeadE => ".",
         TextKey::ExampleGentiana => "Taxonname, Wikidata-QID oder * für alle Taxa eingeben",
         TextKey::ExampleSmilesOnly => "SMILES oder Molfile in das Strukturfeld einfügen",
         TextKey::ExampleQueryExecute => "Ausführen",
@@ -71,9 +62,6 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryAdvanced => "RDF herunterladen",
         TextKey::WelcomeProgrammaticDownload => {
             "Programmgesteuerte URL-Parameter (Abfrage ausführen oder CSV / JSON / RDF laden):"
-        }
-        TextKey::LabelLanguagePolicy => {
-            "Beschriftungen werden zuerst aus 'mul' und dann 'en' aufgelöst, damit Ergebnisse vergleichbar bleiben."
         }
         TextKey::SearchFilters => "Suchfilter",
         TextKey::Taxon => "Taxon",
