@@ -202,7 +202,7 @@ fn structure_section_style() -> String {
         .flex_direction("column")
         .gap("5px")
         .padding("10px 12px")
-        .border("1px solid var(--panel-border)")
+        .border(BORDER_PANEL)
         .border_radius("12px")
         .background_color("transparent")
         .build()

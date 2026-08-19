@@ -63,8 +63,8 @@ fn footer_style() -> String {
     StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
-        .background_color("var(--panel-bg)")
-        .property("border-top", "1px solid var(--panel-border)")
+        .background_color(PANEL_BG)
+        .property("border-top", BORDER_PANEL)
         .property("margin-top", "auto")
         .padding("16px 28px 20px")
         .build()
@@ -170,7 +170,7 @@ fn footer_line_style() -> String {
         .gap("0 24px")
         .align_items("start")
         .padding("10px 0")
-        .border_bottom("1px solid var(--panel-border)")
+        .border_bottom(BORDER_PANEL)
         .build()
 }
 
@@ -189,10 +189,10 @@ fn footer_row_style() -> String {
 
 fn footer_label_style() -> String {
     StyleBuilder::new()
-        .color("var(--text2)")
+        .color(TEXT2)
         .font_weight("700")
         .property("text-transform", "uppercase")
-        .font_size("var(--fs-0)")
+        .font_size(FS_0)
         .property("letter-spacing", "1px")
         .property("min-width", "0")
         .property("white-space", "nowrap")
@@ -202,10 +202,7 @@ fn footer_label_style() -> String {
 }
 
 fn footer_aside_style() -> String {
-    StyleBuilder::new()
-        .color("var(--text2)")
-        .font_size("var(--fs-0)")
-        .build()
+    StyleBuilder::new().color(TEXT2).font_size(FS_0).build()
 }
 
 fn footer_links_style() -> String {
@@ -227,7 +224,7 @@ fn footer_link_style(color: &str) -> String {
         .color(color)
         .text_decoration("none")
         .font_weight("700")
-        .border("1px solid var(--border)")
+        .border(BORDER_DEFAULT)
         .padding("5px 10px")
         .border_radius("999px")
         .property("display", "inline-block")

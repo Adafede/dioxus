@@ -12,10 +12,10 @@ pub(super) fn curation_card_style() -> String {
         .property("flex-direction", "column")
         .property("gap", "10px")
         .property("padding", "12px")
-        .property("border", "1px solid var(--panel-border)")
-        .property("border-radius", "var(--radius)")
-        .property("background", "var(--panel-bg-soft)")
-        .property("box-shadow", "var(--panel-shadow)")
+        .property("border", BORDER_PANEL)
+        .property("border-radius", BORDER_RADIUS)
+        .property("background", PANEL_BG_SOFT)
+        .property("box-shadow", PANEL_SHADOW)
         .build()
 }
 
@@ -41,15 +41,15 @@ pub(super) fn curation_actions_style(space_between: bool) -> String {
 
 pub(super) fn curation_hint_style() -> String {
     StyleBuilder::new()
-        .property("font-size", "var(--fs-0)")
-        .property("color", "var(--text)")
+        .property("font-size", FS_0)
+        .property("color", TEXT)
         .build()
 }
 
 pub(super) fn curation_textarea_style(min_height: &str) -> String {
     StyleBuilder::new()
         .property("min-height", min_height)
-        .property("font-family", "var(--mono)")
+        .property("font-family", FONT_MONO)
         .property("border-radius", "8px")
         .property("resize", "none")
         .build()
@@ -57,9 +57,9 @@ pub(super) fn curation_textarea_style(min_height: &str) -> String {
 
 pub(super) fn curation_file_input_style() -> String {
     StyleBuilder::new()
-        .property("color", "var(--text2)")
+        .property("color", TEXT2)
         .property("max-width", "100%")
-        .property("font-size", "var(--fs-0)")
+        .property("font-size", FS_0)
         .build()
 }
 
@@ -77,9 +77,9 @@ pub(super) fn curation_table_scroll_style() -> String {
         .property("min-width", "0")
         .property("overflow-x", "auto")
         .property("overflow-y", "visible")
-        .property("border", "1px solid var(--panel-border)")
-        .property("background", "var(--panel-bg-soft)")
-        .property("box-shadow", "var(--panel-shadow)")
+        .property("border", BORDER_PANEL)
+        .property("background", PANEL_BG_SOFT)
+        .property("box-shadow", PANEL_SHADOW)
         .property(
             "transition",
             "background .15s ease, border-color .15s ease, box-shadow .15s ease",
@@ -91,7 +91,7 @@ pub(super) fn queue_table_style() -> String {
     StyleBuilder::new()
         .property("width", "100%")
         .property("border-collapse", "collapse")
-        .property("font-size", "var(--fs-ui)")
+        .property("font-size", FS_UI)
         .property("table-layout", "auto")
         .property("word-break", "break-word")
         .build()
@@ -117,9 +117,9 @@ pub(super) fn queue_smiles_col_style() -> String {
 
 pub(super) fn row_stripe_style(idx: usize) -> String {
     let background = if idx.is_multiple_of(2) {
-        "color-mix(in srgb, var(--surface) 94%, transparent)"
+        SURFACE_94_TINT
     } else {
-        "color-mix(in srgb, var(--surface) 88%, transparent)"
+        SURFACE_88_TINT
     };
 
     StyleBuilder::new()

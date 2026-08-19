@@ -74,6 +74,14 @@ pub fn StatBar() -> Element {
             aria_label: "{t(locale, TextKey::DatasetStatistics)}",
             style: crate::ui::style_constants::stats::stat_bar_style(),
             StatBadge {
+                value: entries_value,
+                secondary_value: (entries_unique_value != entries_value).then_some(entries_unique_value),
+                secondary_label: Some(t(locale, TextKey::Unique)),
+                noun: CountNoun::Entry,
+                plus: false,
+                stripe: StatStripe::Entries,
+            }
+            StatBadge {
                 value: stats.n_compounds,
                 secondary_value: None,
                 secondary_label: None,
@@ -96,14 +104,6 @@ pub fn StatBar() -> Element {
                 noun: CountNoun::Reference,
                 plus: false,
                 stripe: StatStripe::Reference,
-            }
-            StatBadge {
-                value: entries_value,
-                secondary_value: (entries_unique_value != entries_value).then_some(entries_unique_value),
-                secondary_label: Some(t(locale, TextKey::Unique)),
-                noun: CountNoun::Entry,
-                plus: false,
-                stripe: StatStripe::Entries,
             }
         }
     }

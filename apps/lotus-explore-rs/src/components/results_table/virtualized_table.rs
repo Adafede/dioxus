@@ -118,11 +118,11 @@ fn table_scroll_style() -> String {
     StyleBuilder::new()
         .property("overflow", "auto")
         .property("max-height", "min(72vh, 980px)")
-        .border("1px solid var(--results-border)")
+        .border(BORDER_RESULTS)
         .property("border-left", &format!("4px solid {}", FOOTER_WD_ENTRIES))
         .border_radius("14px")
         .background_color("transparent")
-        .box_shadow("var(--panel-shadow)")
+        .box_shadow(PANEL_SHADOW)
         .property(
             "transition",
             "background .15s ease, border-color .15s ease, box-shadow .15s ease",
@@ -135,7 +135,7 @@ fn results_table_style() -> String {
         .property("width", "100%")
         .property("min-width", "max-content")
         .property("border-collapse", "collapse")
-        .font_size("var(--fs-ui)")
+        .font_size(FS_UI)
         .property("table-layout", "auto")
         .property("word-break", "break-word")
         .build()

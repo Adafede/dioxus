@@ -218,7 +218,7 @@ fn skip_link_style() -> String {
         .property("z-index", "9999")
         .padding("0.5rem 1rem")
         .background_color("transparent")
-        .color("var(--text)")
+        .color(TEXT)
         .font_size("0.875rem")
         .font_weight("600")
         .border_radius("0 0 4px 4px")

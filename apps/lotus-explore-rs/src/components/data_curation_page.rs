@@ -114,7 +114,7 @@ fn curation_page_style() -> String {
         .property("display", "flex")
         .property("flex-direction", "column")
         .property("gap", "10px")
-        .property("background", "var(--panel-bg-soft)")
+        .property("background", PANEL_BG_SOFT)
         .build()
 }
 

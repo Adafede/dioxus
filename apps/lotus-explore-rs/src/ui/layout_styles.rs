@@ -21,23 +21,22 @@ pub mod stat_stripe_colors {
 
 pub mod borders {
     //! Border colors and styles used across components.
-    pub const RESULTS_BORDER: &str = "var(--results-border)";
+    pub use ui::styles::lotus::tokens::RESULTS_BORDER;
 }
 
 pub mod backgrounds {
     //! Background color tokens.
-    pub const SURFACE: &str = "var(--surface)";
+    pub use ui::styles::lotus::tokens::SURFACE;
 }
 
 pub mod text {
     //! Text color tokens.
-    pub const PRIMARY: &str = "var(--text)";
-    pub const SECONDARY: &str = "var(--text2)";
+    pub use ui::styles::lotus::tokens::{TEXT as PRIMARY, TEXT2 as SECONDARY};
 }
 
 pub mod shadows {
     //! Shadow tokens.
-    pub const SHADOW_XS: &str = "var(--shadow-xs)";
+    pub use ui::styles::lotus::tokens::SHADOW_XS;
 }
 
 // ============================================================================
@@ -60,8 +59,7 @@ pub mod spacing {
 
 pub mod typography {
     //! Font size and weight tokens.
-    pub const FONT_SIZE_STAT: &str = "var(--fs-stat)";
-    pub const FONT_SIZE_0: &str = "var(--fs-0)";
+    pub use ui::styles::lotus::tokens::{FS_0 as FONT_SIZE_0, FS_STAT as FONT_SIZE_STAT};
     pub const FONT_WEIGHT_BOLD: &str = "800";
     pub const FONT_WEIGHT_SEMIBOLD: &str = "700";
     pub const LETTER_SPACING_TITLE: &str = "0.08em";
@@ -100,7 +98,7 @@ pub fn lotus_page_title_style() -> String {
     StyleBuilder::new()
         .property("min-width", "0")
         .property("flex", "1 1 260px")
-        .font_size("var(--fs-4)")
+        .font_size(FS_4)
         .property("margin", "0")
         .build()
 }
@@ -126,11 +124,11 @@ pub fn lotus_page_title_text_style() -> String {
 /// Page subtitle: match the welcome-lead typography for consistent landing-page hierarchy.
 pub fn lotus_page_subtitle_style() -> String {
     StyleBuilder::new()
-        .font_size("var(--fs-1)")
+        .font_size(FS_1)
         .font_weight("400")
         .property("line-height", "1.60")
         .property("margin", "0")
-        .color("var(--text2)")
+        .color(TEXT2)
         .build()
 }
 
@@ -159,7 +157,7 @@ pub fn lotus_page_archive_link_style() -> String {
         .font_weight("600")
         .text_decoration("underline")
         .property("text-underline-offset", "2px")
-        .color("var(--accent)")
+        .color(ACCENT)
         .property("white-space", "nowrap")
         .build()
 }
@@ -173,9 +171,9 @@ pub fn lotus_table_header_cell_style() -> String {
     StyleBuilder::new()
         .padding("9px 10px")
         .text_align("left")
-        .font_size("var(--fs-label)")
+        .font_size(FS_LABEL)
         .font_weight("700")
-        .border_bottom("1px solid var(--results-border)")
+        .border_bottom(BORDER_RESULTS)
         .property("white-space", "nowrap")
         .property("user-select", "none")
         .build()
@@ -220,8 +218,8 @@ pub fn lotus_sort_button_style() -> String {
 /// Sort icon: muted color, smaller font.
 pub fn lotus_sort_icon_style() -> String {
     StyleBuilder::new()
-        .color("var(--text3)")
-        .font_size("var(--fs-0)")
+        .color(TEXT3)
+        .font_size(FS_0)
         .font_weight("700")
         .property("line-height", "1")
         .build()
@@ -239,15 +237,15 @@ pub fn lotus_search_button_dirty_style() -> String {
         .justify_content("center")
         .gap("8px")
         .border_radius("4px")
-        .border("1px solid var(--border)")
+        .border(BORDER_DEFAULT)
         .property("min-height", "40px")
         .padding("11px 16px")
-        .font_size("var(--fs-ui)")
+        .font_size(FS_UI)
         .font_weight("700")
         .cursor("pointer")
-        .background_color("color-mix(in srgb, var(--btn-primary-bg) 90%, var(--accent))")
-        .color("var(--text)")
-        .box_shadow("var(--shadow-xs)")
+        .background_color(BTN_PRIMARY_ACCENT_TINT)
+        .color(TEXT)
+        .box_shadow(SHADOW_XS)
         .property(
             "transition",
             "background .15s, box-shadow .15s, transform .12s ease",
@@ -286,7 +284,7 @@ pub fn lotus_section_card_style() -> String {
         .flex_direction("column")
         .gap("5px")
         .padding("10px 12px")
-        .border("1px solid var(--panel-border)")
+        .border(BORDER_PANEL)
         .border_radius("12px")
         .background_color("transparent")
         .build()
@@ -296,10 +294,10 @@ pub fn lotus_section_card_style() -> String {
 pub fn lotus_ketcher_panel_style() -> String {
     StyleBuilder::new()
         .property("margin", "0")
-        .border("1px solid var(--panel-border)")
-        .border_radius("var(--radius)")
-        .background_color("var(--panel-bg-soft)")
-        .box_shadow("var(--panel-shadow)")
+        .border(BORDER_PANEL)
+        .border_radius(BORDER_RADIUS)
+        .background_color(PANEL_BG_SOFT)
+        .box_shadow(PANEL_SHADOW)
         .property(
             "transition",
             "background .15s ease, border-color .15s ease, box-shadow .15s ease",
@@ -311,11 +309,11 @@ pub fn lotus_ketcher_panel_style() -> String {
 pub fn lotus_iframe_style() -> String {
     StyleBuilder::new()
         .property("width", "100%")
-        .property("height", "min(78vh, 820px)")
-        .property("min-height", "600px")
-        .border("1px solid var(--border)")
+        .property("height", "min(55vh, 820px)")
+        .property("min-height", "400px")
+        .border(BORDER_DEFAULT)
         .border_radius("4px")
-        .background_color("var(--surface)")
+        .background_color(SURFACE)
         .build()
 }
 
@@ -449,8 +447,8 @@ pub fn lotus_spinner_sm_style() -> String {
     StyleBuilder::new()
         .property("width", "14px")
         .property("height", "14px")
-        .border("2px solid color-mix(in srgb, var(--text) 30%, transparent)")
-        .property("border-top-color", "var(--text)")
+        .border(BORDER_TEXT_30_TINT)
+        .property("border-top-color", TEXT)
         .border_radius("50%")
         .property("animation", "spin .7s linear infinite")
         .property("display", "inline-block")
@@ -464,14 +462,14 @@ pub fn lotus_button_small_style() -> String {
         .align_items("center")
         .justify_content("center")
         .gap("6px")
-        .border("1px solid var(--border)")
+        .border(BORDER_DEFAULT)
         .border_radius("8px")
         .padding("8px 12px")
-        .font_size("var(--fs-0)")
+        .font_size(FS_0)
         .font_weight("600")
         .cursor("pointer")
         .background_color("transparent")
-        .color("var(--text)")
+        .color(TEXT)
         .property("flex", "1 1 auto")
         .property("min-width", "0")
         .property("white-space", "nowrap")
@@ -491,8 +489,8 @@ pub fn lotus_query_summary_toggle_style() -> String {
     StyleBuilder::new()
         .cursor("pointer")
         .padding(spacing::QUERY_SUMMARY_PADDING)
-        .font_size("var(--fs-0)")
-        .color("var(--text2)")
+        .font_size(FS_0)
+        .color(TEXT2)
         .property("user-select", "none")
         .property("letter-spacing", "0.04em")
         .font_weight("600")
@@ -509,9 +507,9 @@ pub fn lotus_query_summary_toggle_style() -> String {
 /// Query summary chevron: positioned absolute with rotation transform.
 pub fn lotus_query_summary_chevron_style(is_open: bool) -> String {
     let (rotation_deg, color) = if is_open {
-        ("90deg", "var(--accent)")
+        ("90deg", ACCENT)
     } else {
-        ("0deg", "var(--text3)")
+        ("0deg", TEXT3)
     };
 
     let transform = format!("translateY(-50%) rotate({})", rotation_deg);
@@ -532,9 +530,9 @@ pub fn lotus_query_summary_chevron_style(is_open: bool) -> String {
 pub fn lotus_query_panel_style() -> String {
     StyleBuilder::new()
         .background_color("transparent")
-        .border("1px solid var(--panel-border)")
-        .border_radius("var(--radius)")
-        .box_shadow("var(--panel-shadow)")
+        .border(BORDER_PANEL)
+        .border_radius(BORDER_RADIUS)
+        .box_shadow(PANEL_SHADOW)
         .property(
             "transition",
             "background .15s ease, border-color .15s ease, box-shadow .15s ease",
@@ -546,7 +544,7 @@ pub fn lotus_query_panel_style() -> String {
 pub fn lotus_query_body_style() -> String {
     StyleBuilder::new()
         .property("position", "relative")
-        .border_radius("0 0 var(--radius) var(--radius)")
+        .border_radius(BORDER_RADIUS_TOP)
         .property("overflow", "hidden")
         .build()
 }
@@ -556,10 +554,10 @@ pub fn lotus_query_text_style() -> String {
     StyleBuilder::new()
         .padding("12px 16px")
         .property("margin", "0")
-        .font_family("var(--mono)")
-        .font_size("var(--fs-0)")
-        .color("var(--text)")
-        .background_color("var(--bg2)")
+        .font_family(FONT_MONO)
+        .font_size(FS_0)
+        .color(TEXT)
+        .background_color(BG2)
         .property("white-space", "pre-wrap")
         .property("word-break", "break-word")
         .property("max-height", "320px")

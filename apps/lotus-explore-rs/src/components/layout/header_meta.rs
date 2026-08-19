@@ -147,10 +147,10 @@ fn page_header_meta_style() -> String {
         .gap(spacing::HEADER_META_GAP)
         .margin("10px 22px 0")
         .padding("10px 12px")
-        .border("1px solid var(--panel-border)")
-        .border_radius("var(--radius)")
-        .background_color("var(--panel-bg-soft)")
-        .box_shadow("var(--panel-shadow)")
+        .border(BORDER_PANEL)
+        .border_radius(BORDER_RADIUS)
+        .background_color(PANEL_BG_SOFT)
+        .box_shadow(PANEL_SHADOW)
         .property(
             "transition",
             "background .15s ease, border-color .15s ease, box-shadow .15s ease",
@@ -171,7 +171,7 @@ fn meta_item_style() -> String {
 
 fn meta_key_style() -> String {
     StyleBuilder::new()
-        .font_size("var(--fs-micro)")
+        .font_size(FS_MICRO)
         .property("white-space", "nowrap")
         .property("flex-shrink", "0")
         .build()
@@ -192,6 +192,6 @@ fn meta_value_monospace_style() -> String {
         .property("min-width", "0")
         .property("max-width", "100%")
         .property("font-family", "monospace")
-        .font_size("var(--fs-label)")
+        .font_size(FS_LABEL)
         .build()
 }

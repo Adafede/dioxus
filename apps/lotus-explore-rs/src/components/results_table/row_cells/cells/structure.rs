@@ -39,7 +39,7 @@ pub(in crate::components::results_table::row_cells) fn structure_cell(
 }
 
 fn na_style() -> String {
-    StyleBuilder::new().color("var(--text3)").build()
+    StyleBuilder::new().color(TEXT3).build()
 }
 
 fn structure_cell_style() -> String {

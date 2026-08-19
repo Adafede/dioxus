@@ -329,7 +329,7 @@ pub fn QueueRowsCard(
                             tr {
                                 td { style: queue_action_col_style(), class: "mono", "-" }
                                 td { style: queue_index_col_style(), class: "mono", "-" }
-                                td { class: "mono", "{t(locale, TextKey::NoResults)}" }
+                                td { class: "mono", "-" }
                                 td { style: queue_smiles_col_style(), class: "mono", "-" }
                                 td { class: "mono", "-" }
                                 td { class: "mono", "-" }

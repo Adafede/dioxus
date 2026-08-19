@@ -51,6 +51,7 @@ pub mod prelude {
         SegmentedControlItem, UploadZone,
     };
     pub use crate::document::{DocumentHead, DocumentLinks, DocumentScripts, LinkSpec};
+    pub use crate::styles::lotus::tokens::*;
     pub use crate::theme::{
         ColorScheme, Interaction, Radius, Shadow, Spacing, StyleBuilder, Typography,
     };

@@ -31,14 +31,14 @@ pub fn lotus_cell_primary_style() -> String {
 pub fn lotus_id_badge_style() -> String {
     StyleBuilder::new()
         .display("inline-block")
-        .font_size("var(--fs-micro)")
+        .font_size(FS_MICRO)
         .padding("1px 5px")
         .border_radius("3px")
         .font_weight("600")
         .text_decoration("none")
         .property("line-height", "1.5")
         .border("1px solid transparent")
-        .font_family("var(--mono)")
+        .font_family(FONT_MONO)
         .property("max-width", "100%")
         .property("white-space", "normal")
         .property("overflow-wrap", "anywhere")
@@ -101,7 +101,7 @@ pub fn lotus_table_cell_style() -> String {
 
 /// N/A text for missing values: muted color.
 pub fn lotus_na_style() -> String {
-    StyleBuilder::new().color("var(--text3)").build()
+    StyleBuilder::new().color(TEXT3).build()
 }
 
 #[cfg(test)]

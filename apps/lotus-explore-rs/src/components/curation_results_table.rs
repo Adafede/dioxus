@@ -172,10 +172,10 @@ fn curation_card_style() -> String {
         .property("flex-direction", "column")
         .property("gap", "10px")
         .property("padding", "12px")
-        .property("border", "1px solid var(--panel-border)")
-        .property("border-radius", "var(--radius)")
+        .property("border", BORDER_PANEL)
+        .property("border-radius", BORDER_RADIUS)
         .property("background", "transparent")
-        .property("box-shadow", "var(--panel-shadow)")
+        .property("box-shadow", PANEL_SHADOW)
         .build()
 }
 
@@ -199,14 +199,14 @@ fn row_badges_style() -> String {
 fn curation_status_cell_style() -> String {
     StyleBuilder::new()
         .property("font-weight", "700")
-        .property("color", "var(--text)")
+        .property("color", TEXT)
         .build()
 }
 
 fn curation_note_style() -> String {
     StyleBuilder::new()
-        .property("font-size", "var(--fs-label)")
-        .property("color", "var(--text)")
+        .property("font-size", FS_LABEL)
+        .property("color", TEXT)
         .property("margin-top", "3px")
         .property("white-space", "pre-line")
         .build()
@@ -225,15 +225,15 @@ fn curation_scroll_hint_style() -> String {
         .property("display", "inline-flex")
         .property("align-items", "center")
         .property("gap", "8px")
-        .property("color", "var(--text3)")
-        .property("font-size", "var(--fs-0)")
+        .property("color", TEXT3)
+        .property("font-size", FS_0)
         .property("line-height", "1.4")
         .build()
 }
 
 fn scroll_hint_icon_style() -> String {
     StyleBuilder::new()
-        .property("color", "var(--accent)")
+        .property("color", ACCENT)
         .property("font-weight", "700")
         .property("font-size", "1.05em")
         .build()
@@ -245,9 +245,9 @@ fn curation_table_scroll_style() -> String {
         .property("min-width", "0")
         .property("overflow-x", "auto")
         .property("overflow-y", "visible")
-        .property("border", "1px solid var(--panel-border)")
-        .property("background", "var(--panel-bg-soft)")
-        .property("box-shadow", "var(--panel-shadow)")
+        .property("border", BORDER_PANEL)
+        .property("background", PANEL_BG_SOFT)
+        .property("box-shadow", PANEL_SHADOW)
         .property(
             "transition",
             "background .15s ease, border-color .15s ease, box-shadow .15s ease",
@@ -259,7 +259,7 @@ fn results_table_style() -> String {
     StyleBuilder::new()
         .property("width", "100%")
         .property("border-collapse", "collapse")
-        .property("font-size", "var(--fs-ui)")
+        .property("font-size", FS_UI)
         .property("table-layout", "auto")
         .property("word-break", "break-word")
         .build()
@@ -281,15 +281,12 @@ fn status_pill_style(status: &CurationStatus) -> String {
         .property("border-radius", "4px")
         .property("border-left", "3px solid transparent")
         .property("border-left-color", border_color)
-        .property(
-            "background",
-            "color-mix(in srgb, var(--surface) 90%, transparent)",
-        )
+        .property("background", SURFACE_90_TINT)
         .property("font-weight", "700")
         .property("text-transform", "uppercase")
-        .property("font-size", "var(--fs-micro)")
+        .property("font-size", FS_MICRO)
         .property("letter-spacing", "0.04em")
-        .property("color", "var(--text)")
+        .property("color", TEXT)
         .build()
 }
 
@@ -301,15 +298,12 @@ fn status_warning_pill_style() -> String {
         .property("border-radius", "4px")
         .property("border-left", "3px solid transparent")
         .property("border-left-color", FOOTER_WD_ENTRIES)
-        .property(
-            "background",
-            "color-mix(in srgb, var(--surface) 90%, transparent)",
-        )
+        .property("background", SURFACE_90_TINT)
         .property("font-weight", "700")
         .property("text-transform", "uppercase")
-        .property("font-size", "var(--fs-micro)")
+        .property("font-size", FS_MICRO)
         .property("letter-spacing", "0.04em")
-        .property("color", "var(--text)")
+        .property("color", TEXT)
         .build()
 }
 
@@ -342,9 +336,9 @@ fn formula_column_style() -> String {
 
 fn row_stripe_style(idx: usize) -> String {
     let background = if idx.is_multiple_of(2) {
-        "color-mix(in srgb, var(--surface) 94%, transparent)"
+        SURFACE_94_TINT
     } else {
-        "color-mix(in srgb, var(--surface) 88%, transparent)"
+        SURFACE_88_TINT
     };
 
     StyleBuilder::new()

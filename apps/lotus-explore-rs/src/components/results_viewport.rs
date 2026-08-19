@@ -103,18 +103,18 @@ fn query_section_style() -> String {
 
 fn query_title_style() -> String {
     StyleBuilder::new()
-        .font_size("var(--fs-1)")
+        .font_size(FS_1)
         .font_weight("700")
-        .color("var(--text)")
+        .color(TEXT)
         .build()
 }
 
 fn query_container_style() -> String {
     StyleBuilder::new()
-        .border("1px solid var(--panel-border)")
-        .border_radius("var(--radius)")
+        .border(BORDER_PANEL)
+        .border_radius(BORDER_RADIUS)
         .background_color("transparent")
-        .box_shadow("var(--panel-shadow)")
+        .box_shadow(PANEL_SHADOW)
         .build()
 }
 
@@ -123,10 +123,10 @@ fn query_code_style() -> String {
         .display("block")
         .padding("12px 16px")
         .property("margin", "0")
-        .font_family("var(--mono)")
-        .font_size("var(--fs-0)")
-        .color("var(--text)")
-        .background_color("var(--bg2)")
+        .font_family(FONT_MONO)
+        .font_size(FS_0)
+        .color(TEXT)
+        .background_color(BG2)
         .property("white-space", "pre-wrap")
         .property("word-break", "break-word")
         .property("max-height", "320px")

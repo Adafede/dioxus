@@ -166,9 +166,9 @@ fn section_card_style() -> String {
         .flex_direction("column")
         .gap("5px")
         .padding("10px 12px")
-        .border("1px solid var(--panel-border)")
+        .border(BORDER_PANEL)
         .border_radius("12px")
-        .background_color("var(--panel-bg-soft)")
+        .background_color(PANEL_BG_SOFT)
         .build()
 }
 fn range_inputs_pair_style() -> String {
@@ -193,7 +193,7 @@ fn range_pair_style() -> String {
 
 fn range_separator_style() -> String {
     StyleBuilder::new()
-        .color("var(--text3)")
+        .color(TEXT3)
         .property("padding-bottom", "8px")
         .build()
 }

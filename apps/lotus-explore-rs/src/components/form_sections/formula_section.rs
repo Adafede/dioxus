@@ -222,9 +222,9 @@ fn form_section_style() -> String {
         .flex_direction("column")
         .gap("5px")
         .padding("10px 12px")
-        .border("1px solid var(--panel-border)")
+        .border(BORDER_PANEL)
         .border_radius("12px")
-        .background_color("var(--panel-bg-soft)")
+        .background_color(PANEL_BG_SOFT)
         .build()
 }
 fn radio_label_style() -> String {
@@ -232,9 +232,9 @@ fn radio_label_style() -> String {
         .display("flex")
         .align_items("center")
         .gap("6px")
-        .font_size("var(--fs-0)")
+        .font_size(FS_0)
         .cursor("pointer")
-        .color("var(--text2)")
+        .color(TEXT2)
         .build()
 }
 
@@ -249,22 +249,22 @@ fn range_pair_style() -> String {
 fn form_input_small_style() -> String {
     StyleBuilder::new()
         .width("100%")
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
+        .background_color(SURFACE)
+        .border(BORDER_DEFAULT)
         .border_radius("4px")
-        .color("var(--text)")
+        .color(TEXT)
         .padding("9px 11px")
-        .font_size("var(--fs-ui)")
-        .font_family("var(--sans)")
+        .font_size(FS_UI)
+        .font_family(FONT_SANS)
         .property("transition", "border-color .15s")
         .build()
 }
 
 fn formula_num_pair_style() -> String {
     StyleBuilder::new()
-        .border("1px solid var(--panel-border)")
+        .border(BORDER_PANEL)
         .border_radius("10px")
-        .background_color("var(--panel-bg-soft)")
+        .background_color(PANEL_BG_SOFT)
         .padding("8px")
         .display("flex")
         .flex_direction("column")
@@ -273,7 +273,7 @@ fn formula_num_pair_style() -> String {
 }
 
 fn formula_num_label_style() -> String {
-    StyleBuilder::new().color("var(--text2)").build()
+    StyleBuilder::new().color(TEXT2).build()
 }
 
 fn formula_input_small_style() -> String {
@@ -281,12 +281,12 @@ fn formula_input_small_style() -> String {
         .width("100%")
         .property("min-width", "6ch")
         .padding("9px 6px")
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
+        .background_color(SURFACE)
+        .border(BORDER_DEFAULT)
         .border_radius("4px")
-        .color("var(--text)")
-        .font_size("var(--fs-ui)")
-        .font_family("var(--sans)")
+        .color(TEXT)
+        .font_size(FS_UI)
+        .font_family(FONT_SANS)
         .property("font-variant-numeric", "tabular-nums")
         .property("transition", "border-color .15s")
         .build()
@@ -298,11 +298,11 @@ fn formula_exact_row_style() -> String {
         .flex_direction("column")
         .gap("5px")
         .padding("10px 12px")
-        .border("1px solid var(--panel-border)")
+        .border(BORDER_PANEL)
         .border_radius("12px")
-        .background_color("var(--panel-bg-soft)")
+        .background_color(PANEL_BG_SOFT)
         .property("margin-top", "4px")
-        .border_left("1px solid var(--border)")
+        .border_left(BORDER_DEFAULT)
         .property("padding-left", "10px")
         .build()
 }
@@ -310,13 +310,13 @@ fn formula_exact_row_style() -> String {
 fn formula_exact_input_style() -> String {
     StyleBuilder::new()
         .width("100%")
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
+        .background_color(SURFACE)
+        .border(BORDER_DEFAULT)
         .border_radius("4px")
-        .color("var(--text)")
+        .color(TEXT)
         .padding("9px 11px")
-        .font_size("var(--fs-ui)")
-        .font_family("var(--sans)")
+        .font_size(FS_UI)
+        .font_family(FONT_SANS)
         .property("transition", "border-color .15s")
         .build()
 }

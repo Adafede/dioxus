@@ -124,22 +124,9 @@ fn ExRow(value: &'static str, note: &'static str) -> Element {
     }
 }
 
-/// CSS custom-property / spacing tokens shared by the welcome styles.
-///
-/// These mirror the bundled lotus theme values emitted in
-/// `inline_style::build_inline_style`. Centralising them here as named Rust
-/// constants keeps the style builders readable and avoids magic-string drift;
-/// if a design token changes it only needs updating in (at most) two places.
-const FONT_MONO: &str = "var(--mono)";
-const FS_0: &str = "var(--fs-0)";
-const FS_1: &str = "var(--fs-1)";
-const FS_LABEL: &str = "var(--fs-label)";
-const COLOR_TEXT: &str = "var(--text)";
-const COLOR_TEXT2: &str = "var(--text2)";
-const COLOR_SURFACE: &str = "var(--surface)";
-const COLOR_BORDER: &str = "var(--border)";
-const COLOR_SHADOW_XS: &str = "var(--shadow-xs)";
-const COLOR_RADIUS_SM: &str = "var(--radius-sm)";
+// CSS custom-property tokens are sourced from the shared lotus design-token
+// module re-exported through `ui::prelude::*`, so there is no local
+// magic-string drift here.
 
 fn welcome_style() -> String {
     StyleBuilder::new()
@@ -162,7 +149,7 @@ fn welcome_hero_style() -> String {
 fn welcome_lead_style() -> String {
     StyleBuilder::new()
         .font_size(FS_1)
-        .color(COLOR_TEXT2)
+        .color(TEXT2)
         .property("margin-top", "6px")
         .property("line-height", "1.60")
         .property("max-width", "none")
@@ -182,7 +169,7 @@ fn support_text_style() -> String {
     StyleBuilder::new()
         .font_size(FS_1)
         .property("line-height", "1.55")
-        .color(COLOR_TEXT2)
+        .color(TEXT2)
         .property("margin-top", "10px")
         .property("max-width", "72ch")
         .build()
@@ -235,9 +222,9 @@ fn notice_base_style() -> String {
         .gap("12px")
         .border_radius("12px")
         .font_size(FS_0)
-        .border(&format!("1px solid {COLOR_BORDER}"))
-        .background_color(COLOR_SURFACE)
-        .box_shadow(COLOR_SHADOW_XS)
+        .border(BORDER_DEFAULT)
+        .background_color(SURFACE)
+        .box_shadow(SHADOW_XS)
         .property("min-width", "0")
         .property(
             "transition",
@@ -266,10 +253,10 @@ fn notice_input_style() -> String {
         .property("flex", "1 1 auto")
         .property("min-width", "min(200px, 100%)")
         .property("max-width", "100%")
-        .background_color(COLOR_SURFACE)
-        .border(&format!("1px solid {COLOR_BORDER}"))
-        .border_radius(COLOR_RADIUS_SM)
-        .color(COLOR_TEXT2)
+        .background_color(SURFACE)
+        .border(BORDER_DEFAULT)
+        .border_radius(BORDER_RADIUS_SM)
+        .color(TEXT2)
         .padding("4px 8px")
         .font_size(FS_0)
         .property("overflow", "hidden")
@@ -280,7 +267,7 @@ fn notice_input_style() -> String {
 fn notice_value_style() -> String {
     StyleBuilder::new()
         .property("flex", "1")
-        .color(COLOR_TEXT)
+        .color(TEXT)
         .property("word-break", "break-word")
         .property("line-height", "1.4")
         .build()

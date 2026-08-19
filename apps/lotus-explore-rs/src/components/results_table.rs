@@ -97,7 +97,7 @@ fn empty_state_style() -> String {
         .align_items("center")
         .gap("12px")
         .padding("64px 24px")
-        .color("var(--text2)")
+        .color(TEXT2)
         .build()
 }
 

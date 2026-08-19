@@ -67,7 +67,7 @@ fn row_view(
 
 fn table_row_style() -> String {
     StyleBuilder::new()
-        .border_bottom("1px solid var(--results-border)")
+        .border_bottom(BORDER_RESULTS)
         .property("transition", "background .14s ease")
         .property("contain", "layout paint")
         .build()

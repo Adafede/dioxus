@@ -24,9 +24,9 @@ pub fn lotus_radio_label_style() -> String {
         .display("flex")
         .align_items("center")
         .gap("6px")
-        .font_size("var(--fs-0)")
+        .font_size(FS_0)
         .cursor("pointer")
-        .color("var(--text2)")
+        .color(TEXT2)
         .build()
 }
 
@@ -34,7 +34,7 @@ pub fn lotus_radio_label_style() -> String {
 pub fn lotus_range_input_style() -> String {
     StyleBuilder::new()
         .property("width", "100%")
-        .property("accent-color", "var(--accent)")
+        .property("accent-color", ACCENT)
         .property("margin-top", "4px")
         .build()
 }
@@ -42,16 +42,16 @@ pub fn lotus_range_input_style() -> String {
 /// Textarea: surface background, border, full width, no resize.
 pub fn lotus_textarea_base_style() -> String {
     StyleBuilder::new()
-        .background_color("var(--surface)")
-        .border("1px solid var(--border)")
+        .background_color(SURFACE)
+        .border(BORDER_DEFAULT)
         .border_radius("4px")
-        .color("var(--text)")
+        .color(TEXT)
         .padding("9px 11px")
-        .font_size("var(--fs-ui)")
+        .font_size(FS_UI)
         .property("width", "100%")
         .property("max-width", "100%")
         .property("resize", "none")
-        .font_family("var(--sans)")
+        .font_family(FONT_SANS)
         .property("transition", "border-color .15s")
         .build()
 }
@@ -63,7 +63,7 @@ pub fn lotus_threshold_section_style() -> String {
         .flex_direction("column")
         .gap("5px")
         .padding("10px")
-        .property("border-left", "1px solid var(--border)")
+        .property("border-left", BORDER_DEFAULT)
         .property("margin-top", "4px")
         .build()
 }
@@ -71,21 +71,21 @@ pub fn lotus_threshold_section_style() -> String {
 /// Kind pill badge: inline-block with background color and uppercase text.
 pub fn lotus_kind_pill_style(kind: &str) -> String {
     let background = match kind {
-        "smiles" => "var(--accent2)",
+        "smiles" => ACCENT2,
         "mol2000" => "#c97a2b",
         "mol3000" => "#2b8f57",
-        _ => "var(--text3)",
+        _ => TEXT3,
     };
     StyleBuilder::new()
         .display("inline-block")
         .padding("1px 7px")
         .border_radius("999px")
-        .font_size("var(--fs-micro)")
+        .font_size(FS_MICRO)
         .font_weight("700")
         .property("letter-spacing", "1px")
         .property("text-transform", "uppercase")
         .property("margin-right", "6px")
-        .color("var(--text)")
+        .color(TEXT)
         .background_color(background)
         .build()
 }

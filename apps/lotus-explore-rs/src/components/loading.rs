@@ -96,18 +96,15 @@ fn spinner_lg_style() -> String {
     StyleBuilder::new()
         .property("width", "40px")
         .property("height", "40px")
-        .border("3px solid var(--border)")
-        .property("border-top-color", "var(--accent)")
+        .border(BORDER_THICK)
+        .property("border-top-color", ACCENT)
         .border_radius("50%")
         .property("animation", "spin .8s linear infinite")
         .build()
 }
 
 fn hint_style() -> String {
-    StyleBuilder::new()
-        .font_size("var(--fs-0)")
-        .color("var(--text3)")
-        .build()
+    StyleBuilder::new().font_size(FS_0).color(TEXT3).build()
 }
 
 fn loading_state_style() -> String {
@@ -118,7 +115,7 @@ fn loading_state_style() -> String {
         .justify_content("center")
         .gap("14px")
         .padding("48px")
-        .color("var(--text2)")
+        .color(TEXT2)
         .property("flex", "1")
         .build()
 }

@@ -117,6 +117,51 @@ pub const RADIUS_XL: &str = "14px";
 pub const RADIUS_XS: &str = "3px";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// BORDER RADIUS CSS CUSTOM PROPERTIES (themeable, via CSS variables)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Border radius CSS custom property — renders `var(--radius)` (themeable).
+pub const BORDER_RADIUS: &str = "var(--radius)";
+
+/// Border radius (small) CSS custom property — renders `var(--radius-sm)`.
+pub const BORDER_RADIUS_SM: &str = "var(--radius-sm)";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPOSITE PRESETS (pre-built, byte-identical value combinations)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// 1px solid border using the default border color.
+pub const BORDER_DEFAULT: &str = "1px solid var(--border)";
+
+/// 1px solid border using the panel border color.
+pub const BORDER_PANEL: &str = "1px solid var(--panel-border)";
+
+/// 1px solid border using the results-table border color.
+pub const BORDER_RESULTS: &str = "1px solid var(--results-border)";
+
+/// Thick (3px) solid border using the default border color.
+pub const BORDER_THICK: &str = "3px solid var(--border)";
+
+/// Top-only border radius (`0 0 var(--radius) var(--radius)`).
+pub const BORDER_RADIUS_TOP: &str = "0 0 var(--radius) var(--radius)";
+
+/// Surface tinted to 94% opacity (subtle background).
+pub const SURFACE_94_TINT: &str = "color-mix(in srgb, var(--surface) 94%, transparent)";
+
+/// Surface tinted to 90% opacity.
+pub const SURFACE_90_TINT: &str = "color-mix(in srgb, var(--surface) 90%, transparent)";
+
+/// Surface tinted to 88% opacity.
+pub const SURFACE_88_TINT: &str = "color-mix(in srgb, var(--surface) 88%, transparent)";
+
+/// Button primary background blended 90%/100% with accent.
+pub const BTN_PRIMARY_ACCENT_TINT: &str =
+    "color-mix(in srgb, var(--btn-primary-bg) 90%, var(--accent))";
+
+/// 2px solid border using text color at 30% opacity.
+pub const BORDER_TEXT_30_TINT: &str = "2px solid color-mix(in srgb, var(--text) 30%, transparent)";
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TYPOGRAPHY TOKENS (via CSS variables - responsive)
 // ─────────────────────────────────────────────────────────────────────────────
 

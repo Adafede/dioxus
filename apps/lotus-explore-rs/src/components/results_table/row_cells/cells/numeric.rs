@@ -54,8 +54,8 @@ pub(in crate::components::results_table::row_cells) fn year_cell(pub_year: Optio
 }
 fn mass_style() -> String {
     StyleBuilder::new()
-        .font_family("var(--sans)")
-        .font_size("var(--fs-0)")
+        .font_family(FONT_SANS)
+        .font_size(FS_0)
         .color(FOOTER_WD_COMPOUND)
         .font_weight("500")
         .build()
@@ -63,8 +63,8 @@ fn mass_style() -> String {
 
 fn formula_style() -> String {
     StyleBuilder::new()
-        .font_family("var(--sans)")
-        .font_size("var(--fs-0)")
+        .font_family(FONT_SANS)
+        .font_size(FS_0)
         .color(FOOTER_WD_COMPOUND)
         .font_weight("500")
         .build()
