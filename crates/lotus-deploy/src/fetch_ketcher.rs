@@ -21,7 +21,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fs;
 use std::io::{self, BufWriter, Cursor, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use reqwest::blocking::Client;
 use zip::ZipArchive;
@@ -32,15 +32,22 @@ const DEFAULT_DIR: &str = "public/assets/ketcher";
 
 /// Unused standalone "entry" bundles (and their license files) that ketcher's
 /// `index.html` never references — only `main.<hash>.js` is loaded by the
-/// editor iframe.
+/// editor iframe. Matches the original shell helper's `rm` globs: only the
+/// `closable`/`duo`/`popup` JavaScript bundles and their `.LICENSE.txt` are
+/// dropped; the small mode-specific `*.html`/`*.css` entry points are kept.
 #[must_use]
 fn is_unused_entry(name: &str) -> bool {
     let Some(file_name) = name.rsplit('/').next() else {
         return false;
     };
-    file_name.starts_with("closable.")
+    let is_entry_bundle = file_name.starts_with("closable.")
         || file_name.starts_with("duo.")
-        || file_name.starts_with("popup.")
+        || file_name.starts_with("popup.");
+    is_entry_bundle
+        && (Path::new(file_name)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("js"))
+            || file_name.ends_with(".js.LICENSE.txt"))
 }
 
 /// macOS zip metadata that must never be extracted: the `__MACOSX/` tree and
@@ -196,6 +203,12 @@ mod tests {
         ));
         assert!(!is_unused_entry("standalone/index.html"));
         assert!(!is_unused_entry("standalone/static/css/main.9cca8bc6.css"));
+        // Small mode-specific entry HTML/CSS are kept (only the 29 MB JS
+        // bundles + their LICENSE files are dead weight).
+        assert!(!is_unused_entry("standalone/duo.html"));
+        assert!(!is_unused_entry(
+            "standalone/static/css/closable.9cca8bc6.css"
+        ));
         // macOS resource forks look like `._<name>` — not "entry bundles", but
         // junk the dioxus asset copier cannot read (handled by is_macos_junk).
         assert!(!is_unused_entry("standalone/._duo.546fbaab.js"));
