@@ -119,9 +119,15 @@ const LINKS: &[LinkSpec] = &[
 ];
 
 /// Hreflang alternate links.
+///
+/// The default English locale is the site's canonical home, so it uses the
+/// clean base URL (no `?lang`) — matching the self-referential canonical below.
+/// `x-default` is intentionally omitted: with the default mapped to the base URL
+/// there is nothing left for an `x-default` fallback to point at, and keeping it
+/// would make the canonical coincide with a *different* hreflang location (the
+/// exact `rel=canonical` audit failure we are fixing).
 const HREFLANGS: &[(&str, &str)] = &[
-    ("x-default", ""),
-    ("en", "?lang=en"),
+    ("en", ""),
     ("fr", "?lang=fr"),
     ("de", "?lang=de"),
     ("it", "?lang=it"),
@@ -170,12 +176,18 @@ pub fn LotusDocumentHead(lang: String) -> Element {
         });
     }
 
-    // Self-referential canonical + og:url: each locale resolves to its own
-    // language-variant URL (matching its hreflang alternate), which is the
-    // pattern Google recommends alongside hreflang. Using the actual locale
-    // (rather than the x-default base URL) prevents the canonical from
-    // colliding with a *different* hreflang location.
-    let canonical = format!("{BASE_URL}?lang={lang}");
+    // Self-referential canonical + og:url: each locale resolves to its *own*
+    // language-variant URL (the same one its `hreflang` alternate claims),
+    // which is the pattern Google recommends alongside hreflang. The default
+    // English locale canonicalises to the clean base URL (no `?lang=en` is ever
+    // forced into the address bar), while non-default locales canonically
+    // resolve to their `?lang=<xx>` variant. Crucially the canonical never
+    // coincides with a *different* locale's hreflang — the old bug that made the
+    // audit report "points to another hreflang location".
+    let canonical = match lang.as_str() {
+        "en" => BASE_URL.to_string(),
+        other => format!("{BASE_URL}?lang={other}"),
+    };
     let inline_style = format!(
         "{}\n\n{}",
         ui::styles::bundled_lotus_styles(),
