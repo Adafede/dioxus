@@ -3087,6 +3087,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "lotus-deploy"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.13.4",
+ "zip 8.6.0",
+]
+
+[[package]]
 name = "lotus-explore-rs"
 version = "0.1.0"
 dependencies = [

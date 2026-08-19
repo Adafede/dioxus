@@ -12,6 +12,7 @@ members = [
   "apps/smellfish-rs",
   "crates/lipidsdl",
   "crates/lotus",
+  "crates/lotus-deploy",
   "crates/ui",
   "crates/upload",
 ]

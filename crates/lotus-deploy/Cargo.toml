@@ -1,0 +1,30 @@
+[package]
+name = "lotus-deploy"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
+description = "Host-only deploy helpers for lotus-explore-rs: bake <html lang> into shipped index.html and fetch/slim the Ketcher editor bundle"
+keywords = ["lotus", "deploy", "ketcher", "i18n", "dioxus"]
+categories = ["web-programming", "development-tools::build-utils"]
+publish = false
+
+# Two independent host-only binaries; build with
+# `cargo build --release -p lotus-deploy --bin bake-lang --bin fetch-ketcher`.
+[[bin]]
+name = "bake-lang"
+path = "src/bake_lang.rs"
+
+[[bin]]
+name = "fetch-ketcher"
+path = "src/fetch_ketcher.rs"
+
+[dependencies]
+# `blocking` so the deploy helper needs no async runtime of its own. The `gzip`
+# feature is inherited from the workspace; `blocking` is added here.
+reqwest = { workspace = true, features = ["blocking"] }
+zip = { workspace = true }
+
+[lints]
+workspace = true
