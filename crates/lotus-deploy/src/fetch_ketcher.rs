@@ -43,6 +43,23 @@ fn is_unused_entry(name: &str) -> bool {
         || file_name.starts_with("popup.")
 }
 
+/// macOS zip metadata that must never be extracted: the `__MACOSX/` tree and
+/// `._`-prefixed resource forks. The ketcher 3.17.0 release zip ships these
+/// (it was archived on macOS), and dioxus-cli's asset copier aborts on them
+/// with "stream did not contain valid UTF-8" / esbuild `Unexpected "\x00"`.
+/// The original shell helper avoided this implicitly via `cp -r standalone/*`;
+/// this makes it explicit and keeps the resource forks out of `public/assets`.
+#[must_use]
+fn is_macos_junk(name: &str) -> bool {
+    if name == "__MACOSX" || name.starts_with("__MACOSX/") {
+        return true;
+    }
+    let Some(file_name) = name.rsplit('/').next() else {
+        return false;
+    };
+    file_name.starts_with("._")
+}
+
 #[must_use]
 fn release_url(version: &str) -> String {
     format!(
@@ -88,6 +105,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut top_levels: BTreeSet<String> = BTreeSet::new();
     for i in 0..archive.len() {
         let name = archive.by_index(i)?.name().to_string();
+        if is_macos_junk(&name) {
+            continue;
+        }
         let Some(first) = name.split('/').next() else {
             continue;
         };
@@ -106,7 +126,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
 
-        // Skip the unused entry bundles before extracting (no 87 MB written).
+        // Skip macOS zip metadata (binary `._` files / `__MACOSX/`) and the
+        // unused entry bundles before extracting (no 87 MB written).
+        if is_macos_junk(file.name()) {
+            continue;
+        }
         if is_unused_entry(file.name()) {
             skipped_bytes += file.size();
             continue;
@@ -172,6 +196,24 @@ mod tests {
         ));
         assert!(!is_unused_entry("standalone/index.html"));
         assert!(!is_unused_entry("standalone/static/css/main.9cca8bc6.css"));
+        // macOS resource forks look like `._<name>` — not "entry bundles", but
+        // junk the dioxus asset copier cannot read (handled by is_macos_junk).
+        assert!(!is_unused_entry("standalone/._duo.546fbaab.js"));
+    }
+
+    #[test]
+    fn classifies_macos_junk() {
+        // The real ketcher 3.17.0 zip ships these (it was archived on macOS).
+        assert!(is_macos_junk("__MACOSX"));
+        assert!(is_macos_junk("__MACOSX/standalone/._index.html"));
+        assert!(is_macos_junk(
+            "__MACOSX/standalone/static/js/._duo.546fbaab.js"
+        ));
+        assert!(is_macos_junk("__MACOSX/standalone/._asset-manifest.json"));
+        // Used assets and (real) entry bundles are NOT macOS junk.
+        assert!(!is_macos_junk("standalone/index.html"));
+        assert!(!is_macos_junk("standalone/static/js/main.cb80d824.js"));
+        assert!(!is_macos_junk("standalone/static/js/duo.546fbaab.js"));
     }
 
     #[test]
