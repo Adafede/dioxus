@@ -183,6 +183,7 @@ pub enum TextKey {
     KetcherHintC,
     KetcherHintD,
     KetcherIframeTitle,
+    KetcherClickToLoad,
     KindNoteSmiles,
     KindNoteMol2000,
     KindNoteMol3000,

@@ -109,6 +109,7 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::KetcherHintC => " (or ",
         TextKey::KetcherHintD => ") and use it in the Search structure field.",
         TextKey::KetcherIframeTitle => "Ketcher structure editor",
+        TextKey::KetcherClickToLoad => "Click to load the Ketcher structure editor.",
         TextKey::KindNoteSmiles => "  Sent as a single-line SPARQL literal.",
         TextKey::KindNoteMol2000 => "  Forwarded verbatim to SACHEM scoredSubstructureSearch.",
         TextKey::KindNoteMol3000 => {

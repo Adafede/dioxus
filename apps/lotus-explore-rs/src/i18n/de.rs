@@ -117,6 +117,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
             ") und verwenden Sie den Inhalt im Strukturfeld der Registerkarte Suche."
         }
         TextKey::KetcherIframeTitle => "Ketcher-Struktureditor",
+        TextKey::KetcherClickToLoad => "Klicken Sie, um den Ketcher-Struktureditor zu laden.",
         TextKey::KindNoteSmiles => "  Wird als einzeiliges SPARQL-Literal gesendet.",
         TextKey::KindNoteMol2000 => {
             "  Wird unverändert an SACHEM scoredSubstructureSearch weitergegeben."
