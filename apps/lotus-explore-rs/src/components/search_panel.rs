@@ -233,7 +233,10 @@ pub fn KetcherPanel() -> Element {
                 iframe {
                     src: "{KETCHER_URL}",
                     title: "{t(locale, TextKey::KetcherIframeTitle)}",
-                    "loading": "lazy",
+                    // Eager: the structure editor is the Draw page's primary
+                    // content — lazy-loading a ~29MB bundle in an SPA defers the
+                    // fetch and can get aborted (ERR_CONNECTION_FAILED) when the
+                    // iframe is torn down on navigation.
                     "sandbox": "allow-scripts allow-same-origin allow-popups allow-forms allow-downloads",
                     style: crate::ui::style_constants::panel_containers::iframe_style(),
                 }

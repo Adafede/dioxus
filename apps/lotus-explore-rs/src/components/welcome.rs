@@ -201,13 +201,22 @@ fn cli_list_style() -> String {
 }
 
 fn mono_label_style() -> String {
-    // `word-break: break-word` lets long monospaced query fragments such as
-    // `structure=<SMILES|Molfile>` wrap onto a new line instead of overflowing
-    // their flex container on narrow (mobile) viewports.
+    // The monospaced query fragments (`structure=<SMILES|Molfile>`,
+    // `taxon=<name|QID|*>`) contain no internal break opportunities, so a flex
+    // item's default `min-width: auto` keeps it pinned to its full min-content
+    // width on narrow viewports.  That hogging leaves the description note
+    // beside it squeezed into a tall, narrow column ("very vertical").
+    //
+    // `min-width: 0` lets the label shrink below that min-content, and
+    // `max-width: 50%` caps it at most half the row so it wraps onto its own
+    // line(s) on small screens instead of starving the note — while staying at
+    // its natural content width on wide viewports (where 50% is not binding).
     StyleBuilder::new()
         .font_family(FONT_MONO)
         .property("word-break", "break-word")
         .property("overflow-wrap", "break-word")
+        .property("min-width", "0")
+        .property("max-width", "50%")
         .build()
 }
 
@@ -265,8 +274,15 @@ fn notice_input_style() -> String {
 }
 
 fn notice_value_style() -> String {
+    // `flex: 1 1 auto` (basis = content) plus `min-width: 0` lets the note
+    // shrink below its min-content together with the label instead of always
+    // growing into whatever narrow remainder the label leaves behind.  That
+    // keeps the description from collapsing into a tall, narrow column on small
+    // screens.  On wide viewports `flex-grow: 1` still expands it to fill the
+    // row, so the horizontal layout is unchanged.
     StyleBuilder::new()
-        .property("flex", "1")
+        .property("flex", "1 1 auto")
+        .property("min-width", "0")
         .color(TEXT)
         .property("word-break", "break-word")
         .property("line-height", "1.4")

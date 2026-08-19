@@ -317,9 +317,10 @@ pub fn lotus_iframe_style() -> String {
         .build()
 }
 
-/// Ketcher content wrapper: padding and gap for nested content.
+/// Ketcher content wrapper: vertical spacing/gap only — no horizontal inset,
+/// so the editor fills its panel and lines up with the curation content column.
 pub fn lotus_ketcher_wrap_style() -> String {
-    lotus_panel_stack_style("0 14px 14px", "10px")
+    lotus_panel_stack_style("0 0 14px", "10px")
 }
 
 // ============================================================================
