@@ -26,10 +26,12 @@ const LANG_BOOTSTRAP_SCRIPT: &str = r#"
 (function syncDocumentLangFromQuery() {
     try {
         const params = new URL(window.location.href).searchParams;
-        const lang = params.get("lang") || params.get("locale");
-        if (lang) {
-            document.documentElement.lang = lang;
-        }
+        // Always set <html lang> synchronously — from ?lang=/?locale= when present,
+        // falling back to "en" (the app default). This prevents a post-load
+        // language change being reported by accessibility tools (the static HTML
+        // otherwise has no lang until the module hydrates).
+        const lang = params.get("lang") || params.get("locale") || "en";
+        document.documentElement.lang = lang;
     } catch (_error) {
         // Keep the app running if the browser blocks URL parsing for any reason.
     }

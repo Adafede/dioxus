@@ -44,5 +44,17 @@ else
     cp -r "$TMPDIR/"* "$KETCHER_DIR/"
 fi
 
+# Ketcher's standalone build ships three additional ~29 MB "entry" bundles
+# (closable / duo / popup) for embedding modes this editor never uses — only
+# `main.<hash>.js` (referenced by ketcher's own index.html) is loaded. Dropping
+# them trims ~87 MB of dead weight from the published deploy (and from the repo
+# cache during local dev clones), with no effect on the editor at runtime.
+rm -f "$KETCHER_DIR"/static/js/closable.*.js \
+      "$KETCHER_DIR"/static/js/duo.*.js \
+      "$KETCHER_DIR"/static/js/popup.*.js \
+      "$KETCHER_DIR"/static/js/closable.*.LICENSE.txt \
+      "$KETCHER_DIR"/static/js/duo.*.LICENSE.txt \
+      "$KETCHER_DIR"/static/js/popup.*.LICENSE.txt
+
 echo "✓ Ketcher v${KETCHER_VERSION} extracted to $KETCHER_DIR"
 echo "  Run 'dx serve --package lotus-explore-rs' to use it."
