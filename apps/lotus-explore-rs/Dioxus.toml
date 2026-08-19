@@ -11,8 +11,8 @@ title = "LOTUS Linked Open Data Explorer"
 # Set base_path when serving under a subpath, e.g.:
 # base_path = "/lotus-explore-rs"
 
-# CSS is now loaded via <link> tags in the custom index.html template
-# (apps/lotus-explore-rs/index.html), not via [web.resource.style].
+# CSS is now loaded via <link> tags in the custom template.html template
+# (apps/lotus-explore-rs/template.html), not via [web.resource.style].
 # This template is used in place of the auto-generated one and includes:
 #   - /assets/lotus-explore.css  (all app CSS)
 #   - /assets/toast.css          (toast notification styles)
