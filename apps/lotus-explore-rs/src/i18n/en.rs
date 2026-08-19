@@ -52,6 +52,15 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::ErrorHintParse => "Response parsing failed. Retry or refine query.",
         TextKey::ErrorHintUnknown => "Unexpected error. Retry may help.",
         TextKey::SkipToResults => "Skip to results",
+        TextKey::WelcomeLeadA => {
+            "This app demonstrates the power of linked open data by connecting natural products to organisms and scientific literature. "
+        }
+        TextKey::WelcomeLeadB => {
+            "The data model links compounds, taxa, and references—sourced from the "
+        }
+        TextKey::WelcomeLeadC => ", published as linked data on ",
+        TextKey::WelcomeLeadD => ", and queried via SPARQL through ",
+        TextKey::WelcomeLeadE => ".",
         TextKey::ExampleGentiana => "Enter a taxon name, Wikidata QID, or * for all taxa",
         TextKey::ExampleSmilesOnly => "Paste a SMILES or Molfile in the structure box",
         TextKey::ExampleQueryExecute => "Execute",
@@ -60,6 +69,9 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryAdvanced => "Download RDF",
         TextKey::WelcomeProgrammaticDownload => {
             "Programmatic URL patterns (run or download CSV / JSON / RDF):"
+        }
+        TextKey::LabelLanguagePolicy => {
+            "Labels use 'mul' first, then 'en' fallback, for comparable results."
         }
         TextKey::SearchFilters => "Search filters",
         TextKey::Taxon => "Taxon",

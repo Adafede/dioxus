@@ -56,6 +56,15 @@ pub const fn it_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintUnknown => "Errore inatteso. Riprova.",
         TextKey::SkipToResults => "Vai ai risultati",
+        TextKey::WelcomeLeadA => {
+            "Questa applicazione dimostra la potenza dei dati aperti collegati collegando i prodotti naturali agli organismi e alla letteratura scientifica. "
+        }
+        TextKey::WelcomeLeadB => {
+            "Il modello di dati collega gli composti, i taxa e i riferimenti—provenienti da "
+        }
+        TextKey::WelcomeLeadC => ", pubblicati come dati aperti collegati su ",
+        TextKey::WelcomeLeadD => " e interrogati tramite SPARQL tramite ",
+        TextKey::WelcomeLeadE => ".",
         TextKey::ExampleGentiana => {
             "Inserisci un nome di taxon, un QID Wikidata o * per tutti i taxa"
         }
@@ -66,6 +75,9 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryAdvanced => "Scarica RDF",
         TextKey::WelcomeProgrammaticDownload => {
             "Parametri URL programmatici (eseguire o scaricare CSV / JSON / RDF):"
+        }
+        TextKey::LabelLanguagePolicy => {
+            "Le etichette usano prima 'mul' e poi 'en' per risultati confrontabili."
         }
         TextKey::SearchFilters => "Filtri di ricerca",
         TextKey::Taxon => "Taxon",
