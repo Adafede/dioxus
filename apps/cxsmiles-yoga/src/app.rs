@@ -261,7 +261,6 @@ pub fn app() -> Element {
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
-            inline_style: Some("-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%;background:#f8fafc;color:#0f172a;font-family:ui-system,system-ui,sans-serif".to_string()),
         }
 
         Header {

@@ -27,7 +27,8 @@
 //! - All buttons use consistent 40px minimum height for touch accessibility
 //! - Padding is adjusted per size variant to maintain aspect ratios
 //! - Styles are CSS-in-Rust using `StyleBuilder` for maintainability
-//! - No external CSS dependencies for core styling
+//! - App-wide CSS lives in external `.css` asset files for optimal mobile
+//!   performance (loaded via `<link rel="stylesheet">` in `index.html`)
 //! - Each module is independently testable and reusable
 
 pub mod buttons;
@@ -37,12 +38,6 @@ pub mod notices;
 pub mod panels;
 pub mod primitives;
 pub mod theme;
-
-// Re-export the consolidated LOTUS CSS bundle (design tokens + base + layout +
-// form controls + curation + accessibility + responsive). Previously this lived
-// in `apps/lotus-explore-rs/src/lotus_styles/` — a per-app parallel to this
-// crate. It now lives here so every app can share a single bundle.
-pub use lotus::bundled_lotus_styles;
 
 // Re-export commonly used items for convenience
 pub use buttons::{

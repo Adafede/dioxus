@@ -4,13 +4,20 @@
 //! Programmatic document `<head>` management for lotus-explore-rs.
 //!
 //! Replaces the static `index.html` with Rust code that sets meta tags,
-//! bundled styles, scripts (CDN + inline bridge code), and structured data.
+//! scripts (CDN + inline bridge code), and structured data.
+//!
+//! CSS (lotus styles, toast styles, Google Fonts) is **not** injected here.
+//! Instead, all stylesheets are declared in the `[web.resource]` section of
+//! `Dioxus.toml` and baked into the generated `index.html` as `<link>` tags.
+//! This ensures the browser receives the CSS in the initial HTML response —
+//! before the WASM bundle downloads — giving mobile users styled content
+//! much sooner (eliminating the 1–2 s unstyled gap caused by runtime CSS
+//! injection via `use_hook`).
 
 use dioxus::prelude::*;
 use ui::prelude::*;
 
 mod inline_script;
-mod inline_style;
 
 /// JSON-LD structured data for the LOTUS Knowledge Explorer.
 const JSON_LD: &str = r#"{
@@ -149,6 +156,13 @@ const ALWAYS_SCRIPTS: &[&str] = &[
 /// analytics script, inline bridge JS (language bootstrap + toast), and
 /// resource hint `<link>`s.
 ///
+/// CSS is no longer injected here as an inline `<style>` tag.  The lotus
+/// styles, toast styles, and Google Fonts are all loaded as external
+/// `<link rel="stylesheet">` tags via the `[web.resource]` section in
+/// `Dioxus.toml`, so the browser receives them in the initial HTML response
+/// — before the WASM bundle even finishes downloading.  This dramatically
+/// improves First Contentful Paint on slow mobile networks.
+///
 /// Heavy scripts that are only needed on a single view (RDKit, citation-js)
 /// are intentionally *not* injected here; they are requested on demand by the
 /// curation-page bridge when those workflows are actually used.
@@ -188,11 +202,6 @@ pub fn LotusDocumentHead(lang: String) -> Element {
         "en" => BASE_URL.to_string(),
         other => format!("{BASE_URL}?lang={other}"),
     };
-    let inline_style = format!(
-        "{}\n\n{}",
-        ui::styles::bundled_lotus_styles(),
-        inline_style::build_inline_style()
-    );
 
     rsx! {
         DocumentHead {
@@ -204,7 +213,6 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             og_site_name: Some("LOTUS Knowledge Explorer".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts,
-            inline_style: Some(inline_style),
             inline_script: Some(inline_script::build_core_inline_script()),
             json_ld: Some(JSON_LD.to_string()),
             canonical: Some(canonical),

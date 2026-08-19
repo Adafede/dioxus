@@ -1,14 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
-
-//! Inline CSS for the document head, split into a font import and toast styles.
-
-const INTER_FONT_IMPORT: &str = r"
-/* Inter Font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap') layer;
-";
-
-const TOAST_STYLE: &str = r#"
+/* Toast notification styles */
 #dx-toast-template {
     display: none;
     visibility: hidden;
@@ -63,7 +53,7 @@ const TOAST_STYLE: &str = r#"
     margin-bottom: 10px;
 }
 
-.dx-toast .dx-toast-header>svg {
+.dx-toast .dx-toast-header > svg {
     height: 18px;
     margin-right: 5px;
 }
@@ -92,9 +82,4 @@ const TOAST_STYLE: &str = r#"
 
 .dx-toast-level-bar.error {
     background-color: #FF4242;
-}
-"#;
-
-pub fn build_inline_style() -> String {
-    [INTER_FONT_IMPORT, TOAST_STYLE].join("\n\n")
 }

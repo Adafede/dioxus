@@ -3,11 +3,11 @@ name = "lotus-deploy"
 version = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
+description = "Host-only deploy helpers for lotus-explore-rs: bake <html lang> into shipped index.html and fetch/slim the Ketcher editor bundle"
 repository = { workspace = true }
 license = { workspace = true }
-description = "Host-only deploy helpers for lotus-explore-rs: bake <html lang> into shipped index.html and fetch/slim the Ketcher editor bundle"
-keywords = ["lotus", "deploy", "ketcher", "i18n", "dioxus"]
-categories = ["web-programming", "development-tools::build-utils"]
+keywords = ["deploy", "dioxus", "i18n", "ketcher", "lotus"]
+categories = ["development-tools::build-utils", "web-programming"]
 publish = false
 
 # Two independent host-only binaries; build with

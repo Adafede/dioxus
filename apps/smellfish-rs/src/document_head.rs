@@ -483,9 +483,12 @@ pub fn SmellfishDocumentHead() -> Element {
             description: Some(description.to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts,
-            inline_style: Some(CSS.to_string()),
             inline_script: Some(INLINE_SCRIPT.to_string()),
         }
+
+        // Keep the local LOTUS-inspired styling in the initial HTML response so
+        // the UI is not blank during the first WASM load.
+        document::Style { "{CSS}" }
 
         // Local motif-library script (must load before inline bridge JS)
         document::Script { src: "motif-library.js" }

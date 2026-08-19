@@ -111,14 +111,7 @@ pub fn app() -> Element {
             title: "Dioxus Experiments".to_string(),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
-            inline_style: Some(
-                "body{font-family:system-ui,sans-serif;-webkit-text-size-adjust:100%;\
-                 -moz-text-size-adjust:100%;text-size-adjust:100%;}\
-                 .skip-link:focus{top:0!important;outline:3px solid #0b5cab;outline-offset:2px}"
-                    .to_string()
-            ),
-        }
+            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],        }
 
         div { style: container_style,
             SkipLink {}

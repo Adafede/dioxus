@@ -5,11 +5,13 @@
 //!
 //! # Design Philosophy
 //!
-//! - **No external CSS files**: All styling defined as Rust constants via [`theme`]
+//! - **CSS bundled as static assets**: App-wide CSS lives in external files
+//!   (e.g. `lotus-explore.css`) loaded via `<link rel="stylesheet">` in the
+//!   generated `index.html` for optimal mobile performance
 //! - **Type-safe theming**: Compile-time checked colors, spacing, typography
+//!   via design tokens ([`styles::lotus::tokens`]) used by [`StyleBuilder`]
 //! - **Accessible components**: WCAG AAA contrast, keyboard navigation, semantic HTML
 //! - **Lotus aesthetic**: Clean, professional design inspired by lotus-explore-rs
-//! - **Zero runtime overhead**: All styles inline, no dynamic CSS generation
 //!
 //! # Example
 //!

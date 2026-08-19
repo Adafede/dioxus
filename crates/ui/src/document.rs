@@ -55,10 +55,7 @@ pub struct DocumentHeadProps {
     /// External JS URLs to load via `<script async src="..." crossorigin>`.
     #[props(default)]
     pub scripts: Vec<String>,
-    /// Inline CSS for a `<style>` tag in the head.
-    #[props(default)]
-    pub inline_style: Option<String>,
-    /// Inline JavaScript (e.g. RDKit bridge code).
+    /// Inline JavaScript (e.g. language bootstrap, toast bridge code).
     #[props(default)]
     pub inline_script: Option<String>,
     /// Open Graph site name.
@@ -94,7 +91,6 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
     let og_site_name = props.og_site_name.clone();
     let theme_colors = props.theme_colors;
     let scripts = props.scripts.clone();
-    let inline_style = props.inline_style.clone();
     let inline_script = props.inline_script.clone();
     let json_ld = props.json_ld.clone();
     let canonical = props.canonical.clone();
@@ -225,10 +221,8 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
             );
         }
 
-        // Inline CSS
-        if let Some(css) = &inline_style {
-            doc.create_head_element("style", &[], Some(css.clone()));
-        }
+        // Inline CSS — CSS is now loaded as external <link> tags via
+        // [web.resource.style] in Dioxus.toml, no longer injected inline.
 
         // Inline JavaScript — wrapped in an IIFE so `const`/`let` declarations
         // don't leak into the global scope (which causes

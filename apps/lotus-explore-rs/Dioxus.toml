@@ -11,6 +11,14 @@ title = "LOTUS Linked Open Data Explorer"
 # Set base_path when serving under a subpath, e.g.:
 # base_path = "/lotus-explore-rs"
 
+# CSS is now loaded via <link> tags in the custom index.html template
+# (apps/lotus-explore-rs/index.html), not via [web.resource.style].
+# This template is used in place of the auto-generated one and includes:
+#   - /assets/lotus-explore.css  (all app CSS)
+#   - /assets/toast.css          (toast notification styles)
+#   - Google Fonts               (non-blocking via media="print" trick)
+# All stylesheets arrive in the initial HTML response, before WASM downloads.
+
 [web.watcher]
 reload_html = true
 watch_path = ["src", "public", "../../crates/lotus/src", "../../crates/ui/src", "../../crates/upload/src"]

@@ -82,11 +82,6 @@ pub fn app() -> Element {
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
-            inline_style: Some(
-                ".skip-link:focus{top:0!important;outline:3px solid #0b5cab;outline-offset:2px}\
-                 -webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%"
-                    .to_string()
-            ),
         }
 
         div {

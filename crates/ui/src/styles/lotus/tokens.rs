@@ -2,9 +2,6 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Lotus design tokens: centralized spacing, colors, typography, and other design values.
-//! All CSS values are extracted here to ensure DRY principles across the UI.
-
-#![allow(dead_code)]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SPACING TOKENS (in pixels)
