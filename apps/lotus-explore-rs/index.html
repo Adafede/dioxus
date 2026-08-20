@@ -4,24 +4,28 @@
   The Dioxus CLI replaces the following placeholders:
     {app_title}   — the <title> from [web.app.title] in Dioxus.toml
     {app_name}    — package name
-    {wasm_path}   — path to the WASM binary (e.g. /./wasm/lotus-explore-rs_bg.wasm)
-    {js_path}     — path to the JS bootstrap (e.g. /./wasm/lotus-explore-rs.js)
+    {wasm_path}   — path to the WASM binary
+    {js_path}     — path to the JS bootstrap
     {base_path}   — base path (for subpath deployments), no leading/trailing slash
+
+  CSS is loaded via external <link> tags in the initial HTML response,
+  BEFORE the WASM bundle.  This eliminates the flash-of-unstyled-content
+  on mobile that was caused by runtime-injected <style> tags.
 -->
 <html lang="en">
-<head>
-    <title>{app_title}</title>
-    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta charset="UTF-8">
+    <head>
+        <title>{app_title}</title>
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta charset="UTF-8">
 
-    <!-- App-wide CSS — loaded in the initial HTML response (no runtime injection) -->
-    <link rel="stylesheet" href="/{base_path}/assets/lotus-explore.css">
+        <!-- App-wide CSS — loaded in the initial HTML response (no runtime injection) -->
+        <link rel="stylesheet" href="/{base_path}/assets/lotus-explore.css">
 
-    <!-- Dioxus CLI injects the <link rel="preload" as="script"> and the
-         <script type="module"> tag here automatically. -->
-</head>
-<body>
-<div id="main"></div>
-</body>
+        <!-- Dioxus CLI injects the <link rel="preload" as="script"> and the
+             <script type="module"> tag here automatically. -->
+    </head>
+    <body>
+        <div id="main"></div>
+    </body>
 </html>

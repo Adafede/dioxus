@@ -221,8 +221,8 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
             );
         }
 
-        // Inline CSS — CSS is now loaded as external <link> tags via
-        // [web.resource.style] in Dioxus.toml, no longer injected inline.
+        // CSS is loaded as external <link> tags in the custom index.html template
+        // (apps/lotus-explore-rs/index.html), no longer injected inline here.
 
         // Inline JavaScript — wrapped in an IIFE so `const`/`let` declarations
         // don't leak into the global scope (which causes
