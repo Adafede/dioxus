@@ -2,6 +2,9 @@
 name = "json-count-rs"
 default_platform = "web"
 
+[web]
+pre_compress = true
+
 [web.app]
 title = "JSON Non-Null Field Counter"
 

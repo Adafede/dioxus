@@ -3,6 +3,9 @@ name = "lipid-selecto-rs"
 default_platform = "web"
 asset_dir = "assets"
 
+[web]
+pre_compress = true
+
 [web.app]
 title = "Lipid Selecto-rs"
 

@@ -6,6 +6,9 @@ asset_dir = "public"
 #   target/dx/<package-name>/release/web/public/
 # and ignores any `out_dir` key set here.
 
+[web]
+pre_compress = true
+
 [web.app]
 title = "LOTUS Linked Open Data Explorer"
 # Set base_path when serving under a subpath, e.g.:

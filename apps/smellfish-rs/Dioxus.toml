@@ -3,6 +3,9 @@ name = "smellfish-rs"
 default_platform = "web"
 asset_dir = "public"
 
+[web]
+pre_compress = true
+
 [web.app]
 title = "🐟 Smellfish-rs"
 
