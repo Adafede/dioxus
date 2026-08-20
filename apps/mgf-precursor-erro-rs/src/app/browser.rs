@@ -14,6 +14,8 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Blob;
+#[cfg(target_arch = "wasm32")]
+use web_sys::console;
 
 #[cfg(target_arch = "wasm32")]
 const EXAMPLE_MGF_URL: &str =
@@ -103,9 +105,24 @@ fn start_analysis(
         .await
         {
             Ok(result) => {
-                // Store a compact representation of the original content for
-                // recalibration output.  We re-read the blob only once.
-                original_content_signal.set(format!("(streamed MGF, {total_bytes} bytes)"));
+                // Read the actual blob content for recalibration
+                let blob_clone = blob.clone();
+                let content_future = async move {
+                    let text_promise = blob_clone.text();
+                    JsFuture::from(text_promise)
+                        .await
+                        .map_err(|e| format!("Failed to read blob text: {e:?}"))
+                        .and_then(|text| {
+                            text.as_string()
+                                .ok_or_else(|| "Failed to convert blob text to string".to_string())
+                        })
+                };
+
+                // Store the actual content for recalibration
+                original_content_signal.set(content_future.await.unwrap_or_else(|e| {
+                    console::log_1(&format!("Error reading blob content: {e}").into());
+                    format!("(streamed MGF, {total_bytes} bytes)")
+                }));
                 metrics_for_results.set(Some(result));
             }
             Err(UploadError::UnexpectedEof) => {
