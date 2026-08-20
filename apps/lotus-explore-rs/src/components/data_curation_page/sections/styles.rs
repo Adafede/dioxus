@@ -124,6 +124,5 @@ pub(super) fn row_stripe_style(idx: usize) -> String {
 
     StyleBuilder::new()
         .property("transition", "background .14s ease")
-        .property("--row-bg", background)
         .build()
 }

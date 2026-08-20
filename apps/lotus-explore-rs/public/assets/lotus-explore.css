@@ -514,7 +514,6 @@ background: var(--bg2);
 
 .curation-table tbody tr {
 transition: background .14s ease;
-background: var(--row-bg, transparent);
 }
 
 .curation-table tbody tr:hover {
