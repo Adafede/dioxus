@@ -4,13 +4,9 @@
   The Dioxus CLI replaces the following placeholders:
     {app_title}   — the <title> from [web.app.title] in Dioxus.toml
     {app_name}    — package name
-    {wasm_path}   — path to the WASM binary
-    {js_path}     — path to the JS bootstrap
+    {wasm_path}   — path to the WASM binary (e.g. /./wasm/lotus-explore-rs_bg.wasm)
+    {js_path}     — path to the JS bootstrap (e.g. /./wasm/lotus-explore-rs.js)
     {base_path}   — base path (for subpath deployments), no leading/trailing slash
-
-  CSS is loaded via external <link> tags in the initial HTML response,
-  BEFORE the WASM bundle.  This eliminates the flash-of-unstyled-content
-  on mobile that was caused by runtime-injected <style> tags.
 -->
 <html lang="en">
     <head>

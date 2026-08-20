@@ -6,9 +6,9 @@
 //! Replaces the static `index.html` with Rust code that sets meta tags,
 //! scripts (CDN + inline bridge code), and structured data.
 //!
-//! CSS (lotus styles) is **not** injected here — it's loaded as an external
-//! `<link>` tag in the custom `index.html` template so the browser receives
-//! it in the initial HTML response, before the WASM bundle downloads.
+//! CSS is inlined directly via `DocumentHead::inline_style` using `include_str!`.
+//! This ensures critical styles are delivered in the initial HTML response without
+//! external stylesheet network hops or chaining critical requests.
 
 use dioxus::prelude::*;
 use ui::prelude::*;
@@ -135,6 +135,8 @@ const ALWAYS_SCRIPTS: &[&str] = &["https://scripts.simpleanalyticscdn.com/latest
 /// Base URL for the app (used in hreflang and canonical links).
 const BASE_URL: &str = "https://adafede.github.io/dioxus/lotus-explore-rs/";
 
+const CSS_STYLES: &str = concat!(include_str!("../public/assets/lotus-explore.css"),);
+
 /// Renders the complete document `<head>` using `dioxus::document`.
 #[component]
 pub fn LotusDocumentHead(lang: String) -> Element {
@@ -173,6 +175,9 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             json_ld: Some(JSON_LD.to_string()),
             canonical: Some(canonical),
         }
+
+        // Inline stylesheet removes critical-path HTTP request chains
+        style { "{CSS_STYLES}" }
 
         DocumentLinks { links }
     }
