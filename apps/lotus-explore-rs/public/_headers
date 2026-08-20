@@ -7,48 +7,45 @@
 
 /*
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; script-src 'self' 'unsafe-inline' https://scripts.simpleanalyticscdn.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://qlever.dev https://query.wikidata.org https://www.wikidata.org https://www.simolecule.com https://idsm.elixir-czech.cz https://doi.org https://api.naturalproducts.net https://pubchem.ncbi.nlm.nih.gov https://api.semanticscholar.org https://api.openalex.org; worker-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types default
-
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; script-src 'self' https://scripts.simpleanalyticscdn.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://qlever.dev https://query.wikidata.org https://www.wikidata.org https://www.simolecule.com https://idsm.elixir-czech.cz https://doi.org https://api.naturalproducts.net https://pubchem.ncbi.nlm.nih.gov https://api.semanticscholar.org https://api.openalex.org; worker-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types default
   X-Content-Type-Options: nosniff
-
   Referrer-Policy: strict-origin-when-cross-origin
-
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
-
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
   Cross-Origin-Resource-Policy: same-origin
-
   Link: </llms.txt>; rel="http://llmstxt.org/llms.txt"; type="text/plain"
   Link: </sitemap.xml>; rel="sitemap"; type="application/xml"
   Link: </robots.txt>; rel="robots"; type="text/plain"
   Link: </.well-known/security.txt>; rel="security.txt"; type="text/plain"
 
-  /.well-known/*
+/.well-known/*
   Cache-Control: no-cache
 
-  /robots.txt
+/robots.txt
   Cache-Control: no-cache
 
-  /sitemap.xml
-  Cache-Control: no-cache, max-age=3600
+/sitemap.xml
+  Cache-Control: no-cache, max-age=2592000
 
-  /llms.txt
+/llms.txt
   Cache-Control: no-cache
 
-  /site.webmanifest
-  Cache-Control: public, max-age=86400
+/site.webmanifest
+  Cache-Control: public, max-age=2592000
 
-  /favicon.svg
-  Cache-Control: public, max-age=604800
+/favicon.svg
+  Cache-Control: public, max-age=2592000
 
-  /favicon.ico
-  Cache-Control: public, max-age=604800
+/favicon.ico
+  Cache-Control: public, max-age=2592000
 
-  /apple-touch-icon.png
-  Cache-Control: public, max-age=604800
+/apple-touch-icon.png
+  Cache-Control: public, max-age=2592000
 
-  /index.html
-  No-Vary-Search: params=("locale"), params_key_order=("locale","search","query")
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/index.html
+  No-Vary-Search: key-order, params, except=("locale")
