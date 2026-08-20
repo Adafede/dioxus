@@ -7,20 +7,6 @@
     {wasm_path}   — path to the WASM binary (e.g. /./wasm/lotus-explore-rs_bg.wasm)
     {js_path}     — path to the JS bootstrap (e.g. /./wasm/lotus-explore-rs.js)
     {base_path}   — base path (for subpath deployments), no leading/trailing slash
-
-  CSS is loaded via external <link> tags in the initial HTML response,
-  BEFORE the WASM bundle. This eliminates the 1-2 s flash-of-unstyled-
-  content on mobile that was caused by runtime-injected <style> tags.
-
-  Google Fonts uses the "media swap" technique:
-    media="print" onload="this.media='all'"
-  This prevents the font stylesheet from blocking rendering while still
-  applying the font once loaded.
-
-  NOTE: this file is used verbatim for BOTH `dx serve` and `dx build
-  --release` — the CLI does not swap in a separate prod template when a
-  custom index.html is present. Do not add dev-only markup (e.g. the
-  hot-reload toast) here; it will ship to production as-is.
 -->
 <html lang="en">
 <head>
@@ -35,7 +21,6 @@
 
     <!-- App-wide CSS — loaded in the initial HTML response (no runtime injection) -->
     <link rel="stylesheet" href="/{base_path}/assets/lotus-explore.css">
-    <link rel="stylesheet" href="/{base_path}/assets/toast.css">
 
     <!-- Google Fonts — non-blocking via media="print" trick -->
     <!-- display=swap ensures text remains visible while font loads -->
