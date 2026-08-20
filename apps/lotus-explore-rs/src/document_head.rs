@@ -129,13 +129,13 @@ const HREFLANGS: &[(&str, &str)] = &[
     ("it", "?lang=it"),
 ];
 
+/// External scripts loaded on every page.
+const ALWAYS_SCRIPTS: &[&str] = &["https://scripts.simpleanalyticscdn.com/latest.js"];
+
 /// Base URL for the app (used in hreflang and canonical links).
 const BASE_URL: &str = "https://adafede.github.io/dioxus/lotus-explore-rs/";
 
-/// External scripts loaded on every page.
-const ALWAYS_SCRIPTS: &[&str] = &[
-    "https://scripts.simpleanalyticscdn.com/latest.js",
-];
+const CSS_STYLES: &str = concat!(include_str!("../public/assets/lotus-explore.css"),);
 
 /// Renders the complete document `<head>` using `dioxus::document`.
 #[component]
@@ -160,11 +160,6 @@ pub fn LotusDocumentHead(lang: String) -> Element {
         "en" => BASE_URL.to_string(),
         other => format!("{BASE_URL}?lang={other}"),
     };
-
-    // Correct path starting from apps/lotus-explore-rs/src/
-    const CSS_STYLES: &str = concat!(
-    include_str!("../public/assets/lotus-explore.css"),
-    );
 
     rsx! {
         DocumentHead {
