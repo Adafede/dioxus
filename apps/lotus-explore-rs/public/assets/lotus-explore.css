@@ -607,7 +607,7 @@ outline-offset: 2px;
 .app-layout.no-sidebar { display:block; }
 
 .sidebar {
-width:300px;
+width:360px;
 min-width:250px;
 overflow-y:auto;
 background:var(--panel-bg);
