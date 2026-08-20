@@ -36,7 +36,7 @@ jobs:
       - name: Build deploy tools
         run: cargo build --release -p lotus-deploy --bin fetch-ketcher --bin bake-lang
 
-      - name: Fetch Ketcher (115 MB structure editor)
+      - name: Fetch Ketcher
         working-directory: apps/lotus-explore-rs
         run: ../../target/release/fetch-ketcher
 
