@@ -38,6 +38,19 @@ impl LipidClass {
         }
     }
 
+    /// LIPID MAPS category name with code, e.g. "Fatty Acyls [FA]".
+    #[must_use]
+    pub const fn lipidmaps_category(self) -> &'static str {
+        match self {
+            Self::FattyAcyl => "Fatty Acyls [FA]",
+            Self::Glycerolipid => "Glycerolipids [GL]",
+            Self::Glycerophospholipid => "Glycerophospholipids [GP]",
+            Self::Sphingolipid => "Sphingolipids [SP]",
+            Self::Sterol => "Sterol Lipids [ST]",
+            Self::Other => "Other Lipids [-]",
+        }
+    }
+
     /// CSS background color used by the classification badge in the UI.
     #[must_use]
     pub const fn color(self) -> &'static str {

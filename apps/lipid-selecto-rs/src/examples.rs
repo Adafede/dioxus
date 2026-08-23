@@ -3,7 +3,7 @@
 //! Covers all 8 categories: FA, GL, GP, SP, ST, PR, SL, PK
 
 /// Real lipid examples from LipidMaps LMSD dataset.
-pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[ 
+pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
     // === Fatty Acyls (FA) ===
     ("10Z,13Z,16Z-nonadecatrienenitrile", "C(#N)CCCCCCCC/C=C\\C/C=C\\C/C=C\\CC", "10Z,13Z,16Z-nonadecatrienenitrile"),
     ("Lauronitrile", "C(CCCCCCCCCCC)#N", "Lauronitrile"),

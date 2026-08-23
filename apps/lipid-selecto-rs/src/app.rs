@@ -98,11 +98,7 @@ pub fn app() -> Element {
                     "Drop an MGF or SMILES file and we'll filter it to keep only lipids matching extensible LIPID MAPS-aligned rules. Download as the same format you uploaded."
                 }
 
-                {
-                    let analysis_guard = ctx.analysis.read();
-                    let gallery: &[crate::parser::GalleryItem] = analysis_guard.as_ref().map_or(&[][..], |a| a.gallery.as_slice());
-                    lipid_classes_card(gallery, mz_min, mz_max, precursor_min, precursor_max, adduct_filter)
-                }
+                { lipid_classes_card() }
                 div {
                     style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").build(),
                     UploadZone {
@@ -136,8 +132,8 @@ pub fn app() -> Element {
                     }
                 }
                 if let Some(analysis) = ctx.analysis.read().as_ref() {
-                    { summary(&analysis.summary, selected_classes, &analysis.all_classes, &analysis.filtered_mgf, &analysis.gallery, mz_min, mz_max, precursor_min, precursor_max, adduct_filter) }
-                    { gallery_with_filter(&analysis.gallery, &selected_classes.read()) }
+                    { summary(&analysis.summary, selected_classes, &analysis.all_classes, &analysis.filtered_mgf, &analysis.gallery, &analysis.blocks, ctx.input_format.read().clone().unwrap_or(crate::format::LipidFormat::Mgf), mz_min, mz_max, precursor_min, precursor_max, adduct_filter) }
+                    { gallery_with_filter(&analysis.gallery, &selected_classes.read(), *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read()) }
                 }
             }
         }

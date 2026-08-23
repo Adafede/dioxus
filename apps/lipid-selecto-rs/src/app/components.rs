@@ -48,35 +48,11 @@ pub(super) fn checkbox_sm() -> String {
         .build()
 }
 
-/// Renders the "Available Lipid Classes" card, sorted by priority.
-pub(super) fn lipid_classes_card(
-    gallery: &[crate::parser::GalleryItem],
-    mut mz_min: Signal<f64>,
-    mut mz_max: Signal<f64>,
-    mut precursor_min: Signal<f64>,
-    mut precursor_max: Signal<f64>,
-    mut adduct_filter: Signal<String>,
-) -> Element {
+/// Renders the "Available Lipid Classes" card, showing LMSD-based classes
+/// grouped by family with collapsible sections for each family.
+pub(super) fn lipid_classes_card() -> Element {
     // Load LMSD-based class scheme (same as Results panel)
     let all_classes = crate::chemical_class::lmsd_all();
-
-    // Collect unique adduct values from gallery items for dropdown
-    let adduct_values: std::collections::BTreeSet<String> = gallery
-        .iter()
-        .filter_map(|item| item.adduct.as_ref())
-        .filter(|a| !a.is_empty())
-        .cloned()
-        .collect();
-    let mut adduct_options: Vec<String> = adduct_values.into_iter().collect();
-    adduct_options.sort_by(|a, b| {
-        let a_plus = a.contains('+');
-        let b_plus = b.contains('+');
-        match (a_plus, b_plus) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.cmp(b),
-        }
-    });
 
     // Group classes by family, then sort families by LIPID MAPS rank order.
     let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
@@ -117,112 +93,75 @@ pub(super) fn lipid_classes_card(
         })
         .collect();
 
+    // Use a single open-collapsed state for simplicity (all expanded by default)
+    let family_expanded = use_signal(|| Vec::<usize>::new());
+
     rsx! {
                 div {
                     style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").property("margin-bottom", "1.25rem").build(),
-                    h2 { style: StyleBuilder::new().margin("0 0 0.75rem").font_size("1.1rem").build(), "Available Lipid Classes" }
+                    h2 { style: StyleBuilder::new().margin("0 0 0.5rem").font_size("1.1rem").build(), "Available Lipid Classes" }
+                    p { style: StyleBuilder::new().margin("0 0 0.75rem").color("#64748b").font_size("0.8rem").build(), "LMSD classification scheme — {all_classes.len()} classes across {families.len()} families" }
 
-                    // Filter controls row
-                    div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.75rem").align_items("flex-end").property("margin-bottom", "1rem").build(),
-                        // m/z range filter
-                        div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
-                            span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "m/z range" }
-                            div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
-                                input {
-                                    r#type: "number",
-                                    placeholder: "min",
-                                    value: "{mz_min.read()}",
-                                    oninput: move |evt| {
-                                        if let Ok(val) = evt.value().parse::<f64>() {
-                                            mz_min.set(val);
+                    // Family sections - stacked vertically with headers
+                    div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.3rem").property("max-height", "320px").property("overflow-y", "auto").build(),
+                        for (idx, (family, shown_classes, others_count, others_color)) in family_display.iter().enumerate() {
+                            // Family header with color bar
+                            {
+                                let family_clone = family.clone();
+                                let family_color = shown_classes.first().map(|c| c.color.clone())
+                                    .unwrap_or_else(|| others_color.clone());
+                                let idx_copy = idx;
+                                let mut family_expanded_signal = family_expanded.clone();
+                                let is_expanded = family_expanded.read().contains(&idx);
+                                rsx! {
+                                    div { style: StyleBuilder::new().build(),
+                                        div {
+                                            style: StyleBuilder::new()
+                                                .display("flex")
+                                                .align_items("center")
+                                                .justify_content("space-between")
+                                                .padding("0.35rem 0.5rem")
+                                                .cursor("pointer")
+                                                .border_bottom("1px solid #f1f5f9")
+                                                .build(),
+                                            onclick: move |_| {
+                                                let mut expanded = family_expanded_signal.read().clone();
+                                                if expanded.contains(&idx_copy) {
+                                                    expanded.retain(|&i| i != idx_copy);
+                                                } else {
+                                                    expanded.push(idx_copy);
+                                                }
+                                                family_expanded_signal.set(expanded);
+                                            },
+                                            div { style: StyleBuilder::new().display("flex").align_items("center").gap("0.3rem").build(),
+                                                span { style: StyleBuilder::new().width("10px").height("10px").border_radius("50%").property("background", &family_color).build(), }
+                                                strong { style: StyleBuilder::new().font_size("0.82rem").font_weight("700").color("#0f172a").build(), "{family_clone}" }
+                                            }
+                                            span { style: StyleBuilder::new().font_size("0.72rem").color("#94a3b8").build(), "{shown_classes.len() + others_count} classes" }
                                         }
-                                    },
-                                    style: StyleBuilder::new().width("70px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
-                                }
-                                span { style: StyleBuilder::new().color("#94a3b8").font_size("0.8rem").build(), "–" }
-                                input {
-                                    r#type: "number",
-                                    placeholder: "max",
-                                    value: "{mz_max.read()}",
-                                    oninput: move |evt| {
-                                        if let Ok(val) = evt.value().parse::<f64>() {
-                                            mz_max.set(val);
+                                        if is_expanded {
+                                            div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.3rem").property("padding", "0.4rem 0 0.2rem 0.8rem").build(),
+                                                for class in shown_classes.iter() {
+                                                    div {
+                                                        style: StyleBuilder::new().padding("0.3rem 0.5rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("6px").font_size("0.75rem").build(),
+                                                        strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.25rem").build(),
+                                                            span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", &class.color).build(), }
+                                                            "{class.name}"
+                                                        }
+                                                    }
+                                                }
+                                                if *others_count > 0 {
+                                                    div {
+                                                        style: StyleBuilder::new().padding("0.3rem 0.5rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("6px").font_size("0.75rem").build(),
+                                                        strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.25rem").build(),
+                                                            span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", &others_color).build(), }
+                                                            "{others_count} more"
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
-                                    },
-                                    style: StyleBuilder::new().width("70px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
-                                }
-                            }
-                        }
-
-                        // precursor range filter
-                        div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
-                            span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "precursor range" }
-                            div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
-                                input {
-                                    r#type: "number",
-                                    placeholder: "min",
-                                    value: "{precursor_min.read()}",
-                                    oninput: move |evt| {
-                                        if let Ok(val) = evt.value().parse::<f64>() {
-                                            precursor_min.set(val);
-                                        }
-                                    },
-                                    style: StyleBuilder::new().width("75px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
-                                }
-                                span { style: StyleBuilder::new().color("#94a3b8").font_size("0.8rem").build(), "–" }
-                                input {
-                                    r#type: "number",
-                                    placeholder: "max",
-                                    value: "{precursor_max.read()}",
-                                    oninput: move |evt| {
-                                        if let Ok(val) = evt.value().parse::<f64>() {
-                                            precursor_max.set(val);
-                                        }
-                                    },
-                                    style: StyleBuilder::new().width("75px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
-                                }
-                            }
-                        }
-
-                        // adduct dropdown
-                        div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
-                            span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "adduct" }
-                            select {
-                                value: "{adduct_filter.read()}",
-                                onchange: move |evt| {
-                                    adduct_filter.set(evt.value());
-                                },
-                                style: StyleBuilder::new().width("110px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
-                                option { value: "", "All" }
-                                for adduct_opt in adduct_options.iter() {
-                                    option { value: "{adduct_opt}", "{adduct_opt}" }
-                                }
-                            }
-                        }
-                    }
-
-                    // Class list - grouped by family with first 4 + "N others"
-                    div {
-                        style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(200px, 1fr))").gap("0.75rem").property("max-height", "300px").property("overflow-y", "auto").build(),
-                        for (family, shown_classes, others_count, others_color) in family_display.iter() {
-                            for class in shown_classes.iter() {
-                                div {
-                                    style: StyleBuilder::new().padding("0.6rem 0.8rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("8px").font_size("0.85rem").build(),
-                                    strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.3rem").build(),
-                                        span { style: StyleBuilder::new().width("8px").height("8px").border_radius("50%").property("background", &class.color).build(), }
-                                        "{class.name}"
                                     }
-                                    span { style: StyleBuilder::new().color("#94a3b8").font_size("0.75rem").property("margin-left", "0.5rem").build(), "({class.family})" }
-                                }
-                            }
-                            if *others_count > 0 {
-                                div {
-                                    style: StyleBuilder::new().padding("0.6rem 0.8rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("8px").font_size("0.85rem").build(),
-                                    strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.3rem").build(),
-                                        span { style: StyleBuilder::new().width("8px").height("8px").border_radius("50%").property("background", &others_color).build(), }
-                                        "{family}"
-                                    }
-                                    span { style: StyleBuilder::new().color("#94a3b8").font_size("0.75rem").property("margin-left", "0.5rem").build(), "({others_count} others)" }
                                 }
                             }
                         }
@@ -231,18 +170,21 @@ pub(super) fn lipid_classes_card(
     }
 }
 
-/// Renders the per-class summary panel.
+/// Renders the per-class summary panel with filter controls and download buttons.
+#[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
 pub(super) fn summary(
     summary_data: &crate::parser::Summary,
     mut selected_classes: Signal<Vec<String>>,
     all_classes: &[ChemicalClass],
-    _filtered_mgf: &str,
-    _gallery: &[crate::parser::GalleryItem],
-    _mz_min: Signal<f64>,
-    _mz_max: Signal<f64>,
-    _precursor_min: Signal<f64>,
-    _precursor_max: Signal<f64>,
-    _adduct_filter: Signal<String>,
+    filtered_mgf: &str,
+    gallery: &[crate::parser::GalleryItem],
+    blocks: &[crate::parser::SpectrumBlock],
+    input_format: crate::format::LipidFormat,
+    mut mz_min: Signal<f64>,
+    mut mz_max: Signal<f64>,
+    mut precursor_min: Signal<f64>,
+    mut precursor_max: Signal<f64>,
+    mut adduct_filter: Signal<String>,
 ) -> Element {
     let lipid_spectra = summary_data.lipid_items;
     let total_spectra = summary_data.total_items;
@@ -251,6 +193,24 @@ pub(super) fn summary(
 
     // Convert to owned data to avoid lifetime issues in closures
     let all_classes_owned = all_classes.to_vec();
+
+    // Collect unique adduct values from gallery items for dropdown
+    let adduct_values: std::collections::BTreeSet<String> = gallery
+        .iter()
+        .filter_map(|item| item.adduct.as_ref())
+        .filter(|a| !a.is_empty())
+        .cloned()
+        .collect();
+    let mut adduct_options: Vec<String> = adduct_values.into_iter().collect();
+    adduct_options.sort_by(|a, b| {
+        let a_plus = a.contains('+');
+        let b_plus = b.contains('+');
+        match (a_plus, b_plus) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.cmp(b),
+        }
+    });
 
     // Group classes by family, then sort families by LIPID MAPS rank order.
     let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
@@ -262,6 +222,98 @@ pub(super) fn summary(
         }
     }
     families.sort_by_key(|(f, _)| family_rank(f));
+
+    // Clone filtered_mgf for the non-WASM download stub
+    #[cfg(not(target_arch = "wasm32"))]
+    #[allow(unused)]
+    let filtered_mgf_owned = filtered_mgf.to_string();
+
+    // Clone gallery SMILES data for the download closure (must be 'static for WASM event handlers)
+    // Include class info (category, main_class, sub_class) for tagging exports
+    #[cfg(target_arch = "wasm32")]
+    let gallery_smiles: Vec<(
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    )> = gallery
+        .iter()
+        .map(|item| {
+            // Use the same primary_class_name as the UI (computed in gallery_item())
+            let category = item
+                .classification
+                .as_ref()
+                .map(|c| c.class.lipidmaps_category().to_string())
+                .unwrap_or_else(|| {
+                    item.primary_class_name
+                        .as_ref()
+                        .and_then(|name| {
+                            all_classes
+                                .iter()
+                                .find(|c| &c.name == name)
+                                .map(|c| c.family.clone())
+                        })
+                        .unwrap_or_else(|| "Other Lipids [-]".to_string())
+                });
+            let main_class = item
+                .primary_class_name
+                .clone()
+                .unwrap_or_else(|| "-".to_string());
+            (
+                item.title.clone(),
+                item.smiles.clone(),
+                Some(category),
+                Some(main_class),
+                Some("-".to_string()),
+            )
+        })
+        .collect();
+    #[cfg(not(target_arch = "wasm32"))]
+    #[allow(unused)]
+    let gallery_smiles: Vec<(
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    )> = Vec::new();
+
+    // Clone block data for filtered MGF download (must be 'static for WASM event handlers)
+    #[cfg(target_arch = "wasm32")]
+    let blocks_owned: Vec<crate::parser::SpectrumBlock> = blocks.to_vec();
+    #[cfg(not(target_arch = "wasm32"))]
+    #[allow(unused)]
+    let _blocks_owned: Vec<crate::parser::SpectrumBlock> = blocks.to_vec();
+
+    // Pre-compute class tags for each block (for MGF download tagging)
+    // Use gallery items' primary_class_name to ensure export matches UI
+    #[cfg(target_arch = "wasm32")]
+    let block_class_tags: Vec<Vec<(String, String)>> = blocks
+        .iter()
+        .map(|block| {
+            // Find the corresponding gallery item by block_index to get the same class as the UI
+            let gallery_item = gallery.iter().find(|item| item.block_index == block.index);
+            if let Some(item) = gallery_item {
+                get_class_tag_from_gallery(item, all_classes)
+            } else {
+                get_class_tag(block, all_classes)
+            }
+        })
+        .collect();
+    #[cfg(not(target_arch = "wasm32"))]
+    #[allow(unused)]
+    let _block_class_tags: Vec<Vec<(String, String)>> = blocks
+        .iter()
+        .map(|block| {
+            let gallery_item = gallery.iter().find(|item| item.block_index == block.index);
+            if let Some(item) = gallery_item {
+                get_class_tag_from_gallery(item, all_classes)
+            } else {
+                get_class_tag(block, all_classes)
+            }
+        })
+        .collect();
 
     rsx! {
         div {
@@ -278,6 +330,83 @@ pub(super) fn summary(
                 }
             }
 
+            // Filter controls row
+            div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.75rem").align_items("flex-end").property("margin", "0.75rem 0").build(),
+                // m/z range filter
+                div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
+                    span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "m/z range" }
+                    div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
+                        input {
+                            r#type: "number",
+                            placeholder: "min",
+                            value: "{mz_min.read()}",
+                            oninput: move |evt| {
+                                if let Ok(val) = evt.value().parse::<f64>() {
+                                    mz_min.set(val);
+                                }
+                            },
+                            style: StyleBuilder::new().width("75px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                        }
+                        span { style: StyleBuilder::new().color("#94a3b8").font_size("0.9rem").build(), "–" }
+                        input {
+                            r#type: "number",
+                            placeholder: "max",
+                            value: "{mz_max.read()}",
+                            oninput: move |evt| {
+                                if let Ok(val) = evt.value().parse::<f64>() {
+                                    mz_max.set(val);
+                                }
+                            },
+                            style: StyleBuilder::new().width("75px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                        }
+                    }
+                }
+                // precursor range filter
+                div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
+                    span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "precursor range" }
+                    div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
+                        input {
+                            r#type: "number",
+                            placeholder: "min",
+                            value: "{precursor_min.read()}",
+                            oninput: move |evt| {
+                                if let Ok(val) = evt.value().parse::<f64>() {
+                                    precursor_min.set(val);
+                                }
+                            },
+                            style: StyleBuilder::new().width("80px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                        }
+                        span { style: StyleBuilder::new().color("#94a3b8").font_size("0.9rem").build(), "–" }
+                        input {
+                            r#type: "number",
+                            placeholder: "max",
+                            value: "{precursor_max.read()}",
+                            oninput: move |evt| {
+                                if let Ok(val) = evt.value().parse::<f64>() {
+                                    precursor_max.set(val);
+                                }
+                            },
+                            style: StyleBuilder::new().width("80px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                        }
+                    }
+                }
+                // adduct dropdown
+                div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
+                    span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "adduct" }
+                    select {
+                        value: "{adduct_filter.read()}",
+                        onchange: move |evt| {
+                            adduct_filter.set(evt.value());
+                        },
+                        style: StyleBuilder::new().width("110px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                        option { value: "", "All" }
+                        for adduct_opt in adduct_options.iter() {
+                            option { value: "{adduct_opt}", "{adduct_opt}" }
+                        }
+                    }
+                }
+            }
+
             if !all_classes_owned.is_empty() {
                 div { style: StyleBuilder::new().margin("0.8rem 0 0").padding("0.6rem").border("1px solid #e2e8f0").border_radius("10px").property("background", "#f8fafc").build(),
                     div { style: StyleBuilder::new().display("flex").align_items("center").justify_content("space-between").property("margin-bottom", "0.6rem").build(),
@@ -289,10 +418,8 @@ pub(super) fn summary(
                                 onchange: move |_| {
                                     let mut classes = selected_classes.read().clone();
                                     if classes.len() == all_classes_owned.len() {
-                                        // Uncheck all
                                         classes.clear();
                                     } else {
-                                        // Check all
                                         classes = all_classes_owned.iter().map(|c| c.name.clone()).collect();
                                     }
                                     selected_classes.set(classes);
@@ -307,8 +434,222 @@ pub(super) fn summary(
                     }
                 }
             }
+
+            // Download buttons - conditional on input format, with filter support
+            div { style: StyleBuilder::new().display("flex").gap("0.5rem").property("margin-top", "0.75rem").build(),
+                if input_format == crate::format::LipidFormat::Mgf {
+                    button {
+                        r#type: "button",
+                        style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
+                        onclick: move |_| {
+                            #[cfg(target_arch = "wasm32")]
+                            {
+                                let mz_min_val = *mz_min.read();
+                                let mz_max_val = *mz_max.read();
+                                let prec_min_val = *precursor_min.read();
+                                let prec_max_val = *precursor_max.read();
+                                let adduct_val = adduct_filter.read().clone();
+                                // Filter blocks and tag each with its attributed lipid class
+                                let mut mgf_content = String::new();
+                                for (idx, block) in blocks_owned.iter().enumerate() {
+                                    // m/z range (using exact_mass)
+                                    if block.exact_mass < mz_min_val || block.exact_mass > mz_max_val {
+                                        continue;
+                                    }
+                                    // precursor range
+                                    if let Some(pmz) = block.precursor_mz {
+                                        if pmz < prec_min_val || pmz > prec_max_val {
+                                            continue;
+                                        }
+                                    }
+                                    // adduct filter
+                                    if !adduct_val.is_empty() && block.adduct.as_deref() != Some(&adduct_val) {
+                                        continue;
+                                    }
+                                    // Tag each block with its attributed lipid class
+                                    let class_tags = &block_class_tags[idx];
+                                    let tagged = insert_class_comment(&block.raw, class_tags);
+                                    mgf_content.push_str(&tagged);
+                                    mgf_content.push_str("\n");
+                                }
+                                let _ = upload::download_text(&mgf_content, "lipids_filtered.mgf");
+                            }
+                            #[cfg(not(target_arch = "wasm32"))]
+                            { let _ = &filtered_mgf_owned; }
+                        },
+                        "Download Filtered Lipids"
+                    }
+                }
+                if input_format == crate::format::LipidFormat::Smiles {
+                    button {
+                        r#type: "button",
+                        style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
+                        onclick: move |_| {
+                            #[cfg(target_arch = "wasm32")]
+                            {
+                                let smiles_content = build_smiles_from_cloned(&gallery_smiles);
+                                let _ = upload::download_text(&smiles_content, "lipids.smi");
+                            }
+                        },
+                        "Download SMILES"
+                    }
+                }
+            }
         }
     }
+}
+
+/// Builds a SMILES file content string from cloned gallery data with class tags.
+#[cfg(target_arch = "wasm32")]
+fn build_smiles_from_cloned(
+    gallery: &[(
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    )],
+) -> String {
+    use std::fmt::Write;
+    let mut content = String::new();
+    for (title, smiles, category, main_class, sub_class) in gallery {
+        if let Some(smiles) = smiles {
+            // Format: SMILES <tab> Title <tab> CATEGORY <tab> MAIN_CLASS <tab> SUB_CLASS
+            let cat_str = category.as_deref().filter(|s| !s.is_empty()).unwrap_or("-");
+            let mc_str = main_class
+                .as_deref()
+                .filter(|s| !s.is_empty())
+                .unwrap_or("-");
+            let sc_str = sub_class
+                .as_deref()
+                .filter(|s| *s != "-" && !s.is_empty())
+                .unwrap_or("-");
+            match title {
+                Some(title) => {
+                    let _ = writeln!(
+                        content,
+                        "{}\t{}\t{}\t{}\t{}",
+                        smiles, title, cat_str, mc_str, sc_str
+                    );
+                }
+                None => {
+                    let _ = writeln!(
+                        content,
+                        "{}\t{}\t{}\t{}\t{}",
+                        smiles, "-", cat_str, mc_str, sc_str
+                    );
+                }
+            }
+        }
+    }
+    content
+}
+
+/// Returns LIPID MAPS class tags from a GalleryItem, ensuring the export uses
+/// the same class assignment shown in the UI (via `primary_class_name`).
+///
+/// CATEGORY comes from the broad classification (`LipidClass::lipidmaps_category()`),
+/// MAIN_CLASS comes from `primary_class_name` (the first matching LMSD class),
+/// SUB_CLASS is always "-" (no sub-subclass info available).
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+fn get_class_tag_from_gallery(
+    item: &crate::parser::GalleryItem,
+    classes: &[ChemicalClass],
+) -> Vec<(String, String)> {
+    let category = item
+        .classification
+        .as_ref()
+        .map(|c| c.class.lipidmaps_category().to_string())
+        .unwrap_or_else(|| {
+            // Fallback: look up the class family from primary_class_name
+            item.primary_class_name
+                .as_ref()
+                .and_then(|name| classes.iter().find(|c| &c.name == name))
+                .map(|c| c.family.clone())
+                .unwrap_or_else(|| "Other Lipids [-]".to_string())
+        });
+
+    let main_class = item
+        .primary_class_name
+        .clone()
+        .unwrap_or_else(|| "-".to_string());
+
+    vec![
+        ("CATEGORY".to_string(), category),
+        ("MAIN_CLASS".to_string(), main_class),
+        ("SUB_CLASS".to_string(), "-".to_string()),
+    ]
+}
+
+/// Returns LIPID MAPS class tags for a spectrum block as a list of (key, value) pairs.
+/// This is a fallback used when no matching GalleryItem is found.
+///
+/// Uses the broad `LipidClassification` for CATEGORY (mapped to proper LIPID MAPS
+/// category names with codes like "Fatty Acyls [FA]"), and the first matching
+/// LMSD subclass name for MAIN_CLASS. SUB_CLASS is always "-" (no sub-subclass
+/// info available).
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+fn get_class_tag(
+    block: &crate::parser::SpectrumBlock,
+    classes: &[ChemicalClass],
+) -> Vec<(String, String)> {
+    // Broad category from structural/formula classification (LIPID MAPS category names)
+    let category = block
+        .classification
+        .as_ref()
+        .map(|c| c.class.lipidmaps_category().to_string())
+        .unwrap_or_else(|| "Other Lipids [-]".to_string());
+
+    // First matching LMSD subclass
+    let main_class = block
+        .gallery_item_matches
+        .as_ref()
+        .and_then(|matches| {
+            // Find first true match
+            let matched_name = matches
+                .iter()
+                .find(|(_, matched)| **matched)
+                .map(|(name, _)| name.clone());
+
+            // If found, try to look it up in classes to get the proper name
+            matched_name.and_then(|name| {
+                classes
+                    .iter()
+                    .find(|c| c.name == name)
+                    .map(|c| c.name.clone())
+                    .or(Some(name))
+            })
+        })
+        .unwrap_or_else(|| "-".to_string());
+
+    vec![
+        ("CATEGORY".to_string(), category),
+        ("MAIN_CLASS".to_string(), main_class),
+        ("SUB_CLASS".to_string(), "-".to_string()),
+    ]
+}
+
+/// Inserts COMMENT= lines with LIPID_MAPS class tags in the MGF header block (after BEGIN IONS, before peaks).
+/// Each item is a (key, value) pair like ("CATEGORY", "Fatty Acyls [FA]").
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+fn insert_class_comment(block_raw: &str, class_tags: &[(String, String)]) -> String {
+    let comment_block: String = class_tags
+        .iter()
+        .map(|(k, v)| format!("COMMENT=LIPID_MAPS_{}={}\n", k, v))
+        .collect();
+    // Find the end of the BEGIN IONS header line and insert after it
+    if let Some(begin_pos) = block_raw.find(|c: char| !c.is_whitespace()) {
+        if block_raw[begin_pos..].starts_with("BEGIN IONS") {
+            // Find end of the BEGIN IONS line
+            let after_begin = &block_raw[begin_pos..];
+            if let Some(newline_pos) = after_begin.find('\n') {
+                let (before, after) = after_begin.split_at(newline_pos + 1);
+                return format!("{}{}{}", before, comment_block, after);
+            }
+        }
+    }
+    // Fallback: prepend with the comment
+    format!("{}{}", comment_block, block_raw)
 }
 
 pub(super) fn family_entry(
@@ -394,22 +735,47 @@ pub(super) fn family_entry(
     }
 }
 
-/// Renders the structure-diagram gallery, filtered by selected classes.
+/// Renders the structure-diagram gallery, filtered by selected classes and m/p/adduct filters.
 pub(super) fn gallery_with_filter(
     gallery: &[crate::parser::GalleryItem],
     selected_classes: &[String],
+    mz_min: f64,
+    mz_max: f64,
+    precursor_min: f64,
+    precursor_max: f64,
+    adduct_filter: &str,
 ) -> Element {
-    // Filter gallery to only show items that match at least one selected class
+    // Filter gallery: must match a selected class AND satisfy range/adduct filters
     let filtered: Vec<_> = gallery
         .iter()
         .filter(|item| {
             if selected_classes.is_empty() {
-                false
-            } else {
-                selected_classes
-                    .iter()
-                    .any(|class_name| item.class_matches.get(class_name).copied().unwrap_or(false))
+                return false;
             }
+            // Class filter
+            let class_match = selected_classes
+                .iter()
+                .any(|class_name| item.class_matches.get(class_name).copied().unwrap_or(false));
+            if !class_match {
+                return false;
+            }
+            // m/z (exact_mass) range filter
+            if item.exact_mass < mz_min || item.exact_mass > mz_max {
+                return false;
+            }
+            // precursor range filter
+            if let Some(pmz) = item.precursor_mz {
+                if pmz < precursor_min || pmz > precursor_max {
+                    return false;
+                }
+            }
+            // adduct filter
+            if !adduct_filter.is_empty() {
+                if item.adduct.as_deref() != Some(adduct_filter) {
+                    return false;
+                }
+            }
+            true
         })
         .collect();
 

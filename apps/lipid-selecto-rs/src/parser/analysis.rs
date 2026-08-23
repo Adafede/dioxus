@@ -8,6 +8,7 @@
 use super::parsing::{SpectrumBlock, extract_blocks};
 use crate::chemical_class::ChemicalClass;
 use crate::chemical_class::lmsd_all;
+use crate::lipids::LipidClassification;
 use std::collections::HashMap;
 
 /// Aggregated counts produced by [`summarize`] / [`analyze`].
@@ -80,10 +81,9 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
     // Use precomputed class matches from compute_class_matches
     let class_matches = block.gallery_item_matches.clone().unwrap_or_default();
 
-    // Find first matching class color
-    let primary_class_color = class_matches
-        .iter()
-        .find(|(_, matches)| **matches)
+    // Find first matching class — used for both color and name (ensures export matches UI)
+    let first_match = class_matches.iter().find(|(_, matches)| **matches);
+    let primary_class_color = first_match
         .and_then(|(class_name, _)| {
             classes
                 .iter()
@@ -91,6 +91,7 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
                 .map(|c| c.color.clone())
         })
         .unwrap_or_else(|| "#f1f5f9".to_string());
+    let primary_class_name = first_match.map(|(name, _)| name.clone());
 
     let svg = block
         .psm_smiles
@@ -110,6 +111,8 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
         svg,
         class_matches,
         primary_class_color,
+        primary_class_name,
+        classification: block.classification.clone(),
     }
 }
 
@@ -152,6 +155,10 @@ pub struct GalleryItem {
     pub class_matches: HashMap<String, bool>,
     /// Primary class color (from first matching class)
     pub primary_class_color: String,
+    /// Primary class name (from first matching class, used for export tagging)
+    pub primary_class_name: Option<String>,
+    /// Broad lipid classification (LipidClass) for LIPID MAPS category mapping
+    pub classification: Option<LipidClassification>,
 }
 
 /// Fallback SVG shown when a structure cannot be rendered.
@@ -185,6 +192,7 @@ pub fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> A
 /// for large files.
 pub fn classify_blocks(blocks: &mut [SpectrumBlock], classes: &[ChemicalClass]) {
     for block in blocks {
+        block.classify();
         block.compute_class_matches(classes);
     }
 }
