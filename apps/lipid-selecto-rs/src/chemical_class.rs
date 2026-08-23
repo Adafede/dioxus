@@ -245,6 +245,352 @@ fn polyketides() -> Vec<ChemicalClass> {
     )]
 }
 
+/// Generate all LMSD subclass classes, sorted by LMSD count within each family.
+///
+/// Colors are assigned using microshades palette:
+/// - First 4 classes per family get shades 0-3
+/// - All remaining classes get shade 4 (the lightest)
+///
+/// Names use the full LMSD format: "Description [CODE]" (e.g., "Fatty Acids and Conjugates [FA01]")
+#[must_use]
+pub fn lmsd_all() -> Vec<ChemicalClass> {
+    use std::collections::HashMap;
+
+    // Counts from LMSD.sdf.tsv
+    let mut counts: HashMap<String, usize> = HashMap::new();
+
+    // Fatty Acyls
+    counts.insert("FA01".to_string(), 3102);
+    counts.insert("FA07".to_string(), 2454);
+    counts.insert("FA03".to_string(), 1381);
+    counts.insert("FA04".to_string(), 1191);
+    counts.insert("FA02".to_string(), 763);
+    counts.insert("FA11".to_string(), 701);
+    counts.insert("FA08".to_string(), 599);
+    counts.insert("FA05".to_string(), 512);
+    counts.insert("FA12".to_string(), 363);
+    counts.insert("FA06".to_string(), 270);
+    counts.insert("FA13".to_string(), 257);
+    counts.insert("FA00".to_string(), 50);
+    counts.insert("FA09".to_string(), 28);
+    counts.insert("FA10".to_string(), 18);
+
+    // Glycerolipids
+    counts.insert("GL03".to_string(), 6936);
+    counts.insert("GL02".to_string(), 604);
+    counts.insert("GL01".to_string(), 93);
+    counts.insert("GL05".to_string(), 104);
+    counts.insert("GL04".to_string(), 25);
+    counts.insert("GL07".to_string(), 16);
+    counts.insert("GL00".to_string(), 10);
+    counts.insert("GL06".to_string(), 7);
+
+    // Glycerophospholipids
+    counts.insert("GP01".to_string(), 1905);
+    counts.insert("GP02".to_string(), 1565);
+    counts.insert("GP04".to_string(), 1351);
+    counts.insert("GP03".to_string(), 1231);
+    counts.insert("GP10".to_string(), 1205);
+    counts.insert("GP06".to_string(), 1199);
+    counts.insert("GP15".to_string(), 338);
+    counts.insert("GP20".to_string(), 273);
+
+    // Sphingolipids
+    counts.insert("SP05".to_string(), 2117);
+    counts.insert("SP06".to_string(), 1393);
+    counts.insert("SP02".to_string(), 612);
+    counts.insert("SP03".to_string(), 353);
+    counts.insert("SP01".to_string(), 129);
+    counts.insert("SP00".to_string(), 11);
+    counts.insert("SP04".to_string(), 9);
+    counts.insert("SP08".to_string(), 1);
+
+    // Sterol Lipids
+    counts.insert("ST01".to_string(), 1923);
+    counts.insert("ST04".to_string(), 795);
+    counts.insert("ST03".to_string(), 761);
+    counts.insert("ST02".to_string(), 402);
+    counts.insert("ST05".to_string(), 232);
+
+    // Prenol Lipids
+    counts.insert("PR01".to_string(), 2475);
+    counts.insert("PR02".to_string(), 82);
+    counts.insert("PR04".to_string(), 50);
+    counts.insert("PR03".to_string(), 37);
+
+    // Saccharolipids
+    counts.insert("SL03".to_string(), 1305);
+    counts.insert("SL05".to_string(), 25);
+    counts.insert("SL01".to_string(), 18);
+    counts.insert("SL02".to_string(), 3);
+
+    // Polyketides
+    counts.insert("PK12".to_string(), 6602);
+    counts.insert("PK13".to_string(), 199);
+    counts.insert("PK15".to_string(), 127);
+    counts.insert("PK03".to_string(), 99);
+    counts.insert("PK04".to_string(), 46);
+    counts.insert("PK09".to_string(), 41);
+    counts.insert("PK11".to_string(), 38);
+
+    // Palettes - shade 0-3 for first 4, shade 4 for rest
+    const FA_PALETTE: [&str; 5] = ["#4E7705", "#6D9F06", "#97CE2F", "#BDEC6F", "#DDFFA0"];
+    const GL_PALETTE: [&str; 5] = ["#098BD9", "#56B4E9", "#7DCCFF", "#BCE1FF", "#E7F4FF"];
+    const GP_PALETTE: [&str; 5] = ["#7D3560", "#A1527F", "#CC79A7", "#E794C1", "#EFB6D6"];
+    const SP_PALETTE: [&str; 5] = ["#9D654C", "#C17754", "#F09163", "#FCB076", "#FFD5AF"];
+    const ST_PALETTE: [&str; 5] = ["#238b45", "#41ab5d", "#74c476", "#a1d99b", "#c7e9c0"];
+    const PR_PALETTE: [&str; 5] = ["#4292c6", "#6baed6", "#9ecae1", "#c6dbef", "#eff3ff"];
+    const SL_PALETTE: [&str; 5] = ["#6a51a3", "#807dba", "#9e9ac8", "#bcbddc", "#dadaeb"];
+    const PK_PALETTE: [&str; 5] = ["#ff7f00", "#fe9929", "#fdae6b", "#fec44f", "#feeda0"];
+
+    // Define all LMSD subclasses (name, code, count)
+    let mut fa_classes: Vec<(String, String)> = Vec::new();
+    fa_classes.push(("Fatty Acids and Conjugates".to_string(), "FA01".to_string()));
+    fa_classes.push(("Fatty esters".to_string(), "FA07".to_string()));
+    fa_classes.push(("Eicosanoids".to_string(), "FA03".to_string()));
+    fa_classes.push(("Docosanoids".to_string(), "FA04".to_string()));
+    fa_classes.push(("Octadecanoids".to_string(), "FA02".to_string()));
+    fa_classes.push(("Hydrocarbons".to_string(), "FA11".to_string()));
+    fa_classes.push(("Fatty amides".to_string(), "FA08".to_string()));
+    fa_classes.push(("Fatty alcohols".to_string(), "FA05".to_string()));
+    fa_classes.push(("Oxygenated hydrocarbons".to_string(), "FA12".to_string()));
+    fa_classes.push(("Fatty aldehydes".to_string(), "FA06".to_string()));
+    fa_classes.push(("Fatty acyl glycosides".to_string(), "FA13".to_string()));
+    fa_classes.push(("Other Fatty Acyls".to_string(), "FA00".to_string()));
+    fa_classes.push(("Fatty nitriles".to_string(), "FA09".to_string()));
+    fa_classes.push(("Fatty ethers".to_string(), "FA10".to_string()));
+
+    let mut gl_classes: Vec<(String, String)> = Vec::new();
+    gl_classes.push(("Triradylglycerols".to_string(), "GL03".to_string()));
+    gl_classes.push(("Diradylglycerols".to_string(), "GL02".to_string()));
+    gl_classes.push(("Monoradylglycerols".to_string(), "GL01".to_string()));
+    gl_classes.push(("Glycosyldiradylglycerols".to_string(), "GL05".to_string()));
+    gl_classes.push(("Monoglycosylglycerols".to_string(), "GL04".to_string()));
+    gl_classes.push(("Betaine diradylglycerols".to_string(), "GL07".to_string()));
+    gl_classes.push(("Other Glycerolipids".to_string(), "GL00".to_string()));
+    gl_classes.push(("Betaine monoradylglycerols".to_string(), "GL06".to_string()));
+
+    let mut gp_classes: Vec<(String, String)> = Vec::new();
+    gp_classes.push(("Glycerophosphocholines".to_string(), "GP01".to_string()));
+    gp_classes.push((
+        "Glycerophosphoethanolamines".to_string(),
+        "GP02".to_string(),
+    ));
+    gp_classes.push(("Glycerophosphoglycerols".to_string(), "GP04".to_string()));
+    gp_classes.push(("Glycerophosphoserines".to_string(), "GP03".to_string()));
+    gp_classes.push(("Glycerophosphates".to_string(), "GP10".to_string()));
+    gp_classes.push(("Glycerophosphoinositols".to_string(), "GP06".to_string()));
+    gp_classes.push((
+        "Glycerophosphoinositolglycans".to_string(),
+        "GP15".to_string(),
+    ));
+    gp_classes.push((
+        "Oxidized glycerophospholipids".to_string(),
+        "GP20".to_string(),
+    ));
+
+    let mut sp_classes: Vec<(String, String)> = Vec::new();
+    sp_classes.push(("Neutral glycosphingolipids".to_string(), "SP05".to_string()));
+    sp_classes.push(("Acidic glycosphingolipids".to_string(), "SP06".to_string()));
+    sp_classes.push(("Ceramides".to_string(), "SP02".to_string()));
+    sp_classes.push(("Phosphosphingolipids".to_string(), "SP03".to_string()));
+    sp_classes.push(("Sphingoid bases".to_string(), "SP01".to_string()));
+    sp_classes.push(("Other Sphingolipids".to_string(), "SP00".to_string()));
+    sp_classes.push(("Phosphonosphingolipids".to_string(), "SP04".to_string()));
+    sp_classes.push((
+        "Amphoteric glycosphingolipids".to_string(),
+        "SP08".to_string(),
+    ));
+
+    let mut st_classes: Vec<(String, String)> = Vec::new();
+    st_classes.push(("Sterols".to_string(), "ST01".to_string()));
+    st_classes.push(("Bile acids and derivatives".to_string(), "ST04".to_string()));
+    st_classes.push(("Secosteroids".to_string(), "ST03".to_string()));
+    st_classes.push(("Steroids".to_string(), "ST02".to_string()));
+    st_classes.push(("Steroid conjugates".to_string(), "ST05".to_string()));
+
+    let mut pr_classes: Vec<(String, String)> = Vec::new();
+    pr_classes.push(("Isoprenoids".to_string(), "PR01".to_string()));
+    pr_classes.push(("Quinones and hydroquinones".to_string(), "PR02".to_string()));
+    pr_classes.push(("Hopanoids".to_string(), "PR04".to_string()));
+    pr_classes.push(("Polyprenols".to_string(), "PR03".to_string()));
+
+    let mut sl_classes: Vec<(String, String)> = Vec::new();
+    sl_classes.push(("Acyltrehaloses".to_string(), "SL03".to_string()));
+    sl_classes.push(("Other acyl sugars".to_string(), "SL05".to_string()));
+    sl_classes.push(("Acylaminosugars".to_string(), "SL01".to_string()));
+    sl_classes.push(("Acylaminosugar glycans".to_string(), "SL02".to_string()));
+
+    let mut pk_classes: Vec<(String, String)> = Vec::new();
+    pk_classes.push(("Flavonoids".to_string(), "PK12".to_string()));
+    pk_classes.push(("Aromatic polyketides".to_string(), "PK13".to_string()));
+    pk_classes.push(("Phenolic lipids".to_string(), "PK15".to_string()));
+    pk_classes.push(("Annonaceae acetogenins".to_string(), "PK03".to_string()));
+    pk_classes.push((
+        "Macrolides and lactone polyketides".to_string(),
+        "PK04".to_string(),
+    ));
+    pk_classes.push(("Polyether antibiotics".to_string(), "PK09".to_string()));
+    pk_classes.push(("Cytochalasins".to_string(), "PK11".to_string()));
+
+    // Build result with proper color assignment
+    let mut result = Vec::new();
+
+    // Fatty Acyls - use fatty acid SMARTS pattern (carboxylic acid with acyl chain)
+    let fa_smarts = "[#6][#6][#6][#6][#6][#6][#6][#6][CX3](=[OX1])[OH]";
+    fa_classes.sort_by(|a, b| {
+        let a_count = counts.get(&b.1).copied().unwrap_or(0);
+        let b_count = counts.get(&a.1).copied().unwrap_or(0);
+        a_count.cmp(&b_count)
+    });
+    for (idx, (name, code)) in fa_classes.drain(..).enumerate() {
+        let shade_idx = if idx < 4 { idx } else { 4 };
+        let color = FA_PALETTE[shade_idx].to_string();
+        let full_name = format!("{} [{}]", name, code);
+        result.push(ChemicalClass::new(
+            full_name,
+            fa_smarts.to_string(),
+            color,
+            "Fatty Acyls".to_string(),
+        ));
+    }
+
+    // Glycerolipids - use TG (triacylglycerol) pattern as family proxy
+    let gl_smarts = "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]";
+    gl_classes.sort_by(|a, b| {
+        let a_count = counts.get(&b.1).copied().unwrap_or(0);
+        let b_count = counts.get(&a.1).copied().unwrap_or(0);
+        a_count.cmp(&b_count)
+    });
+    for (idx, (name, code)) in gl_classes.drain(..).enumerate() {
+        let shade_idx = if idx < 4 { idx } else { 4 };
+        let color = GL_PALETTE[shade_idx].to_string();
+        let full_name = format!("{} [{}]", name, code);
+        result.push(ChemicalClass::new(
+            full_name,
+            gl_smarts.to_string(),
+            color,
+            "Glycerolipids".to_string(),
+        ));
+    }
+
+    // Glycerophospholipids - use PC pattern as family proxy
+    let gp_smarts = "[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]";
+    gp_classes.sort_by(|a, b| {
+        let a_count = counts.get(&b.1).copied().unwrap_or(0);
+        let b_count = counts.get(&a.1).copied().unwrap_or(0);
+        a_count.cmp(&b_count)
+    });
+    for (idx, (name, code)) in gp_classes.drain(..).enumerate() {
+        let shade_idx = if idx < 4 { idx } else { 4 };
+        let color = GP_PALETTE[shade_idx].to_string();
+        let full_name = format!("{} [{}]", name, code);
+        result.push(ChemicalClass::new(
+            full_name,
+            gp_smarts.to_string(),
+            color,
+            "Glycerophospholipids".to_string(),
+        ));
+    }
+
+    // Sphingolipids - use Cer (ceramide) pattern as family proxy
+    let sp_smarts = "[NX3][CX3](=[OX1])[CX4]";
+    sp_classes.sort_by(|a, b| {
+        let a_count = counts.get(&b.1).copied().unwrap_or(0);
+        let b_count = counts.get(&a.1).copied().unwrap_or(0);
+        a_count.cmp(&b_count)
+    });
+    for (idx, (name, code)) in sp_classes.drain(..).enumerate() {
+        let shade_idx = if idx < 4 { idx } else { 4 };
+        let color = SP_PALETTE[shade_idx].to_string();
+        let full_name = format!("{} [{}]", name, code);
+        result.push(ChemicalClass::new(
+            full_name,
+            sp_smarts.to_string(),
+            color,
+            "Sphingolipids".to_string(),
+        ));
+    }
+
+    // Sterol Lipids - use sterol pattern
+    let st_smarts = "[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6]";
+    st_classes.sort_by(|a, b| {
+        let a_count = counts.get(&b.1).copied().unwrap_or(0);
+        let b_count = counts.get(&a.1).copied().unwrap_or(0);
+        a_count.cmp(&b_count)
+    });
+    for (idx, (name, code)) in st_classes.drain(..).enumerate() {
+        let shade_idx = if idx < 4 { idx } else { 4 };
+        let color = ST_PALETTE[shade_idx].to_string();
+        let full_name = format!("{} [{}]", name, code);
+        result.push(ChemicalClass::new(
+            full_name,
+            st_smarts.to_string(),
+            color,
+            "Sterol Lipids".to_string(),
+        ));
+    }
+
+    // Prenol Lipids - use isoprenoid pattern
+    let pr_smarts = "[#6]=[#6][#6]=[#6][#6]";
+    pr_classes.sort_by(|a, b| {
+        let a_count = counts.get(&b.1).copied().unwrap_or(0);
+        let b_count = counts.get(&a.1).copied().unwrap_or(0);
+        a_count.cmp(&b_count)
+    });
+    for (idx, (name, code)) in pr_classes.drain(..).enumerate() {
+        let shade_idx = if idx < 4 { idx } else { 4 };
+        let color = PR_PALETTE[shade_idx].to_string();
+        let full_name = format!("{} [{}]", name, code);
+        result.push(ChemicalClass::new(
+            full_name,
+            pr_smarts.to_string(),
+            color,
+            "Prenol Lipids".to_string(),
+        ));
+    }
+
+    // Saccharolipids - use saccharolipid pattern
+    let sl_smarts = "[#6][OX2][PX4](=[OX1])[OX2][#6]";
+    sl_classes.sort_by(|a, b| {
+        let a_count = counts.get(&b.1).copied().unwrap_or(0);
+        let b_count = counts.get(&a.1).copied().unwrap_or(0);
+        a_count.cmp(&b_count)
+    });
+    for (idx, (name, code)) in sl_classes.drain(..).enumerate() {
+        let shade_idx = if idx < 4 { idx } else { 4 };
+        let color = SL_PALETTE[shade_idx].to_string();
+        let full_name = format!("{} [{}]", name, code);
+        result.push(ChemicalClass::new(
+            full_name,
+            sl_smarts.to_string(),
+            color,
+            "Saccharolipids".to_string(),
+        ));
+    }
+
+    // Polyketides - use aromatic polyketide pattern
+    let pk_smarts = "[#6;R]1[#6]([#6](=[OX1])[#6])[#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R]1";
+    pk_classes.sort_by(|a, b| {
+        let a_count = counts.get(&b.1).copied().unwrap_or(0);
+        let b_count = counts.get(&a.1).copied().unwrap_or(0);
+        a_count.cmp(&b_count)
+    });
+    for (idx, (name, code)) in pk_classes.drain(..).enumerate() {
+        let shade_idx = if idx < 4 { idx } else { 4 };
+        let color = PK_PALETTE[shade_idx].to_string();
+        let full_name = format!("{} [{}]", name, code);
+        result.push(ChemicalClass::new(
+            full_name,
+            pk_smarts.to_string(),
+            color,
+            "Polyketides".to_string(),
+        ));
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

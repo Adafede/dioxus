@@ -7,6 +7,7 @@
 
 use super::parsing::{SpectrumBlock, extract_blocks};
 use crate::chemical_class::ChemicalClass;
+use crate::chemical_class::lmsd_all;
 use std::collections::HashMap;
 
 /// Aggregated counts produced by [`summarize`] / [`analyze`].
@@ -105,6 +106,7 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
         exact_mass,
         precursor_mz: block.precursor_mz,
         charge: block.charge.clone(),
+        adduct: block.adduct.clone(),
         svg,
         class_matches,
         primary_class_color,
@@ -144,6 +146,7 @@ pub struct GalleryItem {
     pub exact_mass: f64,
     pub precursor_mz: Option<f64>,
     pub charge: Option<String>,
+    pub adduct: Option<String>,
     pub svg: String,
     /// Maps chemical class name -> bool (does this molecule match?)
     pub class_matches: HashMap<String, bool>,
@@ -170,7 +173,7 @@ pub struct Analysis {
 /// Full pipeline: extract, classify, summarize, build gallery + filtered MGF.
 #[must_use]
 pub fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
-    let all_classes = ChemicalClass::defaults();
+    let all_classes = lmsd_all();
     classify_blocks(&mut blocks, &all_classes);
     build_analysis_from_classified(blocks, gallery_limit, all_classes)
 }
@@ -209,14 +212,11 @@ pub fn build_analysis_from_classified(
 }
 
 /// Concatenate the verbatim text of all lipid-positive blocks into a filtered MGF.
-/// This uses all default chemical classes.
+/// This uses all LMSD class names.
 #[must_use]
 pub fn build_filtered_mgf(blocks: &[SpectrumBlock]) -> String {
-    // Include all default class names
-    let all_class_names: Vec<String> = ChemicalClass::defaults()
-        .iter()
-        .map(|c| c.name.clone())
-        .collect();
+    // Include all LMSD class names
+    let all_class_names: Vec<String> = lmsd_all().iter().map(|c| c.name.clone()).collect();
     build_filtered_mgf_with_classes(blocks, &all_class_names)
 }
 

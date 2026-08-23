@@ -11,7 +11,7 @@ use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
-use crate::chemical_class::ChemicalClass;
+use crate::chemical_class::lmsd_all;
 use crate::format::LipidFormat;
 use crate::parser::Analysis;
 use crate::rules::LipidRuleLibrary;
@@ -38,14 +38,18 @@ pub fn app() -> Element {
 
     let rule_library = LipidRuleLibrary::defaults();
 
-    // Initialize selected_classes with all ChemicalClass names (ensures Ceramide is included)
-    let all_class_names: Vec<_> = ChemicalClass::defaults()
-        .iter()
-        .map(|c| c.name.clone())
-        .collect();
+    // Initialize selected_classes with all LMSD class names (ensures all classes are available)
+    let all_class_names: Vec<_> = lmsd_all().iter().map(|c| c.name.clone()).collect();
 
     // Start with all classes selected for initial load
     let selected_classes = use_signal(|| all_class_names.clone());
+
+    // Shared filter signals for m/z, precursor, and adduct
+    let mz_min = use_signal(|| 50.0f64);
+    let mz_max = use_signal(|| 1500.0f64);
+    let precursor_min = use_signal(|| 0.0f64);
+    let precursor_max = use_signal(|| 1000.0f64);
+    let adduct_filter = use_signal(|| String::new());
 
     let ctx = UploadCtx {
         file_name,
@@ -94,7 +98,11 @@ pub fn app() -> Element {
                     "Drop an MGF or SMILES file and we'll filter it to keep only lipids matching extensible LIPID MAPS-aligned rules. Download as the same format you uploaded."
                 }
 
-                { lipid_classes_card(&rule_library) }
+                {
+                    let analysis_guard = ctx.analysis.read();
+                    let gallery: &[crate::parser::GalleryItem] = analysis_guard.as_ref().map_or(&[][..], |a| a.gallery.as_slice());
+                    lipid_classes_card(gallery, mz_min, mz_max, precursor_min, precursor_max, adduct_filter)
+                }
                 div {
                     style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").build(),
                     UploadZone {
@@ -128,7 +136,7 @@ pub fn app() -> Element {
                     }
                 }
                 if let Some(analysis) = ctx.analysis.read().as_ref() {
-                    { summary(&analysis.summary, selected_classes, &analysis.all_classes) }
+                    { summary(&analysis.summary, selected_classes, &analysis.all_classes, &analysis.filtered_mgf, &analysis.gallery, mz_min, mz_max, precursor_min, precursor_max, adduct_filter) }
                     { gallery_with_filter(&analysis.gallery, &selected_classes.read()) }
                 }
             }

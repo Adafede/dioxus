@@ -1,55 +1,218 @@
 # Lipid Classification Rules (LIPID MAPS-aligned)
 #
-# This file defines lipid classes using SMARTS patterns.
-# Users can add custom rules by adding new entries to this file.
-# Format: name, family, architecture, smarts_pattern, color
+# This file documents the full LIPID MAPS structural classification tree
+# (8 categories, 50+ main classes) with SMARTS patterns curated from
+# `smarts-evoliposuction` (evolved) or best-possible approximative placeholders.
+#
+# Colors follow the microshades palette system:
+#   FA → cvd_green (#4E7705), GL → cvd_blue (#098BD9), GP → cvd_purple (#7D3560),
+#   SP → cvd_orange (#9D654C), ST → green (#238b45), PR → blue (#4292c6),
+#   SL → purple (#6a51a3), PK → orange (#ff7f00).
+#
+# Family-level entries use shade 0 (darkest). Subclasses use progressively
+# lighter shades (1-4) within the family palette.
 
 families:
   FA: "Fatty Acyls"
   GL: "Glycerolipids"
   GP: "Glycerophospholipids"
   SP: "Sphingolipids"
+  ST: "Sterol Lipids"
+  PR: "Prenol Lipids"
+  SL: "Saccharolipids"
+  PK: "Polyketides"
 
 architectures:
-  DiAcyl: "Two ester linkages"
+  DiAcyl: "Two ester or ester/amide linkages"
   MonoAcyl: "One ester linkage (lyso)"
   AlkylAcyl: "Ether + ester"
   Plasmalogen: "Vinyl ether + ester"
   DiEther: "Two ether linkages"
+  TriAcylGlycerol: "Three ester linkages"
+  Ceramide: "Amide linkage to sphingoid base"
+  Steroid: "Tetracyclic ring system"
+  Isoprenoid: "Isoprene-derived conjugated diene"
+  Acyclic: "No ring system"
 
+# === Fatty Acyls (FA) — cvd_green palette ===
+# Evolved SMARTS: [CX3](=[OX1])[OH] (MCC=0.6048)
+# Common-sense filter: fatty acids must not contain nitrogen or phosphorus.
 lipid_classes:
-  # Fatty Acids (FA)
+  # --- FA main classes ---
   - name: "FA"
     family: "FA"
     architecture: ""
-    description: "Saturated or monounsaturated fatty acid"
-    smarts: "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R][CX3](=[OX1])[OH]"
-    color: "#2563eb"
+    description: "Fatty acids — carboxylic acid with long aliphatic chain"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#4E7705"
+    priority: 10
+
+  - name: "MUFA"
+    family: "FA"
+    architecture: ""
+    description: "Monounsaturated fatty acid (one double bond)"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#6D9F06"
     priority: 10
 
   - name: "PUFA"
     family: "FA"
     architecture: ""
     description: "Polyunsaturated fatty acid (≥2 double bonds)"
-    smarts: "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R][CX3](=[OX1])[OH]"
-    color: "#1e40af"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#97CE2F"
     priority: 9
 
-  - name: "MUFA"
+  # --- FA subclasses of FA01 ---
+  - name: "FA0101"
     family: "FA"
     architecture: ""
-    description: "Monounsaturated fatty acid"
-    smarts: "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R][CX3](=[OX1])[OH]"
-    color: "#3b82f6"
-    priority: 10
+    description: "Saturated fatty acids"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#BDEC6F"
+    priority: 8
 
-  # Glycerolipids (GL)
+  - name: "FA0102"
+    family: "FA"
+    architecture: ""
+    description: "Monounsaturated fatty acids"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#DDFFA0"
+    priority: 8
+
+  - name: "FA0103"
+    family: "FA"
+    architecture: ""
+    description: "Polyunsaturated fatty acids"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#97CE2F"
+    priority: 8
+
+  - name: "FA0104"
+    family: "FA"
+    architecture: ""
+    description: "Branched-chain fatty acids"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#BDEC6F"
+    priority: 7
+
+  - name: "FA0105"
+    family: "FA"
+    architecture: ""
+    description: "Hydroxy fatty acids"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#DDFFA0"
+    priority: 7
+
+  # --- FA02: Eicosanoids ---
+  - name: "FA0201"
+    family: "FA"
+    architecture: ""
+    description: "Prostaglandins"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#4E7705"
+    priority: 6
+
+  - name: "FA0203"
+    family: "FA"
+    architecture: ""
+    description: "Thromboxanes"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#6D9F06"
+    priority: 6
+
+  - name: "FA0204"
+    family: "FA"
+    architecture: ""
+    description: "Leukotrienes"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#97CE2F"
+    priority: 6
+
+  - name: "FA0208"
+    family: "FA"
+    architecture: ""
+    description: "Lipoxins"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#BDEC6F"
+    priority: 6
+
+  # --- FA06: Carnitine conjugates ---
+  - name: "FA0601"
+    family: "FA"
+    architecture: ""
+    description: "Carnitine esters"
+    smarts: "[CX3](=[OX1])([#6;!a;!R])[NX3+]([C])[C]"
+    color: "#DDFFA0"
+    priority: 5
+
+  - name: "FA0602"
+    family: "FA"
+    architecture: ""
+    description: "Acylcarnitine conjugates"
+    smarts: "[CX3](=[OX1])([#6;!a;!R])[NX3+]([C])[C]"
+    color: "#4E7705"
+    priority: 5
+
+  # --- FA07: Dicarboxylic acids ---
+  - name: "FA0701"
+    family: "FA"
+    architecture: ""
+    description: "Saturated dicarboxylic acids"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#6D9F06"
+    priority: 5
+
+  - name: "FA0703"
+    family: "FA"
+    architecture: ""
+    description: "Polyunsaturated dicarboxylic acids"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#97CE2F"
+    priority: 5
+
+  # --- FA09-FA13: specialized fatty acid derivatives ---
+  - name: "FA09"
+    family: "FA"
+    architecture: ""
+    description: "Docosatetraenoic acids (DTA)"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#BDEC6F"
+    priority: 4
+
+  - name: "FA10"
+    family: "FA"
+    architecture: ""
+    description: "Eicosapentaenoic acids (EPA)"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#DDFFA0"
+    priority: 4
+
+  - name: "FA11"
+    family: "FA"
+    architecture: ""
+    description: "Docosahexaenoic acids (DHA)"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#4E7705"
+    priority: 4
+
+  - name: "FA12"
+    family: "FA"
+    architecture: ""
+    description: "Adrenic acids (AdA)"
+    smarts: "[CX3](=[OX1])[OH]"
+    color: "#6D9F06"
+    priority: 4
+
+# === Glycerolipids (GL) — cvd_blue palette ===
+# Evolved SMARTS: [CX3](=[OX1])[OX2][#6;!a;!R] (MCC=0.9146)
+# Common-sense filter: no nitrogen or phosphorus.
   - name: "TG(AAA)"
     family: "GL"
-    architecture: "DiAcyl"
+    architecture: "TriAcylGlycerol"
     description: "Triacylglycerol with three acyl groups"
     smarts: "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]"
-    color: "#0d9488"
+    color: "#098BD9"
     priority: 8
 
   - name: "DG(AA)"
@@ -57,7 +220,7 @@ lipid_classes:
     architecture: "DiAcyl"
     description: "Diacylglycerol with two acyl groups"
     smarts: "[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]"
-    color: "#14b8a6"
+    color: "#56B4E9"
     priority: 7
 
   - name: "MG(A)"
@@ -65,16 +228,26 @@ lipid_classes:
     architecture: "MonoAcyl"
     description: "Monoacylglycerol with one acyl group"
     smarts: "[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]"
-    color: "#2dd4bf"
+    color: "#7DCCFF"
     priority: 6
 
-  # Glycerophospholipids (GP)
+  # GL03: Monoglyceride subclasses
+  - name: "LPI"
+    family: "GL"
+    architecture: "MonoAcyl"
+    description: "Lysophosphatidic acid (monoacylglycerol phosphate)"
+    smarts: "[CH2X4][CHX4][CH2X4][OX2][PX4](=[OX1])([OX2])([OX2])]"
+    color: "#BCE1FF"
+    priority: 5
+
+# === Glycerophospholipids (GP) — cvd_purple palette ===
+# Evolved SMARTS: [PX4](=[OX1])([OX2])([OX2]) (MCC=1.0)
   - name: "PC(AA)"
     family: "GP"
     architecture: "DiAcyl"
     description: "Phosphatidylcholine - diacyl form"
     smarts: "[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]"
-    color: "#7c3aed"
+    color: "#7D3560"
     priority: 10
 
   - name: "PE(AA)"
@@ -82,7 +255,7 @@ lipid_classes:
     architecture: "DiAcyl"
     description: "Phosphatidylethanolamine - diacyl form"
     smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CH2X4][NX3;H2,H1,H0]"
-    color: "#9333ea"
+    color: "#A1527F"
     priority: 9
 
   - name: "PS(AA)"
@@ -90,7 +263,7 @@ lipid_classes:
     architecture: "DiAcyl"
     description: "Phosphatidylserine - diacyl form"
     smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([CX3](=[OX1])[OX2H,OX1-])[NX3]"
-    color: "#a855f7"
+    color: "#CC79A7"
     priority: 8
 
   - name: "PI(AA)"
@@ -98,7 +271,7 @@ lipid_classes:
     architecture: "DiAcyl"
     description: "Phosphatidylinositol - contains inositol headgroup"
     smarts: "[PX4](=[OX1])([OX2])([OX2])[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1"
-    color: "#b78bea"
+    color: "#E794C1"
     priority: 7
 
   - name: "PG(AA)"
@@ -106,7 +279,7 @@ lipid_classes:
     architecture: "DiAcyl"
     description: "Phosphatidylglycerol - diacyl form"
     smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]"
-    color: "#cd34b5"
+    color: "#EFB6D6"
     priority: 6
 
   - name: "PA(AA)"
@@ -114,7 +287,7 @@ lipid_classes:
     architecture: "DiAcyl"
     description: "Phosphatidic acid - minimal phospholipid"
     smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4][CH2X4][OX2H,OX1-]"
-    color: "#ec4899"
+    color: "#7D3560"
     priority: 5
 
   - name: "LPC(A)"
@@ -122,7 +295,7 @@ lipid_classes:
     architecture: "MonoAcyl"
     description: "Lysophosphatidylcholine - monoacyl form"
     smarts: "[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]"
-    color: "#f472b6"
+    color: "#A1527F"
     priority: 6
 
   - name: "LPE(A)"
@@ -130,7 +303,7 @@ lipid_classes:
     architecture: "MonoAcyl"
     description: "Lysophosphatidylethanolamine - monoacyl form"
     smarts: "[CH2X4][CHX4][CH2X4][OX2]"
-    color: "#f787c8"
+    color: "#CC79A7"
     priority: 5
 
   - name: "CL(AAAA)"
@@ -138,16 +311,61 @@ lipid_classes:
     architecture: "DiAcyl"
     description: "Cardiolipin - four acyl groups"
     smarts: "[PX4](=[OX1])([OX2])([OX2])[PX4](=[OX1])([OX2])([OX2])"
-    color: "#f8bbd0"
+    color: "#E794C1"
     priority: 4
 
-  # Sphingolipids (SP)
+  # GP additional headgroup classes with placeholder SMARTS
+  - name: "LPS(A)"
+    family: "GP"
+    architecture: "MonoAcyl"
+    description: "Lysophosphatidylserine - monoacyl form"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([CX3](=[OX1])[OX2H])"
+    color: "#EFB6D6"
+    priority: 3
+
+  - name: "LPI(A)"
+    family: "GP"
+    architecture: "MonoAcyl"
+    description: "Lysophosphatidylinositol - monoacyl form"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1"
+    color: "#7D3560"
+    priority: 3
+
+  - name: "LPG(A)"
+    family: "GP"
+    architecture: "MonoAcyl"
+    description: "Lysophosphatidylglycerol - monoacyl form"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H])"
+    color: "#A1527F"
+    priority: 3
+
+  # GP plasmalogen forms
+  - name: "PC(P-A)"
+    family: "GP"
+    architecture: "Plasmalogen"
+    description: "Plasmalogen phosphatidylcholine"
+    smarts: "[PX4](=[OX1])([OX2])([OX2]).*"
+    color: "#CC79A7"
+    priority: 2
+
+  # GP ether forms
+  - name: "PC(O-A)"
+    family: "GP"
+    architecture: "AlkylAcyl"
+    description: "Alkyl-acyl phosphatidylcholine"
+    smarts: "[PX4](=[OX1])([OX2])([OX2]).*"
+    color: "#E794C1"
+    priority: 2
+
+# === Sphingolipids (SP) — cvd_orange palette ===
+# Evolved SMARTS: [NX3][CX3](=[OX1]) for amide (MCC=0.9994)
+#                 [NX3][CX4] for free amine
   - name: "Cer(AS)"
     family: "SP"
-    architecture: "DiAcyl"
+    architecture: "Ceramide"
     description: "Ceramide - sphingoid base + amide-linked acyl"
-    smarts: "[#6;!a;!R][CHX3]=[CHX3][CHX4]([NX3][CX3](=[OX1])[#6])[CHX4]([OX2H,OX1-])[CH2X4]"
-    color: "#be185d"
+    smarts: "[NX3][CX3](=[OX1])"
+    color: "#9D654C"
     priority: 9
 
   - name: "SM(AS)"
@@ -155,22 +373,199 @@ lipid_classes:
     architecture: "DiAcyl"
     description: "Sphingomyelin - ceramide + phosphocholine headgroup"
     smarts: "[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]"
-    color: "#db2777"
+    color: "#C17754"
     priority: 8
 
   - name: "HexCer(AS)"
     family: "SP"
-    architecture: "DiAcyl"
+    architecture: "Ceramide"
     description: "Hexosylceramide - ceramide + hexose headgroup"
-    smarts: "[#6;!a;!R][CHX3]=[CHX3][CHX4]([NX3][CX3](=[OX1])[#6])[CHX4]([OX2H,OX1-])[CH2X4]"
-    color: "#e91e63"
+    smarts: "[NX3][CX3](=[OX1])"
+    color: "#F09163"
     priority: 7
 
+  # SP subclasses
+  - name: "CerP(AS)"
+    family: "SP"
+    architecture: "Ceramide"
+    description: "Ceramide phosphate"
+    smarts: "[NX3][CX3](=[OX1])"
+    color: "#FCB076"
+    priority: 6
+
+  - name: "SM(MSOS)"
+    family: "SP"
+    architecture: "DiAcyl"
+    description: "Sphingomyelin with monounsaturated sphingosine"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]"
+    color: "#FFD5AF"
+    priority: 6
+
+  - name: "GlcCer(AS)"
+    family: "SP"
+    architecture: "Ceramide"
+    description: "Glucosylceramide"
+    smarts: "[NX3][CX3](=[OX1])"
+    color: "#9D654C"
+    priority: 5
+
+  - name: "GalCer(AS)"
+    family: "SP"
+    architecture: "Ceramide"
+    description: "Galactosylceramide"
+    smarts: "[NX3][CX3](=[OX1])"
+    color: "#C17754"
+    priority: 5
+
+  # Sphingoid bases (free amine form)
+  - name: "Sphingosine"
+    family: "SP"
+    architecture: "Acyclic"
+    description: "Free sphingoid base with primary amine"
+    smarts: "[NX3][CX4]"
+    color: "#F09163"
+    priority: 4
+
+# === Sterol Lipids (ST) — green palette ===
+# Evolved SMARTS: [*;R2] (MCC=0.994) — atoms in exactly 2 rings
+# Common-sense filters: N=0, P=0, aromatic_ring_count=0
+  - name: "ST"
+    family: "ST"
+    architecture: "Steroid"
+    description: "Sterol lipids - tetracyclic steroid core"
+    smarts: "[*;R2]"
+    color: "#238b45"
+    priority: 10
+
+  - name: "ST02"
+    family: "ST"
+    architecture: "Steroid"
+    description: "Bile acids"
+    smarts: "[*;R2]"
+    color: "#41ab5d"
+    priority: 7
+
+  - name: "ST03"
+    family: "ST"
+    architecture: "Steroid"
+    description: " steroids (precursors/metabolites)"
+    smarts: "[*;R2]"
+    color: "#74c476"
+    priority: 6
+
+  - name: "ST05"
+    family: "ST"
+    architecture: "Steroid"
+    description: " Cytosterols (cholesterol, cholesteryl esters, etc.)"
+    smarts: "[*;R2]"
+    color: "#a1d99b"
+    priority: 8
+
+  - name: "ST06"
+    family: "ST"
+    architecture: "Steroid"
+    description: " stanols (dihydrosterols)"
+    smarts: "[*;R2]"
+    color: "#c7e9c0"
+    priority: 6
+
+  # ST08: Carotenoids
+  - name: "ST08"
+    family: "ST"
+    architecture: "Steroid"
+    description: " Carotenoid derivatives"
+    smarts: "C=CC=CC=C"
+    color: "#238b45"
+    priority: 4
+
+# === Prenol Lipids (PR) — blue palette ===
+# Evolved SMARTS: C=CC=CC=C (MCC=0.871) — conjugated triene system
+# Common-sense filters: no phosphorus, no fatty acyl pattern, no aromatic rings
+  - name: "PR"
+    family: "PR"
+    architecture: "Isoprenoid"
+    description: "Prenol lipids - isoprenoid/conjugated diene system"
+    smarts: "C=CC=CC=C"
+    color: "#4292c6"
+    priority: 8
+
+  - name: "PR02"
+    family: "PR"
+    architecture: "Isoprenoid"
+    description: " Isoprenoids (sesquiterpenes, etc.)"
+    smarts: "[*;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1"
+    color: "#6baed6"
+    priority: 6
+
+  # PR additional prenol subclasses
+  - name: "PR01"
+    family: "PR"
+    architecture: "Isoprenoid"
+    description: "Coenzyme Q, dolichols and other prenyl derivatives"
+    smarts: "C=CC=CC=C"
+    color: "#9ecae1"
+    priority: 7
+
+# === Saccharolipids (SL) — purple palette ===
+# Placeholder SMARTS: [*;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1 — 6-membered ring
+# Common-sense filter: must have phosphorus (phosphate-linked sugar)
+  - name: "SL"
+    family: "SL"
+    architecture: " Acyclic"
+    description: "Saccharolipids - sugar-phosphate lipids"
+    smarts: "[*;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1"
+    color: "#6a51a3"
+    priority: 6
+
+  - name: "SL01"
+    family: "SL"
+    architecture: " Acyclic"
+    description: " Acylaminosugars"
+    smarts: "[CX3](=[OX1])[OX2][#6;!a;!R]"
+    color: "#807dba"
+    priority: 5
+
+  - name: "SL02"
+    family: "SL"
+    architecture: " Acyclic"
+    description: " Lipid phosphorylated headgroups (Lipid I, II)"
+    smarts: "[PX4](=[OX1])([OX2])([OX2])"
+    color: "#9e9ac8"
+    priority: 5
+
+# === Polyketides (PK) — orange palette ===
+# Evolved SMARTS: [CX3](=[OX1])([#6;!a;!R])[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R] (MCC=0.9544)
+# This requires a ketone (carbonyl C with two aliphatic C neighbors) + two more aliphatic Cs
+# Common-sense filter: not a fatty acid, not aromatic, not in rings
+  - name: "PK"
+    family: "PK"
+    architecture: " Acyclic"
+    description: "Polyketides - ketone + aliphatic chain, acyclic"
+    smarts: "[CX3](=[OX1])([#6;!a;!R])[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]"
+    color: "#ff7f00"
+    priority: 7
+
+  - name: "PK03"
+    family: "PK"
+    architecture: " Acyclic"
+    description: " Macrocyclic polyketides"
+    smarts: "[CX3](=[OX1])([#6;!a;!R])[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]"
+    color: "#fe9929"
+    priority: 5
+
+  - name: "PK04"
+    family: "PK"
+    architecture: " Acyclic"
+    description: " Meroterpenoids"
+    smarts: "[CX3](=[OX1])([#6;!a;!R])[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]"
+    color: "#fdae6b"
+    priority: 4
+
 # Custom rules can be added below
-# - name: "MyLipid"
-#   family: "GL"
-#   architecture: "DiAcyl"
+# - name: "MyCustomLipid"
+#   family: "FA"
+#   architecture: ""
 #   description: "My custom lipid rule"
 #   smarts: "[your SMARTS pattern here]"
-#   color: "#ff0000"
+#   color: "#4E7705"
 #   priority: 1

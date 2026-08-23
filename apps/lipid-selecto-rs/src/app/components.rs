@@ -8,7 +8,6 @@ use dioxus::prelude::*;
 use ui::prelude::*;
 
 use crate::chemical_class::ChemicalClass;
-use crate::rules::LipidRuleLibrary;
 
 /// LIPID MAPS family rank order (FA → GL → GP → SP → ST → PR → SL → PK).
 /// Used to sort the "Filter by chemical family" groups in the Results UI
@@ -50,21 +49,181 @@ pub(super) fn checkbox_sm() -> String {
 }
 
 /// Renders the "Available Lipid Classes" card, sorted by priority.
-pub(super) fn lipid_classes_card(rule_library: &LipidRuleLibrary) -> Element {
+pub(super) fn lipid_classes_card(
+    gallery: &[crate::parser::GalleryItem],
+    mut mz_min: Signal<f64>,
+    mut mz_max: Signal<f64>,
+    mut precursor_min: Signal<f64>,
+    mut precursor_max: Signal<f64>,
+    mut adduct_filter: Signal<String>,
+) -> Element {
+    // Load LMSD-based class scheme (same as Results panel)
+    let all_classes = crate::chemical_class::lmsd_all();
+
+    // Collect unique adduct values from gallery items for dropdown
+    let adduct_values: std::collections::BTreeSet<String> = gallery
+        .iter()
+        .filter_map(|item| item.adduct.as_ref())
+        .filter(|a| !a.is_empty())
+        .cloned()
+        .collect();
+    let mut adduct_options: Vec<String> = adduct_values.into_iter().collect();
+    adduct_options.sort_by(|a, b| {
+        let a_plus = a.contains('+');
+        let b_plus = b.contains('+');
+        match (a_plus, b_plus) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.cmp(b),
+        }
+    });
+
+    // Group classes by family, then sort families by LIPID MAPS rank order.
+    let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
+    for class in &all_classes {
+        if let Some(entry) = families.iter_mut().find(|(f, _)| f == &class.family) {
+            entry.1.push(class.clone());
+        } else {
+            families.push((class.family.clone(), vec![class.clone()]));
+        }
+    }
+    families.sort_by_key(|(f, _)| family_rank(f));
+
+    const MAX_CLASSES_PER_FAMILY: usize = 4;
+
+    // Pre-compute family display data: (family_name, shown_classes, others_count, others_color)
+    let family_display: Vec<(String, Vec<ChemicalClass>, usize, String)> = families
+        .iter()
+        .map(|(family, classes)| {
+            let shown: Vec<ChemicalClass> = classes
+                .iter()
+                .take(MAX_CLASSES_PER_FAMILY)
+                .cloned()
+                .collect();
+            let others = classes.len() - shown.len();
+            // Use shade 4 color for "N others" - get it from the first "others" class
+            let others_color = classes
+                .iter()
+                .skip(MAX_CLASSES_PER_FAMILY)
+                .next()
+                .map(|c| c.color.clone())
+                .unwrap_or_else(|| {
+                    classes
+                        .last()
+                        .map(|c| c.color.clone())
+                        .unwrap_or("#cbd5e1".to_string())
+                });
+            (family.clone(), shown, others, others_color)
+        })
+        .collect();
+
     rsx! {
                 div {
                     style: StyleBuilder::new().property("background", "rgba(255,255,255,0.9)").border("1px solid rgba(148,163,184,0.22)").border_radius("20px").box_shadow("0 12px 40px rgba(15, 23, 42, 0.08)").padding("1.25rem").property("margin-bottom", "1.25rem").build(),
                     h2 { style: StyleBuilder::new().margin("0 0 0.75rem").font_size("1.1rem").build(), "Available Lipid Classes" }
-                    div {
-                        style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(250px, 1fr))").gap("0.75rem").property("max-height", "300px").property("overflow-y", "auto").build(),
-                        for rule in rule_library.sorted_by_priority() {
-                            div {
-                                style: StyleBuilder::new().padding("0.6rem 0.8rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("8px").font_size("0.85rem").build(),
-                                strong { "{rule.name}" }
-                                if !rule.description.is_empty() {
-                                    span { style: StyleBuilder::new().color("#64748b").font_size("0.8rem").property("margin-left", "0.3rem").build(), " - {rule.description}" }
+
+                    // Filter controls row
+                    div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.75rem").align_items("flex-end").property("margin-bottom", "1rem").build(),
+                        // m/z range filter
+                        div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
+                            span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "m/z range" }
+                            div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
+                                input {
+                                    r#type: "number",
+                                    placeholder: "min",
+                                    value: "{mz_min.read()}",
+                                    oninput: move |evt| {
+                                        if let Ok(val) = evt.value().parse::<f64>() {
+                                            mz_min.set(val);
+                                        }
+                                    },
+                                    style: StyleBuilder::new().width("70px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
                                 }
-                                span { style: StyleBuilder::new().color("#94a3b8").font_size("0.75rem").property("margin-left", "0.5rem").build(), "({rule.family})" }
+                                span { style: StyleBuilder::new().color("#94a3b8").font_size("0.8rem").build(), "–" }
+                                input {
+                                    r#type: "number",
+                                    placeholder: "max",
+                                    value: "{mz_max.read()}",
+                                    oninput: move |evt| {
+                                        if let Ok(val) = evt.value().parse::<f64>() {
+                                            mz_max.set(val);
+                                        }
+                                    },
+                                    style: StyleBuilder::new().width("70px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
+                                }
+                            }
+                        }
+
+                        // precursor range filter
+                        div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
+                            span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "precursor range" }
+                            div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
+                                input {
+                                    r#type: "number",
+                                    placeholder: "min",
+                                    value: "{precursor_min.read()}",
+                                    oninput: move |evt| {
+                                        if let Ok(val) = evt.value().parse::<f64>() {
+                                            precursor_min.set(val);
+                                        }
+                                    },
+                                    style: StyleBuilder::new().width("75px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
+                                }
+                                span { style: StyleBuilder::new().color("#94a3b8").font_size("0.8rem").build(), "–" }
+                                input {
+                                    r#type: "number",
+                                    placeholder: "max",
+                                    value: "{precursor_max.read()}",
+                                    oninput: move |evt| {
+                                        if let Ok(val) = evt.value().parse::<f64>() {
+                                            precursor_max.set(val);
+                                        }
+                                    },
+                                    style: StyleBuilder::new().width("75px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
+                                }
+                            }
+                        }
+
+                        // adduct dropdown
+                        div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
+                            span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "adduct" }
+                            select {
+                                value: "{adduct_filter.read()}",
+                                onchange: move |evt| {
+                                    adduct_filter.set(evt.value());
+                                },
+                                style: StyleBuilder::new().width("110px").padding("0.25rem 0.4rem").border("1px solid #cbd5e1").border_radius("4px").font_size("0.8rem").build(),
+                                option { value: "", "All" }
+                                for adduct_opt in adduct_options.iter() {
+                                    option { value: "{adduct_opt}", "{adduct_opt}" }
+                                }
+                            }
+                        }
+                    }
+
+                    // Class list - grouped by family with first 4 + "N others"
+                    div {
+                        style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(200px, 1fr))").gap("0.75rem").property("max-height", "300px").property("overflow-y", "auto").build(),
+                        for (family, shown_classes, others_count, others_color) in family_display.iter() {
+                            for class in shown_classes.iter() {
+                                div {
+                                    style: StyleBuilder::new().padding("0.6rem 0.8rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("8px").font_size("0.85rem").build(),
+                                    strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.3rem").build(),
+                                        span { style: StyleBuilder::new().width("8px").height("8px").border_radius("50%").property("background", &class.color).build(), }
+                                        "{class.name}"
+                                    }
+                                    span { style: StyleBuilder::new().color("#94a3b8").font_size("0.75rem").property("margin-left", "0.5rem").build(), "({class.family})" }
+                                }
+                            }
+                            if *others_count > 0 {
+                                div {
+                                    style: StyleBuilder::new().padding("0.6rem 0.8rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("8px").font_size("0.85rem").build(),
+                                    strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.3rem").build(),
+                                        span { style: StyleBuilder::new().width("8px").height("8px").border_radius("50%").property("background", &others_color).build(), }
+                                        "{family}"
+                                    }
+                                    span { style: StyleBuilder::new().color("#94a3b8").font_size("0.75rem").property("margin-left", "0.5rem").build(), "({others_count} others)" }
+                                }
                             }
                         }
                     }
@@ -77,6 +236,13 @@ pub(super) fn summary(
     summary_data: &crate::parser::Summary,
     mut selected_classes: Signal<Vec<String>>,
     all_classes: &[ChemicalClass],
+    _filtered_mgf: &str,
+    _gallery: &[crate::parser::GalleryItem],
+    _mz_min: Signal<f64>,
+    _mz_max: Signal<f64>,
+    _precursor_min: Signal<f64>,
+    _precursor_max: Signal<f64>,
+    _adduct_filter: Signal<String>,
 ) -> Element {
     let lipid_spectra = summary_data.lipid_items;
     let total_spectra = summary_data.total_items;
@@ -87,8 +253,6 @@ pub(super) fn summary(
     let all_classes_owned = all_classes.to_vec();
 
     // Group classes by family, then sort families by LIPID MAPS rank order.
-    // The rank order follows the standard LIPID MAPS classification hierarchy:
-    // FA → GL → GP → SP → ST → PR → SL → PK.
     let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
     for class in &all_classes_owned {
         if let Some(entry) = families.iter_mut().find(|(f, _)| f == &class.family) {
@@ -97,7 +261,6 @@ pub(super) fn summary(
             families.push((class.family.clone(), vec![class.clone()]));
         }
     }
-    // Sort families by LIPID MAPS rank (stable — preserves original class order).
     families.sort_by_key(|(f, _)| family_rank(f));
 
     rsx! {
@@ -265,7 +428,7 @@ pub(super) fn gallery_with_filter(
                                 let precursor_text = item
                                     .precursor_mz
                                     .map_or_else(|| "—".to_string(), |mz| format!("{mz:.3}"));
-                                let charge_text = item.charge.as_deref().unwrap_or("—");
+                                let adduct_text = item.adduct.as_deref().unwrap_or("-");
                                 let bg_color = &item.primary_class_color;
                                 rsx! {
                                     div { style: StyleBuilder::new()
@@ -304,8 +467,8 @@ pub(super) fn gallery_with_filter(
                                                     strong { style: StyleBuilder::new().color("#0f172a").build(), "{item.exact_mass:.3}" }
                                                     " · precursor "
                                                     strong { style: StyleBuilder::new().color("#0f172a").build(), "{precursor_text}" }
-                                                    " · charge "
-                                                    strong { style: StyleBuilder::new().color("#0f172a").build(), "{charge_text}" }
+                                                    " · adduct "
+                                                    strong { style: StyleBuilder::new().color("#0f172a").build(), "{adduct_text}" }
                                                 }
                                             }
                                         }

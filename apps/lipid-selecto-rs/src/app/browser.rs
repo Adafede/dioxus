@@ -6,8 +6,6 @@
 use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
-use crate::chemical_class::ChemicalClass;
-#[cfg(target_arch = "wasm32")]
 use crate::examples::example_smiles;
 #[cfg(target_arch = "wasm32")]
 use crate::format::LipidFormat;
@@ -90,7 +88,7 @@ fn start_analysis(
 
         // Classify blocks in chunks, yielding to the event loop between chunks
         // so the UI stays responsive for large MGF files (thousands of entries).
-        let all_classes = ChemicalClass::defaults();
+        let all_classes = crate::chemical_class::lmsd_all();
         let mut blocks = blocks;
         let chunk_size = 500;
         let total = blocks.len();

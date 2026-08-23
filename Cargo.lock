@@ -2995,13 +2995,17 @@ dependencies = [
  "dioxus",
  "gloo-timers",
  "js-sys",
+ "lipidsdl",
+ "serde",
  "tempfile",
  "thiserror 2.0.20",
+ "tokio",
  "ui",
  "upload",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+ "zip 8.6.0",
 ]
 
 [[package]]

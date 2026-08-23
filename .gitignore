@@ -33,3 +33,6 @@ lcov.info
 *.tarpaulin
 
 SESSION_LOG.md
+
+/smarts_results_tested_smarts/
+/smiles_sets/

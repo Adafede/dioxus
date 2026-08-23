@@ -29,6 +29,8 @@ pub struct SpectrumBlock {
     pub formula: Option<String>,
     /// `CHARGE=` value, if present.
     pub charge: Option<String>,
+    /// `ADDUCT=` value, if present (e.g., "[M+H]+", "[M-H]-").
+    pub adduct: Option<String>,
     /// `IONMODE=` value (normalized to lower case), if present.
     pub ion_mode: Option<String>,
     /// Observed precursor m/z from `PEPMASS=` / `PRECURSOR_MZ=`.
@@ -53,6 +55,7 @@ impl SpectrumBlock {
             psm_smiles: None,
             formula: None,
             charge: None,
+            adduct: None,
             ion_mode: None,
             precursor_mz: None,
             classification: None,
@@ -75,6 +78,10 @@ impl SpectrumBlock {
         }
         if let Some(value) = trimmed.strip_prefix("CHARGE=") {
             self.charge = Some(value.trim().to_string());
+            return;
+        }
+        if let Some(value) = trimmed.strip_prefix("ADDUCT=") {
+            self.adduct = Some(value.trim().to_string());
             return;
         }
         if let Some(value) = trimmed.strip_prefix("IONMODE=") {
