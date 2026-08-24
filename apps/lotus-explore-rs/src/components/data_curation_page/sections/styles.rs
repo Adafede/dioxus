@@ -51,7 +51,6 @@ pub(super) fn curation_textarea_style(min_height: &str) -> String {
         .property("min-height", min_height)
         .property("font-family", FONT_MONO)
         .property("border-radius", "8px")
-        .property("resize", "none")
         .build()
 }
 

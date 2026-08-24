@@ -50,7 +50,6 @@ pub fn lotus_textarea_base_style() -> String {
         .font_size(FS_UI)
         .property("width", "100%")
         .property("max-width", "100%")
-        .property("resize", "none")
         .font_family(FONT_SANS)
         .property("transition", "border-color .15s")
         .build()

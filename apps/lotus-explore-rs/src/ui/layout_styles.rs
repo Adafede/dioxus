@@ -186,7 +186,6 @@ pub fn lotus_header_label_style() -> String {
         .property("min-width", "max-content")
         .property("white-space", "nowrap")
         .property("overflow", "visible")
-        .property("text-overflow", "clip")
         .property("line-height", "1.2")
         .font_weight("inherit")
         .font_size("inherit")
