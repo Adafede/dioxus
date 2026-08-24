@@ -11,7 +11,8 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    name: "build and deploy"
+    container:
+      image: ghcr.io/lewimbes/dioxus-docker:latest
     runs-on: codeberg-medium
     env:
       CARGO_PROFILE_RELEASE_LTO: "off"
@@ -19,10 +20,6 @@ jobs:
       CARGO_PROFILE_RELEASE_DEBUG: "0"
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - uses: https://github.com/dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
 
       - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
 

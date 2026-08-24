@@ -21,17 +21,11 @@ env:
 
 jobs:
   native:
-    name: Native workspace checks
+    container:
+      image: ghcr.io/lewimbes/dioxus-docker:latest
     runs-on: codeberg-medium
-    timeout-minutes: 25
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-          fetch-depth: 1
-
-      - name: Install Rust
-        uses: https://github.com/dtolnay/rust-toolchain@stable
 
       - name: Cache
         uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
@@ -48,7 +42,6 @@ jobs:
   wasm:
     name: Type-check explorer (wasm32)
     runs-on: codeberg-small
-    timeout-minutes: 20
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -69,7 +62,6 @@ jobs:
   clippy:
     name: Clippy
     runs-on: codeberg-small
-    timeout-minutes: 20
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -84,7 +76,6 @@ jobs:
   fmt:
     name: Rustfmt
     runs-on: codeberg-small
-    timeout-minutes: 10
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -98,7 +89,6 @@ jobs:
   supply-chain:
     name: Supply-chain checks
     runs-on: codeberg-medium
-    timeout-minutes: 25
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
