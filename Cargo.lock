@@ -2996,7 +2996,6 @@ dependencies = [
  "gloo-timers",
  "js-sys",
  "lipidsdl",
- "serde",
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
