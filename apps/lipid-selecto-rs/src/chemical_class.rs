@@ -245,7 +245,13 @@ fn polyketides() -> Vec<ChemicalClass> {
     )]
 }
 
-/// Generate all LMSD subclass classes, sorted by LMSD count within each family.
+/// Generate all LMSD subclass classes, each with a **specific** SMARTS pattern.
+///
+/// Unlike the previous approach which used a single generic family-wide SMARTS
+/// for all subclasses, this version assigns a distinct SMARTS to every LMSD
+/// subclass (e.g. FA01 gets a carboxylic-acid pattern, GP01 gets a choline
+/// phosphate pattern). This means `compute_class_matches` will match a molecule
+/// against exactly the right subclass — no post-hoc family filtering needed.
 ///
 /// Colors are assigned using microshades palette:
 /// - First 4 classes per family get shades 0-3
@@ -254,9 +260,207 @@ fn polyketides() -> Vec<ChemicalClass> {
 /// Names use the full LMSD format: "Description [CODE]" (e.g., "Fatty Acids and Conjugates [FA01]")
 #[must_use]
 pub fn lmsd_all() -> Vec<ChemicalClass> {
-    use std::collections::HashMap;
+    // Map LMSD code -> specific SMARTS pattern
+    let smarts_map: HashMap<&str, &str> = HashMap::from([
+        // ── Fatty Acyls ──────────────────────────────────────────────
+        // FA01: Carboxylic acid with aliphatic chain (8+ carbons)
+        ("FA01", "[CX3](=[OX1])[OH]"),
+        // FA07: Fatty esters — ester group (R-COO-R')
+        ("FA07", "[CX3](=[OX1])[O;$(OC)]"),
+        // FA03: Eicosanoids — C20 chain with oxygen modifications
+        (
+            "FA03",
+            "[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6][CX3](=[OX1])[OH]",
+        ),
+        // FA04: Docosanoids — C22 chain with oxygen
+        (
+            "FA04",
+            "[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6][CX3](=[OX1])[OH]",
+        ),
+        // FA02: Octadecanoids — C18 chain with oxygen
+        (
+            "FA02",
+            "[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6][CX3](=[OX1])[OH]",
+        ),
+        // FA11: Hydrocarbons — alkane (saturated, no O)
+        ("FA11", "[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]"),
+        // FA08: Fatty amides — amide group (R-C(=O)-N-)
+        ("FA08", "[CX3](=[OX1])[NX3]"),
+        // FA05: Fatty alcohols — primary alcohol with aliphatic chain
+        ("FA05", "[CX4][OH]"),
+        // FA12: Oxygenated hydrocarbons — multiple oxygen atoms
+        (
+            "FA12",
+            "[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[O]~[O]",
+        ),
+        // FA06: Fatty aldehydes — aldehyde group (R-CHO)
+        ("FA06", "[CX3H1](=O)[#6]"),
+        // FA13: Fatty acyl glycosides — glycosidic ester
+        ("FA13", "[O;$(O[C;R0])][CX3](=[OX1])"),
+        // FA00: Other Fatty Acyls — same as FA01 (carboxylic acid)
+        ("FA00", "[CX3](=[OX1])[OH]"),
+        // FA09: Fatty nitriles — nitrile group (R-C≡N)
+        ("FA09", "[CX3]#[NX2]"),
+        // FA10: Fatty ethers — ether linkage (R-O-R')
+        ("FA10", "[CX3][O;$(OC)]"),
+        // ── Glycerolipids ────────────────────────────────────────────
+        // GL03: Triacylglycerols — glycerol with 3 ester-linked acyl chains
+        (
+            "GL03",
+            "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]",
+        ),
+        // GL02: Diacylglycerols — glycerol with 2 ester-linked acyl chains
+        (
+            "GL02",
+            "[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]",
+        ),
+        // GL01: Monoradylglycerols — glycerol with 1 ester-linked acyl chain
+        ("GL01", "[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]"),
+        // GL05: Glycosyldiacylglycerols — DG + sugar phosphate
+        (
+            "GL05",
+            "[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6][OX2R1]",
+        ),
+        // GL04: Monoglycosylglycerols — MG + sugar
+        ("GL04", "[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6][OX2R1]"),
+        // GL07: Betaine diradylglycerols — DG + betaine (quaternary ammonium)
+        (
+            "GL07",
+            "[NX3+]([CH3])([CH3])[CH2X4][OX2][CX3](=[OX1])[#6][CH2X4][OX2][CX3](=[OX1])",
+        ),
+        // GL00: Other Glycerolipids — generic glycerol ester
+        ("GL00", "[CX4]([OX2][CX3](=[OX1])[#6])"),
+        // GL06: Betaine monoradylglycerols — MG + betaine
+        ("GL06", "[NX3+]([CH3])([CH3])[CH2X4][OX2][CX3](=[OX1])[#6]"),
+        // ── Glycerophospholipids ─────────────────────────────────────
+        // GP01: Glycerophosphocholines — phosphate + choline
+        (
+            "GP01",
+            "[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]",
+        ),
+        // GP02: Glycerophosphoethanolamines — phosphate + ethanolamine
+        (
+            "GP02",
+            "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CH2X4][NX3;H2,H1,H0]",
+        ),
+        // GP04: Glycerophosphoglycerols — phosphate + glycerol
+        (
+            "GP04",
+            "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]",
+        ),
+        // GP03: Glycerophosphoserines — phosphate + serine
+        (
+            "GP03",
+            "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([CX3](=[OX1])[OX2H,OX1-])[NX3]",
+        ),
+        // GP10: Glycerophosphates — phosphate only
+        (
+            "GP10",
+            "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4][CH2X4][OX2H,OX1-]",
+        ),
+        // GP06: Glycerophosphoinositols — phosphate + inositol
+        (
+            "GP06",
+            "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4][CH2X4][O!R]1[CH1X4]2[CH1X4][O!R][CH1X4][CH1X4][CH1X4][CH1X4]2[CH1X4]1",
+        ),
+        // GP15: Glycerophosphoinositolglycans — PI + glycan
+        ("GP15", "[PX4](=[OX1])([OX2])([OX2])"),
+        // GP20: Oxidized glycerophospholipids — phospholipid with oxidized chain
+        ("GP20", "[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OH])"),
+        // ── Sphingolipids ────────────────────────────────────────────
+        // SP05: Neutral glycosphingolipids — ceramide + neutral sugar
+        (
+            "SP05",
+            "[NX3][CX3](=[OX1])[CX4][CH1X4][CH1X4][OX2][CH1X4][CH1X4]",
+        ),
+        // SP06: Acidic glycosphingolipids — ceramide + acidic sugar (sulfate/phosphate)
+        (
+            "SP06",
+            "[NX3][CX3](=[OX1])[CX4][CH1X4][CH1X4][OX2][S(=O)(=O)[O-]]",
+        ),
+        // SP02: Ceramides — sphingosine + fatty acyl (amide-linked)
+        ("SP02", "[NX3][CX3](=[OX1])[CX4]"),
+        // SP03: Phosphosphingolipids — ceramide + phosphate + headgroup
+        ("SP03", "[NX4+][CX4][CX4][OX2][PX4](=[OX1])[OX2]"),
+        // SP01: Sphingoid bases — sphingosine without acyl chain
+        ("SP01", "[NX3][CX3]"),
+        // SP00: Other Sphingolipids — generic sphingoid amide
+        ("SP00", "[NX3][CX3](=[OX1])"),
+        // SP04: Phosphonosphingolipids — ceramide + phosphate monoester
+        ("SP04", "[NX3][CX3](=[OX1])[CX4][OX2][PX4](=[OX1])"),
+        // SP08: Amphoteric glycosphingolipids — ceramide + sugar + charge
+        (
+            "SP08",
+            "[NX3][CX3](=[OX1])[CX4][CH1X4][CH1X4][OX2][S(=O)(=O)]",
+        ),
+        // ── Sterol Lipids ────────────────────────────────────────────
+        // ST01: Sterols — steroid nucleus with hydroxyl
+        (
+            "ST01",
+            "[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6]",
+        ),
+        // ST04: Bile acids — steroid with carboxylic acid
+        (
+            "ST04",
+            "[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6][CX3](=[OX1])[OH]",
+        ),
+        // ST03: Secosteroids — steroid with broken ring
+        ("ST03", "[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6]"),
+        // ST02: Steroids — steroid nucleus (4 fused rings)
+        (
+            "ST02",
+            "[#6;R1]1[#6;R1][#6;R1][#6;R1]2[#6;R1]([#6;R1]1)[#6;R1][#6;R1][#6;R1][#6;R1]2",
+        ),
+        // ST05: Steroid conjugates — sterol with conjugated group
+        (
+            "ST05",
+            "[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6][CX3](=[OX1])",
+        ),
+        // ── Prenol Lipids ────────────────────────────────────────────
+        // PR01: Isoprenoids — isoprene units (C=C-C-C=C)
+        ("PR01", "[#6]=[#6][#6]=[#6][#6]"),
+        // PR02: Quinones — quinone structure
+        ("PR02", "[CX3](=O)[CX3](=O)"),
+        // PR04: Hopanoids — pentacyclic triterpenoid
+        (
+            "PR04",
+            "[#6]1[#6][#6]2[#6][#6][#6]1[#6][#6]3[#6]([#6]2)[#6][#6]4[#6]([#6]3)[#6][#6][#6][#6]4",
+        ),
+        // PR03: Polyprenols — long isoprenoid chain
+        ("PR03", "[#6]=[#6][#6]1[#6]=[CH]"),
+        // ── Saccharolipids ───────────────────────────────────────────
+        // SL01: Acylaminosugars — sugar + amide
+        ("SL01", "[N;!R][C;R0][N;!R]"),
+        // SL02: Acylaminosugar glycans — sugar polymer + amide
+        ("SL02", "[N;!R][C;R0][N;!R][C;R1]1[O!R][C;R1][C;R1][C;R1]1"),
+        // SL03: Acyltrehaloses — trehalose + acyl
+        (
+            "SL03",
+            "[O!R][C;R0][C;R1]1[O!R][C;R1][C;R1][C;R1][O!R][C;R0]1",
+        ),
+        // SL05: Other acyl sugars — sugar + acyl
+        ("SL05", "[O!R][C;R0][C;R1]"),
+        // ── Polyketides ──────────────────────────────────────────────
+        // PK12: Flavonoids — C6-C3-C6 with aromatic rings and carbonyl
+        (
+            "PK12",
+            "[C;R1]1[CH;R1][C;R1][C;R1]2[C;R1]([C;R1]1)[C;R1][C;R1][C;R1][C;R1]2[CX3](=[OX1])",
+        ),
+        // PK13: Aromatic polyketides — aromatic ring system
+        ("PK13", "[C;R1]1[CH;R1][C;R1][C;R1][C;R1][C;R1]1"),
+        // PK15: Phenolic lipids — phenol + aliphatic chain
+        ("PK15", "[CX3](=[OX1])[O;$(OC)][CH3]"),
+        // PK03: Annonaceae acetogenins — long-chain acetogenin
+        ("PK03", "[CH2X4]([CX3](=[OX1])[#6])[CX3](=[OX1])O[C;R0]"),
+        // PK04: Macrolides — macrocyclic lactone
+        ("PK04", "[CX3](=[OX1])O[C;R0]1[CH2X4]"),
+        // PK09: Polyether antibiotics — polyether ring system
+        ("PK09", "[C;R1]1[O!R][C;R1][C;R1][O!R]1"),
+        // PK11: Cytochalasins — bicyclic structure with conjugated bond
+        ("PK11", "[C;R1]1[C;R1][C;R1][C;R1][C;R1][C;R1]1[NX2]=[CX3]"),
+    ]);
 
-    // Counts from LMSD.sdf.tsv
+    // Counts from LMSD.sdf.tsv (for sorting within family)
     let mut counts: HashMap<String, usize> = HashMap::new();
 
     // Fatty Acyls
@@ -278,8 +482,8 @@ pub fn lmsd_all() -> Vec<ChemicalClass> {
     // Glycerolipids
     counts.insert("GL03".to_string(), 6936);
     counts.insert("GL02".to_string(), 604);
-    counts.insert("GL01".to_string(), 93);
     counts.insert("GL05".to_string(), 104);
+    counts.insert("GL01".to_string(), 93);
     counts.insert("GL04".to_string(), 25);
     counts.insert("GL07".to_string(), 16);
     counts.insert("GL00".to_string(), 10);
@@ -333,7 +537,7 @@ pub fn lmsd_all() -> Vec<ChemicalClass> {
     counts.insert("PK09".to_string(), 41);
     counts.insert("PK11".to_string(), 38);
 
-    // Palettes - shade 0-3 for first 4, shade 4 for rest
+    // Palettes — shade 0-3 for first 4, shade 4 for rest
     const FA_PALETTE: [&str; 5] = ["#4E7705", "#6D9F06", "#97CE2F", "#BDEC6F", "#DDFFA0"];
     const GL_PALETTE: [&str; 5] = ["#098BD9", "#56B4E9", "#7DCCFF", "#BCE1FF", "#E7F4FF"];
     const GP_PALETTE: [&str; 5] = ["#7D3560", "#A1527F", "#CC79A7", "#E794C1", "#EFB6D6"];
@@ -343,252 +547,195 @@ pub fn lmsd_all() -> Vec<ChemicalClass> {
     const SL_PALETTE: [&str; 5] = ["#6a51a3", "#807dba", "#9e9ac8", "#bcbddc", "#dadaeb"];
     const PK_PALETTE: [&str; 5] = ["#ff7f00", "#fe9929", "#fdae6b", "#fec44f", "#feeda0"];
 
-    // Define all LMSD subclasses (name, code, count)
-    let mut fa_classes: Vec<(String, String)> = Vec::new();
-    fa_classes.push(("Fatty Acids and Conjugates".to_string(), "FA01".to_string()));
-    fa_classes.push(("Fatty esters".to_string(), "FA07".to_string()));
-    fa_classes.push(("Eicosanoids".to_string(), "FA03".to_string()));
-    fa_classes.push(("Docosanoids".to_string(), "FA04".to_string()));
-    fa_classes.push(("Octadecanoids".to_string(), "FA02".to_string()));
-    fa_classes.push(("Hydrocarbons".to_string(), "FA11".to_string()));
-    fa_classes.push(("Fatty amides".to_string(), "FA08".to_string()));
-    fa_classes.push(("Fatty alcohols".to_string(), "FA05".to_string()));
-    fa_classes.push(("Oxygenated hydrocarbons".to_string(), "FA12".to_string()));
-    fa_classes.push(("Fatty aldehydes".to_string(), "FA06".to_string()));
-    fa_classes.push(("Fatty acyl glycosides".to_string(), "FA13".to_string()));
-    fa_classes.push(("Other Fatty Acyls".to_string(), "FA00".to_string()));
-    fa_classes.push(("Fatty nitriles".to_string(), "FA09".to_string()));
-    fa_classes.push(("Fatty ethers".to_string(), "FA10".to_string()));
-
-    let mut gl_classes: Vec<(String, String)> = Vec::new();
-    gl_classes.push(("Triradylglycerols".to_string(), "GL03".to_string()));
-    gl_classes.push(("Diradylglycerols".to_string(), "GL02".to_string()));
-    gl_classes.push(("Monoradylglycerols".to_string(), "GL01".to_string()));
-    gl_classes.push(("Glycosyldiradylglycerols".to_string(), "GL05".to_string()));
-    gl_classes.push(("Monoglycosylglycerols".to_string(), "GL04".to_string()));
-    gl_classes.push(("Betaine diradylglycerols".to_string(), "GL07".to_string()));
-    gl_classes.push(("Other Glycerolipids".to_string(), "GL00".to_string()));
-    gl_classes.push(("Betaine monoradylglycerols".to_string(), "GL06".to_string()));
-
-    let mut gp_classes: Vec<(String, String)> = Vec::new();
-    gp_classes.push(("Glycerophosphocholines".to_string(), "GP01".to_string()));
-    gp_classes.push((
-        "Glycerophosphoethanolamines".to_string(),
-        "GP02".to_string(),
-    ));
-    gp_classes.push(("Glycerophosphoglycerols".to_string(), "GP04".to_string()));
-    gp_classes.push(("Glycerophosphoserines".to_string(), "GP03".to_string()));
-    gp_classes.push(("Glycerophosphates".to_string(), "GP10".to_string()));
-    gp_classes.push(("Glycerophosphoinositols".to_string(), "GP06".to_string()));
-    gp_classes.push((
-        "Glycerophosphoinositolglycans".to_string(),
-        "GP15".to_string(),
-    ));
-    gp_classes.push((
-        "Oxidized glycerophospholipids".to_string(),
-        "GP20".to_string(),
-    ));
-
-    let mut sp_classes: Vec<(String, String)> = Vec::new();
-    sp_classes.push(("Neutral glycosphingolipids".to_string(), "SP05".to_string()));
-    sp_classes.push(("Acidic glycosphingolipids".to_string(), "SP06".to_string()));
-    sp_classes.push(("Ceramides".to_string(), "SP02".to_string()));
-    sp_classes.push(("Phosphosphingolipids".to_string(), "SP03".to_string()));
-    sp_classes.push(("Sphingoid bases".to_string(), "SP01".to_string()));
-    sp_classes.push(("Other Sphingolipids".to_string(), "SP00".to_string()));
-    sp_classes.push(("Phosphonosphingolipids".to_string(), "SP04".to_string()));
-    sp_classes.push((
-        "Amphoteric glycosphingolipids".to_string(),
-        "SP08".to_string(),
-    ));
-
-    let mut st_classes: Vec<(String, String)> = Vec::new();
-    st_classes.push(("Sterols".to_string(), "ST01".to_string()));
-    st_classes.push(("Bile acids and derivatives".to_string(), "ST04".to_string()));
-    st_classes.push(("Secosteroids".to_string(), "ST03".to_string()));
-    st_classes.push(("Steroids".to_string(), "ST02".to_string()));
-    st_classes.push(("Steroid conjugates".to_string(), "ST05".to_string()));
-
-    let mut pr_classes: Vec<(String, String)> = Vec::new();
-    pr_classes.push(("Isoprenoids".to_string(), "PR01".to_string()));
-    pr_classes.push(("Quinones and hydroquinones".to_string(), "PR02".to_string()));
-    pr_classes.push(("Hopanoids".to_string(), "PR04".to_string()));
-    pr_classes.push(("Polyprenols".to_string(), "PR03".to_string()));
-
-    let mut sl_classes: Vec<(String, String)> = Vec::new();
-    sl_classes.push(("Acyltrehaloses".to_string(), "SL03".to_string()));
-    sl_classes.push(("Other acyl sugars".to_string(), "SL05".to_string()));
-    sl_classes.push(("Acylaminosugars".to_string(), "SL01".to_string()));
-    sl_classes.push(("Acylaminosugar glycans".to_string(), "SL02".to_string()));
-
-    let mut pk_classes: Vec<(String, String)> = Vec::new();
-    pk_classes.push(("Flavonoids".to_string(), "PK12".to_string()));
-    pk_classes.push(("Aromatic polyketides".to_string(), "PK13".to_string()));
-    pk_classes.push(("Phenolic lipids".to_string(), "PK15".to_string()));
-    pk_classes.push(("Annonaceae acetogenins".to_string(), "PK03".to_string()));
-    pk_classes.push((
-        "Macrolides and lactone polyketides".to_string(),
-        "PK04".to_string(),
-    ));
-    pk_classes.push(("Polyether antibiotics".to_string(), "PK09".to_string()));
-    pk_classes.push(("Cytochalasins".to_string(), "PK11".to_string()));
-
     // Build result with proper color assignment
     let mut result = Vec::new();
 
-    // Fatty Acyls - use fatty acid SMARTS pattern (carboxylic acid with acyl chain)
-    let fa_smarts = "[#6][#6][#6][#6][#6][#6][#6][#6][CX3](=[OX1])[OH]";
-    fa_classes.sort_by(|a, b| {
-        let a_count = counts.get(&b.1).copied().unwrap_or(0);
-        let b_count = counts.get(&a.1).copied().unwrap_or(0);
-        a_count.cmp(&b_count)
-    });
-    for (idx, (name, code)) in fa_classes.drain(..).enumerate() {
-        let shade_idx = if idx < 4 { idx } else { 4 };
-        let color = FA_PALETTE[shade_idx].to_string();
-        let full_name = format!("{} [{}]", name, code);
-        result.push(ChemicalClass::new(
-            full_name,
-            fa_smarts.to_string(),
-            color,
-            "Fatty Acyls".to_string(),
-        ));
-    }
+    // ── Fatty Acyls ────────────────────────────────────────────────
+    let fa_classes: Vec<(&str, &str)> = vec![
+        ("Fatty Acids and Conjugates", "FA01"),
+        ("Fatty esters", "FA07"),
+        ("Eicosanoids", "FA03"),
+        ("Docosanoids", "FA04"),
+        ("Octadecanoids", "FA02"),
+        ("Hydrocarbons", "FA11"),
+        ("Fatty amides", "FA08"),
+        ("Fatty alcohols", "FA05"),
+        ("Oxygenated hydrocarbons", "FA12"),
+        ("Fatty aldehydes", "FA06"),
+        ("Fatty acyl glycosides", "FA13"),
+        ("Other Fatty Acyls", "FA00"),
+        ("Fatty nitriles", "FA09"),
+        ("Fatty ethers", "FA10"),
+    ];
+    build_family(
+        &mut result,
+        &fa_classes,
+        &counts,
+        &smarts_map,
+        &FA_PALETTE,
+        "Fatty Acyls",
+    );
 
-    // Glycerolipids - use TG (triacylglycerol) pattern as family proxy
-    let gl_smarts = "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]";
-    gl_classes.sort_by(|a, b| {
-        let a_count = counts.get(&b.1).copied().unwrap_or(0);
-        let b_count = counts.get(&a.1).copied().unwrap_or(0);
-        a_count.cmp(&b_count)
-    });
-    for (idx, (name, code)) in gl_classes.drain(..).enumerate() {
-        let shade_idx = if idx < 4 { idx } else { 4 };
-        let color = GL_PALETTE[shade_idx].to_string();
-        let full_name = format!("{} [{}]", name, code);
-        result.push(ChemicalClass::new(
-            full_name,
-            gl_smarts.to_string(),
-            color,
-            "Glycerolipids".to_string(),
-        ));
-    }
+    // ── Glycerolipids ──────────────────────────────────────────────
+    let gl_classes: Vec<(&str, &str)> = vec![
+        ("Triradylglycerols", "GL03"),
+        ("Diradylglycerols", "GL02"),
+        ("Glycosyldiradylglycerols", "GL05"),
+        ("Monoradylglycerols", "GL01"),
+        ("Monoglycosylglycerols", "GL04"),
+        ("Betaine diradylglycerols", "GL07"),
+        ("Other Glycerolipids", "GL00"),
+        ("Betaine monoradylglycerols", "GL06"),
+    ];
+    build_family(
+        &mut result,
+        &gl_classes,
+        &counts,
+        &smarts_map,
+        &GL_PALETTE,
+        "Glycerolipids",
+    );
 
-    // Glycerophospholipids - use PC pattern as family proxy
-    let gp_smarts = "[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]";
-    gp_classes.sort_by(|a, b| {
-        let a_count = counts.get(&b.1).copied().unwrap_or(0);
-        let b_count = counts.get(&a.1).copied().unwrap_or(0);
-        a_count.cmp(&b_count)
-    });
-    for (idx, (name, code)) in gp_classes.drain(..).enumerate() {
-        let shade_idx = if idx < 4 { idx } else { 4 };
-        let color = GP_PALETTE[shade_idx].to_string();
-        let full_name = format!("{} [{}]", name, code);
-        result.push(ChemicalClass::new(
-            full_name,
-            gp_smarts.to_string(),
-            color,
-            "Glycerophospholipids".to_string(),
-        ));
-    }
+    // ── Glycerophospholipids ───────────────────────────────────────
+    let gp_classes: Vec<(&str, &str)> = vec![
+        ("Glycerophosphocholines", "GP01"),
+        ("Glycerophosphoethanolamines", "GP02"),
+        ("Glycerophosphoglycerols", "GP04"),
+        ("Glycerophosphoserines", "GP03"),
+        ("Glycerophosphates", "GP10"),
+        ("Glycerophosphoinositols", "GP06"),
+        ("Glycerophosphoinositolglycans", "GP15"),
+        ("Oxidized glycerophospholipids", "GP20"),
+    ];
+    build_family(
+        &mut result,
+        &gp_classes,
+        &counts,
+        &smarts_map,
+        &GP_PALETTE,
+        "Glycerophospholipids",
+    );
 
-    // Sphingolipids - use Cer (ceramide) pattern as family proxy
-    let sp_smarts = "[NX3][CX3](=[OX1])[CX4]";
-    sp_classes.sort_by(|a, b| {
-        let a_count = counts.get(&b.1).copied().unwrap_or(0);
-        let b_count = counts.get(&a.1).copied().unwrap_or(0);
-        a_count.cmp(&b_count)
-    });
-    for (idx, (name, code)) in sp_classes.drain(..).enumerate() {
-        let shade_idx = if idx < 4 { idx } else { 4 };
-        let color = SP_PALETTE[shade_idx].to_string();
-        let full_name = format!("{} [{}]", name, code);
-        result.push(ChemicalClass::new(
-            full_name,
-            sp_smarts.to_string(),
-            color,
-            "Sphingolipids".to_string(),
-        ));
-    }
+    // ── Sphingolipids ──────────────────────────────────────────────
+    let sp_classes: Vec<(&str, &str)> = vec![
+        ("Neutral glycosphingolipids", "SP05"),
+        ("Acidic glycosphingolipids", "SP06"),
+        ("Ceramides", "SP02"),
+        ("Phosphosphingolipids", "SP03"),
+        ("Sphingoid bases", "SP01"),
+        ("Other Sphingolipids", "SP00"),
+        ("Phosphonosphingolipids", "SP04"),
+        ("Amphoteric glycosphingolipids", "SP08"),
+    ];
+    build_family(
+        &mut result,
+        &sp_classes,
+        &counts,
+        &smarts_map,
+        &SP_PALETTE,
+        "Sphingolipids",
+    );
 
-    // Sterol Lipids - use sterol pattern
-    let st_smarts = "[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6]";
-    st_classes.sort_by(|a, b| {
-        let a_count = counts.get(&b.1).copied().unwrap_or(0);
-        let b_count = counts.get(&a.1).copied().unwrap_or(0);
-        a_count.cmp(&b_count)
-    });
-    for (idx, (name, code)) in st_classes.drain(..).enumerate() {
-        let shade_idx = if idx < 4 { idx } else { 4 };
-        let color = ST_PALETTE[shade_idx].to_string();
-        let full_name = format!("{} [{}]", name, code);
-        result.push(ChemicalClass::new(
-            full_name,
-            st_smarts.to_string(),
-            color,
-            "Sterol Lipids".to_string(),
-        ));
-    }
+    // ── Sterol Lipids ──────────────────────────────────────────────
+    let st_classes: Vec<(&str, &str)> = vec![
+        ("Sterols", "ST01"),
+        ("Bile acids and derivatives", "ST04"),
+        ("Secosteroids", "ST03"),
+        ("Steroids", "ST02"),
+        ("Steroid conjugates", "ST05"),
+    ];
+    build_family(
+        &mut result,
+        &st_classes,
+        &counts,
+        &smarts_map,
+        &ST_PALETTE,
+        "Sterol Lipids",
+    );
 
-    // Prenol Lipids - use isoprenoid pattern
-    let pr_smarts = "[#6]=[#6][#6]=[#6][#6]";
-    pr_classes.sort_by(|a, b| {
-        let a_count = counts.get(&b.1).copied().unwrap_or(0);
-        let b_count = counts.get(&a.1).copied().unwrap_or(0);
-        a_count.cmp(&b_count)
-    });
-    for (idx, (name, code)) in pr_classes.drain(..).enumerate() {
-        let shade_idx = if idx < 4 { idx } else { 4 };
-        let color = PR_PALETTE[shade_idx].to_string();
-        let full_name = format!("{} [{}]", name, code);
-        result.push(ChemicalClass::new(
-            full_name,
-            pr_smarts.to_string(),
-            color,
-            "Prenol Lipids".to_string(),
-        ));
-    }
+    // ── Prenol Lipids ──────────────────────────────────────────────
+    let pr_classes: Vec<(&str, &str)> = vec![
+        ("Isoprenoids", "PR01"),
+        ("Quinones and hydroquinones", "PR02"),
+        ("Hopanoids", "PR04"),
+        ("Polyprenols", "PR03"),
+    ];
+    build_family(
+        &mut result,
+        &pr_classes,
+        &counts,
+        &smarts_map,
+        &PR_PALETTE,
+        "Prenol Lipids",
+    );
 
-    // Saccharolipids - use saccharolipid pattern
-    let sl_smarts = "[#6][OX2][PX4](=[OX1])[OX2][#6]";
-    sl_classes.sort_by(|a, b| {
-        let a_count = counts.get(&b.1).copied().unwrap_or(0);
-        let b_count = counts.get(&a.1).copied().unwrap_or(0);
-        a_count.cmp(&b_count)
-    });
-    for (idx, (name, code)) in sl_classes.drain(..).enumerate() {
-        let shade_idx = if idx < 4 { idx } else { 4 };
-        let color = SL_PALETTE[shade_idx].to_string();
-        let full_name = format!("{} [{}]", name, code);
-        result.push(ChemicalClass::new(
-            full_name,
-            sl_smarts.to_string(),
-            color,
-            "Saccharolipids".to_string(),
-        ));
-    }
+    // ── Saccharolipids ─────────────────────────────────────────────
+    let sl_classes: Vec<(&str, &str)> = vec![
+        ("Acyltrehaloses", "SL03"),
+        ("Other acyl sugars", "SL05"),
+        ("Acylaminosugars", "SL01"),
+        ("Acylaminosugar glycans", "SL02"),
+    ];
+    build_family(
+        &mut result,
+        &sl_classes,
+        &counts,
+        &smarts_map,
+        &SL_PALETTE,
+        "Saccharolipids",
+    );
 
-    // Polyketides - use aromatic polyketide pattern
-    let pk_smarts = "[#6;R]1[#6]([#6](=[OX1])[#6])[#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R][#6;R]1";
-    pk_classes.sort_by(|a, b| {
-        let a_count = counts.get(&b.1).copied().unwrap_or(0);
-        let b_count = counts.get(&a.1).copied().unwrap_or(0);
-        a_count.cmp(&b_count)
-    });
-    for (idx, (name, code)) in pk_classes.drain(..).enumerate() {
-        let shade_idx = if idx < 4 { idx } else { 4 };
-        let color = PK_PALETTE[shade_idx].to_string();
-        let full_name = format!("{} [{}]", name, code);
-        result.push(ChemicalClass::new(
-            full_name,
-            pk_smarts.to_string(),
-            color,
-            "Polyketides".to_string(),
-        ));
-    }
+    // ── Polyketides ────────────────────────────────────────────────
+    let pk_classes: Vec<(&str, &str)> = vec![
+        ("Flavonoids", "PK12"),
+        ("Aromatic polyketides", "PK13"),
+        ("Phenolic lipids", "PK15"),
+        ("Annonaceae acetogenins", "PK03"),
+        ("Macrolides and lactone polyketides", "PK04"),
+        ("Polyether antibiotics", "PK09"),
+        ("Cytochalasins", "PK11"),
+    ];
+    build_family(
+        &mut result,
+        &pk_classes,
+        &counts,
+        &smarts_map,
+        &PK_PALETTE,
+        "Polyketides",
+    );
 
     result
+}
+
+/// Build a family of [`ChemicalClass`] objects, sorted by LMSD count (descending),
+/// each using its own specific SMARTS pattern from `smarts_map`.
+fn build_family(
+    result: &mut Vec<ChemicalClass>,
+    classes: &[(&str, &str)],
+    counts: &HashMap<String, usize>,
+    smarts_map: &HashMap<&str, &str>,
+    palette: &[&str],
+    family: &str,
+) {
+    let mut sorted: Vec<_> = classes.to_vec();
+    sorted.sort_by(|a, b| {
+        let a_count = counts.get(b.1).copied().unwrap_or(0);
+        let b_count = counts.get(a.1).copied().unwrap_or(0);
+        a_count.cmp(&b_count)
+    });
+
+    for (idx, (name, code)) in sorted.iter().enumerate() {
+        let shade_idx = if idx < 4 { idx } else { 4 };
+        let color = palette[shade_idx].to_string();
+        let full_name = format!("{} [{}]", name, code);
+        let smarts = smarts_map.get(*code).copied().unwrap_or("[*]").to_string();
+        result.push(ChemicalClass::new(
+            full_name,
+            smarts,
+            color,
+            family.to_string(),
+        ));
+    }
 }
 
 #[cfg(test)]

@@ -229,7 +229,7 @@ pub(super) fn summary(
     let filtered_mgf_owned = filtered_mgf.to_string();
 
     // Clone gallery SMILES data for the download closure (must be 'static for WASM event handlers)
-    // Include class info (category, main_class, sub_class) for tagging exports
+    // Include class info + filter fields so the download can apply the same filters as the gallery
     #[cfg(target_arch = "wasm32")]
     let gallery_smiles: Vec<(
         Option<String>,
@@ -237,28 +237,24 @@ pub(super) fn summary(
         Option<String>,
         Option<String>,
         Option<String>,
+        Option<f64>,
+        Option<f64>,
+        Option<String>,
+        std::collections::HashMap<String, bool>,
     )> = gallery
         .iter()
         .map(|item| {
-            // Use the same primary_class_name as the UI (computed in gallery_item())
-            let category = item
-                .classification
-                .as_ref()
-                .map(|c| c.class.lipidmaps_category().to_string())
-                .unwrap_or_else(|| {
-                    item.primary_class_name
-                        .as_ref()
-                        .and_then(|name| {
-                            all_classes
-                                .iter()
-                                .find(|c| &c.name == name)
-                                .map(|c| c.family.clone())
-                        })
-                        .unwrap_or_else(|| "Other Lipids [-]".to_string())
-                });
-            let main_class = item
-                .primary_class_name
-                .clone()
+            // Use the same class tag computation as MGF export (ensures UI consistency)
+            let class_tags = get_class_tag_from_gallery(item, all_classes);
+            let category = class_tags
+                .iter()
+                .find(|(k, _)| k == "CATEGORY")
+                .map(|(_, v)| v.clone())
+                .unwrap_or_else(|| "-".to_string());
+            let main_class = class_tags
+                .iter()
+                .find(|(k, _)| k == "MAIN_CLASS")
+                .map(|(_, v)| v.clone())
                 .unwrap_or_else(|| "-".to_string());
             (
                 item.title.clone(),
@@ -266,6 +262,10 @@ pub(super) fn summary(
                 Some(category),
                 Some(main_class),
                 Some("-".to_string()),
+                Some(item.exact_mass),
+                item.precursor_mz,
+                item.adduct.clone(),
+                item.class_matches.clone(),
             )
         })
         .collect();
@@ -277,6 +277,10 @@ pub(super) fn summary(
         Option<String>,
         Option<String>,
         Option<String>,
+        Option<f64>,
+        Option<f64>,
+        Option<String>,
+        std::collections::HashMap<String, bool>,
     )> = Vec::new();
 
     // Clone block data for filtered MGF download (must be 'static for WASM event handlers)
@@ -449,9 +453,27 @@ pub(super) fn summary(
                                 let prec_min_val = *precursor_min.read();
                                 let prec_max_val = *precursor_max.read();
                                 let adduct_val = adduct_filter.read().clone();
-                                // Filter blocks and tag each with its attributed lipid class
+                                let selected = selected_classes.read().clone();
+                                // Filter blocks: class selection + m/z + precursor + adduct
                                 let mut mgf_content = String::new();
                                 for (idx, block) in blocks_owned.iter().enumerate() {
+                                    // Class selection filter: block must match at least one selected class
+                                    if !selected.is_empty() {
+                                        let matches_selected = block
+                                            .gallery_item_matches
+                                            .as_ref()
+                                            .map(|matches| {
+                                                selected
+                                                    .iter()
+                                                    .any(|class_name| {
+                                                        matches.get(class_name).copied().unwrap_or(false)
+                                                    })
+                                            })
+                                            .unwrap_or(false);
+                                        if !matches_selected {
+                                            continue;
+                                        }
+                                    }
                                     // m/z range (using exact_mass)
                                     if block.exact_mass < mz_min_val || block.exact_mass > mz_max_val {
                                         continue;
@@ -487,7 +509,47 @@ pub(super) fn summary(
                         onclick: move |_| {
                             #[cfg(target_arch = "wasm32")]
                             {
-                                let smiles_content = build_smiles_from_cloned(&gallery_smiles);
+                                let mz_min_val = *mz_min.read();
+                                let mz_max_val = *mz_max.read();
+                                let prec_min_val = *precursor_min.read();
+                                let prec_max_val = *precursor_max.read();
+                                let adduct_val = adduct_filter.read().clone();
+                                let selected = selected_classes.read().clone();
+                                // Filter gallery items: class selection + m/z + precursor + adduct
+                                let filtered: Vec<_> = gallery_smiles
+                                    .iter()
+                                    .filter(|(_, _, _, _, _, exact_mass, precursor_mz, adduct, class_matches)| {
+                                        // Class selection filter
+                                        if !selected.is_empty() {
+                                            let matches_selected = selected
+                                                .iter()
+                                                .any(|class_name| {
+                                                    class_matches.get(class_name).copied().unwrap_or(false)
+                                                });
+                                            if !matches_selected {
+                                                return false;
+                                            }
+                                        }
+                                        // m/z range filter
+                                        if let Some(mass) = exact_mass {
+                                            if *mass < mz_min_val || *mass > mz_max_val {
+                                                return false;
+                                            }
+                                        }
+                                        // precursor range filter
+                                        if let (Some(pmz), val) = (precursor_mz, prec_min_val) {
+                                            if *pmz < val || *pmz > prec_max_val {
+                                                return false;
+                                            }
+                                        }
+                                        // adduct filter
+                                        if !adduct_val.is_empty() && adduct.as_deref() != Some(&adduct_val) {
+                                            return false;
+                                        }
+                                        true
+                                    })
+                                    .collect();
+                                let smiles_content = build_smiles_from_cloned(&filtered);
                                 let _ = upload::download_text(&smiles_content, "lipids.smi");
                             }
                         },
@@ -502,17 +564,21 @@ pub(super) fn summary(
 /// Builds a SMILES file content string from cloned gallery data with class tags.
 #[cfg(target_arch = "wasm32")]
 fn build_smiles_from_cloned(
-    gallery: &[(
+    gallery: &[&(
         Option<String>,
         Option<String>,
         Option<String>,
         Option<String>,
         Option<String>,
+        Option<f64>,
+        Option<f64>,
+        Option<String>,
+        std::collections::HashMap<String, bool>,
     )],
 ) -> String {
     use std::fmt::Write;
     let mut content = String::new();
-    for (title, smiles, category, main_class, sub_class) in gallery {
+    for (title, smiles, category, main_class, sub_class, _, _, _, _) in gallery {
         if let Some(smiles) = smiles {
             // Format: SMILES <tab> Title <tab> CATEGORY <tab> MAIN_CLASS <tab> SUB_CLASS
             let cat_str = category.as_deref().filter(|s| !s.is_empty()).unwrap_or("-");
@@ -556,29 +622,101 @@ fn get_class_tag_from_gallery(
     item: &crate::parser::GalleryItem,
     classes: &[ChemicalClass],
 ) -> Vec<(String, String)> {
-    let category = item
-        .classification
-        .as_ref()
-        .map(|c| c.class.lipidmaps_category().to_string())
-        .unwrap_or_else(|| {
-            // Fallback: look up the class family from primary_class_name
-            item.primary_class_name
-                .as_ref()
-                .and_then(|name| classes.iter().find(|c| &c.name == name))
-                .map(|c| c.family.clone())
-                .unwrap_or_else(|| "Other Lipids [-]".to_string())
-        });
+    // Collect ALL matching LMSD classes from the gallery item matches.
+    // With specific per-subclass SMARTS this is usually a single class,
+    // but as a safety net we pipe multiple matches together with " | "
+    // so that CATEGORY and MAIN_CLASS are always derived from the same
+    // set of matches — avoiding mismatches like
+    //   CATEGORY=Fatty Acyls [FA]  +  MAIN_CLASS=Isoprenoids [PR01].
+    let matched: Vec<&ChemicalClass> = item
+        .class_matches
+        .iter()
+        .filter(|(_, matched)| **matched)
+        .filter_map(|(name, _)| classes.iter().find(|c| &c.name == name))
+        .collect();
 
-    let main_class = item
-        .primary_class_name
-        .clone()
-        .unwrap_or_else(|| "-".to_string());
+    if matched.is_empty() {
+        // No gallery matches — fall back to broad classification for category,
+        // primary_class_name for main class.
+        let category = item
+            .classification
+            .as_ref()
+            .map(|c| c.class.lipidmaps_category().to_string())
+            .unwrap_or_else(|| "Other Lipids [-]".to_string());
+        let main_class = item
+            .primary_class_name
+            .clone()
+            .unwrap_or_else(|| "-".to_string());
+        vec![
+            ("CATEGORY".to_string(), category),
+            ("MAIN_CLASS".to_string(), main_class),
+            ("SUB_CLASS".to_string(), "-".to_string()),
+        ]
+    } else {
+        // Try to prefer matches in the same family as the broad classification.
+        let broad_family = item
+            .classification
+            .as_ref()
+            .map(|c| family_from_category(c.class.lipidmaps_category()))
+            .unwrap_or("");
+        let same_family: Vec<&ChemicalClass> = if !broad_family.is_empty() {
+            matched
+                .iter()
+                .filter(|c| c.family == broad_family)
+                .copied()
+                .collect()
+        } else {
+            Vec::new()
+        };
 
-    vec![
-        ("CATEGORY".to_string(), category),
-        ("MAIN_CLASS".to_string(), main_class),
-        ("SUB_CLASS".to_string(), "-".to_string()),
-    ]
+        // Use same-family matches if available, otherwise all matched classes.
+        let selected: Vec<&ChemicalClass> = if same_family.is_empty() {
+            matched.iter().copied().collect()
+        } else {
+            same_family
+        };
+
+        // Derive CATEGORY and MAIN_CLASS from the same set of classes,
+        // piping with " | " when multiple matches exist.
+        let category = selected
+            .iter()
+            .map(|c| format!("{} [{}]", c.family, family_code(&c.family)))
+            .collect::<Vec<_>>()
+            .join(" | ");
+        let main_class = selected
+            .iter()
+            .map(|c| c.name.as_str())
+            .collect::<Vec<_>>()
+            .join(" | ");
+
+        vec![
+            ("CATEGORY".to_string(), category),
+            ("MAIN_CLASS".to_string(), main_class),
+            ("SUB_CLASS".to_string(), "-".to_string()),
+        ]
+    }
+}
+
+/// Map a CATEGORY string (e.g. "Fatty Acyls [FA]") back to the family name
+/// (e.g. "Fatty Acyls") used by [`ChemicalClass`].
+fn family_from_category(category: &str) -> &str {
+    // Categories look like "Fatty Acyls [FA]" — strip the trailing [XX] code.
+    category.split(" [").next().unwrap_or(category).trim()
+}
+
+/// Map a family name to its LIPID MAPS two-letter code.
+fn family_code(family: &str) -> &str {
+    match family {
+        "Fatty Acyls" => "FA",
+        "Glycerolipids" => "GL",
+        "Glycerophospholipids" => "GP",
+        "Sphingolipids" => "SP",
+        "Sterol Lipids" => "ST",
+        "Prenol Lipids" => "PR",
+        "Saccharolipids" => "SL",
+        "Polyketides" => "PK",
+        _ => "-",
+    }
 }
 
 /// Returns LIPID MAPS class tags for a spectrum block as a list of (key, value) pairs.
