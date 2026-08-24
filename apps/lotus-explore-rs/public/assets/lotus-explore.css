@@ -94,42 +94,44 @@ img, svg, canvas, video {
     --fs-small-tablet: var(--fs-0);
 }
 
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-        color-scheme: dark;
-    }
+:root[data-theme="dark"],
+:root:not([data-theme="light"]) {
+    color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]),
-    [data-theme="dark"] {
-        --bg:        #0f172a;
-        --bg2:       #0f172a;
-        --surface:   #111827;
-        --surface2:  #111827;
-        --border:    #38475a;
-        --text:      #eef4fb;
-        --text2:     #d5deea;
-        --text3:     #a7b4c7;
-        --accent:    #8cbcff;
-        --accent2:   #5e98f3;
-        --btn-primary-bg: #0b5cab;
-        --btn-primary-hover-bg: #285fcc;
-        --green:     #4cc38a;
-        --red:       #ff8a80;
-        --yellow:    #f0b35e;
-        --purple:    #c3a0ff;
-        --shadow-xs: 0 1px 2px rgb(0 0 0 / 45%);
-        --shadow-sm: 0 4px 14px rgb(0 0 0 / 35%);
-        --shadow-md: 0 10px 30px rgb(0 0 0 / 35%);
-        --glass:     rgb(22 27 34 / 78%);
-        --ring:      0 0 0 3px rgb(140 188 255 / 28%);
-        --critical-text: #e8edf5;
-        --critical-muted: #d0d9e5;
-        --footer-wd-taxon: var(--wd-taxon);
-        --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 60%, #fff);
-        --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 77%, #fff);
-        --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #fff);
+:is([data-theme="dark"], :root:not([data-theme="light"])) {
+    --bg:        #0f172a;
+    --bg2:       #0f172a;
+    --surface:   #111827;
+    --surface2:  #111827;
+    --border:    #38475a;
+    --text:      #eef4fb;
+    --text2:     #d5deea;
+    --text3:     #a7b4c7;
+    --accent:    #8cbcff;
+    --accent2:   #5e98f3;
+    --btn-primary-bg: #0b5cab;
+    --btn-primary-hover-bg: #285fcc;
+    --green:     #4cc38a;
+    --red:       #ff8a80;
+    --yellow:    #f0b35e;
+    --purple:    #c3a0ff;
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 45%);
+    --shadow-sm: 0 4px 14px rgb(0 0 0 / 35%);
+    --shadow-md: 0 10px 30px rgb(0 0 0 / 35%);
+    --glass:     rgb(22 27 34 / 78%);
+    --ring:      0 0 0 3px rgb(140 188 255 / 28%);
+    --critical-text: #e8edf5;
+    --critical-muted: #d0d9e5;
+    --footer-wd-taxon: var(--wd-taxon);
+    --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 60%, #fff);
+    --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 77%, #fff);
+    --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #fff);
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+        color-scheme: light;
     }
 }
 
