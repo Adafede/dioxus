@@ -1,8 +1,4 @@
-/* ─────────────────────────────────────────────────────────────────────────────
-   LOTUS Knowledge Explorer — design tokens + base + app layout
-   Previously injected at runtime via `dangerous_inner_html`. Now assembled
-   from smaller Rust strings so the browser still caches the result.
-   ───────────────────────────────────────────────────────────────────────── */
+/* LOTUS Knowledge Explorer — design tokens + base + app layout */
 
 /* Reset & base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -103,8 +99,9 @@ img, svg, canvas, video {
     --fs-small-tablet: clamp(0.7rem, 0.68rem + 0.1vw, 0.8rem);
 }
 
+/* Grouped Dark Theme Variables to reduce duplicate definitions */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
         --bg:        #0f172a;
         --bg2:       #0f172a;
         --surface:   #111827;
@@ -135,44 +132,6 @@ img, svg, canvas, video {
     }
 }
 
-/* Light mode override via data-theme attribute */
-[data-theme="light"] {
-    color-scheme: light;
-    --bg:        #f7fafc;
-    --bg2:       #f7fafc;
-    --surface:   #ffffff;
-    --surface2:  #ffffff;
-    --border:    #c3cfdd;
-    --text:      #111827;
-    --text2:     #233548;
-    --text3:     #516274;
-    --accent:    #0b5cab;
-    --accent2:   #084b8a;
-    --btn-primary-bg: #0b5cab;
-    --btn-primary-hover-bg: #084b8a;
-    --green:     #1f7a4d;
-    --red:       #b42318;
-    --yellow:    #8a4b0f;
-    --purple:    #6941c6;
-    --shadow-xs: 0 1px 2px rgb(15 23 42 / 6%);
-    --shadow-sm: 0 4px 14px rgb(15 23 42 / 6%);
-    --shadow-md: 0 10px 30px rgb(15 23 42 / 9%);
-    --glass:     rgb(255 255 255 / 82%);
-    --ring:      0 0 0 3px rgb(11 92 171 / 22%);
-    --critical-text: #172535;
-    --critical-muted: #33475c;
-    --footer-wd-taxon: color-mix(in srgb, var(--wd-taxon) 77%, #000);
-    --footer-wd-compound: var(--wd-compound);
-    --footer-wd-reference: var(--wd-reference);
-    --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #000);
-}
-
-[data-theme="light"] body {
-    background: var(--bg);
-    color: var(--text);
-}
-
-/* Dark mode override via data-theme attribute */
 [data-theme="dark"] {
     color-scheme: dark;
     --bg:        #0f172a;
@@ -204,6 +163,11 @@ img, svg, canvas, video {
     --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #fff);
 }
 
+[data-theme="light"] {
+    color-scheme: light;
+}
+
+[data-theme="light"] body,
 [data-theme="dark"] body {
     background: var(--bg);
     color: var(--text);
@@ -1535,7 +1499,6 @@ button:focus-visible,
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
-
 
 /* Header controls wrapper: flex container for lang-switch and theme-toggle */
 .header-controls {
