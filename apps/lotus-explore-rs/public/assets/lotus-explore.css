@@ -180,8 +180,6 @@ body {
     font-size: var(--fs-body);
     line-height: 1.52;
     min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     font-optical-sizing: auto;
 }
