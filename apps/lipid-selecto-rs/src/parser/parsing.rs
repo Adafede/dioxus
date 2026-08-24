@@ -20,6 +20,9 @@ use std::collections::HashMap;
 #[derive(Clone, Debug)]
 pub struct SpectrumBlock {
     /// 1-based position of the block within the original file.
+    ///
+    /// Used as a stable key for re-associating gallery items with blocks
+    /// during filtered-MGF export.
     pub index: usize,
     /// Spectrum title (`TITLE=` / `NAME=`), if present.
     pub title: Option<String>,
@@ -47,6 +50,7 @@ pub struct SpectrumBlock {
 }
 
 impl SpectrumBlock {
+    /// Create a new empty block with the given 1-based index.
     #[must_use]
     pub const fn new(index: usize) -> Self {
         Self {

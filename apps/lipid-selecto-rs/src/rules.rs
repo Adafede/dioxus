@@ -9,8 +9,10 @@ use std::collections::HashMap;
 /// Error when loading evolved SMARTS rules from CSV.
 #[derive(Debug, thiserror::Error)]
 pub enum EvolvedRulesError {
+    /// CSV parsing error from the `csv` crate.
     #[error("CSV error: {0}")]
     Csv(#[from] csv::Error),
+    /// I/O error during CSV or file operations.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -21,13 +23,23 @@ pub enum EvolvedRulesError {
 /// re-parsing the pattern string on every `matches` call.
 #[derive(Clone, Debug)]
 pub struct LipidRule {
+    /// Display name of the lipid class (e.g. "PC(AA)", "Ceramides").
     pub name: String,
+    /// LIPID MAPS broad family (e.g. "Glycerophospholipids", "Sphingolipids").
     pub family: String,
+    /// Broad structural architecture ("F" fatty acyl, "G" glycerolipid,
+    /// "GP" glycerophospholipid, "S" sphingolipid, "ST" sterol, etc.).
     pub architecture: String,
+    /// Short human-readable description of the subclass.
     pub description: String,
+    /// SMARTS pattern string (as loaded from YAML).
     pub smarts: String,
+    /// Hex color code for UI rendering.
     pub color: String,
+    /// Matching priority — higher values take precedence when multiple
+    /// rules match the same spectrum.
     pub priority: u32,
+    /// Pre-compiled SMARTS query (parsed once in `new`).
     compiled: Option<chematic::smarts::QueryMolecule>,
 }
 
@@ -45,8 +57,11 @@ impl LipidRule {
 /// The rule library: a collection of lipid class definitions indexed by name.
 #[derive(Clone, Debug)]
 pub struct LipidRuleLibrary {
+    /// All rules indexed by class name (e.g. "PC(AA)").
     pub rules: HashMap<String, LipidRule>,
+    /// Family name → LIPID MAPS two-letter code (e.g. "FA" for "Fatty Acyls").
     pub families: HashMap<String, String>,
+    /// Architecture code → display name (e.g. "F" → "FA").
     pub architectures: HashMap<String, String>,
 }
 
@@ -437,7 +452,9 @@ pub mod colors {
     /// A color palette with 5 shades (darkest → lightest).
     #[derive(Debug, Clone, Copy)]
     pub struct Palette {
+        /// Palette identifier (e.g. `cvd_green`).
         pub name: &'static str,
+        /// Five hex color codes from darkest to lightest shade.
         pub colors: [&'static str; 5],
     }
 

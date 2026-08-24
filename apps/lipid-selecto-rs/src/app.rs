@@ -49,7 +49,7 @@ pub fn app() -> Element {
     let mz_max = use_signal(|| 1500.0f64);
     let precursor_min = use_signal(|| 0.0f64);
     let precursor_max = use_signal(|| 1000.0f64);
-    let adduct_filter = use_signal(|| String::new());
+    let adduct_filter = use_signal(String::new);
 
     let ctx = UploadCtx {
         file_name,
@@ -60,6 +60,7 @@ pub fn app() -> Element {
     };
 
     let rule_lib_for_change = rule_library.clone();
+    #[allow(clippy::redundant_clone)]
     let rule_lib_for_drop = rule_library.clone();
 
     let on_file_change = move |evt: Event<FormData>| {
@@ -132,7 +133,7 @@ pub fn app() -> Element {
                     }
                 }
                 if let Some(analysis) = ctx.analysis.read().as_ref() {
-                    { summary(&analysis.summary, selected_classes, &analysis.all_classes, &analysis.filtered_mgf, &analysis.gallery, &analysis.blocks, ctx.input_format.read().clone().unwrap_or(crate::format::LipidFormat::Mgf), mz_min, mz_max, precursor_min, precursor_max, adduct_filter) }
+                    { summary(&analysis.summary, &components::SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, &analysis.all_classes, &analysis.filtered_mgf, &analysis.gallery, &analysis.blocks, (*ctx.input_format.read()).unwrap_or(crate::format::LipidFormat::Mgf)) }
                     { gallery_with_filter(&analysis.gallery, &selected_classes.read(), *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read()) }
                 }
             }

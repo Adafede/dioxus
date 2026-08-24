@@ -9,6 +9,36 @@ use ui::prelude::*;
 
 use crate::chemical_class::ChemicalClass;
 
+/// Type alias for the packed gallery-entry tuple used in WASM download closures.
+///
+/// Fields: `title`, `smiles`, `category`, `main_class`, `sub_class`,
+/// `exact_mass`, `precursor_mz`, `adduct`, `class_matches`.
+pub type GallerySmilesEntry = (
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<f64>,
+    Option<f64>,
+    Option<String>,
+    std::collections::HashMap<String, bool>,
+);
+
+/// Grouped mutable filter signals for the summary panel.
+///
+/// Bundling the signals into a struct keeps the [`summary`] function
+/// signature readable and avoids passing twelve individual arguments.
+#[derive(Clone)]
+pub struct SummaryFilters {
+    pub selected_classes: Signal<Vec<String>>,
+    pub mz_min: Signal<f64>,
+    pub mz_max: Signal<f64>,
+    pub precursor_min: Signal<f64>,
+    pub precursor_max: Signal<f64>,
+    pub adduct_filter: Signal<String>,
+}
+
 /// LIPID MAPS family rank order (FA → GL → GP → SP → ST → PR → SL → PK).
 /// Used to sort the "Filter by chemical family" groups in the Results UI
 /// so they display in the standard LIPID MAPS classification hierarchy,
@@ -51,6 +81,9 @@ pub(super) fn checkbox_sm() -> String {
 /// Renders the "Available Lipid Classes" card, showing LMSD-based classes
 /// grouped by family with collapsible sections for each family.
 pub(super) fn lipid_classes_card() -> Element {
+    // Pre-compute family display data: (family_name, shown_classes, others_count, others_color)
+    const MAX_CLASSES_PER_FAMILY: usize = 4;
+
     // Load LMSD-based class scheme (same as Results panel)
     let all_classes = crate::chemical_class::lmsd_all();
 
@@ -65,9 +98,6 @@ pub(super) fn lipid_classes_card() -> Element {
     }
     families.sort_by_key(|(f, _)| family_rank(f));
 
-    const MAX_CLASSES_PER_FAMILY: usize = 4;
-
-    // Pre-compute family display data: (family_name, shown_classes, others_count, others_color)
     let family_display: Vec<(String, Vec<ChemicalClass>, usize, String)> = families
         .iter()
         .map(|(family, classes)| {
@@ -78,23 +108,20 @@ pub(super) fn lipid_classes_card() -> Element {
                 .collect();
             let others = classes.len() - shown.len();
             // Use shade 4 color for "N others" - get it from the first "others" class
-            let others_color = classes
-                .iter()
-                .skip(MAX_CLASSES_PER_FAMILY)
-                .next()
-                .map(|c| c.color.clone())
-                .unwrap_or_else(|| {
+            let others_color = classes.get(MAX_CLASSES_PER_FAMILY).map_or_else(
+                || {
                     classes
                         .last()
-                        .map(|c| c.color.clone())
-                        .unwrap_or("#cbd5e1".to_string())
-                });
+                        .map_or_else(|| "#cbd5e1".to_string(), |c| c.color.clone())
+                },
+                |c| c.color.clone(),
+            );
             (family.clone(), shown, others, others_color)
         })
         .collect();
 
     // Use a single open-collapsed state for simplicity (all expanded by default)
-    let family_expanded = use_signal(|| Vec::<usize>::new());
+    let family_expanded = use_signal(Vec::<usize>::new);
 
     rsx! {
                 div {
@@ -108,10 +135,9 @@ pub(super) fn lipid_classes_card() -> Element {
                             // Family header with color bar
                             {
                                 let family_clone = family.clone();
-                                let family_color = shown_classes.first().map(|c| c.color.clone())
-                                    .unwrap_or_else(|| others_color.clone());
+                                let family_color = shown_classes.first().map_or_else(|| others_color.clone(), |c| c.color.clone());
                                 let idx_copy = idx;
-                                let mut family_expanded_signal = family_expanded.clone();
+                                let mut family_expanded_signal = family_expanded;
                                 let is_expanded = family_expanded.read().contains(&idx);
                                 rsx! {
                                     div { style: StyleBuilder::new().build(),
@@ -154,7 +180,7 @@ pub(super) fn lipid_classes_card() -> Element {
                                                     div {
                                                         style: StyleBuilder::new().padding("0.3rem 0.5rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("6px").font_size("0.75rem").build(),
                                                         strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.25rem").build(),
-                                                            span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", &others_color).build(), }
+                                                            span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", others_color).build(), }
                                                             "{others_count} more"
                                                         }
                                                     }
@@ -170,154 +196,332 @@ pub(super) fn lipid_classes_card() -> Element {
     }
 }
 
-/// Renders the per-class summary panel with filter controls and download buttons.
-#[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
-pub(super) fn summary(
-    summary_data: &crate::parser::Summary,
-    mut selected_classes: Signal<Vec<String>>,
-    all_classes: &[ChemicalClass],
-    filtered_mgf: &str,
-    gallery: &[crate::parser::GalleryItem],
-    blocks: &[crate::parser::SpectrumBlock],
-    input_format: crate::format::LipidFormat,
+/// Renders the filter controls row: m/z range, precursor range, and adduct dropdown.
+#[allow(unused_variables, unused_mut)]
+fn filter_controls_row(
     mut mz_min: Signal<f64>,
     mut mz_max: Signal<f64>,
     mut precursor_min: Signal<f64>,
     mut precursor_max: Signal<f64>,
     mut adduct_filter: Signal<String>,
+    adduct_options: &[String],
 ) -> Element {
+    // Pre-build adduct option elements outside rsx! to avoid scoping issues
+    let adduct_option_elements: Vec<Element> = adduct_options
+        .iter()
+        .map(|opt| {
+            let opt_opt = opt.clone();
+            rsx! { option { value: "{opt_opt}", "{opt_opt}" } }
+        })
+        .collect();
+
+    rsx! {
+        div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.75rem").align_items("flex-end").property("margin", "0.75rem 0").build(),
+            // m/z range filter
+            div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
+                span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "m/z range" }
+                div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
+                    input {
+                        r#type: "number",
+                        placeholder: "min",
+                        value: "{mz_min.read()}",
+                        oninput: move |evt| {
+                            if let Ok(val) = evt.value().parse::<f64>() {
+                                mz_min.set(val);
+                            }
+                        },
+                        style: StyleBuilder::new().width("75px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                    }
+                    span { style: StyleBuilder::new().color("#94a3b8").font_size("0.9rem").build(), "–" }
+                    input {
+                        r#type: "number",
+                        placeholder: "max",
+                        value: "{mz_max.read()}",
+                        oninput: move |evt| {
+                            if let Ok(val) = evt.value().parse::<f64>() {
+                                mz_max.set(val);
+                            }
+                        },
+                        style: StyleBuilder::new().width("75px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                    }
+                }
+            }
+            // precursor range filter
+            div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
+                span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "precursor range" }
+                div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
+                    input {
+                        r#type: "number",
+                        placeholder: "min",
+                        value: "{precursor_min.read()}",
+                        oninput: move |evt| {
+                            if let Ok(val) = evt.value().parse::<f64>() {
+                                precursor_min.set(val);
+                            }
+                        },
+                        style: StyleBuilder::new().width("80px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                    }
+                    span { style: StyleBuilder::new().color("#94a3b8").font_size("0.9rem").build(), "–" }
+                    input {
+                        r#type: "number",
+                        placeholder: "max",
+                        value: "{precursor_max.read()}",
+                        oninput: move |evt| {
+                            if let Ok(val) = evt.value().parse::<f64>() {
+                                precursor_max.set(val);
+                            }
+                        },
+                        style: StyleBuilder::new().width("80px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                    }
+                }
+            }
+            // adduct dropdown
+            div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
+                span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "adduct" }
+                select {
+                    value: "{adduct_filter.read()}",
+                    onchange: move |evt| {
+                        adduct_filter.set(evt.value());
+                    },
+                    style: StyleBuilder::new().width("110px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+                    option { value: "", "All" }
+                    for elem in adduct_option_elements.iter() {
+                        { elem }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Renders the family selection panel with a "Select All" checkbox.
+#[allow(unused_variables, unused_mut)]
+fn family_filter_panel(
+    all_classes_owned: Vec<ChemicalClass>,
+    mut selected_classes: Signal<Vec<String>>,
+    families: &[(String, Vec<ChemicalClass>)],
+) -> Element {
+    rsx! {
+        if !all_classes_owned.is_empty() {
+            div { style: StyleBuilder::new().margin("0.8rem 0 0").padding("0.6rem").border("1px solid #e2e8f0").border_radius("10px").property("background", "#f8fafc").build(),
+                div { style: StyleBuilder::new().display("flex").align_items("center").justify_content("space-between").property("margin-bottom", "0.6rem").build(),
+                    h3 { style: StyleBuilder::new().margin("0").font_size("0.85rem").color("#0f172a").font_weight("700").property("text-transform", "uppercase").property("letter-spacing", "0.05em").build(), "Filter by chemical family" }
+                    label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").font_size("0.75rem").color("#475569").font_weight("600").build(),
+                        input {
+                            r#type: "checkbox",
+                            checked: selected_classes.read().len() == all_classes_owned.len(),
+                            onchange: move |_| {
+                                let mut classes = selected_classes.read().clone();
+                                if classes.len() == all_classes_owned.len() {
+                                    classes.clear();
+                                } else {
+                                    classes = all_classes_owned.iter().map(|c| c.name.clone()).collect();
+                                }
+                                selected_classes.set(classes);
+                            },
+                            style: checkbox_sm(),
+                        }
+                        "Select All"
+                    }
+                }
+                for (family, family_classes) in &families {
+                    { family_entry(family, family_classes, selected_classes) }
+                }
+            }
+        }
+    }
+}
+
+/// Download filtered MGF content with class tags, applying all filter selections.
+#[cfg(target_arch = "wasm32")]
+fn download_filtered_mgf(
+    blocks: &[crate::parser::SpectrumBlock],
+    block_class_tags: &[Vec<(String, String)>],
+    mz_min_val: f64,
+    mz_max_val: f64,
+    prec_min_val: f64,
+    prec_max_val: f64,
+    adduct_val: &str,
+    selected: &[String],
+) {
+    let mut mgf_content = String::new();
+    for (idx, block) in blocks.iter().enumerate() {
+        // Class selection filter: block must match at least one selected class
+        if !selected.is_empty()
+            && !block
+                .gallery_item_matches
+                .as_ref()
+                .map(|matches| {
+                    selected
+                        .iter()
+                        .any(|class_name| matches.get(class_name).copied().unwrap_or(false))
+                })
+                .unwrap_or(false)
+        {
+            continue;
+        }
+        // m/z range (using exact_mass)
+        if block.exact_mass < mz_min_val || block.exact_mass > mz_max_val {
+            continue;
+        }
+        // precursor range
+        if let Some(pmz) = block.precursor_mz {
+            if pmz < prec_min_val || pmz > prec_max_val {
+                continue;
+            }
+        }
+        // adduct filter
+        if !adduct_val.is_empty() && block.adduct.as_deref() != Some(adduct_val) {
+            continue;
+        }
+        // Tag each block with its attributed lipid class
+        let class_tags = &block_class_tags[idx];
+        let tagged = insert_class_comment(&block.raw, class_tags);
+        mgf_content.push_str(&tagged);
+        mgf_content.push_str("\n");
+    }
+    let _ = upload::download_text(&mgf_content, "lipids_filtered.mgf");
+}
+
+/// Download filtered SMILES content with class tags, applying all filter selections.
+#[cfg(target_arch = "wasm32")]
+fn download_filtered_smiles(
+    gallery_smiles: &[GallerySmilesEntry],
+    mz_min_val: f64,
+    mz_max_val: f64,
+    prec_min_val: f64,
+    prec_max_val: f64,
+    adduct_val: &str,
+    selected: &[String],
+) {
+    let filtered: Vec<_> = gallery_smiles
+        .iter()
+        .filter(
+            |(_, _, _, _, _, exact_mass, precursor_mz, adduct, class_matches)| {
+                // Class selection filter
+                if !selected.is_empty()
+                    && !selected
+                        .iter()
+                        .any(|class_name| class_matches.get(class_name).copied().unwrap_or(false))
+                {
+                    return false;
+                }
+                // m/z range filter
+                if let Some(mass) = exact_mass {
+                    if *mass < mz_min_val || *mass > mz_max_val {
+                        return false;
+                    }
+                }
+                // precursor range filter
+                if let (Some(pmz), val) = (precursor_mz, prec_min_val) {
+                    if *pmz < val || *pmz > prec_max_val {
+                        return false;
+                    }
+                }
+                // adduct filter
+                if !adduct_val.is_empty() && adduct.as_deref() != Some(adduct_val) {
+                    return false;
+                }
+                true
+            },
+        )
+        .collect();
+    let smiles_content = build_smiles_from_cloned(&filtered);
+    let _ = upload::download_text(&smiles_content, "lipids.smi");
+}
+
+/// Renders the download buttons (filtered MGF or filtered SMILES) with filter support.
+#[allow(unused_variables, unused_mut)]
+fn download_buttons(
+    filters: &SummaryFilters,
+    input_format: crate::format::LipidFormat,
+    filtered_mgf: &str,
+    all_classes_owned: &[ChemicalClass],
+    gallery: &[crate::parser::GalleryItem],
+    blocks: &[crate::parser::SpectrumBlock],
+) -> Element {
+    let mut mz_min = filters.mz_min;
+    let mut mz_max = filters.mz_max;
+    let mut precursor_min = filters.precursor_min;
+    let mut precursor_max = filters.precursor_max;
+    let mut adduct_filter = filters.adduct_filter;
+    let mut selected_classes = filters.selected_classes;
+    // Clone gallery SMILES data for the download closure
+    #[cfg(target_arch = "wasm32")]
+    let gallery_smiles: Vec<GallerySmilesEntry> =
+        prepare_gallery_smiles(gallery, all_classes_owned);
+    #[cfg(not(target_arch = "wasm32"))]
+    let gallery_smiles: Vec<GallerySmilesEntry> = Vec::new();
+
+    // Clone block data for filtered MGF download
+    #[cfg(target_arch = "wasm32")]
+    let blocks_owned: Vec<crate::parser::SpectrumBlock> = blocks.to_vec();
+    #[cfg(not(target_arch = "wasm32"))]
+    let _blocks_owned: Vec<crate::parser::SpectrumBlock> = blocks.to_vec();
+
+    // Pre-compute class tags for each block (for MGF download tagging)
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused))]
+    let block_class_tags: Vec<Vec<(String, String)>> =
+        prepare_block_class_tags(blocks, gallery, all_classes_owned);
+
+    // Clone filtered_mgf for the non-WASM download stub
+    #[allow(unused)]
+    let filtered_mgf_owned = filtered_mgf.to_string();
+
+    rsx! {
+        div { style: StyleBuilder::new().display("flex").gap("0.5rem").property("margin-top", "0.75rem").build(),
+            if input_format == crate::format::LipidFormat::Mgf {
+                button {
+                    r#type: "button",
+                    style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
+                    onclick: move |_| {
+                        #[cfg(target_arch = "wasm32")]
+                        download_filtered_mgf(&blocks_owned, &block_class_tags, *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read(), &selected_classes.read());
+                        #[cfg(not(target_arch = "wasm32"))]
+                        { let _ = &filtered_mgf_owned; }
+                    },
+                    "Download Filtered Lipids"
+                }
+            }
+            if input_format == crate::format::LipidFormat::Smiles {
+                button {
+                    r#type: "button",
+                    style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
+                    onclick: move |_| {
+                        #[cfg(target_arch = "wasm32")]
+                        download_filtered_smiles(&gallery_smiles, *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read(), &selected_classes.read());
+                    },
+                    "Download SMILES"
+                }
+            }
+        }
+    }
+}
+
+/// Renders the per-class summary panel with filter controls and download buttons.
+pub(super) fn summary(
+    summary_data: &crate::parser::Summary,
+    filters: &SummaryFilters,
+    all_classes: &[ChemicalClass],
+    filtered_mgf: &str,
+    gallery: &[crate::parser::GalleryItem],
+    blocks: &[crate::parser::SpectrumBlock],
+    input_format: crate::format::LipidFormat,
+) -> Element {
+    let selected_classes = filters.selected_classes;
+    let mz_min = filters.mz_min;
+    let mz_max = filters.mz_max;
+    let precursor_min = filters.precursor_min;
+    let precursor_max = filters.precursor_max;
+    let adduct_filter = filters.adduct_filter;
+
     let lipid_spectra = summary_data.lipid_items;
     let total_spectra = summary_data.total_items;
     let skipped = summary_data.skipped;
     let unclassified = summary_data.unclassified;
-
-    // Convert to owned data to avoid lifetime issues in closures
     let all_classes_owned = all_classes.to_vec();
-
-    // Collect unique adduct values from gallery items for dropdown
-    let adduct_values: std::collections::BTreeSet<String> = gallery
-        .iter()
-        .filter_map(|item| item.adduct.as_ref())
-        .filter(|a| !a.is_empty())
-        .cloned()
-        .collect();
-    let mut adduct_options: Vec<String> = adduct_values.into_iter().collect();
-    adduct_options.sort_by(|a, b| {
-        let a_plus = a.contains('+');
-        let b_plus = b.contains('+');
-        match (a_plus, b_plus) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.cmp(b),
-        }
-    });
-
-    // Group classes by family, then sort families by LIPID MAPS rank order.
-    let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
-    for class in &all_classes_owned {
-        if let Some(entry) = families.iter_mut().find(|(f, _)| f == &class.family) {
-            entry.1.push(class.clone());
-        } else {
-            families.push((class.family.clone(), vec![class.clone()]));
-        }
-    }
-    families.sort_by_key(|(f, _)| family_rank(f));
-
-    // Clone filtered_mgf for the non-WASM download stub
-    #[cfg(not(target_arch = "wasm32"))]
-    #[allow(unused)]
-    let filtered_mgf_owned = filtered_mgf.to_string();
-
-    // Clone gallery SMILES data for the download closure (must be 'static for WASM event handlers)
-    // Include class info + filter fields so the download can apply the same filters as the gallery
-    #[cfg(target_arch = "wasm32")]
-    let gallery_smiles: Vec<(
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<f64>,
-        Option<f64>,
-        Option<String>,
-        std::collections::HashMap<String, bool>,
-    )> = gallery
-        .iter()
-        .map(|item| {
-            // Use the same class tag computation as MGF export (ensures UI consistency)
-            let class_tags = get_class_tag_from_gallery(item, all_classes);
-            let category = class_tags
-                .iter()
-                .find(|(k, _)| k == "CATEGORY")
-                .map(|(_, v)| v.clone())
-                .unwrap_or_else(|| "-".to_string());
-            let main_class = class_tags
-                .iter()
-                .find(|(k, _)| k == "MAIN_CLASS")
-                .map(|(_, v)| v.clone())
-                .unwrap_or_else(|| "-".to_string());
-            (
-                item.title.clone(),
-                item.smiles.clone(),
-                Some(category),
-                Some(main_class),
-                Some("-".to_string()),
-                Some(item.exact_mass),
-                item.precursor_mz,
-                item.adduct.clone(),
-                item.class_matches.clone(),
-            )
-        })
-        .collect();
-    #[cfg(not(target_arch = "wasm32"))]
-    #[allow(unused)]
-    let gallery_smiles: Vec<(
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<f64>,
-        Option<f64>,
-        Option<String>,
-        std::collections::HashMap<String, bool>,
-    )> = Vec::new();
-
-    // Clone block data for filtered MGF download (must be 'static for WASM event handlers)
-    #[cfg(target_arch = "wasm32")]
-    let blocks_owned: Vec<crate::parser::SpectrumBlock> = blocks.to_vec();
-    #[cfg(not(target_arch = "wasm32"))]
-    #[allow(unused)]
-    let _blocks_owned: Vec<crate::parser::SpectrumBlock> = blocks.to_vec();
-
-    // Pre-compute class tags for each block (for MGF download tagging)
-    // Use gallery items' primary_class_name to ensure export matches UI
-    #[cfg(target_arch = "wasm32")]
-    let block_class_tags: Vec<Vec<(String, String)>> = blocks
-        .iter()
-        .map(|block| {
-            // Find the corresponding gallery item by block_index to get the same class as the UI
-            let gallery_item = gallery.iter().find(|item| item.block_index == block.index);
-            if let Some(item) = gallery_item {
-                get_class_tag_from_gallery(item, all_classes)
-            } else {
-                get_class_tag(block, all_classes)
-            }
-        })
-        .collect();
-    #[cfg(not(target_arch = "wasm32"))]
-    #[allow(unused)]
-    let _block_class_tags: Vec<Vec<(String, String)>> = blocks
-        .iter()
-        .map(|block| {
-            let gallery_item = gallery.iter().find(|item| item.block_index == block.index);
-            if let Some(item) = gallery_item {
-                get_class_tag_from_gallery(item, all_classes)
-            } else {
-                get_class_tag(block, all_classes)
-            }
-        })
-        .collect();
+    let adduct_options = collect_adduct_options(gallery);
+    let families = group_classes_by_family(&all_classes_owned);
 
     rsx! {
         div {
@@ -333,249 +537,16 @@ pub(super) fn summary(
                     span { style: StyleBuilder::new().color("#94a3b8").build(), "(ignored {unclassified} annotated non-lipid items)" }
                 }
             }
-
-            // Filter controls row
-            div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.75rem").align_items("flex-end").property("margin", "0.75rem 0").build(),
-                // m/z range filter
-                div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
-                    span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "m/z range" }
-                    div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
-                        input {
-                            r#type: "number",
-                            placeholder: "min",
-                            value: "{mz_min.read()}",
-                            oninput: move |evt| {
-                                if let Ok(val) = evt.value().parse::<f64>() {
-                                    mz_min.set(val);
-                                }
-                            },
-                            style: StyleBuilder::new().width("75px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
-                        }
-                        span { style: StyleBuilder::new().color("#94a3b8").font_size("0.9rem").build(), "–" }
-                        input {
-                            r#type: "number",
-                            placeholder: "max",
-                            value: "{mz_max.read()}",
-                            oninput: move |evt| {
-                                if let Ok(val) = evt.value().parse::<f64>() {
-                                    mz_max.set(val);
-                                }
-                            },
-                            style: StyleBuilder::new().width("75px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
-                        }
-                    }
-                }
-                // precursor range filter
-                div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
-                    span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "precursor range" }
-                    div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
-                        input {
-                            r#type: "number",
-                            placeholder: "min",
-                            value: "{precursor_min.read()}",
-                            oninput: move |evt| {
-                                if let Ok(val) = evt.value().parse::<f64>() {
-                                    precursor_min.set(val);
-                                }
-                            },
-                            style: StyleBuilder::new().width("80px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
-                        }
-                        span { style: StyleBuilder::new().color("#94a3b8").font_size("0.9rem").build(), "–" }
-                        input {
-                            r#type: "number",
-                            placeholder: "max",
-                            value: "{precursor_max.read()}",
-                            oninput: move |evt| {
-                                if let Ok(val) = evt.value().parse::<f64>() {
-                                    precursor_max.set(val);
-                                }
-                            },
-                            style: StyleBuilder::new().width("80px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
-                        }
-                    }
-                }
-                // adduct dropdown
-                div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
-                    span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "adduct" }
-                    select {
-                        value: "{adduct_filter.read()}",
-                        onchange: move |evt| {
-                            adduct_filter.set(evt.value());
-                        },
-                        style: StyleBuilder::new().width("110px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
-                        option { value: "", "All" }
-                        for adduct_opt in adduct_options.iter() {
-                            option { value: "{adduct_opt}", "{adduct_opt}" }
-                        }
-                    }
-                }
-            }
-
-            if !all_classes_owned.is_empty() {
-                div { style: StyleBuilder::new().margin("0.8rem 0 0").padding("0.6rem").border("1px solid #e2e8f0").border_radius("10px").property("background", "#f8fafc").build(),
-                    div { style: StyleBuilder::new().display("flex").align_items("center").justify_content("space-between").property("margin-bottom", "0.6rem").build(),
-                        h3 { style: StyleBuilder::new().margin("0").font_size("0.85rem").color("#0f172a").font_weight("700").property("text-transform", "uppercase").property("letter-spacing", "0.05em").build(), "Filter by chemical family" }
-                        label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").font_size("0.75rem").color("#475569").font_weight("600").build(),
-                            input {
-                                r#type: "checkbox",
-                                checked: selected_classes.read().len() == all_classes_owned.len(),
-                                onchange: move |_| {
-                                    let mut classes = selected_classes.read().clone();
-                                    if classes.len() == all_classes_owned.len() {
-                                        classes.clear();
-                                    } else {
-                                        classes = all_classes_owned.iter().map(|c| c.name.clone()).collect();
-                                    }
-                                    selected_classes.set(classes);
-                                },
-                                style: checkbox_sm(),
-                            }
-                            "Select All"
-                        }
-                    }
-                    for (family, family_classes) in families.iter() {
-                        { family_entry(family, family_classes, selected_classes) }
-                    }
-                }
-            }
-
-            // Download buttons - conditional on input format, with filter support
-            div { style: StyleBuilder::new().display("flex").gap("0.5rem").property("margin-top", "0.75rem").build(),
-                if input_format == crate::format::LipidFormat::Mgf {
-                    button {
-                        r#type: "button",
-                        style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
-                        onclick: move |_| {
-                            #[cfg(target_arch = "wasm32")]
-                            {
-                                let mz_min_val = *mz_min.read();
-                                let mz_max_val = *mz_max.read();
-                                let prec_min_val = *precursor_min.read();
-                                let prec_max_val = *precursor_max.read();
-                                let adduct_val = adduct_filter.read().clone();
-                                let selected = selected_classes.read().clone();
-                                // Filter blocks: class selection + m/z + precursor + adduct
-                                let mut mgf_content = String::new();
-                                for (idx, block) in blocks_owned.iter().enumerate() {
-                                    // Class selection filter: block must match at least one selected class
-                                    if !selected.is_empty() {
-                                        let matches_selected = block
-                                            .gallery_item_matches
-                                            .as_ref()
-                                            .map(|matches| {
-                                                selected
-                                                    .iter()
-                                                    .any(|class_name| {
-                                                        matches.get(class_name).copied().unwrap_or(false)
-                                                    })
-                                            })
-                                            .unwrap_or(false);
-                                        if !matches_selected {
-                                            continue;
-                                        }
-                                    }
-                                    // m/z range (using exact_mass)
-                                    if block.exact_mass < mz_min_val || block.exact_mass > mz_max_val {
-                                        continue;
-                                    }
-                                    // precursor range
-                                    if let Some(pmz) = block.precursor_mz {
-                                        if pmz < prec_min_val || pmz > prec_max_val {
-                                            continue;
-                                        }
-                                    }
-                                    // adduct filter
-                                    if !adduct_val.is_empty() && block.adduct.as_deref() != Some(&adduct_val) {
-                                        continue;
-                                    }
-                                    // Tag each block with its attributed lipid class
-                                    let class_tags = &block_class_tags[idx];
-                                    let tagged = insert_class_comment(&block.raw, class_tags);
-                                    mgf_content.push_str(&tagged);
-                                    mgf_content.push_str("\n");
-                                }
-                                let _ = upload::download_text(&mgf_content, "lipids_filtered.mgf");
-                            }
-                            #[cfg(not(target_arch = "wasm32"))]
-                            { let _ = &filtered_mgf_owned; }
-                        },
-                        "Download Filtered Lipids"
-                    }
-                }
-                if input_format == crate::format::LipidFormat::Smiles {
-                    button {
-                        r#type: "button",
-                        style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
-                        onclick: move |_| {
-                            #[cfg(target_arch = "wasm32")]
-                            {
-                                let mz_min_val = *mz_min.read();
-                                let mz_max_val = *mz_max.read();
-                                let prec_min_val = *precursor_min.read();
-                                let prec_max_val = *precursor_max.read();
-                                let adduct_val = adduct_filter.read().clone();
-                                let selected = selected_classes.read().clone();
-                                // Filter gallery items: class selection + m/z + precursor + adduct
-                                let filtered: Vec<_> = gallery_smiles
-                                    .iter()
-                                    .filter(|(_, _, _, _, _, exact_mass, precursor_mz, adduct, class_matches)| {
-                                        // Class selection filter
-                                        if !selected.is_empty() {
-                                            let matches_selected = selected
-                                                .iter()
-                                                .any(|class_name| {
-                                                    class_matches.get(class_name).copied().unwrap_or(false)
-                                                });
-                                            if !matches_selected {
-                                                return false;
-                                            }
-                                        }
-                                        // m/z range filter
-                                        if let Some(mass) = exact_mass {
-                                            if *mass < mz_min_val || *mass > mz_max_val {
-                                                return false;
-                                            }
-                                        }
-                                        // precursor range filter
-                                        if let (Some(pmz), val) = (precursor_mz, prec_min_val) {
-                                            if *pmz < val || *pmz > prec_max_val {
-                                                return false;
-                                            }
-                                        }
-                                        // adduct filter
-                                        if !adduct_val.is_empty() && adduct.as_deref() != Some(&adduct_val) {
-                                            return false;
-                                        }
-                                        true
-                                    })
-                                    .collect();
-                                let smiles_content = build_smiles_from_cloned(&filtered);
-                                let _ = upload::download_text(&smiles_content, "lipids.smi");
-                            }
-                        },
-                        "Download SMILES"
-                    }
-                }
-            }
+            { filter_controls_row(mz_min, mz_max, precursor_min, precursor_max, adduct_filter, &adduct_options) }
+            { family_filter_panel(all_classes_owned.clone(), selected_classes, &families) }
+            { download_buttons(&SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, input_format, filtered_mgf, &all_classes_owned, gallery, blocks) }
         }
     }
 }
 
 /// Builds a SMILES file content string from cloned gallery data with class tags.
 #[cfg(target_arch = "wasm32")]
-fn build_smiles_from_cloned(
-    gallery: &[&(
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<f64>,
-        Option<f64>,
-        Option<String>,
-        std::collections::HashMap<String, bool>,
-    )],
-) -> String {
+fn build_smiles_from_cloned(gallery: &[&GallerySmilesEntry]) -> String {
     use std::fmt::Write;
     let mut content = String::new();
     for (title, smiles, category, main_class, sub_class, _, _, _, _) in gallery {
@@ -611,12 +582,12 @@ fn build_smiles_from_cloned(
     content
 }
 
-/// Returns LIPID MAPS class tags from a GalleryItem, ensuring the export uses
+/// Returns LIPID MAPS class tags from a `GalleryItem`, ensuring the export uses
 /// the same class assignment shown in the UI (via `primary_class_name`).
 ///
 /// CATEGORY comes from the broad classification (`LipidClass::lipidmaps_category()`),
-/// MAIN_CLASS comes from `primary_class_name` (the first matching LMSD class),
-/// SUB_CLASS is always "-" (no sub-subclass info available).
+/// `MAIN_CLASS` comes from `primary_class_name` (the first matching LMSD class),
+/// `SUB_CLASS` is always "-" (no sub-subclass info available).
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn get_class_tag_from_gallery(
     item: &crate::parser::GalleryItem,
@@ -638,11 +609,10 @@ fn get_class_tag_from_gallery(
     if matched.is_empty() {
         // No gallery matches — fall back to broad classification for category,
         // primary_class_name for main class.
-        let category = item
-            .classification
-            .as_ref()
-            .map(|c| c.class.lipidmaps_category().to_string())
-            .unwrap_or_else(|| "Other Lipids [-]".to_string());
+        let category = item.classification.as_ref().map_or_else(
+            || "Other Lipids [-]".to_string(),
+            |c| c.class.lipidmaps_category().to_string(),
+        );
         let main_class = item
             .primary_class_name
             .clone()
@@ -657,21 +627,20 @@ fn get_class_tag_from_gallery(
         let broad_family = item
             .classification
             .as_ref()
-            .map(|c| family_from_category(c.class.lipidmaps_category()))
-            .unwrap_or("");
-        let same_family: Vec<&ChemicalClass> = if !broad_family.is_empty() {
+            .map_or("", |c| family_from_category(c.class.lipidmaps_category()));
+        let same_family: Vec<&ChemicalClass> = if broad_family.is_empty() {
+            Vec::new()
+        } else {
             matched
                 .iter()
                 .filter(|c| c.family == broad_family)
                 .copied()
                 .collect()
-        } else {
-            Vec::new()
         };
 
         // Use same-family matches if available, otherwise all matched classes.
         let selected: Vec<&ChemicalClass> = if same_family.is_empty() {
-            matched.iter().copied().collect()
+            matched.clone()
         } else {
             same_family
         };
@@ -720,11 +689,11 @@ fn family_code(family: &str) -> &str {
 }
 
 /// Returns LIPID MAPS class tags for a spectrum block as a list of (key, value) pairs.
-/// This is a fallback used when no matching GalleryItem is found.
+/// This is a fallback used when no matching `GalleryItem` is found.
 ///
 /// Uses the broad `LipidClassification` for CATEGORY (mapped to proper LIPID MAPS
 /// category names with codes like "Fatty Acyls [FA]"), and the first matching
-/// LMSD subclass name for MAIN_CLASS. SUB_CLASS is always "-" (no sub-subclass
+/// LMSD subclass name for `MAIN_CLASS`. `SUB_CLASS` is always "-" (no sub-subclass
 /// info available).
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn get_class_tag(
@@ -732,11 +701,10 @@ fn get_class_tag(
     classes: &[ChemicalClass],
 ) -> Vec<(String, String)> {
     // Broad category from structural/formula classification (LIPID MAPS category names)
-    let category = block
-        .classification
-        .as_ref()
-        .map(|c| c.class.lipidmaps_category().to_string())
-        .unwrap_or_else(|| "Other Lipids [-]".to_string());
+    let category = block.classification.as_ref().map_or_else(
+        || "Other Lipids [-]".to_string(),
+        |c| c.class.lipidmaps_category().to_string(),
+    );
 
     // First matching LMSD subclass
     let main_class = block
@@ -767,29 +735,31 @@ fn get_class_tag(
     ]
 }
 
-/// Inserts COMMENT= lines with LIPID_MAPS class tags in the MGF header block (after BEGIN IONS, before peaks).
+/// Inserts COMMENT= lines with `LIPID_MAPS` class tags in the MGF header block (after BEGIN IONS, before peaks).
 /// Each item is a (key, value) pair like ("CATEGORY", "Fatty Acyls [FA]").
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn insert_class_comment(block_raw: &str, class_tags: &[(String, String)]) -> String {
     let comment_block: String = class_tags
         .iter()
-        .map(|(k, v)| format!("COMMENT=LIPID_MAPS_{}={}\n", k, v))
-        .collect();
+        .map(|(k, v)| format!("COMMENT=LIPID_MAPS_{k}={v}\n"))
+        .collect::<Vec<_>>()
+        .concat();
     // Find the end of the BEGIN IONS header line and insert after it
-    if let Some(begin_pos) = block_raw.find(|c: char| !c.is_whitespace()) {
-        if block_raw[begin_pos..].starts_with("BEGIN IONS") {
-            // Find end of the BEGIN IONS line
-            let after_begin = &block_raw[begin_pos..];
-            if let Some(newline_pos) = after_begin.find('\n') {
-                let (before, after) = after_begin.split_at(newline_pos + 1);
-                return format!("{}{}{}", before, comment_block, after);
-            }
+    if let Some(begin_pos) = block_raw.find(|c: char| !c.is_whitespace())
+        && block_raw[begin_pos..].starts_with("BEGIN IONS")
+    {
+        // Find end of the BEGIN IONS line
+        let after_begin = &block_raw[begin_pos..];
+        if let Some(newline_pos) = after_begin.find('\n') {
+            let (before, after) = after_begin.split_at(newline_pos + 1);
+            return format!("{before}{comment_block}{after}");
         }
     }
     // Fallback: prepend with the comment
-    format!("{}{}", comment_block, block_raw)
+    format!("{comment_block}{block_raw}")
 }
 
+#[allow(unused_variables, unused_mut)]
 pub(super) fn family_entry(
     family: &str,
     family_classes: &[ChemicalClass],
@@ -873,6 +843,103 @@ pub(super) fn family_entry(
     }
 }
 
+/// Collect unique adduct values from gallery items, sorted with `+` first.
+fn collect_adduct_options(gallery: &[crate::parser::GalleryItem]) -> Vec<String> {
+    let adduct_values: std::collections::BTreeSet<String> = gallery
+        .iter()
+        .filter_map(|item| item.adduct.as_ref())
+        .filter(|a| !a.is_empty())
+        .cloned()
+        .collect();
+    let mut adduct_options: Vec<String> = adduct_values.into_iter().collect();
+    adduct_options.sort_by(|a, b| {
+        let a_plus = a.contains('+');
+        let b_plus = b.contains('+');
+        match (a_plus, b_plus) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.cmp(b),
+        }
+    });
+    adduct_options
+}
+
+/// Group chemical classes by family, sorted by LIPID MAPS rank order.
+fn group_classes_by_family(classes: &[ChemicalClass]) -> Vec<(String, Vec<ChemicalClass>)> {
+    let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
+    for class in classes {
+        if let Some(entry) = families.iter_mut().find(|(f, _)| f == &class.family) {
+            entry.1.push(class.clone());
+        } else {
+            families.push((class.family.clone(), vec![class.clone()]));
+        }
+    }
+    families.sort_by_key(|(f, _)| family_rank(f));
+    families
+}
+
+/// Prepare gallery SMILES entries for WASM download closures.
+///
+/// Each entry includes the SMILES, title, category, main class, exact mass,
+/// precursor m/z, adduct, and class-match map so the download can apply
+/// the same filters as the gallery view.
+#[cfg(target_arch = "wasm32")]
+fn prepare_gallery_smiles(
+    gallery: &[crate::parser::GalleryItem],
+    all_classes: &[ChemicalClass],
+) -> Vec<GallerySmilesEntry> {
+    gallery
+        .iter()
+        .map(|item| {
+            // Use the same class tag computation as MGF export (ensures UI consistency)
+            let class_tags = get_class_tag_from_gallery(item, all_classes);
+            let category = class_tags
+                .iter()
+                .find(|(k, _)| k == "CATEGORY")
+                .map(|(_, v)| v.clone())
+                .unwrap_or_else(|| "-".to_string());
+            let main_class = class_tags
+                .iter()
+                .find(|(k, _)| k == "MAIN_CLASS")
+                .map(|(_, v)| v.clone())
+                .unwrap_or_else(|| "-".to_string());
+            (
+                item.title.clone(),
+                item.smiles.clone(),
+                Some(category),
+                Some(main_class),
+                Some("-".to_string()),
+                Some(item.exact_mass),
+                item.precursor_mz,
+                item.adduct.clone(),
+                item.class_matches.clone(),
+            )
+        })
+        .collect()
+}
+
+/// Pre-compute class tags for each block (for MGF download tagging).
+///
+/// Tries to find the corresponding [`GalleryItem`] by `block_index` to get
+/// the same class as the UI. Falls back to direct block classification.
+fn prepare_block_class_tags(
+    blocks: &[crate::parser::SpectrumBlock],
+    gallery: &[crate::parser::GalleryItem],
+    all_classes: &[ChemicalClass],
+) -> Vec<Vec<(String, String)>> {
+    blocks
+        .iter()
+        .map(|block| {
+            // Find the corresponding gallery item by block_index to get the same class as the UI
+            let gallery_item = gallery.iter().find(|item| item.block_index == block.index);
+            gallery_item.map_or_else(
+                || get_class_tag(block, all_classes),
+                |item| get_class_tag_from_gallery(item, all_classes),
+            )
+        })
+        .collect()
+}
+
 /// Renders the structure-diagram gallery, filtered by selected classes and m/p/adduct filters.
 pub(super) fn gallery_with_filter(
     gallery: &[crate::parser::GalleryItem],
@@ -902,16 +969,14 @@ pub(super) fn gallery_with_filter(
                 return false;
             }
             // precursor range filter
-            if let Some(pmz) = item.precursor_mz {
-                if pmz < precursor_min || pmz > precursor_max {
-                    return false;
-                }
+            if let Some(pmz) = item.precursor_mz
+                && (pmz < precursor_min || pmz > precursor_max)
+            {
+                return false;
             }
             // adduct filter
-            if !adduct_filter.is_empty() {
-                if item.adduct.as_deref() != Some(adduct_filter) {
-                    return false;
-                }
+            if !adduct_filter.is_empty() && item.adduct.as_deref() != Some(adduct_filter) {
+                return false;
             }
             true
         })

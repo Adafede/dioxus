@@ -1,12 +1,13 @@
-//! Generate example_lipids.smi from LipidMaps LMSD data.
+//! Generate `example_lipids.smi` from `LipidMaps` LMSD data.
 //!
-//! Downloads LMSD.sdf.zip from LipidMaps, parses it, and generates
+//! Downloads `LMSD.sdf.zip` from `LipidMaps`, parses it, and generates
 //! example SMILES for all major lipid classes.
 //!
 //! Also outputs a Rust constant that can be used in the lipid-selecto-rs app.
 
 use std::collections::HashMap;
 use std::io::Read;
+use std::io::Write;
 use std::path::Path;
 
 use lipidsdl::sdf::lipidmaps;
@@ -16,35 +17,37 @@ fn get_family_code(main_class: &str) -> Option<&'static str> {
     let main_class_str = main_class.trim();
 
     // Extract the class code from brackets, e.g., "[GP01]"
-    if let Some(s) = main_class_str.split_whitespace().next() {
-        if s.starts_with('[') && s.ends_with(']') {
-            let code = &s[1..s.len() - 1];
-            if code.starts_with("GP") {
-                return Some("GP");
-            }
-            if code.starts_with("GL") {
-                return Some("GL");
-            }
-            if code.starts_with("FA") {
-                return Some("FA");
-            }
-            if code.starts_with("SP") {
-                return Some("SP");
-            }
-            if code.starts_with("ST") {
-                return Some("ST");
-            }
-            if code.starts_with("PR") {
-                return Some("PR");
-            }
-            if code.starts_with("SL") {
-                return Some("SL");
-            }
-            if code.starts_with("PK") {
-                return Some("PK");
-            }
-            return None;
+    let s = main_class_str.split_whitespace().next();
+    if let Some(s) = s
+        && s.starts_with('[')
+        && s.ends_with(']')
+    {
+        let code = &s[1..s.len() - 1];
+        if code.starts_with("GP") {
+            return Some("GP");
         }
+        if code.starts_with("GL") {
+            return Some("GL");
+        }
+        if code.starts_with("FA") {
+            return Some("FA");
+        }
+        if code.starts_with("SP") {
+            return Some("SP");
+        }
+        if code.starts_with("ST") {
+            return Some("ST");
+        }
+        if code.starts_with("PR") {
+            return Some("PR");
+        }
+        if code.starts_with("SL") {
+            return Some("SL");
+        }
+        if code.starts_with("PK") {
+            return Some("PK");
+        }
+        return None;
     }
 
     // Map first word to family
@@ -72,7 +75,7 @@ fn get_family_code(main_class: &str) -> Option<&'static str> {
     }
 }
 
-/// Check if a SMILES string looks like a valid lipid (has carbon atoms)
+/// Check if a SMILES string looks like a valid lipid (has at least 6 carbons).
 fn is_valid_lipid(smiles: &str) -> bool {
     smiles.chars().filter(|&c| c == 'C').count() >= 6
 }
@@ -87,7 +90,7 @@ struct LipidExample {
 
 /// Sample examples from the TSV data using round-robin sampling.
 ///
-/// For each MAIN_CLASS, we sample evenly across all entries to get diverse
+/// For each `MAIN_CLASS`, we sample evenly across all entries to get diverse
 /// representation rather than just taking the first N.
 fn sample_examples_from_tsv(tsv_text: &str, max_per_main_class: usize) -> Vec<LipidExample> {
     type Example = (String, String, String); // LM_ID, SMILES, Name
@@ -112,7 +115,7 @@ fn sample_examples_from_tsv(tsv_text: &str, max_per_main_class: usize) -> Vec<Li
 
         let main_class_str = main_class.trim().to_string();
 
-        if let Some(family) = get_family_code(&main_class_str) {
+        if get_family_code(&main_class_str).is_some() {
             by_main_class
                 .entry(main_class_str)
                 .or_default()
@@ -145,10 +148,10 @@ fn sample_examples_from_tsv(tsv_text: &str, max_per_main_class: usize) -> Vec<Li
         let max_to_take = max_per_main_class.min(total);
 
         // Round-robin sampling: take every Nth entry
-        let step = (total + max_per_main_class - 1) / max_per_main_class;
+        let step = total.div_ceil(max_per_main_class);
         let step = step.max(1);
 
-        for (idx, (lm_id, smiles, name)) in valid_entries
+        for (_, (_lm_id, smiles, name)) in valid_entries
             .into_iter()
             .enumerate()
             .filter(|(i, _)| i % step == 0)
@@ -192,9 +195,17 @@ fn extract_sdf_from_zip(data: &[u8]) -> Result<String, String> {
     Ok(sdf_text)
 }
 
-fn main() {
+/// Parsed command-line arguments for the example generator.
+struct CliArgs {
+    assets_dir: std::path::PathBuf,
+    max_per_main_class: usize,
+    write_rust_constant: bool,
+}
+
+/// Parse command-line arguments into [`CliArgs`].
+fn parse_args() -> CliArgs {
     let args: Vec<String> = std::env::args().collect();
-    let mut assets_dir = Path::new("apps/lipid-selecto-rs/assets");
+    let mut assets_dir = std::path::PathBuf::from("apps/lipid-selecto-rs/assets");
     let mut max_per_main_class: usize = 10;
     let mut write_rust_constant = false;
 
@@ -209,16 +220,146 @@ fn main() {
                 i += 1;
             }
             _ if !args[i].starts_with('-') => {
-                assets_dir = Path::new(&args[i]);
+                assets_dir = std::path::PathBuf::from(&args[i]);
             }
             _ => {}
         }
         i += 1;
     }
 
+    CliArgs {
+        assets_dir,
+        max_per_main_class,
+        write_rust_constant,
+    }
+}
+
+/// Write the filtered SMILES file.
+fn write_smi_file(examples: &[LipidExample], out_path: &Path) {
+    std::fs::create_dir_all(out_path.parent().unwrap_or_else(|| Path::new(".")))
+        .expect("Failed to create output directory");
+    let mut out = std::fs::File::create(out_path).expect("Failed to create output file");
+
+    writeln!(
+        out,
+        "# Example lipids covering all major LIPID MAPS classes"
+    )
+    .expect("Failed to write header");
+    writeln!(out, "# Format: ID\tSMILES\tDescription").expect("Failed to write format");
+    writeln!(out).expect("Failed to write blank line");
+
+    for ex in examples {
+        writeln!(out, "{name}\t{smiles}", name = ex.name, smiles = ex.smiles)
+            .expect("Failed to write entry");
+        writeln!(
+            out,
+            "# {name} ({family})",
+            name = ex.name,
+            family = ex.family
+        )
+        .expect("Failed to write description");
+    }
+
     eprintln!(
-        "Generating example_lipids.smi from LipidMaps (max {} per MAIN_CLASS)...",
-        max_per_main_class
+        "Wrote {} examples to {}",
+        examples.len(),
+        out_path.display()
+    );
+}
+
+/// Write the Rust constant file.
+#[allow(clippy::too_many_lines, clippy::uninlined_format_args)]
+fn write_rust_constant(examples: &[LipidExample], rust_path: &Path) {
+    let mut rust_out = std::fs::File::create(rust_path).expect("Failed to create examples.rs");
+
+    writeln!(
+        rust_out,
+        "//! Collection of {} example SMILES covering all LIPID MAPS classes from real data.",
+        examples.len()
+    )
+    .unwrap();
+    writeln!(rust_out, "//! Generated from LipidMaps LMSD dataset.").unwrap();
+    writeln!(
+        rust_out,
+        "//! Covers all 8 categories: FA, GL, GP, SP, ST, PR, SL, PK"
+    )
+    .unwrap();
+    writeln!(rust_out).unwrap();
+    writeln!(
+        rust_out,
+        "/// Real lipid examples from LipidMaps LMSD dataset."
+    )
+    .unwrap();
+    writeln!(
+        rust_out,
+        "pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[ "
+    )
+    .unwrap();
+
+    // Group examples by family
+    let mut by_family: HashMap<&str, Vec<_>> = HashMap::new();
+    for ex in examples {
+        by_family.entry(ex.family).or_default().push(ex.clone());
+    }
+
+    let order = ["FA", "GL", "GP", "SP", "ST", "PR", "SL", "PK"];
+    for fam in &order {
+        if let Some(exs) = by_family.get(fam) {
+            // Write comment header
+            match *fam {
+                "FA" => writeln!(rust_out, "    // === Fatty Acyls (FA) ===").unwrap(),
+                "GL" => writeln!(rust_out, "    // === Glycerolipids (GL) ===").unwrap(),
+                "GP" => writeln!(rust_out, "    // === Glycerophospholipins (GP) ===").unwrap(),
+                "SP" => writeln!(rust_out, "    // === Sphingolipids (SP) ===").unwrap(),
+                "ST" => writeln!(rust_out, "    // === Sterol Lipids (ST) ===").unwrap(),
+                "PR" => writeln!(rust_out, "    // === Prenol Lipids (PR) ===").unwrap(),
+                "SL" => writeln!(rust_out, "    // === Saccharolipids (SL) ===").unwrap(),
+                "PK" => writeln!(rust_out, "    // === Polyketides (PK) ===").unwrap(),
+                _ => {}
+            }
+
+            for ex in exs {
+                let safe_name = ex.name.replace(['\\', '"'], "");
+                let safe_smiles = ex.smiles.replace(['\\'], "\\\\").replace('"', "\\\"");
+                writeln!(
+                    rust_out,
+                    "    (\"{safe_name}\", \"{safe_smiles}\", \"{safe_name}\"),"
+                )
+                .unwrap();
+            }
+        }
+    }
+
+    writeln!(rust_out, "];").unwrap();
+
+    // Write the example_smiles helper function
+    writeln!(rust_out).unwrap();
+    writeln!(
+        rust_out,
+        "/// Convert example list to query format (just SMILES + description lines separated by newlines)."
+    )
+    .unwrap();
+    writeln!(rust_out, "#[must_use]").unwrap();
+    writeln!(rust_out, "pub fn example_smiles() -> Vec<String> {{").unwrap();
+    writeln!(rust_out, "    EXAMPLE_LIPIDS").unwrap();
+    writeln!(rust_out, "        .iter()").unwrap();
+    writeln!(
+        rust_out,
+        "        .map(|(id, smiles, _)| format!(\"{{id}}\\t{{smiles}}\"))"
+    )
+    .unwrap();
+    writeln!(rust_out, "        .collect()").unwrap();
+    writeln!(rust_out, "}}").unwrap();
+
+    eprintln!("Wrote Rust constant to {}", rust_path.display());
+}
+
+fn main() {
+    let args = parse_args();
+
+    eprintln!(
+        "Generating `example_lipids.smi` from `LipidMaps` (max {} per `MAIN_CLASS`)...",
+        args.max_per_main_class
     );
 
     let zip_path = std::env::temp_dir().join("LMSD.sdf.zip");
@@ -242,118 +383,16 @@ fn main() {
 
     eprintln!("Processed {count} lipids from LMSD");
 
-    let examples = sample_examples_from_tsv(&tsv, max_per_main_class);
+    let examples = sample_examples_from_tsv(&tsv, args.max_per_main_class);
     eprintln!("Selected {} total examples", examples.len());
 
     // Write SMI file
-    let out_path = assets_dir.join("example_lipids.smi");
-    std::fs::create_dir_all(assets_dir).expect("Failed to create output directory");
-    let mut out = std::fs::File::create(&out_path).expect("Failed to create output file");
-
-    use std::io::Write;
-    writeln!(
-        out,
-        "# Example lipids covering all major LIPID MAPS classes"
-    )
-    .expect("Failed to write header");
-    writeln!(out, "# Format: ID\tSMILES\tDescription").expect("Failed to write format");
-    writeln!(out).expect("Failed to write blank line");
-
-    for ex in &examples {
-        writeln!(out, "{}\t{}", ex.name, ex.smiles).expect("Failed to write entry");
-        writeln!(out, "# {} ({})", ex.name, ex.family).expect("Failed to write description");
-    }
-
-    eprintln!(
-        "Wrote {} examples to {}",
-        examples.len(),
-        out_path.display()
-    );
+    let out_path = args.assets_dir.join("example_lipids.smi");
+    write_smi_file(&examples, &out_path);
 
     // Also write Rust constant if requested
-    if write_rust_constant {
+    if args.write_rust_constant {
         let rust_path = Path::new("apps/lipid-selecto-rs/src/examples.rs");
-        let mut rust_out = std::fs::File::create(rust_path).expect("Failed to create examples.rs");
-
-        writeln!(
-            rust_out,
-            "//! Collection of {} example SMILES covering all LIPID MAPS classes from real data.",
-            examples.len()
-        )
-        .unwrap();
-        writeln!(rust_out, "//! Generated from LipidMaps LMSD dataset.").unwrap();
-        writeln!(
-            rust_out,
-            "//! Covers all 8 categories: FA, GL, GP, SP, ST, PR, SL, PK"
-        )
-        .unwrap();
-        writeln!(rust_out).unwrap();
-        writeln!(
-            rust_out,
-            "/// Real lipid examples from LipidMaps LMSD dataset."
-        )
-        .unwrap();
-        writeln!(
-            rust_out,
-            "pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[ "
-        )
-        .unwrap();
-
-        // Group examples by family
-        let mut by_family: HashMap<&str, Vec<_>> = HashMap::new();
-        for ex in &examples {
-            by_family.entry(ex.family).or_default().push(ex.clone());
-        }
-
-        let order = ["FA", "GL", "GP", "SP", "ST", "PR", "SL", "PK"];
-        for fam in &order {
-            if let Some(examples) = by_family.get(fam) {
-                // Write comment header
-                match *fam {
-                    "FA" => writeln!(rust_out, "    // === Fatty Acyls (FA) ===").unwrap(),
-                    "GL" => writeln!(rust_out, "    // === Glycerolipids (GL) ===").unwrap(),
-                    "GP" => writeln!(rust_out, "    // === Glycerophospholipids (GP) ===").unwrap(),
-                    "SP" => writeln!(rust_out, "    // === Sphingolipids (SP) ===").unwrap(),
-                    "ST" => writeln!(rust_out, "    // === Sterol Lipids (ST) ===").unwrap(),
-                    "PR" => writeln!(rust_out, "    // === Prenol Lipids (PR) ===").unwrap(),
-                    "SL" => writeln!(rust_out, "    // === Saccharolipids (SL) ===").unwrap(),
-                    "PK" => writeln!(rust_out, "    // === Polyketides (PK) ===").unwrap(),
-                    _ => {}
-                }
-
-                for ex in examples {
-                    let safe_name = ex.name.replace('\\', "").replace("\"", "");
-                    let safe_smiles = ex.smiles.replace('\\', "\\\\").replace("\"", "\\\"");
-                    writeln!(
-                        rust_out,
-                        "    (\"{}\", \"{}\", \"{}\"),",
-                        safe_name, safe_smiles, safe_name
-                    )
-                    .unwrap();
-                }
-            }
-        }
-
-        writeln!(rust_out, "];").unwrap();
-
-        // Write the example_smiles helper function
-        writeln!(rust_out).unwrap();
-        writeln!(
-            rust_out,
-            "/// Convert example list to query format (just SMILES + description lines separated by newlines)."
-        ).unwrap();
-        writeln!(rust_out, "#[must_use]").unwrap();
-        writeln!(rust_out, "pub fn example_smiles() -> Vec<String> {{").unwrap();
-        writeln!(rust_out, "    EXAMPLE_LIPIDS").unwrap();
-        writeln!(rust_out, "        .iter()").unwrap();
-        writeln!(
-            rust_out,
-            "        .map(|(id, smiles, _)| format!(\"{{id}}\\t{{smiles}}\"))"
-        )
-        .unwrap();
-        writeln!(rust_out, "        .collect()").unwrap();
-        writeln!(rust_out, "}}").unwrap();
-
-        eprintln!("Wrote Rust constant to {}", rust_path.display());
+        write_rust_constant(&examples, rust_path);
     }
 }

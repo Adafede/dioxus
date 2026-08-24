@@ -52,9 +52,11 @@ pub enum ChainType {
 pub struct ChainComposition {
     /// All detected chains
     pub chains: Vec<AcylChain>,
-    /// Summary of chain counts by type
+    /// Number of saturated fatty acyl chains.
     pub saturated_count: usize,
+    /// Number of monounsaturated fatty acyl chains.
     pub mufa_count: usize,
+    /// Number of polyunsaturated fatty acyl chains.
     pub pufa_count: usize,
 }
 

@@ -14,9 +14,13 @@ use std::collections::HashMap;
 /// Aggregated counts produced by [`summarize`] / [`analyze`].
 #[derive(Clone, Debug, Default)]
 pub struct Summary {
+    /// Total number of blocks parsed from the input.
     pub total_items: usize,
+    /// Blocks that matched at least one lipid class.
     pub lipid_items: usize,
+    /// Annotated blocks (had SMILES or FORMULA) that did not match any lipid class.
     pub unclassified: usize,
+    /// Blocks with no SMILES or FORMULA annotation at all.
     pub skipped: usize,
 }
 
@@ -142,14 +146,23 @@ pub fn build_gallery(
 /// A lightweight, owned view of one spectrum used to render the gallery.
 #[derive(Clone, Debug)]
 pub struct GalleryItem {
+    /// 1-based index linking back to the original [`SpectrumBlock`].
     pub block_index: usize,
+    /// Spectrum title from `TITLE=` / `NAME=` / `SCANS=`, if present.
     pub title: Option<String>,
+    /// SMILES string from `SMILES=` metadata, if present.
     pub smiles: Option<String>,
+    /// Molecular formula from `FORMULA=`, if present (empty otherwise).
     pub formula: String,
+    /// Exact monoisotopic mass (cached during classification, not re-parsed).
     pub exact_mass: f64,
+    /// Observed precursor m/z from `PEPMASS=` / `PRECURSOR_MZ=`.
     pub precursor_mz: Option<f64>,
+    /// Ion charge from `CHARGE=`, if present.
     pub charge: Option<String>,
+    /// Adduct ion from `ADDUCT=`, if present (e.g. "[M+H]+").
     pub adduct: Option<String>,
+    /// Pre-rendered 2D structure SVG.
     pub svg: String,
     /// Maps chemical class name -> bool (does this molecule match?)
     pub class_matches: HashMap<String, bool>,
@@ -157,7 +170,7 @@ pub struct GalleryItem {
     pub primary_class_color: String,
     /// Primary class name (from first matching class, used for export tagging)
     pub primary_class_name: Option<String>,
-    /// Broad lipid classification (LipidClass) for LIPID MAPS category mapping
+    /// Broad lipid classification (`LipidClass`) for LIPID MAPS category mapping
     pub classification: Option<LipidClassification>,
 }
 
@@ -169,11 +182,15 @@ fn empty_svg() -> String {
 /// Aggregate analysis result handed to the UI by the wasm worker / tests.
 #[derive(Debug)]
 pub struct Analysis {
+    /// Aggregated counts (total, lipid, unclassified, skipped).
     pub summary: Summary,
+    /// Pre-rendered gallery cards, one per lipid-positive block.
     pub gallery: Vec<GalleryItem>,
+    /// Filtered MGF text containing only blocks that match all selected classes.
     pub filtered_mgf: String,
+    /// All parsed spectrum blocks (owned, for chunked re-processing in WASM).
     pub blocks: Vec<SpectrumBlock>,
-    /// All available chemical classes (for UI selection)
+    /// All available chemical classes (for UI selection and class matching).
     pub all_classes: Vec<ChemicalClass>,
 }
 
@@ -274,8 +291,10 @@ pub fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     for block in &mut blocks {
         block.classify();
     }
-    // Also compute class matches for is_lipid() to work correctly
-    let all_classes = ChemicalClass::defaults();
+    // Also compute class matches for is_lipid() to work correctly.
+    // Use lmsd_all() (same classes as build_analysis) for consistency —
+    // this ensures analyze() and build_analysis() classify identically.
+    let all_classes = crate::chemical_class::lmsd_all();
     for block in &mut blocks {
         block.compute_class_matches(&all_classes);
     }

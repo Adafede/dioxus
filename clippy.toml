@@ -25,6 +25,7 @@ allowed-duplicate-crates = [
   "reqwest",
   "rustc-hash",
   "sha2",
+  "sha1",
   "syn",
   "thiserror",
   "thiserror-impl",

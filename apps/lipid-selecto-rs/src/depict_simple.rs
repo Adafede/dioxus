@@ -2,6 +2,10 @@
 //!
 //! Returns HTML `img` tag that loads from the working simolecule service.
 
+/// Render a SMILES string into an SVG `<img>` tag via the simolecule `CDKdepict` service.
+///
+/// Returns `None` if the input is empty. The returned HTML `<img>` tag fetches
+/// the structure from the remote `simolecule.com` `CDKdepict` endpoint.
 #[must_use]
 pub fn render_svg(smiles: &str) -> Option<String> {
     // URL encode the SMILES (simple percent encoding for special chars)

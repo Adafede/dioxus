@@ -68,12 +68,19 @@ impl LipidClass {
 /// Elemental composition extracted from a molecule or a formula string.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ElementCounts {
+    /// Number of carbon atoms.
     pub carbon: u32,
+    /// Number of hydrogen atoms.
     pub hydrogen: u32,
+    /// Number of nitrogen atoms.
     pub nitrogen: u32,
+    /// Number of oxygen atoms.
     pub oxygen: u32,
+    /// Number of phosphorus atoms.
     pub phosphorus: u32,
+    /// Number of sulfur atoms.
     pub sulfur: u32,
+    /// Count of halogen atoms (F, Cl, Br, I).
     pub halogens: u32,
 }
 
@@ -126,9 +133,13 @@ impl ElementCounts {
 /// A full result of classifying one spectrum, ready for display.
 #[derive(Clone, Debug)]
 pub struct LipidClassification {
+    /// The broad lipid class assignment.
     pub class: LipidClass,
+    /// Elemental composition extracted from the molecule or formula string.
     pub counts: ElementCounts,
+    /// Hill-ordered molecular formula string.
     pub formula: String,
+    /// Exact monoisotopic mass.
     pub exact_mass: f64,
     /// Whether the classification came from a structural (SMILES) analysis.
     pub derived_from_smiles: bool,
