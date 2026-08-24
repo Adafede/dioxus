@@ -94,12 +94,8 @@ img, svg, canvas, video {
     --fs-small-tablet: var(--fs-0);
 }
 
-:root[data-theme="dark"],
-:root:not([data-theme="light"]) {
-    color-scheme: dark;
-}
-
 :is([data-theme="dark"], :root:not([data-theme="light"])) {
+    color-scheme: dark;
     --bg:        #0f172a;
     --bg2:       #0f172a;
     --surface:   #111827;
@@ -129,24 +125,8 @@ img, svg, canvas, video {
     --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #fff);
 }
 
-@media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-        color-scheme: light;
-    }
-}
-
-[data-theme="dark"] {
-    color-scheme: dark;
-}
-
 [data-theme="light"] {
     color-scheme: light;
-}
-
-[data-theme="light"] body,
-[data-theme="dark"] body {
-    background: var(--bg);
-    color: var(--text);
 }
 
 body {
