@@ -1,6 +1,3 @@
-/* LOTUS Knowledge Explorer — design tokens + base + app layout */
-
-/* Reset & base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 
@@ -15,10 +12,8 @@ img, svg, canvas, video {
     height: auto;
 }
 
-/* Design tokens */
 :root {
     color-scheme: light dark;
-
     --bg:        #f7fafc;
     --bg2:       #f7fafc;
     --surface:   #ffffff;
@@ -40,8 +35,8 @@ img, svg, canvas, video {
     --shadow-xs: 0 1px 2px rgb(15 23 42 / 6%);
     --shadow-sm: 0 4px 14px rgb(15 23 42 / 6%);
     --shadow-md: 0 10px 30px rgb(15 23 42 / 9%);
-    --mono:      'Fira Code', ui-monospace, sfmono-regular, 'JetBrains Mono', consolas, monospace;
-    --sans:      'Inter', -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
+    --mono:      'Fira Code', 'JetBrains Mono', consolas, monospace;
+    --sans:      'Inter', 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
     --fs-0:      clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);
     --fs-1:      clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
     --fs-2:      clamp(0.9375rem, 0.9rem + 0.28vw, 1.0625rem);
@@ -68,7 +63,6 @@ img, svg, canvas, video {
     --results-border: var(--panel-border);
     --panel-shadow: var(--shadow-xs);
 
-    /* Wikidata colour palette */
     --wd-compound:  #990000;
     --wd-taxon:     #339966;
     --wd-reference: #006699;
@@ -78,7 +72,6 @@ img, svg, canvas, video {
     --footer-wd-reference: var(--wd-reference);
     --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #000);
 
-    /* Stats palette follows the footer color logic so it stays aligned with the theme. */
     --stat-compound-bg: color-mix(in srgb, var(--footer-wd-compound) 12%, var(--surface));
     --stat-compound-border: color-mix(in srgb, var(--footer-wd-compound) 34%, var(--border));
     --stat-compound-stripe: var(--footer-wd-compound);
@@ -92,14 +85,12 @@ img, svg, canvas, video {
     --stat-total-border: color-mix(in srgb, var(--footer-wd-entries) 34%, var(--border));
     --stat-total-stripe: var(--footer-wd-entries);
 
-    /* Enhanced responsive font sizing for better mobile UX */
     --fs-title-tablet: clamp(1.2rem, 0.85rem + 1.05vw, 1.5rem);
     --fs-heading-tablet: clamp(1rem, 0.8rem + 0.6vw, 1.25rem);
     --fs-body-tablet: clamp(0.85rem, 0.8rem + 0.15vw, 0.9rem);
     --fs-small-tablet: clamp(0.7rem, 0.68rem + 0.1vw, 0.8rem);
 }
 
-/* Grouped Dark Theme Variables to reduce duplicate definitions */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
         --bg:        #0f172a;
@@ -235,7 +226,6 @@ a:hover { text-decoration: underline; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius:3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 
-/* Forms */
 .form-input, .form-textarea {
     background:var(--surface); border:1px solid var(--border);
     border-radius:4px; color:var(--text);
@@ -245,13 +235,11 @@ a:hover { text-decoration: underline; }
 .form-input:focus, .form-textarea:focus { outline:none; border-color:var(--accent); }
 .form-input.sm { width:90px; }
 
-/* Loading */
 .spinner-lg { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
 .spinner-sm { width:14px; height:14px; border:2px solid rgb(255 255 255 / 30%); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; }
 .loading-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:48px; color:var(--text2); flex:1; }
 .loading-hint  { font-size:var(--fs-0); color:var(--text3); }
 
-/* Pagination / empty */
 .pagination-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; }
 .page-info { font-size:var(--fs-0); color:var(--text2); }
 .empty-state { display:flex; flex-direction:column; align-items:center; gap:12px; padding:64px 24px; color:var(--text2); }
@@ -263,8 +251,6 @@ a:hover { text-decoration: underline; }
         background: var(--bg2);
     }
 }
-
-/* Accessibility & Preferences */
 
 .skip-link:focus {
     top: 0;
@@ -379,7 +365,6 @@ a:hover { text-decoration: underline; }
     }
 }
 
-/* Curation surface */
 .curation-wrap > .notice {
     margin-left: 0;
     margin-right: 0;
@@ -451,7 +436,6 @@ a:hover { text-decoration: underline; }
     min-width: max-content;
 }
 
-/* Form controls pack: shared form primitives, structure editor, and search button. */
 .form-section { display:flex; flex-direction:column; gap:6px; padding:10px 12px; border:1px solid var(--panel-border); border-radius:12px; background:var(--panel-bg-soft); }
 .form-section.nested { padding-left:10px; border-left:1px solid var(--border); margin-top:4px; }
 .form-label { font-size:var(--fs-0); font-weight:700; color:var(--critical-text); text-transform:uppercase; letter-spacing:0.08em; }
@@ -480,7 +464,6 @@ a:hover { text-decoration: underline; }
     font-variant-numeric: tabular-nums;
 }
 
-/* Make two-ended range filters responsive without affecting formula rows. */
 .range-inputs--pair {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -491,16 +474,12 @@ a:hover { text-decoration: underline; }
 .range-inputs--pair .range-pair { min-width: 0; }
 .range-inputs--pair .form-input { width: 100%; }
 
-/* Normalize number input chrome for consistent borders on Safari/Firefox. */
 input[type="number"].form-input { appearance: textfield; }
-
 input[type="number"].form-input::-webkit-outer-spin-button,
 input[type="number"].form-input::-webkit-inner-spin-button { appearance: none; margin: 0; }
 
-/* Structure section */
 .form-textarea.mono, .mono { font-family: var(--mono); }
 
-/* Focus-visible styles for interactive elements */
 button:focus-visible,
 .sort-btn:focus-visible,
 .notice-dismiss:focus-visible,
@@ -511,7 +490,6 @@ button:focus-visible,
     outline-offset: 2px;
 }
 
-/* Layout shell pack: app frame, header/meta, notices, share bar, sidebar shell, and app footer. */
 .app-shell { display:flex; flex-direction:column; min-height:100dvh; }
 .app-layout { display:flex; flex:0 0 auto; min-height:0; overflow:hidden; gap:10px; padding:10px; align-items:stretch; }
 .app-layout.no-sidebar { display:block; }
@@ -549,7 +527,6 @@ button:focus-visible,
 
 .main-content.single-pane { width:100%; }
 
-/* Perceived perf: skip off-screen paint work */
 .welcome, .results-wrap, .query-panel, .ketcher-panel, .table-scroll {
     content-visibility: auto;
     contain-intrinsic-size: 900px;
@@ -580,7 +557,6 @@ button:focus-visible,
 .meta-val.mono { font-family:var(--mono); color:var(--critical-text); font-variant-numeric: tabular-nums; font-size: var(--fs-0); }
 .meta-sep { color:var(--text3); }
 
-/* Notices */
 .notice {
     margin:10px 22px 0;
     padding:9px 12px;
@@ -595,7 +571,6 @@ button:focus-visible,
     transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 
-/* Notices that are direct children of the results pane span full width. */
 .main-content > .notice {
     margin-left: 0;
     margin-right: 0;
@@ -641,7 +616,6 @@ button:focus-visible,
 .notice-error { border-color:color-mix(in srgb, var(--red) 34%, var(--results-border)); background:color-mix(in srgb, var(--red) 8%, var(--panel-bg-soft)); }
 .notice-error .notice-label { background:color-mix(in srgb, var(--red) 16%, var(--surface)); color:color-mix(in srgb, var(--red) 88%, var(--text)); }
 
-/* Share bar */
 .share-bar {
     display: flex;
     flex-flow: row wrap;
@@ -685,7 +659,6 @@ button:focus-visible,
     border-color: var(--accent);
 }
 
-/* Search panel shell */
 .search-panel { align-self:stretch; padding:18px 16px; display:flex; flex-direction:column; gap:14px; background:var(--panel-bg); flex:0 0 auto; box-sizing:border-box; min-width:240px; overflow-y:auto; max-height:calc(100vh - 200px); }
 .search-panel-body { display:flex; flex-direction:column; gap:12px; }
 .filters-toggle { display:none !important; }
@@ -697,9 +670,6 @@ button:focus-visible,
 .view-switch [role="group"],
 .lang-switch [role="group"] { background: transparent !important; border-color: var(--border) !important; }
 
-/* Responsive Media Queries */
-
-/* Tablet & Mobile (≤ 768px) */
 @media (max-width: 768px) {
     :root {
         --fs-0:      clamp(0.7rem, 0.68rem + 0.12vw, 0.8rem);
@@ -818,7 +788,6 @@ button:focus-visible,
     }
 }
 
-/* Tablet specific range (769px - 1023px) */
 @media (min-width: 769px) and (max-width: 1023px) {
     :root {
         --fs-0:      clamp(0.72rem, 0.68rem + 0.15vw, 0.8rem);
@@ -892,7 +861,6 @@ button:focus-visible,
     .sidebar-logo-wrap { border-top: none; margin-top: 0; }
 }
 
-/* Mobile (≤ 480px) */
 @media (max-width: 480px) {
     :root {
         --fs-0:      clamp(0.65rem, 0.63rem + 0.08vw, 0.75rem);
@@ -1100,7 +1068,6 @@ button:focus-visible,
     .ketcher-iframe { height:min(62vh, 420px); min-height:300px; }
 }
 
-/* Small Mobile (≤ 430px) */
 @media (max-width: 430px) {
     :root {
         --fs-0:      clamp(0.62rem, 0.60rem + 0.06vw, 0.7rem);
@@ -1225,7 +1192,6 @@ button:focus-visible,
     }
 }
 
-/* Extra Small Mobile (≤ 360px) */
 @media (max-width: 360px) {
     :root {
         --fs-0:      clamp(0.6rem, 0.58rem + 0.04vw, 0.68rem);
@@ -1373,14 +1339,12 @@ button:focus-visible,
     }
 }
 
-/* Footer layout (≥ 640px) */
 @media (min-width: 640px) {
     footer > div {
         grid-template-columns: 1.2fr 1fr !important;
     }
 }
 
-/* Desktop Optimizations (≥ 1024px) */
 @media (min-width: 1024px) {
     :root {
         --fs-0:      clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);
@@ -1453,7 +1417,6 @@ button:focus-visible,
     .filters-toggle { display:none; }
 }
 
-/* Extra Large Screens (≥ 1440px) */
 @media (min-width: 1440px) {
     .page-header { padding-left: 32px; padding-right: 32px; }
     .page-header-meta { margin-left: 32px; margin-right: 32px; }
@@ -1471,7 +1434,7 @@ button:focus-visible,
         padding-right: 32px;
     }
 }
-/* Theme toggle button (next to language switcher in page header) */
+
 .theme-toggle {
     display: inline-flex;
     align-items: center;
@@ -1500,7 +1463,6 @@ button:focus-visible,
     outline-offset: 2px;
 }
 
-/* Header controls wrapper: flex container for lang-switch and theme-toggle */
 .header-controls {
     display: flex;
     gap: 8px;
