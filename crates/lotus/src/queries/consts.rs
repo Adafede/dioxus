@@ -155,8 +155,7 @@ pub fn transform_query_for_wdqs(query: &str) -> String {
         format!(
             "SERVICE <https://query-scholarly.wikidata.org/sparql> {{\n  {query_body}\n}}\nLIMIT 1"
         )
-    } else if query.contains("OPTIONAL { ?ref wdt:P1476 ?ref_title. }")
-    {
+    } else if query.contains("OPTIONAL { ?ref wdt:P1476 ?ref_title. }") {
         // Replace ?ref variable with SERVICE
         query.replace(ref_optional_ref, REFERENCE_METADATA_SERVICE_REF)
     } else if query.contains("OPTIONAL { ?r wdt:P1476 ?ref_title. }") {

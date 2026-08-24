@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::*;
+#[allow(unused_imports)]
 use crate::export::SparqlEndpoint;
 use crate::features::explore::actions::ExploreAction;
 use crate::features::explore::command::SearchCommand;

@@ -149,7 +149,7 @@ pub fn toolbar_snapshot_from_result(result: &ResultDataState) -> ToolbarResultSn
         total_stats: result.total_stats.clone(),
         total_matches: result.total_matches,
         display_capped_rows: result.display_capped_rows,
-        endpoint: result.endpoint.clone(),
+        endpoint: result.endpoint,
     }
 }
 

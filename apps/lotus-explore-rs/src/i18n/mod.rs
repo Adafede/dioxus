@@ -206,7 +206,9 @@ pub enum TextKey {
     DownloadRdfLabel,
     DownloadMetadataTitle,
     DownloadMetadataLabel,
+    #[allow(dead_code)]
     OpenInQlever,
+    #[allow(dead_code)]
     OpenInQleverTitle,
     OpenInEndpoint,
     OpenInEndpointTitle,

@@ -14,4 +14,5 @@ mod url_builder;
 
 pub use filename::generate_filename;
 pub use metadata::{MetadataInputs, SparqlEndpoint, build_metadata_json};
+#[allow(unused_imports)]
 pub use url_builder::{qlever_export_url, wdqs_export_url, wdqs_scholarly_export_url};

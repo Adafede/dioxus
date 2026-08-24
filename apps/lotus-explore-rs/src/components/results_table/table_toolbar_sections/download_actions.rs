@@ -234,7 +234,7 @@ pub fn DownloadActionsGroup() -> Element {
 
     let download_results_label = t(locale, TextKey::DownloadResults);
     let open_in_title = t(locale, TextKey::OpenInEndpointTitle);
-    let open_in_label = t(locale, TextKey::OpenInEndpoint);
+    let _open_in_label = t(locale, TextKey::OpenInEndpoint);
 
     // Local download state — busy flag and status text.
     let download_busy = use_signal(|| false);

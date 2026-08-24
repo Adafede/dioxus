@@ -14,18 +14,13 @@ pub const QLEVER_ENDPOINT: &str = "https://qlever.dev/api/wikidata";
 pub const WDQS_ENDPOINT: &str = "https://query.wikidata.org/sparql";
 
 /// Represents the SPARQL endpoint used for a query.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum SparqlEndpoint {
     /// QLever endpoint (default/preferred)
+    #[default]
     Qlever,
     /// Wikidata Query Service (fallback on 502 from QLever)
     Wdqs,
-}
-
-impl Default for SparqlEndpoint {
-    fn default() -> Self {
-        Self::Qlever
-    }
 }
 
 impl std::fmt::Display for SparqlEndpoint {

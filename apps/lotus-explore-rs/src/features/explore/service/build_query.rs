@@ -69,6 +69,7 @@ pub fn build_sparql_query(smiles: &str, crit: &SearchCriteria, taxon_qid: Option
 /// Apply server-side filters and log the outcome.
 pub fn apply_server_filters(base_query: &str, crit: &SearchCriteria) -> String {
     let execution_query = queries::query_with_server_filters(base_query, crit);
+
     telemetry::query_build_after_server_filters(
         execution_query.contains("SERVICE"),
         execution_query.contains("FILTER"),

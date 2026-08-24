@@ -10,6 +10,7 @@ use lotus::transport::{WDQS_SCHOLARLY, WDQS_WIKIDATA};
 ///
 /// This wraps `lotus::export::qlever_export_url` for use in the lotus-explore-rs app.
 #[must_use]
+#[allow(dead_code)]
 pub fn qlever_export_url(query: &str, format: ExportFormat) -> String {
     lotus::export::qlever_export_url(query, format)
 }
@@ -18,6 +19,7 @@ pub fn qlever_export_url(query: &str, format: ExportFormat) -> String {
 ///
 /// WDQS uses direct SPARQL POST requests without the QLever `action=` parameter.
 #[must_use]
+#[allow(dead_code)]
 pub fn wdqs_export_url(query: &str, format: ExportFormat) -> String {
     let prepared_query = format.prepared_query(query);
     let encoded_query = urlencoding::encode(&prepared_query);
@@ -40,6 +42,7 @@ pub fn wdqs_export_url(query: &str, format: ExportFormat) -> String {
 /// For downloads when falling back to WDQS with scholarly subgraph queries,
 /// this URL points to the scholarly subgraph endpoint.
 #[must_use]
+#[allow(dead_code)]
 pub fn wdqs_scholarly_export_url(query: &str, format: ExportFormat) -> String {
     let prepared_query = format.prepared_query(query);
     let encoded_query = urlencoding::encode(&prepared_query);

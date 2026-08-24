@@ -11,18 +11,13 @@ use crate::models::SearchCriteria;
 const QLEVER_UI: &str = "https://qlever.dev/wikidata";
 const WDQS_UI: &str = "https://query.wikidata.org";
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub(super) enum SparqlEndpointUI {
     /// QLever endpoint (default)
+    #[default]
     Qlever,
     /// Wikidata Query Service (fallback)
     Wdqs,
-}
-
-impl Default for SparqlEndpointUI {
-    fn default() -> Self {
-        Self::Qlever
-    }
 }
 
 impl From<export::SparqlEndpoint> for SparqlEndpointUI {
@@ -95,6 +90,7 @@ pub(super) struct DownloadToolbarModel {
 }
 
 #[must_use]
+#[allow(dead_code)]
 pub(super) fn build_download_toolbar_model(
     criteria: &SearchCriteria,
     sparql_query: Option<&str>,
