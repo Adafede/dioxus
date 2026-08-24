@@ -10,12 +10,8 @@ keywords = ["deploy", "dioxus", "i18n", "ketcher", "lotus"]
 categories = ["development-tools::build-utils", "web-programming"]
 publish = false
 
-# Two independent host-only binaries; build with
-# `cargo build --release -p lotus-deploy --bin bake-lang --bin fetch-ketcher`.
-[[bin]]
-name = "bake-lang"
-path = "src/bake_lang.rs"
-
+# Independent host-only binary; build with
+# `cargo build --release -p lotus-deploy --bin fetch-ketcher`.
 [[bin]]
 name = "fetch-ketcher"
 path = "src/fetch_ketcher.rs"

@@ -31,6 +31,9 @@ jobs:
       - name: Install dioxus-cli
         run: cargo binstall dioxus-cli --version 0.7.10 --locked --force
 
+      - name: Build deploy tools
+        run: cargo build --release -p lotus-deploy --bin fetch-ketcher
+
       - name: Fetch Ketcher
         working-directory: apps/lotus-explore-rs
         run: ../../target/release/fetch-ketcher
@@ -70,12 +73,6 @@ jobs:
           cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
           cp -r "$DX_OUT/smellfish-rs/$DX_WEB" _site/smellfish-rs
           cp -r "$DX_OUT/lipid-selecto-rs/$DX_WEB" _site/lipid-selecto-rs
-
-          # Bake <html lang> + a synchronous language bootstrap into every
-          # shipped index.html so the language resolves on initial paint
-          # (before the async dioxus module hydrates). See
-          # crates/lotus-deploy/src/bake_lang.rs for details.
-          target/release/bake-lang
 
       - uses: actions/git-pages@v2
         with:
