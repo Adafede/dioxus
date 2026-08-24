@@ -10,7 +10,7 @@
 //! changes, and persists `?dark_mode=true` in the URL.
 
 use crate::hooks::use_locale;
-use crate::i18n::{Locale, TextKey, t};
+use crate::i18n::{TextKey, t};
 use crate::state::use_app_state_context;
 use dioxus::prelude::*;
 

@@ -1536,3 +1536,11 @@ button:focus-visible,
     outline-offset: 2px;
 }
 
+
+/* Header controls wrapper: flex container for lang-switch and theme-toggle */
+.header-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+}

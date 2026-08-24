@@ -35,8 +35,10 @@ pub fn PageHeader() -> Element {
                         span { style: header::page_title_text_style(), "{t(locale, TextKey::PageTitle)}" }
                     }
                 }
-                LangSwitch {}
-                DarkModeToggle {}
+                div { class: "header-controls",
+                    LangSwitch {}
+                    DarkModeToggle {}
+                }
             }
             ViewSwitch {}
             p { style: header::page_subtitle_style(),
