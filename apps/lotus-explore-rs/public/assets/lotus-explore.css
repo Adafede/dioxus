@@ -167,7 +167,7 @@ img, svg, canvas, video {
 body {
     background: var(--bg);
     color: var(--text);
-    font-family: var(--sans);
+    font-family: var(--sans), sans-serif;
     font-size: var(--fs-body);
     line-height: 1.52;
     min-height: 100vh;
@@ -230,7 +230,7 @@ a:hover { text-decoration: underline; }
     background:var(--surface); border:1px solid var(--border);
     border-radius:4px; color:var(--text);
     padding:9px 11px; font-size:var(--fs-ui); width:100%;
-    font-family:var(--sans); transition:border-color .15s;
+    font-family:var(--sans), sans-serif; transition:border-color .15s;
 }
 .form-input:focus, .form-textarea:focus { outline:none; border-color:var(--accent); }
 .form-input.sm { width:90px; }
@@ -478,7 +478,7 @@ input[type="number"].form-input { appearance: textfield; }
 input[type="number"].form-input::-webkit-outer-spin-button,
 input[type="number"].form-input::-webkit-inner-spin-button { appearance: none; margin: 0; }
 
-.form-textarea.mono, .mono { font-family: var(--mono); }
+.form-textarea.mono, .mono { font-family: var(--mono), monospace; }
 
 button:focus-visible,
 .sort-btn:focus-visible,
@@ -554,7 +554,7 @@ button:focus-visible,
 .page-meta { display: contents; }
 .meta-item { display:inline-flex; align-items:center; gap:4px; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
 .meta-key { text-transform:uppercase; letter-spacing:0.08em; font-weight:700; font-size: var(--fs-0); color: var(--text2); }
-.meta-val.mono { font-family:var(--mono); color:var(--critical-text); font-variant-numeric: tabular-nums; font-size: var(--fs-0); }
+.meta-val.mono { font-family:var(--mono), monospace; color:var(--critical-text); font-variant-numeric: tabular-nums; font-size: var(--fs-0); }
 .meta-sep { color:var(--text3); }
 
 .notice {
