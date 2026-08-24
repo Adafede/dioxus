@@ -129,9 +129,6 @@ const HREFLANGS: &[(&str, &str)] = &[
     ("it", "?lang=it"),
 ];
 
-/// External scripts loaded on every page.
-const ALWAYS_SCRIPTS: &[&str] = &["https://scripts.simpleanalyticscdn.com/latest.js"];
-
 /// Base URL for the app (used in hreflang and canonical links).
 const BASE_URL: &str = "https://adafede.github.io/dioxus/lotus-explore-rs/";
 
@@ -141,7 +138,6 @@ const CSS_STYLES: &str = concat!(include_str!("../public/assets/lotus-explore.cs
 #[component]
 pub fn LotusDocumentHead(lang: String) -> Element {
     let description = "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
-    let scripts = ALWAYS_SCRIPTS.iter().map(|s| s.to_string()).collect();
 
     let mut links: Vec<LinkSpec> = LINKS.to_vec();
     for (lang_code, suffix) in HREFLANGS {
@@ -170,13 +166,18 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             og_url: Some(canonical.clone()),
             og_site_name: Some("LOTUS Knowledge Explorer".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            scripts,
             inline_script: Some(inline_script::build_core_inline_script()),
             json_ld: Some(JSON_LD.to_string()),
             canonical: Some(canonical),
         }
 
-        // Inline stylesheet removes critical-path HTTP request chains
+        // Explicit non-blocking analytics script
+        script {
+            r#async: true,
+            defer: true,
+            src: "https://scripts.simpleanalyticscdn.com/latest.js",
+        }
+
         style { "{CSS_STYLES}" }
 
         DocumentLinks { links }
