@@ -69,11 +69,8 @@ body {
   font-size: var(--fs-body);
   line-height: 1.52;
   min-height: 100vh;
-  -webkit-text-size-adjust: 100%;
-  -moz-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  webkit-font-smoothing: antialiased;
+  moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   font-optical-sizing: auto;
 }

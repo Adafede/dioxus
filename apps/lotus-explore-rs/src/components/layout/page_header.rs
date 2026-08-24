@@ -5,6 +5,7 @@
 //!
 //! Zero props -- all data comes from context (use_locale, AppStateContext).
 
+use crate::components::layout::dark_mode_toggle::DarkModeToggle;
 use crate::components::layout::lang_switch::LangSwitch;
 use crate::components::layout::view_switch::ViewSwitch;
 use crate::hooks::use_locale;
@@ -15,8 +16,9 @@ use dioxus::prelude::*;
 
 /// Full page header section.
 ///
-/// Composes `LangSwitch` and `ViewSwitch` as context-aware children.
-/// Zero props -- only re-renders when locale or view changes.
+/// Composes `LangSwitch` (EN/FR/DE/IT), `DarkModeToggle` (light/dark), and
+/// `ViewSwitch` (Search / Curation / Structure editor) as context-aware
+/// children. Zero props -- only re-renders when locale or view changes.
 #[component]
 pub fn PageHeader() -> Element {
     let locale = use_locale();
@@ -34,6 +36,7 @@ pub fn PageHeader() -> Element {
                     }
                 }
                 LangSwitch {}
+                DarkModeToggle {}
             }
             ViewSwitch {}
             p { style: header::page_subtitle_style(),

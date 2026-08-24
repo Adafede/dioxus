@@ -18,6 +18,7 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::FiltersHide => "Nascondi filtri",
         TextKey::Language => "Lingua",
         TextKey::PageTitle => "Esploratore LOTUS di dati aperti collegati",
+        TextKey::DarkModeToggle => "Attiva/disattiva tema chiaro/scuro",
         TextKey::GoToHomepage => "Vai alla home page",
         TextKey::PageSubtitle => {
             "Esplora dati aperti collegati: prodotti naturali, organismi e letteratura scientifica."

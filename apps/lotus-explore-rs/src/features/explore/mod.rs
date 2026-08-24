@@ -20,7 +20,8 @@ pub use selectors::{
 pub use types::{DomainError, ErrorKind, ParseFault, QueryStage, TaxonWarning, ValidationFault};
 pub use url_state::{
     InitialUrlState, absolute_current_url_with_query, absolute_share_url, build_shareable_url,
-    initial_url_state, persist_locale_query_param, persist_view_query_param,
+    initial_url_state, persist_dark_mode_query_param, persist_locale_query_param,
+    persist_view_query_param,
 };
 
 #[cfg(test)]

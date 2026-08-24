@@ -106,6 +106,7 @@ pub enum TextKey {
     Language,
     // Header
     PageTitle,
+    DarkModeToggle,
     GoToHomepage,
     PageSubtitle,
     ResolvedTaxon,

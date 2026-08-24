@@ -120,6 +120,29 @@ pub fn persist_view_query_param(view: AppView) {
     }
 }
 
+pub fn persist_dark_mode_query_param(dark_mode: bool) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let mut params = read_url_query_params();
+        if dark_mode {
+            params.insert("dark_mode".into(), "true".into());
+        } else {
+            params.remove("dark_mode");
+        }
+        let query = build_query_string(&params);
+        let url = absolute_current_url_with_query(&query);
+        if let Some(win) = web_sys::window()
+            && let Ok(history) = win.history()
+        {
+            let _ = history.replace_state_with_url(&wasm_bindgen::JsValue::NULL, "", Some(&url));
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = dark_mode;
+    }
+}
+
 pub fn read_url_query_params() -> BTreeMap<String, String> {
     #[cfg(target_arch = "wasm32")]
     {

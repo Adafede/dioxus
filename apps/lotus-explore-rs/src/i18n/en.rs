@@ -18,6 +18,7 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::FiltersHide => "Hide filters",
         TextKey::Language => "Language",
         TextKey::PageTitle => "LOTUS Linked Open Data Explorer",
+        TextKey::DarkModeToggle => "Toggle dark/light mode",
         TextKey::GoToHomepage => "Go to homepage",
         TextKey::PageSubtitle => {
             "Explore linked open data: natural products, organisms, and scientific literature."

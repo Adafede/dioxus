@@ -18,6 +18,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::FiltersHide => "Filter ausblenden",
         TextKey::Language => "Sprache",
         TextKey::PageTitle => "LOTUS Explorer für verknüpfte offene Daten",
+        TextKey::DarkModeToggle => "Thema hell/dunkel umschalten",
         TextKey::GoToHomepage => "Zur Startseite",
         TextKey::PageSubtitle => {
             "Erkunden Sie verknüpfte offene Daten: Naturstoffe, Organismen und wissenschaftliche Literatur."
