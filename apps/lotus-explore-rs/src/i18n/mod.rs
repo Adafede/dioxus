@@ -208,6 +208,8 @@ pub enum TextKey {
     DownloadMetadataLabel,
     OpenInQlever,
     OpenInQleverTitle,
+    OpenInEndpoint,
+    OpenInEndpointTitle,
     NoResults,
     DisplayCappedHint,
     // Columns

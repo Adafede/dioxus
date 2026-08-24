@@ -10,6 +10,11 @@ pub type ResponseBody = bytes::Bytes;
 
 /// Default `QLever` endpoint for Wikidata (used by lotus-explore-rs).
 pub const QLEVER_WIKIDATA: &str = "https://qlever.dev/api/wikidata";
+/// Wikidata Query Service endpoint, used as a fallback when `QLever` returns a
+/// gateway error (502) — see [`crate::transport`] module docs.
+pub const WDQS_WIKIDATA: &str = "https://query.wikidata.org/sparql";
+/// Scholarly subgraph endpoint for reference metadata (P1476, P356, P577).
+pub const WDQS_SCHOLARLY: &str = "https://query-scholarly.wikidata.org/sparql";
 /// Maximum number of HTTP retry attempts before giving up.
 pub(super) const MAX_HTTP_ATTEMPTS: u32 = 2;
 

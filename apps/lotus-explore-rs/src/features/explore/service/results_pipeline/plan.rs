@@ -1,4 +1,5 @@
 use super::ResultsPipelineOutcome;
+use crate::export::SparqlEndpoint;
 use crate::features::explore::request::SearchRequest;
 use crate::features::explore::search_metrics::SearchMetrics;
 use crate::features::explore::service::{
@@ -7,7 +8,7 @@ use crate::features::explore::service::{
     resolve_taxon::{self, TaxonResolution},
 };
 use crate::features::explore::types::{DomainError, QueryPhase};
-use crate::repositories::LotusRepository;
+use crate::repositories::{LotusRepository, is_wdqs_fallback_used};
 
 pub(super) struct ResultsExecutionPlan {
     taxon_resolution: TaxonResolution,
@@ -20,14 +21,29 @@ impl ResultsExecutionPlan {
     }
 
     pub(super) fn into_download_only_outcome(self) -> ResultsPipelineOutcome {
+        let endpoint = if is_wdqs_fallback_used() {
+            SparqlEndpoint::Wdqs
+        } else {
+            SparqlEndpoint::Qlever
+        };
+        let warning = if is_wdqs_fallback_used() {
+            Some(crate::features::explore::types::TaxonWarning::WdqsFallback)
+        } else {
+            self.taxon_resolution.warning
+        };
+        // Store the display query (WDQS-transformed if fallback occurred)
+        let query = crate::repositories::get_wdqs_transformed_query()
+            .unwrap_or_else(|| self.execution_query.clone());
+
         ResultsPipelineOutcome {
             rows: Vec::new(),
             qid: self.taxon_resolution.qid,
-            warning: self.taxon_resolution.warning,
-            query: self.execution_query,
+            warning,
+            query,
             total_matches: None,
             total_stats: None,
             display_capped_rows: false,
+            endpoint,
         }
     }
 
@@ -35,14 +51,29 @@ impl ResultsExecutionPlan {
         self,
         fetch_result: FetchResult,
     ) -> ResultsPipelineOutcome {
+        let endpoint = if is_wdqs_fallback_used() {
+            SparqlEndpoint::Wdqs
+        } else {
+            SparqlEndpoint::Qlever
+        };
+        let warning = if is_wdqs_fallback_used() {
+            Some(crate::features::explore::types::TaxonWarning::WdqsFallback)
+        } else {
+            self.taxon_resolution.warning
+        };
+        // Store the display query (WDQS-transformed if fallback occurred)
+        let query = crate::repositories::get_wdqs_transformed_query()
+            .unwrap_or_else(|| self.execution_query.clone());
+
         ResultsPipelineOutcome {
             rows: fetch_result.rows,
             qid: self.taxon_resolution.qid,
-            warning: self.taxon_resolution.warning,
-            query: self.execution_query,
+            warning,
+            query,
             total_matches: fetch_result.total_matches,
             total_stats: fetch_result.total_stats,
             display_capped_rows: fetch_result.display_capped_rows,
+            endpoint,
         }
     }
 }

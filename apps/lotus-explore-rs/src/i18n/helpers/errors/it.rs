@@ -65,6 +65,14 @@ pub fn warn_ambiguous_taxon(best_name: &str, best_qid: &str, names: &str) -> Str
     format!("Nome taxon ambiguo; uso {best_name} ({best_qid}). Candidati: {names}")
 }
 
+pub fn warn_qlever_bad_gateway() -> String {
+    "QLever ha restituito un errore; ripetizione con Wikidata Query Service.".to_string()
+}
+
+pub fn warn_wdqs_fallback() -> String {
+    ".query eseguita tramite Wikidata Query Service (fallback da QLever 502).".to_string()
+}
+
 #[cfg(target_arch = "wasm32")]
 pub fn error_hint_memory() -> &'static str {
     "Risultato troppo grande per la memoria disponibile sul dispositivo."

@@ -21,7 +21,9 @@ pub use execute::{
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use execute::{execute_sparql_tempfile, execute_sparql_with_format_tempfile};
-pub use types::{FetchError, QLEVER_WIKIDATA, ResponseBody, ResponseFormat};
+pub use types::{
+    FetchError, QLEVER_WIKIDATA, ResponseBody, ResponseFormat, WDQS_SCHOLARLY, WDQS_WIKIDATA,
+};
 
 // CSV / string helpers are re-exported through `csv::*` since they were all
 // public in the original transport module.

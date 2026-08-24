@@ -6,7 +6,7 @@
 
 use super::super::download_model::{
     DOWNLOAD_METADATA_SPEC, DOWNLOAD_QUERY_CSV_SPEC, DOWNLOAD_QUERY_JSON_SPEC,
-    DOWNLOAD_QUERY_RDF_SPEC, DownloadQuerySpec, build_download_toolbar_model,
+    DOWNLOAD_QUERY_RDF_SPEC, DownloadQuerySpec, build_download_toolbar_model_with_endpoint,
 };
 use crate::download::{DownloadFormat, execute_download, trigger_download};
 use crate::features::explore::use_toolbar_result_snapshot;
@@ -222,18 +222,19 @@ pub fn DownloadActionsGroup() -> Element {
 
     let snapshot = toolbar_snapshot.read();
     let toolbar_model = use_signal(|| {
-        build_download_toolbar_model(
+        build_download_toolbar_model_with_endpoint(
             &criteria.read(),
             snapshot.sparql_query.as_deref(),
             snapshot.metadata_json.as_deref(),
             snapshot.query_hash.as_deref(),
             snapshot.result_hash.as_deref(),
+            snapshot.endpoint.into(),
         )
     });
 
     let download_results_label = t(locale, TextKey::DownloadResults);
-    let qlever_title = t(locale, TextKey::OpenInQleverTitle);
-    let qlever_label = t(locale, TextKey::OpenInQlever);
+    let open_in_title = t(locale, TextKey::OpenInEndpointTitle);
+    let open_in_label = t(locale, TextKey::OpenInEndpoint);
 
     // Local download state — busy flag and status text.
     let download_busy = use_signal(|| false);
@@ -242,7 +243,8 @@ pub fn DownloadActionsGroup() -> Element {
     let sparql_query_value = snapshot.sparql_query.clone();
     let metadata_json_value = snapshot.metadata_json.clone();
     let export_available = toolbar_model.read().export_available;
-    let qlever_ui_url = toolbar_model.read().qlever_ui_url.clone();
+    let ui_url = toolbar_model.read().ui_url.clone();
+    let endpoint_name = toolbar_model.read().sparql_endpoint_ui.to_string();
     drop(snapshot);
 
     rsx! {
@@ -301,15 +303,16 @@ pub fn DownloadActionsGroup() -> Element {
                             disabled: *download_busy.read(),
                         }
                     }
-                    if let Some(url) = qlever_ui_url.as_deref() {
+                    if let Some(url) = ui_url.as_deref() {
                         a {
                             href: "{url}",
                             target: "_blank",
                             rel: "noopener noreferrer",
+                            role: "button",
                             style: crate::ui::style_constants::downloads::button_small_style(),
-                            title: "{qlever_title}",
-                            aria_label: "{qlever_title}",
-                            "{qlever_label}"
+                            title: "{open_in_title} ({endpoint_name})",
+                            aria_label: "{open_in_title} ({endpoint_name})",
+                            "Open in {endpoint_name}"
                         }
                     }
                 }

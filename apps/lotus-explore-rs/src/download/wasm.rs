@@ -5,7 +5,9 @@ use crate::api;
 use crate::download::DownloadFormat;
 use crate::models::SearchCriteria;
 use crate::perf;
-use lotus::transport::QLEVER_WIKIDATA;
+use crate::repositories::is_wdqs_fallback_used;
+use lotus::queries::transform_query_for_wdqs;
+use lotus::transport::{QLEVER_WIKIDATA, WDQS_SCHOLARLY, WDQS_WIKIDATA};
 use std::sync::Arc;
 
 pub(super) async fn execute_download_wasm(
@@ -15,6 +17,15 @@ pub(super) async fn execute_download_wasm(
     filename: String,
     dl_timer: perf::TimerHandle,
 ) -> Result<(), String> {
+    // If WDQS fallback was used for the interactive query, download from WDQS directly
+    if is_wdqs_fallback_used() {
+        log::warn!(
+            "event=download format={} phase=fetch state=wdqs_fallback fallback=true",
+            format.log_name()
+        );
+        return execute_download_wasm_wdqs(format, query, filename, dl_timer).await;
+    }
+
     match api::export_urls(&criteria).await {
         Ok(urls) => {
             let url = append_filename_query(select_export_url(format, &urls), &filename);
@@ -46,9 +57,70 @@ pub(super) async fn execute_download_wasm(
                 "event=download format={} phase=fetch state=fallback reason=api_export_urls_failed detail={err}",
                 format.log_name()
             );
-            execute_download_wasm_browser_post(format, query, filename, dl_timer).await
+            // Check if WDQS fallback was used for interactive query
+            if is_wdqs_fallback_used() {
+                log::warn!(
+                    "event=download format={} phase=fetch state=wdqs_fallback_from_api_error",
+                    format.log_name()
+                );
+                execute_download_wasm_wdqs(format, query, filename, dl_timer).await
+            } else {
+                execute_download_wasm_browser_post(format, query, filename, dl_timer).await
+            }
         }
     }
+}
+
+async fn execute_download_wasm_wdqs(
+    format: DownloadFormat,
+    query: Arc<str>,
+    filename: String,
+    dl_timer: perf::TimerHandle,
+) -> Result<(), String> {
+    // For simple reference queries, use scholarly endpoint directly without transformation
+    let (wdqs_query, endpoint) =
+        if query.contains("SELECT ?ref WHERE {") && query.contains("wdt:P356") {
+            let query_without_prefix = query.replace("{CURATION_SPARQL_PREFIXES}\n", "");
+            (query_without_prefix, WDQS_SCHOLARLY)
+        } else {
+            (transform_query_for_wdqs(&query), WDQS_WIKIDATA)
+        };
+
+    // Build WDQS export URL with proper format
+    let encoded_query = urlencoding::encode(&wdqs_query);
+    let accept_header = match format {
+        DownloadFormat::Csv => "text/csv",
+        DownloadFormat::Json => "application/sparql-results+json",
+        DownloadFormat::Rdf => "text/turtle",
+    };
+
+    let wdqs_url = format!(
+        "{}?query={}&Accept={}",
+        endpoint, encoded_query, accept_header
+    );
+
+    let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
+    perf::log_timing(
+        "download",
+        &format!(
+            "event=download format={} phase=fetch state=success source=wdqs_url",
+            format.log_name(),
+        ),
+        Some(fetch_elapsed),
+    );
+
+    let trigger_timer = perf::start_timer(&format.trigger_timer_label());
+    let _ = upload::download_url(&wdqs_url, &filename);
+    let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
+    perf::log_timing(
+        "download",
+        &format!(
+            "event=download format={} phase=trigger state=success source=wdqs_url",
+            format.log_name()
+        ),
+        Some(trigger_elapsed),
+    );
+    Ok(())
 }
 
 async fn execute_download_wasm_browser_post(

@@ -158,7 +158,23 @@ pub async fn execute_sparql_with_format_body(
                 let body = resp.text().await.unwrap_or_default();
                 let detail = compact_http_error_text(&body);
                 log::error!("event=sparql_http_error status={code} detail={detail}");
-                // Fail fast on client errors (4xx); retry on server errors (5xx).
+                // Retry on rate limiting (429) with simple backoff; fail fast on other 4xx.
+                if code == 429 {
+                    let backoff_ms: u64 = 1000 * u64::from(attempt + 1); // 1s, 2s, 3s...
+                    log::warn!(
+                        "event=sparql_rate_limit status={code} attempt={} backoff_ms={}",
+                        attempt + 1,
+                        backoff_ms
+                    );
+                    last_err = Some(FetchError::Http(code, detail.clone()));
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        std::thread::sleep(std::time::Duration::from_millis(backoff_ms));
+                        continue;
+                    }
+                    #[cfg(target_arch = "wasm32")]
+                    return Err(FetchError::Http(code, detail));
+                }
                 if (400..500).contains(&code) {
                     return Err(FetchError::Http(code, detail));
                 }
@@ -256,6 +272,18 @@ pub async fn execute_sparql_with_format_tempfile(
                 let body = resp.text().await.unwrap_or_default();
                 let detail = compact_http_error_text(&body);
                 log::error!("event=sparql_http_error status={code} detail={detail}");
+                // Retry on rate limiting (429) with simple backoff; fail fast on other 4xx.
+                if code == 429 {
+                    let backoff_ms: u64 = 1000 * u64::from(attempt + 1); // 1s, 2s, 3s...
+                    log::warn!(
+                        "event=sparql_rate_limit status={code} attempt={} backoff_ms={}",
+                        attempt + 1,
+                        backoff_ms
+                    );
+                    last_err = Some(FetchError::Http(code, detail));
+                    std::thread::sleep(std::time::Duration::from_millis(backoff_ms));
+                    continue;
+                }
                 if (400..500).contains(&code) {
                     return Err(FetchError::Http(code, detail));
                 }

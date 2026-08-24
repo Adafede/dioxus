@@ -26,6 +26,7 @@ pub struct ResultsPipelineOutcome {
     pub total_matches: Option<usize>,
     pub total_stats: Option<DatasetStats>,
     pub display_capped_rows: bool,
+    pub endpoint: crate::export::SparqlEndpoint,
 }
 
 pub async fn execute<R: LotusRepository>(

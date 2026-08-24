@@ -13,8 +13,8 @@ use crate::i18n::{
     curation_note_existing_updates, curation_note_new_compound, curation_pending_reference,
     curation_pending_taxon,
 };
-use crate::sparql::execute_sparql_format;
-use lotus::transport::ResponseFormat;
+use lotus::queries::transform_query_for_wdqs;
+use lotus::transport::{QLEVER_WIKIDATA, ResponseFormat, WDQS_SCHOLARLY, WDQS_WIKIDATA};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -46,3 +46,31 @@ pub mod quickstatements;
 pub(crate) use chemical::extract_exact_mass_from_json;
 pub use enrichment::curate_single_row;
 pub use helpers::{extract_formula_from_inchi, normalize_formula_for_wikidata, qs_mass_statement};
+
+/// Execute a SPARQL query with WDQS fallback on 502 Bad Gateway.
+///
+/// This function first tries QLever, and if it returns a 502 error,
+/// it retries on the WDQS endpoint with scholarly subgraph for reference queries.
+pub async fn execute_sparql_with_wdqs_fallback(
+    query: &str,
+    format: ResponseFormat,
+) -> Result<String, lotus::transport::FetchError> {
+    let result = lotus::transport::execute_sparql_with_format(query, QLEVER_WIKIDATA, format).await;
+
+    match result {
+        Ok(response) => Ok(response),
+        Err(lotus::transport::FetchError::Http(502, _)) => {
+            log::warn!("event=curation_sparql phase=fallback reason=qlever_502");
+            // For simple reference lookups, use scholarly endpoint directly
+            if query.contains("SELECT ?ref WHERE {") && query.contains("wdt:P356") {
+                lotus::transport::execute_sparql_with_format(query, WDQS_SCHOLARLY, format).await
+            } else {
+                // For complex queries, apply transformation and use regular WDQS
+                let wdqs_query = transform_query_for_wdqs(query);
+                lotus::transport::execute_sparql_with_format(&wdqs_query, WDQS_WIKIDATA, format)
+                    .await
+            }
+        }
+        Err(e) => Err(e),
+    }
+}

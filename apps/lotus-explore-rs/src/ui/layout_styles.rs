@@ -470,9 +470,11 @@ pub fn lotus_button_small_style() -> String {
         .cursor("pointer")
         .background_color("transparent")
         .color(TEXT)
+        .font_family(FONT_SANS)
         .property("flex", "1 1 auto")
         .property("min-width", "0")
         .property("white-space", "nowrap")
+        .property("text-decoration", "none")
         .property(
             "transition",
             "border-color .15s, background .15s, box-shadow .15s, transform .12s ease",

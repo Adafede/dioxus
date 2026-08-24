@@ -132,6 +132,8 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::DownloadMetadataLabel => "Download metadata",
         TextKey::OpenInQlever => "Open in QLever",
         TextKey::OpenInQleverTitle => "Open this query in the QLever web interface",
+        TextKey::OpenInEndpoint => "Open in endpoint",
+        TextKey::OpenInEndpointTitle => "Open this query in the SPARQL endpoint web interface",
         TextKey::NoResults => "No results. Try broadening your search.",
         TextKey::StageTaxonSearch => "taxon lookup",
         TextKey::StageResultsQuery => "results fetch",

@@ -9,6 +9,39 @@ use crate::i18n::TextKey;
 use crate::models::SearchCriteria;
 
 const QLEVER_UI: &str = "https://qlever.dev/wikidata";
+const WDQS_UI: &str = "https://query.wikidata.org";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum SparqlEndpointUI {
+    /// QLever endpoint (default)
+    Qlever,
+    /// Wikidata Query Service (fallback)
+    Wdqs,
+}
+
+impl Default for SparqlEndpointUI {
+    fn default() -> Self {
+        Self::Qlever
+    }
+}
+
+impl From<export::SparqlEndpoint> for SparqlEndpointUI {
+    fn from(value: export::SparqlEndpoint) -> Self {
+        match value {
+            export::SparqlEndpoint::Qlever => Self::Qlever,
+            export::SparqlEndpoint::Wdqs => Self::Wdqs,
+        }
+    }
+}
+
+impl std::fmt::Display for SparqlEndpointUI {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Qlever => write!(f, "QLever"),
+            Self::Wdqs => write!(f, "Wikidata Query Service"),
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct DownloadQuerySpec {
@@ -57,7 +90,8 @@ pub(super) struct DownloadToolbarModel {
     pub(super) json_filename: String,
     pub(super) rdf_filename: String,
     pub(super) metadata_filename: String,
-    pub(super) qlever_ui_url: Option<String>,
+    pub(super) sparql_endpoint_ui: SparqlEndpointUI,
+    pub(super) ui_url: Option<String>,
 }
 
 #[must_use]
@@ -68,13 +102,33 @@ pub(super) fn build_download_toolbar_model(
     query_hash: Option<&str>,
     result_hash: Option<&str>,
 ) -> DownloadToolbarModel {
+    build_download_toolbar_model_with_endpoint(
+        criteria,
+        sparql_query,
+        metadata_json,
+        query_hash,
+        result_hash,
+        SparqlEndpointUI::default(),
+    )
+}
+
+#[must_use]
+pub(super) fn build_download_toolbar_model_with_endpoint(
+    criteria: &SearchCriteria,
+    sparql_query: Option<&str>,
+    metadata_json: Option<&str>,
+    query_hash: Option<&str>,
+    result_hash: Option<&str>,
+    endpoint: SparqlEndpointUI,
+) -> DownloadToolbarModel {
     DownloadToolbarModel {
         export_available: sparql_query.is_some() || metadata_json.is_some(),
         csv_filename: export::generate_filename(criteria, "csv"),
         json_filename: export::generate_filename(criteria, "json"),
         rdf_filename: export::generate_filename(criteria, "rdf"),
         metadata_filename: build_metadata_filename(criteria, query_hash, result_hash),
-        qlever_ui_url: build_qlever_ui_url(sparql_query),
+        sparql_endpoint_ui: endpoint,
+        ui_url: build_sparql_ui_url(sparql_query, endpoint),
     }
 }
 
@@ -93,15 +147,19 @@ fn build_metadata_filename(
 }
 
 #[must_use]
-fn build_qlever_ui_url(sparql_query: Option<&str>) -> Option<String> {
-    sparql_query.map(|query| format!("{QLEVER_UI}?query={}", urlencoding::encode(query)))
+fn build_sparql_ui_url(sparql_query: Option<&str>, endpoint: SparqlEndpointUI) -> Option<String> {
+    let base_url = match endpoint {
+        SparqlEndpointUI::Qlever => QLEVER_UI,
+        SparqlEndpointUI::Wdqs => WDQS_UI,
+    };
+    sparql_query.map(|query| format!("{base_url}?query={}", urlencoding::encode(query)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         DOWNLOAD_QUERY_CSV_SPEC, DOWNLOAD_QUERY_JSON_SPEC, DOWNLOAD_QUERY_RDF_SPEC,
-        build_download_toolbar_model,
+        SparqlEndpointUI, build_download_toolbar_model, build_download_toolbar_model_with_endpoint,
     };
     use crate::download::DownloadFormat;
     use crate::models::SearchCriteria;
@@ -148,7 +206,7 @@ mod tests {
         let model = build_download_toolbar_model(&criteria, None, None, None, None);
 
         assert!(!model.export_available);
-        assert!(model.qlever_ui_url.is_none());
+        assert!(model.ui_url.is_none());
     }
 
     #[test]
@@ -158,9 +216,56 @@ mod tests {
 
         let model = build_download_toolbar_model(&criteria, Some(query), None, None, None);
 
-        let url = model.qlever_ui_url.expect("query link should be present");
+        let url = model.ui_url.expect("query link should be present");
         let encoded = urlencoding::encode(query);
         assert!(url.starts_with("https://qlever.dev/wikidata?query="));
         assert!(url.contains(encoded.as_ref()));
+    }
+
+    #[test]
+    fn toolbar_model_encodes_query_for_wdqs_ui_link_when_endpoint_is_wdqs() {
+        let criteria = SearchCriteria::default();
+        let query = "SELECT * WHERE { ?compound wdt:P31 \"natural product\" }";
+
+        let model = build_download_toolbar_model_with_endpoint(
+            &criteria,
+            Some(query),
+            None,
+            None,
+            None,
+            SparqlEndpointUI::Wdqs,
+        );
+
+        let url = model.ui_url.expect("query link should be present");
+        let encoded = urlencoding::encode(query);
+        assert!(url.starts_with("https://query.wikidata.org?query="));
+        assert!(url.contains(encoded.as_ref()));
+    }
+
+    #[test]
+    fn toolbar_model_shows_correct_endpoint_name() {
+        let criteria = SearchCriteria::default();
+
+        let qlever_model = build_download_toolbar_model(
+            &criteria,
+            Some("SELECT ?s WHERE { ?s ?p ?o }"),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(qlever_model.sparql_endpoint_ui.to_string(), "QLever");
+
+        let wdqs_model = build_download_toolbar_model_with_endpoint(
+            &criteria,
+            Some("SELECT ?s WHERE { ?s ?p ?o }"),
+            None,
+            None,
+            None,
+            SparqlEndpointUI::Wdqs,
+        );
+        assert_eq!(
+            wdqs_model.sparql_endpoint_ui.to_string(),
+            "Wikidata Query Service"
+        );
     }
 }

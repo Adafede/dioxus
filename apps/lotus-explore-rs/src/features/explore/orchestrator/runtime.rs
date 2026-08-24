@@ -9,7 +9,7 @@ use crate::features::explore::search_state::{ExploreState, dispatch_explore_acti
 use crate::features::explore::service::finalize;
 use crate::features::explore::types::DomainError;
 use crate::models::SearchCriteria;
-use crate::repositories::LotusRepository;
+use crate::repositories::{LotusRepository, reset_wdqs_fallback_flag};
 use crate::services::search_telemetry as telemetry;
 use dioxus::prelude::*;
 use std::time::Duration;
@@ -24,6 +24,9 @@ pub fn start_search<R: LotusRepository>(
     task_controller: SearchTaskController,
     repo: R,
 ) {
+    // Reset WDQS fallback flag for new search
+    reset_wdqs_fallback_flag();
+
     let request = match prepare_search_request(criteria, command, explore) {
         Ok(request) => request,
         Err(error) => {
@@ -117,6 +120,7 @@ fn build_search_succeeded_action(request: &SearchRequest, outcome: SearchOutcome
         total_matches,
         total_stats,
         display_capped_rows,
+        endpoint,
     } = outcome;
 
     let meta = finalize::finalize(
@@ -126,6 +130,7 @@ fn build_search_succeeded_action(request: &SearchRequest, outcome: SearchOutcome
         total_matches,
         total_stats,
         request.direct_download(),
+        endpoint,
     );
 
     ExploreAction::SearchSucceeded {
@@ -139,6 +144,7 @@ fn build_search_succeeded_action(request: &SearchRequest, outcome: SearchOutcome
         query_hash: meta.query_hash,
         result_hash: meta.result_hash,
         metadata_json: meta.metadata_json,
+        endpoint,
     }
 }
 

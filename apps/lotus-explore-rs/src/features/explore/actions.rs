@@ -3,6 +3,7 @@
 
 //! Action catalog for the Explore feature reducer.
 
+use crate::export::SparqlEndpoint;
 use crate::features::explore::command::SearchCommand;
 use crate::features::explore::types::{DomainError, QueryPhase, TaxonWarning};
 use crate::models::{CompoundEntry, DatasetStats, SearchCriteria, SortColumn};
@@ -33,6 +34,7 @@ pub enum ExploreAction {
         query_hash: Arc<str>,
         result_hash: Arc<str>,
         metadata_json: Arc<str>,
+        endpoint: SparqlEndpoint,
     },
 
     /// Commit a typed search error (i18n-free; formatted at render time).

@@ -2,7 +2,13 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use super::*;
+use lotus::transport::{FetchError, ResponseFormat};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+
+async fn execute_sparql_format(query: &str, format: ResponseFormat) -> Result<String, FetchError> {
+    super::execute_sparql_with_wdqs_fallback(query, format).await
+}
 
 async fn execute_sparql_json(query: &str) -> Result<Value, CurationError> {
     let raw = execute_sparql_format(query, ResponseFormat::SparqlJson)
@@ -323,7 +329,9 @@ pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, Cura
 pub async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, CurationError> {
     let query = format!(
         "{CURATION_SPARQL_PREFIXES}\n\
-         SELECT ?ref WHERE {{ ?ref wdt:P356 \"{}\" . }} LIMIT 1",
+         SELECT ?ref WHERE {{\n  \
+           ?ref wdt:P356 \"{}\" .\n         \
+         }} LIMIT 1",
         escape_sparql_string(&doi.to_ascii_uppercase())
     );
     let json = execute_sparql_json(&query).await?;

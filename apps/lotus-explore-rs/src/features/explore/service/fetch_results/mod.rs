@@ -50,13 +50,16 @@ struct PlannedResultsFetch<'a> {
 ///
 /// `on_fetching` is called before the network fetch begins and `on_processing`
 /// before CSV parsing/stat aggregation; in tests pass `|| ()`.
-pub async fn fetch<R: LotusRepository, OnFetching: Fn(), OnProcessing: Fn()>(
+pub(super) async fn fetch<R: LotusRepository, OnFetching: Fn(), OnProcessing: Fn()>(
     execution_query: &str,
     display_limit: usize,
     repo: &R,
     metrics: &mut SearchMetrics,
     hooks: FetchHooks<OnFetching, OnProcessing>,
 ) -> Result<FetchResult, DomainError> {
+    // Clear any previous WDQS fallback state from taxon resolution or other operations
+    crate::repositories::reset_wdqs_fallback_flag();
+
     let plan = plan_full_results_fetch(execution_query, display_limit);
     let FetchHooks {
         on_fetching,

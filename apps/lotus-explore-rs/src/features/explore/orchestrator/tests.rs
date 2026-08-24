@@ -19,6 +19,7 @@ fn build_search_succeeded_action_applies_finalized_counts() {
         total_matches: Some(7),
         total_stats: None,
         display_capped_rows: true,
+        endpoint: crate::export::SparqlEndpoint::Qlever,
     };
 
     let action = build_search_succeeded_action_for_tests(&request, outcome);

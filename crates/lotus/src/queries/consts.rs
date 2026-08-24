@@ -97,3 +97,72 @@ pub(super) const PROPERTIES_OPTIONAL: &str = r#"
   OPTIONAL { ?c rdfs:label ?compoundLabelEn. FILTER(LANG(?compoundLabelEn) = "en") }
   BIND(COALESCE(?compoundLabelMul, ?compoundLabelEn) AS ?compoundLabel)
 "#;
+
+/// Reference metadata service wrapper for WDQS scholarly subgraph.
+///
+/// Wraps the standard reference metadata OPTIONAL blocks with a SERVICE clause
+/// that queries the scholarly subgraph endpoint for enhanced bibliographic data.
+/// Used when executing queries directly against WDQS (fallback from `QLever` 502).
+pub(super) const REFERENCE_METADATA_SERVICE: &str = r"
+  SERVICE <https://query-scholarly.wikidata.org/sparql> {
+    OPTIONAL { ?r wdt:P1476 ?ref_title. }
+    OPTIONAL { ?r wdt:P356 ?ref_doi. }
+    OPTIONAL { ?r wdt:P577 ?ref_date. }
+  }
+";
+
+/// Reference metadata service wrapper for WDQS scholarly subgraph (using ?ref variable).
+///
+/// Same as `REFERENCE_METADATA_SERVICE` but uses ?ref instead of ?r as the variable name.
+pub(super) const REFERENCE_METADATA_SERVICE_REF: &str = r"
+  SERVICE <https://query-scholarly.wikidata.org/sparql> {
+    OPTIONAL { ?ref wdt:P1476 ?ref_title. }
+    OPTIONAL { ?ref wdt:P356 ?ref_doi. }
+    OPTIONAL { ?ref wdt:P577 ?ref_date. }
+  }
+";
+
+/// Transforms a query to use scholarly subgraph SERVICE for reference metadata
+/// (replacing standalone OPTIONAL blocks with SERVICE-wrapped version).
+///
+/// This is used when falling back from `QLever` to WDQS, as the scholarly subgraph
+/// provides enhanced access to bibliographic data.
+#[must_use]
+pub fn transform_query_for_wdqs(query: &str) -> String {
+    // Pattern with ?r variable (established in TAXON_REFERENCE_ASSOCIATION)
+    let ref_optional_r = r"
+  OPTIONAL { ?r wdt:P1476 ?ref_title. }
+  OPTIONAL { ?r wdt:P356 ?ref_doi. }
+  OPTIONAL { ?r wdt:P577 ?ref_date. }
+";
+    // Pattern with ?ref variable (used in resolve_reference_qid)
+    let ref_optional_ref = r"
+  OPTIONAL { ?ref wdt:P1476 ?ref_title. }
+  OPTIONAL { ?ref wdt:P356 ?ref_doi. }
+  OPTIONAL { ?ref wdt:P577 ?ref_date. }
+";
+    // Check if this is a simple reference lookup query (just SELECT ?ref)
+    let is_simple_ref_query = query.contains("SELECT ?ref WHERE {")
+        && query.contains("wdt:P356")
+        && !query.contains("SERVICE")
+        && !query.contains("OPTIONAL");
+
+    // Try ?ref pattern first, then ?r pattern
+    if is_simple_ref_query {
+        // For simple reference queries, wrap SELECT in SERVICE while keeping PREFIXES outside
+        let query_without_prefix_placeholder = query.replace("{CURATION_SPARQL_PREFIXES}\n", "");
+        let query_body = query_without_prefix_placeholder.replace(" LIMIT 1", "");
+        format!(
+            "SERVICE <https://query-scholarly.wikidata.org/sparql> {{\n  {query_body}\n}}\nLIMIT 1"
+        )
+    } else if query.contains("OPTIONAL { ?ref wdt:P1476 ?ref_title. }")
+    {
+        // Replace ?ref variable with SERVICE
+        query.replace(ref_optional_ref, REFERENCE_METADATA_SERVICE_REF)
+    } else if query.contains("OPTIONAL { ?r wdt:P1476 ?ref_title. }") {
+        // Replace ?r variable with SERVICE
+        query.replace(ref_optional_r, REFERENCE_METADATA_SERVICE)
+    } else {
+        query.to_string()
+    }
+}

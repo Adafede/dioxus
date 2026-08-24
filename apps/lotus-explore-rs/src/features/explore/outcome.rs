@@ -17,6 +17,7 @@ pub struct SearchOutcome {
     pub total_matches: Option<usize>,
     pub total_stats: Option<DatasetStats>,
     pub display_capped_rows: bool,
+    pub endpoint: crate::export::SparqlEndpoint,
 }
 
 impl SearchOutcome {
@@ -46,6 +47,7 @@ impl SearchOutcome {
             total_matches: Some(response.total_matches),
             total_stats: Some(response.stats.into()),
             display_capped_rows,
+            endpoint: crate::export::SparqlEndpoint::Qlever,
         }
     }
 
@@ -59,6 +61,7 @@ impl SearchOutcome {
             total_matches: outcome.total_matches,
             total_stats: outcome.total_stats,
             display_capped_rows: outcome.display_capped_rows,
+            endpoint: outcome.endpoint,
         }
     }
 }

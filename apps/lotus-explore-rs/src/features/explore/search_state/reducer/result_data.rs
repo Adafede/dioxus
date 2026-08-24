@@ -1,3 +1,4 @@
+use crate::export::SparqlEndpoint;
 use crate::features::explore::types::TaxonWarning;
 use crate::models::{CompoundEntry, DatasetStats, SortColumn, SortDir};
 use std::sync::Arc;
@@ -15,6 +16,7 @@ pub(super) struct SearchSuccessPayload {
     pub query_hash: Arc<str>,
     pub result_hash: Arc<str>,
     pub metadata_json: Arc<str>,
+    pub endpoint: SparqlEndpoint,
 }
 
 pub(super) fn reset_for_new_search(state: &mut ResultDataState) {
@@ -31,11 +33,19 @@ pub(super) fn search_succeeded(state: &mut ResultDataState, payload: SearchSucce
     state.resolved_qid = payload.qid.map(Arc::from);
     state.query_hash = Some(payload.query_hash);
     state.result_hash = Some(payload.result_hash);
-    state.sparql_query = Some(Arc::<str>::from(payload.query));
+    // If WDQS fallback occurred, replace with transformed query
+    if matches!(payload.endpoint, crate::export::SparqlEndpoint::Wdqs) {
+        if let Some(transformed) = crate::repositories::get_wdqs_transformed_query() {
+            state.sparql_query = Some(Arc::<str>::from(transformed));
+        }
+    } else {
+        state.sparql_query = Some(Arc::<str>::from(payload.query));
+    }
     state.metadata_json = Some(payload.metadata_json);
     state.total_matches = payload.total_matches;
     state.total_stats = payload.total_stats;
     state.display_capped_rows = payload.display_capped_rows;
+    state.endpoint = payload.endpoint;
 }
 
 pub(super) fn sort_toggled(state: &mut ResultDataState, column: SortColumn) {

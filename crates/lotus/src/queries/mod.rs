@@ -32,6 +32,7 @@ mod structure;
 // ── Re-exports (public API unchanged) ────────────────────────────────────────
 
 pub use compound::{query_all_compounds, query_compounds_by_taxon, query_taxon_search};
+pub use consts::transform_query_for_wdqs;
 pub use filters::query_with_server_filters;
 pub use pagination::{query_counts_from_base, query_with_limit};
 pub use rdf::query_construct_from_select;

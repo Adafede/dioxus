@@ -157,6 +157,24 @@ pub fn warn_ambiguous_taxon(
     }
 }
 
+pub fn warn_qlever_bad_gateway(locale: Locale) -> String {
+    match locale {
+        Locale::En => en::warn_qlever_bad_gateway(),
+        Locale::Fr => fr::warn_qlever_bad_gateway(),
+        Locale::De => de::warn_qlever_bad_gateway(),
+        Locale::It => it::warn_qlever_bad_gateway(),
+    }
+}
+
+pub fn warn_wdqs_fallback(locale: Locale) -> String {
+    match locale {
+        Locale::En => en::warn_wdqs_fallback(),
+        Locale::Fr => fr::warn_wdqs_fallback(),
+        Locale::De => de::warn_wdqs_fallback(),
+        Locale::It => it::warn_wdqs_fallback(),
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 pub fn error_hint_memory(locale: Locale) -> &'static str {
     match locale {

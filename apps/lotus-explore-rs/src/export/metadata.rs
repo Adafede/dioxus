@@ -11,6 +11,31 @@ pub const APP_VERSION: &str = "0.1.0";
 pub const APP_NAME: &str = "LOTUS Knowledge Search";
 pub const APP_URL: &str = "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explore-rs";
 pub const QLEVER_ENDPOINT: &str = "https://qlever.dev/api/wikidata";
+pub const WDQS_ENDPOINT: &str = "https://query.wikidata.org/sparql";
+
+/// Represents the SPARQL endpoint used for a query.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SparqlEndpoint {
+    /// QLever endpoint (default/preferred)
+    Qlever,
+    /// Wikidata Query Service (fallback on 502 from QLever)
+    Wdqs,
+}
+
+impl Default for SparqlEndpoint {
+    fn default() -> Self {
+        Self::Qlever
+    }
+}
+
+impl std::fmt::Display for SparqlEndpoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Qlever => write!(f, "QLever"),
+            Self::Wdqs => write!(f, "Wikidata Query Service"),
+        }
+    }
+}
 
 #[derive(Serialize)]
 struct Organization<'a> {
@@ -56,10 +81,10 @@ struct ChemicalSearchService<'a> {
 }
 
 #[derive(Serialize)]
-struct SparqlEndpointInfo<'a> {
-    url: &'a str,
-    name: &'a str,
-    description: &'a str,
+struct SparqlEndpointInfo {
+    url: String,
+    name: String,
+    description: String,
 }
 
 #[derive(Serialize)]
@@ -76,32 +101,32 @@ struct HashInfo {
 }
 
 #[derive(Serialize)]
-struct DatasetMetadata<'a> {
+struct DatasetMetadata {
     #[serde(rename = "@context")]
-    context: &'a str,
+    context: &'static str,
     #[serde(rename = "@type")]
-    type_: &'a str,
+    type_: &'static str,
     name: String,
     description: String,
-    version: &'a str,
+    version: &'static str,
     #[serde(rename = "dateCreated")]
     date_created: String,
-    license: &'a str,
-    creator: Creator<'a>,
-    provider: Vec<Organization<'a>>,
-    citation: Vec<ScholarlyArticle<'a>>,
-    distribution: Vec<DataDownload<'a>>,
+    license: &'static str,
+    creator: Creator<'static>,
+    provider: Vec<Organization<'static>>,
+    citation: Vec<ScholarlyArticle<'static>>,
+    distribution: Vec<DataDownload<'static>>,
     #[serde(rename = "numberOfRecords", skip_serializing_if = "Option::is_none")]
     number_of_records: Option<usize>,
     #[serde(rename = "variablesMeasured")]
-    variables_measured: Vec<&'a str>,
+    variables_measured: Vec<&'static str>,
     search_parameters: Value,
     #[serde(
         rename = "chemical_search_service",
         skip_serializing_if = "Option::is_none"
     )]
-    chemical_search_service: Option<ChemicalSearchService<'a>>,
-    sparql_endpoint: SparqlEndpointInfo<'a>,
+    chemical_search_service: Option<ChemicalSearchService<'static>>,
+    sparql_endpoint: SparqlEndpointInfo,
     provenance: Provenance,
 }
 
@@ -111,6 +136,8 @@ pub struct MetadataInputs<'a> {
     pub number_of_records_override: Option<usize>,
     pub query_hash: &'a str,
     pub result_hash: &'a str,
+    /// The SPARQL endpoint used for this query (Qlever by default, WDQS on fallback)
+    pub endpoint: SparqlEndpoint,
 }
 
 pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
@@ -292,9 +319,20 @@ pub fn build_metadata_json(inp: MetadataInputs<'_>) -> String {
         search_parameters: Value::Object(search_params),
         chemical_search_service,
         sparql_endpoint: SparqlEndpointInfo {
-            url: QLEVER_ENDPOINT,
-            name: "QLever Wikidata",
-            description: "Fast SPARQL endpoint for Wikidata",
+            url: match inp.endpoint {
+                SparqlEndpoint::Qlever => QLEVER_ENDPOINT.to_string(),
+                SparqlEndpoint::Wdqs => WDQS_ENDPOINT.to_string(),
+            },
+            name: match inp.endpoint {
+                SparqlEndpoint::Qlever => "QLever Wikidata".to_string(),
+                SparqlEndpoint::Wdqs => "Wikidata Query Service".to_string(),
+            },
+            description: match inp.endpoint {
+                SparqlEndpoint::Qlever => "Fast SPARQL endpoint for Wikidata (QLever)".to_string(),
+                SparqlEndpoint::Wdqs => {
+                    "Wikidata Query Service (fell back from QLever 502)".to_string()
+                }
+            },
         },
         provenance: Provenance {
             query_hash: HashInfo {
@@ -332,8 +370,25 @@ mod tests {
             number_of_records_override: Some(1),
             query_hash: "abc",
             result_hash: "def",
+            endpoint: SparqlEndpoint::Qlever,
         });
         assert!(body.contains("\"@type\": \"Dataset\""));
         assert!(body.contains("\"query_hash\""));
+    }
+
+    #[test]
+    fn metadata_json_shows_wdqs_when_fallback_used() {
+        let criteria = SearchCriteria::default();
+        let body = build_metadata_json(MetadataInputs {
+            criteria: &criteria,
+            qid: Some("Q42"),
+            number_of_records_override: Some(1),
+            query_hash: "abc",
+            result_hash: "def",
+            endpoint: SparqlEndpoint::Wdqs,
+        });
+        assert!(body.contains(&format!("\"url\": \"{}\"", WDQS_ENDPOINT)));
+        assert!(body.contains("Wikidata Query Service"));
+        assert!(body.contains("fell back from QLever 502"));
     }
 }

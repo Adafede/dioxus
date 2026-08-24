@@ -8,13 +8,59 @@
 //!    (gives exact counts + query in one round-trip).
 //! 2. On API error or when not configured, return `None` / `Some(Err(…))`
 //!    so the caller falls back to direct SPARQL execution.
+//! 3. Direct SPARQL execution targets `QLever` (`QLEVER_WIKIDATA`) by
+//!    default. If `QLever` answers with a 502 Bad Gateway — a known
+//!    transient failure mode on the public instance — the same query is
+//!    immediately re-sent to the Wikidata Query Service (`WDQS_WIKIDATA`)
+//!    as a fallback, using the scholarly subgraph for reference metadata,
+//!    rather than surfacing the gateway error to the user.
 
 use crate::api;
 use crate::api::SearchResponse;
 use crate::models::SearchCriteria;
 use crate::repositories::{LotusRepository, RepositoryError};
 use crate::sparql;
-use lotus::transport::FetchError;
+use lotus::queries::transform_query_for_wdqs;
+use lotus::transport::{self, FetchError, WDQS_WIKIDATA};
+use std::cell::RefCell;
+
+thread_local! {
+    /// Tracks whether WDQS fallback was used for the current search.
+    /// Reset at the start of each search operation.
+    static WDQS_FALLBACK_USED: RefCell<bool> = RefCell::new(false);
+    /// Stores the WDQS-transformed query when fallback occurs.
+    static WDQS_TRANSFORMED_QUERY: RefCell<Option<String>> = RefCell::new(None);
+}
+
+/// Check if WDQS fallback was used in the current operation.
+pub fn is_wdqs_fallback_used() -> bool {
+    WDQS_FALLBACK_USED.with(|b| *b.borrow())
+}
+
+/// Get the WDQS-transformed query (if fallback occurred).
+pub fn get_wdqs_transformed_query() -> Option<String> {
+    WDQS_TRANSFORMED_QUERY.with(|b| b.borrow().clone())
+}
+
+/// Reset the WDQS fallback flag at the start of a new operation.
+pub fn reset_wdqs_fallback_flag() {
+    WDQS_FALLBACK_USED.with(|b| *b.borrow_mut() = false);
+    WDQS_TRANSFORMED_QUERY.with(|b| *b.borrow_mut() = None);
+}
+
+/// Mark that WDQS fallback was used and store the transformed query.
+/// Only stores the first transformed query (results query priority over count query).
+fn mark_wdqs_fallback_used(query: String) {
+    // Only store the first transformed query (results query priority over count query)
+    WDQS_TRANSFORMED_QUERY.with(|transformed| {
+        if transformed.borrow().is_none() {
+            *transformed.borrow_mut() = Some(query);
+        }
+    });
+    WDQS_FALLBACK_USED.with(|flag| {
+        *flag.borrow_mut() = true;
+    });
+}
 
 /// Zero-size, `Copy` production repository.
 ///
@@ -46,18 +92,34 @@ impl LotusRepository for HybridRepository {
     }
 
     async fn sparql_bytes(&self, query: &str) -> Result<Vec<u8>, RepositoryError> {
-        sparql::execute_sparql_bytes(query)
-            .await
-            .map_err(map_fetch_error)
+        match sparql::execute_sparql_bytes(query).await {
+            Err(err) if is_bad_gateway(&err) => {
+                log::warn!("event=qlever_bad_gateway action=fallback_wdqs_scholarly");
+                let wdqs_query = transform_query_for_wdqs(query);
+                mark_wdqs_fallback_used(wdqs_query.clone());
+                transport::execute_sparql_bytes(&wdqs_query, WDQS_WIKIDATA)
+                    .await
+                    .map_err(map_fetch_error)
+            }
+            result => result.map_err(map_fetch_error),
+        }
     }
 
     async fn sparql_body(
         &self,
         query: &str,
     ) -> Result<lotus::transport::ResponseBody, RepositoryError> {
-        sparql::execute_sparql_body(query)
-            .await
-            .map_err(map_fetch_error)
+        match sparql::execute_sparql_body(query).await {
+            Err(err) if is_bad_gateway(&err) => {
+                log::warn!("event=qlever_bad_gateway action=fallback_wdqs_scholarly");
+                let wdqs_query = transform_query_for_wdqs(query);
+                mark_wdqs_fallback_used(wdqs_query.clone());
+                transport::execute_sparql_body(&wdqs_query, WDQS_WIKIDATA)
+                    .await
+                    .map_err(map_fetch_error)
+            }
+            result => result.map_err(map_fetch_error),
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -65,10 +127,27 @@ impl LotusRepository for HybridRepository {
         &self,
         query: &str,
     ) -> Result<tempfile::NamedTempFile, RepositoryError> {
-        sparql::execute_sparql_tempfile(query)
-            .await
-            .map_err(map_fetch_error)
+        match sparql::execute_sparql_tempfile(query).await {
+            Err(err) if is_bad_gateway(&err) => {
+                log::warn!("event=qlever_bad_gateway action=fallback_wdqs_scholarly");
+                let wdqs_query = transform_query_for_wdqs(query);
+                mark_wdqs_fallback_used(wdqs_query.clone());
+                transport::execute_sparql_tempfile(&wdqs_query, WDQS_WIKIDATA)
+                    .await
+                    .map_err(map_fetch_error)
+            }
+            result => result.map_err(map_fetch_error),
+        }
     }
+}
+
+/// True when `QLever` failed with a 502 Bad Gateway — the signal to retry the
+/// same query against the WDQS fallback endpoint instead of surfacing the
+/// error. `QLever`'s own transport layer already retries transient network
+/// failures and gateway errors internally (see `MAX_HTTP_ATTEMPTS`), so a 502
+/// reaching this layer means those in-endpoint retries were exhausted.
+fn is_bad_gateway(err: &FetchError) -> bool {
+    matches!(err, FetchError::Http(502, _))
 }
 
 fn map_fetch_error(err: FetchError) -> RepositoryError {
@@ -100,5 +179,17 @@ mod tests {
     fn map_fetch_error_keeps_network_as_network() {
         let mapped = map_fetch_error(FetchError::Network("timeout".to_string()));
         assert!(matches!(mapped, RepositoryError::Network(_)));
+    }
+
+    #[test]
+    fn is_bad_gateway_matches_only_502() {
+        assert!(is_bad_gateway(&FetchError::Http(
+            502,
+            "upstream gateway error (HTML payload)".into()
+        )));
+        assert!(!is_bad_gateway(&FetchError::Http(500, "boom".into())));
+        assert!(!is_bad_gateway(&FetchError::Http(400, "bad query".into())));
+        assert!(!is_bad_gateway(&FetchError::Network("timeout".into())));
+        assert!(!is_bad_gateway(&FetchError::Empty));
     }
 }

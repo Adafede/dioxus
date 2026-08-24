@@ -20,11 +20,15 @@ pub struct FinalizedMeta {
     pub filtered_matches: Option<usize>,
     /// Filtered dataset stats (absent in download-only mode).
     pub filtered_stats: Option<DatasetStats>,
+    /// The SPARQL endpoint used for this query.
+    pub endpoint: export::SparqlEndpoint,
 }
 
 /// Assemble [`FinalizedMeta`] from the raw outcome parts.
 ///
 /// `direct_download_mode` suppresses stats/counts (they were never fetched).
+/// `endpoint` indicates which SPARQL endpoint was used (Qlever by default,
+/// WDQS on fallback due to 502 errors).
 pub fn finalize(
     crit: &SearchCriteria,
     qid: Option<&str>,
@@ -32,6 +36,7 @@ pub fn finalize(
     raw_matches: Option<usize>,
     raw_stats: Option<DatasetStats>,
     direct_download_mode: bool,
+    endpoint: export::SparqlEndpoint,
 ) -> FinalizedMeta {
     let filtered_stats = if direct_download_mode {
         None
@@ -51,6 +56,7 @@ pub fn finalize(
         number_of_records_override: filtered_matches,
         query_hash: &query_hash,
         result_hash: &result_hash,
+        endpoint,
     }));
 
     FinalizedMeta {
@@ -59,6 +65,7 @@ pub fn finalize(
         metadata_json,
         filtered_matches,
         filtered_stats,
+        endpoint,
     }
 }
 
@@ -70,7 +77,15 @@ mod tests {
     #[test]
     fn download_only_suppresses_stats_and_matches() {
         let crit = SearchCriteria::default();
-        let m = finalize(&crit, None, &[], None, None, true);
+        let m = finalize(
+            &crit,
+            None,
+            &[],
+            None,
+            None,
+            true,
+            export::SparqlEndpoint::Qlever,
+        );
         assert!(m.filtered_matches.is_none());
         assert!(m.filtered_stats.is_none());
     }
@@ -78,7 +93,15 @@ mod tests {
     #[test]
     fn normal_mode_fills_stats_and_matches() {
         let crit = SearchCriteria::default();
-        let m = finalize(&crit, None, &[], Some(7), None, false);
+        let m = finalize(
+            &crit,
+            None,
+            &[],
+            Some(7),
+            None,
+            false,
+            export::SparqlEndpoint::Qlever,
+        );
         assert_eq!(m.filtered_matches, Some(7));
         assert!(m.filtered_stats.is_some());
     }
@@ -86,8 +109,24 @@ mod tests {
     #[test]
     fn hashes_are_deterministic() {
         let crit = SearchCriteria::default();
-        let m1 = finalize(&crit, Some("Q42"), &[], None, None, false);
-        let m2 = finalize(&crit, Some("Q42"), &[], None, None, false);
+        let m1 = finalize(
+            &crit,
+            Some("Q42"),
+            &[],
+            None,
+            None,
+            false,
+            export::SparqlEndpoint::Qlever,
+        );
+        let m2 = finalize(
+            &crit,
+            Some("Q42"),
+            &[],
+            None,
+            None,
+            false,
+            export::SparqlEndpoint::Qlever,
+        );
         assert_eq!(m1.query_hash, m2.query_hash);
         assert_eq!(m1.result_hash, m2.result_hash);
     }
@@ -95,7 +134,15 @@ mod tests {
     #[test]
     fn metadata_json_is_non_empty() {
         let crit = SearchCriteria::default();
-        let m = finalize(&crit, None, &[], None, None, false);
+        let m = finalize(
+            &crit,
+            None,
+            &[],
+            None,
+            None,
+            false,
+            export::SparqlEndpoint::Qlever,
+        );
         assert!(!m.metadata_json.is_empty());
     }
 }

@@ -137,6 +137,7 @@ pub struct ToolbarResultSnapshot {
     pub total_stats: Option<DatasetStats>,
     pub total_matches: Option<usize>,
     pub display_capped_rows: bool,
+    pub endpoint: crate::export::SparqlEndpoint,
 }
 
 pub fn toolbar_snapshot_from_result(result: &ResultDataState) -> ToolbarResultSnapshot {
@@ -148,6 +149,7 @@ pub fn toolbar_snapshot_from_result(result: &ResultDataState) -> ToolbarResultSn
         total_stats: result.total_stats.clone(),
         total_matches: result.total_matches,
         display_capped_rows: result.display_capped_rows,
+        endpoint: result.endpoint.clone(),
     }
 }
 

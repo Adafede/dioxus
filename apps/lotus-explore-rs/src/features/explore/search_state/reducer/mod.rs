@@ -39,6 +39,7 @@ pub fn reduce_mut(state: &mut ExploreState, action: ExploreAction) {
             query_hash,
             result_hash,
             metadata_json,
+            endpoint,
         } => {
             lifecycle::search_finished(&mut state.lifecycle);
             result_data::search_succeeded(
@@ -54,6 +55,7 @@ pub fn reduce_mut(state: &mut ExploreState, action: ExploreAction) {
                     query_hash,
                     result_hash,
                     metadata_json,
+                    endpoint,
                 },
             );
         }

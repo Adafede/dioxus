@@ -48,6 +48,8 @@ pub struct ResultDataState {
     pub total_stats: Option<DatasetStats>,
     pub display_capped_rows: bool,
     pub sort: SortState,
+    /// The SPARQL endpoint used (Qlever by default, WDQS on fallback from 502)
+    pub endpoint: crate::export::SparqlEndpoint,
 }
 
 impl Default for ResultDataState {
@@ -64,6 +66,7 @@ impl Default for ResultDataState {
             total_stats: None,
             display_capped_rows: false,
             sort: SortState::default(),
+            endpoint: crate::export::SparqlEndpoint::Qlever,
         }
     }
 }
