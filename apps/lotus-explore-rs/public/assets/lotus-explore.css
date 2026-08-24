@@ -37,16 +37,19 @@ img, svg, canvas, video {
     --shadow-md: 0 10px 30px rgb(15 23 42 / 9%);
     --mono:      'Fira Code', 'JetBrains Mono', consolas, monospace;
     --sans:      'Inter', 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
+
+    --fs-micro:  clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);
     --fs-0:      clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);
     --fs-1:      clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
     --fs-2:      clamp(0.9375rem, 0.9rem + 0.28vw, 1.0625rem);
     --fs-3:      clamp(1.125rem, 1.02rem + 0.6vw, 1.5rem);
     --fs-4:      clamp(1.375rem, 1.1rem + 0.85vw, 1.85rem);
-    --fs-body:   clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
-    --fs-label:  clamp(0.6875rem, 0.66rem + 0.14vw, 0.75rem);
-    --fs-micro:  clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);
-    --fs-ui:     clamp(0.8125rem, 0.785rem + 0.16vw, 0.875rem);
-    --fs-stat:   clamp(1.125rem, 1.02rem + 0.52vw, 1.375rem);
+
+    --fs-label:  var(--fs-micro);
+    --fs-ui:     var(--fs-0);
+    --fs-body:   var(--fs-1);
+    --fs-stat:   var(--fs-3);
+
     --tap-target-min: 40px;
     --space-1:   6px;
     --space-2:   10px;
@@ -85,14 +88,21 @@ img, svg, canvas, video {
     --stat-total-border: color-mix(in srgb, var(--footer-wd-entries) 34%, var(--border));
     --stat-total-stripe: var(--footer-wd-entries);
 
-    --fs-title-tablet: clamp(1.2rem, 0.85rem + 1.05vw, 1.5rem);
-    --fs-heading-tablet: clamp(1rem, 0.8rem + 0.6vw, 1.25rem);
-    --fs-body-tablet: clamp(0.85rem, 0.8rem + 0.15vw, 0.9rem);
-    --fs-small-tablet: clamp(0.7rem, 0.68rem + 0.1vw, 0.8rem);
+    --fs-title-tablet: var(--fs-3);
+    --fs-heading-tablet: var(--fs-2);
+    --fs-body-tablet: var(--fs-1);
+    --fs-small-tablet: var(--fs-0);
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
+        color-scheme: dark;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]),
+    [data-theme="dark"] {
         --bg:        #0f172a;
         --bg2:       #0f172a;
         --surface:   #111827;
@@ -125,33 +135,6 @@ img, svg, canvas, video {
 
 [data-theme="dark"] {
     color-scheme: dark;
-    --bg:        #0f172a;
-    --bg2:       #0f172a;
-    --surface:   #111827;
-    --surface2:  #111827;
-    --border:    #38475a;
-    --text:      #eef4fb;
-    --text2:     #d5deea;
-    --text3:     #a7b4c7;
-    --accent:    #8cbcff;
-    --accent2:   #5e98f3;
-    --btn-primary-bg: #0b5cab;
-    --btn-primary-hover-bg: #285fcc;
-    --green:     #4cc38a;
-    --red:       #ff8a80;
-    --yellow:    #f0b35e;
-    --purple:    #c3a0ff;
-    --shadow-xs: 0 1px 2px rgb(0 0 0 / 45%);
-    --shadow-sm: 0 4px 14px rgb(0 0 0 / 35%);
-    --shadow-md: 0 10px 30px rgb(0 0 0 / 35%);
-    --glass:     rgb(22 27 34 / 78%);
-    --ring:      0 0 0 3px rgb(140 188 255 / 28%);
-    --critical-text: #e8edf5;
-    --critical-muted: #d0d9e5;
-    --footer-wd-taxon: var(--wd-taxon);
-    --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 60%, #fff);
-    --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 77%, #fff);
-    --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 77%, #fff);
 }
 
 [data-theme="light"] {
@@ -305,16 +288,12 @@ a:hover { text-decoration: underline; }
         --border: #7a879a;
         --text3: #334155;
         --critical-muted: #223247;
+        --fs-micro:  clamp(0.82rem, 0.80rem + 0.13vw, 0.89rem);
         --fs-0:      clamp(0.82rem, 0.80rem + 0.18vw, 0.96rem);
         --fs-1:      clamp(0.96rem, 0.93rem + 0.22vw, 1.03rem);
         --fs-2:      clamp(1.03rem, 0.99rem + 0.31vw, 1.17rem);
         --fs-3:      clamp(1.24rem, 1.12rem + 0.66vw, 1.65rem);
         --fs-4:      clamp(1.51rem, 1.21rem + 0.94vw, 2.04rem);
-        --fs-body:   clamp(0.96rem, 0.93rem + 0.22vw, 1.03rem);
-        --fs-label:  clamp(0.76rem, 0.73rem + 0.15vw, 0.83rem);
-        --fs-micro:  clamp(0.82rem, 0.80rem + 0.13vw, 0.89rem);
-        --fs-ui:     clamp(0.89rem, 0.86rem + 0.18vw, 0.96rem);
-        --fs-stat:   clamp(1.24rem, 1.12rem + 0.57vw, 1.51rem);
     }
 
     .notice,
@@ -672,16 +651,12 @@ button:focus-visible,
 
 @media (max-width: 768px) {
     :root {
+        --fs-micro:  clamp(0.7rem, 0.68rem + 0.08vw, 0.75rem);
         --fs-0:      clamp(0.7rem, 0.68rem + 0.12vw, 0.8rem);
         --fs-1:      clamp(0.8rem, 0.78rem + 0.12vw, 0.85rem);
         --fs-2:      clamp(0.85rem, 0.83rem + 0.18vw, 0.95rem);
         --fs-3:      clamp(1rem, 0.92rem + 0.4vw, 1.25rem);
         --fs-4:      clamp(1.2rem, 0.95rem + 0.65vw, 1.5rem);
-        --fs-body:   clamp(0.8rem, 0.78rem + 0.12vw, 0.85rem);
-        --fs-label:  clamp(0.65rem, 0.63rem + 0.1vw, 0.7rem);
-        --fs-micro:  clamp(0.7rem, 0.68rem + 0.08vw, 0.75rem);
-        --fs-ui:     clamp(0.75rem, 0.73rem + 0.1vw, 0.8rem);
-        --fs-stat:   clamp(1rem, 0.92rem + 0.4vw, 1.2rem);
     }
 
     .app-shell    { min-height:100dvh; }
@@ -790,16 +765,12 @@ button:focus-visible,
 
 @media (min-width: 769px) and (max-width: 1023px) {
     :root {
+        --fs-micro:  clamp(0.75rem, 0.71rem + 0.1vw, 0.8rem);
         --fs-0:      clamp(0.72rem, 0.68rem + 0.15vw, 0.8rem);
         --fs-1:      clamp(0.87rem, 0.82rem + 0.18vw, 0.92rem);
         --fs-2:      clamp(0.94rem, 0.88rem + 0.24vw, 1.02rem);
         --fs-3:      clamp(1.125rem, 1.02rem + 0.46vw, 1.35rem);
         --fs-4:      clamp(1.375rem, 1.1rem + 0.7vw, 1.7rem);
-        --fs-body:   clamp(0.87rem, 0.82rem + 0.18vw, 0.92rem);
-        --fs-label:  clamp(0.68rem, 0.64rem + 0.12vw, 0.75rem);
-        --fs-micro:  clamp(0.75rem, 0.71rem + 0.1vw, 0.8rem);
-        --fs-ui:     clamp(0.8125rem, 0.76rem + 0.14vw, 0.87rem);
-        --fs-stat:   clamp(1.125rem, 1.02rem + 0.4vw, 1.3rem);
     }
 
     body { line-height: 1.6; }
@@ -863,16 +834,12 @@ button:focus-visible,
 
 @media (max-width: 480px) {
     :root {
+        --fs-micro:  clamp(0.65rem, 0.63rem + 0.06vw, 0.7rem);
         --fs-0:      clamp(0.65rem, 0.63rem + 0.08vw, 0.75rem);
         --fs-1:      clamp(0.75rem, 0.73rem + 0.08vw, 0.8rem);
         --fs-2:      clamp(0.8rem, 0.78rem + 0.12vw, 0.9rem);
         --fs-3:      clamp(0.95rem, 0.87rem + 0.3vw, 1.15rem);
         --fs-4:      clamp(1.1rem, 0.85rem + 0.6vw, 1.35rem);
-        --fs-body:   clamp(0.75rem, 0.73rem + 0.08vw, 0.8rem);
-        --fs-label:  clamp(0.6rem, 0.58rem + 0.08vw, 0.65rem);
-        --fs-micro:  clamp(0.65rem, 0.63rem + 0.06vw, 0.7rem);
-        --fs-ui:     clamp(0.7rem, 0.68rem + 0.08vw, 0.75rem);
-        --fs-stat:   clamp(0.95rem, 0.87rem + 0.3vw, 1.1rem);
     }
 
     .sidebar { padding:0; }
@@ -1070,16 +1037,12 @@ button:focus-visible,
 
 @media (max-width: 430px) {
     :root {
+        --fs-micro:  clamp(0.6rem, 0.58rem + 0.04vw, 0.65rem);
         --fs-0:      clamp(0.62rem, 0.60rem + 0.06vw, 0.7rem);
         --fs-1:      clamp(0.7rem, 0.68rem + 0.06vw, 0.75rem);
         --fs-2:      clamp(0.75rem, 0.73rem + 0.1vw, 0.85rem);
         --fs-3:      clamp(0.9rem, 0.82rem + 0.25vw, 1.05rem);
         --fs-4:      clamp(1rem, 0.78rem + 0.55vw, 1.2rem);
-        --fs-body:   clamp(0.7rem, 0.68rem + 0.06vw, 0.75rem);
-        --fs-label:  clamp(0.55rem, 0.53rem + 0.06vw, 0.6rem);
-        --fs-micro:  clamp(0.6rem, 0.58rem + 0.04vw, 0.65rem);
-        --fs-ui:     clamp(0.65rem, 0.63rem + 0.06vw, 0.7rem);
-        --fs-stat:   clamp(0.9rem, 0.82rem + 0.25vw, 1rem);
     }
 
     .page-header,
@@ -1194,16 +1157,12 @@ button:focus-visible,
 
 @media (max-width: 360px) {
     :root {
+        --fs-micro:  clamp(0.58rem, 0.56rem + 0.02vw, 0.62rem);
         --fs-0:      clamp(0.6rem, 0.58rem + 0.04vw, 0.68rem);
         --fs-1:      clamp(0.68rem, 0.66rem + 0.04vw, 0.72rem);
         --fs-2:      clamp(0.72rem, 0.70rem + 0.08vw, 0.8rem);
         --fs-3:      clamp(0.85rem, 0.77rem + 0.2vw, 1rem);
         --fs-4:      clamp(0.95rem, 0.73rem + 0.5vw, 1.1rem);
-        --fs-body:   clamp(0.68rem, 0.66rem + 0.04vw, 0.72rem);
-        --fs-label:  clamp(0.52rem, 0.50rem + 0.04vw, 0.58rem);
-        --fs-micro:  clamp(0.58rem, 0.56rem + 0.02vw, 0.62rem);
-        --fs-ui:     clamp(0.62rem, 0.60rem + 0.04vw, 0.68rem);
-        --fs-stat:   clamp(0.85rem, 0.77rem + 0.2vw, 0.95rem);
     }
 
     .page-header,
@@ -1347,16 +1306,12 @@ button:focus-visible,
 
 @media (min-width: 1024px) {
     :root {
+        --fs-micro:  clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);
         --fs-0:      clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);
         --fs-1:      clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
         --fs-2:      clamp(0.9375rem, 0.9rem + 0.28vw, 1.0625rem);
         --fs-3:      clamp(1.125rem, 1.02rem + 0.6vw, 1.5rem);
         --fs-4:      clamp(1.375rem, 1.1rem + 0.85vw, 1.85rem);
-        --fs-body:   clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
-        --fs-label:  clamp(0.6875rem, 0.66rem + 0.14vw, 0.75rem);
-        --fs-micro:  clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);
-        --fs-ui:     clamp(0.8125rem, 0.785rem + 0.16vw, 0.875rem);
-        --fs-stat:   clamp(1.125rem, 1.02rem + 0.52vw, 1.375rem);
     }
 
     .results-table {
