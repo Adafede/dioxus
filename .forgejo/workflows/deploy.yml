@@ -12,7 +12,7 @@ concurrency:
 jobs:
   build-and-deploy:
     container:
-      image: ghcr.io/nigeleke/docker-dioxus-cli:latest
+      image: nigeleke/docker-dioxus-cli:latest
     runs-on: codeberg-medium
     env:
       CARGO_PROFILE_RELEASE_LTO: "off"
