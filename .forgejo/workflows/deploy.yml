@@ -30,7 +30,7 @@ jobs:
           mkdir -p bin-tools
           cp $HOME/.cargo/bin/dx bin-tools/
           cp target/release/fetch-ketcher bin-tools/
-      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      - uses: actions/upload-artifact@v2
         with:
           name: pipeline-tools
           path: bin-tools/
@@ -61,7 +61,7 @@ jobs:
       - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           key: ${{ matrix.app }}
-      - uses: https://github.com/actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      - uses: actions/download-artifact@v2
         with:
           name: pipeline-tools
           path: bin-tools
@@ -76,7 +76,7 @@ jobs:
       - name: Build App
         working-directory: apps/${{ matrix.app }}
         run: dx build --release --platform web --debug-symbols false --base-path "${{ matrix.path }}"
-      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      - uses: actions/upload-artifact@v2
         with:
           name: app-${{ matrix.app }}
           path: target/dx/${{ matrix.app }}/release/web/public
@@ -86,7 +86,7 @@ jobs:
     runs-on: codeberg-small
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: https://github.com/actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      - uses: actions/download-artifact@v2
         with:
           path: raw_artifacts
       - name: Assemble Site Layout
@@ -102,7 +102,7 @@ jobs:
               mv "$dir" "_site/$folder_name"
             fi
           done
-      - uses: https://github.com/actions/git-pages@v2
+      - uses: actions/git-pages@v2
         with:
           site: https://adafede.codeberg.page/dioxus/
           token: ${{ forge.token }}
