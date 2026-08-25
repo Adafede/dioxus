@@ -58,17 +58,17 @@ const LINKS: &[LinkSpec] = &[
     },
     LinkSpec {
         rel: "icon",
-        href: "favicon.svg",
+        href: "/favicon.svg",
         r#type: Some("image/svg+xml"),
         media: None,
         crossorigin: None,
         sizes: Some("any"),
         hreflang: None,
     },
-    // Pre-calculated alternate hreflang links to prevent heap leaks during render
+    // Pre-calculated alternate hreflang links
     LinkSpec {
         rel: "alternate",
-        href: "https://adafede.github.io/dioxus/lotus-explore-rs/",
+        href: "/",
         r#type: None,
         media: None,
         crossorigin: None,
@@ -77,7 +77,7 @@ const LINKS: &[LinkSpec] = &[
     },
     LinkSpec {
         rel: "alternate",
-        href: "https://adafede.github.io/dioxus/lotus-explore-rs/?lang=fr",
+        href: "/?lang=fr",
         r#type: None,
         media: None,
         crossorigin: None,
@@ -86,7 +86,7 @@ const LINKS: &[LinkSpec] = &[
     },
     LinkSpec {
         rel: "alternate",
-        href: "https://adafede.github.io/dioxus/lotus-explore-rs/?lang=de",
+        href: "/?lang=de",
         r#type: None,
         media: None,
         crossorigin: None,
@@ -95,7 +95,7 @@ const LINKS: &[LinkSpec] = &[
     },
     LinkSpec {
         rel: "alternate",
-        href: "https://adafede.github.io/dioxus/lotus-explore-rs/?lang=it",
+        href: "/?lang=it",
         r#type: None,
         media: None,
         crossorigin: None,
