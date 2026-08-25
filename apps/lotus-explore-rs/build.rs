@@ -298,6 +298,8 @@ fn build_headers_txt() -> String {
     \x20 Cache-Control: public, max-age=2592000\n\n\
     /favicon.svg\n\
     \x20 Cache-Control: public, max-age=2592000\n\n\
+    /favicon.ico\n\
+    \x20 Status: 410\n\n\
     **/assets/*\n\
     \x20 Cache-Control: public, max-age=31536000, immutable\n\n\
     /index.html\n\
