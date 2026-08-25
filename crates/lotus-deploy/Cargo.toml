@@ -24,3 +24,12 @@ zip = { workspace = true }
 
 [lints]
 workspace = true
+
+# ── Release profile — tiny WASM ───────────────────────────────────────────────
+[profile.release]
+opt-level = "z"
+debug = false
+lto = true
+panic = "abort"
+incremental = false
+codegen-units = 1
