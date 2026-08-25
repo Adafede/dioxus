@@ -166,7 +166,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             og_url: Some(canonical.clone()),
             og_site_name: Some("LOTUS Knowledge Explorer".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            inline_script: Some(inline_script::build_core_inline_script()),
+            inline_script: None, // lang bootstrap moved to index.html template for synchronous execution
             json_ld: Some(JSON_LD.to_string()),
             canonical: Some(canonical),
         }

@@ -2,41 +2,11 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Inline JavaScript for the document head, split into small bridge snippets.
-
-const LANG_BOOTSTRAP_SCRIPT: &str = r#"
-(function installTrustedTypesPolicy() {
-    const trusted = window.trustedTypes;
-    if (!trusted || typeof trusted.getPolicy !== "function" || typeof trusted.createPolicy !== "function") {
-        return;
-    }
-    try {
-        if (!trusted.getPolicy("default")) {
-            trusted.createPolicy("default", {
-                createHTML: (value) => String(value),
-                createScript: (value) => String(value),
-                createScriptURL: (value) => String(value),
-                createURL: (value) => String(value),
-            });
-        }
-    } catch (_error) {
-        // Browsers without Trusted Types support will ignore the policy registration.
-    }
-})();
-
-(function syncDocumentLangFromQuery() {
-    try {
-        const params = new URL(window.location.href).searchParams;
-        // Always set <html lang> synchronously — from ?lang=/?locale= when present,
-        // falling back to "en" (the app default). This prevents a post-load
-        // language change being reported by accessibility tools (the static HTML
-        // otherwise has no lang until the module hydrates).
-        const lang = params.get("lang") || params.get("locale") || "en";
-        document.documentElement.lang = lang;
-    } catch (_error) {
-        // Keep the app running if the browser blocks URL parsing for any reason.
-    }
-})();
-"#;
+//!
+//! The critical language/trusted-types bootstrap that was previously injected
+//! via `DocumentHead` (running after WASM hydration) has been moved to the
+//! `index.html` template so it executes synchronously during HTML parsing —
+//! eliminating the lang flicker that delayed LCP.
 
 const RDKIT_BRIDGE_SCRIPT: &str = r#"
 const RDKIT_JS_SRC = "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js";
@@ -320,10 +290,6 @@ window.__lotusCitation = {
     },
 };
 "#;
-
-pub fn build_core_inline_script() -> String {
-    [LANG_BOOTSTRAP_SCRIPT].join("\n\n")
-}
 
 /// Inline scripts only required on the curation page: the RDKit bridge and the
 /// citation bridge. Loaded lazily via [`ui::document::DocumentScripts`]
