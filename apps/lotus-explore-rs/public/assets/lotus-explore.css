@@ -240,20 +240,17 @@ a:hover { text-decoration: underline; }
     .query-panel,
     .ketcher-panel,
     .table-scroll,
-    .notice {
-        transition: none;
+    .notice,
+    a,
+    .btn,
+    .curation-file-input::file-selector-button {
+        transition: none !important;
+        animation: none !important;
     }
 
     .sidebar::before,
     .page-header::before {
-        animation: none;
-    }
-
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
+        animation: none !important;
     }
 
     .sidebar,
@@ -355,7 +352,7 @@ a:hover { text-decoration: underline; }
     width: 100%;
     border-collapse: collapse;
     font-size: var(--fs-ui);
-    table-layout: auto;
+    table-layout: fixed;
     word-break: break-word;
 }
 
@@ -372,6 +369,8 @@ a:hover { text-decoration: underline; }
     top: 0;
     z-index: 2;
     background: var(--bg2);
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .curation-table tbody tr {
@@ -490,7 +489,8 @@ button:focus-visible,
 
 .welcome, .results-wrap, .query-panel, .ketcher-panel, .table-scroll {
     content-visibility: auto;
-    contain-intrinsic-size: 900px;
+    contain-intrinsic-size: auto 600px;
+    contain: layout style paint;
 }
 
 .page-header {
@@ -501,6 +501,8 @@ button:focus-visible,
     position: sticky;
     top: 0;
     z-index: 3;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .page-title-link,
@@ -762,7 +764,7 @@ button:focus-visible,
 
     .results-table {
         font-size: var(--fs-ui);
-        table-layout: auto;
+        table-layout: fixed;
         word-break: break-word;
     }
 
@@ -934,7 +936,7 @@ button:focus-visible,
 
     .results-table {
         font-size: var(--fs-label);
-        table-layout: auto;
+        table-layout: fixed;
         word-break: break-word;
     }
 
@@ -1193,7 +1195,7 @@ button:focus-visible,
 
     .results-table {
         font-size: var(--fs-label);
-        table-layout: auto;
+        table-layout: fixed;
         word-break: break-word;
     }
 
@@ -1295,7 +1297,7 @@ button:focus-visible,
 
     .results-table {
         font-size: var(--fs-ui);
-        table-layout: auto;
+        table-layout: fixed;
         word-break: break-word;
     }
 
