@@ -12,6 +12,16 @@ img, svg, canvas, video {
     height: auto;
 }
 
+/* Optimization: GPU Hardware Acceleration for dynamic overlay layers */
+.modal-overlay,
+.drawer,
+.tooltip,
+.loading-spinner {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
 :root {
     color-scheme: light dark;
     --bg:        #f7fafc;

@@ -11,7 +11,6 @@ pre_compress = true
 
 [web.app]
 title = "LOTUS Linked Open Data Explorer"
-base_path = "/dioxus/lotus-explore-rs"
 
 [web.watcher]
 reload_html = true
