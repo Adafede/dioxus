@@ -29,7 +29,7 @@ fn base_url() -> String {
 const LINKS: &[LinkSpec] = &[
     LinkSpec {
         rel: "icon",
-        href: "./favicon.ico",
+        href: "/favicon.ico",
         r#type: Some("image/x-icon"),
         media: None,
         crossorigin: None,
@@ -38,7 +38,7 @@ const LINKS: &[LinkSpec] = &[
     },
     LinkSpec {
         rel: "apple-touch-icon",
-        href: "./apple-touch-icon.png",
+        href: "/apple-touch-icon.png",
         r#type: None,
         media: None,
         crossorigin: None,
@@ -47,7 +47,7 @@ const LINKS: &[LinkSpec] = &[
     },
     LinkSpec {
         rel: "icon",
-        href: "./favicon-32x32.png",
+        href: "/favicon-32x32.png",
         r#type: Some("image/png"),
         media: None,
         crossorigin: None,
@@ -56,7 +56,7 @@ const LINKS: &[LinkSpec] = &[
     },
     LinkSpec {
         rel: "icon",
-        href: "./favicon-16x16.png",
+        href: "/favicon-16x16.png",
         r#type: Some("image/png"),
         media: None,
         crossorigin: None,
@@ -119,7 +119,7 @@ const LINKS: &[LinkSpec] = &[
     },
     LinkSpec {
         rel: "manifest",
-        href: "./site.webmanifest",
+        href: "/site.webmanifest",
         r#type: Some("application/manifest+json"),
         media: None,
         crossorigin: None,

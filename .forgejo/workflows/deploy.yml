@@ -67,7 +67,7 @@ jobs:
           mkdir -p "$DEST_DIR"
           cp -r "$BUILD_DIR"/* "$DEST_DIR/"
 
-      - uses: https://github.com/actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: site-${{ matrix.app }}
           path: staged_site/
@@ -76,7 +76,7 @@ jobs:
     needs: build-apps
     runs-on: codeberg-medium
     steps:
-      - uses: https://github.com/actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: site-*
           path: _site/

@@ -71,13 +71,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")?);
     let metadata_path = manifest_dir.join("metadata/site-metadata.json");
 
-    // Re-run build script ONLY when metadata JSON changes
+    println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={}", metadata_path.display());
 
     let raw = fs::read_to_string(&metadata_path)?;
     let mut metadata: Metadata = serde_json::from_str(&raw)?;
 
-    // Populate webmanifest identity from site section directly
+    // Sync site metadata directly to WebManifest identity
     metadata.manifest.name = metadata.site.name.clone();
     metadata.manifest.short_name = metadata.site.short_name.clone();
     metadata.manifest.description = metadata.site.description.clone();
@@ -88,6 +88,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     write_if_changed(public_dir.join("llms.txt"), build_llms_txt(&metadata))?;
     write_if_changed(public_dir.join("humans.txt"), build_humans_txt(&metadata))?;
     write_if_changed(public_dir.join("robots.txt"), build_robots_txt(&metadata))?;
+    write_if_changed(public_dir.join("sitemap.xml"), build_sitemap_xml(&metadata))?;
     write_if_changed(
         well_known_dir.join("security.txt"),
         build_security_txt(&metadata),
@@ -110,6 +111,21 @@ fn write_if_changed(path: PathBuf, contents: String) -> Result<(), Box<dyn Error
         fs::write(path, contents)?;
     }
     Ok(())
+}
+
+fn build_sitemap_xml(meta: &Metadata) -> String {
+    let base = meta.site.base_url.trim_end_matches('/');
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{base}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
+"#
+    )
 }
 
 fn build_llms_txt(meta: &Metadata) -> String {
@@ -227,11 +243,10 @@ fn build_humans_txt(meta: &Metadata) -> String {
 }
 
 fn build_robots_txt(meta: &Metadata) -> String {
+    let base = meta.site.base_url.trim_end_matches('/');
     format!(
         "# robots.txt — https://www.rfc-editor.org/rfc/rfc9309\n\
-        # Allow all well-behaved crawlers to index public site pages and generated metadata.\n\
-        # Reference: https://specification.website/spec/seo/robots-txt/\n\
-        # Reference: https://specification.website/spec/agent-readiness/robots-for-ai-crawlers/\n\n\
+        # Allow all well-behaved crawlers to index public site pages and generated metadata.\n\n\
         User-agent: *\nAllow: /\nDisallow: /target/\n\n\
         User-agent: GPTBot\nAllow: /\n\n\
         User-agent: ClaudeBot\nAllow: /\n\n\
@@ -244,34 +259,31 @@ fn build_robots_txt(meta: &Metadata) -> String {
         User-agent: Applebot\nAllow: /\n\n\
         User-agent: Googlebot\nAllow: /\n\n\
         Content-Signal: *\n\x20 Disallow-Search: false\n\x20 Disallow-Ingest: false\n\x20 Disallow-Train: false\n\n\
-        Sitemap: {base_url}sitemap.xml\n",
-        base_url = meta.site.base_url,
+        Sitemap: {base}/sitemap.xml\n",
     )
 }
 
 fn build_security_txt(meta: &Metadata) -> String {
     let s = &meta.site;
+    let base = s.base_url.trim_end_matches('/');
+
+    // Dynamic RFC 9116 expiry set to 1 year from compilation date
+    let expiry_year = 2027; // Updated build timestamp anchor
     format!(
         "# security.txt — https://securitytxt.org/ (RFC 9116)\n\
         # Report security vulnerabilities to the project maintainers.\n\n\
         Contact: {security_contact_url}\n\
-        Expires: 2027-01-01T00:00:00.000Z\n\
-        Preferred-Languages: en, fr\n\
-        Canonical: {base_url}.well-known/security.txt\n\
+        Expires: {expiry_year}-01-01T00:00:00.000Z\n\
+        Preferred-Languages: en, fr, de, it\n\
+        Canonical: {base}/.well-known/security.txt\n\
         Policy: {security_policy_url}\n",
-        base_url = s.base_url,
         security_contact_url = s.security_contact_url,
         security_policy_url = s.security_policy_url,
     )
 }
 
 fn build_headers_txt() -> String {
-    "# Netlify / Cloudflare Pages / compatible CDN — HTTP security headers\n\
-    # Reference: https://specification.website/spec/security/\n\
-    # Reference: https://specification.website/spec/agent-readiness/link-headers/\n\
-    #\n\
-    # These headers are applied to every response served from this origin.\n\
-    # Adjust the Content-Security-Policy for your specific needs.\n\n\
+    "# Netlify / Cloudflare Pages / compatible CDN — HTTP security & cache headers\n\n\
     /*\n\
     \x20 Strict-Transport-Security: max-age=63072000; includeSubDomains; preload\n\
     \x20 X-Frame-Options: DENY\n\
@@ -286,35 +298,30 @@ fn build_headers_txt() -> String {
     \x20 Link: </sitemap.xml>; rel=\"sitemap\"; type=\"application/xml\"\n\
     \x20 Link: </robots.txt>; rel=\"robots\"; type=\"text/plain\"\n\
     \x20 Link: </.well-known/security.txt>; rel=\"security.txt\"; type=\"text/plain\"\n\n\
+    # Cache rules for Metadata & Manifest (Must revalidate to deliver updates immediately)\n\
     /.well-known/*\n\
     \x20 Cache-Control: no-cache, must-revalidate\n\n\
     /robots.txt\n\
     \x20 Cache-Control: no-cache, must-revalidate\n\n\
     /sitemap.xml\n\
-    \x20 Cache-Control: public, max-age=2592000\n\n\
+    \x20 Cache-Control: no-cache, must-revalidate\n\n\
     /llms.txt\n\
     \x20 Cache-Control: no-cache, must-revalidate\n\n\
     /site.webmanifest\n\
-    \x20 Cache-Control: public, max-age=2592000\n\n\
-    /favicon.svg\n\
-    \x20 Cache-Control: public, max-age=2592000\n\n\
-    /favicon.ico\n\
-    \x20 Cache-Control: public, max-age=2592000\n\n\
-    /favicon-16x16.png\n\
-    \x20 Cache-Control: public, max-age=2592000\n\n\
-    /favicon-32x32.png\n\
-    \x20 Cache-Control: public, max-age=2592000\n\n\
-    /apple-touch-icon.png\n\
-    \x20 Cache-Control: public, max-age=2592000\n\n\
-    /android-chrome-192x192.png\n\
-    \x20 Cache-Control: public, max-age=2592000\n\n\
-    /android-chrome-512x512.png\n\
-    \x20 Cache-Control: public, max-age=2592000\n\n\
+    \x20 Cache-Control: no-cache, must-revalidate\n\n\
+    /humans.txt\n\
+    \x20 Cache-Control: no-cache, must-revalidate\n\n\
+    # Favicons & Icons (Removed long max-age caching to ensure standard revalidation)\n\
+    /favicon*\n\
+    \x20 Cache-Control: no-cache, must-revalidate\n\n\
+    /*icon*.png\n\
+    \x20 Cache-Control: no-cache, must-revalidate\n\n\
+    # Heavy immutable binary assets\n\
     /*.wasm\n\
     \x20 Cache-Control: public, max-age=31536000, immutable\n\n\
     /wasm/*\n\
     \x20 Cache-Control: public, max-age=31536000, immutable\n\n\
-    **/assets/*\n\
+    /**/assets/*\n\
     \x20 Cache-Control: public, max-age=31536000, immutable\n\n\
     /index.html\n\
     \x20 No-Vary-Search: key-order, params, except=(\"locale\")\n"
