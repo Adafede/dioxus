@@ -25,8 +25,6 @@ jobs:
       - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
       - name: Install dioxus-cli
         run: cargo binstall dioxus-cli --version 0.7.10 --locked --force
-      - name: Check workspace (all targets)
-        run: cargo check --workspace --all-targets --locked
       - name: Test workspace (all targets)
         run: cargo test --workspace --all-targets --locked --quiet
       - name: Build docs
@@ -81,14 +79,11 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
       - uses: https://github.com/dtolnay/rust-toolchain@stable
-      - name: Install cargo-deny
-        run: cargo install cargo-deny --version 0.19.4 --locked
-      - name: Install cargo-audit
-        run: cargo install cargo-audit --version 0.22.1 --locked
-      - name: Show supply-chain tool versions
-        run: |
-          cargo deny --version
-          cargo audit --version
+      - uses: https://github.com/taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
+        with:
+          tool: |
+            cargo-audit@0.22.2
+            cargo-deny@0.19.4
       - name: Cargo deny
         run: cargo deny check advisories bans licenses sources
       - name: Cargo audit

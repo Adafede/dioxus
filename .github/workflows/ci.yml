@@ -45,16 +45,6 @@ jobs:
         with: { components: clippy }
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
-  check:
-    name: Check (native)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo check --workspace --all-targets --locked
-
   # ── Pre-push checks: heavy — run on every PR and push ─────────────────────────
 
   test:
@@ -109,10 +99,6 @@ jobs:
           tool: |
             cargo-audit@0.22.2
             cargo-deny@0.19.4
-      - name: Show tool versions
-        run: |
-          cargo deny --version
-          cargo audit --version
       - name: Cargo deny
         run: cargo deny check advisories bans licenses sources
       - name: Cargo audit
