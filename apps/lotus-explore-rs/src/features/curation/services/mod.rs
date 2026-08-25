@@ -66,16 +66,11 @@ pub async fn execute_sparql_with_wdqs_fallback(
         if query.contains("SELECT ?ref WHERE {") && query.contains("wdt:P356") {
             return lotus::transport::execute_sparql_with_format(query, WDQS_SCHOLARLY, format)
                 .await;
-        } else {
-            // For complex queries, apply transformation and use regular WDQS
-            let wdqs_query = transform_query_for_wdqs(query);
-            return lotus::transport::execute_sparql_with_format(
-                &wdqs_query,
-                WDQS_WIKIDATA,
-                format,
-            )
-            .await;
         }
+        // For complex queries, apply transformation and use regular WDQS
+        let wdqs_query = transform_query_for_wdqs(query);
+        return lotus::transport::execute_sparql_with_format(&wdqs_query, WDQS_WIKIDATA, format)
+            .await;
     }
 
     let result = lotus::transport::execute_sparql_with_format(query, QLEVER_WIKIDATA, format).await;
