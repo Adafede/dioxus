@@ -45,7 +45,7 @@ jobs:
       - uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           key: ${{ matrix.app }}
       - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
@@ -71,16 +71,14 @@ jobs:
 
       - name: Structure _site directory
         run: |
-          # Move base index contents to root of _site
           cp -r _site/app-index/* _site/
           rm -rf _site/app-index
 
-          # Rename remaining folders from app-X to X
           for dir in _site/app-*; do
             mv "$dir" "_site/${dir#_site/app-}"
           done
 
-      - uses: actions/git-pages@v2
+      - uses: https://github.com/actions/git-pages@v2
         with:
           site: https://adafede.codeberg.page/dioxus/
           token: ${{ forge.token }}
