@@ -121,9 +121,11 @@ async fn execute_download_wdqs(
                 .await
             }
             DownloadFormat::Rdf => {
+                // For Turtle format, SELECT must be wrapped in CONSTRUCT
+                let construct_query = format.prepared_query(&query_without_prefix);
                 execute_sparql_with_format_download(
                     format,
-                    &query_without_prefix,
+                    &construct_query,
                     WDQS_SCHOLARLY,
                     LotusResponseFormat::Turtle,
                     &filename,
@@ -161,9 +163,12 @@ async fn execute_download_wdqs(
             .await
         }
         DownloadFormat::Rdf => {
+            // For Turtle format, SELECT queries must be wrapped in CONSTRUCT
+            // (WDQS can't return Turtle for SELECT queries)
+            let construct_query = format.prepared_query(&wdqs_query);
             execute_sparql_with_format_download(
                 format,
-                &wdqs_query,
+                &construct_query,
                 WDQS_WIKIDATA,
                 LotusResponseFormat::Turtle,
                 &filename,

@@ -7,7 +7,9 @@ use crate::models::SearchCriteria;
 use crate::perf;
 use crate::repositories::is_wdqs_fallback_used;
 use lotus::queries::transform_query_for_wdqs;
-use lotus::transport::{QLEVER_WIKIDATA, WDQS_SCHOLARLY, WDQS_WIKIDATA};
+use lotus::transport::{
+    QLEVER_WIKIDATA, ResponseFormat as LotusResponseFormat, WDQS_SCHOLARLY, WDQS_WIKIDATA,
+};
 use std::sync::Arc;
 
 pub(super) async fn execute_download_wasm(
@@ -86,41 +88,73 @@ async fn execute_download_wasm_wdqs(
             (transform_query_for_wdqs(&query), WDQS_WIKIDATA)
         };
 
-    // Build WDQS export URL with proper format
-    let encoded_query = urlencoding::encode(&wdqs_query);
-    let accept_header = match format {
-        DownloadFormat::Csv => "text/csv",
-        DownloadFormat::Json => "application/sparql-results+json",
-        DownloadFormat::Rdf => "text/turtle",
-    };
+    // For RDF format, the query must be wrapped in CONSTRUCT
+    // (WDQS can't return Turtle for SELECT queries)
+    let prepared_query = format.prepared_query(&wdqs_query);
 
-    let wdqs_url = format!(
-        "{}?query={}&Accept={}",
-        endpoint, encoded_query, accept_header
-    );
+    // Determine the WDQS response format
+    let response_format = wdqs_response_format(format);
+
+    // Fetch results from WDQS using POST with proper Accept header.
+    // WDQS GET URL doesn't support format negotiation for CSV/Turtle.
+    // POST with Accept header properly requests the right content type.
+    let body =
+        lotus::transport::execute_sparql_with_format(&prepared_query, endpoint, response_format)
+            .await
+            .map_err(|e| e.to_string())?;
 
     let fetch_elapsed = perf::end_timer(format.timer_label(), dl_timer);
     perf::log_timing(
         "download",
         &format!(
-            "event=download format={} phase=fetch state=success source=wdqs_url",
+            "event=download format={} phase=fetch state=success source=wdqs body_bytes={}",
             format.log_name(),
+            body.len()
         ),
         Some(fetch_elapsed),
     );
 
+    // Determine the MIME type for the downloaded file
+    let mime = wdqs_content_type(format);
+
     let trigger_timer = perf::start_timer(&format.trigger_timer_label());
-    let _ = upload::download_url(&wdqs_url, &filename);
+    if let Err(e) = upload::download_text_as_blob(&body, &filename, "", mime) {
+        log::error!(
+            "download failed: filename={} mime={} error={}",
+            filename,
+            mime,
+            e
+        );
+        return Err(e);
+    }
     let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
     perf::log_timing(
         "download",
         &format!(
-            "event=download format={} phase=trigger state=success source=wdqs_url",
+            "event=download format={} phase=trigger state=success source=wdqs",
             format.log_name()
         ),
         Some(trigger_elapsed),
     );
     Ok(())
+}
+
+/// Maps DownloadFormat to WDQS ResponseFormat for content negotiation.
+fn wdqs_response_format(format: DownloadFormat) -> LotusResponseFormat {
+    match format {
+        DownloadFormat::Csv => LotusResponseFormat::Csv,
+        DownloadFormat::Json => LotusResponseFormat::SparqlJson,
+        DownloadFormat::Rdf => LotusResponseFormat::Turtle,
+    }
+}
+
+/// Returns the MIME type for downloaded file content.
+fn wdqs_content_type(format: DownloadFormat) -> &'static str {
+    match format {
+        DownloadFormat::Csv => "text/csv",
+        DownloadFormat::Json => "application/sparql-results+json",
+        DownloadFormat::Rdf => "text/turtle",
+    }
 }
 
 async fn execute_download_wasm_browser_post(

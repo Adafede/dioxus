@@ -43,8 +43,46 @@ pub fn is_wdqs_fallback_used() -> bool {
 }
 
 /// Get the WDQS-transformed query (if fallback occurred).
+/// Strips any trailing LIMIT clause so the stored query is suitable for
+/// downloads (which should not be capped at the interactive display limit).
 pub fn get_wdqs_transformed_query() -> Option<String> {
-    WDQS_TRANSFORMED_QUERY.with(|b| b.borrow().clone())
+    WDQS_TRANSFORMED_QUERY.with(|b| b.borrow().as_ref().map(|q| strip_limit_clause(q)))
+}
+
+/// Remove a trailing `LIMIT nnn` (case-insensitive) clause from a query string.
+///
+/// This is used when retrieving the WDQS-transformed query for downloads —
+/// the interactive search adds `LIMIT 500` (from `runtime_table_row_limit()`),
+/// but downloads should fetch all results without that display-time cap.
+fn strip_limit_clause(query: &str) -> String {
+    // Strip a trailing `LIMIT nnn` clause so downloads aren't capped at
+    // the interactive display limit (e.g. 500 from runtime_table_row_limit()).
+    let trimmed = query.trim_end();
+    let lower = trimmed.to_ascii_lowercase();
+    // Find the last occurrence of "limit" preceded by whitespace or start of string
+    let mut best_pos = None;
+    for (i, _) in lower.match_indices("limit") {
+        let preceded_ok = i == 0
+            || trimmed[..i]
+                .chars()
+                .last()
+                .is_some_and(|c| c.is_whitespace());
+        if !preceded_ok {
+            continue;
+        }
+        let after = trimmed[i + 5..].trim_start();
+        let num = after.split_whitespace().next().unwrap_or("");
+        if !num.is_empty()
+            && num.chars().all(|c| c.is_ascii_digit())
+            && after[num.len()..].trim().is_empty()
+        {
+            best_pos = Some(i);
+        }
+    }
+    best_pos.map_or_else(
+        || query.to_string(),
+        |pos| trimmed[..pos].trim_end().to_string(),
+    )
 }
 
 /// Reset the WDQS fallback flag at the start of a new operation.
@@ -197,6 +235,40 @@ fn map_fetch_error(err: FetchError) -> RepositoryError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn strip_limit_removes_trailing_limit() {
+        let q = "SELECT ?s WHERE { ?s ?p ?o } LIMIT 500";
+        assert_eq!(strip_limit_clause(q), "SELECT ?s WHERE { ?s ?p ?o }");
+    }
+
+    #[test]
+    fn strip_limit_preserves_query_without_limit() {
+        let q = "SELECT ?s WHERE { ?s ?p ?o }";
+        assert_eq!(strip_limit_clause(q), "SELECT ?s WHERE { ?s ?p ?o }");
+    }
+
+    #[test]
+    fn strip_limit_preserves_inner_limit() {
+        let q = "SELECT ?s WHERE { { SELECT ?s WHERE { ?s ?p ?o } LIMIT 10 } LIMIT 500";
+        // Should only strip the last LIMIT
+        assert_eq!(
+            strip_limit_clause(q),
+            "SELECT ?s WHERE { { SELECT ?s WHERE { ?s ?p ?o } LIMIT 10 }"
+        );
+    }
+
+    #[test]
+    fn strip_limit_handles_case_insensitive() {
+        let q = "SELECT ?s WHERE { ?s ?p ?o } limit 500";
+        assert_eq!(strip_limit_clause(q), "SELECT ?s WHERE { ?s ?p ?o }");
+    }
+
+    #[test]
+    fn strip_limit_handles_newline() {
+        let q = "SELECT ?s WHERE { ?s ?p ?o }\nLIMIT 500";
+        assert_eq!(strip_limit_clause(q), "SELECT ?s WHERE { ?s ?p ?o }");
+    }
 
     #[test]
     fn map_fetch_error_preserves_http_status_and_body() {
