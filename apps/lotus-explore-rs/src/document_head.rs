@@ -26,7 +26,17 @@ fn base_url() -> String {
 }
 
 /// Non-hreflang links that can be statically known at compile time.
+/// Non-hreflang links that can be statically known at compile time.
 const LINKS: &[LinkSpec] = &[
+    LinkSpec {
+        rel: "icon",
+        href: "./favicon.ico",
+        r#type: Some("image/x-icon"),
+        media: None,
+        crossorigin: None,
+        sizes: Some("48x48"),
+        hreflang: None,
+    },
     LinkSpec {
         rel: "apple-touch-icon",
         href: "./apple-touch-icon.png",
@@ -75,6 +85,15 @@ const LINKS: &[LinkSpec] = &[
     LinkSpec {
         rel: "dns-prefetch",
         href: "https://unpkg.com",
+        r#type: None,
+        media: None,
+        crossorigin: None,
+        sizes: None,
+        hreflang: None,
+    },
+    LinkSpec {
+        rel: "dns-prefetch",
+        href: "https://tools-static.wmflabs.org",
         r#type: None,
         media: None,
         crossorigin: None,
