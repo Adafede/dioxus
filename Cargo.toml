@@ -153,10 +153,10 @@ opt-level = 1
 [profile.release]
 opt-level = "z"
 debug = false
-strip = "symbols"
-lto = "fat"
+strip = true
+lto = "off"
 panic = "abort"
-codegen-units = 1
+codegen-units = 16
 
 # ── Testing profile — faster compilation, better diagnostics ─────────────────
 [profile.test]
