@@ -48,8 +48,27 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: dx build --release --platform web --debug-symbols false --base-path "${{ matrix.path }}"
       - name: Publish build output to Git staging
-        uses: actions/git-pages@v2
-        with:
-          branch: build-stage-${{ matrix.app }}
-          token: ${{ forge.token }}
-          source: target/dx/${{ matrix.app }}/release/web/public
+        run: |
+          # 1. Locate the build directory dynamically
+          if [ -d "apps/${{ matrix.app }}/target/dx/${{ matrix.app }}/release/web/public" ]; then
+            BUILD_DIR="apps/${{ matrix.app }}/target/dx/${{ matrix.app }}/release/web/public"
+          elif [ -d "target/dx/${{ matrix.app }}/release/web/public" ]; then
+            BUILD_DIR="target/dx/${{ matrix.app }}/release/web/public"
+          else
+            echo "Error: Build output directory not found!"
+            exit 1
+          fi
+
+          # 2. Re-initialize an isolated orphan branch inside the build dir
+          cd "$BUILD_DIR"
+          git init
+          git config user.name "Codeberg Actions"
+          git config user.email "actions@codeberg.org"
+          git checkout --orphan "build-stage-${{ matrix.app }}"
+          git add -A
+          git commit -m "deploy: build stage for ${{ matrix.app }}"
+
+          # 3. Push to Codeberg using HTTP Basic Auth
+          REPO="${{ github.repository }}"
+          TOKEN="${{ forge.token }}"
+          git push -f "https://x-access-token:${TOKEN}@codeberg.org/${REPO}.git" "build-stage-${{ matrix.app }}"
