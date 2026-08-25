@@ -36,14 +36,13 @@ pub fn Sidebar() -> Element {
             class: if mobile_filters_open { "sidebar mobile-open" } else { "sidebar mobile-closed" },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             div {
-                class: "sidebar-logo-wrap",
-                style: sidebar_logo_wrap_style(),
-                div {
-                    class: "sidebar-logo",
-                    style: sidebar_logo_style(),
-                    "aria-hidden": "true",
-                    dangerous_inner_html: LOTUS_FERRIS_SVG,
-                }
+                class: "sidebar-logo",
+                style: StyleBuilder::new()
+                    .display("flex")
+                    .justify_content("center")
+                    .build(),
+                "aria-hidden": "true",
+                dangerous_inner_html: LOTUS_FERRIS_SVG,
             }
             div {
                 style: button_wrapper_style(),
@@ -114,16 +113,4 @@ fn button_wrapper_style() -> String {
         .display("flex")
         .justify_content("center")
         .build()
-}
-
-fn sidebar_logo_wrap_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .justify_content("center")
-        .align_items("center")
-        .build()
-}
-
-fn sidebar_logo_style() -> String {
-    StyleBuilder::new().display("block").build()
 }
