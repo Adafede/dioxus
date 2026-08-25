@@ -1,0 +1,4 @@
+# Vendored third-party JavaScript bundles — download with:
+#   cargo run -p lotus-deploy -- fetch-ketcher   (Ketcher editor)
+# RDKit and citation-js are loaded from CDN, not vendored.
+assets/ketcher/

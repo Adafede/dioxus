@@ -1,0 +1,1 @@
+{"rewrites":[{"destination":"/popup.html","source":"/popup"},{"destination":"/duo.html","source":"/duo"},{"destination":"/iframe.html","source":"/iframe"},{"destination":"/index.html","source":"!/**/*.html"}]}

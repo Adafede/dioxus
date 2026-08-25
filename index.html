@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<head>
+  <title>LOTUS Linked Open Data Explorer</title>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <!-- Early synchronous language detection and Trusted Types initialization -->
+  <script>
+    (function () {
+      var p = new URL(window.location.href).searchParams;
+      document.documentElement.lang =
+              p.get("lang") || p.get("locale") || "en";
+      var t = window.trustedTypes;
+      if (t) {
+        try {
+          t.createPolicy("default", {
+            createHTML: function (v) { return String(v); },
+            createScript: function (v) { return String(v); },
+            createScriptURL: function (v) { return String(v); },
+            createURL: function (v) { return String(v); }
+          });
+        } catch (e) {
+          // Policy "default" was already created or is disallowed by CSP; safe to ignore.
+        }
+      }
+    })();
+  </script>
+<link rel="preload" as="script" href="/dioxus/lotus-explore-rs/assets/lotus-explore-rs-dxh2bea35f912a0a93d.js" crossorigin></head>
+<body>
+<div id="main"></div>
+<script type="module" async src="/dioxus/lotus-explore-rs/assets/lotus-explore-rs-dxh2bea35f912a0a93d.js"></script>
+            </body>
+</html>
