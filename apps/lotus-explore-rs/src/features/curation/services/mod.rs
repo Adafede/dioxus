@@ -50,7 +50,7 @@ pub use helpers::{extract_formula_from_inchi, normalize_formula_for_wikidata, qs
 /// Single toggle to force WDQS fallback for testing.
 /// Set this to `true` to force all queries to use WDQS (bypass QLever entirely).
 /// Set this to `false` to use QLever with WDQS fallback on 502.
-const FORCE_WDQS_FALLBACK: bool = true;
+const FORCE_WDQS_FALLBACK: bool = false;
 
 /// Execute a SPARQL query with WDQS fallback on 502 Bad Gateway.
 ///
