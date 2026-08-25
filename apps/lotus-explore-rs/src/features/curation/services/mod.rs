@@ -47,6 +47,11 @@ pub(crate) use chemical::extract_exact_mass_from_json;
 pub use enrichment::curate_single_row;
 pub use helpers::{extract_formula_from_inchi, normalize_formula_for_wikidata, qs_mass_statement};
 
+/// Single toggle to force WDQS fallback for testing.
+/// Set this to `true` to force all queries to use WDQS (bypass QLever entirely).
+/// Set this to `false` to use QLever with WDQS fallback on 502.
+const FORCE_WDQS_FALLBACK: bool = true;
+
 /// Execute a SPARQL query with WDQS fallback on 502 Bad Gateway.
 ///
 /// This function first tries QLever, and if it returns a 502 error,
@@ -55,6 +60,24 @@ pub async fn execute_sparql_with_wdqs_fallback(
     query: &str,
     format: ResponseFormat,
 ) -> Result<String, lotus::transport::FetchError> {
+    if FORCE_WDQS_FALLBACK {
+        log::warn!("event=curation_sparql phase=forced_wdqs_fallback");
+        // For simple reference lookups, use scholarly endpoint directly
+        if query.contains("SELECT ?ref WHERE {") && query.contains("wdt:P356") {
+            return lotus::transport::execute_sparql_with_format(query, WDQS_SCHOLARLY, format)
+                .await;
+        } else {
+            // For complex queries, apply transformation and use regular WDQS
+            let wdqs_query = transform_query_for_wdqs(query);
+            return lotus::transport::execute_sparql_with_format(
+                &wdqs_query,
+                WDQS_WIKIDATA,
+                format,
+            )
+            .await;
+        }
+    }
+
     let result = lotus::transport::execute_sparql_with_format(query, QLEVER_WIKIDATA, format).await;
 
     match result {
