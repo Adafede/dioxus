@@ -15,44 +15,27 @@ env:
   CARGO_PROFILE_RELEASE_DEBUG: "0"
 
 jobs:
-  prepare-tools:
+  # Pre-build workspace tools so app build jobs don't compile native binaries sequentially
+  build-fetch-ketcher:
+    name: Build fetch-ketcher tool
     runs-on: codeberg-medium
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: https://github.com/dtolnay/rust-toolchain@stable
       - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
-      - name: Install dioxus-cli & build fetch-ketcher
-        run: |
-          cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
-          cargo build --release -p lotus-deploy --bin fetch-ketcher
-          
-          mkdir -p bin-tools
-          cp $HOME/.cargo/bin/dx bin-tools/
-          cp target/release/fetch-ketcher bin-tools/
-      - uses: actions/upload-artifact@v2
         with:
-          name: pipeline-tools
-          path: bin-tools/
+          key: tool-ketcher
+      - name: Compile tool binary
+        run: cargo build --release -p lotus-deploy --bin fetch-ketcher
+      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: fetch-ketcher-bin
+          path: target/release/fetch-ketcher
 
-  build-apps:
-    needs: prepare-tools
+  # Parallel Job 1: Index
+  build-index:
+    name: Build index
     runs-on: codeberg-medium
-    strategy:
-      matrix:
-        include:
-          - app: index
-            path: "/dioxus/"
-          - app: lotus-explore-rs
-            path: "/dioxus/lotus-explore-rs/"
-          - app: json-count-rs
-            path: "/dioxus/json-count-rs/"
-          - app: mgf-precursor-erro-rs
-            path: "/dioxus/mgf-precursor-erro-rs/"
-          - app: smellfish-rs
-            path: "/dioxus/smellfish-rs/"
-          - app: lipid-selecto-rs
-            path: "/dioxus/lipid-selecto-rs/"
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: https://github.com/dtolnay/rust-toolchain@stable
@@ -60,42 +43,175 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
-          key: ${{ matrix.app }}
-      - uses: actions/download-artifact@v2
-        with:
-          name: pipeline-tools
-          path: bin-tools
-      - name: Setup tools in PATH
+          key: app-index
+      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
+      - name: Install dioxus-cli
         run: |
-          chmod +x bin-tools/*
-          echo "$GITHUB_WORKSPACE/bin-tools" >> $GITHUB_PATH
-      - name: Fetch Ketcher Assets
-        if: matrix.app == 'lotus-explore-rs'
-        working-directory: apps/lotus-explore-rs
-        run: fetch-ketcher
+          cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Build App
-        working-directory: apps/${{ matrix.app }}
-        run: dx build --release --platform web --debug-symbols false --base-path "${{ matrix.path }}"
-      - uses: actions/upload-artifact@v2
+        working-directory: apps/index
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/"
+      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: app-${{ matrix.app }}
-          path: target/dx/${{ matrix.app }}/release/web/public
+          name: app-index
+          path: target/dx/index/release/web/public
 
+  # Parallel Job 2: Lotus Explore (Downloads prebuilt tool)
+  build-lotus-explore-rs:
+    name: Build lotus-explore-rs
+    needs: build-fetch-ketcher
+    runs-on: codeberg-medium
+    steps:
+      - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: app-lotus-explore-rs
+      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
+      - name: Install dioxus-cli
+        run: |
+          cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - uses: https://github.com/actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: fetch-ketcher-bin
+          path: bin-tool
+      - name: Fetch Ketcher Assets
+        working-directory: apps/lotus-explore-rs
+        run: |
+          chmod +x ../../bin-tool/fetch-ketcher
+          ../../bin-tool/fetch-ketcher
+      - name: Build App
+        working-directory: apps/lotus-explore-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lotus-explore-rs/"
+      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: app-lotus-explore-rs
+          path: target/dx/lotus-explore-rs/release/web/public
+
+  # Parallel Job 3: JSON Count
+  build-json-count-rs:
+    name: Build json-count-rs
+    runs-on: codeberg-medium
+    steps:
+      - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: app-json-count-rs
+      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
+      - name: Install dioxus-cli
+        run: |
+          cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Build App
+        working-directory: apps/json-count-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/json-count-rs/"
+      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: app-json-count-rs
+          path: target/dx/json-count-rs/release/web/public
+
+  # Parallel Job 4: MGF Precursor Error
+  build-mgf-precursor-erro-rs:
+    name: Build mgf-precursor-erro-rs
+    runs-on: codeberg-medium
+    steps:
+      - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: app-mgf-precursor-erro-rs
+      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
+      - name: Install dioxus-cli
+        run: |
+          cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Build App
+        working-directory: apps/mgf-precursor-erro-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/mgf-precursor-erro-rs/"
+      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: app-mgf-precursor-erro-rs
+          path: target/dx/mgf-precursor-erro-rs/release/web/public
+
+  # Parallel Job 5: Smellfish
+  build-smellfish-rs:
+    name: Build smellfish-rs
+    runs-on: codeberg-medium
+    steps:
+      - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: app-smellfish-rs
+      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
+      - name: Install dioxus-cli
+        run: |
+          cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Build App
+        working-directory: apps/smellfish-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/smellfish-rs/"
+      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: app-smellfish-rs
+          path: target/dx/smellfish-rs/release/web/public
+
+  # Parallel Job 6: Lipid Selecto
+  build-lipid-selecto-rs:
+    name: Build lipid-selecto-rs
+    runs-on: codeberg-medium
+    steps:
+      - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: app-lipid-selecto-rs
+      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
+      - name: Install dioxus-cli
+        run: |
+          cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Build App
+        working-directory: apps/lipid-selecto-rs
+        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lipid-selecto-rs/"
+      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: app-lipid-selecto-rs
+          path: target/dx/lipid-selecto-rs/release/web/public
+
+  # Assembly & Deployment Step
   deploy:
-    needs: build-apps
+    needs:
+      - build-index
+      - build-lotus-explore-rs
+      - build-json-count-rs
+      - build-mgf-precursor-erro-rs
+      - build-smellfish-rs
+      - build-lipid-selecto-rs
     runs-on: codeberg-small
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/download-artifact@v2
+      - uses: https://github.com/actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: raw_artifacts
       - name: Assemble Site Layout
         run: |
           mkdir -p _site
-          # Landing page (index) contents at root
           cp -r raw_artifacts/app-index/* _site/
           
-          # Move remaining 5 apps to subfolders
           for dir in raw_artifacts/app-*; do
             folder_name="${dir#raw_artifacts/app-}"
             if [ "$folder_name" != "index" ]; then
