@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
@@ -11,95 +11,91 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: "pages"
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-apps:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - app: index
+            path: "/${REPONAME}/"
+          - app: lotus-explore-rs
+            path: "/${REPONAME}/lotus-explore-rs/"
+          - app: json-count-rs
+            path: "/${REPONAME}/json-count-rs/"
+          - app: mgf-precursor-erro-rs
+            path: "/${REPONAME}/mgf-precursor-erro-rs/"
+          - app: smellfish-rs
+            path: "/${REPONAME}/smellfish-rs/"
+          - app: lipid-selecto-rs
+            path: "/${REPONAME}/lipid-selecto-rs/"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: ${{ matrix.app }}
+
       - uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
 
       - name: Install dioxus-cli
-        run: cargo binstall dioxus-cli --version 0.7.10 --locked --force
+        run: cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
 
-      - name: Build deploy tools
-        run: cargo build --release -p lotus-deploy --bin fetch-ketcher
-
-      - name: Fetch Ketcher
-        working-directory: apps/lotus-explore-rs
-        run: ../../target/release/fetch-ketcher
-
-      - name: Build index landing page
-        working-directory: apps/index
-        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/"
-        env:
-          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
-
-      - name: Build lotus-explore-rs
-        working-directory: apps/lotus-explore-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/lotus-explore-rs/"
-        env:
-          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
-
-      - name: Build json-count-rs
-        working-directory: apps/json-count-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/json-count-rs/"
-        env:
-          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
-
-      - name: Build mgf-precursor-erro-rs
-        working-directory: apps/mgf-precursor-erro-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/mgf-precursor-erro-rs/"
-        env:
-          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
-
-      - name: Build smellfish-rs
-        working-directory: apps/smellfish-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/smellfish-rs/"
-        env:
-          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
-
-      - name: Build lipid-selecto-rs
-        working-directory: apps/lipid-selecto-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/${GITHUB_EVENT_REPOSITORY_NAME}/lipid-selecto-rs/"
-        env:
-          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
-
-      - name: Assemble site
+      # Only run fetch-ketcher for the app that actually uses it
+      - name: Fetch Ketcher (lotus-explore-rs only)
+        if: matrix.app == 'lotus-explore-rs'
         run: |
-          DX_OUT="target/dx"
-          DX_WEB="release/web/public"
-          mkdir -p _site
+          cargo build --release -p lotus-deploy --bin fetch-ketcher
+          ../../target/release/fetch-ketcher
+        working-directory: apps/lotus-explore-rs
 
-          # Deploy index as root (landing page)
-          cp -r "$DX_OUT/index/$DX_WEB"/* _site/
+      - name: Build App
+        run: |
+          REPONAME="${GITHUB_REPOSITORY#*/}"
+          EVAL_PATH=$(eval echo "${{ matrix.path }}")
+          dx build --release --platform web --debug-symbols false --base-path "$EVAL_PATH"
+        working-directory: apps/${{ matrix.app }}
 
-          # Deploy other apps to subdirectories
-          cp -r "$DX_OUT/lotus-explore-rs/$DX_WEB" _site/lotus-explore-rs
-          cp -r "$DX_OUT/json-count-rs/$DX_WEB"    _site/json-count-rs
-          cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
-          cp -r "$DX_OUT/smellfish-rs/$DX_WEB" _site/smellfish-rs
-          cp -r "$DX_OUT/lipid-selecto-rs/$DX_WEB" _site/lipid-selecto-rs
-
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          path: _site
+          name: app-${{ matrix.app }}
+          path: target/dx/${{ matrix.app }}/release/web/public
 
   deploy:
-    needs: build
+    needs: build-apps
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          path: _site
+
+      - name: Structure _site directory
+        run: |
+          mkdir -p _final_site
+
+          # Move base index contents to root of final site directory
+          cp -r _site/app-index/* _final_site/
+          rm -rf _site/app-index
+
+          # Move remaining apps to subdirectories
+          for dir in _site/app-*; do
+            app_name="${dir#_site/app-}"
+            mv "$dir" "_final_site/$app_name"
+          done
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+        with:
+          path: _final_site
+
       - uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
         id: deployment

@@ -10,64 +10,75 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  prepare-assets:
+    runs-on: codeberg-small
+    steps:
+      - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - name: Build & Run Fetch Ketcher
+        run: |
+          cargo build --release -p lotus-deploy --bin fetch-ketcher
+          ./target/release/fetch-ketcher
+        working-directory: apps/lotus-explore-rs
+
+  build-apps:
+    needs: prepare-assets
     runs-on: codeberg-medium
-    env:
-      CARGO_PROFILE_RELEASE_LTO: "off"
-      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
-      CARGO_PROFILE_RELEASE_DEBUG: "0"
+    strategy:
+      matrix:
+        include:
+          - app: index
+            path: "/dioxus/"
+          - app: lotus-explore-rs
+            path: "/dioxus/lotus-explore-rs/"
+          - app: json-count-rs
+            path: "/dioxus/json-count-rs/"
+          - app: mgf-precursor-erro-rs
+            path: "/dioxus/mgf-precursor-erro-rs/"
+          - app: smellfish-rs
+            path: "/dioxus/smellfish-rs/"
+          - app: lipid-selecto-rs
+            path: "/dioxus/lipid-selecto-rs/"
+    steps:
+      - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: ${{ matrix.app }}
+      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
+      - name: Install dioxus-cli
+        run: cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
+      - name: Build App
+        working-directory: apps/${{ matrix.app }}
+        run: dx build --release --platform web --debug-symbols false --base-path "${{ matrix.path }}"
+      - uses: https://github.com/actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: app-${{ matrix.app }}
+          path: target/dx/${{ matrix.app }}/release/web/public
+
+  deploy:
+    needs: build-apps
+    runs-on: codeberg-small
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: https://github.com/dtolnay/rust-toolchain@stable
+      - uses: https://github.com/actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          path: _site
 
-      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
-
-      - name: Install dioxus-cli
-        run: cargo binstall dioxus-cli --version 0.7.10 --locked --force
-
-      - name: Build deploy tools
-        run: cargo build --release -p lotus-deploy --bin fetch-ketcher
-
-      - name: Fetch Ketcher
-        working-directory: apps/lotus-explore-rs
-        run: ../../target/release/fetch-ketcher
-
-      - name: Build index landing page
-        working-directory: apps/index
-        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/"
-
-      - name: Build lotus-explore-rs
-        working-directory: apps/lotus-explore-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lotus-explore-rs/"
-
-      - name: Build json-count-rs
-        working-directory: apps/json-count-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/json-count-rs/"
-
-      - name: Build mgf-precursor-erro-rs
-        working-directory: apps/mgf-precursor-erro-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/mgf-precursor-erro-rs/"
-
-      - name: Build smellfish-rs
-        working-directory: apps/smellfish-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/smellfish-rs/"
-
-      - name: Build lipid-selecto-rs
-        working-directory: apps/lipid-selecto-rs
-        run: dx build --release --platform web --debug-symbols false --base-path "/dioxus/lipid-selecto-rs/"
-
-      - name: Assemble site
+      - name: Structure _site directory
         run: |
-          DX_OUT="target/dx"
-          DX_WEB="release/web/public"
-          mkdir -p _site
-          cp -r "$DX_OUT/index/$DX_WEB"/* _site/
-          cp -r "$DX_OUT/lotus-explore-rs/$DX_WEB" _site/lotus-explore-rs
-          cp -r "$DX_OUT/json-count-rs/$DX_WEB"    _site/json-count-rs
-          cp -r "$DX_OUT/mgf-precursor-erro-rs/$DX_WEB" _site/mgf-precursor-erro-rs
-          cp -r "$DX_OUT/smellfish-rs/$DX_WEB" _site/smellfish-rs
-          cp -r "$DX_OUT/lipid-selecto-rs/$DX_WEB" _site/lipid-selecto-rs
+          # Move base index contents to root of _site
+          cp -r _site/app-index/* _site/
+          rm -rf _site/app-index
+
+          # Rename remaining folders from app-X to X
+          for dir in _site/app-*; do
+            mv "$dir" "_site/${dir#_site/app-}"
+          done
 
       - uses: actions/git-pages@v2
         with:
