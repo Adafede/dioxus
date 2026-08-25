@@ -24,4 +24,3 @@ zip = { workspace = true }
 
 [lints]
 workspace = true
-

@@ -26,4 +26,3 @@ web-sys = { workspace = true, features = ["Blob", "File", "FileList", "FileReade
 
 [lints]
 workspace = true
-

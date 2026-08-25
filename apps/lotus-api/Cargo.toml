@@ -35,4 +35,3 @@ tower = { workspace = true }
 
 [lints]
 workspace = true
-

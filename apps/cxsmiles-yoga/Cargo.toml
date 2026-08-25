@@ -24,4 +24,3 @@ web-sys = { workspace = true, features = ["Clipboard", "Navigator", "Window"] }
 
 [lints]
 workspace = true
-

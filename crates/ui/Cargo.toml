@@ -15,4 +15,3 @@ categories = ["gui", "web-programming"]
 dioxus = { workspace = true }
 
 [dev-dependencies]
-

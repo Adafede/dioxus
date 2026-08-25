@@ -22,4 +22,3 @@ web-sys = { workspace = true, features = ["Blob", "BlobPropertyBag", "File", "Fi
 
 [lints]
 workspace = true
-

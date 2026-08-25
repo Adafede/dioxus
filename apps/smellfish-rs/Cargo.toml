@@ -32,4 +32,3 @@ web-sys = { workspace = true, features = ["Blob", "File", "FileList", "HtmlInput
 
 [lints]
 workspace = true
-
