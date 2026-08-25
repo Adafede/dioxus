@@ -220,12 +220,18 @@ window.__lotusRdkit = {
 "#;
 
 const CITATION_BRIDGE_SCRIPT: &str = r#"
-const CITATION_JS_SRC = "https://cdn.jsdelivr.net/npm/citation-js@0.8.2/build/citation.min.js";
+// citation.js + @citation-js/plugin-quickstatements
+// Bundled together by Scholia (which uses the plugin in production for its
+// DOI → QuickStatements feature). The 2.1 MB bundle includes citation.js
+// (v0.8.2) and ALL its plugins, including @citation-js/plugin-quickstatements.
+// After loading, require('citation-js').Cite exposes the Cite constructor
+// with the 'quickstatements' output format already registered.
+const CITATION_JS_SRC = "https://tools-static.wmflabs.org/scholia/js/citation.js";
 let citationJsLoadPromise = null;
 
 function loadCitationJs() {
-    if (typeof globalThis.Cite === "function") {
-        return Promise.resolve(globalThis.Cite);
+    if (typeof globalThis.__Cite !== "undefined") {
+        return Promise.resolve(globalThis.__Cite);
     }
     if (citationJsLoadPromise) {
         return citationJsLoadPromise;
@@ -234,10 +240,16 @@ function loadCitationJs() {
     citationJsLoadPromise = new Promise((resolve, reject) => {
         const existing = document.querySelector(`script[src="${CITATION_JS_SRC}"]`);
         const complete = () => {
-            if (typeof globalThis.Cite === "function") {
-                resolve(globalThis.Cite);
-            } else {
-                reject(new Error("citation.js loaded but did not expose a Cite constructor"));
+            try {
+                const CiteCtor = require("citation-js").Cite;
+                if (typeof CiteCtor === "function") {
+                    globalThis.__Cite = CiteCtor;
+                    resolve(CiteCtor);
+                } else {
+                    reject(new Error("citation.js loaded but did not expose a Cite constructor"));
+                }
+            } catch (_error) {
+                reject(new Error("Scholia citation.js bundle failed to expose Cite"));
             }
         };
 
@@ -271,27 +283,10 @@ function loadCitationJs() {
 }
 
 async function resolveCitationBridge() {
-    let CiteCtor = globalThis.Cite;
-    if (typeof CiteCtor !== "function") {
-        CiteCtor = await loadCitationJs();
+    if (typeof globalThis.__Cite === "function") {
+        return globalThis.__Cite;
     }
-    if (typeof CiteCtor !== "function" && typeof require === "function") {
-        for (const moduleId of ["citation-js", "@citation-js/core"]) {
-            try {
-                const mod = require(moduleId);
-                CiteCtor = mod?.default?.default || mod?.default || mod?.Cite || mod;
-                if (typeof CiteCtor === "function") {
-                    break;
-                }
-            } catch (_error) {
-                // Try the next module id.
-            }
-        }
-    }
-    if (typeof CiteCtor !== "function") {
-        throw new Error("citation.js is not loaded or did not expose a Cite constructor");
-    }
-    return CiteCtor;
+    return await loadCitationJs();
 }
 
 async function fetchDoiCslJson(doi) {
@@ -331,9 +326,13 @@ pub fn build_core_inline_script() -> String {
 }
 
 /// Inline scripts only required on the curation page: the RDKit bridge and the
-/// citation.js bridge/loader. Loaded lazily via [`ui::document::DocumentScripts`]
+/// citation bridge. Loaded lazily via [`ui::document::DocumentScripts`]
 /// (mounted inside the curation view) so the bridge code stays off other views,
-/// and both RDKit and citation.js only load on first use.
+/// and both RDKit and citation.js only load on first use. The citation bridge
+/// uses Scholia's pre-built citation.js bundle which includes citation.js
+/// (v0.8.2) and the @citation-js/plugin-quickstatements output format, and
+/// calls cite.format('quickstatements') to generate QuickStatements from CSL
+/// JSON fetched via doi.org.
 pub fn build_curation_inline_script() -> String {
     [RDKIT_BRIDGE_SCRIPT, CITATION_BRIDGE_SCRIPT].join("\n\n")
 }

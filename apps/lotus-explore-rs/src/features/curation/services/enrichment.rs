@@ -386,7 +386,10 @@ async fn resolve_row_dependencies(
     Ok(Some(resolution))
 }
 
-/// Fetch pre-generated QuickStatements from Scholia (native) or citation.js (WASM)
+/// Fetch pre-generated QuickStatements from citation.js (WASM only)
+/// Uses the __lotusCitation JS bridge which fetches CSL JSON from doi.org
+/// and calls cite.format('quickstatements') with the plugin-quickstatements
+/// output format registered with citation.js.
 async fn resolve_or_create_reference(
     repository: &dyn CurationKnowledgeRepository,
     doi: &str,
@@ -401,10 +404,18 @@ async fn resolve_or_create_reference(
         return Ok((Some(qid), Vec::new()));
     }
 
-    // Try to fetch QuickStatements from Scholia or citation.js
+    // Try to fetch QuickStatements from doi.org CSL JSON via JS bridge
     let qs_lines = fetch_reference_quickstatements(doi)
         .await
         .unwrap_or_default();
+
+    let qs_lines = if qs_lines.is_empty() {
+        vec!["## -- Step: create missing reference --".into()]
+    } else {
+        let mut lines = vec!["## -- Step: create missing reference --".into()];
+        lines.extend(qs_lines);
+        lines
+    };
 
     Ok((None, qs_lines))
 }
