@@ -6,8 +6,6 @@
 use dioxus::prelude::*;
 use ui::prelude::*;
 
-mod inline_script;
-
 #[cfg(target_arch = "wasm32")]
 use dioxus::document::document as dioxus_document;
 
@@ -112,7 +110,6 @@ const LINKS: &[LinkSpec] = &[
     },
 ];
 
-const CSS_STYLES: &str = include_str!("../public/assets/lotus-explore.css");
 const DESCRIPTION: &str = "Explore LOTUS with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
 
 /// Alternating-language hreflang map: `"en"` → path suffix.
@@ -167,22 +164,24 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             og_url: Some(canonical.clone()),
             og_site_name: Some("LOTUS Knowledge Explorer".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            inline_script: Some(inline_script::build_bootstrap_inline_script()),
             canonical: Some(canonical),
         }
 
-        style { "{CSS_STYLES}" }
+        // Externalized CSS stylesheet via asset pipeline
+        document::Link { rel: "stylesheet", href: asset!("/public/assets/lotus-explore.css") }
+
+        // Externalized Bootstrap script asset
+        document::Script { src: asset!("/public/assets/js/bootstrap.js"), defer: true }
+
         DocumentLinks { links: LINKS.to_vec() }
     }
 }
 
-/// Lazily inject the curation bridge JS into the document `<head>`.
+/// Lazily inject the curation bridge JS files into the document `<head>`.
 #[component]
 pub fn CurationScripts() -> Element {
     rsx! {
-        DocumentScripts {
-            scripts: Vec::new(),
-            inline_script: Some(inline_script::build_curation_inline_script())
-        }
+        document::Script { src: asset!("/public/assets/js/curation/rdkit-bridge.js"), defer: true }
+        document::Script { src: asset!("/public/assets/js/curation/citation-bridge.js"), defer: true }
     }
 }
