@@ -26,7 +26,6 @@ fn base_url() -> String {
 }
 
 /// Non-hreflang links that can be statically known at compile time.
-/// Non-hreflang links that can be statically known at compile time.
 const LINKS: &[LinkSpec] = &[
     LinkSpec {
         rel: "icon",
@@ -187,10 +186,17 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             canonical: Some(canonical),
         }
 
-        // Externalized CSS stylesheet via asset pipeline
-        document::Link { rel: "stylesheet", href: asset!("/public/assets/lotus-explore.css") }
+        document::Link {
+            rel: "preload",
+            r#as: "style",
+            href: asset!("/public/assets/lotus-explore.css"),
+        }
 
-        // Externalized Bootstrap script asset
+        document::Link {
+            rel: "stylesheet",
+            href: asset!("/public/assets/lotus-explore.css"),
+        }
+
         document::Script { src: asset!("/public/assets/js/bootstrap.js"), defer: true }
 
         DocumentLinks { links: LINKS.to_vec() }
