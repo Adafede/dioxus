@@ -327,12 +327,16 @@ pub(super) async fn resolve_taxon_qid(name: &str) -> Result<Option<String>, Cura
 }
 
 pub async fn resolve_reference_qid(doi: &str) -> Result<Option<String>, CurationError> {
+    // Normalize DOI: strip the `doi.org/` prefix (case-insensitive) and uppercase.
+    // Wikidata stores P356 (DOI) values in uppercase without the prefix.
+    let normalized = normalize_doi(doi)
+        .ok_or_else(|| CurationError::InvalidInput("invalid or empty DOI".to_string()))?;
     let query = format!(
         "{CURATION_SPARQL_PREFIXES}\n\
          SELECT ?ref WHERE {{\n  \
            ?ref wdt:P356 \"{}\" .\n         \
          }} LIMIT 1",
-        escape_sparql_string(&doi.to_ascii_uppercase())
+        escape_sparql_string(&normalized)
     );
     let json = execute_sparql_json(&query).await?;
     Ok(extract_first_qid_from_json(&json, "ref"))

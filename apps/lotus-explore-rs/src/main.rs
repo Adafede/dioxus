@@ -47,9 +47,10 @@
 //!
 //! # Setup: external assets
 //!
-//! RDKit.js and citation-js are loaded from CDN on demand by the curation
+//! RDKit.js and citation.js are loaded from CDN on demand by the curation
 //! workflow when their respective operations first need them (no local
-//! download needed).
+//! download needed). The @citation-js/plugin-quickstatements output formatter
+//! is registered inline with citation.js after it loads.
 //! All document `<head>` metadata, scripts, and styles are managed in Rust
 //! via `ui::document::DocumentHead` — see `src/document_head.rs`.
 //!
