@@ -1,50 +1,50 @@
 {
+  "name": "LOTUS Explore-rs",
+  "short_name": "LOTUS-rs",
+  "description": "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
   "background_color": "#f6f8fb",
+  "theme_color": "#0b5cab",
+  "lang": "en",
+  "dir": "ltr",
+  "screenshots": [],
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
   "categories": [
     "science",
     "education",
     "research",
     "productivity"
   ],
-  "description": "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.",
-  "dir": "ltr",
-  "display": "standalone",
-  "icons": [
-    {
-      "purpose": "any",
-      "sizes": "any",
-      "src": "favicon.svg",
-      "type": "image/svg+xml"
-    },
-    {
-      "purpose": "maskable",
-      "sizes": "any",
-      "src": "favicon.svg",
-      "type": "image/svg+xml"
-    }
-  ],
-  "lang": "en",
-  "name": "LOTUS Explore-rs",
   "prefer_related_applications": false,
-  "scope": "./",
-  "screenshots": [],
-  "short_name": "LOTUS-rs",
   "shortcuts": [
     {
-      "description": "Search for natural product compounds",
-      "icons": [
-        {
-          "purpose": "any",
-          "sizes": "any",
-          "src": "favicon.svg",
-          "type": "image/svg+xml"
-        }
-      ],
       "name": "Search Compounds",
       "short_name": "Search",
-      "url": "./?tab=search"
+      "description": "Search for natural product compounds",
+      "url": "./?tab=search",
+      "icons": [
+        {
+          "src": "favicon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml",
+          "purpose": "any"
+        }
+      ]
     }
-  ],
-  "start_url": "./",
-  "theme_color": "#0b5cab"
+  ]
 }

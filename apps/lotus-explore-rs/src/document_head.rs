@@ -8,9 +8,9 @@ use ui::prelude::*;
 
 mod inline_script;
 
-/// Link specifications for resource hints and favicons.
+const BASE_URL: &str = "https://adafede.github.io/dioxus/lotus-explore-rs/";
+
 const LINKS: &[LinkSpec] = &[
-    // Resource hints for external SPARQL / API endpoints
     LinkSpec {
         rel: "dns-prefetch",
         href: "https://qlever.dev",
@@ -47,7 +47,6 @@ const LINKS: &[LinkSpec] = &[
         sizes: None,
         hreflang: None,
     },
-    // Discovery & Manifest
     LinkSpec {
         rel: "manifest",
         href: "/site.webmanifest",
@@ -66,35 +65,50 @@ const LINKS: &[LinkSpec] = &[
         sizes: Some("any"),
         hreflang: None,
     },
+    // Pre-calculated alternate hreflang links to prevent heap leaks during render
+    LinkSpec {
+        rel: "alternate",
+        href: "https://adafede.github.io/dioxus/lotus-explore-rs/",
+        r#type: None,
+        media: None,
+        crossorigin: None,
+        sizes: None,
+        hreflang: Some("en"),
+    },
+    LinkSpec {
+        rel: "alternate",
+        href: "https://adafede.github.io/dioxus/lotus-explore-rs/?lang=fr",
+        r#type: None,
+        media: None,
+        crossorigin: None,
+        sizes: None,
+        hreflang: Some("fr"),
+    },
+    LinkSpec {
+        rel: "alternate",
+        href: "https://adafede.github.io/dioxus/lotus-explore-rs/?lang=de",
+        r#type: None,
+        media: None,
+        crossorigin: None,
+        sizes: None,
+        hreflang: Some("de"),
+    },
+    LinkSpec {
+        rel: "alternate",
+        href: "https://adafede.github.io/dioxus/lotus-explore-rs/?lang=it",
+        r#type: None,
+        media: None,
+        crossorigin: None,
+        sizes: None,
+        hreflang: Some("it"),
+    },
 ];
 
-const HREFLANGS: &[(&str, &str)] = &[
-    ("en", ""),
-    ("fr", "?lang=fr"),
-    ("de", "?lang=de"),
-    ("it", "?lang=it"),
-];
-
-const BASE_URL: &str = "https://adafede.github.io/dioxus/lotus-explore-rs/";
-const CSS_STYLES: &str = concat!(include_str!("../public/assets/lotus-explore.css"));
+const CSS_STYLES: &str = include_str!("../public/assets/lotus-explore.css");
+const DESCRIPTION: &str = "Explore LOTUS with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
 
 #[component]
 pub fn LotusDocumentHead(lang: String) -> Element {
-    let description = "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
-
-    let mut links: Vec<LinkSpec> = LINKS.to_vec();
-    for (lang_code, suffix) in HREFLANGS {
-        links.push(LinkSpec {
-            rel: "alternate",
-            href: Box::leak(format!("{BASE_URL}{suffix}").into_boxed_str()),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: Some(*lang_code),
-        });
-    }
-
     let canonical = match lang.as_str() {
         "en" => BASE_URL.to_string(),
         other => format!("{BASE_URL}?lang={other}"),
@@ -104,7 +118,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
         DocumentHead {
             title: "LOTUS Knowledge Explorer".to_string(),
             lang,
-            description: Some(description.to_string()),
+            description: Some(DESCRIPTION.to_string()),
             og_type: Some("website".to_string()),
             og_url: Some(canonical.clone()),
             og_site_name: Some("LOTUS Knowledge Explorer".to_string()),
@@ -114,15 +128,17 @@ pub fn LotusDocumentHead(lang: String) -> Element {
         }
 
         style { "{CSS_STYLES}" }
-        DocumentLinks { links }
+        DocumentLinks { links: LINKS.to_vec() }
     }
 }
 
 /// Lazily inject the curation bridge JS into the document `<head>`.
 #[component]
 pub fn CurationScripts() -> Element {
-    let inline_script = Some(inline_script::build_curation_inline_script());
     rsx! {
-        DocumentScripts { scripts: Vec::<String>::new(), inline_script }
+        DocumentScripts {
+            scripts: Vec::new(),
+            inline_script: Some(inline_script::build_curation_inline_script())
+        }
     }
 }
