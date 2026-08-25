@@ -22,11 +22,9 @@ jobs:
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: https://github.com/dtolnay/rust-toolchain@stable
-      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
-      - name: Install dioxus-cli
-        run: cargo binstall dioxus-cli --version 0.7.10 --locked --force
-      - name: Test workspace (all targets)
-        run: cargo test --workspace --all-targets --locked --quiet
+      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - name: Test workspace
+        run: cargo test --workspace --lib --bins --tests --locked --quiet
       - name: Build docs
         run: cargo doc --workspace --no-deps --locked
 
@@ -72,7 +70,7 @@ jobs:
 
   supply-chain:
     name: Supply-chain checks
-    runs-on: codeberg-medium
+    runs-on: codeberg-small
     steps:
       - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
