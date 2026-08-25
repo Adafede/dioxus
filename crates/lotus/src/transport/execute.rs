@@ -166,14 +166,16 @@ pub async fn execute_sparql_with_format_body(
                         attempt + 1,
                         backoff_ms
                     );
-                    last_err = Some(FetchError::Http(code, detail.clone()));
                     #[cfg(not(target_arch = "wasm32"))]
                     {
                         std::thread::sleep(std::time::Duration::from_millis(backoff_ms));
+                        last_err = Some(FetchError::Http(code, detail.clone()));
                         continue;
                     }
                     #[cfg(target_arch = "wasm32")]
-                    return Err(FetchError::Http(code, detail));
+                    {
+                        return Err(FetchError::Http(code, detail));
+                    }
                 }
                 if (400..500).contains(&code) {
                     return Err(FetchError::Http(code, detail));
