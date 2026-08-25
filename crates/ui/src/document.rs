@@ -315,7 +315,7 @@ pub struct DocumentLinksProps {
 #[derive(Clone, PartialEq)]
 pub struct LinkSpec {
     pub rel: &'static str,
-    pub href: &'static str,
+    pub href: String,
     pub r#type: Option<&'static str>,
     pub media: Option<&'static str>,
     pub crossorigin: Option<&'static str>,

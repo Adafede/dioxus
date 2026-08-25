@@ -26,107 +26,110 @@ fn base_url() -> String {
 }
 
 /// Non-hreflang links that can be statically known at compile time.
-const LINKS: &[LinkSpec] = &[
-    LinkSpec {
-        rel: "icon",
-        href: "/favicon.ico",
-        r#type: Some("image/x-icon"),
-        media: None,
-        crossorigin: None,
-        sizes: Some("48x48"),
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "apple-touch-icon",
-        href: "/apple-touch-icon.png",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: Some("180x180"),
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "icon",
-        href: "/favicon-32x32.png",
-        r#type: Some("image/png"),
-        media: None,
-        crossorigin: None,
-        sizes: Some("32x32"),
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "icon",
-        href: "/favicon-16x16.png",
-        r#type: Some("image/png"),
-        media: None,
-        crossorigin: None,
-        sizes: Some("16x16"),
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "dns-prefetch",
-        href: "https://qlever.dev",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "dns-prefetch",
-        href: "https://query.wikidata.org",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "dns-prefetch",
-        href: "https://unpkg.com",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "dns-prefetch",
-        href: "https://tools-static.wmflabs.org",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "dns-prefetch",
-        href: "https://www.simolecule.com",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "dns-prefetch",
-        href: "https://idsm.elixir-czech.cz",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: None,
-    },
-    LinkSpec {
-        rel: "manifest",
-        href: "/site.webmanifest",
-        r#type: Some("application/manifest+json"),
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: None,
-    },
-];
+#[allow(clippy::volatile_composites)]
+fn links() -> Vec<LinkSpec> {
+    vec![
+        LinkSpec {
+            rel: "icon",
+            href: asset!("/public/favicon.ico").to_string(),
+            r#type: Some("image/x-icon"),
+            media: None,
+            crossorigin: None,
+            sizes: Some("48x48"),
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "apple-touch-icon",
+            href: asset!("/public/apple-touch-icon.png").to_string(),
+            r#type: None,
+            media: None,
+            crossorigin: None,
+            sizes: Some("180x180"),
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "icon",
+            href: asset!("/public/favicon-32x32.png").to_string(),
+            r#type: Some("image/png"),
+            media: None,
+            crossorigin: None,
+            sizes: Some("32x32"),
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "icon",
+            href: asset!("/public/favicon-16x16.png").to_string(),
+            r#type: Some("image/png"),
+            media: None,
+            crossorigin: None,
+            sizes: Some("16x16"),
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "dns-prefetch",
+            href: "https://qlever.dev".to_string(),
+            r#type: None,
+            media: None,
+            crossorigin: None,
+            sizes: None,
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "dns-prefetch",
+            href: "https://query.wikidata.org".to_string(),
+            r#type: None,
+            media: None,
+            crossorigin: None,
+            sizes: None,
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "dns-prefetch",
+            href: "https://unpkg.com".to_string(),
+            r#type: None,
+            media: None,
+            crossorigin: None,
+            sizes: None,
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "dns-prefetch",
+            href: "https://tools-static.wmflabs.org".to_string(),
+            r#type: None,
+            media: None,
+            crossorigin: None,
+            sizes: None,
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "dns-prefetch",
+            href: "https://www.simolecule.com".to_string(),
+            r#type: None,
+            media: None,
+            crossorigin: None,
+            sizes: None,
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "dns-prefetch",
+            href: "https://idsm.elixir-czech.cz".to_string(),
+            r#type: None,
+            media: None,
+            crossorigin: None,
+            sizes: None,
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "manifest",
+            href: asset!("/public/site.webmanifest").to_string(),
+            r#type: Some("application/manifest+json"),
+            media: None,
+            crossorigin: None,
+            sizes: None,
+            hreflang: None,
+        },
+    ]
+}
 
 const DESCRIPTION: &str = "Explore LOTUS with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
 
@@ -199,7 +202,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
 
         document::Script { src: asset!("/public/assets/js/bootstrap.js"), defer: true }
 
-        DocumentLinks { links: LINKS.to_vec() }
+        DocumentLinks { links: links() }
     }
 }
 
