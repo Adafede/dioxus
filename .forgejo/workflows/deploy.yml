@@ -47,9 +47,8 @@ jobs:
       - name: Build App
         working-directory: apps/${{ matrix.app }}
         run: dx build --release --platform web --debug-symbols false --base-path "${{ matrix.path }}"
-      - name: Publish build output to Git staging
+      - name: Stage build output
         run: |
-          # 1. Locate the build directory dynamically
           if [ -d "apps/${{ matrix.app }}/target/dx/${{ matrix.app }}/release/web/public" ]; then
             BUILD_DIR="apps/${{ matrix.app }}/target/dx/${{ matrix.app }}/release/web/public"
           elif [ -d "target/dx/${{ matrix.app }}/release/web/public" ]; then
@@ -59,16 +58,32 @@ jobs:
             exit 1
           fi
 
-          # 2. Re-initialize an isolated orphan branch inside the build dir
-          cd "$BUILD_DIR"
-          git init
-          git config user.name "Codeberg Actions"
-          git config user.email "actions@codeberg.org"
-          git checkout --orphan "build-stage-${{ matrix.app }}"
-          git add -A
-          git commit -m "deploy: build stage for ${{ matrix.app }}"
+          if [ "${{ matrix.app }}" = "index" ]; then
+            DEST_DIR="staged_site"
+          else
+            DEST_DIR="staged_site/${{ matrix.app }}"
+          fi
 
-          # 3. Push to Codeberg using HTTP Basic Auth
-          REPO="${{ github.repository }}"
-          TOKEN="${{ forge.token }}"
-          git push -f "https://x-access-token:${TOKEN}@codeberg.org/${REPO}.git" "build-stage-${{ matrix.app }}"
+          mkdir -p "$DEST_DIR"
+          cp -r "$BUILD_DIR"/* "$DEST_DIR/"
+
+      - uses: https://github.com/actions/upload-artifact@v4
+        with:
+          name: site-${{ matrix.app }}
+          path: staged_site/
+
+  deploy:
+    needs: build-apps
+    runs-on: codeberg-medium
+    steps:
+      - uses: https://github.com/actions/download-artifact@v4
+        with:
+          pattern: site-*
+          path: _site/
+          merge-multiple: true
+
+      - uses: actions/git-pages@v2
+        with:
+          site: https://adafede.codeberg.page/dioxus/
+          token: ${{ forge.token }}
+          source: _site/
