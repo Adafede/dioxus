@@ -8,8 +8,26 @@ use ui::prelude::*;
 
 mod inline_script;
 
-const BASE_URL: &str = "https://adafede.github.io/dioxus/lotus-explore-rs/";
+#[cfg(target_arch = "wasm32")]
+use dioxus::document::document as dioxus_document;
 
+/// Build the absolute base URL (origin + pathname) from the browser's
+/// `location` so that every canonical / hreflang link is an absolute URL.
+#[cfg(target_arch = "wasm32")]
+fn base_url() -> String {
+    let win = web_sys::window().expect("web_sys::window");
+    let loc = win.location();
+    let origin = loc.origin().unwrap_or_default();
+    let pathname = loc.pathname().unwrap_or_default();
+    format!("{origin}{pathname}")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn base_url() -> String {
+    String::new()
+}
+
+/// Non-hreflang links that can be statically known at compile time.
 const LINKS: &[LinkSpec] = &[
     LinkSpec {
         rel: "dns-prefetch",
@@ -65,54 +83,53 @@ const LINKS: &[LinkSpec] = &[
         sizes: Some("any"),
         hreflang: None,
     },
-    // Pre-calculated alternate hreflang links
-    LinkSpec {
-        rel: "alternate",
-        href: "/",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: Some("en"),
-    },
-    LinkSpec {
-        rel: "alternate",
-        href: "/?lang=fr",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: Some("fr"),
-    },
-    LinkSpec {
-        rel: "alternate",
-        href: "/?lang=de",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: Some("de"),
-    },
-    LinkSpec {
-        rel: "alternate",
-        href: "/?lang=it",
-        r#type: None,
-        media: None,
-        crossorigin: None,
-        sizes: None,
-        hreflang: Some("it"),
-    },
 ];
 
 const CSS_STYLES: &str = include_str!("../public/assets/lotus-explore.css");
 const DESCRIPTION: &str = "Explore LOTUS with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
 
+/// Alternating-language hreflang map: `"en"` → path suffix.
+/// English has no suffix because it is the default language.
+#[cfg(target_arch = "wasm32")]
+const HREF_LANGS: &[(&str, &str)] = &[("en", ""), ("fr", "fr"), ("de", "de"), ("it", "it")];
+
 #[component]
 pub fn LotusDocumentHead(lang: String) -> Element {
     let canonical = match lang.as_str() {
-        "en" => BASE_URL.to_string(),
-        other => format!("{BASE_URL}?lang={other}"),
+        "en" => base_url(),
+        other => {
+            let base = base_url();
+            if base.contains('?') {
+                format!("{base}&lang={other}")
+            } else {
+                format!("{base}?lang={other}")
+            }
+        }
     };
+
+    // Inject hreflang `<link rel="alternate">` tags with absolute URLs.
+    #[cfg(target_arch = "wasm32")]
+    use_hook(move || {
+        let doc = dioxus_document();
+        let base = base_url();
+        for (hreflang, suffix) in HREF_LANGS {
+            let href = if suffix.is_empty() {
+                base.clone()
+            } else if base.contains('?') {
+                format!("{base}&lang={suffix}")
+            } else {
+                format!("{base}?lang={suffix}")
+            };
+            let attrs: Vec<(&str, String)> = vec![
+                ("rel", "alternate".to_string()),
+                ("href", href),
+                ("hreflang", hreflang.to_string()),
+            ];
+            doc.create_head_element("link", &attrs, None);
+        }
+    });
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = canonical.clone(); // suppress unused warning in tests
 
     rsx! {
         DocumentHead {

@@ -144,7 +144,7 @@ fn FooterRow(
             span { class: "footer-label", style: footer_label_style(), "{label}" }
             ul { class: "footer-links", role: "list", style: footer_links_style(),
                 for (href, text) in links.iter() {
-                    li {
+                    li { key: "{href}",
                         a {
                             class: "footer-link",
                             href: "{href}",

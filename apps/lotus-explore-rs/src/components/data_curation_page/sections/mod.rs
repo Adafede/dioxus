@@ -336,7 +336,8 @@ pub fn QueueRowsCard(
                             }
                         } else {
                             for (idx, row) in rows_snapshot.iter().enumerate() {
-                                tr { style: row_stripe_style(idx),
+                                tr { key: "{row.name}|{row.smiles}",
+                                    style: row_stripe_style(idx),
                                     td { style: queue_action_col_style(),
                                         button {
                                             r#type: "button",

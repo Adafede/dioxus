@@ -120,7 +120,8 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     }
                     tbody {
                         for (idx, row) in rows.iter().enumerate() {
-                            tr { style: row_stripe_style(idx),
+                            tr { key: "{row.inchikey.as_deref().unwrap_or(&idx.to_string())}",
+                                style: row_stripe_style(idx),
                                 {render_curation_result_cells(locale, row)}
                             }
                         }
