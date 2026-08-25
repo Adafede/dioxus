@@ -74,15 +74,6 @@ const LINKS: &[LinkSpec] = &[
         sizes: None,
         hreflang: None,
     },
-    LinkSpec {
-        rel: "icon",
-        href: "/favicon.svg",
-        r#type: Some("image/svg+xml"),
-        media: None,
-        crossorigin: None,
-        sizes: Some("any"),
-        hreflang: None,
-    },
 ];
 
 const CSS_STYLES: &str = include_str!("../public/assets/lotus-explore.css");
