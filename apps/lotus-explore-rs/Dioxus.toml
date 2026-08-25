@@ -11,8 +11,7 @@ pre_compress = true
 
 [web.app]
 title = "LOTUS Linked Open Data Explorer"
-# Set base_path when serving under a subpath, e.g.:
-# base_path = "/lotus-explore-rs"
+base_path = "/dioxus/lotus-explore-rs"
 
 [web.watcher]
 reload_html = true

@@ -310,6 +310,10 @@ fn build_headers_txt() -> String {
     \x20 Cache-Control: public, max-age=2592000\n\n\
     /android-chrome-512x512.png\n\
     \x20 Cache-Control: public, max-age=2592000\n\n\
+    /*.wasm\n\
+    \x20 Cache-Control: public, max-age=31536000, immutable\n\n\
+    /wasm/*\n\
+    \x20 Cache-Control: public, max-age=31536000, immutable\n\n\
     **/assets/*\n\
     \x20 Cache-Control: public, max-age=31536000, immutable\n\n\
     /index.html\n\

@@ -11,10 +11,16 @@ const BOOTSTRAP_INLINE_SCRIPT: &str = r#"
     // 1. Service Worker: Cache-First strategy for WASM and JS assets
     // Overrides GitHub Pages default 10-minute (600s) Cache-Control header.
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('./sw.js').catch(function() {});
-        });
+    // Wait until idle or after DOMContentLoaded to register sw.js
+    var registerSw = function() {
+        navigator.serviceWorker.register('./sw.js').catch(function() {});
+    };
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(registerSw);
+    } else {
+        setTimeout(registerSw, 2000);
     }
+}
 
     // 2. Non-blocking Analytics Initialization
     // Defers loading Simple Analytics to unblock initial WASM instantiation and LCP.
