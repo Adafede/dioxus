@@ -301,7 +301,7 @@ fn build_headers_txt(_meta: &Metadata) -> String {
     "  Cache-Control: public, max-age=2592000\n\n",
     "/favicon.svg\n",
     "  Cache-Control: public, max-age=2592000\n\n",
-    "/assets/*\n",
+    "**/assets/*\n",
     "  Cache-Control: public, max-age=31536000, immutable\n\n",
     "/index.html\n",
     "  No-Vary-Search: key-order, params, except=(\"locale\")\n",
