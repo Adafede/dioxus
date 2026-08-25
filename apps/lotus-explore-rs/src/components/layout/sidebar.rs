@@ -18,7 +18,7 @@ use ui::prelude::*;
 
 use crate::ui::style_constants::primary_buttons;
 
-const LOTUS_FERRIS_SVG: &str = include_str!("../../../public/assets/lotus_ferris.svg");
+const LOTUS_LOGO_SVG: &str = include_str!("../../../public/favicon.svg");
 
 /// Sidebar: filter toggle + `SearchPanel` + logo.
 ///
@@ -42,7 +42,7 @@ pub fn Sidebar() -> Element {
                     .justify_content("center")
                     .build(),
                 "aria-hidden": "true",
-                dangerous_inner_html: LOTUS_FERRIS_SVG,
+                dangerous_inner_html: LOTUS_LOGO_SVG,
             }
             div {
                 style: button_wrapper_style(),

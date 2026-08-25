@@ -30,6 +30,33 @@ fn base_url() -> String {
 /// Non-hreflang links that can be statically known at compile time.
 const LINKS: &[LinkSpec] = &[
     LinkSpec {
+        rel: "apple-touch-icon",
+        href: "/apple-touch-icon.png",
+        r#type: None,
+        media: None,
+        crossorigin: None,
+        sizes: Some("180x180"),
+        hreflang: None,
+    },
+    LinkSpec {
+        rel: "icon",
+        href: "/favicon-32x32.png",
+        r#type: Some("image/png"),
+        media: None,
+        crossorigin: None,
+        sizes: Some("32x32"),
+        hreflang: None,
+    },
+    LinkSpec {
+        rel: "icon",
+        href: "/favicon-16x16.png",
+        r#type: Some("image/png"),
+        media: None,
+        crossorigin: None,
+        sizes: Some("16x16"),
+        hreflang: None,
+    },
+    LinkSpec {
         rel: "dns-prefetch",
         href: "https://qlever.dev",
         r#type: None,

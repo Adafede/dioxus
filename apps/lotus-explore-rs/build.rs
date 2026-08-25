@@ -299,7 +299,17 @@ fn build_headers_txt() -> String {
     /favicon.svg\n\
     \x20 Cache-Control: public, max-age=2592000\n\n\
     /favicon.ico\n\
-    \x20 Status: 410\n\n\
+    \x20 Cache-Control: public, max-age=2592000\n\n\
+    /favicon-16x16.png\n\
+    \x20 Cache-Control: public, max-age=2592000\n\n\
+    /favicon-32x32.png\n\
+    \x20 Cache-Control: public, max-age=2592000\n\n\
+    /apple-touch-icon.png\n\
+    \x20 Cache-Control: public, max-age=2592000\n\n\
+    /android-chrome-192x192.png\n\
+    \x20 Cache-Control: public, max-age=2592000\n\n\
+    /android-chrome-512x512.png\n\
+    \x20 Cache-Control: public, max-age=2592000\n\n\
     **/assets/*\n\
     \x20 Cache-Control: public, max-age=31536000, immutable\n\n\
     /index.html\n\
