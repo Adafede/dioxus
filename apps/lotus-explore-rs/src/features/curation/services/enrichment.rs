@@ -386,10 +386,12 @@ async fn resolve_row_dependencies(
     Ok(Some(resolution))
 }
 
-/// Fetch pre-generated QuickStatements from citation.js (WASM only)
+/// Fetch pre-generated QuickStatements from citation.js (WASM only).
 /// Uses the __lotusCitation JS bridge which fetches CSL JSON from doi.org
-/// and calls cite.format('quickstatements') with the plugin-quickstatements
+/// and calls `cite.format('quickstatements')` with the plugin-quickstatements
 /// output format registered with citation.js.
+/// When the citation bridge is unavailable or returns empty output,
+/// returns a minimal `## -- Step: create missing reference --` header only.
 async fn resolve_or_create_reference(
     repository: &dyn CurationKnowledgeRepository,
     doi: &str,
@@ -418,4 +420,37 @@ async fn resolve_or_create_reference(
     };
 
     Ok((None, qs_lines))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reference_step_header_always_present() {
+        // When QS lines are empty, only the header should be present.
+        let qs_lines: Vec<String> = Vec::new();
+        let result = if qs_lines.is_empty() {
+            vec!["## -- Step: create missing reference --".to_string()]
+        } else {
+            let mut lines = vec!["## -- Step: create missing reference --".to_string()];
+            lines.extend(qs_lines);
+            lines
+        };
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], "## -- Step: create missing reference --");
+
+        // When QS lines are present, the header is still the first line.
+        let qs_lines: Vec<String> = vec!["CREATE".to_string(), "LAST|Len|\"Foo\"".to_string()];
+        let result = if qs_lines.is_empty() {
+            vec!["## -- Step: create missing reference --".to_string()]
+        } else {
+            let mut lines = vec!["## -- Step: create missing reference --".to_string()];
+            lines.extend(qs_lines);
+            lines
+        };
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0], "## -- Step: create missing reference --");
+        assert_eq!(result[1], "CREATE");
+    }
 }

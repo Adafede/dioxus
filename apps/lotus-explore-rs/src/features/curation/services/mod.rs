@@ -52,10 +52,13 @@ pub use helpers::{extract_formula_from_inchi, normalize_formula_for_wikidata, qs
 /// Set this to `false` to use QLever with WDQS fallback on 502.
 const FORCE_WDQS_FALLBACK: bool = false;
 
-/// Execute a SPARQL query with WDQS fallback on 502 Bad Gateway.
+/// Execute a SPARQL query against Wikidata, preferring WDQS when
+/// `FORCE_WDQS_FALLBACK` is enabled, otherwise falls back to WDQS on 502.
 ///
-/// This function first tries QLever, and if it returns a 502 error,
-/// it retries on the WDQS endpoint with scholarly subgraph for reference queries.
+/// - Reference lookups (queries containing `SELECT ?ref WHERE {` and `wdt:P356`)
+///   use the WDQS scholarly subgraph endpoint directly.
+/// - All other queries are transformed via `transform_query_for_wdqs` and sent
+///   to the regular WDQS endpoint.
 pub async fn execute_sparql_with_wdqs_fallback(
     query: &str,
     format: ResponseFormat,
