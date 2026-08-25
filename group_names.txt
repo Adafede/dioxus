@@ -1,0 +1,2 @@
+# Shared names for Ertl and user-defined groups
+"geminal dimethyl" "[#6]([CH3])[CH3]" "0000-0003-3389-2191"
