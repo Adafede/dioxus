@@ -424,8 +424,6 @@ async fn resolve_or_create_reference(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn reference_step_header_always_present() {
         // When QS lines are empty, only the header should be present.
