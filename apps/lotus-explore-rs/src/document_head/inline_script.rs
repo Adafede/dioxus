@@ -3,10 +3,37 @@
 
 //! Inline JavaScript for the document head, split into small bridge snippets.
 //!
-//! The critical language/trusted-types bootstrap that was previously injected
-//! via `DocumentHead` (running after WASM hydration) has been moved to the
-//! `index.html` template so it executes synchronously during HTML parsing —
-//! eliminating the lang flicker that delayed LCP.
+//! Handles synchronous app bootstrap (Service Worker registration & non-blocking analytics)
+//! alongside lazy-loaded bridges for RDKit and Citation.js.
+
+const BOOTSTRAP_INLINE_SCRIPT: &str = r#"
+(function() {
+    // 1. Service Worker: Cache-First strategy for WASM and JS assets
+    // Overrides GitHub Pages default 10-minute (600s) Cache-Control header.
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('./sw.js').catch(function() {});
+        });
+    }
+
+    // 2. Non-blocking Analytics Initialization
+    // Defers loading Simple Analytics to unblock initial WASM instantiation and LCP.
+    var loadAnalytics = function() {
+        if (document.querySelector('script[src*="simpleanalyticscdn.com"]')) return;
+        var s = document.createElement('script');
+        s.async = true;
+        s.defer = true;
+        s.src = 'https://scripts.simpleanalyticscdn.com/latest.js';
+        document.head.appendChild(s);
+    };
+
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(loadAnalytics, { timeout: 2000 });
+    } else {
+        setTimeout(loadAnalytics, 1500);
+    }
+})();
+"#;
 
 const RDKIT_BRIDGE_SCRIPT: &str = r#"
 const RDKIT_JS_SRC = "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js";
@@ -190,12 +217,6 @@ window.__lotusRdkit = {
 "#;
 
 const CITATION_BRIDGE_SCRIPT: &str = r#"
-// citation.js + @citation-js/plugin-quickstatements
-// Bundled together by Scholia (which uses the plugin in production for its
-// DOI → QuickStatements feature). The 2.1 MB bundle includes citation.js
-// (v0.8.2) and ALL its plugins, including @citation-js/plugin-quickstatements.
-// After loading, require('citation-js').Cite exposes the Cite constructor
-// with the 'quickstatements' output format already registered.
 const CITATION_JS_SRC = "https://tools-static.wmflabs.org/scholia/js/citation.js";
 let citationJsLoadPromise = null;
 
@@ -291,14 +312,13 @@ window.__lotusCitation = {
 };
 "#;
 
-/// Inline scripts only required on the curation page: the RDKit bridge and the
-/// citation bridge. Loaded lazily via [`ui::document::DocumentScripts`]
-/// (mounted inside the curation view) so the bridge code stays off other views,
-/// and both RDKit and citation.js only load on first use. The citation bridge
-/// uses Scholia's pre-built citation.js bundle which includes citation.js
-/// (v0.8.2) and the @citation-js/plugin-quickstatements output format, and
-/// calls cite.format('quickstatements') to generate QuickStatements from CSL
-/// JSON fetched via doi.org.
+/// Primary bootstrap script passed to `DocumentHead { inline_script }`.
+/// Registers the Service Worker and schedules analytics injection during browser idle time.
+pub fn build_bootstrap_inline_script() -> String {
+    BOOTSTRAP_INLINE_SCRIPT.to_string()
+}
+
+/// Lazy-loaded bridge code for RDKit and Citation.js on curation routes.
 pub fn build_curation_inline_script() -> String {
     [RDKIT_BRIDGE_SCRIPT, CITATION_BRIDGE_SCRIPT].join("\n\n")
 }

@@ -9,7 +9,26 @@
              browser knows the document language before any JS bundle loads.
              This eliminates the lang flicker that delays LCP. Also installs
              a Trusted Types policy synchronously for the strict CSP. -->
-        <script>(function(){var p=new URL(window.location.href).searchParams;document.documentElement.lang=p.get("lang")||p.get("locale")||"en";var t=window.trustedTypes;if(t&&!t.getPolicy("default")){try{t.createPolicy("default",{createHTML:function(v){return String(v)},createScript:function(v){return String(v)},createScriptURL:function(v){return String(v)},createURL:function(v){return String(v)}})}catch(e){}}})();</script>
+        <script>
+          (function () {
+            var p = new URL(window.location.href).searchParams;
+            document.documentElement.lang =
+              p.get("lang") || p.get("locale") || "en";
+            var t = window.trustedTypes;
+            if (t) {
+              try {
+                t.createPolicy("default", {
+                  createHTML: function (v) { return String(v); },
+                  createScript: function (v) { return String(v); },
+                  createScriptURL: function (v) { return String(v); },
+                  createURL: function (v) { return String(v); }
+                });
+              } catch (e) {
+                // Policy "default" was already created or is disallowed by CSP; safe to ignore.
+              }
+            }
+          })();
+        </script>
     </head>
     <body>
         <div id="main"></div>

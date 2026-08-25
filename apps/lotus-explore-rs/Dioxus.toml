@@ -22,3 +22,7 @@ watch_path = ["src", "public", "../../crates/lotus/src", "../../crates/ui/src", 
 # Proxy API requests to the lotus-api backend to avoid CORS issues in development
 path = "/v1"
 backend = "http://127.0.0.1:8787/v1"
+
+[web.serve]
+# Ensures correct MIME types are emitted locally
+asset_dir = "public"
