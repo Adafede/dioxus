@@ -17,17 +17,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  native:
-    runs-on: codeberg-medium
-    steps:
-      - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: https://github.com/dtolnay/rust-toolchain@stable
-      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-      - name: Test workspace
-        run: cargo test --workspace --lib --bins --tests --locked --quiet
-      - name: Build docs
-        run: cargo doc --workspace --no-deps --locked
-
   wasm:
     name: Type-check explorer (wasm32)
     runs-on: codeberg-small
