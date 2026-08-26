@@ -168,6 +168,10 @@ video {
     --ring: 0 0 0 3px rgb(140 188 255 / 28%);
     --critical-text: #e8edf5;
     --critical-muted: #d0d9e5;
+    --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 52%, white);
+    --footer-wd-taxon: color-mix(in srgb, var(--wd-taxon) 56%, white);
+    --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 52%, white);
+    --footer-wd-entries: color-mix(in srgb, var(--wd-entries) 56%, white);
 }
 
 [data-theme="light"] {
@@ -423,7 +427,6 @@ a:hover {
     padding: 4px 0 0;
     display: block;
     margin: 0 auto;
-    border-top: 1px solid var(--border);
     width: 120px;
     height: 120px;
     aspect-ratio: 1 / 1;
@@ -491,7 +494,7 @@ a:hover {
     width: 100%;
     border-collapse: collapse;
     font-size: var(--fs-ui);
-    table-layout: fixed;
+    table-layout: auto;
     word-break: break-word;
 }
 
@@ -928,6 +931,7 @@ a:hover {
 .footer-link {
     text-decoration: none;
     font-size: var(--fs-0);
+    color: inherit;
 }
 
 .footer-link-border {

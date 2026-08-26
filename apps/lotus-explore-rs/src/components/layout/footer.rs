@@ -113,7 +113,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                 role: "list",
                 li {
                     a {
-                        class: "footer-link text-muted hover:text-text hover:underline",
+                        class: "footer-link text-wd-entries hover:underline font-medium",
                         href: "https://creativecommons.org/publicdomain/zero/1.0/",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -126,7 +126,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                 }
                 li {
                     a {
-                        class: "footer-link text-muted hover:text-text hover:underline",
+                        class: "footer-link text-wd-entries hover:underline font-medium",
                         href: "https://www.gnu.org/licenses/agpl-3.0.html",
                         target: "_blank",
                         rel: "noopener noreferrer",

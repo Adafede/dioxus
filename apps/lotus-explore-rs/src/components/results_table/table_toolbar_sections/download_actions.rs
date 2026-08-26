@@ -8,6 +8,7 @@ use super::super::download_model::{
     DOWNLOAD_METADATA_SPEC, DOWNLOAD_QUERY_CSV_SPEC, DOWNLOAD_QUERY_JSON_SPEC,
     DOWNLOAD_QUERY_RDF_SPEC, DownloadQuerySpec, build_download_toolbar_model_with_endpoint,
 };
+use crate::components::ui::{Button, ButtonSize, ButtonVariant};
 use crate::download::{DownloadFormat, execute_download, trigger_download};
 use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{TextKey, t};
@@ -18,6 +19,8 @@ use dioxus::prelude::*;
 use std::sync::Arc;
 
 const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
+const TOOLBAR_ACTION_CLASS: &str = "shrink-0 min-h-[34px]";
+const TOOLBAR_LINK_CLASS: &str = "inline-flex shrink-0 min-h-[34px] items-center justify-center gap-1.5 rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs transition-colors hover:bg-bg";
 
 // ── private helpers ───────────────────────────────────────────────────────────
 
@@ -131,30 +134,32 @@ fn DownloadStatusSpinner(
 #[component]
 fn DownloadQueryButton(
     spec: DownloadQuerySpec,
-    toolbar_model: ReadSignal<
-        crate::components::results_table::download_model::DownloadToolbarModel,
-    >,
     sparql_query: Arc<str>,
     locale: crate::i18n::Locale,
     disabled: bool,
     download_busy: Signal<bool>,
     download_status: Signal<Option<String>>,
-    criteria: ReadSignal<SearchCriteria>,
+    _criteria: ReadSignal<SearchCriteria>,
     filename: String,
 ) -> Element {
     let title = t(locale, spec.title_key);
     let label = t(locale, spec.label_key);
 
     rsx! {
-        button {
+        Button {
             r#type: "button",
             disabled,
-            class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs hover:bg-bg disabled:cursor-not-allowed disabled:opacity-60",
+            variant: ButtonVariant::Secondary,
+            size: ButtonSize::Sm,
+            class: Some(TOOLBAR_ACTION_CLASS.to_string()),
+            title: Some(title.to_string()),
+            aria_label: Some(title.to_string()),
+            label: Some(label.to_string()),
             onclick: {
                 let q = sparql_query.clone();
                 let fname = filename.clone();
                 #[cfg(target_arch = "wasm32")]
-                let criteria_snapshot = Some(Arc::new(criteria.read().clone()));
+                let criteria_snapshot = Some(Arc::new(_criteria.read().clone()));
                 #[cfg(not(target_arch = "wasm32"))]
                 let criteria_snapshot = None;
                 move |_| {
@@ -169,9 +174,6 @@ fn DownloadQueryButton(
                     );
                 }
             },
-            aria_label: "{title}",
-            title: "{title}",
-            "{label}"
         }
     }
 }
@@ -190,10 +192,15 @@ fn DownloadMetadataButton(
     let label = t(locale, DOWNLOAD_METADATA_SPEC.label_key);
 
     rsx! {
-        button {
+        Button {
             r#type: "button",
             disabled,
-            class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs hover:bg-bg disabled:cursor-not-allowed disabled:opacity-60",
+            variant: ButtonVariant::Secondary,
+            size: ButtonSize::Sm,
+            class: Some(TOOLBAR_ACTION_CLASS.to_string()),
+            title: Some(title.to_string()),
+            aria_label: Some(title.to_string()),
+            label: Some(label.to_string()),
             onclick: {
                 let body = metadata_json.clone();
                 let filename = toolbar_model.read().metadata_filename.clone();
@@ -201,9 +208,6 @@ fn DownloadMetadataButton(
                     dispatch_metadata_download_blob(&filename, body.as_ref());
                 }
             },
-            title: "{title}",
-            aria_label: "{title}",
-            "{label}"
         }
     }
 }
@@ -263,35 +267,32 @@ pub fn DownloadActionsGroup() -> Element {
                     if let Some(query) = sparql_query_value.as_ref() {
                         DownloadQueryButton {
                             spec: DOWNLOAD_QUERY_CSV_SPEC,
-                            toolbar_model,
                             sparql_query: query.clone(),
                             locale,
                             disabled: *download_busy.read(),
                             download_busy,
                             download_status,
-                            criteria,
+                            _criteria: criteria,
                             filename: toolbar_model.read().csv_filename.clone(),
                         }
                         DownloadQueryButton {
                             spec: DOWNLOAD_QUERY_JSON_SPEC,
-                            toolbar_model,
                             sparql_query: query.clone(),
                             locale,
                             disabled: *download_busy.read(),
                             download_busy,
                             download_status,
-                            criteria,
+                            _criteria: criteria,
                             filename: toolbar_model.read().json_filename.clone(),
                         }
                         DownloadQueryButton {
                             spec: DOWNLOAD_QUERY_RDF_SPEC,
-                            toolbar_model,
                             sparql_query: query.clone(),
                             locale,
                             disabled: *download_busy.read(),
                             download_busy,
                             download_status,
-                            criteria,
+                            _criteria: criteria,
                             filename: toolbar_model.read().rdf_filename.clone(),
                         }
                     }
@@ -309,7 +310,7 @@ pub fn DownloadActionsGroup() -> Element {
                             target: "_blank",
                             rel: "noopener noreferrer",
                             role: "button",
-                            class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs hover:bg-bg disabled:cursor-not-allowed disabled:opacity-60",
+                            class: "{TOOLBAR_LINK_CLASS}",
                             title: "{open_in_title} ({endpoint_name})",
                             aria_label: "{open_in_title} ({endpoint_name})",
                             "Open in {endpoint_name}"
