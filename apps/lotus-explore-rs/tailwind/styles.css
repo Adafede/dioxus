@@ -261,6 +261,22 @@ video {
     --radius-lotus-sm: var(--radius-sm);
 }
 
+/* Typography scale — fluid sizes consumed by the --text-* utilities above and by
+   component CSS (var(--fs-body), var(--fs-ui), ...). Previously these were never
+   defined, so all text fell back to the inherited 16px browser default. */
+:root {
+    --fs-micro: clamp(0.69rem, 0.67rem + 0.08vw, 0.75rem);
+    --fs-0:     clamp(0.72rem, 0.7rem + 0.12vw, 0.8125rem);
+    --fs-ui:    clamp(0.78rem, 0.76rem + 0.14vw, 0.84rem);
+    --fs-1:     clamp(0.84rem, 0.82rem + 0.16vw, 0.9rem);
+    --fs-body:  clamp(0.84rem, 0.82rem + 0.16vw, 0.9rem);
+    --fs-label: clamp(0.66rem, 0.64rem + 0.1vw, 0.72rem);
+    --fs-2:     clamp(0.9rem, 0.87rem + 0.22vw, 1.0rem);
+    --fs-3:     clamp(1.0625rem, 0.98rem + 0.5vw, 1.4rem);
+    --fs-4:     clamp(1.3rem, 1.05rem + 0.75vw, 1.7rem);
+    --fs-stat:  clamp(1.0625rem, 0.98rem + 0.46vw, 1.3rem);
+}
+
 /* Base styles */
 body {
     background: var(--bg);
@@ -1002,7 +1018,7 @@ a:hover {
     display: grid;
     grid-template-columns: clamp(7.5rem, 7vw, 9rem) minmax(0, 1fr);
     gap: 4px 6px;
-    align-items: start;
+    align-items: baseline;
     padding: 2px 0;
 }
 
@@ -1013,7 +1029,6 @@ a:hover {
     letter-spacing: 1px;
     min-width: 0;
     white-space: nowrap;
-    padding-top: 4px;
     text-align: left;
 }
 

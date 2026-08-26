@@ -30,7 +30,7 @@ pub(super) const TABLE_SCROLL: &str =
     "curation-table-scroll w-full min-w-0 overflow-x-auto overflow-y-visible rounded-xl border border-panel-border bg-panel-soft shadow-xs";
 
 pub(super) const QUEUE_TABLE: &str =
-    "w-full table-auto border-collapse text-ui [word-break:break-word]";
+    "w-full table-fixed border-collapse text-ui [word-break:break-word]";
 
 pub(super) const QUEUE_ACTION_COL: &str = "w-[110px] min-w-[110px] px-2 py-2";
 

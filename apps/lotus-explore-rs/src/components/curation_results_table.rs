@@ -261,7 +261,7 @@ fn results_table_style() -> String {
         .property("width", "100%")
         .property("border-collapse", "collapse")
         .property("font-size", FS_UI)
-        .property("table-layout", "auto")
+        .property("table-layout", "fixed")
         .property("word-break", "break-word")
         .build()
 }

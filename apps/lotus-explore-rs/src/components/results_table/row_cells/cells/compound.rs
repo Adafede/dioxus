@@ -47,7 +47,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     rel: "noopener noreferrer",
                     title: "{text.open_in_scholia}",
                     aria_label: "{text.open_in_scholia}",
-                    class: "id-badge text-wd-reference font-mono",
+                    class: "id-badge text-wd-compound font-mono",
                     "Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
@@ -57,7 +57,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         rel: "noopener noreferrer",
                         title: "{ik}",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                        class: "id-badge text-wd-taxon font-mono whitespace-nowrap",
+                        class: "id-badge text-wd-compound font-mono whitespace-nowrap",
                         "{ik}"
                     }
                 }
