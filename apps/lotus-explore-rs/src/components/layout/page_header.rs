@@ -41,11 +41,11 @@ pub fn PageHeader() -> Element {
                 }
                 div {
                     class: "header-controls",
+                    ViewSwitch {}
                     LangSwitch {}
                     DarkModeToggle {}
                 }
             }
-            ViewSwitch {}
             p {
                 class: "page-subtitle",
                 "{t(locale, TextKey::PageSubtitle)}"

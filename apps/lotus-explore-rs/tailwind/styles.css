@@ -473,8 +473,18 @@ a:hover {
 .page-brand {
     display: flex;
     gap: 8px 10px;
-    align-items: flex-start;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    min-width: 0;
+    overflow-x: auto;
 }
 
 .results-table {
@@ -891,7 +901,6 @@ a:hover {
 }
 
 .footer-label {
-    color: var(--text2);
     font-weight: 700;
     text-transform: uppercase;
     font-size: var(--fs-0);
@@ -917,7 +926,6 @@ a:hover {
 }
 
 .footer-link {
-    color: var(--text2);
     text-decoration: none;
     font-size: var(--fs-0);
 }

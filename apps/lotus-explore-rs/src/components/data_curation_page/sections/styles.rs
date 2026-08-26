@@ -2,15 +2,15 @@
 //! Curation section Tailwind class fragments.
 
 pub(super) const CARD: &str =
-    "flex flex-col gap-2.5 rounded-lotus border border-panel-border bg-panel-soft p-3 shadow-xs";
+    "flex flex-col gap-3 rounded-xl border border-panel-border bg-panel-soft p-4 shadow-xs";
 
-pub(super) const FORM_GRID: &str = "grid grid-cols-1 gap-2";
+pub(super) const FORM_GRID: &str = "grid grid-cols-1 gap-3";
 
 pub(super) fn actions(space_between: bool) -> &'static str {
     if space_between {
-        "flex flex-wrap items-center justify-between gap-2"
+        "flex flex-wrap items-center justify-between gap-2.5"
     } else {
-        "flex flex-wrap items-center gap-2"
+        "flex flex-wrap items-center gap-2.5"
     }
 }
 

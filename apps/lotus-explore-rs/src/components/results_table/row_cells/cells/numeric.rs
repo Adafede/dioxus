@@ -12,13 +12,13 @@ pub(in crate::components::results_table) fn format_mass_value(mass: f64) -> Stri
 
 pub(in crate::components::results_table::row_cells) fn mass_cell(mass: Option<f64>) -> Element {
     rsx! {
-        td { class: "px-3 py-2 align-middle text-ui",
-            if let Some(m) = mass {
+            td { class: "px-3 py-2 align-middle text-ui",
+                if let Some(m) = mass {
                 span { class: "font-medium tabular-nums text-wd-compound", "{format_mass_value(m)}" }
-            } else {
-                span { class: "text-subtle", "-" }
+                } else {
+                    span { class: "text-subtle", "-" }
+                }
             }
-        }
     }
 }
 
@@ -26,13 +26,13 @@ pub(in crate::components::results_table::row_cells) fn formula_cell(
     formula: Option<&str>,
 ) -> Element {
     rsx! {
-        td { class: "px-3 py-2 align-middle text-ui",
-            if let Some(f) = formula {
-                span { class: "font-medium font-mono text-wd-compound", "{f}" }
-            } else {
-                span { class: "text-subtle", "-" }
+            td { class: "px-3 py-2 align-middle text-ui",
+                if let Some(f) = formula {
+                span { class: "font-medium font-mono text-wd-reference", "{f}" }
+                } else {
+                    span { class: "text-subtle", "-" }
+                }
             }
-        }
     }
 }
 

@@ -57,7 +57,7 @@ pub fn DataCurationPage() -> Element {
                 "{crate::i18n::view_label_curation_explorer(locale)}"
             }
             div {
-                class: "curation-grid",
+                class: "curation-grid grid grid-cols-1 gap-4 lg:grid-cols-2",
                 AddRowCard {
                     locale,
                     form: controller.form,

@@ -29,7 +29,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "primary-link",
+                        class: "primary-link text-text",
                         title: "{full_title}",
                         "{full_title}"
                     }
@@ -38,7 +38,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "primary-link",
+                        class: "primary-link text-text",
                         "{reference_qid}"
                     }
                 }
@@ -48,7 +48,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                     href: "https://www.wikidata.org/entity/{reference_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    class: "id-badge",
+                    class: "id-badge text-wd-reference",
                     title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, reference_qid)}",
                     "{reference_qid}"
@@ -58,7 +58,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://doi.org/{d}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "id-badge",
+                        class: "id-badge text-wd-compound",
                         title: "{text.open_doi}",
                         aria_label: "{text.open_doi}",
                         "DOI"
@@ -69,7 +69,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/statement/{stmt}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "id-badge",
+                        class: "id-badge text-wd-entries",
                         title: "{stmt}",
                         aria_label: "{aria_wikidata_statement(locale, stmt)}",
                         "{text.statement}"

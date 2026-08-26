@@ -22,12 +22,15 @@ pub fn ViewSwitch() -> Element {
     let locale = use_locale();
     let mut app_state = ctx.state;
     let current_view = *use_app_selector(app_state, |state| state.view).read();
+    let dark_mode = app_state.read().dark_mode;
 
     rsx! {
-        nav { class: "view-switch flex items-center", aria_label: "{view_switch_aria(locale)}",
+        nav { class: "view-switch flex shrink-0 items-center", aria_label: "{view_switch_aria(locale)}",
             SegmentedControl {
                 aria_label: view_switch_aria(locale).to_string(),
                 selected_value: view_key(current_view).to_string(),
+                dark: dark_mode,
+                wrap: false,
                 active_aria_current: "page",
                 items: vec![
                     SegmentedControlItem {

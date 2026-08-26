@@ -8,6 +8,7 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 use crate::curation::{CurationInputRow, QuickStatementsBundle};
+use crate::components::ui::{Button, ButtonSize, ButtonVariant};
 use crate::features::curation::services::quickstatements::build_qs_dev_link;
 use crate::hooks::use_add_row_form::AddRowForm;
 use crate::i18n::{
@@ -186,11 +187,13 @@ pub fn AddRowCard(
                 Button {
                     label: button_add_row(locale).to_string(),
                     variant: ButtonVariant::Primary,
+                    size: ButtonSize::Sm,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_add_row.call(()))),
                 }
                 Button {
                     label: button_load_example_rows(locale).to_string(),
-                    variant: ButtonVariant::Primary,
+                    variant: ButtonVariant::Secondary,
+                    size: ButtonSize::Sm,
                     disabled: processing,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_load_examples.call(()))),
                 }
@@ -246,12 +249,12 @@ pub fn TsvImportCard(
                 "{hint_expected_tsv_headers(locale)}"
             }
             div { class: "{styles::actions(false)}",
-                button {
-                    r#type: "button",
+                Button {
+                    label: button_append_tsv_rows(locale).to_string(),
+                    variant: ButtonVariant::Secondary,
+                    size: ButtonSize::Sm,
                     disabled: processing || !has_tsv_input,
-                    onclick: move |_| on_parse_tsv.call(()),
-                    class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs hover:bg-bg",
-                    "{button_append_tsv_rows(locale)}"
+                    onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_parse_tsv.call(()))),
                 }
                 input {
                     class: "curation-file-input {styles::FILE_INPUT}",
@@ -290,16 +293,16 @@ pub fn QueueRowsCard(
         div { class: "{styles::CARD}",
             div { class: "{styles::actions(true)}",
                 h3 { "{heading_queued_rows(locale)}" }
-                button {
-                class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center rounded-lotus-sm border border-border bg-primary px-3 py-1.5 text-ui font-semibold text-white shadow-xs hover:bg-primary-hover",
-                    r#type: "button",
-                    disabled: processing,
-                    onclick: move |_| on_process.call(()),
-                    if processing {
-                        "{button_generating(locale)}"
+                Button {
+                    label: if processing {
+                        button_generating(locale).to_string()
                     } else {
-                        "{button_generate_quickstatements(locale)}"
-                    }
+                        button_generate_quickstatements(locale).to_string()
+                    },
+                    variant: ButtonVariant::Primary,
+                    size: ButtonSize::Sm,
+                    disabled: processing,
+                    onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_process.call(()))),
                 }
             }
             div {
@@ -336,15 +339,16 @@ pub fn QueueRowsCard(
                                 tr { key: "{row.name}|{row.smiles}",
                                     class: "{styles::row_stripe(idx)}",
                                     td { class: "{styles::QUEUE_ACTION_COL}",
-                                        button {
-                                            r#type: "button",
-                                            class: "inline-flex min-h-8 cursor-pointer items-center justify-center rounded-lotus-sm border border-border bg-surface px-2 py-1 text-micro font-semibold text-text hover:bg-bg",
-                                            onclick: move |_| {
-                                                if idx < rows.read().len() {
+                                        Button {
+                                            label: button_remove(locale).to_string(),
+                                            variant: ButtonVariant::Danger,
+                                            size: ButtonSize::Sm,
+                                            onclick: Some(EventHandler::new(move |_: Event<MouseData>| {
+                                                let row_count = rows.read().len();
+                                                if idx < row_count {
                                                     rows.write().remove(idx);
                                                 }
-                                            },
-                                            "{button_remove(locale)}"
+                                            })),
                                         }
                                     }
                                     td { class: "{styles::QUEUE_INDEX_COL}", "{idx + 1}" }
@@ -407,7 +411,8 @@ pub fn QuickStatementsCard(
                 }
                 Button {
                     label: button_second_pass(locale).to_string(),
-                    variant: ButtonVariant::Primary,
+                    variant: ButtonVariant::Secondary,
+                    size: ButtonSize::Sm,
                     disabled: processing,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_second_pass.call(()))),
                 }

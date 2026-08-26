@@ -20,25 +20,25 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
     compound_qid: &str,
 ) -> Element {
     rsx! {
-        td { class: "td-compound",
-            div { class: "cell-primary",
-                a {
-                    href: "https://www.wikidata.org/entity/{compound_qid}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    title: "{name}",
-                    class: "primary-link",
-                    "{prepared.display_name}"
+            td { class: "td-compound",
+                div { class: "cell-primary",
+                    a {
+                        href: "https://www.wikidata.org/entity/{compound_qid}",
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        title: "{name}",
+                    class: "primary-link text-text",
+                        "{prepared.display_name}"
+                    }
                 }
-            }
-            div { class: "badge-row",
+                div { class: "badge-row",
                 a {
                     href: "https://www.wikidata.org/entity/{compound_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
                     title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, compound_qid)}",
-                    class: "id-badge",
+                    class: "id-badge text-wd-compound",
                     "{compound_qid}"
                 }
                 a {
@@ -47,7 +47,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     rel: "noopener noreferrer",
                     title: "{text.open_in_scholia}",
                     aria_label: "{text.open_in_scholia}",
-                    class: "id-badge",
+                    class: "id-badge text-wd-reference",
                     "Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
@@ -57,7 +57,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         rel: "noopener noreferrer",
                         title: "{ik}",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                        class: "id-badge",
+                        class: "id-badge text-wd-taxon",
                         "{ik}"
                     }
                 }

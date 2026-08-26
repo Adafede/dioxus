@@ -12,9 +12,10 @@ pub fn Footer() -> Element {
         footer {
             class: "app-footer",
             div {
-                class: "footer-line",
+            class: "footer-line",
                 FooterRow {
                     label: t(locale, TextKey::FooterArchive),
+                    label_class: "text-wd-compound",
                     color_class: "text-wd-compound",
                     links: &[("https://doi.org/10.5281/zenodo.5794106", "LOTUS Frozen")],
                 }
@@ -24,6 +25,7 @@ pub fn Footer() -> Element {
                 class: "footer-line",
                 FooterRow {
                     label: t(locale, TextKey::FooterCode),
+                    label_class: "text-wd-taxon",
                     color_class: "text-wd-taxon",
                     links: &[
                         (
@@ -34,6 +36,7 @@ pub fn Footer() -> Element {
                 }
                 FooterRow {
                     label: t(locale, TextKey::FooterData),
+                    label_class: "text-wd-taxon",
                     color_class: "text-wd-taxon",
                     links: &[
                         ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
@@ -45,6 +48,7 @@ pub fn Footer() -> Element {
                 class: "footer-line",
                 FooterRow {
                     label: t(locale, TextKey::FooterPrograms),
+                    label_class: "text-wd-reference",
                     color_class: "text-wd-reference",
                     links: &[
                         ("https://github.com/cdk/depict", "CDK Depict"),
@@ -67,7 +71,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
         div {
             class: "footer-row",
             span {
-                class: "footer-label text-text font-bold",
+                class: "footer-label text-wd-compound font-bold",
                 "{t(locale, TextKey::FooterCitation)}"
             }
             ul {
@@ -101,7 +105,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
         div {
             class: "footer-row",
             span {
-                class: "footer-label text-text font-bold",
+                class: "footer-label text-wd-entries font-bold",
                 "{t(locale, TextKey::FooterLicense)}"
             }
             ul {
@@ -141,6 +145,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
 #[component]
 fn FooterRow(
     label: &'static str,
+    label_class: &'static str,
     color_class: &'static str,
     links: &'static [(&'static str, &'static str)],
 ) -> Element {
@@ -148,7 +153,7 @@ fn FooterRow(
         div {
             class: "footer-row",
             span {
-                class: "footer-label text-text font-bold",
+                class: "footer-label {label_class} font-bold",
                 "{label}"
             }
             ul {

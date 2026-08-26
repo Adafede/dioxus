@@ -8,6 +8,7 @@
 
 use crate::hooks::{use_locale, use_locale_signal};
 use crate::i18n::{Locale, TextKey, t};
+use crate::state::use_app_state_context;
 use dioxus::prelude::*;
 use ui::prelude::{SegmentedControl, SegmentedControlItem};
 
@@ -16,12 +17,15 @@ use ui::prelude::{SegmentedControl, SegmentedControlItem};
 pub fn LangSwitch() -> Element {
     let mut locale_sig = use_locale_signal();
     let locale = use_locale();
+    let dark_mode = use_app_state_context().state.read().dark_mode;
 
     rsx! {
-        div { class: "lang-switch flex items-center",
+        div { class: "lang-switch flex shrink-0 items-center",
             SegmentedControl {
                 aria_label: t(locale, TextKey::Language).to_string(),
                 selected_value: locale_code(locale).to_string(),
+                dark: dark_mode,
+                wrap: false,
                 items: vec![
                     SegmentedControlItem { label: "EN".to_string(), value: "en".to_string() },
                     SegmentedControlItem { label: "FR".to_string(), value: "fr".to_string() },

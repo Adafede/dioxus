@@ -50,13 +50,13 @@ pub(super) fn VirtualizedResultsTable(
                 class: "results-table w-full min-w-max table-auto border-collapse text-ui [word-break:break-word]",
                 caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                 colgroup {
-                    col { class: "w-[124px]" }
-                    col { class: "w-[31ch]" }
-                    col { class: "w-[12ch]" }
-                    col { class: "w-[12ch]" }
-                    col { class: "w-[20ch]" }
-                    col { class: "w-[45ch]" }
-                    col { class: "w-[4ch]" }
+                    col { class: "w-[96px]" }
+                    col { class: "w-[24ch]" }
+                    col { class: "w-[10ch]" }
+                    col { class: "w-[10ch]" }
+                    col { class: "w-[16ch]" }
+                    col { class: "w-[30ch]" }
+                    col { class: "w-[5ch]" }
                 }
                 thead {
                     TableHeader {

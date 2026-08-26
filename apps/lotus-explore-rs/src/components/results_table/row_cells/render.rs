@@ -51,7 +51,7 @@ fn row_view(
     rsx! {
         tr {
             key: "{row_key}",
-            class: "data-row border-b border-panel-border transition-colors contain-paint hover:bg-bg",
+            class: "data-row border-b border-panel-border text-text transition-colors contain-paint odd:bg-surface/90 even:bg-bg hover:bg-bg",
             {structure_cell(locale, text, prepared.depict_url.as_deref(), name)}
             {compound_cell(locale, text, entry, prepared, name, compound_qid)}
             {mass_cell(entry.mass)}

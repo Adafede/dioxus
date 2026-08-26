@@ -18,7 +18,7 @@ pub fn DarkModeToggle() -> Element {
 
     rsx! {
         button {
-            class: "theme-toggle inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-surface px-2.5 py-1.5 text-muted shadow-xs transition-colors hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+            class: "theme-toggle inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-muted shadow-xs transition-all duration-150 hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
             r#type: "button",
             role: "switch",
             "aria-label": t(locale, TextKey::DarkModeToggle),
@@ -27,7 +27,7 @@ pub fn DarkModeToggle() -> Element {
                 app_state.with_mut(|s| s.dark_mode = !s.dark_mode);
             },
             span {
-                class: "flex size-6 items-center justify-center rounded-full bg-accent/12 text-accent",
+                class: "flex h-6 w-6 items-center justify-center rounded-full bg-accent/12 text-accent",
                 if dark_mode {
                     span { class: "text-sm leading-none", "🌙" }
                 } else {
