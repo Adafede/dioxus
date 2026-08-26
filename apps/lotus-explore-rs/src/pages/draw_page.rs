@@ -3,8 +3,8 @@
 
 //! The "Structure editor" tab: a full-pane Ketcher molecule editor.
 
-use crate::components::search_panel::KetcherPanel;
 use crate::i18n::view_label_draw;
+use crate::pages::ketcher_panel::KetcherPanel;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
