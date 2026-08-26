@@ -21,7 +21,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
     statement_id: Option<&str>,
 ) -> Element {
     rsx! {
-        td { class: "td-ref",
+        td { class: "td-ref border-l-[3px] border-l-wd-reference",
             div { class: "cell-primary",
                 if let Some(full_title) = entry.ref_title.as_deref()
                 {
@@ -69,7 +69,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/statement/{stmt}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "id-badge text-wd-entries",
+                        class: "id-badge text-wd-reference",
                         title: "{stmt}",
                         aria_label: "{aria_wikidata_statement(locale, stmt)}",
                         "{text.statement}"

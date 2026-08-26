@@ -43,21 +43,21 @@ pub(super) fn VirtualizedResultsTable(
             role: "region",
             tabindex: "0",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-            class: "max-h-[min(72vh,980px)] overflow-auto rounded-[14px] border border-panel-border border-l-4 border-l-wd-entries bg-transparent shadow-xs",
-            onscroll: on_scroll,
-            table {
-                aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                class: "results-table w-full min-w-max table-auto border-collapse text-ui [word-break:break-word]",
-                caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
-                colgroup {
-                    col { class: "w-[96px]" }
-                    col { class: "w-[26ch]" }
-                    col { class: "w-[10ch]" }
-                    col { class: "w-[12ch]" }
-                    col { class: "w-[18ch]" }
-                    col { class: "w-[34ch]" }
-                    col { class: "w-[8ch]" }
-                }
+                class: "max-h-[min(72vh,980px)] overflow-auto rounded-[14px] border border-panel-border border-l-4 border-l-wd-entries bg-transparent shadow-xs",
+                onscroll: on_scroll,
+                table {
+                    aria_label: "{t(locale, TextKey::TableTriplesAria)}",
+                    class: "results-table w-full min-w-[760px] table-fixed border-collapse text-ui [word-break:break-word]",
+                    caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
+                    colgroup {
+                        col { class: "w-[11%]" }
+                        col { class: "w-[21%]" }
+                        col { class: "w-[9%]" }
+                        col { class: "w-[13%]" }
+                        col { class: "w-[18%]" }
+                        col { class: "w-[23%]" }
+                        col { class: "w-[5%]" }
+                    }
                 thead {
                     TableHeader {
                         current_sort: render_model.current_sort,

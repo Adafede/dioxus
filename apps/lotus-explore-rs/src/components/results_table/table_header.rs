@@ -39,12 +39,18 @@ fn SortableColumnHeader(
     let locale = crate::hooks::use_locale();
     let label_text = t(locale, header.label);
     let sort_aria = aria_sort_toggle(locale, label_text, header.next_descending);
+    let stripe = match header.col {
+        SortColumn::Name => "border-l-[3px] border-l-wd-compound",
+        SortColumn::TaxonName => "border-l-[3px] border-l-wd-taxon",
+        SortColumn::RefTitle => "border-l-[3px] border-l-wd-reference",
+        _ => "",
+    };
 
     rsx! {
         th {
             scope: "col",
             aria_sort: "{header.aria_sort}",
-            class: "sort-th p-2.5 text-micro font-semibold uppercase tracking-wider text-subtle select-none",
+            class: "sort-th p-2.5 text-micro font-semibold uppercase tracking-wider text-subtle select-none {stripe}",
             button {
                 r#type: "button",
                 aria_label: "{sort_aria}",

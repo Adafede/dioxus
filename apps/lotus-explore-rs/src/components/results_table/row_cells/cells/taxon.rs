@@ -15,7 +15,7 @@ pub(in crate::components::results_table::row_cells) fn taxon_cell(
     taxon_qid: &str,
 ) -> Element {
     rsx! {
-            td { class: "td-taxon",
+            td { class: "td-taxon border-l-[3px] border-l-wd-taxon",
                 div { class: "cell-primary",
                     a {
                         href: "https://www.wikidata.org/entity/{taxon_qid}",

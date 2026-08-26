@@ -20,7 +20,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
     compound_qid: &str,
 ) -> Element {
     rsx! {
-            td { class: "td-compound",
+            td { class: "td-compound border-l-[3px] border-l-wd-compound",
                 div { class: "cell-primary",
                     a {
                         href: "https://www.wikidata.org/entity/{compound_qid}",
@@ -47,7 +47,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     rel: "noopener noreferrer",
                     title: "{text.open_in_scholia}",
                     aria_label: "{text.open_in_scholia}",
-                    class: "id-badge text-wd-reference",
+                    class: "id-badge text-wd-reference font-mono",
                     "Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
@@ -57,7 +57,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         rel: "noopener noreferrer",
                         title: "{ik}",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                        class: "id-badge text-wd-taxon",
+                        class: "id-badge text-wd-taxon font-mono whitespace-nowrap",
                         "{ik}"
                     }
                 }

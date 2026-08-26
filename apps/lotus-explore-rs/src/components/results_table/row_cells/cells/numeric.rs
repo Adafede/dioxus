@@ -12,7 +12,7 @@ pub(in crate::components::results_table) fn format_mass_value(mass: f64) -> Stri
 
 pub(in crate::components::results_table::row_cells) fn mass_cell(mass: Option<f64>) -> Element {
     rsx! {
-            td { class: "px-3 py-2 align-middle text-ui",
+            td { class: "px-3 py-2 align-middle text-ui text-right",
                 if let Some(m) = mass {
                 span { class: "font-medium tabular-nums text-wd-compound", "{format_mass_value(m)}" }
                 } else {
@@ -26,7 +26,7 @@ pub(in crate::components::results_table::row_cells) fn formula_cell(
     formula: Option<&str>,
 ) -> Element {
     rsx! {
-            td { class: "px-3 py-2 align-middle text-ui",
+            td { class: "px-3 py-2 align-middle text-ui text-right",
                 if let Some(f) = formula {
                 span { class: "font-medium font-mono text-wd-compound whitespace-nowrap", "{f}" }
                 } else {
@@ -38,7 +38,7 @@ pub(in crate::components::results_table::row_cells) fn formula_cell(
 
 pub(in crate::components::results_table::row_cells) fn year_cell(pub_year: Option<i16>) -> Element {
     rsx! {
-        td { class: "px-3 py-2 align-middle text-ui whitespace-nowrap min-w-[8ch]",
+        td { class: "px-3 py-2 align-middle text-ui whitespace-nowrap text-right min-w-[7ch]",
             if let Some(y) = pub_year {
                 span { class: "font-medium text-wd-reference", "{y}" }
             } else {
