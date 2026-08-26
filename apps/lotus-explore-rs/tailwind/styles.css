@@ -373,6 +373,7 @@ a:hover {
     background: var(--panel-bg);
     border: 1px solid var(--panel-border);
     border-radius: 16px;
+    box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
     flex-shrink: 0;
     align-self: stretch;
     display: flex;
@@ -391,6 +392,7 @@ a:hover {
     border: 1px solid var(--panel-border);
     border-radius: 16px;
     background: var(--panel-bg);
+    box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
     align-self: stretch;
 }
 
@@ -405,6 +407,7 @@ a:hover {
     flex-direction: column;
     gap: 14px;
     background: var(--panel-bg);
+    border-top: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
     flex: 0 0 auto;
     box-sizing: border-box;
     min-width: 240px;
@@ -440,6 +443,8 @@ a:hover {
     padding: 14px 22px 10px;
     border-bottom: 1px solid var(--panel-border);
     background: color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface));
+    box-shadow: 0 1px 0 rgb(15 23 42 / 4%);
+    backdrop-filter: blur(12px);
     position: sticky;
     top: 0;
     z-index: 3;
@@ -510,6 +515,7 @@ a:hover {
     padding: 8px 12px;
     vertical-align: middle;
     word-break: break-word;
+    color: var(--text2);
 }
 
 .td-compound,
@@ -536,6 +542,7 @@ a:hover {
     font-weight: 500;
     line-height: 1.4;
     white-space: normal;
+    color: var(--text);
 }
 
 .primary-link {
@@ -571,6 +578,33 @@ a:hover {
     overflow-wrap: anywhere;
 }
 
+.form-input,
+.form-textarea,
+.share-bar-input,
+.curation-file-input {
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.form-input:focus-visible,
+.form-textarea:focus-visible,
+.share-bar-input:focus-visible,
+.curation-file-input:focus-visible {
+    outline: none;
+    border-color: color-mix(in srgb, var(--accent) 52%, var(--border));
+    box-shadow: 0 0 0 3px rgb(11 92 171 / 16%);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder,
+.share-bar-input::placeholder {
+    color: var(--text3);
+}
+
 .copy-btn {
     display: inline-flex;
     align-items: center;
@@ -579,6 +613,28 @@ a:hover {
     font-size: var(--fs-0);
     cursor: pointer;
     color: var(--text);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.copy-btn:hover {
+    background: var(--bg);
+    border-color: color-mix(in srgb, var(--accent) 26%, var(--border));
+}
+
+.theme-toggle {
+    border-radius: 9999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.theme-toggle:hover {
+    background: var(--bg);
+    border-color: color-mix(in srgb, var(--accent) 26%, var(--border));
 }
 
 .stat-bar {
@@ -951,6 +1007,26 @@ a:hover {
     font-size: var(--fs-0);
 }
 
+.app-footer .footer-label.text-wd-compound,
+.app-footer .footer-link.text-wd-compound {
+    color: var(--footer-wd-compound);
+}
+
+.app-footer .footer-label.text-wd-taxon,
+.app-footer .footer-link.text-wd-taxon {
+    color: var(--footer-wd-taxon);
+}
+
+.app-footer .footer-label.text-wd-reference,
+.app-footer .footer-link.text-wd-reference {
+    color: var(--footer-wd-reference);
+}
+
+.app-footer .footer-label.text-wd-entries,
+.app-footer .footer-link.text-wd-entries {
+    color: var(--footer-wd-entries);
+}
+
 .footer-link-border {
     border-left: 1px solid var(--border);
     padding-left: 6px;
@@ -967,6 +1043,9 @@ a:hover {
     padding: 12px;
     margin: 12px 0;
     align-items: stretch;
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    background: var(--panel-bg-soft);
 }
 
 .share-bar-label {
@@ -978,8 +1057,6 @@ a:hover {
 .share-bar-input {
     font-size: var(--fs-0);
     padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
     font-family: var(--mono), monospace;
 }
 
@@ -1098,6 +1175,34 @@ a:hover {
 
 .results-table tbody tr:nth-child(even) td {
     background: color-mix(in srgb, var(--surface) 86%, transparent);
+}
+
+.results-table .td-compound .primary-link,
+.results-table .td-compound .id-badge.text-wd-compound {
+    color: var(--wd-compound);
+}
+
+.results-table .td-taxon .primary-link,
+.results-table .td-taxon .id-badge.text-wd-taxon {
+    color: var(--wd-taxon);
+}
+
+.results-table .td-ref .primary-link,
+.results-table .td-ref .id-badge.text-wd-reference {
+    color: var(--wd-reference);
+}
+
+.results-table .td-ref .id-badge.text-wd-entries {
+    color: var(--wd-entries);
+}
+
+.results-table .td-taxon .primary-link {
+    font-style: italic;
+}
+
+.results-table .td-compound .primary-link,
+.results-table .td-ref .primary-link {
+    font-weight: 600;
 }
 
 .page-header-meta {
