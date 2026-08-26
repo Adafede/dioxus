@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
 const TOOLBAR_ACTION_CLASS: &str = "shrink-0 min-h-[34px]";
-const TOOLBAR_LINK_CLASS: &str = "inline-flex shrink-0 min-h-[34px] items-center justify-center gap-1.5 rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs transition-colors hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30";
+const TOOLBAR_LINK_CLASS: &str = "inline-flex shrink-0 min-h-[34px] items-center justify-center gap-1.5 rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs transition-colors hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
 
 // ── private helpers ───────────────────────────────────────────────────────────
 

@@ -133,6 +133,19 @@ fn links() -> Vec<LinkSpec> {
 
 const DESCRIPTION: &str = "Explore LOTUS with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
 
+/// Build `application/ld+json` structured data (schema.org `WebApplication`).
+///
+/// `serde_json::to_string` is used to safely JSON-encode the free-text
+/// description and the URL so the emitted script stays valid even if those
+/// values ever contain quotes or control characters.
+fn json_ld(canonical: &str) -> String {
+    let desc = serde_json::to_string(DESCRIPTION).unwrap_or_else(|_| "\"\"".to_string());
+    let url = serde_json::to_string(canonical).unwrap_or_else(|_| "\"\"".to_string());
+    format!(
+        "{{\"@context\":\"https://schema.org\",\"@type\":\"WebApplication\",\"name\":\"LOTUS Knowledge Explorer\",\"description\":{desc},\"url\":{url},\"applicationCategory\":\"ScienceApplication\",\"operatingSystem\":\"Web\",\"inLanguage\":[\"en\",\"fr\",\"de\",\"it\"],\"offers\":{{\"@type\":\"Offer\",\"price\":\"0\",\"priceCurrency\":\"EUR\"}}}}"
+    )
+}
+
 /// Alternating-language hreflang map: `"en"` → path suffix.
 /// English has no suffix because it is the default language.
 #[cfg(target_arch = "wasm32")]
@@ -186,6 +199,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             og_url: Some(canonical.clone()),
             og_site_name: Some("LOTUS Knowledge Explorer".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
+            json_ld: Some(json_ld(&canonical)),
             canonical: Some(canonical),
         }
 

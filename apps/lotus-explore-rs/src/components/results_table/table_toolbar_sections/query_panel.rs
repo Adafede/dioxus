@@ -46,7 +46,7 @@ pub fn QueryPanel() -> Element {
                         panel_open.set(evt.value() == "true");
                     },
                     summary {
-                        class: "flex cursor-pointer select-none items-center gap-2 px-3.5 py-2.5 text-ui font-semibold text-muted hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
+                        class: "flex cursor-pointer select-none items-center gap-2 px-3.5 py-2.5 text-ui font-semibold text-muted hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
                         span {
                             class: if *panel_open.read() {
                                 "inline-block rotate-90 text-subtle transition-transform"

@@ -127,7 +127,7 @@ fn DownloadExampleRow(
                 readonly: true,
                 value: "{absolute}",
                 aria_label: "{format}",
-                class: "min-w-0 flex-1 truncate rounded-lotus-sm border border-border bg-surface px-2 py-1 font-mono text-ui text-muted shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
+                class: "min-w-0 flex-1 truncate rounded-lotus-sm border border-border bg-surface px-2 py-1 font-mono text-ui text-muted shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
             }
             CopyButton { text: absolute.clone(), locale }
         }

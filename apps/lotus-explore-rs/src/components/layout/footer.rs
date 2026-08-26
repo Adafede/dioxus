@@ -74,18 +74,18 @@ fn FooterCitationRow(locale: Locale) -> Element {
                 class: "footer-links",
                 role: "list",
                 li {
-                    a {
-                        class: "footer-link hover:underline font-medium",
-                        href: "https://doi.org/10.7554/eLife.70780",
+                        a {
+                            class: "footer-link hover:underline font-medium text-wd-compound",
+                            href: "https://doi.org/10.7554/eLife.70780",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         "LOTUS Article"
                     }
                 }
                 li {
-                    a {
-                        class: "footer-link hover:underline font-medium",
-                        href: "/docs/references.bib",
+                        a {
+                            class: "footer-link hover:underline font-medium text-wd-compound",
+                            href: "/docs/references.bib",
                         download: "references.bib",
                         "BibTeX"
                     }
@@ -108,9 +108,9 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                 class: "footer-links",
                 role: "list",
                 li {
-                    a {
-                        class: "footer-link hover:underline font-medium",
-                        href: "https://creativecommons.org/publicdomain/zero/1.0/",
+                        a {
+                            class: "footer-link hover:underline font-medium text-wd-entries",
+                            href: "https://creativecommons.org/publicdomain/zero/1.0/",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         "CC0 1.0"
@@ -121,9 +121,9 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                     }
                 }
                 li {
-                    a {
-                        class: "footer-link hover:underline font-medium",
-                        href: "https://www.gnu.org/licenses/agpl-3.0.html",
+                        a {
+                            class: "footer-link hover:underline font-medium text-wd-entries",
+                            href: "https://www.gnu.org/licenses/agpl-3.0.html",
                         target: "_blank",
                         rel: "noopener noreferrer",
                         "AGPL-3.0"
@@ -158,7 +158,7 @@ fn FooterRow(
                     li {
                         key: "{href}",
                         a {
-                            class: "footer-link hover:underline font-medium",
+                            class: "footer-link hover:underline font-medium {label_class}",
                             href: "{href}",
                             target: "_blank",
                             rel: "noopener noreferrer",

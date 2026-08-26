@@ -101,7 +101,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                 "{hint_scroll_curation_results(locale)}"
             }
             div {
-                class: "w-full overflow-x-auto rounded-lg border border-panel-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
+                class: "w-full overflow-x-auto rounded-lg border border-panel-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
                 role: "region",
                 tabindex: "0",
                 aria_label: "{crate::i18n::heading_results(locale)}",

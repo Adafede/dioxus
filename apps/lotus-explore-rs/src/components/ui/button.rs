@@ -72,7 +72,7 @@ pub fn Button(props: ButtonProps) -> Element {
     // Keep variants flat — tokens already carry light/dark.
     let variant_classes = match props.variant {
         ButtonVariant::Primary => {
-            "border border-accent bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2"
+            "border border-border bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2"
         }
         ButtonVariant::Secondary => {
             "border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg"
@@ -81,7 +81,7 @@ pub fn Button(props: ButtonProps) -> Element {
             "border border-danger/35 bg-danger/10 text-danger font-semibold hover:bg-danger/15"
         }
         ButtonVariant::Accent => {
-            "border border-accent bg-accent text-bg font-semibold shadow-xs ring-2 ring-accent/30 hover:bg-accent-2"
+            "border border-border bg-accent text-bg font-semibold shadow-xs ring-2 ring-accent/40 hover:bg-accent-2"
         }
     };
 
@@ -102,7 +102,7 @@ pub fn Button(props: ButtonProps) -> Element {
             aria_controls: props.aria_controls.as_deref().unwrap_or_default(),
             aria_expanded: props.aria_expanded.as_deref().unwrap_or_default(),
             aria_pressed: props.aria_pressed.as_deref().unwrap_or_default(),
-            class: "inline-flex items-center justify-center font-sans select-none transition-[background,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 {size_classes} {variant_classes} {state_classes} {custom_classes}",
+            class: "inline-flex items-center justify-center font-sans select-none transition-[background,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 {size_classes} {variant_classes} {state_classes} {custom_classes}",
             onclick: move |evt| {
                 if !props.disabled && !props.loading {
                     if let Some(handler) = props.onclick.as_ref() {
