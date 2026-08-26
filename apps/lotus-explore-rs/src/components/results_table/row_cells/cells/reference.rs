@@ -29,7 +29,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "primary-link text-text",
+                        class: "primary-link text-wd-reference",
                         title: "{full_title}",
                         "{full_title}"
                     }
@@ -38,7 +38,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "primary-link text-text",
+                        class: "primary-link text-wd-reference",
                         "{reference_qid}"
                     }
                 }

@@ -51,12 +51,12 @@ pub(super) fn VirtualizedResultsTable(
                 caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                 colgroup {
                     col { class: "w-[96px]" }
-                    col { class: "w-[24ch]" }
+                    col { class: "w-[26ch]" }
                     col { class: "w-[10ch]" }
-                    col { class: "w-[10ch]" }
-                    col { class: "w-[16ch]" }
-                    col { class: "w-[30ch]" }
-                    col { class: "w-[5ch]" }
+                    col { class: "w-[12ch]" }
+                    col { class: "w-[18ch]" }
+                    col { class: "w-[34ch]" }
+                    col { class: "w-[8ch]" }
                 }
                 thead {
                     TableHeader {

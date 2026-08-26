@@ -27,7 +27,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         target: "_blank",
                         rel: "noopener noreferrer",
                         title: "{name}",
-                    class: "primary-link text-text",
+                    class: "primary-link text-wd-compound",
                         "{prepared.display_name}"
                     }
                 }

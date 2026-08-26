@@ -2,7 +2,7 @@
 //! Curation section Tailwind class fragments.
 
 pub(super) const CARD: &str =
-    "flex flex-col gap-3 rounded-xl border border-panel-border bg-panel-soft p-4 shadow-xs";
+    "flex flex-col gap-4 rounded-xl border border-panel-border bg-panel-soft p-4 shadow-xs";
 
 pub(super) const FORM_GRID: &str = "grid grid-cols-1 gap-3";
 
@@ -14,7 +14,7 @@ pub(super) fn actions(space_between: bool) -> &'static str {
     }
 }
 
-pub(super) const HINT: &str = "text-ui text-text";
+pub(super) const HINT: &str = "text-ui text-subtle leading-snug";
 
 pub(super) const TEXTAREA_130: &str =
     "form-textarea mono w-full min-h-[130px] rounded-lg border border-border bg-surface p-2.5 font-mono text-ui text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";

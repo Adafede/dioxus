@@ -106,7 +106,7 @@ fn StructureSection() -> Element {
                 value: "{smiles}",
                 oninput: move |e| ctx.update(FormAction::Smiles(e.value())),
                 rows: "2",
-                class: "min-h-[4.5rem] resize-y font-mono {classes::INPUT}",
+                class: "min-h-[4rem] resize-y font-mono {classes::INPUT}",
             }
             if let Some(note_key) = view_model.note_key {
                 p { class: "flex flex-wrap items-center gap-2 {classes::HINT}",

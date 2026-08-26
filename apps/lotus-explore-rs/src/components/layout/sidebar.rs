@@ -35,7 +35,7 @@ pub fn Sidebar() -> Element {
                 dangerous_inner_html: LOTUS_LOGO_SVG,
             }
             div {
-                class: "flex justify-center px-3 pb-2",
+                class: "flex justify-center px-3 pb-1",
                 button {
                     r#type: "button",
                     class: "filters-toggle inline-flex w-full min-h-10 cursor-pointer items-center justify-center rounded-lotus-sm border border-border bg-primary px-3.5 py-2 text-ui font-semibold text-white shadow-xs transition-[background] duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",

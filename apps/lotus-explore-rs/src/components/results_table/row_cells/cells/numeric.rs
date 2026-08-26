@@ -28,7 +28,7 @@ pub(in crate::components::results_table::row_cells) fn formula_cell(
     rsx! {
             td { class: "px-3 py-2 align-middle text-ui",
                 if let Some(f) = formula {
-                span { class: "font-medium font-mono text-wd-reference", "{f}" }
+                span { class: "font-medium font-mono text-wd-compound whitespace-nowrap", "{f}" }
                 } else {
                     span { class: "text-subtle", "-" }
                 }
@@ -38,7 +38,7 @@ pub(in crate::components::results_table::row_cells) fn formula_cell(
 
 pub(in crate::components::results_table::row_cells) fn year_cell(pub_year: Option<i16>) -> Element {
     rsx! {
-        td { class: "px-3 py-2 align-middle text-ui",
+        td { class: "px-3 py-2 align-middle text-ui whitespace-nowrap min-w-[8ch]",
             if let Some(y) = pub_year {
                 span { class: "font-medium text-wd-reference", "{y}" }
             } else {

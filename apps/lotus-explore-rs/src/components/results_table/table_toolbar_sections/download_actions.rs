@@ -252,7 +252,7 @@ pub fn DownloadActionsGroup() -> Element {
     drop(snapshot);
 
     rsx! {
-        div { class: "flex flex-wrap items-center gap-2",
+        div { class: "flex w-full flex-wrap items-center justify-center gap-2",
             if *download_busy.read() {
                 DownloadStatusSpinner {
                     download_status,
@@ -263,7 +263,7 @@ pub fn DownloadActionsGroup() -> Element {
                 div {
                     role: "group",
                     aria_label: "{download_results_label}",
-                    class: "flex flex-wrap items-center gap-2",
+                    class: "flex flex-wrap items-center justify-center gap-2",
                     if let Some(query) = sparql_query_value.as_ref() {
                         DownloadQueryButton {
                             spec: DOWNLOAD_QUERY_CSV_SPEC,

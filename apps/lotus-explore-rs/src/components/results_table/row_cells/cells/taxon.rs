@@ -21,7 +21,7 @@ pub(in crate::components::results_table::row_cells) fn taxon_cell(
                         href: "https://www.wikidata.org/entity/{taxon_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                    class: "primary-link text-text",
+                    class: "primary-link text-wd-taxon italic",
                         "{entry.taxon_name}"
                     }
                 }
