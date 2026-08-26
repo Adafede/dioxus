@@ -28,62 +28,69 @@ jobs:
           - app: lipid-selecto-rs
             path: "/dioxus/lipid-selecto-rs/"
     steps:
-      - uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@v4
+
       - uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-      - uses: https://github.com/Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+
+      - uses: https://github.com/Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.app }}
-      - uses: https://github.com/cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
+
+      - uses: https://github.com/cargo-bins/cargo-binstall@v1.18.1
+
       - name: Install dioxus-cli
         run: |
           cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: Fetch Ketcher Assets (lotus-explore-rs only)
         if: matrix.app == 'lotus-explore-rs'
-        run: cargo run --release -p lotus-deploy --bin fetch-ketcher
-        working-directory: apps/lotus-explore-rs
-      - name: Build App
-        working-directory: apps/${{ matrix.app }}
-        run: dx build --release --platform web --debug-symbols false --base-path "${{ matrix.path }}"
-      - name: Stage build output
         run: |
-          if [ -d "apps/${{ matrix.app }}/target/dx/${{ matrix.app }}/release/web/public" ]; then
-            BUILD_DIR="apps/${{ matrix.app }}/target/dx/${{ matrix.app }}/release/web/public"
-          elif [ -d "target/dx/${{ matrix.app }}/release/web/public" ]; then
-            BUILD_DIR="target/dx/${{ matrix.app }}/release/web/public"
-          else
-            echo "Error: Build output directory not found!"
-            exit 1
-          fi
+          cargo build --release -p lotus-deploy --bin fetch-ketcher
+          ../../target/release/fetch-ketcher
+        working-directory: apps/lotus-explore-rs
 
-          if [ "${{ matrix.app }}" = "index" ]; then
-            DEST_DIR="staged_site"
-          else
-            DEST_DIR="staged_site/${{ matrix.app }}"
-          fi
-
-          mkdir -p "$DEST_DIR"
-          cp -r "$BUILD_DIR"/* "$DEST_DIR/"
+      - name: Build App
+        run: dx build --release --platform web --debug-symbols false --base-path "${{ matrix.path }}"
+        working-directory: apps/${{ matrix.app }}
 
       - uses: actions/upload-artifact@v3
         with:
-          name: site-${{ matrix.app }}
-          path: staged_site/
+          name: app-${{ matrix.app }}
+          path: target/dx/${{ matrix.app }}/release/web/public
 
   deploy:
     needs: build-apps
     runs-on: codeberg-small
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v3
         with:
-          pattern: site-*
-          path: _site/
-          merge-multiple: true
+          path: _site
+
+      - name: Structure _site directory
+        run: |
+          mkdir -p _final_site
+          
+          # Move base index contents to root of final site directory
+          if [ -d "_site/app-index" ]; then
+            cp -r _site/app-index/* _final_site/
+            rm -rf _site/app-index
+          fi
+
+          # Move remaining apps to subdirectories
+          for dir in _site/app-*; do
+            if [ -d "$dir" ]; then
+              app_name="${dir#_site/app-}"
+              mv "$dir" "_final_site/$app_name"
+            fi
+          done
 
       - uses: actions/git-pages@v2
         with:
           site: https://adafede.codeberg.page/dioxus/
           token: ${{ forge.token }}
-          source: /workspace/adafede/dioxus/_site/
+          source: _final_site/
