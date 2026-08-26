@@ -311,7 +311,7 @@ fn build_headers_txt() -> String {
     \x20 Cache-Control: no-cache, must-revalidate\n\n\
     /humans.txt\n\
     \x20 Cache-Control: no-cache, must-revalidate\n\n\
-    # Favicons & Icons (Removed long max-age caching to ensure standard revalidation)\n\
+    # Favicons & Icons\n\
     /favicon*\n\
     \x20 Cache-Control: no-cache, must-revalidate\n\n\
     /*icon*.png\n\
