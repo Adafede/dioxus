@@ -74,7 +74,7 @@ jobs:
       - name: Structure _site directory
         run: |
           mkdir -p _final_site
-          
+
           # Move base index contents to root of final site directory
           if [ -d "_site/app-index" ]; then
             cp -r _site/app-index/* _final_site/
