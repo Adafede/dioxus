@@ -11,19 +11,22 @@ use crate::i18n::{
 use dioxus::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
-use ui::prelude::*;
-use ui::styles::lotus::tokens::{
-    FOOTER_WD_COMPOUND, FOOTER_WD_ENTRIES, FOOTER_WD_REFERENCE, FOOTER_WD_TAXON,
-};
 
 const NA_TEXT: &str = "n/a";
+
+const PILL: &str =
+    "inline-flex items-center rounded-md border border-panel-border bg-surface px-2 py-0.5 text-xs font-semibold uppercase tracking-wide";
+const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted";
+const TD: &str = "border-b border-panel-border px-3 py-2 align-top text-ui";
+const MONO: &str = "font-mono text-xs break-all";
+const MONO_NB: &str = "font-mono text-xs";
 
 #[component]
 fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Element {
     rsx! {
-        div { style: status_badges_style(),
+        div { class: "flex flex-wrap gap-1.5",
             for (status, count) in status_counts(rows.as_ref()) {
-                span { style: status_pill_style(&status),
+                span { class: "{PILL} {status_text_class(&status)}",
                     "{status_label(locale, &status)} ({count})"
                 }
             }
@@ -33,54 +36,53 @@ fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Elemen
 
 fn render_curation_result_cells(locale: Locale, row: &CurationResultRow) -> Element {
     rsx! {
-        td { style: curation_status_cell_style(),
-            span { style: status_pill_style(&row.status),
+        td { class: TD,
+            span { class: "{PILL} {status_text_class(&row.status)}",
                 "{status_label(locale, &row.status)}"
             }
-            div { style: row_badges_style(),
+            div { class: "mt-1 flex flex-wrap gap-1",
                 if !row.dependency_blocks.is_empty() {
-                    span { style: status_pill_style(&CurationStatus::PendingDependencies),
+                    span { class: "{PILL} {status_text_class(&CurationStatus::PendingDependencies)}",
                         "{curation_badge_prerequisite_pending(locale)}"
                     }
                 }
                 if matches!(row.status, CurationStatus::PendingDependencies) {
-                    span { style: status_pill_style(&CurationStatus::PendingDependencies),
+                    span { class: "{PILL} {status_text_class(&CurationStatus::PendingDependencies)}",
                         "{curation_badge_second_pass_required(locale)}"
                     }
                 }
                 if row.exact_mass.is_none() {
                     span {
-                        style: status_warning_pill_style(),
+                        class: "{PILL} text-wd-entries",
                         title: "{row.mass_warning.as_deref().unwrap_or(curation_mass_warning_title(locale))}",
                         "{curation_badge_mass_missing(locale)}"
                     }
                 }
             }
-            div { style: curation_note_style(), "{row.note}" }
+            if !row.note.is_empty() {
+                div { class: "mt-1 whitespace-pre-line text-xs text-muted", "{row.note}" }
+            }
         }
-        td {
+        td { class: TD,
             if let Some(qid) = row.wikidata_qid.as_deref() {
                 a {
+                    class: "font-mono text-xs text-accent underline",
                     href: "https://www.wikidata.org/wiki/{qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
                     "{qid}"
                 }
             } else {
-                "{label_new_item(locale)}"
+                span { class: "text-muted", "{label_new_item(locale)}" }
             }
         }
-        td { "{row.input.name}" }
-        td { class: "mono", style: curation_cell_wrap_style(), "{row.input.smiles}" }
-        td { class: "mono", style: curation_cell_wrap_style(),
-            "{row.canonical_smiles.as_deref().unwrap_or(NA_TEXT)}"
-        }
-        td { class: "mono", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
-        td { class: "mono", style: curation_cell_wrap_style(),
-            "{row.inchi.as_deref().unwrap_or(NA_TEXT)}"
-        }
-        td { class: "mono", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
-        td { class: "mono", "{format_mass(row.exact_mass)}" }
+        td { class: TD, "{row.input.name}" }
+        td { class: "{TD} {MONO}", "{row.input.smiles}" }
+        td { class: "{TD} {MONO}", "{row.canonical_smiles.as_deref().unwrap_or(NA_TEXT)}" }
+        td { class: "{TD} {MONO_NB}", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
+        td { class: "{TD} {MONO}", "{row.inchi.as_deref().unwrap_or(NA_TEXT)}" }
+        td { class: "{TD} {MONO_NB}", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
+        td { class: "{TD} {MONO_NB}", "{format_mass(row.exact_mass)}" }
     }
 }
 
@@ -89,41 +91,39 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
     let scroll_hint_id = "curation-results-scroll-hint";
 
     rsx! {
-        div { style: curation_card_style(),
-            h3 { "{crate::i18n::heading_results(locale)}" }
+        div { class: "flex flex-col gap-3 rounded-xl border border-panel-border bg-panel-soft p-4 shadow-xs",
+            h3 { class: "text-base font-semibold", "{crate::i18n::heading_results(locale)}" }
             StatusSummaryBadges { locale, rows: rows.clone() }
             p {
                 id: scroll_hint_id,
-                style: curation_scroll_hint_style(),
-                span { style: scroll_hint_icon_style(), "↔" }
+                class: "inline-flex items-center gap-2 text-xs text-muted",
+                span { class: "text-sm font-bold text-accent", "↔" }
                 "{hint_scroll_curation_results(locale)}"
             }
             div {
-                class: "curation-table-scroll",
-                style: curation_table_scroll_style(),
+                class: "w-full overflow-x-auto rounded-lg border border-panel-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
                 role: "region",
                 tabindex: "0",
                 aria_label: "{crate::i18n::heading_results(locale)}",
                 aria_describedby: scroll_hint_id,
-                table { class: "curation-table curation-results-table",
-                    style: results_table_style(),
+                table { class: "w-full table-fixed border-collapse text-ui",
                     thead {
-                        tr {
-                            th { scope: "col", style: status_column_style(), "{col_status(locale)}" }
-                            th { scope: "col", style: wikidata_column_style(), "Wikidata" }
-                            th { scope: "col", style: name_column_style(), "{col_name(locale)}" }
-                            th { scope: "col", style: smiles_column_style(), "{col_original_smiles(locale)}" }
-                            th { scope: "col", style: smiles_column_style(), "{col_canonical_smiles(locale)}" }
-                            th { scope: "col", style: inchikey_column_style(), "InChIKey" }
-                            th { scope: "col", style: smiles_column_style(), "InChI" }
-                            th { scope: "col", style: formula_column_style(), "{t(locale, TextKey::Formula)}" }
-                            th { scope: "col", style: formula_column_style(), "{col_exact_mass(locale)}" }
+                        tr { class: "text-left",
+                            th { scope: "col", class: "{TH} min-w-[170px]", "{col_status(locale)}" }
+                            th { scope: "col", class: "{TH} min-w-[8ch]", "Wikidata" }
+                            th { scope: "col", class: "{TH} min-w-[14ch]", "{col_name(locale)}" }
+                            th { scope: "col", class: "{TH} min-w-[160px]", "{col_original_smiles(locale)}" }
+                            th { scope: "col", class: "{TH} min-w-[160px]", "{col_canonical_smiles(locale)}" }
+                            th { scope: "col", class: "{TH} min-w-[180px]", "InChIKey" }
+                            th { scope: "col", class: "{TH} min-w-[160px]", "InChI" }
+                            th { scope: "col", class: "{TH} min-w-[8ch]", "{t(locale, TextKey::Formula)}" }
+                            th { scope: "col", class: "{TH} min-w-[8ch]", "{col_exact_mass(locale)}" }
                         }
                     }
                     tbody {
                         for (idx, row) in rows.iter().enumerate() {
                             tr { key: "{row.inchikey.as_deref().unwrap_or(&idx.to_string())}",
-                                style: row_stripe_style(idx),
+                                class: "odd:bg-surface/30 hover:bg-surface/60",
                                 {render_curation_result_cells(locale, row)}
                             }
                         }
@@ -143,6 +143,16 @@ fn status_label(locale: Locale, status: &CurationStatus) -> &'static str {
         CurationStatus::Error => "error",
     };
     curation_status_label(locale, key)
+}
+
+fn status_text_class(status: &CurationStatus) -> &'static str {
+    match status {
+        CurationStatus::ExistingComplete => "text-wd-taxon",
+        CurationStatus::ExistingNeedsUpdates => "text-wd-entries",
+        CurationStatus::NewCompound => "text-wd-reference",
+        CurationStatus::PendingDependencies => "text-wd-reference",
+        CurationStatus::Error => "text-wd-compound",
+    }
 }
 
 fn status_counts(rows: &[CurationResultRow]) -> Vec<(CurationStatus, usize)> {
@@ -167,183 +177,4 @@ fn status_counts(rows: &[CurationResultRow]) -> Vec<(CurationStatus, usize)> {
 
 fn format_mass(value: Option<f64>) -> String {
     value.map_or_else(|| "n/a".to_string(), |m| format!("{m:.5}"))
-}
-
-fn curation_card_style() -> String {
-    StyleBuilder::new()
-        .property("display", "flex")
-        .property("flex-direction", "column")
-        .property("gap", "10px")
-        .property("padding", "12px")
-        .property("border", BORDER_PANEL)
-        .property("border-radius", BORDER_RADIUS)
-        .property("background", PANEL_BG_SOFT)
-        .property("box-shadow", PANEL_SHADOW)
-        .build()
-}
-
-fn status_badges_style() -> String {
-    StyleBuilder::new()
-        .property("display", "flex")
-        .property("flex-wrap", "wrap")
-        .property("gap", "6px")
-        .build()
-}
-
-fn row_badges_style() -> String {
-    StyleBuilder::new()
-        .property("display", "flex")
-        .property("flex-wrap", "wrap")
-        .property("gap", "4px")
-        .property("margin-top", "4px")
-        .build()
-}
-
-fn curation_status_cell_style() -> String {
-    StyleBuilder::new()
-        .property("font-weight", "700")
-        .property("color", TEXT)
-        .build()
-}
-
-fn curation_note_style() -> String {
-    StyleBuilder::new()
-        .property("font-size", FS_LABEL)
-        .property("color", TEXT)
-        .property("margin-top", "3px")
-        .property("white-space", "pre-line")
-        .build()
-}
-
-fn curation_cell_wrap_style() -> String {
-    StyleBuilder::new()
-        .property("white-space", "pre-wrap")
-        .property("overflow-wrap", "anywhere")
-        .property("word-break", "break-word")
-        .build()
-}
-
-fn curation_scroll_hint_style() -> String {
-    StyleBuilder::new()
-        .property("display", "inline-flex")
-        .property("align-items", "center")
-        .property("gap", "8px")
-        .property("color", TEXT3)
-        .property("font-size", FS_0)
-        .property("line-height", "1.4")
-        .build()
-}
-
-fn scroll_hint_icon_style() -> String {
-    StyleBuilder::new()
-        .property("color", ACCENT)
-        .property("font-weight", "700")
-        .property("font-size", "1.05em")
-        .build()
-}
-
-fn curation_table_scroll_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("min-width", "0")
-        .property("overflow-x", "auto")
-        .property("overflow-y", "visible")
-        .property("border-top", "1px solid var(--panel-border)")
-        .property("margin-top", "2px")
-        .build()
-}
-
-fn results_table_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("border-collapse", "collapse")
-        .property("font-size", FS_UI)
-        .property("table-layout", "fixed")
-        .property("word-break", "break-word")
-        .build()
-}
-
-fn status_pill_style(status: &CurationStatus) -> String {
-    let border_color = match status {
-        CurationStatus::ExistingComplete => FOOTER_WD_TAXON,
-        CurationStatus::ExistingNeedsUpdates => FOOTER_WD_ENTRIES,
-        CurationStatus::NewCompound => FOOTER_WD_REFERENCE,
-        CurationStatus::PendingDependencies => FOOTER_WD_REFERENCE,
-        CurationStatus::Error => FOOTER_WD_COMPOUND,
-    };
-    let tint = format!("color-mix(in srgb, {border_color} 28%, transparent)");
-
-    StyleBuilder::new()
-        .property("display", "inline-flex")
-        .property("align-items", "center")
-        .property("padding", "3px 9px")
-        .property("border-radius", "6px")
-        .property("border", tint.as_str())
-        .property("border-left", format!("3px solid {border_color}").as_str())
-        .property("background", SURFACE_90_TINT)
-        .property("font-weight", "700")
-        .property("text-transform", "uppercase")
-        .property("font-size", FS_MICRO)
-        .property("letter-spacing", "0.04em")
-        .property("color", TEXT)
-        .build()
-}
-
-fn status_warning_pill_style() -> String {
-    let tint = format!("color-mix(in srgb, {FOOTER_WD_ENTRIES} 28%, transparent)");
-
-    StyleBuilder::new()
-        .property("display", "inline-flex")
-        .property("align-items", "center")
-        .property("padding", "3px 9px")
-        .property("border-radius", "6px")
-        .property("border", tint.as_str())
-        .property("border-left", format!("3px solid {FOOTER_WD_ENTRIES}").as_str())
-        .property("background", SURFACE_90_TINT)
-        .property("font-weight", "700")
-        .property("text-transform", "uppercase")
-        .property("font-size", FS_MICRO)
-        .property("letter-spacing", "0.04em")
-        .property("color", TEXT)
-        .build()
-}
-
-fn status_column_style() -> String {
-    StyleBuilder::new().property("min-width", "180px").build()
-}
-
-fn wikidata_column_style() -> String {
-    StyleBuilder::new().property("min-width", "10ch").build()
-}
-
-fn name_column_style() -> String {
-    StyleBuilder::new().property("min-width", "16ch").build()
-}
-
-fn smiles_column_style() -> String {
-    StyleBuilder::new()
-        .property("min-width", "160px")
-        .property("max-width", "260px")
-        .build()
-}
-
-fn inchikey_column_style() -> String {
-    StyleBuilder::new().property("min-width", "22ch").build()
-}
-
-fn formula_column_style() -> String {
-    StyleBuilder::new().property("min-width", "10ch").build()
-}
-
-fn row_stripe_style(idx: usize) -> String {
-    let background = if idx.is_multiple_of(2) {
-        SURFACE_94_TINT
-    } else {
-        SURFACE_88_TINT
-    };
-
-    StyleBuilder::new()
-        .property("transition", "background .14s ease")
-        .property("--row-bg", background)
-        .build()
 }

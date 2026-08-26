@@ -27,21 +27,16 @@ pub(super) const FILE_INPUT: &str = "curation-file-input max-w-full text-ui text
 pub(super) const NOTICE_VALUE: &str = "break-words leading-snug text-inherit";
 
 pub(super) const TABLE_SCROLL: &str =
-    "curation-table-scroll w-full min-w-0 overflow-x-auto overflow-y-visible rounded-xl border border-panel-border bg-panel-soft shadow-xs";
+    "w-full overflow-x-auto rounded-lg border border-panel-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30";
 
-pub(super) const QUEUE_TABLE: &str =
-    "w-full table-fixed border-collapse text-ui [word-break:break-word]";
+pub(super) const QUEUE_TABLE: &str = "w-full table-fixed border-collapse text-ui";
 
-pub(super) const QUEUE_ACTION_COL: &str = "w-[110px] min-w-[110px] px-2 py-2";
+pub(super) const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted";
 
-pub(super) const QUEUE_INDEX_COL: &str = "min-w-[3ch] px-2 py-2";
+pub(super) const TD: &str = "border-b border-panel-border px-3 py-2 align-top text-ui";
 
-pub(super) const QUEUE_SMILES_COL: &str = "min-w-[220px] max-w-[320px] px-2 py-2 break-all";
+pub(super) const QUEUE_ACTION_COL: &str = "w-[110px] min-w-[110px]";
 
-pub(super) fn row_stripe(idx: usize) -> &'static str {
-    if idx.is_multiple_of(2) {
-        "bg-surface/90 transition-colors hover:bg-bg"
-    } else {
-        "bg-surface/80 transition-colors hover:bg-bg"
-    }
-}
+pub(super) const QUEUE_INDEX_COL: &str = "min-w-[3ch]";
+
+pub(super) const QUEUE_SMILES_COL: &str = "min-w-[220px] max-w-[320px] break-all";

@@ -311,32 +311,32 @@ pub fn QueueRowsCard(
                 tabindex: "0",
                 aria_label: "{heading_queued_rows(locale)}",
                 table {
-                    class: "curation-table curation-queue-table",
+                    class: "{styles::QUEUE_TABLE}",
                     thead {
-                        tr {
-                            th { scope: "col", class: "{styles::QUEUE_ACTION_COL}", "{col_action(locale)}" }
-                            th { scope: "col", class: "{styles::QUEUE_INDEX_COL}", "#" }
-                            th { scope: "col", "{col_name(locale)}" }
-                            th { scope: "col", class: "{styles::QUEUE_SMILES_COL}", "SMILES" }
-                            th { scope: "col", "{t(locale, TextKey::TaxonCol)}" }
-                            th { scope: "col", "DOI" }
+                        tr { class: "text-left",
+                            th { scope: "col", class: "{styles::TH} {styles::QUEUE_ACTION_COL}", "{col_action(locale)}" }
+                            th { scope: "col", class: "{styles::TH} {styles::QUEUE_INDEX_COL}", "#" }
+                            th { scope: "col", class: "{styles::TH}", "{col_name(locale)}" }
+                            th { scope: "col", class: "{styles::TH} {styles::QUEUE_SMILES_COL}", "SMILES" }
+                            th { scope: "col", class: "{styles::TH}", "{t(locale, TextKey::TaxonCol)}" }
+                            th { scope: "col", class: "{styles::TH}", "DOI" }
                         }
                     }
                     tbody {
                         if rows_snapshot.is_empty() {
                             tr {
-                                td { class: "{styles::QUEUE_ACTION_COL} mono", "-" }
-                                td { class: "{styles::QUEUE_INDEX_COL} mono", "-" }
-                                td { class: "mono", "-" }
-                                td { class: "{styles::QUEUE_SMILES_COL} mono", "-" }
-                                td { class: "mono", "-" }
-                                td { class: "mono", "-" }
+                                td { class: "{styles::TD} {styles::QUEUE_ACTION_COL} font-mono text-xs", "-" }
+                                td { class: "{styles::TD} {styles::QUEUE_INDEX_COL} font-mono text-xs", "-" }
+                                td { class: "{styles::TD} font-mono text-xs", "-" }
+                                td { class: "{styles::TD} {styles::QUEUE_SMILES_COL} font-mono text-xs", "-" }
+                                td { class: "{styles::TD} font-mono text-xs", "-" }
+                                td { class: "{styles::TD} font-mono text-xs", "-" }
                             }
                         } else {
                             for (idx, row) in rows_snapshot.iter().enumerate() {
                                 tr { key: "{row.name}|{row.smiles}",
-                                    class: "{styles::row_stripe(idx)}",
-                                    td { class: "{styles::QUEUE_ACTION_COL}",
+                                    class: "odd:bg-surface/30 hover:bg-surface/60",
+                                    td { class: "{styles::TD} {styles::QUEUE_ACTION_COL}",
                                         Button {
                                             label: button_remove(locale).to_string(),
                                             variant: ButtonVariant::Danger,
@@ -349,11 +349,11 @@ pub fn QueueRowsCard(
                                             })),
                                         }
                                     }
-                                    td { class: "{styles::QUEUE_INDEX_COL}", "{idx + 1}" }
-                                    td { "{row.name}" }
-                                    td { class: "{styles::QUEUE_SMILES_COL} mono", "{row.smiles}" }
-                                    td { "{row.taxon.as_deref().unwrap_or(\"\")}" }
-                                    td { class: "mono", "{row.doi.as_deref().unwrap_or(\"\")}" }
+                                    td { class: "{styles::TD} {styles::QUEUE_INDEX_COL} font-mono text-xs", "{idx + 1}" }
+                                    td { class: "{styles::TD}", "{row.name}" }
+                                    td { class: "{styles::TD} {styles::QUEUE_SMILES_COL}", "{row.smiles}" }
+                                    td { class: "{styles::TD}", "{row.taxon.as_deref().unwrap_or(\"\")}" }
+                                    td { class: "{styles::TD} font-mono text-xs", "{row.doi.as_deref().unwrap_or(\"\")}" }
                                 }
                             }
                         }
