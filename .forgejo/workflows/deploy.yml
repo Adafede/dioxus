@@ -74,7 +74,7 @@ jobs:
 
   deploy:
     needs: build-apps
-    runs-on: codeberg-medium
+    runs-on: codeberg-small
     steps:
       - uses: actions/download-artifact@v3
         with:
@@ -86,4 +86,4 @@ jobs:
         with:
           site: https://adafede.codeberg.page/dioxus/
           token: ${{ forge.token }}
-          source: _site/
+          source: /workspace/adafede/dioxus/_site/
