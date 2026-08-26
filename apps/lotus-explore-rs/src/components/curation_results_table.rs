@@ -66,7 +66,7 @@ fn render_curation_result_cells(locale: Locale, row: &CurationResultRow) -> Elem
         td { class: TD,
             if let Some(qid) = row.wikidata_qid.as_deref() {
                 a {
-                    class: "font-mono text-xs text-accent underline",
+                    class: "font-mono text-xs text-wd-compound underline",
                     href: "https://www.wikidata.org/wiki/{qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",

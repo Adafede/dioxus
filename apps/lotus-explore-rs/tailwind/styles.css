@@ -398,7 +398,7 @@ a:hover {
 
 .app-layout {
     display: flex;
-    flex: 0 0 auto;
+    flex: 1;
     min-height: 0;
     overflow: hidden;
     gap: 10px;
@@ -922,9 +922,9 @@ a:hover {
 .app-footer {
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     background: var(--panel-bg);
     border-top: 1px solid var(--border);
-    margin-top: auto;
     padding: 6px 20px 10px;
 }
 
