@@ -49,7 +49,7 @@ fn SortableColumnHeader(
                 r#type: "button",
                 aria_label: "{sort_aria}",
                 title: "{sort_aria}",
-                class: "group inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit transition-colors hover:text-accent",
+                class: "group inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:rounded-sm",
                 onclick: move |_| on_toggle.call(header.col),
                 span { "{label_text}" }
                 span {

@@ -67,7 +67,7 @@ video {
 
 :root {
     color-scheme: light dark;
-    /* Core colors */
+    /* Core colors - aligned with Wikidata brand */
     --bg: #f7fafc;
     --bg2: #f7fafc;
     --surface: #ffffff;
@@ -84,31 +84,28 @@ video {
     --red: #b42318;
     --yellow: #8a4b0f;
     --purple: #6941c6;
-    /* Radii */
-    --radius: 10px;
+
+    /* Wikidata organism colors */
+    --wd-compound: #990000;
+    --wd-taxon: #339966;
+    --wd-reference: #006699;
+    --wd-entries: #484848;
+
+    /* Radii - consistent scale */
     --radius-sm: 4px;
-    /* Fonts */
-    --mono: "Fira Code", "JetBrains Mono", consolas, monospace;
-    --sans: "Inter", "Segoe UI", "Helvetica Neue", roboto, arial, sans-serif;
-    /* Typography - responsive font sizes */
-    --fs-micro: clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);
-    --fs-0: clamp(0.75rem, 0.725rem + 0.17vw, 0.875rem);
-    --fs-1: clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem);
-    --fs-2: clamp(0.9375rem, 0.9rem + 0.28vw, 1.0625rem);
-    --fs-3: clamp(1.125rem, 1.02rem + 0.6vw, 1.5rem);
-    --fs-4: clamp(1.375rem, 1.1rem + 0.85vw, 1.85rem);
-    /* Typography aliases */
-    --fs-label: var(--fs-micro);
-    --fs-ui: var(--fs-0);
-    --fs-body: var(--fs-1);
-    --fs-stat: var(--fs-3);
-    /* Spacing */
-    --tap-target-min: 40px;
-    --space-1: 6px;
-    --space-2: 10px;
-    --space-3: 14px;
-    --space-4: 20px;
-    --space-5: 28px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+
+    /* Spacing - consistent scale */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
     /* Effects */
     --glass: rgb(255 255 255 / 82%);
     --ring: 0 0 0 3px rgb(11 92 171 / 22%);
@@ -168,6 +165,23 @@ video {
     --ring: 0 0 0 3px rgb(140 188 255 / 28%);
     --critical-text: #e8edf5;
     --critical-muted: #d0d9e5;
+
+    /* Spacing scale - same as light mode */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    /* Radius scale - same as light mode */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+
     --footer-wd-compound: color-mix(in srgb, var(--wd-compound) 52%, white);
     --footer-wd-taxon: color-mix(in srgb, var(--wd-taxon) 56%, white);
     --footer-wd-reference: color-mix(in srgb, var(--wd-reference) 52%, white);
@@ -228,7 +242,22 @@ video {
     --text-hero: var(--fs-4);
     --text-stat: var(--fs-stat);
 
-    --radius-lotus: var(--radius);
+    /* Spacing scale */
+    --spacing-1: var(--space-1);
+    --spacing-2: var(--space-2);
+    --spacing-3: var(--space-3);
+    --spacing-4: var(--space-4);
+    --spacing-5: var(--space-5);
+    --spacing-6: var(--space-6);
+    --spacing-8: var(--space-8);
+
+    /* Radius scale */
+    --radius-sm: var(--radius-sm);
+    --radius-md: var(--radius-md);
+    --radius-lg: var(--radius-lg);
+    --radius-xl: var(--radius-xl);
+    --radius-2xl: var(--radius-2xl);
+    --radius-lotus: var(--radius-lg);
     --radius-lotus-sm: var(--radius-sm);
 }
 
@@ -1260,22 +1289,9 @@ a:hover {
     background-color: var(--surface2);
 }
 
-.btn-open-endpoint:focus {
+.btn-open-endpoint:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-}
-
-/* Dark mode variants */
-@media (prefers-color-scheme: dark) {
-    .btn-open-endpoint {
-        background-color: #111827;
-        border-color: #38475a;
-        color: #eef4fb;
-    }
-
-    .btn-open-endpoint:hover {
-        background-color: #1e293b;
-    }
 }
 
 /* Responsive breakpoints */

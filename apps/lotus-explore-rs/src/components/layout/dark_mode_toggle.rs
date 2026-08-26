@@ -7,6 +7,7 @@ use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use crate::state::use_app_state_context;
 use dioxus::prelude::*;
+use wasm_bindgen::JsCast;
 
 #[component]
 pub fn DarkModeToggle() -> Element {
@@ -24,14 +25,28 @@ pub fn DarkModeToggle() -> Element {
             "aria-label": t(locale, TextKey::DarkModeToggle),
             "aria-checked": dark_mode.to_string(),
             onclick: move |_| {
-                app_state.with_mut(|s| s.dark_mode = !s.dark_mode);
+                let new_dark_mode = !dark_mode;
+                app_state.with_mut(|s| s.dark_mode = new_dark_mode);
+
+                // Persist to localStorage
+                #[cfg(target_arch = "wasm32")]
+                {
+                    if let Some(win) = web_sys::window()
+                        && let Ok(storage) = js_sys::Reflect::get(&win, &"localStorage".into())
+                        && !storage.is_undefined()
+                        && let Ok(func) = js_sys::Reflect::get(&storage, &"setItem".into())
+                        && let Some(set_item) = func.dyn_ref::<js_sys::Function>()
+                    {
+                        let _ = set_item.call2(&storage, &"dark_mode".into(), &(if new_dark_mode { "true" } else { "false" }).into());
+                    }
+                }
             },
             span {
                 class: "flex h-6 w-6 items-center justify-center rounded-full bg-accent/12 text-accent",
                 if dark_mode {
-                    span { class: "text-sm leading-none", "🌙" }
+                    span { class: "text-xs font-bold", "🌙" }
                 } else {
-                    span { class: "text-sm leading-none", "☀️" }
+                    span { class: "text-xs font-bold", "🔆" }
                 }
             }
             span {

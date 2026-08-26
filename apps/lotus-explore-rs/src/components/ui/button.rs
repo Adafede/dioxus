@@ -49,6 +49,12 @@ pub struct ButtonProps {
     #[props(default)]
     pub aria_label: Option<String>,
     #[props(default)]
+    pub aria_controls: Option<String>,
+    #[props(default)]
+    pub aria_expanded: Option<String>,
+    #[props(default)]
+    pub aria_pressed: Option<String>,
+    #[props(default)]
     pub class: Option<String>,
     #[props(default)]
     pub onclick: Option<EventHandler<MouseEvent>>,
@@ -59,8 +65,8 @@ pub struct ButtonProps {
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
     let size_classes = match props.size {
-        ButtonSize::Sm => "min-h-[34px] gap-1.5 px-3 py-1.5 text-ui rounded-lotus-sm",
-        ButtonSize::Md => "min-h-10 gap-2 px-3.5 py-2 text-ui rounded-lotus-sm",
+        ButtonSize::Sm => "min-h-[34px] gap-1.5 px-3 py-1.5 text-ui rounded-sm",
+        ButtonSize::Md => "min-h-10 gap-2 px-3.5 py-2 text-ui rounded-md",
     };
 
     // Keep variants flat — tokens already carry light/dark.
@@ -93,7 +99,10 @@ pub fn Button(props: ButtonProps) -> Element {
             disabled: props.disabled || props.loading,
             title: props.title.as_deref().unwrap_or_default(),
             aria_label: props.aria_label.as_deref().unwrap_or_default(),
-            class: "inline-flex items-center justify-center font-sans select-none transition-[background,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 {size_classes} {variant_classes} {state_classes} {custom_classes}",
+            aria_controls: props.aria_controls.as_deref().unwrap_or_default(),
+            aria_expanded: props.aria_expanded.as_deref().unwrap_or_default(),
+            aria_pressed: props.aria_pressed.as_deref().unwrap_or_default(),
+            class: "inline-flex items-center justify-center font-sans select-none transition-[background,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 {size_classes} {variant_classes} {state_classes} {custom_classes}",
             onclick: move |evt| {
                 if !props.disabled && !props.loading {
                     if let Some(handler) = props.onclick.as_ref() {

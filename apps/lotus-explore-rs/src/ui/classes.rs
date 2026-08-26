@@ -16,17 +16,17 @@ pub const HINT: &str = "text-micro text-subtle";
 pub const MICRO_LABEL: &str = "text-[10px] font-semibold uppercase tracking-wide text-subtle";
 
 /// Standard text/number input.
-pub const INPUT: &str = "w-full rounded-lotus-sm border border-border bg-surface px-2.5 py-2 text-ui text-text placeholder:text-subtle shadow-xs transition-colors focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";
+pub const INPUT: &str = "w-full rounded-md border border-border bg-surface px-3 py-2 text-ui text-text placeholder:text-subtle shadow-xs transition-colors focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30";
 
 /// Compact number input inside range pairs.
-pub const INPUT_SM: &str = "w-full rounded-lotus-sm border border-border bg-surface px-2 py-1.5 text-ui text-text shadow-xs transition-colors focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";
+pub const INPUT_SM: &str = "w-full rounded-sm border border-border bg-surface px-2 py-1.5 text-ui text-text shadow-xs transition-colors focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30";
 
 /// Search / form section card.
 pub const SECTION: &str =
-    "flex flex-col gap-1.5 rounded-xl border border-border bg-panel p-3 shadow-xs";
+    "flex flex-col gap-3 rounded-lg border border-border bg-panel p-3 shadow-xs";
 
 /// Generic surface card.
-pub const CARD: &str = "rounded-xl border border-panel-border bg-surface shadow-xs";
+pub const CARD: &str = "rounded-lg border border-panel-border bg-surface shadow-xs";
 
 /// Inline text link using accent.
 pub const LINK: &str = "font-medium text-accent hover:underline";
@@ -35,5 +35,4 @@ pub const LINK: &str = "font-medium text-accent hover:underline";
 pub const SUPPORT: &str = "text-ui text-subtle";
 
 /// Toolbar / panel shell.
-pub const PANEL_SHELL: &str =
-    "rounded-xl border border-panel-border bg-panel-soft shadow-xs";
+pub const PANEL_SHELL: &str = "rounded-xl border border-panel-border bg-panel-soft shadow-xs";

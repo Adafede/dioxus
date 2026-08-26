@@ -29,6 +29,7 @@ use crate::state::{
 use crate::ui::a11y_contract::{MAIN_PANEL_ID, PAGE_TITLE_ID, SKIP_TO_RESULTS_HREF};
 use dioxus::prelude::*;
 use std::sync::Arc;
+use wasm_bindgen::JsCast;
 
 const fn locale_lang_tag(locale: Locale) -> &'static str {
     match locale {
@@ -44,8 +45,22 @@ fn resolve_startup_dark_mode(startup: &crate::features::explore::InitialUrlState
         return true;
     }
 
+    let mut startup_dark_mode = false;
+
     #[cfg(target_arch = "wasm32")]
     {
+        // Check localStorage first for persisted user preference
+        if let Some(win) = web_sys::window()
+            && let Ok(storage) = js_sys::Reflect::get(&win, &"localStorage".into())
+            && !storage.is_undefined()
+            && let Ok(func) = js_sys::Reflect::get(&storage, &"getItem".into())
+            && let Some(get_item) = func.dyn_ref::<js_sys::Function>()
+            && let Ok(value) = get_item.call1(&storage, &"dark_mode".into())
+            && let Some(value_str) = value.as_string()
+        {
+            startup_dark_mode = value_str == "true";
+        }
+
         let params = crate::features::explore::url_state::read_url_query_params();
         if let Some(raw) = params.get("dark_mode") {
             return crate::features::explore::url_state::is_true_flag(raw);
@@ -60,7 +75,7 @@ fn resolve_startup_dark_mode(startup: &crate::features::explore::InitialUrlState
         }
     }
 
-    false
+    startup_dark_mode
 }
 
 #[component]
@@ -143,20 +158,14 @@ fn AppRuntimeEffects(
     });
 
     // Sync data-theme="dark|light" on <html> based on dark_mode state.
-    // Also checks the URL param or prefers-color-scheme on initial load.
+    // Uses the app_state value which is persisted to localStorage via the toggle.
     use_effect(move || {
         let dark_mode = app_state.read().dark_mode;
         #[cfg(target_arch = "wasm32")]
         {
-            let params = crate::features::explore::url_state::read_url_query_params();
-            let effective_dark_mode = params
-                .get("dark_mode")
-                .map(|raw| crate::features::explore::url_state::is_true_flag(raw))
-                .unwrap_or(dark_mode);
-
             if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
                 if let Some(html) = doc.document_element() {
-                    if effective_dark_mode {
+                    if dark_mode {
                         let _ = html.set_attribute("data-theme", "dark");
                     } else {
                         let _ = html.set_attribute("data-theme", "light");

@@ -4,6 +4,7 @@
 //! Sidebar: mobile-filter toggle button, search panel, and branding logo.
 
 use crate::components::search_panel::SearchPanel;
+use crate::components::ui::{Button, ButtonSize, ButtonVariant};
 use crate::features::explore::interactions::use_explore_interactions;
 use crate::features::explore::selectors::use_ui_selector;
 use crate::hooks::use_locale;
@@ -36,18 +37,19 @@ pub fn Sidebar() -> Element {
             }
             div {
                 class: "flex justify-center px-3 pb-1",
-                button {
+                Button {
                     r#type: "button",
-                    class: "filters-toggle inline-flex w-full min-h-10 cursor-pointer items-center justify-center rounded-lotus-sm border border-border bg-primary px-3.5 py-2 text-ui font-semibold text-white shadow-xs transition-[background] duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                    variant: ButtonVariant::Primary,
+                    size: ButtonSize::Md,
                     aria_controls: SEARCH_PANEL_BODY_ID,
                     aria_expanded: if mobile_filters_open { "true" } else { "false" },
                     aria_pressed: if mobile_filters_open { "true" } else { "false" },
                     onclick: move |_| interactions.toggle_mobile_filters(),
-                    if mobile_filters_open {
-                        "{t(locale, TextKey::FiltersHide)}"
+                    label: if mobile_filters_open {
+                        t(locale, TextKey::FiltersHide).to_string()
                     } else {
-                        "{t(locale, TextKey::FiltersShow)}"
-                    }
+                        t(locale, TextKey::FiltersShow).to_string()
+                    },
                 }
             }
             SearchPanel {}
