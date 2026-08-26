@@ -37,6 +37,7 @@ fn ResolvedTaxonMetaItem(locale: crate::i18n::Locale, qid: Arc<str>) -> Element 
             CopyButton {
                 text: qid,
                 title: t(locale, TextKey::CopyTaxonQid),
+                class: "meta-copy",
                 locale,
             }
         }
@@ -63,6 +64,7 @@ fn QueryHashMetaItem(locale: crate::i18n::Locale, full_hash: Arc<str>) -> Elemen
             CopyButton {
                 text: full_hash,
                 title: t(locale, TextKey::CopyFullQueryHash),
+                class: "meta-copy",
                 locale,
             }
         }
@@ -89,6 +91,7 @@ fn ResultHashMetaItem(locale: crate::i18n::Locale, full_hash: Arc<str>) -> Eleme
             CopyButton {
                 text: full_hash,
                 title: t(locale, TextKey::CopyFullResultHash),
+                class: "meta-copy",
                 locale,
             }
         }

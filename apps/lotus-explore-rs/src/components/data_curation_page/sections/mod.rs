@@ -306,14 +306,12 @@ pub fn QueueRowsCard(
                 }
             }
             div {
-                class: "curation-table-scroll",
                 class: "{styles::TABLE_SCROLL}",
                 role: "region",
                 tabindex: "0",
                 aria_label: "{heading_queued_rows(locale)}",
                 table {
                     class: "curation-table curation-queue-table",
-                    class: "{styles::QUEUE_TABLE}",
                     thead {
                         tr {
                             th { scope: "col", class: "{styles::QUEUE_ACTION_COL}", "{col_action(locale)}" }

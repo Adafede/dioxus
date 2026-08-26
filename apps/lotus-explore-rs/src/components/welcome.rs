@@ -49,7 +49,7 @@ pub fn WelcomeScreen() -> Element {
                     "{t(locale, TextKey::WelcomeLeadE)}"
                     " "
                     span {
-                        class: "mt-2 block text-ui italic text-subtle",
+                        class: "text-ui italic text-subtle",
                         "{t(locale, TextKey::LabelLanguagePolicy)}"
                     }
                 }

@@ -25,7 +25,7 @@ pub fn ViewSwitch() -> Element {
     let dark_mode = app_state.read().dark_mode;
 
     rsx! {
-        nav { class: "view-switch flex shrink-0 items-center", aria_label: "{view_switch_aria(locale)}",
+        nav { class: "view-switch flex shrink-0 flex-wrap items-center", aria_label: "{view_switch_aria(locale)}",
             SegmentedControl {
                 aria_label: view_switch_aria(locale).to_string(),
                 selected_value: view_key(current_view).to_string(),

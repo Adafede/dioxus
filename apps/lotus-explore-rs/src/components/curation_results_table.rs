@@ -12,7 +12,9 @@ use dioxus::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use ui::prelude::*;
-use ui::styles::lotus::tokens::{FOOTER_WD_ENTRIES, WD_COMPOUND, WD_REFERENCE, WD_TAXON};
+use ui::styles::lotus::tokens::{
+    FOOTER_WD_COMPOUND, FOOTER_WD_ENTRIES, FOOTER_WD_REFERENCE, FOOTER_WD_TAXON,
+};
 
 const NA_TEXT: &str = "n/a";
 
@@ -175,7 +177,7 @@ fn curation_card_style() -> String {
         .property("padding", "12px")
         .property("border", BORDER_PANEL)
         .property("border-radius", BORDER_RADIUS)
-        .property("background", "transparent")
+        .property("background", PANEL_BG_SOFT)
         .property("box-shadow", PANEL_SHADOW)
         .build()
 }
@@ -246,13 +248,8 @@ fn curation_table_scroll_style() -> String {
         .property("min-width", "0")
         .property("overflow-x", "auto")
         .property("overflow-y", "visible")
-        .property("border", BORDER_PANEL)
-        .property("background", PANEL_BG_SOFT)
-        .property("box-shadow", PANEL_SHADOW)
-        .property(
-            "transition",
-            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
-        )
+        .property("border-top", "1px solid var(--panel-border)")
+        .property("margin-top", "2px")
         .build()
 }
 
@@ -268,11 +265,11 @@ fn results_table_style() -> String {
 
 fn status_pill_style(status: &CurationStatus) -> String {
     let border_color = match status {
-        CurationStatus::ExistingComplete => WD_TAXON,
+        CurationStatus::ExistingComplete => FOOTER_WD_TAXON,
         CurationStatus::ExistingNeedsUpdates => FOOTER_WD_ENTRIES,
-        CurationStatus::NewCompound => WD_REFERENCE,
-        CurationStatus::PendingDependencies => WD_REFERENCE,
-        CurationStatus::Error => WD_COMPOUND,
+        CurationStatus::NewCompound => FOOTER_WD_REFERENCE,
+        CurationStatus::PendingDependencies => FOOTER_WD_REFERENCE,
+        CurationStatus::Error => FOOTER_WD_COMPOUND,
     };
 
     StyleBuilder::new()
@@ -309,30 +306,30 @@ fn status_warning_pill_style() -> String {
 }
 
 fn status_column_style() -> String {
-    StyleBuilder::new().property("min-width", "220px").build()
+    StyleBuilder::new().property("min-width", "180px").build()
 }
 
 fn wikidata_column_style() -> String {
-    StyleBuilder::new().property("min-width", "12ch").build()
+    StyleBuilder::new().property("min-width", "10ch").build()
 }
 
 fn name_column_style() -> String {
-    StyleBuilder::new().property("min-width", "18ch").build()
+    StyleBuilder::new().property("min-width", "16ch").build()
 }
 
 fn smiles_column_style() -> String {
     StyleBuilder::new()
-        .property("min-width", "220px")
-        .property("max-width", "320px")
+        .property("min-width", "160px")
+        .property("max-width", "260px")
         .build()
 }
 
 fn inchikey_column_style() -> String {
-    StyleBuilder::new().property("min-width", "28ch").build()
+    StyleBuilder::new().property("min-width", "22ch").build()
 }
 
 fn formula_column_style() -> String {
-    StyleBuilder::new().property("min-width", "12ch").build()
+    StyleBuilder::new().property("min-width", "10ch").build()
 }
 
 fn row_stripe_style(idx: usize) -> String {

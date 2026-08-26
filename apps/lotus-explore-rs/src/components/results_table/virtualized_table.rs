@@ -43,20 +43,20 @@ pub(super) fn VirtualizedResultsTable(
             role: "region",
             tabindex: "0",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                class: "max-h-[min(72vh,980px)] overflow-auto rounded-[14px] border border-panel-border border-l-4 border-l-wd-entries bg-transparent shadow-xs",
+                class: "max-h-[min(72vh,980px)] overflow-auto rounded-xl border border-panel-border border-l-4 border-l-wd-entries bg-transparent shadow-xs",
                 onscroll: on_scroll,
                 table {
                     aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                    class: "results-table w-full min-w-[760px] table-fixed border-collapse text-ui [word-break:break-word]",
+                    class: "results-table w-full min-w-[980px] table-fixed border-collapse text-ui [word-break:break-word]",
                     caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                     colgroup {
-                        col { class: "w-[11%]" }
-                        col { class: "w-[21%]" }
-                        col { class: "w-[9%]" }
-                        col { class: "w-[13%]" }
-                        col { class: "w-[18%]" }
-                        col { class: "w-[23%]" }
-                        col { class: "w-[5%]" }
+                        col { class: "w-[8%]" }
+                        col { class: "w-[20%]" }
+                        col { class: "w-[11%] min-w-[92px]" }
+                        col { class: "w-[12%] min-w-[100px]" }
+                        col { class: "w-[17%]" }
+                        col { class: "w-[24%]" }
+                        col { class: "w-[8%] min-w-[58px]" }
                     }
                 thead {
                     TableHeader {

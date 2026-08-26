@@ -20,7 +20,7 @@ pub fn LangSwitch() -> Element {
     let dark_mode = use_app_state_context().state.read().dark_mode;
 
     rsx! {
-        div { class: "lang-switch flex shrink-0 items-center",
+        div { class: "lang-switch flex shrink-0 flex-wrap items-center",
             SegmentedControl {
                 aria_label: t(locale, TextKey::Language).to_string(),
                 selected_value: locale_code(locale).to_string(),

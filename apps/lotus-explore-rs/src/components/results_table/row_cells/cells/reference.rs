@@ -58,7 +58,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://doi.org/{d}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "id-badge text-wd-compound",
+                        class: "id-badge text-wd-reference",
                         title: "{text.open_doi}",
                         aria_label: "{text.open_doi}",
                         "DOI"

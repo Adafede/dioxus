@@ -265,16 +265,16 @@ video {
    component CSS (var(--fs-body), var(--fs-ui), ...). Previously these were never
    defined, so all text fell back to the inherited 16px browser default. */
 :root {
-    --fs-micro: clamp(0.66rem, 0.64rem + 0.08vw, 0.72rem);
-    --fs-0:     clamp(0.7rem, 0.68rem + 0.1vw, 0.78rem);
-    --fs-ui:    clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);
-    --fs-1:     clamp(0.8125rem, 0.79rem + 0.14vw, 0.875rem);
-    --fs-body:  clamp(0.8125rem, 0.79rem + 0.14vw, 0.875rem);
-    --fs-label: clamp(0.64rem, 0.62rem + 0.1vw, 0.7rem);
-    --fs-2:     clamp(0.875rem, 0.84rem + 0.18vw, 0.97rem);
-    --fs-3:     clamp(1.0rem, 0.93rem + 0.42vw, 1.3rem);
-    --fs-4:     clamp(1.2rem, 0.98rem + 0.65vw, 1.55rem);
-    --fs-stat:  clamp(1.0rem, 0.93rem + 0.4vw, 1.2rem);
+    --fs-micro: clamp(0.62rem, 0.60rem + 0.07vw, 0.67rem);
+    --fs-0:     clamp(0.66rem, 0.64rem + 0.09vw, 0.73rem);
+    --fs-ui:    clamp(0.70rem, 0.68rem + 0.11vw, 0.76rem);
+    --fs-1:     clamp(0.76rem, 0.74rem + 0.13vw, 0.82rem);
+    --fs-body:  clamp(0.76rem, 0.74rem + 0.13vw, 0.82rem);
+    --fs-label: clamp(0.59rem, 0.57rem + 0.09vw, 0.66rem);
+    --fs-2:     clamp(0.84rem, 0.81rem + 0.16vw, 0.93rem);
+    --fs-3:     clamp(0.96rem, 0.9rem + 0.38vw, 1.25rem);
+    --fs-4:     clamp(1.15rem, 0.95rem + 0.6vw, 1.5rem);
+    --fs-stat:  clamp(0.96rem, 0.9rem + 0.36vw, 1.15rem);
 }
 
 /* Base styles */
@@ -528,23 +528,23 @@ a:hover {
     gap: 8px 10px;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
 }
 
 .header-controls {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     min-width: 0;
-    overflow-x: auto;
+    justify-content: flex-end;
 }
 
 .results-table {
     width: 100%;
     border-collapse: collapse;
     font-size: var(--fs-ui);
-    table-layout: auto;
+    table-layout: fixed;
     word-break: break-word;
 }
 
@@ -1016,19 +1016,23 @@ a:hover {
 
 .footer-row {
     display: flex;
-    align-items: center;
+    align-items: start;
     gap: 10px;
     padding: 3px 0;
 }
 
 .footer-label {
     flex: 0 0 auto;
+    display: inline-block;
     font-weight: 700;
     text-transform: uppercase;
     font-size: var(--fs-0);
     letter-spacing: 0.06em;
     white-space: nowrap;
     line-height: 1.45;
+    padding: 2px 10px;
+    border-radius: 8px;
+    border-left: 4px solid transparent;
 }
 
 .footer-aside {
@@ -1223,8 +1227,12 @@ a:hover {
     border-color: color-mix(in srgb, var(--accent) 44%, var(--panel-border)) !important;
 }
 
-.curation-results-table,
+.curation-results-table {
+    min-width: max-content;
+}
+
 .curation-queue-table {
+    table-layout: auto;
     min-width: max-content;
 }
 
@@ -1238,21 +1246,21 @@ a:hover {
 
 .results-table .td-compound .primary-link,
 .results-table .td-compound .id-badge.text-wd-compound {
-    color: var(--wd-compound);
+    color: var(--footer-wd-compound);
 }
 
 .results-table .td-taxon .primary-link,
 .results-table .td-taxon .id-badge.text-wd-taxon {
-    color: var(--wd-taxon);
+    color: var(--footer-wd-taxon);
 }
 
 .results-table .td-ref .primary-link,
 .results-table .td-ref .id-badge.text-wd-reference {
-    color: var(--wd-reference);
+    color: var(--footer-wd-reference);
 }
 
 .results-table .td-ref .id-badge.text-wd-entries {
-    color: var(--wd-entries);
+    color: var(--footer-wd-entries);
 }
 
 .results-table .td-taxon .primary-link {
@@ -1289,6 +1297,15 @@ a:hover {
 .meta-value-monospace {
     font-family: var(--mono), monospace;
     color: var(--text3);
+}
+
+.page-header-meta .meta-copy {
+    min-height: 0;
+    height: auto;
+    padding: 1px 6px;
+    font-size: var(--fs-0);
+    line-height: 1.35;
+    gap: 4px;
 }
 
 /* =========================================================================
