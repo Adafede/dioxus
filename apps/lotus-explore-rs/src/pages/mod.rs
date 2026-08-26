@@ -9,7 +9,10 @@
 //!
 //! ## Pages
 //! - `draw_page` - Structure editor tab with Ketcher molecule editor
+//! - `ketcher_panel` - Panel for Ketcher molecule editor
 
 pub mod draw_page;
+pub mod ketcher_panel;
 
 pub use draw_page::DrawPage;
+pub use ketcher_panel::KetcherPanel;
