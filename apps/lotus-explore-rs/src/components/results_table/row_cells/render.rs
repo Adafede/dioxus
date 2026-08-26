@@ -48,10 +48,15 @@ fn row_view(
     let doi = prepared.doi.as_deref();
     let statement_id = prepared.statement_id.as_deref();
     let name = prepared.display_name.as_ref();
+    let zebra = if row_key.is_multiple_of(2) {
+        "bg-surface/30"
+    } else {
+        ""
+    };
     rsx! {
         tr {
             key: "{row_key}",
-            class: "data-row border-b border-panel-border contain-paint",
+            class: "data-row contain-paint {zebra} hover:bg-surface/60",
             {structure_cell(locale, text, prepared.depict_url.as_deref(), name)}
             {compound_cell(locale, text, entry, prepared, name, compound_qid)}
             {mass_cell(entry.mass)}

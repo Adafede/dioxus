@@ -72,7 +72,7 @@ pub fn Button(props: ButtonProps) -> Element {
     // Keep variants flat — tokens already carry light/dark.
     let variant_classes = match props.variant {
         ButtonVariant::Primary => {
-            "border border-border bg-primary text-white font-semibold shadow-xs hover:bg-primary-hover"
+            "border border-accent bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2"
         }
         ButtonVariant::Secondary => {
             "border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg"
@@ -81,7 +81,7 @@ pub fn Button(props: ButtonProps) -> Element {
             "border border-danger/35 bg-danger/10 text-danger font-semibold hover:bg-danger/15"
         }
         ButtonVariant::Accent => {
-            "border border-border bg-primary text-white font-semibold shadow-xs ring-2 ring-accent/30 hover:bg-primary-hover"
+            "border border-accent bg-accent text-bg font-semibold shadow-xs ring-2 ring-accent/30 hover:bg-accent-2"
         }
     };
 

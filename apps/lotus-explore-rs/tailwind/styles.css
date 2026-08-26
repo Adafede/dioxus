@@ -447,10 +447,10 @@ a:hover {
 
 .search-panel {
     align-self: stretch;
-    padding: 10px 16px;
+    padding: 8px 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     background: var(--panel-bg);
     border-top: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
     flex: 0 0 auto;
@@ -463,7 +463,7 @@ a:hover {
 .search-panel-body {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 /* Show/hide filters control: mobile only */
@@ -485,7 +485,7 @@ a:hover {
    ======================================== */
 
 .page-header {
-    padding: 8px 22px 6px;
+    padding: 6px 22px 4px;
     border-bottom: 1px solid var(--panel-border);
     background: color-mix(in srgb, var(--panel-bg-soft) 92%, var(--surface));
     box-shadow: 0 1px 0 rgb(15 23 42 / 4%);
@@ -495,7 +495,7 @@ a:hover {
     z-index: 3;
     will-change: transform;
     transform: translatez(0);
-    min-height: 64px;
+    min-height: 52px;
 }
 
 .page-title {
@@ -557,29 +557,45 @@ a:hover {
 
 .th-static,
 .sort-th {
-    padding: 11px 14px;
-    font-size: var(--fs-label);
-    font-weight: 700;
-    color: var(--text3);
-    letter-spacing: 0.04em;
+    padding: 12px;
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
     white-space: normal;
     text-align: left;
+    border-bottom: 1px solid var(--panel-border);
 }
 
 .data-row td {
-    padding: 10px 14px;
+    padding: 12px;
     vertical-align: middle;
     word-break: break-word;
-    color: var(--text2);
+    color: var(--text);
+    border-bottom: 1px solid var(--panel-border);
     transition: background-color 0.14s ease;
 }
 
-.td-compound,
-.td-taxon,
+.td-compound {
+    width: auto;
+    min-width: 180px;
+    padding: 8px 12px;
+    border-left: 4px solid var(--footer-wd-compound);
+}
+
+.td-taxon {
+    width: auto;
+    min-width: 180px;
+    padding: 8px 12px;
+    border-left: 4px solid var(--footer-wd-taxon);
+}
+
 .td-ref {
     width: auto;
     min-width: 180px;
     padding: 8px 12px;
+    border-left: 4px solid var(--footer-wd-reference);
 }
 
 .td-depict {
@@ -1016,7 +1032,7 @@ a:hover {
     background: var(--panel-bg);
     border-top: 1px solid var(--border);
     margin-top: auto;
-    padding: 10px 28px 12px;
+    padding: 6px 20px 10px;
 }
 
 .footer-line {
@@ -1203,18 +1219,6 @@ a:hover {
 .curation-grid {
     display: grid;
     gap: 14px;
-}
-
-.results-table tbody tr:nth-child(odd) td {
-    background: color-mix(in srgb, var(--surface) 96%, transparent);
-}
-
-.results-table tbody tr:nth-child(even) td {
-    background: color-mix(in srgb, var(--surface) 90%, transparent);
-}
-
-.results-table tbody tr:hover td {
-    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
 
 .results-table .td-compound .primary-link,

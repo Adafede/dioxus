@@ -40,9 +40,9 @@ fn SortableColumnHeader(
     let label_text = t(locale, header.label);
     let sort_aria = aria_sort_toggle(locale, label_text, header.next_descending);
     let stripe = match header.col {
-        SortColumn::Name => "border-l-4 border-l-wd-compound bg-stat-compound",
-        SortColumn::TaxonName => "border-l-4 border-l-wd-taxon bg-stat-taxon",
-        SortColumn::RefTitle => "border-l-4 border-l-wd-reference bg-stat-reference",
+        SortColumn::Name => "border-l-4 border-l-wd-compound border-solid bg-stat-compound",
+        SortColumn::TaxonName => "border-l-4 border-l-wd-taxon border-solid bg-stat-taxon",
+        SortColumn::RefTitle => "border-l-4 border-l-wd-reference border-solid bg-stat-reference",
         _ => "",
     };
 

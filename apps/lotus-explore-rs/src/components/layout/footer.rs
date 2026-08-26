@@ -16,7 +16,6 @@ pub fn Footer() -> Element {
                 FooterRow {
                     label: t(locale, TextKey::FooterArchive),
                     label_class: "text-wd-compound",
-                    color_class: "text-wd-compound",
                     links: &[("https://doi.org/10.5281/zenodo.5794106", "LOTUS Frozen")],
                 }
                 FooterCitationRow { locale }
@@ -25,8 +24,7 @@ pub fn Footer() -> Element {
                 class: "footer-line",
                 FooterRow {
                     label: t(locale, TextKey::FooterCode),
-                    label_class: "text-wd-taxon bg-stat-taxon border-l-4 border-l-wd-taxon",
-                    color_class: "text-wd-taxon",
+                    label_class: "text-wd-taxon",
                     links: &[
                         (
                             "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explore-rs",
@@ -37,7 +35,6 @@ pub fn Footer() -> Element {
                 FooterRow {
                     label: t(locale, TextKey::FooterData),
                     label_class: "text-wd-taxon",
-                    color_class: "text-wd-taxon",
                     links: &[
                         ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
                         ("https://www.wikidata.org/", "Wikidata"),
@@ -49,7 +46,6 @@ pub fn Footer() -> Element {
                 FooterRow {
                     label: t(locale, TextKey::FooterPrograms),
                     label_class: "text-wd-reference",
-                    color_class: "text-wd-reference",
                     links: &[
                         ("https://github.com/cdk/depict", "CDK Depict"),
                         ("https://citation.js.org", "Citation.js"),
@@ -79,7 +75,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
                 role: "list",
                 li {
                     a {
-                        class: "footer-link text-wd-compound hover:underline font-medium",
+                        class: "footer-link hover:underline font-medium",
                         href: "https://doi.org/10.7554/eLife.70780",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -88,7 +84,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
                 }
                 li {
                     a {
-                        class: "footer-link text-wd-compound hover:underline font-medium",
+                        class: "footer-link hover:underline font-medium",
                         href: "/docs/references.bib",
                         download: "references.bib",
                         "BibTeX"
@@ -113,7 +109,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                 role: "list",
                 li {
                     a {
-                        class: "footer-link text-wd-entries hover:underline font-medium",
+                        class: "footer-link hover:underline font-medium",
                         href: "https://creativecommons.org/publicdomain/zero/1.0/",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -126,7 +122,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                 }
                 li {
                     a {
-                        class: "footer-link text-wd-entries hover:underline font-medium",
+                        class: "footer-link hover:underline font-medium",
                         href: "https://www.gnu.org/licenses/agpl-3.0.html",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -146,7 +142,6 @@ fn FooterLicenseRow(locale: Locale) -> Element {
 fn FooterRow(
     label: &'static str,
     label_class: &'static str,
-    color_class: &'static str,
     links: &'static [(&'static str, &'static str)],
 ) -> Element {
     rsx! {
@@ -163,7 +158,7 @@ fn FooterRow(
                     li {
                         key: "{href}",
                         a {
-                            class: "footer-link {color_class} hover:underline font-medium",
+                            class: "footer-link hover:underline font-medium",
                             href: "{href}",
                             target: "_blank",
                             rel: "noopener noreferrer",

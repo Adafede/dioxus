@@ -23,7 +23,7 @@ pub const INPUT_SM: &str = "w-full rounded-sm border border-border bg-surface px
 
 /// Search / form section card.
 pub const SECTION: &str =
-    "flex flex-col gap-2 rounded-lg border border-border bg-panel p-2 shadow-xs";
+    "flex flex-col gap-1.5 rounded-lg border border-border bg-panel p-1.5 shadow-xs";
 
 /// Generic surface card.
 pub const CARD: &str = "rounded-lg border border-panel-border bg-surface shadow-xs";

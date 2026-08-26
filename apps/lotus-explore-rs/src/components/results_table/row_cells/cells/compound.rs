@@ -20,7 +20,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
     compound_qid: &str,
 ) -> Element {
     rsx! {
-            td { class: "td-compound border-l-[3px] border-l-wd-compound",
+            td { class: "td-compound",
                 div { class: "cell-primary",
                     a {
                         href: "https://www.wikidata.org/entity/{compound_qid}",

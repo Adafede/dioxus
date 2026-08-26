@@ -43,7 +43,7 @@ pub(super) fn VirtualizedResultsTable(
             role: "region",
             tabindex: "0",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                class: "max-h-[min(72vh,980px)] overflow-auto rounded-xl border border-panel-border bg-surface shadow-xs",
+                class: "max-h-[min(72vh,980px)] overflow-auto rounded-xl border border-panel-border bg-panel-soft shadow-xs",
                 onscroll: on_scroll,
                 table {
                     aria_label: "{t(locale, TextKey::TableTriplesAria)}",

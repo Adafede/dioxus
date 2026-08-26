@@ -21,7 +21,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
     statement_id: Option<&str>,
 ) -> Element {
     rsx! {
-        td { class: "td-ref border-l-[3px] border-l-wd-reference",
+        td { class: "td-ref",
             div { class: "cell-primary",
                 if let Some(full_title) = entry.ref_title.as_deref()
                 {
