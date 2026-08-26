@@ -120,8 +120,8 @@ fn DownloadStatusSpinner(
         span {
             role: "status",
             aria_live: "polite",
-            style: crate::ui::style_constants::buttons::button_transparent_style(),
-            span { style: crate::ui::style_constants::downloads::spinner_sm_style(), "aria-hidden": "true" }
+            class: "inline-flex items-center gap-2 rounded-lotus-sm border border-border px-3 py-1.5 text-ui font-semibold text-muted",
+            span { class: "spinner-sm", "aria-hidden": "true" }
             {text}
         }
     }
@@ -149,7 +149,7 @@ fn DownloadQueryButton(
         button {
             r#type: "button",
             disabled,
-            style: crate::ui::style_constants::downloads::button_small_style(),
+            class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs hover:bg-bg disabled:cursor-not-allowed disabled:opacity-60",
             onclick: {
                 let q = sparql_query.clone();
                 let fname = filename.clone();
@@ -193,7 +193,7 @@ fn DownloadMetadataButton(
         button {
             r#type: "button",
             disabled,
-            style: crate::ui::style_constants::downloads::button_small_style(),
+            class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs hover:bg-bg disabled:cursor-not-allowed disabled:opacity-60",
             onclick: {
                 let body = metadata_json.clone();
                 let filename = toolbar_model.read().metadata_filename.clone();
@@ -248,7 +248,7 @@ pub fn DownloadActionsGroup() -> Element {
     drop(snapshot);
 
     rsx! {
-        div { style: crate::ui::style_constants::downloads::toolbar_actions_style(),
+        div { class: "flex flex-wrap items-center gap-2",
             if *download_busy.read() {
                 DownloadStatusSpinner {
                     download_status,
@@ -259,7 +259,7 @@ pub fn DownloadActionsGroup() -> Element {
                 div {
                     role: "group",
                     aria_label: "{download_results_label}",
-                    style: crate::ui::style_constants::downloads::dl_group_style(),
+                    class: "flex flex-wrap items-center gap-2",
                     if let Some(query) = sparql_query_value.as_ref() {
                         DownloadQueryButton {
                             spec: DOWNLOAD_QUERY_CSV_SPEC,
@@ -309,7 +309,7 @@ pub fn DownloadActionsGroup() -> Element {
                             target: "_blank",
                             rel: "noopener noreferrer",
                             role: "button",
-                            style: crate::ui::style_constants::downloads::button_small_style(),
+                            class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs hover:bg-bg disabled:cursor-not-allowed disabled:opacity-60",
                             title: "{open_in_title} ({endpoint_name})",
                             aria_label: "{open_in_title} ({endpoint_name})",
                             "Open in {endpoint_name}"

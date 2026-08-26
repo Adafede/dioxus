@@ -10,8 +10,6 @@ use crate::components::results_table::row_cells::row_text::RowText;
 use crate::i18n::{Locale, aria_wikidata_entity, aria_wikidata_statement};
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
-use ui::prelude::*;
-use ui::styles::lotus::tokens::FOOTER_WD_REFERENCE;
 
 pub(in crate::components::results_table::row_cells) fn reference_cell(
     locale: Locale,
@@ -23,15 +21,15 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
     statement_id: Option<&str>,
 ) -> Element {
     rsx! {
-    td { style: crate::ui::style_constants::table_cells::reference_cell_style(),
-        div { style: cell_primary_style(),
+        td { class: "td-ref",
+            div { class: "cell-primary",
                 if let Some(full_title) = entry.ref_title.as_deref()
                 {
                     a {
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                    style: crate::ui::style_constants::table_cells::primary_link_style(),
+                        class: "primary-link",
                         title: "{full_title}",
                         "{full_title}"
                     }
@@ -40,17 +38,17 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                    style: crate::ui::style_constants::table_cells::primary_link_style(),
+                        class: "primary-link",
                         "{reference_qid}"
                     }
                 }
             }
-        div { style: crate::ui::style_constants::table_cells::badge_row_style(),
+            div { class: "badge-row",
                 a {
                     href: "https://www.wikidata.org/entity/{reference_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                style: id_badge_style("transparent", FOOTER_WD_REFERENCE, FOOTER_WD_REFERENCE),
+                    class: "id-badge",
                     title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, reference_qid)}",
                     "{reference_qid}"
@@ -60,7 +58,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://doi.org/{d}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                    style: id_badge_style("transparent", FOOTER_WD_REFERENCE, FOOTER_WD_REFERENCE),
+                        class: "id-badge",
                         title: "{text.open_doi}",
                         aria_label: "{text.open_doi}",
                         "DOI"
@@ -71,7 +69,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/statement/{stmt}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        style: id_badge_style("transparent", FOOTER_WD_REFERENCE, FOOTER_WD_REFERENCE),
+                        class: "id-badge",
                         title: "{stmt}",
                         aria_label: "{aria_wikidata_statement(locale, stmt)}",
                         "{text.statement}"
@@ -80,31 +78,4 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
             }
         }
     }
-}
-fn cell_primary_style() -> String {
-    StyleBuilder::new().font_weight("500").build()
-}
-fn id_badge_style(_bg: &str, fg: &str, border: &str) -> String {
-    StyleBuilder::new()
-        .display("inline-block")
-        .font_size(FS_MICRO)
-        .padding("1px 5px")
-        .border_radius("3px")
-        .font_weight("600")
-        .text_decoration("none")
-        .property("line-height", "1.5")
-        .border("1px solid transparent")
-        .font_family(FONT_MONO)
-        .property("max-width", "100%")
-        .property("white-space", "normal")
-        .property("overflow-wrap", "anywhere")
-        .property(
-            "transition",
-            "transform .12s ease, box-shadow .12s ease, filter .12s ease",
-        )
-        .background_color("transparent")
-        .color(fg)
-        .border("1px solid")
-        .property("border-color", border)
-        .build()
 }

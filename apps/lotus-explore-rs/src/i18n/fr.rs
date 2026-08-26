@@ -20,6 +20,7 @@ pub const fn fr_t(key: TextKey) -> &'static str {
         TextKey::PageTitle => "Explorateur LOTUS de données ouvertes liées",
         TextKey::DarkModeToggle => "Basculer thème clair/sombre",
         TextKey::GoToHomepage => "Aller à la page d'accueil",
+        TextKey::SkipToResults => "Passer aux résultats",
         TextKey::PageSubtitle => {
             "Explorez des données ouvertes liées : produits naturels, organismes et littérature scientifique."
         }
@@ -54,7 +55,6 @@ pub const fn fr_t(key: TextKey) -> &'static str {
             "Échec de lecture de la réponse. Réessayez ou affinez la requête."
         }
         TextKey::ErrorHintUnknown => "Erreur inattendue. Réessayer peut aider.",
-        TextKey::SkipToResults => "Aller aux résultats",
         TextKey::WelcomeLeadA => {
             "Cette application démontre la puissance des données ouvertes liées en connectant les produits naturels aux organismes et à la littérature scientifique. "
         }

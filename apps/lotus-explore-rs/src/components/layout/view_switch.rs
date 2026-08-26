@@ -13,11 +13,9 @@ use crate::i18n::{
 };
 use crate::state::{use_app_selector, use_app_state_context};
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::prelude::{SegmentedControl, SegmentedControlItem};
 
 /// Three-button view switcher.
-///
-/// Zero props — reads and mutates `AppStateContext` directly.
 #[component]
 pub fn ViewSwitch() -> Element {
     let ctx = use_app_state_context();
@@ -26,12 +24,10 @@ pub fn ViewSwitch() -> Element {
     let current_view = *use_app_selector(app_state, |state| state.view).read();
 
     rsx! {
-        nav { class: "view-switch", aria_label: "{view_switch_aria(locale)}",
+        nav { class: "view-switch flex items-center", aria_label: "{view_switch_aria(locale)}",
             SegmentedControl {
                 aria_label: view_switch_aria(locale).to_string(),
                 selected_value: view_key(current_view).to_string(),
-                stretch: false,
-                wrap: false,
                 active_aria_current: "page",
                 items: vec![
                     SegmentedControlItem {

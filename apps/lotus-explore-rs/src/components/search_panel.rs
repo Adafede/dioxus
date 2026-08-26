@@ -2,20 +2,6 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Search panel and its subsection components.
-//!
-//! # Architecture
-//!
-//! `SearchPanel` is now extremely thin — it owns only two concerns:
-//! * Presenting the search button (loading state + dirty indicator).
-//! * Delegating form sections to context-aware subcomponents.
-//!
-//! Every form section (`TaxonInput`, `StructureSection`, `MassRangeInput`,
-//! `YearRangeInput`, `FormulaSection`) reads and writes `FormCriteriaContext`
-//! directly.  Search execution is invoked via `ExploreInteractions` context,
-//! including Enter-key submission from `TaxonInput`.
-//!
-//! **Props eliminated vs original:** 38 (18 values + 18 callbacks for formula,
-//! plus value + on_input for taxon, plus 4 for mass, plus 4 for year).
 
 pub use crate::components::form_sections::{
     FormulaSection, MassRangeInput, TaxonInput, YearRangeInput,
@@ -32,18 +18,16 @@ use crate::models::*;
 use crate::queries::classify_structure;
 use crate::state::{use_form_criteria_context, use_results_context};
 use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
-use crate::ui::style_constants;
+use crate::ui::classes;
 use dioxus::prelude::*;
-use ui::prelude::*;
+
 pub fn SearchPanel() -> Element {
     let state = use_results_context();
     let form_ctx = use_form_criteria_context();
     let interactions = use_explore_interactions();
     let locale = crate::hooks::use_locale();
 
-    // Loading flag subscribed via selector so result churn does not rerender the sidebar.
     let loading = *use_lifecycle_selector(state.explore, |lifecycle| lifecycle.loading).read();
-    // Dirty flag: show affordance when form changed since last search.
     let is_dirty = form_ctx.is_dirty();
     let form_search = interactions.clone();
     let button_search = interactions.clone();
@@ -54,7 +38,6 @@ pub fn SearchPanel() -> Element {
         form {
             id: "lotus-search-form",
             class: "search-panel",
-            style: crate::ui::style_constants::panels::search_panel_style(),
             aria_label: "{t(locale, TextKey::SearchFilters)}",
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             "data-webmcp-id": "lotus-search-form",
@@ -74,7 +57,6 @@ pub fn SearchPanel() -> Element {
             h2 { id: SEARCH_PANEL_HEADING_ID, class: "sr-only", "{t(locale, TextKey::SearchFilters)}" }
 
             div { id: SEARCH_PANEL_BODY_ID, class: "search-panel-body",
-                // All sections are zero-prop — they read FormCriteriaContext.
                 TaxonInput {}
                 StructureSection {}
                 MassRangeInput {}
@@ -82,25 +64,15 @@ pub fn SearchPanel() -> Element {
                 FormulaSection {}
             }
 
-            if loading {
-                button {
-                    r#type: "submit",
-                    disabled: true,
-                    aria_label: "{t(locale, TextKey::RunSearch)}",
-                    style: style_constants::search_buttons::search_button_state(is_dirty),
-                    span { class: "spinner-sm", "aria-hidden": "true" }
-                    "{t(locale, TextKey::Searching)}"
-                }
-            } else {
-                SearchButton { on_click: move |_| button_search.search() }
+            SearchButton {
+                loading,
+                is_dirty,
+                on_click: move |_| button_search.search(),
             }
         }
     }
 }
 
-// ── Structure section: SMILES + Molfile V2000/V3000 + Ketcher ────────────────
-
-/// Structure input reads criteria from `FormCriteriaContext` — no props needed.
 #[component]
 fn StructureSection() -> Element {
     let locale = crate::hooks::use_locale();
@@ -115,15 +87,15 @@ fn StructureSection() -> Element {
     });
     let (smiles, smiles_search_type, smiles_threshold) = structure_fields.read().clone();
     let smiles_for_kind = smiles.clone();
-    // Memoised classifier: `classify_structure` uppercases the entire Molfile
-    // on every call.  Recompute only when the SMILES text changes.
     let kind = use_memo(move || classify_structure(&smiles_for_kind));
     let kind_value = *kind.read();
     let view_model = structure_model::build_structure_section_model(kind_value, smiles_search_type);
 
     rsx! {
-        div { style: structure_section_style(),
-            label { style: crate::ui::style_constants::forms::label_base_style(), r#for: "smiles-input",
+        div { class: "{classes::SECTION}",
+            label {
+                class: "{classes::LABEL}",
+                r#for: "smiles-input",
                 "{t(locale, TextKey::StructureSmilesOrMol)}"
             }
             textarea {
@@ -134,21 +106,25 @@ fn StructureSection() -> Element {
                 value: "{smiles}",
                 oninput: move |e| ctx.update(FormAction::Smiles(e.value())),
                 rows: "2",
-                style: crate::ui::style_constants::search_controls::textarea_base_style(),
+                class: "min-h-[4.5rem] resize-y font-mono {classes::INPUT}",
             }
             if let Some(note_key) = view_model.note_key {
-                p { style: crate::ui::style_constants::forms::hint_text_style(),
-                    span { style: style_constants::search_controls::kind_pill_style(view_model.kind_class), "{kind_value.label()}" }
+                p { class: "flex flex-wrap items-center gap-2 {classes::HINT}",
+                    span {
+                        class: "rounded-lotus-sm bg-accent/10 px-1.5 py-0.5 font-semibold text-accent",
+                        "{kind_value.label()}"
+                    }
                     span { "{t(locale, note_key)}" }
                 }
             }
 
-            fieldset { style: crate::ui::style_constants::search_controls::radio_group_style(),
-                legend { style: crate::ui::style_constants::utilities::sr_only_style(), "{t(locale, TextKey::StructureSearchMode)}" }
-                label { style: crate::ui::style_constants::search_controls::radio_label_style(),
+            fieldset { class: "m-0 flex flex-wrap gap-3 border-0 p-0",
+                legend { class: "sr-only", "{t(locale, TextKey::StructureSearchMode)}" }
+                label { class: "inline-flex items-center gap-1.5 text-ui text-muted",
                     input {
                         r#type: "radio",
                         name: "stype",
+                        class: "accent-accent",
                         checked: smiles_search_type == SmilesSearchType::Substructure,
                         onchange: move |_| {
                             ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Substructure))
@@ -156,10 +132,11 @@ fn StructureSection() -> Element {
                     }
                     "{t(locale, TextKey::Substructure)}"
                 }
-                label { style: crate::ui::style_constants::search_controls::radio_label_style(),
+                label { class: "inline-flex items-center gap-1.5 text-ui text-muted",
                     input {
                         r#type: "radio",
                         name: "stype",
+                        class: "accent-accent",
                         checked: smiles_search_type == SmilesSearchType::Similarity,
                         onchange: move |_| {
                             ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Similarity))
@@ -169,8 +146,10 @@ fn StructureSection() -> Element {
                 }
             }
             if view_model.show_similarity_threshold {
-                div { style: crate::ui::style_constants::search_controls::threshold_section_style(),
-                    label { style: crate::ui::style_constants::forms::label_small_style(), r#for: "threshold-input",
+                div { class: "flex flex-col gap-1",
+                    label {
+                        class: "{classes::MICRO_LABEL}",
+                        r#for: "threshold-input",
                         "{threshold_label(locale, smiles_threshold)}"
                     }
                     input {
@@ -183,27 +162,15 @@ fn StructureSection() -> Element {
                         aria_valuemin: "0",
                         aria_valuemax: "1",
                         aria_valuenow: "{smiles_threshold}",
+                        class: "w-full accent-accent cursor-pointer",
                         oninput: move |e| {
                             if let Ok(v) = e.value().parse::<f64>() {
                                 ctx.update(FormAction::SmilesThreshold(v));
                             }
                         },
-                        style: crate::ui::style_constants::search_controls::range_input_style(),
                     }
                 }
             }
         }
     }
-}
-
-fn structure_section_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("5px")
-        .padding("10px 12px")
-        .border(BORDER_PANEL)
-        .border_radius("12px")
-        .background_color("transparent")
-        .build()
 }

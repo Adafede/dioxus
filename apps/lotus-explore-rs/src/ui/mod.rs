@@ -4,17 +4,42 @@
 //! UI composition primitives used by live components.
 //!
 //! ## Style Organization
-//! - `style_constants` - Legacy module, kept for backward compatibility
 //! - `layout_styles` - Lotus-specific layout, headers, tables, stats, queries
 //! - `table_styles` - Lotus-specific table cell and row formatting
 //! - `search_controls` - Lotus-specific search form controls
 
 pub mod a11y_contract;
 mod a11y_smoke;
+pub mod classes;
 pub mod layout_styles;
 pub mod search_controls;
 pub mod style_constants;
 pub mod table_styles;
+
+/// Type-safe stat stripe colors (instead of string parameters).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StatStripe {
+    /// Compound statistic stripe color
+    Compound,
+    /// Taxon statistic stripe color
+    Taxon,
+    /// Reference statistic stripe color
+    Reference,
+    /// Entries statistic stripe color
+    Entries,
+}
+
+impl StatStripe {
+    /// Get the CSS color variable for this stripe.
+    pub const fn as_color(&self) -> &'static str {
+        match self {
+            Self::Compound => ui::styles::lotus::tokens::FOOTER_WD_COMPOUND,
+            Self::Taxon => ui::styles::lotus::tokens::FOOTER_WD_TAXON,
+            Self::Reference => ui::styles::lotus::tokens::FOOTER_WD_REFERENCE,
+            Self::Entries => ui::styles::lotus::tokens::FOOTER_WD_ENTRIES,
+        }
+    }
+}
 
 /// A content-phase enumeration for better state-driven UI rendering.
 ///

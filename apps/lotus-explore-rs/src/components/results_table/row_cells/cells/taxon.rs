@@ -15,24 +15,24 @@ pub(in crate::components::results_table::row_cells) fn taxon_cell(
     taxon_qid: &str,
 ) -> Element {
     rsx! {
-        td { style: crate::ui::style_constants::table_cells::taxon_cell_style(),
-            div { style: crate::ui::style_constants::table_cells::cell_primary_style(),
+        td { class: "td-taxon",
+            div { class: "cell-primary",
                 a {
                     href: "https://www.wikidata.org/entity/{taxon_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    style: crate::ui::style_constants::table_cells::primary_link_style(),
+                    class: "primary-link",
                     "{entry.taxon_name}"
                 }
             }
-            div { style: crate::ui::style_constants::table_cells::badge_row_style(),
+            div { class: "badge-row",
                 a {
                     href: "https://www.wikidata.org/entity/{taxon_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
                     title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, taxon_qid)}",
-                    style: crate::ui::style_constants::table_cells::id_badge_style(),
+                    class: "id-badge",
                     "{taxon_qid}"
                 }
             }

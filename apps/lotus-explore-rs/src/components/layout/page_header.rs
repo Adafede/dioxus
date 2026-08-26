@@ -11,7 +11,6 @@ use crate::components::layout::view_switch::ViewSwitch;
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use crate::ui::a11y_contract::PAGE_TITLE_ID;
-use crate::ui::style_constants::header;
 use dioxus::prelude::*;
 
 /// Full page header section.
@@ -24,32 +23,43 @@ pub fn PageHeader() -> Element {
     let locale = use_locale();
 
     rsx! {
-        header { style: header::page_header_style(),
-            div { style: header::page_brand_style(),
-                h1 { id: PAGE_TITLE_ID, style: header::page_title_style(),
+        header {
+            class: "page-header",
+            div {
+                class: "page-brand",
+                h1 { id: PAGE_TITLE_ID,
+                    class: "page-title-text",
                     a {
-                        href: "?",
+                        href: "/",
                         class: "page-title-link page-home-link",
                         aria_label: "{t(locale, TextKey::GoToHomepage)}",
-                        style: header::page_title_link_style(),
-                        span { style: header::page_title_text_style(), "{t(locale, TextKey::PageTitle)}" }
+                        span {
+                            class: "page-title",
+                            "{t(locale, TextKey::PageTitle)}"
+                        }
                     }
                 }
-                div { class: "header-controls",
+                div {
+                    class: "header-controls",
                     LangSwitch {}
                     DarkModeToggle {}
                 }
             }
             ViewSwitch {}
-            p { style: header::page_subtitle_style(),
+            p {
+                class: "page-subtitle",
                 "{t(locale, TextKey::PageSubtitle)}"
-                span { style: header::page_archive_note_style(),
-                    span { style: header::page_archive_label_style(), "{t(locale, TextKey::ArchiveNotice)}" }
+                span {
+                    class: "page-archive-note",
+                    span {
+                        class: "page-archive-label",
+                        "{t(locale, TextKey::ArchiveNotice)}"
+                    }
                     a {
                         href: "https://doi.org/10.5281/zenodo.5794106",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        style: header::page_archive_link_style(),
+                        class: "page-archive-link",
                         "10.5281/zenodo.5794106"
                     }
                 }

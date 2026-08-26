@@ -4,10 +4,9 @@
 use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::DatasetStats;
-use crate::state::{use_app_state_context, use_results_context};
-use crate::ui::style_constants::{self, StatStripe};
+use crate::state::use_results_context;
+use crate::ui::StatStripe;
 use dioxus::prelude::*;
-use ui::prelude::*;
 
 #[component]
 fn StatBadge(
@@ -33,17 +32,33 @@ fn StatBadge(
             },
         )
     });
+    let (bg, border) = match stripe {
+        StatStripe::Compound => ("bg-stat-compound", "border-stat-compound-border"),
+        StatStripe::Taxon => ("bg-stat-taxon", "border-stat-taxon-border"),
+        StatStripe::Reference => ("bg-stat-reference", "border-stat-reference-border"),
+        StatStripe::Entries => ("bg-stat-total", "border-stat-total-border"),
+    };
     rsx! {
-        div { style: style_constants::stats::stat_badge_style(stripe),
-            div { style: style_constants::stats::stat_value_row_style(),
-                span { style: style_constants::stats::stat_value_style(), "{display_value}" }
+        div {
+            class: "relative flex min-w-[120px] flex-1 flex-col gap-1 overflow-hidden rounded-xl border p-2.5 shadow-xs {bg} {border}",
+            style: "border-left: 4px solid {stripe.as_color()}",
+            div {
+                class: "flex items-baseline gap-1.5",
+                span {
+                    class: "text-stat font-bold leading-tight text-text tabular-nums",
+                    "{display_value}"
+                }
                 if let Some(secondary_text) = secondary_inline.as_ref() {
-                    span { style: style_constants::stats::stat_secondary_style(),
+                    span {
+                        class: "text-[11px] font-medium text-subtle",
                         "{secondary_text}"
                     }
                 }
             }
-            span { style: style_constants::stats::stat_label_style(), "{label}" }
+            span {
+                class: "truncate text-[11px] font-semibold uppercase tracking-wider text-subtle",
+                "{label}"
+            }
         }
     }
 }
@@ -70,9 +85,9 @@ pub fn StatBar() -> Element {
 
     rsx! {
         div {
+            class: "stat-bar grid w-full grid-cols-2 gap-2.5 sm:grid-cols-4",
             role: "group",
             aria_label: "{t(locale, TextKey::DatasetStatistics)}",
-            style: crate::ui::style_constants::stats::stat_bar_style(),
             StatBadge {
                 value: entries_value,
                 secondary_value: (entries_unique_value != entries_value).then_some(entries_unique_value),
@@ -112,20 +127,17 @@ pub fn StatBar() -> Element {
 #[component]
 pub fn CappedRowsNotice() -> Element {
     let locale = crate::hooks::use_locale();
-    let dark_mode = use_app_state_context().state.read().dark_mode;
     let explore = use_results_context().explore;
     let toolbar_snapshot = use_toolbar_result_snapshot(explore);
 
     rsx! {
         if toolbar_snapshot.read().display_capped_rows {
-            NoticeBar {
-                label: t(locale, TextKey::Notice).to_string(),
-                tone: NoticeTone::Warning,
+            div {
+                class: "mt-2 flex items-center gap-2 rounded-lg border border-warning/35 bg-warning/10 p-2.5 text-ui font-medium text-warning",
                 role: "status",
                 aria_live: "polite",
-                dark: dark_mode,
-                margin: "10px 0 0",
-                span { style: crate::ui::style_constants::shared::notice_value_style(), "{t(locale, TextKey::DisplayCappedHint)}" }
+                span { class: "text-sm font-bold", "⚠️" }
+                span { "{t(locale, TextKey::DisplayCappedHint)}" }
             }
         }
     }

@@ -20,6 +20,7 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::PageTitle => "Esploratore LOTUS di dati aperti collegati",
         TextKey::DarkModeToggle => "Attiva/disattiva tema chiaro/scuro",
         TextKey::GoToHomepage => "Vai alla home page",
+        TextKey::SkipToResults => "Salta ai risultati",
         TextKey::PageSubtitle => {
             "Esplora dati aperti collegati: prodotti naturali, organismi e letteratura scientifica."
         }
@@ -56,7 +57,6 @@ pub const fn it_t(key: TextKey) -> &'static str {
             "Impossibile interpretare la risposta. Riprova o affina la query."
         }
         TextKey::ErrorHintUnknown => "Errore inatteso. Riprova.",
-        TextKey::SkipToResults => "Vai ai risultati",
         TextKey::WelcomeLeadA => {
             "Questa applicazione dimostra la potenza dei dati aperti collegati collegando i prodotti naturali agli organismi e alla letteratura scientifica. "
         }

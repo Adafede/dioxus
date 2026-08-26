@@ -15,4 +15,3 @@ pub mod draw_page;
 pub mod ketcher_panel;
 
 pub use draw_page::DrawPage;
-pub use ketcher_panel::KetcherPanel;

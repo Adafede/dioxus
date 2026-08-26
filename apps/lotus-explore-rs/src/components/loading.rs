@@ -8,13 +8,14 @@
 //! the component that subscribes to `query_phase`, not the entire
 //! `ResultsViewport` tree.
 
+use crate::components::ui::{Button, ButtonSize, ButtonVariant};
 use crate::features::explore::interactions::use_explore_interactions;
 use crate::features::explore::selectors::use_lifecycle_selector;
 use crate::features::explore::types::QueryPhase;
 use crate::i18n::{Locale, TextKey, t};
 use crate::state::use_results_context;
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::prelude::{NoticeBar, NoticeTone};
 
 /// Spinner overlay shown while a query is in-flight.
 ///
@@ -30,10 +31,10 @@ pub fn LoadingState() -> Element {
             role: "status",
             aria_live: "polite",
             aria_busy: "true",
-            style: loading_state_style(),
-            div { style: spinner_lg_style(), "aria-hidden": "true" }
-            p { "{query_phase_text(locale, query_phase)}" }
-            p { style: hint_style(), "{t(locale, TextKey::LoadingHint)}" }
+            class: "flex flex-col items-center justify-center gap-3 p-12 text-center text-muted",
+            div { class: "spinner-lg", "aria-hidden": "true" }
+            p { class: "text-body text-text", "{query_phase_text(locale, query_phase)}" }
+            p { class: "text-ui text-subtle", "{t(locale, TextKey::LoadingHint)}" }
         }
     }
 }
@@ -47,10 +48,10 @@ pub fn DownloadDispatchState() -> Element {
             role: "status",
             aria_live: "polite",
             aria_busy: "true",
-            style: loading_state_style(),
-            div { style: spinner_lg_style(), "aria-hidden": "true" }
-            p { "{t(locale, TextKey::PreparingDownload)}" }
-            p { style: hint_style(), "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
+            class: "flex flex-col items-center justify-center gap-3 p-12 text-center text-muted",
+            div { class: "spinner-lg", "aria-hidden": "true" }
+            p { class: "text-body text-text", "{t(locale, TextKey::PreparingDownload)}" }
+            p { class: "text-ui text-subtle", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
         }
     }
 }
@@ -67,12 +68,13 @@ pub fn DownloadOnlyState() -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            span { style: crate::ui::style_constants::shared::notice_value_style(), "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
-            button {
+            span { class: "notice-value flex-1 text-ui text-muted", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
+            Button {
                 r#type: "button",
-                style: crate::ui::style_constants::buttons::button_base_style(),
+                variant: ButtonVariant::Secondary,
+                size: ButtonSize::Sm,
+                label: t(locale, TextKey::RunSearch).to_string(),
                 onclick: move |_| interactions.preview(),
-                "{t(locale, TextKey::RunSearch)}"
             }
         }
     }
@@ -92,33 +94,6 @@ pub fn query_phase_text(locale: Locale, phase: QueryPhase) -> &'static str {
     }
 }
 
-fn spinner_lg_style() -> String {
-    StyleBuilder::new()
-        .property("width", "40px")
-        .property("height", "40px")
-        .border(BORDER_THICK)
-        .property("border-top-color", ACCENT)
-        .border_radius("50%")
-        .property("animation", "spin .8s linear infinite")
-        .build()
-}
-
-fn hint_style() -> String {
-    StyleBuilder::new().font_size(FS_0).color(TEXT3).build()
-}
-
-fn loading_state_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .align_items("center")
-        .justify_content("center")
-        .gap("14px")
-        .padding("48px")
-        .color(TEXT2)
-        .property("flex", "1")
-        .build()
-}
 #[cfg(test)]
 mod tests {
     use super::*;

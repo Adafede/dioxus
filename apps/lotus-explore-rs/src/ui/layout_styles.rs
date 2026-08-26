@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+#![allow(dead_code, unused_imports)]
+
 //! Lotus-specific layout overrides and customizations.
 //! Styling for headers, search buttons, and query panels.
 

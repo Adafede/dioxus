@@ -6,7 +6,6 @@
 use crate::components::results_table::row_cells::row_text::RowText;
 use crate::i18n::{Locale, aria_chemical_structure};
 use dioxus::prelude::*;
-use ui::prelude::*;
 
 pub(in crate::components::results_table::row_cells) fn structure_cell(
     locale: Locale,
@@ -15,7 +14,7 @@ pub(in crate::components::results_table::row_cells) fn structure_cell(
     name: &str,
 ) -> Element {
     rsx! {
-        td { style: structure_cell_style(),
+        td { class: "td-depict px-3 py-2 align-middle",
             if let Some(url) = depict_url {
                 a {
                     href: "{url}",
@@ -28,38 +27,12 @@ pub(in crate::components::results_table::row_cells) fn structure_cell(
                         loading: "lazy",
                         width: "120",
                         height: "72",
-                        style: depict_img_style(),
+                        class: "depict-img block max-w-[108px] rounded-md bg-transparent object-contain",
                     }
                 }
             } else {
-                span { style: na_style(), "-" }
+                span { class: "text-subtle", "-" }
             }
         }
     }
-}
-
-fn na_style() -> String {
-    StyleBuilder::new().color(TEXT3).build()
-}
-
-fn structure_cell_style() -> String {
-    StyleBuilder::new()
-        .property("width", "auto")
-        .property("min-width", "0")
-        .padding("8px 12px")
-        .build()
-}
-
-fn depict_img_style() -> String {
-    StyleBuilder::new()
-        .property("display", "block")
-        .background_color("transparent")
-        .border("none")
-        .border_radius("6px")
-        .property("width", "min(100%, 108px)")
-        .property("max-width", "108px")
-        .property("height", "auto")
-        .property("object-fit", "contain")
-        .box_shadow("none")
-        .build()
 }

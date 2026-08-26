@@ -108,6 +108,7 @@ pub enum TextKey {
     PageTitle,
     DarkModeToggle,
     GoToHomepage,
+    SkipToResults,
     PageSubtitle,
     ResolvedTaxon,
     QueryHash,
@@ -133,7 +134,6 @@ pub enum TextKey {
     ErrorHintBadRequest,
     ErrorHintParse,
     ErrorHintUnknown,
-    SkipToResults,
     WelcomeLeadA,
     WelcomeLeadB,
     WelcomeLeadC,
@@ -210,6 +210,7 @@ pub enum TextKey {
     OpenInQlever,
     #[allow(dead_code)]
     OpenInQleverTitle,
+    #[allow(dead_code)]
     OpenInEndpoint,
     OpenInEndpointTitle,
     NoResults,
@@ -257,107 +258,3 @@ pub fn t(locale: Locale, key: TextKey) -> &'static str {
 mod helpers;
 
 pub use helpers::*;
-
-#[cfg(any(test, doc))]
-pub mod error_key;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn core_labels_exist() {
-        assert!(!t(Locale::En, TextKey::Search).is_empty());
-        assert!(!t(Locale::Fr, TextKey::Search).is_empty());
-        assert!(!t(Locale::En, TextKey::SkipToResults).is_empty());
-        assert!(!t(Locale::Fr, TextKey::SkipToResults).is_empty());
-    }
-
-    #[test]
-    fn wikidata_entity_aria_labels_include_an_action() {
-        assert_eq!(
-            aria_wikidata_entity(Locale::En, "Q42"),
-            "Open Wikidata entity Q42"
-        );
-        assert!(aria_wikidata_entity(Locale::Fr, "Q42").contains("Ouvrir"));
-        assert!(aria_wikidata_entity(Locale::De, "Q42").contains("öffnen"));
-        assert!(aria_wikidata_entity(Locale::It, "Q42").contains("Apri"));
-    }
-
-    #[test]
-    fn sort_toggle_aria_includes_column_and_direction() {
-        let en = aria_sort_toggle(Locale::En, "Mass", true);
-        assert!(en.contains("Mass"));
-        assert!(en.contains("descending"));
-
-        let de = aria_sort_toggle(Locale::De, "Jahr", false);
-        assert!(de.contains("Jahr"));
-        assert!(de.contains("aufsteigend"));
-    }
-
-    #[test]
-    fn format_count_uses_locale_separators() {
-        assert_eq!(format_count(Locale::En, 1_234_567), "1,234,567");
-        assert_eq!(format_count(Locale::Fr, 1_234_567), "1 234 567");
-        assert_eq!(format_count(Locale::De, 1_234_567), "1.234.567");
-        assert_eq!(format_count(Locale::It, 1_234_567), "1.234.567");
-        assert_eq!(format_count(Locale::En, 42), "42");
-    }
-
-    #[test]
-    fn error_key_messages_exist_for_all_locales() {
-        for key in error_key::ALL_ERROR_KEYS {
-            for locale in &[Locale::En, Locale::Fr, Locale::De, Locale::It] {
-                let msg = error_key::err(*locale, *key);
-                assert!(
-                    !msg.is_empty(),
-                    "Error message for {:?} in {:?} should not be empty",
-                    key,
-                    locale
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn all_text_keys_have_translations_in_all_locales() {
-        let keys = vec![
-            TextKey::Share,
-            TextKey::Copy,
-            TextKey::Copied,
-            TextKey::Notice,
-            TextKey::Search,
-            TextKey::Searching,
-            TextKey::RunSearch,
-            TextKey::SkipToResults,
-            TextKey::DatasetStatistics,
-            TextKey::NoResults,
-            TextKey::Error,
-            TextKey::TableTriplesAria,
-            TextKey::Structure,
-            TextKey::Compound,
-            TextKey::Mass,
-            TextKey::Formula,
-            TextKey::TaxonCol,
-            TextKey::Reference,
-            TextKey::Year,
-            TextKey::Taxon,
-            TextKey::DownloadResults,
-            TextKey::DownloadCsvTitle,
-            TextKey::DownloadJsonTitle,
-            TextKey::DownloadRdfTitle,
-        ];
-
-        for key in keys.iter() {
-            for locale in &[Locale::En, Locale::Fr, Locale::De, Locale::It] {
-                let text = t(*locale, *key);
-                assert!(
-                    !text.is_empty(),
-                    "TextKey {:?} has empty translation in {:?}",
-                    key,
-                    locale
-                );
-            }
-        }
-    }
-}

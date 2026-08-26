@@ -2,18 +2,13 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Focused, reusable form input components.
-//!
-//! These components are building blocks for larger forms. They accept props
-//! directly rather than relying on context, making them easy to test and reuse.
-//!
-//! Future: Can be enhanced to use EnhancedFormContext for context-aware version.
 
+use crate::components::ui::{Button, ButtonSize, ButtonVariant};
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
+use crate::ui::classes;
 use dioxus::prelude::*;
-use ui::prelude::{Button, ButtonVariant};
 
-/// Generic reusable text input component
 #[component]
 pub fn TextInput(
     id: String,
@@ -30,15 +25,19 @@ pub fn TextInput(
     };
 
     rsx! {
-        div { style: crate::ui::style_constants::forms::form_section_style(),
+        div { class: "flex flex-col gap-1",
             if !label.is_empty() {
-                label { r#for: "{id}", style: crate::ui::style_constants::forms::label_base_style(), "{label}" }
+                label {
+                    r#for: "{id}",
+                    class: "{classes::LABEL}",
+                    "{label}"
+                }
             }
 
             input {
                 id: "{id}",
                 r#type: "text",
-                style: crate::ui::style_constants::forms::input_base_style(),
+                class: "{classes::INPUT}",
                 value: "{value}",
                 placeholder: placeholder.unwrap_or_default(),
                 aria_describedby: if !hint_id.is_empty() { "{hint_id}" } else { "" },
@@ -46,13 +45,12 @@ pub fn TextInput(
             }
 
             if let Some(hint_text) = hint {
-                p { id: "{hint_id}", style: crate::ui::style_constants::forms::hint_text_style(), "{hint_text}" }
+                p { id: "{hint_id}", class: "{classes::HINT}", "{hint_text}" }
             }
         }
     }
 }
 
-/// Generic number range input component (reusable for mass, year, etc.)
 #[component]
 pub fn RangeInput(
     label: String,
@@ -68,30 +66,28 @@ pub fn RangeInput(
     let max_id = "range-max-input";
 
     rsx! {
-        div { style: crate::ui::style_constants::forms::form_section_style(),
-            label { style: crate::ui::style_constants::forms::label_base_style(), "{label}" }
+        div { class: "flex flex-col gap-1.5",
+            label { class: "{classes::LABEL}", "{label}" }
 
-            div { style: crate::ui::style_constants::forms::range_inputs_style(),
-                div { style: crate::ui::style_constants::forms::range_pair_style(),
-                    label { style: crate::ui::style_constants::forms::label_small_style(), r#for: "{min_id}", "{min_label}" }
+            div { class: "flex items-center gap-2",
+                div { class: "flex flex-1 flex-col gap-0.5",
+                    label { class: "{classes::MICRO_LABEL}", r#for: "{min_id}", "{min_label}" }
                     input {
                         id: "{min_id}",
                         r#type: "number",
-                        style: crate::ui::style_constants::forms::input_base_style(),
+                        class: "{classes::INPUT_SM}",
                         value: "{min_value}",
-
                         oninput: move |e| on_min_change.call(parse_f64(&e.value())),
                     }
                 }
-
-                div { style: crate::ui::style_constants::forms::range_pair_style(),
-                    label { style: crate::ui::style_constants::forms::label_small_style(), r#for: "{max_id}", "{max_label}" }
+                span { class: "self-end pb-1.5 text-subtle", "–" }
+                div { class: "flex flex-1 flex-col gap-0.5",
+                    label { class: "{classes::MICRO_LABEL}", r#for: "{max_id}", "{max_label}" }
                     input {
                         id: "{max_id}",
                         r#type: "number",
-                        style: crate::ui::style_constants::forms::input_base_style(),
+                        class: "{classes::INPUT_SM}",
                         value: "{max_value}",
-
                         oninput: move |e| on_max_change.call(parse_f64(&e.value())),
                     }
                 }
@@ -100,16 +96,29 @@ pub fn RangeInput(
     }
 }
 
-/// Simplified search button
 #[component]
-pub fn SearchButton(on_click: EventHandler<()>) -> Element {
+pub fn SearchButton(
+    #[props(default = false)] loading: bool,
+    #[props(default = false)] is_dirty: bool,
+    on_click: EventHandler<()>,
+) -> Element {
     let locale = use_locale();
 
     rsx! {
         Button {
-            label: t(locale, TextKey::Search).to_string(),
-            variant: ButtonVariant::Primary,
-            onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_click.call(()))),
+            label: if loading {
+                t(locale, TextKey::Searching).to_string()
+            } else {
+                t(locale, TextKey::Search).to_string()
+            },
+            variant: if is_dirty { ButtonVariant::Accent } else { ButtonVariant::Primary },
+            size: ButtonSize::Md,
+            loading,
+            disabled: loading,
+            r#type: "submit",
+            class: "w-full",
+            aria_label: t(locale, TextKey::RunSearch).to_string(),
+            onclick: move |_| on_click.call(()),
         }
     }
 }

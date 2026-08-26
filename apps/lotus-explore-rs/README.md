@@ -54,7 +54,21 @@ RDKit.js and citation-js are loaded from CDN (no local download needed). All
 document `<head>` metadata, scripts, and styles are managed in Rust via
 `ui::document::DocumentHead` --- see `src/document_head.rs`.
 
-Ketcher (115 MB) must be fetched before serving or deploying:
+### CSS Build Dependencies (Tailwind)
+
+The project uses Tailwind CSS for styling. Install build dependencies:
+
+```bash
+npm install
+npm run build:css  # Build CSS once, or run 'npm run watch:css' during development
+```
+
+For detailed guidance on using Tailwind with Dioxus, see
+[`TAILWIND_MIGRATION.md`](./TAILWIND_MIGRATION.md).
+
+### Ketcher (115 MB)
+
+Ketcher must be fetched before serving or deploying:
 
 ```bash
 ./scripts/fetch-ketcher.sh

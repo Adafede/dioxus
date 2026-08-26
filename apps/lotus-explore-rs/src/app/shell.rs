@@ -29,7 +29,6 @@ use crate::state::{
 use crate::ui::a11y_contract::{MAIN_PANEL_ID, PAGE_TITLE_ID, SKIP_TO_RESULTS_HREF};
 use dioxus::prelude::*;
 use std::sync::Arc;
-use ui::prelude::*;
 
 const fn locale_lang_tag(locale: Locale) -> &'static str {
     match locale {
@@ -186,11 +185,15 @@ fn ShellScaffold(lang: String) -> Element {
 
     rsx! {
         LotusDocumentHead { lang }
-        a { class: "skip-link", href: SKIP_TO_RESULTS_HREF, style: skip_link_style(),
+        a {
+            href: SKIP_TO_RESULTS_HREF,
+            class: "skip-link",
             "{t(locale, TextKey::SkipToResults)}"
         }
-        div { class: "app-shell",
-            div { class: "app-layout",
+        div {
+            class: "app-shell",
+            div {
+                class: if single_pane { "app-layout single-pane" } else { "app-layout" },
                 if current_view == AppView::Explore {
                     LazySidebar {}
                 }
@@ -233,19 +236,5 @@ fn ExplorePage() -> Element {
     }
 }
 
-fn skip_link_style() -> String {
-    StyleBuilder::new()
-        .property("position", "absolute")
-        .property("left", "0.5rem")
-        .property("top", "-100%")
-        .property("z-index", "9999")
-        .padding("0.5rem 1rem")
-        .background_color("transparent")
-        .color(TEXT)
-        .font_size("0.875rem")
-        .font_weight("600")
-        .border_radius("0 0 4px 4px")
-        .text_decoration("none")
-        .property("transition", "top 0.1s")
-        .build()
-}
+#[cfg(test)]
+mod tests {}

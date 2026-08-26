@@ -20,6 +20,7 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::PageTitle => "LOTUS Linked Open Data Explorer",
         TextKey::DarkModeToggle => "Toggle dark/light mode",
         TextKey::GoToHomepage => "Go to homepage",
+        TextKey::SkipToResults => "Skip to results",
         TextKey::PageSubtitle => {
             "Explore linked open data: natural products, organisms, and scientific literature."
         }
@@ -52,7 +53,6 @@ pub const fn en_t(key: TextKey) -> &'static str {
         }
         TextKey::ErrorHintParse => "Response parsing failed. Retry or refine query.",
         TextKey::ErrorHintUnknown => "Unexpected error. Retry may help.",
-        TextKey::SkipToResults => "Skip to results",
         TextKey::WelcomeLeadA => {
             "This app demonstrates the power of linked open data by connecting natural products to organisms and scientific literature. "
         }

@@ -7,7 +7,6 @@ use crate::features::curation::state::page_controller::CurationUiState;
 use crate::features::curation::use_curation_page_controller;
 use dioxus::prelude::*;
 use std::sync::Arc;
-use ui::prelude::*;
 
 use super::curation_results_table::CurationResultsTable;
 
@@ -51,14 +50,14 @@ pub fn DataCurationPage() -> Element {
         CurationScripts {}
         section {
             class: "curation-wrap",
-            style: curation_page_style(),
             aria_labelledby: "curation-page-heading",
             h2 {
                 id: "curation-page-heading",
                 class: "sr-only",
                 "{crate::i18n::view_label_curation_explorer(locale)}"
             }
-            div { style: curation_grid_style(),
+            div {
+                class: "curation-grid",
                 AddRowCard {
                     locale,
                     form: controller.form,
@@ -106,25 +105,4 @@ pub fn DataCurationPage() -> Element {
             }
         }
     }
-}
-
-fn curation_page_style() -> String {
-    StyleBuilder::new()
-        .property("padding", "12px 22px 18px")
-        .property("display", "flex")
-        .property("flex-direction", "column")
-        .property("gap", "10px")
-        .property("background", PANEL_BG_SOFT)
-        .build()
-}
-
-fn curation_grid_style() -> String {
-    StyleBuilder::new()
-        .property("display", "grid")
-        .property(
-            "grid-template-columns",
-            "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
-        )
-        .property("gap", "12px")
-        .build()
 }

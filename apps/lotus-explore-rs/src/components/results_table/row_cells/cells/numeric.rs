@@ -4,12 +4,7 @@
 //! Numeric and simple value cells for results-table rows: mass, formula, year.
 
 use dioxus::prelude::*;
-use ui::prelude::*;
-use ui::styles::lotus::tokens::{FOOTER_WD_COMPOUND, FOOTER_WD_REFERENCE};
 
-/// Formats a mass value to 4 decimal places for display.
-///
-/// Extracted as a pure function to be unit-testable independently of RSX.
 #[must_use]
 pub(in crate::components::results_table) fn format_mass_value(mass: f64) -> String {
     format!("{mass:.4}")
@@ -17,11 +12,11 @@ pub(in crate::components::results_table) fn format_mass_value(mass: f64) -> Stri
 
 pub(in crate::components::results_table::row_cells) fn mass_cell(mass: Option<f64>) -> Element {
     rsx! {
-        td { style: crate::ui::style_constants::table_cells::table_cell_style(),
+        td { class: "px-3 py-2 align-middle text-ui",
             if let Some(m) = mass {
-                span { style: mass_style(), "{format_mass_value(m)}" }
+                span { class: "font-medium tabular-nums text-wd-compound", "{format_mass_value(m)}" }
             } else {
-                span { style: crate::ui::style_constants::table_cells::na_style(), "-" }
+                span { class: "text-subtle", "-" }
             }
         }
     }
@@ -31,11 +26,11 @@ pub(in crate::components::results_table::row_cells) fn formula_cell(
     formula: Option<&str>,
 ) -> Element {
     rsx! {
-        td { style: crate::ui::style_constants::table_cells::table_cell_style(),
+        td { class: "px-3 py-2 align-middle text-ui",
             if let Some(f) = formula {
-                span { style: formula_style(), "{f}" }
+                span { class: "font-medium font-mono text-wd-compound", "{f}" }
             } else {
-                span { style: crate::ui::style_constants::table_cells::na_style(), "-" }
+                span { class: "text-subtle", "-" }
             }
         }
     }
@@ -43,36 +38,16 @@ pub(in crate::components::results_table::row_cells) fn formula_cell(
 
 pub(in crate::components::results_table::row_cells) fn year_cell(pub_year: Option<i16>) -> Element {
     rsx! {
-        td { style: crate::ui::style_constants::table_cells::table_cell_style(),
+        td { class: "px-3 py-2 align-middle text-ui",
             if let Some(y) = pub_year {
-                span { style: year_style(), "{y}" }
+                span { class: "font-medium text-wd-reference", "{y}" }
             } else {
-                span { style: crate::ui::style_constants::table_cells::na_style(), "-" }
+                span { class: "text-subtle", "-" }
             }
         }
     }
 }
-fn mass_style() -> String {
-    StyleBuilder::new()
-        .font_family(FONT_SANS)
-        .font_size(FS_0)
-        .color(FOOTER_WD_COMPOUND)
-        .font_weight("500")
-        .build()
-}
 
-fn formula_style() -> String {
-    StyleBuilder::new()
-        .font_family(FONT_SANS)
-        .font_size(FS_0)
-        .color(FOOTER_WD_COMPOUND)
-        .font_weight("500")
-        .build()
-}
-
-fn year_style() -> String {
-    StyleBuilder::new().color(FOOTER_WD_REFERENCE).build()
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -86,9 +61,7 @@ mod tests {
 
     #[test]
     fn format_mass_value_rounds_half_up_on_fifth_decimal() {
-        // 1.000045 rounded to 4dp → "1.0000" (rounds down)
         assert_eq!(format_mass_value(1.000045), "1.0000");
-        // 1.000055 rounded to 4dp → "1.0001" (rounds up)
         assert_eq!(format_mass_value(1.000055), "1.0001");
     }
 

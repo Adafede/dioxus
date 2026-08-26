@@ -20,6 +20,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::PageTitle => "LOTUS Explorer für verknüpfte offene Daten",
         TextKey::DarkModeToggle => "Thema hell/dunkel umschalten",
         TextKey::GoToHomepage => "Zur Startseite",
+        TextKey::SkipToResults => "Zurück zu den Ergebnissen",
         TextKey::PageSubtitle => {
             "Erkunden Sie verknüpfte offene Daten: Naturstoffe, Organismen und wissenschaftliche Literatur."
         }
@@ -54,7 +55,6 @@ pub const fn de_t(key: TextKey) -> &'static str {
             "Antwort konnte nicht verarbeitet werden. Erneut versuchen oder Abfrage verfeinern."
         }
         TextKey::ErrorHintUnknown => "Unerwarteter Fehler. Ein erneuter Versuch kann helfen.",
-        TextKey::SkipToResults => "Zu den Ergebnissen springen",
         TextKey::WelcomeLeadA => {
             "Diese Anwendung demonstriert die Leistungsfähigkeit verknüpfter offener Daten durch Verbindung natürlicher Produkte mit Organismen und wissenschaftlicher Literatur. "
         }

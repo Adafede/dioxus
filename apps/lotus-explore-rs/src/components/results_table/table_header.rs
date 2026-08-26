@@ -6,10 +6,8 @@
 use super::header_model::{SortableHeaderModel, build_sortable_header_models};
 use crate::i18n::{TextKey, aria_sort_toggle, t};
 use crate::models::{SortColumn, SortState};
-use crate::ui::style_constants::table;
 use dioxus::prelude::*;
 
-/// Table header row with sortable column headers.
 #[component]
 pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortColumn>) -> Element {
     let locale = crate::hooks::use_locale();
@@ -17,8 +15,11 @@ pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortCol
 
     rsx! {
         tr {
-            th { scope: "col", style: table::table_header_cell_style(),
-                span { style: table::header_label_style(), "{t(locale, TextKey::Structure)}" }
+            class: "border-b border-border bg-panel-soft text-left",
+            th {
+                scope: "col",
+                class: "th-static p-2.5 text-micro font-semibold uppercase tracking-wider text-subtle select-none",
+                span { "{t(locale, TextKey::Structure)}" }
             }
             for header in headers {
                 SortableColumnHeader {
@@ -30,7 +31,6 @@ pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortCol
     }
 }
 
-/// Individual sortable column header.
 #[component]
 fn SortableColumnHeader(
     header: SortableHeaderModel,
@@ -44,15 +44,19 @@ fn SortableColumnHeader(
         th {
             scope: "col",
             aria_sort: "{header.aria_sort}",
-            style: table::table_header_cell_style(),
+            class: "sort-th p-2.5 text-micro font-semibold uppercase tracking-wider text-subtle select-none",
             button {
                 r#type: "button",
                 aria_label: "{sort_aria}",
                 title: "{sort_aria}",
-                style: table::sort_button_style(),
+                class: "group inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit transition-colors hover:text-accent",
                 onclick: move |_| on_toggle.call(header.col),
-                span { style: table::header_label_style(), "{label_text}" }
-                span { style: table::sort_icon_style(), "aria-hidden": "true", {header.sort_icon} }
+                span { "{label_text}" }
+                span {
+                    class: "text-subtle group-hover:text-accent",
+                    "aria-hidden": "true",
+                    {header.sort_icon}
+                }
             }
         }
     }

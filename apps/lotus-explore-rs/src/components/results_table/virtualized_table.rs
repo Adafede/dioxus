@@ -13,8 +13,6 @@ use crate::features::explore::selectors::ArcPtrEq;
 use crate::i18n::{TextKey, t};
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
-use ui::prelude::*;
-use ui::styles::lotus::tokens::FOOTER_WD_ENTRIES;
 
 #[component]
 pub(super) fn VirtualizedResultsTable(
@@ -45,20 +43,20 @@ pub(super) fn VirtualizedResultsTable(
             role: "region",
             tabindex: "0",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-            style: table_scroll_style(),
+            class: "max-h-[min(72vh,980px)] overflow-auto rounded-[14px] border border-panel-border border-l-4 border-l-wd-entries bg-transparent shadow-xs",
             onscroll: on_scroll,
             table {
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                style: results_table_style(),
-                caption { style: crate::ui::style_constants::shared::sr_only_style(), "{t(locale, TextKey::TableTriplesAria)}" }
+                class: "results-table w-full min-w-max table-auto border-collapse text-ui [word-break:break-word]",
+                caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                 colgroup {
-                    col { style: col_style("124px") }
-                    col { style: col_style("31ch") }
-                    col { style: col_style("12ch") }
-                    col { style: col_style("12ch") }
-                    col { style: col_style("20ch") }
-                    col { style: col_style("45ch") }
-                    col { style: col_style("4ch") }
+                    col { class: "w-[124px]" }
+                    col { class: "w-[31ch]" }
+                    col { class: "w-[12ch]" }
+                    col { class: "w-[12ch]" }
+                    col { class: "w-[20ch]" }
+                    col { class: "w-[45ch]" }
+                    col { class: "w-[4ch]" }
                 }
                 thead {
                     TableHeader {
@@ -71,7 +69,7 @@ pub(super) fn VirtualizedResultsTable(
                         tr { aria_hidden: "true",
                             td {
                                 colspan: "7",
-                                style: spacer_cell_style(render_model.top_spacer_px),
+                                style: "height: {render_model.top_spacer_px}px",
                             }
                         }
                     }
@@ -94,7 +92,7 @@ pub(super) fn VirtualizedResultsTable(
                         tr { aria_hidden: "true",
                             td {
                                 colspan: "7",
-                                style: spacer_cell_style(render_model.bottom_spacer_px),
+                                style: "height: {render_model.bottom_spacer_px}px",
                             }
                         }
                     }
@@ -102,41 +100,4 @@ pub(super) fn VirtualizedResultsTable(
             }
         }
     }
-}
-
-fn col_style(width: &str) -> String {
-    StyleBuilder::new().property("width", width).build()
-}
-
-fn spacer_cell_style(height: usize) -> String {
-    StyleBuilder::new()
-        .property("height", &format!("{height}px"))
-        .build()
-}
-
-fn table_scroll_style() -> String {
-    StyleBuilder::new()
-        .property("overflow", "auto")
-        .property("max-height", "min(72vh, 980px)")
-        .border(BORDER_RESULTS)
-        .property("border-left", &format!("4px solid {}", FOOTER_WD_ENTRIES))
-        .border_radius("14px")
-        .background_color("transparent")
-        .box_shadow(PANEL_SHADOW)
-        .property(
-            "transition",
-            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
-        )
-        .build()
-}
-
-fn results_table_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("min-width", "max-content")
-        .property("border-collapse", "collapse")
-        .font_size(FS_UI)
-        .property("table-layout", "auto")
-        .property("word-break", "break-word")
-        .build()
 }

@@ -2,20 +2,12 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Reusable "copy to clipboard" button.
-//!
-//! Uses the modern `navigator.clipboard.writeText` API with a silent
-//! `document.execCommand('copy')` fallback for older browsers / non-secure
-//! contexts. Shows a brief "Copied!" state for user feedback.
 
+use crate::components::ui::{Button, ButtonSize, ButtonVariant};
 use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
 use std::sync::Arc;
-use ui::styles::buttons;
 
-/// A compact button that copies `text` to the system clipboard on click.
-///
-/// `label` is the resting label shown on the button. We swap it for
-/// "Copied!" for ~1.2 seconds after a successful copy.
 #[component]
 pub fn CopyButton(
     text: Arc<str>,
@@ -37,11 +29,13 @@ pub fn CopyButton(
     };
 
     rsx! {
-        button {
+        Button {
             r#type: "button",
-            title: "{title_attr}",
-            aria_label: "{title_attr}",
-            style: buttons::button_copy_style(),
+            title: Some(title_attr.to_string()),
+            aria_label: Some(title_attr.to_string()),
+            variant: ButtonVariant::Secondary,
+            size: ButtonSize::Sm,
+            class: Some(class.to_string()),
             onclick: move |_| {
                 copy_to_clipboard(text.as_ref());
                 *copied.write() = true;
@@ -51,16 +45,14 @@ pub fn CopyButton(
                 });
             },
             if *copied.read() {
-                "{t(locale, TextKey::Copied)}"
+                span { class: "font-semibold text-success", "✓ {t(locale, TextKey::Copied)}" }
             } else {
-                {label_attr}
+                span { "{label_attr}" }
             }
         }
     }
 }
 
-//noinspection ALL
-/// Portable sleep helper — uses `setTimeout` on wasm and `thread::sleep`
 async fn gloo_timer_sleep_ms(ms: u32) {
     #[cfg(target_arch = "wasm32")]
     {
@@ -84,10 +76,7 @@ async fn gloo_timer_sleep_ms(ms: u32) {
         std::thread::sleep(std::time::Duration::from_millis(ms as u64));
     }
 }
-/// Write `text` to the system clipboard. Tries `navigator.clipboard` first,
-/// falls back to a hidden-textarea + `document.execCommand('copy')` for
-/// older browsers or non-secure (http://) contexts where `clipboard` is
-/// unavailable. Silent on failure.
+
 pub fn copy_to_clipboard(text: &str) {
     #[cfg(target_arch = "wasm32")]
     {
@@ -100,8 +89,6 @@ pub fn copy_to_clipboard(text: &str) {
             return;
         };
 
-        // Try modern clipboard API via reflection without requiring extra
-        // `web-sys` features.
         let window_js = wasm_bindgen::JsValue::from(window.clone());
         let nav = js_sys::Reflect::get(&window_js, &wasm_bindgen::JsValue::from_str("navigator"));
         if let Ok(nav) = nav {
@@ -119,7 +106,6 @@ pub fn copy_to_clipboard(text: &str) {
             }
         }
 
-        // Fallback: hidden textarea + execCommand('copy').
         let area = document
             .create_element("textarea")
             .ok()

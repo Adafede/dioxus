@@ -6,6 +6,11 @@ asset_dir = "public"
 #   target/dx/<package-name>/release/web/public/
 # and ignores any `out_dir` key set here.
 
+[[hooks]]
+# Compile Tailwind (token theme + scanned Rust utilities) before each dx build.
+stage = "pre-build"
+command = "npx @tailwindcss/cli -i ./tailwind/styles.css -o ./public/assets/lotus-explore.css --minify"
+
 [web]
 pre_compress = true
 
@@ -14,7 +19,7 @@ title = "LOTUS Linked Open Data Explorer"
 
 [web.watcher]
 reload_html = true
-watch_path = ["src", "public", "../../crates/lotus/src", "../../crates/ui/src", "../../crates/upload/src"]
+watch_path = ["src", "public", "tailwind", "../../crates/lotus/src", "../../crates/ui/src", "../../crates/upload/src"]
 
 [[web.proxy]]
 # Proxy API requests to the lotus-api backend to avoid CORS issues in development

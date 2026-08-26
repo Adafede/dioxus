@@ -6,7 +6,6 @@ use crate::i18n::{TextKey, t};
 use crate::state::use_results_context;
 use crate::ui::a11y_contract::{RESULTS_SECTION_HEADING_ID, RESULTS_SECTION_ID};
 use dioxus::prelude::*;
-use ui::prelude::*;
 
 mod download_model;
 mod header_model;
@@ -72,13 +71,21 @@ pub fn ResultsTable() -> Element {
             id: RESULTS_SECTION_ID,
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
             aria_labelledby: RESULTS_SECTION_HEADING_ID,
-            style: results_wrap_style(),
-            h2 { id: RESULTS_SECTION_HEADING_ID, style: crate::ui::style_constants::shared::sr_only_style(), "{t(locale, TextKey::TableTriplesAria)}" }
+            class: "results-wrap",
+            h2 {
+                id: RESULTS_SECTION_HEADING_ID,
+                class: "sr-only",
+                "{t(locale, TextKey::TableTriplesAria)}"
+            }
             ResultsToolbar {}
 
             if total == 0 {
-                div { style: empty_state_style(),
-                    p { style: crate::ui::style_constants::shared::hint_text_style(), "{t(locale, TextKey::NoResults)}" }
+                div {
+                    class: "empty-state",
+                    p {
+                        class: "text-muted",
+                        "{t(locale, TextKey::NoResults)}"
+                    }
                 }
             } else {
                 VirtualizedResultsTable {
@@ -88,24 +95,4 @@ pub fn ResultsTable() -> Element {
             }
         }
     }
-}
-
-fn empty_state_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .align_items("center")
-        .gap("12px")
-        .padding("64px 24px")
-        .color(TEXT2)
-        .build()
-}
-
-fn results_wrap_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("10px")
-        .padding("12px 22px")
-        .build()
 }

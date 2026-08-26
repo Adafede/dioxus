@@ -9,19 +9,16 @@
 use crate::hooks::{use_locale, use_locale_signal};
 use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
-use ui::prelude::*;
+use ui::prelude::{SegmentedControl, SegmentedControlItem};
 
 /// Four-button language switcher (EN / FR / DE / IT).
-///
-/// Zero props — reads and writes the locale signal from `LocaleProvider`
-/// context.  Only re-renders when the locale changes.
 #[component]
 pub fn LangSwitch() -> Element {
     let mut locale_sig = use_locale_signal();
     let locale = use_locale();
 
     rsx! {
-        div { class: "lang-switch",
+        div { class: "lang-switch flex items-center",
             SegmentedControl {
                 aria_label: t(locale, TextKey::Language).to_string(),
                 selected_value: locale_code(locale).to_string(),
@@ -42,8 +39,8 @@ pub fn LangSwitch() -> Element {
                     if *locale_sig.peek() != next {
                         *locale_sig.write() = next;
                     }
-                }
-            },
+                },
+            }
         }
     }
 }

@@ -4,26 +4,30 @@
 //! Welcome screen shown before the first search, with example queries.
 
 use crate::components::copy_button::CopyButton;
+use crate::components::ui::Card;
 use crate::features::explore::absolute_current_url_with_query;
 use crate::i18n::{TextKey, t};
+use crate::ui::classes;
 use dioxus::prelude::*;
 use std::sync::Arc;
-use ui::prelude::*;
 
 #[component]
 pub fn WelcomeScreen() -> Element {
     let locale = crate::hooks::use_locale();
     rsx! {
-        section { style: welcome_style(),
-            div { style: welcome_hero_style(),
-                p { style: welcome_lead_style(),
+        section {
+            class: "mx-auto flex w-full max-w-4xl flex-col gap-6 p-6",
+            div {
+                class: "flex flex-col gap-3 rounded-2xl border border-panel-border bg-panel-soft p-6 shadow-xs",
+                p {
+                    class: "text-body leading-relaxed text-muted",
                     "{t(locale, TextKey::WelcomeLeadA)}"
                     "{t(locale, TextKey::WelcomeLeadB)}"
                     a {
                         href: "https://www.wikidata.org/wiki/Q104225190",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        style: inline_link_style(),
+                        class: "mx-1 {classes::LINK}",
                         "LOTUS initiative"
                     }
                     "{t(locale, TextKey::WelcomeLeadC)}"
@@ -31,7 +35,7 @@ pub fn WelcomeScreen() -> Element {
                         href: "https://www.wikidata.org/",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        style: inline_link_style(),
+                        class: "mx-1 {classes::LINK}",
                         "Wikidata"
                     }
                     "{t(locale, TextKey::WelcomeLeadD)}"
@@ -39,19 +43,22 @@ pub fn WelcomeScreen() -> Element {
                         href: "https://qlever.dev/wikidata",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        style: inline_link_style(),
+                        class: "mx-1 {classes::LINK}",
                         "QLever"
                     }
                     "{t(locale, TextKey::WelcomeLeadE)}"
                     " "
-                    span { style: support_text_style(),
+                    span {
+                        class: "mt-2 block text-ui italic text-subtle",
                         "{t(locale, TextKey::LabelLanguagePolicy)}"
                     }
                 }
             }
 
-            div { style: welcome_examples_style(),
-                ul { style: example_list_style(),
+            div {
+                class: "flex flex-col gap-3",
+                ul {
+                    class: "grid grid-cols-1 gap-3 md:grid-cols-2",
                     ExRow {
                         value: "taxon=<name|QID|*>",
                         note: t(locale, TextKey::ExampleGentiana),
@@ -61,10 +68,18 @@ pub fn WelcomeScreen() -> Element {
                         note: t(locale, TextKey::ExampleSmilesOnly),
                     }
                 }
-                p { style: support_text_style(),
-                    "{t(locale, TextKey::WelcomeProgrammaticDownload)}"
+            }
+
+            Card {
+                class: "flex flex-col gap-3",
+                div { class: "flex flex-col gap-1",
+                    p {
+                        class: "{classes::SUPPORT}",
+                        "{t(locale, TextKey::WelcomeProgrammaticDownload)}"
+                    }
                 }
-                div { style: cli_list_style(),
+                div {
+                    class: "mt-1 flex flex-col gap-2.5",
                     DownloadExampleRow {
                         locale,
                         format: t(locale, TextKey::ExampleQueryExecute),
@@ -100,14 +115,19 @@ fn DownloadExampleRow(
     let absolute = absolute_current_url_with_query(query.trim_start_matches('?'));
     let absolute = Arc::<str>::from(absolute);
     rsx! {
-        div { role: "status", style: notice_base_style(),
-            span { style: notice_label_style(), "{format}" }
+        div {
+            role: "status",
+            class: "flex items-center gap-2 rounded-lg border border-border bg-bg p-2 text-ui shadow-xs",
+            span {
+                class: "shrink-0 rounded bg-accent/12 px-2 py-0.5 text-[11px] font-semibold text-accent",
+                "{format}"
+            }
             input {
                 r#type: "text",
                 readonly: true,
                 value: "{absolute}",
                 aria_label: "{format}",
-                style: notice_input_style(),
+                class: "min-w-0 flex-1 truncate rounded-lotus-sm border border-border bg-surface px-2 py-1 font-mono text-ui text-muted shadow-xs focus:outline-none",
             }
             CopyButton { text: absolute.clone(), locale }
         }
@@ -117,174 +137,16 @@ fn DownloadExampleRow(
 #[component]
 fn ExRow(value: &'static str, note: &'static str) -> Element {
     rsx! {
-        li { style: notice_base_style(),
-            span { style: mono_label_style(), "{value}" }
-            span { style: notice_value_style(), "{note}" }
+        li {
+            class: "flex flex-col gap-1 rounded-xl border border-border bg-surface p-3 shadow-xs",
+            span {
+                class: "self-start rounded-md bg-accent/10 px-2 py-0.5 font-mono text-ui font-semibold text-accent",
+                "{value}"
+            }
+            span {
+                class: "text-ui text-muted",
+                "{note}"
+            }
         }
     }
-}
-
-// CSS custom-property tokens are sourced from the shared lotus design-token
-// module re-exported through `ui::prelude::*`, so there is no local
-// magic-string drift here.
-
-fn welcome_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("12px")
-        .padding("16px 22px")
-        .property("width", "100%")
-        .property("max-width", "none")
-        .build()
-}
-
-fn welcome_hero_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("min-width", "0")
-        .build()
-}
-
-fn welcome_lead_style() -> String {
-    StyleBuilder::new()
-        .font_size(FS_1)
-        .color(TEXT2)
-        .property("margin-top", "6px")
-        .property("line-height", "1.60")
-        .property("max-width", "none")
-        .property("overflow-wrap", "anywhere")
-        .build()
-}
-
-fn inline_link_style() -> String {
-    StyleBuilder::new()
-        .text_decoration("underline")
-        .property("text-underline-offset", "2px")
-        .font_weight("600")
-        .build()
-}
-
-fn support_text_style() -> String {
-    StyleBuilder::new()
-        .font_size(FS_1)
-        .property("line-height", "1.55")
-        .color(TEXT2)
-        .property("margin-top", "10px")
-        .property("max-width", "72ch")
-        .build()
-}
-
-fn welcome_examples_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("min-width", "0")
-        .build()
-}
-
-fn example_list_style() -> String {
-    StyleBuilder::new()
-        .property("list-style", "none")
-        .display("flex")
-        .flex_direction("column")
-        .gap("6px")
-        .build()
-}
-
-fn cli_list_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("8px")
-        .property("margin-top", "3px")
-        .build()
-}
-
-fn mono_label_style() -> String {
-    // The monospaced query fragments (`structure=<SMILES|Molfile>`,
-    // `taxon=<name|QID|*>`) contain no internal break opportunities, so a flex
-    // item's default `min-width: auto` keeps it pinned to its full min-content
-    // width on narrow viewports.  That hogging leaves the description note
-    // beside it squeezed into a tall, narrow column ("very vertical").
-    //
-    // `min-width: 0` lets the label shrink below that min-content, and
-    // `max-width: 50%` caps it at most half the row so it wraps onto its own
-    // line(s) on small screens instead of starving the note — while staying at
-    // its natural content width on wide viewports (where 50% is not binding).
-    StyleBuilder::new()
-        .font_family(FONT_MONO)
-        .property("word-break", "break-word")
-        .property("overflow-wrap", "break-word")
-        .property("min-width", "0")
-        .property("max-width", "50%")
-        .build()
-}
-
-fn notice_base_style() -> String {
-    StyleBuilder::new()
-        .margin("10px 24px 0")
-        .padding("9px 12px")
-        .display("flex")
-        .flex_direction("row")
-        .property("flex-wrap", "wrap")
-        .align_items("center")
-        .gap("12px")
-        .border_radius("12px")
-        .font_size(FS_0)
-        .border(BORDER_DEFAULT)
-        .background_color(SURFACE)
-        .box_shadow(SHADOW_XS)
-        .property("min-width", "0")
-        .property(
-            "transition",
-            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
-        )
-        .build()
-}
-
-fn notice_label_style() -> String {
-    StyleBuilder::new()
-        .display("inline-flex")
-        .align_items("center")
-        .property("text-transform", "uppercase")
-        .property("letter-spacing", "1px")
-        .font_size(FS_LABEL)
-        .font_weight("700")
-        .property("line-height", "1.4")
-        .padding("2px 6px")
-        .border_radius("3px")
-        .property("flex-shrink", "0")
-        .build()
-}
-
-fn notice_input_style() -> String {
-    StyleBuilder::new()
-        .property("flex", "1 1 auto")
-        .property("min-width", "min(200px, 100%)")
-        .property("max-width", "100%")
-        .background_color(SURFACE)
-        .border(BORDER_DEFAULT)
-        .border_radius(BORDER_RADIUS_SM)
-        .color(TEXT2)
-        .padding("4px 8px")
-        .font_size(FS_0)
-        .property("overflow", "hidden")
-        .property("text-overflow", "ellipsis")
-        .build()
-}
-
-fn notice_value_style() -> String {
-    // `flex: 1 1 auto` (basis = content) plus `min-width: 0` lets the note
-    // shrink below its min-content together with the label instead of always
-    // growing into whatever narrow remainder the label leaves behind.  That
-    // keeps the description from collapsing into a tall, narrow column on small
-    // screens.  On wide viewports `flex-grow: 1` still expands it to fill the
-    // row, so the horizontal layout is unchanged.
-    StyleBuilder::new()
-        .property("flex", "1 1 auto")
-        .property("min-width", "0")
-        .color(TEXT)
-        .property("word-break", "break-word")
-        .property("line-height", "1.4")
-        .build()
 }

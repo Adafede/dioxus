@@ -1,30 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! DRY Button component using Tailwind classes.
-//!
-//! Supports size and variant props for consistent styling across the application.
+//! Shared Button component using Lotus token Tailwind classes.
 
 use dioxus::prelude::*;
 
 /// Visual variant for the button.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ButtonVariant {
-    /// Solid primary brand action (sky)
+    /// Solid primary brand action
     #[default]
     Primary,
-    /// Subtle bordered secondary action
+    /// Bordered secondary action on surface
     Secondary,
-    /// Danger/destructive action (rose)
+    /// Destructive action
     Danger,
-    /// Highlighted/dirty search state with prominent glow
+    /// Emphasized primary (e.g. dirty search)
     Accent,
 }
 
 /// Size variant for the button.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ButtonSize {
-    /// Compact size for toolbars, table cells, and dense forms
+    /// Compact toolbar / dense form control
     #[default]
     Sm,
     /// Standard form / card button
@@ -34,68 +32,57 @@ pub enum ButtonSize {
 /// Props for the Button component.
 #[derive(Props, Clone, PartialEq)]
 pub struct ButtonProps {
-    /// Optional button text label
     #[props(default)]
     pub label: Option<String>,
-    /// Visual style variant
     #[props(default)]
     pub variant: ButtonVariant,
-    /// Size of the button
     #[props(default)]
     pub size: ButtonSize,
-    /// Whether the button is disabled
     #[props(default)]
     pub disabled: bool,
-    /// Whether to display a loading spinner
     #[props(default)]
     pub loading: bool,
-    /// HTML button type (defaults to "button")
     #[props(default = "button")]
     pub r#type: &'static str,
-    /// Optional tooltip title
     #[props(default)]
     pub title: Option<String>,
-    /// Optional accessibility aria-label
     #[props(default)]
     pub aria_label: Option<String>,
-    /// Additional CSS classes
     #[props(default)]
     pub class: Option<String>,
-    /// Optional click handler
     #[props(default)]
     pub onclick: Option<EventHandler<MouseEvent>>,
-    /// Optional child elements (icons, custom content)
     #[props(default)]
     pub children: Element,
 }
 
-/// DRY Button component used across the application.
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
     let size_classes = match props.size {
-        ButtonSize::Sm => "px-2.5 py-1 text-xs rounded-lg gap-1.5",
-        ButtonSize::Md => "px-3.5 py-1.5 text-sm rounded-lg gap-2",
+        ButtonSize::Sm => "min-h-[34px] gap-1.5 px-3 py-1.5 text-ui rounded-lotus-sm",
+        ButtonSize::Md => "min-h-10 gap-2 px-3.5 py-2 text-ui rounded-lotus-sm",
     };
 
+    // Keep variants flat — tokens already carry light/dark.
     let variant_classes = match props.variant {
         ButtonVariant::Primary => {
-            "bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-semibold shadow-xs border border-transparent focus-visible:ring-2 focus-visible:ring-sky-500"
+            "border border-border bg-primary text-white font-semibold shadow-xs hover:bg-primary-hover"
         }
         ButtonVariant::Secondary => {
-            "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-medium shadow-xs focus-visible:ring-2 focus-visible:ring-sky-500"
+            "border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg"
         }
         ButtonVariant::Danger => {
-            "border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-medium focus-visible:ring-2 focus-visible:ring-rose-500"
+            "border border-danger/35 bg-danger/10 text-danger font-semibold hover:bg-danger/15"
         }
         ButtonVariant::Accent => {
-            "border border-transparent bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold shadow-md ring-2 ring-sky-400/40 focus-visible:ring-2 focus-visible:ring-sky-500"
+            "border border-border bg-primary text-white font-semibold shadow-xs ring-2 ring-accent/30 hover:bg-primary-hover"
         }
     };
 
-    let disabled_classes = if props.disabled || props.loading {
+    let state_classes = if props.disabled || props.loading {
         "opacity-60 cursor-not-allowed pointer-events-none"
     } else {
-        "cursor-pointer active:scale-[0.98] transition-all duration-150"
+        "cursor-pointer"
     };
 
     let custom_classes = props.class.as_deref().unwrap_or("");
@@ -106,7 +93,7 @@ pub fn Button(props: ButtonProps) -> Element {
             disabled: props.disabled || props.loading,
             title: props.title.as_deref().unwrap_or_default(),
             aria_label: props.aria_label.as_deref().unwrap_or_default(),
-            class: "inline-flex items-center justify-center font-sans select-none {size_classes} {variant_classes} {disabled_classes} {custom_classes}",
+            class: "inline-flex items-center justify-center font-sans select-none transition-[background,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 {size_classes} {variant_classes} {state_classes} {custom_classes}",
             onclick: move |evt| {
                 if !props.disabled && !props.loading {
                     if let Some(handler) = props.onclick.as_ref() {
@@ -116,7 +103,7 @@ pub fn Button(props: ButtonProps) -> Element {
             },
             if props.loading {
                 span {
-                    class: "inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin",
+                    class: "inline-block size-3.5 rounded-full border-2 border-current border-t-transparent animate-spin",
                     "aria-hidden": "true",
                 }
             }

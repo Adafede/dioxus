@@ -1,128 +1,47 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+//! Curation section Tailwind class fragments.
 
-//! Curation/table style builders: pure `StyleBuilder` → CSS strings,
-//! grouped here so the section components stay under 500 lines.
+pub(super) const CARD: &str =
+    "flex flex-col gap-2.5 rounded-lotus border border-panel-border bg-panel-soft p-3 shadow-xs";
 
-use ui::prelude::*;
+pub(super) const FORM_GRID: &str = "grid grid-cols-1 gap-2";
 
-pub(super) fn curation_card_style() -> String {
-    StyleBuilder::new()
-        .property("display", "flex")
-        .property("flex-direction", "column")
-        .property("gap", "10px")
-        .property("padding", "12px")
-        .property("border", BORDER_PANEL)
-        .property("border-radius", BORDER_RADIUS)
-        .property("background", PANEL_BG_SOFT)
-        .property("box-shadow", PANEL_SHADOW)
-        .build()
-}
-
-pub(super) fn curation_form_grid_style() -> String {
-    StyleBuilder::new()
-        .property("display", "grid")
-        .property("grid-template-columns", "1fr")
-        .property("gap", "8px")
-        .build()
-}
-
-pub(super) fn curation_actions_style(space_between: bool) -> String {
-    let mut style = StyleBuilder::new()
-        .property("display", "flex")
-        .property("flex-wrap", "wrap")
-        .property("gap", "8px")
-        .property("align-items", "center");
+pub(super) fn actions(space_between: bool) -> &'static str {
     if space_between {
-        style = style.property("justify-content", "space-between");
-    }
-    style.build()
-}
-
-pub(super) fn curation_hint_style() -> String {
-    StyleBuilder::new()
-        .property("font-size", FS_0)
-        .property("color", TEXT)
-        .build()
-}
-
-pub(super) fn curation_textarea_style(min_height: &str) -> String {
-    StyleBuilder::new()
-        .property("min-height", min_height)
-        .property("font-family", FONT_MONO)
-        .property("border-radius", "8px")
-        .build()
-}
-
-pub(super) fn curation_file_input_style() -> String {
-    StyleBuilder::new()
-        .property("color", TEXT2)
-        .property("max-width", "100%")
-        .property("font-size", FS_0)
-        .build()
-}
-
-pub(super) fn curation_notice_value_style() -> String {
-    StyleBuilder::new()
-        .color("inherit")
-        .property("word-break", "break-word")
-        .property("line-height", "1.4")
-        .build()
-}
-
-pub(super) fn curation_table_scroll_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("min-width", "0")
-        .property("overflow-x", "auto")
-        .property("overflow-y", "visible")
-        .property("border", BORDER_PANEL)
-        .property("background", PANEL_BG_SOFT)
-        .property("box-shadow", PANEL_SHADOW)
-        .property(
-            "transition",
-            "background .15s ease, border-color .15s ease, box-shadow .15s ease",
-        )
-        .build()
-}
-
-pub(super) fn queue_table_style() -> String {
-    StyleBuilder::new()
-        .property("width", "100%")
-        .property("border-collapse", "collapse")
-        .property("font-size", FS_UI)
-        .property("table-layout", "auto")
-        .property("word-break", "break-word")
-        .build()
-}
-
-pub(super) fn queue_action_col_style() -> String {
-    StyleBuilder::new()
-        .property("width", "110px")
-        .property("min-width", "110px")
-        .build()
-}
-
-pub(super) fn queue_index_col_style() -> String {
-    StyleBuilder::new().property("min-width", "3ch").build()
-}
-
-pub(super) fn queue_smiles_col_style() -> String {
-    StyleBuilder::new()
-        .property("min-width", "220px")
-        .property("max-width", "320px")
-        .build()
-}
-
-pub(super) fn row_stripe_style(idx: usize) -> String {
-    let background = if idx.is_multiple_of(2) {
-        SURFACE_94_TINT
+        "flex flex-wrap items-center justify-between gap-2"
     } else {
-        SURFACE_88_TINT
-    };
+        "flex flex-wrap items-center gap-2"
+    }
+}
 
-    StyleBuilder::new()
-        .property("transition", "background .14s ease")
-        .property("--row-bg", background)
-        .build()
+pub(super) const HINT: &str = "text-ui text-text";
+
+pub(super) const TEXTAREA_130: &str =
+    "form-textarea mono w-full min-h-[130px] rounded-lg border border-border bg-surface p-2.5 font-mono text-ui text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";
+
+pub(super) const TEXTAREA_220: &str =
+    "form-textarea mono w-full min-h-[220px] rounded-lg border border-border bg-surface p-2.5 font-mono text-ui text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";
+
+pub(super) const FILE_INPUT: &str = "curation-file-input max-w-full text-ui text-muted";
+
+pub(super) const NOTICE_VALUE: &str = "break-words leading-snug text-inherit";
+
+pub(super) const TABLE_SCROLL: &str =
+    "curation-table-scroll w-full min-w-0 overflow-x-auto overflow-y-visible rounded-xl border border-panel-border bg-panel-soft shadow-xs";
+
+pub(super) const QUEUE_TABLE: &str =
+    "w-full table-auto border-collapse text-ui [word-break:break-word]";
+
+pub(super) const QUEUE_ACTION_COL: &str = "w-[110px] min-w-[110px] px-2 py-2";
+
+pub(super) const QUEUE_INDEX_COL: &str = "min-w-[3ch] px-2 py-2";
+
+pub(super) const QUEUE_SMILES_COL: &str = "min-w-[220px] max-w-[320px] px-2 py-2";
+
+pub(super) fn row_stripe(idx: usize) -> &'static str {
+    if idx.is_multiple_of(2) {
+        "bg-surface/90 transition-colors hover:bg-bg"
+    } else {
+        "bg-surface/80 transition-colors hover:bg-bg"
+    }
 }

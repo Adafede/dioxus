@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Row-level render orchestration: window component and per-row assembly.
-//!
-//! Each cell type lives in `cells/`. This module owns only the top-level
-//! `ResultsRowsWindow` component and the `row_view` assembler.
+//! Row-level render orchestration.
 
 use crate::i18n::Locale;
 use crate::models::CompoundEntry;
 use dioxus::prelude::*;
 use std::sync::Arc;
-use ui::prelude::*;
 
 use super::PreparedRow;
 use super::cells::{
@@ -53,7 +49,9 @@ fn row_view(
     let statement_id = prepared.statement_id.as_deref();
     let name = prepared.display_name.as_ref();
     rsx! {
-        tr { key: "{row_key}", style: table_row_style(),
+        tr {
+            key: "{row_key}",
+            class: "data-row border-b border-panel-border transition-colors contain-paint hover:bg-bg",
             {structure_cell(locale, text, prepared.depict_url.as_deref(), name)}
             {compound_cell(locale, text, entry, prepared, name, compound_qid)}
             {mass_cell(entry.mass)}
@@ -63,12 +61,4 @@ fn row_view(
             {year_cell(entry.pub_year)}
         }
     }
-}
-
-fn table_row_style() -> String {
-    StyleBuilder::new()
-        .border_bottom(BORDER_RESULTS)
-        .property("transition", "background .14s ease")
-        .property("contain", "layout paint")
-        .build()
 }

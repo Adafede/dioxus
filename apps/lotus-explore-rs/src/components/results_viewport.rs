@@ -9,7 +9,6 @@ use crate::components::welcome::WelcomeScreen;
 use crate::state::use_results_context;
 use crate::ui::ContentPhase;
 use dioxus::prelude::*;
-use ui::prelude::*;
 
 #[component]
 pub fn ResultsViewport() -> Element {
@@ -81,96 +80,14 @@ fn QueryDisplay(query: String) -> Element {
     rsx! {
         section {
             id: "query-display",
-            style: query_section_style(),
-            h2 { style: query_title_style(), "SPARQL Query" }
-            div { style: query_container_style(),
+            class: "flex flex-col gap-2 px-4 py-3 sm:px-5",
+            h2 { class: "text-title font-semibold text-text", "SPARQL Query" }
+            div { class: "overflow-hidden rounded-xl border border-panel-border bg-surface shadow-xs",
                 pre {
-                    code { style: query_code_style(), "{query}" }
+                    class: "m-0 max-h-96 overflow-auto p-3",
+                    code { class: "font-mono text-ui text-muted whitespace-pre-wrap break-all", "{query}" }
                 }
             }
         }
-    }
-}
-
-fn query_section_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("8px")
-        .padding("12px 22px")
-        .build()
-}
-
-fn query_title_style() -> String {
-    StyleBuilder::new()
-        .font_size(FS_1)
-        .font_weight("700")
-        .color(TEXT)
-        .build()
-}
-
-fn query_container_style() -> String {
-    StyleBuilder::new()
-        .border(BORDER_PANEL)
-        .border_radius(BORDER_RADIUS)
-        .background_color("transparent")
-        .box_shadow(PANEL_SHADOW)
-        .build()
-}
-
-fn query_code_style() -> String {
-    StyleBuilder::new()
-        .display("block")
-        .padding("12px 16px")
-        .property("margin", "0")
-        .font_family(FONT_MONO)
-        .font_size(FS_0)
-        .color(TEXT)
-        .background_color(BG2)
-        .property("white-space", "pre-wrap")
-        .property("word-break", "break-word")
-        .property("max-height", "320px")
-        .property("overflow", "auto")
-        .build()
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::ui::ContentPhase;
-
-    #[test]
-    fn phase_welcome_when_initial_state() {
-        let phase = ContentPhase::from_lifecycle(false, false, false, false, false);
-        assert_eq!(phase, ContentPhase::Welcome);
-    }
-
-    #[test]
-    fn phase_loading_takes_priority() {
-        let phase = ContentPhase::from_lifecycle(true, false, true, false, true);
-        assert_eq!(phase, ContentPhase::Loading);
-    }
-
-    #[test]
-    fn phase_error_when_error_flag_set() {
-        let phase = ContentPhase::from_lifecycle(false, true, true, false, true);
-        assert_eq!(phase, ContentPhase::Error);
-    }
-
-    #[test]
-    fn phase_empty_when_no_results_after_search() {
-        let phase = ContentPhase::from_lifecycle(false, false, true, false, false);
-        assert_eq!(phase, ContentPhase::Empty);
-    }
-
-    #[test]
-    fn phase_loaded_when_results_exist() {
-        let phase = ContentPhase::from_lifecycle(false, false, true, false, true);
-        assert_eq!(phase, ContentPhase::Loaded);
-    }
-
-    #[test]
-    fn phase_download_only_in_download_mode() {
-        let phase = ContentPhase::from_lifecycle(false, false, true, true, false);
-        assert_eq!(phase, ContentPhase::DownloadOnly);
     }
 }

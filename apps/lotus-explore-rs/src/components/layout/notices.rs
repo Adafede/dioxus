@@ -2,11 +2,9 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Status, warning, and error notice components.
-//!
-//! All notice components read locale via `use_locale()` and explore state via
-//! `ResultsContext` — no `explore` or `locale` props are drilled from `App`.
 
 use crate::components::copy_button::CopyButton;
+use crate::components::ui::{Button, ButtonSize, ButtonVariant};
 use crate::features::explore::interactions::use_explore_interactions;
 use crate::features::explore::recovery;
 use crate::features::explore::selectors::{use_lifecycle_selector, use_result_selector};
@@ -17,10 +15,11 @@ use crate::services::error_presenter::{
     error_hint_text, format_domain_error, format_taxon_warning,
 };
 use crate::state::{use_app_state_context, use_results_context};
+use crate::ui::classes;
 use dioxus::prelude::*;
 use std::sync::Arc;
-use ui::prelude::*;
-/// Share URL notice — shows the current shareable URL with a copy button.
+use ui::prelude::{NoticeBar, NoticeTone};
+
 #[component]
 pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
     let locale = crate::hooks::use_locale();
@@ -43,7 +42,7 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
                 readonly: true,
                 value: "{share}",
                 aria_label: "{t(locale, TextKey::CopyShareableLink)}",
-                style: crate::ui::style_constants::notices::share_input_style(),
+                class: "min-w-0 flex-1 truncate font-mono {classes::INPUT_SM}",
             }
             CopyButton {
                 text: Arc::<str>::from(absolute_share_url(share)),
@@ -54,7 +53,6 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
     }
 }
 
-/// Taxon-resolution warning notice.
 #[component]
 pub fn TaxonNotice() -> Element {
     let locale = crate::hooks::use_locale();
@@ -73,15 +71,11 @@ pub fn TaxonNotice() -> Element {
             role: "status",
             aria_live: "polite",
             dark: dark_mode,
-            span { style: crate::ui::style_constants::notices::notice_value_style(), "{text}" }
+            span { class: "notice-value flex-1 text-ui text-muted", "{text}" }
         }
     }
 }
 
-/// Error notice with optional retry and dismiss buttons.
-///
-/// Retry visibility is delegated to `explore::recovery` so policy remains
-/// consistent with orchestration-level error handling.
 #[component]
 pub fn ErrorNotice() -> Element {
     let locale = crate::hooks::use_locale();
@@ -104,20 +98,21 @@ pub fn ErrorNotice() -> Element {
             role: "alert",
             aria_live: "assertive",
             dark: dark_mode,
-            span { style: crate::ui::style_constants::notices::notice_value_style(), "{msg}" }
-            span { style: crate::ui::style_constants::notices::notice_value_style(), "{error_hint_text(locale, kind)}" }
+            span { class: "notice-value flex-1 text-ui text-muted", "{msg}" }
+            span { class: "notice-value text-ui text-subtle", "{error_hint_text(locale, kind)}" }
             if recovery::should_show_retry_button(domain_err) && !*is_loading.read() {
-                button {
+                Button {
                     r#type: "button",
-                    style: crate::ui::style_constants::buttons::button_base_style(),
+                    variant: ButtonVariant::Secondary,
+                    size: ButtonSize::Sm,
+                    label: t(locale, TextKey::Retry).to_string(),
                     onclick: move |_| retry_interactions.retry(),
-                    "{t(locale, TextKey::Retry)}"
                 }
             }
             button {
                 r#type: "button",
                 aria_label: "{t(locale, TextKey::DismissError)}",
-                style: crate::ui::style_constants::notices::notice_dismiss_style(),
+                class: "notice-dismiss flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-base font-bold text-subtle transition-colors hover:bg-danger/15 hover:text-danger",
                 onclick: move |_| interactions.dismiss_error(),
                 "×"
             }

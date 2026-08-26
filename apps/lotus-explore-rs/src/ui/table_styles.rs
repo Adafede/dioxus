@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+#![allow(dead_code)]
+
 //! Table cell styling for different column types (taxon, reference, numeric, etc).
 //! Lotus-specific cell and row formatting.
 

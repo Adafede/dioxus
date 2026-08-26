@@ -28,7 +28,6 @@ use crate::features::explore::absolute_share_url;
 use crate::state::use_app_state_context;
 
 mod styles;
-use styles::*;
 
 #[component]
 pub fn ShareBar(locale: Locale, share: Arc<str>) -> Element {
@@ -95,7 +94,7 @@ pub fn StatusNotice(locale: Locale, message: Arc<str>) -> Element {
             aria_live: "polite",
             dark: dark_mode,
             margin: "0",
-            span { style: curation_notice_value_style(), "{message}" }
+            span { class: "{styles::NOTICE_VALUE}", "{message}" }
         }
     }
 }
@@ -127,9 +126,9 @@ pub fn AddRowCard(
                 evt.prevent_default();
                 on_add_row.call(());
             },
-            style: curation_card_style(),
+            class: "{styles::CARD}",
             h3 { "{heading_add_one_row(locale)}" }
-            div { style: curation_form_grid_style(),
+            div { class: "{styles::FORM_GRID}",
                 label { class: "form-label", r#for: "curation-name-input",
                     "{placeholder_molecule_name(locale)}"
                 }
@@ -183,7 +182,7 @@ pub fn AddRowCard(
                     oninput: move |e| form.doi.set(e.value()),
                 }
             }
-            div { style: curation_actions_style(false),
+            div { class: "{styles::actions(false)}",
                 Button {
                     label: button_add_row(locale).to_string(),
                     variant: ButtonVariant::Primary,
@@ -231,15 +230,14 @@ pub fn TsvImportCard(
                     on_parse_tsv.call(());
                 }
             },
-            style: curation_card_style(),
+            class: "{styles::CARD}",
             h3 { "{heading_tsv_import(locale)}" }
-            p { style: curation_hint_style(), "{hint_expected_tsv_headers(locale)}" }
+            p { class: "{styles::HINT}", "{hint_expected_tsv_headers(locale)}" }
             label { class: "form-label", r#for: "curation-tsv-input", "TSV" }
             textarea {
                 id: "curation-tsv-input",
                 name: "tsv",
-                class: "form-textarea mono",
-                style: curation_textarea_style("130px"),
+                class: "{styles::TEXTAREA_130}",
                 aria_describedby: "curation-tsv-hint",
                 value: "{tsv_input}",
                 oninput: move |e| tsv_input.set(e.value()),
@@ -247,17 +245,16 @@ pub fn TsvImportCard(
             p { id: "curation-tsv-hint", class: "sr-only",
                 "{hint_expected_tsv_headers(locale)}"
             }
-            div { style: curation_actions_style(false),
+            div { class: "{styles::actions(false)}",
                 button {
                     r#type: "button",
                     disabled: processing || !has_tsv_input,
                     onclick: move |_| on_parse_tsv.call(()),
-                    style: crate::ui::style_constants::primary_buttons::button_sm_style(),
+                    class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center rounded-lotus-sm border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-text shadow-xs hover:bg-bg",
                     "{button_append_tsv_rows(locale)}"
                 }
                 input {
-                    class: "curation-file-input",
-                    style: curation_file_input_style(),
+                    class: "curation-file-input {styles::FILE_INPUT}",
                     aria_label: "TSV file upload",
                     r#type: "file",
                     accept: ".tsv,text/tab-separated-values,text/plain",
@@ -290,11 +287,11 @@ pub fn QueueRowsCard(
     let rows_snapshot = rows.read().clone();
 
     rsx! {
-        div { style: curation_card_style(),
-            div { style: curation_actions_style(true),
+        div { class: "{styles::CARD}",
+            div { class: "{styles::actions(true)}",
                 h3 { "{heading_queued_rows(locale)}" }
                 button {
-                style: crate::ui::style_constants::primary_buttons::button_primary_sm_style(),
+                class: "inline-flex min-h-[34px] cursor-pointer items-center justify-center rounded-lotus-sm border border-border bg-primary px-3 py-1.5 text-ui font-semibold text-white shadow-xs hover:bg-primary-hover",
                     r#type: "button",
                     disabled: processing,
                     onclick: move |_| on_process.call(()),
@@ -307,19 +304,19 @@ pub fn QueueRowsCard(
             }
             div {
                 class: "curation-table-scroll",
-                style: curation_table_scroll_style(),
+                class: "{styles::TABLE_SCROLL}",
                 role: "region",
                 tabindex: "0",
                 aria_label: "{heading_queued_rows(locale)}",
                 table {
                     class: "curation-table curation-queue-table",
-                    style: queue_table_style(),
+                    class: "{styles::QUEUE_TABLE}",
                     thead {
                         tr {
-                            th { scope: "col", style: queue_action_col_style(), "{col_action(locale)}" }
-                            th { scope: "col", style: queue_index_col_style(), "#" }
+                            th { scope: "col", class: "{styles::QUEUE_ACTION_COL}", "{col_action(locale)}" }
+                            th { scope: "col", class: "{styles::QUEUE_INDEX_COL}", "#" }
                             th { scope: "col", "{col_name(locale)}" }
-                            th { scope: "col", style: queue_smiles_col_style(), "SMILES" }
+                            th { scope: "col", class: "{styles::QUEUE_SMILES_COL}", "SMILES" }
                             th { scope: "col", "{t(locale, TextKey::TaxonCol)}" }
                             th { scope: "col", "DOI" }
                         }
@@ -327,21 +324,21 @@ pub fn QueueRowsCard(
                     tbody {
                         if rows_snapshot.is_empty() {
                             tr {
-                                td { style: queue_action_col_style(), class: "mono", "-" }
-                                td { style: queue_index_col_style(), class: "mono", "-" }
+                                td { class: "{styles::QUEUE_ACTION_COL} mono", "-" }
+                                td { class: "{styles::QUEUE_INDEX_COL} mono", "-" }
                                 td { class: "mono", "-" }
-                                td { style: queue_smiles_col_style(), class: "mono", "-" }
+                                td { class: "{styles::QUEUE_SMILES_COL} mono", "-" }
                                 td { class: "mono", "-" }
                                 td { class: "mono", "-" }
                             }
                         } else {
                             for (idx, row) in rows_snapshot.iter().enumerate() {
                                 tr { key: "{row.name}|{row.smiles}",
-                                    style: row_stripe_style(idx),
-                                    td { style: queue_action_col_style(),
+                                    class: "{styles::row_stripe(idx)}",
+                                    td { class: "{styles::QUEUE_ACTION_COL}",
                                         button {
                                             r#type: "button",
-                                            style: crate::ui::style_constants::primary_buttons::button_xs_style(),
+                                            class: "inline-flex min-h-8 cursor-pointer items-center justify-center rounded-lotus-sm border border-border bg-surface px-2 py-1 text-micro font-semibold text-text hover:bg-bg",
                                             onclick: move |_| {
                                                 if idx < rows.read().len() {
                                                     rows.write().remove(idx);
@@ -350,9 +347,9 @@ pub fn QueueRowsCard(
                                             "{button_remove(locale)}"
                                         }
                                     }
-                                    td { style: queue_index_col_style(), "{idx + 1}" }
+                                    td { class: "{styles::QUEUE_INDEX_COL}", "{idx + 1}" }
                                     td { "{row.name}" }
-                                    td { style: queue_smiles_col_style(), class: "mono", "{row.smiles}" }
+                                    td { class: "{styles::QUEUE_SMILES_COL} mono", "{row.smiles}" }
                                     td { "{row.taxon.as_deref().unwrap_or(\"\")}" }
                                     td { class: "mono", "{row.doi.as_deref().unwrap_or(\"\")}" }
                                 }
@@ -382,11 +379,11 @@ pub fn QuickStatementsCard(
     let qs_main_link = build_qs_dev_link(&qs_ref.main);
 
     rsx! {
-        div { style: curation_card_style(),
+        div { class: "{styles::CARD}",
             if !qs_ref.dependencies.is_empty() {
-                p { style: curation_hint_style(), "{msg_two_step_hint(locale)}" }
-                p { style: curation_hint_style(), "{msg_delay_advice(locale)}" }
-                p { style: curation_hint_style(),
+                p { class: "{styles::HINT}", "{msg_two_step_hint(locale)}" }
+                p { class: "{styles::HINT}", "{msg_delay_advice(locale)}" }
+                p { class: "{styles::HINT}",
                     a {
                         href: "{qs_dependency_link}",
                         target: "_blank",
@@ -395,7 +392,7 @@ pub fn QuickStatementsCard(
                     }
                     " - {curation_qs_dev_prereq_hint(locale)}"
                 }
-                div { style: curation_actions_style(true),
+                div { class: "{styles::actions(true)}",
                     h3 { "{heading_quickstatements_dependencies(locale)}" }
                     CopyButton {
                         text: qs_ref.dependencies.clone(),
@@ -403,8 +400,7 @@ pub fn QuickStatementsCard(
                     }
                 }
                 textarea {
-                    class: "form-textarea mono",
-                    style: curation_textarea_style("220px"),
+                    class: "{styles::TEXTAREA_220}",
                     aria_label: "{heading_quickstatements_dependencies(locale)}",
                     readonly: true,
                     value: "{qs_ref.dependencies}",
@@ -418,7 +414,7 @@ pub fn QuickStatementsCard(
             }
 
             if !awaiting_second_pass && !qs_ref.main.is_empty() {
-                p { style: curation_hint_style(),
+                p { class: "{styles::HINT}",
                     a {
                         href: "{qs_main_link}",
                         target: "_blank",
@@ -427,7 +423,7 @@ pub fn QuickStatementsCard(
                     }
                     " - {curation_qs_dev_main_hint(locale)}"
                 }
-                div { style: curation_actions_style(true),
+                div { class: "{styles::actions(true)}",
                     h3 { "{heading_quickstatements(locale)}" }
                     CopyButton {
                         text: qs_ref.main.clone(),
@@ -435,8 +431,7 @@ pub fn QuickStatementsCard(
                     }
                 }
                 textarea {
-                    class: "form-textarea mono",
-                    style: curation_textarea_style("220px"),
+                    class: "{styles::TEXTAREA_220}",
                     aria_label: "{heading_quickstatements(locale)}",
                     readonly: true,
                     value: "{qs_ref.main}",

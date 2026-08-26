@@ -7,7 +7,7 @@ use crate::i18n::{TextKey, t};
 use crate::models::ElementState;
 use crate::state::use_form_criteria_context;
 use dioxus::prelude::*;
-use ui::prelude::*;
+use crate::ui::classes;
 
 use super::shared::{FormulaSectionState, parse_u16_input};
 
@@ -21,10 +21,10 @@ fn ElemStateSelect(
     let locale = crate::hooks::use_locale();
 
     rsx! {
-        div { style: range_pair_style(),
-            label { style: crate::ui::style_constants::shared::label_small_style(), "{label}" }
+        div { class: "flex flex-col gap-0.5",
+            label { class: "{classes::MICRO_LABEL}", "{label}" }
             select {
-                style: form_input_small_style(),
+                class: "{classes::INPUT_SM}",
                 aria_label: "{label} {t(locale, TextKey::ElementRequirement)}",
                 value: "{value.as_str()}",
                 onchange: move |e| on_change.call(e.value().parse::<ElementState>().unwrap_or_default()),
@@ -48,14 +48,14 @@ fn NumPair(
     let locale = crate::hooks::use_locale();
 
     rsx! {
-        div { style: formula_num_pair_style(),
-            p { style: formula_num_label_style(), "{label}" }
+        div { class: "flex flex-col gap-1.5 rounded-[10px] border border-panel-border bg-panel-soft p-2",
+            p { class: "text-ui text-muted", "{label}" }
             div { class: "formula-minmax-grid",
-                div { style: range_pair_style(),
-                    label { style: crate::ui::style_constants::shared::label_small_style(), "{t(locale, TextKey::MinCount)}" }
+                div { class: "flex flex-col gap-0.5",
+                    label { class: "{classes::MICRO_LABEL}", "{t(locale, TextKey::MinCount)}" }
                     input {
                         r#type: "number",
-                        style: formula_input_small_style(),
+                        class: "tabular-nums {classes::INPUT_SM}",
                         min: "0",
                         max: "10000",
                         aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
@@ -67,11 +67,11 @@ fn NumPair(
                         },
                     }
                 }
-                div { style: range_pair_style(),
-                    label { style: crate::ui::style_constants::shared::label_small_style(), "{t(locale, TextKey::MaxCount)}" }
+                div { class: "flex flex-col gap-0.5",
+                    label { class: "{classes::MICRO_LABEL}", "{t(locale, TextKey::MaxCount)}" }
                     input {
                         r#type: "number",
-                        style: formula_input_small_style(),
+                        class: "tabular-nums {classes::INPUT_SM}",
                         min: "0",
                         max: "10000",
                         aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",
@@ -117,10 +117,11 @@ pub fn FormulaSection() -> Element {
     let enabled = criteria.formula_enabled;
 
     rsx! {
-        div { style: form_section_style(),
-            label { style: radio_label_style(),
+        div { class: "{classes::SECTION}",
+            label { class: "flex cursor-pointer items-center gap-1.5 text-ui text-muted",
                 input {
                     r#type: "checkbox",
+                    class: "accent-accent",
                     checked: enabled,
                     onchange: move |e| ctx.update(FormAction::FormulaEnabled(e.checked())),
                 }
@@ -128,15 +129,15 @@ pub fn FormulaSection() -> Element {
             }
 
             if enabled {
-                div { style: formula_exact_row_style(),
-                    label { style: crate::ui::style_constants::shared::label_small_style(), r#for: "formula-exact",
+                div { class: "mt-1 flex flex-col gap-1.5 rounded-xl border border-panel-border border-l border-border bg-panel-soft p-2.5 pl-2.5",
+                    label { class: "{classes::MICRO_LABEL}", r#for: "formula-exact",
                         "{t(locale, TextKey::ExactFormula)}"
                     }
                     input {
                         id: "formula-exact",
                         name: "formula_exact",
                         r#type: "text",
-                        style: formula_exact_input_style(),
+                        class: "{classes::INPUT}",
                         autocomplete: "off",
                         spellcheck: "false",
                         placeholder: "C15H10O5",
@@ -214,109 +215,4 @@ pub fn FormulaSection() -> Element {
             }
         }
     }
-}
-
-fn form_section_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("5px")
-        .padding("10px 12px")
-        .border(BORDER_PANEL)
-        .border_radius("12px")
-        .background_color(PANEL_BG_SOFT)
-        .build()
-}
-fn radio_label_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .align_items("center")
-        .gap("6px")
-        .font_size(FS_0)
-        .cursor("pointer")
-        .color(TEXT2)
-        .build()
-}
-
-fn range_pair_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("3px")
-        .build()
-}
-
-fn form_input_small_style() -> String {
-    StyleBuilder::new()
-        .width("100%")
-        .background_color(SURFACE)
-        .border(BORDER_DEFAULT)
-        .border_radius("4px")
-        .color(TEXT)
-        .padding("9px 11px")
-        .font_size(FS_UI)
-        .font_family(FONT_SANS)
-        .property("transition", "border-color .15s")
-        .build()
-}
-
-fn formula_num_pair_style() -> String {
-    StyleBuilder::new()
-        .border(BORDER_PANEL)
-        .border_radius("10px")
-        .background_color(PANEL_BG_SOFT)
-        .padding("8px")
-        .display("flex")
-        .flex_direction("column")
-        .gap("6px")
-        .build()
-}
-
-fn formula_num_label_style() -> String {
-    StyleBuilder::new().color(TEXT2).build()
-}
-
-fn formula_input_small_style() -> String {
-    StyleBuilder::new()
-        .width("100%")
-        .property("min-width", "6ch")
-        .padding("9px 6px")
-        .background_color(SURFACE)
-        .border(BORDER_DEFAULT)
-        .border_radius("4px")
-        .color(TEXT)
-        .font_size(FS_UI)
-        .font_family(FONT_SANS)
-        .property("font-variant-numeric", "tabular-nums")
-        .property("transition", "border-color .15s")
-        .build()
-}
-
-fn formula_exact_row_style() -> String {
-    StyleBuilder::new()
-        .display("flex")
-        .flex_direction("column")
-        .gap("5px")
-        .padding("10px 12px")
-        .border(BORDER_PANEL)
-        .border_radius("12px")
-        .background_color(PANEL_BG_SOFT)
-        .property("margin-top", "4px")
-        .border_left(BORDER_DEFAULT)
-        .property("padding-left", "10px")
-        .build()
-}
-
-fn formula_exact_input_style() -> String {
-    StyleBuilder::new()
-        .width("100%")
-        .background_color(SURFACE)
-        .border(BORDER_DEFAULT)
-        .border_radius("4px")
-        .color(TEXT)
-        .padding("9px 11px")
-        .font_size(FS_UI)
-        .font_family(FONT_SANS)
-        .property("transition", "border-color .15s")
-        .build()
 }

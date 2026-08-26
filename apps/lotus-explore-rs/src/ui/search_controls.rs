@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+#![allow(dead_code)]
+
 //! Search form controls styling: radio groups, range inputs, textareas, etc.
 //! Lotus-specific search panel customizations.
 
