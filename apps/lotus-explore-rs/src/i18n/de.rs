@@ -79,7 +79,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::SearchFilters => "Suchfilter",
         TextKey::Taxon => "Taxon",
         TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
-        TextKey::TaxonHint => "Name, Wikidata-QID oder * für alle Taxa.",
+        TextKey::TaxonHint => "Name, QID oder * für alle Taxa.",
         TextKey::StructureSmilesOrMol => "SMILES oder Molfile",
         TextKey::StructurePlaceholder => {
             "c1ccccc1   - oder einen Molfile-Block (V2000 / V3000) einfügen"

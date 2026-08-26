@@ -77,7 +77,7 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::SearchFilters => "Search filters",
         TextKey::Taxon => "Taxon",
         TextKey::TaxonPlaceholder => "Gentiana lutea - Q34317 - *",
-        TextKey::TaxonHint => "Name, Wikidata QID or * for all taxa.",
+        TextKey::TaxonHint => "Name, QID or * for all taxa.",
         TextKey::StructureSmilesOrMol => "SMILES or Molfile",
         TextKey::StructurePlaceholder => "c1ccccc1   - or paste a Molfile (V2000 / V3000) block",
         TextKey::Substructure => "Substructure",

@@ -271,14 +271,15 @@ fn status_pill_style(status: &CurationStatus) -> String {
         CurationStatus::PendingDependencies => FOOTER_WD_REFERENCE,
         CurationStatus::Error => FOOTER_WD_COMPOUND,
     };
+    let tint = format!("color-mix(in srgb, {border_color} 28%, transparent)");
 
     StyleBuilder::new()
         .property("display", "inline-flex")
         .property("align-items", "center")
-        .property("padding", "2px 8px")
-        .property("border-radius", "4px")
-        .property("border-left", "3px solid transparent")
-        .property("border-left-color", border_color)
+        .property("padding", "3px 9px")
+        .property("border-radius", "6px")
+        .property("border", tint.as_str())
+        .property("border-left", format!("3px solid {border_color}").as_str())
         .property("background", SURFACE_90_TINT)
         .property("font-weight", "700")
         .property("text-transform", "uppercase")
@@ -289,13 +290,15 @@ fn status_pill_style(status: &CurationStatus) -> String {
 }
 
 fn status_warning_pill_style() -> String {
+    let tint = format!("color-mix(in srgb, {FOOTER_WD_ENTRIES} 28%, transparent)");
+
     StyleBuilder::new()
         .property("display", "inline-flex")
         .property("align-items", "center")
-        .property("padding", "2px 8px")
-        .property("border-radius", "4px")
-        .property("border-left", "3px solid transparent")
-        .property("border-left-color", FOOTER_WD_ENTRIES)
+        .property("padding", "3px 9px")
+        .property("border-radius", "6px")
+        .property("border", tint.as_str())
+        .property("border-left", format!("3px solid {FOOTER_WD_ENTRIES}").as_str())
         .property("background", SURFACE_90_TINT)
         .property("font-weight", "700")
         .property("text-transform", "uppercase")

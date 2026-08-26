@@ -15,7 +15,7 @@ pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortCol
 
     rsx! {
         tr {
-            class: "border-b border-border bg-panel-soft text-left text-subtle",
+            class: "border-b border-panel-border bg-panel-soft text-left text-subtle",
             th {
                 scope: "col",
                 class: "th-static p-2.5 text-micro font-semibold uppercase tracking-wider text-subtle select-none",

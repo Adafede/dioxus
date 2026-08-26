@@ -36,7 +36,7 @@ pub(super) const QUEUE_ACTION_COL: &str = "w-[110px] min-w-[110px] px-2 py-2";
 
 pub(super) const QUEUE_INDEX_COL: &str = "min-w-[3ch] px-2 py-2";
 
-pub(super) const QUEUE_SMILES_COL: &str = "min-w-[220px] max-w-[320px] px-2 py-2";
+pub(super) const QUEUE_SMILES_COL: &str = "min-w-[220px] max-w-[320px] px-2 py-2 break-all";
 
 pub(super) fn row_stripe(idx: usize) -> &'static str {
     if idx.is_multiple_of(2) {

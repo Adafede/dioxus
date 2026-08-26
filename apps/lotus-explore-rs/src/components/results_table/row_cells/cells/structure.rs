@@ -27,7 +27,7 @@ pub(in crate::components::results_table::row_cells) fn structure_cell(
                         loading: "lazy",
                         width: "120",
                         height: "72",
-                        class: "depict-img block max-w-[108px] rounded-md bg-transparent object-contain",
+                        class: "depict-img block max-w-[108px] rounded-lg bg-transparent object-contain",
                     }
                 }
             } else {
