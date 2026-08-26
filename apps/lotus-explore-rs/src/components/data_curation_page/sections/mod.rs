@@ -7,8 +7,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::curation::{CurationInputRow, QuickStatementsBundle};
 use crate::components::ui::{Button, ButtonSize, ButtonVariant};
+use crate::curation::{CurationInputRow, QuickStatementsBundle};
 use crate::features::curation::services::quickstatements::build_qs_dev_link;
 use crate::hooks::use_add_row_form::AddRowForm;
 use crate::i18n::{

@@ -14,8 +14,7 @@ use std::sync::Arc;
 
 const NA_TEXT: &str = "n/a";
 
-const PILL: &str =
-    "inline-flex items-center rounded-md border border-panel-border bg-surface px-2 py-0.5 text-xs font-semibold uppercase tracking-wide";
+const PILL: &str = "inline-flex items-center rounded-md border border-panel-border bg-surface px-2 py-0.5 text-xs font-semibold uppercase tracking-wide";
 const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted";
 const TD: &str = "border-b border-panel-border px-3 py-2 align-top text-ui";
 const MONO: &str = "font-mono text-xs break-all";

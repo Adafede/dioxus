@@ -6,8 +6,8 @@ use crate::features::explore::selectors::use_criteria_selector;
 use crate::i18n::{TextKey, t};
 use crate::models::ElementState;
 use crate::state::use_form_criteria_context;
-use dioxus::prelude::*;
 use crate::ui::classes;
+use dioxus::prelude::*;
 
 use super::shared::{FormulaSectionState, parse_u16_input};
 

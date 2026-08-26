@@ -17,13 +17,9 @@ pub enum BadgeVariant {
 impl BadgeVariant {
     pub const fn classes(&self) -> &'static str {
         match self {
-            Self::Compound => {
-                "border-wd-compound/35 bg-stat-compound text-wd-compound"
-            }
+            Self::Compound => "border-wd-compound/35 bg-stat-compound text-wd-compound",
             Self::Taxon => "border-wd-taxon/35 bg-stat-taxon text-wd-taxon",
-            Self::Reference => {
-                "border-wd-reference/35 bg-stat-reference text-wd-reference"
-            }
+            Self::Reference => "border-wd-reference/35 bg-stat-reference text-wd-reference",
             Self::Entries => "border-wd-entries/35 bg-stat-total text-wd-entries",
             Self::Warning => "border-warning/35 bg-warning/10 text-warning",
         }
