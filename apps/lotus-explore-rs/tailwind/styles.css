@@ -265,16 +265,16 @@ video {
    component CSS (var(--fs-body), var(--fs-ui), ...). Previously these were never
    defined, so all text fell back to the inherited 16px browser default. */
 :root {
-    --fs-micro: clamp(0.69rem, 0.67rem + 0.08vw, 0.75rem);
-    --fs-0:     clamp(0.72rem, 0.7rem + 0.12vw, 0.8125rem);
-    --fs-ui:    clamp(0.78rem, 0.76rem + 0.14vw, 0.84rem);
-    --fs-1:     clamp(0.84rem, 0.82rem + 0.16vw, 0.9rem);
-    --fs-body:  clamp(0.84rem, 0.82rem + 0.16vw, 0.9rem);
-    --fs-label: clamp(0.66rem, 0.64rem + 0.1vw, 0.72rem);
-    --fs-2:     clamp(0.9rem, 0.87rem + 0.22vw, 1.0rem);
-    --fs-3:     clamp(1.0625rem, 0.98rem + 0.5vw, 1.4rem);
-    --fs-4:     clamp(1.3rem, 1.05rem + 0.75vw, 1.7rem);
-    --fs-stat:  clamp(1.0625rem, 0.98rem + 0.46vw, 1.3rem);
+    --fs-micro: clamp(0.66rem, 0.64rem + 0.08vw, 0.72rem);
+    --fs-0:     clamp(0.7rem, 0.68rem + 0.1vw, 0.78rem);
+    --fs-ui:    clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem);
+    --fs-1:     clamp(0.8125rem, 0.79rem + 0.14vw, 0.875rem);
+    --fs-body:  clamp(0.8125rem, 0.79rem + 0.14vw, 0.875rem);
+    --fs-label: clamp(0.64rem, 0.62rem + 0.1vw, 0.7rem);
+    --fs-2:     clamp(0.875rem, 0.84rem + 0.18vw, 0.97rem);
+    --fs-3:     clamp(1.0rem, 0.93rem + 0.42vw, 1.3rem);
+    --fs-4:     clamp(1.2rem, 0.98rem + 0.65vw, 1.55rem);
+    --fs-stat:  clamp(1.0rem, 0.93rem + 0.4vw, 1.2rem);
 }
 
 /* Base styles */
@@ -447,10 +447,10 @@ a:hover {
 
 .search-panel {
     align-self: stretch;
-    padding: 18px 16px;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
     background: var(--panel-bg);
     border-top: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
     flex: 0 0 auto;
@@ -463,7 +463,7 @@ a:hover {
 .search-panel-body {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 /* Show/hide filters control: mobile only */
@@ -475,8 +475,8 @@ a:hover {
     padding: 0;
     display: block;
     margin: 0 auto;
-    width: 120px;
-    height: 120px;
+    width: 80px;
+    height: 80px;
     aspect-ratio: 1 / 1;
 }
 
@@ -1015,40 +1015,55 @@ a:hover {
 }
 
 .footer-row {
-    display: grid;
-    grid-template-columns: clamp(7.5rem, 7vw, 9rem) minmax(0, 1fr);
-    gap: 4px 6px;
-    align-items: baseline;
-    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 3px 0;
 }
 
 .footer-label {
+    flex: 0 0 auto;
     font-weight: 700;
     text-transform: uppercase;
     font-size: var(--fs-0);
-    letter-spacing: 1px;
-    min-width: 0;
+    letter-spacing: 0.06em;
     white-space: nowrap;
-    text-align: left;
+    line-height: 1.45;
 }
 
 .footer-aside {
     color: var(--text3);
-    font-size: var(--fs-0);
+    white-space: nowrap;
 }
 
 .footer-links {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 8px;
+    align-items: center;
+    gap: 4px 10px;
     list-style: none;
     margin: 0;
     padding: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    line-height: 1.5;
+}
+
+.footer-links li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
 }
 
 .footer-link {
     text-decoration: none;
     font-size: var(--fs-0);
+    line-height: 1.45;
+}
+
+.app-footer .footer-line:last-child {
+    border-bottom: none;
 }
 
 .app-footer .footer-label.text-wd-compound,
