@@ -45,24 +45,17 @@ fn row_view(
     let compound_qid = entry.compound_qid.as_ref();
     let taxon_qid = entry.taxon_qid.as_ref();
     let reference_qid = entry.reference_qid.as_ref();
-    let doi = prepared.doi.as_deref();
-    let statement_id = prepared.statement_id.as_deref();
     let name = prepared.display_name.as_ref();
-    let zebra = if row_key.is_multiple_of(2) {
-        "bg-surface/30"
-    } else {
-        ""
-    };
     rsx! {
         tr {
             key: "{row_key}",
-            class: "data-row contain-paint {zebra} hover:bg-surface/60",
-            {structure_cell(locale, text, prepared.depict_url.as_deref(), name)}
+            class: "data-row border-b border-panel-border transition-colors hover:bg-surface/40 [contain:layout_paint]",
+            {structure_cell(locale, text, prepared.depict_url.clone(), name)}
             {compound_cell(locale, text, entry, prepared, name, compound_qid)}
             {mass_cell(entry.mass)}
             {formula_cell(entry.formula.as_deref())}
             {taxon_cell(locale, text, entry, taxon_qid)}
-            {reference_cell(locale, text, entry, prepared, reference_qid, doi, statement_id)}
+            {reference_cell(locale, text, entry, prepared, reference_qid)}
             {year_cell(entry.pub_year)}
         }
     }

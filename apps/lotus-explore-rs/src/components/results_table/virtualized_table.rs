@@ -47,18 +47,19 @@ pub(super) fn VirtualizedResultsTable(
                 onscroll: on_scroll,
                 table {
                     aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                    class: "results-table w-full min-w-[980px] table-fixed border-collapse text-ui [word-break:break-word]",
+                    class: "w-full min-w-max table-auto border-collapse text-ui [word-break:break-word]",
                     caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                     colgroup {
-                        col { class: "w-[8%]" }
-                        col { class: "w-[20%]" }
-                        col { class: "w-[11%] min-w-[92px]" }
-                        col { class: "w-[12%] min-w-[100px]" }
-                        col { class: "w-[17%]" }
-                        col { class: "w-[24%]" }
-                        col { class: "w-[8%] min-w-[58px]" }
+                        col { class: "w-[124px]" }
+                        col { class: "w-[31ch]" }
+                        col { class: "w-[12ch]" }
+                        col { class: "w-[12ch]" }
+                        col { class: "w-[20ch]" }
+                        col { class: "w-[45ch]" }
+                        col { class: "w-[4ch]" }
                     }
                 thead {
+                    class: "sticky top-0 z-2",
                     TableHeader {
                         current_sort: render_model.current_sort,
                         on_sort_toggle: move |col| interactions.toggle_sort(col),

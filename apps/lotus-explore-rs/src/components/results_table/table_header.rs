@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Table header with sortable columns.
+//! Sortable column header for the results table.
+//!
+//! The header bar is visually aligned with the body rows: neutral labels, a grid
+//! based sort button, and a subtle sort indicator arrow.
 
 use super::header_model::{SortableHeaderModel, build_sortable_header_models};
 use crate::i18n::{TextKey, aria_sort_toggle, t};
@@ -15,10 +18,10 @@ pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortCol
 
     rsx! {
         tr {
-            class: "border-b border-panel-border bg-panel-soft text-left text-subtle",
+            class: "border-b border-panel-border bg-panel-soft text-left text-text2",
             th {
                 scope: "col",
-                class: "th-static p-2.5 text-micro font-semibold uppercase tracking-wider text-subtle select-none",
+                class: "px-2.5 py-2 text-micro font-bold whitespace-nowrap select-none",
                 span { "{t(locale, TextKey::Structure)}" }
             }
             for header in headers {
@@ -39,27 +42,20 @@ fn SortableColumnHeader(
     let locale = crate::hooks::use_locale();
     let label_text = t(locale, header.label);
     let sort_aria = aria_sort_toggle(locale, label_text, header.next_descending);
-    let stripe = match header.col {
-        SortColumn::Name => "border-l-4 border-l-wd-compound border-solid bg-stat-compound",
-        SortColumn::TaxonName => "border-l-4 border-l-wd-taxon border-solid bg-stat-taxon",
-        SortColumn::RefTitle => "border-l-4 border-l-wd-reference border-solid bg-stat-reference",
-        _ => "",
-    };
-
     rsx! {
         th {
             scope: "col",
             aria_sort: "{header.aria_sort}",
-            class: "sort-th p-2.5 text-micro font-semibold uppercase tracking-wider text-subtle select-none {stripe}",
+            class: "px-2.5 py-2 text-micro font-bold whitespace-nowrap select-none",
             button {
                 r#type: "button",
                 aria_label: "{sort_aria}",
                 title: "{sort_aria}",
-                class: "group inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-inherit transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:rounded-sm",
+                class: "grid w-full min-w-max grid-cols-[auto_auto] items-start gap-x-1.5 border-0 bg-transparent p-0 text-inherit hover:text-accent focus-visible:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-accent/50",
                 onclick: move |_| on_toggle.call(header.col),
-                span { "{label_text}" }
+                span { class: "block min-w-max whitespace-nowrap leading-none", "{label_text}" }
                 span {
-                    class: "text-subtle group-hover:text-accent",
+                    class: "text-sm font-bold leading-none text-subtle",
                     "aria-hidden": "true",
                     {header.sort_icon}
                 }
