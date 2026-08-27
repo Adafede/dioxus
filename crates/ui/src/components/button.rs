@@ -91,7 +91,7 @@ pub fn Button(props: ButtonProps) -> Element {
             "pointer"
         })
         .opacity(if props.disabled { "0.6" } else { "1" })
-        .transition(crate::theme::Interaction::TRANSITION_FAST)
+        .transition("transform 150ms")
         .build();
 
     let on_click = props.onclick;

@@ -67,7 +67,6 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         .background_color(&outer_background)
         .box_shadow(Shadow::XS)
         .font_size(Typography::UI)
-        .transition(crate::theme::Interaction::TRANSITION_FAST)
         .build();
 
     let label_style = StyleBuilder::new()

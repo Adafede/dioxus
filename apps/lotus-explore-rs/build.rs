@@ -99,6 +99,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         serde_json::to_string_pretty(&metadata.manifest)?,
     )?;
 
+    // Copy public folder to output directory for static asset serving
+    let out_dir = manifest_dir.join("target").join("dx").join("lotus-explore-rs").join("wasm32-unknown-unknown").join("release");
+    if out_dir.exists() {
+        let out_public = out_dir.join("public");
+        if out_public.exists() {
+            fs::remove_dir_all(&out_public)?;
+        }
+        copy_dir_all(&public_dir, &out_public)?;
+    }
+
     Ok(())
 }
 
@@ -326,4 +336,19 @@ fn build_headers_txt() -> String {
     /index.html\n\
     \x20 No-Vary-Search: key-order, params, except=(\"locale\")\n"
         .to_string()
+}
+
+fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> Result<(), Box<dyn Error>> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let dst_path = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_all(&entry.path(), &dst_path)?;
+        } else {
+            fs::copy(entry.path(), dst_path)?;
+        }
+    }
+    Ok(())
 }

@@ -69,7 +69,7 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
         .property("line-height", "1.2")
         .property("border", "1px solid transparent")
         .property("cursor", "pointer")
-        .transition(crate::theme::Interaction::TRANSITION_FAST)
+        .transition("transform 150ms")
         .build();
 
     rsx! {

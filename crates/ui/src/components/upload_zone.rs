@@ -76,7 +76,6 @@ pub fn UploadZone(
             colors.surface
         })
         .color(colors.text2)
-        .transition(Interaction::TRANSITION_FAST)
         .build();
 
     let status_color = if status.read().contains("Error") {

@@ -23,6 +23,7 @@ use crate::i18n::{
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
+use upload::{read_blob_string, extract_blob_from_file_data};
 
 use crate::components::copy_button::CopyButton;
 use crate::features::explore::absolute_share_url;
@@ -268,9 +269,15 @@ pub fn TsvImportCard(
                             return;
                         };
                         spawn(async move {
-                            match file.read_string().await {
-                                Ok(content) => on_import_uploaded_tsv.call(content),
-                                Err(err) => on_import_error.call(err.to_string()),
+                            match extract_blob_from_file_data(&[file]) {
+                                Ok(Some(extracted)) => {
+                                    match read_blob_string(&extracted.blob).await {
+                                        Ok(content) => on_import_uploaded_tsv.call(content),
+                                        Err(err) => on_import_error.call(err.to_string()),
+                                    }
+                                }
+                                Ok(None) => {}
+                                Err(err) => on_import_error.call(err),
                             }
                         });
                     },

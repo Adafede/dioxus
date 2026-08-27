@@ -54,7 +54,6 @@ pub fn Footer(props: FooterProps) -> Element {
             .color(colors.accent)
             .text_decoration("none")
             .border_bottom("1px solid transparent")
-            .transition(crate::theme::Interaction::TRANSITION_FAST)
             .build()
     };
 
