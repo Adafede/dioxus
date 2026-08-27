@@ -29,15 +29,36 @@ fn base_url() -> String {
 #[allow(clippy::volatile_composites)]
 fn links() -> Vec<LinkSpec> {
     vec![
+        // Font optimization - preconnect and load Inter font
         LinkSpec {
-            rel: "icon",
-            href: "/favicon.ico".to_string(),
-            r#type: Some("image/x-icon"),
+            rel: "preconnect",
+            href: "https://fonts.googleapis.com".to_string(),
+            r#type: None,
             media: None,
             crossorigin: None,
-            sizes: Some("any"),
+            sizes: None,
             hreflang: None,
         },
+        LinkSpec {
+            rel: "preconnect",
+            href: "https://fonts.gstatic.com".to_string(),
+            r#type: None,
+            media: None,
+            crossorigin: Some("anonymous"),
+            sizes: None,
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "stylesheet",
+            href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap".to_string(),
+            r#type: None,
+            media: None,
+            crossorigin: None,
+            sizes: None,
+            hreflang: None,
+        },
+
+        // Favicon links
         LinkSpec {
             rel: "icon",
             href: asset!("/public/favicon.ico").to_string(),
@@ -74,6 +95,8 @@ fn links() -> Vec<LinkSpec> {
             sizes: Some("16x16"),
             hreflang: None,
         },
+
+        // External Third-Party APIs (DNS Prefetching)
         LinkSpec {
             rel: "dns-prefetch",
             href: "https://qlever.dev".to_string(),
@@ -128,6 +151,8 @@ fn links() -> Vec<LinkSpec> {
             sizes: None,
             hreflang: None,
         },
+
+        // Web Manifest
         LinkSpec {
             rel: "manifest",
             href: asset!("/public/site.webmanifest").to_string(),
