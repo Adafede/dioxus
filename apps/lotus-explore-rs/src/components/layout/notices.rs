@@ -112,7 +112,7 @@ pub fn ErrorNotice() -> Element {
             button {
                 r#type: "button",
                 aria_label: "{t(locale, TextKey::DismissError)}",
-                class: "notice-dismiss flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-base font-bold text-subtle transition-colors hover:bg-danger/15 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40 focus-visible:ring-offset-1",
+                class: "notice-dismiss flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-base font-bold text-subtle hover:bg-danger/15 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40 focus-visible:ring-offset-1",
                 onclick: move |_| interactions.dismiss_error(),
                 "×"
             }
