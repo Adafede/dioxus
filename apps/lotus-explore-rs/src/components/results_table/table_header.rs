@@ -21,7 +21,7 @@ pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortCol
             class: "border-b border-panel-border bg-panel-soft text-left text-text2",
             th {
                 scope: "col",
-                class: "px-3 py-2.5 text-ui font-bold whitespace-nowrap select-none text-wd-structure",
+                class: "px-3 py-2.5 text-ui font-bold whitespace-nowrap select-none",
                 span { "{t(locale, TextKey::Structure)}" }
             }
             for header in headers {
