@@ -75,11 +75,18 @@ pub(super) fn measure_row_height_px(
 }
 
 #[cfg(target_arch = "wasm32")]
+pub(super) type RafClosure = wasm_bindgen::closure::Closure<dyn FnMut(f64)>;
+type RafSignal = Signal<Option<RafClosure>>;
+type RafIdSignal = Signal<Option<i32>>;
+type ScrollHostSignal = Signal<Option<web_sys::HtmlElement>>;
+type BoolSignal = Signal<bool>;
+
+#[cfg(target_arch = "wasm32")]
 pub(super) fn schedule_virtual_scroll_frame(
-    mut scroll_host: Signal<Option<web_sys::HtmlElement>>,
-    mut scroll_raf_scheduled: Signal<bool>,
-    mut scroll_raf_cb: Signal<Option<wasm_bindgen::closure::Closure<dyn FnMut(f64)>>>,
-    mut scroll_raf_id: Signal<Option<i32>>,
+    mut scroll_host: ScrollHostSignal,
+    mut scroll_raf_scheduled: BoolSignal,
+    mut scroll_raf_cb: RafSignal,
+    mut scroll_raf_id: RafIdSignal,
     scroll_id: &'static str,
     row_height_px: usize,
     total_rows: usize,
@@ -132,22 +139,19 @@ pub(super) fn schedule_virtual_scroll_frame(
     }) as Box<dyn FnMut(f64)>);
 
     *scroll_raf_cb.write() = Some(raf_cb);
-    let scheduled_id = if let Some(win) = web_sys::window() {
-        if let Some(cb) = scroll_raf_cb.peek().as_ref() {
+    let scheduled_id: Option<i32> = web_sys::window().and_then(|win| {
+        scroll_raf_cb.peek().as_ref().and_then(|cb| {
             win.request_animation_frame(cb.as_ref().unchecked_ref())
                 .ok()
-        } else {
-            None
+        })
+    });
+    match scheduled_id {
+        Some(id) => *scroll_raf_id.write() = Some(id),
+        None => {
+            *scroll_raf_id.write() = None;
+            *scroll_raf_scheduled.write() = false;
+            *scroll_raf_cb.write() = None;
         }
-    } else {
-        None
-    };
-    if let Some(id) = scheduled_id {
-        *scroll_raf_id.write() = Some(id);
-    } else {
-        *scroll_raf_id.write() = None;
-        *scroll_raf_scheduled.write() = false;
-        *scroll_raf_cb.write() = None;
     }
 }
 

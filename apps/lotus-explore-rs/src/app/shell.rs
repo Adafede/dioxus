@@ -66,12 +66,11 @@ fn resolve_startup_dark_mode(startup: &crate::features::explore::InitialUrlState
             return crate::features::explore::url_state::is_true_flag(raw);
         }
 
-        if let Some(win) = web_sys::window() {
-            if let Ok(media) = win.match_media("(prefers-color-scheme: dark)") {
-                if let Some(media_query) = media {
-                    return media_query.matches();
-                }
-            }
+        if let Some(win) = web_sys::window()
+            && let Ok(media) = win.match_media("(prefers-color-scheme: dark)")
+            && let Some(media_query) = media
+        {
+            return media_query.matches();
         }
     }
 
@@ -145,10 +144,10 @@ fn AppRuntimeEffects(
         #[cfg(target_arch = "wasm32")]
         {
             let lang = locale_lang_tag(*locale.read());
-            if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
-                if let Some(html) = doc.document_element() {
-                    let _ = html.set_attribute("lang", lang);
-                }
+            if let Some(doc) = web_sys::window().and_then(|w| w.document())
+                && let Some(html) = doc.document_element()
+            {
+                let _ = html.set_attribute("lang", lang);
             }
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -163,13 +162,13 @@ fn AppRuntimeEffects(
         let dark_mode = app_state.read().dark_mode;
         #[cfg(target_arch = "wasm32")]
         {
-            if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
-                if let Some(html) = doc.document_element() {
-                    if dark_mode {
-                        let _ = html.set_attribute("data-theme", "dark");
-                    } else {
-                        let _ = html.set_attribute("data-theme", "light");
-                    }
+            if let Some(doc) = web_sys::window().and_then(|w| w.document())
+                && let Some(html) = doc.document_element()
+            {
+                if dark_mode {
+                    let _ = html.set_attribute("data-theme", "dark");
+                } else {
+                    let _ = html.set_attribute("data-theme", "light");
                 }
             }
         }

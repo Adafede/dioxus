@@ -23,8 +23,7 @@ pub type TimerHandle = Instant;
 fn wasm_now_ms() -> f64 {
     web_sys::window()
         .and_then(|w| w.performance())
-        .map(|p| p.now())
-        .unwrap_or(0.0)
+        .map_or(0.0, |p| p.now())
 }
 
 /// Log a message with timing context. Works cross-platform (WASM console vs. native stdout).

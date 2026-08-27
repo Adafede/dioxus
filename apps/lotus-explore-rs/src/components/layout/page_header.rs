@@ -30,7 +30,7 @@ pub fn PageHeader() -> Element {
                 h1 { id: PAGE_TITLE_ID,
                     class: "page-title-text",
                     a {
-                        href: "/",
+                        href: "/dioxus/lotus-explore-rs/",
                         class: "page-title-link page-home-link",
                         aria_label: "{t(locale, TextKey::GoToHomepage)}",
                         span {
@@ -59,7 +59,7 @@ pub fn PageHeader() -> Element {
                         href: "https://doi.org/10.5281/zenodo.5794106",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "page-archive-link underline underline-offset-2 hover:no-underline",
+                        class: "page-archive-link border-b-2 border-current underline-offset-2 hover:no-underline",
                         "10.5281/zenodo.5794106"
                     }
                 }

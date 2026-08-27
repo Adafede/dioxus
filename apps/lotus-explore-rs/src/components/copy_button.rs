@@ -91,19 +91,15 @@ pub fn copy_to_clipboard(text: &str) {
 
         let window_js = wasm_bindgen::JsValue::from(window.clone());
         let nav = js_sys::Reflect::get(&window_js, &wasm_bindgen::JsValue::from_str("navigator"));
-        if let Ok(nav) = nav {
-            if let Ok(clipboard) =
+        if let Ok(nav) = nav
+            && let Ok(clipboard) =
                 js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("clipboard"))
-            {
-                if let Ok(write_text) =
-                    js_sys::Reflect::get(&clipboard, &wasm_bindgen::JsValue::from_str("writeText"))
-                {
-                    if let Some(func) = write_text.dyn_ref::<js_sys::Function>() {
-                        let _ = func.call1(&clipboard, &wasm_bindgen::JsValue::from_str(text));
-                        return;
-                    }
-                }
-            }
+            && let Ok(write_text) =
+                js_sys::Reflect::get(&clipboard, &wasm_bindgen::JsValue::from_str("writeText"))
+            && let Some(func) = write_text.dyn_ref::<js_sys::Function>()
+        {
+            let _ = func.call1(&clipboard, &wasm_bindgen::JsValue::from_str(text));
+            return;
         }
 
         let area = document
@@ -122,10 +118,9 @@ pub fn copy_to_clipboard(text: &str) {
             let doc_js = wasm_bindgen::JsValue::from(document.clone());
             if let Ok(exec_cmd) =
                 js_sys::Reflect::get(&doc_js, &wasm_bindgen::JsValue::from_str("execCommand"))
+                && let Some(func) = exec_cmd.dyn_ref::<js_sys::Function>()
             {
-                if let Some(func) = exec_cmd.dyn_ref::<js_sys::Function>() {
-                    let _ = func.call1(&doc_js, &wasm_bindgen::JsValue::from_str("copy"));
-                }
+                let _ = func.call1(&doc_js, &wasm_bindgen::JsValue::from_str("copy"));
             }
             let _ = body.remove_child(&ta);
         }

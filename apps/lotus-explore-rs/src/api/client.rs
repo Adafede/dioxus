@@ -93,9 +93,10 @@ fn resolve_api_url(base: &str, url: &str) -> String {
         return trimmed.to_string();
     }
     let base = base.trim_end_matches('/');
-    match trimmed.starts_with('/') {
-        true => format!("{base}{trimmed}"),
-        false => format!("{base}/{trimmed}"),
+    if trimmed.starts_with('/') {
+        format!("{base}{trimmed}")
+    } else {
+        format!("{base}/{trimmed}")
     }
 }
 

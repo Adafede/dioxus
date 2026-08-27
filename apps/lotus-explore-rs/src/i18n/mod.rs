@@ -65,16 +65,12 @@ impl Locale {
                 let win_js = wasm_bindgen::JsValue::from(win);
                 if let Ok(nav) =
                     js_sys::Reflect::get(&win_js, &wasm_bindgen::JsValue::from_str("navigator"))
-                {
-                    if let Ok(lang) =
+                    && let Ok(lang) =
                         js_sys::Reflect::get(&nav, &wasm_bindgen::JsValue::from_str("language"))
-                    {
-                        if let Some(code) = lang.as_string() {
-                            if let Some(locale) = Self::from_lang_tag(&code) {
-                                return locale;
-                            }
-                        }
-                    }
+                    && let Some(code) = lang.as_string()
+                    && let Some(locale) = Self::from_lang_tag(&code)
+                {
+                    return locale;
                 }
             }
         }

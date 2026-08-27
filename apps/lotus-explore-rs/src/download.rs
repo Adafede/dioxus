@@ -37,7 +37,7 @@ pub async fn execute_download(
 
     #[cfg(target_arch = "wasm32")]
     {
-        return wasm::execute_download_wasm(format, criteria, query, filename, dl_timer).await;
+        wasm::execute_download_wasm(format, criteria, query, filename, dl_timer).await
     }
 
     #[cfg(not(target_arch = "wasm32"))]

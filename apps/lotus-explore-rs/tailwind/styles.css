@@ -1061,18 +1061,20 @@ a:hover {
 
 .footer-label {
     flex: 0 0 auto;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     font-weight: 700;
     text-transform: uppercase;
     font-size: var(--fs-0);
     letter-spacing: 0.06em;
     white-space: nowrap;
-    line-height: 1.4;
-    padding: 3px 10px;
+    line-height: 1.5;
+    padding: 4px 10px;
     border-radius: 8px;
     border: 1px solid color-mix(in srgb, currentColor 30%, var(--border));
     border-left: 4px solid currentColor;
     background: color-mix(in srgb, currentColor 14%, var(--surface));
+    min-height: 44px;
 }
 
 .footer-aside {

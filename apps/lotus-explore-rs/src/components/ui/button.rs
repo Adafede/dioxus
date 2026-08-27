@@ -104,11 +104,10 @@ pub fn Button(props: ButtonProps) -> Element {
             aria_pressed: props.aria_pressed.as_deref().unwrap_or_default(),
             class: "inline-flex items-center justify-center font-sans select-none transition-[background,border-color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 {size_classes} {variant_classes} {state_classes} {custom_classes}",
             onclick: move |evt| {
-                if !props.disabled && !props.loading {
-                    if let Some(handler) = props.onclick.as_ref() {
+                if !props.disabled && !props.loading
+                    && let Some(handler) = props.onclick.as_ref() {
                         handler.call(evt);
                     }
-                }
             },
             if props.loading {
                 span {

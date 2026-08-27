@@ -33,6 +33,3 @@ pub const LINK: &str = "font-medium text-accent hover:underline";
 
 /// Muted supporting paragraph.
 pub const SUPPORT: &str = "text-body text-subtle";
-
-/// Toolbar / panel shell.
-pub const PANEL_SHELL: &str = "rounded-xl border border-panel-border bg-panel-soft shadow-xs";

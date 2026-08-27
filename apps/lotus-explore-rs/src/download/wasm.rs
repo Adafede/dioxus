@@ -177,7 +177,7 @@ async fn execute_download_wasm_browser_post(
     );
 
     let trigger_timer = perf::start_timer(&format.trigger_timer_label());
-    if let Err(e) = upload::submit_download_form(
+    upload::submit_download_form(
         QLEVER_WIKIDATA,
         &[
             ("query", &prepared_query),
@@ -185,10 +185,7 @@ async fn execute_download_wasm_browser_post(
             ("filename", &filename),
         ],
     )
-    .await
-    {
-        return Err(e);
-    }
+    .await?;
     let trigger_elapsed = perf::end_timer(&format.trigger_timer_label(), trigger_timer);
     perf::log_timing(
         "download",

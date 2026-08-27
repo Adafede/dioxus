@@ -6,6 +6,7 @@
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[allow(dead_code)]
 pub enum BadgeVariant {
     Compound,
     Taxon,
@@ -15,6 +16,7 @@ pub enum BadgeVariant {
 }
 
 impl BadgeVariant {
+    #[allow(dead_code)]
     pub const fn classes(&self) -> &'static str {
         match self {
             Self::Compound => "border-wd-compound/35 bg-stat-compound text-wd-compound",

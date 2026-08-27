@@ -33,7 +33,7 @@ pub(super) struct ResultsTableVirtualizationController {
     #[cfg(target_arch = "wasm32")]
     scroll_raf_scheduled: Signal<bool>,
     #[cfg(target_arch = "wasm32")]
-    scroll_raf_cb: Signal<Option<wasm_bindgen::closure::Closure<dyn FnMut(f64)>>>,
+    scroll_raf_cb: Signal<Option<scroll_runtime::RafClosure>>,
     #[cfg(target_arch = "wasm32")]
     scroll_raf_id: Signal<Option<i32>>,
 }
@@ -138,9 +138,9 @@ impl ResultsTableVirtualizationController {
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) const fn sync_after_render(&mut self, _total_rows: usize) {}
 
-    pub(super) fn handle_scroll(&self, _total_rows: usize) {
+    pub(super) fn handle_scroll(&self, total_rows: usize) {
         #[cfg(target_arch = "wasm32")]
-        self.schedule_scroll_frame(_total_rows, *self.row_height_px.read());
+        self.schedule_scroll_frame(total_rows, *self.row_height_px.read());
     }
 
     #[cfg(target_arch = "wasm32")]

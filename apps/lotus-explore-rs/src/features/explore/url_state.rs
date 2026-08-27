@@ -159,12 +159,10 @@ pub fn read_url_query_params() -> BTreeMap<String, String> {
                 continue;
             }
             let (key, val) = pair.split_once('=').unwrap_or((pair, ""));
-            let key_decoded = urlencoding::decode(key)
-                .map(|v| v.into_owned())
-                .unwrap_or_else(|_| key.into());
-            let val_decoded = urlencoding::decode(val)
-                .map(|v| v.into_owned())
-                .unwrap_or_else(|_| val.into());
+            let key_decoded =
+                urlencoding::decode(key).map_or_else(|_| key.into(), |v| v.into_owned());
+            let val_decoded =
+                urlencoding::decode(val).map_or_else(|_| val.into(), |v| v.into_owned());
             out.insert(key_decoded, val_decoded);
         }
         out

@@ -4,10 +4,10 @@
 pub fn api_base_url() -> Option<String> {
     #[cfg(target_arch = "wasm32")]
     {
-        if let Some(base) = runtime_query_param("api_base") {
-            if let Some(normalized) = normalize_api_base(&base) {
-                return Some(normalized);
-            }
+        if let Some(base) = runtime_query_param("api_base")
+            && let Some(normalized) = normalize_api_base(&base)
+        {
+            return Some(normalized);
         }
     }
 
@@ -19,14 +19,14 @@ pub fn api_base_url() -> Option<String> {
 
     #[cfg(target_arch = "wasm32")]
     {
-        if let Some(window) = web_sys::window() {
-            if let Ok(hostname) = window.location().hostname() {
-                let hostname = hostname.to_ascii_lowercase();
-                if hostname == "localhost" || hostname == "127.0.0.1" {
-                    // Use relative/empty base for development to leverage Dioxus dev server proxy.
-                    // The dev server is configured to proxy /v1 requests to the API backend.
-                    return Some(String::new());
-                }
+        if let Some(window) = web_sys::window()
+            && let Ok(hostname) = window.location().hostname()
+        {
+            let hostname = hostname.to_ascii_lowercase();
+            if hostname == "localhost" || hostname == "127.0.0.1" {
+                // Use relative/empty base for development to leverage Dioxus dev server proxy.
+                // The dev server is configured to proxy /v1 requests to the API backend.
+                return Some(String::new());
             }
         }
     }
