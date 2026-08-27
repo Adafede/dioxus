@@ -1007,7 +1007,7 @@ a:hover {
     width: 100%;
     max-width: 1600px;
     margin-inline: auto;
-    padding: 4px 20px 8px;
+    padding: 3px 20px 6px;
     box-sizing: border-box;
 }
 
@@ -1023,15 +1023,15 @@ a:hover {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 0 24px;
     align-items: start;
-    padding: 4px 0;
+    padding: 2px 0;
     border-bottom: 1px solid var(--border);
 }
 
 .footer-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 4px 0;
+    gap: 8px;
+    padding: 2px 0;
 }
 
 .footer-label {
@@ -1043,7 +1043,8 @@ a:hover {
     font-size: var(--fs-0);
     letter-spacing: 0.06em;
     white-space: nowrap;
-    padding: 4px 10px;
+    line-height: 1.5;
+    padding: 3px 8px;
     border-radius: 8px;
     border: 1px solid color-mix(in srgb, currentColor 30%, var(--border));
     border-left: 4px solid currentColor;
