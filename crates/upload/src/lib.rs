@@ -84,5 +84,7 @@ pub async fn read_blob_string(blob: &Blob) -> Result<String, UploadError> {
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::unused_async)]
 pub async fn read_blob_string(_blob: &Blob) -> Result<String, UploadError> {
-    Err(UploadError::other("read_blob_string only available on WASM targets"))
+    Err(UploadError::other(
+        "read_blob_string only available on WASM targets",
+    ))
 }

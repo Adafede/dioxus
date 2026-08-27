@@ -23,7 +23,7 @@ use crate::i18n::{
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
-use upload::{read_blob_string, extract_blob_from_file_data};
+use upload::{extract_blob_from_file_data, read_blob_string};
 
 use crate::components::copy_button::CopyButton;
 use crate::features::explore::absolute_share_url;

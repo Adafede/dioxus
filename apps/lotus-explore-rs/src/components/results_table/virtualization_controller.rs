@@ -138,9 +138,9 @@ impl ResultsTableVirtualizationController {
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) const fn sync_after_render(&mut self, _total_rows: usize) {}
 
-    pub(super) fn handle_scroll(&self, total_rows: usize) {
+    pub(super) fn handle_scroll(&self, _total_rows: usize) {
         #[cfg(target_arch = "wasm32")]
-        self.schedule_scroll_frame(total_rows, *self.row_height_px.read());
+        self.schedule_scroll_frame(_total_rows, *self.row_height_px.read());
     }
 
     #[cfg(target_arch = "wasm32")]

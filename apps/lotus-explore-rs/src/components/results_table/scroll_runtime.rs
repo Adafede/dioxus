@@ -76,9 +76,13 @@ pub(super) fn measure_row_height_px(
 
 #[cfg(target_arch = "wasm32")]
 pub(super) type RafClosure = wasm_bindgen::closure::Closure<dyn FnMut(f64)>;
+#[cfg(target_arch = "wasm32")]
 type RafSignal = Signal<Option<RafClosure>>;
+#[cfg(target_arch = "wasm32")]
 type RafIdSignal = Signal<Option<i32>>;
+#[cfg(target_arch = "wasm32")]
 type ScrollHostSignal = Signal<Option<web_sys::HtmlElement>>;
+#[cfg(target_arch = "wasm32")]
 type BoolSignal = Signal<bool>;
 
 #[cfg(target_arch = "wasm32")]

@@ -7,6 +7,8 @@ use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use crate::state::use_app_state_context;
 use dioxus::prelude::*;
+
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 
 #[component]

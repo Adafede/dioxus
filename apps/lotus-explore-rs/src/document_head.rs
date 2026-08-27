@@ -50,14 +50,15 @@ fn links() -> Vec<LinkSpec> {
         },
         LinkSpec {
             rel: "stylesheet",
-            href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap".to_string(),
+            href:
+                "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+                    .to_string(),
             r#type: None,
             media: None,
             crossorigin: None,
             sizes: None,
             hreflang: None,
         },
-
         // Favicon links
         LinkSpec {
             rel: "icon",
@@ -95,7 +96,6 @@ fn links() -> Vec<LinkSpec> {
             sizes: Some("16x16"),
             hreflang: None,
         },
-
         // External Third-Party APIs (DNS Prefetching)
         LinkSpec {
             rel: "dns-prefetch",
@@ -151,7 +151,6 @@ fn links() -> Vec<LinkSpec> {
             sizes: None,
             hreflang: None,
         },
-
         // Web Manifest
         LinkSpec {
             rel: "manifest",

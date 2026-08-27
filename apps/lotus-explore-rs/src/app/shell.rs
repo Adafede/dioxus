@@ -29,6 +29,8 @@ use crate::state::{
 use crate::ui::a11y_contract::{MAIN_PANEL_ID, PAGE_TITLE_ID, SKIP_TO_RESULTS_HREF};
 use dioxus::prelude::*;
 use std::sync::Arc;
+
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 
 const fn locale_lang_tag(locale: Locale) -> &'static str {
@@ -45,7 +47,10 @@ fn resolve_startup_dark_mode(startup: &crate::features::explore::InitialUrlState
         return true;
     }
 
+    #[cfg(target_arch = "wasm32")]
     let mut startup_dark_mode = false;
+    #[cfg(not(target_arch = "wasm32"))]
+    let startup_dark_mode = false;
 
     #[cfg(target_arch = "wasm32")]
     {

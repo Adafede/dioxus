@@ -100,7 +100,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
 
     // Copy public folder to output directory for static asset serving
-    let out_dir = manifest_dir.join("target").join("dx").join("lotus-explore-rs").join("wasm32-unknown-unknown").join("release");
+    let out_dir = manifest_dir
+        .join("target")
+        .join("dx")
+        .join("lotus-explore-rs")
+        .join("wasm32-unknown-unknown")
+        .join("release");
     if out_dir.exists() {
         let out_public = out_dir.join("public");
         if out_public.exists() {

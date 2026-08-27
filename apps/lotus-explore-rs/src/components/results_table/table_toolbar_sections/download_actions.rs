@@ -139,7 +139,7 @@ fn DownloadQueryButton(
     disabled: bool,
     download_busy: Signal<bool>,
     download_status: Signal<Option<String>>,
-    _criteria: ReadSignal<SearchCriteria>,
+    criteria: ReadSignal<SearchCriteria>,
     filename: String,
 ) -> Element {
     let title = t(locale, spec.title_key);
@@ -159,7 +159,7 @@ fn DownloadQueryButton(
                 let q = sparql_query.clone();
                 let fname = filename.clone();
                 #[cfg(target_arch = "wasm32")]
-                let criteria_snapshot = Some(Arc::new(_criteria.read().clone()));
+                let criteria_snapshot = Some(Arc::new(criteria.read().clone()));
                 #[cfg(not(target_arch = "wasm32"))]
                 let criteria_snapshot = None;
                 move |_| {
@@ -272,7 +272,7 @@ pub fn DownloadActionsGroup() -> Element {
                             disabled: *download_busy.read(),
                             download_busy,
                             download_status,
-                            _criteria: criteria,
+                            criteria,
                             filename: toolbar_model.read().csv_filename.clone(),
                         }
                         DownloadQueryButton {
@@ -282,7 +282,7 @@ pub fn DownloadActionsGroup() -> Element {
                             disabled: *download_busy.read(),
                             download_busy,
                             download_status,
-                            _criteria: criteria,
+                            criteria,
                             filename: toolbar_model.read().json_filename.clone(),
                         }
                         DownloadQueryButton {
@@ -292,7 +292,7 @@ pub fn DownloadActionsGroup() -> Element {
                             disabled: *download_busy.read(),
                             download_busy,
                             download_status,
-                            _criteria: criteria,
+                            criteria,
                             filename: toolbar_model.read().rdf_filename.clone(),
                         }
                     }
