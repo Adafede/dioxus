@@ -24,6 +24,8 @@ pub struct ManifestRow {
     pub slug: String,
     pub positive_path: String,
     pub negative_path: String,
+    pub positive_count: String,
+    pub negative_count: String,
 }
 
 /// Read a manifest CSV from `path` into a vector of [`ManifestRow`].

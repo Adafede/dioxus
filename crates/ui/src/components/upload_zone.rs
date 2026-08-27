@@ -16,7 +16,7 @@
 //! The blob extraction (`upload::extract_blob_from_file_data`) is intentionally
 //! kept in the apps — so `crates/ui` stays free of the `crates/upload` dep.
 
-use crate::theme::{ColorScheme, Interaction, Radius, Spacing, StyleBuilder, Typography};
+use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
 use dioxus::events::{DragData, FormData};
 use dioxus::prelude::*;
 

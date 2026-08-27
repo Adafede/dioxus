@@ -16,7 +16,7 @@ pub fn WelcomeScreen() -> Element {
     let locale = crate::hooks::use_locale();
     rsx! {
         section {
-            class: "mx-auto flex w-full max-w-6xl flex-col gap-6 p-6",
+            class: "mx-auto flex w-full max-w-7xl flex-col gap-6 p-6",
             div {
                 class: "flex flex-col gap-3 rounded-xl border border-panel-border bg-panel-soft p-6 shadow-xs",
                 p {

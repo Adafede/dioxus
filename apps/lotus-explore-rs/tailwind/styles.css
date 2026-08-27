@@ -293,16 +293,16 @@ video {
    component CSS (var(--fs-body), var(--fs-ui), ...). Previously these were never
    defined, so all text fell back to the inherited 16px browser default. */
 :root {
-    --fs-micro: clamp(0.75rem, 0.70rem + 0.07vw, 0.8rem);
-    --fs-0:     clamp(0.75rem, 0.72rem + 0.09vw, 0.82rem);
-    --fs-ui:    clamp(0.8rem, 0.75rem + 0.11vw, 0.875rem);
-    --fs-1:     clamp(0.875rem, 0.82rem + 0.13vw, 0.9375rem);
-    --fs-body:  clamp(1rem, 0.95rem + 0.15vw, 1.125rem);
-    --fs-label: clamp(0.75rem, 0.72rem + 0.09vw, 0.8rem);
-    --fs-2:     clamp(1.125rem, 1.05rem + 0.2vw, 1.25rem);
-    --fs-3:     clamp(1.25rem, 1.125rem + 0.4vw, 1.5rem);
-    --fs-4:     clamp(1.5rem, 1.25rem + 0.6vw, 1.875rem);
-    --fs-stat:  clamp(1.125rem, 1.05rem + 0.36vw, 1.25rem);
+    --fs-micro: clamp(0.70rem, 0.68rem + 0.11vw, 0.76rem);
+    --fs-0:     clamp(0.70rem, 0.68rem + 0.11vw, 0.76rem);
+    --fs-ui:    clamp(0.70rem, 0.68rem + 0.11vw, 0.76rem);
+    --fs-1:     clamp(0.76rem, 0.74rem + 0.13vw, 0.82rem);
+    --fs-body:  clamp(0.875rem, 0.85rem + 0.15vw, 1rem);
+    --fs-label: clamp(0.59rem, 0.57rem + 0.09vw, 0.66rem);
+    --fs-2:     clamp(1rem, 0.95rem + 0.2vw, 1.125rem);
+    --fs-3:     clamp(1.125rem, 1rem + 0.4vw, 1.375rem);
+    --fs-4:     clamp(1.375rem, 1.15rem + 0.6vw, 1.625rem);
+    --fs-stat:  clamp(1rem, 0.95rem + 0.36vw, 1.15rem);
 }
 
 /* Base styles */
@@ -1333,8 +1333,8 @@ a:hover {
 /* Responsive breakpoints */
 @media (max-width: 768px) {
     :root {
-        --fs-micro: clamp(0.625rem, 0.68rem + 0.08vw, 0.75rem);
-        --fs-0: clamp(0.7rem, 0.68rem + 0.12vw, 0.8rem);
+        --fs-micro: clamp(0.75rem, 0.72rem + 0.08vw, 0.8rem);
+        --fs-0: clamp(0.75rem, 0.72rem + 0.12vw, 0.82rem);
     }
 
     .app-layout {
