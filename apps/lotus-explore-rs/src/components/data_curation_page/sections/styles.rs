@@ -28,7 +28,7 @@ pub(super) const TABLE_SCROLL: &str = "w-full overflow-x-auto rounded-lg border 
 
 pub(super) const QUEUE_TABLE: &str = "w-full table-fixed border-collapse text-ui";
 
-pub(super) const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted";
+pub(super) const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2.5 text-left text-micro font-semibold uppercase tracking-wide text-muted";
 
 pub(super) const TD: &str = "border-b border-panel-border px-3 py-2.5 align-top text-ui";
 

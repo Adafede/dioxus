@@ -325,12 +325,12 @@ pub fn QueueRowsCard(
                     tbody {
                         if rows_snapshot.is_empty() {
                             tr {
-                                td { class: "{styles::TD} {styles::QUEUE_ACTION_COL} font-mono text-xs", "-" }
-                                td { class: "{styles::TD} {styles::QUEUE_INDEX_COL} font-mono text-xs", "-" }
-                                td { class: "{styles::TD} font-mono text-xs", "-" }
-                                td { class: "{styles::TD} {styles::QUEUE_SMILES_COL} font-mono text-xs", "-" }
-                                td { class: "{styles::TD} font-mono text-xs", "-" }
-                                td { class: "{styles::TD} font-mono text-xs", "-" }
+                                td { class: "{styles::TD} {styles::QUEUE_ACTION_COL} font-mono text-micro", "-" }
+                                td { class: "{styles::TD} {styles::QUEUE_INDEX_COL} font-mono text-micro", "-" }
+                                td { class: "{styles::TD} font-mono text-micro", "-" }
+                                td { class: "{styles::TD} {styles::QUEUE_SMILES_COL} font-mono text-micro", "-" }
+                                td { class: "{styles::TD} font-mono text-micro", "-" }
+                                td { class: "{styles::TD} font-mono text-micro", "-" }
                             }
                         } else {
                             for (idx, row) in rows_snapshot.iter().enumerate() {
@@ -349,11 +349,11 @@ pub fn QueueRowsCard(
                                             })),
                                         }
                                     }
-                                    td { class: "{styles::TD} {styles::QUEUE_INDEX_COL} font-mono text-xs", "{idx + 1}" }
+                                    td { class: "{styles::TD} {styles::QUEUE_INDEX_COL} font-mono text-micro", "{idx + 1}" }
                                     td { class: "{styles::TD}", "{row.name}" }
                                     td { class: "{styles::TD} {styles::QUEUE_SMILES_COL}", "{row.smiles}" }
                                     td { class: "{styles::TD}", "{row.taxon.as_deref().unwrap_or(\"\")}" }
-                                    td { class: "{styles::TD} font-mono text-xs", "{row.doi.as_deref().unwrap_or(\"\")}" }
+                                    td { class: "{styles::TD} font-mono text-micro", "{row.doi.as_deref().unwrap_or(\"\")}" }
                                 }
                             }
                         }

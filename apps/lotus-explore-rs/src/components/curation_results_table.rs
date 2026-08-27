@@ -14,11 +14,11 @@ use std::sync::Arc;
 
 const NA_TEXT: &str = "n/a";
 
-const PILL: &str = "inline-flex items-center rounded-xs border border-panel-border bg-surface px-2 py-0.5 text-xs font-semibold uppercase tracking-wide";
-const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted";
+const PILL: &str = "inline-flex items-center rounded-xs border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide";
+const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted";
 const TD: &str = "border-b border-panel-border px-3 py-2.5 align-top text-ui";
-const MONO: &str = "font-mono text-xs break-all";
-const MONO_NB: &str = "font-mono text-xs";
+const MONO: &str = "font-mono text-micro break-all";
+const MONO_NB: &str = "font-mono text-micro";
 
 #[component]
 fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Element {
@@ -59,13 +59,13 @@ fn render_curation_result_cells(locale: Locale, row: &CurationResultRow) -> Elem
                 }
             }
             if !row.note.is_empty() {
-                div { class: "mt-1 whitespace-pre-line text-xs text-muted", "{row.note}" }
+                div { class: "mt-1 whitespace-pre-line text-micro text-muted", "{row.note}" }
             }
         }
         td { class: TD,
             if let Some(qid) = row.wikidata_qid.as_deref() {
                 a {
-                    class: "font-mono text-xs text-wd-compound underline",
+                    class: "font-mono text-micro text-wd-compound underline",
                     href: "https://www.wikidata.org/wiki/{qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
@@ -95,7 +95,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
             StatusSummaryBadges { locale, rows: rows.clone() }
             p {
                 id: scroll_hint_id,
-                class: "inline-flex items-center gap-2 text-xs text-muted",
+                class: "inline-flex items-center gap-2 text-micro text-muted",
                 span { class: "text-sm font-bold text-accent", "↔" }
                 "{hint_scroll_curation_results(locale)}"
             }
