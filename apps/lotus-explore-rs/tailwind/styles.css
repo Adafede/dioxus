@@ -1031,7 +1031,7 @@ a:hover {
     width: 100%;
     max-width: 1600px;
     margin-inline: auto;
-    padding: 6px 20px 10px;
+    padding: 4px 20px 8px;
     box-sizing: border-box;
 }
 
@@ -1047,7 +1047,7 @@ a:hover {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 0 24px;
     align-items: start;
-    padding: 6px 0;
+    padding: 4px 0;
     border-bottom: 1px solid var(--border);
 }
 
@@ -1055,7 +1055,7 @@ a:hover {
     display: flex;
     align-items: start;
     gap: 10px;
-    padding: 3px 0;
+    padding: 2px 0;
 }
 
 .footer-label {

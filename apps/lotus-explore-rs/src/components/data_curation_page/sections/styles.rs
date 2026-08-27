@@ -16,18 +16,15 @@ pub(super) fn actions(space_between: bool) -> &'static str {
 
 pub(super) const HINT: &str = "text-ui text-subtle leading-snug";
 
-pub(super) const TEXTAREA_130: &str =
-    "form-textarea mono w-full min-h-[130px] rounded-lg border border-border bg-surface p-2.5 font-mono text-body text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40";
+pub(super) const TEXTAREA_130: &str = "form-textarea mono w-full min-h-[130px] rounded-lg border border-border bg-surface p-2.5 font-mono text-body text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40";
 
-pub(super) const TEXTAREA_220: &str =
-    "form-textarea mono w-full min-h-[220px] rounded-lg border border-border bg-surface p-2.5 font-mono text-body text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40";
+pub(super) const TEXTAREA_220: &str = "form-textarea mono w-full min-h-[220px] rounded-lg border border-border bg-surface p-2.5 font-mono text-body text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40";
 
 pub(super) const FILE_INPUT: &str = "curation-file-input max-w-full text-ui text-muted";
 
 pub(super) const NOTICE_VALUE: &str = "break-words leading-snug text-inherit";
 
-pub(super) const TABLE_SCROLL: &str =
-    "w-full overflow-x-auto rounded-lg border border-panel-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+pub(super) const TABLE_SCROLL: &str = "w-full overflow-x-auto rounded-lg border border-panel-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
 
 pub(super) const QUEUE_TABLE: &str = "w-full table-fixed border-collapse text-ui";
 

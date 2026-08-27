@@ -15,7 +15,11 @@ pub fn DarkModeToggle() -> Element {
     let ctx = use_app_state_context();
     let mut app_state = ctx.state;
     let dark_mode = app_state.read().dark_mode;
-    let label = if dark_mode { t(locale, TextKey::DarkMode) } else { t(locale, TextKey::LightMode) };
+    let label = if dark_mode {
+        t(locale, TextKey::DarkMode)
+    } else {
+        t(locale, TextKey::LightMode)
+    };
 
     rsx! {
         button {
