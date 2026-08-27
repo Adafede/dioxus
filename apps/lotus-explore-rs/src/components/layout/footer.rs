@@ -116,7 +116,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                         "CC0 1.0"
                     }
                     span {
-                        class: "footer-aside text-subtle text-[11px]",
+                        class: "footer-aside text-subtle text-micro",
                         "({t(locale, TextKey::FooterForData)})"
                     }
                 }
@@ -129,7 +129,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                         "AGPL-3.0"
                     }
                     span {
-                        class: "footer-aside text-subtle text-[11px]",
+                        class: "footer-aside text-subtle text-micro",
                         "({t(locale, TextKey::FooterForCode)})"
                     }
                 }

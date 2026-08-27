@@ -70,6 +70,7 @@ pub(super) fn VirtualizedResultsTable(
                         tr { aria_hidden: "true",
                             td {
                                 colspan: "7",
+                                class: "virtual-spacer",
                                 style: "height: {render_model.top_spacer_px}px",
                             }
                         }
@@ -93,6 +94,7 @@ pub(super) fn VirtualizedResultsTable(
                         tr { aria_hidden: "true",
                             td {
                                 colspan: "7",
+                                class: "virtual-spacer",
                                 style: "height: {render_model.bottom_spacer_px}px",
                             }
                         }

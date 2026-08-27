@@ -216,7 +216,10 @@ fn ShellScaffold(lang: String) -> Element {
                     RouteContent { current_view }
                 }
             }
-            Footer {}
+            footer {
+                class: "app-footer",
+                div { class: "footer-inner", Footer {} }
+            }
         }
     }
 }

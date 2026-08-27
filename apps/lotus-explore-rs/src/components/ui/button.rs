@@ -65,30 +65,30 @@ pub struct ButtonProps {
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
     let size_classes = match props.size {
-        ButtonSize::Sm => "min-h-[34px] gap-1.5 px-3 py-1.5 text-ui rounded-sm",
+        ButtonSize::Sm => "min-h-8 gap-1.5 px-3 py-1.5 text-ui rounded-sm",
         ButtonSize::Md => "min-h-10 gap-2 px-3.5 py-2 text-ui rounded-md",
     };
 
     // Keep variants flat — tokens already carry light/dark.
     let variant_classes = match props.variant {
         ButtonVariant::Primary => {
-            "border border-border bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2"
+            "border border-border bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2"
         }
         ButtonVariant::Secondary => {
-            "border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg"
+            "border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg"
         }
         ButtonVariant::Danger => {
-            "border border-danger/35 bg-danger/10 text-danger font-semibold hover:bg-danger/15"
+            "border border-danger/35 bg-danger/10 text-danger font-semibold hover:bg-danger/15 active:bg-danger/20"
         }
         ButtonVariant::Accent => {
-            "border border-border bg-accent text-bg font-semibold shadow-xs ring-2 ring-accent/40 hover:bg-accent-2"
+            "border border-border bg-accent text-bg font-semibold shadow-xs ring-2 ring-accent/40 hover:bg-accent-2 active:bg-accent-2"
         }
     };
 
     let state_classes = if props.disabled || props.loading {
         "opacity-60 cursor-not-allowed pointer-events-none"
     } else {
-        "cursor-pointer"
+        "cursor-pointer active:scale-[0.98]"
     };
 
     let custom_classes = props.class.as_deref().unwrap_or("");
@@ -102,7 +102,7 @@ pub fn Button(props: ButtonProps) -> Element {
             aria_controls: props.aria_controls.as_deref().unwrap_or_default(),
             aria_expanded: props.aria_expanded.as_deref().unwrap_or_default(),
             aria_pressed: props.aria_pressed.as_deref().unwrap_or_default(),
-            class: "inline-flex items-center justify-center font-sans select-none transition-[background,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 {size_classes} {variant_classes} {state_classes} {custom_classes}",
+            class: "inline-flex items-center justify-center font-sans select-none transition-[background,border-color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 {size_classes} {variant_classes} {state_classes} {custom_classes}",
             onclick: move |evt| {
                 if !props.disabled && !props.loading {
                     if let Some(handler) = props.onclick.as_ref() {

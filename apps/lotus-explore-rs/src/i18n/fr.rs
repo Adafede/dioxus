@@ -19,6 +19,8 @@ pub const fn fr_t(key: TextKey) -> &'static str {
         TextKey::Language => "Langue",
         TextKey::PageTitle => "Explorateur LOTUS de données ouvertes liées",
         TextKey::DarkModeToggle => "Basculer thème clair/sombre",
+        TextKey::DarkMode => "Sombre",
+        TextKey::LightMode => "Clair",
         TextKey::GoToHomepage => "Aller à la page d'accueil",
         TextKey::SkipToResults => "Passer aux résultats",
         TextKey::PageSubtitle => {

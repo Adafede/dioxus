@@ -3,18 +3,12 @@
 
 //! UI composition primitives used by live components.
 //!
-//! ## Style Organization
-//! - `layout_styles` - Lotus-specific layout, headers, tables, stats, queries
-//! - `table_styles` - Lotus-specific table cell and row formatting
-//! - `search_controls` - Lotus-specific search form controls
+//! All styling is now done via Tailwind classes with design tokens.
+//! Legacy CSS-in-Rust modules have been removed.
 
 pub mod a11y_contract;
 mod a11y_smoke;
 pub mod classes;
-pub mod layout_styles;
-pub mod search_controls;
-pub mod style_constants;
-pub mod table_styles;
 
 /// Type-safe stat stripe colors (instead of string parameters).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

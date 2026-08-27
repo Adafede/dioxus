@@ -31,6 +31,15 @@ fn links() -> Vec<LinkSpec> {
     vec![
         LinkSpec {
             rel: "icon",
+            href: "/favicon.ico".to_string(),
+            r#type: Some("image/x-icon"),
+            media: None,
+            crossorigin: None,
+            sizes: Some("any"),
+            hreflang: None,
+        },
+        LinkSpec {
+            rel: "icon",
             href: asset!("/public/favicon.ico").to_string(),
             r#type: Some("image/x-icon"),
             media: None,

@@ -19,6 +19,8 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::Language => "Lingua",
         TextKey::PageTitle => "Esploratore LOTUS di dati aperti collegati",
         TextKey::DarkModeToggle => "Attiva/disattiva tema chiaro/scuro",
+        TextKey::DarkMode => "Scuro",
+        TextKey::LightMode => "Chiaro",
         TextKey::GoToHomepage => "Vai alla home page",
         TextKey::SkipToResults => "Salta ai risultati",
         TextKey::PageSubtitle => {

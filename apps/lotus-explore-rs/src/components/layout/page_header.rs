@@ -59,7 +59,7 @@ pub fn PageHeader() -> Element {
                         href: "https://doi.org/10.5281/zenodo.5794106",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "page-archive-link",
+                        class: "page-archive-link underline underline-offset-2 hover:no-underline",
                         "10.5281/zenodo.5794106"
                     }
                 }

@@ -107,6 +107,8 @@ pub enum TextKey {
     // Header
     PageTitle,
     DarkModeToggle,
+    DarkMode,
+    LightMode,
     GoToHomepage,
     SkipToResults,
     PageSubtitle,

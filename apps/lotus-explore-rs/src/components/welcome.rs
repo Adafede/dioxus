@@ -18,7 +18,7 @@ pub fn WelcomeScreen() -> Element {
         section {
             class: "mx-auto flex w-full max-w-6xl flex-col gap-6 p-6",
             div {
-                class: "flex flex-col gap-3 rounded-2xl border border-panel-border bg-panel-soft p-6 shadow-xs",
+                class: "flex flex-col gap-3 rounded-xl border border-panel-border bg-panel-soft p-6 shadow-xs",
                 p {
                     class: "text-body leading-relaxed text-muted",
                     "{t(locale, TextKey::WelcomeLeadA)}"
@@ -119,7 +119,7 @@ fn DownloadExampleRow(
             role: "status",
             class: "flex items-center gap-2 rounded-lg border border-border bg-bg p-2 text-ui shadow-xs",
             span {
-                class: "shrink-0 rounded bg-accent/12 px-2 py-0.5 text-[11px] font-semibold text-accent",
+                class: "shrink-0 rounded-xs bg-accent/12 px-2 py-0.5 text-micro font-semibold text-accent",
                 "{format}"
             }
             input {
@@ -127,7 +127,7 @@ fn DownloadExampleRow(
                 readonly: true,
                 value: "{absolute}",
                 aria_label: "{format}",
-                class: "min-w-0 flex-1 truncate rounded-lotus-sm border border-border bg-surface px-2 py-1 font-mono text-ui text-muted shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                class: "min-w-0 flex-1 truncate rounded-xs border border-border bg-surface px-2 py-1 font-mono text-ui text-muted shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
             }
             CopyButton { text: absolute.clone(), locale }
         }
@@ -140,7 +140,7 @@ fn ExRow(value: &'static str, note: &'static str) -> Element {
         li {
             class: "flex flex-col gap-1 rounded-xl border border-border bg-surface p-3 shadow-xs",
             span {
-                class: "self-start rounded-md bg-accent/10 px-2 py-0.5 font-mono text-ui font-semibold text-accent",
+                class: "self-start rounded-xs bg-accent/10 px-2 py-0.5 font-mono text-ui font-semibold text-accent",
                 "{value}"
             }
             span {

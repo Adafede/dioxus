@@ -50,13 +50,13 @@ fn StatBadge(
                 }
                 if let Some(secondary_text) = secondary_inline.as_ref() {
                     span {
-                        class: "text-[11px] font-medium text-subtle",
+                        class: "text-micro font-medium text-subtle",
                         "{secondary_text}"
                     }
                 }
             }
             span {
-                class: "truncate text-[11px] font-semibold uppercase tracking-wider text-subtle",
+                class: "truncate text-micro font-semibold uppercase tracking-wider text-subtle",
                 "{label}"
             }
         }

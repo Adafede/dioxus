@@ -14,9 +14,9 @@ use std::sync::Arc;
 
 const NA_TEXT: &str = "n/a";
 
-const PILL: &str = "inline-flex items-center rounded-md border border-panel-border bg-surface px-2 py-0.5 text-xs font-semibold uppercase tracking-wide";
+const PILL: &str = "inline-flex items-center rounded-xs border border-panel-border bg-surface px-2 py-0.5 text-xs font-semibold uppercase tracking-wide";
 const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted";
-const TD: &str = "border-b border-panel-border px-3 py-2 align-top text-ui";
+const TD: &str = "border-b border-panel-border px-3 py-2.5 align-top text-ui";
 const MONO: &str = "font-mono text-xs break-all";
 const MONO_NB: &str = "font-mono text-xs";
 
@@ -122,7 +122,8 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     tbody {
                         for (idx, row) in rows.iter().enumerate() {
                             tr { key: "{row.inchikey.as_deref().unwrap_or(&idx.to_string())}",
-                                class: "odd:bg-surface/30 hover:bg-surface/60",
+                                class: "odd:bg-surface/30 hover:bg-surface/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
+                                tabindex: "0",
                                 {render_curation_result_cells(locale, row)}
                             }
                         }

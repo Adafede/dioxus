@@ -47,7 +47,7 @@ pub fn StatusBadge(props: StatusBadgeProps) -> Element {
             "{props.label}"
             if let Some(count) = props.count {
                 span {
-                    class: "ml-1 rounded-full bg-text/10 px-1.5 py-0.5 text-[10px]",
+                    class: "ml-1 rounded-full bg-text/10 px-1.5 py-0.5 text-micro",
                     "{count}"
                 }
             }

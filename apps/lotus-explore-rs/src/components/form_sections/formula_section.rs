@@ -48,7 +48,7 @@ fn NumPair(
     let locale = crate::hooks::use_locale();
 
     rsx! {
-        div { class: "flex flex-col gap-1.5 rounded-[10px] border border-panel-border bg-panel-soft p-2",
+        div { class: "flex flex-col gap-1.5 rounded-lg border border-panel-border bg-panel-soft p-2",
             p { class: "text-ui text-muted", "{label}" }
             div { class: "formula-minmax-grid",
                 div { class: "flex flex-col gap-0.5",
@@ -121,6 +121,7 @@ pub fn FormulaSection() -> Element {
             label { class: "flex cursor-pointer items-center gap-1.5 text-ui text-muted",
                 input {
                     r#type: "checkbox",
+                    id: "formula-enabled",
                     class: "accent-accent",
                     checked: enabled,
                     onchange: move |e| ctx.update(FormAction::FormulaEnabled(e.checked())),

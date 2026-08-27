@@ -106,7 +106,7 @@ fn StructureSection() -> Element {
                 value: "{smiles}",
                 oninput: move |e| ctx.update(FormAction::Smiles(e.value())),
                 rows: "2",
-                class: "min-h-[4rem] resize-y font-mono {classes::INPUT}",
+                class: "min-h-16 resize-y font-mono {classes::INPUT}",
             }
             if let Some(note_key) = view_model.note_key {
                 p { class: "flex flex-wrap items-center gap-2 {classes::HINT}",
@@ -124,7 +124,7 @@ fn StructureSection() -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        class: "accent-accent",
+                        class: "accent-accent h-4 w-4 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                         checked: smiles_search_type == SmilesSearchType::Substructure,
                         onchange: move |_| {
                             ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Substructure))
@@ -136,7 +136,7 @@ fn StructureSection() -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        class: "accent-accent",
+                        class: "accent-accent h-4 w-4 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                         checked: smiles_search_type == SmilesSearchType::Similarity,
                         onchange: move |_| {
                             ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Similarity))
@@ -162,7 +162,7 @@ fn StructureSection() -> Element {
                         aria_valuemin: "0",
                         aria_valuemax: "1",
                         aria_valuenow: "{smiles_threshold}",
-                        class: "w-full accent-accent cursor-pointer",
+                        class: "w-full accent-accent cursor-pointer appearance-none h-2 bg-border rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                         oninput: move |e| {
                             if let Ok(v) = e.value().parse::<f64>() {
                                 ctx.update(FormAction::SmilesThreshold(v));

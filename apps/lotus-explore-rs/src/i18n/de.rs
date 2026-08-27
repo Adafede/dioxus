@@ -19,6 +19,8 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::Language => "Sprache",
         TextKey::PageTitle => "LOTUS Explorer für verknüpfte offene Daten",
         TextKey::DarkModeToggle => "Thema hell/dunkel umschalten",
+        TextKey::DarkMode => "Dunkel",
+        TextKey::LightMode => "Hell",
         TextKey::GoToHomepage => "Zur Startseite",
         TextKey::SkipToResults => "Zurück zu den Ergebnissen",
         TextKey::PageSubtitle => {

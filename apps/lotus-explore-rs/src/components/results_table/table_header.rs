@@ -21,7 +21,7 @@ pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortCol
             class: "border-b border-panel-border bg-panel-soft text-left text-text2",
             th {
                 scope: "col",
-                class: "px-2.5 py-2 text-micro font-bold whitespace-nowrap select-none",
+                class: "px-3 py-2.5 text-ui font-bold whitespace-nowrap select-none text-wd-structure",
                 span { "{t(locale, TextKey::Structure)}" }
             }
             for header in headers {
@@ -46,16 +46,16 @@ fn SortableColumnHeader(
         th {
             scope: "col",
             aria_sort: "{header.aria_sort}",
-            class: "px-2.5 py-2 text-micro font-bold whitespace-nowrap select-none",
+            class: "px-3 py-2.5 text-ui font-bold whitespace-nowrap select-none",
             button {
                 r#type: "button",
                 aria_label: "{sort_aria}",
                 title: "{sort_aria}",
-                class: "grid w-full min-w-max grid-cols-[auto_auto] items-start gap-x-1.5 border-0 bg-transparent p-0 text-inherit hover:text-accent focus-visible:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-accent/50",
+                class: "grid w-full min-w-max grid-cols-[auto_auto] items-start gap-x-1.5 border-0 bg-transparent p-0 text-inherit hover:text-accent focus-visible:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-[0.98]",
                 onclick: move |_| on_toggle.call(header.col),
                 span { class: "block min-w-max whitespace-nowrap leading-none", "{label_text}" }
                 span {
-                    class: "text-sm font-bold leading-none text-subtle",
+                    class: "text-ui font-bold leading-none text-subtle",
                     "aria-hidden": "true",
                     {header.sort_icon}
                 }
