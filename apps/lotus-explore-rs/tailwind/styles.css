@@ -702,6 +702,7 @@ a:hover {
     border: 1px solid var(--border);
     background: var(--surface);
     box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+    min-width: 100px;
 }
 
 .theme-toggle:hover {

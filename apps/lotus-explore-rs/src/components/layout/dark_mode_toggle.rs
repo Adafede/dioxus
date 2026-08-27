@@ -23,7 +23,7 @@ pub fn DarkModeToggle() -> Element {
 
     rsx! {
         button {
-            class: "theme-toggle inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-muted shadow-xs transition-all duration-150 hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+            class: "theme-toggle inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-muted shadow-xs hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
             r#type: "button",
             role: "switch",
             "aria-label": t(locale, TextKey::DarkModeToggle),
@@ -46,7 +46,7 @@ pub fn DarkModeToggle() -> Element {
                 }
             },
             span {
-                class: "flex h-6 w-6 items-center justify-center rounded-full bg-accent/12 text-accent",
+                class: "flex h-6 w-6 items-center justify-center rounded-full bg-accent/12 text-accent flex-shrink-0",
                 "aria-hidden": "true",
                 if dark_mode {
                     // Moon icon
@@ -83,7 +83,7 @@ pub fn DarkModeToggle() -> Element {
                 }
             }
             span {
-                class: "text-micro font-semibold uppercase tracking-[0.12em]",
+                class: "text-micro font-semibold uppercase tracking-[0.12em] min-w-[4.5ch] text-center",
                 "{label}"
             }
         }
