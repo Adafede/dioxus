@@ -285,7 +285,7 @@ video {
    component CSS (var(--fs-body), var(--fs-ui), ...). Previously these were never
    defined, so all text fell back to the inherited 16px browser default. */
 :root {
-    --fs-micro: clamp(0.62rem, 0.60rem + 0.07vw, 0.67rem);
+    --fs-micro: clamp(0.625rem, 0.60rem + 0.07vw, 0.67rem);
     --fs-0:     clamp(0.66rem, 0.64rem + 0.09vw, 0.73rem);
     --fs-ui:    clamp(0.70rem, 0.68rem + 0.11vw, 0.76rem);
     --fs-1:     clamp(0.76rem, 0.74rem + 0.13vw, 0.82rem);
@@ -1068,7 +1068,6 @@ a:hover {
     font-size: var(--fs-0);
     letter-spacing: 0.06em;
     white-space: nowrap;
-    line-height: 1.5;
     padding: 4px 10px;
     border-radius: 8px;
     border: 1px solid color-mix(in srgb, currentColor 30%, var(--border));
@@ -1092,7 +1091,6 @@ a:hover {
     padding: 0;
     flex: 1 1 auto;
     min-width: 0;
-    line-height: 1.5;
 }
 
 .footer-links li {
@@ -1320,7 +1318,7 @@ a:hover {
 /* Responsive breakpoints */
 @media (max-width: 768px) {
     :root {
-        --fs-micro: clamp(0.7rem, 0.68rem + 0.08vw, 0.75rem);
+        --fs-micro: clamp(0.625rem, 0.68rem + 0.08vw, 0.75rem);
         --fs-0: clamp(0.7rem, 0.68rem + 0.12vw, 0.8rem);
     }
 
