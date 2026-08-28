@@ -61,7 +61,7 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
         .display("inline-flex")
         .align_items("center")
         .justify_content("center")
-        .padding("6px 12px")
+        .padding("6px 10px")
         .min_height("40px")
         .border_radius("999px")
         .font_size(Typography::UI)
@@ -70,6 +70,9 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
         .property("border", "1px solid transparent")
         .property("cursor", "pointer")
         .transition("transform 150ms")
+        .property("white-space", "nowrap")
+        .property("overflow", "hidden")
+        .property("text-overflow", "ellipsis")
         .build();
 
     rsx! {
@@ -140,7 +143,8 @@ fn segmented_button_style(
     base_style: &str,
 ) -> String {
     let mut style =
-        StyleBuilder::new().property("flex", if stretch { "1 1 180px" } else { "0 0 auto" });
+        StyleBuilder::new().property("flex", if stretch { "1 1 80px" } else { "0 0 auto" })
+        .property("min-width", "0");
     if active {
         style = style
             .background_color(colors.accent)

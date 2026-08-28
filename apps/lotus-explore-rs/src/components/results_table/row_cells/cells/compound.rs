@@ -20,7 +20,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
     compound_qid: &str,
 ) -> Element {
     rsx! {
-        td { class: "min-w-0 rounded-lg px-3 py-2.5 align-middle text-wd-compound shadow-[inset_3px_0_0_var(--footer-wd-compound)]",
+        td { class: "min-w-0 rounded-lg px-3 py-2.5 align-middle text-ui shadow-[inset_3px_0_0_var(--footer-wd-compound)]",
             div { class: "flex flex-col gap-1",
                 a {
                     href: "https://www.wikidata.org/entity/{compound_qid}",

@@ -18,7 +18,7 @@ const PILL: &str = "inline-flex items-center rounded-xs border border-panel-bord
 const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted";
 const TD: &str = "border-b border-panel-border px-3 py-2.5 align-top text-ui";
 const MONO: &str = "font-mono text-micro break-all";
-const MONO_NB: &str = "font-mono text-micro";
+const MONO_NB: &str = "font-mono text-micro break-all";
 
 #[component]
 fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Element {
@@ -65,7 +65,7 @@ fn render_curation_result_cells(locale: Locale, row: &CurationResultRow) -> Elem
         td { class: TD,
             if let Some(qid) = row.wikidata_qid.as_deref() {
                 a {
-                    class: "font-mono text-micro text-wd-compound underline",
+                    class: "font-mono text-micro text-wd-compound underline break-all",
                     href: "https://www.wikidata.org/wiki/{qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
@@ -105,18 +105,29 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                 tabindex: "0",
                 aria_label: "{crate::i18n::heading_results(locale)}",
                 aria_describedby: scroll_hint_id,
-                table { class: "w-full table-fixed border-collapse text-ui",
+                table { class: "curation-results-table w-full table-fixed border-collapse text-ui",
+                    colgroup {
+                        col { class: "w-[140px] min-w-[100px]" }
+                        col { class: "w-[8ch] min-w-[6ch]" }
+                        col { class: "w-[12ch] min-w-[8ch]" }
+                        col { class: "w-[140px] min-w-[100px]" }
+                        col { class: "w-[140px] min-w-[100px]" }
+                        col { class: "w-[150px] min-w-[100px]" }
+                        col { class: "w-[140px] min-w-[100px]" }
+                        col { class: "w-[8ch] min-w-[6ch]" }
+                        col { class: "w-[8ch] min-w-[6ch]" }
+                    }
                     thead {
                         tr { class: "text-left",
-                            th { scope: "col", class: "{TH} min-w-[170px]", "{col_status(locale)}" }
-                            th { scope: "col", class: "{TH} min-w-[8ch]", "Wikidata" }
-                            th { scope: "col", class: "{TH} min-w-[14ch]", "{col_name(locale)}" }
-                            th { scope: "col", class: "{TH} min-w-[160px]", "{col_original_smiles(locale)}" }
-                            th { scope: "col", class: "{TH} min-w-[160px]", "{col_canonical_smiles(locale)}" }
-                            th { scope: "col", class: "{TH} min-w-[180px]", "InChIKey" }
-                            th { scope: "col", class: "{TH} min-w-[160px]", "InChI" }
-                            th { scope: "col", class: "{TH} min-w-[8ch]", "{t(locale, TextKey::Formula)}" }
-                            th { scope: "col", class: "{TH} min-w-[8ch]", "{col_exact_mass(locale)}" }
+                            th { scope: "col", class: "{TH} min-w-[140px] w-[140px]", "{col_status(locale)}" }
+                            th { scope: "col", class: "{TH} min-w-[8ch] w-[8ch]", "Wikidata" }
+                            th { scope: "col", class: "{TH} min-w-[12ch] w-[12ch]", "{col_name(locale)}" }
+                            th { scope: "col", class: "{TH} min-w-[140px] w-[140px]", "{col_original_smiles(locale)}" }
+                            th { scope: "col", class: "{TH} min-w-[140px] w-[140px]", "{col_canonical_smiles(locale)}" }
+                            th { scope: "col", class: "{TH} min-w-[150px] w-[150px]", "InChIKey" }
+                            th { scope: "col", class: "{TH} min-w-[140px] w-[140px]", "InChI" }
+                            th { scope: "col", class: "{TH} min-w-[8ch] w-[8ch]", "{t(locale, TextKey::Formula)}" }
+                            th { scope: "col", class: "{TH} min-w-[8ch] w-[8ch]", "{col_exact_mass(locale)}" }
                         }
                     }
                     tbody {
