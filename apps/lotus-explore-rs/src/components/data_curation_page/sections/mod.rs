@@ -323,10 +323,10 @@ pub fn QueueRowsCard(
                         tr { class: "text-left",
                             th { scope: "col", class: "{styles::TH} {styles::QUEUE_ACTION_COL}", "{col_action(locale)}" }
                             th { scope: "col", class: "{styles::TH} {styles::QUEUE_INDEX_COL}", "#" }
-                            th { scope: "col", class: "{styles::TH}", "{col_name(locale)}" }
+                            th { scope: "col", class: "{styles::TH} w-[140px] min-w-[140px]", "{col_name(locale)}" }
                             th { scope: "col", class: "{styles::TH} {styles::QUEUE_SMILES_COL}", "SMILES" }
-                            th { scope: "col", class: "{styles::TH}", "{t(locale, TextKey::TaxonCol)}" }
-                            th { scope: "col", class: "{styles::TH}", "DOI" }
+                            th { scope: "col", class: "{styles::TH} w-[140px] min-w-[140px]", "{t(locale, TextKey::TaxonCol)}" }
+                            th { scope: "col", class: "{styles::TH} w-[140px] min-w-[140px]", "DOI" }
                         }
                     }
                     tbody {

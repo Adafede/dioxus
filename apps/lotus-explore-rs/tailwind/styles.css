@@ -516,6 +516,12 @@ a:hover {
     align-items: stretch;
 }
 
+@media (max-width: 768px) {
+    .app-shell {
+        padding-bottom: env(safe-area-inset-bottom, 20px);
+    }
+}
+
 .app-layout.single-pane {
     display: block;
 }
@@ -1138,6 +1144,15 @@ a:hover {
     min-height: 44px;
 }
 
+@media (max-width: 480px) {
+    .footer-label {
+        white-space: normal;
+        font-size: var(--fs-micro);
+        padding: 2px 6px;
+        min-height: auto;
+    }
+}
+
 .footer-aside {
     color: var(--text3);
     white-space: nowrap;
@@ -1153,13 +1168,13 @@ a:hover {
     padding: 0;
     flex: 0 0 auto;
     min-width: 0;
-    min-height: 44px;
 }
 
 .footer-links li {
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    flex-shrink: 0;
 }
 
 @media (min-width: 641px) {
@@ -1173,11 +1188,18 @@ a:hover {
     font-size: var(--fs-0);
     line-height: 1.45;
     min-height: 44px;
-    min-width: 44px;
     display: inline-flex;
     align-items: center;
     padding: 4px 8px;
     border-radius: var(--radius-2xs);
+}
+
+@media (max-width: 480px) {
+    .footer-link {
+        padding: 3px 6px;
+        font-size: var(--fs-micro);
+        min-height: 40px;
+    }
 }
 
 .footer-link:hover {

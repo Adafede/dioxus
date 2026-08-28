@@ -26,7 +26,7 @@ pub(super) const NOTICE_VALUE: &str = "break-words leading-snug text-inherit";
 
 pub(super) const TABLE_SCROLL: &str = "w-full overflow-x-auto rounded-lg border border-panel-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
 
-pub(super) const QUEUE_TABLE: &str = "w-full table-fixed border-collapse text-ui";
+pub(super) const QUEUE_TABLE: &str = "w-full min-w-max table-auto border-collapse text-ui";
 
 pub(super) const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2.5 text-left text-micro font-semibold uppercase tracking-wide text-muted";
 
@@ -36,4 +36,4 @@ pub(super) const QUEUE_ACTION_COL: &str = "w-[110px] min-w-[110px]";
 
 pub(super) const QUEUE_INDEX_COL: &str = "min-w-[3ch]";
 
-pub(super) const QUEUE_SMILES_COL: &str = "min-w-[220px] max-w-[320px] break-all";
+pub(super) const QUEUE_SMILES_COL: &str = "min-w-[220px]";
