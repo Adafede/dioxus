@@ -28,7 +28,7 @@ pub(in crate::components::results_table::row_cells) fn structure_cell(
                         src: "{url}",
                         alt: "{aria_chemical_structure(locale, name)}",
                         loading: "lazy",
-                        class: "block h-auto w-full max-w-[108px] rounded-md bg-transparent object-contain",
+                        class: "block h-auto w-full max-w-[100px] rounded-md bg-transparent object-contain",
                     }
                 }
             } else {

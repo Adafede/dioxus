@@ -105,29 +105,18 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                 tabindex: "0",
                 aria_label: "{crate::i18n::heading_results(locale)}",
                 aria_describedby: scroll_hint_id,
-                table { class: "curation-results-table w-full table-fixed border-collapse text-ui",
-                    colgroup {
-                        col { class: "w-[140px] min-w-[100px]" }
-                        col { class: "w-[8ch] min-w-[6ch]" }
-                        col { class: "w-[12ch] min-w-[8ch]" }
-                        col { class: "w-[140px] min-w-[100px]" }
-                        col { class: "w-[140px] min-w-[100px]" }
-                        col { class: "w-[150px] min-w-[100px]" }
-                        col { class: "w-[140px] min-w-[100px]" }
-                        col { class: "w-[8ch] min-w-[6ch]" }
-                        col { class: "w-[8ch] min-w-[6ch]" }
-                    }
+                table { class: "curation-results-table w-full min-w-max table-auto border-collapse text-ui",
                     thead {
                         tr { class: "text-left",
-                            th { scope: "col", class: "{TH} min-w-[140px] w-[140px]", "{col_status(locale)}" }
-                            th { scope: "col", class: "{TH} min-w-[8ch] w-[8ch]", "Wikidata" }
-                            th { scope: "col", class: "{TH} min-w-[12ch] w-[12ch]", "{col_name(locale)}" }
-                            th { scope: "col", class: "{TH} min-w-[140px] w-[140px]", "{col_original_smiles(locale)}" }
-                            th { scope: "col", class: "{TH} min-w-[140px] w-[140px]", "{col_canonical_smiles(locale)}" }
-                            th { scope: "col", class: "{TH} min-w-[150px] w-[150px]", "InChIKey" }
-                            th { scope: "col", class: "{TH} min-w-[140px] w-[140px]", "InChI" }
-                            th { scope: "col", class: "{TH} min-w-[8ch] w-[8ch]", "{t(locale, TextKey::Formula)}" }
-                            th { scope: "col", class: "{TH} min-w-[8ch] w-[8ch]", "{col_exact_mass(locale)}" }
+                            th { scope: "col", class: "{TH} w-[140px] min-w-[140px]", "{col_status(locale)}" }
+                            th { scope: "col", class: "{TH} w-[8ch] min-w-[8ch]", "Wikidata" }
+                            th { scope: "col", class: "{TH} w-[12ch] min-w-[12ch]", "{col_name(locale)}" }
+                            th { scope: "col", class: "{TH} w-[140px] min-w-[140px]", "{col_original_smiles(locale)}" }
+                            th { scope: "col", class: "{TH} w-[140px] min-w-[140px]", "{col_canonical_smiles(locale)}" }
+                            th { scope: "col", class: "{TH} w-[150px] min-w-[150px]", "InChIKey" }
+                            th { scope: "col", class: "{TH} w-[140px] min-w-[140px]", "InChI" }
+                            th { scope: "col", class: "{TH} w-[8ch] min-w-[8ch]", "{t(locale, TextKey::Formula)}" }
+                            th { scope: "col", class: "{TH} w-[8ch] min-w-[8ch]", "{col_exact_mass(locale)}" }
                         }
                     }
                     tbody {
