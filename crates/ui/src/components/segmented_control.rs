@@ -142,8 +142,8 @@ fn segmented_button_style(
     stretch: bool,
     base_style: &str,
 ) -> String {
-    let mut style =
-        StyleBuilder::new().property("flex", if stretch { "1 1 80px" } else { "0 0 auto" })
+    let mut style = StyleBuilder::new()
+        .property("flex", if stretch { "1 1 80px" } else { "0 0 auto" })
         .property("min-width", "0");
     if active {
         style = style
