@@ -25,115 +25,9 @@ fn base_url() -> String {
     String::new()
 }
 
-/// Non-hreflang links that can be statically known at compile time.
-#[allow(clippy::volatile_composites)]
-fn links() -> Vec<LinkSpec> {
-    vec![
-        // The base favicon is a static <link> in index.html (served at the app
-        // base path, 200) so there is no pre-WASM /favicon.ico fallback 404.
-        // Here we only add the enriched, hash-versioned icon set.
-        LinkSpec {
-            rel: "apple-touch-icon",
-            href: asset!("/public/apple-touch-icon.png").resolve().to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: Some("180x180"),
-            hreflang: None,
-        },
-        LinkSpec {
-            rel: "icon",
-            href: asset!("/public/favicon-32x32.png").resolve().to_string(),
-            r#type: Some("image/png"),
-            media: None,
-            crossorigin: None,
-            sizes: Some("32x32"),
-            hreflang: None,
-        },
-        LinkSpec {
-            rel: "icon",
-            href: asset!("/public/favicon-16x16.png").resolve().to_string(),
-            r#type: Some("image/png"),
-            media: None,
-            crossorigin: None,
-            sizes: Some("16x16"),
-            hreflang: None,
-        },
-        // External Third-Party APIs (DNS Prefetching)
-        LinkSpec {
-            rel: "dns-prefetch",
-            href: "https://qlever.dev".to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: None,
-        },
-        LinkSpec {
-            rel: "dns-prefetch",
-            href: "https://query.wikidata.org".to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: None,
-        },
-        LinkSpec {
-            rel: "dns-prefetch",
-            href: "https://unpkg.com".to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: None,
-        },
-        LinkSpec {
-            rel: "dns-prefetch",
-            href: "https://tools-static.wmflabs.org".to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: None,
-        },
-        LinkSpec {
-            rel: "dns-prefetch",
-            href: "https://www.simolecule.com".to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: None,
-        },
-        LinkSpec {
-            rel: "dns-prefetch",
-            href: "https://idsm.elixir-czech.cz".to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: None,
-        },
-        // Web Manifest
-        LinkSpec {
-            rel: "manifest",
-            href: asset!("/public/site.webmanifest").resolve().to_string(),
-            r#type: Some("application/manifest+json"),
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: None,
-        },
-    ]
-}
-
 const DESCRIPTION: &str = "Explore LOTUS with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
 
 /// Build `application/ld+json` structured data (schema.org `WebApplication`).
-///
-/// `serde_json::to_string` is used to safely JSON-encode the free-text
-/// description and the URL so the emitted script stays valid even if those
-/// values ever contain quotes or control characters.
 fn json_ld(canonical: &str) -> String {
     let desc = serde_json::to_string(DESCRIPTION).unwrap_or_else(|_| "\"\"".to_string());
     let url = serde_json::to_string(canonical).unwrap_or_else(|_| "\"\"".to_string());
@@ -148,7 +42,6 @@ fn json_ld(canonical: &str) -> String {
 const HREF_LANGS: &[(&str, &str)] = &[("en", ""), ("fr", "fr"), ("de", "de"), ("it", "it")];
 
 #[component]
-#[allow(clippy::volatile_composites)]
 pub fn LotusDocumentHead(lang: String) -> Element {
     let canonical = match lang.as_str() {
         "en" => base_url(),
@@ -204,14 +97,11 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             href: asset!("/public/assets/lotus-explore.css"),
         }
         document::Script { src: asset!("/public/assets/js/bootstrap.js"), defer: true }
-
-        DocumentLinks { links: links() }
     }
 }
 
 /// Lazily inject the curation bridge JS files into the document `<head>`.
 #[component]
-#[allow(clippy::volatile_composites)]
 pub fn CurationScripts() -> Element {
     rsx! {
         document::Script { src: asset!("/public/assets/js/curation/rdkit-bridge.js"), defer: true }
