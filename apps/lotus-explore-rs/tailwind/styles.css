@@ -339,13 +339,15 @@ legend {
     padding: 0;
 }
 
-a {
-    color: var(--accent);
-    text-decoration: none;
-}
+@layer base {
+    a {
+        color: var(--accent);
+        text-decoration: none;
+    }
 
-a:hover {
-    text-decoration: underline;
+    a:hover {
+        text-decoration: underline;
+    }
 }
 
 /* ========================================
