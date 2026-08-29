@@ -27,7 +27,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     title: "{name}",
-                    class: "block break-words font-semibold leading-snug hover:underline text-wd-compound",
+                    class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline text-text",
                     "{prepared.display_name}"
                 }
             }
@@ -38,7 +38,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     rel: "noopener noreferrer",
                     title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, compound_qid)}",
-                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-compound",
+                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-text",
                     "{compound_qid}"
                 }
                 a {
@@ -47,7 +47,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     rel: "noopener noreferrer",
                     title: "{text.open_in_scholia}",
                     aria_label: "{text.open_in_scholia}",
-                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-compound",
+                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-text",
                     "Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
@@ -57,7 +57,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         rel: "noopener noreferrer",
                         title: "{ik}",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                        class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-compound",
+                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-text",
                         "{ik}"
                     }
                 }
