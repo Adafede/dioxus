@@ -29,17 +29,9 @@ fn base_url() -> String {
 #[allow(clippy::volatile_composites)]
 fn links() -> Vec<LinkSpec> {
     vec![
-        // Favicon links (a static <link> is also in index.html to avoid the
-        // pre-WASM /favicon.ico fallback request).
-        LinkSpec {
-            rel: "icon",
-            href: asset!("/public/favicon.ico").to_string(),
-            r#type: Some("image/x-icon"),
-            media: None,
-            crossorigin: None,
-            sizes: Some("48x48"),
-            hreflang: None,
-        },
+        // The base favicon is a static <link> in index.html (served at the app
+        // base path, 200) so there is no pre-WASM /favicon.ico fallback 404.
+        // Here we only add the enriched, hash-versioned icon set.
         LinkSpec {
             rel: "apple-touch-icon",
             href: asset!("/public/apple-touch-icon.png").to_string(),
