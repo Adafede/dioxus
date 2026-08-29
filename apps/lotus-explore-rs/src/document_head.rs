@@ -34,7 +34,7 @@ fn links() -> Vec<LinkSpec> {
         // Here we only add the enriched, hash-versioned icon set.
         LinkSpec {
             rel: "apple-touch-icon",
-            href: asset!("/public/apple-touch-icon.png").to_string(),
+            href: asset!("/public/apple-touch-icon.png").resolve().to_string(),
             r#type: None,
             media: None,
             crossorigin: None,
@@ -43,7 +43,7 @@ fn links() -> Vec<LinkSpec> {
         },
         LinkSpec {
             rel: "icon",
-            href: asset!("/public/favicon-32x32.png").to_string(),
+            href: asset!("/public/favicon-32x32.png").resolve().to_string(),
             r#type: Some("image/png"),
             media: None,
             crossorigin: None,
@@ -52,7 +52,7 @@ fn links() -> Vec<LinkSpec> {
         },
         LinkSpec {
             rel: "icon",
-            href: asset!("/public/favicon-16x16.png").to_string(),
+            href: asset!("/public/favicon-16x16.png").resolve().to_string(),
             r#type: Some("image/png"),
             media: None,
             crossorigin: None,
@@ -117,7 +117,7 @@ fn links() -> Vec<LinkSpec> {
         // Web Manifest
         LinkSpec {
             rel: "manifest",
-            href: asset!("/public/site.webmanifest").to_string(),
+            href: asset!("/public/site.webmanifest").resolve().to_string(),
             r#type: Some("application/manifest+json"),
             media: None,
             crossorigin: None,
