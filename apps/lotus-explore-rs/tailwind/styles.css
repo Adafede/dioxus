@@ -806,12 +806,15 @@ legend {
    TABLE ROW HOVER STATES
    ======================================== */
 
-/* Links in hovered/focused table rows inherit row text color for consistency */
-.data-row:hover a,
-.data-row:focus-within a,
-.curation-results-table tbody tr:hover a,
-.curation-results-table tbody tr:focus-within a {
-    color: inherit;
+/* Links in hovered/focused table rows inherit row text color for consistency.
+   Wrapped in @layer base so organism-color utilities (text-wd-*) still win. */
+@layer base {
+    .data-row:hover a,
+    .data-row:focus-within a,
+    .curation-results-table tbody tr:hover a,
+    .curation-results-table tbody tr:focus-within a {
+        color: inherit;
+    }
 }
 
 /* Ensure organism-color links show underline on hover */
