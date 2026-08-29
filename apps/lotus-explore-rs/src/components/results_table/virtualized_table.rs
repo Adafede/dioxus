@@ -43,19 +43,19 @@ pub(super) fn VirtualizedResultsTable(
             role: "region",
             tabindex: "0",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                class: "max-h-[min(72vh,980px)] overflow-auto rounded-xl border border-panel-border bg-panel-soft shadow-xs",
+                class: "max-h-[min(72dvh,980px)] overflow-auto rounded-xl border border-panel-border bg-panel-soft shadow-xs",
                 onscroll: on_scroll,
                 table {
                     aria_label: "{t(locale, TextKey::TableTriplesAria)}",
                     class: "w-full min-w-max table-auto border-collapse text-ui [word-break:break-word]",
                     caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                     colgroup {
-                        col { class: "w-[124px]" }
-                        col { class: "w-[31ch]" }
+                        col { class: "w-[40px]" }
+                        col { class: "w-[32ch]" }
                         col { class: "w-[12ch]" }
                         col { class: "w-[12ch]" }
                         col { class: "w-[20ch]" }
-                        col { class: "w-[45ch]" }
+                        col { class: "w-[40ch]" }
                         col { class: "w-[4ch]" }
                     }
                 thead {

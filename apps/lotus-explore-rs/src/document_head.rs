@@ -29,37 +29,8 @@ fn base_url() -> String {
 #[allow(clippy::volatile_composites)]
 fn links() -> Vec<LinkSpec> {
     vec![
-        // Font optimization - preconnect and load Inter font
-        LinkSpec {
-            rel: "preconnect",
-            href: "https://fonts.googleapis.com".to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: None,
-        },
-        LinkSpec {
-            rel: "preconnect",
-            href: "https://fonts.gstatic.com".to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: Some("anonymous"),
-            sizes: None,
-            hreflang: None,
-        },
-        LinkSpec {
-            rel: "stylesheet",
-            href:
-                "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-                    .to_string(),
-            r#type: None,
-            media: None,
-            crossorigin: None,
-            sizes: None,
-            hreflang: None,
-        },
-        // Favicon links
+        // Favicon links (a static <link> is also in index.html to avoid the
+        // pre-WASM /favicon.ico fallback request).
         LinkSpec {
             rel: "icon",
             href: asset!("/public/favicon.ico").to_string(),

@@ -29,7 +29,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline text-text",
+                        class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline text-wd-reference",
                         title: "{full_title}",
                         "{full_title}"
                     }
@@ -38,7 +38,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline text-text",
+                        class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline text-wd-reference",
                         "{reference_qid}"
                     }
                 }
@@ -48,7 +48,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                     href: "https://www.wikidata.org/entity/{reference_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-text",
+                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-reference",
                     title: "{text.open_in_wikidata}",
                     aria_label: "{aria_wikidata_entity(locale, reference_qid)}",
                     "{reference_qid}"
@@ -58,7 +58,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://doi.org/{d}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-text",
+                        class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-reference",
                         title: "{text.open_doi}",
                         aria_label: "{text.open_doi}",
                         "DOI"
@@ -69,7 +69,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/statement/{stmt}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-text",
+                        class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-reference",
                         title: "{stmt}",
                         aria_label: "{aria_wikidata_statement(locale, stmt)}",
                         "{text.statement}"

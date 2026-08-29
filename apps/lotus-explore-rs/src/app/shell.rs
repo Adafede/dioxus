@@ -221,8 +221,11 @@ fn ShellScaffold(lang: String) -> Element {
                 }
             }
             footer {
-                class: "app-footer",
-                div { class: "footer-inner", Footer {} }
+                class: "flex flex-col shrink-0 w-full bg-panel border-t border-border",
+                div {
+                    class: "w-full max-w-[1600px] mx-auto px-5 pt-[3px] pb-[6px] box-border min-[1024px]:px-8",
+                    Footer {}
+                }
             }
         }
     }
