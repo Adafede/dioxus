@@ -30,7 +30,9 @@ pub(in crate::components::results_table::row_cells) fn structure_cell(
                         width: "100",
                         height: "60",
                         loading: "lazy",
-                        class: "block h-auto w-full max-w-[100px] rounded-md bg-transparent object-contain",
+                        decoding: "async",
+                        referrerpolicy: "no-referrer",
+                        class: "block h-auto w-full rounded-md bg-transparent object-contain",
                     }
                 }
             } else {
