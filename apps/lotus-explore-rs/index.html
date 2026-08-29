@@ -1,19 +1,33 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
-  <title>{app_title}</title>
-  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8">
-  <!-- Favicon served at the app base path (verified 200), NOT /public/.
-       SVG scales crisply at any size (primary); ICO is the legacy fallback. -->
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" sizes="any">
-  <link rel="icon" href="favicon.ico" sizes="48x48">
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LOTUS Knowledge Explorer</title>
+
+  <!-- Favicons and Manifest (Loaded pre-WASM) -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest" type="application/manifest+json">
+
+  <!-- External Third-Party APIs (DNS Prefetching) -->
+  <link rel="dns-prefetch" href="https://qlever.dev">
+  <link rel="dns-prefetch" href="https://query.wikidata.org">
+  <link rel="dns-prefetch" href="https://unpkg.com">
+  <link rel="dns-prefetch" href="https://tools-static.wmflabs.org">
+  <link rel="dns-prefetch" href="https://www.simolecule.com">
+  <link rel="dns-prefetch" href="https://idsm.elixir-czech.cz">
+
   <!-- Early synchronous language detection and Trusted Types initialization -->
   <script>
     (function () {
       var p = new URL(window.location.href).searchParams;
       document.documentElement.lang =
-              p.get("lang") || p.get("locale") || "en";
+            p.get("lang") || p.get("locale") || "en";
       var t = window.trustedTypes;
       if (t) {
         try {
@@ -31,6 +45,6 @@
   </script>
 </head>
 <body>
-<div id="main"></div>
+  <div id="main"></div>
 </body>
 </html>
