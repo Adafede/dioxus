@@ -23,16 +23,13 @@ pub(in crate::components::results_table::row_cells) fn structure_cell(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     title: "{text.open_full_size_depiction}",
-                    class: "structure-image-wrapper block",
                     img {
+                        class: "block h-auto w-full rounded-md bg-transparent object-contain",
                         src: "{url}",
                         alt: "{aria_chemical_structure(locale, name)}",
-                        width: "100",
-                        height: "60",
                         loading: "lazy",
                         decoding: "async",
-                        referrerpolicy: "no-referrer",
-                        class: "block h-auto w-full rounded-md bg-transparent object-contain",
+
                     }
                 }
             } else {
