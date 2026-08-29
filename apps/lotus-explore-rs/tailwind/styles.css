@@ -356,11 +356,8 @@ legend {
 
 /* Reserve space for structure images before load */
 .structure-image-wrapper {
-    aspect-ratio: 120 / 72;
     width: 100%;
-    max-width: 100px;
     overflow: hidden;
-    contain-intrinsic-size: 100px 60px;
 }
 
  .structure-image-wrapper img {
