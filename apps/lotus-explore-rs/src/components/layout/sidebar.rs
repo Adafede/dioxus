@@ -33,6 +33,7 @@ pub fn Sidebar() -> Element {
             div {
                 class: "sidebar-logo flex justify-center",
                 "aria-hidden": "true",
+                style: "width: 80px; height: auto; aspect-ratio: 1115 / 981;",
                 dangerous_inner_html: LOTUS_LOGO_SVG,
             }
             div {
