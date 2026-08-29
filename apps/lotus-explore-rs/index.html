@@ -4,9 +4,8 @@
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8">
-  <!-- Static icon link so the browser does not fall back to /favicon.ico
-       (which 404s) before Dioxus injects the hashed icon links at runtime. -->
-  <link rel="icon" href="public/favicon.ico" sizes="48x48">
+  <!-- Favicon is served at the app base path (verified 200), not under /public/. -->
+  <link rel="icon" href="favicon.ico" sizes="any">
   <!-- Early synchronous language detection and Trusted Types initialization -->
   <script>
     (function () {
