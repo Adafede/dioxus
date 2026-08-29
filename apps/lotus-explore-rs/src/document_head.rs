@@ -42,6 +42,7 @@ fn json_ld(canonical: &str) -> String {
 const HREF_LANGS: &[(&str, &str)] = &[("en", ""), ("fr", "fr"), ("de", "de"), ("it", "it")];
 
 #[component]
+#[allow(clippy::volatile_composites)]
 pub fn LotusDocumentHead(lang: String) -> Element {
     let canonical = match lang.as_str() {
         "en" => base_url(),
@@ -102,6 +103,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
 
 /// Lazily inject the curation bridge JS files into the document `<head>`.
 #[component]
+#[allow(clippy::volatile_composites)]
 pub fn CurationScripts() -> Element {
     rsx! {
         document::Script { src: asset!("/public/assets/js/curation/rdkit-bridge.js"), defer: true }
