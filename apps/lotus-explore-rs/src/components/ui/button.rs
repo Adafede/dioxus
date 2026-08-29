@@ -3,6 +3,7 @@
 
 //! Shared Button component using Lotus token Tailwind classes.
 
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 /// Visual variant for the button.
@@ -22,10 +23,10 @@ pub enum ButtonVariant {
 /// Size variant for the button.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ButtonSize {
-    /// Compact toolbar / dense form control
+    /// Compact toolbar / dense form control (34px min-height)
     #[default]
     Sm,
-    /// Standard form / card button
+    /// Standard form / card button (40px min-height)
     Md,
 }
 
@@ -65,8 +66,8 @@ pub struct ButtonProps {
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
     let size_classes = match props.size {
-        ButtonSize::Sm => "min-h-8 gap-1.5 px-3 py-1.5 text-ui rounded-sm",
-        ButtonSize::Md => "min-h-10 gap-2 px-3.5 py-2 text-ui rounded-md",
+        ButtonSize::Sm => "min-h-[34px] gap-1.5 px-3 py-1.5 text-ui rounded-sm",
+        ButtonSize::Md => "min-h-[40px] gap-2 px-3.5 py-2 text-ui rounded-md",
     };
 
     // Keep variants flat — tokens already carry light/dark.
@@ -102,7 +103,7 @@ pub fn Button(props: ButtonProps) -> Element {
             aria_controls: props.aria_controls.as_deref().unwrap_or_default(),
             aria_expanded: props.aria_expanded.as_deref().unwrap_or_default(),
             aria_pressed: props.aria_pressed.as_deref().unwrap_or_default(),
-            class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 {size_classes} {variant_classes} {state_classes} {custom_classes}",
+            class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 {classes::FOCUS_RING} {size_classes} {variant_classes} {state_classes} {custom_classes}",
             onclick: move |evt| {
                 if !props.disabled && !props.loading
                     && let Some(handler) = props.onclick.as_ref() {

@@ -12,7 +12,7 @@ const FOOTER_ROW: &str = "footer-row flex items-center gap-2 py-0.5 flex-wrap mi
 const FOOTER_LABEL: &str = "footer-label inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-lg border border-[color-mix(in_srgb,currentColor_30%,var(--border))] border-l-4 border-current bg-[color-mix(in_srgb,currentColor_14%,var(--surface))] min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0";
 const FOOTER_LINKS: &str = "footer-links flex flex-wrap items-center gap-x-2.5 gap-y-1 list-none m-0 p-0 flex-none min-w-0";
 const FOOTER_LI: &str = "inline-flex items-center gap-[5px] shrink-0 min-[641px]:whitespace-nowrap";
-const FOOTER_LINK: &str = "footer-link no-underline text-ui leading-[1.45] min-h-[34px] inline-flex items-center px-2 py-1 rounded-[2px] hover:underline hover:bg-[color-mix(in_srgb,currentColor_8%,var(--surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:rounded-[2px] max-[480px]:px-1.5 max-[480px]:py-[3px] max-[480px]:text-micro max-[480px]:min-h-[32px]";
+const FOOTER_LINK: &str = "footer-link no-underline text-ui leading-[1.45] min-h-[34px] inline-flex items-center px-2 py-1 rounded-[2px] hover:underline hover:bg-[color-mix(in_srgb,currentColor_8%,var(--surface))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:rounded-[2px] max-[480px]:px-1.5 max-[480px]:py-[3px] max-[480px]:text-micro max-[480px]:min-h-[32px]";
 const FOOTER_ASIDE: &str = "footer-aside text-subtle whitespace-nowrap";
 
 #[component]

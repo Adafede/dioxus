@@ -45,7 +45,7 @@ pub fn CopyButton(
                 });
             },
             if *copied.read() {
-                span { class: "font-semibold text-success", "✓ {t(locale, TextKey::Copied)}" }
+                span { class: "font-semibold text-success", "aria-live": "polite", "✓ {t(locale, TextKey::Copied)}" }
             } else {
                 span { "{label_attr}" }
             }

@@ -8,6 +8,7 @@ use crate::i18n::{
     curation_badge_second_pass_required, curation_mass_warning_title, curation_status_label,
     hint_scroll_curation_results, label_new_item, t,
 };
+use crate::ui::classes;
 use dioxus::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -122,7 +123,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     tbody {
                         for (idx, row) in rows.iter().enumerate() {
                             tr { key: "{row.inchikey.as_deref().unwrap_or(&idx.to_string())}",
-                                class: "odd:bg-surface/30 hover:bg-surface/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
+                                class: "odd:bg-surface/30 hover:bg-surface/40 focus-visible:outline-none {classes::FOCUS_RING} focus-visible:ring-offset-[-2px]",
                                 tabindex: "0",
                                 {render_curation_result_cells(locale, row)}
                             }

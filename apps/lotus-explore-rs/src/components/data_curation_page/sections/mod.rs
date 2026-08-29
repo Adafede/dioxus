@@ -20,6 +20,7 @@ use crate::i18n::{
     msg_delay_advice, msg_two_step_hint, placeholder_doi_optional, placeholder_molecule_name,
     placeholder_taxon_optional, t,
 };
+use crate::ui::classes;
 use dioxus::prelude::*;
 use std::sync::Arc;
 use ui::prelude::*;
@@ -342,7 +343,8 @@ pub fn QueueRowsCard(
                         } else {
                             for (idx, row) in rows_snapshot.iter().enumerate() {
                                 tr { key: "{row.name}|{row.smiles}",
-                                    class: "odd:bg-surface/30 hover:bg-surface/60",
+                                    class: "odd:bg-surface/30 hover:bg-surface/60 focus-visible:outline-none {classes::FOCUS_RING} focus-visible:ring-offset-[-2px]",
+                                    tabindex: "0",
                                     td { class: "{styles::TD} {styles::QUEUE_ACTION_COL}",
                                         Button {
                                             label: button_remove(locale).to_string(),

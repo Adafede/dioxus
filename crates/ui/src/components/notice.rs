@@ -105,7 +105,11 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         .build();
 
     rsx! {
-        div { role: props.role, aria_live: props.aria_live, style: outer_style,
+        div {
+            role: props.role,
+            aria_live: props.aria_live,
+            class: "notice-bar",
+            style: outer_style,
             span { style: label_style, "{props.label}" }
             if let Some(children) = props.children {
                 div { style: body_style, {children} }

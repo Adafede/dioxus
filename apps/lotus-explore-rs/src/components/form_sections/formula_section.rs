@@ -48,8 +48,8 @@ fn NumPair(
     let locale = crate::hooks::use_locale();
 
     rsx! {
-        div { class: "flex flex-col gap-1.5 rounded-lg border border-panel-border bg-panel-soft p-2",
-            p { class: "text-ui text-muted", "{label}" }
+        div { class: "{classes::SECTION}",
+            p { class: "{classes::HINT}", "{label}" }
             div { class: "formula-minmax-grid",
                 div { class: "flex flex-col gap-0.5",
                     label { class: "{classes::MICRO_LABEL}", "{t(locale, TextKey::MinCount)}" }
@@ -130,7 +130,7 @@ pub fn FormulaSection() -> Element {
             }
 
             if enabled {
-                div { class: "mt-1 flex flex-col gap-1.5 rounded-xl border border-panel-border border-l border-border bg-panel-soft p-2.5 pl-2.5",
+                div { class: "{classes::SECTION}",
                     label { class: "{classes::MICRO_LABEL}", r#for: "formula-exact",
                         "{t(locale, TextKey::ExactFormula)}"
                     }

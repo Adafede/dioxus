@@ -6,6 +6,9 @@
 //! Prefer these over raw `slate-*` / `sky-*` / `dark:` pairs so colors track
 //! `data-theme` via CSS variables.
 
+/// Standard focus-visible ring using design token variables.
+pub const FOCUS_RING: &str = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+
 /// Field / control label.
 pub const LABEL: &str = "text-body font-semibold text-text";
 
