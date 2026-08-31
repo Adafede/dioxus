@@ -10,7 +10,7 @@ categories = ["science", "wasm", "web-programming"]
 publish = false
 
 [dependencies]
-chematic = { version = "=0.16", default-features = false, features = ["chem", "smarts", "smiles"] }
+chematic = { version = "=0.19", default-features = false, features = ["chem", "smarts", "smiles"] }
 csv = { workspace = true }
 dioxus = { workspace = true }
 gloo-timers = { workspace = true }
