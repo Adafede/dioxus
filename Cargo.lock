@@ -1893,7 +1893,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2171,7 +2171,7 @@ dependencies = [
 [[package]]
 name = "geometric-traits"
 version = "0.1.0"
-source = "git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main#59f580bcf10f357e81f606db693dfc49f20ee863"
+source = "git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main#2d8742268bab6b58536ebd2b41e2878720f4123c"
 dependencies = [
  "barnes-hut-tree",
  "bitvec",
@@ -4007,7 +4007,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4444,7 +4444,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4502,7 +4502,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4882,7 +4882,7 @@ dependencies = [
 [[package]]
 name = "smarts-evolution"
 version = "0.1.0"
-source = "git+https://github.com/earth-metabolome-initiative/smarts-evolution?branch=main#b7d4ad38f66c373ba72614d07fab2940487b9699"
+source = "git+https://github.com/earth-metabolome-initiative/smarts-evolution?branch=main#c6f0821899ae599c2c9ebb153548a86454269ca8"
 dependencies = [
  "arboard",
  "base64",
@@ -4900,7 +4900,7 @@ dependencies = [
 [[package]]
 name = "smarts-rs"
 version = "0.1.0"
-source = "git+https://github.com/earth-metabolome-initiative/smarts-rs?branch=main#b94c942c084e79488d24309923186d07085b8c9a"
+source = "git+https://github.com/earth-metabolome-initiative/smarts-rs?branch=main#771e179eb7bf4a8c1e77aada38a18f2cfef3f88e"
 dependencies = [
  "elements_rs",
  "geometric-traits 0.1.0 (git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main)",
@@ -4929,7 +4929,7 @@ dependencies = [
 [[package]]
 name = "smiles-parser"
 version = "0.1.0"
-source = "git+https://github.com/earth-metabolome-initiative/smiles-parser?branch=main#829e0b18447ebb45aa13177d229b3d585ee04bc8"
+source = "git+https://github.com/earth-metabolome-initiative/smiles-parser?branch=main#e39194cb6b8e7159d63ea8acb7a50ab971546da0"
 dependencies = [
  "elements_rs",
  "geometric-traits 0.1.0 (git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main)",
@@ -5143,7 +5143,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6108,7 +6108,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
