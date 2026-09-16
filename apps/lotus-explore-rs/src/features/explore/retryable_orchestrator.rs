@@ -25,7 +25,7 @@ use std::time::Duration;
 ///
 /// Returns the backoff duration before retry attempt, or None if the error is permanent.
 #[cfg(test)]
-pub fn compute_retry_schedule(
+pub fn retry_schedule_delay(
     error: &DomainError,
     attempt_count: u32,
     max_retries: u32,
@@ -41,7 +41,7 @@ pub fn compute_retry_schedule(
 /// Returns `true` if state should be cleared (bad error at early stage),
 /// `false` if state should be preserved (e.g., we have previous results to show).
 #[cfg(test)]
-pub fn should_preserve_results_on_error(error: &DomainError) -> bool {
+pub fn preserve_results_on_error(error: &DomainError) -> bool {
     !should_clear_state_on_error(error.query_stage())
 }
 
@@ -113,14 +113,14 @@ mod tests {
     #[test]
     fn compute_retry_schedule_returns_none_at_max_retries() {
         let error = DomainError::Validation(ValidationFault::EmptyInput);
-        let schedule = compute_retry_schedule(&error, 3, 3);
+        let schedule = retry_schedule_delay(&error, 3, 3);
         assert_eq!(schedule, None);
     }
 
     #[test]
     fn compute_retry_schedule_returns_none_for_permanent_errors() {
         let error = DomainError::Validation(ValidationFault::EmptyInput);
-        let schedule = compute_retry_schedule(&error, 0, 10);
+        let schedule = retry_schedule_delay(&error, 0, 10);
         assert_eq!(schedule, None);
     }
 
@@ -130,7 +130,7 @@ mod tests {
             stage: QueryStage::ResultsQuery,
             source: RepositoryError::network("connection refused"),
         };
-        let schedule = compute_retry_schedule(&error, 0, 3);
+        let schedule = retry_schedule_delay(&error, 0, 3);
         assert!(schedule.is_some());
         assert_eq!(schedule, Some(Duration::from_millis(200)));
     }
@@ -141,7 +141,7 @@ mod tests {
             stage: QueryStage::ResultsQuery,
             source: RepositoryError::network("timeout"),
         };
-        assert!(should_preserve_results_on_error(&error));
+        assert!(preserve_results_on_error(&error));
     }
 
     #[test]
@@ -150,7 +150,7 @@ mod tests {
             stage: QueryStage::TaxonSearch,
             source: RepositoryError::network("timeout"),
         };
-        assert!(!should_preserve_results_on_error(&error));
+        assert!(!preserve_results_on_error(&error));
     }
 
     #[test]

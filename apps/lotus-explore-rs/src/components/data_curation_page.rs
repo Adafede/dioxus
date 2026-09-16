@@ -49,17 +49,12 @@ pub fn DataCurationPage() -> Element {
     rsx! {
         CurationScripts {}
         section {
-            class: "curation-wrap w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8",
-            aria_labelledby: "curation-page-heading",
-            div { class: "overflow-hidden rounded-2xl border border-panel-border bg-panel shadow-xs",
-                h2 {
-                    id: "curation-page-heading",
-                    class: "text-title font-semibold text-text px-4 pt-4 sm:px-6",
-                    "{crate::i18n::view_label_curation_explorer(locale)}"
-                }
-                div { class: "results-inner w-full px-4 pb-4 pt-3 sm:px-6",
+            class: "page-section w-full max-w-none px-4 sm:px-6 lg:px-8",
+            h2 { class: "sr-only", id: "curation-page-heading", "{crate::i18n::view_label_curation_explorer(locale)}" }
+            div { class: "w-full rounded-2xl bg-panel overflow-hidden",
+                div { class: "page-body flex flex-col gap-4 px-4 pb-4 pt-5 sm:px-6 sm:pb-6 sm:pt-6",
                     div {
-                        class: "curation-grid grid grid-cols-1 gap-4 2xl:grid-cols-2 w-full",
+                        class: "curation-grid grid grid-cols-1 gap-4 lg:grid-cols-2 w-full",
                     AddRowCard {
                         locale,
                         form: controller.form,
@@ -79,24 +74,24 @@ pub fn DataCurationPage() -> Element {
                     }
                 }
 
-                if let Some(share) = shareable_url.read().as_ref() {
-                    ShareBar { locale, share: share.clone() }
-                }
+                    if let Some(share) = shareable_url.read().as_ref() {
+                        ShareBar { locale, share: share.clone() }
+                    }
 
-                if let Some(status) = controller.status_message.read().as_ref() {
-                    StatusNotice { locale, message: Arc::<str>::from(status.as_str()) }
-                }
+                    if let Some(status) = controller.status_message.read().as_ref() {
+                        StatusNotice { locale, message: Arc::<str>::from(status.as_str()) }
+                    }
 
-                QueueRowsCard {
-                    locale,
-                    rows: controller.rows,
-                    processing: ui_state.processing,
-                    on_process,
-                }
+                    QueueRowsCard {
+                        locale,
+                        rows: controller.rows,
+                        processing: ui_state.processing,
+                        on_process,
+                    }
 
-                if let Some(rows) = result_rows_memo.read().as_ref() {
-                    CurationResultsTable { locale, rows: rows.clone() }
-                }
+                    if let Some(rows) = result_rows_memo.read().as_ref() {
+                        CurationResultsTable { locale, rows: rows.clone() }
+                    }
 
                     QuickStatementsCard {
                         locale,

@@ -50,7 +50,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                     rel: "noopener noreferrer",
                     aria_label: "{reference_qid} • {t(locale, TextKey::OpenInReferenceScholia)}",
                     class: "inline-block {classes::PILL} border-current {classes::WD_REFERENCE} {classes::WD_REFERENCE_BORDER}",
-                    "{reference_qid} - Scholia"
+                    "{reference_qid} • Scholia"
                 }
                 if let Some(d) = doi {
                     a {

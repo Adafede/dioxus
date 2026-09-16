@@ -252,7 +252,7 @@ pub fn DownloadActionsGroup() -> Element {
     drop(snapshot);
 
     rsx! {
-        div { class: "flex w-full flex-wrap items-center justify-center gap-2.5",
+        nav { class: "flex w-full min-w-0 flex-wrap items-center justify-center gap-3 py-1 mb-3", aria_label: "{download_results_label}",
             if *download_busy.read() {
                 DownloadStatusSpinner {
                     download_status,
@@ -260,67 +260,78 @@ pub fn DownloadActionsGroup() -> Element {
                 }
             }
             if export_available {
-                div {
-                    role: "group",
-                    aria_label: "{download_results_label}",
-                    class: "flex flex-wrap items-center justify-center gap-2.5",
+                ul {
+                    class: "flex min-w-0 flex-wrap items-center justify-center gap-3",
                     if let Some(query) = sparql_query_value.as_ref() {
-                        DownloadQueryButton {
-                            spec: DOWNLOAD_QUERY_CSV_SPEC,
-                            sparql_query: query.clone(),
-                            locale,
-                            disabled: *download_busy.read(),
-                            download_busy,
-                            download_status,
-                            criteria,
-                            filename: toolbar_model.read().csv_filename.clone(),
+                        li {
+                            DownloadQueryButton {
+                                spec: DOWNLOAD_QUERY_CSV_SPEC,
+                                sparql_query: query.clone(),
+                                locale,
+                                disabled: *download_busy.read(),
+                                download_busy,
+                                download_status,
+                                criteria,
+                                filename: toolbar_model.read().csv_filename.clone(),
+                            }
                         }
-                        DownloadQueryButton {
-                            spec: DOWNLOAD_QUERY_JSON_SPEC,
-                            sparql_query: query.clone(),
-                            locale,
-                            disabled: *download_busy.read(),
-                            download_busy,
-                            download_status,
-                            criteria,
-                            filename: toolbar_model.read().json_filename.clone(),
+                        li {
+                            DownloadQueryButton {
+                                spec: DOWNLOAD_QUERY_JSON_SPEC,
+                                sparql_query: query.clone(),
+                                locale,
+                                disabled: *download_busy.read(),
+                                download_busy,
+                                download_status,
+                                criteria,
+                                filename: toolbar_model.read().json_filename.clone(),
+                            }
                         }
-                        DownloadQueryButton {
-                            spec: DOWNLOAD_QUERY_RDF_SPEC,
-                            sparql_query: query.clone(),
-                            locale,
-                            disabled: *download_busy.read(),
-                            download_busy,
-                            download_status,
-                            criteria,
-                            filename: toolbar_model.read().rdf_filename.clone(),
+                        li {
+                            DownloadQueryButton {
+                                spec: DOWNLOAD_QUERY_RDF_SPEC,
+                                sparql_query: query.clone(),
+                                locale,
+                                disabled: *download_busy.read(),
+                                download_busy,
+                                download_status,
+                                criteria,
+                                filename: toolbar_model.read().rdf_filename.clone(),
+                            }
                         }
                     }
                     if let Some(body) = metadata_json_value.as_ref() {
-                        DownloadMetadataButton {
-                            metadata_json: body.clone(),
-                            toolbar_model,
-                            locale,
-                            disabled: *download_busy.read(),
+                        li {
+                            DownloadMetadataButton {
+                                metadata_json: body.clone(),
+                                toolbar_model,
+                                locale,
+                                disabled: *download_busy.read(),
+                            }
                         }
                     }
-                    if let Some(url) = ui_url_for_click.clone() {
-                        Button {
-                            r#type: "button",
-                            variant: ButtonVariant::Secondary,
-                            size: ButtonSize::Sm,
-                            class: Some(TOOLBAR_ACTION_CLASS.to_string()),
-                            title: Some(format!("{open_in_title} ({endpoint_name})")),
-                            aria_label: Some(format!("{open_in_title} ({endpoint_name})")),
-                            label: Some(format!("Open in {endpoint_name}")),
-                            onclick: move |_| {
-                                #[cfg(target_arch = "wasm32")]
-                                {
-                                    if let Some(win) = web_sys::window() {
-                                        let _ = win.open_with_url_and_target(&url, "_blank");
+                    if let Some(_url) = ui_url_for_click.as_ref() {
+                        li {
+                            Button {
+                                r#type: "button",
+                                variant: ButtonVariant::Secondary,
+                                size: ButtonSize::Sm,
+                                class: Some(TOOLBAR_ACTION_CLASS.to_string()),
+                                title: Some(format!("{open_in_title} ({endpoint_name})")),
+                                aria_label: Some(format!("{open_in_title} ({endpoint_name})")),
+                                label: Some(format!("Open in {endpoint_name}")),
+                                onclick: move |_| {
+                                    #[cfg(target_arch = "wasm32")]
+                                    {
+                                        if let Some(win) = web_sys::window() {
+                                            let _ = win.open_with_url_and_target(
+                                                ui_url_for_click.as_ref().unwrap(),
+                                                "_blank",
+                                            );
+                                        }
                                     }
-                                }
-                            },
+                                },
+                            }
                         }
                     }
                 }

@@ -91,7 +91,8 @@ pub const SECTION: &str =
     "flex flex-col gap-1.5 rounded-xl border border-border bg-panel p-1.5 shadow-xs";
 
 /// Generic surface card (curation sections).
-pub const CARD: &str = "flex flex-col gap-4 rounded-xl border border-panel-border bg-panel-soft p-4 shadow-xs";
+pub const CARD: &str =
+    "flex flex-col gap-4 rounded-xl border border-panel-border bg-panel-soft p-4 shadow-xs";
 
 /// Form grid layout.
 pub const FORM_GRID: &str = "grid grid-cols-1 gap-3";
@@ -106,7 +107,8 @@ pub const TEXTAREA_130: &str = "form-textarea mono w-full min-h-[130px] rounded-
 pub const TEXTAREA_220: &str = "form-textarea mono w-full min-h-[220px] rounded-xl border border-border bg-surface p-2.5 font-mono text-body text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2";
 
 /// Share bar (custom styling).
-pub const SHARE_BAR: &str = "flex flex-col gap-2 p-3 rounded-xl border border-panel-border bg-panel-soft shadow-xs";
+pub const SHARE_BAR: &str =
+    "flex flex-col gap-2 p-3 rounded-xl border border-panel-border bg-panel-soft shadow-xs";
 pub const SHARE_BAR_LABEL: &str = "text-ui font-semibold text-text2";
 
 /// Inline text link using accent.

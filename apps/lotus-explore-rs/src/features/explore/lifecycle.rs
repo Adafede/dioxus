@@ -38,7 +38,7 @@ impl SearchLifecycleCoordinator {
 
     pub fn on_success(&self, request: &SearchRequest, success_action: ExploreAction) {
         if is_stale_token(request.request_token(), self.current_token()) {
-            telemetry::stale_result_ignored(request.request_token());
+            telemetry::ignored_stale_result(request.request_token());
             return;
         }
 
@@ -55,7 +55,7 @@ impl SearchLifecycleCoordinator {
         max_retries: u32,
     ) -> ErrorHandlingOutcome {
         if is_stale_token(request.request_token(), self.current_token()) {
-            telemetry::stale_error_ignored(request.request_token());
+            telemetry::ignored_stale_error(request.request_token());
             return ErrorHandlingOutcome::Finalized;
         }
 

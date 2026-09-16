@@ -20,7 +20,9 @@ pub fn LangSwitch() -> Element {
     let dark_mode = use_app_state_context().state.read().dark_mode;
 
     rsx! {
-        div { class: "lang-switch inline-flex items-center rounded-full overflow-hidden border border-border bg-surface shadow-xs",
+        nav {
+            class: "lang-switch inline-flex items-center rounded-full overflow-hidden border border-border bg-surface shadow-xs mx-2",
+            aria_label: t(locale, TextKey::Language).to_string(),
             SegmentedControl {
                 aria_label: t(locale, TextKey::Language).to_string(),
                 selected_value: locale_code(locale).to_string(),

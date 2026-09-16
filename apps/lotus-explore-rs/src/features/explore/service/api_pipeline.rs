@@ -41,7 +41,7 @@ pub async fn try_execute<R: LotusRepository>(
         Some(Ok(response)) => {
             let api_elapsed = perf::end_timer("LOTUS:api_search", api_timer);
             metrics.add_network(api_elapsed);
-            telemetry::api_success(api_elapsed, response.rows.len(), response.total_matches);
+            telemetry::record_api_success(api_elapsed, response.rows.len(), response.total_matches);
             Some(SearchOutcome::from_api_response(
                 response,
                 display_limit,

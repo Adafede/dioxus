@@ -30,24 +30,26 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
         return rsx! {};
     };
     rsx! {
-        NoticeBar {
-            label: t(locale, TextKey::Share).to_string(),
-            tone: NoticeTone::Warning,
-            role: "status",
-            aria_live: "polite",
-            dark: dark_mode,
-            input {
-                id: share_input_id,
-                r#type: "text",
-                readonly: true,
-                value: "{share}",
-                aria_label: "{t(locale, TextKey::CopyShareableLink)}",
-                class: "min-w-0 flex-1 truncate font-mono {classes::INPUT_SM}",
-            }
-            CopyButton {
-                text: Arc::<str>::from(absolute_share_url(share)),
-                title: t(locale, TextKey::CopyShareableLink),
-                locale,
+        div { class: "px-4 sm:px-6 lg:px-8",
+            NoticeBar {
+                label: t(locale, TextKey::Share).to_string(),
+                tone: NoticeTone::Warning,
+                role: "status",
+                aria_live: "polite",
+                dark: dark_mode,
+                input {
+                    id: share_input_id,
+                    r#type: "text",
+                    readonly: true,
+                    value: "{share}",
+                    aria_label: "{t(locale, TextKey::CopyShareableLink)}",
+                    class: "min-w-0 flex-1 truncate font-mono {classes::INPUT_SM}",
+                }
+                CopyButton {
+                    text: Arc::<str>::from(absolute_share_url(share)),
+                    title: t(locale, TextKey::CopyShareableLink),
+                    locale,
+                }
             }
         }
     }
@@ -65,13 +67,15 @@ pub fn TaxonNotice() -> Element {
     };
     let text = format_taxon_warning(locale, warning);
     rsx! {
-        NoticeBar {
-            label: t(locale, TextKey::Notice).to_string(),
-            tone: NoticeTone::Warning,
-            role: "status",
-            aria_live: "polite",
-            dark: dark_mode,
-            span { class: "flex-1 min-w-0 text-ui text-muted break-words leading-snug", "{text}" }
+        div { class: "px-4 sm:px-6 lg:px-8",
+            NoticeBar {
+                label: t(locale, TextKey::Notice).to_string(),
+                tone: NoticeTone::Warning,
+                role: "status",
+                aria_live: "polite",
+                dark: dark_mode,
+                span { class: "flex-1 min-w-0 text-ui text-muted break-words leading-snug", "{text}" }
+            }
         }
     }
 }
@@ -92,6 +96,7 @@ pub fn ErrorNotice() -> Element {
     let kind: ErrorKind = domain_err.kind();
     let msg = format_domain_error(locale, domain_err);
     rsx! {
+        div { class: "px-4 sm:px-6 lg:px-8",
             NoticeBar {
                 label: t(locale, TextKey::Error).to_string(),
                 tone: NoticeTone::Warning,
@@ -118,4 +123,5 @@ pub fn ErrorNotice() -> Element {
                 }
             }
         }
+    }
 }

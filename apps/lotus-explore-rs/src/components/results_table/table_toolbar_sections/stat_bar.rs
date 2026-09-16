@@ -40,8 +40,8 @@ fn StatBadge(
         StatStripe::Entries => ("bg-stat-total", "border-stat-total-border"),
     };
     rsx! {
-        div {
-            class: "relative flex min-w-[120px] flex-1 flex-col gap-1 overflow-hidden {classes::RADIUS_CARD} border p-3 shadow-xs {bg} {border}",
+        article {
+            class: "relative flex min-w-[140px] flex-[1_1_180px] flex-col gap-1 overflow-hidden {classes::RADIUS_CARD} border p-3 shadow-xs {bg} {border}",
             style: "border-left: 4px solid {stripe.as_color()}",
             div {
                 class: "flex items-baseline gap-1.5",
@@ -60,7 +60,7 @@ fn StatBadge(
                 class: "truncate text-micro font-semibold uppercase tracking-wider text-subtle",
                 "{label}"
             }
-        }
+            }
     }
 }
 
@@ -85,8 +85,8 @@ pub fn StatBar() -> Element {
     let entries_unique_value = stats.n_entries_unique;
 
     rsx! {
-        div {
-            class: "stat-bar grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4",
+        nav {
+            class: "stat-bar flex w-full min-w-0 flex-wrap items-stretch justify-center gap-3 px-0",
             role: "group",
             aria_label: "{t(locale, TextKey::DatasetStatistics)}",
             StatBadge {

@@ -14,7 +14,7 @@ pub fn search_inflight_cancelled() {
     log_debug_evt("search", "start", "inflight_cancelled", None);
 }
 
-pub fn stale_result_ignored(request_token: u64) {
+pub fn ignored_stale_result(request_token: u64) {
     log_debug_evt(
         "search",
         "finish",
@@ -23,7 +23,7 @@ pub fn stale_result_ignored(request_token: u64) {
     );
 }
 
-pub fn stale_error_ignored(request_token: u64) {
+pub fn ignored_stale_error(request_token: u64) {
     log_debug_evt(
         "search",
         "finish",
@@ -77,7 +77,7 @@ pub fn api_path_not_available(reason: &str) {
     log_info_evt("search", "api", "path_not_available", Some(reason));
 }
 
-pub fn api_success(elapsed: Duration, rows: usize, total_matches: usize) {
+pub fn record_api_success(elapsed: Duration, rows: usize, total_matches: usize) {
     log_timing_evt(
         "search",
         "api",

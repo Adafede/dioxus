@@ -41,13 +41,14 @@ pub fn QueryPanel() -> Element {
         if *panel_visible.read() {
             if let Some(q) = toolbar_snapshot.read().sparql_query.as_ref() {
                 details {
-                    class: "overflow-hidden {classes::RADIUS_PANEL} border border-panel-border bg-panel-soft shadow-xs",
+                    class: "overflow-hidden",
                     open: *panel_open.read(),
-                    onchange: move |evt: FormEvent| {
-                        panel_open.set(evt.value() == "true");
+                    ontoggle: move |_| {
+                        let next = !*panel_open.peek();
+                        panel_open.set(next);
                     },
                     summary {
-                        class: "flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-ui font-semibold text-muted hover:bg-bg {classes::FOCUS_RING_BTN}",
+                        class: "flex w-full min-w-0 cursor-pointer select-none items-center gap-2 bg-panel-soft px-3 py-2 text-ui font-semibold text-muted hover:bg-bg {classes::FOCUS_RING_BTN}",
                         span {
                             class: if *panel_open.read() {
                                 "inline-block rotate-90 text-subtle {classes::TRANSITION_TRANSFORM}"
@@ -58,7 +59,7 @@ pub fn QueryPanel() -> Element {
                         }
                         "{t(locale, TextKey::SparqlQuery)}"
                     }
-                    div { class: "flex flex-col gap-2 border-t border-border p-3 sm:p-4",
+                    div { class: "flex w-full min-w-0 flex-col gap-2 bg-panel-soft p-3 sm:p-4",
                         CopyButton {
                             text: q.clone(),
                             title: t(locale, TextKey::CopySparqlQuery),

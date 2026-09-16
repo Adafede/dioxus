@@ -13,10 +13,10 @@ const WDQS_UI: &str = "https://query.wikidata.org";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub(super) enum SparqlEndpointUI {
-    /// QLever endpoint (default)
+    /// QLever SPARQL endpoint (default)
     #[default]
     Qlever,
-    /// Wikidata Query Service (fallback)
+    /// Wikidata Query Service endpoint (fallback)
     Wdqs,
 }
 
@@ -32,7 +32,7 @@ impl From<export::SparqlEndpoint> for SparqlEndpointUI {
 impl std::fmt::Display for SparqlEndpointUI {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Qlever => write!(f, "QLever"),
+            Self::Qlever => write!(f, "QLever SPARQL"),
             Self::Wdqs => write!(f, "Wikidata Query Service"),
         }
     }
@@ -249,7 +249,7 @@ mod tests {
             None,
             None,
         );
-        assert_eq!(qlever_model.sparql_endpoint_ui.to_string(), "QLever");
+        assert_eq!(qlever_model.sparql_endpoint_ui.to_string(), "QLever SPARQL");
 
         let wdqs_model = build_download_toolbar_model_with_endpoint(
             &criteria,

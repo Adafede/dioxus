@@ -43,20 +43,20 @@ pub(super) fn VirtualizedResultsTable(
             role: "region",
             tabindex: "0",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-            class: "w-full max-w-full max-h-[min(78dvh,1120px)] overflow-x-auto overflow-y-auto rounded-xl border border-panel-border bg-panel-soft shadow-xs",
+            class: "w-full max-w-none max-h-[min(78dvh,1120px)] overflow-x-auto overflow-y-auto rounded-xl border border-panel-border bg-panel-soft shadow-xs",
             onscroll: on_scroll,
             table {
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                class: "w-full min-w-[1240px] table-auto border-collapse text-ui [word-break:break-word] lg:min-w-[1360px]",
+                class: "w-full min-w-[1800px] table-auto border-collapse text-ui",
                 caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                 colgroup {
-                    col { class: "w-[96px] sm:w-[112px] lg:w-[120px]" }
-                    col { class: "w-[20ch] sm:w-[24ch] lg:w-[26ch]" }
-                    col { class: "w-[10ch] sm:w-[11ch] lg:w-[12ch]" }
-                    col { class: "w-[10ch] sm:w-[11ch] lg:w-[12ch]" }
-                    col { class: "w-[32ch] sm:w-[38ch] lg:w-[44ch]" }
-                    col { class: "w-[28ch] sm:w-[34ch] lg:w-[40ch]" }
-                    col { class: "w-[7ch] sm:w-[8ch]" }
+                    col { class: "w-[112px] sm:w-[132px] lg:w-[152px]" }
+                    col { class: "w-[28ch] sm:w-[30ch] lg:w-[32ch]" }
+                    col { class: "w-[12ch] sm:w-[13ch] lg:w-[14ch]" }
+                    col { class: "w-[12ch] sm:w-[13ch] lg:w-[14ch]" }
+                    col { class: "w-[40ch] sm:w-[44ch] lg:w-[48ch]" }
+                    col { class: "w-[26ch] sm:w-[28ch] lg:w-[30ch]" }
+                    col { class: "w-[8ch] sm:w-[9ch]" }
                 }
                 thead {
                     class: "sticky top-0 z-2",

@@ -46,7 +46,7 @@ pub fn Footer() -> Element {
                 label: t(locale, TextKey::FooterData),
                 label_class: classes::WD_TAXON,
                 links: &[
-                    ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
+                    ("https://www.wikidata.org/wiki/Q104225190", "LOTUS initiative"),
                     ("https://www.wikidata.org/", "Wikidata"),
                 ],
             }
@@ -60,7 +60,7 @@ pub fn Footer() -> Element {
                     ("https://github.com/cdk/depict", "CDK Depict"),
                     ("https://citation.js.org", "Citation.js"),
                     ("https://lifescience.opensource.epam.com/ketcher", "Ketcher"),
-                    ("https://qlever.dev/wikidata", "QLever"),
+                    ("https://qlever.dev/wikidata", "QLever SPARQL"),
                     ("https://www.rdkitjs.com", "RDKit.js"),
                     ("https://doi.org/10.1186/s13321-018-0282-y", "Sachem"),
                 ],

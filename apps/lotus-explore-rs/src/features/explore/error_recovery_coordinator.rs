@@ -15,7 +15,7 @@ use crate::repositories::RepositoryError;
 
 /// Encapsulates retry decision-making for a failed search operation.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ErrorRecoveryDecision {
+pub struct RetryDecision {
     /// Whether the search should be retried.
     pub should_retry: bool,
     /// If retrying, how long to wait (milliseconds) before attempting.
@@ -76,15 +76,15 @@ impl ErrorClass {
 ///
 /// # Returns
 /// A decision indicating whether to retry, with backoff timing if applicable.
-pub fn classify_error_recovery(error: &DomainError, attempt: u32) -> ErrorRecoveryDecision {
+pub fn classify_error_recovery(error: &DomainError, attempt: u32) -> RetryDecision {
     match error {
-        DomainError::Validation(_) => ErrorRecoveryDecision {
+        DomainError::Validation(_) => RetryDecision {
             should_retry: false,
             backoff_ms: None,
             error_class: ErrorClass::Validation,
         },
 
-        DomainError::Parse(_) => ErrorRecoveryDecision {
+        DomainError::Parse(_) => RetryDecision {
             should_retry: false,
             backoff_ms: None,
             error_class: ErrorClass::Parse,
@@ -93,7 +93,7 @@ pub fn classify_error_recovery(error: &DomainError, attempt: u32) -> ErrorRecove
         DomainError::Transport { source, .. } => classify_transport_error_recovery(source, attempt),
 
         #[cfg(target_arch = "wasm32")]
-        DomainError::MemoryLimit { .. } => ErrorRecoveryDecision {
+        DomainError::MemoryLimit { .. } => RetryDecision {
             should_retry: false,
             backoff_ms: None,
             error_class: ErrorClass::Memory,
@@ -102,35 +102,32 @@ pub fn classify_error_recovery(error: &DomainError, attempt: u32) -> ErrorRecove
 }
 
 /// Classify a transport-layer error and determine retry strategy.
-fn classify_transport_error_recovery(
-    repo_error: &RepositoryError,
-    attempt: u32,
-) -> ErrorRecoveryDecision {
+fn classify_transport_error_recovery(repo_error: &RepositoryError, attempt: u32) -> RetryDecision {
     match classify_transport_error(repo_error) {
-        TransportFailureKind::Configuration => ErrorRecoveryDecision {
+        TransportFailureKind::Configuration => RetryDecision {
             should_retry: false,
             backoff_ms: None,
             error_class: ErrorClass::Configuration,
         },
-        TransportFailureKind::Network => ErrorRecoveryDecision {
+        TransportFailureKind::Network => RetryDecision {
             should_retry: true,
             backoff_ms: Some(backoff_delay_ms(attempt)),
             error_class: ErrorClass::Network,
         },
 
-        TransportFailureKind::Server => ErrorRecoveryDecision {
+        TransportFailureKind::Server => RetryDecision {
             should_retry: true,
             backoff_ms: Some(backoff_delay_ms(attempt)),
             error_class: ErrorClass::Server,
         },
 
-        TransportFailureKind::CacheConflict => ErrorRecoveryDecision {
+        TransportFailureKind::CacheConflict => RetryDecision {
             should_retry: true,
             backoff_ms: Some(100),
             error_class: ErrorClass::CacheConflict,
         },
 
-        TransportFailureKind::RateLimit => ErrorRecoveryDecision {
+        TransportFailureKind::RateLimit => RetryDecision {
             should_retry: true,
             // Qlever throttles over a short window and is pushed into a
             // *permanent* IP block when hammered with the default 100 ms base
@@ -141,19 +138,19 @@ fn classify_transport_error_recovery(
             error_class: ErrorClass::RateLimit,
         },
 
-        TransportFailureKind::BadRequest => ErrorRecoveryDecision {
+        TransportFailureKind::BadRequest => RetryDecision {
             should_retry: false,
             backoff_ms: None,
             error_class: ErrorClass::BadRequest,
         },
 
-        TransportFailureKind::QuerySyntax => ErrorRecoveryDecision {
+        TransportFailureKind::QuerySyntax => RetryDecision {
             should_retry: false,
             backoff_ms: None,
             error_class: ErrorClass::QuerySyntax,
         },
 
-        TransportFailureKind::Parse => ErrorRecoveryDecision {
+        TransportFailureKind::Parse => RetryDecision {
             should_retry: false,
             backoff_ms: None,
             error_class: ErrorClass::Parse,

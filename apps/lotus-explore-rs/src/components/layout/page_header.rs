@@ -25,7 +25,7 @@ pub fn PageHeader() -> Element {
 
     rsx! {
         header {
-            class: "sticky top-0 z-3 min-h-[46px] bg-panel/92 backdrop-blur-sm border-b border-panel-border {classes::SHADOW_XS} px-4 sm:px-8",
+            class: "sticky top-0 z-3 min-h-[46px] bg-panel/92 backdrop-blur-sm rounded-t-2xl {classes::SHADOW_XS} px-4 sm:px-8",
             div {
                 class: "flex flex-wrap items-start justify-between gap-3 sm:gap-4",
                 h1 { id: PAGE_TITLE_ID,
@@ -45,7 +45,7 @@ pub fn PageHeader() -> Element {
                 }
             }
             p {
-                class: "max-w-[72ch] text-title text-critical-muted mt-3 pb-2",
+                class: "max-w-none text-title text-critical-muted mt-3 pb-2",
                 "{t(locale, TextKey::PageSubtitle)}"
             }
         }

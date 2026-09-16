@@ -121,7 +121,7 @@ pub fn AddRowCard(
                 evt.prevent_default();
                 on_add_row.call(());
             },
-            class: "{classes::CARD}",
+            class: "flex flex-col gap-4 rounded-xl bg-panel-soft p-4 shadow-xs",
             h3 { "{heading_add_one_row(locale)}" }
             div { class: "{classes::FORM_GRID}",
                 label { class: "form-label", r#for: "curation-name-input",
@@ -227,7 +227,7 @@ pub fn TsvImportCard(
                     on_parse_tsv.call(());
                 }
             },
-            class: "{classes::CARD}",
+            class: "flex flex-col gap-4 rounded-xl bg-panel-soft p-4 shadow-xs",
             h3 { "{heading_tsv_import(locale)}" }
             p { class: "text-ui text-subtle leading-snug", "{hint_expected_tsv_headers(locale)}" }
             label { class: "form-label", r#for: "curation-tsv-input", "TSV" }
@@ -290,7 +290,7 @@ pub fn QueueRowsCard(
     let rows_snapshot = rows.read().clone();
 
     rsx! {
-        div { class: "{classes::CARD}",
+        div { class: "flex flex-col gap-4 rounded-xl bg-panel-soft p-4 shadow-xs",
             div { class: "flex flex-wrap items-center justify-between gap-2.5",
                 h3 { "{heading_queued_rows(locale)}" }
                 Button {
@@ -382,7 +382,7 @@ pub fn QuickStatementsCard(
     let qs_main_link = build_qs_dev_link(&qs_ref.main);
 
     rsx! {
-        div { class: "{classes::CARD}",
+        div { class: "flex flex-col gap-4 rounded-xl bg-panel-soft p-4 shadow-xs",
             if !qs_ref.dependencies.is_empty() {
                 p { class: "text-ui text-subtle leading-snug", "{msg_two_step_hint(locale)}" }
                 p { class: "text-ui text-subtle leading-snug", "{msg_delay_advice(locale)}" }

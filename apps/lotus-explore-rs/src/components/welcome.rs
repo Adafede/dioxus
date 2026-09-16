@@ -16,9 +16,9 @@ pub fn WelcomeScreen() -> Element {
     let locale = crate::hooks::use_locale();
     rsx! {
         section {
-            class: "results-wrap w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8",
-            div { class: "results-inner w-full",
-                div { class: "flex flex-col gap-3 p-6",
+            class: "page-section w-full max-w-none px-0",
+            div { class: "w-full",
+                div { class: "flex flex-col gap-3 px-4 py-6 sm:px-6 sm:py-8",
                     p {
                         class: "text-body leading-relaxed text-muted",
                         "{t(locale, TextKey::WelcomeLeadA)}"
@@ -56,7 +56,7 @@ pub fn WelcomeScreen() -> Element {
                 }
 
                 div {
-                    class: "flex flex-col gap-3",
+                    class: "flex flex-col gap-5 px-4 pb-4 pt-5 sm:px-6 sm:pb-6 sm:pt-6",
                     ul {
                         class: "grid grid-cols-1 gap-3 md:grid-cols-2",
                         ExRow {
@@ -70,8 +70,10 @@ pub fn WelcomeScreen() -> Element {
                     }
                 }
 
-                Card {
-                    class: "flex flex-col gap-3",
+                div { class: "h-4" }
+                div { class: "px-4 sm:px-6",
+                    Card {
+                        class: "flex flex-col gap-3 pb-4 sm:pb-6",
                     div { class: "flex flex-col gap-1",
                         p {
                             class: "{classes::SUPPORT}",
@@ -100,6 +102,7 @@ pub fn WelcomeScreen() -> Element {
                             format: t(locale, TextKey::ExampleQueryAdvanced),
                             query: "?taxon=Fungi&mass_filter=true&mass_min=0&mass_max=300&year_filter=true&year_start=2000&year_end=2026&formula_filter=true&c_min=1&c_max=10&cl_state=required&br_state=excluded&download=true&format=rdf",
                         }
+                    }
                     }
                 }
             }

@@ -35,7 +35,7 @@ pub(in crate::components::results_table::row_cells) fn taxon_cell(
                     rel: "noopener noreferrer",
                     aria_label: "{taxon_qid} • {t(_locale, TextKey::OpenInTaxonScholia)}",
                     class: "inline-block {classes::PILL} border-current {classes::WD_TAXON} border-wd-taxon",
-                    "{taxon_qid} - Scholia"
+                    "{taxon_qid} • Scholia"
                 }
             }
         }

@@ -76,7 +76,7 @@ struct SegmentedButtonProps {
 #[component]
 fn SegmentedButton(props: SegmentedButtonProps) -> Element {
     let active = props.value == props.selected_value;
-    
+
     let stretch = props.stretch;
     let on_select = props.on_select;
     let value = props.value.clone();
@@ -90,10 +90,14 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
         "bg-surface text-text border-border"
     };
 
-    let flex_class = if stretch { "flex-1 min-w-0" } else { "flex-none" };
+    let flex_class = if stretch {
+        "flex-1 min-w-0"
+    } else {
+        "flex-none"
+    };
 
     let classes = format!(
-        "inline-flex items-center justify-center px-2.5 py-1.5 text-ui leading-none font-semibold rounded-full border transition-transform duration-150 active:scale-[0.98] min-h-[40px] whitespace-nowrap focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 {} {}",
+        "inline-flex items-center justify-center px-5 py-1.5 text-ui leading-none font-semibold rounded-full border transition-transform duration-150 active:scale-[0.98] min-h-[40px] whitespace-nowrap focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 {} {}",
         flex_class, active_classes
     );
 

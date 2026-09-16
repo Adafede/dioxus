@@ -214,9 +214,9 @@ fn ShellScaffold(lang: String) -> Element {
                 main {
                     id: MAIN_PANEL_ID,
                     class: if single_pane {
-                        "main-content single-pane min-w-0 w-full"
+                        "main-content single-pane min-w-0 w-full max-w-none"
                     } else {
-                        "main-content min-w-0 w-full"
+                        "main-content min-w-0 w-full max-w-none"
                     },
                     tabindex: "-1",
                     aria_labelledby: PAGE_TITLE_ID,

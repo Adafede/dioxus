@@ -22,23 +22,23 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
 ) -> Element {
     rsx! {
         td { class: "{classes::TABLE_CELL_BASE} shadow-[inset_2px_0_0_var(--border)]",
-            div { class: "flex flex-col gap-1 max-w-[32ch]",
+            div { class: "flex flex-col gap-1 max-w-[30ch]",
                 a {
                     href: "https://www.wikidata.org/entity/{compound_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline {classes::WD_COMPOUND}",
+                    class: "block break-words hyphens-auto line-clamp-2 font-semibold leading-snug hover:underline {classes::WD_COMPOUND}",
                     "{prepared.display_name}"
                 }
             }
-            div { class: "mt-1 flex flex-wrap items-center gap-1 max-w-[32ch]",
+            div { class: "mt-1 flex flex-wrap items-center gap-1 max-w-[30ch]",
                 a {
                     href: "https://scholia.toolforge.org/chemical/{compound_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
                     aria_label: "{compound_qid} • {t(locale, TextKey::OpenInCompoundScholia)}",
                     class: "inline-block {classes::PILL} border-current {classes::WD_COMPOUND} {classes::WD_COMPOUND_BORDER}",
-                    "{compound_qid} - Scholia"
+                    "{compound_qid} • Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
                     a {
@@ -46,7 +46,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         target: "_blank",
                         rel: "noopener noreferrer",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                        class: "inline-block {classes::PILL} border-current {classes::WD_COMPOUND} {classes::WD_COMPOUND_BORDER}",
+                        class: "inline-block max-w-full break-all {classes::PILL} border-current {classes::WD_COMPOUND} {classes::WD_COMPOUND_BORDER}",
                         "{ik}"
                     }
                 }

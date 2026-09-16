@@ -3,24 +3,18 @@
 
 //! The "Structure editor" tab: a full-pane Ketcher molecule editor.
 
-use crate::i18n::view_label_draw;
 use crate::pages::ketcher_panel::KetcherPanel;
 use dioxus::prelude::*;
 
 #[component]
 pub fn DrawPage() -> Element {
-    let locale = crate::hooks::use_locale();
     rsx! {
         section {
-            class: "results-wrap w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8",
-            aria_labelledby: "draw-page-heading",
-            h2 {
-                id: "draw-page-heading",
-                class: "text-title font-semibold text-text mb-4",
-                "{view_label_draw(locale)}"
-            }
-            div { class: "results-inner w-full",
-                KetcherPanel {}
+            class: "page-section w-full max-w-none px-4 sm:px-6 lg:px-8",
+            div { class: "px-4 sm:px-6 lg:px-8",
+                div { class: "w-full rounded-2xl border border-panel-border bg-panel shadow-xs overflow-hidden",
+                    KetcherPanel {}
+                }
             }
         }
     }

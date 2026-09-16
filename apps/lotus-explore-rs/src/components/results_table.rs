@@ -69,21 +69,15 @@ pub fn ResultsTable() -> Element {
     rsx! {
         section {
             id: RESULTS_SECTION_ID,
+            role: "region",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
             aria_labelledby: RESULTS_SECTION_HEADING_ID,
-            class: "results-wrap w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8",
-            h2 {
-                id: RESULTS_SECTION_HEADING_ID,
-                class: "text-title font-semibold text-text mb-4",
-                "{t(locale, TextKey::TableTriplesAria)}"
-            }
-            div {
-                class: "overflow-hidden {crate::ui::classes::RADIUS_PANEL} border border-panel-border bg-panel shadow-xs",
-                ResultsToolbar {}
-            }
+            class: "results-wrap w-full max-w-none px-0",
+            h2 { id: RESULTS_SECTION_HEADING_ID, class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
+            ResultsToolbar {}
 
             if total == 0 {
-                div { class: "results-inner w-full",
+                div { class: "w-full mt-5 px-0",
                     div {
                         class: "empty-state",
                         p {
@@ -93,7 +87,7 @@ pub fn ResultsTable() -> Element {
                     }
                 }
             } else {
-                div { class: "results-inner w-full",
+                div { class: "w-full mt-5 px-0",
                     VirtualizedResultsTable {
                         entries: entries_arc,
                         table_view_model,

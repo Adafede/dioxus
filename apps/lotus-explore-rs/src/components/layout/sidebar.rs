@@ -25,13 +25,13 @@ pub fn Sidebar() -> Element {
     rsx! {
         aside {
             class: if mobile_filters_open {
-                "sidebar w-[360px] min-w-[250px] min-h-[400px] overflow-hidden rounded-2xl bg-panel border border-panel-border shadow-xs flex flex-col mobile-open flex-shrink-0"
+                "sidebar w-[360px] min-w-[250px] min-h-[400px] overflow-hidden rounded-2xl bg-panel shadow-xs flex flex-col mobile-open flex-shrink-0 min-[1440px]:mr-2 pl-4 sm:pl-6 lg:pl-8"
             } else {
-                "sidebar w-[360px] min-w-[250px] min-h-[400px] overflow-hidden rounded-2xl bg-panel border border-panel-border shadow-xs flex flex-col mobile-closed flex-shrink-0"
+                "sidebar w-[360px] min-w-[250px] min-h-[400px] overflow-hidden rounded-2xl bg-panel shadow-xs flex flex-col mobile-closed flex-shrink-0 min-[1440px]:mr-2 pl-4 sm:pl-6 lg:pl-8"
             },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             div {
-                class: "w-full flex justify-center px-3 pt-4 pb-2",
+                class: "w-full flex justify-center pr-4 pt-4 pb-2",
                 "aria-hidden": "true",
                 div {
                     class: "w-20 min-[1440px]:w-24 aspect-[1115/981]",
@@ -39,7 +39,7 @@ pub fn Sidebar() -> Element {
                 }
             }
             div {
-                class: "flex justify-center px-4 pb-4",
+                class: "flex justify-center pr-4 pb-4",
                 Button {
                     r#type: "button",
                     variant: ButtonVariant::Primary,
@@ -72,7 +72,7 @@ pub fn LazySidebar() -> Element {
             Sidebar {}
         } else {
             aside {
-                class: "sidebar w-[360px] min-w-[250px] min-h-[400px] overflow-hidden rounded-2xl bg-panel border border-panel-border shadow-xs flex flex-col mobile-closed flex-shrink-0",
+            class: "sidebar w-[360px] min-w-[250px] min-h-[400px] overflow-hidden rounded-2xl bg-panel shadow-xs flex flex-col mobile-closed flex-shrink-0 pl-4 sm:pl-6 lg:pl-8",
             }
         }
     }
