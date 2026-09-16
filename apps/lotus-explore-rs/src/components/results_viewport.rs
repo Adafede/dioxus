@@ -8,6 +8,7 @@ use crate::components::results_table::ResultsTable;
 use crate::components::welcome::WelcomeScreen;
 use crate::state::use_results_context;
 use crate::ui::ContentPhase;
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 #[component]
@@ -80,12 +81,14 @@ fn QueryDisplay(query: String) -> Element {
     rsx! {
         section {
             id: "query-display",
-            class: "flex flex-col gap-2 px-4 py-3 sm:px-5",
-            h2 { class: "text-title font-semibold text-text", "SPARQL Query" }
-            div { class: "overflow-hidden rounded-xl border border-panel-border bg-surface shadow-xs",
-                pre {
-                    class: "m-0 max-h-96 overflow-auto p-3",
-                    code { class: "font-mono text-ui text-muted whitespace-pre-wrap break-all", "{query}" }
+            class: "results-wrap w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8",
+            h2 { class: "text-title font-semibold text-text mb-4", "SPARQL Query" }
+            div { class: "results-inner w-full",
+                div { class: "overflow-hidden {classes::RADIUS_CARD} border border-panel-border bg-surface shadow-xs",
+                    pre {
+                        class: "m-0 max-h-96 overflow-auto p-3",
+                        code { class: "font-mono text-ui text-muted whitespace-pre-wrap break-all", "{query}" }
+                    }
                 }
             }
         }

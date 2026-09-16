@@ -21,12 +21,12 @@ pub(super) fn VirtualizedResultsTable(
 ) -> Element {
     let locale = crate::hooks::use_locale();
     let interactions = use_explore_interactions();
-    let total = entries.read().0.len();
+    let entries_ref = entries.read();
+    let total = entries_ref.0.len();
     let virtualization = use_results_table_virtualization(total);
     let text = row_text(locale);
 
     let view_model = table_view_model.read();
-    let rows = entries.read().0.clone();
     let render_model = build_virtualized_table_render_model(&view_model, virtualization.state);
     let mut effect_virtualization = virtualization.clone();
     let scroll_virtualization = virtualization.clone();
@@ -43,21 +43,21 @@ pub(super) fn VirtualizedResultsTable(
             role: "region",
             tabindex: "0",
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                class: "max-h-[min(72dvh,980px)] overflow-auto rounded-xl border border-panel-border bg-panel-soft shadow-xs",
-                onscroll: on_scroll,
-                table {
-                    aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                    class: "w-full min-w-max table-auto border-collapse text-ui [word-break:break-word]",
-                    caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
-                    colgroup {
-                        col { class: "w-[40px]" }
-                        col { class: "w-[32ch]" }
-                        col { class: "w-[12ch]" }
-                        col { class: "w-[12ch]" }
-                        col { class: "w-[20ch]" }
-                        col { class: "w-[40ch]" }
-                        col { class: "w-[4ch]" }
-                    }
+            class: "w-full max-w-full max-h-[min(78dvh,1120px)] overflow-x-auto overflow-y-auto rounded-xl border border-panel-border bg-panel-soft shadow-xs",
+            onscroll: on_scroll,
+            table {
+                aria_label: "{t(locale, TextKey::TableTriplesAria)}",
+                class: "w-full min-w-[1240px] table-auto border-collapse text-ui [word-break:break-word] lg:min-w-[1360px]",
+                caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
+                colgroup {
+                    col { class: "w-[96px] sm:w-[112px] lg:w-[120px]" }
+                    col { class: "w-[20ch] sm:w-[24ch] lg:w-[26ch]" }
+                    col { class: "w-[10ch] sm:w-[11ch] lg:w-[12ch]" }
+                    col { class: "w-[10ch] sm:w-[11ch] lg:w-[12ch]" }
+                    col { class: "w-[32ch] sm:w-[38ch] lg:w-[44ch]" }
+                    col { class: "w-[28ch] sm:w-[34ch] lg:w-[40ch]" }
+                    col { class: "w-[7ch] sm:w-[8ch]" }
+                }
                 thead {
                     class: "sticky top-0 z-2",
                     TableHeader {
@@ -81,7 +81,7 @@ pub(super) fn VirtualizedResultsTable(
                                 ResultsRowsWindow {
                                     locale,
                                     text,
-                                    rows: rows,
+                                    rows: entries_ref.0.clone(),
                                     prepared_rows: render_model.prepared_rows.clone(),
                                     order: render_model.sorted_indices.clone(),
                                     start_row: render_model.start_row,

@@ -6,6 +6,7 @@ use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::DatasetStats;
 use crate::state::use_results_context;
 use crate::ui::StatStripe;
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 #[component]
@@ -40,7 +41,7 @@ fn StatBadge(
     };
     rsx! {
         div {
-            class: "relative flex min-w-[120px] flex-1 flex-col gap-1 overflow-hidden rounded-xl border p-2.5 shadow-xs {bg} {border}",
+            class: "relative flex min-w-[120px] flex-1 flex-col gap-1 overflow-hidden {classes::RADIUS_CARD} border p-3 shadow-xs {bg} {border}",
             style: "border-left: 4px solid {stripe.as_color()}",
             div {
                 class: "flex items-baseline gap-1.5",
@@ -85,7 +86,7 @@ pub fn StatBar() -> Element {
 
     rsx! {
         div {
-            class: "stat-bar grid w-full grid-cols-2 gap-2.5 sm:grid-cols-4",
+            class: "stat-bar grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4",
             role: "group",
             aria_label: "{t(locale, TextKey::DatasetStatistics)}",
             StatBadge {
@@ -133,7 +134,7 @@ pub fn CappedRowsNotice() -> Element {
     rsx! {
         if toolbar_snapshot.read().display_capped_rows {
             div {
-                class: "mt-2 flex items-center gap-2 rounded-lg border border-warning/35 bg-warning/10 p-2.5 text-ui font-medium text-warning",
+                class: "mt-2 flex items-center gap-2 {classes::RADIUS_CARD} border border-warning/35 bg-warning/10 p-2.5 text-ui font-medium text-warning",
                 role: "status",
                 aria_live: "polite",
                 span { class: "text-sm font-bold", "⚠️" }

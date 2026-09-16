@@ -11,6 +11,7 @@ use crate::components::layout::view_switch::ViewSwitch;
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use crate::ui::a11y_contract::PAGE_TITLE_ID;
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 /// Full page header section.
@@ -24,45 +25,28 @@ pub fn PageHeader() -> Element {
 
     rsx! {
         header {
-            class: "page-header",
+            class: "sticky top-0 z-3 min-h-[46px] bg-panel/92 backdrop-blur-sm border-b border-panel-border {classes::SHADOW_XS} px-4 sm:px-8",
             div {
-                class: "page-brand",
+                class: "flex flex-wrap items-start justify-between gap-3 sm:gap-4",
                 h1 { id: PAGE_TITLE_ID,
-                    class: "page-title-text",
+                    class: "text-display font-bold truncate",
                     a {
                         href: "/dioxus/lotus-explore-rs/",
-                        class: "page-title-link page-home-link",
+                        class: "text-inherit no-underline hover:no-underline",
                         aria_label: "{t(locale, TextKey::GoToHomepage)}",
-                        span {
-                            class: "page-title",
-                            "{t(locale, TextKey::PageTitle)}"
-                        }
+                        "{t(locale, TextKey::PageTitle)}"
                     }
                 }
                 div {
-                    class: "header-controls",
+                    class: "flex flex-wrap items-center gap-2 shrink-0",
                     ViewSwitch {}
                     LangSwitch {}
                     DarkModeToggle {}
                 }
             }
             p {
-                class: "page-subtitle",
+                class: "max-w-[72ch] text-title text-critical-muted mt-3 pb-2",
                 "{t(locale, TextKey::PageSubtitle)}"
-                span {
-                    class: "page-archive-note",
-                    span {
-                        class: "page-archive-label",
-                        "{t(locale, TextKey::ArchiveNotice)}"
-                    }
-                    a {
-                        href: "https://doi.org/10.5281/zenodo.5794106",
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                        class: "page-archive-link border-b-2 border-current underline-offset-2 hover:no-underline",
-                        "10.5281/zenodo.5794106"
-                    }
-                }
             }
         }
     }

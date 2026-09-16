@@ -12,9 +12,16 @@ pub fn DrawPage() -> Element {
     let locale = crate::hooks::use_locale();
     rsx! {
         section {
-            aria_label: "{view_label_draw(locale)}",
-            class: "panel-stack",
-            KetcherPanel {}
+            class: "results-wrap w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8",
+            aria_labelledby: "draw-page-heading",
+            h2 {
+                id: "draw-page-heading",
+                class: "text-title font-semibold text-text mb-4",
+                "{view_label_draw(locale)}"
+            }
+            div { class: "results-inner w-full",
+                KetcherPanel {}
+            }
         }
     }
 }

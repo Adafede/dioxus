@@ -33,8 +33,8 @@ pub fn LoadingState() -> Element {
             aria_busy: "true",
             class: "flex flex-col items-center justify-center gap-3 p-12 text-center text-muted",
             div { class: "spinner-lg", "aria-hidden": "true" }
-            p { class: "text-body text-text", "{query_phase_text(locale, query_phase)}" }
-            p { class: "text-ui text-subtle", "{t(locale, TextKey::LoadingHint)}" }
+            p { class: "max-w-[28ch] text-body text-text", "{query_phase_text(locale, query_phase)}" }
+            p { class: "max-w-[36ch] text-ui text-subtle", "{t(locale, TextKey::LoadingHint)}" }
         }
     }
 }
@@ -50,8 +50,8 @@ pub fn DownloadDispatchState() -> Element {
             aria_busy: "true",
             class: "flex flex-col items-center justify-center gap-3 p-12 text-center text-muted",
             div { class: "spinner-lg", "aria-hidden": "true" }
-            p { class: "text-body text-text", "{t(locale, TextKey::PreparingDownload)}" }
-            p { class: "text-ui text-subtle", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
+            p { class: "max-w-[28ch] text-body text-text", "{t(locale, TextKey::PreparingDownload)}" }
+            p { class: "max-w-[36ch] text-ui text-subtle", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
         }
     }
 }
@@ -68,7 +68,7 @@ pub fn DownloadOnlyState() -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            span { class: "notice-value flex-1 text-ui text-muted", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
+            span { class: "notice-value flex-1 min-w-0 text-ui text-muted", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
             Button {
                 r#type: "button",
                 variant: ButtonVariant::Secondary,

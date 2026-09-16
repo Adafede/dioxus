@@ -4,9 +4,6 @@
 //! Curation-page UI sections: share-bar, status notice, add-row /
 //! TSV-import / queue / quickstatements cards, plus dark-mode detection.
 
-// SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
-
 use crate::components::ui::{Button, ButtonSize, ButtonVariant};
 use crate::curation::{CurationInputRow, QuickStatementsBundle};
 use crate::features::curation::services::quickstatements::build_qs_dev_link;
@@ -23,31 +20,29 @@ use crate::i18n::{
 use crate::ui::classes;
 use dioxus::prelude::*;
 use std::sync::Arc;
-use ui::prelude::*;
 use upload::{extract_blob_from_file_data, read_blob_string};
 
 use crate::components::copy_button::CopyButton;
 use crate::features::explore::absolute_share_url;
-use crate::state::use_app_state_context;
-
-mod styles;
 
 #[component]
 pub fn ShareBar(locale: Locale, share: Arc<str>) -> Element {
     rsx! {
-        div { class: "share-bar", role: "status",
-            span { class: "share-bar-label", "{t(locale, TextKey::Share)}" }
-            input {
-                aria_label: "{t(locale, TextKey::CopyShareableLink)}",
-                class: "share-bar-input mono",
-                r#type: "text",
-                readonly: true,
-                value: "{share}",
-            }
-            CopyButton {
-                text: Arc::<str>::from(absolute_share_url(&share)),
-                title: t(locale, TextKey::CopyShareableLink),
-                locale,
+        div { class: "{classes::SHARE_BAR}", role: "status",
+            span { class: "{classes::SHARE_BAR_LABEL}", "{t(locale, TextKey::Share)}" }
+            div { class: "flex flex-col gap-2",
+                input {
+                    aria_label: "{t(locale, TextKey::CopyShareableLink)}",
+                    class: "w-full font-mono {classes::INPUT}",
+                    r#type: "text",
+                    readonly: true,
+                    value: "{share}",
+                }
+                CopyButton {
+                    text: Arc::<str>::from(absolute_share_url(&share)),
+                    title: t(locale, TextKey::CopyShareableLink),
+                    locale,
+                }
             }
         }
     }
@@ -88,16 +83,13 @@ mod tests {
 
 #[component]
 pub fn StatusNotice(locale: Locale, message: Arc<str>) -> Element {
-    let dark_mode = use_app_state_context().state.read().dark_mode;
     rsx! {
-        NoticeBar {
-            label: t(locale, TextKey::Notice).to_string(),
-            tone: NoticeTone::Warning,
+        div {
+            class: "{classes::NOTICE_BAR} {classes::NOTICE_WARNING}",
             role: "status",
             aria_live: "polite",
-            dark: dark_mode,
-            margin: "0",
-            span { class: "{styles::NOTICE_VALUE}", "{message}" }
+            span { class: "{classes::NOTICE_LABEL} {classes::NOTICE_LABEL_WARNING}", "{t(locale, TextKey::Notice)}" }
+            span { class: "{classes::NOTICE_BODY} break-words leading-snug text-inherit", "{message}" }
         }
     }
 }
@@ -129,16 +121,16 @@ pub fn AddRowCard(
                 evt.prevent_default();
                 on_add_row.call(());
             },
-            class: "{styles::CARD}",
+            class: "{classes::CARD}",
             h3 { "{heading_add_one_row(locale)}" }
-            div { class: "{styles::FORM_GRID}",
+            div { class: "{classes::FORM_GRID}",
                 label { class: "form-label", r#for: "curation-name-input",
                     "{placeholder_molecule_name(locale)}"
                 }
                 input {
                     id: "curation-name-input",
                     name: "name",
-                    class: "form-input",
+                    class: "form-input {classes::INPUT}",
                     r#type: "text",
                     placeholder: "{placeholder_molecule_name(locale)}",
                     value: "{form.name}",
@@ -152,7 +144,7 @@ pub fn AddRowCard(
                 input {
                     id: "curation-smiles-input",
                     name: "smiles",
-                    class: "form-input",
+                    class: "form-input {classes::INPUT}",
                     r#type: "text",
                     placeholder: "SMILES",
                     value: "{form.smiles}",
@@ -166,7 +158,7 @@ pub fn AddRowCard(
                 input {
                     id: "curation-taxon-input",
                     name: "taxon",
-                    class: "form-input",
+                    class: "form-input {classes::INPUT}",
                     r#type: "text",
                     placeholder: "{placeholder_taxon_optional(locale)}",
                     value: "{form.taxon}",
@@ -178,14 +170,14 @@ pub fn AddRowCard(
                 input {
                     id: "curation-doi-input",
                     name: "doi",
-                    class: "form-input",
+                    class: "form-input {classes::INPUT}",
                     r#type: "text",
                     placeholder: "{placeholder_doi_optional(locale)}",
                     value: "{form.doi}",
                     oninput: move |e| form.doi.set(e.value()),
                 }
             }
-            div { class: "{styles::actions(false)}",
+            div { class: "{classes::ACTIONS}",
                 Button {
                     label: button_add_row(locale).to_string(),
                     variant: ButtonVariant::Primary,
@@ -235,14 +227,14 @@ pub fn TsvImportCard(
                     on_parse_tsv.call(());
                 }
             },
-            class: "{styles::CARD}",
+            class: "{classes::CARD}",
             h3 { "{heading_tsv_import(locale)}" }
-            p { class: "{styles::HINT}", "{hint_expected_tsv_headers(locale)}" }
+            p { class: "text-ui text-subtle leading-snug", "{hint_expected_tsv_headers(locale)}" }
             label { class: "form-label", r#for: "curation-tsv-input", "TSV" }
             textarea {
                 id: "curation-tsv-input",
                 name: "tsv",
-                class: "{styles::TEXTAREA_130}",
+                class: "{classes::TEXTAREA_130}",
                 aria_describedby: "curation-tsv-hint",
                 value: "{tsv_input}",
                 oninput: move |e| tsv_input.set(e.value()),
@@ -250,7 +242,7 @@ pub fn TsvImportCard(
             p { id: "curation-tsv-hint", class: "sr-only",
                 "{hint_expected_tsv_headers(locale)}"
             }
-            div { class: "{styles::actions(false)}",
+            div { class: "{classes::ACTIONS}",
                 Button {
                     label: button_append_tsv_rows(locale).to_string(),
                     variant: ButtonVariant::Secondary,
@@ -259,7 +251,7 @@ pub fn TsvImportCard(
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_parse_tsv.call(()))),
                 }
                 input {
-                    class: "curation-file-input {styles::FILE_INPUT}",
+                    class: "curation-file-input max-w-full text-ui text-muted",
                     aria_label: "TSV file upload",
                     r#type: "file",
                     accept: ".tsv,text/tab-separated-values,text/plain",
@@ -298,8 +290,8 @@ pub fn QueueRowsCard(
     let rows_snapshot = rows.read().clone();
 
     rsx! {
-        div { class: "{styles::CARD}",
-            div { class: "{styles::actions(true)}",
+        div { class: "{classes::CARD}",
+            div { class: "flex flex-wrap items-center justify-between gap-2.5",
                 h3 { "{heading_queued_rows(locale)}" }
                 Button {
                     label: if processing {
@@ -314,38 +306,38 @@ pub fn QueueRowsCard(
                 }
             }
             div {
-                class: "{styles::TABLE_SCROLL}",
+                class: "w-full overflow-x-auto {classes::RADIUS_CARD} {classes::BORDER_PANEL} focus-visible:outline-none {classes::FOCUS_RING_BTN}",
                 role: "region",
                 tabindex: "0",
                 aria_label: "{heading_queued_rows(locale)}",
                 table {
-                    class: "{styles::QUEUE_TABLE}",
+                    class: "w-full min-w-max table-auto border-collapse text-ui",
                     thead {
                         tr { class: "text-left",
-                            th { scope: "col", class: "{styles::TH} {styles::QUEUE_ACTION_COL}", "{col_action(locale)}" }
-                            th { scope: "col", class: "{styles::TH} {styles::QUEUE_INDEX_COL}", "#" }
-                            th { scope: "col", class: "{styles::TH} w-[140px] min-w-[140px]", "{col_name(locale)}" }
-                            th { scope: "col", class: "{styles::TH} {styles::QUEUE_SMILES_COL}", "SMILES" }
-                            th { scope: "col", class: "{styles::TH} w-[140px] min-w-[140px]", "{t(locale, TextKey::TaxonCol)}" }
-                            th { scope: "col", class: "{styles::TH} w-[140px] min-w-[140px]", "DOI" }
+                            th { scope: "col", class: "{classes::TABLE_TH} {classes::QUEUE_ACTION_COL}", "{col_action(locale)}" }
+                            th { scope: "col", class: "{classes::TABLE_TH} {classes::QUEUE_INDEX_COL}", "#" }
+                            th { scope: "col", class: "{classes::TABLE_TH} w-[140px] min-w-[140px]", "{col_name(locale)}" }
+                            th { scope: "col", class: "{classes::TABLE_TH} min-w-[220px]", "SMILES" }
+                            th { scope: "col", class: "{classes::TABLE_TH} w-[140px] min-w-[140px]", "{t(locale, TextKey::TaxonCol)}" }
+                            th { scope: "col", class: "{classes::TABLE_TH} w-[140px] min-w-[140px]", "DOI" }
                         }
                     }
                     tbody {
                         if rows_snapshot.is_empty() {
                             tr {
-                                td { class: "{styles::TD} {styles::QUEUE_ACTION_COL} font-mono text-micro", "-" }
-                                td { class: "{styles::TD} {styles::QUEUE_INDEX_COL} font-mono text-micro", "-" }
-                                td { class: "{styles::TD} font-mono text-micro", "-" }
-                                td { class: "{styles::TD} {styles::QUEUE_SMILES_COL} font-mono text-micro", "-" }
-                                td { class: "{styles::TD} font-mono text-micro", "-" }
-                                td { class: "{styles::TD} font-mono text-micro", "-" }
+                                td { class: "{classes::TD} {classes::QUEUE_ACTION_COL} font-mono text-micro", "-" }
+                                td { class: "{classes::TD} {classes::QUEUE_INDEX_COL} font-mono text-micro", "-" }
+                                td { class: "{classes::TD} font-mono text-micro", "-" }
+                                td { class: "{classes::TD} min-w-[220px] font-mono text-micro", "-" }
+                                td { class: "{classes::TD} font-mono text-micro", "-" }
+                                td { class: "{classes::TD} font-mono text-micro", "-" }
                             }
                         } else {
                             for (idx, row) in rows_snapshot.iter().enumerate() {
                                 tr { key: "{row.name}|{row.smiles}",
                                     class: "odd:bg-surface/30 hover:bg-surface/60 focus-visible:outline-none {classes::FOCUS_RING} focus-visible:ring-offset-[-2px]",
                                     tabindex: "0",
-                                    td { class: "{styles::TD} {styles::QUEUE_ACTION_COL}",
+                                    td { class: "{classes::TD} {classes::QUEUE_ACTION_COL}",
                                         Button {
                                             label: button_remove(locale).to_string(),
                                             variant: ButtonVariant::Danger,
@@ -358,11 +350,11 @@ pub fn QueueRowsCard(
                                             })),
                                         }
                                     }
-                                    td { class: "{styles::TD} {styles::QUEUE_INDEX_COL} font-mono text-micro", "{idx + 1}" }
-                                    td { class: "{styles::TD}", "{row.name}" }
-                                    td { class: "{styles::TD} {styles::QUEUE_SMILES_COL}", "{row.smiles}" }
-                                    td { class: "{styles::TD}", "{row.taxon.as_deref().unwrap_or(\"\")}" }
-                                    td { class: "{styles::TD} font-mono text-micro", "{row.doi.as_deref().unwrap_or(\"\")}" }
+                                    td { class: "{classes::TD} {classes::QUEUE_INDEX_COL} font-mono text-micro", "{idx + 1}" }
+                                    td { class: "{classes::TD}", "{row.name}" }
+                                    td { class: "{classes::TD} min-w-[220px]", "{row.smiles}" }
+                                    td { class: "{classes::TD}", "{row.taxon.as_deref().unwrap_or(\"\")}" }
+                                    td { class: "{classes::TD} font-mono text-micro", "{row.doi.as_deref().unwrap_or(\"\")}" }
                                 }
                             }
                         }
@@ -390,11 +382,11 @@ pub fn QuickStatementsCard(
     let qs_main_link = build_qs_dev_link(&qs_ref.main);
 
     rsx! {
-        div { class: "{styles::CARD}",
+        div { class: "{classes::CARD}",
             if !qs_ref.dependencies.is_empty() {
-                p { class: "{styles::HINT}", "{msg_two_step_hint(locale)}" }
-                p { class: "{styles::HINT}", "{msg_delay_advice(locale)}" }
-                p { class: "{styles::HINT}",
+                p { class: "text-ui text-subtle leading-snug", "{msg_two_step_hint(locale)}" }
+                p { class: "text-ui text-subtle leading-snug", "{msg_delay_advice(locale)}" }
+                p { class: "text-ui text-subtle leading-snug",
                     a {
                         href: "{qs_dependency_link}",
                         target: "_blank",
@@ -403,7 +395,7 @@ pub fn QuickStatementsCard(
                     }
                     " - {curation_qs_dev_prereq_hint(locale)}"
                 }
-                div { class: "{styles::actions(true)}",
+                div { class: "flex flex-wrap items-center justify-between gap-2.5",
                     h3 { "{heading_quickstatements_dependencies(locale)}" }
                     CopyButton {
                         text: qs_ref.dependencies.clone(),
@@ -411,7 +403,7 @@ pub fn QuickStatementsCard(
                     }
                 }
                 textarea {
-                    class: "{styles::TEXTAREA_220}",
+                    class: "{classes::TEXTAREA_220}",
                     aria_label: "{heading_quickstatements_dependencies(locale)}",
                     readonly: true,
                     value: "{qs_ref.dependencies}",
@@ -426,7 +418,7 @@ pub fn QuickStatementsCard(
             }
 
             if !awaiting_second_pass && !qs_ref.main.is_empty() {
-                p { class: "{styles::HINT}",
+                p { class: "text-ui text-subtle leading-snug",
                     a {
                         href: "{qs_main_link}",
                         target: "_blank",
@@ -435,7 +427,7 @@ pub fn QuickStatementsCard(
                     }
                     " - {curation_qs_dev_main_hint(locale)}"
                 }
-                div { class: "{styles::actions(true)}",
+                div { class: "flex flex-wrap items-center justify-between gap-2.5",
                     h3 { "{heading_quickstatements(locale)}" }
                     CopyButton {
                         text: qs_ref.main.clone(),
@@ -443,7 +435,7 @@ pub fn QuickStatementsCard(
                     }
                 }
                 textarea {
-                    class: "{styles::TEXTAREA_220}",
+                    class: "{classes::TEXTAREA_220}",
                     aria_label: "{heading_quickstatements(locale)}",
                     readonly: true,
                     value: "{qs_ref.main}",

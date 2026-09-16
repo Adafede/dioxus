@@ -3,61 +3,50 @@
 
 //! Compound identity cell for results-table rows.
 //!
-//! Renders the compound name link, Wikidata badge, Scholia badge, and InChIKey badge.
+//! Renders the compound name link, Wikidata badge, Scholia link, and InChIKey badge.
 
 use crate::components::results_table::row_cells::prepared::PreparedRow;
 use crate::components::results_table::row_cells::row_text::RowText;
-use crate::i18n::{Locale, aria_search_inchikey, aria_wikidata_entity};
+use crate::i18n::{Locale, TextKey, aria_search_inchikey, t};
 use crate::models::CompoundEntry;
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 pub(in crate::components::results_table::row_cells) fn compound_cell(
     locale: Locale,
-    text: RowText,
+    _text: RowText,
     entry: &CompoundEntry,
     prepared: &PreparedRow,
-    name: &str,
+    _name: &str,
     compound_qid: &str,
 ) -> Element {
     rsx! {
-        td { class: "min-w-0 rounded-lg px-3 py-2.5 align-middle text-ui shadow-[inset_3px_0_0_var(--footer-wd-compound)]",
-            div { class: "flex flex-col gap-1",
+        td { class: "{classes::TABLE_CELL_BASE} shadow-[inset_2px_0_0_var(--border)]",
+            div { class: "flex flex-col gap-1 max-w-[32ch]",
                 a {
                     href: "https://www.wikidata.org/entity/{compound_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    title: "{name}",
-                    class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline text-wd-compound",
+                    class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline {classes::WD_COMPOUND}",
                     "{prepared.display_name}"
                 }
             }
-            div { class: "mt-1 flex flex-wrap items-center gap-1",
-                a {
-                    href: "https://www.wikidata.org/entity/{compound_qid}",
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                    title: "{text.open_in_wikidata}",
-                    aria_label: "{aria_wikidata_entity(locale, compound_qid)}",
-                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-compound",
-                    "{compound_qid}"
-                }
+            div { class: "mt-1 flex flex-wrap items-center gap-1 max-w-[32ch]",
                 a {
                     href: "https://scholia.toolforge.org/chemical/{compound_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    title: "{text.open_in_scholia}",
-                    aria_label: "{text.open_in_scholia}",
-                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-compound",
-                    "Scholia"
+                    aria_label: "{compound_qid} • {t(locale, TextKey::OpenInCompoundScholia)}",
+                    class: "inline-block {classes::PILL} border-current {classes::WD_COMPOUND} {classes::WD_COMPOUND_BORDER}",
+                    "{compound_qid} - Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
                     a {
                         href: "https://www.wikidata.org/wiki/Special:Search?search={ik}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        title: "{ik}",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-compound",
+                        class: "inline-block {classes::PILL} border-current {classes::WD_COMPOUND} {classes::WD_COMPOUND_BORDER}",
                         "{ik}"
                     }
                 }

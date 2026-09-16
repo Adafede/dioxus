@@ -3,13 +3,14 @@
 
 //! Reference identity cell for results-table rows.
 //!
-//! Renders the reference title (or QID fallback), Wikidata badge, DOI badge, and
+//! Renders the reference title (or QID fallback), Scholia link, DOI badge, and
 //! Wikidata statement badge.
 
 use crate::components::results_table::row_cells::prepared::PreparedRow;
 use crate::components::results_table::row_cells::row_text::RowText;
-use crate::i18n::{Locale, aria_wikidata_entity, aria_wikidata_statement};
+use crate::i18n::{Locale, TextKey, aria_wikidata_statement, t};
 use crate::models::CompoundEntry;
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 pub(in crate::components::results_table::row_cells) fn reference_cell(
@@ -22,15 +23,14 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
     let doi = prepared.doi.as_deref();
     let statement_id = prepared.statement_id.as_deref();
     rsx! {
-        td { class: "min-w-0 rounded-lg px-3 py-2.5 align-middle text-ui shadow-[inset_3px_0_0_var(--footer-wd-reference)]",
+        td { class: "{classes::TABLE_CELL_BASE} shadow-[inset_3px_0_0_var(--footer-wd-reference)]",
             div { class: "flex flex-col gap-1",
                 if let Some(full_title) = entry.ref_title.as_deref() {
                     a {
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline text-wd-reference",
-                        title: "{full_title}",
+                        class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline {classes::WD_REFERENCE}",
                         "{full_title}"
                     }
                 } else {
@@ -38,30 +38,28 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/{reference_qid}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline text-wd-reference",
+                        class: "block break-words line-clamp-2 font-semibold leading-snug hover:underline {classes::WD_REFERENCE}",
                         "{reference_qid}"
                     }
                 }
             }
             div { class: "mt-1 flex flex-wrap items-center gap-1",
                 a {
-                    href: "https://www.wikidata.org/entity/{reference_qid}",
+                    href: "https://scholia.toolforge.org/work/{reference_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-reference",
-                    title: "{text.open_in_wikidata}",
-                    aria_label: "{aria_wikidata_entity(locale, reference_qid)}",
-                    "{reference_qid}"
+                    aria_label: "{reference_qid} • {t(locale, TextKey::OpenInReferenceScholia)}",
+                    class: "inline-block {classes::PILL} border-current {classes::WD_REFERENCE} {classes::WD_REFERENCE_BORDER}",
+                    "{reference_qid} - Scholia"
                 }
                 if let Some(d) = doi {
                     a {
                         href: "https://doi.org/{d}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-reference",
-                        title: "{text.open_doi}",
+                        class: "inline-block {classes::PILL} border-current {classes::WD_REFERENCE} {classes::WD_REFERENCE_BORDER}",
                         aria_label: "{text.open_doi}",
-                        "DOI"
+                        "{d}"
                     }
                 }
                 if let Some(stmt) = statement_id {
@@ -69,10 +67,9 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/statement/{stmt}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-reference",
-                        title: "{stmt}",
+                        class: "inline-block {classes::PILL} border-current {classes::WD_REFERENCE} {classes::WD_REFERENCE_BORDER}",
                         aria_label: "{aria_wikidata_statement(locale, stmt)}",
-                        "{text.statement}"
+                        "{stmt}"
                     }
                 }
             }

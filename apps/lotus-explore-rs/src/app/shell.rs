@@ -213,7 +213,11 @@ fn ShellScaffold(lang: String) -> Element {
 
                 main {
                     id: MAIN_PANEL_ID,
-                    class: if single_pane { "main-content single-pane" } else { "main-content" },
+                    class: if single_pane {
+                        "main-content single-pane min-w-0 w-full"
+                    } else {
+                        "main-content min-w-0 w-full"
+                    },
                     tabindex: "-1",
                     aria_labelledby: PAGE_TITLE_ID,
                     PageHeader {}
@@ -221,7 +225,7 @@ fn ShellScaffold(lang: String) -> Element {
                 }
             }
             footer {
-                class: "flex flex-col shrink-0 w-full bg-panel border-t border-border",
+                class: "flex flex-col shrink-0 w-full bg-panel border-t border-border min-h-[80px]",
                 div {
                     class: "w-full max-w-[1600px] mx-auto px-5 pt-[3px] pb-[6px] box-border min-[1024px]:px-8",
                     Footer {}

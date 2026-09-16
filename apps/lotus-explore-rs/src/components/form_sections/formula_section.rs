@@ -19,11 +19,13 @@ fn ElemStateSelect(
     on_change: EventHandler<ElementState>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
+    let select_id = format!("{}-select", label.to_lowercase());
 
     rsx! {
         div { class: "flex flex-col gap-0.5",
-            label { class: "{classes::MICRO_LABEL}", "{label}" }
+            label { class: "{classes::MICRO_LABEL}", r#for: "{select_id}", "{label}" }
             select {
+                id: "{select_id}",
                 class: "{classes::INPUT_SM}",
                 aria_label: "{label} {t(locale, TextKey::ElementRequirement)}",
                 value: "{value.as_str()}",
@@ -46,15 +48,18 @@ fn NumPair(
     on_max: EventHandler<u16>,
 ) -> Element {
     let locale = crate::hooks::use_locale();
+    let min_id = format!("{}-min", label.to_lowercase());
+    let max_id = format!("{}-max", label.to_lowercase());
 
     rsx! {
         div { class: "{classes::SECTION}",
             p { class: "{classes::HINT}", "{label}" }
             div { class: "formula-minmax-grid",
                 div { class: "flex flex-col gap-0.5",
-                    label { class: "{classes::MICRO_LABEL}", "{t(locale, TextKey::MinCount)}" }
+                    label { class: "{classes::MICRO_LABEL}", r#for: "{min_id}", "{t(locale, TextKey::MinCount)}" }
                     input {
                         r#type: "number",
+                        id: "{min_id}",
                         class: "tabular-nums {classes::INPUT_SM}",
                         min: "0",
                         max: "10000",
@@ -68,9 +73,10 @@ fn NumPair(
                     }
                 }
                 div { class: "flex flex-col gap-0.5",
-                    label { class: "{classes::MICRO_LABEL}", "{t(locale, TextKey::MaxCount)}" }
+                    label { class: "{classes::MICRO_LABEL}", r#for: "{max_id}", "{t(locale, TextKey::MaxCount)}" }
                     input {
                         r#type: "number",
+                        id: "{max_id}",
                         class: "tabular-nums {classes::INPUT_SM}",
                         min: "0",
                         max: "10000",
@@ -130,87 +136,89 @@ pub fn FormulaSection() -> Element {
             }
 
             if enabled {
-                div { class: "{classes::SECTION}",
-                    label { class: "{classes::MICRO_LABEL}", r#for: "formula-exact",
-                        "{t(locale, TextKey::ExactFormula)}"
+                div { class: "flex flex-col gap-3",
+                    div { class: "flex flex-col gap-1.5",
+                        label { class: "{classes::MICRO_LABEL}", r#for: "formula-exact",
+                            "{t(locale, TextKey::ExactFormula)}"
+                        }
+                        input {
+                            id: "formula-exact",
+                            name: "formula_exact",
+                            r#type: "text",
+                            class: "{classes::INPUT}",
+                            autocomplete: "off",
+                            spellcheck: "false",
+                            placeholder: "C15H10O5",
+                            value: "{criteria.formula_exact}",
+                            oninput: move |e| ctx.update(FormAction::FormulaExact(e.value())),
+                        }
                     }
-                    input {
-                        id: "formula-exact",
-                        name: "formula_exact",
-                        r#type: "text",
-                        class: "{classes::INPUT}",
-                        autocomplete: "off",
-                        spellcheck: "false",
-                        placeholder: "C15H10O5",
-                        value: "{criteria.formula_exact}",
-                        oninput: move |e| ctx.update(FormAction::FormulaExact(e.value())),
-                    }
-                }
 
-                div { class: "formula-grid",
-                    NumPair {
-                        label: "C",
-                        min_value: criteria.c_min,
-                        max_value: criteria.c_max,
-                        on_min: move |v| ctx.update(FormAction::CMin(v)),
-                        on_max: move |v| ctx.update(FormAction::CMax(v)),
+                    div { class: "formula-grid",
+                        NumPair {
+                            label: "C",
+                            min_value: criteria.c_min,
+                            max_value: criteria.c_max,
+                            on_min: move |v| ctx.update(FormAction::CMin(v)),
+                            on_max: move |v| ctx.update(FormAction::CMax(v)),
+                        }
+                        NumPair {
+                            label: "H",
+                            min_value: criteria.h_min,
+                            max_value: criteria.h_max,
+                            on_min: move |v| ctx.update(FormAction::HMin(v)),
+                            on_max: move |v| ctx.update(FormAction::HMax(v)),
+                        }
+                        NumPair {
+                            label: "N",
+                            min_value: criteria.n_min,
+                            max_value: criteria.n_max,
+                            on_min: move |v| ctx.update(FormAction::NMin(v)),
+                            on_max: move |v| ctx.update(FormAction::NMax(v)),
+                        }
+                        NumPair {
+                            label: "O",
+                            min_value: criteria.o_min,
+                            max_value: criteria.o_max,
+                            on_min: move |v| ctx.update(FormAction::OMin(v)),
+                            on_max: move |v| ctx.update(FormAction::OMax(v)),
+                        }
+                        NumPair {
+                            label: "P",
+                            min_value: criteria.p_min,
+                            max_value: criteria.p_max,
+                            on_min: move |v| ctx.update(FormAction::PMin(v)),
+                            on_max: move |v| ctx.update(FormAction::PMax(v)),
+                        }
+                        NumPair {
+                            label: "S",
+                            min_value: criteria.s_min,
+                            max_value: criteria.s_max,
+                            on_min: move |v| ctx.update(FormAction::SMin(v)),
+                            on_max: move |v| ctx.update(FormAction::SMax(v)),
+                        }
                     }
-                    NumPair {
-                        label: "H",
-                        min_value: criteria.h_min,
-                        max_value: criteria.h_max,
-                        on_min: move |v| ctx.update(FormAction::HMin(v)),
-                        on_max: move |v| ctx.update(FormAction::HMax(v)),
-                    }
-                    NumPair {
-                        label: "N",
-                        min_value: criteria.n_min,
-                        max_value: criteria.n_max,
-                        on_min: move |v| ctx.update(FormAction::NMin(v)),
-                        on_max: move |v| ctx.update(FormAction::NMax(v)),
-                    }
-                    NumPair {
-                        label: "O",
-                        min_value: criteria.o_min,
-                        max_value: criteria.o_max,
-                        on_min: move |v| ctx.update(FormAction::OMin(v)),
-                        on_max: move |v| ctx.update(FormAction::OMax(v)),
-                    }
-                    NumPair {
-                        label: "P",
-                        min_value: criteria.p_min,
-                        max_value: criteria.p_max,
-                        on_min: move |v| ctx.update(FormAction::PMin(v)),
-                        on_max: move |v| ctx.update(FormAction::PMax(v)),
-                    }
-                    NumPair {
-                        label: "S",
-                        min_value: criteria.s_min,
-                        max_value: criteria.s_max,
-                        on_min: move |v| ctx.update(FormAction::SMin(v)),
-                        on_max: move |v| ctx.update(FormAction::SMax(v)),
-                    }
-                }
-                div { class: "formula-grid",
-                    ElemStateSelect {
-                        label: "F",
-                        value: criteria.f_state,
-                        on_change: move |v| ctx.update(FormAction::FState(v)),
-                    }
-                    ElemStateSelect {
-                        label: "Cl",
-                        value: criteria.cl_state,
-                        on_change: move |v| ctx.update(FormAction::ClState(v)),
-                    }
-                    ElemStateSelect {
-                        label: "Br",
-                        value: criteria.br_state,
-                        on_change: move |v| ctx.update(FormAction::BrState(v)),
-                    }
-                    ElemStateSelect {
-                        label: "I",
-                        value: criteria.i_state,
-                        on_change: move |v| ctx.update(FormAction::IState(v)),
+                    div { class: "formula-grid",
+                        ElemStateSelect {
+                            label: "F",
+                            value: criteria.f_state,
+                            on_change: move |v| ctx.update(FormAction::FState(v)),
+                        }
+                        ElemStateSelect {
+                            label: "Cl",
+                            value: criteria.cl_state,
+                            on_change: move |v| ctx.update(FormAction::ClState(v)),
+                        }
+                        ElemStateSelect {
+                            label: "Br",
+                            value: criteria.br_state,
+                            on_change: move |v| ctx.update(FormAction::BrState(v)),
+                        }
+                        ElemStateSelect {
+                            label: "I",
+                            value: criteria.i_state,
+                            on_change: move |v| ctx.update(FormAction::IState(v)),
+                        }
                     }
                 }
             }

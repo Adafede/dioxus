@@ -23,10 +23,10 @@ pub enum ButtonVariant {
 /// Size variant for the button.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ButtonSize {
-    /// Compact toolbar / dense form control (34px min-height)
+    /// Compact toolbar / dense form control (34px min-height) - uses RADIUS_SM_CTRL (4px)
     #[default]
     Sm,
-    /// Standard form / card button (40px min-height)
+    /// Standard form / card button (40px min-height) - uses RADIUS_INPUT (6px)
     Md,
 }
 
@@ -66,30 +66,22 @@ pub struct ButtonProps {
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
     let size_classes = match props.size {
-        ButtonSize::Sm => "min-h-[34px] gap-1.5 px-3 py-1.5 text-ui rounded-sm",
-        ButtonSize::Md => "min-h-[40px] gap-2 px-3.5 py-2 text-ui rounded-md",
+        ButtonSize::Sm => classes::BTN_SIZE_SM,
+        ButtonSize::Md => classes::BTN_SIZE_MD,
     };
 
-    // Keep variants flat — tokens already carry light/dark.
+    // Variants map 1:1 to token composites — no inline duplication
     let variant_classes = match props.variant {
-        ButtonVariant::Primary => {
-            "border border-border bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2"
-        }
-        ButtonVariant::Secondary => {
-            "border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg"
-        }
-        ButtonVariant::Danger => {
-            "border border-danger/35 bg-danger/10 text-danger font-semibold hover:bg-danger/15 active:bg-danger/20"
-        }
-        ButtonVariant::Accent => {
-            "border border-border bg-accent text-bg font-semibold shadow-xs ring-2 ring-accent/40 hover:bg-accent-2 active:bg-accent-2"
-        }
+        ButtonVariant::Primary => classes::BTN_PRIMARY,
+        ButtonVariant::Secondary => classes::BTN_SECONDARY,
+        ButtonVariant::Danger => classes::BTN_DANGER,
+        ButtonVariant::Accent => classes::BTN_ACCENT,
     };
 
     let state_classes = if props.disabled || props.loading {
-        "opacity-60 cursor-not-allowed pointer-events-none"
+        classes::DISABLED
     } else {
-        "cursor-pointer active:scale-[0.98]"
+        classes::ACTIVE_SCALE
     };
 
     let custom_classes = props.class.as_deref().unwrap_or("");
@@ -103,7 +95,7 @@ pub fn Button(props: ButtonProps) -> Element {
             aria_controls: props.aria_controls.as_deref().unwrap_or_default(),
             aria_expanded: props.aria_expanded.as_deref().unwrap_or_default(),
             aria_pressed: props.aria_pressed.as_deref().unwrap_or_default(),
-            class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 {classes::FOCUS_RING} {size_classes} {variant_classes} {state_classes} {custom_classes}",
+            class: "inline-flex items-center justify-center font-sans select-none {size_classes} {variant_classes} {state_classes} {custom_classes}",
             onclick: move |evt| {
                 if !props.disabled && !props.loading
                     && let Some(handler) = props.onclick.as_ref() {
@@ -112,7 +104,7 @@ pub fn Button(props: ButtonProps) -> Element {
             },
             if props.loading {
                 span {
-                    class: "inline-block size-3.5 rounded-full border-2 border-current border-t-transparent animate-spin",
+                    class: "inline-block size-3.5 {classes::RADIUS_FULL} border-2 border-current border-t-transparent animate-spin",
                     "aria-hidden": "true",
                 }
             }

@@ -3,17 +3,19 @@
 
 use crate::hooks::use_locale;
 use crate::i18n::{Locale, TextKey, t};
+use crate::ui::classes;
 use dioxus::prelude::*;
 
-// Styling lives in the component (utility classes) rather than global CSS.
-// Class names (footer-line, footer-label, …) are kept as semantic hooks.
-const FOOTER_LINE_ROW: &str = "footer-line flex flex-col gap-3 py-1 border-b border-border last:border-b-0 min-[640px]:flex-row min-[640px]:flex-wrap min-[640px]:items-start min-[640px]:gap-x-6 min-[640px]:gap-y-0";
-const FOOTER_ROW: &str = "footer-row flex items-center gap-2 py-0.5 flex-wrap min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px]";
-const FOOTER_LABEL: &str = "footer-label inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-lg border border-[color-mix(in_srgb,currentColor_30%,var(--border))] border-l-4 border-current bg-[color-mix(in_srgb,currentColor_14%,var(--surface))] min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0";
-const FOOTER_LINKS: &str = "footer-links flex flex-wrap items-center gap-x-2.5 gap-y-1 list-none m-0 p-0 flex-none min-w-0";
+// Tailwind-only footer — no inline style constants, no color-mix()
+
+const FOOTER_LINE_ROW: &str = "flex flex-col gap-3 py-1 border-b border-border last:border-b-0 min-[640px]:flex-row min-[640px]:flex-wrap min-[640px]:items-start min-[640px]:gap-x-6 min-[640px]:gap-y-0";
+const FOOTER_ROW: &str = "flex items-center gap-2 py-0.5 flex-wrap min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px]";
+const FOOTER_LABEL: &str = "inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-xl border border-current/30 border-l-4 border-current bg-current/14 min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0";
+const FOOTER_LINKS: &str =
+    "flex flex-wrap items-center gap-x-2.5 gap-y-1 list-none m-0 p-0 flex-none min-w-0";
 const FOOTER_LI: &str = "inline-flex items-center gap-[5px] shrink-0 min-[641px]:whitespace-nowrap";
-const FOOTER_LINK: &str = "footer-link no-underline text-ui leading-[1.45] min-h-[34px] inline-flex items-center px-2 py-1 rounded-[2px] hover:underline hover:bg-[color-mix(in_srgb,currentColor_8%,var(--surface))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:rounded-[2px] max-[480px]:px-1.5 max-[480px]:py-[3px] max-[480px]:text-micro max-[480px]:min-h-[32px]";
-const FOOTER_ASIDE: &str = "footer-aside text-subtle whitespace-nowrap";
+const FOOTER_LINK: &str = "no-underline text-ui leading-[1.45] min-h-[34px] inline-flex items-center px-2 py-1 rounded-xl hover:underline hover:bg-current/8 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 max-[480px]:px-1.5 max-[480px]:py-[3px] max-[480px]:text-micro max-[480px]:min-h-[32px]";
+const FOOTER_ASIDE: &str = "text-subtle whitespace-nowrap";
 
 #[component]
 pub fn Footer() -> Element {
@@ -23,7 +25,7 @@ pub fn Footer() -> Element {
             class: "{FOOTER_LINE_ROW}",
             FooterRow {
                 label: t(locale, TextKey::FooterArchive),
-                label_class: "text-wd-compound",
+                label_class: classes::WD_COMPOUND,
                 links: &[("https://doi.org/10.5281/zenodo.5794106", "LOTUS Frozen")],
             }
             FooterCitationRow { locale }
@@ -32,7 +34,7 @@ pub fn Footer() -> Element {
             class: "{FOOTER_LINE_ROW}",
             FooterRow {
                 label: t(locale, TextKey::FooterCode),
-                label_class: "text-wd-taxon",
+                label_class: classes::WD_TAXON,
                 links: &[
                     (
                         "https://github.com/Adafede/dioxus/tree/main/apps/lotus-explore-rs",
@@ -42,7 +44,7 @@ pub fn Footer() -> Element {
             }
             FooterRow {
                 label: t(locale, TextKey::FooterData),
-                label_class: "text-wd-taxon",
+                label_class: classes::WD_TAXON,
                 links: &[
                     ("https://www.wikidata.org/wiki/Q104225190", "LOTUS Initiative"),
                     ("https://www.wikidata.org/", "Wikidata"),
@@ -53,7 +55,7 @@ pub fn Footer() -> Element {
             class: "{FOOTER_LINE_ROW}",
             FooterRow {
                 label: t(locale, TextKey::FooterPrograms),
-                label_class: "text-wd-reference",
+                label_class: classes::WD_REFERENCE,
                 links: &[
                     ("https://github.com/cdk/depict", "CDK Depict"),
                     ("https://citation.js.org", "Citation.js"),
@@ -74,7 +76,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
         div {
             class: "{FOOTER_ROW}",
             span {
-                class: "{FOOTER_LABEL} text-wd-compound",
+                class: "{FOOTER_LABEL} {classes::WD_COMPOUND}",
                 "{t(locale, TextKey::FooterCitation)}"
             }
             ul {
@@ -83,7 +85,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
                 li {
                     class: "{FOOTER_LI}",
                     a {
-                        class: "{FOOTER_LINK} font-medium text-wd-compound",
+                        class: "{FOOTER_LINK} font-medium {classes::WD_COMPOUND}",
                         href: "https://doi.org/10.7554/eLife.70780",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -93,7 +95,7 @@ fn FooterCitationRow(locale: Locale) -> Element {
                 li {
                     class: "{FOOTER_LI}",
                     a {
-                        class: "{FOOTER_LINK} font-medium text-wd-compound",
+                        class: "{FOOTER_LINK} font-medium {classes::WD_COMPOUND}",
                         href: "/docs/references.bib",
                         download: "references.bib",
                         "BibTeX"
@@ -110,7 +112,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
         div {
             class: "{FOOTER_ROW}",
             span {
-                class: "{FOOTER_LABEL} text-wd-entries",
+                class: "{FOOTER_LABEL} {classes::WD_ENTRIES}",
                 "{t(locale, TextKey::FooterLicense)}"
             }
             ul {
@@ -119,7 +121,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                 li {
                     class: "{FOOTER_LI}",
                     a {
-                        class: "{FOOTER_LINK} font-medium text-wd-entries",
+                        class: "{FOOTER_LINK} font-medium {classes::WD_ENTRIES}",
                         href: "https://creativecommons.org/publicdomain/zero/1.0/",
                         target: "_blank",
                         rel: "noopener noreferrer",
@@ -133,7 +135,7 @@ fn FooterLicenseRow(locale: Locale) -> Element {
                 li {
                     class: "{FOOTER_LI}",
                     a {
-                        class: "{FOOTER_LINK} font-medium text-wd-entries",
+                        class: "{FOOTER_LINK} font-medium {classes::WD_ENTRIES}",
                         href: "https://www.gnu.org/licenses/agpl-3.0.html",
                         target: "_blank",
                         rel: "noopener noreferrer",

@@ -71,7 +71,7 @@ pub fn TaxonNotice() -> Element {
             role: "status",
             aria_live: "polite",
             dark: dark_mode,
-            span { class: "notice-value flex-1 text-ui text-muted", "{text}" }
+            span { class: "flex-1 min-w-0 text-ui text-muted break-words leading-snug", "{text}" }
         }
     }
 }
@@ -92,30 +92,30 @@ pub fn ErrorNotice() -> Element {
     let kind: ErrorKind = domain_err.kind();
     let msg = format_domain_error(locale, domain_err);
     rsx! {
-        NoticeBar {
-            label: t(locale, TextKey::Error).to_string(),
-            tone: NoticeTone::Warning,
-            role: "alert",
-            aria_live: "assertive",
-            dark: dark_mode,
-            span { class: "notice-value flex-1 text-ui text-muted", "{msg}" }
-            span { class: "notice-value text-ui text-subtle", "{error_hint_text(locale, kind)}" }
-            if recovery::should_show_retry_button(domain_err) && !*is_loading.read() {
-                Button {
+            NoticeBar {
+                label: t(locale, TextKey::Error).to_string(),
+                tone: NoticeTone::Warning,
+                role: "alert",
+                aria_live: "assertive",
+                dark: dark_mode,
+            span { class: "flex-1 min-w-0 text-ui text-muted break-words leading-snug", "{msg}" }
+            span { class: "min-w-0 text-ui text-subtle break-words leading-snug", "{error_hint_text(locale, kind)}" }
+                if recovery::should_show_retry_button(domain_err) && !*is_loading.read() {
+                    Button {
+                        r#type: "button",
+                        variant: ButtonVariant::Secondary,
+                        size: ButtonSize::Sm,
+                        label: t(locale, TextKey::Retry).to_string(),
+                        onclick: move |_| retry_interactions.retry(),
+                    }
+                }
+                button {
                     r#type: "button",
-                    variant: ButtonVariant::Secondary,
-                    size: ButtonSize::Sm,
-                    label: t(locale, TextKey::Retry).to_string(),
-                    onclick: move |_| retry_interactions.retry(),
+                    aria_label: "{t(locale, TextKey::DismissError)}",
+                    class: "notice-dismiss flex size-6 shrink-0 cursor-pointer items-center justify-center {classes::RADIUS_INPUT} text-base font-bold text-subtle hover:bg-danger/15 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40 focus-visible:ring-offset-1",
+                    onclick: move |_| interactions.dismiss_error(),
+                    "×"
                 }
             }
-            button {
-                r#type: "button",
-                aria_label: "{t(locale, TextKey::DismissError)}",
-                class: "notice-dismiss flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-base font-bold text-subtle hover:bg-danger/15 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40 focus-visible:ring-offset-1",
-                onclick: move |_| interactions.dismiss_error(),
-                "×"
-            }
         }
-    }
 }

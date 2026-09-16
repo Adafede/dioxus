@@ -3,22 +3,21 @@
 
 //! Ketcher molecule editor panel.
 
+use crate::document_head::asset_url;
 use crate::i18n::{TextKey, t};
 use crate::ui::classes;
 use dioxus::prelude::*;
-
-const KETCHER_URL: &str = "assets/ketcher/index.html";
 
 #[component]
 pub fn KetcherPanel() -> Element {
     let locale = crate::hooks::use_locale();
     let mut ketcher_ready = use_signal(|| false);
+    let ketcher_url = asset_url("assets/ketcher/index.html");
     rsx! {
-        section {
-            aria_label: "{t(locale, TextKey::KetcherSummary)}",
-            class: "flex w-full flex-col gap-3 p-4",
+        div {
+            class: "flex w-full flex-col gap-3",
             div {
-                class: "flex min-h-[420px] w-full flex-col gap-3 overflow-hidden rounded-xl border border-panel-border bg-panel",
+                class: "flex flex-col gap-3 p-4",
                 p { class: "{classes::HINT} px-1",
                     "{t(locale, TextKey::KetcherHintA)}"
                     strong { class: "text-muted", "{t(locale, TextKey::KetcherSummary)}" }
@@ -30,14 +29,14 @@ pub fn KetcherPanel() -> Element {
                 }
                 if *ketcher_ready.read() {
                     iframe {
-                        src: "{KETCHER_URL}",
+                        src: "{ketcher_url}",
                         title: "{t(locale, TextKey::KetcherIframeTitle)}",
                         class: "min-h-[420px] w-full flex-1 border-0 bg-surface",
                     }
                 } else {
                     button {
                         aria_label: "{t(locale, TextKey::KetcherIframeTitle)}",
-                        class: "flex min-h-[420px] w-full flex-1 cursor-pointer items-center justify-center border-0 bg-bg text-center hover:bg-panel-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:rounded",
+                        class: "flex min-h-[420px] w-full flex-1 cursor-pointer items-center justify-center border-0 bg-bg text-center hover:bg-panel-soft {classes::FOCUS_RING_BTN} focus-visible:rounded",
                         onclick: move |_| ketcher_ready.set(true),
                         em {
                             class: "{classes::HINT}",

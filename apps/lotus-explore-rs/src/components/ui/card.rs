@@ -23,7 +23,7 @@ pub fn Card(props: CardProps) -> Element {
     if let Some(href) = &props.href {
         rsx! {
             article {
-                class: "{base_class} transition-shadow duration-200 hover:shadow-md",
+                class: "{base_class} transition-shadow duration-200 hover:{classes::SHADOW_MD}",
                 a {
                     href: href,
                     class: "block",

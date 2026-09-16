@@ -15,12 +15,12 @@ use crate::i18n::{TextKey, t};
 use crate::models::SearchCriteria;
 use crate::perf;
 use crate::state::use_results_context;
+use crate::ui::classes;
 use dioxus::prelude::*;
 use std::sync::Arc;
 
 const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
-const TOOLBAR_ACTION_CLASS: &str = "shrink-0 min-h-8";
-const TOOLBAR_LINK_CLASS: &str = "inline-flex shrink-0 min-h-8 items-center justify-center gap-1.5 rounded-sm border border-border bg-surface text-text font-semibold shadow-xs px-3 py-1.5 text-ui font-sans select-none transition-transform duration-150 cursor-pointer hover:bg-bg active:bg-bg active:scale-[0.98] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+const TOOLBAR_ACTION_CLASS: &str = "shrink-0 min-h-9 px-4";
 
 // ── private helpers ───────────────────────────────────────────────────────────
 
@@ -123,7 +123,7 @@ fn DownloadStatusSpinner(
         span {
             role: "status",
             aria_live: "polite",
-            class: "inline-flex items-center gap-2 rounded-lotus-sm border border-border px-3 py-1.5 text-ui font-semibold text-muted",
+            class: "inline-flex items-center gap-2 {classes::RADIUS_SM_CTRL} border border-border px-3 py-1.5 text-ui font-semibold text-muted",
             span { class: "spinner-sm", "aria-hidden": "true" }
             {text}
         }
@@ -198,7 +198,6 @@ fn DownloadMetadataButton(
             variant: ButtonVariant::Secondary,
             size: ButtonSize::Sm,
             class: Some(TOOLBAR_ACTION_CLASS.to_string()),
-            title: Some(title.to_string()),
             aria_label: Some(title.to_string()),
             label: Some(label.to_string()),
             onclick: {
@@ -249,10 +248,11 @@ pub fn DownloadActionsGroup() -> Element {
     let export_available = toolbar_model.read().export_available;
     let ui_url = toolbar_model.read().ui_url.clone();
     let endpoint_name = toolbar_model.read().sparql_endpoint_ui.to_string();
+    let ui_url_for_click = ui_url.clone();
     drop(snapshot);
 
     rsx! {
-        div { class: "flex w-full flex-wrap items-center justify-center gap-2",
+        div { class: "flex w-full flex-wrap items-center justify-center gap-2.5",
             if *download_busy.read() {
                 DownloadStatusSpinner {
                     download_status,
@@ -263,7 +263,7 @@ pub fn DownloadActionsGroup() -> Element {
                 div {
                     role: "group",
                     aria_label: "{download_results_label}",
-                    class: "flex flex-wrap items-center justify-center gap-2",
+                    class: "flex flex-wrap items-center justify-center gap-2.5",
                     if let Some(query) = sparql_query_value.as_ref() {
                         DownloadQueryButton {
                             spec: DOWNLOAD_QUERY_CSV_SPEC,
@@ -304,16 +304,23 @@ pub fn DownloadActionsGroup() -> Element {
                             disabled: *download_busy.read(),
                         }
                     }
-                    if let Some(url) = ui_url.as_deref() {
-                        a {
-                            href: "{url}",
-                            target: "_blank",
-                            rel: "noopener noreferrer",
-                            role: "button",
-                            class: "{TOOLBAR_LINK_CLASS}",
-                            title: "{open_in_title} ({endpoint_name})",
-                            aria_label: "{open_in_title} ({endpoint_name})",
-                            "Open in {endpoint_name}"
+                    if let Some(url) = ui_url_for_click.clone() {
+                        Button {
+                            r#type: "button",
+                            variant: ButtonVariant::Secondary,
+                            size: ButtonSize::Sm,
+                            class: Some(TOOLBAR_ACTION_CLASS.to_string()),
+                            title: Some(format!("{open_in_title} ({endpoint_name})")),
+                            aria_label: Some(format!("{open_in_title} ({endpoint_name})")),
+                            label: Some(format!("Open in {endpoint_name}")),
+                            onclick: move |_| {
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    if let Some(win) = web_sys::window() {
+                                        let _ = win.open_with_url_and_target(&url, "_blank");
+                                    }
+                                }
+                            },
                         }
                     }
                 }

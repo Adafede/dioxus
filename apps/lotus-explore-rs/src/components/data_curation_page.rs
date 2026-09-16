@@ -49,59 +49,63 @@ pub fn DataCurationPage() -> Element {
     rsx! {
         CurationScripts {}
         section {
-            class: "curation-wrap",
+            class: "curation-wrap w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8",
             aria_labelledby: "curation-page-heading",
-            h2 {
-                id: "curation-page-heading",
-                class: "sr-only",
-                "{crate::i18n::view_label_curation_explorer(locale)}"
-            }
-            div {
-                class: "curation-grid grid grid-cols-1 gap-4 lg:grid-cols-2",
-                AddRowCard {
-                    locale,
-                    form: controller.form,
-                    processing: ui_state.processing,
-                    on_add_row,
-                    on_load_examples,
+            div { class: "overflow-hidden rounded-2xl border border-panel-border bg-panel shadow-xs",
+                h2 {
+                    id: "curation-page-heading",
+                    class: "text-title font-semibold text-text px-4 pt-4 sm:px-6",
+                    "{crate::i18n::view_label_curation_explorer(locale)}"
+                }
+                div { class: "results-inner w-full px-4 pb-4 pt-3 sm:px-6",
+                    div {
+                        class: "curation-grid grid grid-cols-1 gap-4 2xl:grid-cols-2 w-full",
+                    AddRowCard {
+                        locale,
+                        form: controller.form,
+                        processing: ui_state.processing,
+                        on_add_row,
+                        on_load_examples,
+                    }
+
+                    TsvImportCard {
+                        locale,
+                        tsv_input: controller.tsv_input,
+                        processing: ui_state.processing,
+                        has_tsv_input,
+                        on_parse_tsv,
+                        on_import_uploaded_tsv,
+                        on_import_error,
+                    }
                 }
 
-                TsvImportCard {
-                    locale,
-                    tsv_input: controller.tsv_input,
-                    processing: ui_state.processing,
-                    has_tsv_input,
-                    on_parse_tsv,
-                    on_import_uploaded_tsv,
-                    on_import_error,
+                if let Some(share) = shareable_url.read().as_ref() {
+                    ShareBar { locale, share: share.clone() }
                 }
-            }
 
-            if let Some(share) = shareable_url.read().as_ref() {
-                ShareBar { locale, share: share.clone() }
-            }
+                if let Some(status) = controller.status_message.read().as_ref() {
+                    StatusNotice { locale, message: Arc::<str>::from(status.as_str()) }
+                }
 
-            if let Some(status) = controller.status_message.read().as_ref() {
-                StatusNotice { locale, message: Arc::<str>::from(status.as_str()) }
-            }
+                QueueRowsCard {
+                    locale,
+                    rows: controller.rows,
+                    processing: ui_state.processing,
+                    on_process,
+                }
 
-            QueueRowsCard {
-                locale,
-                rows: controller.rows,
-                processing: ui_state.processing,
-                on_process,
-            }
+                if let Some(rows) = result_rows_memo.read().as_ref() {
+                    CurationResultsTable { locale, rows: rows.clone() }
+                }
 
-            if let Some(rows) = result_rows_memo.read().as_ref() {
-                CurationResultsTable { locale, rows: rows.clone() }
-            }
-
-            QuickStatementsCard {
-                locale,
-                quickstatements: controller.quickstatements,
-                awaiting_second_pass: ui_state.awaiting_second_pass,
-                processing: ui_state.processing,
-                on_second_pass,
+                    QuickStatementsCard {
+                        locale,
+                        quickstatements: controller.quickstatements,
+                        awaiting_second_pass: ui_state.awaiting_second_pass,
+                        processing: ui_state.processing,
+                        on_second_pass,
+                    }
+                }
             }
         }
     }

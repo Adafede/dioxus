@@ -27,8 +27,8 @@ use virtualized_table::VirtualizedResultsTable;
 
 const TABLE_SCROLL_ID: &str = "results-table-scroll";
 const VIRTUAL_OVERSCAN_ROWS: usize = 12;
-const ROW_HEIGHT_PX_COMFORTABLE: usize = 114;
-const TABLE_VIEWPORT_FALLBACK_PX: usize = 640;
+const ROW_HEIGHT_PX_COMFORTABLE: usize = 138;
+const TABLE_VIEWPORT_FALLBACK_PX: usize = 760;
 
 /// Renders the full results section.
 ///
@@ -71,26 +71,33 @@ pub fn ResultsTable() -> Element {
             id: RESULTS_SECTION_ID,
             aria_label: "{t(locale, TextKey::TableTriplesAria)}",
             aria_labelledby: RESULTS_SECTION_HEADING_ID,
-            class: "results-wrap",
+            class: "results-wrap w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8",
             h2 {
                 id: RESULTS_SECTION_HEADING_ID,
-                class: "sr-only",
+                class: "text-title font-semibold text-text mb-4",
                 "{t(locale, TextKey::TableTriplesAria)}"
             }
-            ResultsToolbar {}
+            div {
+                class: "overflow-hidden {crate::ui::classes::RADIUS_PANEL} border border-panel-border bg-panel shadow-xs",
+                ResultsToolbar {}
+            }
 
             if total == 0 {
-                div {
-                    class: "empty-state",
-                    p {
-                        class: "text-muted",
-                        "{t(locale, TextKey::NoResults)}"
+                div { class: "results-inner w-full",
+                    div {
+                        class: "empty-state",
+                        p {
+                            class: "text-muted",
+                            "{t(locale, TextKey::NoResults)}"
+                        }
                     }
                 }
             } else {
-                VirtualizedResultsTable {
-                    entries: entries_arc,
-                    table_view_model,
+                div { class: "results-inner w-full",
+                    VirtualizedResultsTable {
+                        entries: entries_arc,
+                        table_view_model,
+                    }
                 }
             }
         }

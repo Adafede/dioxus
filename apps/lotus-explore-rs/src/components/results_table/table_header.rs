@@ -9,6 +9,7 @@
 use super::header_model::{SortableHeaderModel, build_sortable_header_models};
 use crate::i18n::{TextKey, aria_sort_toggle, t};
 use crate::models::{SortColumn, SortState};
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 #[component]
@@ -21,7 +22,7 @@ pub fn TableHeader(current_sort: SortState, on_sort_toggle: EventHandler<SortCol
             class: "border-b border-panel-border bg-panel-soft text-left text-text2",
             th {
                 scope: "col",
-                class: "px-3 py-2.5 text-ui font-bold whitespace-nowrap select-none",
+                class: "px-3 sm:px-4 py-3 text-ui font-bold whitespace-nowrap select-none",
                 span { "{t(locale, TextKey::Structure)}" }
             }
             for header in headers {
@@ -46,14 +47,14 @@ fn SortableColumnHeader(
         th {
             scope: "col",
             aria_sort: "{header.aria_sort}",
-            class: "px-3 py-2.5 text-ui font-bold whitespace-nowrap select-none",
+            class: "px-3 sm:px-4 py-3 text-ui font-bold whitespace-nowrap select-none",
             button {
                 r#type: "button",
                 aria_label: "{sort_aria}",
                 title: "{sort_aria}",
-                class: "grid w-full min-w-max grid-cols-[auto_auto] items-start gap-x-1.5 border-0 bg-transparent p-0 text-inherit hover:text-accent focus-visible:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-[0.98]",
+                class: "inline-flex w-full min-w-0 items-center gap-1.5 border-0 bg-transparent p-0 text-inherit hover:text-accent focus-visible:outline-none {classes::FOCUS_RING} active:scale-[0.98]",
                 onclick: move |_| on_toggle.call(header.col),
-                span { class: "block min-w-max whitespace-nowrap leading-none", "{label_text}" }
+                span { class: "block min-w-0 whitespace-nowrap leading-tight", "{label_text}" }
                 span {
                     class: "text-ui font-bold leading-none text-subtle",
                     "aria-hidden": "true",

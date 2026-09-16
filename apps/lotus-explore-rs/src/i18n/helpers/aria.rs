@@ -3,15 +3,6 @@
 
 use super::Locale;
 
-pub fn aria_wikidata_entity(locale: Locale, qid: &str) -> String {
-    match locale {
-        Locale::En => format!("Open Wikidata entity {qid}"),
-        Locale::Fr => format!("Ouvrir l'entité Wikidata {qid}"),
-        Locale::De => format!("Wikidata-Entität {qid} öffnen"),
-        Locale::It => format!("Apri l'entità Wikidata {qid}"),
-    }
-}
-
 pub fn aria_search_inchikey(locale: Locale, ik: &str) -> String {
     match locale {
         Locale::En => format!("Search Wikidata for InChIKey {ik}"),

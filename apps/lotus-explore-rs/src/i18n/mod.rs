@@ -115,7 +115,6 @@ pub enum TextKey {
     CopyFullQueryHash,
     CopyFullResultHash,
     CopyShareableLink,
-    ArchiveNotice,
     Unique,
     // Loading/welcome
     LoadingTitle,
@@ -234,6 +233,9 @@ pub enum TextKey {
     OpenFullSizeDepiction,
     OpenInWikidata,
     OpenInScholia,
+    OpenInCompoundScholia,
+    OpenInTaxonScholia,
+    OpenInReferenceScholia,
     OpenDoi,
     Statement,
     SparqlQuery,

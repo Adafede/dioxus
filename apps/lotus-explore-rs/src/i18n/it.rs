@@ -33,7 +33,6 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::CopyFullQueryHash => "Copia hash completo della query (SHA-256)",
         TextKey::CopyFullResultHash => "Copia hash completo del risultato (SHA-256)",
         TextKey::CopyShareableLink => "Copia link condivisibile",
-        TextKey::ArchiveNotice => "Archivio congelato:",
         TextKey::Unique => "Uniche",
         TextKey::LoadingTitle => "Interrogazione di Wikidata tramite QLever...",
         TextKey::LoadingHint => {
@@ -173,6 +172,9 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::OpenFullSizeDepiction => "Apri la rappresentazione a dimensione piena",
         TextKey::OpenInWikidata => "Apri in Wikidata",
         TextKey::OpenInScholia => "Apri in Scholia",
+        TextKey::OpenInCompoundScholia => "Apri il composto in Scholia",
+        TextKey::OpenInTaxonScholia => "Apri il taxon in Scholia",
+        TextKey::OpenInReferenceScholia => "Apri il riferimento in Scholia",
         TextKey::OpenDoi => "Apri DOI",
         TextKey::Statement => "Dichiarazione",
         TextKey::SparqlQuery => "Query SPARQL",

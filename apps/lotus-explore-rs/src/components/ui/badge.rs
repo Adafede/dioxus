@@ -3,6 +3,7 @@
 
 //! Badge components using Wikidata organism colors.
 
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -44,12 +45,12 @@ pub fn StatusBadge(props: StatusBadgeProps) -> Element {
 
     rsx! {
         span {
-            class: "inline-flex items-center gap-1.5 rounded-lotus-sm border px-2 py-0.5 text-micro font-medium shadow-xs {tone}",
+            class: "inline-flex items-center gap-1.5 {classes::RADIUS_PILL} border px-2 py-0.5 text-micro font-medium shadow-xs {tone}",
             title: props.title.as_deref().unwrap_or(""),
             "{props.label}"
             if let Some(count) = props.count {
                 span {
-                    class: "ml-1 rounded-full bg-text/10 px-1.5 py-0.5 text-micro",
+                    class: "ml-1 {classes::RADIUS_FULL} bg-text/10 px-1.5 py-0.5 text-micro",
                     "{count}"
                 }
             }

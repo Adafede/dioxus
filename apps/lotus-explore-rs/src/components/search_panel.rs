@@ -37,7 +37,7 @@ pub fn SearchPanel() -> Element {
     rsx! {
         form {
             id: "lotus-search-form",
-            class: "search-panel",
+            class: "search-panel flex-0-auto flex flex-col gap-2 p-3.5 bg-panel min-w-[240px] overflow-y-auto max-h-[calc(100vh-200px)]",
             aria_label: "{t(locale, TextKey::SearchFilters)}",
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             "data-webmcp-id": "lotus-search-form",
@@ -56,7 +56,7 @@ pub fn SearchPanel() -> Element {
             },
             h2 { id: SEARCH_PANEL_HEADING_ID, class: "sr-only", "{t(locale, TextKey::SearchFilters)}" }
 
-            div { id: SEARCH_PANEL_BODY_ID, class: "search-panel-body",
+            div { id: SEARCH_PANEL_BODY_ID, class: "search-panel-body flex flex-col gap-1.5",
                 TaxonInput {}
                 StructureSection {}
                 MassRangeInput {}
@@ -111,7 +111,7 @@ fn StructureSection() -> Element {
             if let Some(note_key) = view_model.note_key {
                 p { class: "flex flex-wrap items-center gap-2 {classes::HINT}",
                     span {
-                        class: "rounded-lotus-sm bg-accent/10 px-1.5 py-0.5 font-semibold text-accent",
+                        class: "{classes::RADIUS_PILL} bg-accent/10 px-1.5 py-0.5 font-semibold text-accent",
                         "{kind_value.label()}"
                     }
                     span { "{t(locale, note_key)}" }
@@ -124,7 +124,7 @@ fn StructureSection() -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        class: "accent-accent h-4 w-4 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                        class: "accent-accent h-4 w-4 {classes::FOCUS_RING_BTN}",
                         checked: smiles_search_type == SmilesSearchType::Substructure,
                         onchange: move |_| {
                             ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Substructure))
@@ -136,7 +136,7 @@ fn StructureSection() -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        class: "accent-accent h-4 w-4 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                        class: "accent-accent h-4 w-4 {classes::FOCUS_RING_BTN}",
                         checked: smiles_search_type == SmilesSearchType::Similarity,
                         onchange: move |_| {
                             ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Similarity))
@@ -162,7 +162,7 @@ fn StructureSection() -> Element {
                         aria_valuemin: "0",
                         aria_valuemax: "1",
                         aria_valuenow: "{smiles_threshold}",
-                        class: "w-full accent-accent cursor-pointer appearance-none h-2 bg-border rounded-full focus-visible:outline-none {classes::FOCUS_RING} focus-visible:ring-offset-2",
+                        class: "w-full accent-accent cursor-pointer appearance-none h-2 bg-border {classes::RADIUS_SM_CTRL} focus-visible:outline-none {classes::FOCUS_RING} focus-visible:ring-offset-2",
                         oninput: move |e| {
                             if let Ok(v) = e.value().parse::<f64>() {
                                 ctx.update(FormAction::SmilesThreshold(v));

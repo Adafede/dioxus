@@ -25,19 +25,21 @@ pub fn Sidebar() -> Element {
     rsx! {
         aside {
             class: if mobile_filters_open {
-                "sidebar flex flex-col mobile-open"
+                "sidebar w-[360px] min-w-[250px] min-h-[400px] overflow-hidden rounded-2xl bg-panel border border-panel-border shadow-xs flex flex-col mobile-open flex-shrink-0"
             } else {
-                "sidebar flex flex-col mobile-closed"
+                "sidebar w-[360px] min-w-[250px] min-h-[400px] overflow-hidden rounded-2xl bg-panel border border-panel-border shadow-xs flex flex-col mobile-closed flex-shrink-0"
             },
             aria_labelledby: SEARCH_PANEL_HEADING_ID,
             div {
-                class: "sidebar-logo flex justify-center",
+                class: "w-full flex justify-center px-3 pt-4 pb-2",
                 "aria-hidden": "true",
-                style: "width: 80px; height: auto; aspect-ratio: 1115 / 981;",
-                dangerous_inner_html: LOTUS_LOGO_SVG,
+                div {
+                    class: "w-20 min-[1440px]:w-24 aspect-[1115/981]",
+                    dangerous_inner_html: LOTUS_LOGO_SVG,
+                }
             }
             div {
-                class: "flex justify-center px-3 pb-1",
+                class: "flex justify-center px-4 pb-4",
                 Button {
                     r#type: "button",
                     variant: ButtonVariant::Primary,
@@ -70,7 +72,7 @@ pub fn LazySidebar() -> Element {
             Sidebar {}
         } else {
             aside {
-                class: "sidebar mobile-closed flex h-full flex-col",
+                class: "sidebar w-[360px] min-w-[250px] min-h-[400px] overflow-hidden rounded-2xl bg-panel border border-panel-border shadow-xs flex flex-col mobile-closed flex-shrink-0",
             }
         }
     }

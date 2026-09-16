@@ -3,39 +3,39 @@
 
 //! Taxon identity cell for results-table rows.
 //!
-//! Renders the taxon name link and Wikidata badge.
+//! Renders the taxon name link and Scholia/Wikidata badges.
 
 use crate::components::results_table::row_cells::row_text::RowText;
-use crate::i18n::{Locale, aria_wikidata_entity};
+use crate::i18n::{Locale, TextKey, t};
 use crate::models::CompoundEntry;
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 pub(in crate::components::results_table::row_cells) fn taxon_cell(
-    locale: Locale,
-    text: RowText,
+    _locale: Locale,
+    _text: RowText,
     entry: &CompoundEntry,
     taxon_qid: &str,
 ) -> Element {
     rsx! {
-        td { class: "min-w-0 rounded-lg px-3 py-2.5 align-middle text-ui shadow-[inset_3px_0_0_var(--footer-wd-taxon)]",
-            div { class: "flex flex-col gap-1",
+        td { class: "{classes::TABLE_CELL_BASE} shadow-[inset_3px_0_0_var(--footer-wd-taxon)]",
+            div { class: "flex flex-col gap-1 max-w-[24ch]",
                 a {
                     href: "https://www.wikidata.org/entity/{taxon_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    class: "block break-words line-clamp-2 font-semibold italic leading-snug hover:underline text-wd-taxon",
+                    class: "block break-words line-clamp-2 font-semibold italic leading-snug hover:underline {classes::WD_TAXON}",
                     "{entry.taxon_name}"
                 }
             }
-            div { class: "mt-1 flex flex-wrap items-center gap-1",
+            div { class: "mt-1 flex flex-wrap items-center gap-1 max-w-[24ch]",
                 a {
-                    href: "https://www.wikidata.org/entity/{taxon_qid}",
+                    href: "https://scholia.toolforge.org/taxon/{taxon_qid}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    title: "{text.open_in_wikidata}",
-                    aria_label: "{aria_wikidata_entity(locale, taxon_qid)}",
-                    class: "inline-block rounded-xs border border-current px-2 py-0.5 font-mono text-micro font-semibold hover:underline text-wd-taxon",
-                    "{taxon_qid}"
+                    aria_label: "{taxon_qid} • {t(_locale, TextKey::OpenInTaxonScholia)}",
+                    class: "inline-block {classes::PILL} border-current {classes::WD_TAXON} border-wd-taxon",
+                    "{taxon_qid} - Scholia"
                 }
             }
         }

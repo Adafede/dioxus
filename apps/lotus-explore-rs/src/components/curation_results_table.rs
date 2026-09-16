@@ -91,7 +91,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
     let scroll_hint_id = "curation-results-scroll-hint";
 
     rsx! {
-        div { class: "flex flex-col gap-3 rounded-xl border border-panel-border bg-panel-soft p-4 shadow-xs",
+        div { class: "flex flex-col gap-3",
             h3 { class: "text-base font-semibold", "{crate::i18n::heading_results(locale)}" }
             StatusSummaryBadges { locale, rows: rows.clone() }
             p {
@@ -101,21 +101,21 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                 "{hint_scroll_curation_results(locale)}"
             }
             div {
-                class: "w-full overflow-x-auto rounded-lg border border-panel-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                class: "w-full overflow-x-auto {classes::RADIUS_PANEL} border border-panel-border bg-panel shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
                 role: "region",
                 tabindex: "0",
                 aria_label: "{crate::i18n::heading_results(locale)}",
                 aria_describedby: scroll_hint_id,
-                table { class: "curation-results-table w-full min-w-max table-auto border-collapse text-ui",
+                table { class: "curation-results-table w-full min-w-[1320px] table-auto border-collapse text-ui",
                     thead {
                         tr { class: "text-left",
-                            th { scope: "col", class: "{TH} w-[140px] min-w-[140px]", "{col_status(locale)}" }
+                            th { scope: "col", class: "{TH} w-[160px] min-w-[160px]", "{col_status(locale)}" }
                             th { scope: "col", class: "{TH} w-[8ch] min-w-[8ch]", "Wikidata" }
-                            th { scope: "col", class: "{TH} w-[12ch] min-w-[12ch]", "{col_name(locale)}" }
-                            th { scope: "col", class: "{TH} w-[140px] min-w-[140px]", "{col_original_smiles(locale)}" }
-                            th { scope: "col", class: "{TH} w-[140px] min-w-[140px]", "{col_canonical_smiles(locale)}" }
-                            th { scope: "col", class: "{TH} w-[150px] min-w-[150px]", "InChIKey" }
-                            th { scope: "col", class: "{TH} w-[140px] min-w-[140px]", "InChI" }
+                            th { scope: "col", class: "{TH} w-[14ch] min-w-[14ch]", "{col_name(locale)}" }
+                            th { scope: "col", class: "{TH} w-[180px] min-w-[180px]", "{col_original_smiles(locale)}" }
+                            th { scope: "col", class: "{TH} w-[180px] min-w-[180px]", "{col_canonical_smiles(locale)}" }
+                            th { scope: "col", class: "{TH} w-[180px] min-w-[180px]", "InChIKey" }
+                            th { scope: "col", class: "{TH} w-[180px] min-w-[180px]", "InChI" }
                             th { scope: "col", class: "{TH} w-[8ch] min-w-[8ch]", "{t(locale, TextKey::Formula)}" }
                             th { scope: "col", class: "{TH} w-[8ch] min-w-[8ch]", "{col_exact_mass(locale)}" }
                         }

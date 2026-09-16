@@ -25,6 +25,27 @@ fn base_url() -> String {
     String::new()
 }
 
+/// Build absolute asset URL from origin (not including app pathname).
+/// Ketcher and other root-level assets are served from /assets/ at the domain root.
+#[cfg(target_arch = "wasm32")]
+pub fn asset_url(path: &str) -> String {
+    let win = web_sys::window().expect("web_sys::window");
+    let loc = win.location();
+    let origin = loc.origin().unwrap_or_default();
+    // Ensure path starts with /
+    let path = if path.starts_with('/') {
+        path
+    } else {
+        &format!("/{path}")
+    };
+    format!("{origin}{path}")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn asset_url(_path: &str) -> String {
+    String::new()
+}
+
 const DESCRIPTION: &str = "Explore LOTUS with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
 
 /// Build `application/ld+json` structured data (schema.org `WebApplication`).

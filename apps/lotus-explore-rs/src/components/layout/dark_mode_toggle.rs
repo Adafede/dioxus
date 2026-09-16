@@ -6,6 +6,7 @@
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use crate::state::use_app_state_context;
+use crate::ui::classes;
 use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
@@ -25,7 +26,7 @@ pub fn DarkModeToggle() -> Element {
 
     rsx! {
         button {
-            class: "theme-toggle inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-muted shadow-xs hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+            class: "theme-toggle inline-flex cursor-pointer items-center gap-2 {classes::RADIUS_FULL} border border-border bg-surface px-3 py-2 text-muted shadow-xs hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
             r#type: "button",
             role: "switch",
             "aria-label": t(locale, TextKey::DarkModeToggle),
@@ -48,7 +49,7 @@ pub fn DarkModeToggle() -> Element {
                 }
             },
             span {
-                class: "flex h-6 w-6 items-center justify-center rounded-full bg-accent/12 text-accent flex-shrink-0",
+                class: "flex h-6 w-6 items-center justify-center {classes::RADIUS_PILL} bg-accent/12 text-accent flex-shrink-0",
                 "aria-hidden": "true",
                 if dark_mode {
                     // Moon icon

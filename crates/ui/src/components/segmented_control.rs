@@ -1,6 +1,5 @@
 //! Shared segmented button group.
 
-use crate::theme::{ColorScheme, Shadow, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Item rendered inside a segmented control.
@@ -29,54 +28,22 @@ pub struct SegmentedControlProps {
 
 #[component]
 pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
-    let colors = if props.dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
-    };
     let selected_value = props.selected_value.clone();
     let stretch = props.stretch;
     let wrap = props.wrap;
     let on_select = props.on_select;
 
-    let mut group_style = StyleBuilder::new()
-        .display("flex")
-        .align_items("center")
-        .gap("4px")
-        .padding("4px")
-        .border(&format!("1px solid {}", colors.border))
-        .border_radius("999px")
-        .background_color(colors.surface)
-        .box_shadow(Shadow::XS);
-    group_style = if wrap {
-        group_style.flex_wrap("wrap")
+    let group_classes = if wrap {
+        "inline-flex flex-wrap items-center gap-1 shrink-0"
     } else {
-        group_style
-            .flex_wrap("nowrap")
-            .property("overflow-x", "auto")
+        "inline-flex items-center gap-1 shrink-0"
     };
-    let group_style = group_style.build();
-
-    let button_base_style = StyleBuilder::new()
-        .display("inline-flex")
-        .align_items("center")
-        .justify_content("center")
-        .padding("6px 10px")
-        .min_height("40px")
-        .border_radius("999px")
-        .font_size(Typography::UI)
-        .font_weight("600")
-        .property("line-height", "1.2")
-        .property("border", "1px solid transparent")
-        .property("cursor", "pointer")
-        .transition("transform 150ms")
-        .property("white-space", "nowrap")
-        .property("overflow", "hidden")
-        .property("text-overflow", "ellipsis")
-        .build();
 
     rsx! {
-        div { role: "group", aria_label: props.aria_label, style: group_style,
+        div {
+            role: "group",
+            aria_label: props.aria_label,
+            class: "{group_classes}",
             for item in &props.items {
                 SegmentedButton {
                     label: item.label.clone(),
@@ -85,8 +52,7 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
                     dark: props.dark,
                     stretch,
                     active_aria_current: props.active_aria_current,
-                   on_select,
-                    base_style: button_base_style.clone(),
+                    on_select,
                 }
             }
         }
@@ -105,56 +71,40 @@ struct SegmentedButtonProps {
     pub stretch: bool,
     #[props(default = "true")]
     pub active_aria_current: &'static str,
-    pub base_style: String,
 }
 
 #[component]
 fn SegmentedButton(props: SegmentedButtonProps) -> Element {
-    let colors = if props.dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
-    };
     let active = props.value == props.selected_value;
-    let style = segmented_button_style(&colors, active, props.stretch, &props.base_style);
-    let value = props.value.clone();
+    
+    let stretch = props.stretch;
     let on_select = props.on_select;
+    let value = props.value.clone();
+    let label = props.label.clone();
+
+    let active_classes = if active {
+        "bg-accent text-bg border-accent shadow-xs"
+    } else if props.dark {
+        "bg-surface2 text-text2 border-border"
+    } else {
+        "bg-surface text-text border-border"
+    };
+
+    let flex_class = if stretch { "flex-1 min-w-0" } else { "flex-none" };
+
+    let classes = format!(
+        "inline-flex items-center justify-center px-2.5 py-1.5 text-ui leading-none font-semibold rounded-full border transition-transform duration-150 active:scale-[0.98] min-h-[40px] whitespace-nowrap focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 {} {}",
+        flex_class, active_classes
+    );
 
     rsx! {
         button {
             r#type: "button",
             aria_pressed: if active { "true" } else { "false" },
-            aria_current: if active {
-                props.active_aria_current
-            } else {
-                "false"
-            },
-            style: style,
+            aria_current: if active { props.active_aria_current } else { "false" },
+            class: "{classes}",
             onclick: move |_| on_select.call(value.clone()),
-            "{props.label}"
+            "{label}"
         }
     }
-}
-
-fn segmented_button_style(
-    colors: &ColorScheme,
-    active: bool,
-    stretch: bool,
-    base_style: &str,
-) -> String {
-    let mut style = StyleBuilder::new()
-        .property("flex", if stretch { "1 1 80px" } else { "0 0 auto" })
-        .property("min-width", "0");
-    if active {
-        style = style
-            .background_color(colors.accent)
-            .color(colors.bg)
-            .border(&format!("1px solid {}", colors.accent));
-    } else {
-        style = style
-            .background_color(colors.surface2)
-            .color(colors.text2)
-            .border(&format!("1px solid {}", colors.border));
-    }
-    format!("{}; {}", base_style, style.build())
 }
