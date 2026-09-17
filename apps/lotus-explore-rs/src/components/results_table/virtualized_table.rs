@@ -47,16 +47,16 @@ pub(super) fn VirtualizedResultsTable(
             onscroll: on_scroll,
             table {
                 aria_label: "{t(locale, TextKey::TableTriplesAria)}",
-                class: "w-full min-w-[1800px] table-auto border-collapse text-ui",
+                class: "w-full min-w-[1480px] table-auto border-collapse text-ui",
                 caption { class: "sr-only", "{t(locale, TextKey::TableTriplesAria)}" }
                 colgroup {
-                    col { class: "w-[112px] sm:w-[132px] lg:w-[152px]" }
+                    col { class: "w-[50px] sm:w-[50px] lg:w-[50px] min-w-[50px] max-w-[50px]" }
                     col { class: "w-[28ch] sm:w-[30ch] lg:w-[32ch]" }
-                    col { class: "w-[12ch] sm:w-[13ch] lg:w-[14ch]" }
-                    col { class: "w-[12ch] sm:w-[13ch] lg:w-[14ch]" }
-                    col { class: "w-[40ch] sm:w-[44ch] lg:w-[48ch]" }
-                    col { class: "w-[26ch] sm:w-[28ch] lg:w-[30ch]" }
-                    col { class: "w-[8ch] sm:w-[9ch]" }
+                    col { class: "w-[12ch] sm:w-[12ch] lg:w-[12ch]" }
+                    col { class: "w-[12ch] sm:w-[12ch] lg:w-[12ch]" }
+                    col { class: "w-[24ch] sm:w-[26ch] lg:w-[28ch]" }
+                    col { class: "w-[28ch] sm:w-[30ch] lg:w-[32ch]" }
+                    col { class: "w-[7ch] sm:w-[7ch] lg:w-[7ch]" }
                 }
                 thead {
                     class: "sticky top-0 z-2",

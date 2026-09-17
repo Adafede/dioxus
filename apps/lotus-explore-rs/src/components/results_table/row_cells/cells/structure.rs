@@ -33,13 +33,12 @@ pub(in crate::components::results_table::row_cells) fn structure_cell(
                     href: "{url}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    img {
+                        img {
                         class: "block h-auto w-full min-w-[120px] bg-transparent object-contain",
-                        src: "{url}",
-                        alt: "{alt_text}",
-                        loading: "lazy",
-                        decoding: "async",
-
+                            src: "{url}",
+                            alt: "{alt_text}",
+                            loading: "lazy",
+                            decoding: "async",
                     }
                 }
             } else {

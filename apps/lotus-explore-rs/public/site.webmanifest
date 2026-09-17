@@ -1,7 +1,7 @@
 {
   "name": "LOTUS Explore-rs",
   "short_name": "LOTUS-rs",
-  "description": "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.",
+  "description": "Explore LOTUS with taxon filters, structure search, and Wikidata curation workflows.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -69,8 +69,7 @@
   "categories": [
     "science",
     "education",
-    "research",
-    "productivity"
+    "research"
   ],
   "prefer_related_applications": false,
   "shortcuts": [

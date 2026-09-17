@@ -1,6 +1,6 @@
 # LOTUS Explore-rs
 
-> Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.
+> Explore LOTUS with taxon filters, structure search, and Wikidata curation workflows.
 
 ## Core information
 

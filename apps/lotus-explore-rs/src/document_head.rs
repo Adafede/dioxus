@@ -46,7 +46,8 @@ pub fn asset_url(_path: &str) -> String {
     String::new()
 }
 
-const DESCRIPTION: &str = "Explore LOTUS with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.";
+const DESCRIPTION: &str =
+    "Explore LOTUS with taxon filters, structure search, and Wikidata curation workflows.";
 
 /// Build `application/ld+json` structured data (schema.org `WebApplication`).
 fn json_ld(canonical: &str) -> String {
@@ -103,12 +104,12 @@ pub fn LotusDocumentHead(lang: String) -> Element {
 
     rsx! {
         DocumentHead {
-            title: "LOTUS Knowledge Explorer".to_string(),
+            title: "LOTUS Explore-rs".to_string(),
             lang,
             description: Some(DESCRIPTION.to_string()),
             og_type: Some("website".to_string()),
             og_url: Some(canonical.clone()),
-            og_site_name: Some("LOTUS Knowledge Explorer".to_string()),
+            og_site_name: Some("LOTUS Explore-rs".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             json_ld: Some(json_ld(&canonical)),
             canonical: Some(canonical),

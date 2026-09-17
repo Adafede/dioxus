@@ -17,7 +17,7 @@
 /* SITE */
   Product: LOTUS Explore-rs
   Short name: LOTUS-rs
-  Description: Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.
+  Description: Explore LOTUS with taxon filters, structure search, and Wikidata curation workflows.
   Language: English with French, German, Italian localizations
   Standards: HTML5, CSS3, WebAssembly, WCAG 2.1 AA, JSON-LD
   Components: Rust + Dioxus compiled to WASM

@@ -2,7 +2,7 @@
   "site": {
     "name": "LOTUS Explore-rs",
     "short_name": "LOTUS-rs",
-    "description": "Explore LOTUS natural-product records with taxon filters, SMILES/Molfile structure search, and Wikidata curation workflows.",
+    "description": "Explore LOTUS with taxon filters, structure search, and Wikidata curation workflows.",
     "base_url": "https://adafede.github.io/dioxus/lotus-explore-rs/",
     "repo_url": "https://github.com/Adafede/dioxus",
     "issues_url": "https://github.com/Adafede/dioxus/issues",
@@ -26,7 +26,7 @@
     "lang": "en",
     "dir": "ltr",
     "screenshots": [],
-    "categories": ["science", "education", "research", "productivity"],
+    "categories": ["science", "education", "research"],
     "prefer_related_applications": false,
     "icons": [
       {
