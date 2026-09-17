@@ -8,12 +8,12 @@ use dioxus::prelude::*;
 
 // Tailwind-only footer — no inline style constants, no color-mix()
 
-const FOOTER_LINE_ROW: &str = "flex flex-col gap-3 py-1 border-b border-border last:border-b-0 min-[640px]:flex-row min-[640px]:flex-wrap min-[640px]:items-start min-[640px]:gap-x-6 min-[640px]:gap-y-0";
-const FOOTER_ROW: &str = "flex items-center gap-2 py-0.5 flex-wrap min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px]";
-const FOOTER_LABEL: &str = "inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-xl border border-current/30 border-l-4 border-current bg-current/14 min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0";
+const FOOTER_LINE_ROW: &str = "flex flex-col gap-3 py-1 border-b border-border last:border-b-0 min-[640px]:flex-row min-[640px]:items-start min-[640px]:gap-x-6 min-[640px]:gap-y-0";
+const FOOTER_ROW: &str = "flex items-center gap-2 py-0.5 min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px] flex-nowrap";
+const FOOTER_LABEL: &str = "inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-xl border border-current/30 border-l-4 border-current bg-current/14 min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0 shrink-0";
 const FOOTER_LINKS: &str =
-    "flex flex-wrap items-center gap-x-2.5 gap-y-1 list-none m-0 p-0 flex-none min-w-0";
-const FOOTER_LI: &str = "inline-flex items-center gap-[5px] shrink-0 min-[641px]:whitespace-nowrap";
+    "flex items-center gap-x-2.5 list-none m-0 p-0 min-w-0 overflow-x-auto whitespace-nowrap pb-1 scrollbar-thin scrollbar-thumb-current/20 scrollbar-track-transparent flex-nowrap";
+const FOOTER_LI: &str = "shrink-0";
 const FOOTER_LINK: &str = "no-underline text-ui leading-[1.45] min-h-[34px] inline-flex items-center px-2 py-1 rounded-xl hover:underline hover:bg-current/8 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 max-[480px]:px-1.5 max-[480px]:py-[3px] max-[480px]:text-micro max-[480px]:min-h-[32px]";
 const FOOTER_ASIDE: &str = "text-subtle whitespace-nowrap";
 

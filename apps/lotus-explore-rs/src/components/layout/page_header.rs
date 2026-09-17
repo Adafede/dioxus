@@ -35,7 +35,7 @@ pub fn PageHeader() -> Element {
                 }
                 div {
                     h1 { id: PAGE_TITLE_ID,
-                        class: "text-display font-bold truncate",
+                        class: "text-display font-bold truncate sm:truncate max-w-full break-words",
                         a {
                             href: "/dioxus/lotus-explore-rs/",
                             class: "text-inherit no-underline hover:no-underline",
@@ -52,7 +52,7 @@ pub fn PageHeader() -> Element {
                 }
             }
             p {
-                class: "max-w-[72ch] text-sm leading-6 text-critical-muted mt-3 pb-2",
+                class: "max-w-[72ch] text-sm leading-6 text-critical-muted mt-3 pb-2 break-words",
                 "{t(locale, TextKey::PageSubtitle)}"
             }
         }

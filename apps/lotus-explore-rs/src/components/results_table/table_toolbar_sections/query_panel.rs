@@ -16,24 +16,29 @@ pub fn QueryPanel() -> Element {
     let form_ctx = use_form_criteria_context();
     let toolbar_snapshot = use_toolbar_result_snapshot(explore);
 
-    let mut criteria_effect_ready = use_signal(|| false);
     let mut panel_visible = use_signal(|| toolbar_snapshot.read().sparql_query.is_some());
     let mut panel_open = use_signal(|| false);
 
+    // Only hide panel when criteria actually changes to a new search (not just typing)
+    let mut prev_criteria = use_signal(|| form_ctx.criteria.read().clone());
     use_effect(move || {
-        let _ = form_ctx.criteria.read();
-        if *criteria_effect_ready.peek() {
-            panel_visible.set(false);
-            panel_open.set(false);
-        } else {
-            criteria_effect_ready.set(true);
+        let current = form_ctx.criteria.read().clone();
+        let previous = prev_criteria.read().clone();
+        if current != previous {
+            prev_criteria.set(current);
+            // Only hide if we had a query before and now it's a new search
+            if toolbar_snapshot.read().sparql_query.is_some() {
+                panel_visible.set(false);
+                panel_open.set(false);
+            }
         }
     });
 
+    // Show panel when a new query is available
     use_effect(move || {
         let current_query = toolbar_snapshot.read();
-        if !*panel_visible.peek() {
-            panel_visible.set(current_query.sparql_query.is_some());
+        if !*panel_visible.peek() && current_query.sparql_query.is_some() {
+            panel_visible.set(true);
         }
     });
 
