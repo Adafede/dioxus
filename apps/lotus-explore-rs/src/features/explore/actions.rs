@@ -46,9 +46,6 @@ pub enum ExploreAction {
     /// Dismiss the current error notice.
     ErrorDismissed,
 
-    /// Toggle the mobile filter drawer.
-    MobileFiltersToggled,
-
     /// Start/stop download dispatching.
     DownloadDispatchStarted,
     DownloadDispatchFinished,

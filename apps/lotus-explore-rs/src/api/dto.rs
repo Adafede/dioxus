@@ -177,24 +177,21 @@ pub struct SearchStats {
     pub n_compounds: usize,
     pub n_taxa: usize,
     pub n_references: usize,
-    pub n_entries: usize,
     #[serde(default)]
-    pub n_entries_unique: usize,
+    pub n_entries: Option<usize>,
+    #[serde(default)]
+    pub n_entries_unique: Option<usize>,
 }
 
 impl From<SearchStats> for DatasetStats {
     fn from(value: SearchStats) -> Self {
-        // The API may omit n_entries_unique for legacy compatibility; fall back to n_entries.
-        let n_entries_unique = match value.n_entries_unique {
-            0 => value.n_entries,
-            n => n,
-        };
+        let n_entries = value.n_entries.unwrap_or(0);
         Self {
             n_compounds: value.n_compounds,
             n_taxa: value.n_taxa,
             n_references: value.n_references,
-            n_entries: value.n_entries,
-            n_entries_unique,
+            n_entries,
+            n_entries_unique: value.n_entries_unique.unwrap_or(n_entries),
         }
     }
 }

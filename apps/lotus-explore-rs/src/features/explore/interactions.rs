@@ -59,10 +59,6 @@ impl ExploreInteractions {
         dispatch_explore_action(self.explore, ExploreAction::ErrorDismissed);
     }
 
-    pub fn toggle_mobile_filters(&self) {
-        dispatch_explore_action(self.explore, ExploreAction::MobileFiltersToggled);
-    }
-
     pub fn toggle_sort(&self, column: SortColumn) {
         dispatch_explore_action(self.explore, ExploreAction::SortToggled(column));
     }

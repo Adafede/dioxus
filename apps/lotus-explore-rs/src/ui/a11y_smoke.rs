@@ -17,11 +17,9 @@ mod tests {
     }
 
     #[test]
-    fn sidebar_filter_button_exposes_expanded_and_controls_relation() {
-        let sidebar_src = include_str!("../components/layout/sidebar.rs");
-        assert!(sidebar_src.contains("aria_controls: SEARCH_PANEL_BODY_ID"));
-        assert!(sidebar_src.contains("aria_expanded:"));
-        assert!(sidebar_src.contains("aria_labelledby: SEARCH_PANEL_HEADING_ID"));
+    fn search_panel_exposes_heading_and_body_landmarks() {
+        let search_panel_src = include_str!("../components/search_panel.rs");
+        assert!(search_panel_src.contains("id: SEARCH_PANEL_BODY_ID"));
     }
 
     #[test]

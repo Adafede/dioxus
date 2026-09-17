@@ -72,9 +72,6 @@ pub fn reduce_mut(state: &mut ExploreState, action: ExploreAction) {
         ExploreAction::ErrorDismissed => {
             lifecycle::dismiss_error(&mut state.lifecycle);
         }
-        ExploreAction::MobileFiltersToggled => {
-            ui::toggle_mobile_filters(&mut state.ui);
-        }
         ExploreAction::DownloadDispatchStarted => {
             lifecycle::download_dispatch_started(&mut state.lifecycle);
         }

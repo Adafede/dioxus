@@ -72,11 +72,10 @@ impl Default for ResultDataState {
 }
 
 /// UI chrome and the last-executed criteria snapshot. Changes here re-render
-/// the sidebar / mobile-filter overlay and the query toolbar.
+/// the query toolbar.
 #[derive(Clone, PartialEq, Default)]
 pub struct UiChromeState {
     pub executed_criteria: SearchCriteria,
-    pub mobile_filters_open: bool,
 }
 
 #[derive(Clone, PartialEq, Default)]

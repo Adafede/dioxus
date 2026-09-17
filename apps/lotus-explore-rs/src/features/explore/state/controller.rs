@@ -19,7 +19,7 @@ pub fn classes_for_view(view: AppView) -> AppLayoutClasses {
         }
     } else {
         AppLayoutClasses {
-            app_layout: "app-layout no-sidebar",
+            app_layout: "app-layout single-pane",
             main: "main-content single-pane",
         }
     }
@@ -30,16 +30,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn classes_for_explore_view_keeps_sidebar_layout() {
-        let classes = classes_for_view(AppView::Explore);
-        assert_eq!(classes.app_layout, "app-layout");
-        assert_eq!(classes.main, "main-content");
-    }
-
-    #[test]
     fn classes_for_non_explore_view_uses_single_pane_layout() {
         let classes = classes_for_view(AppView::Curation);
-        assert_eq!(classes.app_layout, "app-layout no-sidebar");
+        assert_eq!(classes.app_layout, "app-layout single-pane");
         assert_eq!(classes.main, "main-content single-pane");
     }
 }

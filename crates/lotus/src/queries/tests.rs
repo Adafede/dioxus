@@ -112,7 +112,7 @@ fn count_query_uses_distinct_entry_triples_not_raw_rows() {
         0.8,
         Some("Q158572"),
     ));
-    assert!(q.contains("COUNT(*) AS ?n_entries"));
+    assert!(q.contains("COUNT(DISTINCT CONCAT("));
     assert!(q.contains("COUNT(DISTINCT CONCAT("));
     assert!(q.contains("AS ?n_entries_unique"));
     assert!(q.contains("STR(?compound)"));

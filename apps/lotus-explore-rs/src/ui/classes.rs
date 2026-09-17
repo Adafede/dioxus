@@ -19,7 +19,7 @@ pub const RADIUS_PILL: &str = "rounded-full"; // 9999px - pills, badges, tags (f
 pub const RADIUS_SM_CTRL: &str = "rounded-md"; // 8px - small controls: checkboxes, radios, slider
 pub const RADIUS_INPUT: &str = "rounded-xl"; // 16px - inputs, buttons (rounded rectangles)
 pub const RADIUS_CARD: &str = "rounded-xl"; // 16px - cards, textareas, containers
-pub const RADIUS_PANEL: &str = "rounded-2xl"; // 20px - major panels: sidebar, main content, toolbars
+pub const RADIUS_PANEL: &str = "rounded-2xl"; // 20px - major panels: main content, toolbars
 pub const RADIUS_FULL: &str = "rounded-full"; // 9999px - circular: avatars, toggle icons, spinners
 
 // ============================================================================

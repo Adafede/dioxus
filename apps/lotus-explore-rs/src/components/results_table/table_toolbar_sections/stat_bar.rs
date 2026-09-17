@@ -81,7 +81,10 @@ pub fn StatBar() -> Element {
         .total_stats
         .as_ref()
         .unwrap_or(&fallback_stats_ref);
-    let entries_value = snapshot_ref.total_matches.unwrap_or(stats.n_entries);
+    let entries_value = snapshot_ref
+        .total_matches
+        .or_else(|| snapshot_ref.total_stats.as_ref().map(|s| s.n_entries))
+        .unwrap_or(stats.n_entries);
     let entries_unique_value = stats.n_entries_unique;
 
     rsx! {

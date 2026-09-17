@@ -154,7 +154,7 @@ pub fn FormulaSection() -> Element {
                         }
                     }
 
-                    div { class: "formula-grid",
+                    div { class: "formula-grid grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8",
                         NumPair {
                             label: "C",
                             min_value: criteria.c_min,
@@ -198,7 +198,7 @@ pub fn FormulaSection() -> Element {
                             on_max: move |v| ctx.update(FormAction::SMax(v)),
                         }
                     }
-                    div { class: "formula-grid",
+                    div { class: "formula-grid grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8",
                         ElemStateSelect {
                             label: "F",
                             value: criteria.f_state,

@@ -55,21 +55,6 @@ pub fn WelcomeScreen() -> Element {
                     }
                 }
 
-                div {
-                    class: "flex flex-col gap-5 px-4 pb-4 pt-5 sm:px-6 sm:pb-6 sm:pt-6",
-                    ul {
-                        class: "grid grid-cols-1 gap-3 md:grid-cols-2",
-                        ExRow {
-                            value: "taxon=<name|QID|*>",
-                            note: t(locale, TextKey::ExampleGentiana),
-                        }
-                        ExRow {
-                            value: "structure=<SMILES|Molfile>",
-                            note: t(locale, TextKey::ExampleSmilesOnly),
-                        }
-                    }
-                }
-
                 div { class: "h-4" }
                 div { class: "px-4 sm:px-6",
                     Card {
@@ -81,7 +66,7 @@ pub fn WelcomeScreen() -> Element {
                         }
                     }
                     div {
-                        class: "mt-1 flex flex-col gap-2.5",
+                        class: "mt-1 grid grid-cols-1 gap-2.5 md:grid-cols-2",
                         DownloadExampleRow {
                             locale,
                             format: t(locale, TextKey::ExampleQueryExecute),

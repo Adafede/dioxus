@@ -21,7 +21,6 @@
 //! * [`crate::components::results_table::ResultsTable`] — uses both
 //!   `use_result_arc_selector` (entries, ptr equality) and `use_result_selector`
 //!   (sort); this eliminates O(N) deep comparisons on every sort toggle.
-//! * [`crate::components::layout::sidebar::Sidebar`] — uses `use_ui_selector`
 //! * [`crate::components::form_sections`] — use `use_criteria_selector`
 
 use crate::features::explore::search_state::{

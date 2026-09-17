@@ -7,8 +7,7 @@
 //! ## Why the previous SearchState / UiState were removed
 //!
 //! The earlier revision stored `criteria`, `explore`, `locale`, and
-//! `mobile_filters_open` inside `AppState` as stale mirror copies that were
-//! kept in sync via `use_effect` loops.  Those copies were:
+//! stale mirror copies that were kept in sync via `use_effect` loops.  Those copies were:
 //!
 //! * **Never read** — every consumer read from the live signal instead.
 //! * **Write-only** — the sync effects wrote to them but nothing consumed them.

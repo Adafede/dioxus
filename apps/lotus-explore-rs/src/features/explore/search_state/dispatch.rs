@@ -15,7 +15,6 @@ fn is_noop(current: &ExploreState, action: &ExploreAction) -> bool {
         ExploreAction::SearchRequested { .. }
         | ExploreAction::SearchSucceeded { .. }
         | ExploreAction::SearchFailed { .. }
-        | ExploreAction::MobileFiltersToggled
         | ExploreAction::SortToggled(_) => false,
     }
 }

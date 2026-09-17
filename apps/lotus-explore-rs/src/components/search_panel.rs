@@ -17,7 +17,7 @@ use crate::i18n::{TextKey, t, threshold_label};
 use crate::models::*;
 use crate::queries::classify_structure;
 use crate::state::{use_form_criteria_context, use_results_context};
-use crate::ui::a11y_contract::{SEARCH_PANEL_BODY_ID, SEARCH_PANEL_HEADING_ID};
+use crate::ui::a11y_contract::SEARCH_PANEL_BODY_ID;
 use crate::ui::classes;
 use dioxus::prelude::*;
 
@@ -37,9 +37,7 @@ pub fn SearchPanel() -> Element {
     rsx! {
         form {
             id: "lotus-search-form",
-            class: "search-panel flex-0-auto flex flex-col gap-2 p-3.5 bg-panel min-w-[240px] overflow-y-auto max-h-[calc(100vh-200px)]",
-            aria_label: "{t(locale, TextKey::SearchFilters)}",
-            aria_labelledby: SEARCH_PANEL_HEADING_ID,
+            class: "search-panel flex-0-auto flex flex-col gap-2 p-3.5 bg-panel w-full min-w-0",
             "data-webmcp-id": "lotus-search-form",
             "data-webmcp-type": "form",
             "data-webmcp-name": "LOTUS search form",
@@ -54,13 +52,15 @@ pub fn SearchPanel() -> Element {
                 evt.prevent_default();
                 form_search.search();
             },
-            h2 { id: SEARCH_PANEL_HEADING_ID, class: "sr-only", "{t(locale, TextKey::SearchFilters)}" }
-
-            div { id: SEARCH_PANEL_BODY_ID, class: "search-panel-body flex flex-col gap-1.5",
-                TaxonInput {}
-                StructureSection {}
-                MassRangeInput {}
-                YearRangeInput {}
+            div {
+                id: SEARCH_PANEL_BODY_ID,
+                class: "search-panel-body flex flex-col gap-1.5",
+                div { class: "grid grid-cols-2 gap-3 lg:grid-cols-4",
+                    TaxonInput {}
+                    StructureSection {}
+                    MassRangeInput {}
+                    YearRangeInput {}
+                }
                 FormulaSection {}
             }
 
@@ -107,6 +107,12 @@ fn StructureSection() -> Element {
                 oninput: move |e| ctx.update(FormAction::Smiles(e.value())),
                 rows: "2",
                 class: "min-h-16 resize-y font-mono {classes::INPUT}",
+            }
+            div { class: "flex flex-wrap gap-1.5",
+                span { class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle", "CC" }
+                span { class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle", "CCC" }
+                span { class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle", "c1ccccc1" }
+                span { class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle", "C[C@H](O)CO" }
             }
             if let Some(note_key) = view_model.note_key {
                 p { class: "flex flex-wrap items-center gap-2 {classes::HINT}",

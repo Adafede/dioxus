@@ -21,7 +21,7 @@ pub fn LangSwitch() -> Element {
 
     rsx! {
         nav {
-            class: "lang-switch inline-flex items-center rounded-full overflow-hidden border border-border bg-surface shadow-xs mx-2",
+            class: "lang-switch inline-flex items-center rounded-full overflow-hidden border border-border bg-surface shadow-xs",
             aria_label: t(locale, TextKey::Language).to_string(),
             SegmentedControl {
                 aria_label: t(locale, TextKey::Language).to_string(),

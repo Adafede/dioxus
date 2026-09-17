@@ -11,13 +11,14 @@ use dioxus::prelude::*;
 
 use super::shared::{normalized_year_input_max, parse_f64_input, parse_u16_input};
 
+pub(super) const TAXON_SUGGESTIONS: &[&str] = &["Fungi", "Bacteria", "Plantae", "Animalia", "*"];
+
 #[component]
 pub fn TaxonInput() -> Element {
     let locale = crate::hooks::use_locale();
     let ctx = use_form_criteria_context();
     let interactions = use_explore_interactions();
     let taxon = use_criteria_selector(ctx.criteria, |c| c.taxon.clone());
-
     rsx! {
         div { class: "{classes::SECTION}",
             label {
@@ -34,6 +35,7 @@ pub fn TaxonInput() -> Element {
                 placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
                 value: "{taxon.read()}",
                 class: "{classes::INPUT}",
+                list: "taxon-suggestions",
                 oninput: move |e| ctx.update(FormAction::Taxon(e.value())),
                 onkeydown: move |e| {
                     if e.key() == Key::Enter {
@@ -41,7 +43,19 @@ pub fn TaxonInput() -> Element {
                     }
                 },
             }
-            p { class: "{classes::HINT}", "{t(locale, TextKey::TaxonHint)}" }
+            datalist { id: "taxon-suggestions",
+                for item in TAXON_SUGGESTIONS {
+                    option { value: "{item}" }
+                }
+            }
+            div { class: "flex flex-wrap gap-1.5",
+                for item in TAXON_SUGGESTIONS {
+                    span {
+                        class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle",
+                        "{item}"
+                    }
+                }
+            }
         }
     }
 }

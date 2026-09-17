@@ -117,6 +117,7 @@ video {
     --radius-xl: 16px;
     --radius-2xl: 20px;
     --radius-3xl: 24px;
+    --radius-full: 30px;
 
     /* Spacing - consistent scale */
     --space-1: 4px;
@@ -357,7 +358,7 @@ legend {
 
 /* Main layout containers - reserve space to prevent CLS */
 .app-shell { min-height: 100dvh; }
-.main-content, .sidebar { min-height: 400px; }
+.main-content { min-height: 400px; }
 .page-header { min-height: 46px; }
 footer { min-height: 80px; }
 .search-panel { min-height: 300px; }
@@ -373,29 +374,18 @@ footer { min-height: 80px; }
 .results-inner { min-height: 200px; }
 .curation-grid { min-height: 200px; }
 
-/* Desktop layout: sidebar + main content side by side */
+/* Desktop layout: main content side by side */
 .app-layout {
     display: flex;
     flex: 1;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
     gap: 10px;
     padding: 8px;
     align-items: stretch;
 }
 
-/* Responsive: reduce search panel min-height on mobile when collapsed */
-@media (max-width: 768px) {
-    .search-panel { min-height: 48px; }
-    .sidebar.mobile-open .search-panel { min-height: 300px; }
-}
-
-/* Base: hide filters toggle on desktop */
-.filters-toggle {
-    display: none !important;
-}
-
-/* Mobile layout: stacked sidebar + main content */
+/* Mobile layout: stacked main content */
 @media (max-width: 768px) {
     .app-shell {
         padding-bottom: env(safe-area-inset-bottom, 20px);
@@ -405,42 +395,17 @@ footer { min-height: 80px; }
         flex-direction: column;
         gap: 0;
         padding: 0;
-        overflow-y: auto;
-    }
-
-    .sidebar {
-        width: 100%;
-        overflow-y: visible;
-        border-radius: 0;
-        border-left: 0;
-        border-right: 0;
-        min-height: auto;
+        overflow: visible;
     }
 
     .main-content {
         min-height: auto;
-        overflow-y: visible;
+        overflow: visible;
         border-radius: 0;
         border-left: 0;
         border-right: 0;
     }
 
-    .filters-toggle {
-        display: inline-flex !important;
-        min-height: 40px;
-    }
-
-    .search-panel-body {
-        display: none !important;
-    }
-
-    .sidebar.mobile-open .search-panel-body {
-        display: flex !important;
-    }
-
-    .sidebar-logo {
-        border-top: none;
-    }
 }
 
 /* Very small screens: full-width view/lang switches */
@@ -476,26 +441,6 @@ footer { min-height: 80px; }
         padding-left: 32px;
         padding-right: 32px;
     }
-}
-
-/* Single-pane mode (Curation, Draw) - full width main content */
-.app-layout.single-pane {
-    flex-direction: column;
-    padding: 0;
-    gap: 0;
-}
-
-.main-content.single-pane {
-    width: 100%;
-    max-width: 1600px;
-    margin-inline: auto;
-    border-radius: 0;
-    border: none;
-    box-shadow: none;
-    padding: 0;
-    min-height: 0;
-    flex: 1;
-    overflow: hidden;
 }
 
 /* Font loading fallback sizing to prevent CLS */

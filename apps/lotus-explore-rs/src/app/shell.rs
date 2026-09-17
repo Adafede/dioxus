@@ -9,8 +9,8 @@ use crate::components::layout::footer::Footer;
 use crate::components::layout::header_meta::HeaderMetaSection;
 use crate::components::layout::notices::{ErrorNotice, ShareNotice, TaxonNotice};
 use crate::components::layout::page_header::PageHeader;
-use crate::components::layout::sidebar::LazySidebar;
 use crate::components::results_viewport::ResultsViewport;
+use crate::components::welcome::WelcomeScreen;
 use crate::document_head::LotusDocumentHead;
 use crate::features::explore::{
     ExploreInteractions, ExploreState, SearchTaskController, build_shareable_url,
@@ -24,7 +24,7 @@ use crate::pages::DrawPage;
 use crate::services::AppServices;
 use crate::state::{
     AppStateContext, FormCriteriaContext, ResultsContext, use_app_selector, use_app_state_context,
-    use_form_criteria_context,
+    use_form_criteria_context, use_results_context,
 };
 use crate::ui::a11y_contract::{MAIN_PANEL_ID, PAGE_TITLE_ID, SKIP_TO_RESULTS_HREF};
 use dioxus::prelude::*;
@@ -194,8 +194,6 @@ fn ShellScaffold(lang: String) -> Element {
     let locale = crate::hooks::use_locale();
     let app_state = use_app_state_context().state;
     let current_view = *use_app_selector(app_state, |state| state.view).read();
-    let single_pane = current_view != AppView::Explore;
-
     rsx! {
         LotusDocumentHead { lang }
         a {
@@ -206,18 +204,10 @@ fn ShellScaffold(lang: String) -> Element {
         div {
             class: "app-shell",
             div {
-                class: if single_pane { "app-layout single-pane" } else { "app-layout" },
-                if current_view == AppView::Explore {
-                    LazySidebar {}
-                }
-
+                class: "app-layout",
                 main {
                     id: MAIN_PANEL_ID,
-                    class: if single_pane {
-                        "main-content single-pane min-w-0 w-full max-w-none"
-                    } else {
-                        "main-content min-w-0 w-full max-w-none"
-                    },
+                    class: "main-content min-w-0 w-full max-w-none",
                     tabindex: "-1",
                     aria_labelledby: PAGE_TITLE_ID,
                     PageHeader {}
@@ -246,17 +236,28 @@ fn RouteContent(current_view: AppView) -> Element {
 
 #[component]
 fn ExplorePage() -> Element {
+    let locale = crate::hooks::use_locale();
     let criteria = use_form_criteria_context().criteria;
+    let searched_once = use_results_context().explore.read().lifecycle.searched_once;
     let shareable_url =
         use_memo(move || build_shareable_url(&criteria.read()).map(Arc::<str>::from));
 
     rsx! {
-        ShareNotice { shareable_url }
         TaxonNotice {}
         ErrorNotice {}
-        HeaderMetaSection {}
+        WelcomeScreen {}
+        SearchPanelInline {}
+        if searched_once {
+            ShareNotice { shareable_url }
+            HeaderMetaSection {}
+        }
         ResultsViewport {}
     }
+}
+
+#[component]
+fn SearchPanelInline() -> Element {
+    crate::components::search_panel::SearchPanel()
 }
 
 #[cfg(test)]

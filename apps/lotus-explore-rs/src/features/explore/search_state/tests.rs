@@ -175,16 +175,6 @@ fn error_dismissed_clears_error_only() {
 }
 
 #[test]
-fn mobile_filters_toggled_flips_flag() {
-    let state = default_state();
-    assert!(!state.ui.mobile_filters_open);
-    let next = reduce(state, ExploreAction::MobileFiltersToggled);
-    assert!(next.ui.mobile_filters_open);
-    let next2 = reduce(next, ExploreAction::MobileFiltersToggled);
-    assert!(!next2.ui.mobile_filters_open);
-}
-
-#[test]
 fn download_dispatch_start_stop_round_trip() {
     let state = default_state();
     let next = reduce(state, ExploreAction::DownloadDispatchStarted);

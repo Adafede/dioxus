@@ -5,7 +5,6 @@
 
 use crate::components::loading::{DownloadDispatchState, DownloadOnlyState, LoadingState};
 use crate::components::results_table::ResultsTable;
-use crate::components::welcome::WelcomeScreen;
 use crate::state::use_results_context;
 use crate::ui::ContentPhase;
 use dioxus::prelude::*;
@@ -35,11 +34,10 @@ pub fn ResultsViewport() -> Element {
 
     // Get the SPARQL query to show even on error
     let sparql_query = use_result_selector(explore, |result| result.sparql_query.clone());
+    let searched_once = use_result_selector(explore, |result| result.sparql_query.is_some());
 
     match *phase.read() {
-        ContentPhase::Welcome => rsx! {
-            WelcomeScreen {}
-        },
+        ContentPhase::Welcome => rsx! {},
         ContentPhase::Loading => rsx! {
             LoadingState {}
         },
@@ -53,9 +51,13 @@ pub fn ResultsViewport() -> Element {
                 },
             )
         }
-        ContentPhase::Empty => rsx! {
-            ResultsTable {}
-        },
+        ContentPhase::Empty => {
+            if *searched_once.read() {
+                rsx! { ResultsTable {} }
+            } else {
+                rsx! {}
+            }
+        }
         ContentPhase::Loaded => rsx! {
             ResultsTable {}
         },

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Page header: brand title, language switcher, view switcher, subtitle, archive note.
+//! Page header: title, language switcher, view switcher, subtitle, archive note.
 //!
 //! Zero props -- all data comes from context (use_locale, AppStateContext).
 
@@ -11,8 +11,9 @@ use crate::components::layout::view_switch::ViewSwitch;
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
 use crate::ui::a11y_contract::PAGE_TITLE_ID;
-use crate::ui::classes;
 use dioxus::prelude::*;
+
+const LOTUS_LOGO_SVG: &str = include_str!("../../../public/favicon.svg");
 
 /// Full page header section.
 ///
@@ -25,27 +26,33 @@ pub fn PageHeader() -> Element {
 
     rsx! {
         header {
-            class: "sticky top-0 z-3 min-h-[46px] bg-panel/92 backdrop-blur-sm rounded-t-2xl {classes::SHADOW_XS} px-4 sm:px-8",
+            class: "sticky top-0 z-3 min-h-[46px] bg-panel/92 backdrop-blur-sm rounded-t-2xl shadow-xs px-4 sm:px-8",
             div {
-                class: "flex flex-wrap items-start justify-between gap-3 sm:gap-4",
-                h1 { id: PAGE_TITLE_ID,
-                    class: "text-display font-bold truncate",
-                    a {
-                        href: "/dioxus/lotus-explore-rs/",
-                        class: "text-inherit no-underline hover:no-underline",
-                        aria_label: "{t(locale, TextKey::GoToHomepage)}",
-                        "{t(locale, TextKey::PageTitle)}"
+                class: "flex flex-wrap items-center justify-between gap-3 sm:gap-4",
+                div {
+                    class: "w-[90px] shrink-0",
+                    dangerous_inner_html: LOTUS_LOGO_SVG,
+                }
+                div {
+                    h1 { id: PAGE_TITLE_ID,
+                        class: "text-display font-bold truncate",
+                        a {
+                            href: "/dioxus/lotus-explore-rs/",
+                            class: "text-inherit no-underline hover:no-underline",
+                            aria_label: "{t(locale, TextKey::GoToHomepage)}",
+                            "{t(locale, TextKey::PageTitle)}"
+                        }
                     }
                 }
                 div {
-                    class: "flex flex-wrap items-center gap-2 shrink-0",
+                    class: "flex flex-wrap items-center gap-2 min-w-0 max-w-full",
                     ViewSwitch {}
                     LangSwitch {}
                     DarkModeToggle {}
                 }
             }
             p {
-                class: "max-w-none text-title text-critical-muted mt-3 pb-2",
+                class: "max-w-none text-sm leading-6 text-critical-muted mt-3 pb-2",
                 "{t(locale, TextKey::PageSubtitle)}"
             }
         }
