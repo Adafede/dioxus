@@ -9,11 +9,13 @@ use dioxus::prelude::*;
 #[component]
 pub(super) fn ResultsToolbar() -> Element {
     rsx! {
-        div { class: "flex w-full min-w-0 flex-col gap-4 px-0 max-w-none",
-            super::table_toolbar_sections::QueryPanel {}
-            StatBar {}
-            super::table_toolbar_sections::DownloadActionsGroup {}
+        div { class: "w-full max-w-none px-0",
+            div { class: "flex w-full min-w-0 flex-col gap-4",
+                super::table_toolbar_sections::QueryPanel {}
+                super::table_toolbar_sections::StatBar {}
+                super::table_toolbar_sections::DownloadActionsGroup {}
+            }
         }
-        CappedRowsNotice {}
+        super::table_toolbar_sections::CappedRowsNotice {}
     }
 }

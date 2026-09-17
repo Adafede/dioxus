@@ -45,7 +45,7 @@ pub fn QueryPanel() -> Element {
         if *panel_visible.read() {
             if let Some(q) = toolbar_snapshot.read().sparql_query.as_ref() {
                 details {
-                    class: "overflow-hidden",
+                    class: "overflow-hidden contain-layout contain-style contain-size",
                     open: *panel_open.read(),
                     ontoggle: move |_| {
                         let next = !*panel_open.peek();

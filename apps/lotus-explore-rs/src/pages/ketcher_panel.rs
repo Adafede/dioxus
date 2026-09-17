@@ -31,6 +31,8 @@ pub fn KetcherPanel() -> Element {
                         src: "{ketcher_url}",
                         title: "{t(locale, TextKey::KetcherIframeTitle)}",
                         class: "min-h-[420px] w-full flex-1 border-0 bg-surface",
+                        allow: "fullscreen",
+                        referrerpolicy: "no-referrer",
                     }
                 } else {
                     button {

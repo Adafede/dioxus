@@ -25,20 +25,13 @@ fn base_url() -> String {
     String::new()
 }
 
-/// Build absolute asset URL from origin (not including app pathname).
-/// Ketcher and other root-level assets are served from /assets/ at the domain root.
+/// Build absolute asset URL from the current page's base URL (including pathname).
+/// Ketcher and other root-level assets are served from /assets/ at the app's base path.
 #[cfg(target_arch = "wasm32")]
 pub fn asset_url(path: &str) -> String {
-    let win = web_sys::window().expect("web_sys::window");
-    let loc = win.location();
-    let origin = loc.origin().unwrap_or_default();
-    // Ensure path starts with /
-    let path = if path.starts_with('/') {
-        path
-    } else {
-        &format!("/{path}")
-    };
-    format!("{origin}{path}")
+    let base = base_url();
+    let path = if path.starts_with('/') { path } else { &format!("/{path}") };
+    base + path
 }
 
 #[cfg(not(target_arch = "wasm32"))]
