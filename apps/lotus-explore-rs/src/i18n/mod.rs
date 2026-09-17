@@ -88,6 +88,7 @@ pub enum CountNoun {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum TextKey {
     // Generic/meta
     Share,
