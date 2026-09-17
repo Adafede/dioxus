@@ -73,9 +73,7 @@ pub const fn fr_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryTaxon => "Télécharger CSV",
         TextKey::ExampleQueryStructure => "Télécharger JSON",
         TextKey::ExampleQueryAdvanced => "Télécharger RDF",
-        TextKey::WelcomeProgrammaticDownload => {
-            "Modèles d'URL programmatiques (lancer ou télécharger CSV / JSON / RDF) :"
-        }
+        TextKey::ExampleApiUrls => "Exemples d'URLs API",
         TextKey::LabelLanguagePolicy => {
             "Les libellés utilisent d'abord 'mul', puis 'en', pour des résultats comparables."
         }

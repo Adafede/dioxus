@@ -18,7 +18,6 @@ use crate::models::*;
 use crate::queries::classify_structure;
 use crate::state::{use_form_criteria_context, use_results_context};
 use crate::ui::a11y_contract::SEARCH_PANEL_BODY_ID;
-use crate::ui::classes;
 use dioxus::prelude::*;
 
 pub fn SearchPanel() -> Element {
@@ -91,9 +90,9 @@ fn StructureSection() -> Element {
     let view_model = structure_model::build_structure_section_model(kind_value, smiles_search_type);
 
     rsx! {
-        div { class: "{classes::SECTION}",
+        div { class: "flex flex-col gap-1.5 rounded-xl border border-border bg-panel p-1.5 shadow-xs",
             label {
-                class: "{classes::LABEL}",
+                class: "text-body font-semibold text-text",
                 r#for: "smiles-input",
                 "{t(locale, TextKey::StructureSmilesOrMol)}"
             }
@@ -105,18 +104,18 @@ fn StructureSection() -> Element {
                 value: "{smiles}",
                 oninput: move |e| ctx.update(FormAction::Smiles(e.value())),
                 rows: "2",
-                class: "min-h-16 resize-y font-mono {classes::INPUT}",
+                class: "min-h-16 resize-y font-mono w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
             }
             div { class: "flex flex-wrap gap-1.5",
-                span { class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle", "CC" }
-                span { class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle", "CCC" }
-                span { class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle", "c1ccccc1" }
-                span { class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle", "C[C@H](O)CO" }
+                span { class: "rounded-full border border-border bg-panel px-2 py-1 text-micro text-subtle", "CC" }
+                span { class: "rounded-full border border-border bg-panel px-2 py-1 text-micro text-subtle", "CCC" }
+                span { class: "rounded-full border border-border bg-panel px-2 py-1 text-micro text-subtle", "c1ccccc1" }
+                span { class: "rounded-full border border-border bg-panel px-2 py-1 text-micro text-subtle", "C[C@H](O)CO" }
             }
             if let Some(note_key) = view_model.note_key {
-                p { class: "flex flex-wrap items-center gap-2 {classes::HINT}",
+                p { class: "flex flex-wrap items-center gap-2 text-micro text-subtle",
                     span {
-                        class: "{classes::RADIUS_PILL} bg-accent/10 px-1.5 py-0.5 font-semibold text-accent",
+                        class: "rounded-full bg-accent/10 px-1.5 py-0.5 font-semibold text-accent",
                         "{kind_value.label()}"
                     }
                     span { "{t(locale, note_key)}" }
@@ -129,7 +128,7 @@ fn StructureSection() -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        class: "accent-accent h-4 w-4 {classes::FOCUS_RING_BTN}",
+                        class: "accent-accent h-4 w-4 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         checked: smiles_search_type == SmilesSearchType::Substructure,
                         onchange: move |_| {
                             ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Substructure))
@@ -141,7 +140,7 @@ fn StructureSection() -> Element {
                     input {
                         r#type: "radio",
                         name: "stype",
-                        class: "accent-accent h-4 w-4 {classes::FOCUS_RING_BTN}",
+                        class: "accent-accent h-4 w-4 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         checked: smiles_search_type == SmilesSearchType::Similarity,
                         onchange: move |_| {
                             ctx.update(FormAction::SmilesSearchType(SmilesSearchType::Similarity))
@@ -153,7 +152,7 @@ fn StructureSection() -> Element {
             if view_model.show_similarity_threshold {
                 div { class: "flex flex-col gap-1",
                     label {
-                        class: "{classes::MICRO_LABEL}",
+                        class: "text-micro font-semibold uppercase tracking-wide text-subtle",
                         r#for: "threshold-input",
                         "{threshold_label(locale, smiles_threshold)}"
                     }
@@ -167,7 +166,7 @@ fn StructureSection() -> Element {
                         aria_valuemin: "0",
                         aria_valuemax: "1",
                         aria_valuenow: "{smiles_threshold}",
-                        class: "w-full accent-accent cursor-pointer appearance-none h-2 bg-border {classes::RADIUS_SM_CTRL} focus-visible:outline-none {classes::FOCUS_RING} focus-visible:ring-offset-2",
+                        class: "w-full accent-accent cursor-pointer appearance-none h-2 bg-border rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         oninput: move |e| {
                             if let Ok(v) = e.value().parse::<f64>() {
                                 ctx.update(FormAction::SmilesThreshold(v));

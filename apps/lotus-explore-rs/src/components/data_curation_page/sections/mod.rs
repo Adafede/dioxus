@@ -4,7 +4,7 @@
 //! Curation-page UI sections: share-bar, status notice, add-row /
 //! TSV-import / queue / quickstatements cards, plus dark-mode detection.
 
-use crate::components::ui::{Button, ButtonSize, ButtonVariant};
+use crate::components::ui::Button;
 use crate::curation::{CurationInputRow, QuickStatementsBundle};
 use crate::features::curation::services::quickstatements::build_qs_dev_link;
 use crate::hooks::use_add_row_form::AddRowForm;
@@ -17,7 +17,6 @@ use crate::i18n::{
     msg_delay_advice, msg_two_step_hint, placeholder_doi_optional, placeholder_molecule_name,
     placeholder_taxon_optional, t,
 };
-use crate::ui::classes;
 use dioxus::prelude::*;
 use std::sync::Arc;
 use upload::{extract_blob_from_file_data, read_blob_string};
@@ -28,12 +27,12 @@ use crate::features::explore::absolute_share_url;
 #[component]
 pub fn ShareBar(locale: Locale, share: Arc<str>) -> Element {
     rsx! {
-        div { class: "{classes::SHARE_BAR}", role: "status",
-            span { class: "{classes::SHARE_BAR_LABEL}", "{t(locale, TextKey::Share)}" }
+        div { class: "flex flex-col gap-2 p-3 rounded-xl border border-panel-border bg-panel-soft shadow-xs", role: "status",
+            span { class: "text-ui font-semibold text-text2", "{t(locale, TextKey::Share)}" }
             div { class: "flex flex-col gap-2",
                 input {
                     aria_label: "{t(locale, TextKey::CopyShareableLink)}",
-                    class: "w-full font-mono {classes::INPUT}",
+                    class: "w-full font-mono w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                     r#type: "text",
                     readonly: true,
                     value: "{share}",
@@ -85,11 +84,11 @@ mod tests {
 pub fn StatusNotice(locale: Locale, message: Arc<str>) -> Element {
     rsx! {
         div {
-            class: "{classes::NOTICE_BAR} {classes::NOTICE_WARNING}",
+            class: "flex flex-wrap items-center gap-2 rounded-xl border p-2.5 shadow-xs border-warning/35 bg-warning/10",
             role: "status",
             aria_live: "polite",
-            span { class: "{classes::NOTICE_LABEL} {classes::NOTICE_LABEL_WARNING}", "{t(locale, TextKey::Notice)}" }
-            span { class: "{classes::NOTICE_BODY} break-words leading-snug text-inherit", "{message}" }
+            span { class: "inline-flex items-center px-2 py-0.5 rounded-full font-semibold uppercase tracking-[0.08em] text-micro flex-shrink-0 bg-warning/12 text-warning", "{t(locale, TextKey::Notice)}" }
+            span { class: "flex-1 min-w-0 text-ui break-words leading-snug text-inherit", "{message}" }
         }
     }
 }
@@ -123,14 +122,14 @@ pub fn AddRowCard(
             },
             class: "flex flex-col gap-4 rounded-xl bg-panel-soft p-4 shadow-xs",
             h3 { "{heading_add_one_row(locale)}" }
-            div { class: "{classes::FORM_GRID}",
+            div { class: "grid grid-cols-1 gap-3",
                 label { class: "form-label", r#for: "curation-name-input",
                     "{placeholder_molecule_name(locale)}"
                 }
                 input {
                     id: "curation-name-input",
                     name: "name",
-                    class: "form-input {classes::INPUT}",
+                    class: "form-input w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                     r#type: "text",
                     placeholder: "{placeholder_molecule_name(locale)}",
                     value: "{form.name}",
@@ -144,7 +143,7 @@ pub fn AddRowCard(
                 input {
                     id: "curation-smiles-input",
                     name: "smiles",
-                    class: "form-input {classes::INPUT}",
+                    class: "form-input w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                     r#type: "text",
                     placeholder: "SMILES",
                     value: "{form.smiles}",
@@ -158,7 +157,7 @@ pub fn AddRowCard(
                 input {
                     id: "curation-taxon-input",
                     name: "taxon",
-                    class: "form-input {classes::INPUT}",
+                    class: "form-input w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                     r#type: "text",
                     placeholder: "{placeholder_taxon_optional(locale)}",
                     value: "{form.taxon}",
@@ -170,24 +169,22 @@ pub fn AddRowCard(
                 input {
                     id: "curation-doi-input",
                     name: "doi",
-                    class: "form-input {classes::INPUT}",
+                    class: "form-input w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                     r#type: "text",
                     placeholder: "{placeholder_doi_optional(locale)}",
                     value: "{form.doi}",
                     oninput: move |e| form.doi.set(e.value()),
                 }
             }
-            div { class: "{classes::ACTIONS}",
+            div { class: "flex flex-wrap items-center gap-2.5",
                 Button {
                     label: button_add_row(locale).to_string(),
-                    variant: ButtonVariant::Primary,
-                    size: ButtonSize::Sm,
+                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2 min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98]",
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_add_row.call(()))),
                 }
                 Button {
                     label: button_load_example_rows(locale).to_string(),
-                    variant: ButtonVariant::Secondary,
-                    size: ButtonSize::Sm,
+                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] opacity-50 cursor-not-allowed pointer-events-none",
                     disabled: processing,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_load_examples.call(()))),
                 }
@@ -234,7 +231,7 @@ pub fn TsvImportCard(
             textarea {
                 id: "curation-tsv-input",
                 name: "tsv",
-                class: "{classes::TEXTAREA_130}",
+                class: "form-textarea mono w-full min-h-[130px] rounded-xl border border-border bg-surface p-2.5 font-mono text-body text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                 aria_describedby: "curation-tsv-hint",
                 value: "{tsv_input}",
                 oninput: move |e| tsv_input.set(e.value()),
@@ -242,11 +239,10 @@ pub fn TsvImportCard(
             p { id: "curation-tsv-hint", class: "sr-only",
                 "{hint_expected_tsv_headers(locale)}"
             }
-            div { class: "{classes::ACTIONS}",
+            div { class: "flex flex-wrap items-center gap-2.5",
                 Button {
                     label: button_append_tsv_rows(locale).to_string(),
-                    variant: ButtonVariant::Secondary,
-                    size: ButtonSize::Sm,
+                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] opacity-50 cursor-not-allowed pointer-events-none",
                     disabled: processing || !has_tsv_input,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_parse_tsv.call(()))),
                 }
@@ -299,14 +295,13 @@ pub fn QueueRowsCard(
                     } else {
                         button_generate_quickstatements(locale).to_string()
                     },
-                    variant: ButtonVariant::Primary,
-                    size: ButtonSize::Sm,
+                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2 min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] opacity-50 cursor-not-allowed pointer-events-none",
                     disabled: processing,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_process.call(()))),
                 }
             }
             div {
-                class: "w-full overflow-x-auto {classes::RADIUS_CARD} {classes::BORDER_PANEL} focus-visible:outline-none {classes::FOCUS_RING_BTN}",
+                class: "w-full overflow-x-auto rounded-xl border border-panel-border focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                 role: "region",
                 tabindex: "0",
                 aria_label: "{heading_queued_rows(locale)}",
@@ -314,34 +309,33 @@ pub fn QueueRowsCard(
                     class: "w-full min-w-max table-auto border-collapse text-ui",
                     thead {
                         tr { class: "text-left",
-                            th { scope: "col", class: "{classes::TABLE_TH} {classes::QUEUE_ACTION_COL}", "{col_action(locale)}" }
-                            th { scope: "col", class: "{classes::TABLE_TH} {classes::QUEUE_INDEX_COL}", "#" }
-                            th { scope: "col", class: "{classes::TABLE_TH} w-[140px] min-w-[140px]", "{col_name(locale)}" }
-                            th { scope: "col", class: "{classes::TABLE_TH} min-w-[220px]", "SMILES" }
-                            th { scope: "col", class: "{classes::TABLE_TH} w-[140px] min-w-[140px]", "{t(locale, TextKey::TaxonCol)}" }
-                            th { scope: "col", class: "{classes::TABLE_TH} w-[140px] min-w-[140px]", "DOI" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[110px] min-w-[110px]", "{col_action(locale)}" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted min-w-[3ch]", "#" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[140px] min-w-[140px]", "{col_name(locale)}" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted min-w-[220px]", "SMILES" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[140px] min-w-[140px]", "{t(locale, TextKey::TaxonCol)}" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[140px] min-w-[140px]", "DOI" }
                         }
                     }
                     tbody {
                         if rows_snapshot.is_empty() {
                             tr {
-                                td { class: "{classes::TD} {classes::QUEUE_ACTION_COL} font-mono text-micro", "-" }
-                                td { class: "{classes::TD} {classes::QUEUE_INDEX_COL} font-mono text-micro", "-" }
-                                td { class: "{classes::TD} font-mono text-micro", "-" }
-                                td { class: "{classes::TD} min-w-[220px] font-mono text-micro", "-" }
-                                td { class: "{classes::TD} font-mono text-micro", "-" }
-                                td { class: "{classes::TD} font-mono text-micro", "-" }
+                                td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui w-[110px] min-w-[110px] font-mono text-micro", "-" }
+                                td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui min-w-[3ch] font-mono text-micro", "-" }
+                                td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro", "-" }
+                                td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui min-w-[220px] font-mono text-micro", "-" }
+                                td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro", "-" }
+                                td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro", "-" }
                             }
                         } else {
                             for (idx, row) in rows_snapshot.iter().enumerate() {
                                 tr { key: "{row.name}|{row.smiles}",
-                                    class: "odd:bg-surface/30 hover:bg-surface/60 focus-visible:outline-none {classes::FOCUS_RING} focus-visible:ring-offset-[-2px]",
+                                    class: "odd:bg-surface/30 hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 focus-visible:ring-offset-[-2px]",
                                     tabindex: "0",
-                                    td { class: "{classes::TD} {classes::QUEUE_ACTION_COL}",
+                                    td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui w-[110px] min-w-[110px]",
                                         Button {
                                             label: button_remove(locale).to_string(),
-                                            variant: ButtonVariant::Danger,
-                                            size: ButtonSize::Sm,
+                                            class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-danger/35 bg-danger/10 text-danger font-semibold hover:bg-danger/15 active:bg-danger/20 min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98]",
                                             onclick: Some(EventHandler::new(move |_: Event<MouseData>| {
                                                 let row_count = rows.read().len();
                                                 if idx < row_count {
@@ -350,11 +344,11 @@ pub fn QueueRowsCard(
                                             })),
                                         }
                                     }
-                                    td { class: "{classes::TD} {classes::QUEUE_INDEX_COL} font-mono text-micro", "{idx + 1}" }
-                                    td { class: "{classes::TD}", "{row.name}" }
-                                    td { class: "{classes::TD} min-w-[220px]", "{row.smiles}" }
-                                    td { class: "{classes::TD}", "{row.taxon.as_deref().unwrap_or(\"\")}" }
-                                    td { class: "{classes::TD} font-mono text-micro", "{row.doi.as_deref().unwrap_or(\"\")}" }
+                                    td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui min-w-[3ch] font-mono text-micro", "{idx + 1}" }
+                                    td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui", "{row.name}" }
+                                    td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui min-w-[220px]", "{row.smiles}" }
+                                    td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui", "{row.taxon.as_deref().unwrap_or(\"\")}" }
+                                    td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro", "{row.doi.as_deref().unwrap_or(\"\")}" }
                                 }
                             }
                         }
@@ -403,15 +397,14 @@ pub fn QuickStatementsCard(
                     }
                 }
                 textarea {
-                    class: "{classes::TEXTAREA_220}",
+                    class: "form-textarea mono w-full min-h-[220px] rounded-xl border border-border bg-surface p-2.5 font-mono text-body text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                     aria_label: "{heading_quickstatements_dependencies(locale)}",
                     readonly: true,
                     value: "{qs_ref.dependencies}",
                 }
                 Button {
                     label: button_second_pass(locale).to_string(),
-                    variant: ButtonVariant::Secondary,
-                    size: ButtonSize::Sm,
+                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] opacity-50 cursor-not-allowed pointer-events-none",
                     disabled: processing,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_second_pass.call(()))),
                 }
@@ -435,7 +428,7 @@ pub fn QuickStatementsCard(
                     }
                 }
                 textarea {
-                    class: "{classes::TEXTAREA_220}",
+                    class: "form-textarea mono w-full min-h-[220px] rounded-xl border border-border bg-surface p-2.5 font-mono text-body text-text shadow-xs focus:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                     aria_label: "{heading_quickstatements(locale)}",
                     readonly: true,
                     value: "{qs_ref.main}",

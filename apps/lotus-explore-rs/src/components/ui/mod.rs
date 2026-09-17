@@ -13,6 +13,6 @@ pub mod card;
 #[allow(unused_imports)]
 pub use badge::{BadgeVariant, StatusBadge};
 #[allow(unused_imports)]
-pub use button::{Button, ButtonSize, ButtonVariant};
+pub use button::Button;
 #[allow(unused_imports)]
 pub use card::{Card, CardProps};

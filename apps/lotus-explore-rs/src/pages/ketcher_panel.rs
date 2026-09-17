@@ -5,7 +5,6 @@
 
 use crate::document_head::asset_url;
 use crate::i18n::{TextKey, t};
-use crate::ui::classes;
 use dioxus::prelude::*;
 
 #[component]
@@ -18,7 +17,7 @@ pub fn KetcherPanel() -> Element {
             class: "flex w-full flex-col gap-3",
             div {
                 class: "flex flex-col gap-3 p-4",
-                p { class: "{classes::HINT} px-1",
+                p { class: "text-micro text-subtle px-1",
                     "{t(locale, TextKey::KetcherHintA)}"
                     strong { class: "text-muted", "{t(locale, TextKey::KetcherSummary)}" }
                     "{t(locale, TextKey::KetcherHintB)}"
@@ -36,10 +35,10 @@ pub fn KetcherPanel() -> Element {
                 } else {
                     button {
                         aria_label: "{t(locale, TextKey::KetcherIframeTitle)}",
-                        class: "flex min-h-[420px] w-full flex-1 cursor-pointer items-center justify-center border-0 bg-bg text-center hover:bg-panel-soft {classes::FOCUS_RING_BTN} focus-visible:rounded",
+                        class: "flex min-h-[420px] w-full flex-1 cursor-pointer items-center justify-center border-0 bg-bg text-center hover:bg-panel-soft focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 focus-visible:rounded",
                         onclick: move |_| ketcher_ready.set(true),
                         em {
-                            class: "{classes::HINT}",
+                            class: "text-micro text-subtle",
                             "{t(locale, TextKey::KetcherClickToLoad)}"
                         }
                     }

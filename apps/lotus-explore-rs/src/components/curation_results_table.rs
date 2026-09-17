@@ -8,7 +8,6 @@ use crate::i18n::{
     curation_badge_second_pass_required, curation_mass_warning_title, curation_status_label,
     hint_scroll_curation_results, label_new_item, t,
 };
-use crate::ui::classes;
 use dioxus::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -82,7 +81,7 @@ fn render_curation_result_cells(locale: Locale, row: &CurationResultRow) -> Elem
         td { class: "{TD} {MONO_NB}", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
         td { class: "{TD} {MONO}", "{row.inchi.as_deref().unwrap_or(NA_TEXT)}" }
         td { class: "{TD} {MONO_NB}", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
-        td { class: "{TD} {MONO_NB}", "{format_mass(row.exact_mass)}" }
+        td { class: "{TD} {MONO}", "{format_mass(row.exact_mass)}" }
     }
 }
 
@@ -101,7 +100,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                 "{hint_scroll_curation_results(locale)}"
             }
             div {
-                class: "w-full overflow-x-auto {classes::RADIUS_PANEL} border border-panel-border bg-panel shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                class: "w-full overflow-x-auto rounded-xl border border-panel-border bg-panel shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
                 role: "region",
                 tabindex: "0",
                 aria_label: "{crate::i18n::heading_results(locale)}",
@@ -123,7 +122,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     tbody {
                         for (idx, row) in rows.iter().enumerate() {
                             tr { key: "{row.inchikey.as_deref().unwrap_or(&idx.to_string())}",
-                                class: "odd:bg-surface/30 hover:bg-surface/40 focus-visible:outline-none {classes::FOCUS_RING} focus-visible:ring-offset-[-2px]",
+                                class: "odd:bg-surface/30 hover:bg-surface/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 focus-visible:ring-offset-[-2px]",
                                 tabindex: "0",
                                 {render_curation_result_cells(locale, row)}
                             }

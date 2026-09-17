@@ -6,7 +6,6 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
 use crate::state::use_results_context;
-use crate::ui::classes;
 use dioxus::prelude::*;
 
 #[component]
@@ -53,12 +52,12 @@ pub fn QueryPanel() -> Element {
                         panel_open.set(next);
                     },
                     summary {
-                        class: "flex w-full min-w-0 cursor-pointer select-none items-center gap-2 bg-panel-soft px-3 py-2 text-ui font-semibold text-muted hover:bg-bg {classes::FOCUS_RING_BTN}",
+                        class: "flex w-full min-w-0 cursor-pointer select-none items-center gap-2 bg-panel-soft px-3 py-2 text-ui font-semibold text-muted hover:bg-bg focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         span {
                             class: if *panel_open.read() {
-                                "inline-block rotate-90 text-subtle {classes::TRANSITION_TRANSFORM}"
+                                "inline-block rotate-90 text-subtle transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)]"
                             } else {
-                                "inline-block text-subtle {classes::TRANSITION_TRANSFORM}"
+                                "inline-block text-subtle transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)]"
                             },
                             "▶"
                         }
@@ -72,7 +71,7 @@ pub fn QueryPanel() -> Element {
                             locale,
                         }
                         pre {
-                            class: "m-0 max-h-96 overflow-y-auto whitespace-pre-wrap break-all {classes::RADIUS_CARD} border border-border bg-surface p-4 font-mono text-ui text-text",
+                            class: "m-0 max-h-96 overflow-y-auto whitespace-pre-wrap break-all rounded-xl border border-border bg-surface p-4 font-mono text-ui text-text",
                             "{q.as_ref()}"
                         }
                     }

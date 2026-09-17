@@ -8,14 +8,13 @@ use super::super::download_model::{
     DOWNLOAD_METADATA_SPEC, DOWNLOAD_QUERY_CSV_SPEC, DOWNLOAD_QUERY_JSON_SPEC,
     DOWNLOAD_QUERY_RDF_SPEC, DownloadQuerySpec, build_download_toolbar_model_with_endpoint,
 };
-use crate::components::ui::{Button, ButtonSize, ButtonVariant};
+use crate::components::ui::Button;
 use crate::download::{DownloadFormat, execute_download, trigger_download};
 use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{TextKey, t};
 use crate::models::SearchCriteria;
 use crate::perf;
 use crate::state::use_results_context;
-use crate::ui::classes;
 use dioxus::prelude::*;
 use std::sync::Arc;
 
@@ -123,7 +122,7 @@ fn DownloadStatusSpinner(
         span {
             role: "status",
             aria_live: "polite",
-            class: "inline-flex items-center gap-2 {classes::RADIUS_SM_CTRL} border border-border px-3 py-1.5 text-ui font-semibold text-muted",
+            class: "inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-ui font-semibold text-muted",
             span { class: "spinner-sm", "aria-hidden": "true" }
             {text}
         }
@@ -149,9 +148,7 @@ fn DownloadQueryButton(
         Button {
             r#type: "button",
             disabled,
-            variant: ButtonVariant::Secondary,
-            size: ButtonSize::Sm,
-            class: Some(TOOLBAR_ACTION_CLASS.to_string()),
+            class: Some(format!("{} inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98]", TOOLBAR_ACTION_CLASS)),
             title: Some(title.to_string()),
             aria_label: Some(title.to_string()),
             label: Some(label.to_string()),
@@ -195,9 +192,7 @@ fn DownloadMetadataButton(
         Button {
             r#type: "button",
             disabled,
-            variant: ButtonVariant::Secondary,
-            size: ButtonSize::Sm,
-            class: Some(TOOLBAR_ACTION_CLASS.to_string()),
+            class: Some(format!("{} inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98]", TOOLBAR_ACTION_CLASS)),
             aria_label: Some(title.to_string()),
             label: Some(label.to_string()),
             onclick: {
@@ -314,9 +309,7 @@ pub fn DownloadActionsGroup() -> Element {
                         li {
                             Button {
                                 r#type: "button",
-                                variant: ButtonVariant::Secondary,
-                                size: ButtonSize::Sm,
-                                class: Some(TOOLBAR_ACTION_CLASS.to_string()),
+                                class: Some(format!("{} inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98]", TOOLBAR_ACTION_CLASS)),
                                 title: Some(format!("{open_in_title} ({endpoint_name})")),
                                 aria_label: Some(format!("{open_in_title} ({endpoint_name})")),
                                 label: Some(format!("Open in {endpoint_name}")),

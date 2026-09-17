@@ -71,9 +71,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryTaxon => "CSV herunterladen",
         TextKey::ExampleQueryStructure => "JSON herunterladen",
         TextKey::ExampleQueryAdvanced => "RDF herunterladen",
-        TextKey::WelcomeProgrammaticDownload => {
-            "Programmgesteuerte URL-Parameter (Abfrage ausführen oder CSV / JSON / RDF laden):"
-        }
+        TextKey::ExampleApiUrls => "API-URL-Beispiele",
         TextKey::LabelLanguagePolicy => {
             "Beschriftungen werden zuerst aus 'mul' und dann 'en' aufgelöst, damit Ergebnisse vergleichbar bleiben."
         }

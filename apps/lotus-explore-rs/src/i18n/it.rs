@@ -75,9 +75,7 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryTaxon => "Scarica CSV",
         TextKey::ExampleQueryStructure => "Scarica JSON",
         TextKey::ExampleQueryAdvanced => "Scarica RDF",
-        TextKey::WelcomeProgrammaticDownload => {
-            "Parametri URL programmatici (eseguire o scaricare CSV / JSON / RDF):"
-        }
+        TextKey::ExampleApiUrls => "Esempi di URL API",
         TextKey::LabelLanguagePolicy => {
             "Le etichette usano prima 'mul' e poi 'en' per risultati confrontabili."
         }

@@ -1,50 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Shared Button component using Lotus token Tailwind classes.
+//! Shared Button component using inline Tailwind classes.
 
-use crate::ui::classes;
 use dioxus::prelude::*;
-
-/// Visual variant for the button.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub enum ButtonVariant {
-    /// Solid primary brand action
-    #[default]
-    Primary,
-    /// Bordered secondary action on surface
-    Secondary,
-    /// Destructive action
-    Danger,
-    /// Emphasized primary (e.g. dirty search)
-    Accent,
-}
-
-/// Size variant for the button.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub enum ButtonSize {
-    /// Compact toolbar / dense form control (34px min-height) - uses RADIUS_SM_CTRL (4px)
-    #[default]
-    Sm,
-    /// Standard form / card button (40px min-height) - uses RADIUS_INPUT (6px)
-    Md,
-}
 
 /// Props for the Button component.
 #[derive(Props, Clone, PartialEq)]
 pub struct ButtonProps {
     #[props(default)]
     pub label: Option<String>,
-    #[props(default)]
-    pub variant: ButtonVariant,
-    #[props(default)]
-    pub size: ButtonSize,
+    #[props(default = "button")]
+    pub r#type: &'static str,
     #[props(default)]
     pub disabled: bool,
     #[props(default)]
     pub loading: bool,
-    #[props(default = "button")]
-    pub r#type: &'static str,
     #[props(default)]
     pub title: Option<String>,
     #[props(default)]
@@ -65,25 +36,6 @@ pub struct ButtonProps {
 
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
-    let size_classes = match props.size {
-        ButtonSize::Sm => classes::BTN_SIZE_SM,
-        ButtonSize::Md => classes::BTN_SIZE_MD,
-    };
-
-    // Variants map 1:1 to token composites — no inline duplication
-    let variant_classes = match props.variant {
-        ButtonVariant::Primary => classes::BTN_PRIMARY,
-        ButtonVariant::Secondary => classes::BTN_SECONDARY,
-        ButtonVariant::Danger => classes::BTN_DANGER,
-        ButtonVariant::Accent => classes::BTN_ACCENT,
-    };
-
-    let state_classes = if props.disabled || props.loading {
-        classes::DISABLED
-    } else {
-        classes::ACTIVE_SCALE
-    };
-
     let custom_classes = props.class.as_deref().unwrap_or("");
 
     rsx! {
@@ -95,7 +47,7 @@ pub fn Button(props: ButtonProps) -> Element {
             aria_controls: props.aria_controls.as_deref().unwrap_or_default(),
             aria_expanded: props.aria_expanded.as_deref().unwrap_or_default(),
             aria_pressed: props.aria_pressed.as_deref().unwrap_or_default(),
-            class: "inline-flex items-center justify-center font-sans select-none {size_classes} {variant_classes} {state_classes} {custom_classes}",
+            class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2 min-h-[40px] gap-2 px-3.5 py-2 text-ui active:scale-[0.98] cursor-pointer {custom_classes}",
             onclick: move |evt| {
                 if !props.disabled && !props.loading
                     && let Some(handler) = props.onclick.as_ref() {
@@ -104,7 +56,7 @@ pub fn Button(props: ButtonProps) -> Element {
             },
             if props.loading {
                 span {
-                    class: "inline-block size-3.5 {classes::RADIUS_FULL} border-2 border-current border-t-transparent animate-spin",
+                    class: "inline-block size-3.5 rounded-full border-2 border-current border-t-transparent animate-spin",
                     "aria-hidden": "true",
                 }
             }

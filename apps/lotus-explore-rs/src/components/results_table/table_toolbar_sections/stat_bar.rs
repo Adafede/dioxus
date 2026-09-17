@@ -5,9 +5,26 @@ use crate::features::explore::use_toolbar_result_snapshot;
 use crate::i18n::{CountNoun, TextKey, count_label, format_count, t};
 use crate::models::DatasetStats;
 use crate::state::use_results_context;
-use crate::ui::StatStripe;
-use crate::ui::classes;
 use dioxus::prelude::*;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StatStripe {
+    Compound,
+    Taxon,
+    Reference,
+    Entries,
+}
+
+impl StatStripe {
+    pub const fn as_color(&self) -> &'static str {
+        match self {
+            Self::Compound => "var(--footer-wd-compound)",
+            Self::Taxon => "var(--footer-wd-taxon)",
+            Self::Reference => "var(--footer-wd-reference)",
+            Self::Entries => "var(--footer-wd-entries)",
+        }
+    }
+}
 
 #[component]
 fn StatBadge(
@@ -41,7 +58,7 @@ fn StatBadge(
     };
     rsx! {
         article {
-            class: "relative flex min-w-[140px] flex-[1_1_180px] flex-col gap-1 overflow-hidden {classes::RADIUS_CARD} border p-3 shadow-xs {bg} {border}",
+            class: "relative flex min-w-[140px] flex-[1_1_180px] flex-col gap-1 overflow-hidden rounded-xl border p-3 shadow-xs {bg} {border}",
             style: "border-left: 4px solid {stripe.as_color()}",
             div {
                 class: "flex items-baseline gap-1.5",
@@ -137,7 +154,7 @@ pub fn CappedRowsNotice() -> Element {
     rsx! {
         if toolbar_snapshot.read().display_capped_rows {
             div {
-                class: "mt-2 flex items-center gap-2 {classes::RADIUS_CARD} border border-warning/35 bg-warning/10 p-2.5 text-ui font-medium text-warning",
+                class: "mt-2 flex items-center gap-2 rounded-xl border border-warning/35 bg-warning/10 p-2.5 text-ui font-medium text-warning",
                 role: "status",
                 aria_live: "polite",
                 span { class: "text-sm font-bold", "⚠️" }

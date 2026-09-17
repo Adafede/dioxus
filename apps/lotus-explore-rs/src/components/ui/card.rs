@@ -3,7 +3,6 @@
 
 //! Card component for grouped content.
 
-use crate::ui::classes;
 use dioxus::prelude::*;
 
 #[derive(Props, Clone, PartialEq)]
@@ -18,12 +17,15 @@ pub struct CardProps {
 
 #[component]
 pub fn Card(props: CardProps) -> Element {
-    let base_class = format!("{} p-4 lg:p-6 {}", classes::CARD, props.class);
+    let base_class = format!(
+        "flex flex-col gap-4 rounded-xl border border-panel-border bg-panel-soft p-4 shadow-xs {}",
+        props.class
+    );
 
     if let Some(href) = &props.href {
         rsx! {
             article {
-                class: "{base_class} transition-shadow duration-200 hover:{classes::SHADOW_MD}",
+                class: "{base_class} transition-shadow duration-200 hover:shadow-md",
                 a {
                     href: href,
                     class: "block",

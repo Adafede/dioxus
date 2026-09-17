@@ -3,37 +3,11 @@
 
 //! UI composition primitives used by live components.
 //!
-//! All styling is now done via Tailwind classes with design tokens.
+//! All styling is now done via inline Tailwind classes with design tokens.
 //! Legacy CSS-in-Rust modules have been removed.
 
 pub mod a11y_contract;
 mod a11y_smoke;
-pub mod classes;
-
-/// Type-safe stat stripe colors (instead of string parameters).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StatStripe {
-    /// Compound statistic stripe color
-    Compound,
-    /// Taxon statistic stripe color
-    Taxon,
-    /// Reference statistic stripe color
-    Reference,
-    /// Entries statistic stripe color
-    Entries,
-}
-
-impl StatStripe {
-    /// Get the CSS color variable for this stripe.
-    pub const fn as_color(&self) -> &'static str {
-        match self {
-            Self::Compound => ui::styles::lotus::tokens::FOOTER_WD_COMPOUND,
-            Self::Taxon => ui::styles::lotus::tokens::FOOTER_WD_TAXON,
-            Self::Reference => ui::styles::lotus::tokens::FOOTER_WD_REFERENCE,
-            Self::Entries => ui::styles::lotus::tokens::FOOTER_WD_ENTRIES,
-        }
-    }
-}
 
 /// A content-phase enumeration for better state-driven UI rendering.
 ///

@@ -6,7 +6,6 @@ use crate::features::explore::selectors::use_criteria_selector;
 use crate::i18n::{TextKey, t};
 use crate::models::ElementState;
 use crate::state::use_form_criteria_context;
-use crate::ui::classes;
 use dioxus::prelude::*;
 
 use super::shared::{FormulaSectionState, parse_u16_input};
@@ -23,10 +22,10 @@ fn ElemStateSelect(
 
     rsx! {
         div { class: "flex flex-col gap-0.5",
-            label { class: "{classes::MICRO_LABEL}", r#for: "{select_id}", "{label}" }
+            label { class: "text-micro font-semibold uppercase tracking-wide text-subtle", r#for: "{select_id}", "{label}" }
             select {
                 id: "{select_id}",
-                class: "{classes::INPUT_SM}",
+                class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                 aria_label: "{label} {t(locale, TextKey::ElementRequirement)}",
                 value: "{value.as_str()}",
                 onchange: move |e| on_change.call(e.value().parse::<ElementState>().unwrap_or_default()),
@@ -52,15 +51,15 @@ fn NumPair(
     let max_id = format!("{}-max", label.to_lowercase());
 
     rsx! {
-        div { class: "{classes::SECTION}",
-            p { class: "{classes::HINT}", "{label}" }
+        div { class: "flex flex-col gap-1.5 rounded-xl border border-border bg-panel p-1.5 shadow-xs",
+            p { class: "text-micro text-subtle", "{label}" }
             div { class: "formula-minmax-grid",
                 div { class: "flex flex-col gap-0.5",
-                    label { class: "{classes::MICRO_LABEL}", r#for: "{min_id}", "{t(locale, TextKey::MinCount)}" }
+                    label { class: "text-micro font-semibold uppercase tracking-wide text-subtle", r#for: "{min_id}", "{t(locale, TextKey::MinCount)}" }
                     input {
                         r#type: "number",
                         id: "{min_id}",
-                        class: "tabular-nums {classes::INPUT_SM}",
+                        class: "tabular-nums w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         min: "0",
                         max: "10000",
                         aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
@@ -73,11 +72,11 @@ fn NumPair(
                     }
                 }
                 div { class: "flex flex-col gap-0.5",
-                    label { class: "{classes::MICRO_LABEL}", r#for: "{max_id}", "{t(locale, TextKey::MaxCount)}" }
+                    label { class: "text-micro font-semibold uppercase tracking-wide text-subtle", r#for: "{max_id}", "{t(locale, TextKey::MaxCount)}" }
                     input {
                         r#type: "number",
                         id: "{max_id}",
-                        class: "tabular-nums {classes::INPUT_SM}",
+                        class: "tabular-nums w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         min: "0",
                         max: "10000",
                         aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",
@@ -123,7 +122,7 @@ pub fn FormulaSection() -> Element {
     let enabled = criteria.formula_enabled;
 
     rsx! {
-        div { class: "{classes::SECTION}",
+        div { class: "flex flex-col gap-1.5 rounded-xl border border-border bg-panel p-1.5 shadow-xs",
             label { class: "flex cursor-pointer items-center gap-1.5 text-ui text-muted",
                 input {
                     r#type: "checkbox",
@@ -138,14 +137,14 @@ pub fn FormulaSection() -> Element {
             if enabled {
                 div { class: "flex flex-col gap-3",
                     div { class: "flex flex-col gap-1.5",
-                        label { class: "{classes::MICRO_LABEL}", r#for: "formula-exact",
+                        label { class: "text-micro font-semibold uppercase tracking-wide text-subtle", r#for: "formula-exact",
                             "{t(locale, TextKey::ExactFormula)}"
                         }
                         input {
                             id: "formula-exact",
                             name: "formula_exact",
                             r#type: "text",
-                            class: "{classes::INPUT}",
+                            class: "w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                             autocomplete: "off",
                             spellcheck: "false",
                             placeholder: "C15H10O5",

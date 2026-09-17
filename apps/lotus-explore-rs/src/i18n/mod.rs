@@ -140,10 +140,10 @@ pub enum TextKey {
     ExampleGentiana,
     ExampleSmilesOnly,
     ExampleQueryExecute,
+    ExampleApiUrls,
     ExampleQueryTaxon,
     ExampleQueryStructure,
     ExampleQueryAdvanced,
-    WelcomeProgrammaticDownload,
     LabelLanguagePolicy,
     // Search panel
     SearchFilters,

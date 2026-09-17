@@ -3,7 +3,7 @@
 
 //! Reusable "copy to clipboard" button.
 
-use crate::components::ui::{Button, ButtonSize, ButtonVariant};
+use crate::components::ui::Button;
 use crate::i18n::{Locale, TextKey, t};
 use dioxus::prelude::*;
 use std::sync::Arc;
@@ -33,9 +33,7 @@ pub fn CopyButton(
             r#type: "button",
             title: Some(title_attr.to_string()),
             aria_label: Some(title_attr.to_string()),
-            variant: ButtonVariant::Secondary,
-            size: ButtonSize::Sm,
-            class: Some(class.to_string()),
+            class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] {class}",
             onclick: move |_| {
                 copy_to_clipboard(text.as_ref());
                 *copied.write() = true;

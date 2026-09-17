@@ -6,7 +6,6 @@ use crate::features::explore::interactions::use_explore_interactions;
 use crate::features::explore::selectors::use_criteria_selector;
 use crate::i18n::{TextKey, t};
 use crate::state::use_form_criteria_context;
-use crate::ui::classes;
 use dioxus::prelude::*;
 
 use super::shared::{normalized_year_input_max, parse_f64_input, parse_u16_input};
@@ -20,9 +19,9 @@ pub fn TaxonInput() -> Element {
     let interactions = use_explore_interactions();
     let taxon = use_criteria_selector(ctx.criteria, |c| c.taxon.clone());
     rsx! {
-        div { class: "{classes::SECTION}",
+        div { class: "flex flex-col gap-1.5 rounded-xl border border-border bg-panel p-1.5 shadow-xs",
             label {
-                class: "{classes::LABEL}",
+                class: "text-body font-semibold text-text",
                 r#for: "taxon-input",
                 "{t(locale, TextKey::Taxon)}"
             }
@@ -34,7 +33,7 @@ pub fn TaxonInput() -> Element {
                 spellcheck: "false",
                 placeholder: "{t(locale, TextKey::TaxonPlaceholder)}",
                 value: "{taxon.read()}",
-                class: "{classes::INPUT}",
+                class: "w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                 list: "taxon-suggestions",
                 oninput: move |e| ctx.update(FormAction::Taxon(e.value())),
                 onkeydown: move |e| {
@@ -51,7 +50,7 @@ pub fn TaxonInput() -> Element {
             div { class: "flex flex-wrap gap-1.5",
                 for item in TAXON_SUGGESTIONS {
                     span {
-                        class: "{classes::RADIUS_PILL} border border-border bg-panel px-2 py-1 text-micro text-subtle",
+                        class: "rounded-full border border-border bg-panel px-2 py-1 text-micro text-subtle",
                         "{item}"
                     }
                 }
@@ -71,12 +70,12 @@ pub fn MassRangeInput() -> Element {
         div {
             role: "group",
             aria_labelledby: "mass-range-label",
-            class: "{classes::SECTION}",
-            p { id: "mass-range-label", class: "{classes::LABEL}", "{t(locale, TextKey::MolecularMass)}" }
+            class: "flex flex-col gap-1.5 rounded-xl border border-border bg-panel p-1.5 shadow-xs",
+            p { id: "mass-range-label", class: "text-body font-semibold text-text", "{t(locale, TextKey::MolecularMass)}" }
             div { class: "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2",
                 div { class: "flex min-w-0 flex-col gap-0.5",
                     label {
-                        class: "{classes::MICRO_LABEL}",
+                        class: "text-micro font-semibold uppercase tracking-wide text-subtle",
                         r#for: "mass-min",
                         "{t(locale, TextKey::Min)}"
                     }
@@ -88,7 +87,7 @@ pub fn MassRangeInput() -> Element {
                         max: "10000",
                         step: "1",
                         value: "{min_value}",
-                        class: "{classes::INPUT_SM}",
+                        class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         oninput: move |e| {
                             if let Some(v) = parse_f64_input(&e.value()) {
                                 ctx.update(FormAction::MassMin(v));
@@ -99,7 +98,7 @@ pub fn MassRangeInput() -> Element {
                 span { aria_hidden: "true", class: "pb-2 text-subtle", "-" }
                 div { class: "flex min-w-0 flex-col gap-0.5",
                     label {
-                        class: "{classes::MICRO_LABEL}",
+                        class: "text-micro font-semibold uppercase tracking-wide text-subtle",
                         r#for: "mass-max",
                         "{t(locale, TextKey::Max)}"
                     }
@@ -111,7 +110,7 @@ pub fn MassRangeInput() -> Element {
                         max: "10000",
                         step: "1",
                         value: "{max_value}",
-                        class: "{classes::INPUT_SM}",
+                        class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         oninput: move |e| {
                             if let Some(v) = parse_f64_input(&e.value()) {
                                 ctx.update(FormAction::MassMax(v));
@@ -138,12 +137,12 @@ pub fn YearRangeInput() -> Element {
         div {
             role: "group",
             aria_labelledby: "year-range-label",
-            class: "{classes::SECTION}",
-            p { id: "year-range-label", class: "{classes::LABEL}", "{t(locale, TextKey::PublicationYear)}" }
+            class: "flex flex-col gap-1.5 rounded-xl border border-border bg-panel p-1.5 shadow-xs",
+            p { id: "year-range-label", class: "text-body font-semibold text-text", "{t(locale, TextKey::PublicationYear)}" }
             div { class: "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2",
                 div { class: "flex min-w-0 flex-col gap-0.5",
                     label {
-                        class: "{classes::MICRO_LABEL}",
+                        class: "text-micro font-semibold uppercase tracking-wide text-subtle",
                         r#for: "year-min",
                         "{t(locale, TextKey::YearFrom)}"
                     }
@@ -155,7 +154,7 @@ pub fn YearRangeInput() -> Element {
                         max: "{current}",
                         step: "1",
                         value: "{min_value}",
-                        class: "{classes::INPUT_SM}",
+                        class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         oninput: move |e| {
                             if let Some(v) = parse_u16_input(&e.value()) {
                                 ctx.update(FormAction::YearMin(v));
@@ -166,7 +165,7 @@ pub fn YearRangeInput() -> Element {
                 span { aria_hidden: "true", class: "pb-2 text-subtle", "-" }
                 div { class: "flex min-w-0 flex-col gap-0.5",
                     label {
-                        class: "{classes::MICRO_LABEL}",
+                        class: "text-micro font-semibold uppercase tracking-wide text-subtle",
                         r#for: "year-max",
                         "{t(locale, TextKey::YearTo)}"
                     }
@@ -178,7 +177,7 @@ pub fn YearRangeInput() -> Element {
                         max: "{current}",
                         step: "1",
                         value: "{max_value}",
-                        class: "{classes::INPUT_SM}",
+                        class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         oninput: move |e| {
                             if let Some(v) = parse_u16_input(&e.value()) {
                                 ctx.update(FormAction::YearMax(v));

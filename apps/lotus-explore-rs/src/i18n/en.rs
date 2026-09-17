@@ -69,9 +69,7 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::ExampleQueryTaxon => "Download CSV",
         TextKey::ExampleQueryStructure => "Download JSON",
         TextKey::ExampleQueryAdvanced => "Download RDF",
-        TextKey::WelcomeProgrammaticDownload => {
-            "Programmatic URL patterns (run or download CSV / JSON / RDF):"
-        }
+        TextKey::ExampleApiUrls => "Example API URLs",
         TextKey::LabelLanguagePolicy => {
             "Labels use 'mul' first, then 'en' fallback, for comparable results."
         }

@@ -97,7 +97,7 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
     };
 
     let classes = format!(
-        "inline-flex items-center justify-center px-5 py-1.5 text-ui leading-none font-semibold rounded-full border transition-transform duration-150 active:scale-[0.98] min-h-[40px] whitespace-nowrap focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 {} {}",
+        "inline-flex items-center justify-center px-5 py-1.5 text-ui leading-none font-semibold rounded-full border transition-transform duration-150 active:scale-[0.98] min-h-[40px] whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 {} {}",
         flex_class, active_classes
     );
 

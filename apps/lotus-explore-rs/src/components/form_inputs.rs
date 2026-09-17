@@ -3,10 +3,9 @@
 
 //! Focused, reusable form input components.
 
-use crate::components::ui::{Button, ButtonSize, ButtonVariant};
+use crate::components::ui::Button;
 use crate::hooks::use_locale;
 use crate::i18n::{TextKey, t};
-use crate::ui::classes;
 use dioxus::prelude::*;
 
 #[component]
@@ -29,7 +28,7 @@ pub fn TextInput(
             if !label.is_empty() {
                 label {
                     r#for: "{id}",
-                    class: "{classes::LABEL}",
+                    class: "text-body font-semibold text-text",
                     "{label}"
                 }
             }
@@ -37,7 +36,7 @@ pub fn TextInput(
             input {
                 id: "{id}",
                 r#type: "text",
-                class: "{classes::INPUT}",
+                class: "w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                 value: "{value}",
                 placeholder: placeholder.unwrap_or_default(),
                 aria_describedby: if !hint_id.is_empty() { "{hint_id}" } else { "" },
@@ -45,7 +44,7 @@ pub fn TextInput(
             }
 
             if let Some(hint_text) = hint {
-                p { id: "{hint_id}", class: "{classes::HINT}", "{hint_text}" }
+                p { id: "{hint_id}", class: "text-micro text-subtle", "{hint_text}" }
             }
         }
     }
@@ -67,26 +66,26 @@ pub fn RangeInput(
 
     rsx! {
         div { class: "flex flex-col gap-1.5",
-            label { class: "{classes::LABEL}", "{label}" }
+            label { class: "text-body font-semibold text-text", "{label}" }
 
             div { class: "flex items-center gap-2",
                 div { class: "flex flex-1 flex-col gap-0.5",
-                    label { class: "{classes::MICRO_LABEL}", r#for: "{min_id}", "{min_label}" }
+                    label { class: "text-micro font-semibold uppercase tracking-wide text-subtle", r#for: "{min_id}", "{min_label}" }
                     input {
                         id: "{min_id}",
                         r#type: "number",
-                        class: "{classes::INPUT_SM}",
+                        class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         value: "{min_value}",
                         oninput: move |e| on_min_change.call(parse_f64(&e.value())),
                     }
                 }
                 span { class: "self-end pb-1.5 text-subtle", "–" }
                 div { class: "flex flex-1 flex-col gap-0.5",
-                    label { class: "{classes::MICRO_LABEL}", r#for: "{max_id}", "{max_label}" }
+                    label { class: "text-micro font-semibold uppercase tracking-wide text-subtle", r#for: "{max_id}", "{max_label}" }
                     input {
                         id: "{max_id}",
                         r#type: "number",
-                        class: "{classes::INPUT_SM}",
+                        class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         value: "{max_value}",
                         oninput: move |e| on_max_change.call(parse_f64(&e.value())),
                     }
@@ -111,12 +110,14 @@ pub fn SearchButton(
             } else {
                 t(locale, TextKey::Search).to_string()
             },
-            variant: if is_dirty { ButtonVariant::Accent } else { ButtonVariant::Primary },
-            size: ButtonSize::Md,
             loading,
             disabled: loading,
             r#type: "submit",
-            class: "w-full",
+            class: if is_dirty {
+                "w-full inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-accent text-bg font-semibold shadow-xs ring-2 ring-accent/40 hover:bg-accent-2 active:bg-accent-2 min-h-[40px] gap-2 px-3.5 py-2 text-ui active:scale-[0.98]"
+            } else {
+                "w-full inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2 min-h-[40px] gap-2 px-3.5 py-2 text-ui active:scale-[0.98]"
+            },
             aria_label: t(locale, TextKey::RunSearch).to_string(),
             onclick: move |_| on_click.call(()),
         }
