@@ -236,7 +236,6 @@ fn RouteContent(current_view: AppView) -> Element {
 
 #[component]
 fn ExplorePage() -> Element {
-    let locale = crate::hooks::use_locale();
     let criteria = use_form_criteria_context().criteria;
     let searched_once = use_results_context().explore.read().lifecycle.searched_once;
     let shareable_url =

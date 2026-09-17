@@ -25,7 +25,6 @@ pub fn SearchPanel() -> Element {
     let state = use_results_context();
     let form_ctx = use_form_criteria_context();
     let interactions = use_explore_interactions();
-    let locale = crate::hooks::use_locale();
 
     let loading = *use_lifecycle_selector(state.explore, |lifecycle| lifecycle.loading).read();
     let is_dirty = form_ctx.is_dirty();

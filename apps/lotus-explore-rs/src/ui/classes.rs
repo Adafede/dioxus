@@ -42,10 +42,9 @@ pub const WD_REFERENCE_BORDER: &str = "border-wd-reference";
 
 // ============================================================================
 // SHADOWS
-// --shadow-xs: 0 1px 2px (4%/30%), --shadow-md: 0 4px 8px (8%/50%)
+// --shadow-md: 0 4px 8px (8%/50%)
 // ============================================================================
 
-pub const SHADOW_XS: &str = "shadow-xs";
 pub const SHADOW_MD: &str = "shadow-md";
 
 // ============================================================================

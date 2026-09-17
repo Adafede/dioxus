@@ -11,7 +11,6 @@ pub const SKIP_TO_RESULTS_HREF: &str = "#main-panel";
 
 pub const PAGE_TITLE_ID: &str = "page-title";
 
-pub const SEARCH_PANEL_HEADING_ID: &str = "search-panel-heading";
 pub const SEARCH_PANEL_BODY_ID: &str = "search-panel-body";
 
 pub const RESULTS_SECTION_ID: &str = "results-section";
@@ -27,7 +26,6 @@ mod tests {
         let ids = [
             MAIN_PANEL_ID,
             PAGE_TITLE_ID,
-            SEARCH_PANEL_HEADING_ID,
             SEARCH_PANEL_BODY_ID,
             RESULTS_SECTION_ID,
             RESULTS_SECTION_HEADING_ID,
