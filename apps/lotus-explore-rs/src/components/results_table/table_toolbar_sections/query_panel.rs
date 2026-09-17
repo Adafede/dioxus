@@ -60,6 +60,7 @@ pub fn QueryPanel() -> Element {
                         "{t(locale, TextKey::SparqlQuery)}"
                     }
                     div { class: "flex w-full min-w-0 flex-col gap-2 bg-panel-soft p-3 sm:p-4",
+                        // Keep the SPARQL block constrained so it reads like an intentional utility panel.
                         CopyButton {
                             text: q.clone(),
                             title: t(locale, TextKey::CopySparqlQuery),

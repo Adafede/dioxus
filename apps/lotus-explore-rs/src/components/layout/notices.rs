@@ -103,8 +103,8 @@ pub fn ErrorNotice() -> Element {
                 role: "alert",
                 aria_live: "assertive",
                 dark: dark_mode,
-            span { class: "flex-1 min-w-0 text-ui text-muted break-words leading-snug", "{msg}" }
-            span { class: "min-w-0 text-ui text-subtle break-words leading-snug", "{error_hint_text(locale, kind)}" }
+                span { class: "flex-1 min-w-0 text-ui text-muted break-words leading-snug", "{msg}" }
+                span { class: "min-w-0 text-ui text-subtle break-words leading-snug", "{error_hint_text(locale, kind)}" }
                 if recovery::should_show_retry_button(domain_err) && !*is_loading.read() {
                     Button {
                         r#type: "button",

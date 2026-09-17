@@ -28,7 +28,7 @@ pub fn PageHeader() -> Element {
         header {
             class: "sticky top-0 z-3 min-h-[46px] bg-panel/92 backdrop-blur-sm rounded-t-2xl shadow-xs px-4 sm:px-8",
             div {
-                class: "flex flex-wrap items-center justify-between gap-3 sm:gap-4",
+                class: "flex flex-wrap items-start justify-between gap-3 sm:gap-4",
                 div {
                     class: "w-[90px] shrink-0",
                     dangerous_inner_html: LOTUS_LOGO_SVG,
@@ -52,7 +52,7 @@ pub fn PageHeader() -> Element {
                 }
             }
             p {
-                class: "max-w-none text-sm leading-6 text-critical-muted mt-3 pb-2",
+                class: "max-w-[72ch] text-sm leading-6 text-critical-muted mt-3 pb-2",
                 "{t(locale, TextKey::PageSubtitle)}"
             }
         }

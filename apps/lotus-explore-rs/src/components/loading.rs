@@ -68,7 +68,7 @@ pub fn DownloadOnlyState() -> Element {
             tone: NoticeTone::Warning,
             role: "status",
             aria_live: "polite",
-            span { class: "notice-value flex-1 min-w-0 text-ui text-muted", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
+            span { class: "notice-value flex-1 min-w-0 text-ui text-muted max-w-[72ch]", "{t(locale, TextKey::WelcomeProgrammaticDownload)}" }
             Button {
                 r#type: "button",
                 variant: ButtonVariant::Secondary,
