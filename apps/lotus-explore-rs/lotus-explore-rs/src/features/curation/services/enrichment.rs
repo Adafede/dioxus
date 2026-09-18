@@ -87,10 +87,7 @@ async fn enrich_and_generate(
                 changes += 1;
             }
             if existing.inchi.is_none() {
-                lines.push(qs_inchi_statement(
-                    &existing.qid,
-                    &converted.inchi,
-                ));
+                lines.push(qs_inchi_statement(&existing.qid, &converted.inchi));
                 changes += 1;
             }
             if existing.formula.is_none() && formula_from_inchi.is_some() {

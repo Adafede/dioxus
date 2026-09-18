@@ -85,7 +85,12 @@ pub fn qs_canonical_smiles_statement(
     has_isomeric: bool,
 ) -> String {
     if has_isomeric {
-        qs_statement_with_refs(subject, "P233", canonical_smiles, &[crate::features::curation::services::helpers::QS_REF_INFERRED_FROM_ISOMERIC_SMILES])
+        qs_statement_with_refs(
+            subject,
+            "P233",
+            canonical_smiles,
+            &[crate::features::curation::services::helpers::QS_REF_INFERRED_FROM_ISOMERIC_SMILES],
+        )
     } else {
         // No reference for canonical SMILES when no isomeric present
         format!("{subject}|P233|\"{canonical_smiles}\"")

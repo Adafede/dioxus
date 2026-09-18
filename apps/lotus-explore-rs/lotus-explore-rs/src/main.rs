@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
+#![allow(dead_code, unused_imports, unused)]
+
 //! `lotus-explore-rs` — LOTUS Knowledge Explorer.
 //!
 //! A linked open data (LOAD) explorer for the LOTUS compound-taxon-reference
