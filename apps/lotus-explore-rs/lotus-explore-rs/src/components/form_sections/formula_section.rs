@@ -25,7 +25,7 @@ fn ElemStateSelect(
             label { class: "text-micro font-semibold uppercase tracking-wide text-subtle", r#for: "{select_id}", "{label}" }
             select {
                 id: "{select_id}",
-                class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
+                class: "w-full rounded-xl border border-border bg-surface px-2.5 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                 aria_label: "{label} {t(locale, TextKey::ElementRequirement)}",
                 value: "{value.as_str()}",
                 onchange: move |e| on_change.call(e.value().parse::<ElementState>().unwrap_or_default()),
@@ -59,7 +59,7 @@ fn NumPair(
                     input {
                         r#type: "number",
                         id: "{min_id}",
-                        class: "tabular-nums w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
+                        class: "tabular-nums w-full rounded-xl border border-border bg-surface px-2.5 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         min: "0",
                         max: "10000",
                         aria_label: "{label} {t(locale, TextKey::MinCountAria)}",
@@ -76,7 +76,7 @@ fn NumPair(
                     input {
                         r#type: "number",
                         id: "{max_id}",
-                        class: "tabular-nums w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
+                        class: "tabular-nums w-full rounded-xl border border-border bg-surface px-2.5 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         min: "0",
                         max: "10000",
                         aria_label: "{label} {t(locale, TextKey::MaxCountAria)}",

@@ -20,7 +20,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
     compound_qid: &str,
 ) -> Element {
     rsx! {
-        td { class: "min-w-0 rounded-xl px-3 py-2.5 align-middle text-ui shadow-[inset_2px_0_0_var(--border)]",
+        td { class: "min-w-0 px-3 py-2.5 align-middle text-ui border-l-2 border-l-border",
             div { class: "flex flex-col gap-1 max-w-[30ch]",
                 a {
                     href: "https://www.wikidata.org/entity/{compound_qid}",
@@ -36,7 +36,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     aria_label: "{compound_qid} • {t(locale, TextKey::OpenInCompoundScholia)}",
-                    class: "inline-block inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide border-current text-wd-compound border-wd-compound",
+                    class: "inline-flex items-center rounded-full border border-wd-compound/35 bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-compound hover:bg-bg focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28",
                     "{compound_qid} • Scholia"
                 }
                 if let Some(ik) = entry.inchikey.as_deref() {
@@ -45,7 +45,7 @@ pub(in crate::components::results_table::row_cells) fn compound_cell(
                         target: "_blank",
                         rel: "noopener noreferrer",
                         aria_label: "{aria_search_inchikey(locale, ik)}",
-                        class: "inline-block max-w-full break-all inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide border-current text-wd-compound border-wd-compound",
+                        class: "inline-flex max-w-full break-all items-center rounded-full border border-wd-compound/35 bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-compound hover:bg-bg focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28",
                         "{ik}"
                     }
                 }

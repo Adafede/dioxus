@@ -14,18 +14,19 @@ use std::sync::Arc;
 
 const NA_TEXT: &str = "n/a";
 
-const PILL: &str = "inline-flex items-center rounded-xs border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide";
-const TH: &str = "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted";
-const TD: &str = "border-b border-panel-border px-3 py-2.5 align-top text-ui";
-const MONO: &str = "font-mono text-micro break-all";
-const MONO_NB: &str = "font-mono text-micro break-all";
-
 #[component]
 fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Element {
     rsx! {
         div { class: "flex flex-wrap gap-1.5",
             for (status, count) in status_counts(rows.as_ref()) {
-                span { class: "{PILL} {status_text_class(&status)}",
+                span {
+                    class: match status {
+                        CurationStatus::ExistingComplete => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-taxon",
+                        CurationStatus::ExistingNeedsUpdates => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-entries",
+                        CurationStatus::NewCompound => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-reference",
+                        CurationStatus::PendingDependencies => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-reference",
+                        CurationStatus::Error => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-compound",
+                    },
                     "{status_label(locale, &status)} ({count})"
                 }
             }
@@ -35,24 +36,31 @@ fn StatusSummaryBadges(locale: Locale, rows: Arc<[CurationResultRow]>) -> Elemen
 
 fn render_curation_result_cells(locale: Locale, row: &CurationResultRow) -> Element {
     rsx! {
-        td { class: TD,
-            span { class: "{PILL} {status_text_class(&row.status)}",
+        td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui",
+            span {
+                class: match row.status {
+                    CurationStatus::ExistingComplete => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-taxon",
+                    CurationStatus::ExistingNeedsUpdates => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-entries",
+                    CurationStatus::NewCompound => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-reference",
+                    CurationStatus::PendingDependencies => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-reference",
+                    CurationStatus::Error => "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-compound",
+                },
                 "{status_label(locale, &row.status)}"
             }
             div { class: "mt-1 flex flex-wrap gap-1",
                 if !row.dependency_blocks.is_empty() {
-                    span { class: "{PILL} {status_text_class(&CurationStatus::PendingDependencies)}",
+                    span { class: "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-reference",
                         "{curation_badge_prerequisite_pending(locale)}"
                     }
                 }
                 if matches!(row.status, CurationStatus::PendingDependencies) {
-                    span { class: "{PILL} {status_text_class(&CurationStatus::PendingDependencies)}",
+                    span { class: "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-reference",
                         "{curation_badge_second_pass_required(locale)}"
                     }
                 }
                 if row.exact_mass.is_none() {
                     span {
-                        class: "{PILL} text-wd-entries",
+                        class: "inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-entries",
                         title: "{row.mass_warning.as_deref().unwrap_or(curation_mass_warning_title(locale))}",
                         "{curation_badge_mass_missing(locale)}"
                     }
@@ -62,7 +70,7 @@ fn render_curation_result_cells(locale: Locale, row: &CurationResultRow) -> Elem
                 div { class: "mt-1 whitespace-pre-line text-micro text-muted", "{row.note}" }
             }
         }
-        td { class: TD,
+        td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui",
             if let Some(qid) = row.wikidata_qid.as_deref() {
                 a {
                     class: "font-mono text-micro text-wd-compound underline break-all",
@@ -75,13 +83,13 @@ fn render_curation_result_cells(locale: Locale, row: &CurationResultRow) -> Elem
                 span { class: "text-muted", "{label_new_item(locale)}" }
             }
         }
-        td { class: TD, "{row.input.name}" }
-        td { class: "{TD} {MONO}", "{row.input.smiles}" }
-        td { class: "{TD} {MONO}", "{row.canonical_smiles.as_deref().unwrap_or(NA_TEXT)}" }
-        td { class: "{TD} {MONO_NB}", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
-        td { class: "{TD} {MONO}", "{row.inchi.as_deref().unwrap_or(NA_TEXT)}" }
-        td { class: "{TD} {MONO_NB}", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
-        td { class: "{TD} {MONO}", "{format_mass(row.exact_mass)}" }
+        td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui", "{row.input.name}" }
+        td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro break-all", "{row.input.smiles}" }
+        td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro break-all", "{row.canonical_smiles.as_deref().unwrap_or(NA_TEXT)}" }
+        td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro break-all", "{row.inchikey.as_deref().unwrap_or(NA_TEXT)}" }
+        td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro break-all", "{row.inchi.as_deref().unwrap_or(NA_TEXT)}" }
+        td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro break-all", "{row.formula.as_deref().unwrap_or(NA_TEXT)}" }
+        td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui font-mono text-micro break-all", "{format_mass(row.exact_mass)}" }
     }
 }
 
@@ -108,15 +116,15 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                 table { class: "curation-results-table w-full min-w-[1320px] table-auto border-collapse text-ui",
                     thead {
                         tr { class: "text-left",
-                            th { scope: "col", class: "{TH} w-[160px] min-w-[160px]", "{col_status(locale)}" }
-                            th { scope: "col", class: "{TH} w-[8ch] min-w-[8ch]", "Wikidata" }
-                            th { scope: "col", class: "{TH} w-[14ch] min-w-[14ch]", "{col_name(locale)}" }
-                            th { scope: "col", class: "{TH} w-[180px] min-w-[180px]", "{col_original_smiles(locale)}" }
-                            th { scope: "col", class: "{TH} w-[180px] min-w-[180px]", "{col_canonical_smiles(locale)}" }
-                            th { scope: "col", class: "{TH} w-[180px] min-w-[180px]", "InChIKey" }
-                            th { scope: "col", class: "{TH} w-[180px] min-w-[180px]", "InChI" }
-                            th { scope: "col", class: "{TH} w-[8ch] min-w-[8ch]", "{t(locale, TextKey::Formula)}" }
-                            th { scope: "col", class: "{TH} w-[8ch] min-w-[8ch]", "{col_exact_mass(locale)}" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[160px] min-w-[160px]", "{col_status(locale)}" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[8ch] min-w-[8ch]", "Wikidata" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[14ch] min-w-[14ch]", "{col_name(locale)}" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[180px] min-w-[180px]", "{col_original_smiles(locale)}" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[180px] min-w-[180px]", "{col_canonical_smiles(locale)}" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[180px] min-w-[180px]", "InChIKey" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[180px] min-w-[180px]", "InChI" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[8ch] min-w-[8ch]", "{t(locale, TextKey::Formula)}" }
+                            th { scope: "col", class: "border-b border-panel-border bg-panel-soft px-3 py-2 text-left text-micro font-semibold uppercase tracking-wide text-muted w-[8ch] min-w-[8ch]", "{col_exact_mass(locale)}" }
                         }
                     }
                     tbody {
@@ -143,16 +151,6 @@ fn status_label(locale: Locale, status: &CurationStatus) -> &'static str {
         CurationStatus::Error => "error",
     };
     curation_status_label(locale, key)
-}
-
-fn status_text_class(status: &CurationStatus) -> &'static str {
-    match status {
-        CurationStatus::ExistingComplete => "text-wd-taxon",
-        CurationStatus::ExistingNeedsUpdates => "text-wd-entries",
-        CurationStatus::NewCompound => "text-wd-reference",
-        CurationStatus::PendingDependencies => "text-wd-reference",
-        CurationStatus::Error => "text-wd-compound",
-    }
 }
 
 fn status_counts(rows: &[CurationResultRow]) -> Vec<(CurationStatus, usize)> {

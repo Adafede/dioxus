@@ -32,7 +32,7 @@ pub fn ShareBar(locale: Locale, share: Arc<str>) -> Element {
             div { class: "flex flex-col gap-2",
                 input {
                     aria_label: "{t(locale, TextKey::CopyShareableLink)}",
-                    class: "w-full font-mono w-full rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
+                    class: "w-full font-mono rounded-xl border border-border bg-surface px-3 py-2 text-body text-text placeholder:text-subtle shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                     r#type: "text",
                     readonly: true,
                     value: "{share}",
@@ -87,7 +87,7 @@ pub fn StatusNotice(locale: Locale, message: Arc<str>) -> Element {
             class: "flex flex-wrap items-center gap-2 rounded-xl border p-2.5 shadow-xs border-warning/35 bg-warning/10",
             role: "status",
             aria_live: "polite",
-            span { class: "inline-flex items-center px-2 py-0.5 rounded-full font-semibold uppercase tracking-[0.08em] text-micro flex-shrink-0 bg-warning/12 text-warning", "{t(locale, TextKey::Notice)}" }
+            span { class: "inline-flex items-center px-2 py-0.5 rounded-full font-semibold uppercase tracking-[0.08em] text-micro shrink-0 bg-warning/12 text-warning", "{t(locale, TextKey::Notice)}" }
             span { class: "flex-1 min-w-0 text-ui break-words leading-snug text-inherit", "{message}" }
         }
     }

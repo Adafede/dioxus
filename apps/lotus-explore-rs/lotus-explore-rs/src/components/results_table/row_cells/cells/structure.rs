@@ -26,18 +26,18 @@ pub(in crate::components::results_table::row_cells) fn structure_cell(
 ) -> Element {
     let alt_text = truncate_alt(&aria_chemical_structure(locale, name), 100);
     rsx! {
-        td { class: "min-w-0 rounded-xl px-3 py-2.5 align-middle text-ui text-wd-structure border-l-2 border-l-wd-structure",
+        td { class: "min-w-0 px-3 py-2.5 align-middle text-ui text-wd-structure border-l-2 border-l-wd-structure",
             if let Some(url) = depict_url {
                 a {
                     href: "{url}",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                        img {
+                    img {
                         class: "block h-auto w-full min-w-[120px] bg-transparent object-contain",
-                            src: "{url}",
-                            alt: "{alt_text}",
-                            loading: "lazy",
-                            decoding: "async",
+                        src: "{url}",
+                        alt: "{alt_text}",
+                        loading: "lazy",
+                        decoding: "async",
                     }
                 }
             } else {

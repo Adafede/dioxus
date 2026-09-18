@@ -19,10 +19,10 @@ impl BadgeVariant {
     #[allow(dead_code)]
     pub const fn classes(&self) -> &'static str {
         match self {
-            Self::Compound => "border-wd-compound/35 bg-stat-compound text-wd-compound",
-            Self::Taxon => "border-wd-taxon/35 bg-stat-taxon text-wd-taxon",
-            Self::Reference => "border-wd-reference/35 bg-stat-reference text-wd-reference",
-            Self::Entries => "border-wd-entries/35 bg-stat-total text-wd-entries",
+            Self::Compound => "border-wd-compound/35 bg-surface text-wd-compound",
+            Self::Taxon => "border-wd-taxon/35 bg-surface text-wd-taxon",
+            Self::Reference => "border-wd-reference/35 bg-surface text-wd-reference",
+            Self::Entries => "border-wd-entries/35 bg-surface text-wd-entries",
             Self::Warning => "border-warning/35 bg-warning/10 text-warning",
         }
     }
@@ -44,12 +44,12 @@ pub fn StatusBadge(props: StatusBadgeProps) -> Element {
 
     rsx! {
         span {
-            class: "inline-flex items-center gap-1.5 rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide shadow-xs {tone}",
+            class: "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-micro font-semibold uppercase tracking-wide shadow-xs {tone}",
             title: props.title.as_deref().unwrap_or(""),
             "{props.label}"
             if let Some(count) = props.count {
                 span {
-                    class: "ml-1 rounded-full bg-text/10 px-1.5 py-0.5 text-micro",
+                    class: "ml-1 rounded-full bg-current/10 px-1.5 py-0.5 text-micro",
                     "{count}"
                 }
             }

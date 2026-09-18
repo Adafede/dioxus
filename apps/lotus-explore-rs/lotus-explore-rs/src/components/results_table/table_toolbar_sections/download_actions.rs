@@ -18,10 +18,7 @@ use crate::state::use_results_context;
 use dioxus::prelude::*;
 use std::sync::Arc;
 
-const DOWNLOAD_METADATA_MIME: &str = "application/ld+json";
-const TOOLBAR_ACTION_CLASS: &str = "shrink-0 min-h-9 px-4";
-
-// ── private helpers ───────────────────────────────────────────────────────────
+// ── private helpers ─────────────────────────────────────────────────────────
 
 fn spawn_query_download(
     format: DownloadFormat,
@@ -97,7 +94,7 @@ fn dispatch_metadata_download_blob(filename: &str, body: &str) {
         );
         return;
     }
-    trigger_download(filename, DOWNLOAD_METADATA_MIME, body);
+    trigger_download(filename, "application/ld+json", body);
     let elapsed_ms =
         perf::end_timer("LOTUS:table_download_meta_trigger", trigger_timer).as_secs_f64() * 1000.0;
     log::info!(
@@ -105,7 +102,7 @@ fn dispatch_metadata_download_blob(filename: &str, body: &str) {
     );
 }
 
-// ── components ───────────────────────────────────────────────────────────────
+// ── components ─────────────────────────────────────────────────────────────
 
 /// Displays download status with spinning indicator.
 #[component]
@@ -122,7 +119,7 @@ fn DownloadStatusSpinner(
         span {
             role: "status",
             aria_live: "polite",
-            class: "inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-ui font-semibold text-muted",
+            class: "inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-1.5 text-ui font-semibold text-muted shadow-xs",
             span { class: "spinner-sm", "aria-hidden": "true" }
             {text}
         }
@@ -148,7 +145,7 @@ fn DownloadQueryButton(
         Button {
             r#type: "button",
             disabled,
-            class: Some(format!("{} inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98]", TOOLBAR_ACTION_CLASS)),
+            class: "inline-flex shrink-0 items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-9 px-4 py-1.5 text-ui active:scale-[0.98]",
             title: Some(title.to_string()),
             aria_label: Some(title.to_string()),
             label: Some(label.to_string()),
@@ -192,7 +189,7 @@ fn DownloadMetadataButton(
         Button {
             r#type: "button",
             disabled,
-            class: Some(format!("{} inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98]", TOOLBAR_ACTION_CLASS)),
+            class: "inline-flex shrink-0 items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-9 px-4 py-1.5 text-ui active:scale-[0.98]",
             aria_label: Some(title.to_string()),
             label: Some(label.to_string()),
             onclick: {
@@ -309,7 +306,7 @@ pub fn DownloadActionsGroup() -> Element {
                         li {
                             Button {
                                 r#type: "button",
-                                class: Some(format!("{} inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98]", TOOLBAR_ACTION_CLASS)),
+                                class: "inline-flex shrink-0 items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-9 px-4 py-1.5 text-ui active:scale-[0.98]",
                                 title: Some(format!("{open_in_title} ({endpoint_name})")),
                                 aria_label: Some(format!("{open_in_title} ({endpoint_name})")),
                                 label: Some(format!("Open in {endpoint_name}")),

@@ -26,7 +26,7 @@ pub struct ButtonProps {
     pub aria_expanded: Option<String>,
     #[props(default)]
     pub aria_pressed: Option<String>,
-    #[props(default)]
+    #[props(into, default)]
     pub class: Option<String>,
     #[props(default)]
     pub onclick: Option<EventHandler<MouseEvent>>,
@@ -36,7 +36,8 @@ pub struct ButtonProps {
 
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
-    let custom_classes = props.class.as_deref().unwrap_or("");
+    let default_class = "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2 min-h-[40px] gap-2 px-3.5 py-2 text-ui active:scale-[0.98] cursor-pointer";
+    let class = props.class.as_deref().unwrap_or(default_class);
 
     rsx! {
         button {
@@ -47,7 +48,7 @@ pub fn Button(props: ButtonProps) -> Element {
             aria_controls: props.aria_controls.as_deref().unwrap_or_default(),
             aria_expanded: props.aria_expanded.as_deref().unwrap_or_default(),
             aria_pressed: props.aria_pressed.as_deref().unwrap_or_default(),
-            class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2 min-h-[40px] gap-2 px-3.5 py-2 text-ui active:scale-[0.98] cursor-pointer {custom_classes}",
+            class: class,
             onclick: move |evt| {
                 if !props.disabled && !props.loading
                     && let Some(handler) = props.onclick.as_ref() {

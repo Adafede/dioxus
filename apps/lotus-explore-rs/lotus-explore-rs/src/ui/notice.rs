@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Shared notice bar component.
+//! Shared notice bar component using inline Tailwind utility classes.
 
-use crate::ui::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Visual tone for a notice bar.
@@ -28,10 +27,6 @@ pub struct NoticeBarProps {
     pub aria_live: &'static str,
     #[props(default = false)]
     pub dark: bool,
-    #[props(default = "10px 22px 0")]
-    pub margin: &'static str,
-    #[props(default = "9px 12px")]
-    pub padding: &'static str,
     #[props(default)]
     pub trailing: Option<Element>,
     #[props(default)]
@@ -40,85 +35,49 @@ pub struct NoticeBarProps {
 
 #[component]
 pub fn NoticeBar(props: NoticeBarProps) -> Element {
-    let colors = if props.dark {
-        ColorScheme::DARK
-    } else {
-        ColorScheme::LIGHT
+    let (outer_tone, label_tone) = match props.tone {
+        NoticeTone::Neutral => (
+            "border-border bg-panel-soft border-l-4 border-l-accent",
+            "bg-accent/12 text-accent",
+        ),
+        NoticeTone::Info => (
+            "border-blue/35 bg-blue/10 border-l-4 border-l-blue",
+            "bg-blue/12 text-blue",
+        ),
+        NoticeTone::Success => (
+            "border-success/35 bg-success/10 border-l-4 border-l-success",
+            "bg-success/12 text-success",
+        ),
+        NoticeTone::Warning => (
+            "border-warning/35 bg-warning/10 border-l-4 border-l-warning",
+            "bg-warning/12 text-warning",
+        ),
+        NoticeTone::Danger => (
+            "border-danger/35 bg-danger/10 border-l-4 border-l-danger",
+            "bg-danger/12 text-danger",
+        ),
     };
-    let tone_color = match props.tone {
-        NoticeTone::Neutral => colors.accent,
-        NoticeTone::Info => colors.blue,
-        NoticeTone::Success => colors.green,
-        NoticeTone::Warning => colors.yellow,
-        NoticeTone::Danger => colors.red,
-    };
-    let border_color = format!("color-mix(in srgb, {} 24%, {})", tone_color, colors.border);
-    let label_background = format!("color-mix(in srgb, {} 12%, {})", tone_color, colors.bg2);
-    let outer_background = format!("color-mix(in srgb, {} 4%, {})", tone_color, colors.bg2);
-
-    let outer_style = StyleBuilder::new()
-        .margin(props.margin)
-        .padding(props.padding)
-        .display("flex")
-        .flex_direction("row")
-        .flex_wrap("wrap")
-        .align_items("center")
-        .gap(Spacing::SM)
-        .border(&format!("1px solid {}", border_color))
-        .border_left(&format!("4px solid {}", tone_color))
-        .border_radius(Radius::MD)
-        .background_color(&outer_background)
-        .box_shadow(Shadow::XS)
-        .font_size(Typography::UI)
-        .build();
-
-    let label_style = StyleBuilder::new()
-        .display("inline-flex")
-        .align_items("center")
-        .padding("2px 8px")
-        .border_radius("999px")
-        .background_color(&label_background)
-        .color(tone_color)
-        .font_size(Typography::LABEL)
-        .font_weight("700")
-        .property("letter-spacing", "0.08em")
-        .property("text-transform", "uppercase")
-        .property("flex-shrink", "0")
-        .property("white-space", "nowrap")
-        .build();
-
-    let body_style = StyleBuilder::new()
-        .display("flex")
-        .flex_direction("row")
-        .flex_wrap("wrap")
-        .align_items("center")
-        .gap(Spacing::SM)
-        .property("min-width", "0")
-        .property("flex", "1")
-        .color(colors.text)
-        .build();
-
-    let trailing_style = StyleBuilder::new()
-        .display("flex")
-        .flex_direction("row")
-        .flex_wrap("wrap")
-        .align_items("center")
-        .gap(Spacing::SM)
-        .property("margin-left", "auto")
-        .build();
 
     rsx! {
         div {
             role: props.role,
             aria_live: props.aria_live,
-            class: "notice-bar",
-            style: outer_style,
-            span { style: label_style, "{props.label}" }
+            class: "notice-bar flex flex-wrap items-center gap-2 rounded-xl border p-2.5 shadow-xs text-ui {outer_tone}",
+            span {
+                class: "inline-flex items-center px-2 py-0.5 rounded-full font-bold uppercase tracking-[0.08em] text-micro shrink-0 whitespace-nowrap {label_tone}",
+                "{props.label}"
+            }
             if let Some(children) = props.children {
-                div { style: body_style, {children} }
+                div {
+                    class: "flex flex-1 min-w-0 flex-wrap items-center gap-2 text-text",
+                    {children}
+                }
             }
             if let Some(trailing) = props.trailing {
-                div { style: trailing_style, {trailing} }
+                div {
+                    class: "ml-auto flex flex-wrap items-center gap-2",
+                    {trailing}
+                }
             }
         }
     }

@@ -15,17 +15,6 @@ pub enum StatStripe {
     Entries,
 }
 
-impl StatStripe {
-    pub const fn as_color(&self) -> &'static str {
-        match self {
-            Self::Compound => "var(--footer-wd-compound)",
-            Self::Taxon => "var(--footer-wd-taxon)",
-            Self::Reference => "var(--footer-wd-reference)",
-            Self::Entries => "var(--footer-wd-entries)",
-        }
-    }
-}
-
 #[component]
 fn StatBadge(
     value: usize,
@@ -50,16 +39,31 @@ fn StatBadge(
             },
         )
     });
-    let (bg, border) = match stripe {
-        StatStripe::Compound => ("bg-stat-compound", "border-stat-compound-border"),
-        StatStripe::Taxon => ("bg-stat-taxon", "border-stat-taxon-border"),
-        StatStripe::Reference => ("bg-stat-reference", "border-stat-reference-border"),
-        StatStripe::Entries => ("bg-stat-total", "border-stat-total-border"),
+    let (bg, border, stripe_class) = match stripe {
+        StatStripe::Compound => (
+            "bg-stat-compound",
+            "border-stat-compound-border",
+            "border-l-4 border-l-wd-compound",
+        ),
+        StatStripe::Taxon => (
+            "bg-stat-taxon",
+            "border-stat-taxon-border",
+            "border-l-4 border-l-wd-taxon",
+        ),
+        StatStripe::Reference => (
+            "bg-stat-reference",
+            "border-stat-reference-border",
+            "border-l-4 border-l-wd-reference",
+        ),
+        StatStripe::Entries => (
+            "bg-stat-total",
+            "border-stat-total-border",
+            "border-l-4 border-l-wd-entries",
+        ),
     };
     rsx! {
         article {
-            class: "relative flex min-w-[140px] flex-[1_1_180px] flex-col gap-1 overflow-hidden rounded-xl border p-3 shadow-xs {bg} {border}",
-            style: "border-left: 4px solid {stripe.as_color()}",
+            class: "relative flex min-w-[140px] flex-[1_1_180px] flex-col gap-1 overflow-hidden rounded-xl border p-3 shadow-xs {bg} {border} {stripe_class}",
             div {
                 class: "flex items-baseline gap-1.5",
                 span {
@@ -77,7 +81,7 @@ fn StatBadge(
                 class: "truncate text-micro font-semibold uppercase tracking-wider text-subtle",
                 "{label}"
             }
-            }
+        }
     }
 }
 
@@ -154,10 +158,10 @@ pub fn CappedRowsNotice() -> Element {
     rsx! {
         if toolbar_snapshot.read().display_capped_rows {
             div {
-                class: "mt-2 flex items-center gap-2 rounded-xl border border-warning/35 bg-warning/10 p-2.5 text-ui font-medium text-warning",
+                class: "mt-2 flex items-center gap-2 rounded-xl border border-warning/35 bg-warning/10 p-2.5 text-ui font-medium text-warning shadow-xs",
                 role: "status",
                 aria_live: "polite",
-                span { class: "text-sm font-bold", "⚠️" }
+                span { class: "text-sm font-bold", "⚠️" },
                 span { "{t(locale, TextKey::DisplayCappedHint)}" }
             }
         }

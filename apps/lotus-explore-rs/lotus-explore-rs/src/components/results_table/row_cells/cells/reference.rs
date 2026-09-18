@@ -22,7 +22,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
     let doi = prepared.doi.as_deref();
     let statement_id = prepared.statement_id.as_deref();
     rsx! {
-        td { class: "min-w-0 rounded-xl px-3 py-2.5 align-middle text-ui shadow-[inset_3px_0_0_var(--footer-wd-reference)]",
+        td { class: "min-w-0 px-3 py-2.5 align-middle text-ui border-l-2 border-l-wd-reference",
             div { class: "flex flex-col gap-1",
                 if let Some(full_title) = entry.ref_title.as_deref() {
                     a {
@@ -48,7 +48,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     aria_label: "{reference_qid} • {t(locale, TextKey::OpenInReferenceScholia)}",
-                    class: "inline-block inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide border-current text-wd-reference border-wd-reference",
+                    class: "inline-flex items-center rounded-full border border-wd-reference/35 bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-reference hover:bg-bg focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28",
                     "{reference_qid} • Scholia"
                 }
                 if let Some(d) = doi {
@@ -56,7 +56,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://doi.org/{d}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "inline-block inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide border-current text-wd-reference border-wd-reference",
+                        class: "inline-flex items-center rounded-full border border-wd-reference/35 bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-reference hover:bg-bg focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28",
                         aria_label: "{text.open_doi}",
                         "{d}"
                     }
@@ -66,7 +66,7 @@ pub(in crate::components::results_table::row_cells) fn reference_cell(
                         href: "https://www.wikidata.org/entity/statement/{stmt}",
                         target: "_blank",
                         rel: "noopener noreferrer",
-                        class: "inline-block inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide border-current text-wd-reference border-wd-reference",
+                        class: "inline-flex items-center rounded-full border border-wd-reference/35 bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-reference hover:bg-bg focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28",
                         aria_label: "{aria_wikidata_statement(locale, stmt)}",
                         "{stmt}"
                     }

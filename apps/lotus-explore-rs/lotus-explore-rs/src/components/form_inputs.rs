@@ -74,7 +74,7 @@ pub fn RangeInput(
                     input {
                         id: "{min_id}",
                         r#type: "number",
-                        class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
+                        class: "w-full rounded-xl border border-border bg-surface px-2.5 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         value: "{min_value}",
                         oninput: move |e| on_min_change.call(parse_f64(&e.value())),
                     }
@@ -85,7 +85,7 @@ pub fn RangeInput(
                     input {
                         id: "{max_id}",
                         r#type: "number",
-                        class: "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
+                        class: "w-full rounded-xl border border-border bg-surface px-2.5 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         value: "{max_value}",
                         oninput: move |e| on_max_change.call(parse_f64(&e.value())),
                     }

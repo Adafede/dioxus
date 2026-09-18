@@ -17,7 +17,7 @@ pub(in crate::components::results_table::row_cells) fn taxon_cell(
     taxon_qid: &str,
 ) -> Element {
     rsx! {
-        td { class: "min-w-0 rounded-xl px-3 py-2.5 align-middle text-ui shadow-[inset_3px_0_0_var(--footer-wd-taxon)]",
+        td { class: "min-w-0 px-3 py-2.5 align-middle text-ui border-l-2 border-l-wd-taxon",
             div { class: "flex flex-col gap-1 max-w-[24ch]",
                 a {
                     href: "https://www.wikidata.org/entity/{taxon_qid}",
@@ -33,7 +33,7 @@ pub(in crate::components::results_table::row_cells) fn taxon_cell(
                     target: "_blank",
                     rel: "noopener noreferrer",
                     aria_label: "{taxon_qid} • {t(_locale, TextKey::OpenInTaxonScholia)}",
-                    class: "inline-block inline-flex items-center rounded-full border border-panel-border bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide border-current text-wd-taxon border-wd-taxon",
+                    class: "inline-flex items-center rounded-full border border-wd-taxon/35 bg-surface px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-wd-taxon hover:bg-bg focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28",
                     "{taxon_qid} • Scholia"
                 }
             }
