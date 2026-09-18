@@ -21,27 +21,27 @@ jobs:
       matrix:
         include:
           - app: index
-            path: "/${REPONAME}/"
+            path: "/${REPONAME}"
             dir: "apps/index"
             pkg: "index"
           - app: lotus-explore-rs
-            path: "/${REPONAME}/lotus-explore-rs/"
+            path: "/${REPONAME}/lotus-explore-rs"
             dir: "apps/lotus-explore-rs/lotus-explore-rs"
             pkg: "lotus-explore-rs"
           - app: json-count-rs
-            path: "/${REPONAME}/json-count-rs/"
+            path: "/${REPONAME}/json-count-rs"
             dir: "apps/json-count-rs"
             pkg: "json-count-rs"
           - app: mgf-precursor-erro-rs
-            path: "/${REPONAME}/mgf-precursor-erro-rs/"
+            path: "/${REPONAME}/mgf-precursor-erro-rs"
             dir: "apps/mgf-precursor-erro-rs"
             pkg: "mgf-precursor-erro-rs"
           - app: smellfish-rs
-            path: "/${REPONAME}/smellfish-rs/"
+            path: "/${REPONAME}/smellfish-rs"
             dir: "apps/smellfish-rs"
             pkg: "smellfish-rs"
           - app: lipid-selecto-rs
-            path: "/${REPONAME}/lipid-selecto-rs/"
+            path: "/${REPONAME}/lipid-selecto-rs"
             dir: "apps/lipid-selecto-rs"
             pkg: "lipid-selecto-rs"
     steps:
