@@ -255,7 +255,7 @@ This project builds on the excellent work of **Luca Cappelletti**
   Genetic algorithm for evolving SMARTS patterns
 - [`smarts-rs`](https://github.com/earth-metabolome-initiative/smarts-rs) ---
   High-performance SMARTS matching library
-- [`smiles-parser`](https://github.com/earth-metabolome-initiative/smiles-parser) ---
+- [`smiles-rs`](https://github.com/earth-metabolome-initiative/smiles-rs) ---
   SMILES string parser
 
 Credit: Luca Cappelletti, Earth Metabolome Initiative.

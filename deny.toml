@@ -69,7 +69,7 @@ skip = [
   { name = "darling_macro" },
   { name = "hashbrown" },
   { name = "sha1" },
-  { name = "smiles-parser" },
+  { name = "smiles-rs" },
   { name = "tower-http" },
   { name = "windows-targets" },
   { name = "windows_aarch64_gnullvm" },
@@ -102,7 +102,7 @@ allow-git = [
   "https://github.com/earth-metabolome-initiative/geometric-traits",
   "https://github.com/earth-metabolome-initiative/mascot-rs.git",
   "https://github.com/earth-metabolome-initiative/mass-spectrometry-traits",
-  "https://github.com/earth-metabolome-initiative/smiles-parser",
   "https://github.com/earth-metabolome-initiative/smarts-evolution",
   "https://github.com/earth-metabolome-initiative/smarts-rs",
+  "https://github.com/earth-metabolome-initiative/smiles-rs",
 ]

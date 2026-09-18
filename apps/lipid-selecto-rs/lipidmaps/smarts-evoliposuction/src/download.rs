@@ -5,8 +5,8 @@
 
 use std::path::Path;
 
-use lipidsdl::download::{Error, download_to, noop_progress};
-use lipidsdl::sdf::lipidmaps::to_lmsd_tsv;
+use crate::lipidsdl::download::{Error, download_to, noop_progress};
+use crate::lipidsdl::sdf::lipidmaps::to_lmsd_tsv;
 
 /// The canonical LMSD download URL.
 pub const LIPIDMAPS_LMSD_URL: &str = "https://www.lipidmaps.org/files/?file=LMSD&ext=sdf.zip";

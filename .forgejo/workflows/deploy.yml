@@ -17,8 +17,6 @@ jobs:
         include:
           - app: index
             path: "/dioxus/"
-          - app: lotus-explore-rs
-            path: "/dioxus/lotus-explore-rs/"
           - app: json-count-rs
             path: "/dioxus/json-count-rs/"
           - app: mgf-precursor-erro-rs
@@ -44,13 +42,6 @@ jobs:
         run: |
           cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Fetch Ketcher Assets (lotus-explore-rs only)
-        if: matrix.app == 'lotus-explore-rs'
-        run: |
-          cargo build --release -p lotus-deploy --bin fetch-ketcher
-          ../../target/release/fetch-ketcher
-        working-directory: apps/lotus-explore-rs
 
       - name: Build App
         run: dx build --release --platform web --debug-symbols false --base-path "${{ matrix.path }}"

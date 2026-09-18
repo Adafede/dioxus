@@ -64,6 +64,7 @@ pub mod depict_simple;
 pub mod examples;
 pub mod format;
 pub mod lipids;
+pub mod lipidsdl;
 pub mod parser;
 pub mod rules;
 

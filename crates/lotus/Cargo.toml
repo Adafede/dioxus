@@ -13,7 +13,6 @@ publish = false
 bytes = { workspace = true }
 csv = { workspace = true }
 log = { workspace = true }
-upload = { path = "../upload", version = "0.1" }
 urlencoding = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

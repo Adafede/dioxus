@@ -553,7 +553,7 @@ pub mod colors {
     /// Count the 8 major families from a TSV string and attribute colors.
     ///
     /// The TSV must have `MAIN_CLASS` and `SUB_CLASS` columns (as produced
-    /// by `lipidsdl::sdf::lipidmaps::to_lmsd_tsv`).
+    /// by `crate::lipidsdl::sdf::lipidmaps::to_lmsd_tsv`).
     ///
     /// Returns one [`Assignment`] per family (the family-level entry) plus
     /// per-subclass entries.

@@ -19,11 +19,12 @@
 //!
 //! This crate wraps [`smarts-evolution`](https://github.com/earth-metabolome-initiative/smarts-evolution),
 //! [`smarts-rs`](https://github.com/earth-metabolome-initiative/smarts-rs), and
-//! [`smiles-parser`](https://github.com/earth-metabolome-initiative/smiles-parser)
+//! [`smiles-rs`](https://github.com/earth-metabolome-initiative/smiles-rs)
 //! by **Luca Cappelletti** (`@LucaCappelletti94`), Earth Metabolome Initiative.
 
 pub mod download;
 pub mod evolve;
+pub mod lipidsdl;
 pub mod manifest;
 pub mod splitting;
 
