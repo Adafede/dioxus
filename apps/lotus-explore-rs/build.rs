@@ -273,7 +273,6 @@ fn build_robots_txt(meta: &Metadata) -> String {
         User-agent: anthropic-ai\nAllow: /\n\n\
         User-agent: Applebot\nAllow: /\n\n\
         User-agent: Googlebot\nAllow: /\n\n\
-        Content-Signal: *\n\x20 Disallow-Search: false\n\x20 Disallow-Ingest: false\n\x20 Disallow-Train: false\n\n\
         Sitemap: {base}/sitemap.xml\n",
     )
 }

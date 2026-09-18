@@ -30,7 +30,11 @@ fn base_url() -> String {
 #[cfg(target_arch = "wasm32")]
 pub fn asset_url(path: &str) -> String {
     let base = base_url();
-    let path = if path.starts_with('/') { path } else { &format!("/{path}") };
+    let path = if path.starts_with('/') {
+        path
+    } else {
+        &format!("/{path}")
+    };
     base + path
 }
 
