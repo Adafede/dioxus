@@ -22,16 +22,28 @@ jobs:
         include:
           - app: index
             path: "/${REPONAME}/"
+            dir: "apps/index"
+            pkg: "index"
           - app: lotus-explore-rs
             path: "/${REPONAME}/lotus-explore-rs/"
+            dir: "apps/lotus-explore-rs/lotus-explore-rs"
+            pkg: "lotus-explore-rs"
           - app: json-count-rs
             path: "/${REPONAME}/json-count-rs/"
+            dir: "apps/json-count-rs"
+            pkg: "json-count-rs"
           - app: mgf-precursor-erro-rs
             path: "/${REPONAME}/mgf-precursor-erro-rs/"
+            dir: "apps/mgf-precursor-erro-rs"
+            pkg: "mgf-precursor-erro-rs"
           - app: smellfish-rs
             path: "/${REPONAME}/smellfish-rs/"
+            dir: "apps/smellfish-rs"
+            pkg: "smellfish-rs"
           - app: lipid-selecto-rs
             path: "/${REPONAME}/lipid-selecto-rs/"
+            dir: "apps/lipid-selecto-rs"
+            pkg: "lipid-selecto-rs"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
@@ -60,13 +72,13 @@ jobs:
         run: |
           REPONAME="${GITHUB_REPOSITORY#*/}"
           EVAL_PATH=$(eval echo "${{ matrix.path }}")
-          dx build --release --platform web --debug-symbols false --base-path "$EVAL_PATH"
-        working-directory: apps/${{ matrix.app }}
+          dx build --release --platform web --debug-symbols false --base-path "$EVAL_PATH" --package ${{ matrix.pkg }}
+        working-directory: ${{ matrix.dir }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: app-${{ matrix.app }}
-          path: target/dx/${{ matrix.app }}/release/web/public
+          path: target/dx/${{ matrix.pkg }}/release/web/public
 
   deploy:
     needs: build-apps

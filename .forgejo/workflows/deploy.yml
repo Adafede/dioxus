@@ -1,4 +1,4 @@
-name: Deploy to Codeberg Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -16,17 +16,29 @@ jobs:
       matrix:
         include:
           - app: index
-            path: "/dioxus/"
+            path: "/${REPONAME}/"
+            dir: "apps/index"
+            pkg: "index"
           - app: lotus-explore-rs
-            path: "/dioxus/lotus-explore-rs/"
+            path: "/${REPONAME}/lotus-explore-rs/"
+            dir: "apps/lotus-explore-rs/lotus-explore-rs"
+            pkg: "lotus-explore-rs"
           - app: json-count-rs
-            path: "/dioxus/json-count-rs/"
+            path: "/${REPONAME}/json-count-rs/"
+            dir: "apps/json-count-rs"
+            pkg: "json-count-rs"
           - app: mgf-precursor-erro-rs
-            path: "/dioxus/mgf-precursor-erro-rs/"
+            path: "/${REPONAME}/mgf-precursor-erro-rs/"
+            dir: "apps/mgf-precursor-erro-rs"
+            pkg: "mgf-precursor-erro-rs"
           - app: smellfish-rs
-            path: "/dioxus/smellfish-rs/"
+            path: "/${REPONAME}/smellfish-rs/"
+            dir: "apps/smellfish-rs"
+            pkg: "smellfish-rs"
           - app: lipid-selecto-rs
-            path: "/dioxus/lipid-selecto-rs/"
+            path: "/${REPONAME}/lipid-selecto-rs/"
+            dir: "apps/lipid-selecto-rs"
+            pkg: "lipid-selecto-rs"
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +57,8 @@ jobs:
           cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Fetch Ketcher Assets (lotus-explore-rs only)
+      # Only run fetch-ketcher for the app that actually uses it
+      - name: Fetch Ketcher (lotus-explore-rs only)
         if: matrix.app == 'lotus-explore-rs'
         run: |
           cargo build --release -p lotus-deploy --bin fetch-ketcher
@@ -53,13 +66,16 @@ jobs:
         working-directory: apps/lotus-explore-rs
 
       - name: Build App
-        run: dx build --release --platform web --debug-symbols false --base-path "${{ matrix.path }}"
-        working-directory: apps/${{ matrix.app }}
+        run: |
+          REPONAME="${GITHUB_REPOSITORY#*/}"
+          EVAL_PATH=$(eval echo "${{ matrix.path }}")
+          dx build --release --platform web --debug-symbols false --base-path "$EVAL_PATH" --package ${{ matrix.pkg }}
+        working-directory: ${{ matrix.dir }}
 
       - uses: actions/upload-artifact@v3
         with:
           name: app-${{ matrix.app }}
-          path: target/dx/${{ matrix.app }}/release/web/public
+          path: target/dx/${{ matrix.pkg }}/release/web/public
 
   deploy:
     needs: build-apps
@@ -76,17 +92,13 @@ jobs:
           mkdir -p _final_site
 
           # Move base index contents to root of final site directory
-          if [ -d "_site/app-index" ]; then
-            cp -r _site/app-index/* _final_site/
-            rm -rf _site/app-index
-          fi
+          cp -r _site/app-index/* _final_site/
+          rm -rf _site/app-index
 
           # Move remaining apps to subdirectories
           for dir in _site/app-*; do
-            if [ -d "$dir" ]; then
-              app_name="${dir#_site/app-}"
-              mv "$dir" "_final_site/$app_name"
-            fi
+            app_name="${dir#_site/app-}"
+            mv "$dir" "_final_site/$app_name"
           done
 
       - uses: actions/git-pages@v2
