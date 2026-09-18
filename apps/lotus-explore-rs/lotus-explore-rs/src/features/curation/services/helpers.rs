@@ -61,6 +61,53 @@ pub fn qs_mass_statement(subject: &str, mass: f64) -> String {
     format!("{subject}|P2067|+{mass:.6}U483261|S887|Q113907573")
 }
 
+/// Reference QIDs for S887 (source/reference) in QuickStatements.
+pub const QS_REF_INFERRED_FROM_SMILES: &str = "Q113907573"; // inferred from SMILES
+pub const QS_REF_INFERRED_FROM_ISOMERIC_SMILES: &str = "Q123282952"; // inferred from isomeric SMILES
+
+/// Build a QuickStatements statement with S887 reference(s).
+/// Returns a statement like: `subject|prop|"value"|S887|Q113907573|S887|Q123282952`
+pub fn qs_statement_with_refs(subject: &str, prop: &str, value: &str, refs: &[&str]) -> String {
+    let mut stmt = format!("{subject}|{prop}|\"{value}\"");
+    for r in refs {
+        stmt.push_str("|S887|");
+        stmt.push_str(r);
+    }
+    stmt
+}
+
+/// Build a canonical SMILES statement with appropriate S887 references.
+/// - NO reference if no isomeric SMILES present
+/// - ONLY Q123282952 ("inferred from isomeric SMILES") if isomeric SMILES also present
+pub fn qs_canonical_smiles_statement(
+    subject: &str,
+    canonical_smiles: &str,
+    has_isomeric: bool,
+) -> String {
+    if has_isomeric {
+        qs_statement_with_refs(subject, "P233", canonical_smiles, &[crate::features::curation::services::helpers::QS_REF_INFERRED_FROM_ISOMERIC_SMILES])
+    } else {
+        // No reference for canonical SMILES when no isomeric present
+        format!("{subject}|P233|\"{canonical_smiles}\"")
+    }
+}
+
+/// Build an InChI statement with "inferred from SMILES" reference.
+pub fn qs_inchi_statement(subject: &str, inchi: &str) -> String {
+    qs_statement_with_refs(subject, "P234", inchi, &[QS_REF_INFERRED_FROM_SMILES])
+}
+
+/// Build an InChIKey statement with "inferred from SMILES" reference.
+pub fn qs_inchikey_statement(subject: &str, inchikey: &str) -> String {
+    qs_statement_with_refs(subject, "P235", inchikey, &[QS_REF_INFERRED_FROM_SMILES])
+}
+
+/// Build an isomeric SMILES statement WITHOUT any S887 reference.
+/// Isomeric SMILES is the source itself, not inferred from something else.
+pub fn qs_isomeric_smiles_statement(subject: &str, isomeric_smiles: &str) -> String {
+    format!("{subject}|P2017|\"{isomeric_smiles}\"")
+}
+
 // -- Text / chemistry normalization --------------------------------------------
 
 pub(super) fn normalize_doi(value: &str) -> Option<String> {

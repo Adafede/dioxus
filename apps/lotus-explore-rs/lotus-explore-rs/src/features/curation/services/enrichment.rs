@@ -6,6 +6,9 @@ use super::occurrence_cache::{
 };
 use super::*;
 use crate::features::curation::repositories::CurationKnowledgeRepository;
+use crate::features::curation::services::helpers::{
+    extract_formula_from_inchi, normalize_formula_for_wikidata,
+};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -76,26 +79,27 @@ async fn enrich_and_generate(
             let mut note = curation_note_existing_complete(locale).into();
 
             if existing.canonical_smiles.is_none() {
-                lines.push(format!(
-                    "{}|P233|\"{}\"",
-                    existing.qid,
-                    escape_qs_string(&converted.canonical_smiles)
+                lines.push(qs_canonical_smiles_statement(
+                    &existing.qid,
+                    &converted.canonical_smiles,
+                    has_isomeric_smiles(&converted.isomeric_smiles),
                 ));
                 changes += 1;
             }
             if existing.inchi.is_none() {
-                lines.push(format!(
-                    "{}|P234|\"{}\"",
-                    existing.qid,
-                    escape_qs_string(&converted.inchi)
+                lines.push(qs_inchi_statement(
+                    &existing.qid,
+                    &converted.inchi,
                 ));
                 changes += 1;
             }
             if existing.formula.is_none() && formula_from_inchi.is_some() {
-                lines.push(format!(
-                    "{}|P274|\"{}\"",
-                    existing.qid,
-                    escape_qs_string(formula_from_inchi.as_deref().unwrap_or_default())
+                let formula = formula_from_inchi.as_deref().unwrap_or_default();
+                lines.push(qs_statement_with_refs(
+                    &existing.qid,
+                    "P274",
+                    formula,
+                    &[QS_REF_INFERRED_FROM_SMILES],
                 ));
                 changes += 1;
             }
@@ -108,10 +112,9 @@ async fn enrich_and_generate(
             }
             if has_isomeric_smiles(&converted.isomeric_smiles) && existing.isomeric_smiles.is_none()
             {
-                lines.push(format!(
-                    "{}|P2017|\"{}\"",
-                    existing.qid,
-                    escape_qs_string(&converted.isomeric_smiles)
+                lines.push(qs_isomeric_smiles_statement(
+                    &existing.qid,
+                    &converted.isomeric_smiles,
                 ));
                 changes += 1;
             }
@@ -237,26 +240,26 @@ async fn enrich_and_generate(
                 lines.push(format!("LAST|P31|{WD_TYPE_CHEMICAL_ENTITY_QID}"));
             }
             lines.push(format!("LAST|P279|{WD_CHEMICAL_COMPOUND_QID}"));
-            lines.push(format!(
-                "LAST|P235|\"{}\"",
-                escape_qs_string(&converted.inchikey)
-            ));
-            lines.push(format!(
-                "LAST|P233|\"{}\"",
-                escape_qs_string(&converted.canonical_smiles)
+            lines.push(qs_inchikey_statement("LAST", &converted.inchikey));
+            lines.push(qs_canonical_smiles_statement(
+                "LAST",
+                &converted.canonical_smiles,
+                has_isomeric_smiles(&converted.isomeric_smiles),
             ));
             if has_isomeric_smiles(&converted.isomeric_smiles) {
-                lines.push(format!(
-                    "LAST|P2017|\"{}\"",
-                    escape_qs_string(&converted.isomeric_smiles)
+                lines.push(qs_isomeric_smiles_statement(
+                    "LAST",
+                    &converted.isomeric_smiles,
                 ));
             }
-            lines.push(format!(
-                "LAST|P234|\"{}\"",
-                escape_qs_string(&converted.inchi)
-            ));
+            lines.push(qs_inchi_statement("LAST", &converted.inchi));
             if let Some(formula) = formula_from_inchi.as_deref() {
-                lines.push(format!("LAST|P274|\"{}\"", escape_qs_string(formula)));
+                lines.push(qs_statement_with_refs(
+                    "LAST",
+                    "P274",
+                    formula,
+                    &[QS_REF_INFERRED_FROM_SMILES],
+                ));
             }
             if let Some(mass) = exact_mass {
                 lines.push(qs_mass_statement("LAST", mass));

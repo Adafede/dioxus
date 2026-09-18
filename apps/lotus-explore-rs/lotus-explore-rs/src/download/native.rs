@@ -261,6 +261,6 @@ async fn execute_download_direct(format: DownloadFormat, query: &str) -> Result<
 }
 
 pub(super) fn trigger_download(filename: &str, mime: &str, content: &str) {
-    let _ = crate::crate::upload::download_text(content, filename);
+    let _ = crate::upload::download_text(content, filename);
     let _ = mime;
 }

@@ -30,6 +30,9 @@ use chemical::{convert_smiles, has_undefined_stereo, resolve_exact_mass};
 use helpers::{
     binding_value, escape_qs_string, escape_sparql_string, extract_qid_from_uri,
     has_isomeric_smiles, has_stereo_marks, normalize_doi,
+    qs_canonical_smiles_statement, qs_inchi_statement,
+    qs_inchikey_statement, qs_isomeric_smiles_statement,
+    qs_statement_with_refs, QS_REF_INFERRED_FROM_SMILES, QS_REF_INFERRED_FROM_ISOMERIC_SMILES,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use http_client::{BatchConvertResponse, natprod_client};
@@ -45,7 +48,11 @@ pub mod quickstatements;
 #[cfg(test)]
 pub(crate) use chemical::extract_exact_mass_from_json;
 pub use enrichment::curate_single_row;
-pub use helpers::{extract_formula_from_inchi, normalize_formula_for_wikidata, qs_mass_statement};
+#[cfg(test)]
+pub use helpers::{
+    extract_exact_mass_from_json, extract_formula_from_inchi, normalize_formula_for_wikidata,
+    qs_mass_statement,
+};
 
 /// Single toggle to force WDQS fallback for testing.
 /// Set this to `true` to force all queries to use WDQS (bypass QLever entirely).
