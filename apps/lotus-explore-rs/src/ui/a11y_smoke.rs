@@ -34,6 +34,7 @@ mod tests {
         let header_src = include_str!("../components/layout/page_header.rs");
         assert!(header_src.contains("h1 { id: PAGE_TITLE_ID"));
         assert!(header_src.contains("class: \"text-inherit no-underline hover:no-underline\""));
-        assert!(header_src.contains("aria_label: \"{t(locale, TextKey::GoToHomepage)}\""));
+        // Home link uses visible text as accessible name (no redundant aria_label)
+        assert!(header_src.contains("\"{t(locale, TextKey::PageTitle)}\""));
     }
 }
