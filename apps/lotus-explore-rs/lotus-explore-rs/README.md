@@ -71,7 +71,7 @@ For detailed guidance on using Tailwind with Dioxus, see
 Ketcher must be fetched before serving or deploying:
 
 ```bash
-./scripts/fetch-ketcher.sh
+cargo run --release -p lotus-deploy --bin fetch-ketcher
 ```
 
 ## Citation

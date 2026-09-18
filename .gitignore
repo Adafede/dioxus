@@ -1,20 +1,20 @@
-# ── Build artefacts ──────────────────────────────────────────────────────────
+# ── Build artefacts ──────────────────────────────────────────
 target/
 dist/
 
-# ── Dioxus / dx CLI outputs ───────────────────────────────────────────────────
+# ── Dioxus / dx CLI outputs ──────────────────────────────────
 apps/*/dist/
 apps/*/.dioxus/
 
-# ── Downloaded assets (Ketcher, etc) ───────────────────────────────────────────
-apps/*/public/assets/ketcher/
+# ── Downloaded assets (Ketcher, etc) ─────────────────────────
+**/public/assets/ketcher/
 
-# ── macOS ─────────────────────────────────────────────────────────────────────
+# ── macOS ───────────────────────────────────────────────────
 .DS_Store
 .AppleDouble
 .LSOverride
 
-# ── IDE / editor ─────────────────────────────────────────────────────────────
+# ── IDE / editor ────────────────────────────────────────────
 .idea/
 *.iml
 .vscode/
@@ -22,12 +22,12 @@ apps/*/public/assets/ketcher/
 *.swo
 *~
 
-# ── Environment / secrets ─────────────────────────────────────────────────────
+# ── Environment / secrets ───────────────────────────────────
 .env
 .env.local
 .env.*.local
 
-# ── Pre-commit cache ──────────────────────────────────────────────────────────
+# ── Pre-commit cache ────────────────────────────────────────
 .pre-commit-cache/
 lcov.info
 *.tarpaulin

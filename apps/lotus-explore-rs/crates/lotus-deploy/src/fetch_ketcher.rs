@@ -8,8 +8,8 @@
 //! ~87 MB of dead weight from the deploy (and from local clones), with no
 //! effect on the editor at runtime.
 //!
-//! Run from `apps/lotus-explore-rs` (resolves `public/assets/ketcher` relative
-//! to the working directory, matching the former `scripts/fetch-ketcher.sh`).
+//! Run from `apps/lotus-explore-rs/lotus-explore-rs` (resolves `public/assets/ketcher` relative
+//! to the working directory).
 //!
 //! # Environment
 //!

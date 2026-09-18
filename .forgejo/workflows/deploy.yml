@@ -60,10 +60,8 @@ jobs:
       # Only run fetch-ketcher for the app that actually uses it
       - name: Fetch Ketcher (lotus-explore-rs only)
         if: matrix.app == 'lotus-explore-rs'
-        run: |
-          cargo build --release -p lotus-deploy --bin fetch-ketcher
-          ../../target/release/fetch-ketcher
-        working-directory: apps/lotus-explore-rs
+        run: cargo run --release -p lotus-deploy --bin fetch-ketcher
+        working-directory: ${{ matrix.dir }}
 
       - name: Build App
         run: |
