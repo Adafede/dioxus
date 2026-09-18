@@ -112,7 +112,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
             rel: "stylesheet",
             href: asset!("/public/assets/lotus-explore.css"),
         }
-        document::Script { src: asset!("/public/assets/js/bootstrap.js"), defer: true }
+        document::Script { src: asset!("/public/assets/js/bootstrap.js"), defer: true, "type": "text/javascript" }
     }
 }
 
@@ -121,7 +121,7 @@ pub fn LotusDocumentHead(lang: String) -> Element {
 #[allow(clippy::volatile_composites)]
 pub fn CurationScripts() -> Element {
     rsx! {
-        document::Script { src: asset!("/public/assets/js/curation/rdkit-bridge.js"), defer: true }
-        document::Script { src: asset!("/public/assets/js/curation/citation-bridge.js"), defer: true }
+        document::Script { src: asset!("/public/assets/js/curation/rdkit-bridge.js"), defer: true, "type": "text/javascript" }
+        document::Script { src: asset!("/public/assets/js/curation/citation-bridge.js"), defer: true, "type": "text/javascript" }
     }
 }

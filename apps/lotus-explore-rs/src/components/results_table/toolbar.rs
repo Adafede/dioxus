@@ -3,7 +3,6 @@
 
 //! Toolbar assembly for the results table.
 
-use super::table_toolbar_sections::{CappedRowsNotice, StatBar};
 use dioxus::prelude::*;
 
 #[component]

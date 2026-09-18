@@ -66,5 +66,15 @@ web-sys = {
   ]
 }
 
+[profile.release]
+debug = false
+debug-assertions = false
+overflow-checks = false
+lto = "thin"
+codegen-units = 1
+
+[profile.release.package."*"]
+opt-level = 3
+
 [lints]
 workspace = true

@@ -39,7 +39,6 @@ pub fn PageHeader() -> Element {
                         a {
                             href: "/dioxus/lotus-explore-rs/",
                             class: "text-inherit no-underline hover:no-underline",
-                            aria_label: "{t(locale, TextKey::GoToHomepage)}",
                             "{t(locale, TextKey::PageTitle)}"
                         }
                     }

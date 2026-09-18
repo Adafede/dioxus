@@ -36,7 +36,6 @@ pub fn KetcherPanel() -> Element {
                     }
                 } else {
                     button {
-                        aria_label: "{t(locale, TextKey::KetcherIframeTitle)}",
                         class: "flex min-h-[420px] w-full flex-1 cursor-pointer items-center justify-center border-0 bg-bg text-center hover:bg-panel-soft focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 focus-visible:rounded",
                         onclick: move |_| ketcher_ready.set(true),
                         em {

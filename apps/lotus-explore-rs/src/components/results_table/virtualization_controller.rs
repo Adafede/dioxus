@@ -15,6 +15,12 @@ use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
 use super::scroll_runtime;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::closure::Closure;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsCast;
+#[cfg(target_arch = "wasm32")]
+use web_sys::window;
 
 #[derive(Clone)]
 pub(super) struct ResultsTableVirtualizationController {
@@ -116,14 +122,26 @@ impl ResultsTableVirtualizationController {
 
         let current_row_height = *self.row_height_px.read();
         let mut row_height_for_frame = current_row_height;
+
+        // Defer row height measurement to rAF to avoid forced reflow.
+        // Reading offsetHeight after DOM mutations triggers synchronous layout.
         if !*self.row_height_measured.read() {
-            let measured_row_height =
-                scroll_runtime::measure_row_height_px(self.config.scroll_id, current_row_height);
-            if measured_row_height != current_row_height {
-                self.row_height_px.set(measured_row_height);
-                row_height_for_frame = measured_row_height;
+            let scroll_id = self.config.scroll_id;
+            let mut row_height_px = self.row_height_px;
+            let mut row_height_measured = self.row_height_measured;
+            let fallback = current_row_height;
+            if let Some(win) = window() {
+                let cb = Closure::wrap(Box::new(move || {
+                    let measured = scroll_runtime::measure_row_height_px(scroll_id, fallback);
+                    if measured != fallback {
+                        row_height_px.set(measured);
+                    }
+                    row_height_measured.set(true);
+                }) as Box<dyn FnMut()>);
+                let _ = win.request_animation_frame(cb.as_ref().unchecked_ref());
+                cb.forget();
             }
-            self.row_height_measured.set(true);
+            row_height_for_frame = fallback;
         }
 
         // Schedule a frame only during initial attachment/measurement and viewport bootstrap,

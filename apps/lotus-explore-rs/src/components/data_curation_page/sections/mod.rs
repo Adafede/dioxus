@@ -184,7 +184,7 @@ pub fn AddRowCard(
                 }
                 Button {
                     label: button_load_example_rows(locale).to_string(),
-                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] opacity-50 cursor-not-allowed pointer-events-none",
+                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] disabled:opacity-100 disabled:bg-border disabled:text-muted disabled:cursor-not-allowed",
                     disabled: processing,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_load_examples.call(()))),
                 }
@@ -242,7 +242,7 @@ pub fn TsvImportCard(
             div { class: "flex flex-wrap items-center gap-2.5",
                 Button {
                     label: button_append_tsv_rows(locale).to_string(),
-                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] opacity-50 cursor-not-allowed pointer-events-none",
+                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] disabled:opacity-100 disabled:bg-border disabled:text-muted disabled:cursor-not-allowed",
                     disabled: processing || !has_tsv_input,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_parse_tsv.call(()))),
                 }
@@ -295,7 +295,7 @@ pub fn QueueRowsCard(
                     } else {
                         button_generate_quickstatements(locale).to_string()
                     },
-                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2 min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] opacity-50 cursor-not-allowed pointer-events-none",
+                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl bg-accent text-bg font-semibold shadow-xs hover:bg-accent-2 active:bg-accent-2 min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] disabled:opacity-100 disabled:bg-accent/30 disabled:text-bg/60 disabled:cursor-not-allowed",
                     disabled: processing,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_process.call(()))),
                 }
@@ -404,7 +404,7 @@ pub fn QuickStatementsCard(
                 }
                 Button {
                     label: button_second_pass(locale).to_string(),
-                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] opacity-50 cursor-not-allowed pointer-events-none",
+                    class: "inline-flex items-center justify-center font-sans select-none transition-transform duration-150 ease-[cubic-bezier(.4,0,.2,1)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 rounded-xl border border-border bg-surface text-text font-semibold shadow-xs hover:bg-bg active:bg-bg min-h-[34px] gap-1.5 px-3 py-1.5 text-ui active:scale-[0.98] disabled:opacity-100 disabled:bg-border disabled:text-muted disabled:cursor-not-allowed",
                     disabled: processing,
                     onclick: Some(EventHandler::new(move |_: Event<MouseData>| on_second_pass.call(()))),
                 }

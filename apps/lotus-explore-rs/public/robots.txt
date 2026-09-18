@@ -35,9 +35,4 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
-Content-Signal: *
-  Disallow-Search: false
-  Disallow-Ingest: false
-  Disallow-Train: false
-
 Sitemap: https://adafede.github.io/dioxus/lotus-explore-rs/sitemap.xml
