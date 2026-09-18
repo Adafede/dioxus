@@ -32,7 +32,7 @@ use helpers::{
     has_isomeric_smiles, has_stereo_marks, normalize_doi,
     qs_canonical_smiles_statement, qs_inchi_statement,
     qs_inchikey_statement, qs_isomeric_smiles_statement,
-    qs_statement_with_refs, QS_REF_INFERRED_FROM_SMILES, QS_REF_INFERRED_FROM_ISOMERIC_SMILES,
+    qs_statement_with_refs, QS_REF_INFERRED_FROM_SMILES,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use http_client::{BatchConvertResponse, natprod_client};
@@ -50,7 +50,7 @@ pub(crate) use chemical::extract_exact_mass_from_json;
 pub use enrichment::curate_single_row;
 #[cfg(test)]
 pub use helpers::{
-    extract_exact_mass_from_json, extract_formula_from_inchi, normalize_formula_for_wikidata,
+    extract_formula_from_inchi, normalize_formula_for_wikidata,
     qs_mass_statement,
 };
 
