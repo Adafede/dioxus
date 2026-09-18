@@ -37,9 +37,21 @@ pub(super) fn escape_sparql_string(value: &str) -> String {
 
 /// Escape a string literal for use inside a QuickStatements statement value.
 ///
-/// Uses the same escaping rules as SPARQL double-quoted strings.
+/// Unlike SPARQL, QuickStatements string values (inside double quotes)
+/// only require double-quote escaping. Backslashes in SMILES/InChI
+/// are stereo chemistry indicators and must NOT be escaped.
+/// See https://www.wikidata.org/wiki/Q140985706
 pub(super) fn escape_qs_string(value: &str) -> String {
-    escape_sparql_string(value)
+    let mut out = String::with_capacity(value.len() + 4);
+    for ch in value.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\t' => out.push_str("\\t"),
+            other => out.push(other),
+        }
+    }
+    out
 }
 
 /// Format a Wikidata QuickStatements mass statement using the dalton unit (Q483261).
@@ -109,4 +121,35 @@ pub fn normalize_formula_for_wikidata(value: &str) -> String {
             _ => ch,
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn escape_sparql_string_escapes_backslash_and_quote() {
+        assert_eq!(escape_sparql_string(r#"C\C"#), r#"C\\C"#);
+        assert_eq!(escape_sparql_string(r#"C"C"#), r#"C\"C"#);
+        assert_eq!(escape_sparql_string(r#"C\C"D"#), r#"C\\C\"D"#);
+    }
+
+    #[test]
+    fn escape_qs_string_escapes_only_quote_newline_tab() {
+        // SMILES with backslashes (stereo chemistry) should NOT be double-escaped
+        // See https://www.wikidata.org/wiki/Q140985706
+        let smiles = r#"C/C(=C\CC/C=C(\C)CC/C=C(\C)CCC(=O)O)CC/C=C(\C)CCC(=O)O"#;
+        assert_eq!(escape_qs_string(smiles), smiles);
+
+        // Double quotes should be escaped
+        assert_eq!(escape_qs_string(r#"C"C"#), r#"C\"C"#);
+
+        // Newlines and tabs should be escaped
+        assert_eq!(escape_qs_string("C\nC"), "C\\nC");
+        assert_eq!(escape_qs_string("C\tC"), "C\\tC");
+
+        // InChI with backslashes should not be double-escaped
+        let inchi = "InChI=1S/C8H10N4O2/c1-10-4-9-6-5(10)7(13)12(3)8(14)11(6)2/h4-6H,1-3H3";
+        assert_eq!(escape_qs_string(inchi), inchi);
+    }
 }
