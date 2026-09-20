@@ -44,29 +44,11 @@ use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
 #[error("{message}")]
-pub struct NetworkErrorDetail {
+pub struct ErrorDetail {
     pub message: Arc<str>,
 }
 
-impl NetworkErrorDetail {
-    pub fn new(message: impl Into<Arc<str>>) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.message
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Error)]
-#[error("{message}")]
-pub struct ParseErrorDetail {
-    pub message: Arc<str>,
-}
-
-impl ParseErrorDetail {
+impl ErrorDetail {
     pub fn new(message: impl Into<Arc<str>>) -> Self {
         Self {
             message: message.into(),
@@ -84,22 +66,22 @@ pub enum RepositoryError {
     NotConfigured,
 
     #[error("network error: {0}")]
-    Network(NetworkErrorDetail),
+    Network(ErrorDetail),
 
     #[error("HTTP {status}: {body}")]
     Http { status: u16, body: String },
 
     #[error("parse error: {0}")]
-    Parse(ParseErrorDetail),
+    Parse(ErrorDetail),
 }
 
 impl RepositoryError {
     pub fn network(message: impl Into<Arc<str>>) -> Self {
-        Self::Network(NetworkErrorDetail::new(message))
+        Self::Network(ErrorDetail::new(message))
     }
 
     pub fn parse(message: impl Into<Arc<str>>) -> Self {
-        Self::Parse(ParseErrorDetail::new(message))
+        Self::Parse(ErrorDetail::new(message))
     }
 }
 

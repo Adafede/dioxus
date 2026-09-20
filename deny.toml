@@ -48,6 +48,7 @@ multiple-versions = "deny"
 # Only allow the duplicate crates that are actually present in the current
 # dependency graph. Re-audit this list whenever Cargo.lock changes.
 skip = [
+  { name = "base64" },
   { name = "block-buffer" },
   { name = "const-serialize" },
   { name = "const-serialize-macro" },
@@ -59,6 +60,7 @@ skip = [
   { name = "getrandom" },
   { name = "jni" },
   { name = "jni-sys" },
+  { name = "miniz_oxide" },
   { name = "r-efi" },
   { name = "rand" },
   { name = "rand_core" },
@@ -90,6 +92,8 @@ skip = [
   { name = "windows_x86_64_gnullvm" },
   { name = "windows_x86_64_msvc" },
   { name = "winnow" },
+  { name = "zstd" },
+  { name = "zstd-safe" },
 ]
 
 # ── Source policy ─────────────────────────────────────────────────────────────
@@ -105,4 +109,5 @@ allow-git = [
   "https://github.com/earth-metabolome-initiative/smarts-evolution",
   "https://github.com/earth-metabolome-initiative/smarts-rs",
   "https://github.com/earth-metabolome-initiative/smiles-rs",
+  "https://github.com/earth-metabolome-initiative/smiles-parser",
 ]
