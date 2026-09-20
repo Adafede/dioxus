@@ -217,7 +217,7 @@ fn ShellScaffold(lang: String) -> Element {
             footer {
                 class: "flex flex-col shrink-0 w-full bg-panel border-t border-border min-h-[80px]",
                 div {
-                    class: "w-full max-w-[1600px] mx-auto px-5 pt-[3px] pb-[6px] box-border min-[1024px]:px-8",
+                    class: "w-full max-w-[1600px] mx-auto px-5 pt-[3px] pb-[6px] box-border lg:px-8",
                     Footer {}
                 }
             }

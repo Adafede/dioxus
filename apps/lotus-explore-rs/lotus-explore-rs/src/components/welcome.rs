@@ -120,7 +120,6 @@ fn DownloadExampleRow(
     let absolute = Arc::<str>::from(absolute);
     rsx! {
         div {
-            role: "status",
             class: "flex items-center gap-2 rounded-xl border border-border bg-bg p-2 text-ui shadow-xs",
             span {
                 class: "shrink-0 rounded-full bg-accent/12 px-2 py-0.5 text-micro font-semibold text-accent",

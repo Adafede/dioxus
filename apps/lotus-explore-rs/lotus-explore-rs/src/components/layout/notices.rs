@@ -42,7 +42,7 @@ pub fn ShareNotice(shareable_url: Memo<Option<Arc<str>>>) -> Element {
                     readonly: true,
                     value: "{share}",
                     aria_label: "{t(locale, TextKey::CopyShareableLink)}",
-                    class: "min-w-0 flex-1 truncate font-mono w-full rounded-md border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
+                    class: "min-w-0 flex-1 truncate font-mono w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-body text-text shadow-xs focus-visible:outline-none focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                 }
                 CopyButton {
                     text: Arc::<str>::from(absolute_share_url(share)),

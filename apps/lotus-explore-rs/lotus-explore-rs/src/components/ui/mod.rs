@@ -6,12 +6,9 @@
 //! These components are styled with Tailwind classes and take explicit props.
 //! They can be composed into larger components in other modules.
 
-pub mod badge;
 pub mod button;
 pub mod card;
 
-#[allow(unused_imports)]
-pub use badge::{BadgeVariant, StatusBadge};
 #[allow(unused_imports)]
 pub use button::Button;
 #[allow(unused_imports)]

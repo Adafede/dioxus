@@ -10,16 +10,15 @@ pub fn Footer() -> Element {
     let locale = use_locale();
     rsx! {
         div {
-            class: "flex flex-col gap-3 py-1 border-b border-border last:border-b-0 min-[640px]:flex-row min-[640px]:items-start min-[640px]:gap-x-6 min-[640px]:gap-y-0",
+            class: "flex flex-col gap-3 py-1 border-b border-border last:border-b-0 sm:flex-row sm:items-start sm:gap-x-6 sm:gap-y-0",
             div {
-                class: "flex items-center gap-2 py-0.5 min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px] flex-nowrap",
+                class: "flex items-center gap-2 py-0.5 sm:flex-[1_1_280px] sm:min-w-[280px] flex-nowrap",
                 span {
                     class: "inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-xl border border-current/30 border-l-4 border-current bg-current/14 min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0 shrink-0 text-wd-compound",
                     "{t(locale, TextKey::FooterArchive)}"
                 }
                 ul {
                     class: "flex items-center gap-x-2.5 list-none m-0 p-0 min-w-0 overflow-x-auto whitespace-nowrap pb-1 scrollbar-thin scrollbar-thumb-current/20 scrollbar-track-transparent flex-nowrap",
-                    role: "list",
                     li {
                         class: "shrink-0",
                         a {
@@ -35,16 +34,15 @@ pub fn Footer() -> Element {
             FooterCitationRow { locale }
         }
         div {
-            class: "flex flex-col gap-3 py-1 border-b border-border last:border-b-0 min-[640px]:flex-row min-[640px]:items-start min-[640px]:gap-x-6 min-[640px]:gap-y-0",
+            class: "flex flex-col gap-3 py-1 border-b border-border last:border-b-0 sm:flex-row sm:items-start sm:gap-x-6 sm:gap-y-0",
             div {
-                class: "flex items-center gap-2 py-0.5 min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px] flex-nowrap",
+                class: "flex items-center gap-2 py-0.5 sm:flex-[1_1_280px] sm:min-w-[280px] flex-nowrap",
                 span {
                     class: "inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-xl border border-current/30 border-l-4 border-current bg-current/14 min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0 shrink-0 text-wd-taxon",
                     "{t(locale, TextKey::FooterCode)}"
                 }
                 ul {
                     class: "flex items-center gap-x-2.5 list-none m-0 p-0 min-w-0 overflow-x-auto whitespace-nowrap pb-1 scrollbar-thin scrollbar-thumb-current/20 scrollbar-track-transparent flex-nowrap",
-                    role: "list",
                     li {
                         class: "shrink-0",
                         a {
@@ -58,14 +56,13 @@ pub fn Footer() -> Element {
                 }
             }
             div {
-                class: "flex items-center gap-2 py-0.5 min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px] flex-nowrap",
+                class: "flex items-center gap-2 py-0.5 sm:flex-[1_1_280px] sm:min-w-[280px] flex-nowrap",
                 span {
                     class: "inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-xl border border-current/30 border-l-4 border-current bg-current/14 min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0 shrink-0 text-wd-taxon",
                     "{t(locale, TextKey::FooterData)}"
                 }
                 ul {
                     class: "flex items-center gap-x-2.5 list-none m-0 p-0 min-w-0 overflow-x-auto whitespace-nowrap pb-1 scrollbar-thin scrollbar-thumb-current/20 scrollbar-track-transparent flex-nowrap",
-                    role: "list",
                     li {
                         class: "shrink-0",
                         a {
@@ -90,16 +87,15 @@ pub fn Footer() -> Element {
             }
         }
         div {
-            class: "flex flex-col gap-3 py-1 border-b border-border last:border-b-0 min-[640px]:flex-row min-[640px]:items-start min-[640px]:gap-x-6 min-[640px]:gap-y-0",
+            class: "flex flex-col gap-3 py-1 border-b border-border last:border-b-0 sm:flex-row sm:items-start sm:gap-x-6 sm:gap-y-0",
             div {
-                class: "flex items-center gap-2 py-0.5 min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px] flex-nowrap",
+                class: "flex items-center gap-2 py-0.5 sm:flex-[1_1_280px] sm:min-w-[280px] flex-nowrap",
                 span {
                     class: "inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-xl border border-current/30 border-l-4 border-current bg-current/14 min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0 shrink-0 text-wd-reference",
                     "{t(locale, TextKey::FooterPrograms)}"
                 }
                 ul {
                     class: "flex items-center gap-x-2.5 list-none m-0 p-0 min-w-0 overflow-x-auto whitespace-nowrap pb-1 scrollbar-thin scrollbar-thumb-current/20 scrollbar-track-transparent flex-nowrap",
-                    role: "list",
                     li {
                         class: "shrink-0",
                         a {
@@ -171,14 +167,13 @@ pub fn Footer() -> Element {
 fn FooterCitationRow(locale: Locale) -> Element {
     rsx! {
         div {
-            class: "flex items-center gap-2 py-0.5 min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px] flex-nowrap",
+            class: "flex items-center gap-2 py-0.5 sm:flex-[1_1_280px] sm:min-w-[280px] flex-nowrap",
             span {
                 class: "inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-xl border border-current/30 border-l-4 border-current bg-current/14 min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0 shrink-0 text-wd-compound",
                 "{t(locale, TextKey::FooterCitation)}"
             }
             ul {
                 class: "flex items-center gap-x-2.5 list-none m-0 p-0 min-w-0 overflow-x-auto whitespace-nowrap pb-1 scrollbar-thin scrollbar-thumb-current/20 scrollbar-track-transparent flex-nowrap",
-                role: "list",
                 li {
                     class: "shrink-0",
                     a {
@@ -207,14 +202,13 @@ fn FooterCitationRow(locale: Locale) -> Element {
 fn FooterLicenseRow(locale: Locale) -> Element {
     rsx! {
         div {
-            class: "flex items-center gap-2 py-0.5 min-[640px]:flex-[1_1_280px] min-[640px]:min-w-[280px] flex-nowrap",
+            class: "flex items-center gap-2 py-0.5 sm:flex-[1_1_280px] sm:min-w-[280px] flex-nowrap",
             span {
                 class: "inline-flex items-center font-bold uppercase tracking-[0.06em] whitespace-nowrap leading-normal px-2 py-1 rounded-xl border border-current/30 border-l-4 border-current bg-current/14 min-h-[34px] text-sm max-[480px]:whitespace-normal max-[480px]:text-micro max-[480px]:px-1.5 max-[480px]:py-[2px] max-[480px]:min-h-0 shrink-0 text-wd-entries",
                 "{t(locale, TextKey::FooterLicense)}"
             }
             ul {
                 class: "flex items-center gap-x-2.5 list-none m-0 p-0 min-w-0 overflow-x-auto whitespace-nowrap pb-1 scrollbar-thin scrollbar-thumb-current/20 scrollbar-track-transparent flex-nowrap",
-                role: "list",
                 li {
                     class: "shrink-0",
                     a {

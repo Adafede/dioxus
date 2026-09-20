@@ -330,8 +330,7 @@ pub fn QueueRowsCard(
                         } else {
                             for (idx, row) in rows_snapshot.iter().enumerate() {
                                 tr { key: "{row.name}|{row.smiles}",
-                                    class: "odd:bg-surface/30 hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 focus-visible:ring-offset-[-2px]",
-                                    tabindex: "0",
+                                    class: "odd:bg-surface/30 hover:bg-surface/60",
                                     td { class: "border-b border-panel-border px-3 py-2.5 align-top text-ui w-[110px] min-w-[110px]",
                                         Button {
                                             label: button_remove(locale).to_string(),

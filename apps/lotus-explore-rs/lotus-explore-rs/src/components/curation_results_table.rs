@@ -130,8 +130,7 @@ pub fn CurationResultsTable(locale: Locale, rows: Arc<[CurationResultRow]>) -> E
                     tbody {
                         for (idx, row) in rows.iter().enumerate() {
                             tr { key: "{row.inchikey.as_deref().unwrap_or(&idx.to_string())}",
-                                class: "odd:bg-surface/30 hover:bg-surface/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 focus-visible:ring-offset-[-2px]",
-                                tabindex: "0",
+                                class: "odd:bg-surface/30 hover:bg-surface/40",
                                 {render_curation_result_cells(locale, row)}
                             }
                         }

@@ -166,7 +166,7 @@ fn StructureSection() -> Element {
                         aria_valuemin: "0",
                         aria_valuemax: "1",
                         aria_valuenow: "{smiles_threshold}",
-                        class: "w-full accent-accent cursor-pointer appearance-none h-2 bg-border rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
+                        class: "w-full accent-accent cursor-pointer appearance-none h-2 bg-border rounded-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2",
                         oninput: move |e| {
                             if let Ok(v) = e.value().parse::<f64>() {
                                 ctx.update(FormAction::SmilesThreshold(v));
