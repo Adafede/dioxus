@@ -105,7 +105,6 @@ fn extract_batch_convert_output(parsed: BatchConvertResponse) -> Result<String, 
     Ok(first.output.clone())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn extract_exact_mass_from_json(value: &Value) -> Option<f64> {
     if let Some(v) = value
@@ -131,7 +130,6 @@ pub fn extract_exact_mass_from_json(value: &Value) -> Option<f64> {
     None
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[cfg_attr(not(test), allow(dead_code))]
 fn parse_exact_mass_scalar(value: &Value) -> Option<f64> {
     if let Some(v) = value.as_f64() {

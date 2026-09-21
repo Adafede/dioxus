@@ -25,17 +25,21 @@ fn base_url() -> String {
     String::new()
 }
 
-/// Build absolute asset URL from the current page's base URL (including pathname).
-/// Ketcher and other root-level assets are served from /assets/ at the app's base path.
+/// Build a root-relative URL for a static asset under the served `public/` tree.
+///
+/// Emitted as a leading-`/` path so it always resolves against the server origin,
+/// independent of the current SPA route. That is what stops the Ketcher `<iframe>`
+/// from 404'ing into the dev-server SPA fallback (which would serve the app shell
+/// back into the iframe and nest it recursively). Note this deliberately does NOT
+/// use `base_uri()`: `dx` emits no `<base href>`, so `base_uri()` would fall back to
+/// the *current page URL* (e.g. `/curation`) and reintroduce the recursion.
 #[cfg(target_arch = "wasm32")]
 pub fn asset_url(path: &str) -> String {
-    let base = base_url();
-    let path = if path.starts_with('/') {
-        path
+    if path.starts_with('/') {
+        String::from(path)
     } else {
-        &format!("/{path}")
-    };
-    base + path
+        format!("/{path}")
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

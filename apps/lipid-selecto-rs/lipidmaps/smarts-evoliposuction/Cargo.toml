@@ -29,9 +29,9 @@ zip = { workspace = true }
 
 # External crates by Luca Cappelletti (@LucaCappelletti94) / Earth Metabolome Initiative
 # See README.md for full credit and links.
-smarts-evolution = { git = "https://github.com/earth-metabolome-initiative/smarts-evolution", branch = "main", version = "0.1.0", features = ["tui"] }
-smarts-rs = { git = "https://github.com/earth-metabolome-initiative/smarts-rs", branch = "main", version = "0.1.0" }
-smiles-rs = { git = "https://github.com/earth-metabolome-initiative/smiles-rs", branch = "main", version = "0.1.4" }
+smarts-evolution = { git = "https://github.com/earth-metabolome-initiative/smarts-evolution", branch = "main", version = "0.1", features = ["tui"] }
+smarts-rs = { git = "https://github.com/earth-metabolome-initiative/smarts-rs", branch = "main", version = "0.1" }
+smiles-rs = { git = "https://github.com/earth-metabolome-initiative/smiles-rs", branch = "main", version = "0.1" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tempfile = { workspace = true }

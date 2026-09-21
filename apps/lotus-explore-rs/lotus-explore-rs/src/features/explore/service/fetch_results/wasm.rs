@@ -20,13 +20,28 @@ pub(super) async fn fetch_results<R: LotusRepository>(
     // Display query FIRST, alone — it is authoritative and its failure fails the
     // search (subject to backoff). Fetching it alone guarantees it can never
     // race the COUNT, which is what `try_join!` did (the 15:00 burst that 429'd).
+    //
+    // Cache: reuse a previously fetched page (back/repeat navigation) instead of
+    // re-hitting QLever. Keys come from `lotus::state::build_search_cache_key`,
+    // the same keys the native server uses, so both cache paths stay compatible.
+    let results_key =
+        lotus::state::build_search_cache_key(plan.execution_query, plan.display_limit, true);
     let results_timer = perf::start_timer("LOTUS:results_page_query");
-    let results_csv = repo
-        .sparql_body(&results_query)
-        .await
-        .map_err(DomainError::transport_at(QueryStage::ResultsQuery))?;
+    let (results_csv, fetched_remote) = match crate::cache::get_cached(&results_key) {
+        Some(cached) => (cached, false),
+        None => {
+            let fetched = repo
+                .sparql_body(&results_query)
+                .await
+                .map_err(DomainError::transport_at(QueryStage::ResultsQuery))?;
+            crate::cache::store_cached(results_key, fetched.clone());
+            (fetched, true)
+        }
+    };
     let results_elapsed = perf::end_timer("LOTUS:results_page_query", results_timer);
-    metrics.add_network(results_elapsed);
+    if fetched_remote {
+        metrics.add_network(results_elapsed);
+    }
 
     on_processing();
 

@@ -45,6 +45,16 @@ impl SearchMetrics {
     pub fn add_parse(&mut self, elapsed: std::time::Duration) {
         self.parse_ms = elapsed.as_secs_f64().mul_add(1000.0, self.parse_ms);
     }
+
+    /// Record an already-overlapped (parallel) network batch: add the batch's
+    /// wall-clock duration once, and the number of calls bundled in it.
+    /// WASM-only per the parallel-fetch timing design (see struct docs).
+    #[cfg(target_arch = "wasm32")]
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn add_parallel_network(&mut self, elapsed: std::time::Duration, n_calls: usize) {
+        self.network_ms = elapsed.as_secs_f64().mul_add(1000.0, self.network_ms);
+        self.sparql_calls += n_calls;
+    }
 }
 
 /// Searches taking longer than this threshold are flagged as slow queries in

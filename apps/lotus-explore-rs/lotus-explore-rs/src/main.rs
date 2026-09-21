@@ -104,6 +104,9 @@
 mod api;
 mod app;
 mod app_state;
+/// In-browser result cache (mirrors the native server's result cache).
+#[cfg(any(test, target_arch = "wasm32"))]
+mod cache;
 mod components;
 mod core;
 mod curation;

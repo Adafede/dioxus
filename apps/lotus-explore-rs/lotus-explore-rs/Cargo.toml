@@ -70,12 +70,3 @@ server = [
   "dep:utoipa-swagger-ui",
 ]
 
-[profile.release]
-debug = false
-debug-assertions = false
-overflow-checks = false
-lto = "thin"
-codegen-units = 1
-
-[profile.release.package."*"]
-opt-level = 3
