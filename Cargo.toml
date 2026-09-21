@@ -82,7 +82,7 @@ web-sys = {
   ]
 }
 zip = "8.6"
-zstd = "0.13.3"
+zstd = "0.14.0"
 zstd-safe = "7.3.0"
 
 [workspace.lints.clippy]
