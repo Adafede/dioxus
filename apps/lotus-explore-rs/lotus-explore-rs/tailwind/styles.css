@@ -1,9 +1,9 @@
 /* ============================================================
-   Tailwind CSS Source File - Single Source of Truth
+   Tailwind CSS — Single Source of Truth
    ============================================================
-
-   Build: npm run build:css
-     → public/assets/lotus-explore.css
+   Compiled by the Dioxus.toml `[[hooks]] pre-build` hook, which runs
+   automatically on `dx build` / `dx serve`:
+     npx @tailwindcss/cli -i ./tailwind/styles.css -o ./public/assets/lotus-explore.css --minify
    ============================================================ */
 
 @import "tailwindcss";
