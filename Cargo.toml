@@ -11,7 +11,7 @@ members = [
   "apps/lotus-explore-rs/lotus-explore-rs",
   "apps/mgf-precursor-erro-rs",
   "apps/smellfish-rs",
-  "crates/lotus",
+  "apps/lotus-explore-rs/crates/lotus",
   "crates/ui",
   "crates/upload",
 ]
