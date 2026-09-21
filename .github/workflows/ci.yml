@@ -85,7 +85,6 @@ jobs:
           cargo check -p json-count-rs --target wasm32-unknown-unknown --locked
           cargo check -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --locked
           cargo check -p lipid-selecto-rs --target wasm32-unknown-unknown --locked
-          cargo check -p lotus-explore-rs --target wasm32-unknown-unknown --locked
           cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked
 
   supply-chain:

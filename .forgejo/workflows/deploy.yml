@@ -19,10 +19,6 @@ jobs:
             path: "/${REPONAME}"
             dir: "apps/index"
             pkg: "index"
-          - app: lotus-explore-rs
-            path: "/${REPONAME}/lotus-explore-rs"
-            dir: "apps/lotus-explore-rs/lotus-explore-rs"
-            pkg: "lotus-explore-rs"
           - app: json-count-rs
             path: "/${REPONAME}/json-count-rs"
             dir: "apps/json-count-rs"
@@ -56,12 +52,6 @@ jobs:
         run: |
           cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      # Only run fetch-ketcher for the app that actually uses it
-      - name: Fetch Ketcher (lotus-explore-rs only)
-        if: matrix.app == 'lotus-explore-rs'
-        run: cargo run --release -p lotus-deploy --bin fetch-ketcher
-        working-directory: ${{ matrix.dir }}
 
       - name: Build App
         run: |
