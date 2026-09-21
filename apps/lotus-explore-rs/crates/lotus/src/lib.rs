@@ -33,5 +33,9 @@ pub mod models;
 pub mod queries;
 /// LOTUS-specific wrappers combining transport + models: execute queries, parse CSV results.
 pub mod sparql;
+/// Cache-key computation shared by the native server and the WASM client.
+pub mod state;
 /// Platform-agnostic SPARQL-over-HTTP transport.
 pub mod transport;
+/// Cache-key computation shared by the native server and the WASM client.
+pub mod state;

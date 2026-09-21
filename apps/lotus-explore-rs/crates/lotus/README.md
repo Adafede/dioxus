@@ -9,7 +9,8 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 The single source of truth for everything LOTUS/Wikidata/QLever across the
 `dioxus-apps` workspace. The `lotus-explore-rs` app --- serving both its native
 `/v1` API (under `--features server`) and its WASM client --- and any future app
-consume this crate rather than constructing queries or parsing CSV results themselves.
+consume this crate rather than constructing queries or parsing CSV results
+themselves.
 
 ### Module map
 

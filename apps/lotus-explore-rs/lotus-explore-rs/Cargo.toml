@@ -13,19 +13,6 @@ publish = false
 [package.metadata.dioxus]
 wasm-opt = 4
 
-[features]
-server = [
-    "dep:axum",
-    "dep:clap",
-    "dep:env_logger",
-    "dep:flate2",
-    "dep:tokio",
-    "dep:tower-http",
-    "dep:tracing",
-    "dep:utoipa",
-    "dep:utoipa-swagger-ui",
-]
-
 [[bin]]
 name = "lotus-explore-rs"
 path = "src/main.rs"
@@ -44,24 +31,24 @@ sha2 = { workspace = true }
 thiserror = { workspace = true }
 urlencoding = { workspace = true }
 
+[dev-dependencies]
+tower = { workspace = true }
+
 [build-dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tempfile = { workspace = true }
 axum = { workspace = true, optional = true }
 clap = { workspace = true, features = ["env"], optional = true }
 env_logger = { workspace = true, optional = true }
 flate2 = { workspace = true, optional = true }
+tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal", "sync"], optional = true }
 tower-http = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
 utoipa = { workspace = true, optional = true }
 utoipa-swagger-ui = { workspace = true, optional = true }
-
-[dev-dependencies]
-tower = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 gloo-timers = { workspace = true }
@@ -69,6 +56,19 @@ js-sys = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
 web-sys = { workspace = true }
+
+[features]
+server = [
+  "dep:axum",
+  "dep:clap",
+  "dep:env_logger",
+  "dep:flate2",
+  "dep:tokio",
+  "dep:tower-http",
+  "dep:tracing",
+  "dep:utoipa",
+  "dep:utoipa-swagger-ui",
+]
 
 [profile.release]
 debug = false

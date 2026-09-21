@@ -2773,6 +2773,7 @@ dependencies = [
  "js-sys",
  "log",
  "reqwest 0.13.5",
+ "sha2 0.11.0",
  "tempfile",
  "urlencoding",
  "wasm-bindgen",

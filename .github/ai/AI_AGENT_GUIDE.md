@@ -118,7 +118,8 @@ dx serve --package lotus-explore-rs
   (521→`sections/{mod,styles}`); the `plotting/diagnostics.rs` histogram
   `bin_count==0` div-by-zero is guarded. Remaining larger god-files:
   `crates/lotus/src/sparql.rs` (840), `crates/ui/styles/lotus/responsive.rs`
-  (910), smellfish `app.rs`/`verdict.rs`, lotus-explore-rs server `tests.rs` (tests only).
+  (910), smellfish `app.rs`/`verdict.rs`, lotus-explore-rs server `tests.rs`
+  (tests only).
 - **Phase 4 (shared signals):** complete (verified) --- `mgf-precursor-erro-rs` +
   `json-count-rs` declare signals via `ui::shared_signal!` / `shared_signals!`;
   `cxsmiles-yoga`, `lipid-selecto-rs`, and `lotus-explore-rs` use plain

@@ -6,7 +6,7 @@ use crate::server::{
     errors::ApiError,
     types::{ExportUrlResponse, HealthResponse, SearchResponse},
 };
-use sha2::{Digest, Sha256};
+pub use lotus::state::{build_export_cache_key, build_search_cache_key};
 use std::{
     collections::HashMap,
     sync::{
@@ -186,33 +186,6 @@ impl RuntimeMetrics {
             snapshot.request_timeouts,
         )
     }
-}
-
-pub fn build_search_cache_key(query: &str, limit: usize, include_counts: bool) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(b"search");
-    hasher.update(limit.to_le_bytes());
-    hasher.update([u8::from(include_counts)]);
-    hasher.update(query.as_bytes());
-    format!("search:{}", sha256_hex(hasher.finalize()))
-}
-
-pub fn build_export_cache_key(query: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(b"export");
-    hasher.update(query.as_bytes());
-    format!("export:{}", sha256_hex(hasher.finalize()))
-}
-
-fn sha256_hex(bytes: impl AsRef<[u8]>) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let bytes = bytes.as_ref();
-    let mut out = String::with_capacity(bytes.len() * 2);
-    for &b in bytes {
-        out.push(HEX[(b >> 4) as usize] as char);
-        out.push(HEX[(b & 0x0f) as usize] as char);
-    }
-    out
 }
 
 pub fn search_cache_get(state: &AppState, key: &str) -> Option<SearchResponse> {
