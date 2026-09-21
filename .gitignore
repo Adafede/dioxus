@@ -36,3 +36,6 @@ SESSION_LOG.md
 
 /smarts_results_tested_smarts/
 /smiles_sets/
+
+# Knowledge graph outputs
+graphify-out/
