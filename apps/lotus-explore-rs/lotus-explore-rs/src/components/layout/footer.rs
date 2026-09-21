@@ -70,7 +70,7 @@ pub fn Footer() -> Element {
                             href: "https://www.wikidata.org/wiki/Q104225190",
                             target: "_blank",
                             rel: "noopener noreferrer",
-                            "LOTUS initiative"
+                            "LOTUS Initiative"
                         }
                     }
                     li {

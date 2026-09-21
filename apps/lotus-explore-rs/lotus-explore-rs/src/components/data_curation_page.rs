@@ -15,7 +15,7 @@ use sections::{
     AddRowCard, QueueRowsCard, QuickStatementsCard, ShareBar, StatusNotice, TsvImportCard,
 };
 
-#[component]
+#[component(lazy)]
 pub fn DataCurationPage() -> Element {
     let locale = crate::hooks::use_locale();
     let mut controller = use_curation_page_controller(locale);

@@ -6,7 +6,7 @@
 use crate::pages::ketcher_panel::KetcherPanel;
 use dioxus::prelude::*;
 
-#[component]
+#[component(lazy)]
 pub fn DrawPage() -> Element {
     rsx! {
         section {
