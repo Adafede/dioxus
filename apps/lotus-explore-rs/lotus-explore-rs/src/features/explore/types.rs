@@ -83,7 +83,6 @@ pub enum TaxonWarning {
     /// Raw warning string received from the REST API response.
     ApiMessage(String),
     /// QLever returned 502 Bad Gateway; query was retried against WDQS.
-    #[allow(dead_code)]
     QleverBadGateway,
     /// QLever returned 502; query executed against Wikidata Query Service.
     WdqsFallback,

@@ -88,7 +88,6 @@ pub enum CountNoun {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum TextKey {
     // Generic/meta
     Share,
@@ -204,11 +203,8 @@ pub enum TextKey {
     DownloadRdfLabel,
     DownloadMetadataTitle,
     DownloadMetadataLabel,
-    #[allow(dead_code)]
     OpenInQlever,
-    #[allow(dead_code)]
     OpenInQleverTitle,
-    #[allow(dead_code)]
     OpenInEndpoint,
     OpenInEndpointTitle,
     NoResults,

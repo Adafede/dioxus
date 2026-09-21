@@ -21,7 +21,6 @@ pub struct FinalizedMeta {
     /// Filtered dataset stats (absent in download-only mode).
     pub filtered_stats: Option<DatasetStats>,
     /// The SPARQL endpoint used for this query.
-    #[allow(dead_code)]
     pub endpoint: export::SparqlEndpoint,
 }
 

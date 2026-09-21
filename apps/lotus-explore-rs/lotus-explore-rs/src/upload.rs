@@ -33,7 +33,6 @@ pub type UploadBlob = ();
 #[derive(Debug)]
 pub struct ExtractedFile {
     /// The file as a browser `UploadBlob` ready for streaming reads.
-    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
     pub blob: UploadBlob,
     /// The original filename from the `<input>` or drag source.
     pub name: String,

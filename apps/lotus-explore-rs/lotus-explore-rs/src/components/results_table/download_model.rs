@@ -90,7 +90,6 @@ pub(super) struct DownloadToolbarModel {
 }
 
 #[must_use]
-#[allow(dead_code)]
 pub(super) fn build_download_toolbar_model(
     criteria: &SearchCriteria,
     sparql_query: Option<&str>,

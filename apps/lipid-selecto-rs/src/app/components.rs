@@ -588,7 +588,7 @@ fn build_smiles_from_cloned(gallery: &[&GallerySmilesEntry]) -> String {
 /// CATEGORY comes from the broad classification (`LipidClass::lipidmaps_category()`),
 /// `MAIN_CLASS` comes from `primary_class_name` (the first matching LMSD class),
 /// `SUB_CLASS` is always "-" (no sub-subclass info available).
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+#[cfg(not(target_arch = "wasm32"))]
 fn get_class_tag_from_gallery(
     item: &crate::parser::GalleryItem,
     classes: &[ChemicalClass],
@@ -695,7 +695,7 @@ fn family_code(family: &str) -> &str {
 /// category names with codes like "Fatty Acyls [FA]"), and the first matching
 /// LMSD subclass name for `MAIN_CLASS`. `SUB_CLASS` is always "-" (no sub-subclass
 /// info available).
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+#[cfg(not(target_arch = "wasm32"))]
 fn get_class_tag(
     block: &crate::parser::SpectrumBlock,
     classes: &[ChemicalClass],

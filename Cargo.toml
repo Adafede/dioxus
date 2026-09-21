@@ -101,9 +101,11 @@ missing_errors_doc = "warn"
 missing_panics_doc = "warn"
 # High-noise / style-opinion lints intentionally relaxed to keep signal high.
 module_name_repetitions = "warn"
-# Keep this lint enabled; unavoidable transitive duplicates are allowlisted in
-# `clippy.toml` via `allowed-duplicate-crates`.
-multiple_crate_versions = "warn"
+# `cargo::multiple_crate_versions` is allowed: upstream dependency trees bring
+# expected transitive duplicates (sha2 / base64 / syn / thiserror / etc.) and we
+# no longer carry a hand-maintained `clippy.toml` `allowed-duplicate-crates`
+# list to silence them.
+multiple_crate_versions = "allow"
 must_use_candidate = "warn"
 similar_names = "warn"
 too_many_lines = "warn"

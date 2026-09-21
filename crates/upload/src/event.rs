@@ -17,7 +17,7 @@ use dioxus::html::FileData;
 #[derive(Debug)]
 pub struct ExtractedFile {
     /// The file as a browser `Blob` ready for streaming reads.
-    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    #[cfg(target_arch = "wasm32")]
     pub blob: Blob,
     /// The original filename from the `<input>` or drag source.
     pub name: String,
