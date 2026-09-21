@@ -8,8 +8,13 @@ asset_dir = "public"
 
 [[hooks]]
 # Compile Tailwind (token theme + scanned Rust utilities) before each dx build.
+# Pin the CLI to an exact version so the committed lotus-explore.css stays
+# byte-identical to dx's build output. Unpinned `npx` fetches LATEST, which
+# drifts the generated CSS across builds (this is what caused the committed
+# file and the build output to disagree). dx 0.7 has no built-in auto-tailwind,
+# so this pre-build hook is the required 0.7 path.
 stage = "pre-build"
-command = "npx @tailwindcss/cli -i ./tailwind/styles.css -o ./public/assets/lotus-explore.css --minify"
+command = "npx @tailwindcss/cli@4.3.3 -i ./tailwind/styles.css -o ./public/assets/lotus-explore.css --minify"
 
 [web]
 pre_compress = true
