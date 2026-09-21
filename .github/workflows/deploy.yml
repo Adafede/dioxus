@@ -70,7 +70,7 @@ jobs:
         run: |
           REPONAME="${GITHUB_REPOSITORY#*/}"
           EVAL_PATH=$(eval echo "${{ matrix.path }}")
-          dx build --release --platform web --debug-symbols false --base-path "$EVAL_PATH" --package ${{ matrix.pkg }} --wasm-split
+          dx build --release --platform web --debug-symbols false --base-path "$EVAL_PATH" --package ${{ matrix.pkg }}
         working-directory: ${{ matrix.dir }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
