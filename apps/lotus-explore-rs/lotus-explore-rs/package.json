@@ -2,8 +2,8 @@
   "name": "lotus-explore-rs",
   "private": true,
   "scripts": {
-    "dev": "dx serve --package lotus-explore-rs --platform web --wasm-split",
-    "build:release": "dx build --package lotus-explore-rs --platform web --release --debug-symbols=false --wasm-split"
+    "dev": "dx serve --package lotus-explore-rs --platform web",
+    "build:release": "dx build --package lotus-explore-rs --platform web --release --debug-symbols=false"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",
