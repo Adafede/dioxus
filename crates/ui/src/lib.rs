@@ -9,7 +9,7 @@
 //!   (e.g. `lotus-explore.css`) loaded via `<link rel="stylesheet">` in the
 //!   generated `index.html` for optimal mobile performance
 //! - **Type-safe theming**: Compile-time checked colors, spacing, typography
-//!   via [`StyleBuilder`], [`ColorScheme`], [`Spacing`] and [`Typography`]
+//!   via design tokens ([`styles::lotus::tokens`]) used by [`StyleBuilder`]
 //! - **Accessible components**: WCAG AAA contrast, keyboard navigation, semantic HTML
 //! - **Lotus aesthetic**: Clean, professional design inspired by lotus-explore-rs
 //!
@@ -42,6 +42,7 @@ pub mod common;
 pub mod components;
 pub mod document;
 pub mod signals;
+pub mod styles;
 pub mod theme;
 
 /// Convenience re-exports of the most commonly used UI primitives.
@@ -52,6 +53,7 @@ pub mod prelude {
         SegmentedControlItem, UploadZone,
     };
     pub use crate::document::{DocumentHead, DocumentLinks, DocumentScripts, LinkSpec};
+    pub use crate::styles::lotus::tokens::*;
     pub use crate::theme::{
         ColorScheme, Interaction, Radius, Shadow, Spacing, StyleBuilder, Typography,
     };
