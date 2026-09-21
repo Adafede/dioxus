@@ -26,24 +26,6 @@
       "entrypoint": "src/lib.rs"
     },
     {
-      "name": "lotus-api",
-      "kind": "native http api",
-      "path": "apps/lotus-api",
-      "entrypoint": "src/main.rs"
-    },
-    {
-      "name": "lotus-explore-rs",
-      "kind": "wasm app",
-      "path": "apps/lotus-explore-rs",
-      "entrypoint": "src/main.rs"
-    },
-    {
-      "name": "lotus",
-      "kind": "shared library",
-      "path": "crates/lotus",
-      "entrypoint": "src/lib.rs"
-    },
-    {
       "name": "upload",
       "kind": "shared library",
       "path": "crates/upload",

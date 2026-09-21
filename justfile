@@ -3,7 +3,7 @@
 #
 # Web apps (use `just serve`/`just build` with one of these):
 #	cxsmiles-yoga  index  json-count-rs  lipid-selecto-rs
-#	mgf-precursor-erro-rs  lotus-explore-rs  smellfish-rs
+#	mgf-precursor-erro-rs smellfish-rs
 
 # ── Workspace gate (mirrors .github/workflows/ci.yml) ─────────────────────────
 
@@ -37,16 +37,15 @@ ci:
 	just audit
 	just deny
 
-# WASM apps only — never `--workspace --target wasm32` (lotus-api/axum is
-# non-wasm, and crates/upload has wasm-incompatible unit patterns in
-# download.rs). One `cargo check -p <app>` per app keeps the wasm build green.
+# WASM apps only — never `--workspace --target wasm32` (crates/upload
+# has wasm-incompatible unit patterns in download.rs).
+# One `cargo check -p <app>` per app keeps the wasm build green.
 wasm:
 	cargo check -p cxsmiles-yoga --target wasm32-unknown-unknown --locked
 	cargo check -p index --target wasm32-unknown-unknown --locked
 	cargo check -p json-count-rs --target wasm32-unknown-unknown --locked
 	cargo check -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --locked
 	cargo check -p lipid-selecto-rs --target wasm32-unknown-unknown --locked
-	cargo check -p lotus-explore-rs --target wasm32-unknown-unknown --locked
 	cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked
 
 # ── Per-app dev servers / production builds ───────────────────────────────────
@@ -56,11 +55,6 @@ serve app:
 
 build app:
 	dx build --release --package {{app}}
-
-# ── Native services ───────────────────────────────────────────────────────────
-
-lotus-api:
-	cargo run --locked -p lotus-api
 
 # ── Supply-chain hygiene (skip gracefully if a tool is not installed) ─────────
 
@@ -82,6 +76,6 @@ outdated:
 readme:
 	@command -v cargo-readme >/dev/null 2>&1 || { echo "cargo-readme not installed; skipping"; exit 0; }
 	@command -v panache >/dev/null 2>&1 || { echo "panache not installed; skipping"; exit 0; }
-	@for d in crates/lotus crates/ui crates/upload apps/cxsmiles-yoga apps/index apps/lotus-api apps/lotus-explore-rs apps/json-count-rs apps/lipid-selecto-rs apps/mgf-precursor-erro-rs apps/smellfish-rs; do \
+	@for d in crates/ui crates/upload apps/cxsmiles-yoga apps/index apps/json-count-rs apps/lipid-selecto-rs apps/mgf-precursor-erro-rs apps/smellfish-rs; do \
 	(cd $$d && cargo readme -t README.tpl -o /tmp/readme_panache.md 2>/dev/null && panache lint /tmp/readme_panache.md && diff -q /tmp/readme_panache.md README.md > /dev/null 2>&1 || { echo "README.md out of date for $$d — run: (cd $$d && cargo readme -t README.tpl -o README.md)"; exit 1; }) || exit 1; \
 	done
