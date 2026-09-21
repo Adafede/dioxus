@@ -44,7 +44,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with: { components: clippy }
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo clippy -p lotus-explore-rs --features server --locked -- -D warnings
 
   # ── Pre-push checks: heavy — run on every PR and push ─────────────────────────
 
@@ -57,7 +56,6 @@ jobs:
         with: { persist-credentials: false, fetch-depth: 1 }
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --workspace --all-targets --locked --quiet
-      - run: cargo test -p lotus-explore-rs --features server --locked --quiet
 
   doc:
     name: Docs

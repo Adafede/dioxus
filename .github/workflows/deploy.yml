@@ -24,10 +24,6 @@ jobs:
             path: "/${REPONAME}"
             dir: "apps/index"
             pkg: "index"
-          - app: lotus-explore-rs
-            path: "/${REPONAME}/lotus-explore-rs"
-            dir: "apps/lotus-explore-rs/lotus-explore-rs"
-            pkg: "lotus-explore-rs"
           - app: json-count-rs
             path: "/${REPONAME}/json-count-rs"
             dir: "apps/json-count-rs"
