@@ -6,7 +6,6 @@ members = [
   "apps/json-count-rs",
   "apps/lipid-selecto-rs",
   # "apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction",
-  "apps/lotus-api",
   "apps/lotus-explore-rs/crates/lotus-deploy",
   "apps/lotus-explore-rs/lotus-explore-rs",
   "apps/mgf-precursor-erro-rs",

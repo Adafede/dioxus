@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! `lotus-api` — native HTTP API for LOTUS explorer search and export.
-//!
-//! Wraps the `lotus` and `upload` shared crates behind Axum endpoints, providing
-//! species/occurrence search, CSV/JSON/RDF export via `Query` or local SPARQL,
-//! and runtime metrics.
+//! Native HTTP API for the LOTUS explorer: search and export endpoints wired
+//! to an Axum [`Router`].  Migrated from the former `lotus-api` crate so the
+//! full native + WASM stack builds from a single package.
 //!
 //! # Run locally
 //!
 //! ```bash
-//! cargo run -p lotus-api -- --help                       # list flags; each falls back to $VAR
-//! cargo run -p lotus-api -- --host 0.0.0.0 --port 8787
+//! cargo run --features server -p lotus-explore-rs -- --help                       # list flags; each falls back to $VAR
+//! cargo run --features server -p lotus-explore-rs -- --host 0.0.0.0 --port 8787
+//! LOTUS_API_BASE=http://localhost:3030 cargo run --features server -p lotus-explore-rs
 //! ```
 //!
 //! # Endpoints
@@ -29,34 +28,6 @@
 //! - `LOTUS_API_BASE` — base URL for the API server
 //! - `HOST` — bind address (default: `127.0.0.1`)
 //! - `PORT` — bind port (default: `8787`)
-//!
-//! # Deploying the API
-//!
-//! The CI pipeline builds and pushes a container image on every push to `main`:
-//!
-//! | Forge    | Image                                   |
-//! | -------- | --------------------------------------- |
-//! | Codeberg | `codeberg.org/adafede/lotus-api:latest` |
-//! | GitHub   | `ghcr.io/adafede/lotus-api:latest`      |
-//!
-//! Self-host:
-//!
-//! ```bash
-//! docker run -d --restart unless-stopped \
-//!   -e APP_ENV=production \
-//!   -e CORS_ALLOWED_ORIGINS=https://your-origin.example.org \
-//!   -p 8787:8787 \
-//!   codeberg.org/adafede/lotus-api:latest
-//! ```
-//!
-//! Build-time WASM wiring:
-//!
-//! ```bash
-//! LOTUS_API_BASE=https://your-server.example.org \
-//!   dx build --release --platform web --package lotus-explore-rs
-//! ```
-
-#![allow(clippy::multiple_crate_versions)]
 
 mod config;
 mod errors;
@@ -88,7 +59,7 @@ use tracing::Level;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{
+use crate::server::{
     config::{AppConfig, build_cors_layer},
     errors::ErrorResponse,
     state::AppState,
@@ -122,36 +93,11 @@ const X_REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
             ApiElementState
         )
     ),
-    tags((name = "lotus-api", description = "LOTUS explorer programmatic API"))
+    tags((name = "lotus-explore-rs", description = "LOTUS explorer programmatic API"))
 )]
 struct ApiDoc;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-        .format_timestamp_millis()
-        .init();
-
-    let config = AppConfig::from_env().map_err(std::io::Error::other)?;
-    let state = AppState::new(&config);
-    let app = build_router(config.max_body_bytes, &config, state);
-
-    let addr = config.bind_addr().map_err(std::io::Error::other)?;
-    log::info!(
-        "lotus-api listening on http://{addr} timeout_ms={} max_concurrency={} max_body_bytes={}",
-        config.request_timeout.as_millis(),
-        config.max_concurrency,
-        config.max_body_bytes,
-    );
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
-    Ok(())
-}
-
-fn build_router(max_body_bytes: usize, config: &AppConfig, state: AppState) -> Router {
+pub fn build_router(max_body_bytes: usize, config: &AppConfig, state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/metrics", get(metrics))
@@ -186,6 +132,35 @@ async fn add_security_headers(req: axum::http::Request<Body>, next: Next) -> Res
         HeaderValue::from_static("no-referrer"),
     );
     response
+}
+
+/// Entry point for the in-package native API server.
+///
+/// Started from [`fn main`](crate::main) when the `server` feature is enabled
+/// on a non-WASM target. Mirrors the former standalone `lotus-api` binary so the
+/// full native + WASM stack builds and runs from this single package.
+pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format_timestamp_millis()
+        .init();
+
+    let config = config::AppConfig::from_env().map_err(std::io::Error::other)?;
+    let state = state::AppState::new(&config);
+    let app = build_router(config.max_body_bytes, &config, state);
+
+    let addr = config.bind_addr().map_err(std::io::Error::other)?;
+    log::info!(
+        "lotus-explore-rs server listening on http://{addr} timeout_ms={} max_concurrency={} max_body_bytes={}",
+        config.request_timeout.as_millis(),
+        config.max_concurrency,
+        config.max_body_bytes,
+    );
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+    Ok(())
 }
 
 async fn shutdown_signal() {

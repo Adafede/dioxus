@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::{
+use crate::server::{
     errors::ApiError,
     types::{RowDto, SearchResponse, SearchStats},
 };

@@ -15,15 +15,16 @@
 //! dx serve --package lotus-explore-rs
 //! ```
 //!
-//! To also run the optional API:
+//! The LOTUS API server is built into this package. Run it natively and serve
+//! the WASM client in parallel:
 //!
 //! ```bash
-//! cargo run --locked -p lotus-api
+//! cargo run --locked --features server -p lotus-explore-rs     # API on :8787
+//! dx serve --package lotus-explore-rs --platform web           # client on :8080
 //! ```
 //!
-//! Then open `http://localhost:8080/?api_base=http://127.0.0.1:8787`.
-//!
-//! Without `lotus-api`, the explorer falls back to direct QLever/SPARQL queries.
+//! The dev server proxies `/v1` requests to `http://127.0.0.1:8787`.
+//! Without the server running, the explorer falls back to direct QLever/SPARQL.
 //!
 //! # Architecture
 //!
@@ -181,11 +182,30 @@ mod ui;
 mod upload;
 mod utils;
 
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+mod server;
+
 use dioxus::prelude::*;
 
 #[cfg(test)]
 mod tests;
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "server"))]
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    server::run().await
+}
+
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "server")))]
+fn main() {
+    eprintln!(
+        "lotus-explore-rs (native): enable the `server` feature to host the API \
+         (cargo run --features server -p lotus-explore-rs), \
+         or build the WASM client with `dx serve --platform web`."
+    );
+}
+
+#[cfg(target_arch = "wasm32")]
 fn main() {
     let level = if cfg!(debug_assertions) {
         log::Level::Debug

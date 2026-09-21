@@ -15,7 +15,9 @@ A Cargo workspace for reproducible Dioxus web apps, pinned by
   fields in uploaded JSON files.
 - **lotus-explore-rs** explores the LOTUS compounds knowledge graph from
   Wikidata via SPARQL.
-- **lotus-api** provides a native HTTP API for advanced search and export.
+- **lotus-explore-rs** explores the LOTUS compounds knowledge graph from
+  Wikidata via SPARQL. Its `server` feature builds an in-package native HTTP API
+  for advanced search and export.
 - **mgf-precursor-erro-rs** analyzes uploaded MGF files and reports precursor
   mass errors in Da and ppm.
 - **lipid-selecto-rs** classifies and filters lipid mass-spec data using LIPID
@@ -50,9 +52,10 @@ dioxus-apps/
 │   ├── json-count-rs/        ← upload a JSON file and count non-null values (WASM)
 │   ├── lipid-selecto-rs/     ← lipid classification and filtering via SMARTS (WASM)
 │   ├── mgf-precursor-erro-rs/← MGF precursor mass-error analysis (WASM + lib)
-│   ├── lotus-api/            ← OpenAPI service for LOTUS search and exports (native)
-│   ├── lotus-explore-rs/     ← LOTUS Wikidata natural-product explorer (WASM)
+│   ├── mgf-precursor-erro-rs/← MGF precursor mass-error analysis (WASM + lib)
+│   ├── lotus-explore-rs/     ← LOTUS Wikidata natural-product explorer (WASM + server feature)
 │   ├── smellfish-rs/         ← NP-likeness scoring, RDKit.js integration (WASM + lib)
+│   └── cxsmiles-yoga/        ← CX-SMILES generation from related structures (WASM + lib)
 │   └── cxsmiles-yoga/        ← CX-SMILES generation from related structures (WASM + lib)
 └── crates/
     ├── lotus/                ← SPARQL client, LOTUS models, transport, export
@@ -68,7 +71,7 @@ Apps marked **(WASM + lib)** have a `lib.rs` alongside `main.rs` to enable
 ```bash
 dx serve --package lotus-explore-rs
 dx serve --package cxsmiles-yoga
-cargo run --locked -p lotus-api
+  cargo run --locked --features server -p lotus-explore-rs
 dx serve --package json-count-rs
 dx serve --package index
 dx serve --package lipid-selecto-rs

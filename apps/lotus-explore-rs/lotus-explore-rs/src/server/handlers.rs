@@ -11,7 +11,7 @@ use lotus::models;
 use std::{sync::atomic::Ordering, time::Instant};
 use tokio::time::timeout;
 
-use crate::{
+use crate::server::{
     errors::{ApiError, ErrorResponse, SharedApiError},
     query_logic::{apply_request, build_execution_query, gzip_bytes, resolve_taxon_qid_cached},
     services::build_search_response,

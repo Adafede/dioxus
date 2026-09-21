@@ -10,7 +10,7 @@ the apps:
 
 - `crates/lotus` --- LOTUS domain models, SPARQL query builders, and
   platform-agnostic SPARQL-over-HTTP transport. The single shared data core for
-  `lotus-api` and `lotus-explore-rs`.
+  `lotus-explore-rs`.
 - `crates/ui` --- unified, type-safe Dioxus design system: reusable components
   (`Button`, `Card`, `Footer`, `Header`, `NoticeBar`, `SegmentedControl`),
   `DocumentHead`/`DocumentLinks`, pure-Rust style builders (`styles::*`), and
@@ -51,7 +51,8 @@ the apps:
   UI layer.
 - `apps/mgf-precursor-erro-rs` --- MGF precursor mass-error analysis (WASM +
   lib).
-- `apps/lotus-api` --- native Axum API for LOTUS search and exports.
+- `apps/lotus-explore-rs` --- LOTUS Knowledge Explorer (WASM). Its `server`
+  feature builds an in-package native Axum API for LOTUS search and exports.
 
 ## Stable commands
 
@@ -64,7 +65,7 @@ cargo doc --workspace --no-deps --locked
 
 ```bash
 dx serve --package lotus-explore-rs
-cargo run --locked -p lotus-api
+  cargo run --locked --features server -p lotus-explore-rs
 ```
 
 ## Change protocol
@@ -117,7 +118,7 @@ cargo run --locked -p lotus-api
   (521→`sections/{mod,styles}`); the `plotting/diagnostics.rs` histogram
   `bin_count==0` div-by-zero is guarded. Remaining larger god-files:
   `crates/lotus/src/sparql.rs` (840), `crates/ui/styles/lotus/responsive.rs`
-  (910), smellfish `app.rs`/`verdict.rs`, lotus-api `tests.rs` (tests only).
+  (910), smellfish `app.rs`/`verdict.rs`, lotus-explore-rs server `tests.rs` (tests only).
 - **Phase 4 (shared signals):** complete (verified) --- `mgf-precursor-erro-rs` +
   `json-count-rs` declare signals via `ui::shared_signal!` / `shared_signals!`;
   `cxsmiles-yoga`, `lipid-selecto-rs`, and `lotus-explore-rs` use plain

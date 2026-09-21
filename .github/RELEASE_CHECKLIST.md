@@ -60,14 +60,14 @@ doc) - `wasm` (wasm32 type-check) - `clippy` - `fmt` - `supply-chain`
 
 --------------------------------------------------------------------------------
 
-## 6. Docker image (lotus-api)
+## 6. Docker image (lotus-explore-rs server)
 
 The pipeline builds and pushes automatically on `main`. Verify the image tag
 exists before advertising it:
 
 ```bash
-docker pull codeberg.org/YOUR_ORG/lotus-api:vX.Y.Z
-docker pull ghcr.io/YOUR_ORG/lotus-api:vX.Y.Z
+docker pull codeberg.org/YOUR_ORG/lotus-explore-rs:vX.Y.Z
+docker pull ghcr.io/YOUR_ORG/lotus-explore-rs:vX.Y.Z
 ```
 
 --------------------------------------------------------------------------------

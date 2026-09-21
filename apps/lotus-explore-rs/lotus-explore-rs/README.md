@@ -19,12 +19,12 @@ dx serve --package lotus-explore-rs
 To also run the optional API:
 
 ```bash
-cargo run --locked -p lotus-api
+cargo run --locked --features server -p lotus-explore-rs
 ```
 
 Then open `http://localhost:8080/?api_base=http://127.0.0.1:8787`.
 
-Without `lotus-api`, the explorer falls back to direct QLever/SPARQL queries.
+Without the server, the explorer falls back to direct QLever/SPARQL queries.
 
 ## Architecture
 

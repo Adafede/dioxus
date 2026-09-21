@@ -7,9 +7,9 @@
 //! validating and normalizing request parameters, caching taxon QID lookups,
 //! building query strings and export URLs, and providing gzip compression.
 
-use crate::errors::ApiError;
-use crate::state::{AppState, taxon_cache_get, taxon_cache_put};
-use crate::types::SearchRequest;
+use crate::server::errors::ApiError;
+use crate::server::state::{AppState, taxon_cache_get, taxon_cache_put};
+use crate::server::types::SearchRequest;
 use flate2::{Compression, write::GzEncoder};
 use lotus::models::{SearchCriteria, TaxonMatch};
 use lotus::{queries, sparql};

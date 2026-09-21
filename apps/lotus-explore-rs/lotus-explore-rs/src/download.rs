@@ -23,7 +23,7 @@ mod wasm;
 
 /// Execute a download in the given format.
 ///
-/// On WASM, tries the `lotus-api` `/v1/export-url` endpoint first, falling back
+/// On WASM, tries the in-package server's `/v1/export-url` endpoint first, falling back
 /// to a direct QLever browser POST if the API call fails.
 /// On native, executes the query directly against QLever via `lotus::sparql`.
 pub async fn execute_download(

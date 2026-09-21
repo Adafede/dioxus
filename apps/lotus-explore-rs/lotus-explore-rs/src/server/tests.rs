@@ -11,7 +11,7 @@ use axum::http::{Request, StatusCode, header};
 use tower::ServiceExt;
 use utoipa::OpenApi;
 
-use crate::{
+use crate::server::{
     ApiDoc, build_router,
     config::AppConfig,
     query_logic::{apply_request, normalized_structure_input},

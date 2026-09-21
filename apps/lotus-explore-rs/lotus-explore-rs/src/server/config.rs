@@ -22,7 +22,7 @@ pub struct AppConfig {
     pub(crate) cors_allowed_origins: Option<Vec<HeaderValue>>,
 }
 
-/// Command-line and environment configuration for `lotus-api`.
+/// Command-line and environment configuration for the in-package `lotus-explore-rs` server.
 ///
 /// Each field is resolved by clap in priority order: an explicit `--flag`, then
 /// the matching `VAR` environment variable, then a default value. `from_env`
@@ -31,7 +31,7 @@ pub struct AppConfig {
 /// (which call `from_provider` directly) are unaffected.
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "lotus-api",
+    name = "lotus-explore-rs",
     version,
     about = "OpenAPI service for LOTUS explorer search and export workflows",
     long_about = None,
@@ -207,20 +207,20 @@ mod tests {
 
     #[test]
     fn cli_port_flag_overrides_default() {
-        let cli = Cli::try_parse_from(["lotus-api", "--port", "1234"]).unwrap();
+        let cli = Cli::try_parse_from(["lotus-explore-rs", "--port", "1234"]).unwrap();
         assert_eq!(cli.get("PORT"), Some("1234".to_string()));
     }
 
     #[test]
     fn cli_port_default_when_no_flag() {
         // Assumes PORT is not set in the test environment (typical for CI).
-        let cli = Cli::try_parse_from(["lotus-api"]).unwrap();
+        let cli = Cli::try_parse_from(["lotus-explore-rs"]).unwrap();
         assert_eq!(cli.get("PORT"), Some("8787".to_string()));
     }
 
     #[test]
     fn cli_host_flag_overrides_default() {
-        let cli = Cli::try_parse_from(["lotus-api", "--host", "0.0.0.0"]).unwrap();
+        let cli = Cli::try_parse_from(["lotus-explore-rs", "--host", "0.0.0.0"]).unwrap();
         assert_eq!(cli.get("HOST"), Some("0.0.0.0".to_string()));
     }
 
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn flag_port_through_full_flow() {
-        let cli = Cli::try_parse_from(["lotus-api", "--port", "1234"]).unwrap();
+        let cli = Cli::try_parse_from(["lotus-explore-rs", "--port", "1234"]).unwrap();
         let cfg =
             AppConfig::from_provider(|name| cli.get(name)).expect("flag port 1234 should parse");
         assert_eq!(cfg.port, 1234);
@@ -278,7 +278,7 @@ mod tests {
     #[test]
     fn default_port_through_full_flow() {
         // Assumes PORT is not set in the test environment.
-        let cli = Cli::try_parse_from(["lotus-api"]).unwrap();
+        let cli = Cli::try_parse_from(["lotus-explore-rs"]).unwrap();
         let cfg =
             AppConfig::from_provider(|name| cli.get(name)).expect("default port should parse");
         assert_eq!(cfg.port, 8787);

@@ -27,7 +27,7 @@ reload_html = true
 watch_path = ["src", "public", "tailwind", "../crates/lotus/src"]
 
 [[web.proxy]]
-# Proxy API requests to the lotus-api backend to avoid CORS issues in development
+# Proxy API requests to the in-package server backend to avoid CORS issues in development
 path = "/v1"
 backend = "http://127.0.0.1:8787/v1"
 

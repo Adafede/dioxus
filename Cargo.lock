@@ -2780,28 +2780,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lotus-api"
-version = "0.1.0"
-dependencies = [
- "axum",
- "clap",
- "env_logger",
- "flate2",
- "log",
- "lotus",
- "serde",
- "serde_json",
- "sha2 0.11.0",
- "tokio",
- "tower",
- "tower-http 0.7.1",
- "tracing",
- "urlencoding",
- "utoipa",
- "utoipa-swagger-ui",
-]
-
-[[package]]
 name = "lotus-deploy"
 version = "0.1.0"
 dependencies = [
@@ -2813,9 +2791,13 @@ dependencies = [
 name = "lotus-explore-rs"
 version = "0.1.0"
 dependencies = [
+ "axum",
+ "clap",
  "console_log",
  "dioxus",
  "dioxus-i18n",
+ "env_logger",
+ "flate2",
  "futures",
  "gloo-timers",
  "js-sys",
@@ -2827,7 +2809,13 @@ dependencies = [
  "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.20",
+ "tokio",
+ "tower",
+ "tower-http 0.7.1",
+ "tracing",
  "urlencoding",
+ "utoipa",
+ "utoipa-swagger-ui",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

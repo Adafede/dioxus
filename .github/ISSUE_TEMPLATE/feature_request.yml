@@ -14,7 +14,7 @@ body:
       label: Target component
       options:
         - lotus-explorer (frontend / WASM)
-        - lotus-api (backend / Axum)
+        - lotus-explore-rs server (backend / Axum)
         - shared (SPARQL client / CSV parser)
         - CI / build pipeline
         - Documentation

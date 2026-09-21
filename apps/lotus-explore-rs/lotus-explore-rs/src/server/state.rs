@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-use crate::{
+use crate::server::{
     config::AppConfig,
     errors::ApiError,
     types::{ExportUrlResponse, HealthResponse, SearchResponse},
@@ -25,8 +25,10 @@ const MAX_TAXON_CACHE_ENTRIES: usize = 512;
 const MAX_SEARCH_CACHE_ENTRIES: usize = 128;
 const MAX_EXPORT_CACHE_ENTRIES: usize = 256;
 
-pub type InFlightSearch = Arc<OnceCell<Result<SearchResponse, crate::errors::SharedApiError>>>;
-pub type InFlightExport = Arc<OnceCell<Result<ExportUrlResponse, crate::errors::SharedApiError>>>;
+pub type InFlightSearch =
+    Arc<OnceCell<Result<SearchResponse, crate::server::errors::SharedApiError>>>;
+pub type InFlightExport =
+    Arc<OnceCell<Result<ExportUrlResponse, crate::server::errors::SharedApiError>>>;
 
 #[derive(Clone)]
 pub struct AppState {
