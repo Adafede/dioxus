@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Format detection and preservation for input/output files.
 //!
 //! Detects whether input is MGF (Mascot Generic Format) or SMILES list,

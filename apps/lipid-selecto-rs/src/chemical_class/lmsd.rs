@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! LIPID MAPS Structure Database (LMSD) subclass definitions.
 //!
 //! Contains the 58 standard LMSD subclasses (FA01–FA13, GL01–GL07, GP01–GP20,

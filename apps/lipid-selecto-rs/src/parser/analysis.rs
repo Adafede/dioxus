@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Aggregate analysis over parsed `SpectrumBlock`s: counts/summary, gallery
 // construction, chemical-class matching across the collection, and
 // filtered-MGF generation. Already-parsed blocks are pulled in from

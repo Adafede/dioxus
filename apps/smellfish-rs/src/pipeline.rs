@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
+
 use crate::csv::parse_csv_rows;
 use crate::evidence::{EvidenceInputs, assess_np_evidence, row_verdict, run_checks};
 use crate::model::{

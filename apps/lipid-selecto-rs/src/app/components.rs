@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Reusable rendering components for the lipid-selecto-rs UI.
 //!
 //! Extracted from `app.rs` to keep the entry-point module focused on the

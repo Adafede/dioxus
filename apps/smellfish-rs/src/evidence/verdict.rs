@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 //! Verdict derivation: the human-facing one-liner verdict per row, its
 //! machine-readable category (for CSV export), and the ring-family

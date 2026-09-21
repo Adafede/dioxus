@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+// SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
 //! Colour helpers: adduct-family palettes, Paul Tol colours, and the
 //! tolerance-step LUT (driven by the `prismatic` BATLOW palette).

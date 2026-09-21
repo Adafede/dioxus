@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
+
 // Example: Using Precursor-Driven MS2 Fragment Recalibration
 //
 // This example demonstrates how to use the recalibration module to:

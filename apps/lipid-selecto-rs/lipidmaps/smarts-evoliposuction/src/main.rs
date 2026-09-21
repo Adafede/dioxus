@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! CLI entry point for the `smarts-evoliposuction` binary.
 //!
 //! Unified tool for downloading LIPID MAPS data, splitting into training sets,

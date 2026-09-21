@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+// SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
 //! Data-preparation primitives shared by every chart: numeric conversions,
 //! scatter-plot point assembly, legend embedding, ECDF sampling and axis/value

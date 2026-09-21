@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! `lipid-selecto-rs` — interactive lipid classification and filtering.
 //!
 //! **A modern, interactive web application for filtering and visualizing lipid

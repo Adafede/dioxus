@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Dioxus UI for `lipid-selecto-rs`: drag-and-drop file upload (MGF or SMILES),
 //! lipid classification with extensible rules, a "Download" button, and a gallery
 //! of structure diagrams.

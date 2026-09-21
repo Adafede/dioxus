@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! CSV parsing and positive/negative SMILES splitting for smarts-evolution.
 //!
 //! Pure Rust (no smarts-evolution dependency) — safe to compile on any target.

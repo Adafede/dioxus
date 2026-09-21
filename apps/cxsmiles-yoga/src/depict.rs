@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the cxsmiles-yoga project
+
 //! Local 2D depiction — no remote rendering service required.
 //!
 //! Wraps `chematic::depict::{depict_svg, depict_svg_highlighted}`, which compute

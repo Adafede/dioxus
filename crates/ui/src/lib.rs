@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Unified UI design system for Dioxus applications.
 //!
 //! Provides a complete, type-safe design system with reusable components,

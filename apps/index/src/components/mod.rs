@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the index project
+
 //! Reusable UI components for the landing page.
 //!
 //! Demonstrates best practices for component design:

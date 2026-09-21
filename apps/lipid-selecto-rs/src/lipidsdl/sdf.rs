@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Streaming SDF (Structure-Data File) parser.
 //!
 //! An SDF file is a sequence of records, each containing a molecular structure

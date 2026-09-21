@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Collection of 204 example SMILES covering all LIPID MAPS classes from real data.
 //! Generated from `LipidMaps` LMSD dataset.
 //! Covers all 8 categories: FA, GL, GP, SP, ST, PR, SL, PK

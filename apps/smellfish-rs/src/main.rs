@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
+
 //! `smellfish-rs` — literature-backed NP-likeness scoring.
 //!
 //! Scores natural-product-likeness of SMILES structures using machine-learned

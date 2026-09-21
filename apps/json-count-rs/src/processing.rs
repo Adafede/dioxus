@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the json-count-rs project
+
 //! Streaming JSON field scanner.
 //!
 //! Counts non-null values per top-level key of an uploaded JSON object using a

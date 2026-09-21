@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Load and manage lipid classification rules from external YAML configuration.
 //!
 //! This module provides an extensible framework for lipid class definitions,

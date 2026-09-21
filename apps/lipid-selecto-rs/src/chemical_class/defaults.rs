@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Broad-grained lipid class definitions (one SMARTS pattern per LIPID MAPS family).
 //!
 //! These are the "defaults" — coarse patterns covering the major lipid families.

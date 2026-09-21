@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! WASM-only glue that reads the uploaded blob in streaming chunks, runs the
 //! (cooperative) lipid classification pass off the render thread, and triggers
 //! a file download.

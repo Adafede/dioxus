@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the index project
+
 //! Type-safe, accessible landing page for Dioxus experiments.
 //!
 //! This module provides the root application component and demonstrates best

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
+
 /// Diagnostics and plotting utilities for precursor error analysis before and after recalibration.
 ///
 /// This module provides tools to compute and visualize precursor error distributions,

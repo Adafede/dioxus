@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
+
 use std::fs;
 use std::path::Path;
 use std::process::Command;

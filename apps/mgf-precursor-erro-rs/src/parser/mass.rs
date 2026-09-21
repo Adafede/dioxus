@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+// SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
 //! Exact-mass lookup helpers: SMILES/formula → neutral mass (with
 //! panic-tolerant parsing + per-call caching), and small numeric helpers

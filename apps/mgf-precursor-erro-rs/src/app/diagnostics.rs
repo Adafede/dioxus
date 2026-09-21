@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
+
 use dioxus::prelude::Signal;
 #[cfg(target_arch = "wasm32")]
 use dioxus::prelude::WritableExt;

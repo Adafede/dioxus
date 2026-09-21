@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
+
 use crate::model::{EndpointStatus, Enrichment, EnrichmentOutcome, SourceSummary};
 use futures::future::join;
 use lotus::transport::{ResponseFormat, execute_sparql_with_format};

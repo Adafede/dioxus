@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+// SPDX-FileCopyrightText: Contributors to the cxsmiles-yoga project
 
 //! Public result types for CX-SMILES generation.
 //!

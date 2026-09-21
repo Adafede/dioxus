@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the index project
+
 //! Accessibility utilities and components.
 //!
 //! This module provides reusable accessibility patterns:

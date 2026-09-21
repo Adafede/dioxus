@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
+
 pub struct LiteratureEntry {
     pub title: &'static str,
     pub doi: &'static str,

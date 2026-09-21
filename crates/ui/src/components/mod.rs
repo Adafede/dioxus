@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Reusable Dioxus components for unified UI across all applications.
 //!
 //! All components use pure Rust styling via [`crate::theme`], no external CSS files.

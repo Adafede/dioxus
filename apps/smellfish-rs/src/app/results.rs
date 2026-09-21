@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
+
 //! Renderable sub-trees + pure formatting helpers extracted from `app.rs`.
 //!
 //! Each `#[component]` owns one responsibility so `app.rs` only wires signals

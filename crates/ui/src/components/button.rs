@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Button component with multiple variants and states.
 
 use crate::theme::{Radius, Spacing, StyleBuilder, Typography};

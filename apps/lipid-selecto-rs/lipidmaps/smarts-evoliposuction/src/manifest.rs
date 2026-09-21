@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Manifest CSV reading/writing for the smarts-evoliposuction pipeline.
 //!
 //! The manifest is the contract between the `split` phase (which writes

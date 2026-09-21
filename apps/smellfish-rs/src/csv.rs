@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
+
 use crate::model::RawRow;
 
 pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {

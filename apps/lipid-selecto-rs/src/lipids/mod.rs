@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Lipid classification from SMILES / molecular formula.
 //!
 //! A molecule is classified as a lipid when it carries the structural hallmark

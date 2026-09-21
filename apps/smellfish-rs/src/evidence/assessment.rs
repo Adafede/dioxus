@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 //! Evidence assessment: builds an [`EvidenceAssessment`] for a single
 //! molecule from the Ertl NP-likeness score plus structural motif context.

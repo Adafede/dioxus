@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Depiction using simolecule `CDKdepict` API.
 //!
 //! Returns HTML `img` tag that loads from the working simolecule service.

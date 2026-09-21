@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Fatty acyl chain analysis for lipid characterization.
 //!
 //! This module identifies and characterizes individual fatty acyl/radyl groups

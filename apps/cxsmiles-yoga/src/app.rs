@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the cxsmiles-yoga project
+
 //! Dioxus UI for `cxsmiles-yoga`.
 //!
 //! A textarea, a "generate" button, and a results panel show the produced

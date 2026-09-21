@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+// SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
 //! Streaming MGF block parser: turns raw MGF `BEGIN IONS` blocks into
 //! [`PrecursorStats`]. Depends on the `mass` and `adduct` layers for

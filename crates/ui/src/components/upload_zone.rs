@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Shared file-drop zone (drag + browse), de-duplicating the per-app upload
 //! pattern found in `apps/json-count-rs` and `apps/lipid-selecto-rs`.
 //!

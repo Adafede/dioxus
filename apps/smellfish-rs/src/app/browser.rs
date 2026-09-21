@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
+
 //! Upload dispatch — mirrors `mgf-precursor-erro-rs`' `app/browser.rs` cfg-mut
 //! pattern: the wasm arm forwards to `pipeline::begin_import` /
 //! `begin_import_from_text`, the native arm pins the signals to the

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the cxsmiles-yoga project
+
 //! `cxsmiles-yoga` — generate CX-SMILES from lists of related structures.
 //!
 //! Core algorithm lives in [`cxsmiles`] (a pure-Rust, UI-free module that can

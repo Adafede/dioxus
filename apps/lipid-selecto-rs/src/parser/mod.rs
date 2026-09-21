@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! MGF parsing and chemical class matching.
 //!
 //! The parser walks an MGF file block-by-block (`BEGIN IONS ... END IONS`),

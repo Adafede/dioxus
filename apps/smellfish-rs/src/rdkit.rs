@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the smellfish-rs project
+
 use crate::model::RdkitInspectResponse;
 use js_sys::{JSON, Promise, Reflect};
 use wasm_bindgen::{JsCast, JsValue};

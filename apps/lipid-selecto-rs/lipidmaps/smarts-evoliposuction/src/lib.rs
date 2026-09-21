@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Core logic for splitting SMILES datasets into positive/negative pairs
 //! and running smarts-evolution on each pair.
 //!

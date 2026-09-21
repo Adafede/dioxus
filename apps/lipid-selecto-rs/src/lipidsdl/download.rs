@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Async file download utilities (native targets only).
 //!
 //! Uses `reqwest` + `tokio` to stream a file from a URL to disk, with

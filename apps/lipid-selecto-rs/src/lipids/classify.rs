@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 //! Lipid classification algorithm.
 //!
 //! SMARTS substructure patterns and the `is_acyclic` / `classify_smiles` /

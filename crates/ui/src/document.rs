@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! Programmatic document head management — replaces static `index.html` files.
 //!
 //! Uses [`dioxus::document`] to set `<head>` content from Rust code.
