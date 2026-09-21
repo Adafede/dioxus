@@ -3,8 +3,8 @@
 
 //! Search criteria: taxon, structure, mass, year, and molecular-formula filters.
 //!
-//! [`SearchCriteria`] is the canonical filter set shared between lotus-api's
-//! `/v1/search` endpoint and lotus-explore-rs's UI form.  It serializes to URL
+//! [`SearchCriteria`] is the canonical filter set used by `lotus-explore-rs`'s
+//! server (`/v1/search`) and client (UI form).  It serializes to URL
 //! query parameters via [`SearchCriteria::shareable_query_params`].
 
 use super::runtime::current_year;

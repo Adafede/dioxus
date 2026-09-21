@@ -22,7 +22,7 @@ pub const fn en_t(key: TextKey) -> &'static str {
         TextKey::DarkMode => "Dark",
         TextKey::LightMode => "Light",
         TextKey::GoToHomepage => "Go to homepage",
-        TextKey::SkipToResults => "Skip to results",
+        TextKey::SkipToResults => "Skip to main content",
         TextKey::PageSubtitle => {
             "Explore linked open data: natural products, organisms, and scientific literature."
         }

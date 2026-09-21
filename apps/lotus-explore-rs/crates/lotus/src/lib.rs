@@ -4,9 +4,9 @@
 //! # lotus — LOTUS domain & SPARQL shared core
 //!
 //! The single source of truth for everything LOTUS/Wikidata/QLever across the
-//! `dioxus-apps` workspace.  Both the native `lotus-api` service and the WASM
-//! `lotus-explore-rs` explorer — and any future app — consume this crate rather
-//! than constructing queries or parsing CSV results themselves.
+//! `dioxus-apps` workspace.  The `lotus-explore-rs` app — serving both its native
+//! `/v1` API (under `--features server`) and its WASM client — and any future app
+//! consume this crate rather than constructing queries or parsing CSV results themselves.
 //!
 //! ## Module map
 //!
@@ -25,8 +25,7 @@
 
 #![warn(missing_docs)]
 
-/// Export-format and download-URL helpers shared by `lotus-api` and
-/// `lotus-explore-rs`.
+/// Export-format and download-URL helpers used by `lotus-explore-rs`.
 pub mod export;
 /// LOTUS domain models: search criteria, compound entries, dataset stats.
 pub mod models;

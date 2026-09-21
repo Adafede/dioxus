@@ -3,7 +3,7 @@
 
 //! Sort state: column selection, direction, and their serialization.
 //!
-//! [`SortState`] is used by lotus-explore-rs's results table and by lotus-api's
+//! [`SortState`] is used by `lotus-explore-rs`'s results table and its
 //! `/v1/search` endpoint to order result rows.
 
 /// Column by which results can be sorted.

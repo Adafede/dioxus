@@ -22,7 +22,7 @@ pub const fn it_t(key: TextKey) -> &'static str {
         TextKey::DarkMode => "Scuro",
         TextKey::LightMode => "Chiaro",
         TextKey::GoToHomepage => "Vai alla home page",
-        TextKey::SkipToResults => "Salta ai risultati",
+        TextKey::SkipToResults => "Vai al contenuto principale",
         TextKey::PageSubtitle => {
             "Esplora dati aperti collegati: prodotti naturali, organismi e letteratura scientifica."
         }

@@ -4,8 +4,8 @@
 //! SPARQL query-string builders for the `LOTUS`/`Wikidata`/`QLever` ecosystem.
 //!
 //! This module is the single source of truth for all SPARQL query construction
-//! in the workspace.  Both `lotus-api` and `lotus-explore-rs` import from here
-//! rather than building query strings inline.
+//! in the workspace.  `lotus-explore-rs` imports from here rather than
+//! building query strings inline.
 //!
 //! ## Submodule layout
 //!

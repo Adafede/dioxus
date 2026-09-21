@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Export-format and download-URL helpers shared by `lotus-api` and
-//! `lotus-explore-rs`.
+//! Export-format and download-URL helpers used by `lotus-explore-rs`
+//! (serves both the native `/v1` API and the WASM client).
 //!
-//! Both apps independently defined an enum for CSV/JSON/RDF export and a
-//! mapping from that enum to `action=` strings ("`csv_export`", "`qlever_json_export`",
-//! "`turtle_export`").  This module is the single source of truth — apps import
-//! `ExportFormat` and call `qlever_export_url` / `build_upstream_export_url`
-//! instead of re-implementing the mapping.
+//! This module is the single source of truth for the CSV/JSON/RDF export
+//! enum and its mapping to `action=` strings ("`csv_export`",
+//! "`qlever_json_export`", "`turtle_export`").  Apps import `ExportFormat`
+//! and call `qlever_export_url` / `build_upstream_export_url` instead of
+//! re-implementing the mapping.
 
 #![allow(clippy::module_name_repetitions)]
 
@@ -133,9 +133,9 @@ pub fn qlever_export_url(query: &str, format: ExportFormat) -> String {
 
 /// Builds a `QLever` export URL for the given query and format action string.
 ///
-/// This is kept for callers that need a raw action string (e.g. the lotus-api
-/// `/v1/search` endpoint which lists direct `QLever` URLs alongside its own
-/// gzip-cached export URLs).
+/// This is kept for callers that need a raw action string (e.g. the
+/// `lotus-explore-rs` `/v1/search` endpoint, which lists direct `QLever` URLs
+/// alongside its own gzip-cached export URLs).
 #[must_use]
 pub fn qlever_export_url_with_action(query: &str, action: &str) -> String {
     format!(
@@ -145,7 +145,7 @@ pub fn qlever_export_url_with_action(query: &str, action: &str) -> String {
     )
 }
 
-/// Builds a lotus-api `/v1/export-file/{cache_key}/{format}` URL.
+/// Builds a `lotus-explore-rs` `/v1/export-file/{cache_key}/{format}` URL.
 #[must_use]
 pub fn api_export_file_url(cache_key: &str, format: ExportFormat) -> String {
     format!("/v1/export-file/{cache_key}/{}", format.extension())

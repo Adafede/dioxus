@@ -1,13 +1,14 @@
 # ── Stage 1: build ────────────────────────────────────────────────────────────
 # Pin to the same channel as rust-toolchain.toml so the build is reproducible.
-FROM rust:1.97.1-slim-bookworm AS builder
+FROM rust:1.97.0-slim-bookworm AS builder
 
 WORKDIR /build
 
-# Copy workspace manifests first so dependency layers are cached
+# Copy manifests first, then ALL app sources: `cargo build -p lotus-explore-rs`
+# resolves the entire workspace, so every member's manifest must be present.
 COPY Cargo.toml Cargo.lock ./
 COPY crates/ crates/
-COPY apps/lotus-explore-rs/ apps/lotus-explore-rs/
+COPY apps/ apps/
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config libssl-dev \

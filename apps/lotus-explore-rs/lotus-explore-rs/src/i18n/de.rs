@@ -22,7 +22,7 @@ pub const fn de_t(key: TextKey) -> &'static str {
         TextKey::DarkMode => "Dunkel",
         TextKey::LightMode => "Hell",
         TextKey::GoToHomepage => "Zur Startseite",
-        TextKey::SkipToResults => "Zurück zu den Ergebnissen",
+        TextKey::SkipToResults => "Zum Hauptinhalt springen",
         TextKey::PageSubtitle => {
             "Erkunden Sie verknüpfte offene Daten: Naturstoffe, Organismen und wissenschaftliche Literatur."
         }

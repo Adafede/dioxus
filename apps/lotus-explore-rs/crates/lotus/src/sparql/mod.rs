@@ -15,7 +15,7 @@
 //! - `execution`: thin wrappers that execute queries on the default endpoint.
 //!
 //! Public items are re-exported below so that `lotus::sparql::*` paths are
-//! unchanged for downstream crates (`lotus-api`, `lotus-explore-rs`).
+//! unchanged for downstream crates (`lotus-explore-rs`).
 
 mod execution;
 mod parsing;
