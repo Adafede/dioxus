@@ -37,5 +37,3 @@ pub mod sparql;
 pub mod state;
 /// Platform-agnostic SPARQL-over-HTTP transport.
 pub mod transport;
-/// Cache-key computation shared by the native server and the WASM client.
-pub mod state;

@@ -59,7 +59,10 @@ mod tests {
     #[test]
     fn keys_are_distinct_by_query_limit_and_kind() {
         let q = "SELECT ?s WHERE { ?s ?p ?o }";
-        assert_ne!(build_search_cache_key(q, 100, true), build_export_cache_key(q));
+        assert_ne!(
+            build_search_cache_key(q, 100, true),
+            build_export_cache_key(q)
+        );
         assert_ne!(
             build_search_cache_key(q, 100, true),
             build_search_cache_key(q, 200, true)
