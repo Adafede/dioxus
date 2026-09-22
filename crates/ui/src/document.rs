@@ -76,9 +76,6 @@ pub struct DocumentHeadProps {
 ///
 /// Call this once in your app's root component.  All head elements are added
 /// lazily via `use_hook` + `document()` after the first render.
-///
-/// For `<link>` tags (favicons, preconnect, manifests), use
-/// `ui::document::DocumentLinks` alongside this component.
 #[component]
 pub fn DocumentHead(props: DocumentHeadProps) -> Element {
     let title = props.title.clone();
@@ -247,114 +244,6 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
     });
 
     use_effect(move || sync_document_lang(&lang_for_effect));
-
-    VNode::empty()
-}
-
-/// Properties for [`DocumentScripts`].
-#[derive(Clone, Props, PartialEq)]
-pub struct DocumentScriptsProps {
-    /// External JS URLs loaded via `<script async src="..." crossorigin>`.
-    #[props(default)]
-    pub scripts: Vec<String>,
-    /// Inline JavaScript, wrapped in an IIFE so declarations don't leak across
-    /// re-mounts (avoids `SyntaxError: redeclaration` on navigation/hot-reload).
-    #[props(default)]
-    pub inline_script: Option<String>,
-}
-
-/// Inject external `<script>` tags and inline JS into the document `<head>` when
-/// this component is mounted.
-///
-/// Unlike [`DocumentHead`], which runs once at the app root, this component can
-/// live inside a page/route so that heavy third-party scripts (e.g. RDKit,
-/// citation-js) are only fetched when the view that needs them is rendered —
-/// reducing the bytes consumed by network activity on every other page.
-#[component]
-pub fn DocumentScripts(props: DocumentScriptsProps) -> Element {
-    let scripts = props.scripts.clone();
-    let inline_script = props.inline_script.clone();
-
-    use_hook(move || {
-        let doc = document();
-        // `async` (not `defer`): `defer` is a no-op on dynamically injected
-        // scripts — the parser has already finished by the time `use_hook`
-        // runs, so a `defer` script would never execute.  `async` loads and
-        // executes as soon as the file arrives; bridge code that depends on
-        // these globals polls for their availability.
-        //
-        // `crossorigin="anonymous"`: prevents `nosniff` MIME-type errors on CDN
-        // resources that send CORS headers.  Browsers also deduplicate
-        // duplicate `async` script `src` URLs naturally.
-        for url in &scripts {
-            doc.create_head_element(
-                "script",
-                &[
-                    ("src", url.clone()),
-                    ("async", "".to_string()),
-                    ("crossorigin", "anonymous".to_string()),
-                ],
-                None,
-            );
-        }
-
-        if let Some(js) = &inline_script {
-            let wrapped = format!("(function(){{{js}}})();");
-            doc.create_head_element("script", &[], Some(wrapped));
-        }
-    });
-
-    VNode::empty()
-}
-
-/// Add `<link>` tags to the document head (favicons, preconnect, manifests, etc.).
-#[derive(Clone, Props, PartialEq)]
-pub struct DocumentLinksProps {
-    #[props(default)]
-    pub links: Vec<LinkSpec>,
-}
-
-/// Specification for a `<link>` tag.
-#[derive(Clone, PartialEq)]
-pub struct LinkSpec {
-    pub rel: &'static str,
-    pub href: String,
-    pub r#type: Option<&'static str>,
-    pub media: Option<&'static str>,
-    pub crossorigin: Option<&'static str>,
-    pub sizes: Option<&'static str>,
-    pub hreflang: Option<&'static str>,
-}
-
-#[component]
-pub fn DocumentLinks(props: DocumentLinksProps) -> Element {
-    let links = props.links.clone();
-
-    use_hook(move || {
-        let doc = document();
-        for spec in &links {
-            let mut attrs: Vec<(&str, String)> = vec![
-                ("rel", spec.rel.to_string()),
-                ("href", spec.href.to_string()),
-            ];
-            if let Some(t) = spec.r#type {
-                attrs.push(("type", t.to_string()));
-            }
-            if let Some(m) = spec.media {
-                attrs.push(("media", m.to_string()));
-            }
-            if let Some(c) = spec.crossorigin {
-                attrs.push(("crossorigin", c.to_string()));
-            }
-            if let Some(s) = spec.sizes {
-                attrs.push(("sizes", s.to_string()));
-            }
-            if let Some(h) = spec.hreflang {
-                attrs.push(("hreflang", h.to_string()));
-            }
-            doc.create_head_element("link", &attrs, None);
-        }
-    });
 
     VNode::empty()
 }

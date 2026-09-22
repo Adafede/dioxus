@@ -54,7 +54,7 @@ pub mod prelude {
         Button, ButtonVariant, Card, Footer, Header, NoticeBar, NoticeTone, SegmentedControl,
         SegmentedControlItem, UploadZone,
     };
-    pub use crate::document::{DocumentHead, DocumentLinks, DocumentScripts, LinkSpec};
+    pub use crate::document::DocumentHead;
     pub use crate::theme::{
         ColorScheme, Interaction, Radius, Shadow, Spacing, StyleBuilder, Typography,
     };
