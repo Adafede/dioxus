@@ -459,8 +459,8 @@ const LMSD_FAMILY_PALETTES: &[(&str, &[&str; 5])] = &[
 /// - First 4 classes per family get shades 0-3
 /// - All remaining classes get shade 4 (the lightest)
 ///
-/// Names use the full LMSD format: "Description [CODE]"
-/// (e.g., "Fatty Acids and Conjugates [FA01]").
+/// Names use the full LMSD format: "Description \[CODE]"
+/// (e.g., "Fatty Acyls and Conjugates \[FA01]").
 /// Within each family, classes are sorted by LMSD database count (descending).
 #[must_use]
 pub fn lmsd_all() -> Vec<ChemicalClass> {

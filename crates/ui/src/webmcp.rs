@@ -4,7 +4,7 @@
 //! page's WebMCP document context (`document.modelContext`), so AI agents can
 //! discover what an app consumes and produces before invoking it. The emitted
 //! script is a guarded no-op in browsers without a WebMCP context, so it is
-//! safe to inject unconditionally via [`DocumentHead`](crate::DocumentHead).
+//! safe to inject unconditionally via [`DocumentHead`](crate::document::DocumentHead).
 //!
 //! Spec: <https://webmachinelearning.github.io/webmcp/>
 

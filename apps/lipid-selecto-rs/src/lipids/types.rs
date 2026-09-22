@@ -41,7 +41,7 @@ impl LipidClass {
         }
     }
 
-    /// LIPID MAPS category name with code, e.g. "Fatty Acyls [FA]".
+    /// LIPID MAPS category name with code, e.g. "Fatty Acyls \[FA]".
     #[must_use]
     pub const fn lipidmaps_category(self) -> &'static str {
         match self {

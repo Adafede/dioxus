@@ -117,7 +117,7 @@ prek run cargo-clippy             # cargo clippy --workspace --all-targets --loc
 prek run cargo-test               # cargo test --workspace --all-targets --locked --quiet
 prek run cargo-check-wasm-all     # cargo check for all 5 WASM apps
 prek run cargo-doc               # cargo doc --workspace --no-deps --locked
-prek run cargo-machete           # cargo machete check --workspace
+prek run cargo-machete           # cargo machete
 prek run cargo-audit             # cargo audit
 prek run cargo-deny              # cargo deny check advisories bans licenses sources
 prek run cargo-readme-panache    # cargo-readme sync + panache lint
@@ -144,7 +144,7 @@ On every push to `main`:
   `lipid-selecto-rs`, `lotus-explore-rs`, `mgf-precursor-erro-rs`,
   `smellfish-rs`)
 - `cargo doc --workspace --no-deps --locked`
-- `cargo machete check --workspace`
+- `cargo machete`
 - `cargo audit`
 - `cargo deny check advisories bans licenses sources`
 - WASM build and deploy artifact for all 7 WASM apps (with Ketcher fetch for

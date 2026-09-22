@@ -12,7 +12,7 @@
 //!   (e.g. `lotus-explore.css`) loaded via `<link rel="stylesheet">` in the
 //!   generated `index.html` for optimal mobile performance
 //! - **Type-safe theming**: Compile-time checked colors, spacing, typography
-//!   via [`StyleBuilder`], [`ColorScheme`], [`Spacing`] and [`Typography`]
+//!   via `StyleBuilder`, `ColorScheme`, `Spacing` and `Typography`
 //! - **Accessible components**: WCAG AAA contrast, keyboard navigation, semantic HTML
 //! - **Lotus aesthetic**: Clean, professional design inspired by lotus-explore-rs
 //!

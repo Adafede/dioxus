@@ -500,7 +500,7 @@ pub mod colors {
 
     /// Extract the 2-letter family code from a `MAIN_CLASS` value.
     ///
-    /// `MAIN_CLASS` values look like `"Fatty Acyls [FA01]"` — the family
+    /// `MAIN_CLASS` values look like `"Fatty Acyls \[FA01]"` — the family
     /// code is the two uppercase letters inside the brackets.
     #[must_use]
     pub fn family_code(main_class: &str) -> &str {

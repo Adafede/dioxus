@@ -668,10 +668,10 @@ fn get_class_tag_from_gallery(
     }
 }
 
-/// Map a CATEGORY string (e.g. "Fatty Acyls [FA]") back to the family name
+/// Map a CATEGORY string (e.g. "Fatty Acyls \[FA]") back to the family name
 /// (e.g. "Fatty Acyls") used by [`ChemicalClass`].
 fn family_from_category(category: &str) -> &str {
-    // Categories look like "Fatty Acyls [FA]" — strip the trailing [XX] code.
+    // Categories look like "Fatty Acyls \[FA]" — strip the trailing [XX] code.
     category.split(" [").next().unwrap_or(category).trim()
 }
 
@@ -694,7 +694,7 @@ fn family_code(family: &str) -> &str {
 /// This is a fallback used when no matching `GalleryItem` is found.
 ///
 /// Uses the broad `LipidClassification` for CATEGORY (mapped to proper LIPID MAPS
-/// category names with codes like "Fatty Acyls [FA]"), and the first matching
+/// category names with codes like "Fatty Acyls \[FA]"), and the first matching
 /// LMSD subclass name for `MAIN_CLASS`. `SUB_CLASS` is always "-" (no sub-subclass
 /// info available).
 fn get_class_tag(
@@ -737,7 +737,7 @@ fn get_class_tag(
 }
 
 /// Inserts COMMENT= lines with `LIPID_MAPS` class tags in the MGF header block (after BEGIN IONS, before peaks).
-/// Each item is a (key, value) pair like ("CATEGORY", "Fatty Acyls [FA]").
+/// Each item is a (key, value) pair like ("CATEGORY", "Fatty Acyls \[FA]").
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn insert_class_comment(block_raw: &str, class_tags: &[(String, String)]) -> String {
     let comment_block: String = class_tags
