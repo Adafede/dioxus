@@ -193,12 +193,6 @@ where
         self.pos = (self.pos + n).min(self.buf.len());
     }
 
-    /// Returns the total bytes read so far (same as [`processed`](Self::processed)).
-    #[must_use]
-    pub fn total_read(&self) -> u64 {
-        self.processed()
-    }
-
     /// Returns a reference to the internal buffer.
     ///
     /// The buffer content is valid until the next call that modifies `pos`
@@ -206,15 +200,5 @@ where
     #[must_use]
     pub fn buffer(&self) -> &[u8] {
         &self.buf
-    }
-
-    /// Returns a mutable reference to the current position.
-    pub fn pos_mut(&mut self) -> &mut usize {
-        &mut self.pos
-    }
-
-    /// Forces a final progress report on the next [`fill`](Self::fill) call.
-    pub fn force_progress_report(&mut self) {
-        self.progress.force_next();
     }
 }
