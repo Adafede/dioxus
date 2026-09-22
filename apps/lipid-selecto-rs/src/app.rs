@@ -31,6 +31,7 @@ use self::components::{gallery_with_filter, lipid_classes_card, summary};
 /// # Errors
 ///
 /// Returns an error if the component tree fails to build or render.
+#[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
     let status = use_signal(|| "Drop an MGF or SMILES file to begin.".to_string());
     let drag_active = use_signal(|| false);
@@ -87,6 +88,13 @@ pub fn app() -> Element {
     rsx! {
         DocumentHead {
             title: "Lipid Selecto-rs".to_string(),
+            webmcp: Some(WebMcpConfig {
+                app_id: "lipid-selecto-rs",
+                title: "Lipid Selecto-rs",
+                description: "Web app for filtering lipid mass spectrometry data by chemical class with interactive structure visualization",
+                inputs: &["lipid_file", "smarts_query"],
+                outputs: &["filtered_lipids", "structures"],
+            }),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],

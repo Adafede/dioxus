@@ -479,6 +479,13 @@ pub fn SmellfishDocumentHead() -> Element {
     rsx! {
         DocumentHead {
             title: "smellfish-rs".to_string(),
+            webmcp: Some(WebMcpConfig {
+                app_id: "smellfish-rs",
+                title: "Smellfish-rs",
+                description: "Smellfish-rs literature-backed NP-likeness scoring with RDKit.js, QLever enrichment, and explicit endpoint health checks",
+                inputs: &["smiles_csv"],
+                outputs: &["np_likeness", "motifs", "enrichment"],
+            }),
             lang: "en".to_string(),
             description: Some(description.to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),

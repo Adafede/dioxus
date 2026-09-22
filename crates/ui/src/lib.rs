@@ -46,6 +46,7 @@ pub mod components;
 pub mod document;
 pub mod signals;
 pub mod theme;
+pub mod webmcp;
 
 /// Convenience re-exports of the most commonly used UI primitives.
 pub mod prelude {
@@ -58,4 +59,5 @@ pub mod prelude {
     pub use crate::theme::{
         ColorScheme, Interaction, Radius, Shadow, Spacing, StyleBuilder, Typography,
     };
+    pub use crate::webmcp::{WebMcpConfig, capabilities_script};
 }

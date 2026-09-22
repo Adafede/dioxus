@@ -261,6 +261,13 @@ pub fn app() -> Element {
     rsx! {
         DocumentHead {
             title: "🧘 CX-SMILES Yoga".to_string(),
+            webmcp: Some(WebMcpConfig {
+                app_id: "cxsmiles-yoga",
+                title: "CX-SMILES Yoga",
+                description: "Web app for generating CX-SMILES from lists of related structures — collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n: blocks) via maximum common substructure",
+                inputs: &["smiles_list"],
+                outputs: &["cx_smiles"],
+            }),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],

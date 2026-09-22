@@ -61,6 +61,10 @@ pub struct DocumentHeadProps {
     /// Inline JavaScript (e.g. language bootstrap, toast bridge code).
     #[props(default)]
     pub inline_script: Option<String>,
+    /// WebMCP tool registration config — emits a read-only `<app_id>_capabilities`
+    /// tool via the [WebMCP proposal](https://webmachinelearning.github.io/webmcp/).
+    #[props(default)]
+    pub webmcp: Option<crate::webmcp::WebMcpConfig>,
     /// Open Graph site name.
     #[props(default)]
     pub og_site_name: Option<String>,
@@ -92,6 +96,7 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
     let theme_colors = props.theme_colors;
     let scripts = props.scripts.clone();
     let inline_script = props.inline_script.clone();
+    let webmcp = props.webmcp;
     let json_ld = props.json_ld.clone();
     let canonical = props.canonical.clone();
 
@@ -231,6 +236,10 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         if let Some(js) = &inline_script {
             let wrapped = format!("(function(){{{js}}})();");
             doc.create_head_element("script", &[], Some(wrapped));
+        }
+
+        if let Some(cfg) = webmcp {
+            doc.create_head_element("script", &[], Some(crate::webmcp::capabilities_script(cfg)));
         }
 
         // JSON-LD structured data

@@ -76,6 +76,13 @@ pub fn app() -> Element {
     rsx! {
         DocumentHead {
             title: "MGF Precursor Error".to_string(),
+            webmcp: Some(WebMcpConfig {
+                app_id: "mgf-precursor-erro-rs",
+                title: "MGF Precursor Erro-rs",
+                description: "Web app for summarizing precursor mass errors from uploaded MGF files",
+                inputs: &["mgf_file"],
+                outputs: &["precursor_error_stats"],
+            }),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],

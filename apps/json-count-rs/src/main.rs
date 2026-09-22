@@ -100,6 +100,13 @@ fn app() -> Element {
         // Document head — replaces static index.html meta tags & styles
         DocumentHead {
             title: "JSON Non-Null Field Counter".to_string(),
+            webmcp: Some(WebMcpConfig {
+                app_id: "json-count-rs",
+                title: "JSON Count-rs",
+                description: "Web app for counting non-null JSON fields from uploaded files",
+                inputs: &["json_file"],
+                outputs: &["field_stats"],
+            }),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],

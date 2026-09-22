@@ -114,6 +114,13 @@ pub fn app() -> Element {
             title: "Dioxus Experiments".to_string(),
             description: Some("Open-source Rust/WASM experiments built with Dioxus: CX-SMILES Yoga, JSON Count-rs, MGF Precursor Erro-rs, Lipid Selecto-rs, and Smellfish-rs.".to_string()),
             lang: "en".to_string(),
+            webmcp: Some(WebMcpConfig {
+                app_id: "index",
+                title: "Dioxus Experiments",
+                description: "Landing page for Dioxus experiments — accessible, type-safe, showcasing best practices",
+                inputs: &[],
+                outputs: &["experiment_links"],
+            }),
             og_type: Some("website".to_string()),
             og_site_name: Some("Dioxus Experiments".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
