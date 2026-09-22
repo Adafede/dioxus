@@ -13,4 +13,5 @@ publish = false
 [dependencies]
 dioxus = { workspace = true }
 
-[dev-dependencies]
+[lints]
+workspace = true

@@ -14,7 +14,7 @@ use crate::rdkit::{rdkit_inspect, read_file_text};
 use dioxus::prelude::{Signal, WritableExt, spawn};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-/// A molecule that has been processed by RDKit but not yet assessed for NP
+/// A molecule that has been processed by `RDKit` but not yet assessed for NP
 /// evidence.  This intermediate representation lets us compute dataset-level
 /// motif prevalence *before* evaluating each row.
 struct RawInspectRow {
@@ -30,6 +30,11 @@ struct RawInspectRow {
     num_atoms: usize,
 }
 
+/// Import a [`web_sys::File`] CSV, parsing and inspecting each row.
+///
+/// # Errors
+///
+/// Returns an error if file reading or row processing fails.
 #[cfg(target_arch = "wasm32")]
 pub async fn import_csv(
     file: web_sys::File,
@@ -40,7 +45,18 @@ pub async fn import_csv(
     import_csv_text(&text, status).await
 }
 
+/// Import SMILES rows from text, running `RDKit` inspection and evidence
+/// assessment for each molecule.
+///
+/// # Errors
+///
+/// Returns an error if CSV parsing or row inspection fails.
 #[cfg(target_arch = "wasm32")]
+#[allow(
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::assigning_clones
+)]
 async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<ImportOutcome, String> {
     status.set("Parsing CSV…".to_string());
     let raw_rows = parse_csv_rows(text)?;
@@ -73,7 +89,6 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                     continue;
                 }
 
-                let inspect = inspect; // consume
                 let motifs_list = inspect.motifs.unwrap_or_default();
                 let motif_labels = motifs_list
                     .iter()
@@ -286,6 +301,11 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
 /// `common_threshold` molecules, where `common_threshold` is the larger of
 /// `ceil(total / 10)` and 2 — i.e. at least 10 % of the set (minimum 2).
 #[cfg(target_arch = "wasm32")]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
 fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> DatasetMotifContext {
     let mut motif_counts: HashMap<String, usize> = HashMap::new();
     for motif in motif_summaries {
@@ -301,6 +321,7 @@ fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> Da
 }
 
 #[cfg(target_arch = "wasm32")]
+#[derive(Debug)]
 pub struct ImportOutcome {
     pub rows: Vec<MoleculeRow>,
     pub motifs: Vec<MotifSummary>,
@@ -311,6 +332,7 @@ pub struct ImportOutcome {
 }
 
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::too_many_arguments)]
 pub fn begin_import(
     file: web_sys::File,
     file_name_value: String,
@@ -364,6 +386,7 @@ pub fn begin_import(
 }
 
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::too_many_arguments)]
 pub fn begin_import_from_text(
     text: String,
     file_name_value: String,
@@ -417,6 +440,7 @@ pub fn begin_import_from_text(
 }
 
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::assigning_clones)]
 fn merge_enrichment(
     mut rows: Vec<MoleculeRow>,
     enrichment_outcome: &EnrichmentOutcome,
@@ -488,7 +512,7 @@ fn merge_enrichment(
             }
         }
     }
-    web_sys::console::log_1(&format!("merge_enrichment complete").into());
+    web_sys::console::log_1(&"merge_enrichment complete".to_string().into());
     rows
 }
 

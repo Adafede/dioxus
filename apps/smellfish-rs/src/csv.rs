@@ -3,6 +3,12 @@
 
 use crate::model::RawRow;
 
+/// Parse CSV text into rows, auto-detecting SMILES and label columns.
+///
+/// # Errors
+///
+/// Returns an error if the input is empty, the CSV is malformed,
+/// or no data rows are found.
 pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {

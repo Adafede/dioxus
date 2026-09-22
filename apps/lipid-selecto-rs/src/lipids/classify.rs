@@ -189,40 +189,21 @@ pub fn classify_smiles(smiles: &str) -> Option<LipidClassification> {
     })
 }
 
-/// Conservative formula-only fallback (used when a SMILES is absent/unparseable
-/// but a Hill-notation `FORMULA=` is available).
-#[must_use]
-pub fn classify_formula(formula: &str) -> Option<LipidClass> {
-    let trimmed = formula.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let map = chem::parse_formula(trimmed).ok()?;
-    let mut counts = ElementCounts::default();
-    let mut halogens = 0u32;
-    for (symbol, value) in &map {
-        match symbol.as_str() {
-            "C" => counts.carbon = *value,
-            "H" => counts.hydrogen = *value,
-            "N" => counts.nitrogen = *value,
-            "O" => counts.oxygen = *value,
-            "P" => counts.phosphorus = *value,
-            "S" => counts.sulfur = *value,
-            "F" | "Cl" | "Br" | "I" => halogens += *value,
-            _ => {}
-        }
-    }
-    counts.halogens = halogens;
-
+/// Formula-based classification decision from pre-computed element counts.
+///
+/// Shared by [`classify_formula`] (public API) and [`classify_spectrum`]
+/// (which already parsed the formula) to avoid duplicating the decision tree
+/// or re-parsing the formula string.
+fn classify_from_counts(counts: &ElementCounts) -> Option<LipidClass> {
     let c = counts.carbon as i32;
     let h = counts.hydrogen as i32;
     let n = counts.nitrogen as i32;
     let p = counts.phosphorus as i32;
     let o = counts.oxygen as i32;
     let s = counts.sulfur as i32;
+    let halogens = counts.halogens as i32;
     let db = counts.double_bond_equivalent();
-    let heavy = c + n + o + p + s + halogens as i32;
+    let heavy = c + n + o + p + s + halogens;
 
     if c == 0 || heavy < 4 {
         return None;
@@ -268,6 +249,20 @@ pub fn classify_formula(formula: &str) -> Option<LipidClass> {
     None
 }
 
+/// Conservative formula-only fallback (used when a SMILES is absent/unparseable
+/// but a Hill-notation `FORMULA=` is available).
+#[must_use]
+pub fn classify_formula(formula: &str) -> Option<LipidClass> {
+    let trimmed = formula.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let map = chem::parse_formula(trimmed).ok()?;
+    let counts = formula_counts(&map);
+    classify_from_counts(&counts)
+}
+
 /// Top-level entry point used by the MGF parser.
 ///
 /// Tries the SMILES first (structural classification) and falls back to the
@@ -283,26 +278,19 @@ pub fn classify_spectrum(
         return Some(classification);
     }
 
-    if let Some(formula) = formula.filter(|value| !value.trim().is_empty())
-        && let Some(class) = classify_formula(formula)
-    {
-        let counts = chem::parse_formula(formula.trim())
-            .ok()
-            .map(|map| formula_counts(&map));
-        let mass = chem::parse_formula(formula.trim())
-            .ok()
-            .and_then(|map| exact_mass_from_counts(&map))
-            .unwrap_or(0.0);
-        return Some(LipidClassification {
-            class,
-            counts: counts.unwrap_or_default(),
-            formula: formula.trim().to_string(),
-            exact_mass: mass,
-            derived_from_smiles: false,
-        });
-    }
-
-    None
+    let formula_str = formula.filter(|value| !value.trim().is_empty())?;
+    let trimmed = formula_str.trim();
+    let map = chem::parse_formula(trimmed).ok()?;
+    let counts = formula_counts(&map);
+    let class = classify_from_counts(&counts)?;
+    let mass = exact_mass_from_counts(&map).unwrap_or(0.0);
+    Some(LipidClassification {
+        class,
+        counts,
+        formula: trimmed.to_string(),
+        exact_mass: mass,
+        derived_from_smiles: false,
+    })
 }
 
 fn formula_counts(map: &std::collections::HashMap<String, u32>) -> ElementCounts {
@@ -435,5 +423,106 @@ mod tests {
         assert_eq!(counts.hydrogen, 32);
         assert_eq!(counts.oxygen, 2);
         assert_eq!(counts.formula_string(), "C16H32O2");
+    }
+
+    // --- classify_from_counts edge-cases (via classify_formula) ---
+
+    #[test]
+    fn formula_fatty_acid_boundary_min_c() {
+        // 7 carbons is the minimum for the FattyAcyl range check (7..=40)
+        assert_eq!(classify_formula("C7H14O2"), Some(LipidClass::FattyAcyl));
+    }
+
+    #[test]
+    fn formula_fatty_acyl_boundary_max_c() {
+        // 40 carbons is the inclusive upper bound
+        assert_eq!(classify_formula("C40H80O2"), Some(LipidClass::FattyAcyl));
+    }
+
+    #[test]
+    fn formula_fatty_acid_rejects_below_min_c() {
+        // 6 carbons — below the (>=7) threshold
+        assert_eq!(classify_formula("C6H12O2"), None);
+    }
+
+    #[test]
+    fn formula_rejects_no_carbon() {
+        // All oxygens, no carbon → heavy < 4 check fails
+        assert_eq!(classify_formula("O2"), None);
+    }
+
+    #[test]
+    fn formula_rejects_too_few_heavy_atoms() {
+        // Carbon present but heavy atoms total < 4 → rejected
+        assert_eq!(classify_formula("CH4"), None);
+    }
+
+    #[test]
+    fn formula_glycerophospholipid_classified() {
+        // P >= 1, C >= 15, O >= 6, O/C <= 0.6 → Glycerophospholipid
+        // C=20, O=8 → O/C = 0.4 ≤ 0.6 ✓
+        assert_eq!(
+            classify_formula("C20H38O8P"),
+            Some(LipidClass::Glycerophospholipid)
+        );
+    }
+
+    #[test]
+    fn formula_glycerophospholipid_rejects_high_oc_ratio() {
+        // Too many oxygens relative to carbons → excluded as ATP-like
+        assert_eq!(classify_formula("C10H15N5O9P2"), None);
+    }
+
+    #[test]
+    fn formula_handles_invalid_input() {
+        assert_eq!(classify_formula("not a formula"), None);
+        assert_eq!(classify_formula("C"), None);
+        assert_eq!(classify_formula("XYZ123"), None);
+    }
+
+    #[test]
+    fn classify_spectrum_falls_back_to_formula() {
+        // SMILES absent → use formula
+        let result = classify_spectrum(None, Some("C16H32O2")).unwrap();
+        assert_eq!(result.class, LipidClass::FattyAcyl);
+        assert!(!result.derived_from_smiles);
+    }
+
+    #[test]
+    fn classify_spectrum_empty_smiles_uses_formula() {
+        let result = classify_spectrum(Some("  "), Some("C16H32O2"));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().class, LipidClass::FattyAcyl);
+    }
+
+    #[test]
+    fn classify_spectrum_no_smiles_no_formula_returns_none() {
+        assert!(classify_spectrum(None, None).is_none());
+    }
+
+    #[test]
+    fn formula_counts_handles_halogen_mixtures() {
+        // Halogens F, Cl, Br, I should all aggregate into `halogens`.
+        let mut map = std::collections::HashMap::new();
+        map.insert("C".to_string(), 10u32);
+        map.insert("F".to_string(), 1u32);
+        map.insert("Cl".to_string(), 2u32);
+        map.insert("Br".to_string(), 1u32);
+        map.insert("I".to_string(), 1u32);
+        let counts = formula_counts(&map);
+        assert_eq!(counts.carbon, 10);
+        assert_eq!(counts.halogens, 5);
+    }
+
+    #[test]
+    fn formula_counts_ignores_unknown_elements() {
+        let mut map = std::collections::HashMap::new();
+        map.insert("C".to_string(), 5u32);
+        map.insert("Fe".to_string(), 1u32);
+        map.insert("Zn".to_string(), 1u32);
+        let counts = formula_counts(&map);
+        assert_eq!(counts.carbon, 5);
+        assert_eq!(counts.halogens, 0);
+        assert_eq!(counts.oxygen, 0);
     }
 }

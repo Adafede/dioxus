@@ -21,7 +21,7 @@ pub struct RawRow {
 
 /// A single chemist's check on a molecule — the kind of quick visual
 /// audit a natural-product chemist would do when eyeballing a structure.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChemistCheck {
     /// Short label, e.g. "NP-likeness", "Skeleton", "Oxygenation".
     pub name: &'static str,
@@ -42,7 +42,7 @@ pub struct MoleculeRow {
     /// Canonical SMILES — used for InChIKey→row mapping during enrichment.
     #[cfg(target_arch = "wasm32")]
     pub canonical_smiles: String,
-    /// InChIKey — used for database lookups during enrichment.
+    /// `InChIKey` — used for database lookups during enrichment.
     #[cfg(target_arch = "wasm32")]
     pub inchikey: String,
     pub svg: Option<String>,
@@ -185,7 +185,7 @@ pub struct RdkitInspectResponse {
     pub error: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 /// Response from `RDKit`'s molecule inspection, containing structural analysis results.
 pub struct RdkitMotifHit {
     /// Human-readable motif label (e.g. "Steroid fused ring", "Flavone ring")
@@ -204,6 +204,7 @@ pub struct RdkitMotifHit {
 /// Normalize a source-class string to one of the three canonical values;
 /// anything else becomes `"unknown"`.  Duplicated in `app.rs` historically;
 /// consolidated here so all modules share the same logic.
+#[must_use]
 pub fn normalized_source_class(source_class: &str) -> &str {
     match source_class {
         "natural" | "synthetic" | "unknown" => source_class,

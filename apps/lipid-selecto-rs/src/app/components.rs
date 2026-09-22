@@ -45,7 +45,7 @@ pub struct SummaryFilters {
 /// LIPID MAPS family rank order (FA → GL → GP → SP → ST → PR → SL → PK).
 /// Used to sort the "Filter by chemical family" groups in the Results UI
 /// so they display in the standard LIPID MAPS classification hierarchy,
-/// consistent with the colour-attribution architecture in `rules::colors`.
+/// consistent with the colour-attribution architecture in the LIPID MAPS families.
 static LIPID_MAPS_FAMILY_RANK: [(&str, usize); 8] = [
     ("Fatty Acyls", 0),
     ("Glycerolipids", 1),

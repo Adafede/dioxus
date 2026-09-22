@@ -6,6 +6,12 @@ use js_sys::{JSON, Promise, Reflect};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 
+/// Read a [`web_sys::File`] as text via the File API.
+///
+/// # Errors
+///
+/// Returns an error if the file read promise is rejected or does not resolve
+/// to a string.
 #[cfg(target_arch = "wasm32")]
 pub async fn read_file_text(file: &web_sys::File) -> Result<String, String> {
     let promise = file.text();
@@ -17,7 +23,14 @@ pub async fn read_file_text(file: &web_sys::File) -> Result<String, String> {
         .ok_or_else(|| "file did not resolve to text".to_string())
 }
 
+/// Inspect a SMILES string via the RDKit.js bridge.
+///
+/// # Errors
+///
+/// Returns an error if the bridge call fails or the JSON response cannot be
+/// deserialized.
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::module_name_repetitions)]
 pub async fn rdkit_inspect(smiles: &str) -> Result<RdkitInspectResponse, String> {
     let value = rdkit_bridge_call("inspect", smiles).await?;
     let json = js_value_to_json(value)?;
@@ -59,7 +72,11 @@ async fn rdkit_bridge_call(method: &str, smiles: &str) -> Result<JsValue, String
     }
 }
 
+/// # Errors
+///
+/// Returns an error if the value cannot be serialized or parsed as JSON.
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::needless_pass_by_value)]
 fn js_value_to_json(value: JsValue) -> Result<serde_json::Value, String> {
     let text = JSON::stringify(&value)
         .ok()

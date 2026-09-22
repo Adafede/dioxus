@@ -7,7 +7,8 @@ use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Properties for the Header component
-#[derive(Clone, Props, Debug, PartialEq)]
+#[allow(clippy::module_name_repetitions)]
+#[derive(Clone, Props, Debug, Eq, PartialEq)]
 pub struct HeaderProps {
     /// Title text displayed in the header
     pub title: String,

@@ -66,7 +66,7 @@ pub fn attempt_import(
 /// (native) reports that the app needs a browser.
 #[allow(clippy::too_many_arguments, unused_mut, unused_variables)]
 pub fn attempt_import_from_text(
-    text: String,
+    text: &str,
     mut file_name: Signal<String>,
     mut status: Signal<String>,
     mut busy: Signal<bool>,
@@ -85,7 +85,7 @@ pub fn attempt_import_from_text(
 
     #[cfg(target_arch = "wasm32")]
     begin_import_from_text(
-        text,
+        text.to_string(),
         file_name_value,
         file_name,
         status,

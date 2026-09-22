@@ -36,17 +36,19 @@ COC1=CC(=CC(=C1O)OC)C2C3COC(C3CO2)C4=CC(=C(C(=C4)OC)OC)OC
 C1=CC(=CC=C1CCC(=O)CC(CCC2=CC(=C(C=C2)O)O)OC3C(C(C(C(O3)CO)O)O)O)O
 CCCCCCCC=CCCCCCCCC(N)=O";
 
-/// The `app` entry point is intentionally **not** annotated with `#[component]`
-/// because the function lives in a `pub mod app;` module that is re-exported
-/// via `pub use app::app;` in `lib.rs`.  The `#[component]` macro generates a
+/// The `app` entry point is intentionally **not** annotated with `#[component]`.
+///
+/// The function lives in a `pub mod app;` module that is re-exported via
+/// `pub use app::app;` in `lib.rs`. The `#[component]` macro generates a
 /// type-level binding named `app` that conflicts with the module name in the
-/// type namespace (E0255).  Since `app()` takes no props, `dioxus::launch`
+/// type namespace (E0255). Since `app()` takes no props, `dioxus::launch`
 /// accepts it directly as a plain function — same pattern used by
 /// `lipid-selecto-rs` and `mgf-precursor-erro-rs`.
 ///
 /// # Errors
 ///
 /// Returns a rendering error only if the RSX tree cannot be constructed.
+#[allow(clippy::too_many_lines)]
 pub fn app() -> Element {
     ui::shared_signal!(file_name, String::new);
 
@@ -100,7 +102,7 @@ pub fn app() -> Element {
     };
     let submit_pasted_smiles = move |_| {
         browser::attempt_import_from_text(
-            pasted_smiles.read().trim().to_string(),
+            pasted_smiles.read().trim(),
             file_name,
             status,
             busy,

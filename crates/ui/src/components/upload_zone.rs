@@ -14,7 +14,7 @@
 //! mono‑morphises it in the same crate; shared components in `crates/ui` have no
 //! same‑crate call site, so the closures fail the rsx `on*` coercion.
 //! `EventHandler` props are wired here with bare `move |e| … .call(e)` closures
-//! (ListenerCallback), never a stored `Callback` on an rsx prop.
+//! (`ListenerCallback`), never a stored `Callback` on an rsx prop.
 //!
 //! The blob extraction (`upload::extract_blob_from_file_data`) is intentionally
 //! kept in the apps — so `crates/ui` stays free of the `crates/upload` dep.

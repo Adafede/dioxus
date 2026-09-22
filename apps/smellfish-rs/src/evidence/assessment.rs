@@ -36,6 +36,7 @@ pub struct EvidenceAssessment {
 /// - **0.5–2.0**: Ambiguous NP signals (could be synthetic or semi-synthetic)
 /// - **-1.0–0.5**: Bad/weak signals (predominantly synthetic features)
 /// - **< -1.0**: Highly synthetic (strong negative signals—rare in real NPs)
+#[must_use]
 pub fn np_likeness_label(score: f64) -> &'static str {
     if score >= 2.0 {
         "strong natural product"
@@ -48,11 +49,13 @@ pub fn np_likeness_label(score: f64) -> &'static str {
     }
 }
 
-/// Inputs bundled for [`assess_np_evidence`]. Passed by value (the struct is
-/// `Copy` because every field is a shared reference or an `Option<f64>`) so the
-/// call site stays free of lifetime annotation while the caller keeps ownership
-/// of the descriptor/motif/slice data.
-#[derive(Clone, Copy)]
+/// Inputs bundled for [`assess_np_evidence`].
+///
+/// Passed by value (the struct is `Copy` because every field is a shared
+/// reference or an `Option<f64>`) so the call site stays free of lifetime
+/// annotation while the caller keeps ownership of the descriptor/motif/slice
+/// data.
+#[derive(Clone, Copy, Debug)]
 pub struct EvidenceInputs<'a> {
     /// rdkit-derived whole-molecule descriptors.
     pub descriptors: &'a RdkitDescriptors,
@@ -84,6 +87,7 @@ pub struct EvidenceInputs<'a> {
 ///   found in the molecule via substructure matching.
 /// * `inputs.dataset_context` carries motif prevalence across the entire
 ///   uploaded set so that per-row notes can flag dataset-common scaffolds.
+#[must_use]
 pub fn assess_np_evidence(inputs: EvidenceInputs<'_>) -> EvidenceAssessment {
     let ring_family = classify_ring_family(inputs.descriptors, inputs.motifs);
     let counts = count_evidence(inputs.motifs, inputs.motif_hits);

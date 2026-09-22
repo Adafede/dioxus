@@ -7,6 +7,7 @@ use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typograph
 use dioxus::prelude::*;
 
 /// Properties for the Card component
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct CardProps {
     /// Card title
@@ -97,7 +98,7 @@ pub fn Card(props: CardProps) -> Element {
         rsx! {
             article {
                 style: card_style,
-                class: if !card_hover_style.is_empty() { "card-hover" } else { "" },
+                class: if card_hover_style.is_empty() { "" } else { "card-hover" },
                 a {
                     href: href,
                     style: StyleBuilder::new()

@@ -17,7 +17,6 @@ use ui::prelude::*;
 use crate::chemical_class::lmsd_all;
 use crate::format::LipidFormat;
 use crate::parser::Analysis;
-use crate::rules::LipidRuleLibrary;
 
 mod browser;
 mod components;
@@ -40,8 +39,6 @@ pub fn app() -> Element {
     let analysis = use_signal(|| None::<Analysis>);
     let input_format = use_signal(|| None::<LipidFormat>);
 
-    let rule_library = LipidRuleLibrary::defaults();
-
     // Initialize selected_classes with all LMSD class names (ensures all classes are available)
     let all_class_names: Vec<_> = lmsd_all().iter().map(|c| c.name.clone()).collect();
 
@@ -63,14 +60,9 @@ pub fn app() -> Element {
         input_format,
     };
 
-    let rule_lib_for_change = rule_library.clone();
-    #[allow(clippy::redundant_clone)]
-    let rule_lib_for_drop = rule_library.clone();
-
     let on_file_change = move |evt: Event<FormData>| {
         handle_uploaded_files(
             ctx,
-            &rule_lib_for_change,
             upload::extract_blob_from_file_data(&evt.data().files()),
             drag_active,
         );
@@ -79,7 +71,6 @@ pub fn app() -> Element {
     let on_drop = move |evt: Event<DragData>| {
         handle_uploaded_files(
             ctx,
-            &rule_lib_for_drop,
             upload::extract_blob_from_file_data(&evt.data().files()),
             drag_active,
         );
@@ -128,7 +119,7 @@ pub fn app() -> Element {
                     button {
                         r#type: "button",
                         style: StyleBuilder::new().property("margin-top", "0.75rem").border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.5rem 0.9rem").cursor("pointer").width("100%").build(),
-                        onclick: move |_| {
+                         onclick: move |_| {
                             #[cfg(target_arch = "wasm32")]
                             let _ = browser::load_example_dataset(
                                 ctx.file_name,
@@ -137,7 +128,6 @@ pub fn app() -> Element {
                                 drag_active,
                                 ctx.analysis,
                                 ctx.input_format,
-                                rule_library.clone(),
                             );
                         },
                         "Load Example SMILES"
@@ -174,14 +164,13 @@ struct UploadCtx {
 /// and `drop` handlers.
 fn handle_uploaded_files(
     mut ctx: UploadCtx,
-    rule_library: &LipidRuleLibrary,
     result: Result<Option<upload::ExtractedFile>, String>,
     drag_active: Signal<bool>,
 ) {
     match result {
         Ok(Some(file)) => {
             let detected_format = LipidFormat::from_path(&file.name);
-            process_file_upload(ctx, rule_library, file, detected_format, drag_active);
+            process_file_upload(ctx, file, detected_format, drag_active);
         }
         Ok(None) => ctx.status.set("No file selected.".to_string()),
         Err(msg) => ctx.status.set(msg),
@@ -191,7 +180,6 @@ fn handle_uploaded_files(
 #[cfg(target_arch = "wasm32")]
 fn process_file_upload(
     mut ctx: UploadCtx,
-    rule_library: &LipidRuleLibrary,
     file: upload::ExtractedFile,
     format: Option<LipidFormat>,
     drag_active: Signal<bool>,
@@ -206,14 +194,12 @@ fn process_file_upload(
         drag_active,
         ctx.analysis,
         format,
-        rule_library.clone(),
     );
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn process_file_upload(
     mut ctx: UploadCtx,
-    _rule_library: &LipidRuleLibrary,
     file: upload::ExtractedFile,
     format: Option<LipidFormat>,
     _drag_active: Signal<bool>,

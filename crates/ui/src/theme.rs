@@ -19,7 +19,7 @@ use core::fmt;
 ///
 /// Based on lotus-explore-rs's proven design system with authentic Wikidata entity colors.
 /// All colors meet WCAG AAA contrast ratios (7:1 minimum for text).
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ColorScheme {
     /// Main background color
     pub bg: &'static str,
@@ -56,7 +56,7 @@ pub struct ColorScheme {
 impl ColorScheme {
     /// Light theme colors optimized for daytime viewing.
     /// All text/background pairs meet WCAG AAA 7:1 contrast ratio.
-    pub const LIGHT: Self = ColorScheme {
+    pub const LIGHT: Self = Self {
         bg: "#f7fafc",
         bg2: "#f7fafc",
         surface: "#ffffff",
@@ -76,7 +76,7 @@ impl ColorScheme {
 
     /// Dark theme colors optimized for low-light viewing.
     /// All text/background pairs meet WCAG AAA 7:1 contrast ratio.
-    pub const DARK: Self = ColorScheme {
+    pub const DARK: Self = Self {
         bg: "#0f172a",
         bg2: "#0f172a",
         surface: "#111827",
@@ -260,15 +260,16 @@ impl Interaction {
 ///     .border_radius(Radius::MD)
 ///     .build();
 /// ```
-#[derive(Clone)]
+#[must_use]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StyleBuilder {
     properties: Vec<(String, String)>,
 }
 
 impl StyleBuilder {
-    /// Create a new style builder
-    pub fn new() -> Self {
-        StyleBuilder {
+    /// Create a new style builder.
+    pub const fn new() -> Self {
+        Self {
             properties: Vec::new(),
         }
     }
@@ -420,10 +421,11 @@ impl StyleBuilder {
     }
 
     /// Build the final style string
+    #[must_use]
     pub fn build(&self) -> String {
         self.properties
             .iter()
-            .map(|(name, value)| format!("{}: {}", name, value))
+            .map(|(name, value)| format!("{name}: {value}"))
             .collect::<Vec<_>>()
             .join("; ")
     }

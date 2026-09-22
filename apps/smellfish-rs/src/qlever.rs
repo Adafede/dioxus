@@ -144,18 +144,18 @@ async fn fetch_lotus_hits_by_inchikey(
             entry.taxa.insert(taxon_name);
         }
 
-        if let Some(qid) = related_uri.strip_prefix("http://www.wikidata.org/entity/") {
-            if !qid.is_empty() {
-                entry.compounds.insert(qid.to_string());
-                // If we have a taxon for this QID, also track it in compounds_with_taxa
-                if has_taxon {
-                    entry.compounds_with_taxa.insert(qid.to_string());
-                }
-                // Log to console: taxon count next to QID (after taxon insertion)
-                web_sys::console::log_1(
-                    &format!("LOTUS: QID:{} taxa:{}", qid, entry.taxa.len()).into(),
-                );
+        if let Some(qid) = related_uri.strip_prefix("http://www.wikidata.org/entity/")
+            && !qid.is_empty()
+        {
+            entry.compounds.insert(qid.to_string());
+            // If we have a taxon for this QID, also track it in compounds_with_taxa
+            if has_taxon {
+                entry.compounds_with_taxa.insert(qid.to_string());
             }
+            // Log to console: taxon count next to QID (after taxon insertion)
+            web_sys::console::log_1(
+                &format!("LOTUS: QID:{} taxa:{}", qid, entry.taxa.len()).into(),
+            );
         }
     }
 
@@ -254,7 +254,7 @@ fn build_pubchem_query(chunk: &[String]) -> String {
         .collect::<Vec<_>>()
         .join(" ");
     format!(
-        r#"
+        r"
 PREFIX cheminf: <http://semanticscience.org/resource/>
 PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX vocab: <http://rdf.ncbi.nlm.nih.gov/pubchem/vocabulary#>
@@ -277,7 +277,7 @@ SELECT DISTINCT ?inchikey ?related_cid WHERE {{
     ?same_conn dcterms:identifier ?related_cid .
   }}
 }}
-"#
+"
     )
 }
 
@@ -302,7 +302,7 @@ async fn fetch_pubchem_hits(
             let cid = binding_value(&binding, "related_cid");
 
             if !cid.is_empty() {
-                web_sys::console::log_1(&format!("  PubChem: {} -> CID {}", key, cid).into());
+                web_sys::console::log_1(&format!("  PubChem: {key} -> CID {cid}").into());
             }
 
             let entry = summary.entry(key.clone()).or_default();
@@ -316,7 +316,7 @@ async fn fetch_pubchem_hits(
         &format!("PubChem FINAL: {} skeletons with hits", summary.len()).into(),
     );
     for key in summary.keys() {
-        web_sys::console::log_1(&format!("  Key: {}", key).into());
+        web_sys::console::log_1(&format!("  Key: {key}").into());
     }
     Ok(summary)
 }

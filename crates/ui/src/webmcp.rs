@@ -1,17 +1,17 @@
-//! WebMCP tool registration for the W3C WebMCP proposal.
+//! `WebMCP` tool registration for the W3C `WebMCP` proposal.
 //!
 //! Each app exposes a single read-only `<app_id>_capabilities` tool on its
-//! page's WebMCP document context (`document.modelContext`), so AI agents can
-//! discover what an app consumes and produces before invoking it. The emitted
-//! script is a guarded no-op in browsers without a WebMCP context, so it is
-//! safe to inject unconditionally via [`DocumentHead`](crate::document::DocumentHead).
-//!
-//! Spec: <https://webmachinelearning.github.io/webmcp/>
+//! page's [`WebMcp`](https://webmachinelearning.github.io/webmcp/) document
+//! context (`document.modelContext`), so AI agents can discover what an app
+//! consumes and produces before invoking it. The emitted script is a guarded
+//! no-op in browsers without a `WebMCP` context, so it is safe to inject
+//! unconditionally via [`DocumentHead`](crate::document::DocumentHead).
 
 use dioxus::prelude::*;
+use std::fmt::Write;
 
-/// Metadata an app exposes as its read-only WebMCP `capabilities` tool.
-#[derive(Clone, Copy, Debug, Props, PartialEq)]
+/// Metadata an app exposes as its read-only `WebMCP` `capabilities` tool.
+#[derive(Clone, Copy, Debug, Eq, Props, PartialEq)]
 pub struct WebMcpConfig {
     /// Stable kebab-case identifier used to derive the tool name
     /// (`"<app_id>_capabilities"`).
@@ -35,7 +35,9 @@ fn json_string(s: &str) -> String {
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c if (c as u32) < 0x20 => {
+                let _ = write!(out, "\\u{:04x}", c as u32);
+            }
             c => out.push(c),
         }
     }
@@ -43,10 +45,9 @@ fn json_string(s: &str) -> String {
     out
 }
 
-/// Returns the inline `<script>` body that registers one read-only tool on the
-/// page's WebMCP document context. The body is a guarded IIFE: it no-ops when
-/// `document.modelContext`/`navigator.modelContext` is absent or does not
-/// expose `registerTool`, and swallows registration rejections.
+/// Returns the inline `<script>` body that registers one read-only tool on
+/// the page's `WebMCP` document context (guarded IIFE).
+#[must_use]
 pub fn capabilities_script(cfg: WebMcpConfig) -> String {
     let tool_name = format!("{}_capabilities", cfg.app_id);
     let name = json_string(&tool_name);

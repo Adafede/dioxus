@@ -36,7 +36,8 @@ fn sync_document_lang(lang: &str) {
 }
 
 /// Properties for [`DocumentHead`].
-#[derive(Clone, Props, PartialEq)]
+#[derive(Clone, Debug, Eq, Props, PartialEq)]
+#[allow(clippy::module_name_repetitions)]
 pub struct DocumentHeadProps {
     /// Page title.
     pub title: String,
@@ -61,7 +62,7 @@ pub struct DocumentHeadProps {
     /// Inline JavaScript (e.g. language bootstrap, toast bridge code).
     #[props(default)]
     pub inline_script: Option<String>,
-    /// WebMCP tool registration config — emits a read-only `<app_id>_capabilities`
+    /// `WebMCP` tool registration config — emits a read-only `<app_id>_capabilities`
     /// tool via the [WebMCP proposal](https://webmachinelearning.github.io/webmcp/).
     #[props(default)]
     pub webmcp: Option<crate::webmcp::WebMcpConfig>,
@@ -85,7 +86,7 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
     let title = props.title.clone();
     let lang = props.lang.trim().to_string();
     let lang_for_hook = lang.clone();
-    let lang_for_effect = lang.clone();
+    let lang_for_effect = lang;
     let description = props.description.clone();
     let og_type = props
         .og_type
@@ -219,7 +220,7 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
                 "script",
                 &[
                     ("src", url.clone()),
-                    ("async", "".to_string()),
+                    ("async", String::new()),
                     ("crossorigin", "anonymous".to_string()),
                 ],
                 None,

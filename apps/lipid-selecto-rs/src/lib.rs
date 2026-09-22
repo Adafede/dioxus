@@ -13,8 +13,7 @@
 //!
 //! # Features
 //!
-//! - 30+ built-in SMARTS rules covering all 8 LIPID MAPS families (FA, GL, GP, SP, ST, PR, SL, PK)
-//! - Supports evolved SMARTS rules from smarts-evoliposuction
+//! - Built-in SMARTS patterns covering all 8 LIPID MAPS families (FA, GL, GP, SP, ST, PR, SL, PK)
 //! - Auto-detects input format: MGF or SMILES list; preserves output format
 //! - Real-time class selection with live gallery/count updates
 //! - 2D molecular structure rendering (no external rendering service)
@@ -61,14 +60,11 @@
 //! No external services or native binaries required.  All processing happens
 //! in the browser — your data never leaves your computer.
 pub mod app;
-pub mod chain_analysis;
 pub mod chemical_class;
 pub mod depict_simple;
 pub mod examples;
 pub mod format;
 pub mod lipids;
-pub mod lipidsdl;
 pub mod parser;
-pub mod rules;
 
 pub use app::app;

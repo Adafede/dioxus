@@ -32,6 +32,7 @@ pub(crate) mod assessment;
 pub(crate) mod chemist;
 pub(crate) mod verdict;
 
+#[allow(clippy::module_name_repetitions)]
 pub use assessment::{EvidenceAssessment, EvidenceInputs, assess_np_evidence, np_likeness_label};
 #[cfg(target_arch = "wasm32")]
 pub use chemist::run_checks;
@@ -79,6 +80,36 @@ mod tests {
         assert_eq!(np_likeness_label(-1.0), "weak NP signals");
         assert_eq!(np_likeness_label(-1.5), "highly synthetic");
         assert_eq!(np_likeness_label(-5.0), "highly synthetic");
+    }
+
+    #[test]
+    fn label_boundary_just_above_strong_threshold() {
+        assert_eq!(np_likeness_label(2.001), "strong natural product");
+    }
+
+    #[test]
+    fn label_boundary_just_below_strong_threshold() {
+        assert_eq!(np_likeness_label(1.999), "NP-ambiguous");
+    }
+
+    #[test]
+    fn label_boundary_just_above_ambiguous_threshold() {
+        assert_eq!(np_likeness_label(0.501), "NP-ambiguous");
+    }
+
+    #[test]
+    fn label_boundary_just_below_ambiguous_threshold() {
+        assert_eq!(np_likeness_label(0.499), "weak NP signals");
+    }
+
+    #[test]
+    fn label_boundary_just_below_weak_threshold() {
+        assert_eq!(np_likeness_label(-1.001), "highly synthetic");
+    }
+
+    #[test]
+    fn label_boundary_at_weak_threshold() {
+        assert_eq!(np_likeness_label(-1.0), "weak NP signals");
     }
 
     #[test]

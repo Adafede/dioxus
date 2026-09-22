@@ -445,7 +445,7 @@ fn build_csv(rows: &[MoleculeRow]) -> String {
         let substituents: String = r
             .substituents_counts
             .iter()
-            .map(|(label, count)| format!("{}({})", label, count))
+            .map(|(label, count)| format!("{label}({count})"))
             .collect::<Vec<_>>()
             .join(";");
         let locus = r
@@ -480,8 +480,7 @@ fn download_csv(rows: &[MoleculeRow]) {
     let csv = build_csv(rows);
     let url = format!("data:text/csv;charset=utf-8,{}", urlencoding::encode(&csv));
     let script = format!(
-        r#"(function(){{var a=document.createElement('a');a.href='{}';a.download='smellfish-results.csv';a.click();}})()"#,
-        url
+        r"(function(){{var a=document.createElement('a');a.href='{url}';a.download='smellfish-results.csv';a.click();}})()"
     );
     let _ = js_sys::eval(&script);
 }

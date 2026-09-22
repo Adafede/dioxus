@@ -7,6 +7,7 @@ use crate::theme::{Radius, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Button variant enumeration
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ButtonVariant {
     /// Primary action button (filled with accent color)
@@ -18,6 +19,7 @@ pub enum ButtonVariant {
 }
 
 /// Properties for the Button component
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct ButtonProps {
     /// Button label text
@@ -70,8 +72,7 @@ pub fn Button(props: ButtonProps) -> Element {
     };
 
     let border_value = match props.variant {
-        ButtonVariant::Primary => "1px solid var(--border)".to_string(),
-        ButtonVariant::Secondary => "1px solid var(--border)".to_string(),
+        ButtonVariant::Primary | ButtonVariant::Secondary => "1px solid var(--border)".to_string(),
         ButtonVariant::Tertiary => "none".to_string(),
     };
 

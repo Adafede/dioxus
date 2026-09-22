@@ -6,13 +6,15 @@
 use dioxus::prelude::*;
 
 /// Item rendered inside a segmented control.
-#[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::module_name_repetitions)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SegmentedControlItem {
     pub label: String,
     pub value: String,
 }
 
 /// Properties for the [`SegmentedControl`] component.
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct SegmentedControlProps {
     pub aria_label: String,
@@ -63,6 +65,7 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
 }
 
 #[derive(Clone, Props, Debug, PartialEq)]
+#[allow(clippy::module_name_repetitions)]
 struct SegmentedButtonProps {
     pub label: String,
     pub value: String,
@@ -100,8 +103,7 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
     };
 
     let classes = format!(
-        "inline-flex items-center justify-center px-5 py-1.5 text-ui leading-none font-semibold rounded-full border transition-transform duration-150 active:scale-[0.98] min-h-[40px] whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 {} {}",
-        flex_class, active_classes
+        "inline-flex items-center justify-center px-5 py-1.5 text-ui leading-none font-semibold rounded-full border transition-transform duration-150 active:scale-[0.98] min-h-[40px] whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 {flex_class} {active_classes}"
     );
 
     rsx! {

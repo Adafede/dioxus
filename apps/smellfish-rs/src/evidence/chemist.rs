@@ -7,7 +7,9 @@
 //! in `assessment`/`verdict`, so the dependency graph stays acyclic
 //! (assessment → verdict → chemist).
 
-use crate::model::{ChemistCheck, MoleculeRow, RdkitMotifHit, normalized_source_class};
+#[cfg(target_arch = "wasm32")]
+use crate::model::{ChemistCheck, MoleculeRow};
+use crate::model::{RdkitMotifHit, normalized_source_class};
 
 /// Quick-check audit that a natural-product chemist would run when
 /// eyeballing a structure.
@@ -28,6 +30,7 @@ use crate::model::{ChemistCheck, MoleculeRow, RdkitMotifHit, normalized_source_c
 /// information, so the absence of stereo tags is not a reliable negative
 /// signal.
 #[cfg(target_arch = "wasm32")]
+#[must_use]
 pub fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     let mut checks: Vec<ChemistCheck> = Vec::with_capacity(3);
 
@@ -119,39 +122,51 @@ pub fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     checks
 }
 
-/// Motif labels that are known to be enriched in natural products, based on
-/// Ertl & Schuhmann (J. Nat. Prod. 2019, Vol. 82, 1258-1263,
-/// DOI 10.1021/acs.jnatprod.8b01022)
-/// and Wetzel et al. (CHIMIA 2007, DOI 10.2533/chimia.2007.355).
+/// Motif labels that indicate scaffold-class characteristics of natural products.
 ///
-/// Used to highlight motifs that are characteristic of NP biosynthesis
-/// in the UI.
+/// Shared by [`is_scaffold_motif`] and [`is_known_np_motif`] so the keyword list
+/// exists in exactly one place. `is_scaffold_motif` adds `"ring"` and
+/// `"cyclohexane"` on top.
+const SCAFFOLD_MOTIFS: &[&str] = &[
+    "steroid",
+    "sugar",
+    "macrolide",
+    "macrocycle",
+    "lactone",
+    "lactam",
+    "flavone",
+    "flavonoid",
+    "indole",
+    "quinoline",
+    "isoquinoline",
+    "benzofuran",
+    "benzothiophene",
+    "quinoxaline",
+    "purine",
+    "chromone",
+    "coumarin",
+    "morpholine",
+    "piperidine",
+    "piperazine",
+    "tetrahydrofuran",
+    "tetrahydropyran",
+];
+
+/// Returns `true` if `lowercase_label` contains any of `motifs`.
+fn matches_any(lowercase_label: &str, motifs: &[&str]) -> bool {
+    motifs.iter().any(|m| lowercase_label.contains(m))
+}
+
+/// Motif labels that are known to be enriched in natural products.
+///
+/// Based on Ertl & Schuhmann (J. Nat. Prod. 2019, Vol. 82, 1258-1263,
+/// DOI 10.1021/acs.jnatprod.8b01022) and Wetzel et al. (CHIMIA 2007,
+/// DOI 10.2533/chimia.2007.355).
+///
+/// Used to highlight motifs characteristic of NP biosynthesis in the UI.
 #[must_use]
 pub fn is_known_np_motif(label: &str) -> bool {
-    let l = label.to_ascii_lowercase();
-    // NP scaffold classes
-    l.contains("steroid")
-        || l.contains("sugar")
-        || l.contains("macrolide")
-        || l.contains("macrocycle")
-        || l.contains("lactone")
-        || l.contains("lactam")
-        || l.contains("flavone")
-        || l.contains("flavonoid")
-        || l.contains("indole")
-        || l.contains("quinoline")
-        || l.contains("isoquinoline")
-        || l.contains("benzofuran")
-        || l.contains("benzothiophene")
-        || l.contains("quinoxaline")
-        || l.contains("purine")
-        || l.contains("chromone")
-        || l.contains("coumarin")
-        || l.contains("tetrahydrofuran")
-        || l.contains("tetrahydropyran")
-        || l.contains("piperidine")
-        || l.contains("piperazine")
-        || l.contains("morpholine")
+    matches_any(&label.to_ascii_lowercase(), SCAFFOLD_MOTIFS)
 }
 
 pub fn count_core_np_motifs(motifs: &[String]) -> usize {
@@ -187,30 +202,7 @@ pub fn count_decoration_motifs(motifs: &[String]) -> usize {
 #[must_use]
 pub fn is_scaffold_motif(label: &str) -> bool {
     let l = label.to_ascii_lowercase();
-    l.contains("ring")
-        || l.contains("steroid")
-        || l.contains("sugar")
-        || l.contains("macrocycle")
-        || l.contains("macrolide")
-        || l.contains("lactone")
-        || l.contains("lactam")
-        || l.contains("flavone")
-        || l.contains("flavonoid")
-        || l.contains("indole")
-        || l.contains("quinoline")
-        || l.contains("isoquinoline")
-        || l.contains("benzofuran")
-        || l.contains("benzothiophene")
-        || l.contains("quinoxaline")
-        || l.contains("purine")
-        || l.contains("chromone")
-        || l.contains("coumarin")
-        || l.contains("morpholine")
-        || l.contains("piperidine")
-        || l.contains("piperazine")
-        || l.contains("tetrahydrofuran")
-        || l.contains("tetrahydropyran")
-        || l.contains("cyclohexane")
+    matches_any(&l, SCAFFOLD_MOTIFS) || l.contains("ring") || l.contains("cyclohexane")
 }
 
 /// Decoration motifs are functional groups or side-chain fragments.
@@ -241,15 +233,15 @@ pub fn is_decoration_motif(label: &str) -> bool {
         || l.contains("allyl")
 }
 
-/// Per-molecule structural evidence counts, computed once from the Ertl motif
-/// labels and the motif hits and reused by both the verdict classifier and the
-/// assessment note builders.
+/// Per-molecule structural evidence counts.
+///
+/// Computed once from Ertl motif labels and motif hits, and reused by both
+/// the verdict classifier and the assessment note builders.
 ///
 /// Centralised in `chemist` (a cfg-free leaf module) so the verdict threshold
-/// logic is unit-testable on native *without* the rdkit.js bridge: the original
-/// smellfish smell was that `row_verdict` and `assess_np_evidence` each
-/// re-derived the natural/synthetic/kingdom split independently.
+/// logic is unit-testable on native *without* the rdkit.js bridge.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[allow(clippy::struct_field_names)]
 pub struct EvidenceCounts {
     /// Ertl NP-typical substituent motifs found (Ertl & Schuhmann 2019 et al.).
     pub np_core_hits: usize,

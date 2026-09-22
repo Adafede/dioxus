@@ -177,8 +177,7 @@ mod tests {
             .filter(|c| c.family == "Glycerophospholipids")
             .collect();
         let gp_names: Vec<_> = gp.iter().map(|c| c.name.as_str()).collect();
-        // PI(AA) (priority 7) must come before PG(AA) (priority 6) —
-        // matches the ordering in `rules::LipidRuleLibrary::add_default_glycerophospholipid_rules`
+        // PI(AA) must come before PG(AA) — matches the LIPID MAPS architecture ordering
         let pi_pos = gp_names.iter().position(|&n| n == "PI(AA)").unwrap();
         let pg_idx = gp_names.iter().position(|&n| n == "PG(AA)").unwrap();
         assert!(

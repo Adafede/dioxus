@@ -7,6 +7,7 @@ use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typograph
 use dioxus::prelude::*;
 
 /// Visual tone for a notice bar.
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NoticeTone {
     Neutral,
@@ -17,6 +18,7 @@ pub enum NoticeTone {
 }
 
 /// Properties for the [`NoticeBar`] component.
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct NoticeBarProps {
     pub label: String,
@@ -64,8 +66,8 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         .flex_wrap("wrap")
         .align_items("center")
         .gap(Spacing::SM)
-        .border(&format!("1px solid {}", border_color))
-        .border_left(&format!("4px solid {}", tone_color))
+        .border(&format!("1px solid {border_color}"))
+        .border_left(&format!("4px solid {tone_color}"))
         .border_radius(Radius::MD)
         .background_color(&outer_background)
         .box_shadow(Shadow::XS)

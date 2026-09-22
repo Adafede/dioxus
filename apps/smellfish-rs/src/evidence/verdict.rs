@@ -7,7 +7,9 @@
 
 use crate::model::RdkitDescriptors;
 
-use super::chemist::{EvidenceCounts, count_evidence};
+use super::chemist::EvidenceCounts;
+#[cfg(target_arch = "wasm32")]
+use super::chemist::count_evidence;
 
 /// Verdict string shown prominently in the UI.
 ///
@@ -66,7 +68,7 @@ pub struct EvidenceSignals {
     pub np_score: Option<f64>,
     /// The molecule itself is a LOTUS natural-product organism record.
     pub has_lotus: bool,
-    /// The molecule is backed by PubChem records.
+    /// The molecule is backed by `PubChem` records.
     pub has_pubchem: bool,
     /// Count of LOTUS 1%-prevalence scaffold matches (Rutz et al. mortar
     /// fragmentation — scaffolds appearing in >1% of LOTUS molecules). A
@@ -105,6 +107,7 @@ pub struct EvidenceSignals {
 /// Score-only signals (high Ertl, no DB, no corroborating structure) are always
 /// "citation needed".
 #[must_use]
+#[allow(clippy::too_many_lines)]
 pub fn classify_np_evidence(signals: &EvidenceSignals) -> String {
     let EvidenceSignals {
         np_score,
@@ -271,6 +274,7 @@ pub fn classify_np_evidence(signals: &EvidenceSignals) -> String {
 /// LOTUS-backenced molecule that still reads "citation needed" is not misfiled
 /// as "likely"; `"synthetic-leaning"` is matched before both so a structural
 /// warning is an orange `caution`, not green.
+#[must_use]
 pub fn category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
 
