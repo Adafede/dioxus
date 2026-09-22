@@ -164,16 +164,10 @@ pub fn app() -> Element {
 /// Curated list of experiment applications.
 const APPS: &[AppInfo] = &[
     AppInfo {
-        id: "lotus-explore-rs",
-        title: "🪷 LOTUS Wikidata Explore-rs",
-        path: "./lotus-explore-rs/",
-        description: "Query the LOTUS knowledge graph powered by Wikidata. Explore natural products, their taxons, and bibliographic references through an interactive search interface.",
-    },
-    AppInfo {
-        id: "smellfish-rs",
-        title: "🐟 Smellfish-rs",
-        path: "./smellfish-rs/",
-        description: "Drop SMILES CSVs, render molecules with RDKit.js, highlight shared motifs, enrich the results with LOTUS and PubChem SPARQL lookups, and flag citation-needed cases.",
+        id: "cxsmiles-yoga",
+        title: "🧘 CX-SMILES Yoga",
+        path: "./cxsmiles-yoga/",
+        description: "Generate a single CX-SMILES from a list of related structures by collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n:) via maximum common substructure, with round-trip confidence.",
     },
     AppInfo {
         id: "json-count-rs",
@@ -194,10 +188,10 @@ const APPS: &[AppInfo] = &[
         description: "Filter and visualize lipid mass spectrometry data by chemical class. Interactive structure viewer for lipidomics analysis with support for SMILES and SMARTS queries.",
     },
     AppInfo {
-        id: "cxsmiles-yoga",
-        title: "🧘 CX-SMILES Yoga",
-        path: "./cxsmiles-yoga/",
-        description: "Generate a single CX-SMILES from a list of related structures by collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n:) via maximum common substructure, with round-trip confidence.",
+        id: "smellfish-rs",
+        title: "🐟 Smellfish-rs",
+        path: "./smellfish-rs/",
+        description: "Drop SMILES CSVs, render molecules with RDKit.js, highlight shared motifs, enrich the results with LOTUS and PubChem SPARQL lookups, and flag citation-needed cases.",
     },
 ];
 
