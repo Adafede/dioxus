@@ -77,7 +77,7 @@ use_self = "deny"
 
 cargo_common_metadata = "warn"
 lint_groups_priority = "warn"
-missing_errors_doc = "warn"
+missing_errors_doc = "deny"
 missing_panics_doc = "warn"
 module_name_repetitions = "warn"
 multiple_crate_versions = "allow"

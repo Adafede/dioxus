@@ -175,11 +175,11 @@ pub fn begin_analysis_from_blob(
 /// Extracts a blob from the given file data and dispatches it to the analysis
 /// pipeline on wasm32, or reports that a browser is required on native.
 /// Consolidates the near-duplicate `on_file_change`/`on_drop` handlers.
-#[allow(unused_mut, unused_variables)]
-// cfg-mut foot-gun: the native arm calls `.set` on these bindings, while the
-// wasm32 arm only forwards the handles to `begin_analysis_from_blob`, so the
-// `mut` qualifiers (and `drag_active`/`original_mgf_content`) look unused on
-// one target or the other.
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+#[allow(unused_mut)]
+// The native arm calls `.set` on these bindings, while the wasm32 arm only
+// forwards the handles to `begin_analysis_from_blob`, so the `mut` qualifiers
+// (and `drag_active`/`original_mgf_content`) look unused on one target.
 pub fn attempt_analysis_from_files(
     files: &[FileData],
     mut file_name: Signal<String>,
