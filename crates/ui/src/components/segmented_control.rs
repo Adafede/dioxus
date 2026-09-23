@@ -6,7 +6,7 @@
 use dioxus::prelude::*;
 
 /// Item rendered inside a segmented control.
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SegmentedControlItem {
     pub label: String,
@@ -14,7 +14,7 @@ pub struct SegmentedControlItem {
 }
 
 /// Properties for the [`SegmentedControl`] component.
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct SegmentedControlProps {
     pub aria_label: String,
@@ -65,7 +65,7 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
 }
 
 #[derive(Clone, Props, Debug, PartialEq)]
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 struct SegmentedButtonProps {
     pub label: String,
     pub value: String,

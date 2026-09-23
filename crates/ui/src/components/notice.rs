@@ -7,7 +7,7 @@ use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typograph
 use dioxus::prelude::*;
 
 /// Visual tone for a notice bar.
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NoticeTone {
     Neutral,
@@ -18,7 +18,7 @@ pub enum NoticeTone {
 }
 
 /// Properties for the [`NoticeBar`] component.
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct NoticeBarProps {
     pub label: String,

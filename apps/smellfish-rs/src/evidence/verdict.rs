@@ -107,7 +107,7 @@ pub struct EvidenceSignals {
 /// Score-only signals (high Ertl, no DB, no corroborating structure) are always
 /// "citation needed".
 #[must_use]
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines)] // single-responsibility: evidence → verdict classification
 pub fn classify_np_evidence(signals: &EvidenceSignals) -> String {
     let EvidenceSignals {
         np_score,

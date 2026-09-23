@@ -7,7 +7,7 @@ use crate::theme::{Radius, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Button variant enumeration
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ButtonVariant {
     /// Primary action button (filled with accent color)
@@ -19,7 +19,7 @@ pub enum ButtonVariant {
 }
 
 /// Properties for the Button component
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct ButtonProps {
     /// Button label text

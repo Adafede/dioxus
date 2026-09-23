@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // LiteratureRef, LiteratureEntry preserve domain naming
 #[derive(Debug)]
 pub struct LiteratureEntry {
     pub title: &'static str,

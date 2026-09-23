@@ -53,9 +53,9 @@ pub async fn import_csv(
 /// Returns an error if CSV parsing or row inspection fails.
 #[cfg(target_arch = "wasm32")]
 #[allow(
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::assigning_clones
+    clippy::too_many_lines,       // wasm pipeline orchestrator: single-pass import flow
+    clippy::too_many_arguments,   // wasm pipeline: signal handles forwarded to async spawn
+    clippy::assigning_clones      // clone-before-overwrite pattern in buffer processing
 )]
 async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<ImportOutcome, String> {
     status.set("Parsing CSV…".to_string());
@@ -302,9 +302,9 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
 /// `ceil(total / 10)` and 2 — i.e. at least 10 % of the set (minimum 2).
 #[cfg(target_arch = "wasm32")]
 #[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss
+    clippy::cast_possible_truncation,  // numeric feature math: ratio computation
+    clippy::cast_sign_loss,           // numeric feature math: ratio computation
+    clippy::cast_precision_loss      // numeric feature math: usize -> f64 (no lossless From)
 )]
 fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> DatasetMotifContext {
     let mut motif_counts: HashMap<String, usize> = HashMap::new();
@@ -332,7 +332,7 @@ pub struct ImportOutcome {
 }
 
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // wasm entry point: signal handles for async import
 pub fn begin_import(
     file: web_sys::File,
     file_name_value: String,
@@ -440,7 +440,7 @@ pub fn begin_import_from_text(
 }
 
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::assigning_clones)]
+#[allow(clippy::assigning_clones)] // clone-then-overwrite in enrichment merge loop
 fn merge_enrichment(
     mut rows: Vec<MoleculeRow>,
     enrichment_outcome: &EnrichmentOutcome,

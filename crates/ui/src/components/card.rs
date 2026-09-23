@@ -7,7 +7,7 @@ use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typograph
 use dioxus::prelude::*;
 
 /// Properties for the Card component
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct CardProps {
     /// Card title

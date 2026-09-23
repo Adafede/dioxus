@@ -7,7 +7,7 @@ use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Properties for the Footer component
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Props, Debug, Eq, PartialEq)]
 pub struct FooterProps {
     /// Whether to use dark theme

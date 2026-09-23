@@ -30,7 +30,7 @@ pub async fn read_file_text(file: &web_sys::File) -> Result<String, String> {
 /// Returns an error if the bridge call fails or the JSON response cannot be
 /// deserialized.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)] // RdkitInspectResponse preserves domain naming
 pub async fn rdkit_inspect(smiles: &str) -> Result<RdkitInspectResponse, String> {
     let value = rdkit_bridge_call("inspect", smiles).await?;
     let json = js_value_to_json(value)?;
