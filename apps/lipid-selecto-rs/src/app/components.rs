@@ -156,7 +156,7 @@ pub(super) fn lipid_classes_card() -> Element {
 }
 
 /// Renders the filter controls row: m/z range, precursor range, and adduct dropdown.
-#[allow(unused_variables, unused_mut)]
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 fn filter_controls_row(
     mut mz_min: Signal<f64>,
     mut mz_max: Signal<f64>,
@@ -254,7 +254,7 @@ fn filter_controls_row(
 }
 
 /// Renders the family selection panel with a "Select All" checkbox.
-#[allow(unused_variables, unused_mut)]
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 fn family_filter_panel(
     all_classes_owned: Vec<ChemicalClass>,
     mut selected_classes: Signal<Vec<String>>,
@@ -291,7 +291,7 @@ fn family_filter_panel(
     }
 }
 
-#[allow(unused_variables, unused_mut)]
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 pub(super) fn family_entry(
     family: &str,
     family_classes: &[ChemicalClass],
@@ -372,7 +372,7 @@ pub(super) fn family_entry(
     }
 }
 
-#[allow(unused_variables, unused_mut)]
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 fn download_buttons(
     filters: &SummaryFilters,
     input_format: crate::format::LipidFormat,
@@ -381,12 +381,12 @@ fn download_buttons(
     gallery: &[crate::parser::GalleryItem],
     blocks: &[crate::parser::SpectrumBlock],
 ) -> Element {
-    let mut mz_min = filters.mz_min;
-    let mut mz_max = filters.mz_max;
-    let mut precursor_min = filters.precursor_min;
-    let mut precursor_max = filters.precursor_max;
-    let mut adduct_filter = filters.adduct_filter;
-    let mut selected_classes = filters.selected_classes;
+    let mz_min = filters.mz_min;
+    let mz_max = filters.mz_max;
+    let precursor_min = filters.precursor_min;
+    let precursor_max = filters.precursor_max;
+    let adduct_filter = filters.adduct_filter;
+    let selected_classes = filters.selected_classes;
     // Clone gallery SMILES data for the download closure
     #[cfg(target_arch = "wasm32")]
     let gallery_smiles: Vec<GallerySmilesEntry> =

@@ -65,26 +65,21 @@ web-sys = {
 zip = "8.6"
 
 [workspace.lints.clippy]
-cargo = { level = "warn", priority = -1 }
+cargo = { level = "deny", priority = -1 }
 dbg_macro = "deny"
 needless_lifetimes = "warn"
-nursery = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-todo = "warn"
-unimplemented = "warn"
-unnecessary_wraps = "warn"
-use_self = "warn"
+nursery = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+todo = "deny"
+unimplemented = "deny"
+unnecessary_wraps = "deny"
+use_self = "deny"
 
 cargo_common_metadata = "warn"
 lint_groups_priority = "warn"
 missing_errors_doc = "warn"
 missing_panics_doc = "warn"
-# High-noise / style-opinion lints intentionally relaxed to keep signal high.
 module_name_repetitions = "warn"
-# `cargo::multiple_crate_versions` is allowed: upstream dependency trees bring
-# expected transitive duplicates (sha2 / base64 / syn / thiserror / etc.) and we
-# no longer carry a hand-maintained `clippy.toml` `allowed-duplicate-crates`
-# list to silence them.
 multiple_crate_versions = "allow"
 must_use_candidate = "warn"
 similar_names = "warn"
@@ -92,37 +87,36 @@ too_many_lines = "warn"
 wildcard_imports = "warn"
 
 cast_lossless = "warn"
-cast_possible_truncation = "warn"
+cast_possible_truncation = "deny"
 cast_possible_wrap = "warn"
-cast_precision_loss = "warn"
-cast_sign_loss = "warn"
+cast_precision_loss = "deny"
+cast_sign_loss = "deny"
 default_trait_access = "warn"
 derive_partial_eq_without_eq = "warn"
-# Additional broad-noise lints discovered under full workspace + all-target checks.
 doc_markdown = "warn"
 duration_suboptimal_units = "warn"
 explicit_iter_loop = "warn"
 float_cmp = "warn"
 fn_params_excessive_bools = "warn"
 format_push_string = "warn"
-future_not_send = "warn"
+future_not_send = "deny"
 if_not_else = "warn"
 ignored_unit_patterns = "warn"
 items_after_statements = "warn"
 large_types_passed_by_value = "warn"
 manual_let_else = "warn"
-manual_string_new = "warn"
+manual_string_new = "deny"
 map_unwrap_or = "warn"
-match_same_arms = "warn"
+match_same_arms = "deny"
 missing_const_for_fn = "warn"
 needless_pass_by_ref_mut = "warn"
-needless_pass_by_value = "warn"
+needless_pass_by_value = "deny"
 needless_raw_string_hashes = "warn"
 no_effect_underscore_binding = "warn"
 option_as_ref_cloned = "warn"
 option_if_let_else = "warn"
 or_fun_call = "warn"
-redundant_clone = "warn"
+redundant_closure = "deny"
 redundant_closure_for_method_calls = "warn"
 redundant_pub_crate = "warn"
 semicolon_if_nothing_returned = "warn"
@@ -133,7 +127,7 @@ struct_excessive_bools = "warn"
 struct_field_names = "warn"
 trivially_copy_pass_by_ref = "warn"
 unchecked_time_subtraction = "warn"
-uninlined_format_args = "warn"
+uninlined_format_args = "deny"
 unnecessary_struct_initialization = "warn"
 unnested_or_patterns = "warn"
 unreadable_literal = "warn"
