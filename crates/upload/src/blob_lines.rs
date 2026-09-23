@@ -41,6 +41,7 @@ where
     pub fn new(blob: &Blob, on_progress: F) -> Self {
         Self {
             blob: blob.clone(),
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             total_bytes: blob.size() as u64,
             offset: 0,
             buffer: Vec::with_capacity(crate::blob_cursor::CHUNK_SIZE),
@@ -62,6 +63,10 @@ where
     }
 
     /// Returns the next line from the blob, or `Ok(None)` at end-of-stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
     pub async fn next_line(&mut self) -> Result<Option<String>, UploadError> {
         loop {
             // Try to extract a complete line from the current buffer.
@@ -107,6 +112,7 @@ where
     async fn load_next_chunk(&mut self) -> Result<(), UploadError> {
         let start = self.offset;
         let end = (self.offset + crate::blob_cursor::CHUNK_SIZE as u64).min(self.total_bytes);
+        #[allow(clippy::cast_precision_loss)]
         let slice = self
             .blob
             .slice_with_f64_and_f64(start as f64, end as f64)

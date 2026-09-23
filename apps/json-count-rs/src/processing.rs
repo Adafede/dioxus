@@ -136,7 +136,7 @@ use dioxus::prelude::*;
 use upload::{Blob, BlobCursor, UploadError};
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn begin_scan_from_blob(
+pub fn begin_scan_from_blob(
     blob: Blob,
     file_name: String,
     mut file_name_signal: Signal<String>,
@@ -267,8 +267,9 @@ fn unescape_json_string(raw: &[u8]) -> String {
     out
 }
 
-/// Reads a JSON string key from the cursor using the shared BlobCursor.
+/// Reads a JSON string key from the cursor using the shared `BlobCursor`.
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::future_not_send)]
 async fn read_json_key<F: FnMut(u64, u64)>(
     cursor: &mut BlobCursor<F>,
 ) -> Result<String, UploadError> {
@@ -288,23 +289,19 @@ async fn read_json_key<F: FnMut(u64, u64)>(
             match buf[i] {
                 _ if escaped => {
                     escaped = false;
-                    i += 1;
-                    continue;
                 }
                 b'\\' => escaped = true,
                 b'"' => {
                     closed = true;
                     break;
                 }
-                _ => {
-                    i += 1;
+                _ if !escaped => {
+                    raw.push(buf[i]);
                 }
+                _ => {}
             }
+            i += 1;
         }
-
-        raw.extend_from_slice(&buf[start..i]);
-        cursor.advance(i - start);
-
         if closed {
             cursor.advance(1); // consume closing quote
             break;
@@ -321,6 +318,7 @@ async fn read_json_key<F: FnMut(u64, u64)>(
 /// Skips over a JSON string (consuming opening/closing quotes) and
 /// reports only whether it had at least one character. No allocation.
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::future_not_send)]
 async fn skip_string_nonempty<F: FnMut(u64, u64)>(
     cursor: &mut BlobCursor<F>,
 ) -> Result<bool, UploadError> {
@@ -340,18 +338,15 @@ async fn skip_string_nonempty<F: FnMut(u64, u64)>(
             match buf[i] {
                 _ if escaped => {
                     escaped = false;
-                    i += 1;
-                    continue;
                 }
                 b'\\' => escaped = true,
                 b'"' => {
                     closed = true;
                     break;
                 }
-                _ => {
-                    i += 1;
-                }
+                _ => {}
             }
+            i += 1;
         }
 
         if i > start {
@@ -377,6 +372,7 @@ async fn skip_string_nonempty<F: FnMut(u64, u64)>(
 /// single synchronous pass; strings count as 1 if non-empty; numbers
 /// and booleans count as 1; `null` counts as 0.
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::future_not_send)]
 async fn count_value<F: FnMut(u64, u64)>(cursor: &mut BlobCursor<F>) -> Result<u64, UploadError> {
     if !cursor.ensure_any().await? {
         return Ok(0);

@@ -100,14 +100,16 @@ pub fn estimate_compliance_ppm(errors: &[f64], threshold_ppm: f64) -> f64 {
     f64::from(count) / f64::from(total) * 100.0
 }
 
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+#[allow(clippy::needless_pass_by_value)]
 fn plot_shell(
     title: String,
     subtitle: String,
     svg_markup: String,
-    _download_markup: Option<String>,
+    download_markup: Option<String>,
 ) -> Element {
     let title_for_display = title;
-    let _title_for_download = title_for_display.clone();
+    let title_for_download = title_for_display.clone();
     let subtitle_for_display = subtitle;
     rsx! {
         div {
@@ -122,8 +124,8 @@ fn plot_shell(
                     style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("999px").property("background", "white").color("#334155").font_size("0.76rem").font_weight("700").padding("0.35rem 0.65rem").cursor("pointer").build(),
                     onclick: move |_| {
                         #[cfg(target_arch = "wasm32")]
-                        if let Some(download_markup) = _download_markup.as_ref() {
-                            download_svg(download_markup, &_title_for_download);
+                        if let Some(download_markup) = download_markup.as_ref() {
+                            download_svg(download_markup, &title_for_download);
                         }
                     },
                     "Download"

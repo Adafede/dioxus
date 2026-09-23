@@ -25,6 +25,7 @@ const EXAMPLE_MGF_URL: &str =
     "https://raw.githubusercontent.com/zamboni-lab/MultiMS2/main/data/multims2_spectra.mgf";
 
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::future_not_send)]
 async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
     let window = web_sys::window().ok_or_else(|| "Browser window unavailable.".to_string())?;
     let response_value = JsFuture::from(window.fetch_with_str(url))
@@ -60,11 +61,7 @@ pub fn download_svg(svg: &str, filename: &str) {
 /// Downloads recalibrated MGF content as a `.mgf` file.
 #[cfg(target_arch = "wasm32")]
 pub fn download_recalibrated_mgf(filename: &str, content: &str) -> Result<(), String> {
-    let base = if filename.ends_with(".mgf") {
-        &filename[..filename.len() - 4]
-    } else {
-        filename
-    };
+    let base = filename.strip_suffix(".mgf").unwrap_or(filename);
     let download_name = format!("{base}_recalibrated.mgf");
     upload::download_text(content, &download_name)
 }
@@ -95,6 +92,7 @@ fn start_analysis(
     let mut original_content_signal = original_mgf_content;
 
     spawn(async move {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let total_bytes = blob.size() as u64;
         status_for_progress.set(format!("Scanning {total_bytes} bytes..."));
 
@@ -142,6 +140,7 @@ fn start_analysis(
 }
 
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::too_many_arguments)]
 pub fn begin_analysis_from_blob(
     blob: Blob,
     file_name: String,

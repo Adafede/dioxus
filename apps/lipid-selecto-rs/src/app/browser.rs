@@ -30,7 +30,7 @@ const MAX_GALLERY_ITEMS: usize = 96;
 
 /// Reads the blob in streaming chunks, classifies lipids, and populates signals.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines, clippy::too_many_arguments)]
 fn start_analysis(
     blob: Blob,
     source_name: String,
@@ -44,6 +44,7 @@ fn start_analysis(
     file_name_signal.set(source_name);
 
     spawn(async move {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let total_bytes = blob.size() as u64;
         status.set(format!("Reading {total_bytes} bytes…"));
         busy.set(true);
@@ -63,8 +64,7 @@ fn start_analysis(
         loop {
             match reader.next_line().await {
                 Ok(Some(line)) => lines.push(line),
-                Ok(None) => break,
-                Err(UploadError::UnexpectedEof) => break,
+                Ok(None) | Err(UploadError::UnexpectedEof) => break,
                 Err(e) => {
                     status.set(format!("Error reading file: {e}"));
                     busy.set(false);
@@ -114,6 +114,7 @@ fn start_analysis(
 
 /// Public entry point: delegates to [`start_analysis`] with the uploaded blob.
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::too_many_arguments)]
 pub fn begin_analysis_from_blob(
     blob: Blob,
     source_name: String,
@@ -122,7 +123,7 @@ pub fn begin_analysis_from_blob(
     busy: Signal<bool>,
     drag_active: Signal<bool>,
     analysis: Signal<Option<Analysis>>,
-    _input_format: Option<LipidFormat>,
+    input_format: Option<LipidFormat>,
 ) {
     start_analysis(
         blob,
@@ -132,7 +133,7 @@ pub fn begin_analysis_from_blob(
         busy,
         drag_active,
         analysis,
-        _input_format,
+        input_format,
     );
 }
 

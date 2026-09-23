@@ -22,9 +22,8 @@ pub fn update_recalibration_diagnostics(
 
     let mut diag = RecalibrationStats::new();
     let lambda = match model {
-        CalibrationModel::TOFDa { lambda } => lambda,
-        CalibrationModel::OrbitrapPPM { lambda } => lambda,
-        _ => 0.0,
+        CalibrationModel::TOFDa { lambda } | CalibrationModel::OrbitrapPPM { lambda } => lambda,
+        CalibrationModel::None => 0.0,
     };
 
     for point in &metrics.plot_points {
@@ -60,7 +59,7 @@ pub fn update_recalibration_diagnostics(
             CalibrationModel::OrbitrapPPM { .. } => {
                 precursor_ms2 * (1.0 - lambda * delta_ppm_ms2_ms1 / 1e6)
             }
-            _ => precursor_ms2,
+            CalibrationModel::None => precursor_ms2,
         };
 
         let error_da_after = precursor_ms2_after - theoretical_mass;

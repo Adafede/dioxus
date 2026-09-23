@@ -69,7 +69,7 @@ where
 
     /// Current position in the stream (including bytes in previous buffers).
     #[must_use]
-    pub fn processed(&self) -> u64 {
+    pub const fn processed(&self) -> u64 {
         self.processed_before_buf + self.pos as u64
     }
 
@@ -83,6 +83,11 @@ where
     ///
     /// Returns `Ok(true)` if data is available to read, `Ok(false)` when the
     /// stream is fully exhausted and the buffer is empty.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`UploadError`] if the browser `Blob.slice` or `array_buffer`
+    /// call fails.
     pub async fn fill(&mut self) -> Result<bool, UploadError> {
         if self.pos > 0 {
             self.buf.drain(0..self.pos);
@@ -101,14 +106,16 @@ where
             return Ok(!self.buf.is_empty());
         }
 
+        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
         let slice = self
             .blob
             .slice_with_f64_and_f64(start as f64, end as f64)
-            .map_err(|e| UploadError::from(e))?;
+            .map_err(UploadError::from)?;
         let array_buffer = JsFuture::from(slice.array_buffer()).await?;
         let array = Uint8Array::new(&array_buffer);
 
         let old_len = self.buf.len();
+        #[allow(clippy::cast_possible_truncation)]
         let add_len = (end - start) as usize;
         self.buf.resize(old_len + add_len, 0);
         array.copy_to(&mut self.buf[old_len..old_len + add_len]);
@@ -130,6 +137,10 @@ where
     }
 
     /// Ensures at least one byte is available in the buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
     pub async fn ensure_any(&mut self) -> Result<bool, UploadError> {
         while self.pos >= self.buf.len() {
             if !self.fill().await? {
@@ -140,6 +151,10 @@ where
     }
 
     /// Peeks at the next byte without consuming it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
     pub async fn peek(&mut self) -> Result<Option<u8>, UploadError> {
         if self.ensure_any().await? {
             Ok(Some(self.buf[self.pos]))
@@ -149,6 +164,10 @@ where
     }
 
     /// Reads the next byte and advances the cursor.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
     pub async fn next_byte(&mut self) -> Result<Option<u8>, UploadError> {
         if self.ensure_any().await? {
             let b = self.buf[self.pos];
@@ -160,6 +179,10 @@ where
     }
 
     /// Skips whitespace in the stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
     pub async fn skip_ws(&mut self) -> Result<(), UploadError> {
         loop {
             while self.pos < self.buf.len()

@@ -186,6 +186,7 @@ impl BlockParseState {
 /// Returns an error when the blob cannot be read or a scan block cannot be
 /// processed.
 #[cfg(target_arch = "wasm32")]
+#[allow(clippy::future_not_send)]
 pub async fn scan_blob_with_progress(
     blob: &Blob,
     mut on_progress: impl FnMut(u64, u64),

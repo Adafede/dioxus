@@ -127,7 +127,7 @@ pub fn app() -> Element {
                         style: StyleBuilder::new().property("margin-top", "0.75rem").border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.5rem 0.9rem").cursor("pointer").width("100%").build(),
                          onclick: move |_| {
                             #[cfg(target_arch = "wasm32")]
-                            let _ = browser::load_example_dataset(
+                            browser::load_example_dataset(
                                 ctx.file_name,
                                 ctx.status,
                                 ctx.busy,
