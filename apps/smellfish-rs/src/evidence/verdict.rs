@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-//! Verdict derivation: the human-facing one-liner verdict per row, its
-//! machine-readable category (for CSV export), and the ring-family
-//! classification. Depends on `chemist` for motif counting.
-
-use crate::model::RdkitDescriptors;
+//! Verdict derivation: the human-facing one-liner verdict per row.
+//!
+//! Depends on `chemist` for motif counting (via `EvidenceCounts`) and
+//! `ring_family` for structural classification.  The CSV categorization
+//! helper (`category`) lives in `app::csv_export`.
 
 use super::chemist::EvidenceCounts;
 #[cfg(target_arch = "wasm32")]
@@ -62,7 +62,7 @@ pub fn row_verdict(row: &crate::model::MoleculeRow) -> String {
 /// LOTUS organism record — ground truth) and `lotus_scaffolds` (the molecule's
 /// *scaffold* is prevalent in >1% of LOTUS compounds — a structural hint, not a
 /// database hit on the molecule). The classifier treats them differently.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct EvidenceSignals {
     /// Ertl NP-likeness score (`None` when the model is unavailable).
     pub np_score: Option<f64>,
@@ -267,129 +267,10 @@ pub fn classify_np_evidence(signals: &EvidenceSignals) -> String {
     format!("👃 Citation needed (Ertl {score:+.2})")
 }
 
-/// Machine-readable category for CSV export — strips emojis and
-/// normalises to "likely", "neutral", "caution", "skeptical", or "fishy".
-///
-/// Order matters: `"citation needed"` is matched *before* `"lotus"` so that a
-/// LOTUS-backenced molecule that still reads "citation needed" is not misfiled
-/// as "likely"; `"synthetic-leaning"` is matched before both so a structural
-/// warning is an orange `caution`, not green.
-#[must_use]
-pub fn category(verdict: &str) -> &'static str {
-    let l = verdict.to_ascii_lowercase();
-
-    // RED — Highly synthetic / fishy (check first!).
-    if l.contains("highly synthetic") || l.contains("smells fishy") {
-        return "fishy";
-    }
-
-    // ORANGE — Synthetic-leaning structural warning.
-    if l.contains("synthetic-leaning") {
-        return "caution";
-    }
-
-    // YELLOW — Skeptical (needs citation). Before `lotus` so a LOTUS-backed
-    // molecule that still reads "citation needed" is not filed as "likely".
-    if l.contains("citation needed") {
-        return "skeptical";
-    }
-
-    // GREEN — High NP confidence (LOTUS or strong structural + Ertl score).
-    if l.contains("lotus") {
-        return "likely";
-    }
-    if l.contains("likely hit") || l.contains("likely novel") {
-        return "likely";
-    }
-    if l.contains("pubchem + strong") {
-        return "likely";
-    }
-    if l.contains("strong np score") && !l.contains("weak") {
-        return "likely";
-    }
-
-    // BLUE — Moderate NP confidence (PubChem with some NP features).
-    if l.contains("pubchem with") || l.contains("pubchem + np") {
-        return "neutral";
-    }
-
-    // RED — Low/weak NP confidence.
-    if l.contains("weak np signals")
-        || (l.contains("pubchem") && l.contains("weak"))
-        || (l.contains("ertl") && l.contains("-1"))
-    {
-        return "caution";
-    }
-
-    "neutral"
-}
-
-/// Classify the core scaffold family using motif SMARTS matches and
-/// descriptor-based heuristics.
-#[must_use]
-pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -> String {
-    let motif_text = motifs.join(" ").to_ascii_lowercase();
-
-    // Steroids — tetracyclic fused ring system with characteristic
-    // cyclopentanoperhydrophenanthrene core.
-    if motif_text.contains("steroid") {
-        return "steroid-like fused ring system".to_string();
-    }
-    // Monosaccharides and THF rings — common in glycosylated NPs.
-    if motif_text.contains("sugar") || motif_text.contains("tetrahydrofuran") {
-        return "sugar-like oxygenated ring system".to_string();
-    }
-    // Macrocycles, lactones, lactams — hallmark macrocyclic NP scaffolds.
-    if motif_text.contains("macrolide")
-        || motif_text.contains("macrocycle")
-        || motif_text.contains("lactone")
-        || motif_text.contains("lactam")
-    {
-        return "macrolide-like oxygenated macrocycle".to_string();
-    }
-    // Benzopyran, flavone, flavonoid — plant secondary metabolite cores.
-    if motif_text.contains("flavone") || motif_text.contains("flavonoid") {
-        return "flavonoid-like scaffold".to_string();
-    }
-    // N-heteroaromatic scaffolds — common in both NPs and synthetic drugs.
-    if motif_text.contains("indole")
-        || motif_text.contains("quinoline")
-        || motif_text.contains("isoquinoline")
-        || motif_text.contains("benzofuran")
-        || motif_text.contains("benzothiophene")
-        || motif_text.contains("quinoxaline")
-        || motif_text.contains("purine")
-        || motif_text.contains("chromone")
-        || motif_text.contains("coumarin")
-    {
-        return "fused heteroaromatic scaffold".to_string();
-    }
-
-    let rings = descriptors.ring_count.unwrap_or(0.0);
-    let aromatic = descriptors.aromatic_ring_count.unwrap_or(0.0);
-    let aliphatic = descriptors.aliphatic_ring_count.unwrap_or(0.0);
-    let csp3 = descriptors.fraction_csp3.unwrap_or(0.0);
-
-    if rings <= 0.0 {
-        return "acyclic".to_string();
-    }
-    // Three or more aromatic rings → polyaromatic (PAHs, not typical of NPs).
-    if aromatic >= 3.0 {
-        return "polyaromatic scaffold".to_string();
-    }
-    if aromatic > 0.0 && aliphatic > 0.0 {
-        return "mixed aromatic/aliphatic scaffold".to_string();
-    }
-    if aliphatic >= 2.0 || csp3 >= 0.5 {
-        return "natural-product-like polycyclic scaffold".to_string();
-    }
-    "compact ring scaffold".to_string()
-}
-
 #[cfg(test)]
 mod classify_tests {
     use super::super::chemist::{EvidenceCounts, count_evidence};
-    use super::{EvidenceSignals, category, classify_np_evidence};
+    use super::{EvidenceSignals, classify_np_evidence};
 
     /// Build evidence counts without touching `count_evidence` — used to
     /// isolate the classifier thresholds.
@@ -529,7 +410,6 @@ mod classify_tests {
         assert!(v.contains("🌿 Likely NP"), "got: {v}");
         assert!(v.contains("Ertl +4.76"), "got: {v}");
         assert!(!v.contains("Citation needed"), "got: {v}");
-        assert_eq!(category(&v), "likely");
     }
 
     #[test]

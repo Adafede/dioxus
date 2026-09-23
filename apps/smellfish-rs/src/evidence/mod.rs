@@ -30,6 +30,7 @@
 
 pub(crate) mod assessment;
 pub(crate) mod chemist;
+mod ring_family;
 pub(crate) mod verdict;
 
 #[allow(clippy::module_name_repetitions)]
@@ -37,9 +38,11 @@ pub use assessment::{EvidenceAssessment, EvidenceInputs, assess_np_evidence, np_
 #[cfg(target_arch = "wasm32")]
 pub use chemist::run_checks;
 pub use chemist::{is_known_np_motif, is_scaffold_motif};
+pub use ring_family::classify_ring_family;
+#[allow(clippy::module_name_repetitions)]
+pub use verdict::EvidenceSignals;
 #[cfg(target_arch = "wasm32")]
 pub use verdict::row_verdict;
-pub use verdict::{category, classify_ring_family};
 
 #[cfg(test)]
 mod tests {
@@ -294,105 +297,9 @@ mod tests {
     }
 
     #[test]
-    fn ring_family_still_functions() {
-        let desc = RdkitDescriptors {
-            ring_count: Some(4.0),
-            aromatic_ring_count: Some(0.0),
-            aliphatic_ring_count: Some(4.0),
-            fraction_csp3: Some(0.75),
-        };
-        let family = classify_ring_family(&desc, &[]);
-        assert_eq!(family, "natural-product-like polycyclic scaffold");
-
-        let desc2 = RdkitDescriptors {
-            ring_count: Some(3.0),
-            aromatic_ring_count: Some(3.0),
-            aliphatic_ring_count: Some(0.0),
-            fraction_csp3: Some(0.10),
-        };
-        let family2 = classify_ring_family(&desc2, &[]);
-        assert_eq!(family2, "polyaromatic scaffold");
-    }
-
-    #[test]
-    fn flavor_classification_via_motif() {
-        let family = classify_ring_family(&empty_descriptors(), &["Flavone ring".to_string()]);
-        assert_eq!(family, "flavonoid-like scaffold");
-
-        let family2 = classify_ring_family(&empty_descriptors(), &["Indole ring".to_string()]);
-        assert_eq!(family2, "fused heteroaromatic scaffold");
-
-        let family3 = classify_ring_family(
-            &empty_descriptors(),
-            &["Sugar-like oxygen ring".to_string()],
-        );
-        assert_eq!(family3, "sugar-like oxygenated ring system");
-    }
-
-    #[test]
     fn decoration_motifs_stay_neutral() {
         assert!(!is_known_np_motif("Methoxy"));
         assert!(is_decoration_motif("Methoxy"));
         assert!(!is_scaffold_motif("Methoxy"));
-    }
-
-    #[test]
-    fn verdict_category_high_quality_pubchem() {
-        // High-quality PubChem hit should be "likely", not "caution"
-        let verdict = "🌿 PubChem + strong NP evidence — Ertl score +1.50 with 3 NP substituent(s) + 2 NP motif(s).";
-        assert_eq!(category(verdict), "likely");
-    }
-
-    #[test]
-    fn verdict_category_moderate_quality_pubchem() {
-        // Moderate-quality PubChem hit should be "neutral"
-        let verdict =
-            "📚 PubChem hit with NP signals — Ertl score +0.80, 2 substituent(s), 1 NP motif(s).";
-        assert_eq!(category(verdict), "neutral");
-    }
-
-    #[test]
-    fn verdict_category_weak_pubchem() {
-        // Weak PubChem hit should be "caution"
-        let verdict = "📚 PubChem hit — weak NP evidence (Ertl score +0.26).";
-        assert_eq!(category(verdict), "caution");
-    }
-
-    #[test]
-    fn verdict_category_lotus_backed() {
-        let verdict = "🌿 LOTUS-backed (Ertl score +1.23).";
-        assert_eq!(category(verdict), "likely");
-    }
-
-    #[test]
-    fn verdict_category_novel_candidate() {
-        let verdict =
-            "🌿 Likely hit — strong NP-likeness (+3.43) + NP-like scaffold, not yet in databases.";
-        assert_eq!(category(verdict), "likely");
-    }
-
-    #[test]
-    fn verdict_category_fishy() {
-        let verdict = "👃 Smells fishy (Ertl score -1.23). Citation needed.";
-        assert_eq!(category(verdict), "fishy");
-    }
-
-    #[test]
-    fn verdict_category_synthetic_leaning() {
-        // Synthetic-leaning structure is an orange CAUTION (not fishy/red,
-        // not likely) — exactly the "needs more evidence" tier.
-        let verdict = "🟧 Synthetic-leaning structure (Ertl score +2.50).";
-        assert_eq!(category(verdict), "caution");
-        assert_ne!(category(verdict), "likely");
-        assert_ne!(category(verdict), "fishy");
-    }
-
-    #[test]
-    fn verdict_category_lotus_scaffold_hint_is_caution_not_likely() {
-        // The scaffold hint alone (insufficient corroboration) is a citation
-        // (skeptical), never misfiled as "likely".
-        let verdict =
-            "👃 Citation needed — LOTUS scaffold hint, insufficient corroboration (Ertl +2.50).";
-        assert_eq!(category(verdict), "skeptical");
     }
 }

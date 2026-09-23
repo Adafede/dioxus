@@ -12,58 +12,14 @@ use ui::prelude::*;
 
 use crate::chemical_class::ChemicalClass;
 
-/// Type alias for the packed gallery-entry tuple used in WASM download closures.
-///
-/// Fields: `title`, `smiles`, `category`, `main_class`, `sub_class`,
-/// `exact_mass`, `precursor_mz`, `adduct`, `class_matches`.
-pub type GallerySmilesEntry = (
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    Option<f64>,
-    Option<f64>,
-    Option<String>,
-    std::collections::HashMap<String, bool>,
-);
-
-/// Grouped mutable filter signals for the summary panel.
-///
-/// Bundling the signals into a struct keeps the [`summary`] function
-/// signature readable and avoids passing twelve individual arguments.
-#[derive(Clone)]
-pub struct SummaryFilters {
-    pub selected_classes: Signal<Vec<String>>,
-    pub mz_min: Signal<f64>,
-    pub mz_max: Signal<f64>,
-    pub precursor_min: Signal<f64>,
-    pub precursor_max: Signal<f64>,
-    pub adduct_filter: Signal<String>,
-}
-
-/// LIPID MAPS family rank order (FA → GL → GP → SP → ST → PR → SL → PK).
-/// Used to sort the "Filter by chemical family" groups in the Results UI
-/// so they display in the standard LIPID MAPS classification hierarchy,
-/// consistent with the colour-attribution architecture in the LIPID MAPS families.
-static LIPID_MAPS_FAMILY_RANK: [(&str, usize); 8] = [
-    ("Fatty Acyls", 0),
-    ("Glycerolipids", 1),
-    ("Glycerophospholipids", 2),
-    ("Sphingolipids", 3),
-    ("Sterol Lipids", 4),
-    ("Prenol Lipids", 5),
-    ("Saccharolipids", 6),
-    ("Polyketides", 7),
-];
-
-/// Lookup helper for [`LIPID_MAPS_FAMILY_RANK`].
-fn family_rank(family: &str) -> usize {
-    LIPID_MAPS_FAMILY_RANK
-        .iter()
-        .find(|(name, _)| *name == family)
-        .map_or(99, |(_, rank)| *rank)
-}
+use super::analysis::{collect_adduct_options, group_classes_by_family};
+#[cfg(target_arch = "wasm32")]
+use super::download::{download_filtered_mgf, download_filtered_smiles};
+use super::family::family_rank;
+use super::gallery::prepare_block_class_tags;
+#[cfg(target_arch = "wasm32")]
+use super::gallery::prepare_gallery_smiles;
+use super::types::{GallerySmilesEntry, SummaryFilters};
 
 pub(super) fn section_subheading() -> String {
     StyleBuilder::new()
@@ -335,105 +291,87 @@ fn family_filter_panel(
     }
 }
 
-/// Download filtered MGF content with class tags, applying all filter selections.
-#[cfg(target_arch = "wasm32")]
-fn download_filtered_mgf(
-    blocks: &[crate::parser::SpectrumBlock],
-    block_class_tags: &[Vec<(String, String)>],
-    mz_min_val: f64,
-    mz_max_val: f64,
-    prec_min_val: f64,
-    prec_max_val: f64,
-    adduct_val: &str,
-    selected: &[String],
-) {
-    let mut mgf_content = String::new();
-    for (idx, block) in blocks.iter().enumerate() {
-        // Class selection filter: block must match at least one selected class
-        if !selected.is_empty()
-            && !block
-                .gallery_item_matches
-                .as_ref()
-                .map(|matches| {
-                    selected
-                        .iter()
-                        .any(|class_name| matches.get(class_name).copied().unwrap_or(false))
-                })
-                .unwrap_or(false)
-        {
-            continue;
-        }
-        // m/z range (using exact_mass)
-        if block.exact_mass < mz_min_val || block.exact_mass > mz_max_val {
-            continue;
-        }
-        // precursor range
-        if let Some(pmz) = block.precursor_mz {
-            if pmz < prec_min_val || pmz > prec_max_val {
-                continue;
+#[allow(unused_variables, unused_mut)]
+pub(super) fn family_entry(
+    family: &str,
+    family_classes: &[ChemicalClass],
+    mut selected_classes: Signal<Vec<String>>,
+) -> Element {
+    let family_clone = family.to_string();
+    let family_classes_clone = family_classes.to_vec();
+
+    let selected_count = family_classes_clone
+        .iter()
+        .filter(|c| selected_classes.read().contains(&c.name))
+        .count();
+    let all_family_selected = selected_count == family_classes_clone.len();
+    let some_family_selected = selected_count > 0 && !all_family_selected;
+
+    rsx! {
+        div { style: StyleBuilder::new().property("margin-bottom", "0.6rem").build(),
+            label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").property("margin-bottom", "0.3rem").build(),
+                input {
+                    r#type: "checkbox",
+                    checked: all_family_selected || some_family_selected,
+                    onchange: move |_| {
+                        let mut classes = selected_classes.read().clone();
+                        if all_family_selected || some_family_selected {
+                            for c in &family_classes_clone {
+                                classes.retain(|name| name != &c.name);
+                            }
+                        } else {
+                            for c in &family_classes_clone {
+                                if !classes.contains(&c.name) {
+                                    classes.push(c.name.clone());
+                                }
+                            }
+                        }
+                        selected_classes.set(classes);
+                    },
+                    style: StyleBuilder::new().width("16px").height("16px").cursor("pointer").build(),
+                }
+                span { style: StyleBuilder::new().font_size("0.85rem").font_weight("700").color("#0f172a").build(), "{family_clone}" }
+                if some_family_selected {
+                    span { style: StyleBuilder::new().font_size("0.7rem").color("#94a3b8").build(), "({selected_count}/{family_classes.len()})" }
+                }
+            }
+            ul { style: StyleBuilder::new().property("margin", "0 0 0 1.5rem").padding("0").property("list-style", "none").display("flex").flex_wrap("wrap").gap("0.4rem").build(),
+                for class in family_classes.iter() {
+                    {
+                        let color = class.color.clone();
+                        let class_name = class.name.clone();
+                        let is_selected = selected_classes.read().contains(&class_name);
+                        rsx! {
+                            li { style: StyleBuilder::new().display("flex").align_items("center").build(),
+                                label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").build(),
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: is_selected,
+                                        onchange: move |_| {
+                                            let mut classes = selected_classes.read().clone();
+                                            if is_selected {
+                                                classes.retain(|c| c != &class_name);
+                                            } else {
+                                                classes.push(class_name.clone());
+                                            }
+                                            selected_classes.set(classes);
+                                        },
+                                        style: checkbox_sm(),
+                                    }
+                                    span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.2rem 0.5rem").border_radius("999px").property("background", "#f1f5f9").font_size("0.75rem").font_weight("500").build(),
+                                        span { style: StyleBuilder::new().width("8px").height("8px").border_radius("50%").property("background", &color).build(), }
+                                        "{class.name}"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-        // adduct filter
-        if !adduct_val.is_empty() && block.adduct.as_deref() != Some(adduct_val) {
-            continue;
-        }
-        // Tag each block with its attributed lipid class
-        let class_tags = &block_class_tags[idx];
-        let tagged = insert_class_comment(&block.raw, class_tags);
-        mgf_content.push_str(&tagged);
-        mgf_content.push_str("\n");
     }
-    let _ = upload::download_text(&mgf_content, "lipids_filtered.mgf");
 }
 
-/// Download filtered SMILES content with class tags, applying all filter selections.
-#[cfg(target_arch = "wasm32")]
-fn download_filtered_smiles(
-    gallery_smiles: &[GallerySmilesEntry],
-    mz_min_val: f64,
-    mz_max_val: f64,
-    prec_min_val: f64,
-    prec_max_val: f64,
-    adduct_val: &str,
-    selected: &[String],
-) {
-    let filtered: Vec<_> = gallery_smiles
-        .iter()
-        .filter(
-            |(_, _, _, _, _, exact_mass, precursor_mz, adduct, class_matches)| {
-                // Class selection filter
-                if !selected.is_empty()
-                    && !selected
-                        .iter()
-                        .any(|class_name| class_matches.get(class_name).copied().unwrap_or(false))
-                {
-                    return false;
-                }
-                // m/z range filter
-                if let Some(mass) = exact_mass {
-                    if *mass < mz_min_val || *mass > mz_max_val {
-                        return false;
-                    }
-                }
-                // precursor range filter
-                if let (Some(pmz), val) = (precursor_mz, prec_min_val) {
-                    if *pmz < val || *pmz > prec_max_val {
-                        return false;
-                    }
-                }
-                // adduct filter
-                if !adduct_val.is_empty() && adduct.as_deref() != Some(adduct_val) {
-                    return false;
-                }
-                true
-            },
-        )
-        .collect();
-    let smiles_content = build_smiles_from_cloned(&filtered);
-    let _ = upload::download_text(&smiles_content, "lipids.smi");
-}
-
-/// Renders the download buttons (filtered MGF or filtered SMILES) with filter support.
 #[allow(unused_variables, unused_mut)]
 fn download_buttons(
     filters: &SummaryFilters,
@@ -548,400 +486,6 @@ pub(super) fn summary(
 }
 
 /// Builds a SMILES file content string from cloned gallery data with class tags.
-#[cfg(target_arch = "wasm32")]
-fn build_smiles_from_cloned(gallery: &[&GallerySmilesEntry]) -> String {
-    use std::fmt::Write;
-    let mut content = String::new();
-    for (title, smiles, category, main_class, sub_class, _, _, _, _) in gallery {
-        if let Some(smiles) = smiles {
-            // Format: SMILES <tab> Title <tab> CATEGORY <tab> MAIN_CLASS <tab> SUB_CLASS
-            let cat_str = category.as_deref().filter(|s| !s.is_empty()).unwrap_or("-");
-            let mc_str = main_class
-                .as_deref()
-                .filter(|s| !s.is_empty())
-                .unwrap_or("-");
-            let sc_str = sub_class
-                .as_deref()
-                .filter(|s| *s != "-" && !s.is_empty())
-                .unwrap_or("-");
-            match title {
-                Some(title) => {
-                    let _ = writeln!(
-                        content,
-                        "{}\t{}\t{}\t{}\t{}",
-                        smiles, title, cat_str, mc_str, sc_str
-                    );
-                }
-                None => {
-                    let _ = writeln!(
-                        content,
-                        "{}\t{}\t{}\t{}\t{}",
-                        smiles, "-", cat_str, mc_str, sc_str
-                    );
-                }
-            }
-        }
-    }
-    content
-}
-
-/// Returns LIPID MAPS class tags from a `GalleryItem`, ensuring the export uses
-/// the same class assignment shown in the UI (via `primary_class_name`).
-///
-/// CATEGORY comes from the broad classification (`LipidClass::lipidmaps_category()`),
-/// `MAIN_CLASS` comes from `primary_class_name` (the first matching LMSD class),
-/// `SUB_CLASS` is always "-" (no sub-subclass info available).
-fn get_class_tag_from_gallery(
-    item: &crate::parser::GalleryItem,
-    classes: &[ChemicalClass],
-) -> Vec<(String, String)> {
-    // Collect ALL matching LMSD classes from the gallery item matches.
-    // With specific per-subclass SMARTS this is usually a single class,
-    // but as a safety net we pipe multiple matches together with " | "
-    // so that CATEGORY and MAIN_CLASS are always derived from the same
-    // set of matches — avoiding mismatches like
-    //   CATEGORY=Fatty Acyls [FA]  +  MAIN_CLASS=Isoprenoids [PR01].
-    let matched: Vec<&ChemicalClass> = item
-        .class_matches
-        .iter()
-        .filter(|(_, matched)| **matched)
-        .filter_map(|(name, _)| classes.iter().find(|c| &c.name == name))
-        .collect();
-
-    if matched.is_empty() {
-        // No gallery matches — fall back to broad classification for category,
-        // primary_class_name for main class.
-        let category = item.classification.as_ref().map_or_else(
-            || "Other Lipids [-]".to_string(),
-            |c| c.class.lipidmaps_category().to_string(),
-        );
-        let main_class = item
-            .primary_class_name
-            .clone()
-            .unwrap_or_else(|| "-".to_string());
-        vec![
-            ("CATEGORY".to_string(), category),
-            ("MAIN_CLASS".to_string(), main_class),
-            ("SUB_CLASS".to_string(), "-".to_string()),
-        ]
-    } else {
-        // Try to prefer matches in the same family as the broad classification.
-        let broad_family = item
-            .classification
-            .as_ref()
-            .map_or("", |c| family_from_category(c.class.lipidmaps_category()));
-        let same_family: Vec<&ChemicalClass> = if broad_family.is_empty() {
-            Vec::new()
-        } else {
-            matched
-                .iter()
-                .filter(|c| c.family == broad_family)
-                .copied()
-                .collect()
-        };
-
-        // Use same-family matches if available, otherwise all matched classes.
-        let selected: Vec<&ChemicalClass> = if same_family.is_empty() {
-            matched.clone()
-        } else {
-            same_family
-        };
-
-        // Derive CATEGORY and MAIN_CLASS from the same set of classes,
-        // piping with " | " when multiple matches exist.
-        let category = selected
-            .iter()
-            .map(|c| format!("{} [{}]", c.family, family_code(&c.family)))
-            .collect::<Vec<_>>()
-            .join(" | ");
-        let main_class = selected
-            .iter()
-            .map(|c| c.name.as_str())
-            .collect::<Vec<_>>()
-            .join(" | ");
-
-        vec![
-            ("CATEGORY".to_string(), category),
-            ("MAIN_CLASS".to_string(), main_class),
-            ("SUB_CLASS".to_string(), "-".to_string()),
-        ]
-    }
-}
-
-/// Map a CATEGORY string (e.g. "Fatty Acyls \[FA]") back to the family name
-/// (e.g. "Fatty Acyls") used by [`ChemicalClass`].
-fn family_from_category(category: &str) -> &str {
-    // Categories look like "Fatty Acyls \[FA]" — strip the trailing [XX] code.
-    category.split(" [").next().unwrap_or(category).trim()
-}
-
-/// Map a family name to its LIPID MAPS two-letter code.
-fn family_code(family: &str) -> &str {
-    match family {
-        "Fatty Acyls" => "FA",
-        "Glycerolipids" => "GL",
-        "Glycerophospholipids" => "GP",
-        "Sphingolipids" => "SP",
-        "Sterol Lipids" => "ST",
-        "Prenol Lipids" => "PR",
-        "Saccharolipids" => "SL",
-        "Polyketides" => "PK",
-        _ => "-",
-    }
-}
-
-/// Returns LIPID MAPS class tags for a spectrum block as a list of (key, value) pairs.
-/// This is a fallback used when no matching `GalleryItem` is found.
-///
-/// Uses the broad `LipidClassification` for CATEGORY (mapped to proper LIPID MAPS
-/// category names with codes like "Fatty Acyls \[FA]"), and the first matching
-/// LMSD subclass name for `MAIN_CLASS`. `SUB_CLASS` is always "-" (no sub-subclass
-/// info available).
-fn get_class_tag(
-    block: &crate::parser::SpectrumBlock,
-    classes: &[ChemicalClass],
-) -> Vec<(String, String)> {
-    // Broad category from structural/formula classification (LIPID MAPS category names)
-    let category = block.classification.as_ref().map_or_else(
-        || "Other Lipids [-]".to_string(),
-        |c| c.class.lipidmaps_category().to_string(),
-    );
-
-    // First matching LMSD subclass
-    let main_class = block
-        .gallery_item_matches
-        .as_ref()
-        .and_then(|matches| {
-            // Find first true match
-            let matched_name = matches
-                .iter()
-                .find(|(_, matched)| **matched)
-                .map(|(name, _)| name.clone());
-
-            // If found, try to look it up in classes to get the proper name
-            matched_name.and_then(|name| {
-                classes
-                    .iter()
-                    .find(|c| c.name == name)
-                    .map(|c| c.name.clone())
-                    .or(Some(name))
-            })
-        })
-        .unwrap_or_else(|| "-".to_string());
-
-    vec![
-        ("CATEGORY".to_string(), category),
-        ("MAIN_CLASS".to_string(), main_class),
-        ("SUB_CLASS".to_string(), "-".to_string()),
-    ]
-}
-
-/// Inserts COMMENT= lines with `LIPID_MAPS` class tags in the MGF header block (after BEGIN IONS, before peaks).
-/// Each item is a (key, value) pair like ("CATEGORY", "Fatty Acyls \[FA]").
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-fn insert_class_comment(block_raw: &str, class_tags: &[(String, String)]) -> String {
-    let comment_block: String = class_tags
-        .iter()
-        .map(|(k, v)| format!("COMMENT=LIPID_MAPS_{k}={v}\n"))
-        .collect::<Vec<_>>()
-        .concat();
-    // Find the end of the BEGIN IONS header line and insert after it
-    if let Some(begin_pos) = block_raw.find(|c: char| !c.is_whitespace())
-        && block_raw[begin_pos..].starts_with("BEGIN IONS")
-    {
-        // Find end of the BEGIN IONS line
-        let after_begin = &block_raw[begin_pos..];
-        if let Some(newline_pos) = after_begin.find('\n') {
-            let (before, after) = after_begin.split_at(newline_pos + 1);
-            return format!("{before}{comment_block}{after}");
-        }
-    }
-    // Fallback: prepend with the comment
-    format!("{comment_block}{block_raw}")
-}
-
-#[allow(unused_variables, unused_mut)]
-pub(super) fn family_entry(
-    family: &str,
-    family_classes: &[ChemicalClass],
-    mut selected_classes: Signal<Vec<String>>,
-) -> Element {
-    let family_clone = family.to_string();
-    let family_classes_clone = family_classes.to_vec();
-
-    // Check how many children are selected
-    let selected_count = family_classes_clone
-        .iter()
-        .filter(|c| selected_classes.read().contains(&c.name))
-        .count();
-    let all_family_selected = selected_count == family_classes_clone.len();
-    let some_family_selected = selected_count > 0 && !all_family_selected;
-
-    rsx! {
-        div { style: StyleBuilder::new().property("margin-bottom", "0.6rem").build(),
-            label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").property("margin-bottom", "0.3rem").build(),
-                input {
-                    r#type: "checkbox",
-                    checked: all_family_selected || some_family_selected,
-                    onchange: move |_| {
-                        let mut classes = selected_classes.read().clone();
-                        if all_family_selected || some_family_selected {
-                            // Uncheck all in family
-                            for c in &family_classes_clone {
-                                classes.retain(|name| name != &c.name);
-                            }
-                        } else {
-                            // Check all in family
-                            for c in &family_classes_clone {
-                                if !classes.contains(&c.name) {
-                                    classes.push(c.name.clone());
-                                }
-                            }
-                        }
-                        selected_classes.set(classes);
-                    },
-                    style: StyleBuilder::new().width("16px").height("16px").cursor("pointer").build(),
-                }
-                span { style: StyleBuilder::new().font_size("0.85rem").font_weight("700").color("#0f172a").build(), "{family_clone}" }
-                if some_family_selected {
-                    span { style: StyleBuilder::new().font_size("0.7rem").color("#94a3b8").build(), "({selected_count}/{family_classes.len()})" }
-                }
-            }
-            ul { style: StyleBuilder::new().property("margin", "0 0 0 1.5rem").padding("0").property("list-style", "none").display("flex").flex_wrap("wrap").gap("0.4rem").build(),
-                for class in family_classes.iter() {
-                    {
-                        let color = class.color.clone();
-                        let class_name = class.name.clone();
-                        let is_selected = selected_classes.read().contains(&class_name);
-                        rsx! {
-                            li { style: StyleBuilder::new().display("flex").align_items("center").build(),
-                                label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").build(),
-                                    input {
-                                        r#type: "checkbox",
-                                        checked: is_selected,
-                                        onchange: move |_| {
-                                            let mut classes = selected_classes.read().clone();
-                                            if is_selected {
-                                                classes.retain(|c| c != &class_name);
-                                            } else {
-                                                classes.push(class_name.clone());
-                                            }
-                                            selected_classes.set(classes);
-                                        },
-                                        style: checkbox_sm(),
-                                    }
-                                    span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.2rem 0.5rem").border_radius("999px").property("background", "#f1f5f9").font_size("0.75rem").font_weight("500").build(),
-                                        span { style: StyleBuilder::new().width("8px").height("8px").border_radius("50%").property("background", &color).build(), }
-                                        "{class.name}"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// Collect unique adduct values from gallery items, sorted with `+` first.
-fn collect_adduct_options(gallery: &[crate::parser::GalleryItem]) -> Vec<String> {
-    let adduct_values: std::collections::BTreeSet<String> = gallery
-        .iter()
-        .filter_map(|item| item.adduct.as_ref())
-        .filter(|a| !a.is_empty())
-        .cloned()
-        .collect();
-    let mut adduct_options: Vec<String> = adduct_values.into_iter().collect();
-    adduct_options.sort_by(|a, b| {
-        let a_plus = a.contains('+');
-        let b_plus = b.contains('+');
-        match (a_plus, b_plus) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.cmp(b),
-        }
-    });
-    adduct_options
-}
-
-/// Group chemical classes by family, sorted by LIPID MAPS rank order.
-fn group_classes_by_family(classes: &[ChemicalClass]) -> Vec<(String, Vec<ChemicalClass>)> {
-    let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
-    for class in classes {
-        if let Some(entry) = families.iter_mut().find(|(f, _)| f == &class.family) {
-            entry.1.push(class.clone());
-        } else {
-            families.push((class.family.clone(), vec![class.clone()]));
-        }
-    }
-    families.sort_by_key(|(f, _)| family_rank(f));
-    families
-}
-
-/// Prepare gallery SMILES entries for WASM download closures.
-///
-/// Each entry includes the SMILES, title, category, main class, exact mass,
-/// precursor m/z, adduct, and class-match map so the download can apply
-/// the same filters as the gallery view.
-#[cfg(target_arch = "wasm32")]
-fn prepare_gallery_smiles(
-    gallery: &[crate::parser::GalleryItem],
-    all_classes: &[ChemicalClass],
-) -> Vec<GallerySmilesEntry> {
-    gallery
-        .iter()
-        .map(|item| {
-            // Use the same class tag computation as MGF export (ensures UI consistency)
-            let class_tags = get_class_tag_from_gallery(item, all_classes);
-            let category = class_tags
-                .iter()
-                .find(|(k, _)| k == "CATEGORY")
-                .map(|(_, v)| v.clone())
-                .unwrap_or_else(|| "-".to_string());
-            let main_class = class_tags
-                .iter()
-                .find(|(k, _)| k == "MAIN_CLASS")
-                .map(|(_, v)| v.clone())
-                .unwrap_or_else(|| "-".to_string());
-            (
-                item.title.clone(),
-                item.smiles.clone(),
-                Some(category),
-                Some(main_class),
-                Some("-".to_string()),
-                Some(item.exact_mass),
-                item.precursor_mz,
-                item.adduct.clone(),
-                item.class_matches.clone(),
-            )
-        })
-        .collect()
-}
-
-/// Pre-compute class tags for each block (for MGF download tagging).
-///
-/// Tries to find the corresponding [`GalleryItem`] by `block_index` to get
-/// the same class as the UI. Falls back to direct block classification.
-fn prepare_block_class_tags(
-    blocks: &[crate::parser::SpectrumBlock],
-    gallery: &[crate::parser::GalleryItem],
-    all_classes: &[ChemicalClass],
-) -> Vec<Vec<(String, String)>> {
-    blocks
-        .iter()
-        .map(|block| {
-            // Find the corresponding gallery item by block_index to get the same class as the UI
-            let gallery_item = gallery.iter().find(|item| item.block_index == block.index);
-            gallery_item.map_or_else(
-                || get_class_tag(block, all_classes),
-                |item| get_class_tag_from_gallery(item, all_classes),
-            )
-        })
-        .collect()
-}
-
-/// Renders the structure-diagram gallery, filtered by selected classes and m/p/adduct filters.
 pub(super) fn gallery_with_filter(
     gallery: &[crate::parser::GalleryItem],
     selected_classes: &[String],

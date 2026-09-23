@@ -18,6 +18,9 @@ use dioxus::prelude::*;
 use ui::prelude::{Button, ButtonVariant};
 
 mod browser;
+mod csv_export;
+mod formatting;
+mod motif_display;
 mod results;
 
 use self::results::{Footer, Hero, MotifPanel, ResultsView};

@@ -9,7 +9,7 @@
 use crate::model::{DatasetMotifContext, RdkitDescriptors, RdkitMotifHit};
 
 use super::chemist::{EvidenceCounts, count_evidence, is_known_np_motif};
-use super::verdict::classify_ring_family;
+use super::ring_family::classify_ring_family;
 
 /// Result of assessing a single molecule against the evidence framework.
 #[derive(Clone, Debug)]

@@ -47,6 +47,7 @@ pub mod pipeline;
 pub mod qlever;
 #[cfg(target_arch = "wasm32")]
 pub mod rdkit;
+pub mod rdkit_bridge;
 pub mod styles;
 
 pub use app::app;

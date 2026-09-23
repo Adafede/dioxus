@@ -1,23 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-//! Renderable sub-trees + pure formatting helpers extracted from `app.rs`.
+//! Renderable result-view components for smellfish-rs.
 //!
-//! Each `#[component]` owns one responsibility so `app.rs` only wires signals
-//! and composes them. The helpers below are pure formatting / CSV-download
-//! utilities used by [`MoleculeCard`] / [`ResultsView`].
+//! Each `#[component]` owns one responsibility so `app.rs` only wires
+//! signals and composes them. Formatting helpers live in [`formatting`],
+//! motif classification in [`motif_display`], and CSV export in
+//! [`csv_export`].
 use crate::literature::LITERATURE;
-use crate::model::{MoleculeRow, MotifSummary, RdkitMotifHit, normalized_source_class};
+use crate::model::MoleculeRow;
 use dioxus::prelude::*;
-#[cfg(target_arch = "wasm32")]
-use std::fmt::Write;
+
+pub use super::csv_export::download_csv;
+pub use super::formatting::{format_score, scaffold_emoji, verdict_color};
+pub use super::motif_display::{
+    motif_chip_class, motif_display_label, motif_is_natural, motif_is_synthetic,
+    motif_is_unclassified, summary_chip_class, summary_display_label, summary_is_natural,
+    summary_is_synthetic, summary_is_unclassified,
+};
 
 /// Hero banner.
 #[component]
 pub fn Hero() -> Element {
     rsx! {
         section { class: "hero",
-            h1 { "🐟 Smellfish-rs" }
+            h1 { "\u{1f41f} Smellfish-rs" }
             p { "A natural-product originality screen for SMILES lists." }
         }
     }
@@ -25,7 +32,7 @@ pub fn Hero() -> Element {
 
 /// Motif chip summary panel (only rendered when motifs were detected).
 #[component]
-pub fn MotifPanel(motifs: Signal<Vec<MotifSummary>>) -> Element {
+pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
     rsx! {
         section { class: "panel",
             h2 { "Motifs" }
@@ -66,7 +73,7 @@ pub fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
         section { class: "panel",
             div { class: "small",
                 strong { "{rows.read().len()}" }
-                " results · "
+                " results \u{00b7} "
                 a { href: "#", onclick: move |_| download_csv(&rows.read()), "Download CSV" }
             }
         }
@@ -87,7 +94,7 @@ pub fn MoleculeCard(row: MoleculeRow) -> Element {
                 div {
                     strong { "{row.label}" }
                 }
-                div { class: "small muted smiles-display", "Row {row.index} · {row.num_atoms} heavy atoms" }
+                div { class: "small muted smiles-display", "Row {row.index} \u{00b7} {row.num_atoms} heavy atoms" }
                 div { class: "small-muted smiles-small", "SMILES: {row.smiles}" }
                 if let Some(err) = row.error.as_deref() {
                     div { class: "error small", "{err}" }
@@ -303,187 +310,3 @@ pub fn Footer() -> Element {
         }
     }
 }
-
-fn format_score(score: f64) -> String {
-    format!("{score:+.2}")
-}
-
-/// CSS-safe verdict color class based on the verdict text.
-fn verdict_color(verdict: &str) -> &'static str {
-    let l = verdict.to_ascii_lowercase();
-    if l.contains("smells fishy") || l.contains("highly synthetic") {
-        "verdict-fishy"
-    } else if l.contains("likely") || l.contains("strong natural") || l.contains("lotus") {
-        "verdict-likely"
-    } else if l.contains("citation needed") {
-        "verdict-skeptical"
-    } else if l.contains("weak np signals") || l.contains("ertl") && l.contains("−1") {
-        "verdict-caution"
-    } else {
-        "verdict-neutral"
-    }
-}
-
-/// Emoji prefix for the scaffold family — 🌿 for NP-typical scaffolds,
-/// ⚠ for polyaromatic (synthetic-typical).
-fn scaffold_emoji(family: &str) -> &'static str {
-    let l = family.to_ascii_lowercase();
-    if l.contains("polyaromatic") {
-        "⚠"
-    } else if l.contains("polycyclic")
-        || l.contains("steroid")
-        || l.contains("sugar")
-        || l.contains("macrolide")
-        || l.contains("flavonoid")
-        || l.contains("heteroaromatic")
-    {
-        "🌿"
-    } else {
-        "—"
-    }
-}
-
-fn summary_is_natural(motif: &MotifSummary) -> bool {
-    normalized_source_class(&motif.source_class) == "natural"
-}
-
-fn summary_is_synthetic(motif: &MotifSummary) -> bool {
-    normalized_source_class(&motif.source_class) == "synthetic"
-}
-
-fn summary_is_unclassified(motif: &MotifSummary) -> bool {
-    normalized_source_class(&motif.source_class) == "unknown"
-}
-
-fn summary_chip_class(motif: &MotifSummary) -> &'static str {
-    if summary_is_natural(motif) {
-        "chip chip-np"
-    } else {
-        "chip alt"
-    }
-}
-
-fn summary_display_label(motif: &MotifSummary) -> String {
-    if summary_is_natural(motif) {
-        let kingdoms = if motif.kingdoms.is_empty() {
-            motif.kingdom.clone()
-        } else if motif.kingdoms.len() == 1 {
-            motif.kingdoms[0].clone()
-        } else {
-            motif.kingdoms.join(" + ")
-        };
-        format!("{} · {}", kingdoms, motif.label)
-    } else if summary_is_synthetic(motif) {
-        format!("synthetic · {}", motif.label)
-    } else {
-        format!("unclassified · {}", motif.label)
-    }
-}
-
-fn motif_is_natural(motif: &RdkitMotifHit) -> bool {
-    normalized_source_class(&motif.source_class) == "natural"
-}
-
-fn motif_is_synthetic(motif: &RdkitMotifHit) -> bool {
-    normalized_source_class(&motif.source_class) == "synthetic"
-}
-
-fn motif_is_unclassified(motif: &RdkitMotifHit) -> bool {
-    normalized_source_class(&motif.source_class) == "unknown"
-}
-
-fn motif_chip_class(motif: &RdkitMotifHit) -> &'static str {
-    if motif_is_natural(motif) {
-        "chip chip-np"
-    } else {
-        "chip alt"
-    }
-}
-
-fn motif_display_label(motif: &RdkitMotifHit) -> String {
-    if motif_is_natural(motif) {
-        let kingdoms = if motif.kingdoms.is_empty() {
-            motif.kingdom.clone()
-        } else if motif.kingdoms.len() == 1 {
-            motif.kingdoms[0].clone()
-        } else {
-            motif.kingdoms.join(" + ")
-        };
-        format!("{} · {}", kingdoms, motif.label)
-    } else if motif_is_synthetic(motif) {
-        format!("synthetic · {}", motif.label)
-    } else {
-        format!("unclassified · {}", motif.label)
-    }
-}
-
-/// Escape a field for CSV output.
-#[cfg(target_arch = "wasm32")]
-fn escape_csv(s: &str) -> String {
-    if s.contains(',') || s.contains('"') {
-        let escaped = s.replace('"', "\"\"");
-        format!("\"{escaped}\"")
-    } else {
-        s.to_string()
-    }
-}
-
-/// Build a CSV string from molecule rows.
-#[cfg(target_arch = "wasm32")]
-fn build_csv(rows: &[MoleculeRow]) -> String {
-    let mut csv = String::from(
-        "label,smiles,np_score,np_label,np_confidence,ring_family,substituents,locus,verdict_category,chemist_checks\n",
-    );
-    for r in rows {
-        let checks = r
-            .chemist_checks
-            .iter()
-            .map(|c| format!("{}:{}", c.name, c.status))
-            .collect::<Vec<_>>()
-            .join(";");
-        // Convert substituents counts to "label(count);" format
-        let substituents: String = r
-            .substituents_counts
-            .iter()
-            .map(|(label, count)| format!("{label}({count})"))
-            .collect::<Vec<_>>()
-            .join(";");
-        let locus = r
-            .lotus_compounds
-            .iter()
-            .chain(r.pubchem_cids.iter())
-            .map(String::as_str)
-            .collect::<Vec<_>>()
-            .join(";");
-        let _ = writeln!(
-            csv,
-            "{},{},{:.3},{},{}%,{},{},{},{},{}",
-            escape_csv(&r.label),
-            escape_csv(&r.smiles),
-            r.np_likeness,
-            r.np_label,
-            (r.np_confidence * 100.0).round(),
-            escape_csv(&r.ring_family),
-            escape_csv(&substituents),
-            escape_csv(&locus),
-            crate::evidence::category(&r.verdict),
-            escape_csv(&checks),
-        );
-    }
-    csv
-}
-
-/// Build a CSV string from molecule rows and trigger a download via a
-/// data: URI injected through `eval`.
-#[cfg(target_arch = "wasm32")]
-fn download_csv(rows: &[MoleculeRow]) {
-    let csv = build_csv(rows);
-    let url = format!("data:text/csv;charset=utf-8,{}", urlencoding::encode(&csv));
-    let script = format!(
-        r"(function(){{var a=document.createElement('a');a.href='{url}';a.download='smellfish-results.csv';a.click();}})()"
-    );
-    let _ = js_sys::eval(&script);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-const fn download_csv(_rows: &[MoleculeRow]) {}

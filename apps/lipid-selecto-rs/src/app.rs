@@ -18,8 +18,14 @@ use crate::chemical_class::lmsd_all;
 use crate::format::LipidFormat;
 use crate::parser::Analysis;
 
+mod analysis;
 mod browser;
+mod class_tags;
 mod components;
+mod download;
+mod family;
+mod gallery;
+mod types;
 
 #[cfg(target_arch = "wasm32")]
 use self::browser::begin_analysis_from_blob;
@@ -134,7 +140,7 @@ pub fn app() -> Element {
                     }
                 }
                 if let Some(analysis) = ctx.analysis.read().as_ref() {
-                    { summary(&analysis.summary, &components::SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, &analysis.all_classes, &analysis.filtered_mgf, &analysis.gallery, &analysis.blocks, (*ctx.input_format.read()).unwrap_or(crate::format::LipidFormat::Mgf)) }
+                    { summary(&analysis.summary, &types::SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, &analysis.all_classes, &analysis.filtered_mgf, &analysis.gallery, &analysis.blocks, (*ctx.input_format.read()).unwrap_or(crate::format::LipidFormat::Mgf)) }
                     { gallery_with_filter(&analysis.gallery, &selected_classes.read(), *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read()) }
                 }
             }
