@@ -11,7 +11,7 @@ ignore = []
 # All project crates are AGPL-3.0-only. Dependencies must carry a license
 # compatible with the GNU Affero General Public License v3 or later.
 [licenses]
-confidence-threshold = 0.8
+confidence-threshold = 1.0
 allow = [
   # Permissive — fully compatible with AGPL-3.0
   "MIT",
@@ -25,7 +25,6 @@ allow = [
   "CDLA-Permissive-2.0",
   "GPL-3.0-only",
   "BSL-1.0",
-  "bzip2-1.0.6",
 ]
 
 [licenses.private]
@@ -65,7 +64,6 @@ skip = [
   { name = "rand" },
   { name = "rand_core" },
   { name = "rustc-hash" },
-  { name = "sha1" },
   { name = "sha2" },
   { name = "syn" },
   { name = "thiserror" },
