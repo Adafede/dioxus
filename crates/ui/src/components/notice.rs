@@ -10,10 +10,15 @@ use dioxus::prelude::*;
 #[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NoticeTone {
+    /// Neutral informational tone (no specific semantic meaning).
     Neutral,
+    /// Informational tone (blue/cyan themed).
     Info,
+    /// Success tone (green themed).
     Success,
+    /// Warning tone (yellow/orange themed).
     Warning,
+    /// Danger/alert tone (red themed).
     Danger,
 }
 
@@ -21,25 +26,38 @@ pub enum NoticeTone {
 #[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct NoticeBarProps {
+    /// The main label text displayed in the notice bar.
     pub label: String,
+    /// Visual tone/style of the notice bar.
     #[props(default = NoticeTone::Neutral)]
     pub tone: NoticeTone,
+    /// ARIA role attribute for accessibility.
     #[props(default = "status")]
     pub role: &'static str,
+    /// ARIA live region setting for dynamic updates.
     #[props(default = "polite")]
     pub aria_live: &'static str,
+    /// Whether to use dark theme colors.
     #[props(default = false)]
     pub dark: bool,
+    /// CSS margin for the outer container.
     #[props(default = "10px 22px 0")]
     pub margin: &'static str,
+    /// CSS padding for the inner content area.
     #[props(default = "9px 12px")]
     pub padding: &'static str,
+    /// Optional trailing content (e.g., icons, buttons).
     #[props(default)]
     pub trailing: Option<Element>,
+    /// Optional child elements to display in the notice body.
     #[props(default)]
     pub children: Option<Element>,
 }
 
+/// A notice bar component for displaying informational messages with visual tone styling.
+///
+/// Supports neutral, info, success, warning, and danger tones with customizable
+/// content and styling.
 #[component]
 pub fn NoticeBar(props: NoticeBarProps) -> Element {
     let colors = if props.dark {

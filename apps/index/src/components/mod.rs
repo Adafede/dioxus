@@ -10,7 +10,7 @@
 //! - Type-safe props
 //! - Comprehensive documentation
 
-pub mod app_card;
+mod app_card;
 
 pub use app_card::AppCard;
 

@@ -9,7 +9,9 @@ use dioxus::prelude::*;
 #[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SegmentedControlItem {
+    /// The display label for this item.
     pub label: String,
+    /// The value used for comparison with `selected_value`.
     pub value: String,
 }
 
@@ -17,20 +19,29 @@ pub struct SegmentedControlItem {
 #[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 #[derive(Clone, Props, Debug, PartialEq)]
 pub struct SegmentedControlProps {
+    /// ARIA label for the control group.
     pub aria_label: String,
+    /// Currently selected value.
     pub selected_value: String,
+    /// Items to render in the control.
     pub items: Vec<SegmentedControlItem>,
+    /// Callback fired when selection changes.
     pub on_select: EventHandler<String>,
+    /// Use dark theme colors.
     #[props(default = false)]
     pub dark: bool,
+    /// Items should stretch to fill available space.
     #[props(default = false)]
     pub stretch: bool,
+    /// Wrap items to multiple lines if needed.
     #[props(default = true)]
     pub wrap: bool,
+    /// ARIA current attribute value when item is active.
     #[props(default = "true")]
     pub active_aria_current: &'static str,
 }
 
+/// A segmented button control for selecting one option from multiple.
 #[component]
 pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
     let selected_value = props.selected_value.clone();

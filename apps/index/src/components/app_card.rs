@@ -18,32 +18,12 @@ use ui::prelude::*;
 /// - Hover and focus states
 /// - High contrast colors (WCAG AAA)
 ///
-/// # Props
-///
-/// - `app`: Application metadata ([`AppInfo`])
-///
 /// # Accessibility
 ///
 /// - Proper heading hierarchy (h2)
 /// - Link focus indicators
 /// - Color contrast >= 7:1 ratio
 /// - Keyboard navigation support
-///
-/// # Example
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use index::components::{AppCard, AppInfo};
-/// let app = AppInfo {
-///     id: "my-app",
-///     title: "🔬 My App",
-///     path: "./my-app/",
-///     description: "Does cool things",
-/// };
-/// rsx! {
-///     AppCard { app: app }
-/// }
-/// ```
 #[component]
 pub fn AppCard(app: AppInfo) -> Element {
     let colors = ColorScheme::LIGHT;

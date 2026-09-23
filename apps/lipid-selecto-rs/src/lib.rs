@@ -59,6 +59,12 @@
 //!
 //! No external services or native binaries required.  All processing happens
 //! in the browser — your data never leaves your computer.
+
+// Note: Many items in submodules are `pub` but only accessible within this crate.
+// `unreachable_pub` would flag these as unreachable from external crates, but they
+// form the internal API that other modules in this crate depend on.
+#![allow(unreachable_pub)]
+
 pub mod app;
 pub mod chemical_class;
 pub mod depict_simple;

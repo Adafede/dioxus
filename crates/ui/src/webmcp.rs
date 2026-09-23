@@ -16,11 +16,13 @@ pub struct WebMcpConfig {
     /// Stable kebab-case identifier used to derive the tool name
     /// (`"<app_id>_capabilities"`).
     pub app_id: &'static str,
+    /// Human-readable title for the tool.
     pub title: &'static str,
+    /// Human-readable description of the tool's purpose.
     pub description: &'static str,
-    /// Human-readable input surface (e.g. `"smiles_list"`).
+    /// Human-readable input surface names (e.g. `"smiles_list"`).
     pub inputs: &'static [&'static str],
-    /// Human-readable output surface (e.g. `"cx_smiles"`).
+    /// Human-readable output surface names (e.g. `"cx_smiles"`).
     pub outputs: &'static [&'static str],
 }
 

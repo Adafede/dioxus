@@ -23,15 +23,13 @@
 //! ```bash
 //! cargo test --lib -p smellfish-rs
 //! ```
-//!
-//! # Lint policy
-//!
-//! WASM UI code legitimately triggers some pedantic lints (float casts in
-//! descriptor math, `format!` interpolation, etc.).  Rather than a blanket
-//! `#![allow(...)]`, each suppression is a targeted, justified `#[allow]` at
-//! the affected call site.
 
 #![cfg_attr(target_arch = "wasm32", allow(clippy::future_not_send))]
+// Note: Many items in submodules are `pub` but only accessible within this crate
+// (the modules themselves are not re-exported publicly). `unreachable_pub` would
+// flag these as unreachable from external crates, but they form the internal API
+// that other modules in this crate depend on.
+#![allow(unreachable_pub)]
 
 pub mod app;
 #[cfg(any(test, target_arch = "wasm32"))]

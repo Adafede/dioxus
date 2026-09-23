@@ -23,6 +23,11 @@
 //! dx build --release --platform web --package index
 //! ```
 
+// Note: The components module contains items (`pub`) that are only accessible
+// within this crate (the module is private). `unreachable_pub` would flag these
+// as unreachable from external crates, which is expected.
+#![allow(unreachable_pub)]
+
 use dioxus::prelude::*;
 use ui::prelude::*;
 

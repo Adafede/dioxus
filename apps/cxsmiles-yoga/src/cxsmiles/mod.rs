@@ -30,6 +30,7 @@
     clippy::cast_possible_wrap,
     clippy::cast_lossless
 )]
+#![allow(unreachable_pub)] // Internal modules: pub items within pub(crate) modules are crate-internal
 
 use chematic::core::Molecule;
 
