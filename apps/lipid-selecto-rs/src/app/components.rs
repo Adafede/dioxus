@@ -406,7 +406,7 @@ fn download_buttons(
         prepare_block_class_tags(blocks, gallery, all_classes_owned);
 
     // Clone filtered_mgf for the non-WASM download stub
-    #[allow(unused)]
+    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
     let filtered_mgf_owned = filtered_mgf.to_string();
 
     rsx! {
