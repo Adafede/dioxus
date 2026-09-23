@@ -4,9 +4,9 @@
 //! Renderable result-view components for smellfish-rs.
 //!
 //! Each `#[component]` owns one responsibility so `app.rs` only wires
-//! signals and composes them. Formatting helpers live in [`formatting`],
-//! motif classification in [`motif_display`], and CSV export in
-//! [`csv_export`].
+//! signals and composes them. Formatting helpers live in [`super::formatting`],
+//! motif classification in [`super::motif_display`], and CSV export in
+//! [`super::csv_export`].
 use crate::literature::LITERATURE;
 use crate::model::MoleculeRow;
 use dioxus::prelude::*;

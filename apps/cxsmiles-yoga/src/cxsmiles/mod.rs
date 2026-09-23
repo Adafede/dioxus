@@ -18,7 +18,7 @@
 //!
 //! This module is split by responsibility:
 //! - `types` — public result types.
-//! - [`parse`] — SMILES input parsing and ECFP4/Tanimoto clustering.
+//! - `parse` — SMILES input parsing and ECFP4/Tanimoto clustering.
 //! - `graph` — Molecule↔Query conversion and graph matching primitives.
 //! - `positional` — `m:` (positional equivalence) construction.
 //! - `repeating` — `Sg:n:` (repeating) construction.

@@ -14,7 +14,7 @@ use crate::model::{EndpointStatus, MoleculeRow, MotifSummary};
 use crate::pipeline::{begin_import, begin_import_from_text};
 
 /// Shared dispatch for `onchange`/`ondrop` file events: selects the first file
-/// from `files` and (wasm) kicks off [`begin_import`], (native) reports that the
+/// from `files` and (wasm) kicks off `pipeline::begin_import`, (native) reports that the
 /// app needs a browser.
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 #[allow(unused_mut, clippy::too_many_arguments)] // wasm dispatch: many signal handles, mut forwarded to async spawn

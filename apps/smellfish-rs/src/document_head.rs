@@ -5,7 +5,7 @@
 //!
 //! Replaces the static `index.html` with Rust code that sets meta tags,
 //! loads CDN scripts, the local motif-library bridge, and inline
-//! RDKit/NP-likeness bridge code (now extracted to [`rdkit_bridge`]).
+//! RDKit/NP-likeness bridge code (now extracted to [`crate::rdkit_bridge`]).
 
 use crate::rdkit_bridge::RDKIT_BRIDGE_JS;
 use crate::styles::CSS;
