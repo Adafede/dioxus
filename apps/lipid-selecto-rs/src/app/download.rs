@@ -17,7 +17,7 @@ use crate::parser::SpectrumBlock;
 
 /// Download filtered MGF content with class tags, applying all filter selections.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
 pub fn download_filtered_mgf(
     blocks: &[SpectrumBlock],
     block_class_tags: &[Vec<(String, String)>],

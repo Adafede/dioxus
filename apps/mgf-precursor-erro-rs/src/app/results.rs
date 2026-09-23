@@ -27,7 +27,7 @@ fn format_lambda(lambda: f64) -> String {
 /// controls, the recalibrated-MGF download, diagnostics, and cumulative-error
 /// plots. Extracted from `app` so the route component stays focused on
 /// input/upload wiring.
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines)] // UI composition functions are inherently verbose
 #[component]
 pub fn ResultsPanel(
     metrics: Signal<Option<PrecursorStats>>,

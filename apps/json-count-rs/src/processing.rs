@@ -162,6 +162,7 @@ fn spawn_scan(
 ) {
     spawn(async move {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        // browser Blob.size() returns f64, cast to u64 for byte counts
         let total_bytes = blob.size() as u64;
         status.set(format!("Scanning {total_bytes} bytes..."));
 
@@ -269,7 +270,7 @@ fn unescape_json_string(raw: &[u8]) -> String {
 
 /// Reads a JSON string key from the cursor using the shared `BlobCursor`.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)]
+#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
 async fn read_json_key<F: FnMut(u64, u64)>(
     cursor: &mut BlobCursor<F>,
 ) -> Result<String, UploadError> {
@@ -318,7 +319,7 @@ async fn read_json_key<F: FnMut(u64, u64)>(
 /// Skips over a JSON string (consuming opening/closing quotes) and
 /// reports only whether it had at least one character. No allocation.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)]
+#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
 async fn skip_string_nonempty<F: FnMut(u64, u64)>(
     cursor: &mut BlobCursor<F>,
 ) -> Result<bool, UploadError> {
@@ -372,7 +373,7 @@ async fn skip_string_nonempty<F: FnMut(u64, u64)>(
 /// single synchronous pass; strings count as 1 if non-empty; numbers
 /// and booleans count as 1; `null` counts as 0.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)]
+#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
 async fn count_value<F: FnMut(u64, u64)>(cursor: &mut BlobCursor<F>) -> Result<u64, UploadError> {
     if !cursor.ensure_any().await? {
         return Ok(0);
@@ -487,12 +488,13 @@ async fn count_value<F: FnMut(u64, u64)>(cursor: &mut BlobCursor<F>) -> Result<u
 }
 
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)]
+#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
 async fn scan_blob_with_progress(
     blob: &Blob,
     on_progress: impl FnMut(u64, u64),
 ) -> Result<Vec<ColumnResult>, String> {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    // browser Blob.size() returns f64, cast to u64 for byte counts
     let total_bytes = blob.size() as u64;
     let mut cur = BlobCursor::new(blob, total_bytes, on_progress);
 

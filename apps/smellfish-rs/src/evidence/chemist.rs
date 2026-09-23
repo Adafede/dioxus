@@ -241,7 +241,7 @@ pub fn is_decoration_motif(label: &str) -> bool {
 /// Centralised in `chemist` (a cfg-free leaf module) so the verdict threshold
 /// logic is unit-testable on native *without* the rdkit.js bridge.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[allow(clippy::struct_field_names)]
+#[allow(clippy::struct_field_names)] // evidence counts share the `EvidenceCounts` naming pattern
 pub struct EvidenceCounts {
     /// Ertl NP-typical substituent motifs found (Ertl & Schuhmann 2019 et al.).
     pub np_core_hits: usize,

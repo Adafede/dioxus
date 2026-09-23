@@ -17,7 +17,7 @@ use crate::pipeline::{begin_import, begin_import_from_text};
 /// from `files` and (wasm) kicks off [`begin_import`], (native) reports that the
 /// app needs a browser.
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-#[allow(unused_mut, clippy::too_many_arguments)]
+#[allow(unused_mut, clippy::too_many_arguments)] // wasm dispatch: many signal handles, mut forwarded to async spawn
 pub fn attempt_import(
     files: &[FileData],
     mut file_name: Signal<String>,
@@ -66,7 +66,7 @@ pub fn attempt_import(
 /// Shared dispatch for the "paste SMILES" path — (wasm) `begin_import_from_text`,
 /// (native) reports that the app needs a browser.
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-#[allow(unused_mut, clippy::too_many_arguments)]
+#[allow(unused_mut, clippy::too_many_arguments)] // wasm dispatch: many signal handles, mut forwarded to async spawn
 pub fn attempt_import_from_text(
     text: &str,
     mut file_name: Signal<String>,

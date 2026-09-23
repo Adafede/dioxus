@@ -76,7 +76,7 @@ async fn rdkit_bridge_call(method: &str, smiles: &str) -> Result<JsValue, String
 ///
 /// Returns an error if the value cannot be serialized or parsed as JSON.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::needless_pass_by_value)]
+#[allow(clippy::needless_pass_by_value)] // JsValue is consumed by JSON::stringify, clippy can't see through wasm-bindgen macros
 fn js_value_to_json(value: JsValue) -> Result<serde_json::Value, String> {
     let text = JSON::stringify(&value)
         .ok()

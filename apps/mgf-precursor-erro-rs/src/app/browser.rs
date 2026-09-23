@@ -25,7 +25,7 @@ const EXAMPLE_MGF_URL: &str =
     "https://raw.githubusercontent.com/zamboni-lab/MultiMS2/main/data/multims2_spectra.mgf";
 
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)]
+#[allow(clippy::future_not_send)] // async fn captures non-Send browser futures
 async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
     let window = web_sys::window().ok_or_else(|| "Browser window unavailable.".to_string())?;
     let response_value = JsFuture::from(window.fetch_with_str(url))
@@ -93,6 +93,7 @@ fn start_analysis(
 
     spawn(async move {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        // blob.slice_with_f64_and_f64 requires f64 args, cast from u64
         let total_bytes = blob.size() as u64;
         status_for_progress.set(format!("Scanning {total_bytes} bytes..."));
 
@@ -140,7 +141,7 @@ fn start_analysis(
 }
 
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
 pub fn begin_analysis_from_blob(
     blob: Blob,
     file_name: String,
@@ -176,7 +177,7 @@ pub fn begin_analysis_from_blob(
 /// pipeline on wasm32, or reports that a browser is required on native.
 /// Consolidates the near-duplicate `on_file_change`/`on_drop` handlers.
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-#[allow(unused_mut)]
+#[allow(unused_mut)] // mut forwarded to begin_analysis_from_blob, unused here
 // The native arm calls `.set` on these bindings, while the wasm32 arm only
 // forwards the handles to `begin_analysis_from_blob`, so the `mut` qualifiers
 // (and `drag_active`/`original_mgf_content`) look unused on one target.

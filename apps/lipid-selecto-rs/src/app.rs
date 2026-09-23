@@ -36,7 +36,7 @@ use self::components::{gallery_with_filter, lipid_classes_card, summary};
 /// # Errors
 ///
 /// Returns an error if the component tree fails to build or render.
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines)] // UI composition functions are inherently verbose
 pub fn app() -> Element {
     let status = use_signal(|| "Drop an MGF or SMILES file to begin.".to_string());
     let drag_active = use_signal(|| false);

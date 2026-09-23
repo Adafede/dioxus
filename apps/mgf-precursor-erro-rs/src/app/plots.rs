@@ -101,7 +101,7 @@ pub fn estimate_compliance_ppm(errors: &[f64], threshold_ppm: f64) -> f64 {
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-#[allow(clippy::needless_pass_by_value)]
+#[allow(clippy::needless_pass_by_value)] // rsx! macro captures by move, clippy cannot see through macro expansion
 fn plot_shell(
     title: String,
     subtitle: String,

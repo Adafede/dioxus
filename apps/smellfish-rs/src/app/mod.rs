@@ -51,7 +51,7 @@ CCCCCCCC=CCCCCCCCC(N)=O";
 /// # Errors
 ///
 /// Returns a rendering error only if the RSX tree cannot be constructed.
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines)] // UI composition functions are inherently verbose
 pub fn app() -> Element {
     ui::shared_signal!(file_name, String::new);
 

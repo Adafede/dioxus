@@ -30,7 +30,7 @@ const MAX_GALLERY_ITEMS: usize = 96;
 
 /// Reads the blob in streaming chunks, classifies lipids, and populates signals.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::too_many_lines, clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines, clippy::too_many_arguments)] // wasm async dispatch needs many signal handles
 fn start_analysis(
     blob: Blob,
     source_name: String,
@@ -45,6 +45,7 @@ fn start_analysis(
 
     spawn(async move {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        // blob.slice_with_f64_and_f64 requires f64 args, cast from u64
         let total_bytes = blob.size() as u64;
         status.set(format!("Reading {total_bytes} bytes…"));
         busy.set(true);
@@ -114,7 +115,7 @@ fn start_analysis(
 
 /// Public entry point: delegates to [`start_analysis`] with the uploaded blob.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
 pub fn begin_analysis_from_blob(
     blob: Blob,
     source_name: String,
