@@ -8,15 +8,18 @@
 
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 
-use super::parsing::{SpectrumBlock, extract_blocks};
+use super::parsing::SpectrumBlock;
+#[cfg(all(test, target_arch = "wasm32"))]
+use super::parsing::extract_blocks;
 use crate::chemical_class::ChemicalClass;
+#[cfg(target_arch = "wasm32")]
 use crate::chemical_class::lmsd_all;
 use crate::lipids::LipidClassification;
 use std::collections::HashMap;
 
 /// Aggregated counts produced by [`summarize`] / [`analyze`].
 #[derive(Clone, Debug, Default)]
-pub struct Summary {
+pub(crate) struct Summary {
     /// Total number of blocks parsed from the input.
     pub total_items: usize,
     /// Blocks that matched at least one lipid class.
@@ -27,25 +30,12 @@ pub struct Summary {
     pub skipped: usize,
 }
 
-impl Summary {
-    /// Total items that had an annotation (SMILES or FORMULA).
-    #[must_use]
-    pub const fn annotated_total(&self) -> usize {
-        self.total_items.saturating_sub(self.skipped)
-    }
-
-    /// Items that had an annotation but were not recognized as lipids.
-    #[must_use]
-    pub const fn non_lipid_annotated(&self) -> usize {
-        self.annotated_total()
-            .saturating_sub(self.lipid_items)
-            .saturating_sub(self.unclassified)
-    }
-}
+impl Summary {}
 
 /// Tally items from a parsed block collection.
 #[must_use]
-pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn summarize(blocks: &[SpectrumBlock]) -> Summary {
     let mut summary = Summary::default();
 
     for block in blocks {
@@ -81,7 +71,8 @@ pub fn summarize(blocks: &[SpectrumBlock]) -> Summary {
 /// [`SpectrumBlock::compute_class_matches`](super::parsing::SpectrumBlock::compute_class_matches)
 /// to avoid re-parsing the SMILES — this is the dominant cost for large files.
 #[must_use]
-pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
     // Reuse pre-computed exact mass (no SMILES re-parsing)
     let exact_mass = block.exact_mass;
 
@@ -103,17 +94,14 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
     let svg = block
         .psm_smiles
         .as_deref()
-        .and_then(crate::depict_simple::render_svg)
-        .unwrap_or_else(empty_svg);
+        .map_or_else(empty_svg, crate::depict_simple::render_svg);
 
     GalleryItem {
         block_index: block.index,
         title: block.title.clone(),
         smiles: block.psm_smiles.clone(),
-        formula: block.formula.clone().unwrap_or_default(),
         exact_mass,
         precursor_mz: block.precursor_mz,
-        charge: block.charge.clone(),
         adduct: block.adduct.clone(),
         svg,
         class_matches,
@@ -128,7 +116,8 @@ pub fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> Gallery
 /// `limit` caps how many structures are generated (rendering is intentionally
 /// done up-front so the gallery never re-renders diagrams on every frame).
 #[must_use]
-pub fn build_gallery(
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn build_gallery(
     blocks: &[SpectrumBlock],
     limit: usize,
     classes: &[ChemicalClass],
@@ -148,21 +137,17 @@ pub fn build_gallery(
 
 /// A lightweight, owned view of one spectrum used to render the gallery.
 #[derive(Clone, Debug)]
-pub struct GalleryItem {
+pub(crate) struct GalleryItem {
     /// 1-based index linking back to the original [`SpectrumBlock`].
     pub block_index: usize,
     /// Spectrum title from `TITLE=` / `NAME=` / `SCANS=`, if present.
     pub title: Option<String>,
     /// SMILES string from `SMILES=` metadata, if present.
     pub smiles: Option<String>,
-    /// Molecular formula from `FORMULA=`, if present (empty otherwise).
-    pub formula: String,
     /// Exact monoisotopic mass (cached during classification, not re-parsed).
     pub exact_mass: f64,
     /// Observed precursor m/z from `PEPMASS=` / `PRECURSOR_MZ=`.
     pub precursor_mz: Option<f64>,
-    /// Ion charge from `CHARGE=`, if present.
-    pub charge: Option<String>,
     /// Adduct ion from `ADDUCT=`, if present (e.g. "[M+H]+").
     pub adduct: Option<String>,
     /// Pre-rendered 2D structure SVG.
@@ -178,13 +163,14 @@ pub struct GalleryItem {
 }
 
 /// Fallback SVG shown when a structure cannot be rendered.
+#[cfg(target_arch = "wasm32")]
 fn empty_svg() -> String {
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 20\"><text x=\"20\" y=\"12\" fill=\"#94a3b8\" text-anchor=\"middle\" font-family=\"system-ui\" font-size=\"10\">no structure</text></svg>".to_string()
 }
 
 /// Aggregate analysis result handed to the UI by the wasm worker / tests.
 #[derive(Debug)]
-pub struct Analysis {
+pub(crate) struct Analysis {
     /// Aggregated counts (total, lipid, unclassified, skipped).
     pub summary: Summary,
     /// Pre-rendered gallery cards, one per lipid-positive block.
@@ -198,8 +184,9 @@ pub struct Analysis {
 }
 
 /// Full pipeline: extract, classify, summarize, build gallery + filtered MGF.
+#[cfg(all(test, target_arch = "wasm32"))]
 #[must_use]
-pub fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
+pub(crate) fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
     let all_classes = lmsd_all();
     classify_blocks(&mut blocks, &all_classes);
     build_analysis_from_classified(blocks, gallery_limit, all_classes)
@@ -210,7 +197,8 @@ pub fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> A
 /// Extracted as a separate function so the wasm worker can process blocks in
 /// chunks and yield to the event loop between chunks, keeping the UI responsive
 /// for large files.
-pub fn classify_blocks(blocks: &mut [SpectrumBlock], classes: &[ChemicalClass]) {
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn classify_blocks(blocks: &mut [SpectrumBlock], classes: &[ChemicalClass]) {
     for block in blocks {
         block.classify();
         block.compute_class_matches(classes);
@@ -222,7 +210,8 @@ pub fn classify_blocks(blocks: &mut [SpectrumBlock], classes: &[ChemicalClass]) 
 /// Used by both [`build_analysis`] (single-call convenience) and the wasm
 /// worker (which classifies in chunks with periodic yields).
 #[must_use]
-pub fn build_analysis_from_classified(
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn build_analysis_from_classified(
     blocks: Vec<SpectrumBlock>,
     gallery_limit: usize,
     all_classes: Vec<ChemicalClass>,
@@ -242,7 +231,8 @@ pub fn build_analysis_from_classified(
 /// Concatenate the verbatim text of all lipid-positive blocks into a filtered MGF.
 /// This uses all LMSD class names.
 #[must_use]
-pub fn build_filtered_mgf(blocks: &[SpectrumBlock]) -> String {
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn build_filtered_mgf(blocks: &[SpectrumBlock]) -> String {
     // Include all LMSD class names
     let all_class_names: Vec<String> = lmsd_all().iter().map(|c| c.name.clone()).collect();
     build_filtered_mgf_with_classes(blocks, &all_class_names)
@@ -250,7 +240,8 @@ pub fn build_filtered_mgf(blocks: &[SpectrumBlock]) -> String {
 
 /// Concatenate the verbatim text of blocks matching selected class names.
 #[must_use]
-pub fn build_filtered_mgf_with_classes(
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn build_filtered_mgf_with_classes(
     blocks: &[SpectrumBlock],
     selected_class_names: &[String],
 ) -> String {
@@ -288,15 +279,13 @@ pub fn build_filtered_mgf_with_classes(
 ///
 /// The returned blocks keep their [`SpectrumBlock::classification`] populated so
 /// callers can inspect or re-filter them; the [`Summary`] is also returned.
+#[cfg(all(test, target_arch = "wasm32"))]
 #[must_use]
-pub fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
+pub(crate) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     let mut blocks = extract_blocks(content);
     for block in &mut blocks {
         block.classify();
     }
-    // Also compute class matches for is_lipid() to work correctly.
-    // Use lmsd_all() (same classes as build_analysis) for consistency —
-    // this ensures analyze() and build_analysis() classify identically.
     let all_classes = crate::chemical_class::lmsd_all();
     for block in &mut blocks {
         block.compute_class_matches(&all_classes);
@@ -305,8 +294,9 @@ pub fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     (blocks, summary)
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_arch = "wasm32"))]
 mod tests {
+    use super::super::parsing::extract_blocks;
     use super::*;
 
     const EXAMPLE_MGF: &str = "\

@@ -3,14 +3,14 @@
 
 #[allow(clippy::module_name_repetitions)] // LiteratureRef, LiteratureEntry preserve domain naming
 #[derive(Debug)]
-pub struct LiteratureEntry {
+pub(crate) struct LiteratureEntry {
     pub title: &'static str,
     pub doi: &'static str,
     pub note: &'static str,
 }
 
 /// All DOIs below were verified via Crossref.
-pub const LITERATURE: &[LiteratureEntry] = &[
+pub(crate) const LITERATURE: &[LiteratureEntry] = &[
     LiteratureEntry {
         title: "Natural product-likeness score revisited: an open-source, open-data implementation",
         doi: "10.1186/1471-2105-13-106",

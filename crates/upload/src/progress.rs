@@ -32,7 +32,7 @@
 /// reporter.maybe_report(bytes_read, total_size);
 /// ```
 #[derive(Debug)]
-pub struct ProgressThrottler<F, T> {
+pub(crate) struct ProgressThrottler<F, T> {
     last_reported_bytes: u64,
     last_reported_time: f64,
     callback: F,
@@ -54,7 +54,12 @@ where
     /// - `byte_threshold`: Report after processing at least this many bytes
     /// - `time_threshold_ms`: Report after at least this many milliseconds
     #[must_use]
-    pub fn new(callback: F, time_fn: T, byte_threshold: u64, time_threshold_ms: f64) -> Self {
+    pub(crate) fn new(
+        callback: F,
+        time_fn: T,
+        byte_threshold: u64,
+        time_threshold_ms: f64,
+    ) -> Self {
         let now = time_fn();
         Self {
             last_reported_bytes: 0,
@@ -72,7 +77,7 @@ where
     ///
     /// # Complexity
     /// O(1): single comparison and possible callback invocation.
-    pub fn maybe_report(&mut self, processed: u64, total: u64) -> bool {
+    pub(crate) fn maybe_report(&mut self, processed: u64, total: u64) -> bool {
         let now = (self.time_fn)();
         let bytes_delta = processed.saturating_sub(self.last_reported_bytes);
 
@@ -87,21 +92,13 @@ where
             false
         }
     }
-
-    /// Forces the next call to [`maybe_report`](Self::maybe_report) to report
-    /// immediately, regardless of thresholds.  Useful for flushing at end of
-    /// stream.
-    pub const fn force_next(&mut self) {
-        self.last_reported_bytes = u64::MAX;
-        self.last_reported_time = f64::NEG_INFINITY;
-    }
 }
 
 /// Default byte interval for progress reporting (4 MiB).
-pub const PROGRESS_BYTE_INTERVAL: u64 = 4 * 1024 * 1024;
+pub(crate) const PROGRESS_BYTE_INTERVAL: u64 = 4 * 1024 * 1024;
 
 /// Default time interval for progress reporting (120 ms).
-pub const PROGRESS_TIME_INTERVAL_MS: f64 = 120.0;
+pub(crate) const PROGRESS_TIME_INTERVAL_MS: f64 = 120.0;
 
 #[cfg(test)]
 mod tests {

@@ -12,34 +12,46 @@
 
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 
+#[cfg(target_arch = "wasm32")]
 use crate::chemical_class::ChemicalClass;
-use crate::lipids::{LipidClassification, classify_spectrum, is_acyclic};
+use crate::lipids::LipidClassification;
+#[cfg(target_arch = "wasm32")]
+use crate::lipids::{classify_spectrum, is_acyclic};
+#[cfg(target_arch = "wasm32")]
 use chematic::chem;
+#[cfg(target_arch = "wasm32")]
 use chematic::smiles;
 use std::collections::HashMap;
 
 /// One `BEGIN IONS ... END IONS` record from the source MGF, together with the
 /// metadata fields relevant to lipid selection.
 #[derive(Clone, Debug)]
-pub struct SpectrumBlock {
+pub(crate) struct SpectrumBlock {
     /// 1-based position of the block within the original file.
     ///
     /// Used as a stable key for re-associating gallery items with blocks
     /// during filtered-MGF export.
     pub index: usize,
     /// Spectrum title (`TITLE=` / `NAME=`), if present.
+    #[cfg(target_arch = "wasm32")]
     pub title: Option<String>,
     /// `SMILES=` value, if present.
+    #[cfg(target_arch = "wasm32")]
     pub psm_smiles: Option<String>,
     /// `FORMULA=` value, if present.
+    #[cfg(target_arch = "wasm32")]
     pub formula: Option<String>,
     /// `CHARGE=` value, if present.
+    #[cfg(target_arch = "wasm32")]
     pub charge: Option<String>,
     /// `ADDUCT=` value, if present (e.g., "[M+H]+", "[M-H]-").
+    #[cfg(target_arch = "wasm32")]
     pub adduct: Option<String>,
     /// `IONMODE=` value (normalized to lower case), if present.
+    #[cfg(target_arch = "wasm32")]
     pub ion_mode: Option<String>,
     /// Observed precursor m/z from `PEPMASS=` / `PRECURSOR_MZ=`.
+    #[cfg(target_arch = "wasm32")]
     pub precursor_mz: Option<f64>,
     /// Result of lipid classification (populated by [`SpectrumBlock::classify`]).
     pub classification: Option<LipidClassification>,
@@ -47,15 +59,18 @@ pub struct SpectrumBlock {
     pub gallery_item_matches: Option<HashMap<String, bool>>,
     /// Pre-computed exact mass from the parsed SMILES (avoids re-parsing
     /// the SMILES in gallery rendering — the dominant cost for large files).
+    #[cfg(target_arch = "wasm32")]
     pub exact_mass: f64,
     /// Verbatim text of the block, from `BEGIN IONS` through `END IONS`.
+    #[cfg(target_arch = "wasm32")]
     pub raw: String,
 }
 
 impl SpectrumBlock {
     /// Create a new empty block with the given 1-based index.
     #[must_use]
-    pub const fn new(index: usize) -> Self {
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) const fn new(index: usize) -> Self {
         Self {
             index,
             title: None,
@@ -73,6 +88,7 @@ impl SpectrumBlock {
     }
 
     /// Parse a single metadata line (`KEY=VALUE`) into the appropriate field.
+    #[cfg(target_arch = "wasm32")]
     fn consume_metadata(&mut self, line: &str) {
         let trimmed = line.trim();
         if let Some(value) = trimmed.strip_prefix("SMILES=") {
@@ -122,6 +138,7 @@ impl SpectrumBlock {
 
     /// Parse the inline header tokens emitted on the `BEGIN IONS` line, e.g.
     /// `BEGIN IONS SMILES=... PEPMASS=100.0 CHARGE=1+`.
+    #[cfg(target_arch = "wasm32")]
     fn consume_inline_header(&mut self, header: &str) {
         for token in header.split_whitespace() {
             if token.eq_ignore_ascii_case("BEGIN") || token.eq_ignore_ascii_case("IONS") {
@@ -135,14 +152,16 @@ impl SpectrumBlock {
 
     /// Run the lipid classifier over this block's SMILES (with `FORMULA=`
     /// fallback) and store the result in [`SpectrumBlock::classification`].
-    pub fn classify(&mut self) {
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn classify(&mut self) {
         self.classification =
             classify_spectrum(self.psm_smiles.as_deref(), self.formula.as_deref());
     }
 
     /// `true` when this spectrum has at least one matching chemical class.
     #[must_use]
-    pub fn is_lipid(&self) -> bool {
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn is_lipid(&self) -> bool {
         self.gallery_item_matches
             .as_ref()
             .is_some_and(|matches| matches.values().any(|&m| m))
@@ -155,7 +174,8 @@ impl SpectrumBlock {
     /// [`gallery_item`](super::analysis::gallery_item)) reuses the cached
     /// `exact_mass` instead of re-parsing the SMILES. Only matches classes for
     /// acyclic molecules (true lipids).
-    pub fn compute_class_matches(&mut self, classes: &[ChemicalClass]) {
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn compute_class_matches(&mut self, classes: &[ChemicalClass]) {
         if let Some(smiles_str) = &self.psm_smiles
             && let Ok(molecule) = smiles::parse(smiles_str.trim())
         {
@@ -173,6 +193,8 @@ impl SpectrumBlock {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+#[cfg(target_arch = "wasm32")]
 fn parse_first_float(text: &str) -> Option<f64> {
     text.split_whitespace()
         .next()
@@ -180,6 +202,8 @@ fn parse_first_float(text: &str) -> Option<f64> {
 }
 
 /// Detect the `BEGIN IONS` header (case-insensitive, tolerate inline tokens).
+#[cfg(target_arch = "wasm32")]
+#[cfg(target_arch = "wasm32")]
 fn is_begin_ions(line: &str) -> bool {
     let trimmed = line.trim();
     trimmed.eq_ignore_ascii_case("BEGIN IONS")
@@ -188,6 +212,8 @@ fn is_begin_ions(line: &str) -> bool {
 }
 
 /// Detect the `END IONS` terminus (case-insensitive).
+#[cfg(target_arch = "wasm32")]
+#[cfg(target_arch = "wasm32")]
 fn is_end_ions(line: &str) -> bool {
     let trimmed = line.trim();
     trimmed.eq_ignore_ascii_case("END IONS")
@@ -203,13 +229,9 @@ fn is_end_ions(line: &str) -> bool {
 ///
 /// For MGF: Each block's [`SpectrumBlock::raw`] preserves the original lines.
 /// For SMILES: Each line becomes a `SpectrumBlock` with SMILES in the `psm_smiles` field.
-///
-/// # Panics
-///
-/// Panics if an `END IONS` marker appears without a matching open `BEGIN IONS`
-/// block (the in-flight block is `None`); this only happens for malformed input.
 #[must_use]
-pub fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> + 'a>>(
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> + 'a>>(
     lines: I,
 ) -> Vec<SpectrumBlock> {
     let mut blocks = Vec::new();
@@ -236,7 +258,13 @@ pub fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> + 'a>>(
             if is_end_ions(line) {
                 block.raw.push_str(line);
                 block.raw.push('\n');
-                blocks.push(current.take().expect("current block exists"));
+                // `current` is `Some` (the `as_mut()` guard above), so the
+                // let-else branch is unreachable in practice — the `else`
+                // exists only to keep this panic-free.
+                let Some(block) = current.take() else {
+                    continue;
+                };
+                blocks.push(block);
                 continue;
             }
             block.consume_metadata(line);
@@ -263,6 +291,8 @@ pub fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> + 'a>>(
 }
 
 /// Parse a single SMILES-format line into an optional [`SpectrumBlock`].
+#[cfg(target_arch = "wasm32")]
+#[cfg(target_arch = "wasm32")]
 fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
     let parts: Vec<&str> = trimmed.split('\t').collect();
     if parts.is_empty() {
@@ -302,7 +332,8 @@ fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
 ///
 /// Convenience wrapper around [`extract_blocks_from_lines`] for callers that
 /// already have the full text in memory (tests, native builds).
+#[cfg(all(test, target_arch = "wasm32"))]
 #[must_use]
-pub fn extract_blocks(content: &str) -> Vec<SpectrumBlock> {
+pub(crate) fn extract_blocks(content: &str) -> Vec<SpectrumBlock> {
     extract_blocks_from_lines(content.lines())
 }

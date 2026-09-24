@@ -25,27 +25,23 @@
 //! ```
 
 #![cfg_attr(target_arch = "wasm32", allow(clippy::future_not_send))]
-// Note: Many items in submodules are `pub` but only accessible within this crate
-// (the modules themselves are not re-exported publicly). `unreachable_pub` would
-// flag these as unreachable from external crates, but they form the internal API
-// that other modules in this crate depend on.
-#![allow(unreachable_pub)]
 
-pub mod app;
+pub(crate) mod app;
 #[cfg(any(test, target_arch = "wasm32"))]
-pub mod csv;
-pub mod document_head;
+pub(crate) mod csv;
+pub(crate) mod document_head;
 #[cfg(any(test, target_arch = "wasm32"))]
-pub mod evidence;
-pub mod literature;
-pub mod model;
+pub(crate) mod evidence;
+pub(crate) mod literature;
+pub(crate) mod model;
 #[cfg(target_arch = "wasm32")]
-pub mod pipeline;
+pub(crate) mod pipeline;
 #[cfg(target_arch = "wasm32")]
-pub mod qlever;
+pub(crate) mod qlever;
 #[cfg(target_arch = "wasm32")]
-pub mod rdkit;
-pub mod rdkit_bridge;
-pub mod styles;
+pub(crate) mod rdkit;
+pub(crate) mod rdkit_bridge;
+pub(crate) mod styles;
 
+/// Root application component. The only externally consumed item.
 pub use app::app;

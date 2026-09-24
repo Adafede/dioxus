@@ -116,7 +116,7 @@ fn start_analysis(
 /// Public entry point: delegates to [`start_analysis`] with the uploaded blob.
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
-pub fn begin_analysis_from_blob(
+pub(super) fn begin_analysis_from_blob(
     blob: Blob,
     source_name: String,
     file_name_signal: Signal<String>,
@@ -140,7 +140,7 @@ pub fn begin_analysis_from_blob(
 
 /// Loads the curated example lipid dataset (74 SMILES) and runs analysis.
 #[cfg(target_arch = "wasm32")]
-pub fn load_example_dataset(
+pub(super) fn load_example_dataset(
     file_name_signal: Signal<String>,
     status: Signal<String>,
     busy: Signal<bool>,

@@ -54,13 +54,13 @@ async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
 
 /// Downloads SVG content as a file.
 #[cfg(target_arch = "wasm32")]
-pub fn download_svg(svg: &str, filename: &str) {
+pub(crate) fn download_svg(svg: &str, filename: &str) {
     let _ = upload::download_text(svg, filename);
 }
 
 /// Downloads recalibrated MGF content as a `.mgf` file.
 #[cfg(target_arch = "wasm32")]
-pub fn download_recalibrated_mgf(filename: &str, content: &str) -> Result<(), String> {
+pub(crate) fn download_recalibrated_mgf(filename: &str, content: &str) -> Result<(), String> {
     let base = filename.strip_suffix(".mgf").unwrap_or(filename);
     let download_name = format!("{base}_recalibrated.mgf");
     upload::download_text(content, &download_name)
@@ -71,7 +71,7 @@ pub fn download_recalibrated_mgf(filename: &str, content: &str) -> Result<(), St
 /// # Errors
 /// Always returns an error on native targets.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn download_recalibrated_mgf(_filename: &str, _content: &str) -> Result<(), String> {
+pub(super) fn download_recalibrated_mgf(_filename: &str, _content: &str) -> Result<(), String> {
     Err("Download is only available in the browser".to_string())
 }
 
@@ -142,7 +142,7 @@ fn start_analysis(
 
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
-pub fn begin_analysis_from_blob(
+pub(crate) fn begin_analysis_from_blob(
     blob: Blob,
     file_name: String,
     file_name_signal: Signal<String>,
@@ -181,7 +181,7 @@ pub fn begin_analysis_from_blob(
 // The native arm calls `.set` on these bindings, while the wasm32 arm only
 // forwards the handles to `begin_analysis_from_blob`, so the `mut` qualifiers
 // (and `drag_active`/`original_mgf_content`) look unused on one target.
-pub fn attempt_analysis_from_files(
+pub(super) fn attempt_analysis_from_files(
     files: &[FileData],
     mut file_name: Signal<String>,
     mut status: Signal<String>,
@@ -218,7 +218,7 @@ pub fn attempt_analysis_from_files(
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn load_example_mgf(
+pub(crate) fn load_example_mgf(
     status: Signal<String>,
     metrics: Signal<Option<PrecursorStats>>,
     busy: Signal<bool>,

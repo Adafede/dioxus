@@ -18,25 +18,25 @@ fn classify_source(source_class: &str) -> &str {
 
 /// Returns `true` when the source class indicates a natural-product origin.
 #[must_use]
-pub fn is_natural_source(source_class: &str) -> bool {
+pub(super) fn is_natural_source(source_class: &str) -> bool {
     classify_source(source_class) == "natural"
 }
 
 /// Returns `true` when the source class indicates a synthetic origin.
 #[must_use]
-pub fn is_synthetic_source(source_class: &str) -> bool {
+pub(super) fn is_synthetic_source(source_class: &str) -> bool {
     classify_source(source_class) == "synthetic"
 }
 
 /// Returns `true` when the source class is unclassified (neither natural nor synthetic).
 #[must_use]
-pub fn is_unclassified_source(source_class: &str) -> bool {
+pub(super) fn is_unclassified_source(source_class: &str) -> bool {
     classify_source(source_class) == "unknown"
 }
 
 /// Returns `"chip chip-np"` for natural sources, `"chip alt"` otherwise.
 #[must_use]
-pub fn chip_class_for(source_class: &str) -> &'static str {
+pub(super) fn chip_class_for(source_class: &str) -> &'static str {
     if is_natural_source(source_class) {
         "chip chip-np"
     } else {
@@ -47,7 +47,7 @@ pub fn chip_class_for(source_class: &str) -> &'static str {
 /// Build the display label for a motif, including kingdom attribution
 /// for natural sources.
 #[must_use]
-pub fn display_label(
+pub(super) fn display_label(
     source_class: &str,
     label: &str,
     kingdom: &str,
@@ -72,27 +72,27 @@ pub fn display_label(
 // ─── Thin wrappers for MotifSummary ───────────────────────────────────
 
 #[must_use]
-pub fn summary_is_natural(motif: &MotifSummary) -> bool {
+pub(super) fn summary_is_natural(motif: &MotifSummary) -> bool {
     is_natural_source(&motif.source_class)
 }
 
 #[must_use]
-pub fn summary_is_synthetic(motif: &MotifSummary) -> bool {
+pub(super) fn summary_is_synthetic(motif: &MotifSummary) -> bool {
     is_synthetic_source(&motif.source_class)
 }
 
 #[must_use]
-pub fn summary_is_unclassified(motif: &MotifSummary) -> bool {
+pub(super) fn summary_is_unclassified(motif: &MotifSummary) -> bool {
     is_unclassified_source(&motif.source_class)
 }
 
 #[must_use]
-pub fn summary_chip_class(motif: &MotifSummary) -> &'static str {
+pub(super) fn summary_chip_class(motif: &MotifSummary) -> &'static str {
     chip_class_for(&motif.source_class)
 }
 
 #[must_use]
-pub fn summary_display_label(motif: &MotifSummary) -> String {
+pub(super) fn summary_display_label(motif: &MotifSummary) -> String {
     display_label(
         &motif.source_class,
         &motif.label,
@@ -104,27 +104,27 @@ pub fn summary_display_label(motif: &MotifSummary) -> String {
 // ─── Thin wrappers for RdkitMotifHit ──────────────────────────────────
 
 #[must_use]
-pub fn motif_is_natural(motif: &RdkitMotifHit) -> bool {
+pub(super) fn motif_is_natural(motif: &RdkitMotifHit) -> bool {
     is_natural_source(&motif.source_class)
 }
 
 #[must_use]
-pub fn motif_is_synthetic(motif: &RdkitMotifHit) -> bool {
+pub(super) fn motif_is_synthetic(motif: &RdkitMotifHit) -> bool {
     is_synthetic_source(&motif.source_class)
 }
 
 #[must_use]
-pub fn motif_is_unclassified(motif: &RdkitMotifHit) -> bool {
+pub(super) fn motif_is_unclassified(motif: &RdkitMotifHit) -> bool {
     is_unclassified_source(&motif.source_class)
 }
 
 #[must_use]
-pub fn motif_chip_class(motif: &RdkitMotifHit) -> &'static str {
+pub(super) fn motif_chip_class(motif: &RdkitMotifHit) -> &'static str {
     chip_class_for(&motif.source_class)
 }
 
 #[must_use]
-pub fn motif_display_label(motif: &RdkitMotifHit) -> String {
+pub(super) fn motif_display_label(motif: &RdkitMotifHit) -> String {
     display_label(
         &motif.source_class,
         &motif.label,

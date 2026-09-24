@@ -12,7 +12,7 @@ use std::path::Path;
 
 /// Supported input/output formats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LipidFormat {
+pub(crate) enum LipidFormat {
     /// MGF (Mascot Generic Format) - mass spectrometry data with SMILES/formula metadata
     Mgf,
     /// SMILES - plain text list of SMILES strings (one per line, with optional IDs)
@@ -22,7 +22,7 @@ pub enum LipidFormat {
 impl LipidFormat {
     /// Detect format from file extension.
     #[must_use]
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Option<Self> {
+    pub(crate) fn from_path<P: AsRef<Path>>(path: P) -> Option<Self> {
         let path = path.as_ref();
         let ext = path.extension()?.to_str()?.to_lowercase();
         match ext.as_str() {
@@ -34,7 +34,9 @@ impl LipidFormat {
 
     /// Detect format from file contents by examining the first non-empty lines.
     #[must_use]
-    pub fn detect_from_content(content: &str) -> Option<Self> {
+    #[cfg(test)]
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn detect_from_content(content: &str) -> Option<Self> {
         let trimmed = content.trim();
 
         // Check for MGF format: look for "BEGIN IONS" block
@@ -73,19 +75,12 @@ impl LipidFormat {
 
     /// Get the file extension for this format.
     #[must_use]
-    pub const fn extension(self) -> &'static str {
+    #[cfg(test)]
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) const fn extension(self) -> &'static str {
         match self {
             Self::Mgf => "mgf",
             Self::Smiles => "smi",
-        }
-    }
-
-    /// Get a descriptive label for this format.
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Mgf => "MGF (Mass Spectrometry)",
-            Self::Smiles => "SMILES (Text)",
         }
     }
 }

@@ -60,17 +60,13 @@
 //! No external services or native binaries required.  All processing happens
 //! in the browser — your data never leaves your computer.
 
-// Note: Many items in submodules are `pub` but only accessible within this crate.
-// `unreachable_pub` would flag these as unreachable from external crates, but they
-// form the internal API that other modules in this crate depend on.
-#![allow(unreachable_pub)]
+pub(crate) mod app;
+pub(crate) mod chemical_class;
+pub(crate) mod depict_simple;
+pub(crate) mod examples;
+pub(crate) mod format;
+pub(crate) mod lipids;
+pub(crate) mod parser;
 
-pub mod app;
-pub mod chemical_class;
-pub mod depict_simple;
-pub mod examples;
-pub mod format;
-pub mod lipids;
-pub mod parser;
-
+/// Root application component. The only externally consumed item.
 pub use app::app;

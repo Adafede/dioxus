@@ -85,7 +85,8 @@ fn click_download_anchor(href: &str, filename: &str, new_tab: bool) -> Result<bo
 /// Removes control characters and replaces path separators and quotes with
 /// underscores.  No external crate required.
 #[must_use]
-pub fn sanitize_filename(input: &str) -> String {
+#[cfg(any(target_arch = "wasm32", test))]
+fn sanitize_filename(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for c in input.trim().chars() {
         if c.is_control() {

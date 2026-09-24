@@ -9,7 +9,7 @@ use crate::model::RawRow;
 ///
 /// Returns an error if the input is empty, the CSV is malformed,
 /// or no data rows are found.
-pub fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
+pub(crate) fn parse_csv_rows(text: &str) -> Result<Vec<RawRow>, String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Err("Input is empty".to_string());
@@ -121,6 +121,7 @@ fn label_for_record(
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used)] // tests expect valid CSV fixtures to parse without error
 mod tests {
     use super::*;
 

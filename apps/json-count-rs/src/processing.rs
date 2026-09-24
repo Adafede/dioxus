@@ -136,7 +136,7 @@ use dioxus::prelude::*;
 use upload::{Blob, BlobCursor, UploadError};
 
 #[cfg(target_arch = "wasm32")]
-pub fn begin_scan_from_blob(
+pub(crate) fn begin_scan_from_blob(
     blob: Blob,
     file_name: String,
     mut file_name_signal: Signal<String>,

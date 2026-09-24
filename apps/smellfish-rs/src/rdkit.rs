@@ -13,7 +13,7 @@ use wasm_bindgen_futures::JsFuture;
 /// Returns an error if the file read promise is rejected or does not resolve
 /// to a string.
 #[cfg(target_arch = "wasm32")]
-pub async fn read_file_text(file: &web_sys::File) -> Result<String, String> {
+pub(crate) async fn read_file_text(file: &web_sys::File) -> Result<String, String> {
     let promise = file.text();
     let value = JsFuture::from(promise)
         .await
@@ -31,7 +31,7 @@ pub async fn read_file_text(file: &web_sys::File) -> Result<String, String> {
 /// deserialized.
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::module_name_repetitions)] // RdkitInspectResponse preserves domain naming
-pub async fn rdkit_inspect(smiles: &str) -> Result<RdkitInspectResponse, String> {
+pub(crate) async fn rdkit_inspect(smiles: &str) -> Result<RdkitInspectResponse, String> {
     let value = rdkit_bridge_call("inspect", smiles).await?;
     let json = js_value_to_json(value)?;
     serde_json::from_value(json).map_err(|err| err.to_string())

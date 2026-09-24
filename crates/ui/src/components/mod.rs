@@ -5,13 +5,13 @@
 //!
 //! All components use pure Rust styling via [`crate::theme`], no external CSS files.
 
-pub mod button;
-pub mod card;
-pub mod footer;
-pub mod header;
-pub mod notice;
-pub mod segmented_control;
-pub mod upload_zone;
+mod button;
+mod card;
+mod footer;
+mod header;
+mod notice;
+mod segmented_control;
+mod upload_zone;
 
 pub use button::{Button, ButtonVariant};
 pub use card::Card;

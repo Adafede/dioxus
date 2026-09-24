@@ -11,11 +11,11 @@ use crate::metrics::{AdductFamily, PlotPoint, ScatterPlotData};
 
 use super::color::{adduct_family_color_hex, adduct_family_rank};
 
-pub fn usize_to_f64(value: usize) -> f64 {
+pub(super) fn usize_to_f64(value: usize) -> f64 {
     f64::from(u32::try_from(value).unwrap_or(u32::MAX))
 }
 
-pub fn floor_to_usize(value: f64) -> usize {
+pub(super) fn floor_to_usize(value: f64) -> usize {
     if !value.is_finite() || value <= 0.0 {
         return 0;
     }
@@ -31,7 +31,7 @@ pub fn floor_to_usize(value: f64) -> usize {
     }
 }
 
-pub fn mean_and_std_dev(values: &[f64]) -> Option<(f64, f64)> {
+pub(super) fn mean_and_std_dev(values: &[f64]) -> Option<(f64, f64)> {
     let filtered = values
         .iter()
         .copied()
@@ -137,7 +137,7 @@ where
     }
 }
 
-pub fn embed_svg_legend(
+pub(super) fn embed_svg_legend(
     svg_markup: &str,
     legend_items: &[(String, String)],
     title: &str,
@@ -240,7 +240,7 @@ pub fn display_error_value_for_point(point: &PlotPoint, unit: &str) -> f64 {
 }
 
 #[must_use]
-pub fn fallback_y_limit_for_unit(unit: &str) -> f64 {
+pub(super) fn fallback_y_limit_for_unit(unit: &str) -> f64 {
     match unit {
         "ppm" => 10.0,
         _ => 5.0,

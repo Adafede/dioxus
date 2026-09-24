@@ -6,7 +6,8 @@
 //! Covers all 8 categories: FA, GL, GP, SP, ST, PR, SL, PK
 
 /// Real lipid examples from `LipidMaps` LMSD dataset.
-pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
+#[cfg(target_arch = "wasm32")]
+pub(crate) const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
     // === Fatty Acyls (FA) ===
     (
         "10Z,13Z,16Z-nonadecatrienenitrile",
@@ -991,7 +992,8 @@ pub const EXAMPLE_LIPIDS: &[(&str, &str, &str)] = &[
 
 /// Convert example list to query format (just SMILES + description lines separated by newlines).
 #[must_use]
-pub fn example_smiles() -> Vec<String> {
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn example_smiles() -> Vec<String> {
     EXAMPLE_LIPIDS
         .iter()
         .map(|(id, smiles, _)| format!("{id}\t{smiles}"))

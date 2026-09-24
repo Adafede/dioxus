@@ -18,7 +18,7 @@ use crate::parser::SpectrumBlock;
 /// Download filtered MGF content with class tags, applying all filter selections.
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
-pub fn download_filtered_mgf(
+pub(super) fn download_filtered_mgf(
     blocks: &[SpectrumBlock],
     block_class_tags: &[Vec<(String, String)>],
     mz_min_val: f64,
@@ -56,7 +56,7 @@ pub fn download_filtered_mgf(
 
 /// Download filtered SMILES content with class tags, applying all filter selections.
 #[cfg(target_arch = "wasm32")]
-pub fn download_filtered_smiles(
+pub(super) fn download_filtered_smiles(
     gallery_smiles: &[GallerySmilesEntry],
     mz_min_val: f64,
     mz_max_val: f64,

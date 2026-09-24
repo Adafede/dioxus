@@ -402,6 +402,7 @@ pub fn render_recalibration_summary_text(
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used)] // tests unwrap the empty-error Result to assert the rendered SVG
 mod tests {
     use super::*;
 

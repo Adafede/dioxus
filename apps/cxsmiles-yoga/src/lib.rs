@@ -49,4 +49,5 @@ pub mod cxsmiles;
 pub mod depict;
 pub mod examples;
 
+/// Root application component. The only externally consumed item.
 pub use app::app;

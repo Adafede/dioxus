@@ -12,19 +12,19 @@
 
 mod app_card;
 
-pub use app_card::AppCard;
+pub(crate) use app_card::AppCard;
 
 /// Metadata for an application card.
 ///
 /// Used by [`AppCard`] to render application information.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AppInfo {
+pub(crate) struct AppInfo {
     /// Unique identifier (used as React key).
-    pub id: &'static str,
+    pub(crate) id: &'static str,
     /// Emoji and title (e.g., "🪷 LOTUS Wikidata Explorer").
-    pub title: &'static str,
+    pub(crate) title: &'static str,
     /// Relative path to application (e.g., "./lotus-explore-rs/").
-    pub path: &'static str,
+    pub(crate) path: &'static str,
     /// Short, clear description of functionality.
-    pub description: &'static str,
+    pub(crate) description: &'static str,
 }

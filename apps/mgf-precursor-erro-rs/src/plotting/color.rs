@@ -11,7 +11,7 @@ use prismatica::crameri::BATLOW;
 
 use crate::metrics::AdductFamily;
 
-pub const fn adduct_family_rank(family: AdductFamily) -> usize {
+pub(super) const fn adduct_family_rank(family: AdductFamily) -> usize {
     match family {
         AdductFamily::Protonated => 0,
         AdductFamily::Deprotonated => 1,

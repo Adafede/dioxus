@@ -30,25 +30,21 @@
     clippy::cast_possible_wrap,
     clippy::cast_lossless
 )]
-#![allow(unreachable_pub)] // Internal modules: pub items within pub(crate) modules are crate-internal
 
 use chematic::core::Molecule;
 
-// Public re-exports (unchanged from the single-file layout): the writer cannot
-// emit `*`, so callers reach for `canonical_smiles`/`parse`/`write` via this
-// module too.
-pub use chematic::smiles::{canonical_smiles, parse, write};
+// Crate-internal re-exports: the writer cannot emit `*`, so in-crate callers
+// reach for `canonical_smiles`/`parse`/`write` via this module.
+pub use chematic::smiles::canonical_smiles;
 
-pub(crate) mod graph;
-pub(crate) mod parse;
-pub(crate) mod positional;
-pub(crate) mod repeating;
-pub(crate) mod roundtrip;
-pub(crate) mod types;
+pub mod graph;
+pub mod parse;
+pub mod positional;
+pub mod repeating;
+pub mod roundtrip;
+pub mod types;
 
-pub use types::{
-    Confidence, Construct, Coverage, CxError, CxResult, CxResult_, FloatingPart, RepeatUnit,
-};
+pub(crate) use types::{Confidence, Construct, Coverage, CxError, CxResult, CxResult_};
 
 // Internal helpers consumed by the orchestrator below. `parse` is also a
 // re-exported *value* (the chematic parser); there is no namespace clash because
@@ -67,15 +63,10 @@ const CLUSTER_TANIMOTO: f64 = 0.3;
 
 /// Generate a CX-SMILES from a list of related SMILES (one per entry).
 ///
-/// # Panics
-///
-/// Panics if clustering discards every group (unreachable: at least one
-/// cluster is always retained).
-///
 /// # Errors
 ///
 /// Returns a [`CxError`] if any input fails to parse as SMILES.
-pub fn generate(smiles: &[String]) -> CxResult_ {
+pub(crate) fn generate(smiles: &[String]) -> CxResult_ {
     let mols = parse_list(smiles)?;
     if mols.is_empty() {
         return Err(CxError("no parseable SMILES in input".into()));
@@ -85,11 +76,9 @@ pub fn generate(smiles: &[String]) -> CxResult_ {
         let smi = canonical_smiles(mol);
         return Ok(CxResult {
             cx_smiles: smi.clone(),
-            base_smiles: smi.clone(),
             construct: Construct::BestEffort,
             scaffold_smiles: smi.clone(),
             floating: Vec::new(),
-            repeating: None,
             confidence: Confidence {
                 coverage: Coverage {
                     covered: 1,
@@ -102,14 +91,15 @@ pub fn generate(smiles: &[String]) -> CxResult_ {
     }
 
     let clusters = cluster(&mols, CLUSTER_TANIMOTO);
-    let group: Vec<Molecule> = if clusters.iter().map(Vec::len).max().unwrap_or(0) >= 2 {
-        clusters
-            .into_iter()
-            .max_by_key(Vec::len)
-            .expect("cluster selection: non-empty by the ≥2-cluster guard")
-    } else {
-        mols
-    };
+    // Largest cluster, but only if it actually contains ≥2 molecules (a
+    // singleton "group" means no shared scaffold to collapse); otherwise fall
+    // back to treating every input as its own group. Non-panicking: `unwrap_or`
+    // handles both the empty-cluster and singleton cases.
+    let group: Vec<Molecule> = clusters
+        .into_iter()
+        .max_by_key(Vec::len)
+        .filter(|c| c.len() >= 2)
+        .unwrap_or(mols);
 
     let counts: Vec<usize> = group.iter().map(Molecule::atom_count).collect();
     if counts.iter().all(|c| *c == counts[0]) {
@@ -124,8 +114,11 @@ pub fn generate(smiles: &[String]) -> CxResult_ {
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used)] // tests unwrap fixtures to fail-fast on parse/generate errors
+#[expect(clippy::expect_used)] // tests expect known fixtures (O*, C(=O)(C)*) to be present
 mod tests {
     use super::*;
+    use chematic::smiles::{parse, write};
 
     fn lines(s: &str) -> Vec<String> {
         s.lines()

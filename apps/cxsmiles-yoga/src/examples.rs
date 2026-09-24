@@ -73,10 +73,10 @@ pub fn example_smiles(id: &str) -> Option<&'static str> {
 
 /// The `SegmentedControl` items for the example picker.
 #[must_use]
-pub fn example_items() -> Vec<ui::components::SegmentedControlItem> {
+pub fn example_items() -> Vec<ui::prelude::SegmentedControlItem> {
     EXAMPLE_SETS
         .iter()
-        .map(|e| ui::components::SegmentedControlItem {
+        .map(|e| ui::prelude::SegmentedControlItem {
             label: e.label.to_string(),
             value: e.id.to_string(),
         })

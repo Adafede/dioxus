@@ -1,23 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
+#[cfg(target_arch = "wasm32")]
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, BinaryHeap};
+use std::collections::BTreeMap;
+#[cfg(target_arch = "wasm32")]
+use std::collections::BinaryHeap;
 
-pub const MAX_PLOT_POINTS: usize = 10_000;
-pub const MAX_ECDF_POINTS: usize = 20_000;
+#[cfg(target_arch = "wasm32")]
+pub(crate) const MAX_PLOT_POINTS: usize = 10_000;
+#[cfg(target_arch = "wasm32")]
+pub(crate) const MAX_ECDF_POINTS: usize = 20_000;
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug, PartialEq)]
-pub struct HistogramData {
+pub(crate) struct HistogramData {
     pub bins: Vec<usize>,
     pub min: f64,
     pub max: f64,
 }
 
+#[cfg(target_arch = "wasm32")]
 fn usize_to_f64(value: usize) -> f64 {
     f64::from(u32::try_from(value).unwrap_or(u32::MAX))
 }
 
+#[cfg(target_arch = "wasm32")]
 fn floor_to_usize(value: f64) -> usize {
     if !value.is_finite() || value <= 0.0 {
         return 0;
@@ -34,9 +42,10 @@ fn floor_to_usize(value: f64) -> usize {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl HistogramData {
     #[must_use]
-    pub fn new(bin_count: usize, min: f64, max: f64) -> Self {
+    pub(crate) fn new(bin_count: usize, min: f64, max: f64) -> Self {
         Self {
             bins: vec![0; bin_count],
             min,
@@ -44,7 +53,7 @@ impl HistogramData {
         }
     }
 
-    pub fn add_value(&mut self, value: f64) {
+    pub(crate) fn add_value(&mut self, value: f64) {
         if self.bins.is_empty() || !value.is_finite() {
             return;
         }
@@ -73,7 +82,8 @@ pub enum AdductFamily {
 
 impl AdductFamily {
     #[must_use]
-    pub fn from_label(label: &str) -> Self {
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn from_label(label: &str) -> Self {
         let normalized = label.trim().replace(' ', "").to_ascii_uppercase();
         if normalized.contains("[M+H]")
             || normalized.contains("[M+2H]")
@@ -100,7 +110,7 @@ impl AdductFamily {
     }
 
     #[must_use]
-    pub const fn as_str(self) -> &'static str {
+    pub(crate) const fn as_str(self) -> &'static str {
         match self {
             Self::Protonated => "Protonated",
             Self::Deprotonated => "Deprotonated",
@@ -122,14 +132,16 @@ pub struct PlotPoint {
     pub expected_mass: Option<f64>, // Theoretical precursor mass for error calculation
 }
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug, Default)]
-pub struct PlotPointSample {
+pub(crate) struct PlotPointSample {
     pub seen: usize,
     pub points: Vec<PlotPoint>,
 }
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Copy, Debug)]
-pub struct ErrorMeasurement<'a> {
+pub(crate) struct ErrorMeasurement<'a> {
     pub abs_error_da: f64,
     pub abs_ppm: f64,
     pub adduct_family: AdductFamily,
@@ -143,6 +155,7 @@ pub struct ErrorMeasurement<'a> {
     pub formula: Option<&'a str>,
 }
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Copy, Debug)]
 struct HighErrorSmilesUpdate<'a> {
     abs_error_da: f64,
@@ -154,8 +167,9 @@ struct HighErrorSmilesUpdate<'a> {
     formula: Option<&'a str>,
 }
 
+#[cfg(target_arch = "wasm32")]
 impl PlotPointSample {
-    pub fn push(&mut self, point: PlotPoint) {
+    pub(crate) fn push(&mut self, point: PlotPoint) {
         self.seen = self.seen.saturating_add(1);
         if self.points.len() < MAX_PLOT_POINTS {
             self.points.push(point);
@@ -187,13 +201,13 @@ pub struct ScatterPlotData {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WarningDetail {
+pub(crate) struct WarningDetail {
     pub count: usize,
     pub formula: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct HighErrorSmilesDetail {
+pub(crate) struct HighErrorSmilesDetail {
     pub count: usize,
     pub calculated_mass: Option<f64>,
     pub expected_mass: Option<f64>,
@@ -203,47 +217,46 @@ pub struct HighErrorSmilesDetail {
     pub observed_precursor_mz: Option<f64>,
 }
 
-#[derive(Clone, Debug)]
-pub struct AdductClass {
-    pub label: String,
-    pub display: String,
-    pub family: String,
-    pub charge: i32,
-}
-
+#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Copy, Debug)]
-pub struct OrderedF64(pub f64);
+pub(crate) struct OrderedF64(pub f64);
 
+#[cfg(target_arch = "wasm32")]
 impl PartialEq for OrderedF64 {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl Eq for OrderedF64 {}
 
+#[cfg(target_arch = "wasm32")]
 impl Ord for OrderedF64 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.total_cmp(&other.0)
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl PartialOrd for OrderedF64 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug, Default)]
-pub struct MedianTracker {
+pub(crate) struct MedianTracker {
     lower: BinaryHeap<OrderedF64>,
     upper: BinaryHeap<Reverse<OrderedF64>>,
     lower_len: usize,
     upper_len: usize,
 }
 
+#[cfg(target_arch = "wasm32")]
 impl MedianTracker {
-    pub fn push(&mut self, value: f64) {
+    pub(crate) fn push(&mut self, value: f64) {
         let should_go_lower =
             self.lower.is_empty() || self.lower.peek().is_none_or(|entry| value <= entry.0);
         if should_go_lower {
@@ -269,7 +282,7 @@ impl MedianTracker {
         }
     }
 
-    pub fn merge(&mut self, mut other: Self) {
+    pub(crate) fn merge(&mut self, mut other: Self) {
         let mut values = Vec::with_capacity(other.lower_len + other.upper_len);
         while let Some(OrderedF64(value)) = other.lower.pop() {
             values.push(value);
@@ -283,7 +296,7 @@ impl MedianTracker {
     }
 
     #[must_use]
-    pub fn median(&self) -> f64 {
+    pub(crate) fn median(&self) -> f64 {
         if self.lower_len == 0 && self.upper_len == 0 {
             0.0
         } else if self.lower_len > self.upper_len {
@@ -297,11 +310,12 @@ impl MedianTracker {
 }
 
 #[derive(Clone, Debug)]
-pub struct PrecursorStats {
+pub(crate) struct PrecursorStats {
     pub spectra: usize,
     pub total_spectra: usize,
     pub skipped_spectra: usize,
     pub spectra_with_reference_mass: usize,
+    #[cfg(target_arch = "wasm32")]
     pub reference_mass_source: String,
     pub unparsed_smiles: usize,
     pub unparsed_smiles_warnings: BTreeMap<String, WarningDetail>,
@@ -309,29 +323,47 @@ pub struct PrecursorStats {
     pub observed_precursor_max: f64,
     pub observed_precursor_mean: f64,
     pub observed_precursor_median: f64,
+    #[cfg(target_arch = "wasm32")]
     pub observed_precursor_median_tracker: MedianTracker,
+    #[cfg(target_arch = "wasm32")]
     pub sample_observed_precursor: f64,
+    #[cfg(target_arch = "wasm32")]
     pub abs_error_da_min: f64,
+    #[cfg(target_arch = "wasm32")]
     pub abs_error_da_max: f64,
     pub abs_error_da_mean: f64,
     pub abs_error_da_median: f64,
+    #[cfg(target_arch = "wasm32")]
     pub abs_error_da_median_tracker: MedianTracker,
+    #[cfg(target_arch = "wasm32")]
     pub sample_abs_error_da: f64,
     pub abs_error_da_rms: f64,
+    #[cfg(target_arch = "wasm32")]
     pub abs_error_ppm_min: f64,
+    #[cfg(target_arch = "wasm32")]
     pub abs_error_ppm_max: f64,
     pub abs_error_ppm_mean: f64,
     pub abs_error_ppm_median: f64,
+    #[cfg(target_arch = "wasm32")]
     pub abs_error_ppm_median_tracker: MedianTracker,
+    #[cfg(target_arch = "wasm32")]
     pub sample_abs_error_ppm: f64,
     pub abs_error_ppm_rms: f64,
+    #[cfg(target_arch = "wasm32")]
     pub signed_error_da_mean: f64,
+    #[cfg(target_arch = "wasm32")]
     pub signed_error_da_median: f64,
+    #[cfg(target_arch = "wasm32")]
     pub signed_error_da_median_tracker: MedianTracker,
+    #[cfg(target_arch = "wasm32")]
     pub sample_signed_error_da: f64,
+    #[cfg(target_arch = "wasm32")]
     pub signed_error_ppm_mean: f64,
+    #[cfg(target_arch = "wasm32")]
     pub signed_error_ppm_median: f64,
+    #[cfg(target_arch = "wasm32")]
     pub signed_error_ppm_median_tracker: MedianTracker,
+    #[cfg(target_arch = "wasm32")]
     pub sample_signed_error_ppm: f64,
     pub within_0_1_da: usize,
     pub within_0_5_da: usize,
@@ -343,13 +375,18 @@ pub struct PrecursorStats {
     pub within_5_ppm: usize,
     pub within_10_ppm: usize,
     pub above_10_ppm: usize,
+    #[cfg(target_arch = "wasm32")]
     pub da_error_histogram: HistogramData,
+    #[cfg(target_arch = "wasm32")]
     pub ppm_error_histogram: HistogramData,
     pub absolute_error_da_values: Vec<f64>,
     pub absolute_error_ppm_values: Vec<f64>,
+    #[cfg(target_arch = "wasm32")]
     pub absolute_error_da_sample_seen: usize,
+    #[cfg(target_arch = "wasm32")]
     pub absolute_error_ppm_sample_seen: usize,
     pub plot_points: Vec<PlotPoint>,
+    #[cfg(target_arch = "wasm32")]
     pub plot_point_stream_seen: usize,
     pub unrecognized_adducts: BTreeMap<String, usize>,
     pub high_error_smiles: BTreeMap<String, HighErrorSmilesDetail>,
@@ -362,6 +399,7 @@ impl Default for PrecursorStats {
             total_spectra: 0,
             skipped_spectra: 0,
             spectra_with_reference_mass: 0,
+            #[cfg(target_arch = "wasm32")]
             reference_mass_source: "none".to_string(),
             unparsed_smiles: 0,
             unparsed_smiles_warnings: BTreeMap::new(),
@@ -369,29 +407,47 @@ impl Default for PrecursorStats {
             observed_precursor_max: 0.0,
             observed_precursor_mean: 0.0,
             observed_precursor_median: 0.0,
+            #[cfg(target_arch = "wasm32")]
             observed_precursor_median_tracker: MedianTracker::default(),
+            #[cfg(target_arch = "wasm32")]
             sample_observed_precursor: 0.0,
+            #[cfg(target_arch = "wasm32")]
             abs_error_da_min: 0.0,
+            #[cfg(target_arch = "wasm32")]
             abs_error_da_max: 0.0,
             abs_error_da_mean: 0.0,
             abs_error_da_median: 0.0,
+            #[cfg(target_arch = "wasm32")]
             abs_error_da_median_tracker: MedianTracker::default(),
+            #[cfg(target_arch = "wasm32")]
             sample_abs_error_da: 0.0,
             abs_error_da_rms: 0.0,
+            #[cfg(target_arch = "wasm32")]
             abs_error_ppm_min: 0.0,
+            #[cfg(target_arch = "wasm32")]
             abs_error_ppm_max: 0.0,
             abs_error_ppm_mean: 0.0,
             abs_error_ppm_median: 0.0,
+            #[cfg(target_arch = "wasm32")]
             abs_error_ppm_median_tracker: MedianTracker::default(),
+            #[cfg(target_arch = "wasm32")]
             sample_abs_error_ppm: 0.0,
             abs_error_ppm_rms: 0.0,
+            #[cfg(target_arch = "wasm32")]
             signed_error_da_mean: 0.0,
+            #[cfg(target_arch = "wasm32")]
             signed_error_da_median: 0.0,
+            #[cfg(target_arch = "wasm32")]
             signed_error_da_median_tracker: MedianTracker::default(),
+            #[cfg(target_arch = "wasm32")]
             sample_signed_error_da: 0.0,
+            #[cfg(target_arch = "wasm32")]
             signed_error_ppm_mean: 0.0,
+            #[cfg(target_arch = "wasm32")]
             signed_error_ppm_median: 0.0,
+            #[cfg(target_arch = "wasm32")]
             signed_error_ppm_median_tracker: MedianTracker::default(),
+            #[cfg(target_arch = "wasm32")]
             sample_signed_error_ppm: 0.0,
             within_0_1_da: 0,
             within_0_5_da: 0,
@@ -403,13 +459,18 @@ impl Default for PrecursorStats {
             within_5_ppm: 0,
             within_10_ppm: 0,
             above_10_ppm: 0,
+            #[cfg(target_arch = "wasm32")]
             da_error_histogram: HistogramData::new(48, 0.0, 0.5),
+            #[cfg(target_arch = "wasm32")]
             ppm_error_histogram: HistogramData::new(48, 0.0, 50.0),
             absolute_error_da_values: Vec::new(),
             absolute_error_ppm_values: Vec::new(),
+            #[cfg(target_arch = "wasm32")]
             absolute_error_da_sample_seen: 0,
+            #[cfg(target_arch = "wasm32")]
             absolute_error_ppm_sample_seen: 0,
             plot_points: Vec::new(),
+            #[cfg(target_arch = "wasm32")]
             plot_point_stream_seen: 0,
             unrecognized_adducts: BTreeMap::new(),
             high_error_smiles: BTreeMap::new(),
@@ -417,6 +478,7 @@ impl Default for PrecursorStats {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl PrecursorStats {
     fn push_sampled_value(value: f64, values: &mut Vec<f64>, seen: &mut usize) {
         *seen = seen.saturating_add(1);
@@ -460,12 +522,7 @@ impl PrecursorStats {
         }
     }
 
-    pub fn record_error(&mut self, measurement: ErrorMeasurement<'_>) {
-        let mut no_plot_sample = None;
-        self.record_error_with_plot_sample(measurement, &mut no_plot_sample);
-    }
-
-    pub fn record_error_with_plot_sample(
+    pub(crate) fn record_error_with_plot_sample(
         &mut self,
         measurement: ErrorMeasurement<'_>,
         plot_sample: &mut Option<&mut PlotPointSample>,
@@ -609,6 +666,8 @@ impl PrecursorStats {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 mod merge;
 
-pub use merge::*;
+#[cfg(target_arch = "wasm32")]
+pub(crate) use merge::*;

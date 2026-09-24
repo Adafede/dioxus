@@ -31,7 +31,7 @@ use crate::model::{RdkitMotifHit, normalized_source_class};
 /// signal.
 #[cfg(target_arch = "wasm32")]
 #[must_use]
-pub fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
+pub(crate) fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     let mut checks: Vec<ChemistCheck> = Vec::with_capacity(3);
 
     // 1 — NP-likeness score
@@ -165,27 +165,27 @@ fn matches_any(lowercase_label: &str, motifs: &[&str]) -> bool {
 ///
 /// Used to highlight motifs characteristic of NP biosynthesis in the UI.
 #[must_use]
-pub fn is_known_np_motif(label: &str) -> bool {
+pub(crate) fn is_known_np_motif(label: &str) -> bool {
     matches_any(&label.to_ascii_lowercase(), SCAFFOLD_MOTIFS)
 }
 
-pub fn count_core_np_motifs(motifs: &[String]) -> usize {
+pub(crate) fn count_core_np_motifs(motifs: &[String]) -> usize {
     motifs.iter().filter(|m| is_known_np_motif(m)).count()
 }
 
-pub fn count_scaffold_hits(hits: &[RdkitMotifHit]) -> usize {
+pub(crate) fn count_scaffold_hits(hits: &[RdkitMotifHit]) -> usize {
     hits.iter()
         .filter(|hit| is_scaffold_motif(&hit.label))
         .count()
 }
 
-pub fn count_source_hits(hits: &[RdkitMotifHit], source_class: &str) -> usize {
+pub(crate) fn count_source_hits(hits: &[RdkitMotifHit], source_class: &str) -> usize {
     hits.iter()
         .filter(|hit| normalized_source_class(&hit.source_class) == source_class)
         .count()
 }
 
-pub fn count_kingdom_enriched_hits(hits: &[RdkitMotifHit]) -> usize {
+pub(crate) fn count_kingdom_enriched_hits(hits: &[RdkitMotifHit]) -> usize {
     hits.iter()
         .filter(|hit| {
             normalized_source_class(&hit.source_class) == "natural" && !hit.kingdoms.is_empty()
@@ -193,20 +193,20 @@ pub fn count_kingdom_enriched_hits(hits: &[RdkitMotifHit]) -> usize {
         .count()
 }
 
-pub fn count_decoration_motifs(motifs: &[String]) -> usize {
+pub(crate) fn count_decoration_motifs(motifs: &[String]) -> usize {
     motifs.iter().filter(|m| is_decoration_motif(m)).count()
 }
 
 /// Scaffold motifs are ring systems or cores characteristic of natural-product
 /// scaffold classes.
 #[must_use]
-pub fn is_scaffold_motif(label: &str) -> bool {
+pub(crate) fn is_scaffold_motif(label: &str) -> bool {
     let l = label.to_ascii_lowercase();
     matches_any(&l, SCAFFOLD_MOTIFS) || l.contains("ring") || l.contains("cyclohexane")
 }
 
 /// Decoration motifs are functional groups or side-chain fragments.
-pub fn is_decoration_motif(label: &str) -> bool {
+pub(crate) fn is_decoration_motif(label: &str) -> bool {
     let l = label.to_ascii_lowercase();
     l.contains("aldehyde")
         || l.contains("ketone")
@@ -242,7 +242,7 @@ pub fn is_decoration_motif(label: &str) -> bool {
 /// logic is unit-testable on native *without* the rdkit.js bridge.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[allow(clippy::struct_field_names)] // evidence counts share the `EvidenceCounts` naming pattern
-pub struct EvidenceCounts {
+pub(crate) struct EvidenceCounts {
     /// Ertl NP-typical substituent motifs found (Ertl & Schuhmann 2019 et al.).
     pub np_core_hits: usize,
     /// Structural scaffold motif hits (ring cores characteristic of NP scaffolds).
@@ -266,7 +266,7 @@ pub struct EvidenceCounts {
 /// Soc.* 125, 10353; Ertl & Schuppenhauer 2011): scaffold cores vs. decoration
 /// side-chains, and the natural/synthetic/unknown source split with kingdom
 /// taxonomy.
-pub fn count_evidence(motifs: &[String], motif_hits: &[RdkitMotifHit]) -> EvidenceCounts {
+pub(crate) fn count_evidence(motifs: &[String], motif_hits: &[RdkitMotifHit]) -> EvidenceCounts {
     EvidenceCounts {
         np_core_hits: count_core_np_motifs(motifs),
         scaffold_hits: count_scaffold_hits(motif_hits),

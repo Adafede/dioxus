@@ -13,7 +13,7 @@ use dioxus::prelude::Signal;
 ///
 /// Fields: `title`, `smiles`, `category`, `main_class`, `sub_class`,
 /// `exact_mass`, `precursor_mz`, `adduct`, `class_matches`.
-pub type GallerySmilesEntry = (
+pub(super) type GallerySmilesEntry = (
     Option<String>,
     Option<String>,
     Option<String>,
@@ -30,7 +30,7 @@ pub type GallerySmilesEntry = (
 /// Bundling the signals into a struct keeps the [`summary`](super::components::summary)
 /// function signature readable and avoids passing twelve individual arguments.
 #[derive(Clone)]
-pub struct SummaryFilters {
+pub(super) struct SummaryFilters {
     pub selected_classes: Signal<Vec<String>>,
     pub mz_min: Signal<f64>,
     pub mz_max: Signal<f64>,

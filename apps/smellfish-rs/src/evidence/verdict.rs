@@ -22,7 +22,7 @@ use super::chemist::count_evidence;
 /// to "novel".
 #[cfg(target_arch = "wasm32")]
 #[must_use]
-pub fn row_verdict(row: &crate::model::MoleculeRow) -> String {
+pub(crate) fn row_verdict(row: &crate::model::MoleculeRow) -> String {
     if let Some(err) = row.error.as_deref() {
         return format!("⚠ {err}");
     }
@@ -63,7 +63,7 @@ pub fn row_verdict(row: &crate::model::MoleculeRow) -> String {
 /// *scaffold* is prevalent in >1% of LOTUS compounds — a structural hint, not a
 /// database hit on the molecule). The classifier treats them differently.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct EvidenceSignals {
+pub(crate) struct EvidenceSignals {
     /// Ertl NP-likeness score (`None` when the model is unavailable).
     pub np_score: Option<f64>,
     /// The molecule itself is a LOTUS natural-product organism record.
@@ -108,7 +108,7 @@ pub struct EvidenceSignals {
 /// "citation needed".
 #[must_use]
 #[allow(clippy::too_many_lines)] // single-responsibility: evidence → verdict classification
-pub fn classify_np_evidence(signals: &EvidenceSignals) -> String {
+pub(crate) fn classify_np_evidence(signals: &EvidenceSignals) -> String {
     let EvidenceSignals {
         np_score,
         has_lotus,
@@ -129,7 +129,9 @@ pub fn classify_np_evidence(signals: &EvidenceSignals) -> String {
     let kingdom_support = counts.kingdom_enriched_hits > 0;
 
     // ---- No Ertl model: only LOTUS scaffolds + structure can speak. ----
-    if np_score.is_none() {
+    // The destructure makes `score` directly available below — no later
+    // re-check or unwrap needed.
+    let Some(score) = np_score else {
         if has_lotus_scaffold && !synthetic_majority && structural_support {
             return "🌿 LOTUS-prevalent scaffold + NP structure — supporting evidence (Ertl unavailable)"
                 .to_string();
@@ -141,9 +143,7 @@ pub fn classify_np_evidence(signals: &EvidenceSignals) -> String {
             return "🌿 LOTUS organism record (Ertl unavailable)".to_string();
         }
         return "⚠ Citation needed — no Ertl model and no structural evidence".to_string();
-    }
-
-    let score = np_score.unwrap();
+    };
 
     // Strongly negative Ertl: highly synthetic (red flag — atypical of NPs).
     if score <= -2.0 {

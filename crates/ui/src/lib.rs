@@ -41,12 +41,16 @@
 //! }
 //! ```
 
-pub mod common;
-pub mod components;
-pub mod document;
-pub mod signals;
+mod common;
+mod components;
+mod document;
+mod signals;
+/// Theme design tokens and the [`StyleBuilder`](theme::StyleBuilder).
+///
+/// Public because apps consume these items via qualified paths such as
+/// `ui::theme::StyleBuilder`.
 pub mod theme;
-pub mod webmcp;
+mod webmcp;
 
 /// Convenience re-exports of the most commonly used UI primitives.
 pub mod prelude {

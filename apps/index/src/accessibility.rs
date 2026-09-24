@@ -22,7 +22,7 @@ use ui::prelude::*;
 /// - Screen reader friendly: Properly announced as a navigation link
 /// - Visible on focus: Becomes visible when focused via keyboard
 #[component]
-pub fn SkipLink() -> Element {
+pub(crate) fn SkipLink() -> Element {
     rsx! {
         a {
             href: "#main-content",

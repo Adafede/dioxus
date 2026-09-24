@@ -36,7 +36,7 @@ struct RawInspectRow {
 ///
 /// Returns an error if file reading or row processing fails.
 #[cfg(target_arch = "wasm32")]
-pub async fn import_csv(
+pub(crate) async fn import_csv(
     file: web_sys::File,
     mut status: Signal<String>,
 ) -> Result<ImportOutcome, String> {
@@ -322,7 +322,7 @@ fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> Da
 
 #[cfg(target_arch = "wasm32")]
 #[derive(Debug)]
-pub struct ImportOutcome {
+pub(crate) struct ImportOutcome {
     pub rows: Vec<MoleculeRow>,
     pub motifs: Vec<MotifSummary>,
     pub unique_inchikeys: usize,
@@ -333,7 +333,7 @@ pub struct ImportOutcome {
 
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_arguments)] // wasm entry point: signal handles for async import
-pub fn begin_import(
+pub(crate) fn begin_import(
     file: web_sys::File,
     file_name_value: String,
     mut file_name: Signal<String>,
@@ -387,7 +387,7 @@ pub fn begin_import(
 
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_arguments)]
-pub fn begin_import_from_text(
+pub(crate) fn begin_import_from_text(
     text: String,
     file_name_value: String,
     mut file_name: Signal<String>,

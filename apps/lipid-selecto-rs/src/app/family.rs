@@ -10,7 +10,7 @@
 /// LIPID MAPS broad family rank order (FA → GL → GP → SP → ST → PR → SL → PK).
 /// Used to sort the "Filter by chemical family" groups in the Results UI so they
 /// display in the standard LIPID MAPS classification hierarchy.
-pub const LIPID_MAPS_FAMILY_RANK: [(&str, usize); 8] = [
+pub(super) const LIPID_MAPS_FAMILY_RANK: [(&str, usize); 8] = [
     ("Fatty Acyls", 0),
     ("Glycerolipids", 1),
     ("Glycerophospholipids", 2),
@@ -22,7 +22,7 @@ pub const LIPID_MAPS_FAMILY_RANK: [(&str, usize); 8] = [
 ];
 
 /// Lookup helper for [`LIPID_MAPS_FAMILY_RANK`].
-pub fn family_rank(family: &str) -> usize {
+pub(super) fn family_rank(family: &str) -> usize {
     LIPID_MAPS_FAMILY_RANK
         .iter()
         .find(|(name, _)| *name == family)
@@ -31,12 +31,12 @@ pub fn family_rank(family: &str) -> usize {
 
 /// Strip the trailing `[XX]` code from a category string
 /// (e.g. "Fatty Acyls \[FA]" → "Fatty Acyls").
-pub fn family_from_category(category: &str) -> &str {
+pub(super) fn family_from_category(category: &str) -> &str {
     category.split(" [").next().unwrap_or(category).trim()
 }
 
 /// Map a family name to its LIPID MAPS two-letter code.
-pub fn family_code(family: &str) -> &str {
+pub(super) fn family_code(family: &str) -> &str {
     match family {
         "Fatty Acyls" => "FA",
         "Glycerolipids" => "GL",

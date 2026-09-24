@@ -21,7 +21,7 @@ use std::fmt::Write;
 /// warning is an orange `caution`, not green.
 #[cfg(any(test, target_arch = "wasm32"))]
 #[must_use]
-pub fn category(verdict: &str) -> &'static str {
+pub(super) fn category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
 
     // RED — Highly synthetic / fishy (check first!).
@@ -73,7 +73,7 @@ pub fn category(verdict: &str) -> &'static str {
 /// Escape a field for CSV output: if it contains a comma or double-quote,
 /// wrap in quotes and double any inner quotes.
 #[cfg(target_arch = "wasm32")]
-pub fn escape_csv(s: &str) -> String {
+pub(crate) fn escape_csv(s: &str) -> String {
     if s.contains(',') || s.contains('"') {
         let escaped = s.replace('"', "\"\"");
         format!("\"{escaped}\"")
@@ -84,7 +84,7 @@ pub fn escape_csv(s: &str) -> String {
 
 /// Build a CSV string from molecule rows.
 #[cfg(target_arch = "wasm32")]
-pub fn build_csv(rows: &[MoleculeRow]) -> String {
+pub(crate) fn build_csv(rows: &[MoleculeRow]) -> String {
     let mut csv = String::from(
         "label,smiles,np_score,np_label,np_confidence,ring_family,substituents,locus,verdict_category,chemist_checks\n",
     );
@@ -129,7 +129,7 @@ pub fn build_csv(rows: &[MoleculeRow]) -> String {
 /// Build a CSV string from molecule rows and trigger a browser download
 /// via a data-URI injected through `eval`.
 #[cfg(target_arch = "wasm32")]
-pub fn download_csv(rows: &[MoleculeRow]) {
+pub(crate) fn download_csv(rows: &[MoleculeRow]) {
     let csv = build_csv(rows);
     let url = format!("data:text/csv;charset=utf-8,{}", urlencoding::encode(&csv));
     let script = format!(
@@ -139,7 +139,7 @@ pub fn download_csv(rows: &[MoleculeRow]) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub const fn download_csv(_rows: &[MoleculeRow]) {}
+pub(super) const fn download_csv(_rows: &[MoleculeRow]) {}
 
 #[cfg(test)]
 mod tests {

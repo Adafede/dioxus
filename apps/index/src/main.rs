@@ -23,10 +23,8 @@
 //! dx build --release --platform web --package index
 //! ```
 
-// Note: The components module contains items (`pub`) that are only accessible
-// within this crate (the module is private). `unreachable_pub` would flag these
-// as unreachable from external crates, which is expected.
-#![allow(unreachable_pub)]
+// Note: All items are scoped to this bin crate (`struct`/`fn`, no `pub`) —
+// nothing here is consumed outside `index`.
 
 use dioxus::prelude::*;
 use ui::prelude::*;
@@ -51,14 +49,13 @@ use components::{AppCard, AppInfo};
 ///
 /// ```rust,no_run
 /// # use dioxus::prelude::*;
-/// # use index::app;
 /// #[component]
-/// pub fn MyApp() -> Element {
-///     rsx! { app {} }
+/// fn MyApp() -> Element {
+///     rsx! { "Hello world" }
 /// }
 /// ```
 #[component]
-pub fn app() -> Element {
+fn app() -> Element {
     let container_style = StyleBuilder::new()
         .display("flex")
         .flex_direction("column")

@@ -36,5 +36,6 @@
 mod classify;
 mod types;
 
-pub use classify::{classify_formula, classify_smiles, classify_spectrum, is_acyclic};
-pub use types::{ElementCounts, LipidClass, LipidClassification};
+#[cfg(target_arch = "wasm32")]
+pub(crate) use classify::{classify_spectrum, is_acyclic};
+pub(crate) use types::LipidClassification;

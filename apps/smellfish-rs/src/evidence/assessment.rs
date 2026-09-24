@@ -13,7 +13,7 @@ use super::ring_family::classify_ring_family;
 
 /// Result of assessing a single molecule against the evidence framework.
 #[derive(Clone, Debug)]
-pub struct EvidenceAssessment {
+pub(crate) struct EvidenceAssessment {
     /// Ertl NP-likeness score (range ≈ −5 to +5), or 0.0 when the model
     /// is not available.
     pub np_likeness: f64,
@@ -37,7 +37,7 @@ pub struct EvidenceAssessment {
 /// - **-1.0–0.5**: Bad/weak signals (predominantly synthetic features)
 /// - **< -1.0**: Highly synthetic (strong negative signals—rare in real NPs)
 #[must_use]
-pub fn np_likeness_label(score: f64) -> &'static str {
+pub(crate) fn np_likeness_label(score: f64) -> &'static str {
     if score >= 2.0 {
         "strong natural product"
     } else if score >= 0.5 {
@@ -56,7 +56,7 @@ pub fn np_likeness_label(score: f64) -> &'static str {
 /// annotation while the caller keeps ownership of the descriptor/motif/slice
 /// data.
 #[derive(Clone, Copy, Debug)]
-pub struct EvidenceInputs<'a> {
+pub(crate) struct EvidenceInputs<'a> {
     /// rdkit-derived whole-molecule descriptors.
     pub descriptors: &'a RdkitDescriptors,
     /// Ertl + user motif labels found in the molecule.
@@ -88,7 +88,7 @@ pub struct EvidenceInputs<'a> {
 /// * `inputs.dataset_context` carries motif prevalence across the entire
 ///   uploaded set so that per-row notes can flag dataset-common scaffolds.
 #[must_use]
-pub fn assess_np_evidence(inputs: EvidenceInputs<'_>) -> EvidenceAssessment {
+pub(crate) fn assess_np_evidence(inputs: EvidenceInputs<'_>) -> EvidenceAssessment {
     let ring_family = classify_ring_family(inputs.descriptors, inputs.motifs);
     let counts = count_evidence(inputs.motifs, inputs.motif_hits);
     let natural_only_hits = counts

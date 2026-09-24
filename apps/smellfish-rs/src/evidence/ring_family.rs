@@ -12,7 +12,7 @@ use crate::model::RdkitDescriptors;
 /// Classify the core scaffold family using motif labels and descriptor
 /// heuristics.
 #[must_use]
-pub fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -> String {
+pub(crate) fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -> String {
     let motif_text = motifs.join(" ").to_ascii_lowercase();
 
     // Steroids — tetracyclic fused ring system.

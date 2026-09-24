@@ -30,10 +30,10 @@
 
 /// WASM-only: byte-level chunked reader over a browser `Blob`.
 #[cfg(target_arch = "wasm32")]
-mod blob_cursor;
+pub mod blob_cursor;
 /// WASM-only: line-oriented chunked reader over a browser `Blob`.
 #[cfg(target_arch = "wasm32")]
-mod blob_lines;
+pub mod blob_lines;
 /// Download helpers (browser-triggered and native stubs).
 mod download;
 /// Unified error type for all upload operations.
@@ -41,13 +41,13 @@ mod error;
 /// Drag-and-drop / file-input event extraction.
 mod event;
 /// Throttled progress reporting.
-mod progress;
+#[cfg(target_arch = "wasm32")]
+pub mod progress;
 
 #[cfg(target_arch = "wasm32")]
-pub use blob_cursor::{BlobCursor, CHUNK_SIZE};
+pub use blob_cursor::BlobCursor;
 #[cfg(target_arch = "wasm32")]
 pub use blob_lines::BlobLines;
-pub use download::{download_text, sanitize_filename};
+pub use download::download_text;
 pub use error::UploadError;
 pub use event::{Blob, ExtractedFile, extract_blob_from_file_data};
-pub use progress::{PROGRESS_BYTE_INTERVAL, PROGRESS_TIME_INTERVAL_MS, ProgressThrottler};

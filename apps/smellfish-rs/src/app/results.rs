@@ -11,9 +11,9 @@ use crate::literature::LITERATURE;
 use crate::model::MoleculeRow;
 use dioxus::prelude::*;
 
-pub use super::csv_export::download_csv;
-pub use super::formatting::{format_score, scaffold_emoji, verdict_color};
-pub use super::motif_display::{
+use super::csv_export::download_csv;
+use super::formatting::{format_score, scaffold_emoji, verdict_color};
+use super::motif_display::{
     motif_chip_class, motif_display_label, motif_is_natural, motif_is_synthetic,
     motif_is_unclassified, summary_chip_class, summary_display_label, summary_is_natural,
     summary_is_synthetic, summary_is_unclassified,

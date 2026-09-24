@@ -33,16 +33,16 @@ pub(crate) mod chemist;
 mod ring_family;
 pub(crate) mod verdict;
 
+#[cfg(test)]
+pub(crate) use assessment::np_likeness_label;
 #[allow(clippy::module_name_repetitions)] // EvidenceXxx re-exports preserve domain naming
-pub use assessment::{EvidenceAssessment, EvidenceInputs, assess_np_evidence, np_likeness_label};
+pub(crate) use assessment::{EvidenceInputs, assess_np_evidence};
 #[cfg(target_arch = "wasm32")]
-pub use chemist::run_checks;
-pub use chemist::{is_known_np_motif, is_scaffold_motif};
-pub use ring_family::classify_ring_family;
-#[allow(clippy::module_name_repetitions)] // EvidenceSignals preserves domain naming
-pub use verdict::EvidenceSignals;
+pub(crate) use chemist::run_checks;
+#[cfg(test)]
+pub(crate) use chemist::{is_known_np_motif, is_scaffold_motif};
 #[cfg(target_arch = "wasm32")]
-pub use verdict::row_verdict;
+pub(crate) use verdict::row_verdict;
 
 #[cfg(test)]
 mod tests {

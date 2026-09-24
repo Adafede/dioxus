@@ -65,9 +65,11 @@ web-sys = {
 zip = "8.6"
 
 # ── Clippy lints ───────────────────────────────────────────────────────────────
-# Pedantic and nursery deny by default; override individually where needed.
-# Restriction lints are NOT enabled wholesale — selected individually per project needs.
+# All, pedantic, cargo denied by default; nursery warned (unstable, evaluated per
+# occurrence). Restriction lints are NOT enabled wholesale — selected individually
+# per project needs, each justified below.
 [workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
 cargo = { level = "deny", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 pedantic = { level = "deny", priority = -1 }
@@ -83,15 +85,27 @@ similar_names = "warn"
 
 fn_params_excessive_bools = "deny"
 struct_excessive_bools = "deny"
-# Restriction-tier lints: selected individually as they are opinionated
-# - `todo` / `unimplemented` are good to have (already deny)
-# - `unwrap_used` / `expect_used` / `panic` - selective, see crate-level enables
-# - `missing_docs_in_private_items` - too noisy for internal modules
-# - `struct_excessive_bools` - deny, genuinely a code smell
-# - `fn_params_excessive_bools` - deny, genuinely a code smell
+
+expect_used = "deny"
+# `panic` lint: `panic!` in hot paths aborts the WASM app; build scripts are
+# exempted at their call sites (build failure must abort the build).
+panic = "deny"
+# ── Restriction tier (selected individually; these are opinionated by design) ──
+# Panics in a WASM frontend abort the whole app into a blank screen, so every
+# reachable panic site is a real defect. Enabled: `panic`, `unwrap_used`,
+# `expect_used`. Deliberately NOT enabled:
+# - `indexing_slicing` — 800+ idiomatic index/slice expressions across the
+#   WASM UI crates; the lint's blanket fire would require touching every
+#   known-length container access, and the panic risk it targets is already
+#   covered by `unwrap_used`/`expect_used`/`panic` plus rustc's default
+#   out-of-bounds checks.
+# - `missing_docs_in_private_items` — valuable but enumerated below; the
+#   workspace self-generates READMEs from public/fn-level docs already.
+# - `todo` / `unimplemented` — deny below: landing one is a build break.
 todo = "deny"
 unimplemented = "deny"
 unnecessary_wraps = "deny"
+unwrap_used = "deny"
 use_self = "deny"
 
 # Cargo hygiene
@@ -141,7 +155,13 @@ option_if_let_else = "deny"
 or_fun_call = "deny"
 redundant_closure = "deny"
 redundant_closure_for_method_calls = "deny"
-redundant_pub_crate = "deny"
+# `redundant_pub_crate` is disabled because it is unsatisfiable alongside
+# `unreachable_pub` below: its only suggested fix is to widen an item to `pub`,
+# which `unreachable_pub` then rejects. For an item in a private module that
+# must stay visible crate-wide, `pub(crate)` and `pub(super)` are the *same*
+# visibility and both are flagged. `unreachable_pub` is the lint that actually
+# enforces a minimal exported surface, so it stays denied.
+redundant_pub_crate = "allow"
 semicolon_if_nothing_returned = "deny"
 significant_drop_tightening = "deny"
 single_match_else = "deny"

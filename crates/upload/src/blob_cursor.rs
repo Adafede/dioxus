@@ -24,7 +24,7 @@ use crate::error::UploadError;
 use crate::progress::{PROGRESS_BYTE_INTERVAL, PROGRESS_TIME_INTERVAL_MS, ProgressThrottler};
 
 /// Default chunk size for Blob reads (16 MiB).
-pub const CHUNK_SIZE: usize = 16 * 1024 * 1024;
+pub(crate) const CHUNK_SIZE: usize = 16 * 1024 * 1024;
 
 /// Buffered, chunked reader over a [`Blob`] with byte-level access.
 ///

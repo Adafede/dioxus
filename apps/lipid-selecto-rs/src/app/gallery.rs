@@ -20,7 +20,7 @@ use super::types::GallerySmilesEntry;
 ///
 /// Tries to find the corresponding `GalleryItem` by `block_index` to get
 /// the same class as the UI. Falls back to direct block classification.
-pub fn prepare_block_class_tags(
+pub(super) fn prepare_block_class_tags(
     blocks: &[SpectrumBlock],
     gallery: &[GalleryItem],
     all_classes: &[ChemicalClass],
@@ -39,7 +39,7 @@ pub fn prepare_block_class_tags(
 
 /// Build a SMILES file content string from gallery-smiles entries for download.
 #[cfg(target_arch = "wasm32")]
-pub fn build_smiles_from_gallery(gallery: &[&GallerySmilesEntry]) -> String {
+pub(super) fn build_smiles_from_gallery(gallery: &[&GallerySmilesEntry]) -> String {
     let mut content = String::new();
     for (smiles, title, category, main_class, _sub_class, _, _, _, _) in gallery {
         if let Some(smiles) = smiles {
@@ -60,7 +60,7 @@ pub fn build_smiles_from_gallery(gallery: &[&GallerySmilesEntry]) -> String {
 
 /// Prepare gallery SMILES entries for WASM download closures.
 #[cfg(target_arch = "wasm32")]
-pub fn prepare_gallery_smiles(
+pub(super) fn prepare_gallery_smiles(
     gallery: &[GalleryItem],
     all_classes: &[ChemicalClass],
 ) -> Vec<GallerySmilesEntry> {

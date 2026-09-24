@@ -22,24 +22,24 @@ use super::types::{Confidence, Construct, CxError, CxResult, CxResult_, Floating
 
 /// A floating fragment ready for serialisation and expansion.
 #[derive(Clone)]
-pub struct FloatingDef {
-    pub atoms: Vec<Atom>,
-    pub bonds: Vec<(usize, usize, BondOrder)>,
+pub(crate) struct FloatingDef {
+    pub(crate) atoms: Vec<Atom>,
+    pub(crate) bonds: Vec<(usize, usize, BondOrder)>,
     /// Index into `atoms`, bonded to the scaffolding/* target.
-    pub attachment: usize,
+    pub(crate) attachment: usize,
     /// Double-`m` variant.
-    pub split: bool,
+    pub(crate) split: bool,
 }
 
 /// The attachment target of a floating group.
-pub enum Target {
+pub(crate) enum Target {
     /// Attaches to one of the equivalent scaffold positions.
     Variable(Vec<usize>),
     /// Attaches to another group's attachment atom (index into `defs`).
     Fixed(usize),
 }
 
-pub fn build_positional(group: &[Molecule]) -> CxResult_ {
+pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
     let mcs = find_mcs(&group.iter().collect::<Vec<_>>());
     let rep = &group[0];
     let hit = best_match(&mcs, rep)?;
@@ -123,7 +123,6 @@ pub fn build_positional(group: &[Molecule]) -> CxResult_ {
                 Target::Fixed(_) => Vec::new(),
             };
             FloatingPart {
-                star_idx: star_idx[j],
                 equiv,
                 fragment_smiles: fragment_smiles(&defs[j]),
                 split: defs[j].split,
@@ -133,11 +132,9 @@ pub fn build_positional(group: &[Molecule]) -> CxResult_ {
 
     Ok(CxResult {
         cx_smiles: format!("{base_smiles} |{ext}|"),
-        base_smiles,
         construct: Construct::Positional,
         scaffold_smiles,
         floating,
-        repeating: None,
         confidence: Confidence {
             coverage: cov,
             clean: frac >= 1.0,

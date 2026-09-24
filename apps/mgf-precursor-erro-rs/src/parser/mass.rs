@@ -15,18 +15,11 @@ use molecular_formulas::molecular_formula::MolecularFormula;
 use web_sys::console;
 
 #[must_use]
-pub fn smiles_is_supported(smiles: &str) -> bool {
+pub(crate) fn smiles_is_supported(smiles: &str) -> bool {
     !smiles.trim().is_empty()
 }
 
-#[must_use]
-pub fn exact_mass_from_smiles(smiles: &str) -> Option<f64> {
-    let mut cache = HashMap::new();
-    let mut logged_failures = HashSet::new();
-    exact_mass_from_smiles_cached(smiles, &mut cache, &mut logged_failures)
-}
-
-pub fn exact_mass_from_smiles_cached<S: std::hash::BuildHasher>(
+pub(crate) fn exact_mass_from_smiles_cached<S: std::hash::BuildHasher>(
     smiles: &str,
     cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
@@ -98,14 +91,7 @@ fn exact_mass_from_smiles_uncached(
     }
 }
 
-#[must_use]
-pub fn exact_mass_from_formula(formula: &str) -> Option<f64> {
-    let mut cache = HashMap::new();
-    let mut logged_failures = HashSet::new();
-    exact_mass_from_formula_cached(formula, &mut cache, &mut logged_failures)
-}
-
-pub fn exact_mass_from_formula_cached<S: std::hash::BuildHasher>(
+pub(crate) fn exact_mass_from_formula_cached<S: std::hash::BuildHasher>(
     formula: &str,
     cache: &mut HashMap<String, Option<f64>, S>,
     logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
@@ -134,24 +120,4 @@ pub fn exact_mass_from_formula_cached<S: std::hash::BuildHasher>(
     );
     cache.insert(trimmed.to_string(), mass);
     mass
-}
-
-#[must_use]
-pub fn decimal_precision(value: &str) -> usize {
-    let trimmed = value.trim();
-    let Some((_, fractional)) = trimmed.split_once('.') else {
-        return 0;
-    };
-    fractional.chars().take_while(char::is_ascii_digit).count()
-}
-
-#[must_use]
-pub fn round_to_precision(value: f64, precision: usize) -> f64 {
-    if precision == 0 {
-        return value.round();
-    }
-
-    let precision = i32::try_from(precision).unwrap_or(i32::MAX);
-    let factor = 10_f64.powi(precision);
-    (value * factor).round() / factor
 }

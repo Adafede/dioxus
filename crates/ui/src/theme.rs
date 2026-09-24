@@ -50,7 +50,7 @@ pub struct ColorScheme {
     /// Warning color
     pub yellow: &'static str,
     /// Secondary accent color
-    pub purple: &'static str,
+    pub(crate) purple: &'static str,
 }
 
 impl ColorScheme {
@@ -102,8 +102,6 @@ impl ColorScheme {
 pub struct Spacing;
 
 impl Spacing {
-    /// Extra-small spacing (6px)
-    pub const XS: &'static str = "6px";
     /// Small spacing (10px)
     pub const SM: &'static str = "10px";
     /// Medium spacing (14px)
@@ -112,8 +110,6 @@ impl Spacing {
     pub const LG: &'static str = "20px";
     /// Extra-large spacing (28px)
     pub const XL: &'static str = "28px";
-    /// Extra-extra-large spacing (40px)
-    pub const XXL: &'static str = "40px";
 }
 
 /// Border radius scale for consistent rounding
@@ -121,8 +117,6 @@ impl Spacing {
 pub struct Radius;
 
 impl Radius {
-    /// Sharp corners for minimal rounding
-    pub const NONE: &'static str = "0";
     /// Micro rounding for small elements
     pub const SM: &'static str = "4px";
     /// Default rounding for cards and components
@@ -145,13 +139,10 @@ impl Shadow {
     /// Medium shadow for elevated cards
     pub const MD: &'static str = "0 10px 30px rgba(15, 23, 42, 0.09)";
 
-    /// Dark mode shadow (higher opacity for contrast)
     /// Dark-mode small shadow (higher opacity)
-    pub const XS_DARK: &'static str = "0 1px 2px rgba(0, 0, 0, 0.45)";
-    /// Dark-mode small shadow (higher opacity)
-    pub const SM_DARK: &'static str = "0 4px 14px rgba(0, 0, 0, 0.35)";
+    pub(crate) const SM_DARK: &'static str = "0 4px 14px rgba(0, 0, 0, 0.35)";
     /// Dark-mode medium shadow (higher opacity)
-    pub const MD_DARK: &'static str = "0 10px 30px rgba(0, 0, 0, 0.35)";
+    pub(crate) const MD_DARK: &'static str = "0 10px 30px rgba(0, 0, 0, 0.35)";
 }
 
 /// Typography scale with responsive fluid sizing
@@ -162,33 +153,22 @@ impl Shadow {
 pub struct Typography;
 
 impl Typography {
-    /// Micro text: 0.75–0.8125rem, used for labels, captions
-    pub const MICRO: &'static str = "clamp(0.75rem, 0.73rem + 0.12vw, 0.8125rem)";
     /// Label text: 0.6875–0.75rem, form labels, badges
     pub const LABEL: &'static str = "clamp(0.6875rem, 0.66rem + 0.14vw, 0.75rem)";
     /// UI text: 0.8125–0.875rem, buttons, small text
     pub const UI: &'static str = "clamp(0.8125rem, 0.785rem + 0.16vw, 0.875rem)";
     /// Body text: 0.875–0.9375rem, paragraphs, default
     pub const BODY: &'static str = "clamp(0.875rem, 0.845rem + 0.2vw, 0.9375rem)";
-    /// Heading 3: 0.9375–1.0625rem, section headings
-    pub const H3: &'static str = "clamp(0.9375rem, 0.9rem + 0.28vw, 1.0625rem)";
     /// Heading 2: 1.125–1.5rem, main section headings
     pub const H2: &'static str = "clamp(1.125rem, 1.02rem + 0.6vw, 1.5rem)";
     /// Heading 1: 1.375–1.85rem, page title
     pub const H1: &'static str = "clamp(1.375rem, 1.1rem + 0.85vw, 1.85rem)";
 
-    /// Large stat text: 1.125–1.375rem
-    pub const STAT: &'static str = "clamp(1.125rem, 1.02rem + 0.52vw, 1.375rem)";
-
     /// Line height for body copy (1.5 = excellent readability)
     pub const LINE_HEIGHT: &'static str = "1.5";
 
-    /// Font families
     /// Font family: sans-serif stack with Inter as primary
     pub const SANS: &'static str = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif";
-    /// Font family: monospace stack with Fira Code as primary
-    pub const MONO: &'static str =
-        "'Fira Code', ui-monospace, 'SF Mono', 'JetBrains Mono', consolas, monospace";
 }
 
 /// Accessibility and interaction constants following WCAG 2.1 AAA standards.
@@ -203,48 +183,9 @@ impl Typography {
 pub struct Interaction;
 
 impl Interaction {
-    /// Minimum tap target size per WCAG 2.5.5 (48px recommended, 44px minimum).
-    /// Used for buttons, links, and interactive elements.
-    pub const MIN_TOUCH_TARGET: &'static str = "44px";
-
-    /// Focus indicator outline width (3px for high visibility).
-    /// Must be visible at any zoom level and with high contrast.
-    pub const FOCUS_OUTLINE_WIDTH: &'static str = "3px";
-
-    /// Focus indicator offset from element (2px recommended).
-    /// Prevents overlap with element borders.
-    pub const FOCUS_OUTLINE_OFFSET: &'static str = "2px";
-
-    /// Focus outline color — high contrast, independent of theming.
-    /// Uses a perceptually distinct blue-purple for universal visibility.
-    pub const FOCUS_OUTLINE_COLOR: &'static str = "#4f46e5";
-
-    /// Fast transition for micro-interactions (150ms).
-    /// Used for button hovers, small state changes.
-    /// Respects prefers-reduced-motion preference.
-    pub const TRANSITION_FAST: &'static str = "150ms ease-in-out";
-
     /// Default transition for standard interactions (200ms).
     /// Used for card hovers, menu opens, typical state changes.
     pub const TRANSITION_DEFAULT: &'static str = "200ms ease-in-out";
-
-    /// Slow transition for prominent animations (300ms).
-    /// Used for modal opens, page transitions, major layout changes.
-    pub const TRANSITION_SLOW: &'static str = "300ms ease-in-out";
-
-    /// CSS media query rule to disable animations for users with motion sensitivity.
-    /// Apply to all animated elements:
-    /// ```css
-    /// @media (prefers-reduced-motion: reduce) { animation: none; transition: none; }
-    /// ```
-    pub const PREFERS_REDUCED_MOTION: &'static str = "@media (prefers-reduced-motion: reduce)";
-
-    /// Skip link style for keyboard navigation.
-    /// Positioned off-screen but becomes visible on focus.
-    pub const SKIP_LINK_STYLE: &'static str = "position: absolute; top: -40px; left: 0; background: #000; color: #fff; padding: 8px 16px; text-decoration: none; z-index: 100;";
-
-    /// Skip link focus style (becomes visible when focused).
-    pub const SKIP_LINK_FOCUS_STYLE: &'static str = "top: 0;";
 }
 
 /// Style string builder for inline CSS attributes

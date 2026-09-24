@@ -8,16 +8,16 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 #[cfg(target_arch = "wasm32")]
-pub const LOTUS_ENDPOINT: &str = "https://qlever.dev/api/wikidata";
+pub(crate) const LOTUS_ENDPOINT: &str = "https://qlever.dev/api/wikidata";
 #[cfg(target_arch = "wasm32")]
-pub const WDQS_ENDPOINT: &str = "https://query.wikidata.org/sparql";
+pub(crate) const WDQS_ENDPOINT: &str = "https://query.wikidata.org/sparql";
 #[cfg(target_arch = "wasm32")]
-pub const PUBCHEM_ENDPOINT: &str = "https://qlever.cs.uni-freiburg.de/api/pubchem";
+pub(crate) const PUBCHEM_ENDPOINT: &str = "https://qlever.cs.uni-freiburg.de/api/pubchem";
 #[cfg(target_arch = "wasm32")]
 const QUERY_CHUNK_SIZE: usize = 50;
 
 #[cfg(target_arch = "wasm32")]
-pub async fn enrich_sources(
+pub(crate) async fn enrich_sources(
     inchikeys: &[String],
     _smiles_list: &[String],
     mut set_status: impl FnMut(String),

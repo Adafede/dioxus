@@ -19,9 +19,9 @@
 mod analysis;
 mod parsing;
 
-pub use analysis::{
-    Analysis, GalleryItem, Summary, analyze, build_analysis, build_analysis_from_classified,
-    build_filtered_mgf, build_filtered_mgf_with_classes, build_gallery, classify_blocks,
-    gallery_item, summarize,
-};
-pub use parsing::{SpectrumBlock, extract_blocks, extract_blocks_from_lines};
+pub(crate) use analysis::{Analysis, GalleryItem, Summary};
+#[cfg(target_arch = "wasm32")]
+pub(crate) use analysis::{build_analysis_from_classified, classify_blocks};
+pub(crate) use parsing::SpectrumBlock;
+#[cfg(target_arch = "wasm32")]
+pub(crate) use parsing::extract_blocks_from_lines;

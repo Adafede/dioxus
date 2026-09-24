@@ -18,11 +18,11 @@ use std::collections::HashSet;
 use super::types::CxError;
 
 /// A single embedding of a query into a molecule: query-atom index → molecule atom.
-pub type Match = FxHashMap<usize, AtomIdx>;
+pub(crate) type Match = FxHashMap<usize, AtomIdx>;
 
 /// `Molecule` → `QueryMolecule` (element + bond-order). Atom `i` of the query
 /// corresponds to atom `i` of the molecule.
-pub fn molecule_to_query(mol: &Molecule) -> QueryMolecule {
+pub(crate) fn molecule_to_query(mol: &Molecule) -> QueryMolecule {
     let n = mol.atom_count();
     let atoms: Vec<QueryAtom> = (0..n as u32)
         .map(|i| {
@@ -50,7 +50,7 @@ pub fn molecule_to_query(mol: &Molecule) -> QueryMolecule {
     QueryMolecule { atoms, bonds, adj }
 }
 
-pub const fn bond_to_primitive(order: BondOrder) -> BondPrimitive {
+pub(crate) const fn bond_to_primitive(order: BondOrder) -> BondPrimitive {
     match order {
         BondOrder::Single => BondPrimitive::Single,
         BondOrder::Double => BondPrimitive::Double,
@@ -61,7 +61,7 @@ pub const fn bond_to_primitive(order: BondOrder) -> BondPrimitive {
 }
 
 /// Build a molecule from the subset of `mol`'s atoms and the bonds between them.
-pub fn subgraph(mol: &Molecule, keep: &[bool]) -> Molecule {
+pub(crate) fn subgraph(mol: &Molecule, keep: &[bool]) -> Molecule {
     let n = mol.atom_count();
     let mut b = MoleculeBuilder::new();
     let mut map: Vec<Option<AtomIdx>> = vec![None; n];
@@ -72,19 +72,16 @@ pub fn subgraph(mol: &Molecule, keep: &[bool]) -> Molecule {
     }
     for (_, be) in mol.bonds() {
         let (a, c) = (be.atom1.0 as usize, be.atom2.0 as usize);
-        if keep[a] && keep[c] {
-            let _ = b.add_bond(
-                map[a].expect("keep[a] guarantees the atom was mapped"),
-                map[c].expect("keep[c] guarantees the atom was mapped"),
-                be.order,
-            );
+        // Both endpoints are mapped above (keep[a] && keep[c] ⇒ map is Some).
+        if let (Some(ma), Some(mc)) = (map[a], map[c]) {
+            let _ = b.add_bond(ma, mc, be.order);
         }
     }
     b.build()
 }
 
 /// Connected components of `atoms` (u32 indices) using `mol`'s internal edges.
-pub fn components(atoms: &[u32], mol: &Molecule) -> Vec<Vec<u32>> {
+pub(crate) fn components(atoms: &[u32], mol: &Molecule) -> Vec<Vec<u32>> {
     let set: HashSet<u32> = atoms.iter().copied().collect();
     let mut seen: HashSet<u32> = HashSet::new();
     let mut comps: Vec<Vec<u32>> = Vec::new();
@@ -111,23 +108,19 @@ pub fn components(atoms: &[u32], mol: &Molecule) -> Vec<Vec<u32>> {
 
 /// One embedding of a query into `mol`, preferring the one that recovers the
 /// most scaffold atoms (fewest unmatched).
-pub fn best_match(q: &QueryMolecule, mol: &Molecule) -> Result<Match, CxError> {
+pub(crate) fn best_match(q: &QueryMolecule, mol: &Molecule) -> Result<Match, CxError> {
     let hits = find_matches(q, mol);
-    if hits.is_empty() {
-        return Err(CxError("no match of query into molecule".into()));
-    }
-    Ok(hits
-        .iter()
+    hits.iter()
         .min_by_key(|h| mol.atom_count() - h.len())
         .cloned()
-        .expect("hits non-empty: the empty case returns Err early above"))
+        .ok_or_else(|| CxError("no match of query into molecule".into()))
 }
 
-pub fn unmatched_count(h: &Match, mol: &Molecule) -> usize {
+pub(crate) fn unmatched_count(h: &Match, mol: &Molecule) -> usize {
     mol.atom_count() - h.len()
 }
 
-pub fn matched_mask(h: &Match, mol: &Molecule) -> Vec<bool> {
+pub(crate) fn matched_mask(h: &Match, mol: &Molecule) -> Vec<bool> {
     let mut m = vec![false; mol.atom_count()];
     for &a in h.values() {
         m[a.0 as usize] = true;
@@ -135,7 +128,7 @@ pub fn matched_mask(h: &Match, mol: &Molecule) -> Vec<bool> {
     m
 }
 
-pub fn unmatched_atoms(matched: &[bool]) -> Vec<u32> {
+pub(crate) fn unmatched_atoms(matched: &[bool]) -> Vec<u32> {
     (0..matched.len() as u32)
         .filter(|i| !matched[*i as usize])
         .collect()

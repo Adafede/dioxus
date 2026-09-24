@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
+// A build script has no `Result`-returning `main`: `panic!` (or `assert!`)
+// is the only way to fail the build with a diagnostic, which is exactly the
+// desired behavior here. Not reachable in the shipped WASM bundle.
+#![expect(clippy::panic)]
+
 use std::fs;
 use std::path::Path;
 use std::process::Command;

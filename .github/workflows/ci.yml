@@ -85,6 +85,24 @@ jobs:
           cargo check -p lipid-selecto-rs --target wasm32-unknown-unknown --locked
           cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked
 
+  clippy-wasm:
+    name: Clippy (WASM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false, fetch-depth: 1 }
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: clippy, targets: wasm32-unknown-unknown }
+      - name: Lint all WASM apps
+        run: |
+          cargo clippy -p cxsmiles-yoga --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+          cargo clippy -p index --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+          cargo clippy -p json-count-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+          cargo clippy -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+          cargo clippy -p lipid-selecto-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+          cargo clippy -p smellfish-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+
   supply-chain:
     name: Supply-chain
     runs-on: ubuntu-latest

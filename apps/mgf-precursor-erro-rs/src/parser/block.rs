@@ -24,7 +24,7 @@ use super::adduct::{
 use super::mass::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached};
 
 #[derive(Clone, Debug, Default)]
-pub struct BlockParseState {
+pub(crate) struct BlockParseState {
     observed_precursor_raw: Option<String>,
     observed_precursor: Option<f64>,
     reference_mass: Option<f64>,
@@ -40,7 +40,7 @@ pub struct BlockParseState {
 }
 
 impl BlockParseState {
-    pub fn consume_line(&mut self, line: &str) {
+    pub(crate) fn consume_line(&mut self, line: &str) {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed == "BEGIN IONS" || trimmed == "END IONS" {
             return;
@@ -138,16 +138,10 @@ impl BlockParseState {
         }
     }
 
-    pub fn consume_block_lines(&mut self, block_lines: &[String]) {
-        for line in block_lines {
-            self.consume_line(line);
-        }
-    }
-
     /// Extract MS2 precursor peak from fragment list.
     /// Returns the closest fragment to PEPMASS if within ~0.02 Da (~100 ppm), otherwise None.
     #[must_use]
-    pub fn get_ms2_precursor_peak(&self, pepmass_header: f64) -> Option<f64> {
+    pub(crate) fn get_ms2_precursor_peak(&self, pepmass_header: f64) -> Option<f64> {
         const TOLERANCE_DA: f64 = 0.02;
 
         self.fragment_peaks
@@ -187,7 +181,7 @@ impl BlockParseState {
 /// processed.
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::future_not_send)] // async fn captures non-Send browser futures
-pub async fn scan_blob_with_progress(
+pub(crate) async fn scan_blob_with_progress(
     blob: &Blob,
     mut on_progress: impl FnMut(u64, u64),
 ) -> std::result::Result<PrecursorStats, UploadError> {
@@ -240,42 +234,6 @@ pub async fn scan_blob_with_progress(
     metrics.plot_points = plot_sample.points;
     metrics.plot_point_stream_seen = plot_sample.seen;
     Ok(metrics)
-}
-
-/// Process a single MGF block into precursor metrics.
-///
-/// # Errors
-/// Returns an error when the parser cannot produce a valid scan result.
-pub fn process_block<S: std::hash::BuildHasher>(
-    block_lines: &[String],
-    smiles_cache: &mut HashMap<String, Option<f64>, S>,
-    formula_cache: &mut HashMap<String, Option<f64>, S>,
-    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
-    plot_sample: Option<&mut PlotPointSample>,
-) -> Option<PrecursorStats> {
-    let mut state = BlockParseState::default();
-    state.consume_block_lines(block_lines);
-    let use_external_sample = plot_sample.is_some();
-    let mut local_plot_sample = PlotPointSample::default();
-    let mut sample_ref = if use_external_sample {
-        plot_sample
-    } else {
-        Some(&mut local_plot_sample)
-    };
-    let result = process_block_state(
-        &state,
-        smiles_cache,
-        formula_cache,
-        logged_failures,
-        &mut sample_ref,
-    );
-    result.map(|mut metrics| {
-        if let Some(plot_sample) = sample_ref.as_ref() {
-            metrics.plot_points.clone_from(&plot_sample.points);
-            metrics.plot_point_stream_seen = plot_sample.seen;
-        }
-        metrics
-    })
 }
 
 fn compute_reference_mass<S: std::hash::BuildHasher>(
@@ -368,8 +326,12 @@ fn observed_metrics(
         state.adduct.as_deref(),
         state.charge.as_deref(),
         state.ion_mode.as_deref(),
-    )
-    .unwrap_or(reference_mass);
+    );
+    let expected_precursor_mz = if expected_precursor_mz.is_finite() {
+        expected_precursor_mz
+    } else {
+        reference_mass
+    };
     let error_da = observed_precursor - expected_precursor_mz;
     let abs_error_da = error_da.abs();
     let error_milli_da = abs_error_da * 1000.0;
@@ -492,6 +454,7 @@ fn process_block_state<S: std::hash::BuildHasher>(
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used)] // test asserts the pipeline always yields metrics
 mod tests {
     use super::*;
 

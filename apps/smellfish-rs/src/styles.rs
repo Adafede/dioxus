@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
-pub const CSS: &str = r"
+pub(crate) const CSS: &str = r"
 :root {
   color-scheme: light dark;
 

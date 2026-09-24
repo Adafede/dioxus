@@ -366,6 +366,7 @@ pub fn render_cumulative_error_three_curves(
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used)] // tests unwrap the empty-error Result to assert the empty SVG
 mod tests {
     use super::*;
 

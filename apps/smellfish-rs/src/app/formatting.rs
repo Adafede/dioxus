@@ -7,13 +7,13 @@
 
 /// Format an NP-likeness score with a `+` or `−` sign and two decimals.
 #[must_use]
-pub fn format_score(score: f64) -> String {
+pub(super) fn format_score(score: f64) -> String {
     format!("{score:+.2}")
 }
 
 /// CSS-safe verdict color class based on the verdict text.
 #[must_use]
-pub fn verdict_color(verdict: &str) -> &'static str {
+pub(super) fn verdict_color(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
     if l.contains("smells fishy") || l.contains("highly synthetic") {
         "verdict-fishy"
@@ -31,7 +31,7 @@ pub fn verdict_color(verdict: &str) -> &'static str {
 /// Emoji prefix for the scaffold family — 🌿 for NP-typical scaffolds,
 /// ⚠ for polyaromatic (synthetic-typical).
 #[must_use]
-pub fn scaffold_emoji(family: &str) -> &'static str {
+pub(super) fn scaffold_emoji(family: &str) -> &'static str {
     let l = family.to_ascii_lowercase();
     if l.contains("polyaromatic") {
         "\u{26a0}"

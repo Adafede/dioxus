@@ -6,11 +6,11 @@ use std::collections::BTreeSet;
 
 /// Type alias for substituent occurrence tracking.
 /// Maps substituent pattern name to the number of times it appears in a molecule.
-pub type SubstituentCounts = std::collections::HashMap<String, usize>;
+pub(crate) type SubstituentCounts = std::collections::HashMap<String, usize>;
 
 #[cfg(any(test, target_arch = "wasm32"))]
 #[derive(Clone, Debug)]
-pub struct RawRow {
+pub(crate) struct RawRow {
     /// 1-based row index from the input file
     pub index: usize,
     /// Compound identifier (from name/label column or auto-generated)
@@ -22,7 +22,7 @@ pub struct RawRow {
 /// A single chemist's check on a molecule — the kind of quick visual
 /// audit a natural-product chemist would do when eyeballing a structure.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ChemistCheck {
+pub(crate) struct ChemistCheck {
     /// Short label, e.g. "NP-likeness", "Skeleton", "Oxygenation".
     pub name: &'static str,
     /// One of "pass", "warn", "fail".
@@ -35,7 +35,7 @@ pub struct ChemistCheck {
 /// only needed during the wasm evidence pipeline; they exist so the struct
 /// can be fully populated and assessed in the browser.
 #[derive(Clone, Debug, PartialEq)]
-pub struct MoleculeRow {
+pub(crate) struct MoleculeRow {
     pub index: usize,
     pub label: String,
     pub smiles: String,
@@ -85,7 +85,7 @@ pub struct MoleculeRow {
 }
 
 #[derive(Clone, Debug)]
-pub struct MotifSummary {
+pub(crate) struct MotifSummary {
     pub label: String,
     pub source_class: String,
     pub kingdom: String,
@@ -100,7 +100,7 @@ pub struct MotifSummary {
 /// molecules are considered "dataset-common".
 #[derive(Clone, Debug, Default)]
 #[cfg(any(test, target_arch = "wasm32"))]
-pub struct DatasetMotifContext {
+pub(crate) struct DatasetMotifContext {
     /// Number of molecules containing each motif (for prevalence filtering)
     pub motif_counts: std::collections::HashMap<String, usize>,
     /// Minimum count threshold for a motif to be considered "common"
@@ -111,7 +111,7 @@ pub struct DatasetMotifContext {
 /// These are used for ring family classification and NP-likeness evidence.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[cfg(any(test, target_arch = "wasm32"))]
-pub struct RdkitDescriptors {
+pub(crate) struct RdkitDescriptors {
     /// Fraction of sp³-hybridized carbons (0–1). High values indicate aliphatic character.
     pub fraction_csp3: Option<f64>,
     /// Total number of rings in the molecule.
@@ -124,7 +124,7 @@ pub struct RdkitDescriptors {
 
 #[derive(Clone, Debug, Default)]
 #[cfg(target_arch = "wasm32")]
-pub struct SourceSummary {
+pub(crate) struct SourceSummary {
     pub taxa: BTreeSet<String>,
     pub compounds: BTreeSet<String>,
     pub cids: BTreeSet<String>,
@@ -134,13 +134,13 @@ pub struct SourceSummary {
 
 #[derive(Clone, Debug, Default)]
 #[cfg(target_arch = "wasm32")]
-pub struct Enrichment {
+pub(crate) struct Enrichment {
     pub lotus: std::collections::HashMap<String, SourceSummary>,
     pub pubchem: std::collections::HashMap<String, SourceSummary>,
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct EndpointStatus {
+pub(crate) struct EndpointStatus {
     pub name: String,
     pub endpoint: String,
     pub reachable: bool,
@@ -149,7 +149,7 @@ pub struct EndpointStatus {
 
 #[derive(Clone, Debug, Default)]
 #[cfg(target_arch = "wasm32")]
-pub struct EnrichmentOutcome {
+pub(crate) struct EnrichmentOutcome {
     pub enrichment: Enrichment,
     pub endpoints: Vec<EndpointStatus>,
     pub warnings: Vec<String>,
@@ -157,7 +157,7 @@ pub struct EnrichmentOutcome {
 
 #[derive(Debug, Deserialize)]
 #[cfg(target_arch = "wasm32")]
-pub struct RdkitInspectResponse {
+pub(crate) struct RdkitInspectResponse {
     pub canonicalsmiles: Option<String>,
     pub inchikey: Option<String>,
     pub svg: Option<String>,
@@ -187,7 +187,7 @@ pub struct RdkitInspectResponse {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 /// Response from `RDKit`'s molecule inspection, containing structural analysis results.
-pub struct RdkitMotifHit {
+pub(crate) struct RdkitMotifHit {
     /// Human-readable motif label (e.g. "Steroid fused ring", "Flavone ring")
     pub label: String,
     /// Source classification: "natural", "synthetic", or "unknown"
@@ -205,7 +205,7 @@ pub struct RdkitMotifHit {
 /// anything else becomes `"unknown"`.  Duplicated in `app.rs` historically;
 /// consolidated here so all modules share the same logic.
 #[must_use]
-pub fn normalized_source_class(source_class: &str) -> &str {
+pub(crate) fn normalized_source_class(source_class: &str) -> &str {
     match source_class {
         "natural" | "synthetic" | "unknown" => source_class,
         _ => "unknown",

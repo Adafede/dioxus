@@ -14,7 +14,7 @@ use chematic::smiles::parse;
 use super::types::CxError;
 
 /// Parse a list of raw SMILES strings into molecules, skipping blanks.
-pub fn parse_list(smiles: &[String]) -> Result<Vec<Molecule>, CxError> {
+pub(crate) fn parse_list(smiles: &[String]) -> Result<Vec<Molecule>, CxError> {
     let mut mols = Vec::new();
     for s in smiles {
         let t = s.trim();
@@ -30,7 +30,7 @@ pub fn parse_list(smiles: &[String]) -> Result<Vec<Molecule>, CxError> {
 }
 
 /// Single-linkage clustering by ECFP4/Tanimoto above `threshold`.
-pub fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
+pub(crate) fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
     let n = mols.len();
     if n == 0 {
         return Vec::new();

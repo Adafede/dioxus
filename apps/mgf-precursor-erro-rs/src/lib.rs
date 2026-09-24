@@ -18,18 +18,18 @@
 //! dx build --release --platform web --package mgf-precursor-erro-rs
 //! ```
 
-// Note: Many items in submodules are `pub` but only accessible within this crate.
-// `unreachable_pub` would flag these as unreachable from external crates, but they
-// form the internal API that other modules in this crate depend on.
-#![allow(unreachable_pub)]
-
-pub mod app;
+pub(crate) mod app;
+/// Externally consumed by `examples/recalibration_demo.rs`.
 pub mod diagnostics;
-pub mod errors;
+pub(crate) mod errors;
 pub mod metrics;
-pub mod parser;
+#[cfg(target_arch = "wasm32")]
+pub(crate) mod parser;
+/// Externally consumed by `examples/recalibration_demo.rs`.
 pub mod plotting;
+/// Externally consumed by `examples/recalibration_demo.rs`.
 pub mod recalibration;
 
 pub use app::app;
+/// Error type surfaced in public signatures (e.g. plotting renders).
 pub use errors::MgfError;

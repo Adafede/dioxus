@@ -9,7 +9,7 @@ use crate::chemical_class::ChemicalClass;
 use crate::parser::GalleryItem;
 
 /// Collect unique adduct values from gallery items, sorted with `+` first.
-pub fn collect_adduct_options(gallery: &[GalleryItem]) -> Vec<String> {
+pub(super) fn collect_adduct_options(gallery: &[GalleryItem]) -> Vec<String> {
     let adduct_values: std::collections::BTreeSet<String> = gallery
         .iter()
         .filter_map(|item| item.adduct.as_ref())
@@ -30,7 +30,9 @@ pub fn collect_adduct_options(gallery: &[GalleryItem]) -> Vec<String> {
 }
 
 /// Group chemical classes by family, sorted by LIPID MAPS rank order.
-pub fn group_classes_by_family(classes: &[ChemicalClass]) -> Vec<(String, Vec<ChemicalClass>)> {
+pub(super) fn group_classes_by_family(
+    classes: &[ChemicalClass],
+) -> Vec<(String, Vec<ChemicalClass>)> {
     let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
     for class in classes {
         if let Some(entry) = families.iter_mut().find(|(f, _)| f == &class.family) {

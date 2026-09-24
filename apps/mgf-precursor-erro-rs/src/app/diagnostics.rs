@@ -10,7 +10,7 @@ use crate::metrics::PrecursorStats;
 use crate::recalibration::CalibrationModel;
 
 #[cfg(target_arch = "wasm32")]
-pub fn update_recalibration_diagnostics(
+pub(crate) fn update_recalibration_diagnostics(
     metrics: &PrecursorStats,
     model: CalibrationModel,
     diagnostics_signal: &mut Signal<Option<RecalibrationStats>>,
@@ -100,7 +100,7 @@ pub fn update_recalibration_diagnostics(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub const fn update_recalibration_diagnostics(
+pub(super) const fn update_recalibration_diagnostics(
     _metrics: &PrecursorStats,
     _model: CalibrationModel,
     _diagnostics_signal: &mut Signal<Option<RecalibrationStats>>,

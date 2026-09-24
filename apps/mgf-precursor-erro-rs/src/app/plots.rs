@@ -21,7 +21,7 @@ fn format_value(value: f64) -> String {
     }
 }
 
-pub fn format_count_with_percentage(count: usize, total: usize) -> String {
+pub(super) fn format_count_with_percentage(count: usize, total: usize) -> String {
     if total == 0 {
         format!("{count} (0.0%)")
     } else {
@@ -32,7 +32,7 @@ pub fn format_count_with_percentage(count: usize, total: usize) -> String {
     }
 }
 
-pub fn format_cumulative_bucket_count(
+pub(super) fn format_cumulative_bucket_count(
     metrics: &crate::metrics::PrecursorStats,
     bucket: &str,
     total: usize,
@@ -63,7 +63,7 @@ pub fn format_cumulative_bucket_count(
     format_count_with_percentage(count, total)
 }
 
-pub fn tolerance_card_style(index: usize) -> String {
+pub(super) fn tolerance_card_style(index: usize) -> String {
     let color = tolerance_step_color(index, 5);
     StyleBuilder::new()
         .padding("0.6rem 0.7rem")
@@ -74,7 +74,7 @@ pub fn tolerance_card_style(index: usize) -> String {
         .build()
 }
 
-pub fn estimate_compliance_mda(errors: &[f64], threshold_mda: f64) -> f64 {
+pub(super) fn estimate_compliance_mda(errors: &[f64], threshold_mda: f64) -> f64 {
     if errors.is_empty() {
         return 0.0;
     }
@@ -90,7 +90,7 @@ pub fn estimate_compliance_mda(errors: &[f64], threshold_mda: f64) -> f64 {
     f64::from(count) / f64::from(total) * 100.0
 }
 
-pub fn estimate_compliance_ppm(errors: &[f64], threshold_ppm: f64) -> f64 {
+pub(super) fn estimate_compliance_ppm(errors: &[f64], threshold_ppm: f64) -> f64 {
     if errors.is_empty() {
         return 0.0;
     }
@@ -214,11 +214,11 @@ pub fn absolute_mass_bias_plot(
     plot_shell(title, subtitle, svg_markup, download_markup)
 }
 
-pub fn format_value_text(value: f64) -> String {
+pub(super) fn format_value_text(value: f64) -> String {
     format_value(value)
 }
 
-pub fn format_bucket_text(
+pub(super) fn format_bucket_text(
     metrics: &crate::metrics::PrecursorStats,
     bucket: &str,
     total: usize,
@@ -226,6 +226,6 @@ pub fn format_bucket_text(
     format_cumulative_bucket_count(metrics, bucket, total)
 }
 
-pub fn tolerance_style(index: usize) -> String {
+pub(super) fn tolerance_style(index: usize) -> String {
     tolerance_card_style(index)
 }

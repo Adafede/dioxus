@@ -17,13 +17,13 @@ use super::graph::{components, matched_mask, molecule_to_query, unmatched_atoms,
 use super::roundtrip::{enumerate_repeating, roundtrip_coverage};
 use super::types::{Confidence, Construct, CxError, CxResult, CxResult_, RepeatUnit};
 
-pub fn build_repeating(group: &[Molecule]) -> CxResult_ {
+pub(crate) fn build_repeating(group: &[Molecule]) -> CxResult_ {
     let mut ordered = group.to_vec();
     ordered.sort_by_key(Molecule::atom_count);
-    let shortest = &ordered[0];
-    let longest = ordered
-        .last()
-        .expect("build_repeating: group is non-empty by the caller invariant");
+    // Both ends of a non-empty group: return an error (never panic) on empty.
+    let (Some(shortest), Some(longest)) = (ordered.first(), ordered.last()) else {
+        return Err(CxError("build_repeating: group is empty".into()));
+    };
 
     let scaffold_smiles = write(shortest);
     let scaffold =
@@ -67,11 +67,9 @@ pub fn build_repeating(group: &[Molecule]) -> CxResult_ {
 
     Ok(CxResult {
         cx_smiles: cx,
-        base_smiles: scaffold_smiles.clone(),
         construct: Construct::Repeating,
         scaffold_smiles,
         floating: Vec::new(),
-        repeating: Some(repeat_unit),
         confidence: Confidence {
             coverage: cov,
             clean: frac >= 1.0,
@@ -82,7 +80,7 @@ pub fn build_repeating(group: &[Molecule]) -> CxResult_ {
 
 /// One copy of the recurring fragment, taken from the extra atoms when the
 /// shortest scaffold is aligned into the longest input.
-pub fn repeat_pattern(
+pub(crate) fn repeat_pattern(
     _shortest: &Molecule,
     longest: &Molecule,
     unit_size: usize,
@@ -107,7 +105,7 @@ pub fn repeat_pattern(
 }
 
 /// Element multiset of ONE repeat unit (sorted), taken from the pattern.
-pub fn unit_multiset(pattern: &[u32], longest: &Molecule, unit_size: usize) -> Vec<u8> {
+pub(crate) fn unit_multiset(pattern: &[u32], longest: &Molecule, unit_size: usize) -> Vec<u8> {
     let k = pattern.len() / unit_size;
     let mut counts: HashMap<u8, usize> = HashMap::new();
     for i in pattern {
@@ -124,7 +122,7 @@ pub fn unit_multiset(pattern: &[u32], longest: &Molecule, unit_size: usize) -> V
 
 /// Locate the in-scaffold copy of the repeat unit: the internal connected
 /// subgraph of `unit_size` atoms whose element multiset matches `target`.
-pub fn locate_repeat_in_scaffold(
+pub(crate) fn locate_repeat_in_scaffold(
     scaffold: &Molecule,
     target: &[u8],
     unit_size: usize,
@@ -147,9 +145,9 @@ pub fn locate_repeat_in_scaffold(
                 }
                 continue;
             }
-            let cur = *frag
-                .last()
-                .expect("frag is non-empty: the stack only holds fragments with ≥1 atom");
+            // Non-empty by construction: the stack only holds fragments with
+            // ≥1 atom (seeded single-element, only ever appended to).
+            let Some(&cur) = frag.last() else { continue };
             for (nbr, _) in scaffold.neighbors(AtomIdx(cur)) {
                 if !frag.contains(&nbr.0) {
                     let mut nf = frag.clone();
@@ -163,7 +161,7 @@ pub fn locate_repeat_in_scaffold(
         .ok_or_else(|| CxError("could not locate repeat unit in scaffold".into()))
 }
 
-pub fn multiset(atoms: &[u32], mol: &Molecule) -> Vec<u8> {
+pub(crate) fn multiset(atoms: &[u32], mol: &Molecule) -> Vec<u8> {
     let mut v: Vec<u8> = atoms
         .iter()
         .map(|&i| mol.atom(AtomIdx(i)).element.atomic_number())
@@ -172,7 +170,7 @@ pub fn multiset(atoms: &[u32], mol: &Molecule) -> Vec<u8> {
     v
 }
 
-pub fn is_internal(atoms: &[u32], mol: &Molecule) -> bool {
+pub(crate) fn is_internal(atoms: &[u32], mol: &Molecule) -> bool {
     let set: HashSet<u32> = atoms.iter().copied().collect();
     let mut ext = 0usize;
     for &a in atoms {
@@ -185,21 +183,21 @@ pub fn is_internal(atoms: &[u32], mol: &Molecule) -> bool {
     ext == 2
 }
 
-pub fn center_dist(atoms: &[u32], n: usize) -> i64 {
+pub(crate) fn center_dist(atoms: &[u32], n: usize) -> i64 {
     let center = (n as i64 - 1) / 2;
     atoms.iter().map(|&a| a as i64 - center).sum::<i64>().abs()
 }
 
-pub fn gcd_vec(xs: &[usize]) -> usize {
+pub(crate) fn gcd_vec(xs: &[usize]) -> usize {
     xs.iter().copied().fold(0, gcd)
 }
 
-pub fn gcd(a: usize, b: usize) -> usize {
+pub(crate) fn gcd(a: usize, b: usize) -> usize {
     if b == 0 { a } else { gcd(b, a % b) }
 }
 
 /// Splice `n` copies of the repeat unit between its two external anchors.
-pub fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> Molecule {
+pub(crate) fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> Molecule {
     if n <= 1 {
         return scaffold.clone();
     }
@@ -230,6 +228,10 @@ pub fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> M
             }
         })
         .collect();
+    // `endpoint_for` only ever returns an atom inside `unit` (it either finds an
+    // anchor-neighbour that is in `unit`, or falls back to `unit[0]`), so the
+    // position always exists; a panic here is unreachable by construction.
+    #[expect(clippy::expect_used)]
     let pos_in_unit = |x: u32| -> usize {
         unit.iter()
             .position(|&v| v == x)
@@ -282,7 +284,7 @@ pub fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> M
 }
 
 /// First atom of `unit` that is bonded to `anchor` in `scaffold`.
-pub fn endpoint_for(scaffold: &Molecule, unit: &[u32], anchor: u32) -> u32 {
+pub(crate) fn endpoint_for(scaffold: &Molecule, unit: &[u32], anchor: u32) -> u32 {
     let uset: HashSet<u32> = unit.iter().copied().collect();
     for (nbr, _) in scaffold.neighbors(AtomIdx(anchor)) {
         if uset.contains(&nbr.0) {

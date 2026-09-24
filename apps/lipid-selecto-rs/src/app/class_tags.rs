@@ -18,7 +18,7 @@ use crate::parser::{GalleryItem, SpectrumBlock};
 ///
 /// `CATEGORY` comes from the broad classification, `MAIN_CLASS` from the
 /// first matching LMSD class, `SUB_CLASS` is always "-".
-pub fn class_tags_from_gallery(
+pub(super) fn class_tags_from_gallery(
     item: &GalleryItem,
     classes: &[ChemicalClass],
 ) -> Vec<(String, String)> {
@@ -94,7 +94,7 @@ fn class_tags_from_matched(
 
 /// Returns LIPID MAPS class tags for a spectrum block as (key, value) pairs.
 /// Used as a fallback when no matching `GalleryItem` is found.
-pub fn class_tags_from_block(
+pub(super) fn class_tags_from_block(
     block: &SpectrumBlock,
     classes: &[ChemicalClass],
 ) -> Vec<(String, String)> {
@@ -131,7 +131,7 @@ pub fn class_tags_from_block(
 /// Insert `COMMENT=LIPID_MAPS_*` lines with class tags in the MGF header
 /// block (after `BEGIN IONS`, before the first peak line).
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-pub fn insert_class_comment(block_raw: &str, class_tags: &[(String, String)]) -> String {
+pub(super) fn insert_class_comment(block_raw: &str, class_tags: &[(String, String)]) -> String {
     let comment_block: String = class_tags
         .iter()
         .map(|(k, v)| format!("COMMENT=LIPID_MAPS_{k}={v}\n"))

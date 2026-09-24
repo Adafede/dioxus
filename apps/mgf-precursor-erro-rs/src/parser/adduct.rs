@@ -16,8 +16,6 @@ use std::str::FromStr;
 use mascot_rs::prelude::*;
 use molecular_formulas::molecular_formula::MolecularFormula;
 
-use crate::metrics::AdductClass;
-
 use super::{
     AMMONIUM_MASS, ELECTRON_MASS, HYDROGEN_MASS, POTASSIUM_MASS, PROTON_MASS, SODIUM_MASS,
 };
@@ -25,18 +23,15 @@ use super::{
 thread_local! {
     static ADDUCT_SPEC_CACHE: RefCell<HashMap<String, Option<(f64, f64)>>> =
         RefCell::new(HashMap::new());
-    static ADDUCT_CLASS_CACHE: RefCell<HashMap<String, Option<AdductClass>>> =
-        RefCell::new(HashMap::new());
-    static ADDUCT_FAMILY_CACHE: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
 }
 
 #[must_use]
-pub fn expected_precursor_mz(
+pub(crate) fn expected_precursor_mz(
     neutral_mass: f64,
     adduct: Option<&str>,
     charge: Option<&str>,
     ion_mode: Option<&str>,
-) -> Option<f64> {
+) -> f64 {
     let normalized_adduct = adduct.unwrap_or("").trim();
     let normalized_ion_mode = ion_mode.unwrap_or("").trim().to_ascii_lowercase();
     let charge_sign =
@@ -84,11 +79,11 @@ pub fn expected_precursor_mz(
     };
 
     let base_mz = neutral_mass.mul_add(multiplier, shift) + electron_adjustment;
-    Some(base_mz / charge_value.max(1.0))
+    base_mz / charge_value.max(1.0)
 }
 
 #[must_use]
-pub fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
+pub(crate) fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
     let adduct = adduct?.trim();
     let cleaned = adduct.replace(' ', "");
     let suffix = cleaned.split(']').nth(1).unwrap_or("").trim();
@@ -333,7 +328,7 @@ fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64>
 }
 
 #[must_use]
-pub fn normalize_adduct_label(adduct: &str) -> String {
+pub(crate) fn normalize_adduct_label(adduct: &str) -> String {
     let trimmed = adduct.trim();
     if trimmed.is_empty() {
         return "unknown".to_string();
@@ -367,97 +362,12 @@ pub fn normalize_adduct_label(adduct: &str) -> String {
 }
 
 #[must_use]
-pub fn normalize_adduct_key(adduct: &str) -> String {
-    adduct.trim().replace(' ', "").to_ascii_uppercase()
-}
-
-#[must_use]
-pub const fn is_excluded_adduct(adduct: &str) -> bool {
+pub(crate) const fn is_excluded_adduct(adduct: &str) -> bool {
     let _ = adduct;
     false
 }
 
 #[must_use]
-pub fn is_supported_adduct(adduct: &str) -> bool {
+pub(crate) fn is_supported_adduct(adduct: &str) -> bool {
     parse_adduct_mass_spec(adduct).is_some()
-}
-
-/// # Panics
-/// Panics if the adduct-class cache mutex is poisoned.
-#[must_use]
-pub fn adduct_family(adduct: &str) -> String {
-    let normalized_key = normalize_adduct_key(adduct);
-    let cached = ADDUCT_FAMILY_CACHE.with(|cache| {
-        let mut cache = cache.borrow_mut();
-        if let Some(cached) = cache.get(&normalized_key) {
-            return Some(cached.clone());
-        }
-
-        let family =
-            adduct_class(adduct).map_or_else(|| "Other".to_string(), |adduct| adduct.family);
-        cache.insert(normalized_key.clone(), family.clone());
-        Some(family)
-    });
-    cached.unwrap_or_else(|| "Other".to_string())
-}
-
-/// # Panics
-/// Panics if the adduct-class cache mutex is poisoned.
-#[must_use]
-pub fn adduct_class(adduct: &str) -> Option<AdductClass> {
-    let normalized_key = adduct.trim().replace(' ', "").to_ascii_uppercase();
-    ADDUCT_CLASS_CACHE.with(|cache| {
-        let mut cache = cache.borrow_mut();
-        if let Some(cached) = cache.get(&normalized_key).cloned() {
-            return cached;
-        }
-
-        let normalized = normalize_adduct_label(adduct);
-        let charge = parse_adduct_charge_sign(Some(adduct)).map_or_else(
-            || {
-                if normalized.contains("]-") {
-                    -1
-                } else if normalized.contains("]+") || normalized.contains("]2+") {
-                    1
-                } else if normalized.contains("]2-") {
-                    -2
-                } else {
-                    0
-                }
-            },
-            |sign| if sign { -1 } else { 1 },
-        );
-        let family = if normalized.contains("[M+H]")
-            || normalized.contains("[M+2H]")
-            || normalized.contains("[M+NH4]")
-        {
-            "Protonated".to_string()
-        } else if normalized.contains("[M-H]") || normalized.contains("[M-2H]") {
-            "Deprotonated".to_string()
-        } else if normalized.contains("[M+NA]")
-            || normalized.contains("[M+K]")
-            || normalized.contains("[M+NH4]")
-        {
-            "Alkali / ammonium".to_string()
-        } else if normalized.contains("MG")
-            || normalized.contains("CA")
-            || normalized.contains("FE")
-        {
-            "Metal / complex".to_string()
-        } else if normalized.contains("CL") || normalized.contains("BR") {
-            "Halide".to_string()
-        } else {
-            "Other".to_string()
-        };
-
-        let result = Some(AdductClass {
-            label: normalized.clone(),
-            display: normalized,
-            family,
-            charge,
-        });
-
-        cache.insert(normalized_key, result.clone());
-        result
-    })
 }

@@ -33,6 +33,7 @@ ci:
 	just test
 	just doc
 	just wasm
+	just clippy-wasm
 	just machete
 	just audit
 	just deny
@@ -47,6 +48,20 @@ wasm:
 	cargo check -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --locked
 	cargo check -p lipid-selecto-rs --target wasm32-unknown-unknown --locked
 	cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked
+
+# WASM lint gate. `cargo check` on wasm32 only type-checks; `#[cfg(wasm32)]`
+# branches never get linted by the host `--workspace` clippy run, so lint
+# regressions in web-only code (e.g. redundant `pub(crate)` re-exports, dead
+# code behind cfg gates) slip through. Same per-app shape as `wasm` above:
+# never `--workspace --target wasm32` (crates/upload has wasm-incompatible unit
+# patterns in download.rs).
+clippy-wasm:
+	cargo clippy -p cxsmiles-yoga --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+	cargo clippy -p index --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+	cargo clippy -p json-count-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+	cargo clippy -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+	cargo clippy -p lipid-selecto-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+	cargo clippy -p smellfish-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
 
 # ── Per-app dev servers / production builds ───────────────────────────────────
 

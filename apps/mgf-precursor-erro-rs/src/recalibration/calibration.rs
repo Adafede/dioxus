@@ -24,7 +24,7 @@ pub fn recalibrate_fragment_mz(
 }
 
 /// Applies Orbitrap-style (ppm) correction to fragments.
-pub fn apply_orbitrap_correction(
+pub(super) fn apply_orbitrap_correction(
     fragments: &mut [Peak],
     precursor_ms1: f64,
     precursor_ms2: f64,
@@ -53,7 +53,7 @@ pub fn apply_orbitrap_correction(
 }
 
 /// Applies TOF-style (absolute Da) correction to fragments.
-pub fn apply_tof_correction(
+pub(super) fn apply_tof_correction(
     fragments: &mut [Peak],
     precursor_ms1: f64,
     precursor_ms2: f64,

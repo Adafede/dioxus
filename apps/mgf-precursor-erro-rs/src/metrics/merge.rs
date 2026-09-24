@@ -4,7 +4,10 @@
 use super::{HighErrorSmilesDetail, PrecursorStats, usize_to_f64};
 
 #[must_use]
-pub fn merge_precursor_stats(mut current: PrecursorStats, next: &PrecursorStats) -> PrecursorStats {
+pub(crate) fn merge_precursor_stats(
+    mut current: PrecursorStats,
+    next: &PrecursorStats,
+) -> PrecursorStats {
     let current_spectra = usize_to_f64(current.spectra);
     let next_spectra = usize_to_f64(next.spectra);
     let total_spectra = current_spectra + next_spectra;

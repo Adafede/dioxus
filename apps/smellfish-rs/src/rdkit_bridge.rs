@@ -10,7 +10,7 @@
 
 /// Inline JavaScript bridge: `RDKit` module waiter, NP-likeness model, and
 /// `window.__smilesRdkit` API used by the Rust app via `js_sys`.
-pub const RDKIT_BRIDGE_JS: &str = r##"
+pub(crate) const RDKIT_BRIDGE_JS: &str = r##"
 function waitForInitRDKitModule(timeoutMs = 12000) {
   const start = Date.now();
   return new Promise((resolve, reject) => {

@@ -25,7 +25,7 @@ use ui::prelude::*;
 /// - Color contrast >= 7:1 ratio
 /// - Keyboard navigation support
 #[component]
-pub fn AppCard(app: AppInfo) -> Element {
+pub(crate) fn AppCard(app: AppInfo) -> Element {
     let colors = ColorScheme::LIGHT;
 
     let card_style = StyleBuilder::new()

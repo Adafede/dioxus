@@ -8,11 +8,10 @@
 //! `LipidClassification` (the full assembled result).  Classification *logic*
 //! lives in [`super::classify`]; this module owns only the data.
 
-use std::fmt::Write;
-
 /// The broad lipid category a spectrum's molecule belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LipidClass {
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+pub(crate) enum LipidClass {
     /// Free fatty acid (RCOOH) — the simplest fatty acyl.
     FattyAcyl,
     /// Di-/tri-acylglycerol (no phosphorus, ester-linked acyl chains).
@@ -21,56 +20,25 @@ pub enum LipidClass {
     Glycerophospholipid,
     /// Ceramides, sphingoid bases, gangliosides and other sphingolipids.
     Sphingolipid,
-    /// Steroids / sterols (fused tetracyclic skeleton).
-    Sterol,
-    /// A molecule that matched the structural formula but not a specific class.
-    Other,
 }
 
 impl LipidClass {
-    /// Human-readable label for UI display.
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::FattyAcyl => "Fatty acyl",
-            Self::Glycerolipid => "Glycerolipid",
-            Self::Glycerophospholipid => "Glycerophospholipid",
-            Self::Sphingolipid => "Sphingolipid",
-            Self::Sterol => "Sterol",
-            Self::Other => "Lipid",
-        }
-    }
-
     /// LIPID MAPS category name with code, e.g. "Fatty Acyls \[FA]".
     #[must_use]
-    pub const fn lipidmaps_category(self) -> &'static str {
+    pub(crate) const fn lipidmaps_category(self) -> &'static str {
         match self {
             Self::FattyAcyl => "Fatty Acyls [FA]",
             Self::Glycerolipid => "Glycerolipids [GL]",
             Self::Glycerophospholipid => "Glycerophospholipids [GP]",
             Self::Sphingolipid => "Sphingolipids [SP]",
-            Self::Sterol => "Sterol Lipids [ST]",
-            Self::Other => "Other Lipids [-]",
-        }
-    }
-
-    /// CSS background color used by the classification badge in the UI.
-    #[must_use]
-    pub const fn color(self) -> &'static str {
-        match self {
-            Self::FattyAcyl => "#2563eb",
-            Self::Glycerolipid => "#0d9488",
-            Self::Glycerophospholipid => "#7c3aed",
-            Self::Sphingolipid => "#be185d",
-            Self::Sterol => "#b45309",
-            Self::Other => "#475569",
         }
     }
 }
 
 /// Elemental composition extracted from a molecule or a formula string.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ElementCounts {
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+pub(crate) struct ElementCounts {
     /// Number of carbon atoms.
     pub carbon: u32,
     /// Number of hydrogen atoms.
@@ -92,7 +60,8 @@ impl ElementCounts {
     ///
     /// `BE = C - H/2 - X/2 + N/2 + 1`
     #[must_use]
-    pub fn double_bond_equivalent(&self) -> f64 {
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn double_bond_equivalent(&self) -> f64 {
         let c = f64::from(self.carbon);
         let h = f64::from(self.hydrogen);
         let n = f64::from(self.nitrogen);
@@ -101,8 +70,10 @@ impl ElementCounts {
     }
 
     /// Molecular formula string in Hill order (e.g. `C16H32O2`).
+    #[cfg(all(test, target_arch = "wasm32"))]
     #[must_use]
-    pub fn formula_string(&self) -> String {
+    pub(crate) fn formula_string(&self) -> String {
+        use std::fmt::Write as _;
         let mut out = String::new();
         if self.carbon > 0 {
             out.push('C');
@@ -135,15 +106,10 @@ impl ElementCounts {
 
 /// A full result of classifying one spectrum, ready for display.
 #[derive(Clone, Debug)]
-pub struct LipidClassification {
+pub(crate) struct LipidClassification {
     /// The broad lipid class assignment.
     pub class: LipidClass,
-    /// Elemental composition extracted from the molecule or formula string.
-    pub counts: ElementCounts,
-    /// Hill-ordered molecular formula string.
-    pub formula: String,
-    /// Exact monoisotopic mass.
-    pub exact_mass: f64,
     /// Whether the classification came from a structural (SMILES) analysis.
+    #[cfg_attr(not(all(test, target_arch = "wasm32")), allow(dead_code))]
     pub derived_from_smiles: bool,
 }

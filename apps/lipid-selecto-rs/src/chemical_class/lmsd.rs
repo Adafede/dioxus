@@ -463,7 +463,7 @@ const LMSD_FAMILY_PALETTES: &[(&str, &[&str; 5])] = &[
 /// (e.g., "Fatty Acyls and Conjugates \[FA01]").
 /// Within each family, classes are sorted by LMSD database count (descending).
 #[must_use]
-pub fn lmsd_all() -> Vec<ChemicalClass> {
+pub(crate) fn lmsd_all() -> Vec<ChemicalClass> {
     let mut result = Vec::new();
     for (family_name, palette) in LMSD_FAMILY_PALETTES {
         let mut matching: Vec<&LmsdEntry> = LMSD_ENTRIES

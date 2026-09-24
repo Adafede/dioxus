@@ -6,7 +6,7 @@
 //! `enumerate` expands a positional CX-SMILES into every distinct molecule
 //! (one per variable-position combination) and canonicalises them; `enumerate_repeating`
 //! expands the repeating case by splicing `n` copies of the unit. Both feed
-//! [`roundtrip_coverage`], which counts how many canonical inputs survive the
+//! `roundtrip_coverage`, which counts how many canonical inputs survive the
 //! round-trip.
 
 use chematic::core::{AtomIdx, BondOrder, Molecule, MoleculeBuilder};
@@ -17,7 +17,12 @@ use super::repeating::splice_repeat;
 use super::types::{Coverage, RepeatUnit};
 
 /// Enumerate every distinct molecule implied by a positional CX-SMILES.
-pub fn enumerate(scaffold: &Molecule, defs: &[FloatingDef], targets: &[Target]) -> Vec<String> {
+#[must_use]
+pub(crate) fn enumerate(
+    scaffold: &Molecule,
+    defs: &[FloatingDef],
+    targets: &[Target],
+) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let var: Vec<usize> = targets
         .iter()
@@ -102,7 +107,8 @@ fn build_one(
 }
 
 /// Enumerate the repeating case: scaffold + (count-1) extra copies of the unit.
-pub fn enumerate_repeating(scaffold: &Molecule, unit: &RepeatUnit) -> Vec<String> {
+#[must_use]
+pub(crate) fn enumerate_repeating(scaffold: &Molecule, unit: &RepeatUnit) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for n in unit.min..=unit.max {
         out.push(canonical_smiles(&splice_repeat(scaffold, &unit.atoms, n)));
@@ -111,7 +117,8 @@ pub fn enumerate_repeating(scaffold: &Molecule, unit: &RepeatUnit) -> Vec<String
 }
 
 /// Round-trip report: how many original inputs re-appear after expanding CX-SMILES.
-pub fn roundtrip_coverage(enumerated: &[String], group: &[Molecule]) -> (usize, Coverage) {
+#[must_use]
+pub(crate) fn roundtrip_coverage(enumerated: &[String], group: &[Molecule]) -> (usize, Coverage) {
     let canon: Vec<String> = group.iter().map(canonical_smiles).collect();
     let mut covered = 0;
     for c in &canon {
@@ -128,7 +135,8 @@ pub fn roundtrip_coverage(enumerated: &[String], group: &[Molecule]) -> (usize, 
     )
 }
 
-pub fn dedup_sort(mut v: Vec<String>) -> Vec<String> {
+#[must_use]
+pub(crate) fn dedup_sort(mut v: Vec<String>) -> Vec<String> {
     v.sort();
     v.dedup();
     v
