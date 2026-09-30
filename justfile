@@ -169,6 +169,56 @@ mutants-mgf:
 	@command -v cargo-mutants >/dev/null 2>&1 || { echo "cargo-mutants not installed; skipping"; exit 0; }
 	cargo mutants --package mgf-precursor-erro-rs --jobs 8 --timeout 300
 
+# ── Mutation testing, sized for a laptop ──────────────────────────────────────
+# The recipes above are the CI-sized ones. These are the same runs with the width
+# taken out, for when the machine is a person's machine.
+#
+# The reason is not slowness. `mutants` at `--jobs 8` exhausted memory and took
+# this machine down twice, before any bounds existed in the three searches that
+# blow up. Those are bounded now — `MAX_FRAGMENTS` in `locate_repeat_in_scaffold`,
+# `MAX_ARRANGEMENTS` in `roundtrip::enumerate`, and the count-range cap in
+# `enumerate_repeating` — so the expected failure mode is a killed mutant rather
+# than a dead machine.
+#
+# "Expected" is the operative word. That is an argument from reading the code, not
+# a guarantee, and it holds because cargo-mutants emits no mutant for
+# `saturating_sub` or for the constants themselves, so a mutation cannot turn the
+# budget counter into a non-decrement. It holds for *those* mutants, on the day it
+# was checked. A mutation is by definition a change nobody predicted.
+#
+# So two things are pinned here rather than trusted:
+#
+#   `--jobs 2`    two cargo builds at a time rather than eight. Every mutant is a
+#                 fresh compile, so this is the whole of the peak memory.
+#   `--timeout`   every mutant is killed on schedule. A runaway one then costs a
+#                 timeout instead of the session.
+#
+# Sharding is the third lever, and the reason the shard is a parameter:
+#
+#   just mutants-safe          # the default scope, both crates, unsharded
+#   just mutants-safe 0/4      # 77 of cxsmiles-yoga's 306 mutants, ~10 min
+#   just mutants-safe 3/4      # the other 75, then 1/4 and 2/4
+#
+# Zero-indexed: `--shard k/n` wants `k < n`, so four shards are `0/4` through
+# `3/4` and `4/4` is an error rather than the last one. A fifth of the four is
+# worth having: they sum to 306 exactly, so no mutant is run twice or dropped.
+#
+# Randomization happens *after* sharding, so each shard is a real random subset
+# and the four together are the same mutants in a different order. One shard is a
+# sample, not a biased prefix, which is what makes it worth running on its own.
+#
+# Run `just mutants-list` first either way: it is instant and shows what a change
+# added before paying for any of this.
+mutants-safe shard="1/1":
+	@command -v cargo-mutants >/dev/null 2>&1 || { echo "cargo-mutants not installed; skipping"; exit 0; }
+	cargo mutants --package json-count-rs --package cxsmiles-yoga --jobs 2 --timeout 180 --shard {{shard}}
+
+# The 717-mutant crate at the same width. Longer than `mutants-safe`, so shard it
+# on purpose: `just mutants-safe-mgf 0/4` and so on through `3/4`.
+mutants-safe-mgf shard="1/1":
+	@command -v cargo-mutants >/dev/null 2>&1 || { echo "cargo-mutants not installed; skipping"; exit 0; }
+	cargo mutants --package mgf-precursor-erro-rs --jobs 2 --timeout 180 --shard {{shard}}
+
 # The Dioxus rendering crates, run on request. See `mutants.toml` for why they
 # are out of the default scope.
 mutants-ui:
