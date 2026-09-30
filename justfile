@@ -174,25 +174,32 @@ mutants-mgf:
 # taken out, for when the machine is a person's machine.
 #
 # The reason is not slowness. `mutants` at `--jobs 8` exhausted memory and took
-# this machine down twice, before any bounds existed in the three searches that
-# blow up. Those are bounded now — `MAX_FRAGMENTS` in `locate_repeat_in_scaffold`,
-# `MAX_ARRANGEMENTS` in `roundtrip::enumerate`, and the count-range cap in
-# `enumerate_repeating` — so the expected failure mode is a killed mutant rather
-# than a dead machine.
+# this machine down, twice, at 17 GB per job on only two jobs. The cause was not
+# the width: it was `enumerate_repeating` capping the *number* of repeat counts
+# when what it needed to cap was the size of one expanded molecule, and
+# canonicalisation being superlinear in molecule size. That is fixed
+# (`MAX_MOLECULE_ATOMS`, on both expansions), and the ceilings are `const`s, which
+# cargo-mutants does not emit mutants for.
 #
-# "Expected" is the operative word. That is an argument from reading the code, not
-# a guarantee, and it holds because cargo-mutants emits no mutant for
-# `saturating_sub` or for the constants themselves, so a mutation cannot turn the
-# budget counter into a non-decrement. It holds for *those* mutants, on the day it
-# was checked. A mutation is by definition a change nobody predicted.
+# "Fixed" is still a statement about the code as written, and it is worth being
+# honest about what it is not: a mutation testing run finds mutants nobody
+# predicted, and I got that wrong once already, in both directions — the first
+# version of this comment claimed a safety argument that a single unchecked
+# function falsified, and a 594 MB measurement on a crate with none of the
+# dangerous code in it was quoted as evidence for a crate that had it. Two jobs is
+# not what saved the machine and is not what should be read as having saved it.
 #
-# So two things are pinned here rather than trusted:
+# So the width is pinned for the ordinary reason — eight concurrent `cargo build`s
+# is eight compilers — and the timeout is pinned because a runaway mutant should
+# cost a timeout rather than the session:
 #
-#   `--jobs 2`    two cargo builds at a time rather than eight. Every mutant is a
-#                 fresh compile, so this is the whole of the peak memory.
-#   `--timeout`   every mutant is killed on schedule. A runaway one then costs a
-#                 timeout instead of the session.
+#   `--jobs 2`    two cargo builds at a time rather than eight.
+#   `--timeout`   every mutant is killed on schedule.
 #
+# Neither makes a run safe. It makes a run interruptible, which is the honest
+# claim: if something does still allocate without limit, this is tuned to lose the
+# mutant rather than the machine, and to tell you which mutant it was.
+
 # Sharding is the third lever, and the reason the shard is a parameter:
 #
 #   just mutants-safe          # the default scope, both crates, unsharded
