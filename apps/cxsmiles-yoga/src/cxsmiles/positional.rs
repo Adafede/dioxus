@@ -125,7 +125,7 @@ pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
     let ext = fields.join(",");
 
     // Round-trip enumeration.
-    let enumerated = enumerate(&scaffold, &defs, &targets);
+    let enumerated = enumerate(&scaffold, &defs, &targets)?;
     let (_, cov) = roundtrip_coverage(&enumerated, group);
     let frac = cov.fraction();
 

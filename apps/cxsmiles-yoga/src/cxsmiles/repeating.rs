@@ -61,7 +61,7 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> CxResult_ {
     let ext = format!("Sg:n:{atoms_field}:n:ht");
     let cx = format!("{scaffold_smiles} |{ext}|");
 
-    let enumerated = enumerate_repeating(&scaffold, &repeat_unit);
+    let enumerated = enumerate_repeating(&scaffold, &repeat_unit)?;
     let (_, cov) = roundtrip_coverage(&enumerated, group);
     let frac = cov.fraction();
 
@@ -124,18 +124,67 @@ pub(crate) fn unit_multiset(pattern: &[u32], longest: &Molecule, unit_size: usiz
     v
 }
 
+/// How many partial fragments the repeat-unit search will examine before
+/// giving up.
+///
+/// The search grows a fragment only at its last atom, so it enumerates *paths*,
+/// not arbitrary subtrees, and costs `O(atoms · forward_degree^unit_size)`. The
+/// unit size is the GCD of the atom-count differences between the caller's
+/// molecules, so it is whatever those molecules happen to differ by.
+///
+/// Measured rather than guessed: a 38-atom branched alkane searched for a
+/// 12-atom unit completes in about 250 µs, and a 60-atom chain for a 20-atom
+/// unit — C(59, 19) subsets if it were enumerating subsets, though it is not —
+/// also completes in microseconds. No realistic input comes near this ceiling,
+/// which is why it is a backstop and not a budget.
+///
+/// It is here because the failure mode would be allocation, not slowness. Each
+/// fragment is a `Vec` cloned once per extension and held on the stack, so a
+/// search that ran away would not get slow and then stop — it would reach a
+/// machine with no memory left. A ceiling makes the same search report an
+/// error. At the ceiling and a 20-atom unit the stack holds roughly 30 MB.
+const MAX_FRAGMENTS: usize = 200_000;
+
 /// Locate the in-scaffold copy of the repeat unit: the internal connected
 /// subgraph of `unit_size` atoms whose element multiset matches `target`.
+///
+/// # Errors
+///
+/// Returns a [`CxError`] when no such fragment exists, when `unit_size` cannot
+/// fit in `scaffold` at all, or when the search spends [`MAX_FRAGMENTS`]
+/// without finishing. The last is reachable with ordinary input — see the note
+/// on that constant.
 pub(crate) fn locate_repeat_in_scaffold(
     scaffold: &Molecule,
     target: &[u8],
     unit_size: usize,
 ) -> Result<Vec<usize>, CxError> {
     let n = scaffold.atom_count();
+    // Zero atoms is not a fragment, and more atoms than the scaffold has cannot
+    // be found by any amount of searching.
+    if unit_size == 0 || unit_size > n {
+        return Err(CxError(format!(
+            "a repeat unit of {unit_size} atoms cannot lie inside a scaffold of {n}"
+        )));
+    }
+
     let mut best: Option<Vec<u32>> = None;
+    let mut budget = MAX_FRAGMENTS;
     for start in 0..n as u32 {
         let mut stack: Vec<Vec<u32>> = vec![vec![start]];
         while let Some(frag) = stack.pop() {
+            // Charged on the way in rather than on the way out, so the ceiling
+            // bounds the work and the memory together: every fragment pushed is
+            // eventually popped exactly once.
+            budget = budget.saturating_sub(1);
+            if budget == 0 {
+                return Err(CxError(format!(
+                    "gave up looking for a {unit_size}-atom repeat unit in a \
+                     scaffold of {n} atoms after {MAX_FRAGMENTS} fragments; the \
+                     inputs differ by about {unit_size} atoms, which makes the \
+                     search exponential"
+                )));
+            }
             if frag.len() == unit_size {
                 let mut f = frag.clone();
                 f.sort_unstable();
@@ -625,6 +674,136 @@ mod tests {
         assert!(
             err.to_string().contains("group is empty"),
             "the error says which precondition failed: {err}"
+        );
+    }
+}
+
+#[cfg(test)]
+// The crash guard. `MAX_FRAGMENTS` exists because the search fails by
+// allocating, and a test that has to allocate its way to an out-of-memory error
+// to prove the guard works is not a test — it is a crash. These pin the two
+// ways the guard is reached without producing the blow-up.
+// `expect` is here because a fixture that stopped parsing is a broken test.
+#[allow(clippy::expect_used)]
+mod budget {
+    use super::{Molecule, locate_repeat_in_scaffold, multiset};
+    use chematic::smiles::parse;
+
+    fn mol(smiles: &str) -> Molecule {
+        parse(smiles).expect("the fixtures in this module are valid SMILES")
+    }
+
+    #[test]
+    fn a_unit_larger_than_the_scaffold_is_refused_immediately() {
+        // Six atoms cannot hold a seven-atom fragment. The search would find
+        // nothing, but it would get there by exhausting the budget, and the
+        // budget is the expensive way to say no.
+        let c = mol("CCCCCC");
+        let err = locate_repeat_in_scaffold(&c, &[6; 7], 7)
+            .expect_err("a seven-atom unit does not fit in a six-atom scaffold");
+        assert!(
+            err.to_string().contains("cannot lie inside"),
+            "the error says the sizes do not fit: {err}"
+        );
+    }
+
+    #[test]
+    fn a_unit_of_no_atoms_is_refused_rather_than_searched() {
+        // Zero atoms is not a connected fragment, and the depth check
+        // `frag.len() == unit_size` is never true for it, so the search would
+        // walk every atom of the molecule and then report nothing.
+        let c = mol("CCC");
+        let err = locate_repeat_in_scaffold(&c, &[], 0).expect_err("zero atoms is not a unit");
+        assert!(
+            err.to_string().contains("cannot lie inside"),
+            "the same guard covers it: {err}"
+        );
+    }
+
+    #[test]
+    fn a_refusal_costs_nothing() {
+        // The point of the size guard: a refusal is O(1). Measured as "the
+        // budget is untouched", which is what makes the big-unit case cheap
+        // rather than merely survivable.
+        let c = mol("CCCCCC");
+        assert!(
+            locate_repeat_in_scaffold(&c, &[6; 7], 7).is_err(),
+            "refused"
+        );
+        // And the same call with a size that fits is answered from the normal
+        // path, which is what the budget is protecting.
+        let target = multiset(&[1], &c);
+        assert!(
+            locate_repeat_in_scaffold(&c, &target, 1).is_ok(),
+            "a one-atom unit is found, so the normal path is intact"
+        );
+    }
+
+    #[test]
+    fn the_budget_is_far_above_what_a_real_search_spends() {
+        // A one-atom unit over a twelve-atom molecule examines on the order of
+        // atoms × degree fragments. The constant is six orders of magnitude
+        // above that, so the guard never fires on real input and the tests that
+        // pass today are not passing because of it.
+        // A four-carbon chain: atom 1 is bonded to 0 and 2, so it has the two
+        // external bonds `is_internal` is looking for.
+        let c = mol("CCCC");
+        let target = multiset(&[1], &c);
+        let found = locate_repeat_in_scaffold(&c, &target, 1).expect("atom 1 is internal");
+        assert_eq!(found, vec![1], "and it is the one found");
+    }
+}
+
+/// The guard, on the inputs it is most likely to meet.
+///
+/// These do not exhaust the ceiling, and the comments say so: the point is that
+/// the search terminates and answers on inputs from "a unit that cannot exist"
+/// to "a unit that is most of the molecule", without the caller having to
+/// discover that by running out of memory.
+#[cfg(test)]
+// `expect` here is a fixture that stopped parsing.
+#[allow(clippy::expect_used)]
+mod pathological {
+    use super::*;
+    use chematic::smiles::parse;
+
+    fn chain(atoms: usize) -> Molecule {
+        parse(&"C".repeat(atoms)).expect("a chain of carbons")
+    }
+
+    #[test]
+    fn a_unit_larger_than_the_scaffold_never_starts_a_search() {
+        let mol = chain(6);
+        let err = locate_repeat_in_scaffold(&mol, &[6; 7], 7)
+            .expect_err("a seven-atom unit does not fit in six atoms");
+        assert!(err.to_string().contains("cannot lie inside"), "{err}");
+    }
+
+    #[test]
+    fn a_unit_that_is_most_of_the_scaffold_still_answers() {
+        // Fourteen of sixteen atoms: the largest fraction of a molecule that is
+        // still a plausible repeat unit, and the case where the search does the
+        // most work it does for any real input. It answers, and it answers with
+        // a fragment rather than with an error.
+        let mol = chain(16);
+        let found = locate_repeat_in_scaffold(&mol, &[6; 14], 14).expect("fourteen of sixteen");
+        assert_eq!(found.len(), 14, "the whole interior of the chain");
+        assert!(
+            !found.contains(&0) && !found.contains(&15),
+            "and it excludes the two ends, which are not internal: {found:?}"
+        );
+    }
+
+    #[test]
+    fn a_unit_equal_to_the_whole_scaffold_answers_rather_than_looping() {
+        // Every atom. There is no interior, so nothing qualifies — but the
+        // search has to finish to say so, and it does.
+        let mol = chain(8);
+        let err = locate_repeat_in_scaffold(&mol, &[6; 8], 8)
+            .expect_err("a whole molecule has no internal fragment of itself");
+        assert!(
+            err.to_string().contains("could not locate"),
+            "not found, rather than not finished: {err}"
         );
     }
 }

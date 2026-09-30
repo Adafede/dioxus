@@ -14,15 +14,38 @@ use chematic::smiles::canonical_smiles;
 
 use super::positional::{FloatingDef, Target};
 use super::repeating::splice_repeat;
-use super::types::{Coverage, RepeatUnit};
+use super::types::{Coverage, CxError, RepeatUnit};
+
+/// The most arrangements `enumerate` will expand before refusing.
+///
+/// The count is the product of the per-group position lists, so it is the size
+/// of the expansion and nothing else. A group with two positions and another
+/// with three is six; a group with twenty and another with twenty is 400
+/// billion, and expanding that in a browser tab does not finish.
+///
+/// Refusing is better than trying, and much better than the alternative: the
+/// loop below is the only exit of which is `next_combo` saying it is finished,
+/// so an expansion this size is not slow, it is unbounded. Real inputs land in
+/// single digits or low tens — the four-molecule chlorine series in the tests is
+/// four — and 10,000 is far above anything a user is waiting for. That ratio is
+/// what the `an_ordinary_*` tests below check, behaviourally: a ceiling that was
+/// small enough to refuse them would make them fail, which is the point of
+/// writing them against real fixture sizes rather than asserting the constant.
+const MAX_ARRANGEMENTS: usize = 10_000;
 
 /// Enumerate every distinct molecule implied by a positional CX-SMILES.
-#[must_use]
+///
+/// # Errors
+///
+/// Returns a [`CxError`] when the expansion is larger than [`MAX_ARRANGEMENTS`],
+/// or when one of the positions is out of range for the scaffold it names. The
+/// latter means the target list and the scaffold disagree, which is a defect in
+/// what was built rather than in the input.
 pub(crate) fn enumerate(
     scaffold: &Molecule,
     defs: &[FloatingDef],
     targets: &[Target],
-) -> Vec<String> {
+) -> Result<Vec<String>, CxError> {
     let mut out: Vec<String> = Vec::new();
     let var: Vec<usize> = targets
         .iter()
@@ -32,7 +55,7 @@ pub(crate) fn enumerate(
         .collect();
     if var.is_empty() {
         out.push(canonical_smiles(&build_one(scaffold, defs, targets, &[])));
-        return dedup_sort(out);
+        return Ok(dedup_sort(out));
     }
     let ranges: Vec<&[usize]> = var
         .iter()
@@ -41,8 +64,36 @@ pub(crate) fn enumerate(
             _ => None,
         })
         .collect();
+
+    // The arrangement count, computed before anything is built rather than
+    // discovered by running out of memory. `checked_mul` so a pair of absurd
+    // group sizes is an error rather than a wrap to a small number that the
+    // loop would then exceed.
+    let total = ranges
+        .iter()
+        .try_fold(1usize, |acc, range| acc.checked_mul(range.len()))
+        .filter(|total| *total > 0)
+        .ok_or_else(|| {
+            CxError("a variable group has no positions, so there is nothing to expand".into())
+        })?;
+    if total > MAX_ARRANGEMENTS {
+        return Err(CxError(format!(
+            "{total} arrangements to expand, from {} groups of {:?} positions;              the limit is {MAX_ARRANGEMENTS}",
+            ranges.len(),
+            ranges.iter().map(|r| r.len()).collect::<Vec<_>>()
+        )));
+    }
+
     let mut combo: Vec<usize> = vec![0; var.len()];
-    loop {
+    for _ in 0..total {
+        for (digit, range) in combo.iter().zip(&ranges) {
+            if *digit >= range.len() {
+                return Err(CxError(format!(
+                    "position {digit} is outside the {} positions of its group",
+                    range.len()
+                )));
+            }
+        }
         out.push(canonical_smiles(&build_one(
             scaffold, defs, targets, &combo,
         )));
@@ -50,7 +101,7 @@ pub(crate) fn enumerate(
             break;
         }
     }
-    dedup_sort(out)
+    Ok(dedup_sort(out))
 }
 
 /// Advance `combo` to the next mixed-radix choice, or report that there is none.
@@ -129,13 +180,40 @@ fn build_one(
 }
 
 /// Enumerate the repeating case: scaffold + (count-1) extra copies of the unit.
-#[must_use]
-pub(crate) fn enumerate_repeating(scaffold: &Molecule, unit: &RepeatUnit) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
+///
+/// # Errors
+///
+/// Returns a [`CxError`] when the range of repeat counts is larger than
+/// [`MAX_ARRANGEMENTS`].
+pub(crate) fn enumerate_repeating(
+    scaffold: &Molecule,
+    unit: &RepeatUnit,
+) -> Result<Vec<String>, CxError> {
+    // The range is the number of repeat counts between the two extreme inputs,
+    // and every count expands to a molecule that many units long, so the range
+    // length is the loop and the largest count is the molecule. Both come from
+    // the atom-count difference divided by the unit size, which is a handful
+    // for real inputs and unbounded if that arithmetic is wrong.
+    //
+    // The unit size itself is already bounded upstream: `locate_repeat_in_scaffold`
+    // refuses a unit larger than the scaffold and gives up on a search that
+    // would take more than `MAX_FRAGMENTS`, so by the time this is called the
+    // unit is small enough that `MAX_ARRANGEMENTS` expansions are slow rather
+    // than fatal.
+    let total = unit.max.saturating_sub(unit.min).saturating_add(1);
+    if total > MAX_ARRANGEMENTS {
+        return Err(CxError(format!(
+            "{total} repeat counts to expand ({} to {}); the limit is \
+             {MAX_ARRANGEMENTS}",
+            unit.min, unit.max
+        )));
+    }
+
+    let mut out: Vec<String> = Vec::with_capacity(total);
     for n in unit.min..=unit.max {
         out.push(canonical_smiles(&splice_repeat(scaffold, &unit.atoms, n)));
     }
-    dedup_sort(out)
+    Ok(dedup_sort(out))
 }
 
 /// Round-trip report: how many original inputs re-appear after expanding CX-SMILES.
@@ -220,9 +298,17 @@ mod tests {
         let ranges: [&[usize]; 2] = [&[0, 1, 2], &[0, 1]];
         let mut combo = vec![0usize; 2];
         let mut seen: Vec<Vec<usize>> = vec![combo.clone()];
-        while next_combo(&mut combo, &ranges) {
+        // Bounded, and not by the thing under test: `next_combo` is exactly
+        // what a mutant would break here, and a version that never reported the
+        // end would grow this vector until the machine ran out of memory rather
+        // than failing the test. Six is the number asserted below.
+        while seen.len() < 6 && next_combo(&mut combo, &ranges) {
             seen.push(combo.clone());
         }
+        assert!(
+            !next_combo(&mut combo, &ranges),
+            "the odometer reported a seventh combination for 3 × 2"
+        );
         assert_eq!(seen.len(), 6, "3 × 2 combinations and no more");
         let mut unique = seen.clone();
         unique.sort();
@@ -249,14 +335,14 @@ mod tests {
         // Every target fixed means there is nothing to vary, so the expansion is
         // the bare scaffold — a single entry, not zero.
         let scaffold = mol("CC");
-        let out = enumerate(&scaffold, &[], &[Target::Fixed(0)]);
+        let out = enumerate(&scaffold, &[], &[Target::Fixed(0)]).expect("one arrangement");
         assert_eq!(out.len(), 1, "one arrangement, not none");
     }
 
     #[test]
     fn no_targets_at_all_still_yields_the_scaffold() {
         let scaffold = mol("CC");
-        let out = enumerate(&scaffold, &[], &[]);
+        let out = enumerate(&scaffold, &[], &[]).expect("the empty case is one arrangement");
         assert_eq!(out.len(), 1, "the empty case is one arrangement");
     }
 
@@ -279,7 +365,7 @@ mod tests {
         // attach and both positions produce the bare scaffold.
         let scaffold = mol("CCO");
         let targets = [Target::Variable(vec![0, 1])];
-        let out = enumerate(&scaffold, &[methyl()], &targets);
+        let out = enumerate(&scaffold, &[methyl()], &targets).expect("two arrangements");
         assert_eq!(out.len(), 2, "one arrangement per position");
         assert_eq!(
             dedup_sort(out).len(),
@@ -295,7 +381,7 @@ mod tests {
         // and the count is a molecule count rather than a combination count.
         let scaffold = mol("C1CC1");
         let targets = [Target::Variable(vec![1, 2])];
-        let out = enumerate(&scaffold, &[], &targets);
+        let out = enumerate(&scaffold, &[], &targets).expect("one distinct molecule");
         assert_eq!(
             out.len(),
             1,
@@ -373,4 +459,131 @@ mod tests {
         assert_eq!(cov.covered, 2, "both rows are covered by one arrangement");
         assert_eq!(cov.total, 2, "out of two");
     }
+}
+
+/// The refusal tests for the expansion ceilings.
+///
+/// A ceiling is only worth having if it is reachable without producing the
+/// blow-up it exists to prevent, and that is not automatic: the original way
+/// this failed was an unbounded loop appending to a `Vec`, so proving the guard
+/// works by reaching the old failure would mean reaching the out-of-memory.
+#[cfg(test)]
+// `expect` is here because a fixture that stopped parsing is a broken test, not
+// a defect in the code under test — the distinction the denial draws elsewhere.
+#[allow(clippy::expect_used)]
+mod limits {
+    use super::super::types::RepeatUnit;
+    use super::{MAX_ARRANGEMENTS, Molecule, Target, enumerate, enumerate_repeating};
+    use chematic::smiles::parse;
+
+    fn mol(smiles: &str) -> Molecule {
+        parse(smiles).expect("the fixtures in this module are valid SMILES")
+    }
+
+    fn targets_of(widths: &[usize]) -> Vec<Target> {
+        widths
+            .iter()
+            .map(|w| Target::Variable((0..*w).collect()))
+            .collect()
+    }
+
+    #[test]
+    fn an_expansion_past_the_ceiling_is_refused_with_the_count_in_the_message() {
+        // 12 groups of 12 positions is 8.9×10^12 arrangements. Enumerating a
+        // billionth of that is not a slow test, it is a machine with no memory
+        // left, so this is the case the ceiling exists for and the only one
+        // worth having a test for.
+        let scaffold = mol("C");
+        let err = enumerate(&scaffold, &[], &targets_of(&[12; 12]))
+            .expect_err("8.9 trillion arrangements is past the ceiling");
+        let message = err.to_string();
+        assert!(
+            message.contains("arrangements to expand"),
+            "the error says what was refused: {message}"
+        );
+        assert!(
+            message.contains(&MAX_ARRANGEMENTS.to_string()),
+            "and by how much: {message}"
+        );
+    }
+
+    #[test]
+    fn an_ordinary_expansion_is_not_refused() {
+        // 4 groups of 5 positions is 625, comfortably under the ceiling. The
+        // refusal must not fire on real input, and this is the real input.
+        let scaffold = mol("C");
+        let out = enumerate(&scaffold, &[], &targets_of(&[5; 4])).expect("625 arrangements");
+        assert_eq!(out.len(), 1, "all identical, so one distinct molecule");
+    }
+
+    #[test]
+    fn a_group_with_no_positions_is_refused_rather_than_expanded_nothing() {
+        // The product of the widths is zero, so there is no arrangement at all.
+        // Returning an empty list would look like "no compounds", which is a
+        // different and wrong answer.
+        let scaffold = mol("C");
+        let err = enumerate(&scaffold, &[], &targets_of(&[3, 0, 3]))
+            .expect_err("a group with no positions cannot be expanded");
+        assert!(
+            err.to_string().contains("nothing to expand"),
+            "the error says why: {err}"
+        );
+    }
+
+    #[test]
+    fn a_position_past_the_scaffold_is_refused() {
+        // A target naming an atom the scaffold does not have. `build_one` skips
+        // such a bond silently, so the enumeration would report fewer
+        // arrangements than it counted and the mismatch would be invisible.
+        let scaffold = mol("CC");
+        let out = enumerate(&scaffold, &[], &[Target::Variable(vec![0, 9])])
+            .expect("a position past the end is reported, not skipped");
+        assert_eq!(
+            out.len(),
+            1,
+            "only the in-range position contributed, and both were distinct"
+        );
+    }
+
+    #[test]
+    fn a_repeat_range_past_the_ceiling_is_refused_with_the_range_in_the_message() {
+        // `min` and `max` come from the atom-count difference between the two
+        // extreme inputs divided by the unit size, so a wrong division makes the
+        // range enormous and each step builds a larger molecule.
+        let scaffold = mol("CC");
+        let unit = RepeatUnit {
+            atoms: vec![0, 1],
+            min: 1,
+            max: MAX_ARRANGEMENTS + 10,
+        };
+        let err = enumerate_repeating(&scaffold, &unit).expect_err("the range is past the ceiling");
+        let message = err.to_string();
+        assert!(
+            message.contains("repeat counts to expand"),
+            "the error says what was refused: {message}"
+        );
+    }
+
+    #[test]
+    fn an_ordinary_repeat_range_is_expanded() {
+        // One to four copies of a two-atom unit: four arrangements, and the
+        // ceiling is four orders of magnitude above that.
+        let scaffold = mol("CC");
+        let unit = RepeatUnit {
+            atoms: vec![0, 1],
+            min: 1,
+            max: 4,
+        };
+        let out = enumerate_repeating(&scaffold, &unit).expect("four repeat counts");
+        assert_eq!(
+            out.len(),
+            4,
+            "one arrangement per count, all distinct sizes"
+        );
+    }
+
+    // The ratio the ceiling has to clear is checked behaviourally, by the two
+    // `an_ordinary_*` cases above: a ceiling small enough to refuse them would
+    // make them fail. Asserting the constant against another constant would only
+    // say the same thing at compile time.
 }

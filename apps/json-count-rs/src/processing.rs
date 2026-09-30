@@ -220,6 +220,22 @@ fn unescape_json_string(raw: &[u8]) -> String {
     let mut out = String::with_capacity(raw.len());
     let mut i = 0;
     while let Some(&byte) = raw.get(i) {
+        // `out` is grown inside this loop, so a branch that failed to move the
+        // cursor would not merely hang: it would allocate a `String` until the
+        // tab died. The trailing-backslash case below is exactly that bug, and
+        // it was live for the life of the function. Two invariants make the
+        // class checkable instead, both of which hold for every input and
+        // neither of which needs the loop to terminate to check:
+        //
+        // * `i` strictly increases, so the loop runs at most `raw.len()` times;
+        // * `out` is never longer than `raw`, because every escape consumes at
+        //   least two input bytes and emits at most one output byte, and every
+        //   run of literal characters is copied at its own length.
+        //
+        // Both are `debug_assert!` so they cost nothing in a release build and
+        // are checked in every test, which is where a regression in this
+        // function would be introduced.
+        let entered_at = i;
         let is_escape = byte == b'\\';
         if is_escape {
             // A backslash with nothing after it has no escape to expand, so it is
@@ -285,7 +301,9 @@ fn unescape_json_string(raw: &[u8]) -> String {
             }
         } else {
             // `raw.get(i)` succeeded, so the tail from `i` exists; `next` is at
-            // least `i` and at most `raw.len()`, so the span does too.
+            // least `i + 1` — this branch is only reached when `raw[i]` is not a
+            // backslash, so the first backslash in the tail is not at its offset
+            // zero — and at most `raw.len()`, so the span does too.
             let Some(rest) = raw.get(i..) else {
                 break;
             };
@@ -298,6 +316,20 @@ fn unescape_json_string(raw: &[u8]) -> String {
             }
             i = next;
         }
+
+        // After both branches, because both are what move the cursor: checked
+        // earlier, the branch that does the advancing had not run yet.
+        debug_assert!(
+            i > entered_at,
+            "the scan must move forward: it entered at {entered_at} and is still \
+             at {i}, which would grow `out` without consuming input"
+        );
+        debug_assert!(
+            out.len() <= raw.len(),
+            "unescaping cannot lengthen a string: {} bytes out of {} in",
+            out.len(),
+            raw.len()
+        );
     }
     out
 }
