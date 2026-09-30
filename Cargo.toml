@@ -27,6 +27,11 @@ dioxus = { version = "0.7", features = ["web"] }
 futures = "0.3"
 gloo-timers = { version = "0.3", features = ["futures"] }
 js-sys = "0.3"
+# The transport and query crates of the LOTUS explorer, consumed by
+# `apps/smellfish-rs`. Tracked on a branch rather than a rev so the app keeps
+# up with a crate that is still being split up; the lockfile pins the exact
+# commit, and CI is what notices an API moving underneath.
+lotus-search = { git = "https://github.com/lotusnprod/lotus-explore-rs", branch = "main", version = "0.1" }
 rand = "0.10"
 rayon = "1.12"
 reqwest = { version = "0.13", features = ["gzip"] }

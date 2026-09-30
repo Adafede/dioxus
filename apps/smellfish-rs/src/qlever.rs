@@ -2,17 +2,18 @@
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 use crate::model::{EndpointStatus, Enrichment, EnrichmentOutcome, SourceSummary};
+use crate::sparql::{QLEVER_PUBCHEM, QLEVER_WIKIDATA, WDQS_WIKIDATA, run_query};
 use futures::future::join;
-use lotus::transport::{ResponseFormat, execute_sparql_with_format};
+use lotus_search::ResponseFormat;
 use serde_json::Value;
 use std::collections::HashMap;
 
+// The browser's `fetch`, through the pooled client `lotus-search` builds for it.
+// Constructed once per enrichment run and passed to every query, because a
+// client per query is a fresh connection pool per query.
 #[cfg(target_arch = "wasm32")]
-pub(crate) const LOTUS_ENDPOINT: &str = "https://qlever.dev/api/wikidata";
-#[cfg(target_arch = "wasm32")]
-pub(crate) const WDQS_ENDPOINT: &str = "https://query.wikidata.org/sparql";
-#[cfg(target_arch = "wasm32")]
-pub(crate) const PUBCHEM_ENDPOINT: &str = "https://qlever.cs.uni-freiburg.de/api/pubchem";
+use lotus_search::reqwest_client::ReqwestClient;
+
 #[cfg(target_arch = "wasm32")]
 const QUERY_CHUNK_SIZE: usize = 50;
 
@@ -22,19 +23,39 @@ pub(crate) async fn enrich_sources(
     _smiles_list: &[String],
     mut set_status: impl FnMut(String),
 ) -> EnrichmentOutcome {
+    // One client for the whole run, so the three endpoints' connections are
+    // pooled rather than rebuilt per query.
+    let http = match ReqwestClient::new() {
+        Ok(http) => http,
+        Err(err) => {
+            return EnrichmentOutcome {
+                enrichment: Enrichment {
+                    lotus: HashMap::new(),
+                    pubchem: HashMap::new(),
+                },
+                endpoints: vec![EndpointStatus {
+                    name: "HTTP client".to_string(),
+                    endpoint: String::new(),
+                    reachable: false,
+                    detail: err.to_string(),
+                }],
+                warnings: vec![format!("could not open an HTTP client: {err}")],
+            };
+        }
+    };
     let mut warnings = Vec::new();
 
     // Probe qlever and pubchem endpoints (in parallel)
     let (qlever_probe, pubchem_probe) = join(
-        probe_endpoint("LOTUS", LOTUS_ENDPOINT),
-        probe_endpoint("PubChem", PUBCHEM_ENDPOINT),
+        probe_endpoint(&http, "LOTUS", QLEVER_WIKIDATA),
+        probe_endpoint(&http, "PubChem", QLEVER_PUBCHEM),
     )
     .await;
 
     // Try WDQS first (most reliable for complex queries)
     set_status("Querying data sources…".to_string());
 
-    let lotus_result = fetch_lotus_hits_by_inchikey(WDQS_ENDPOINT, inchikeys).await;
+    let lotus_result = fetch_lotus_hits_by_inchikey(&http, WDQS_WIKIDATA, inchikeys).await;
 
     let lotus = match lotus_result {
         Ok(data) => data,
@@ -43,7 +64,7 @@ pub(crate) async fn enrich_sources(
                 "LOTUS WDQS failed, switched to Qlever fallback: {err}"
             ));
             // Fall back to qlever with optimized query
-            match fetch_lotus_hits_by_inchikey(LOTUS_ENDPOINT, inchikeys).await {
+            match fetch_lotus_hits_by_inchikey(&http, QLEVER_WIKIDATA, inchikeys).await {
                 Ok(data) => data,
                 Err(err) => {
                     warnings.push(format!("LOTUS qlever also failed: {err}"));
@@ -56,7 +77,7 @@ pub(crate) async fn enrich_sources(
     // Show WDQS as the primary endpoint since that's what we actually queried
     let lotus_probe = EndpointStatus {
         name: "LOTUS".to_string(),
-        endpoint: WDQS_ENDPOINT.to_string(),
+        endpoint: WDQS_WIKIDATA.to_string(),
         reachable: !lotus.is_empty(), // Reachable if we got results
         detail: if lotus.is_empty() {
             "no results".to_string()
@@ -68,7 +89,7 @@ pub(crate) async fn enrich_sources(
     // Use classical InChIKey lookup for PubChem
     let pubchem = if pubchem_probe.reachable {
         set_status("Querying PubChem (InChIKey lookup)…".to_string());
-        match fetch_pubchem_hits(inchikeys).await {
+        match fetch_pubchem_hits(&http, inchikeys).await {
             Ok(data) => data,
             Err(err) => {
                 warnings.push(format!("PubChem search failed: {err}"));
@@ -91,8 +112,8 @@ pub(crate) async fn enrich_sources(
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn probe_endpoint(name: &str, endpoint: &str) -> EndpointStatus {
-    match execute_sparql_with_format("ASK {}", endpoint, ResponseFormat::SparqlJson).await {
+async fn probe_endpoint(http: &ReqwestClient, name: &str, endpoint: &str) -> EndpointStatus {
+    match run_query(http, endpoint, "ASK {}", ResponseFormat::SparqlJson).await {
         Ok(_) => EndpointStatus {
             name: name.to_string(),
             endpoint: endpoint.to_string(),
@@ -110,17 +131,18 @@ async fn probe_endpoint(name: &str, endpoint: &str) -> EndpointStatus {
 
 #[cfg(target_arch = "wasm32")]
 async fn fetch_lotus_hits_by_inchikey(
+    http: &ReqwestClient,
     endpoint: &str,
     inchikeys: &[String],
 ) -> Result<HashMap<String, SourceSummary>, String> {
     // Use WDQS query for WDQS, qlever-specific query for qlever
-    let query = if endpoint == WDQS_ENDPOINT {
+    let query = if endpoint == WDQS_WIKIDATA {
         build_lotus_query_wdqs(inchikeys)
     } else {
         build_lotus_query_qlever(inchikeys)
     };
 
-    let bindings = sparql_bindings(endpoint, &query).await?;
+    let bindings = sparql_bindings(http, endpoint, &query).await?;
 
     let mut summary: HashMap<String, SourceSummary> = HashMap::new();
 
@@ -283,6 +305,7 @@ SELECT DISTINCT ?inchikey ?related_cid WHERE {{
 
 #[cfg(target_arch = "wasm32")]
 async fn fetch_pubchem_hits(
+    http: &ReqwestClient,
     inchikeys: &[String],
 ) -> Result<HashMap<String, SourceSummary>, String> {
     let mut summary: HashMap<String, SourceSummary> = HashMap::new();
@@ -292,7 +315,7 @@ async fn fetch_pubchem_hits(
         let query = build_pubchem_query(chunk);
         web_sys::console::log_1(&format!("PubChem chunk query: {} InChIKeys", chunk.len()).into());
 
-        for binding in sparql_bindings(PUBCHEM_ENDPOINT, &query).await? {
+        for binding in sparql_bindings(http, QLEVER_PUBCHEM, &query).await? {
             let inchikey = binding_value(&binding, "inchikey");
             if inchikey.is_empty() {
                 continue;
@@ -323,10 +346,11 @@ async fn fetch_pubchem_hits(
 
 #[cfg(target_arch = "wasm32")]
 async fn sparql_bindings(
+    http: &ReqwestClient,
     endpoint: &str,
     query: &str,
 ) -> Result<Vec<serde_json::Map<String, Value>>, String> {
-    let response = execute_sparql_with_format(query, endpoint, ResponseFormat::SparqlJson)
+    let response = run_query(http, endpoint, query, ResponseFormat::SparqlJson)
         .await
         .map_err(|err| err.to_string())?;
     let json: Value = serde_json::from_str(&response).map_err(|err| err.to_string())?;

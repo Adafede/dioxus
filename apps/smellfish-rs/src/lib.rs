@@ -41,6 +41,10 @@ pub(crate) mod qlever;
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod rdkit;
 pub(crate) mod rdkit_bridge;
+/// SPARQL over HTTP. Compiled on the host as well so its tests run in
+/// `cargo test`, which is where the only tests of the enrichment path are.
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(crate) mod sparql;
 pub(crate) mod styles;
 
 /// Root application component. The only externally consumed item.
