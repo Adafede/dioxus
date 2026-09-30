@@ -120,8 +120,8 @@ const MAPPING: &[Job] = &[
         name: "mutants",
         recipes: &["mutants"],
         in_local_gate: false,
-        note: "non-blocking in CI: 170 of 421 mutants survive today, so a gate would be \
-               permanently red; 421 mutants also take ~25 min",
+        note: "non-blocking in CI: 13 of cxsmiles-yoga's 290 mutants survive today, so \
+               a gate would be permanently red; 421 mutants also take ~25 min",
     },
 ];
 

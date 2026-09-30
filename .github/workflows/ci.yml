@@ -95,16 +95,18 @@ jobs:
     name: Mutation tests
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # Non-blocking, on purpose, and the numbers in the comment are the reason.
-    # `cargo mutants` exits non-zero when any mutant survives, and 170 of the 421
-    # do today: they are the to-do list, and making this blocking before they are
-    # either covered by a test or excluded in `.cargo/mutants.toml` would mean
-    # shipping a permanently red job. Each run is the list of behaviours the
-    # suite is not actually pinning down.
+    # Non-blocking, on purpose. `cargo mutants` exits non-zero when any mutant
+    # survives, and 13 of `cxsmiles-yoga`'s 290 do today. They are the to-do
+    # list, and making this blocking before they are either covered by a test or
+    # excluded in `.cargo/mutants.toml` would mean shipping a permanently red
+    # job. Each run is the list of behaviours the suite is not pinning down.
     #
-    # `json-count-rs`: 125 mutants, 0 killed, 125 survived. 21 passing tests, and
-    # none of them reaches the function they appear to cover.
-    # `cxsmiles-yoga`: 296 mutants, 164 killed, 45 survived.
+    # `cxsmiles-yoga` was at 45 survivors of 296 before its 100 new tests; the
+    # 13 left are end-to-end arithmetic that no current fixture distinguishes.
+    # `json-count-rs` earns its place in the scope by having found a hang: its
+    # string-escaping functions were wasm-gated despite touching no browser API,
+    # and the test written once they were host-buildable exposed a trailing
+    # backslash that made the scanner loop forever.
     continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

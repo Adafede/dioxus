@@ -100,6 +100,14 @@ wasm:
 # only for wasm, so without this their code and their tests are never built by
 # any command in the gate. That is how a test calling a method that does not
 # exist survived here — the host build never sees those modules at all.
+#
+# The same blindness runs the other way, and it is the more expensive one: pure
+# code behind a `#[cfg(target_arch = "wasm32")]` that touches no browser API is
+# invisible to every *host* check, so nothing can assert on it from a host test
+# run. `json-count-rs`'s string-escaper and `lipid-selecto-rs`'s whole MGF
+# parser were both that, and both are host-built and tested now. The pattern to
+# look for is a `cfg(wasm32)` on a function whose body has no `web_sys`, no
+# `Signal` and no `Blob` in it: the gate is then not saying anything.
 clippy-wasm:
 	cargo clippy -p cxsmiles-yoga --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
 	cargo clippy -p index --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
@@ -127,20 +135,28 @@ build app:
 # they look like. `CAUGHT` is the test failing on the mutant — killed, good.
 # `MISSED` is the test still passing — survived, and that is a gap in the suite.
 #
-# The scope is two crates, and it is two because the third did not fit the time
-# budget. Measured on an 8-core laptop, `--jobs 8`:
+# The scope is two crates. The third did not fit a CI job's budget and is
+# `just mutants-mgf`: 717 mutants, about half an hour, opt-in.
 #
-#   json-count-rs             125 mutants    3 min   0 killed, 125 survived
-#   cxsmiles-yoga             296 mutants   19 min   164 killed,  45 survived
-#   mgf-precursor-erro-rs     717 mutants   ~30 min  (opt-in, `just mutants-mgf`)
+# `cxsmiles-yoga` went from 7 tests to 107 on the strength of this. Before:
+# 296 mutants, 164 killed, 45 survived. After:
 #
-# All three have survivors, so this is a to-do list, not a gate — which is why
-# the CI job is `continue-on-error`. `json-count-rs` is the headline: 21 passing
-# tests, and not one of the 125 mutants they should catch is caught. The 21
-# tests are on the host-side scanner; the mutated function is the WASM streaming
-# scanner, which no host test reaches. That is the same cfg blind spot the
-# WASM clippy line exists to close, and it is worth knowing about before the
-# first is read as evidence the JSON path is tested.
+#   cxsmiles-yoga    290 mutants   21 min   193 killed, 13 survived
+#
+# 13 survivors of 290 is a to-do list, not a gate, which is why the CI job is
+# `continue-on-error`. The remaining ones are the end-to-end arithmetic
+# (`build_repeating`'s count range, `repeat_pattern`'s unit-size filter) and one
+# union-find index, none of which the current fixtures distinguish.
+#
+# `json-count-rs` earned its place here differently. Its string-escaping
+# functions were `#[cfg(target_arch = "wasm32")]` even though they take `&[u8]`
+# and return a `String` and touch no browser API at all — so the host test build
+# never compiled them, and nothing could assert on them from the host. They are
+# now `cfg(any(test, …))` with tests beside them. The first of those tests hung
+# the test runner, which is how the trailing-backslash infinite loop below came
+# to light: a JSON string body ending in a lone `\` made the scanner find the
+# same backslash at offset zero forever and never advance. The gate is worth
+# running for that alone.
 #
 # `mutants.toml` (at `.cargo/mutants.toml`, the only path `cargo-mutants` reads
 # without a flag) records what is excluded from mutation and why.
