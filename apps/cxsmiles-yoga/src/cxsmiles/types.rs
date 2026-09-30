@@ -46,16 +46,28 @@ pub(crate) struct Confidence {
 }
 
 /// A floating (pendant) group, described for serialisation and expansion.
+///
+/// # Nothing reads this but the tests
+///
+/// `build_positional` fills it in and [`CxResult::floating`] carries it, and the
+/// only consumer anywhere in the workspace is the test suite in
+/// [`super::mod`]: the UI renders `cx_smiles` and `construct` and never looks at
+/// `floating`. So in a build without tests these fields are written and dropped.
+///
+/// The alternative to the `allow` is deleting the field and the type, which
+/// would leave the tests asserting on nothing the product produces — the emitted
+/// `m:` field is what they should be checking instead. That is a change in what
+/// the app reports, not a lint fix, so it is raised rather than made here.
+/// `not(test)` is the exact set of builds in which the lint fires; nothing here
+/// is wasm-specific.
+#[allow(dead_code)] // see above
 #[derive(Debug, Clone)]
 pub(crate) struct FloatingPart {
     /// Equivalent base atom indices where this group may attach.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) equiv: Vec<usize>,
     /// Raw SMILES of the floating fragment (e.g. `[*O`, `[*]C(=O)C`).
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fragment_smiles: String,
     /// `true` when emitted as the second half of a split (double-`m`) group.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) split: bool,
 }
 
@@ -70,11 +82,13 @@ pub(crate) struct RepeatUnit {
 
 /// The result of generating a CX-SMILES from a SMILES list.
 #[derive(Debug, Clone)]
+/// See [`FloatingPart`] for why `floating` is suppressed: it is written by
+/// `build_positional` and read by nothing outside the test suite.
+#[allow(dead_code)] // see above
 pub(crate) struct CxResult {
     pub(crate) cx_smiles: String,
     pub(crate) construct: Construct,
     pub(crate) scaffold_smiles: String,
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) floating: Vec<FloatingPart>,
     pub(crate) confidence: Confidence,
     /// All distinct molecules enumerated from the generated CX-SMILES

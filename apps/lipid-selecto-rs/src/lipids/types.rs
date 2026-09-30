@@ -7,10 +7,32 @@
 //! composition with formula-string + double-bond-equivalent helpers), and
 //! `LipidClassification` (the full assembled result).  Classification *logic*
 //! lives in [`super::classify`]; this module owns only the data.
+//!
+//! # The `allow(dead_code)` attributes here
+//!
+//! Three, for three different reasons, and none of them is "this is disabled
+//! work".
+//!
+//! `LipidClass` and `ElementCounts` are narrowed to
+//! `not(any(test, wasm32))` — a host build with no test harness, which is the
+//! only configuration in which nothing constructs them. They were
+//! `not(target_arch = "wasm32")`, one configuration wider than needed, because
+//! the test build *does* construct them: it compiles `classify`, and `classify`
+//! is what builds them.
+//!
+//! They cannot be `cfg`s on the items, which is the better answer where it is
+//! available. `LipidClass` is a field type of `SpectrumBlock`, which is
+//! reachable from the app, which is reachable from `main`, and the host build
+//! compiles `main` — so this module is compiled in every build, and "nothing
+//! constructs this yet" cannot be expressed as "do not compile this".
+//!
+//! `derived_from_smiles` is a different thing entirely and is not narrowed,
+//! because it has no reader in *any* build, wasm included. See its own
+//! documentation.
 
 /// The broad lipid category a spectrum's molecule belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+#[cfg_attr(not(any(test, target_arch = "wasm32")), allow(dead_code))] // see below
 pub(crate) enum LipidClass {
     /// Free fatty acid (RCOOH) — the simplest fatty acyl.
     FattyAcyl,
@@ -37,7 +59,7 @@ impl LipidClass {
 
 /// Elemental composition extracted from a molecule or a formula string.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+#[cfg_attr(not(any(test, target_arch = "wasm32")), allow(dead_code))] // see below
 pub(crate) struct ElementCounts {
     /// Number of carbon atoms.
     pub carbon: u32,
@@ -110,6 +132,17 @@ pub(crate) struct LipidClassification {
     /// The broad lipid class assignment.
     pub class: LipidClass,
     /// Whether the classification came from a structural (SMILES) analysis.
-    #[cfg_attr(not(all(test, target_arch = "wasm32")), allow(dead_code))]
+    /// Written by the classifier and read by nothing at all — not the UI, not
+    /// another module. `classify_spectrum` sets it, and the only reader in the
+    /// workspace is one assertion in `classify`'s own tests.
+    ///
+    /// So this is not a `cfg`-away: the field is genuinely produced and dropped
+    /// in *every* build, wasm included, which is the same finding as
+    /// `CxResult::floating` in `cxsmiles-yoga`. It is a fact about the app —
+    /// it knows whether a classification came from structure or from a formula
+    /// and never says so — so the field stays and the lint is silenced with the
+    /// reason written down, rather than the fact being deleted by a linter
+    /// cleanup.
+    #[allow(dead_code)] // see above
     pub derived_from_smiles: bool,
 }

@@ -35,7 +35,6 @@ impl LipidFormat {
     /// Detect format from file contents by examining the first non-empty lines.
     #[must_use]
     #[cfg(test)]
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn detect_from_content(content: &str) -> Option<Self> {
         let trimmed = content.trim();
 
@@ -76,7 +75,6 @@ impl LipidFormat {
     /// Get the file extension for this format.
     #[must_use]
     #[cfg(test)]
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) const fn extension(self) -> &'static str {
         match self {
             Self::Mgf => "mgf",

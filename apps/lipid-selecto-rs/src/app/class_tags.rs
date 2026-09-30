@@ -130,7 +130,11 @@ pub(super) fn class_tags_from_block(
 
 /// Insert `COMMENT=LIPID_MAPS_*` lines with class tags in the MGF header
 /// block (after `BEGIN IONS`, before the first peak line).
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+// Reachable from the wasm download path and from the analysis pipeline, and
+// from neither in a host build. Not narrowed to `not(any(test, wasm32))`,
+// because the analysis tests are themselves `all(test, wasm32)`: a host *test*
+// build has no caller either, so the wasm condition is the whole of it.
+#[allow(dead_code)] // see above
 pub(super) fn insert_class_comment(block_raw: &str, class_tags: &[(String, String)]) -> String {
     let comment_block: String = class_tags
         .iter()

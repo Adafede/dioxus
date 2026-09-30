@@ -68,9 +68,16 @@ pub(crate) struct ChemicalClass {
     /// moved `smarts_str` into a `drop` and then read it again, and did not
     /// build.
     ///
-    /// Read only where a molecule can be matched, which is test-and-wasm, so the
-    /// host-only build writes it and never looks at it.
-    #[cfg_attr(not(any(test, target_arch = "wasm32")), allow(dead_code))]
+    /// Read only where a molecule can be matched, which is the analysis pipeline:
+    /// the wasm app, and tests that are themselves `all(test, wasm32)`. A host
+    /// build — with or without a test harness — writes this field and never looks
+    /// at it, so `not(wasm32)` is the exact set of builds in which the lint
+    /// fires.
+    ///
+    /// Kept as an `allow` rather than a `cfg` on the field, because the
+    /// constructor above is one shape on every target and gating the field is
+    /// what made it four.
+    #[allow(dead_code)] // see above
     compiled: Option<smarts::QueryMolecule>,
 }
 
