@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 use crate::model::{EndpointStatus, Enrichment, EnrichmentOutcome, SourceSummary};
+use crate::query::{build_lotus_query_qlever, build_lotus_query_wdqs, escape_sparql_literal};
 use crate::sparql::{QLEVER_PUBCHEM, QLEVER_WIKIDATA, WDQS_WIKIDATA, run_query};
 use futures::future::join;
 use lotus_search::ResponseFormat;
@@ -184,90 +185,6 @@ async fn fetch_lotus_hits_by_inchikey(
     Ok(summary)
 }
 
-/// Build Wikidata LOTUS query for WDQS (standard nested SELECT approach).
-fn build_lotus_query_wdqs(inchikeys: &[String]) -> String {
-    let values = inchikeys
-        .iter()
-        .filter(|s| !s.is_empty())
-        .map(|v| format!("\"{}\"", escape_sparql_literal(v)))
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    if values.is_empty() {
-        return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
-    }
-
-    // Nested SELECT structure for cleaner query
-    format!(
-        r#"PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
-  {{
-    SELECT DISTINCT ?inchikey ?connectivity ?related_item WHERE {{
-      VALUES ?inchikey {{ {values} }}
-      BIND(SUBSTR(?inchikey, 1 , 14 ) AS ?connectivity)
-      ?item wdt:P235 ?inchikey;
-        (wdt:P3364|wdt:P6185|(wdt:P279*)|^(wdt:P279+)) ?related_item.
-      OPTIONAL {{ ?related_item wdt:P235 ?related_inchikey. }}
-      OPTIONAL {{
-        ?item wdt:P6185 ?related_item.
-        BIND("true"^^xsd:boolean AS ?is_tautomer)
-      }}
-      FILTER(((?item = ?related_item) || (BOUND(?is_tautomer))) || (STRSTARTS(?related_inchikey, ?connectivity)))
-    }}
-  }}
-  OPTIONAL {{ ?related_item (wdt:P703/wdt:P225) ?taxon_name. }}
-}}"#
-    )
-}
-
-/// Build Wikidata LOTUS query for qlever (optimized union structure).
-fn build_lotus_query_qlever(inchikeys: &[String]) -> String {
-    let values = inchikeys
-        .iter()
-        .filter(|s| !s.is_empty())
-        .map(|v| format!("\"{}\"", escape_sparql_literal(v)))
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    if values.is_empty() {
-        return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
-    }
-
-    // Union-based query for qlever optimization
-    format!(
-        r#"PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-
-SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
-  {{
-    SELECT DISTINCT ?inchikey ?connectivity ?related_item WHERE {{
-      VALUES ?inchikey {{ {values} }}
-      BIND(SUBSTR(?inchikey, 1, 14) AS ?connectivity)
-      ?item wdt:P235 ?inchikey .
-
-      {{
-        ?item (wdt:P3364|wdt:P6185|(wdt:P279*)|^(wdt:P279+)) ?related_item .
-        OPTIONAL {{ ?related_item wdt:P235 ?related_inchikey . }}
-        OPTIONAL {{
-          ?item wdt:P6185 ?related_item .
-          BIND("true"^^xsd:boolean AS ?is_tautomer)
-        }}
-        FILTER(((?item = ?related_item) || (BOUND(?is_tautomer))) || (STRSTARTS(?related_inchikey, ?connectivity)))
-      }}
-      UNION
-      {{
-        # Native QLever compressed dictionary prefix lookup
-        ?related_item wdt:P235 ?prefix_inchikey .
-        FILTER(STRSTARTS(?prefix_inchikey, ?connectivity))
-      }}
-    }}
-  }}
-  OPTIONAL {{ ?related_item (wdt:P703/wdt:P225) ?taxon_name . }}
-}}"#
-    )
-}
-
 #[cfg(target_arch = "wasm32")]
 fn build_pubchem_query(chunk: &[String]) -> String {
     let values = chunk
@@ -375,9 +292,4 @@ fn binding_value(binding: &serde_json::Map<String, Value>, key: &str) -> String 
         .unwrap_or("")
         .trim()
         .to_string()
-}
-
-#[cfg(target_arch = "wasm32")]
-fn escape_sparql_literal(value: &str) -> String {
-    value.replace('\\', r"\\").replace('"', r#"\""#)
 }
