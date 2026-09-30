@@ -33,6 +33,31 @@ use super::types::{Coverage, CxError, RepeatUnit};
 /// writing them against real fixture sizes rather than asserting the constant.
 const MAX_ARRANGEMENTS: usize = 10_000;
 
+/// The largest single molecule either expansion will build, in atoms.
+///
+/// [`MAX_ARRANGEMENTS`] bounds how many molecules; this bounds how big any one
+/// of them may be, and the two together bound the work without needing a
+/// ceiling on the product.
+///
+/// The product is not the quantity to cap, and getting that wrong is what the
+/// 17 GB was. [`enumerate`] builds one scaffold-sized molecule per arrangement, so
+/// the count is a good proxy there. `enumerate_repeating` builds an `n`-unit
+/// molecule at iteration `n` and holds every result at once, so its memory is the
+/// product — and a count of exactly `MAX_ARRANGEMENTS` is *not* refused by a `>`
+/// check, which is exactly what a 20,000-atom input over a one-atom unit
+/// produces: a range sitting on the ceiling, expanding to nothing the count could
+/// see.
+///
+/// Canonicalisation is also superlinear in molecule size, which is the reason
+/// this is a separate ceiling at all rather than a larger count. One 20,000-atom
+/// chain took over a minute to canonicalise, where 20,000 one-atom molecules take
+/// milliseconds — so a single huge molecule is worth refusing well before the
+/// aggregate gets anywhere near 10^7.
+///
+/// 4,096 atoms is far past any molecule worth encoding here, so this does not
+/// fire on input that means anything.
+const MAX_MOLECULE_ATOMS: usize = 4_096;
+
 /// Enumerate every distinct molecule implied by a positional CX-SMILES.
 ///
 /// # Errors
@@ -81,6 +106,17 @@ pub(crate) fn enumerate(
             "{total} arrangements to expand, from {} groups of {:?} positions;              the limit is {MAX_ARRANGEMENTS}",
             ranges.len(),
             ranges.iter().map(|r| r.len()).collect::<Vec<_>>()
+        )));
+    }
+    // The other half of the bound. `MAX_ARRANGEMENTS` says how many molecules and
+    // this says how big; together they bound the work, and a single molecule is
+    // worth capping on its own because canonicalisation is superlinear in size.
+    if scaffold.atom_count() > MAX_MOLECULE_ATOMS {
+        return Err(CxError(format!(
+            "a scaffold of {} atoms cannot be expanded {} times; the limit is \
+             {MAX_MOLECULE_ATOMS} atoms",
+            scaffold.atom_count(),
+            total
         )));
     }
 
@@ -206,6 +242,34 @@ pub(crate) fn enumerate_repeating(
             "{total} repeat counts to expand ({} to {}); the limit is \
              {MAX_ARRANGEMENTS}",
             unit.min, unit.max
+        )));
+    }
+
+    // The other half of the bound, and the half the count could not see. The
+    // count ceiling above is `>`, not `>=`, so a range sitting exactly on
+    // `MAX_ARRANGEMENTS` walks straight through it — and `count_max` reaches
+    // those values honestly, being an atom-count difference over the unit size,
+    // so a long input raises `max` without raising the count. Iteration `n` then
+    // builds an `n`-unit molecule, growing, holding every result. 17 GB, twice,
+    // at only two jobs.
+    //
+    // Capping the widest molecule is what stops it, and `checked_mul` because the
+    // product can wrap to a small number and defeat the cap that way.
+    let widest = unit.max.checked_mul(unit.atoms.len()).ok_or_else(|| {
+        CxError(format!(
+            "a repeat range of {} to {} over a {}-atom unit overflows; the inputs \
+             are not a molecule",
+            unit.min,
+            unit.max,
+            unit.atoms.len()
+        ))
+    })?;
+    if widest > MAX_MOLECULE_ATOMS {
+        return Err(CxError(format!(
+            "{widest} atoms in the largest expansion ({} copies of a {}-atom unit); \
+             the limit is {MAX_MOLECULE_ATOMS} atoms",
+            unit.max,
+            unit.atoms.len()
         )));
     }
 
@@ -473,7 +537,9 @@ mod tests {
 #[allow(clippy::expect_used)]
 mod limits {
     use super::super::types::RepeatUnit;
-    use super::{MAX_ARRANGEMENTS, Molecule, Target, enumerate, enumerate_repeating};
+    use super::{
+        MAX_ARRANGEMENTS, MAX_MOLECULE_ATOMS, Molecule, Target, enumerate, enumerate_repeating,
+    };
     use chematic::smiles::parse;
 
     fn mol(smiles: &str) -> Molecule {
@@ -504,6 +570,22 @@ mod limits {
         assert!(
             message.contains(&MAX_ARRANGEMENTS.to_string()),
             "and by how much: {message}"
+        );
+    }
+
+    #[test]
+    fn a_few_arrangements_of_an_enormous_scaffold_are_refused_too() {
+        // The same ceiling on the other function. Four arrangements is a factor
+        // of 2,500 below the count ceiling, which therefore says nothing, and one
+        // of those arrangements is a 20,000-atom molecule. Four arrangements of
+        // one atom would be nothing at all, which is the point: the count is a
+        // proxy here, and this is what bounds it.
+        let scaffold = mol(&"C".repeat(20_000));
+        let err = enumerate(&scaffold, &[], &targets_of(&[2, 2]))
+            .expect_err("a 20,000-atom scaffold is past the ceiling");
+        assert!(
+            err.to_string().contains(&MAX_MOLECULE_ATOMS.to_string()),
+            "the error names the ceiling that refused it: {err}"
         );
     }
 
@@ -562,6 +644,74 @@ mod limits {
             message.contains("repeat counts to expand"),
             "the error says what was refused: {message}"
         );
+    }
+
+    #[test]
+    fn a_repeat_range_sitting_exactly_on_the_count_ceiling_is_still_refused() {
+        // The crash, as a test. `total = max - min + 1`, so `min: 1` with
+        // `max: MAX_ARRANGEMENTS` is exactly on the count ceiling and the check
+        // above does *not* fire on it — `>` and not `>=`. Nothing else bounded
+        // `max`, so the loop ran 10,000 times building a molecule one unit longer
+        // each time and holding every canonical form at once. 17 GB, twice, at
+        // only two jobs.
+        //
+        // `count_max` reaches those values honestly: it is an atom-count
+        // difference over the unit size, so a long input over a one-atom unit
+        // gives a long range without giving a long *count*.
+        let scaffold = mol("C");
+        let unit = RepeatUnit {
+            atoms: vec![0],
+            min: 1,
+            max: MAX_ARRANGEMENTS,
+        };
+        let err = enumerate_repeating(&scaffold, &unit)
+            .expect_err("exactly on the ceiling is still past what is safe to build");
+        let message = err.to_string();
+        assert!(
+            message.contains("largest expansion"),
+            "the error says which ceiling refused it: {message}"
+        );
+        assert!(
+            message.contains(&MAX_MOLECULE_ATOMS.to_string()),
+            "and by how much: {message}"
+        );
+    }
+
+    #[test]
+    fn a_repeat_range_with_few_counts_and_a_huge_unit_is_refused_too() {
+        // The same defect from the other side. Two counts is a factor of 5,000
+        // below the count ceiling, so that check says nothing at all, while the
+        // single molecule is 20,000 atoms. This is the case a ceiling on the
+        // product would miss and a ceiling on the molecule catches, because two
+        // counts over a 20,000-atom unit is only 40,000 atoms of work.
+        let scaffold = mol(&"C".repeat(20_000));
+        let unit = RepeatUnit {
+            atoms: (0..20_000).collect(),
+            min: 1,
+            max: 2,
+        };
+        let err = enumerate_repeating(&scaffold, &unit)
+            .expect_err("a 40,000-atom molecule is past the ceiling");
+        assert!(
+            err.to_string().contains("largest expansion"),
+            "the error names the ceiling that refused it: {err}"
+        );
+    }
+
+    #[test]
+    fn a_repeat_range_expensive_but_legal_is_still_expanded() {
+        // The other direction, so the new ceiling is not just "refuse anything
+        // large". Fifty counts of a 20-atom unit puts the largest molecule at
+        // 1,000 atoms, a quarter of the ceiling, and every one of those fifty
+        // molecules really is built and canonicalised.
+        let scaffold = mol(&"C".repeat(20));
+        let unit = RepeatUnit {
+            atoms: (0..20).collect(),
+            min: 1,
+            max: 50,
+        };
+        let out = enumerate_repeating(&scaffold, &unit).expect("1,000 atoms is legal");
+        assert_eq!(out.len(), 50, "one arrangement per count");
     }
 
     #[test]

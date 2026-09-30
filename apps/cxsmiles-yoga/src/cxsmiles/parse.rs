@@ -139,7 +139,7 @@ mod tests {
     }
 
     #[test]
-    fn one_unparseable_line_fails_the_whole_list() {
+    fn one_unparsable_line_fails_the_whole_list() {
         // Failing loudly beats returning a partial list: the caller decides
         // what to do about a molecule it never saw, and it cannot do that about
         // one that was silently dropped.
