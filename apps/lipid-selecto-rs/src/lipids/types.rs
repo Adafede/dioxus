@@ -60,7 +60,7 @@ impl ElementCounts {
     ///
     /// `BE = C - H/2 - X/2 + N/2 + 1`
     #[must_use]
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(test, target_arch = "wasm32"))]
     pub(crate) fn double_bond_equivalent(&self) -> f64 {
         let c = f64::from(self.carbon);
         let h = f64::from(self.hydrogen);
@@ -70,7 +70,7 @@ impl ElementCounts {
     }
 
     /// Molecular formula string in Hill order (e.g. `C16H32O2`).
-    #[cfg(all(test, target_arch = "wasm32"))]
+    #[cfg(test)]
     #[must_use]
     pub(crate) fn formula_string(&self) -> String {
         use std::fmt::Write as _;

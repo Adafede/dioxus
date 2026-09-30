@@ -7,69 +7,69 @@
 //! `classify_formula` / `classify_spectrum` entry points over molecules and
 //! spectra.  Domain types come from [`super::types`].
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use super::types::LipidClassification;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use super::types::{ElementCounts, LipidClass};
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use chematic::chem;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use chematic::core::Molecule;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use chematic::smarts;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use chematic::smiles;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use std::sync::LazyLock;
 
 // REAL LIPID SIGNATURES - only actual lipid backbone structures
 // NO RINGS. Just the chemistry that defines each lipid class.
 
 /// Phosphate group with characteristic [PX4](=O) bonding
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_PHOSPHATE: &str = "[PX4](=[OX1])";
 
 /// Choline headgroup: quaternary nitrogen
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_CHOLINE: &str = "[NX4+]";
 
 /// Ethanolamine headgroup: secondary/primary amine bonded to saturated carbon
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_ETHANOLAMINE: &str = "[NX3][CX4]";
 
 /// Triglyceride: one carbon with 3 ester groups (glycerol backbone)
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_TRIGLYCERIDE: &str =
     "[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])";
 
 /// Diglyceride: carbon with 2 ester groups
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_DIGLYCERIDE: &str = "[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])";
 
 /// Monoglyceride: single ester linkage
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_MONOGLYCERIDE: &str = "[CX4][OX2][CX3](=[OX1])[#6]";
 
 /// Long aliphatic chain: 8+ saturated carbons NOT in rings (NO aromatic, NO rings)
 /// Uses [!a] for not aromatic and [!R] for not in ring
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_ALIPHATIC_CHAIN: &str =
     "[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R]";
 
 /// Amide linkage: C(=O)-N (found in ceramides)
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_AMIDE: &str = "[CX3](=[OX1])[NX3]";
 
 /// Amino group: N bonded to aliphatic carbon (sphinganine backbones)
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_AMINO: &str = "[NX3][CH0,CH1,CH2,CH3]";
 
 /// Fatty acid: carboxylic acid with non-aromatic, acyclic carbon
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 const PATTERN_CARBOXYLIC_ACID: &str = "[#6;!a;!R][CX3](=[OX1])[OH]";
 
 /// Returns `true` when `molecule` contains at least one match for `pattern`.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 fn has_substructure(molecule: &Molecule, pattern: &str) -> bool {
     let Ok(query) = smarts::parse_smarts(pattern) else {
         return false;
@@ -87,7 +87,7 @@ fn has_substructure(molecule: &Molecule, pattern: &str) -> bool {
 /// `compute_class_matches`, so avoiding re-parsing is significant for large
 /// datasets.
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn is_acyclic(molecule: &Molecule) -> bool {
     static RING_QUERY: LazyLock<Option<smarts::QueryMolecule>> =
         LazyLock::new(|| smarts::parse_smarts("[R]").ok());
@@ -99,7 +99,7 @@ pub(crate) fn is_acyclic(molecule: &Molecule) -> bool {
 
 /// Extract elemental counts from a parsed molecule using chematic's own
 /// descriptors (heavy atoms plus implicit/explicit hydrogens).
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 fn counts_from_molecule(molecule: &Molecule) -> ElementCounts {
     ElementCounts {
         carbon: chem::num_carbons(molecule) as u32,
@@ -118,7 +118,7 @@ fn counts_from_molecule(molecule: &Molecule) -> ElementCounts {
 /// Structural (SMILES-based) lipid classification.
 /// Only matches REAL lipid backbones: long aliphatic chains + characteristic functional groups.
 /// NO RINGS. NO AROMATICS. NO NUCLEOTIDES. NO STEROIDS.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 fn classify_molecule(molecule: &Molecule) -> Option<(LipidClass, ElementCounts)> {
     let counts = counts_from_molecule(molecule);
 
@@ -185,7 +185,7 @@ fn classify_molecule(molecule: &Molecule) -> Option<(LipidClass, ElementCounts)>
 /// Returns the classification (with formula and exact mass) when the molecule
 /// is recognized as a lipid, otherwise `None`.
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn classify_smiles(smiles: &str) -> Option<LipidClassification> {
     let trimmed = smiles.trim();
     if trimmed.is_empty() {
@@ -212,7 +212,7 @@ pub(crate) fn classify_smiles(smiles: &str) -> Option<LipidClassification> {
 /// Shared by [`classify_formula`] (public API) and [`classify_spectrum`]
 /// (which already parsed the formula) to avoid duplicating the decision tree
 /// or re-parsing the formula string.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 fn classify_from_counts(counts: &ElementCounts) -> Option<LipidClass> {
     let c = counts.carbon as i32;
     let h = counts.hydrogen as i32;
@@ -271,7 +271,7 @@ fn classify_from_counts(counts: &ElementCounts) -> Option<LipidClass> {
 /// Conservative formula-only fallback (used when a SMILES is absent/unparseable
 /// but a Hill-notation `FORMULA=` is available).
 #[must_use]
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 pub(crate) fn classify_formula(formula: &str) -> Option<LipidClass> {
     let trimmed = formula.trim();
     if trimmed.is_empty() {
@@ -288,7 +288,7 @@ pub(crate) fn classify_formula(formula: &str) -> Option<LipidClass> {
 /// Tries the SMILES first (structural classification) and falls back to the
 /// `FORMULA=` value when the SMILES is missing or cannot be parsed.
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn classify_spectrum(
     smiles: Option<&str>,
     formula: Option<&str>,
@@ -310,7 +310,7 @@ pub(crate) fn classify_spectrum(
     })
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 fn formula_counts(map: &std::collections::HashMap<String, u32>) -> ElementCounts {
     let mut counts = ElementCounts::default();
     let mut halogens = 0u32;
@@ -330,7 +330,7 @@ fn formula_counts(map: &std::collections::HashMap<String, u32>) -> ElementCounts
     counts
 }
 
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 #[expect(clippy::unwrap_used)] // tests unwrap fixtures/known modes to fail-fast on regression
 mod tests {
     use super::*;
@@ -484,7 +484,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(test, target_arch = "wasm32"))]
     fn classify_spectrum_falls_back_to_formula() {
         // SMILES absent → use formula
         let result = classify_spectrum(None, Some("C16H32O2")).unwrap();
@@ -493,7 +493,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(test, target_arch = "wasm32"))]
     fn classify_spectrum_empty_smiles_uses_formula() {
         let result = classify_spectrum(Some("  "), Some("C16H32O2"));
         assert!(result.is_some());
@@ -501,13 +501,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(test, target_arch = "wasm32"))]
     fn classify_spectrum_no_smiles_no_formula_returns_none() {
         assert!(classify_spectrum(None, None).is_none());
     }
 
     #[test]
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(test, target_arch = "wasm32"))]
     fn formula_counts_handles_halogen_mixtures() {
         // Halogens F, Cl, Br, I should all aggregate into `halogens`.
         let mut map = std::collections::HashMap::new();
@@ -522,7 +522,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(test, target_arch = "wasm32"))]
     fn formula_counts_ignores_unknown_elements() {
         let mut map = std::collections::HashMap::new();
         map.insert("C".to_string(), 5u32);

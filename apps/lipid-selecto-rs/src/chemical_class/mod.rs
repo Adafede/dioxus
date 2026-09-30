@@ -15,17 +15,16 @@
 //! Both systems share the [`ChemicalClass`] type and the same pre-compiled
 //! SMARTS matching engine.
 
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 mod defaults;
 mod lmsd;
 
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 use std::collections::HashMap;
 
-#[cfg(target_arch = "wasm32")]
 use chematic::smarts;
 
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 use defaults::{
     fatty_acyls, glycerolipids, glycerophospholipids, polyketides, prenol_lipids, saccharolipids,
     sphingolipids, sterol_lipids,
@@ -55,14 +54,23 @@ pub(crate) struct ChemicalClass {
     /// Display name of the lipid class (e.g. "FA", "Cer(AS)").
     pub name: String,
     /// SMARTS pattern string (as defined in the constructor).
-    #[cfg(all(test, target_arch = "wasm32"))]
+    #[cfg(test)]
     pub smarts: String,
     /// Hex color code for UI rendering.
     pub color: String,
     /// LIPID MAPS broad family name (e.g. "Fatty Acyls", "Sphingolipids").
     pub family: String,
     /// Pre-compiled SMARTS query (parsed once in `new`).
-    #[cfg(target_arch = "wasm32")]
+    ///
+    /// Ungated, and written on every target, so that `new` below is one shape
+    /// rather than four. It used to be `cfg`-gated, and `new` with it, into a
+    /// combination no build had ever compiled at once: the host-test shape
+    /// moved `smarts_str` into a `drop` and then read it again, and did not
+    /// build.
+    ///
+    /// Read only where a molecule can be matched, which is test-and-wasm, so the
+    /// host-only build writes it and never looks at it.
+    #[cfg_attr(not(any(test, target_arch = "wasm32")), allow(dead_code))]
     compiled: Option<smarts::QueryMolecule>,
 }
 
@@ -74,20 +82,18 @@ impl ChemicalClass {
         color: impl Into<String>,
         family: impl Into<String>,
     ) -> Self {
-        #[cfg(target_arch = "wasm32")]
-        let smarts_str = smarts_str.into();
-        #[cfg(target_arch = "wasm32")]
-        let compiled = smarts::parse_smarts(&smarts_str).ok();
-        #[cfg(not(target_arch = "wasm32"))]
-        drop(smarts_str);
+        // One shape, not four. The pattern is compiled on every target, so
+        // there is no branch here that a build has not compiled, and no
+        // `drop(smarts_str)` to keep an unused variable quiet — the value is
+        // always read.
+        let smarts = smarts_str.into();
         Self {
             name: name.into(),
-            #[cfg(all(test, target_arch = "wasm32"))]
-            smarts: smarts_str,
+            #[cfg(test)]
+            smarts: smarts.clone(),
             color: color.into(),
             family: family.into(),
-            #[cfg(target_arch = "wasm32")]
-            compiled,
+            compiled: smarts::parse_smarts(&smarts).ok(),
         }
     }
 
@@ -95,8 +101,8 @@ impl ChemicalClass {
     ///
     /// Returns `true` if the molecule contains at least one match, `false` otherwise
     /// or if the SMARTS pattern cannot be parsed.
+    #[cfg(any(test, target_arch = "wasm32"))]
     #[must_use]
-    #[cfg(target_arch = "wasm32")]
     pub(crate) fn matches(&self, molecule: &chematic::core::Molecule) -> bool {
         let Some(query) = &self.compiled else {
             return false;
@@ -108,7 +114,7 @@ impl ChemicalClass {
     ///
     /// These match the LIPID MAPS classification system with proper family and
     /// architecture designations.
-    #[cfg(all(test, target_arch = "wasm32"))]
+    #[cfg(test)]
     #[must_use]
     pub(crate) fn defaults() -> Vec<Self> {
         [
@@ -127,7 +133,7 @@ impl ChemicalClass {
     }
 
     /// Convert defaults into a map for quick lookup by name.
-    #[cfg(all(test, target_arch = "wasm32"))]
+    #[cfg(test)]
     #[must_use]
     pub(crate) fn defaults_map() -> HashMap<String, Self> {
         Self::defaults()
@@ -136,7 +142,7 @@ impl ChemicalClass {
             .collect()
     }
 }
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 #[expect(clippy::unwrap_used)] // tests unwrap fixture lookups to fail-fast if the default set changes
 #[expect(clippy::expect_used)] // tests expect known default classes / valid SMILES fixtures
 mod tests {

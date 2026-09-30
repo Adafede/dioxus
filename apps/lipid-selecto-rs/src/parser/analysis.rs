@@ -9,10 +9,10 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 
 use super::parsing::SpectrumBlock;
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 use super::parsing::extract_blocks;
 use crate::chemical_class::ChemicalClass;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use crate::chemical_class::lmsd_all;
 use crate::lipids::LipidClassification;
 use std::collections::HashMap;
@@ -34,7 +34,7 @@ impl Summary {}
 
 /// Tally items from a parsed block collection.
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn summarize(blocks: &[SpectrumBlock]) -> Summary {
     let mut summary = Summary::default();
 
@@ -71,7 +71,7 @@ pub(crate) fn summarize(blocks: &[SpectrumBlock]) -> Summary {
 /// [`SpectrumBlock::compute_class_matches`](super::parsing::SpectrumBlock::compute_class_matches)
 /// to avoid re-parsing the SMILES — this is the dominant cost for large files.
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> GalleryItem {
     // Reuse pre-computed exact mass (no SMILES re-parsing)
     let exact_mass = block.exact_mass;
@@ -116,7 +116,7 @@ pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> 
 /// `limit` caps how many structures are generated (rendering is intentionally
 /// done up-front so the gallery never re-renders diagrams on every frame).
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn build_gallery(
     blocks: &[SpectrumBlock],
     limit: usize,
@@ -163,7 +163,7 @@ pub(crate) struct GalleryItem {
 }
 
 /// Fallback SVG shown when a structure cannot be rendered.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 fn empty_svg() -> String {
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 20\"><text x=\"20\" y=\"12\" fill=\"#94a3b8\" text-anchor=\"middle\" font-family=\"system-ui\" font-size=\"10\">no structure</text></svg>".to_string()
 }
@@ -184,7 +184,7 @@ pub(crate) struct Analysis {
 }
 
 /// Full pipeline: extract, classify, summarize, build gallery + filtered MGF.
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 #[must_use]
 pub(crate) fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usize) -> Analysis {
     let all_classes = lmsd_all();
@@ -197,7 +197,7 @@ pub(crate) fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usiz
 /// Extracted as a separate function so the wasm worker can process blocks in
 /// chunks and yield to the event loop between chunks, keeping the UI responsive
 /// for large files.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn classify_blocks(blocks: &mut [SpectrumBlock], classes: &[ChemicalClass]) {
     for block in blocks {
         block.classify();
@@ -210,7 +210,7 @@ pub(crate) fn classify_blocks(blocks: &mut [SpectrumBlock], classes: &[ChemicalC
 /// Used by both [`build_analysis`] (single-call convenience) and the wasm
 /// worker (which classifies in chunks with periodic yields).
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn build_analysis_from_classified(
     blocks: Vec<SpectrumBlock>,
     gallery_limit: usize,
@@ -231,7 +231,7 @@ pub(crate) fn build_analysis_from_classified(
 /// Concatenate the verbatim text of all lipid-positive blocks into a filtered MGF.
 /// This uses all LMSD class names.
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn build_filtered_mgf(blocks: &[SpectrumBlock]) -> String {
     // Include all LMSD class names
     let all_class_names: Vec<String> = lmsd_all().iter().map(|c| c.name.clone()).collect();
@@ -240,7 +240,7 @@ pub(crate) fn build_filtered_mgf(blocks: &[SpectrumBlock]) -> String {
 
 /// Concatenate the verbatim text of blocks matching selected class names.
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn build_filtered_mgf_with_classes(
     blocks: &[SpectrumBlock],
     selected_class_names: &[String],
@@ -279,7 +279,7 @@ pub(crate) fn build_filtered_mgf_with_classes(
 ///
 /// The returned blocks keep their [`SpectrumBlock::classification`] populated so
 /// callers can inspect or re-filter them; the [`Summary`] is also returned.
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 #[must_use]
 pub(crate) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     let mut blocks = extract_blocks(content);
@@ -294,7 +294,7 @@ pub(crate) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     (blocks, summary)
 }
 
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(test)]
 // Every assertion below reads a block out of `EXAMPLE_MGF`, the literal fixture
 // at the top of this module, by the index its comment names. An out-of-range
 // read means the fixture and the indices have drifted apart, which is the

@@ -36,6 +36,6 @@
 mod classify;
 mod types;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) use classify::{classify_spectrum, is_acyclic};
 pub(crate) use types::LipidClassification;
