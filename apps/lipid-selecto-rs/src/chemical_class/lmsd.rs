@@ -474,10 +474,20 @@ pub(crate) fn lmsd_all() -> Vec<ChemicalClass> {
         for (idx, entry) in matching.iter().enumerate() {
             let shade_idx = if idx < 4 { idx } else { 4 };
             let full_name = format!("{} [{}]", entry.description, entry.code);
+            // `LMSD_FAMILY_PALETTES` types every palette as `&[&str; 5]`, so
+            // the length is a type-level invariant, and `shade_idx` above is
+            // `0..=4` by construction (`idx` capped at 4, else the literal 4).
+            // `shade_idx < 5` is therefore provable, and the lookup cannot
+            // miss. Rewriting it as `get` would have to invent a fallback for
+            // an unreachable out-of-range index, and turning the loud panic
+            // into a silently wrong (or empty) colour is worse than the
+            // out-of-bounds check this lint is warning about.
+            #[allow(clippy::indexing_slicing)]
+            let shade = palette[shade_idx];
             result.push(ChemicalClass::new(
                 full_name,
                 entry.smarts,
-                palette[shade_idx],
+                shade,
                 (*family_name).to_string(),
             ));
         }

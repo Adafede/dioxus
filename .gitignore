@@ -1,6 +1,8 @@
 # ── Build artefacts ──────────────────────────────────────────
 target/
 dist/
+# `cargo mutants` writes a log per mutant here; it is a run report, not source.
+mutants.out/
 
 # ── Dioxus / dx CLI outputs ──────────────────────────────────
 apps/*/dist/
@@ -34,6 +36,41 @@ lcov.info
 
 SESSION_LOG.md
 
+# ── LIPID MAPS data and the outputs of evolving it ──────────────────────────
+# Everything below is produced by `smarts-evoliposuction`
+# (`apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction`), and none of it is
+# source. It is listed individually rather than as one pattern because the two
+# largest files are third-party licensed data — `git add -A` on a machine that
+# has run the tool once would otherwise put 55 MB of LIPID MAPS into history, and
+# a licence is not something a later commit can take back.
+#
+#   LMSD.sdf.zip     21 MB, downloaded from lipidmaps.org by
+#                    `smarts-evoliposuction download`. Third-party data.
+#   LMSD.sdf.tsv     33 MB, the same records as the zip, converted to TSV.
+#   example_lipids.smi  the scratch input used while developing a rule set.
+#   smarts_results.csv  the tool's default output name, so it lands in whatever
+#                    directory the tool was run from — including this one.
+#   smiles_sets/,     70 MB of SMILES split out of the TSV, and the tested
+#   smarts_results_    SMARTS per class.
+#   tested_smarts/
+#
+# A SMARTS rule set *is* worth committing — it is a result, reproducible from a
+# seed — but it belongs in the rule library, not as whatever the tool last
+# happened to write. Nothing here is that.
+#
+# `.gitignore` is not a lock: `git add -f` overrides it, and a file already
+# tracked stays tracked however many rules are added here. The
+# `check-added-large-files` pre-commit hook (`--maxkb=2048`) is the backstop for
+# the two large ones; the small ones are caught by
+# `crates/upload/tests/gate_consistency.rs`, which fails if a rule below is
+# deleted, so this list cannot quietly stop working.
+#
+# The tool's own README.md and src/ *are* tracked — only its data is not.
+/apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/LMSD.sdf.zip
+/apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/LMSD.sdf.tsv
+/apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/example_lipids.smi
+/smarts_results.csv
+/example_lipids.smi
 /smarts_results_tested_smarts/
 /smiles_sets/
 

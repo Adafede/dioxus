@@ -30,6 +30,13 @@ pub(crate) fn parse_list(smiles: &[String]) -> Result<Vec<Molecule>, CxError> {
 }
 
 /// Single-linkage clustering by ECFP4/Tanimoto above `threshold`.
+// Every index below is either a loop counter over `0..n` or a value `find`
+// returned from that same range, into vectors that each have exactly `n` slots
+// (`parent`, `fps`, `roots`, `mols`, and `order`, a permutation of `0..n`).
+// `n == 0` returns above, so none of them can miss. Threading an `Option`
+// through the two hottest loops in the function to report a state the code above
+// has already excluded would be noise, not safety.
+#[allow(clippy::indexing_slicing)]
 pub(crate) fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
     let n = mols.len();
     if n == 0 {

@@ -5,6 +5,8 @@
 # All Rust check recipes are defined once in the `justfile`; these hooks delegate
 # to them (`just <recipe>`) to keep a single source of truth and avoid the
 # drift that happened when prek and justfile each hardcoded the cargo flags.
+# `crates/upload/tests/gate_consistency.rs` holds the three lists — this file,
+# the justfile and `.github/workflows/ci.yml` — to one mapping.
 
 default_stages = ["pre-commit"]
 fail_fast = false
@@ -18,7 +20,7 @@ hooks = [{ id = "check-added-large-files", args = ["--maxkb=2048"] }, { id = "ch
 
 [[repos]]
 repo = "https://github.com/crate-ci/typos"
-rev = "v1"
+rev = "v1.50.3"
 hooks = [{ id = "typos" }]
 
 [[repos]]
@@ -26,6 +28,9 @@ repo = "local"
 hooks = [
   # ── Fast Rust checks (pre-commit) — delegate to justfile ───────────────────
   { id = "cargo-fmt-check", name = "cargo-fmt-check", language = "system", entry = "just fmt", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
+  # Text-only, so it belongs on the fast path: without it a commit lands with a
+  # missing SPDX header and CI rejects it, which is a pointless round trip.
+  { id = "license-headers", name = "license-headers", language = "system", entry = "just license-headers", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
   { id = "cargo-check", name = "cargo-check", language = "system", entry = "just check", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
   { id = "cargo-clippy", name = "cargo-clippy", language = "system", entry = "just clippy", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
 
@@ -35,7 +40,8 @@ hooks = [
   # crates/upload's wasm-incompatible unit patterns in download.rs).
   { id = "cargo-check-wasm", name = "cargo-check-wasm", language = "system", entry = "just wasm", pass_filenames = false, always_run = true, stages = ["pre-push"] },
   # Lints the `#[cfg(target_arch = "wasm32")]` branches that `just check-wasm`
-  # only type-checks and the host `just clippy` never compiles.
+  # only type-checks and the host `just clippy` never compiles — including the
+  # three `crates/upload` modules that exist only on wasm.
   { id = "cargo-clippy-wasm", name = "cargo-clippy-wasm", language = "system", entry = "just clippy-wasm", pass_filenames = false, always_run = true, stages = ["pre-push"] },
   { id = "cargo-doc", name = "cargo-doc", language = "system", entry = "just doc", pass_filenames = false, always_run = true, stages = ["pre-push"] },
 
@@ -43,15 +49,20 @@ hooks = [
   { id = "cargo-machete", name = "cargo-machete", language = "system", entry = "just machete", pass_filenames = false, always_run = true, stages = ["pre-push"] },
   { id = "cargo-audit", name = "cargo-audit", language = "system", entry = "just audit", pass_filenames = false, always_run = true, stages = ["pre-push"] },
   { id = "cargo-deny", name = "cargo-deny", language = "system", entry = "just deny", pass_filenames = false, always_run = true, stages = ["pre-push"] },
-  { id = "cargo-outdated", name = "cargo-outdated", language = "system", entry = "just outdated", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  # `outdated` is deliberately not a hook: it cannot fail, so on every push it
+  # would only print a version report nobody reads. `just outdated` is one
+  # command away, and `crates/upload/tests/gate_consistency.rs` fails the build
+  # if a recipe without a gate is given a hook.
 
-  # ── README verification (pre-push only) ────────────────────────────────────
+  # ── Generated artefacts (pre-push only) ───────────────────────────────────
+  # The READMEs are generated from the crates' `//!` docs, so a doc change that
+  # was not regenerated lands a README CI will reject.
   { id = "cargo-readme-panache", name = "cargo-readme-panache", language = "system", entry = "just readme", pass_filenames = false, always_run = true, stages = ["pre-push"] },
 ]
 
 [[repos]]
 repo = "https://github.com/tombi-toml/tombi-pre-commit"
-rev = "v1.5.5"
+rev = "v1.6.1"
 hooks = [{ id = "tombi-format" }, { id = "tombi-lint" }]
 
 [[repos]]

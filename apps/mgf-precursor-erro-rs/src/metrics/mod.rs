@@ -66,7 +66,11 @@ impl HistogramData {
             floor_to_usize(index)
         };
         let idx = idx.min(self.bins.len().saturating_sub(1));
-        self.bins[idx] = self.bins[idx].saturating_add(1);
+        // An empty histogram has nowhere to count into, which is a degenerate
+        // configuration rather than a value that fell out of the bin index.
+        if let Some(bin) = self.bins.get_mut(idx) {
+            *bin = bin.saturating_add(1);
+        }
     }
 }
 

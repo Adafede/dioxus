@@ -105,11 +105,15 @@ fn download_and_filter_lotus_scaffolds(dst: &Path, url: &str) {
         }
         // Columns: SMILES,Frequency,Percentage,MoleculeFrequency,MoleculePercentage
         let parts: Vec<&str> = line.split(',').collect();
-        if parts.len() < 5 {
+        // A row with fewer than five columns is skipped, exactly as the
+        // previous `if parts.len() < 5 { continue; }` guard did. Binding the
+        // slice pattern with `let ... else` checks the bound at compile-checked
+        // run time via `get` rather than panicking on an out-of-range index.
+        let Some([smiles, .., mol_pct]) = parts.get(..5) else {
             continue;
-        }
-        let smiles = parts[0].trim();
-        let mol_pct: f64 = parts[4].trim().parse().unwrap_or(0.0);
+        };
+        let smiles = smiles.trim();
+        let mol_pct: f64 = mol_pct.trim().parse().unwrap_or(0.0);
         /* Reject scaffolds shorter than 5 characters — single atoms,
          * diatomic fragments, and very short chains are too
          * non-specific to be meaningful structural motifs. */

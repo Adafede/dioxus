@@ -71,8 +71,7 @@ pub(crate) fn generate(smiles: &[String]) -> CxResult_ {
     if mols.is_empty() {
         return Err(CxError("no parseable SMILES in input".into()));
     }
-    if mols.len() == 1 {
-        let mol = &mols[0];
+    if let [mol] = mols.as_slice() {
         let smi = canonical_smiles(mol);
         return Ok(CxResult {
             cx_smiles: smi.clone(),
@@ -101,8 +100,12 @@ pub(crate) fn generate(smiles: &[String]) -> CxResult_ {
         .filter(|c| c.len() >= 2)
         .unwrap_or(mols);
 
-    let counts: Vec<usize> = group.iter().map(Molecule::atom_count).collect();
-    if counts.iter().all(|c| *c == counts[0]) {
+    // Positional construction needs every input in the group to have the same
+    // atom count; anything else is a repeating unit instead.
+    let uniform = group
+        .first()
+        .is_some_and(|first| group.iter().all(|m| m.atom_count() == first.atom_count()));
+    if uniform {
         build_positional(&group)
     } else {
         build_repeating(&group)
@@ -115,7 +118,12 @@ pub(crate) fn generate(smiles: &[String]) -> CxResult_ {
 
 #[cfg(test)]
 #[expect(clippy::unwrap_used)] // tests unwrap fixtures to fail-fast on parse/generate errors
-#[expect(clippy::expect_used)] // tests expect known fixtures (O*, C(=O)(C)*) to be present
+#[expect(clippy::expect_used)]
+// tests expect known fixtures (O*, C(=O)(C)*) to be present
+// `r.floating[0]` below reads the group a `m:` block was just emitted for, and
+// `generate` fails outright when it emits none, so an out-of-range read is a
+// regression in `generate`, not something this test can usefully report itself.
+#[allow(clippy::indexing_slicing)]
 mod tests {
     use super::*;
     use chematic::smiles::{parse, write};

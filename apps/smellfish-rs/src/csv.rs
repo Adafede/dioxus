@@ -121,7 +121,11 @@ fn label_for_record(
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used)] // tests expect valid CSV fixtures to parse without error
+#[expect(clippy::expect_used)]
+// tests expect valid CSV fixtures to parse without error
+// Every assertion below reads a row out of the literal fixture the same test
+// just parsed, so an out-of-range read is itself the failing assertion.
+#[allow(clippy::indexing_slicing)]
 mod tests {
     use super::*;
 

@@ -1,0 +1,61 @@
+# `cargo-mutants` configuration.
+#
+# `.cargo/mutants.toml` is the only path `cargo-mutants` reads without a
+# `--config` flag, which is why this file is here and not at the repository root:
+# a `mutants.toml` at the root is silently ignored, so every exclusion written
+# in it would be a comment. `crates/upload/tests/gate_consistency.rs` asserts
+# both that this path exists and that no root `mutants.toml` shadows it.
+#
+# The default is to mutate every file of every package named on the command
+# line. This file records the exclusions that are not derivable from the
+# justfile. An exclusion written down is a decision someone can argue with; an
+# omission is not.
+#
+# Two limits on what is here, both from this file's schema:
+#
+# * There is no package-exclusion key. Which packages are mutated is decided on
+#   the command line — `just mutants` names the three whose logic is pure, and
+#   `just mutants-ui` names the two Dioxus apps. That is why the split lives in
+#   the justfile and not here.
+# * `#[cfg(target_arch = "wasm32")]` code is unreachable from a host test run,
+#   so no mutant in it can be killed either way. Roughly half of these files is
+#   behind that gate. Those paths are covered by `just clippy-wasm`, which does
+#   compile them, not by this.
+
+# Which files inside the mutated packages are worth mutating.
+#
+# Three groups are left out. A `build.rs` runs during every build, so mutating
+# it would rebuild the world once per mutant for a handful of lines of constant
+# folding. And two groups are rendering rather than logic: the Dioxus front ends
+# — `main.rs`, `app.rs`, `src/app/`, the `depict.rs` SVG renderer, the
+# `examples.rs` doc page — and `src/plotting/`, which draws SVG through
+# `plotters` and accounts for 338 of `mgf-precursor-erro-rs`'s 1,055 mutants.
+# A surviving mutant in any of them is a literal in a `class` attribute or a
+# coordinate, not a behaviour, and killing those means a rendering test per
+# component. What is left is the parsers, the query builders and the numerics,
+# which is where a surviving mutant is a wrong answer.
+#
+# Globs, not `exclude_re`: a regex here is matched against the file's path
+# without the `src/` prefix, so `/src/app\.rs$` matches nothing and the
+# exclusion reads as if it were in force. Verified with
+# `cargo mutants --package <p> --list | grep -c <file>`.
+exclude_globs = [
+  "**/build.rs",
+  "**/main.rs",
+  "**/app.rs",
+  "**/app/**",
+  "**/depict.rs",
+  "**/depict_simple.rs",
+  "**/examples.rs",
+  "**/plotting/**",
+]
+
+# A mutant that hangs has found an infinite loop, which is worth knowing about,
+# so the run is not allowed to hang on it. `just mutants` passes `--timeout 300`
+# as the per-mutant floor; this is the multiplier on however long the unmutated
+# test run took.
+timeout_multiplier = 1.5
+
+# Fail rather than shrug: a mutant whose test run could not be executed is not a
+# pass, and reporting it as one is how a gap in the suite goes unnoticed.
+minimum_test_timeout = 20

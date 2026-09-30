@@ -294,28 +294,28 @@ pub(crate) fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> +
 #[cfg(target_arch = "wasm32")]
 #[cfg(target_arch = "wasm32")]
 fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
-    let parts: Vec<&str> = trimmed.split('\t').collect();
-    if parts.is_empty() {
-        return None;
-    }
+    let mut parts = trimmed.split('\t');
+    let first = parts.next()?;
 
-    let looks_like_smiles = parts[0].contains(|c: char| {
+    let looks_like_smiles = first.contains(|c: char| {
         matches!(
             c,
             'C' | 'N' | 'O' | 'S' | 'P' | '=' | '#' | '[' | ']' | '(' | ')' | '@'
         )
     });
-    let looks_like_id = parts.len() > 1
-        && parts[1]
-            .chars()
-            .all(|c| c.is_alphanumeric() || c == '_' || c == '-');
+    let second = parts.next();
+    let looks_like_id = second.is_some_and(|id| {
+        id.chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    });
 
-    let (smiles_str, id_str) = if looks_like_smiles && looks_like_id {
-        (parts[0], parts[1])
-    } else if parts.len() > 1 {
-        (parts[1], parts[0])
-    } else {
-        (parts[0], "")
+    // A tab-separated line is either `smiles<TAB>id` or `id<TAB>smiles`; the
+    // field that looks like a SMILES is the one that goes in `psm_smiles`. A
+    // line with no second field has only the first, whatever it looks like.
+    let (smiles_str, id_str) = match (looks_like_smiles && looks_like_id, second) {
+        (true, Some(id)) => (first, id),
+        (_, Some(smiles)) => (smiles, first),
+        (_, None) => (first, ""),
     };
 
     let mut block = SpectrumBlock::new(index);

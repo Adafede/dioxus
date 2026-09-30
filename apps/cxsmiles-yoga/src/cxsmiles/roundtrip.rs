@@ -34,11 +34,11 @@ pub(crate) fn enumerate(
         out.push(canonical_smiles(&build_one(scaffold, defs, targets, &[])));
         return dedup_sort(out);
     }
-    let ranges: Vec<&Vec<usize>> = var
+    let ranges: Vec<&[usize]> = var
         .iter()
-        .map(|&i| match &targets[i] {
-            Target::Variable(p) => p,
-            Target::Fixed(_) => unreachable!(),
+        .filter_map(|&i| match targets.get(i) {
+            Some(Target::Variable(p)) => Some(p.as_slice()),
+            _ => None,
         })
         .collect();
     let mut combo: Vec<usize> = vec![0; var.len()];
@@ -53,13 +53,18 @@ pub(crate) fn enumerate(
     dedup_sort(out)
 }
 
-fn next_combo(combo: &mut [usize], ranges: &[&Vec<usize>]) -> bool {
-    for i in (0..combo.len()).rev() {
-        combo[i] += 1;
-        if combo[i] < ranges[i].len() {
+/// Advance `combo` to the next mixed-radix choice, or report that there is none.
+///
+/// `combo` and `ranges` are built in lockstep one above, so they are the same
+/// length and the two loops walk the same positions; zipping them is what keeps
+/// that true instead of leaving it to a comment.
+fn next_combo(combo: &mut [usize], ranges: &[&[usize]]) -> bool {
+    for (value, range) in combo.iter_mut().zip(ranges).rev() {
+        *value += 1;
+        if *value < range.len() {
             return true;
         }
-        combo[i] = 0;
+        *value = 0;
     }
     false
 }
@@ -77,7 +82,12 @@ fn build_one(
         sc.push(b.add_atom(atom.clone()));
     }
     for (_, be) in scaffold.bonds() {
-        let _ = b.add_bond(sc[be.atom1.0 as usize], sc[be.atom2.0 as usize], be.order);
+        if let (Some(ma), Some(mc)) = (
+            sc.get(be.atom1.0 as usize).copied(),
+            sc.get(be.atom2.0 as usize).copied(),
+        ) {
+            let _ = b.add_bond(ma, mc, be.order);
+        }
     }
     let mut part_attach: Vec<AtomIdx> = Vec::with_capacity(defs.len());
     for def in defs {
@@ -86,20 +96,32 @@ fn build_one(
             pmap.push(b.add_atom(atom.clone()));
         }
         for (a1, a2, order) in &def.bonds {
-            let _ = b.add_bond(pmap[*a1], pmap[*a2], *order);
+            if let (Some(m1), Some(m2)) = (pmap.get(*a1), pmap.get(*a2)) {
+                let _ = b.add_bond(*m1, *m2, *order);
+            }
         }
-        part_attach.push(pmap[def.attachment]);
+        if let Some(&attachment) = pmap.get(def.attachment) {
+            part_attach.push(attachment);
+        }
     }
     let mut var = 0usize;
-    for (pi, _def) in defs.iter().enumerate() {
-        match &targets[pi] {
+    for (attach, target) in part_attach.iter().zip(targets) {
+        match target {
             Target::Variable(positions) => {
-                let pos = positions[combo[var]];
+                // `combo` has one entry per `Variable` target, in order, which
+                // is what `var` counts here.
+                let chosen = combo.get(var).copied();
                 var += 1;
-                let _ = b.add_bond(part_attach[pi], sc[pos], BondOrder::Single);
+                if let Some(pos) = chosen.and_then(|c| positions.get(c).copied())
+                    && let Some(&p) = sc.get(pos)
+                {
+                    let _ = b.add_bond(*attach, p, BondOrder::Single);
+                }
             }
             Target::Fixed(other) => {
-                let _ = b.add_bond(part_attach[pi], part_attach[*other], BondOrder::Single);
+                if let Some(target_attach) = part_attach.get(*other) {
+                    let _ = b.add_bond(*attach, *target_attach, BondOrder::Single);
+                }
             }
         }
     }

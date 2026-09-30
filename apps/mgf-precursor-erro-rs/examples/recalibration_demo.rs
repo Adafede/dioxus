@@ -165,11 +165,20 @@ fn run_visualization_example(diagnostics: &RecalibrationStats) {
     println!("Generated summary: {} bytes HTML", summary.len());
 }
 
+/// The m/z of the single peak a demo fragment list holds.
+///
+/// `recalibrate_fragments` takes a slice, so the two "unchanged" demos below keep
+/// their one peak in a `Vec` and read it back through this. An empty list prints
+/// as `NaN`, which is what it is: there is no m/z to report.
+fn sole_mz(fragments: &[Peak]) -> f64 {
+    fragments.first().map_or(f64::NAN, |peak| peak.mz)
+}
+
 fn run_no_correction_example(precursor_ms1: f64, precursor_ms2: f64) {
     println!("\n=== Example 6: No Correction (λ = 0) ===");
 
     let mut fragments = vec![Peak::new(100.0, 5000.0)];
-    let original_mz = fragments[0].mz;
+    let original_mz = sole_mz(&fragments);
 
     recalibrate_fragments(
         &mut fragments,
@@ -178,17 +187,18 @@ fn run_no_correction_example(precursor_ms1: f64, precursor_ms2: f64) {
         CalibrationModel::TOFDa { lambda: 0.0 },
     );
 
+    let after_mz = sole_mz(&fragments);
     println!("With λ = 0.0, fragment m/z should be unchanged:");
     println!("  Before: {original_mz:.6}");
-    println!("  After:  {:.6}", fragments[0].mz);
-    println!("  Equal: {}", (original_mz - fragments[0].mz).abs() < 1e-10);
+    println!("  After:  {after_mz:.6}");
+    println!("  Equal: {}", (original_mz - after_mz).abs() < 1e-10);
 }
 
 fn run_disabled_example(precursor_ms1: f64, precursor_ms2: f64) {
     println!("\n=== Example 7: Disabled Recalibration ===");
 
     let mut fragments = vec![Peak::new(100.0, 5000.0)];
-    let original_mz = fragments[0].mz;
+    let original_mz = sole_mz(&fragments);
 
     recalibrate_fragments(
         &mut fragments,
@@ -197,10 +207,11 @@ fn run_disabled_example(precursor_ms1: f64, precursor_ms2: f64) {
         CalibrationModel::None,
     );
 
+    let after_mz = sole_mz(&fragments);
     println!("With CalibrationModel::None, fragment m/z is unchanged:");
     println!("  Before: {original_mz:.6}");
-    println!("  After:  {:.6}", fragments[0].mz);
-    println!("  Equal: {}", (original_mz - fragments[0].mz).abs() < 1e-10);
+    println!("  After:  {after_mz:.6}");
+    println!("  Equal: {}", (original_mz - after_mz).abs() < 1e-10);
 }
 
 fn main() {

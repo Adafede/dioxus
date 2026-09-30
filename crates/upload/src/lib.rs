@@ -23,7 +23,7 @@
 //!
 //! - Native file I/O (WASM-only by design)
 //! - HTTP upload to servers
-//! - SPARQL querying or LOTUS domain modeling → see the `lotus` crate
+//! - SPARQL querying or LOTUS domain modeling → see the `lotus-search` crate
 
 #![cfg_attr(target_arch = "wasm32", allow(clippy::future_not_send))]
 #![warn(missing_docs)]

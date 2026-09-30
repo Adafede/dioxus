@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
+
 //! `WebMCP` tool registration for the W3C `WebMCP` proposal.
 //!
 //! Each app exposes a single read-only `<app_id>_capabilities` tool on its

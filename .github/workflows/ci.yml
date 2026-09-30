@@ -34,6 +34,21 @@ jobs:
         with: { components: rustfmt }
       - run: cargo fmt --all -- --check
 
+  license-headers:
+    name: License headers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false, fetch-depth: 1 }
+      # Without this setup step `just` is not on the runner, so the job exits 127
+      # before reading a single file — and reports nothing about license headers.
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
+        with:
+          tool: just
+      - name: Every .rs file carries both AGPL headers on lines 1 and 2
+        run: just license-headers
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
@@ -45,7 +60,7 @@ jobs:
         with: { components: clippy }
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
-  # ── Pre-push checks: heavy — run on every PR and push ─────────────────────────
+  # ── Pre-push checks: heavy — run on every PR and push ─────────────────────
 
   test:
     name: Test (native)
@@ -55,20 +70,62 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false, fetch-depth: 1 }
       - uses: dtolnay/rust-toolchain@stable
+      # This is also where `crates/upload/tests/gate_consistency.rs` runs: the
+      # workspace has no root package, so this is the one `tests/` directory the
+      # `--workspace` test build is guaranteed to compile and run.
       - run: cargo test --workspace --all-targets --locked --quiet
 
   doc:
     name: Docs
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Without this a rustdoc warning is printed and the job still passes, so
+      # the job proves only that the docs build, not that they are warning-free —
+      # and a broken intra-doc link is a 404 in the generated docs, which no
+      # test here would notice.
+      RUSTDOCFLAGS: -D warnings
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false, fetch-depth: 1 }
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo doc --workspace --no-deps --locked
 
+  mutants:
+    name: Mutation tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Non-blocking, on purpose, and the numbers in the comment are the reason.
+    # `cargo mutants` exits non-zero when any mutant survives, and 170 of the 421
+    # do today: they are the to-do list, and making this blocking before they are
+    # either covered by a test or excluded in `.cargo/mutants.toml` would mean
+    # shipping a permanently red job. Each run is the list of behaviours the
+    # suite is not actually pinning down.
+    #
+    # `json-count-rs`: 125 mutants, 0 killed, 125 survived. 21 passing tests, and
+    # none of them reaches the function they appear to cover.
+    # `cxsmiles-yoga`: 296 mutants, 164 killed, 45 survived.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false, fetch-depth: 1 }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
+        with:
+          tool: cargo-mutants@27.1.0
+      # Same two packages, same flags and the same `.cargo/mutants.toml` as
+      # `just mutants`; the exclusions live in that file so the two cannot
+      # disagree. `mgf-precursor-erro-rs` is `just mutants-mgf`: 717 more
+      # mutants, another half hour, and it is the one that does not fit.
+      - run: >-
+          cargo mutants
+          --package json-count-rs
+          --package cxsmiles-yoga
+          --jobs 4
+          --timeout 300
+
   wasm:
-    name: WASM type-check (all apps)
+    name: WASM type-check
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -102,6 +159,35 @@ jobs:
           cargo clippy -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
           cargo clippy -p lipid-selecto-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
           cargo clippy -p smellfish-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
+      # `crates/upload` is linted on its own, and this is the line that matters:
+      # `blob_cursor`, `blob_lines` and `progress` are `#[cfg(wasm32)]`, so no
+      # other command in this workflow compiles their code or their tests. That
+      # is how a test calling a method that does not exist sat here unnoticed.
+      - name: Lint the WASM-only upload crate, tests included
+        run: >-
+          cargo clippy -p upload
+          --target wasm32-unknown-unknown
+          --all-targets
+          --locked
+          -- -D warnings
+
+  readme:
+    name: README sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false, fetch-depth: 1 }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
+        with:
+          tool: |
+            just
+            cargo-readme@3.4.0
+            panache@3.12.0
+      # The READMEs are generated from the crates' `//!` docs, so a doc change
+      # that was not regenerated lands a README nothing else would catch.
+      - run: just readme
 
   supply-chain:
     name: Supply-chain
@@ -131,6 +217,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
         with:
-          tool: |
-            cargo-machete@0.9.2
+          tool: cargo-machete@0.9.2
+      # `machete`, and not the `unused_crate_dependencies` lint, is what holds
+      # this workspace's dependencies honest: a host build does not compile the
+      # `#[cfg(target_arch = "wasm32")]` branches where most of them are used,
+      # so the lint calls them unused in exactly the builds that cannot see the
+      # use. `machete` reads the source text, so it does not have that blind
+      # spot. See the note in the root `Cargo.toml`.
       - run: cargo machete

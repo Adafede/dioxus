@@ -288,10 +288,12 @@ pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f6
 
     let mut index = 0usize;
     let mut previous_y = 0.0f64;
-    while index < sorted.len() {
-        let value = sorted[index];
+    while let Some(&value) = sorted.get(index) {
         let mut next_index = index + 1;
-        while next_index < sorted.len() && (sorted[next_index] - value).abs() <= f64::EPSILON {
+        while sorted
+            .get(next_index)
+            .is_some_and(|&next| (next - value).abs() <= f64::EPSILON)
+        {
             next_index += 1;
         }
         let next_index_u32 = u32::try_from(next_index).unwrap_or(u32::MAX);
@@ -317,11 +319,19 @@ pub fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<
     let target = max_points.max(1);
     let mut sampled = Vec::with_capacity(target);
     for slot in 0..target {
+        // `slot < target` and `target >= 1`, so `slot * len / target` is below
+        // `len` for every slot: the sampled point always exists.
         let point_index = (slot * points.len()) / target;
-        sampled.push(points[point_index]);
+        if let Some(point) = points.get(point_index) {
+            sampled.push(*point);
+        }
     }
-    if sampled.last() != points.last() {
-        sampled.push(points[points.len() - 1]);
+    // `points.len() > target >= 1` past the early return above, so there is
+    // always a last point to close the series with.
+    if sampled.last() != points.last()
+        && let Some(last) = points.last()
+    {
+        sampled.push(*last);
     }
     sampled
 }

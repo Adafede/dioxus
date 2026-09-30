@@ -54,10 +54,10 @@ pub(super) fn display_label(
     kingdoms: &[String],
 ) -> String {
     if is_natural_source(source_class) {
-        let kingdoms_str = if kingdoms.is_empty() {
+        let kingdoms_str = if let [only] = kingdoms {
+            only.clone()
+        } else if kingdoms.is_empty() {
             kingdom.to_string()
-        } else if kingdoms.len() == 1 {
-            kingdoms[0].clone()
         } else {
             kingdoms.join(" + ")
         };

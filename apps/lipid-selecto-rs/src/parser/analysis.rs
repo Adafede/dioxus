@@ -295,6 +295,11 @@ pub(crate) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
 }
 
 #[cfg(all(test, target_arch = "wasm32"))]
+// Every assertion below reads a block out of `EXAMPLE_MGF`, the literal fixture
+// at the top of this module, by the index its comment names. An out-of-range
+// read means the fixture and the indices have drifted apart, which is the
+// failure the test is reporting.
+#[allow(clippy::indexing_slicing)]
 mod tests {
     use super::super::parsing::extract_blocks;
     use super::*;

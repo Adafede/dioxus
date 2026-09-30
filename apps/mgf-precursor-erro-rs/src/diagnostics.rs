@@ -221,10 +221,10 @@ impl RecalibrationStats {
             // Reservoir sampling for additional points
             let index = reservoir_index(self.total_count, max_samples);
             if index < max_samples {
-                self.error_ppm_before[index] = error_ppm_before;
-                self.error_ppm_after[index] = error_ppm_after;
-                self.error_da_before[index] = error_da_before;
-                self.error_da_after[index] = error_da_after;
+                write_reservoir_slot(&mut self.error_ppm_before, index, error_ppm_before);
+                write_reservoir_slot(&mut self.error_ppm_after, index, error_ppm_after);
+                write_reservoir_slot(&mut self.error_da_before, index, error_da_before);
+                write_reservoir_slot(&mut self.error_da_after, index, error_da_after);
             }
         }
 
@@ -279,12 +279,12 @@ impl RecalibrationStats {
             // Reservoir sampling for additional points
             let index = reservoir_index(self.total_count, max_samples);
             if index < max_samples {
-                self.error_ppm_ms1[index] = error_ppm_ms1;
-                self.delta_ppm_ms2_ms1[index] = delta_ppm_ms2_ms1;
-                self.error_ppm_before[index] = error_ppm_before;
-                self.error_ppm_after[index] = error_ppm_after;
-                self.error_da_ms1[index] = error_da_ms1;
-                self.delta_da_ms2_ms1[index] = delta_da_ms2_ms1;
+                write_reservoir_slot(&mut self.error_ppm_ms1, index, error_ppm_ms1);
+                write_reservoir_slot(&mut self.delta_ppm_ms2_ms1, index, delta_ppm_ms2_ms1);
+                write_reservoir_slot(&mut self.error_ppm_before, index, error_ppm_before);
+                write_reservoir_slot(&mut self.error_ppm_after, index, error_ppm_after);
+                write_reservoir_slot(&mut self.error_da_ms1, index, error_da_ms1);
+                write_reservoir_slot(&mut self.delta_da_ms2_ms1, index, delta_da_ms2_ms1);
             }
         }
 
@@ -412,7 +412,24 @@ fn reservoir_index(seen: usize, modulo: usize) -> usize {
     usize::try_from(mixed % modulo_u64).unwrap_or(0)
 }
 
+/// Overwrites reservoir slot `index` of one error series.
+///
+/// Every series reaching the reservoir path has been pushed exactly once per
+/// `sample_count` increment, so it already holds at least `max_samples` values
+/// by the time `index < max_samples` holds — the slot exists. Routing all ten
+/// writes through this helper keeps that invariant enforced at the point of
+/// the write instead of relying on a bound checked elsewhere.
+fn write_reservoir_slot(series: &mut [f64], index: usize, value: f64) {
+    if let Some(slot) = series.get_mut(index) {
+        *slot = value;
+    }
+}
+
 #[cfg(test)]
+#[allow(clippy::indexing_slicing)]
+// Tests reach into the vectors they just filled themselves; indexing past
+// their own literal fixture means the behaviour under test regressed, and the
+// panic is a perfectly good report of that.
 mod tests {
     use super::*;
 

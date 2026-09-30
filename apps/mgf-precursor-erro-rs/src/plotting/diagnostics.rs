@@ -136,8 +136,8 @@ pub fn render_recalibration_diagnostic_histogram(
         if error.is_finite() {
             let normalized = (error - error_min) / (error_max - error_min + f64::EPSILON);
             let bin = floor_to_usize((normalized * (usize_to_f64(bin_count) - 1.0)).floor());
-            if bin < bin_count {
-                hist_before[bin] += 1;
+            if let Some(count) = hist_before.get_mut(bin) {
+                *count += 1;
             }
         }
     }
@@ -146,8 +146,8 @@ pub fn render_recalibration_diagnostic_histogram(
         if error.is_finite() {
             let normalized = (error - error_min) / (error_max - error_min + f64::EPSILON);
             let bin = floor_to_usize((normalized * (usize_to_f64(bin_count) - 1.0)).floor());
-            if bin < bin_count {
-                hist_after[bin] += 1;
+            if let Some(count) = hist_after.get_mut(bin) {
+                *count += 1;
             }
         }
     }

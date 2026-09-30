@@ -36,16 +36,22 @@ pub(crate) fn molecule_to_query(mol: &Molecule) -> QueryMolecule {
     let mut bonds: Vec<QueryBond> = Vec::new();
     let mut adj: Vec<Vec<(usize, usize)>> = vec![Vec::new(); n];
     for (_, be) in mol.bonds() {
-        let a = be.atom1.0 as usize;
-        let b = be.atom2.0 as usize;
-        let qi = bonds.len();
         bonds.push(QueryBond {
-            atom1: a,
-            atom2: b,
+            atom1: be.atom1.0 as usize,
+            atom2: be.atom2.0 as usize,
             query: BondQuery::Primitive(bond_to_primitive(be.order)),
         });
-        adj[a].push((qi, b));
-        adj[b].push((qi, a));
+    }
+    // A second pass over `bonds` rather than filling `adj` while pushing: the
+    // adjacency list of atom `a` is bond indices, so it is clearer to read them
+    // back off the bond list than to maintain two structures in lockstep.
+    for (qi, bond) in bonds.iter().enumerate() {
+        if let Some(neighbours) = adj.get_mut(bond.atom1) {
+            neighbours.push((qi, bond.atom2));
+        }
+        if let Some(neighbours) = adj.get_mut(bond.atom2) {
+            neighbours.push((qi, bond.atom1));
+        }
     }
     QueryMolecule { atoms, bonds, adj }
 }
@@ -65,15 +71,17 @@ pub(crate) fn subgraph(mol: &Molecule, keep: &[bool]) -> Molecule {
     let n = mol.atom_count();
     let mut b = MoleculeBuilder::new();
     let mut map: Vec<Option<AtomIdx>> = vec![None; n];
-    for i in 0..n as u32 {
-        if keep[i as usize] {
-            map[i as usize] = Some(b.add_atom(mol.atom(AtomIdx(i)).clone()));
+    for (i, &keep_atom) in keep.iter().enumerate() {
+        if keep_atom && let Some(slot) = map.get_mut(i) {
+            *slot = Some(b.add_atom(mol.atom(AtomIdx(i as u32)).clone()));
         }
     }
     for (_, be) in mol.bonds() {
-        let (a, c) = (be.atom1.0 as usize, be.atom2.0 as usize);
         // Both endpoints are mapped above (keep[a] && keep[c] ⇒ map is Some).
-        if let (Some(ma), Some(mc)) = (map[a], map[c]) {
+        if let (Some(ma), Some(mc)) = (
+            map.get(be.atom1.0 as usize).copied().flatten(),
+            map.get(be.atom2.0 as usize).copied().flatten(),
+        ) {
             let _ = b.add_bond(ma, mc, be.order);
         }
     }
@@ -123,13 +131,18 @@ pub(crate) fn unmatched_count(h: &Match, mol: &Molecule) -> usize {
 pub(crate) fn matched_mask(h: &Match, mol: &Molecule) -> Vec<bool> {
     let mut m = vec![false; mol.atom_count()];
     for &a in h.values() {
-        m[a.0 as usize] = true;
+        if let Some(slot) = m.get_mut(a.0 as usize) {
+            *slot = true;
+        }
     }
     m
 }
 
 pub(crate) fn unmatched_atoms(matched: &[bool]) -> Vec<u32> {
-    (0..matched.len() as u32)
-        .filter(|i| !matched[*i as usize])
+    matched
+        .iter()
+        .enumerate()
+        .filter(|&(_, &m)| !m)
+        .map(|(i, _)| i as u32)
         .collect()
 }

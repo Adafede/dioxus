@@ -484,10 +484,10 @@ fn merge_enrichment(
                 .into(),
             );
             for &idx in indices {
-                if idx < rows.len() {
-                    rows[idx].lotus_taxa = summary.taxa.iter().cloned().collect();
-                    rows[idx].lotus_compounds = summary.compounds.iter().cloned().collect();
-                    rows[idx].lotus_compounds_with_taxa = summary.compounds_with_taxa.clone();
+                if let Some(row) = rows.get_mut(idx) {
+                    row.lotus_taxa = summary.taxa.iter().cloned().collect();
+                    row.lotus_compounds = summary.compounds.iter().cloned().collect();
+                    row.lotus_compounds_with_taxa = summary.compounds_with_taxa.clone();
                 }
             }
         }
@@ -506,8 +506,8 @@ fn merge_enrichment(
                 .into(),
             );
             for &idx in indices {
-                if idx < rows.len() {
-                    rows[idx].pubchem_cids = summary.cids.iter().cloned().collect();
+                if let Some(row) = rows.get_mut(idx) {
+                    row.pubchem_cids = summary.cids.iter().cloned().collect();
                 }
             }
         }

@@ -88,7 +88,7 @@ fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
                     .iter()
                     .skip(1)
                     .copied()
-                    .chain(std::iter::once(points[0])),
+                    .chain(points.first().copied()),
             )
             .map(|((x1, y1), (x2, y2))| {
                 plotters::prelude::PathElement::new(vec![(x1, y1), (x2, y2)], style)
@@ -367,6 +367,9 @@ pub fn render_cumulative_error_three_curves(
 
 #[cfg(test)]
 #[expect(clippy::unwrap_used)] // tests unwrap the empty-error Result to assert the empty SVG
+#[allow(clippy::indexing_slicing)]
+// Every assertion below indexes the vector the same test just built from a
+// literal fixture, so an out-of-range read is itself the failing assertion.
 mod tests {
     use super::*;
 

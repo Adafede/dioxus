@@ -46,7 +46,10 @@ pub(super) fn download_filtered_mgf(
         if !adduct_val.is_empty() && block.adduct.as_deref() != Some(adduct_val) {
             continue;
         }
-        let class_tags = &block_class_tags[idx];
+        // A caller that passes fewer tag lists than blocks gets an untagged
+        // block rather than a panic: the download is a best-effort export, and
+        // failing to produce the file at all helps nobody.
+        let class_tags = block_class_tags.get(idx).map_or(&[][..], Vec::as_slice);
         let tagged = insert_class_comment(&block.raw, class_tags);
         mgf_content.push_str(&tagged);
         mgf_content.push('\n');

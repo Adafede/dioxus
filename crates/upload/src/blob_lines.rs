@@ -74,11 +74,12 @@ where
                 return Ok(Some(line));
             }
 
-            // No complete line yet — check for EOF.
+            // No complete line yet — check for EOF. Whatever is left in the
+            // buffer is the last line, unterminated; `take_line_from_buffer` has
+            // already drained everything above `buf_start`.
             if self.offset >= self.total_bytes {
-                if self.buf_start < self.buffer.len() {
-                    let remaining =
-                        String::from_utf8_lossy(&self.buffer[self.buf_start..]).into_owned();
+                if let Some(remaining) = self.buffer.get(self.buf_start..) {
+                    let remaining = String::from_utf8_lossy(remaining).into_owned();
                     self.buf_start = self.buffer.len();
                     return Ok(Some(remaining));
                 }
@@ -90,9 +91,10 @@ where
     }
 
     fn take_line_from_buffer(&mut self) -> Option<String> {
-        let available = &self.buffer[self.buf_start..];
-        if let Some(pos) = available.iter().position(|b| *b == b'\n') {
-            let line_bytes = &available[..pos];
+        let available = self.buffer.get(self.buf_start..)?;
+        if let Some(pos) = available.iter().position(|b| *b == b'\n')
+            && let Some(line_bytes) = available.get(..pos)
+        {
             let mut line = String::from_utf8_lossy(line_bytes).into_owned();
             self.buf_start += pos + 1;
             if line.ends_with('\r') {

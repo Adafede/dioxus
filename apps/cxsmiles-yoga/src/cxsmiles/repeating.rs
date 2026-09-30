@@ -248,42 +248,88 @@ pub(crate) fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usiz
     }
     // copies of the unit: copy 0 = original (in scaffold), copies 1..n = new.
     let mut copy_atoms: Vec<Vec<AtomIdx>> = Vec::with_capacity(n);
-    copy_atoms.push(unit.iter().map(|&a| sc[a as usize]).collect());
+    copy_atoms.push(
+        unit.iter()
+            .filter_map(|&a| sc.get(a as usize))
+            .copied()
+            .collect(),
+    );
     for _ in 1..n {
         let block: Vec<AtomIdx> = unit
             .iter()
             .map(|&a| b.add_atom(scaffold.atom(AtomIdx(a)).clone()))
             .collect();
         for (a1, a2, order) in &unit_internal {
-            let _ = b.add_bond(block[pos_in_unit(*a1)], block[pos_in_unit(*a2)], *order);
+            if let (Some(p1), Some(p2)) = (
+                block.get(pos_in_unit(*a1)).copied(),
+                block.get(pos_in_unit(*a2)).copied(),
+            ) {
+                let _ = b.add_bond(p1, p2, *order);
+            }
         }
         copy_atoms.push(block);
     }
-    // Scaffold bonds, omitting the two anchor bonds.
-    for (_, be) in scaffold.bonds() {
-        let (a, c) = (be.atom1.0, be.atom2.0);
-        let omit = (a == anchor_a && c == ep_a)
-            || (c == anchor_a && a == ep_a)
-            || (a == anchor_b && c == ep_b)
-            || (c == anchor_b && a == ep_b);
-        if !omit {
-            let _ = b.add_bond(sc[a as usize], sc[c as usize], be.order);
+    add_scaffold_bonds(&mut b, scaffold, &sc, anchor_a, ep_a, anchor_b, ep_b);
+    // Splice bonds. Every lookup is bounded by construction — `copy_atoms` has
+    // `n` copies, each of `unit.len()` atoms, and `sc` has one slot per scaffold
+    // atom — but a missing slot would silently drop a bond, so each is checked.
+    if let (Some(&ra0), Some(&anchor_a_idx)) = (
+        copy_atoms.first().and_then(|c| c.get(rpos_a)),
+        sc.get(anchor_a as usize),
+    ) {
+        let _ = b.add_bond(anchor_a_idx, ra0, BondOrder::Single);
+    }
+    for (k, copy) in copy_atoms.iter().enumerate().take(n.saturating_sub(1)) {
+        let Some(next) = copy_atoms.get(k + 1) else {
+            break;
+        };
+        if let (Some(&rb_k), Some(&ra_k1)) = (copy.get(rpos_b), next.get(rpos_a)) {
+            let _ = b.add_bond(rb_k, ra_k1, BondOrder::Single);
         }
     }
-    // Splice bonds.
-    let ra0 = copy_atoms[0][rpos_a];
-    let _ = b.add_bond(sc[anchor_a as usize], ra0, BondOrder::Single);
-    for k in 0..(n - 1) {
-        let rb_k = copy_atoms[k][rpos_b];
-        let ra_k1 = copy_atoms[k + 1][rpos_a];
-        let _ = b.add_bond(rb_k, ra_k1, BondOrder::Single);
+    if let (Some(&rb_last), Some(&anchor_b_idx)) = (
+        copy_atoms.get(n - 1).and_then(|c| c.get(rpos_b)),
+        sc.get(anchor_b as usize),
+    ) {
+        let _ = b.add_bond(rb_last, anchor_b_idx, BondOrder::Single);
     }
-    let rb_last = copy_atoms[n - 1][rpos_b];
-    let _ = b.add_bond(rb_last, sc[anchor_b as usize], BondOrder::Single);
     b.build()
 }
 
+/// Copy every scaffold bond into `b`, except the two that attach the repeat
+/// unit's endpoints to the scaffold — those are the bonds `splice_repeat`
+/// replaces with the spliced chain, so copying them too would leave the unit
+/// attached at both ends of the original.
+fn add_scaffold_bonds(
+    b: &mut MoleculeBuilder,
+    scaffold: &Molecule,
+    sc: &[AtomIdx],
+    anchor_a: u32,
+    ep_a: u32,
+    anchor_b: u32,
+    ep_b: u32,
+) {
+    for (_, be) in scaffold.bonds() {
+        let (a, c) = (be.atom1.0, be.atom2.0);
+        let is_anchor_bond = (a == anchor_a && c == ep_a)
+            || (c == anchor_a && a == ep_a)
+            || (a == anchor_b && c == ep_b)
+            || (c == anchor_b && a == ep_b);
+        if !is_anchor_bond
+            && let (Some(ma), Some(mc)) = (sc.get(a as usize).copied(), sc.get(c as usize).copied())
+        {
+            let _ = b.add_bond(ma, mc, be.order);
+        }
+    }
+}
+
 /// First atom of `unit` that is bonded to `anchor` in `scaffold`.
+///
+/// When no such atom exists the unit is wholly the endpoint, and its first atom
+/// is the answer. `unit` is non-empty by construction — it is the single
+/// recurring fragment `find_unit` returned, and `splice_repeat` indexes into it
+/// — so the `0` stands only for the case that cannot occur, as `anchor_a` and
+/// `anchor_b` above already do.
 pub(crate) fn endpoint_for(scaffold: &Molecule, unit: &[u32], anchor: u32) -> u32 {
     let uset: HashSet<u32> = unit.iter().copied().collect();
     for (nbr, _) in scaffold.neighbors(AtomIdx(anchor)) {
@@ -291,5 +337,5 @@ pub(crate) fn endpoint_for(scaffold: &Molecule, unit: &[u32], anchor: u32) -> u3
             return nbr.0;
         }
     }
-    unit[0]
+    unit.first().copied().unwrap_or(0)
 }

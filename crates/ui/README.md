@@ -11,19 +11,21 @@ constants, and styling utilities---all defined in pure Rust.
 
 ## Design Philosophy
 
-- **No external CSS files**: All styling defined as Rust constants via [`theme`]
-- **Type-safe theming**: Compile-time checked colors, spacing, typography
+- **CSS bundled as static assets**: App-wide CSS lives in external files (e.g.
+  `lotus-explore.css`) loaded via `<link rel="stylesheet">` in the generated
+  `index.html` for optimal mobile performance
+- **Type-safe theming**: Compile-time checked colors, spacing, typography via
+  `StyleBuilder`, `ColorScheme`, `Spacing` and `Typography`
 - **Accessible components**: WCAG AAA contrast, keyboard navigation, semantic
   HTML
 - **Lotus aesthetic**: Clean, professional design inspired by lotus-explore-rs
-- **Zero runtime overhead**: All styles inline, no dynamic CSS generation
 
 ## Example
 
 ```rust
 use dioxus::prelude::*;
 use ui::prelude::*;
-use ui::theme::{ColorScheme, Spacing};
+use ui::theme::{ColorScheme, Spacing, StyleBuilder};
 
 fn app() -> Element {
     let colors = ColorScheme::LIGHT;
@@ -32,7 +34,7 @@ fn app() -> Element {
         Header {
             title: "My App".to_string(),
         }
-        div { style: "padding: {}", Spacing::LG,
+        div { style: StyleBuilder::new().padding(Spacing::LG).build(),
             Card {
                 title: "Content".to_string(),
                 "Body text here"

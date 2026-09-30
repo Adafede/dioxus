@@ -40,8 +40,10 @@ pub(crate) enum Target {
 }
 
 pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
+    let Some(rep) = group.first() else {
+        return Err(CxError("build_positional: group is empty".into()));
+    };
     let mcs = find_mcs(&group.iter().collect::<Vec<_>>());
-    let rep = &group[0];
     let hit = best_match(&mcs, rep)?;
     let matched = matched_mask(&hit, rep);
     let unmatched = unmatched_atoms(&matched);
@@ -51,7 +53,9 @@ pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
     // Scaffold = rep minus floating atoms, plus recovered scaffold atoms.
     let mut keep = matched;
     for r in &recovered {
-        keep[*r as usize] = true;
+        if let Some(slot) = keep.get_mut(*r as usize) {
+            *slot = true;
+        }
     }
     let scaffold_mol = subgraph(rep, &keep);
     let scaffold_smiles = write(&scaffold_mol);
@@ -74,12 +78,13 @@ pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
         .map(|fc| equiv_positions(fc, group, &scaffold_q))
         .collect();
 
-    // Targets per flat def.
+    // Targets per flat def. `comp_positions` is built by mapping over the same
+    // `floating_comps` as `comp_defs`, so the two are the same length and can be
+    // walked together rather than indexed in step.
     let mut targets: Vec<Target> = Vec::with_capacity(defs.len());
     let mut di = 0usize;
-    for (ci, cdefs) in comp_defs.iter().enumerate() {
-        let positions = comp_positions[ci].clone();
-        targets.push(Target::Variable(positions));
+    for (cdefs, positions) in comp_defs.iter().zip(&comp_positions) {
+        targets.push(Target::Variable(positions.clone()));
         if cdefs.len() == 1 {
             di += 1;
         } else {
@@ -94,18 +99,27 @@ pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
     let (base_smiles, star_idx, attach_idx) =
         build_base_smiles(&scaffold_smiles, &defs, scaffold_len);
 
-    // m: fields (one per star / def).
-    let fields: Vec<String> = (0..defs.len())
-        .map(|j| {
-            let pos = match &targets[j] {
+    // m: fields (one per star / def). `defs`, `targets` and `star_idx` all have
+    // one entry per floating group, so the three walk together.
+    let fields: Vec<String> = defs
+        .iter()
+        .zip(&targets)
+        .zip(&star_idx)
+        .map(|((_, target), &star)| {
+            let pos = match target {
                 Target::Variable(p) => p
                     .iter()
                     .map(ToString::to_string)
                     .collect::<Vec<_>>()
                     .join("."),
-                Target::Fixed(other) => attach_idx[*other].to_string(),
+                // `Target::Fixed(i)` names the group pushed just before it in the
+                // loop above, so `i` is below `attach_idx.len()`, which has one
+                // entry per def.
+                Target::Fixed(other) => attach_idx
+                    .get(*other)
+                    .map_or_else(String::new, ToString::to_string),
             };
-            format!("m:{}:{}", star_idx[j], pos)
+            format!("m:{star}:{pos}")
         })
         .collect();
     let ext = fields.join(",");
@@ -116,16 +130,18 @@ pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
     let frac = cov.fraction();
 
     // Display FloatingParts (one per star).
-    let floating: Vec<FloatingPart> = (0..defs.len())
-        .map(|j| {
-            let equiv = match &targets[j] {
+    let floating: Vec<FloatingPart> = defs
+        .iter()
+        .zip(&targets)
+        .map(|(def, target)| {
+            let equiv = match target {
                 Target::Variable(p) => p.clone(),
                 Target::Fixed(_) => Vec::new(),
             };
             FloatingPart {
                 equiv,
-                fragment_smiles: fragment_smiles(&defs[j]),
-                split: defs[j].split,
+                fragment_smiles: fragment_smiles(def),
+                split: def.split,
             }
         })
         .collect();
@@ -166,6 +182,12 @@ fn build_base_smiles(
 }
 
 /// Write a fragment molecule with the attachment atom first.
+// `order` is `once(attachment)` followed by every other index below `n`, so it is
+// a permutation of `0..n`; `map` and `def.atoms` both have `n` slots and every
+// index below is an element of `order`. The inversions are the point of the
+// function, and wrapping them in `Option` would mean a bond silently vanishing
+// for a state the two lines above have already excluded.
+#[allow(clippy::indexing_slicing)]
 fn write_fragment_first(def: &FloatingDef) -> String {
     let n = def.atoms.len();
     let mut b = MoleculeBuilder::new();
@@ -192,10 +214,15 @@ fn fragment_smiles(def: &FloatingDef) -> String {
 
 /// A floating component (set of rep atoms) described as one or two defs.
 fn floating_defs(rep: &Molecule, frag: &[u32], keep: &[bool]) -> Vec<FloatingDef> {
-    let attach = *frag
+    let attach = frag
         .iter()
-        .find(|&&a| rep.neighbors(AtomIdx(a)).any(|(n, _)| keep[n.0 as usize]))
-        .unwrap_or(&frag[0]);
+        .copied()
+        .find(|&a| {
+            rep.neighbors(AtomIdx(a))
+                .any(|(n, _)| is_matched(keep, n.0))
+        })
+        .or_else(|| frag.first().copied())
+        .unwrap_or(0);
     let in_frag = |a: u32| frag.contains(&a);
     let is_chain = frag.len() > 1
         && rep
@@ -236,6 +263,9 @@ fn floating_defs(rep: &Molecule, frag: &[u32], keep: &[bool]) -> Vec<FloatingDef
 }
 
 /// Reorder a (atoms, bonds, attachment) so that the attachment atom is index 0.
+// As in `write_fragment_first`, `order` is a permutation of `0..atoms.len()` and
+// `map`, `atoms` and the bond endpoints are all indexed by that permutation.
+#[allow(clippy::indexing_slicing)]
 fn reorder_attachment_first(
     atoms: Vec<Atom>,
     bonds: Vec<(usize, usize, BondOrder)>,
@@ -297,10 +327,9 @@ fn equiv_positions(_comp: &[u32], group: &[Molecule], scaffold_q: &QueryMolecule
     let mut positions: Vec<usize> = Vec::new();
     for mol in group {
         let hits = find_matches(scaffold_q, mol);
-        if hits.is_empty() {
+        let Some(hit) = hits.first().cloned() else {
             continue;
-        }
-        let hit = hits[0].clone();
+        };
         let matched = matched_mask(&hit, mol);
         let unf = unmatched_atoms(&matched);
         for u in &unf {
@@ -348,10 +377,15 @@ fn boundary_edges(comp: &[u32], matched: &[bool], mol: &Molecule) -> usize {
     let mut count = 0;
     for &a in comp {
         for (nbr, _) in mol.neighbors(AtomIdx(a)) {
-            if !set.contains(&nbr.0) && matched[nbr.0 as usize] {
+            if !set.contains(&nbr.0) && is_matched(matched, nbr.0) {
                 count += 1;
             }
         }
     }
     count
+}
+
+/// Whether atom `a` is one of the matched scaffold atoms.
+fn is_matched(matched: &[bool], a: u32) -> bool {
+    matched.get(a as usize) == Some(&true)
 }

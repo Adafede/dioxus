@@ -37,7 +37,10 @@ fn count_non_null_leaves(input: &str) -> u64 {
 
 #[cfg(test)]
 fn skip_ws(input: &[u8], mut pos: usize) -> usize {
-    while pos < input.len() && matches!(input[pos], b' ' | b'\t' | b'\n' | b'\r') {
+    while input
+        .get(pos)
+        .is_some_and(|b| matches!(b, b' ' | b'\t' | b'\n' | b'\r'))
+    {
         pos += 1;
     }
     pos
@@ -48,18 +51,17 @@ fn skip_ws(input: &[u8], mut pos: usize) -> usize {
 #[cfg(test)]
 fn scan_json_value(input: &[u8], start: usize) -> (u64, usize) {
     let mut pos = skip_ws(input, start);
-    if pos >= input.len() {
+    let Some(&byte) = input.get(pos) else {
         return (0, pos);
-    }
+    };
 
-    match input[pos] {
+    match byte {
         b'"' => {
             // String — count 1 if it has at least one character (or escape).
             pos += 1; // consume opening quote
             let mut non_empty = false;
             let mut escaped = false;
-            while pos < input.len() {
-                let b = input[pos];
+            while let Some(&b) = input.get(pos) {
                 if escaped {
                     escaped = false;
                     non_empty = true;
@@ -79,21 +81,20 @@ fn scan_json_value(input: &[u8], start: usize) -> (u64, usize) {
             (u64::from(non_empty), pos)
         }
         b'{' | b'[' => {
-            let opener = input[pos];
-            let closer = if opener == b'{' { b'}' } else { b']' };
+            let closer = if byte == b'{' { b'}' } else { b']' };
             pos += 1;
             let mut count = 0u64;
 
             loop {
                 pos = skip_ws(input, pos);
-                if pos >= input.len() {
+                let Some(&b) = input.get(pos) else {
                     break; // truncated — return what we have
-                }
-                if input[pos] == closer {
+                };
+                if b == closer {
                     pos += 1;
                     break;
                 }
-                if input[pos] == b',' || input[pos] == b':' {
+                if matches!(b, b',' | b':') {
                     pos += 1;
                     continue;
                 }
@@ -114,16 +115,16 @@ fn scan_json_value(input: &[u8], start: usize) -> (u64, usize) {
         _ => {
             // Bare scalar: number, true, false, or null.
             let token_start = pos;
-            while pos < input.len()
-                && !matches!(
-                    input[pos],
-                    b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']'
-                )
-            {
+            while input.get(pos).is_some_and(|b| {
+                !matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']')
+            }) {
                 pos += 1;
             }
-            let token = &input[token_start..pos];
-            if token == b"null" { (0, pos) } else { (1, pos) }
+            if input.get(token_start..pos) == Some(b"null".as_slice()) {
+                (0, pos)
+            } else {
+                (1, pos)
+            }
         }
     }
 }
@@ -207,9 +208,10 @@ fn unescape_json_string(raw: &[u8]) -> String {
 
     let mut out = String::with_capacity(raw.len());
     let mut i = 0;
-    while i < raw.len() {
-        if raw[i] == b'\\' && i + 1 < raw.len() {
-            match raw[i + 1] {
+    while let Some(&byte) = raw.get(i) {
+        let is_escape = byte == b'\\';
+        if let Some(&escaped) = raw.get(i + 1).filter(|_| is_escape) {
+            match escaped {
                 b'"' => {
                     out.push('"');
                     i += 2;
@@ -242,11 +244,11 @@ fn unescape_json_string(raw: &[u8]) -> String {
                     out.push('\t');
                     i += 2;
                 }
-                b'u' if i + 6 <= raw.len() => {
-                    if let Ok(hex) = std::str::from_utf8(&raw[i + 2..i + 6])
-                        && let Ok(code) = u32::from_str_radix(hex, 16)
-                        && let Some(c) = char::from_u32(code)
-                    {
+                // A `\u` with fewer than four digits left is not a unicode
+                // escape at all, and falls through to the unknown-escape arm
+                // below rather than swallowing six bytes.
+                b'u' if raw.get(i + 2..i + 6).is_some() => {
+                    if let Some(c) = unicode_escape(raw, i + 2) {
                         out.push(c);
                     }
                     i += 6;
@@ -257,15 +259,37 @@ fn unescape_json_string(raw: &[u8]) -> String {
                 }
             }
         } else {
-            let next = raw[i..]
+            // `raw.get(i)` succeeded, so the tail from `i` exists; `next` is at
+            // least `i` and at most `raw.len()`, so the span does too.
+            let Some(rest) = raw.get(i..) else {
+                break;
+            };
+            let next = rest
                 .iter()
                 .position(|&c| c == b'\\')
                 .map_or(raw.len(), |p| i + p);
-            out.push_str(&String::from_utf8_lossy(&raw[i..next]));
+            if let Some(chunk) = raw.get(i..next) {
+                out.push_str(&String::from_utf8_lossy(chunk));
+            }
             i = next;
         }
     }
     out
+}
+
+/// The character a `\uXXXX` escape denotes, with `XXXX` starting at `at`.
+///
+/// `None` for any of the four ways this can fail — the digits are not there, are
+/// not ASCII, are not hex, or are a surrogate rather than a code point — because
+/// the caller's response is the same in every case: emit nothing and let the
+/// raw bytes stand. Written as one function rather than a chain of `if let`s so
+/// the four checks are each a line that can be read, and mutated, on its own.
+#[cfg(target_arch = "wasm32")]
+fn unicode_escape(raw: &[u8], at: usize) -> Option<char> {
+    let digits = raw.get(at..at + 4)?;
+    let hex = std::str::from_utf8(digits).ok()?;
+    let code = u32::from_str_radix(hex, 16).ok()?;
+    char::from_u32(code)
 }
 
 /// Reads a JSON string key from the cursor using the shared `BlobCursor`.
@@ -286,8 +310,8 @@ async fn read_json_key<F: FnMut(u64, u64)>(
         let mut i = start;
         let mut closed = false;
 
-        while i < buf.len() {
-            match buf[i] {
+        while let Some(&byte) = buf.get(i) {
+            match byte {
                 _ if escaped => {
                     escaped = false;
                 }
@@ -297,7 +321,7 @@ async fn read_json_key<F: FnMut(u64, u64)>(
                     break;
                 }
                 _ if !escaped => {
-                    raw.push(buf[i]);
+                    raw.push(byte);
                 }
                 _ => {}
             }
@@ -335,8 +359,8 @@ async fn skip_string_nonempty<F: FnMut(u64, u64)>(
         let mut i = start;
         let mut closed = false;
 
-        while i < buf.len() {
-            match buf[i] {
+        while let Some(&byte) = buf.get(i) {
+            match byte {
                 _ if escaped => {
                     escaped = false;
                 }
@@ -400,9 +424,7 @@ async fn count_value<F: FnMut(u64, u64)>(cursor: &mut BlobCursor<F>) -> Result<u
             let buf = cursor.buffer().to_vec(); // Copy to avoid borrow issues
             let mut i = cursor.pos();
 
-            while i < buf.len() {
-                let b = buf[i];
-
+            while let Some(&b) = buf.get(i) {
                 if in_string {
                     if escaped {
                         escaped = false;
@@ -474,8 +496,7 @@ async fn count_value<F: FnMut(u64, u64)>(cursor: &mut BlobCursor<F>) -> Result<u
     loop {
         let buf = cursor.buffer().to_vec(); // Copy to avoid borrow issues
         let i = cursor.pos();
-        while i < buf.len() {
-            let b = buf[i];
+        while let Some(&b) = buf.get(i) {
             if matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']') {
                 return Ok(u64::from(first != b'n'));
             }

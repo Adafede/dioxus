@@ -118,7 +118,12 @@ where
         #[allow(clippy::cast_possible_truncation)]
         let add_len = (end - start) as usize;
         self.buf.resize(old_len + add_len, 0);
-        array.copy_to(&mut self.buf[old_len..old_len + add_len]);
+        // The resize above is what makes the tail slot exist, so this cannot
+        // miss; `get_mut` is here so that if it ever did, the chunk is dropped
+        // rather than the whole upload panicking mid-stream.
+        if let Some(tail) = self.buf.get_mut(old_len..old_len + add_len) {
+            array.copy_to(tail);
+        }
 
         self.blob_read = end;
         if self.blob_read >= self.total_bytes {
@@ -155,6 +160,11 @@ where
     /// # Errors
     ///
     /// Returns [`UploadError`] if reading the next chunk from the blob fails.
+    // `ensure_any` returning `true` *is* `self.pos < self.buf.len()`: it reads
+    // until a byte is buffered and reports whether one is. Reading past that
+    // would be a bug in this module rather than a runtime condition, and
+    // returning `None` instead would report a truncated file as a complete one.
+    #[allow(clippy::indexing_slicing)] // see above
     pub async fn peek(&mut self) -> Result<Option<u8>, UploadError> {
         if self.ensure_any().await? {
             Ok(Some(self.buf[self.pos]))
@@ -168,6 +178,8 @@ where
     /// # Errors
     ///
     /// Returns [`UploadError`] if reading the next chunk from the blob fails.
+    // As in `peek`: `ensure_any` having returned `true` is the bound.
+    #[allow(clippy::indexing_slicing)] // see `peek`
     pub async fn next_byte(&mut self) -> Result<Option<u8>, UploadError> {
         if self.ensure_any().await? {
             let b = self.buf[self.pos];
@@ -185,8 +197,10 @@ where
     /// Returns [`UploadError`] if reading the next chunk from the blob fails.
     pub async fn skip_ws(&mut self) -> Result<(), UploadError> {
         loop {
-            while self.pos < self.buf.len()
-                && matches!(self.buf[self.pos], b' ' | b'\t' | b'\n' | b'\r')
+            while self
+                .buf
+                .get(self.pos)
+                .is_some_and(|b| matches!(b, b' ' | b'\t' | b'\n' | b'\r'))
             {
                 self.pos += 1;
             }

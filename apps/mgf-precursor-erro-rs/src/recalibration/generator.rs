@@ -21,16 +21,16 @@ pub fn write_recalibrated_fragments(
     use std::fmt::Write;
 
     for frag in spectrum_frags {
-        let parts: Vec<&str> = frag.split_whitespace().collect();
-        if parts.len() >= 2
-            && let (Ok(mz), Ok(intensity)) = (parts[0].parse::<f64>(), parts[1].parse::<f64>())
-        {
+        let mut fields = frag.split_whitespace();
+        let mz = fields.next().and_then(|field| field.parse::<f64>().ok());
+        let intensity = fields.next().and_then(|field| field.parse::<f64>().ok());
+        if let (Some(mz), Some(intensity)) = (mz, intensity) {
             let corrected_mz =
                 recalibrate_fragment_mz(mz, delta, pepmass, lambda, calibration_model);
             let _ = write!(result, "{corrected_mz} {intensity}");
-            for p in &parts[2..] {
+            for field in fields {
                 result.push(' ');
-                result.push_str(p);
+                result.push_str(field);
             }
             result.push('\n');
             continue;
@@ -74,8 +74,7 @@ pub fn generate_recalibrated_mgf(
     let lines: Vec<&str> = original_content.lines().collect();
     let mut idx = 0;
 
-    while idx < lines.len() {
-        let line = lines[idx];
+    while let Some(&line) = lines.get(idx) {
         let trimmed = line.trim();
 
         if trimmed.eq_ignore_ascii_case("BEGIN IONS") {
@@ -85,8 +84,7 @@ pub fn generate_recalibrated_mgf(
             result.push('\n');
             idx += 1;
 
-            while idx < lines.len() {
-                let spec_line = lines[idx];
+            while let Some(&spec_line) = lines.get(idx) {
                 if spec_line.trim().eq_ignore_ascii_case("END IONS") {
                     break;
                 }

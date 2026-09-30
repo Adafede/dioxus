@@ -17,8 +17,13 @@ pub fn extract_pepmass_from_line(line: &str) -> Option<f64> {
 
 #[must_use]
 pub fn is_fragment_line(line: &str) -> bool {
-    let parts: Vec<&str> = line.split_whitespace().collect();
-    parts.len() >= 2 && parts[0].parse::<f64>().is_ok() && parts[1].parse::<f64>().is_ok()
+    let mut fields = line.split_whitespace();
+    match (fields.next(), fields.next()) {
+        (Some(mz), Some(intensity)) => {
+            mz.parse::<f64>().is_ok() && intensity.parse::<f64>().is_ok()
+        }
+        _ => false,
+    }
 }
 
 #[must_use]
@@ -27,8 +32,7 @@ pub fn find_ms2_precursor_peak(spectrum_frags: &[String], pepmass: f64) -> Optio
     let mut best_delta = f64::INFINITY;
 
     for frag in spectrum_frags {
-        let parts: Vec<&str> = frag.split_whitespace().collect();
-        if let Ok(mz) = parts[0].parse::<f64>() {
+        if let Some(Ok(mz)) = frag.split_whitespace().next().map(str::parse::<f64>) {
             let da = (mz - pepmass).abs();
             let ppm = da * 1e6 / pepmass;
             if da <= 0.02 && ppm <= 100.0 && da < best_delta {

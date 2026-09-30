@@ -23,6 +23,10 @@ pub use parsing::{extract_pepmass_from_line, find_ms2_precursor_peak, is_fragmen
 pub use types::{CalibrationModel, Peak};
 
 #[cfg(test)]
+#[allow(clippy::indexing_slicing)]
+// A test that indexes past its own literal fixture has already failed; the
+// panic is the assertion. Anything the production path can get wrong is
+// checked by a test that compares whole vectors, not by an index.
 mod tests {
     use super::*;
 
