@@ -113,3 +113,46 @@ script = "cargo msrv find --workspace --all-targets --ignore-lockfile"
 cwd = "${REPO_ROOT}"
 description = "Check the workspace against the minimum versions each dependency allows."
 script = "cargo minimal-versions check --workspace --all-features"
+
+# Every `uses:` pin in `.github/workflows/` is checked against the repository
+# that owns it.
+#
+# This exists because one of them was not: `actions/download-artifact` carried
+# `actions/upload-artifact`'s SHA, and the Pages deploy failed at "Set up job"
+# with "Unable to resolve action ... unable to find version b4b15b8c...". The two
+# are different actions in different repositories, and reading the line does not
+# show it — a SHA is a SHA and it looks like a pin.
+#
+# It is a scheduled task and not a gate because it needs the network and the
+# GitHub API, and because the answer changes as upstream moves: a pin is a
+# commit SHA and stays valid forever, but this check is only worth running on the
+# assumption that the pins are still the ones someone intended.
+[tasks."action-pins"]
+cwd = "${REPO_ROOT}"
+description = "Check every action pin in the workflows resolves in its own repository."
+script = """
+#!/usr/bin/env bash
+set -euo pipefail
+found=0
+bad=0
+while IFS=@ read -r repo sha; do
+  [ -n "$repo" ] || continue
+  found=$((found + 1))
+  if ! gh api "repos/$repo/commits/$sha" --jq .sha > /dev/null 2>&1; then
+    echo "$repo@$sha does not resolve in $repo" >&2
+    bad=$((bad + 1))
+  else
+    echo "ok  $repo@$sha"
+  fi
+done < <(grep -rhoE 'uses: [a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+@[0-9a-f]{40}' .github/workflows/ \
+         | sed 's/uses: //' | sort -u)
+if [ "$found" -eq 0 ]; then
+  echo "no action pins found: the grep matched nothing" >&2
+  exit 1
+fi
+if [ "$bad" -ne 0 ]; then
+  echo "$bad of $found action pins do not resolve" >&2
+  exit 1
+fi
+echo "all $found action pins resolve in their own repository"
+"""

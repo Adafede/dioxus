@@ -82,7 +82,15 @@ install_tool cargo-bloat 0.12.1
 # for key `package.version`", and every crate here inherits it. The check then
 # reports drift against an empty document rather than saying why.
 install_tool cargo-readme 3.4.0
-install_tool panache 3.12.0
+# `panache` is installed with `--bin panache` and without the binstall attempt,
+# because its release archives are missing a binary its own manifest declares as
+# required: cargo-binstall exits 76 with "When resolving panache bin
+# distill_quarto_schema is not found. This binary is not optional so it must be
+# included in the archive". Nothing here calls `distill_quarto_schema`, and
+# 3.13.0's archive ships `panache` only, so bumping does not fix it. `--bin`
+# skips building the missing one. Same reason in the CI workflow.
+echo "==> panache 3.13.0"
+cargo install --locked panache --version 3.13.0 --bin panache
 
 # TOML is handled by tombi, which is the tool the git hooks already run through
 # `tombi-pre-commit`. It is NOT on crates.io: the `tombi-cli` crate there is a

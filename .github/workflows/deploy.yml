@@ -114,7 +114,12 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/download-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+      # `download-artifact`, not `upload-artifact`: the two are different
+      # actions with different repositories, and the run before this one failed
+      # with "unable to find version b4b15b8c..." because this line carried
+      # upload-artifact's SHA. `./mk action-pins` checks every pin against the
+      # repository that owns it, on the weekly schedule.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: _site
 

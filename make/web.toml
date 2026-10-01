@@ -85,12 +85,21 @@ cwd = "${REPO_ROOT}"
 description = "Build smellfish-rs for production."
 script = "dx build --profile wasm-release --package smellfish-rs"
 
-# The size of what each app ships, after `wasm-opt`. Binaryen is not in the gate:
-# it is a separate toolchain from the Rust one, and the number is wanted when
-# someone asks whether a change grew the bundle rather than on every commit.
+# The size of what each app actually ships.
+#
+# No `wasm-opt` pass here, and that is the point: `dx build` already runs its own
+# bundled binaryen with `-Oz` (visible as "Running wasm-opt" under `--verbose`),
+# so the artefact in `target/dx/` is already the optimised one. Re-running
+# `wasm-opt -Oz` over it recovered 0.2% locally and nothing at all on the runner,
+# where Ubuntu's binaryen is older than the one `dx` ships and dies with "Fatal:
+# error parsing wasm" on the CLI's own output. A second pass that cannot be
+# trusted to parse its input is not worth an apt install and a network fetch.
+#
+# To see the unoptimised size, compare against a build with
+# `--profile wasm-release` before the CLI's optimisation pass, or ask the CLI.
 [tasks."web-size"]
 cwd = "${REPO_ROOT}"
-description = "Report the size of each built app's wasm bundle, raw and wasm-opt'd."
+description = "Report the size of each built app's shipped wasm bundle."
 script = """
 #!/usr/bin/env bash
 set -euo pipefail
@@ -99,24 +108,19 @@ set -euo pipefail
 # workspace, and the file name carries a content hash. The hash is dropped here
 # so the report is comparable between runs.
 found=0
+total=0
 for wasm in target/dx/*/release/web/public/assets/*_bg-*.wasm; do
   [ -e "$wasm" ] || continue
   found=1
-  tmp=$(mktemp -d)
-  cp "$wasm" "$tmp/app.wasm"
-  wasm-opt -Oz --strip-debug -o "$tmp/app.opt.wasm" "$tmp/app.wasm"
-  printf '%-30s %10s -> %10s bytes\\n' \\
-    "$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$(dirname "$wasm")")")")")")" \\
-    "$(wc -c < "$tmp/app.wasm" | tr -d ' ')" \\
-    "$(wc -c < "$tmp/app.opt.wasm" | tr -d ' ')"
-  rm -rf "$tmp"
+  bytes=$(wc -c < "$wasm" | tr -d ' ')
+  total=$((total + bytes))
+  app=$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$(dirname "$wasm")")")")")")
+  printf '%-30s %10s bytes\n' "$app" "$bytes"
 done
-[ "$found" = 1 ] || echo "no built wasm found; run './mk web-build-all' first"
+[ "$found" = 1 ] || { echo "no built wasm found; run './mk web-build-all' first" >&2; exit 1; }
+printf '%-30s %10s bytes\n' "all six apps" "$total"
 """
 
-# `./mk cli -- <args>` runs `dx` with the arguments verbatim, for the
-# subcommands that have no task here: `dx new`, `dx check`, `dx translate`, and
-# whatever `dx --help` grows next.
 [tasks."cli"]
 cwd = "${REPO_ROOT}"
 description = "Pass arguments through to the Dioxus CLI. Arg: ARGS."

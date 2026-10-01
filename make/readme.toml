@@ -4,11 +4,14 @@
 # doc comments in its source, so a doc change that was not regenerated lands a
 # README that CI rejects and nothing else catches.
 #
-# The generated file is run through `panache format` before the diff, because a
-# `panache-format` pre-commit hook reformats the committed README and raw
-# `cargo readme` output does not. Diffing the raw output against the formatted
-# file reports drift that does not exist, which is the same shape of failure as a
-# check that cannot pass: it would be red from the day it was added.
+# The generated file is run through `panache format` before the diff, because the
+# committed READMEs are `panache`-formatted: `cargo readme` emits unwrapped prose
+# and the committed files are reflowed to 80 columns. Diffing raw output against a
+# formatted file reports drift that does not exist, which is the same shape of
+# failure as a check that cannot pass — it would be red from the day it was added.
+#
+# `readme-write` formats for the same reason, so the write side and the check
+# agree by construction and there is no second formatter to keep in step.
 #
 # `README.tpl` is globbed rather than the crates being named: a crate with a
 # template has a README generated from its `lib.rs` docs, and one without has no
@@ -59,9 +62,9 @@ cd "${REPO_ROOT}"
 for template in crates/*/README.tpl apps/*/README.tpl; do
   [ -e "$template" ] || continue
   dir=$(dirname "$template")
-  # `cargo readme` writes raw output and `panache format` is what a
-  # `panache-format` pre-commit hook applies to the committed file, so the
-  # formatting has to happen here or every run reports drift that is not there.
+  # `cargo readme` writes raw output and the committed files are
+  # `panache`-formatted, so the formatting has to happen here or every run reports
+  # drift that is not there.
   ( cd "$dir" \\
     && cargo readme -t README.tpl -o README.md \\
     && panache format README.md > /dev/null )

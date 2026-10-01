@@ -183,3 +183,12 @@ jobs:
       # number only moves when a dependency does, so it is a schedule answer.
       - name: The lowest toolchain the workspace builds on
         run: ./mk msrv
+      # Every action pin, checked against the repository that owns it. One of
+      # them was pinned to the wrong repository and the Pages deploy failed at
+      # "Set up job" with "unable to find version", because
+      # `actions/download-artifact` carried `actions/upload-artifact`'s SHA. A
+      # pin is a commit SHA and looks like a pin however wrong it is.
+      - name: Action pins resolve in their own repositories
+        run: ./mk action-pins
+        env:
+          GH_TOKEN: ${{ github.token }}

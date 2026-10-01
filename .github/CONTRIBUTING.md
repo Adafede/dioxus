@@ -117,6 +117,7 @@ Run on purpose, not in the gate. Each has a stated reason in `make/*.toml`.
 | `udeps` | needs nightly and is slow; it catches a dependency used only behind a `#[cfg]`, which `machete` cannot |
 | `geiger` | the transitive unsafe audit — advisory, and `unsafe_code = "forbid"` already covers this repository's own code |
 | `msrv` | bisects a build per toolchain; minutes |
+| `action-pins` | needs the network and the GitHub API; a pin is a commit SHA and stays valid forever, so the only thing this catches is a pin in the wrong repository |
 | `minimal-versions` | a second resolution that frequently fails for reasons unrelated to this code |
 | `mutants`, `mutants-mgf`, `mutants-ui`, `mutants-safe*` | minutes, and the survivors are a to-do list |
 | `cov` | rebuilds the whole crate graph under instrumentation |
