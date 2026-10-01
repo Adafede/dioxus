@@ -1,0 +1,19 @@
+{
+  // The extensions an editor needs for this workspace to match `cargo make ci`.
+  //
+  // Deliberately short. Each one earns its place: rust-analyzer is the language
+  // server for the whole project, taplo is a TOML language server (a separate
+  // extension from the `tombi` formatter the hooks run -- they answer different
+  // questions and neither replaces the other), and markdownlint is the only
+  // formatter the prose in `.github/` and the READMEs has.
+  //
+  // `typos` is NOT here on purpose: it is a CLI check, installed by
+  // `cargo make setup` and run by `cargo make typos` and the git hook. An
+  // editor extension would underline a word the CLI does not flag, or the
+  // reverse, and the gate is what decides.
+  "recommendations": [
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "DavidAnson.vscode-markdownlint"
+  ]
+}

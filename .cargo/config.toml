@@ -1,12 +1,43 @@
-# .cargo/config.toml — workspace-wide Cargo configuration
+# Cargo configuration for the workspace.
 # https://doc.rust-lang.org/cargo/reference/config.html
+#
+# This file lives here rather than at the repository root because Cargo looks
+# for `.cargo/config.toml` in the working directory and in every parent of it, so
+# a member directory finds this one on its own. `cargo make` also runs each task
+# once per member with that member as the working directory, which is the case
+# this location is for.
 
 [build]
-# NOTE: Do NOT put `-D warnings` here — it applies to every dependency crate,
-# not just workspace members, and breaks builds when upstream crates have
-# allowed deprecations. Use `cargo clippy -- -D warnings` (as done in CI/make)
-# to deny warnings scoped to workspace code only.
+# Deliberately empty, and the note is the point. Do NOT put `-D warnings` here:
+# it applies to every dependency crate as well as to workspace members, and one
+# upstream deprecation with an `#[allow]` in the wrong place then breaks a build
+# that has nothing to do with this repository. Warnings are denied where it is
+# scoped to this repository's own code: `RUSTFLAGS="-D warnings"` in CI (which
+# covers rustc's default-warn group for build scripts and proc macros) and
+# `-- -D warnings` on every clippy task.
 
-[profile.test]
-# Keep test binaries debuggable without full dev-optimization overhead.
-opt-level = 1
+[net]
+# `git fetch` rather than `git fetch --unreachable`: the two git dependencies
+# (`lotus-search`, `mascot-rs`) are tracked on a branch rather than a rev, so a
+# new commit on that branch has to be fetched for `cargo update` to see it. The
+# default keeps unreachable objects, which for a workspace this size is real
+# disk.
+git-fetch-with-cli = true
+
+# Dependencies come from the sparse index rather than a full git clone of
+# crates.io. It is several gigabytes smaller and the difference is minutes on a
+# cold machine; see https://doc.rust-lang.org/cargo/reference/registries.html.
+[registries.crates-io]
+protocol = "sparse"
+
+[term]
+# `verbose` rather than `quiet`: a gate task that suppresses Cargo's own progress
+# lines makes a hang indistinguishable from a slow build, and `cargo make` prints
+# which task it is on anyway. Colour is left alone so it follows the terminal,
+# and `CARGO_TERM_COLOR=always` in `[env]` in `Makefile.toml` turns it on for the
+# tasks even when their output is piped into a log.
+#
+# The schema calls this `color`, not `auto`; Cargo accepts both and the schemastore
+# one only knows `color`, so the colour default is left unset rather than written
+# in a form the schema would reject.
+verbose = false

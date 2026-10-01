@@ -2,7 +2,9 @@
 target/
 dist/
 # `cargo mutants` writes a log per mutant here; it is a run report, not source.
+# `.old` is the same thing from a rename rather than a fresh run.
 mutants.out/
+mutants.out.old/
 
 # ── Dioxus / dx CLI outputs ──────────────────────────────────
 apps/*/dist/
@@ -11,18 +13,34 @@ apps/*/.dioxus/
 # ── Downloaded assets (Ketcher, etc) ─────────────────────────
 **/public/assets/ketcher/
 
-# ── macOS ───────────────────────────────────────────────────
-.DS_Store
+# ── macOS ────────────────────────────────────────────────────────────────────
 .AppleDouble
 .LSOverride
 
-# ── IDE / editor ────────────────────────────────────────────
+# ── IDE / editor ─────────────────────────────────────────────────────────────
+# `.vscode/` is TRACKED, deliberately: `settings.json` there points rust-analyzer
+# at nextest and at the shared target directory, and `extensions.json` is the
+# list an editor needs to match the gate. Both are part of the toolchain config
+# rather than personal preference, so they are committed rather than ignored.
+#
+# The negation is needed because a developer's global `core.excludesFile`
+# commonly lists `.vscode/`. A `.gitignore` in the repository takes precedence
+# over the global one, so `!.vscode/` is what actually un-ignores it; without
+# the line, `git add .vscode/settings.json` fails on such a machine and succeeds
+# on another, which is the worse of the two outcomes.
+!.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# `.idea/` is the JetBrains one and is still ignored: the files in it are per
+# machine (window layout, index state) and a shared one is noise.
 .idea/
 *.iml
-.vscode/
 *.swp
 *.swo
 *~
+.DS_Store
 
 # ── Environment / secrets ───────────────────────────────────
 .env
@@ -31,7 +49,10 @@ apps/*/.dioxus/
 
 # ── Pre-commit cache ────────────────────────────────────────
 .pre-commit-cache/
+# Coverage output. `cargo make cov` writes to `target/llvm-cov-report/`; this is
+# the older `cargo tarpaulin` path and the `lcov.info` that lands beside it.
 lcov.info
+lcov.info.*
 *.tarpaulin
 
 SESSION_LOG.md

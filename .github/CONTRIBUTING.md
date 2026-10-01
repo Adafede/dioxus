@@ -2,10 +2,17 @@
 
 ## Project governance
 
-- Branch protection baseline: `.github/BRANCH_PROTECTION.md`
-- Code ownership rules: `.github/CODEOWNERS`
-- Conduct expectations: `CODE_OF_CONDUCT.md`
-- Support policy: `SUPPORT.md`
+- Conduct expectations: [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)
+- Support policy: [`SUPPORT.md`](./SUPPORT.md)
+- Security reporting: [`SECURITY.md`](./SECURITY.md)
+- AI-assisted contributions: [`ai/CONTRIBUTING_AI.md`](./ai/CONTRIBUTING_AI.md)
+
+There is no `CODEOWNERS` and no branch-protection baseline document, because
+there is one maintainer: a `CODEOWNERS` file with a single name in it is a
+review requirement that nobody can satisfy, and a policy document nobody
+maintains is worse than none. Required status checks are listed under
+[The gate](#required-status-checks) above, which is the part that would need
+reviewing if there were ever a second maintainer.
 
 ## License agreement
 

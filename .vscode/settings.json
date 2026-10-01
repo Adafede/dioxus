@@ -1,0 +1,73 @@
+{
+  // Editor settings for this workspace. Committed rather than left to each
+  // contributor's defaults, because two of the defaults that matter here are
+  // the wrong ones for a Dioxus project and a mismatch is a diff on every save.
+  //
+  // The rules for what is checked are `rustfmt.toml`, `clippy.toml` and
+  // `.editorconfig`; this file only makes an editor use them.
+
+  // rust-analyzer: the workspace has no root package, so the server has to be
+  // told to run the cargo check for a file's own crate rather than for the
+  // workspace, or every keystroke tries to build the whole dependency graph.
+  "rust-analyzer.cargo.allTargets": true,
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.cargo.features": "all",
+  // One target directory for the whole workspace, which is also what the Dioxus
+  // CLI uses; a per-crate target dir means building a dependency twice.
+  "rust-analyzer.cargo.targetDir": "${workspaceFolder}/target",
+  // Nextest is the test runner. Without this the editor builds a test binary
+  // per crate with `cargo test`, which is the slow path the gate moved off.
+  "rust-analyzer.cargo.testRunner": "nextest",
+  "rust-analyzer.cargo.testRunnerExtraEnv": {
+    // nextest does not run doctests, so the editor's "run doctest" needs the
+    // one runner that does.
+    "NEXTEST_PROFILE": "default"
+  },
+  // `proxy` rather than `enabled`: the crates are browser targets and half the
+  // workspace does not type-check for the host without its cfg gates. Enabling
+  // the server outright turns every `crates/upload` error into a squiggle.
+  "rust-analyzer.procMacro.enable": true,
+  "rust-analyzer.checkOnSave": true,
+  "rust-analyzer.cargo.buildScripts.enable": true,
+  // The workspace denies `unused_qualifications`, and an editor that shows it
+  // inline inside an `rsx!` block sends you to delete an attribute.
+  "rust-analyzer.diagnostics.experimental.enable": true,
+
+  // Formatting: rustfmt only, with the checked-in config. No formatter for TOML
+  // or markdown on save -- `tombi format` and `panache format` are what CI
+  // compares against, and an editor running a different one is a diff per save.
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.rustfmt.run": "onSave"
+  },
+
+  // The wasm apps' output and the Dioxus CLI's build directory: generated,
+  // large, and in `target/`. Excluded from search and from the file watcher so
+  // the editor does not index a release build.
+  "files.exclude": {
+    "**/target": true,
+    "**/.dioxus": true,
+    "**/dist": true,
+    "**/mutants.out": true,
+    "graphify-out": true
+  },
+  "search.exclude": {
+    "**/target": true,
+    "**/dist": true,
+    "graphify-out": true
+  },
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "**/.dioxus/**": true,
+    "**/dist/**": true
+  },
+
+  // The generated READMEs are diffed by `cargo make readme-check`; editing one
+  // by hand is undone on the next regeneration.
+  "[markdown]": {
+    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.markdownlint": "explicit"
+    }
+  }
+}

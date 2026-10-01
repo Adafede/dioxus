@@ -1,5 +1,16 @@
 # Release Checklist
 
+> **Not in use yet.** Every crate is `publish = false` and the public APIs are
+> still moving, so there is no release to cut. This file records what the
+> process will be when one is actually planned, and the release tooling it
+> assumes — a semver gate, a changelog generator, binaries, SBOMs, provenance,
+> signed tags, image push — is deliberately **not** configured, referenced or
+> stubbed anywhere in this repository until then. See "Deferred" in
+> [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+>
+> When that day comes, the first step is to choose the tooling and write it
+> down here; the steps below are the shape of the process, not the tools.
+
 Use this checklist every time you publish a new release to the organization.
 
 --------------------------------------------------------------------------------
@@ -7,14 +18,13 @@ Use this checklist every time you publish a new release to the organization.
 ## 1. Pre-release quality gate
 
 ```bash
-# Full CI-equivalent gate — must pass with zero warnings
-prek run cargo-qa
-
-# Supply-chain gate — advisories, licenses, bans, sources
-prek run cargo-supply-chain
+# The full CI gate — the same command .github/workflows/ci.yml runs
+cargo make ci
 ```
 
-Both must succeed **on a clean working tree** before continuing.
+Must succeed **on a clean working tree** before continuing. It includes the
+supply-chain checks (advisories, licences, bans, sources), so there is no second
+command to remember.
 
 --------------------------------------------------------------------------------
 
@@ -53,22 +63,21 @@ git push origin main --follow-tags
 
 ## 5. CI green light
 
-Wait for all CI jobs to pass on the tagged commit: - `native` (check + test +
-doc) - `wasm` (wasm32 type-check) - `clippy` - `fmt` - `supply-chain`
+Wait for every check in [`CONTRIBUTING.md`](./CONTRIBUTING.md) to pass on the
+tagged commit: `Gate`, `MSRV (1.97)` and `WASM bundle size`.
 
-**Do not publish Docker images or Pages artifacts until all jobs are green.**
+**Do not let `deploy.yml` publish anything until the gate is green.** It is a
+separate workflow and does not depend on `ci`, so that a deploy is not blocked by
+a slow MSRV bisect — which also means the ordering is on purpose and must stay
+understood.
 
 --------------------------------------------------------------------------------
 
-## 6. Docker image (lotus-explore-rs server)
+## 6. Container images
 
-The pipeline builds and pushes automatically on `main`. Verify the image tag
-exists before advertising it:
-
-```bash
-docker pull codeberg.org/YOUR_ORG/lotus-explore-rs:vX.Y.Z
-docker pull ghcr.io/YOUR_ORG/lotus-explore-rs:vX.Y.Z
-```
+There is no container image for this repository and no registry behind one: the
+deployable artefacts are static wasm bundles, published by `deploy.yml` to GitHub
+Pages. Nothing to pull.
 
 --------------------------------------------------------------------------------
 
@@ -97,8 +106,7 @@ After each release, run:
 
 ```bash
 cargo update
-prek run cargo-qa
-prek run cargo-supply-chain
+cargo make ci
 ```
 
 Review and commit `Cargo.lock` with any intentional updates. Treat each

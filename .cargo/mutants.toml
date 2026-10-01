@@ -1,15 +1,19 @@
 # `cargo-mutants` configuration.
 #
 # `.cargo/mutants.toml` is the only path `cargo-mutants` reads without a
-# `--config` flag, which is why this file is here and not at the repository root:
-# a `mutants.toml` at the root is silently ignored, so every exclusion written
-# in it would be a comment. `crates/upload/tests/gate_consistency.rs` asserts
-# both that this path exists and that no root `mutants.toml` shadows it.
+# `--config` flag, which is why it is a separate file and not a section of
+# `.cargo/config.toml`: Cargo parses every key in its own config against its own
+# schema, and `timeout_multiplier` as a bare float is a hard error there. The
+# original file had both in one and it only worked because the section header
+# above happened to be one Cargo ignored.
+#
+# `crates/upload/tests/gate_consistency.rs` asserts that this path exists and
+# that no root `mutants.toml` shadows it.
 #
 # The default is to mutate every file of every package named on the command
-# line. This file records the exclusions that are not derivable from the
-# justfile. An exclusion written down is a decision someone can argue with; an
-# omission is not.
+# line. This file records the exclusions that are not derivable from
+# `make/test.toml`. An exclusion written down is a decision someone can argue
+# with; an omission is not.
 #
 # Two limits on what is here, both from this file's schema:
 #
@@ -19,16 +23,16 @@
 #   lives in `make/test.toml` and not here.
 # * `#[cfg(target_arch = "wasm32")]` code is unreachable from a host test run,
 #   so no mutant in it can be killed either way. Roughly half of these files is
-#   behind that gate. Those paths are covered by `cargo make lint-wasm`, which does
-#   compile them, not by this.
+#   behind that gate. Those paths are covered by `cargo make lint-wasm`, which
+#   does compile them, not by this.
 
 # Which files inside the mutated packages are worth mutating.
 #
 # Three groups are left out. A `build.rs` runs during every build, so mutating
 # it would rebuild the world once per mutant for a handful of lines of constant
 # folding. And two groups are rendering rather than logic: the Dioxus front ends
-# — `main.rs`, `app.rs`, `src/app/`, the `depict.rs` SVG renderer, the
-# `examples.rs` doc page — and `src/plotting/`, which draws SVG through
+# -- `main.rs`, `app.rs`, `src/app/`, the `depict.rs` SVG renderer, the
+# `examples.rs` doc page -- and `src/plotting/`, which draws SVG through
 # `plotters` and accounts for 338 of `mgf-precursor-erro-rs`'s 1,055 mutants.
 # A surviving mutant in any of them is a literal in a `class` attribute or a
 # coordinate, not a behaviour, and killing those means a rendering test per
@@ -52,11 +56,10 @@ exclude_globs = [
 
 # A mutant that hangs has found an infinite loop, which is worth knowing about,
 # so the run is not allowed to hang on it. `cargo make mutants` passes
-# `--timeout 300`
-# as the per-mutant floor; this is the multiplier on however long the unmutated
-# test run took.
+# `--timeout 300` as the per-mutant floor; this is the multiplier on however
+# long the unmutated test run took.
 timeout_multiplier = 1.5
 
-# Fail rather than shrug: a mutant whose test run could not be executed is not a
-# pass, and reporting it as one is how a gap in the suite goes unnoticed.
+# Fail rather than shrug: a mutant whose test run could not be executed is not
+# a pass, and reporting it as one is how a gap in the suite goes unnoticed.
 minimum_test_timeout = 20

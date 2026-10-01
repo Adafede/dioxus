@@ -1,0 +1,30 @@
+# rustfmt configuration. Stable options only.
+# See https://rust-lang.github.io/rustfmt/
+#
+# Stable-only is a hard constraint rather than a preference: `cargo make
+# fmt-check` runs on every commit and in CI on the pinned stable toolchain, and
+# rustfmt *silently ignores* an option the running toolchain considers unstable.
+# A contributor on nightly would then have their files formatted one way and CI
+# formatted another, with no error anywhere. The unstable options that would
+# otherwise be wanted here — `imports_granularity`, `group_imports`,
+# `wrap_comments`, `format_code_in_doc_comments`, `comment_width`,
+# `end_of_line` — are therefore absent, and each one is enforced by something
+# else: import grouping by the lint table's `wildcard_imports` and by review,
+# line width by `max_width` below, comment width by the 80-column comments
+# already in the tree, line endings by `.gitattributes`.
+#
+# Verified by running `cargo fmt --all` on stable and reading the warnings: this
+# file produces none.
+
+edition = "2024"
+max_width = 100
+
+# The default. Named because it is the one setting an editor is most likely to
+# disagree with, and an editor that disagrees with the committed configuration
+# produces a diff on every format.
+tab_spaces = 4
+
+newline_style = "Unix"
+
+# `use_small_heuristics = "Default"` is the default and is left unstated: a
+# setting that equals its default is a line to keep in sync for nothing.
