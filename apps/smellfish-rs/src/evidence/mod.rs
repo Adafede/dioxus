@@ -135,7 +135,7 @@ mod tests {
         });
         assert!((assessment.np_likeness - 3.42).abs() < 1e-9);
         assert_eq!(assessment.np_label, "strong natural product");
-        assert!(!assessment.ring_family.is_empty());
+        assert_ne!(assessment.ring_family, "");
         assert!(assessment.np_confidence > 0.5);
         assert!(
             assessment
@@ -215,7 +215,7 @@ mod tests {
         });
         assert!((assessment.np_likeness - 0.0).abs() < 1e-9);
         assert_eq!(assessment.np_label, "weak NP signals");
-        assert!(!assessment.ring_family.is_empty());
+        assert_ne!(assessment.ring_family, "");
         assert!(
             assessment
                 .evidence_notes

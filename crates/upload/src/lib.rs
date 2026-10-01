@@ -31,7 +31,7 @@
 /// Byte-level chunked reader.
 ///
 /// Not wasm-gated, and that is the point: it reads from a
-/// [`ChunkSource`](bytes::ChunkSource), so it compiles — and can be tested —
+/// [`bytes::ChunkSource`], so it compiles — and can be tested —
 /// anywhere. Gating it on `cfg(test)` would not have worked, because `cfg(test)`
 /// applies to this crate's own unit tests and not to a downstream crate's, which
 /// is where the parser that needed testing lives.

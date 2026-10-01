@@ -497,7 +497,7 @@ mod tests {
     #[test]
     fn cumulative_points_empty_returns_empty_vec() {
         let result = cumulative_points(&[]);
-        assert!(result.is_empty());
+        assert_eq!(result, Vec::new());
     }
 
     #[test]

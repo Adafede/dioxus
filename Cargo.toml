@@ -177,6 +177,15 @@ cast_possible_wrap = "warn"
 cast_precision_loss = "deny"
 cast_sign_loss = "deny"
 
+# `suboptimal_flops` moved from `nursery` into `pedantic` in clippy 1.99 and is
+# allowed back out. All six sites it finds here are the same line of arithmetic:
+# padding a plot axis by a percentage of its span, `min - span * 0.05`. A fused
+# multiply-add buys one FMA on a computation that runs once per plot, and it
+# changes the result in the last bit -- two roundings become one -- so adopting it
+# would be a behaviour change in exchange for nothing. The lint's premise is that
+# the arithmetic is hot enough for the rounding to matter, and no site here is.
+suboptimal_flops = "allow"
+
 # Other pedantic lints
 default_trait_access = "deny"
 derive_partial_eq_without_eq = "deny"

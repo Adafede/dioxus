@@ -363,7 +363,7 @@ mod tests {
             CalibrationModel::TOFDa { lambda: 1.0 },
         );
 
-        assert!(fragments.is_empty());
+        assert_eq!(fragments, Vec::new());
     }
 
     #[test]

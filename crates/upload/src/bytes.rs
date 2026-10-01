@@ -7,7 +7,7 @@
 //! `Source` and starts with `Chunk`, and a module called either of those trips
 //! `clippy::module_inception` from one side or the other.
 //!
-//! [`BlobCursor`](crate::BlobCursor) and [`BlobLines`](crate::BlobLines) hold one
+//! [`BlobCursor`] and [`BlobLines`] hold one
 //! chunk at a time and pull the next when the current one runs out, which is the
 //! whole reason a multi-gigabyte upload costs 16 MiB of memory rather than the
 //! size of the file.
@@ -83,7 +83,7 @@ pub trait ChunkSource: Debug {
 ///
 /// The host-side implementation: same chunking, same buffering, same progress
 /// reporting as the browser reader, but no `Blob`. Every parser built on
-/// [`BlobCursor`](crate::BlobCursor) can be tested through this, which is what
+/// [`crate::BlobCursor`] can be tested through this, which is what
 /// finally reaches the code that only ever compiled to wasm.
 #[derive(Debug, Clone)]
 pub struct SliceSource<'a> {

@@ -103,7 +103,7 @@ script = "cargo upgrade --incompatible --workspace"
 [tasks."msrv"]
 cwd = "${REPO_ROOT}"
 description = "Find the lowest toolchain the workspace actually builds on."
-script = "cargo msrv find --workspace --all-targets --ignore-lockfile"
+script = "cargo msrv find --ignore-lockfile"
 
 # The version floor that is really required, and the check that the declared
 # minimums are not aspirational. Not in the gate: minimal-versions resolves a

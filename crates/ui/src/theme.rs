@@ -390,7 +390,7 @@ mod tests {
 
     #[test]
     fn color_scheme_light_has_values() {
-        assert!(!ColorScheme::LIGHT.accent.is_empty());
+        assert_ne!(ColorScheme::LIGHT.accent, "");
         assert_ne!(ColorScheme::LIGHT.accent, ColorScheme::DARK.accent);
     }
 
