@@ -3,7 +3,7 @@
 
 //! Throttled progress reporting for long-running browser-side work.
 //!
-//! A single [`ProgressThrottler`] instance is shared by all upload apps to
+//! A single `ProgressThrottler` instance is shared by all upload apps to
 //! avoid each app maintaining its own byte-count / time-throttle logic.
 //!
 //! # Throttling strategy

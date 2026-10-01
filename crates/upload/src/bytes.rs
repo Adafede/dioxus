@@ -26,8 +26,10 @@
 //! progress reports are browser concerns, and a host test should not have to
 //! reimplement either in order to compile the parsing it is there to test.
 //!
-//! Two implementations: [`BlobSource`] over a browser `Blob`, and [`SliceSource`]
-//! over bytes that are already in memory.
+//! Two implementations: `BlobSource` over a browser `Blob`, and [`SliceSource`]
+//! over bytes that are already in memory. `BlobSource` is compiled for wasm only,
+//! so it cannot be linked from a doc comment built on the host — which is the
+//! clearest statement of what this seam is for.
 
 use std::fmt::Debug;
 use std::time::Instant;
@@ -36,7 +38,7 @@ use crate::error::UploadError;
 
 /// A source of bytes the chunked readers can pull ranges from.
 ///
-/// Implemented by [`BlobSource`] for a browser `Blob` and by [`SliceSource`] for
+/// Implemented by `BlobSource` for a browser `Blob` and by [`SliceSource`] for
 /// a slice already in memory. The trait exists so that the readers — and every
 /// parser written against them — can be compiled and tested on the host.
 // `async fn` in a trait is here on purpose. The lint's objection is that a
