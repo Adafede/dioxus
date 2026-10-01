@@ -19,7 +19,7 @@ Use this checklist every time you publish a new release to the organization.
 
 ```bash
 # The full CI gate — the same command .github/workflows/ci.yml runs
-cargo make ci
+./mk ci
 ```
 
 Must succeed **on a clean working tree** before continuing. It includes the
@@ -106,7 +106,7 @@ After each release, run:
 
 ```bash
 cargo update
-cargo make ci
+./mk ci
 ```
 
 Review and commit `Cargo.lock` with any intentional updates. Treat each

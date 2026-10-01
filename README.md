@@ -26,7 +26,7 @@ A Cargo workspace for reproducible Dioxus web apps, pinned by
 ## Prerequisites
 
 ```bash
-cargo make setup
+./mk setup
 ```
 
 That installs the pinned toolchain from `rust-toolchain.toml` (Rust 1.98.1, with
@@ -58,7 +58,7 @@ dioxus-apps/
 The task runner's own configuration:
 
 ```
-├── Makefile.toml            ← cargo make: shared config and the ci/ci-fast gates
+├── Makefile.toml            ← task runner: shared config and the ci/ci-fast gates
 ├── make/                    ← the tasks, split by concern
 ├── .config/nextest.toml     ← nextest profiles
 └── .cargo/                  ← cargo config and the cargo-mutants exclusions
@@ -71,7 +71,7 @@ makes their logic testable from the host. Apps without extensive unit tests use
 ## Running apps locally
 
 ```bash
-cargo make web-dev APP=cxsmiles-yoga       # or index, json-count-rs,
+./mk web-dev APP=cxsmiles-yoga       # or index, json-count-rs,
                                             # lipid-selecto-rs, mgf-precursor-erro-rs,
                                             # smellfish-rs
 ```
@@ -79,15 +79,15 @@ cargo make web-dev APP=cxsmiles-yoga       # or index, json-count-rs,
 Anything else the Dioxus CLI can do goes through the passthrough task:
 
 ```bash
-cargo make cli -- --help
+./mk cli -- --help
 ```
 
 ## Building for production
 
 ```bash
-cargo make web-build APP=cxsmiles-yoga      # one app
-cargo make web-build-all                    # all six
-cargo make web-size                         # report each bundle, raw and wasm-opt'd
+./mk web-build APP=cxsmiles-yoga      # one app
+./mk web-build-all                    # all six
+./mk web-size                         # report each bundle, raw and wasm-opt'd
 ```
 
 Output lands under `apps/<package>/target/dx/<package>/release/web/public/`.
@@ -97,19 +97,19 @@ Output lands under `apps/<package>/target/dx/<package>/release/web/public/`.
 The task runner is **cargo-make**. Install the tools and the git hooks once:
 
 ```bash
-cargo make setup
+./mk setup
 cargo install prek --locked && prek install
 ```
 
 The gate is one command, and it is the same command CI runs:
 
 ```bash
-cargo make ci
+./mk ci
 ```
 
-`cargo make ci-fast` is the pre-push subset (the gate without the
+`./mk ci-fast` is the pre-push subset (the gate without the
 supply-chain checks). For the full current list of tasks rather than a copy of
-it, run `cargo make --list-all-steps` -- that is the one that cannot go stale.
+it, run `./mk --list-all-steps` -- that is the one that cannot go stale.
 The individual checks it depends on are also tasks: `fmt-check`, `lint`,
 `check`, `test`, `doc`, `check-wasm`, `lint-wasm`, `machete`, `deny`, `audit`,
 `typos`, `tombi-check`, `tombi-lint`, `license-headers`, `feature-powerset`,
@@ -126,21 +126,21 @@ flags, so the two cannot drift.
 4. Add the app to `check-wasm`, `lint-wasm`, `web-build-all` and the `MAPPING`
    row in `crates/upload/tests/gate_consistency.rs`. That test fails the build
    otherwise, which is the point of it.
-5. `cargo make web-dev APP=my-new-app`
+5. `./mk web-dev APP=my-new-app`
 
 ## Continuous integration
 
-Every job runs a `cargo make` task, and the per-push gate is the single task
-`cargo make ci`, so what CI runs is what the local gate runs:
+Every job runs a `./mk` task, and the per-push gate is the single task
+`./mk ci`, so what CI runs is what the local gate runs:
 
-- **Gate** (`cargo make ci`): formatting, TOML validity and schema, spelling,
+- **Gate** (`./mk ci`): formatting, TOML validity and schema, spelling,
   SPDX headers, task-list sanity, `cargo check`, clippy on the host and on
   wasm32, the test suite (nextest, then the doctests), rustdoc with warnings
   denied, the feature powerset, the generated-README check, and the
   supply-chain checks.
-- **MSRV** (`cargo make check`, `cargo make test`): the same builds on the
+- **MSRV** (`./mk check`, `./mk test`): the same builds on the
   oldest toolchain `rust-version` claims to support.
-- **WASM bundle** (`cargo make web-build-all`, `cargo make web-size`): the only
+- **WASM bundle** (`./mk web-build-all`, `./mk web-size`): the only
   job that links a `.wasm`, and the one that reports how large it is.
 - **Scheduled**, weekly: mutation testing, coverage, and the dependency-drift
   questions (`outdated`, `udeps`, `geiger`, `msrv`).

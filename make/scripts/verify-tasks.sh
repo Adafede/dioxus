@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Two checks about the task definitions themselves.
 #
-#   1. `cargo make --list-all-steps` lists the gate's own tasks, from a clean
+#   1. `./mk --list-all-steps` lists the gate's own tasks, from a clean
 #      checkout, in the state a contributor is in when they ask what they can
 #      run. If this file exists and says otherwise, either `extend` is no longer
 #      the first key in `Makefile.toml` -- which cargo-make accepts silently, and
 #      which makes every task "not found" -- or a task file does not parse.
 #
-#   2. Every tool the gate calls is a tool `cargo make setup` installs. A gate
+#   2. Every tool the gate calls is a tool `./mk setup` installs. A gate
 #      task that names a tool nothing installs fails on a clean machine with a
 #      message about the change rather than about the missing tool, and on a
 #      machine where the tool happens to exist it passes, so the two look like
@@ -15,8 +15,8 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-echo "==> cargo make --list-all-steps"
-list=$(cargo make --list-all-steps 2>/dev/null)
+echo "==> ./mk --list-all-steps"
+list=$(./mk --list-all-steps 2>/dev/null)
 
 # Every task in the `ci` dependency list must appear in the listing. That is the
 # question this script is really asking: not "did the runner start" but "did it
@@ -35,7 +35,7 @@ for task in $gate; do
   esac
 done
 if [ -n "$missing" ]; then
-  echo "these tasks are in the gate but cargo make does not list them:$missing" >&2
+  echo "these tasks are in the gate but the task runner does not list them:$missing" >&2
   echo "check that 'extend' is still the first key in Makefile.toml" >&2
   exit 1
 fi
@@ -49,7 +49,7 @@ echo "    ${gate} listed"
 # `cargo check`, `cargo clippy`, `cargo test` and `cargo doc` are the pinned
 # toolchain itself -- rustup installs them from `rust-toolchain.toml`, so there is
 # nothing for `setup` to install and nothing to check.
-echo "==> gate tasks vs cargo make setup"
+echo "==> gate tasks vs ./mk setup"
 declare -a crate_of_task=(
   "fmt-check=rustup"
   "tombi-check=tombi"
@@ -74,7 +74,7 @@ for entry in "${crate_of_task[@]}"; do
   task="${entry%%=*}"
   crate="${entry#*=}"
   if ! grep -qF "$crate" make/scripts/setup.sh; then
-    undeclared="$undeclared\n  $task calls '$crate', which 'cargo make setup' does not install"
+    undeclared="$undeclared\n  $task calls '$crate', which './mk setup' does not install"
   fi
 done
 if [ -n "$undeclared" ]; then
@@ -83,17 +83,17 @@ if [ -n "$undeclared" ]; then
 fi
 echo "    every gate tool is installed by setup"
 
-# `cargo make test` must run the doctests too, or nextest alone reports a
+# `./mk test` must run the doctests too, or nextest alone reports a
 # complete-looking run that never checked them. This is the assertion that keeps
 # that true, and it is here rather than only in a test because a test can be
 # deleted and this cannot be deleted silently.
-echo "==> cargo make test depends on the doctests"
+echo "==> ./mk test depends on the doctests"
 test_deps=$(sed -n '/^\[tasks\."test"\]/,/^\[/p' make/test.toml | sed -n '/dependencies = \[/,/\]/p' \
   | sed '1s/^dependencies = \[//' | tr ',' '\n' | tr -d '[]" ' | grep -v '^$')
 case "$test_deps" in
   *test-doc*) echo "    test-doc is in the set" ;;
   *)
-    echo "cargo make test does not depend on test-doc, so the doctests are skipped" >&2
+    echo "./mk test does not depend on test-doc, so the doctests are skipped" >&2
     exit 1
     ;;
 esac

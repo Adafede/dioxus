@@ -38,35 +38,35 @@ the apps:
 
 ## Stable commands
 
-The task runner is cargo-make. `cargo make ci` is the single list of what CI
+The task runner is cargo-make. `./mk ci` is the single list of what CI
 runs, so verifying a change means running that rather than assembling a command
-from memory. Run `cargo make --list-all-steps` for the current task list.
+from memory. Run `./mk --list-all-steps` for the current task list.
 
 ```bash
-cargo make setup      # once: the pinned toolchain and every tool the gate calls
-cargo make check      # cargo check --workspace --all-targets
-cargo make test       # nextest, then cargo test --doc (nextest skips doctests)
-cargo make lint       # clippy, all targets, all features, warnings denied
-cargo make lint-wasm  # the cfg(wasm32) branches the host run never compiles
-cargo make doc        # rustdoc with -D warnings
-cargo make ci         # all of the above plus the hygiene and supply-chain checks
-cargo make ci-fast    # the pre-push subset, without the supply-chain checks
+./mk setup      # once: the pinned toolchain and every tool the gate calls
+./mk check      # cargo check --workspace --all-targets
+./mk test       # nextest, then cargo test --doc (nextest skips doctests)
+./mk lint       # clippy, all targets, all features, warnings denied
+./mk lint-wasm  # the cfg(wasm32) branches the host run never compiles
+./mk doc        # rustdoc with -D warnings
+./mk ci         # all of the above plus the hygiene and supply-chain checks
+./mk ci-fast    # the pre-push subset, without the supply-chain checks
 ```
 
 ```bash
-cargo make web-dev APP=cxsmiles-yoga   # or the other five apps
-cargo make web-build-all
-cargo make cli -- --help               # anything else the Dioxus CLI can do
+./mk web-dev APP=cxsmiles-yoga   # or the other five apps
+./mk web-build-all
+./mk cli -- --help               # anything else the Dioxus CLI can do
 ```
 
 Two things that are easy to get wrong and are worth not having to remember:
 
-- **nextest does not run doctests.** `cargo make test` runs nextest and then
+- **nextest does not run doctests.** `./mk test` runs nextest and then
   `cargo test --doc`, and so does everything else that runs tests. A dropped
   doctest step leaves the examples in the module docs unchecked and nothing
   reports a failure.
 - **The host lint never compiles `#[cfg(target_arch = "wasm32")]` branches.**
-  `cargo make check-wasm` and `cargo make lint-wasm` are the tasks that do, one
+  `./mk check-wasm` and `./mk lint-wasm` are the tasks that do, one
   package at a time rather than `--workspace --target wasm32`, which cannot pass
   because `upload` has a host-only path.
 
@@ -88,7 +88,7 @@ Two things that are easy to get wrong and are worth not having to remember:
 
 ## References
 
-- Task list: `cargo make --list-all-steps`
+- Task list: `./mk --list-all-steps`
 - The gate, and what each check is for: `.github/CONTRIBUTING.md`
 - AI contribution guide: `.github/ai/CONTRIBUTING_AI.md`
 
@@ -138,7 +138,7 @@ Two things that are easy to get wrong and are worth not having to remember:
   `.unwrap_or_default()`; the 9 stale `# Panics` doc blocks converted to
   `# Errors` (summary_text got a new `# Errors` block); redundant `#[must_use]`
   dropped from the `Result`-returning renderers; workspace
-  `cargo make lint`/`cargo make test`/`cargo make check` + 3-app wasm all green.
+  `./mk lint`/`./mk test`/`./mk check` + 3-app wasm all green.
 - **Phase 6f (lotus-sparql styles/services consolidation):** complete
   (triplicate style dir removed; only LOTUS-specific helpers remain).
 

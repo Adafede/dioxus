@@ -1,7 +1,7 @@
 # The CI gate.
 #
-# Every job here runs a `cargo make` task. The task definitions live in
-# `Makefile.toml` and `make/*.toml`, and the local gate is `cargo make ci`, so
+# Every job here runs a `./mk` task. The task definitions live in
+# `Makefile.toml` and `make/*.toml`, and the local gate is `./mk ci`, so
 # there is one list of what "green" means and this file is the runner for it.
 # That is the whole point of the arrangement: when the workflow and the local
 # command each spelled out the cargo flags, they drifted, and a check that was
@@ -51,7 +51,7 @@ env:
 
 jobs:
   # ── The gate ────────────────────────────────────────────────────────────────
-  # One job that runs `cargo make ci`. It is deliberately not eleven jobs: the
+  # One job that runs `./mk ci`. It is deliberately not eleven jobs: the
   # reason the eleven existed was to report *which* check failed, and a named
   # step plus a JUnit artifact does that without eleven toolchain installs,
   # eleven cargo caches and eleven chances for the runner to be the slow part.
@@ -78,7 +78,7 @@ jobs:
           components: clippy, rustfmt, llvm-tools-preview
           targets: wasm32-unknown-unknown
 
-      # The tools the gate calls. `cargo make ci` fails on a missing one rather
+      # The tools the gate calls. `./mk ci` fails on a missing one rather
       # than skipping it, which is deliberate: a supply-chain check that is
       # silently absent on a machine where it is not installed is a check that
       # reports nothing about the code.
@@ -96,8 +96,8 @@ jobs:
             cargo-readme@3.4.0
             panache@3.12.0
 
-      - name: cargo make ci
-        run: cargo make ci
+      - name: ./mk ci
+        run: ./mk ci
 
       # Without this a failure is a red dot and a scrollback. The path is set in
       # `.config/nextest.toml` as `junit.path`, so the file lands under a
@@ -140,8 +140,8 @@ jobs:
           tool: |
             cargo-nextest@0.9.146
             cargo-make@0.37.24
-      - run: cargo make check
-      - run: cargo make test
+      - run: ./mk check
+      - run: ./mk test
 
   # ── The WASM bundle ─────────────────────────────────────────────────────────
   # Nothing in the gate produces a `.wasm`: the apps are checked and linted for
@@ -169,9 +169,9 @@ jobs:
             dioxus-cli@0.7.10
       - name: Install binaryen for wasm-opt
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends binaryen
-      - run: cargo make web-build-all
+      - run: ./mk web-build-all
       - name: Report the optimized size of each app
-        run: cargo make web-size
+        run: ./mk web-size
       - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         with:
           name: wasm-bundles

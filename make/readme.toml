@@ -21,11 +21,11 @@ script = """
 #!/usr/bin/env bash
 set -euo pipefail
 if ! command -v cargo-readme >/dev/null 2>&1; then
-  echo "cargo-readme is not installed; run 'cargo make setup'" >&2
+  echo "cargo-readme is not installed; run './mk setup'" >&2
   exit 1
 fi
 if ! command -v panache >/dev/null 2>&1; then
-  echo "panache is not installed; run 'cargo make setup'" >&2
+  echo "panache is not installed; run './mk setup'" >&2
   exit 1
 fi
 cd "${REPO_ROOT}"
@@ -40,7 +40,7 @@ for template in crates/*/README.tpl apps/*/README.tpl; do
          && panache lint /tmp/readme_panache.md \\
          && diff -q /tmp/readme_panache.md README.md > /dev/null 2>&1 ); then
     echo "README.md out of date for $dir" >&2
-    echo "  run: cargo make readme-write" >&2
+    echo "  run: ./mk readme-write" >&2
     exit 1
   fi
 done

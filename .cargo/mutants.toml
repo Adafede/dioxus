@@ -18,12 +18,12 @@
 # Two limits on what is here, both from this file's schema:
 #
 # * There is no package-exclusion key. Which packages are mutated is decided on
-#   the command line: `cargo make mutants` names the two whose logic is pure,
-#   and `cargo make mutants-ui` names the two Dioxus apps. That is why the split
+#   the command line: `./mk mutants` names the two whose logic is pure,
+#   and `./mk mutants-ui` names the two Dioxus apps. That is why the split
 #   lives in `make/test.toml` and not here.
 # * `#[cfg(target_arch = "wasm32")]` code is unreachable from a host test run,
 #   so no mutant in it can be killed either way. Roughly half of these files is
-#   behind that gate. Those paths are covered by `cargo make lint-wasm`, which
+#   behind that gate. Those paths are covered by `./mk lint-wasm`, which
 #   does compile them, not by this.
 
 # Which files inside the mutated packages are worth mutating.
@@ -55,7 +55,7 @@ exclude_globs = [
 ]
 
 # A mutant that hangs has found an infinite loop, which is worth knowing about,
-# so the run is not allowed to hang on it. `cargo make mutants` passes
+# so the run is not allowed to hang on it. `./mk mutants` passes
 # `--timeout 300` as the per-mutant floor; this is the multiplier on however
 # long the unmutated test run took.
 timeout_multiplier = 1.5

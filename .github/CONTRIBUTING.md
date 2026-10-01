@@ -28,40 +28,40 @@ Add a `Signed-off-by` trailer to each commit:
 git commit --signoff -m "feat: your change"
 ```
 
-Every `.rs` file carries both SPDX headers, on lines 1 and 2. `cargo make
+Every `.rs` file carries both SPDX headers, on lines 1 and 2. `./mk
 license-headers` checks them, and it is the only check in the gate that does not
 compile anything, so it is the one to run while writing rather than after.
 
 ## Development workflow
 
-1. `cargo make setup` — install the pinned toolchain and every tool the gate
+1. `./mk setup` — install the pinned toolchain and every tool the gate
    calls, then `cargo install prek --locked && prek install` for the hooks.
 2. Create a branch from `main`.
 3. Make focused commits with tests.
-4. `cargo make ci` — the full gate, and the same command CI runs.
+4. `./mk ci` — the full gate, and the same command CI runs.
 5. Open a PR with rationale, risk notes, and validation output.
 
 ## The gate
 
-The task runner is **cargo-make**, and `cargo make ci` is the single list of
-what CI runs. Run `cargo make --list-all-steps` for the current task list rather
+The task runner is **cargo-make**, and `./mk ci` is the single list of
+what CI runs. Run `./mk --list-all-steps` for the current task list rather
 than reading one here: that is the only copy that cannot go stale.
 
-`cargo make ci-fast` is the pre-push subset — the gate without the supply-chain
+`./mk ci-fast` is the pre-push subset — the gate without the supply-chain
 checks, which are the slowest part and only change when a dependency does. The
 git hooks in `prek.toml` delegate to those same tasks, so the hook and the
 pipeline cannot disagree about a cargo flag.
 
 One cargo-make behaviour worth knowing: `CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE`
-in `Makefile.toml` is load-bearing — remove it and `cargo make ci` reports
+in `Makefile.toml` is load-bearing — remove it and `./mk ci` reports
 `Task "ci" not found` — and it also means each task is *executed* once per
 workspace member. Eight members, so eight runs, seven of them no-ops because
-Cargo has cached the build. A warm `cargo make ci` is about 16 s of work behind
+Cargo has cached the build. A warm `./mk ci` is about 16 s of work behind
 about 2 min of wall clock, which reads as the gate being slow and is not.
-`cargo make --no-workspace ci` is the same gate once, in 17 s.
+`./mk --no-workspace ci` is the same gate once, in 17 s.
 
 Note that a task is still not reachable *from inside* a member directory
-(`cd crates/upload && cargo make lint` reports "not found") — the env var merges
+(run from a member directory, `./mk lint` reports "not found") — the env var merges
 the makefile per member for the root invocation, it does not make the root
 makefile visible downward. Run the tasks from the repository root.
 
@@ -83,7 +83,7 @@ The gate, in order:
 | `feature-powerset` | every feature combination |
 | `machete`, `deny`, `audit` | unused dependencies, advisories, licences, sources |
 
-`cargo make ci-slow` is what the weekly workflow runs: mutation testing and
+`./mk ci-slow` is what the weekly workflow runs: mutation testing and
 coverage. Both are minutes rather than seconds, and mutation testing's survivors
 are a to-do list rather than a verdict — 13 of `cxsmiles-yoga`'s 290 survive
 today, so it is deliberately not a gate.
@@ -124,7 +124,7 @@ Run on purpose, not in the gate. Each has a stated reason in `make/*.toml`.
 
 ## Dependencies
 
-`cargo make upgrade` takes the newest compatible versions; `cargo make
+`./mk upgrade` takes the newest compatible versions; `./mk
 upgrade-major` takes the majors, which need a changelog read and usually a code
 change. Do majors **one at a time**, each in its own commit, with the build
 green at each — a commit that upgrades five crates and fixes the fallout is not
@@ -159,7 +159,7 @@ picked up when a release is actually being made.
 ## Pull request checklist
 
 - [ ] Tests added/updated for behavior changes
-- [ ] `cargo make ci` passes locally
+- [ ] `./mk ci` passes locally
 - [ ] New env vars and operational changes documented
 - [ ] Any new dependency passes `cargo deny check licenses` and is used, not just
       declared

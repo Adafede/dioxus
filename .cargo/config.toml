@@ -3,8 +3,8 @@
 #
 # This file lives here rather than at the repository root because Cargo looks
 # for `.cargo/config.toml` in the working directory and in every parent of it, so
-# a member directory finds this one on its own. `cargo make` also runs each task
-# once per member with that member as the working directory, which is the case
+# a member directory finds this one on its own. the `./mk` wrapper exists because cargo-make
+# otherwise runs each task once per member with that member as the working directory, which is the case
 # this location is for.
 
 [build]
@@ -32,7 +32,7 @@ protocol = "sparse"
 
 [term]
 # `verbose` rather than `quiet`: a gate task that suppresses Cargo's own progress
-# lines makes a hang indistinguishable from a slow build, and `cargo make` prints
+# lines makes a hang indistinguishable from a slow build, and the task runner prints
 # which task it is on anyway. Colour is left alone so it follows the terminal,
 # and `CARGO_TERM_COLOR=always` in `[env]` in `Makefile.toml` turns it on for the
 # tasks even when their output is piped into a log.

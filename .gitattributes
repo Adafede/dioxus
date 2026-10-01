@@ -31,7 +31,9 @@ crates/*/README.md linguist-generated=true
 graphify-out/graph.json merge=graphify
 
 # Shell scripts must keep LF even on Windows: a CRLF shebang is not a shebang.
+# `mk` has no extension, so it is named rather than matched.
 *.sh text eol=lf
+mk text eol=lf
 
 # Anything under `target/` and the Dioxus CLI output is build output. The rules
 # below are redundant with `.gitignore` and are here because `.gitignore` is not

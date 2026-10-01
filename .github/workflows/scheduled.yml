@@ -7,8 +7,8 @@
 #
 # Weekly, Monday, on the hours the per-push gate is idle.
 #
-# Each job calls a `cargo make` task, so a task added here is also the task a
-# contributor runs by hand -- see `cargo make --list-all-steps`.
+# Each job calls a `./mk` task, so a task added here is also the task a
+# contributor runs by hand -- see `./mk --list-all-steps`.
 
 name: Scheduled
 
@@ -59,7 +59,7 @@ jobs:
             cargo-make@0.37.24
             cargo-nextest@0.9.146
             cargo-mutants@27.1.0
-      - run: cargo make mutants
+      - run: ./mk mutants
       - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         if: always()
         with:
@@ -90,7 +90,7 @@ jobs:
             cargo-make@0.37.24
             cargo-nextest@0.9.146
             cargo-llvm-cov@0.9.1
-      - run: cargo make cov
+      - run: ./mk cov
       - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         with:
           name: coverage-report
@@ -123,23 +123,23 @@ jobs:
       # being behind is not a defect, and this step is where the answer is a
       # list someone reads rather than a red X.
       - name: Outdated direct dependencies
-        run: cargo make outdated
+        run: ./mk outdated
 
       # Unused dependencies the manifest scan cannot see. `cargo machete` is in
       # the per-push gate and reads the manifest and the source text; this one
       # needs nightly and looks at what the compiler actually emitted, which is
       # the only way to catch a dependency used solely behind a `#[cfg]`.
       - name: Unused dependencies, by emitted code
-        run: cargo make udeps
+        run: ./mk udeps
         continue-on-error: true
 
       # The transitive unsafe audit. `unsafe_code = "forbid"` in the workspace
       # lints covers this repository's own code; this is the dependency tree,
       # which is a different question.
       - name: Unsafe code in the dependency tree
-        run: cargo make geiger
+        run: ./mk geiger
 
       # The real MSRV, bisected with a build per toolchain. Minutes, and the
       # number only moves when a dependency does, so it is a schedule answer.
       - name: The lowest toolchain the workspace builds on
-        run: cargo make msrv
+        run: ./mk msrv

@@ -39,7 +39,7 @@ pub(crate) mod pipeline;
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod qlever;
 /// SPARQL over HTTP. Compiled on the host as well so its tests run in
-/// `cargo make test`, which is where the only tests of the enrichment path are.
+/// `./mk test`, which is where the only tests of the enrichment path are.
 /// The SPARQL this app sends. Ungated for the tests — it is string building and
 /// nothing else — so the host test build can reach it. `any(test, …)` rather
 /// than nothing, because the only caller is the wasm-gated `qlever` and
@@ -50,7 +50,7 @@ pub(crate) mod query;
 pub(crate) mod rdkit;
 pub(crate) mod rdkit_bridge;
 /// SPARQL over HTTP. Compiled on the host as well so its tests run in
-/// `cargo make test`, which is where the only tests of the enrichment path are.
+/// `./mk test`, which is where the only tests of the enrichment path are.
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) mod sparql;
 pub(crate) mod styles;

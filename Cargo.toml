@@ -28,7 +28,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-# The real floor, measured: `cargo make msrv` bisects the workspace to 1.97.1.
+# The real floor, measured: `./mk msrv` bisects the workspace to 1.97.1.
 # 1.97 is what is claimed so that any 1.97.x satisfies it.
 rust-version = "1.97"
 readme = "README.md"
@@ -52,7 +52,7 @@ js-sys = "0.3"
 # The transport and query crates of the LOTUS explorer, consumed by
 # `apps/smellfish-rs`. Tracked on a branch rather than a rev so the app keeps
 # up with a crate that is still being split up; the lockfile pins the exact
-# commit, and `cargo make mutants` and CI are what notice an API moving
+# commit, and `./mk mutants` and CI are what notice an API moving
 # underneath.
 lotus-search = { git = "https://github.com/lotusnprod/lotus-explore-rs", branch = "main", version = "0.1" }
 rand = "0.10"
@@ -263,7 +263,7 @@ unused_must_use = "deny"
 # unused in exactly the builds that cannot see the use. The question it asks —
 # "is this dependency referenced by any of this crate's source?" — is the one
 # `cargo machete` already answers correctly from the source text, and
-# `cargo make ci`
+# `./mk ci`
 # runs that. Turning the lint on here would mean either `use x as _;` in every
 # app or a permanently red gate, and neither makes an unused dependency go away.
 
@@ -273,7 +273,7 @@ unused_must_use = "deny"
 
 # `dx serve` and `cargo test` both run through `dev`, and both are dominated by
 # dependency code rather than by this workspace's own. Debug builds of a
-# dependency at `opt-level = 0` are the reason `cargo make test` takes seconds
+# dependency at `opt-level = 0` are the reason `./mk test` takes seconds
 # per chemistry-heavy test rather than milliseconds.
 [profile.dev]
 
@@ -286,7 +286,7 @@ opt-level = 2
 # debuginfo is a dependency whose panic message names an address.
 debug = 1
 
-# The shipped wasm build, which is what `cargo make web-build` produces.
+# The shipped wasm build, which is what `./mk web-build` produces.
 #
 # `opt-level` is measured rather than assumed, because "z" and "s" are a real
 # size/speed trade. Measured rather than guessed, on `cxsmiles-yoga`, whose
@@ -300,7 +300,7 @@ debug = 1
 # Note that the Dioxus CLI post-processes the bundle, which narrows the size gap
 # to nothing in the shipped artefact; the speed difference is in our own code and
 # survives it.
-# `cargo make web-size` re-measures the shipped bundles on demand.
+# `./mk web-size` re-measures the shipped bundles on demand.
 #
 # `panic = "abort"` is compatible here and not everywhere: two apps wrap a
 # third-party parse in `catch_unwind` (`lipid-selecto-rs`'s class rule parsing,
@@ -319,7 +319,7 @@ panic = "abort"
 incremental = false
 codegen-units = 1
 
-# What the browser apps are actually built with, by `cargo make web-build` and by
+# What the browser apps are actually built with, by `./mk web-build` and by
 # the Dioxus CLI's `--release`.
 #
 # The difference from `release` is the one line that matters: `panic = "abort"`

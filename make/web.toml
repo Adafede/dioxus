@@ -2,7 +2,7 @@
 #
 # `dx` is `dioxus-cli`, and the version matters: `dx` building an app against a
 # different `dioxus` dependency than the one in the lockfile is a build that
-# succeeds and an app that does not run. `cargo make setup` installs the version
+# succeeds and an app that does not run. `./mk setup` installs the version
 # read out of `Cargo.lock`.
 #
 # Each app has its own `Dioxus.toml`, so `dx` needs a package rather than a
@@ -23,7 +23,7 @@ description = "Serve one wasm app with a dev server. Arg: APP."
 script = """
 #!/usr/bin/env bash
 set -euo pipefail
-: "${APP:?usage: cargo make web-dev APP=<cxsmiles-yoga|index|json-count-rs|lipid-selecto-rs|mgf-precursor-erro-rs|smellfish-rs>}"
+: "${APP:?usage: ./mk web-dev APP=<cxsmiles-yoga|index|json-count-rs|lipid-selecto-rs|mgf-precursor-erro-rs|smellfish-rs>}"
 dx serve --package "$APP"
 """
 
@@ -37,7 +37,7 @@ description = "Build one wasm app for production. Args: APP, and optionally BASE
 script = """
 #!/usr/bin/env bash
 set -euo pipefail
-: "${APP:?usage: cargo make web-build APP=<cxsmiles-yoga|index|json-count-rs|lipid-selecto-rs|mgf-precursor-erro-rs|smellfish-rs>}"
+: "${APP:?usage: ./mk web-build APP=<cxsmiles-yoga|index|json-count-rs|lipid-selecto-rs|mgf-precursor-erro-rs|smellfish-rs>}"
 dx build --profile wasm-release --package "$APP" ${BASE_PATH:+--base-path "$BASE_PATH"}
 """
 
@@ -111,10 +111,10 @@ for wasm in target/dx/*/release/web/public/assets/*_bg-*.wasm; do
     "$(wc -c < "$tmp/app.opt.wasm" | tr -d ' ')"
   rm -rf "$tmp"
 done
-[ "$found" = 1 ] || echo "no built wasm found; run 'cargo make web-build-all' first"
+[ "$found" = 1 ] || echo "no built wasm found; run './mk web-build-all' first"
 """
 
-# `cargo make cli -- <args>` runs `dx` with the arguments verbatim, for the
+# `./mk cli -- <args>` runs `dx` with the arguments verbatim, for the
 # subcommands that have no task here: `dx new`, `dx check`, `dx translate`, and
 # whatever `dx --help` grows next.
 [tasks."cli"]

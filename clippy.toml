@@ -2,14 +2,14 @@
 # See https://rust-lang.github.io/rust-clippy/master/clippy.toml
 #
 # Read by `cargo clippy` from the workspace root and from every member
-# directory, which is what `cargo make lint` and `cargo make lint-wasm` rely on:
+# directory, which is what `./mk lint` and `./mk lint-wasm` rely on:
 # the numbers below are one answer, not one answer per crate.
 
 # The lowest toolchain the workspace claims to support, which is what
 # `rust-version` says and what the MSRV CI job builds on. Clippy uses this for
 # `msrv`-gated lints and suggestions: without it, a suggestion that needs a
 # newer compiler than `rust-version` is still offered, and taking it silently
-# raises the real MSRV. `cargo make msrv` measures the floor; this records it.
+# raises the real MSRV. `./mk msrv` measures the floor; this records it.
 msrv = "1.97"
 
 # A function whose branches add up past this reads worse than a decomposed one.

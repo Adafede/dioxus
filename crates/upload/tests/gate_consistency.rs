@@ -3,7 +3,7 @@
 
 //! The local gate, the git hooks and the CI gate must be the same gate.
 //!
-//! `cargo make ci`, `prek.toml` and `.github/workflows/ci.yml` are three
+//! `./mk ci`, `prek.toml` and `.github/workflows/ci.yml` are three
 //! hand-maintained lists of the same checks, and hand-maintained lists drift.
 //! They had: the local gate ran checks CI did not, CI ran jobs the local gate
 //! did not, the WASM clippy job never compiled `crates/upload`'s three
@@ -12,7 +12,7 @@
 //!
 //! `MAPPING` below is the correspondence, written out once. These tests hold it
 //! to four things: it covers every CI job, every task it names really exists,
-//! `cargo make ci` runs exactly the part of it meant to be local, and every
+//! `./mk ci` runs exactly the part of it meant to be local, and every
 //! gated task has a hook. Adding a check to one file and forgetting the others
 //! now fails the build.
 //!
@@ -25,7 +25,7 @@
 //! that silently finds nothing fails rather than passes everything.
 //!
 //! The task list is read out of `Makefile.toml` and `make/*.toml` as *source*,
-//! not through `cargo make --list-all-steps`. Asking the runner to confirm
+//! not through `./mk --list-all-steps`. Asking the runner to confirm
 //! itself would be circular, and it would fail open in exactly the case that
 //! matters: cargo-make loads no task file at all when `extend` is not the first
 //! key in `Makefile.toml`, and reports that as an empty list rather than an
@@ -35,8 +35,8 @@
 //!
 //! The workspace has no root package, so there is no `tests/` directory that a
 //! `--workspace` build is obliged to compile. `upload` is the one crate every
-//! app depends on, so its `tests/` directory is compiled by `cargo make test`,
-//! by `cargo make lint --all-targets` and by the CI test job alike, on the host
+//! app depends on, so its `tests/` directory is compiled by `./mk test`,
+//! by `./mk lint --all-targets` and by the CI test job alike, on the host
 //! and on `wasm32`. Put the test anywhere else and one of those three stops
 //! running it.
 //!
@@ -83,7 +83,7 @@ fn makefiles() -> Result<String> {
 /// The `dependencies` of a task, read from its `[tasks."<name>"]` block.
 ///
 /// Parsed by finding the table header and reading until the next one, rather
-/// than by looking for `cargo make <name>` anywhere in the file: a task that
+/// than by looking for `./mk <name>` anywhere in the file: a task that
 /// *calls* another is not the same as a task that *depends on* it, and the
 /// difference is exactly the drift being looked for.
 fn task_dependencies(makefiles: &str, task: &str) -> Result<BTreeSet<String>> {
@@ -129,11 +129,16 @@ fn all_tasks(makefiles: &str) -> BTreeSet<String> {
         .collect()
 }
 
-/// The `cargo make` tasks a `prek.toml` hook delegates to.
+/// The tasks a `prek.toml` hook delegates to.
+///
+/// The delegation is `./mk <task>`, not `cargo make <task>`, and the difference is
+/// load-bearing: `./mk` holds `--no-workspace`, which is the only supported way to
+/// stop cargo-make re-running every task once per workspace member. A hook that
+/// invoked `cargo make` directly would run its check eight times.
 fn hooked_tasks(hooks: &str) -> BTreeSet<String> {
     let mut tasks = BTreeSet::new();
     for line in hooks.lines() {
-        if let Some((_, rest)) = line.split_once("entry = \"cargo make ") {
+        if let Some((_, rest)) = line.split_once("entry = \"./mk ") {
             let name: String = rest
                 .chars()
                 .take_while(|c| c.is_ascii_alphanumeric() || *c == '-')
@@ -146,13 +151,13 @@ fn hooked_tasks(hooks: &str) -> BTreeSet<String> {
     tasks
 }
 
-/// Every task a hook covers, whether by `cargo make` delegation or by prek
+/// Every task a hook covers, whether by `./mk` delegation or by prek
 /// running the tool itself.
 fn covered_by_a_hook(hooks: &str) -> BTreeSet<String> {
     let mut covered = hooked_tasks(hooks);
     // `typos` and `tombi` are covered by prek's own repo hooks rather than by a
-    // `cargo make` delegation: prek installs and runs those tools itself. The
-    // gate still has a `cargo make typos` task for CI, but the coverage comes
+    // `./mk` delegation: prek installs and runs those tools itself. The
+    // gate still has a `./mk typos` task for CI, but the coverage comes
     // from the repo hook. Counting them here is what stops
     // `every_gated_task_has_a_hook` demanding a duplicate delegation for a task
     // that is already covered twice.
@@ -192,7 +197,7 @@ fn ci_jobs(yaml: &str) -> Result<BTreeSet<String>> {
 /// The `jobs:` scrape is per file, so the file has to be named. Two workflows
 /// are in scope: `ci.yml` is the per-push gate, `scheduled.yml` is the weekly
 /// one. The other workflows in `.github/workflows/` -- `CodeQL`, dependency
-/// review and the Pages deploy -- run no `cargo make` task and are not part of
+/// review and the Pages deploy -- run no `./mk` task and are not part of
 /// this mapping; `codeql` and `dependency-review` are GitHub's own analyses of
 /// the code rather than checks this repository defines.
 const MAPPED_WORKFLOWS: &[&str] = &[
@@ -200,7 +205,7 @@ const MAPPED_WORKFLOWS: &[&str] = &[
     ".github/workflows/scheduled.yml",
 ];
 
-/// The workflows that deliberately run no `cargo make` task, and why. Asserted
+/// The workflows that deliberately run no `./mk` task, and why. Asserted
 /// in both directions, so adding a fifth workflow without a row fails.
 const UNMAPPED_WORKFLOWS: &[(&str, &str)] = &[
     (
@@ -229,7 +234,7 @@ fn all_mapped_jobs() -> Result<Vec<(String, String)>> {
     Ok(jobs)
 }
 
-/// The `cargo make <task>` commands a job runs, for one workflow file.
+/// The `./mk <task>` commands a job runs, for one workflow file.
 fn tasks_a_job_runs(yaml: &str, job: &str) -> BTreeSet<String> {
     let mut tasks = BTreeSet::new();
     let mut inside = false;
@@ -245,8 +250,8 @@ fn tasks_a_job_runs(yaml: &str, job: &str) -> BTreeSet<String> {
         if !inside {
             continue;
         }
-        // Both `run: cargo make x` and `- run: cargo make x` appear.
-        if let Some((_, rest)) = line.split_once("cargo make ") {
+        // Both `run: ./mk x` and `- run: ./mk x` appear.
+        if let Some((_, rest)) = line.split_once("./mk ") {
             let name: String = rest
                 .chars()
                 .take_while(|c| c.is_ascii_alphanumeric() || *c == '-')
@@ -266,7 +271,7 @@ struct Job {
     name: &'static str,
     /// Tasks whose combined commands are what this job runs.
     tasks: &'static [&'static str],
-    /// `false` for the jobs `cargo make ci` deliberately leaves out, or that CI
+    /// `false` for the jobs `./mk ci` deliberately leaves out, or that CI
     /// runs and the local gate cannot.
     in_local_gate: bool,
     /// Why, for a job that is not in the local gate. Asserted non-empty.
@@ -286,7 +291,7 @@ const MAPPING: &[Job] = &[
         file: ".github/workflows/ci.yml",
         name: "msrv",
         // Not a task: the point of the job is to build with the oldest
-        // supported toolchain, which `cargo make` cannot express because the
+        // supported toolchain, which `./mk` cannot express because the
         // toolchain is pinned in `rust-toolchain.toml` and rustup reads that
         // file. Named as the two tasks it runs, so the "every named task exists"
         // check still holds and the job is not silently unmapped.
@@ -407,7 +412,7 @@ fn every_ci_job_runs_a_task_that_exists() -> Result<()> {
             for task in tasks {
                 if !defined.contains(&task) {
                     bad.push(format!(
-                        "{file}: {job} runs `cargo make {task}`, which does not exist"
+                        "{file}: {job} runs `./mk {task}`, which does not exist"
                     ));
                 }
             }
@@ -417,7 +422,7 @@ fn every_ci_job_runs_a_task_that_exists() -> Result<()> {
     assert!(bad.is_empty(), "{}", bad.join("\n"));
     assert!(
         silent.is_empty(),
-        "these CI jobs run no `cargo make` task, so nothing holds them to the \
+        "these CI jobs run no `./mk` task, so nothing holds them to the \
          local gate: {silent:?}"
     );
     Ok(())
@@ -425,7 +430,7 @@ fn every_ci_job_runs_a_task_that_exists() -> Result<()> {
 
 #[test]
 fn the_local_gate_runs_exactly_the_mapped_local_jobs() -> Result<()> {
-    // The `ci` job runs `cargo make ci`, and `ci` is a fan-out over the leaf
+    // The `ci` job runs `./mk ci`, and `ci` is a fan-out over the leaf
     // checks. So the comparison is between what `ci` *depends on* and the union
     // of the local rows: the leaf tasks for the `ci` row (which is the gate
     // itself), and the named tasks for every other local row.
@@ -458,7 +463,7 @@ fn the_local_gate_runs_exactly_the_mapped_local_jobs() -> Result<()> {
 
     assert!(
         missing.is_empty() && extra.is_empty(),
-        "`cargo make ci` and MAPPING disagree. In MAPPING but not in `ci`: \
+        "`./mk ci` and MAPPING disagree. In MAPPING but not in `ci`: \
          {missing:?}. In `ci` but not accounted for: {extra:?}. Add a row to \
          MAPPING rather than editing the task alone."
     );
@@ -531,13 +536,13 @@ fn every_gated_task_has_a_hook() -> Result<()> {
     let missing: Vec<String> = ci.into_iter().filter(|t| !covered.contains(t)).collect();
     assert!(
         missing.is_empty(),
-        "`cargo make ci` runs {missing:?} with no prek hook. Add one at the \
+        "`./mk ci` runs {missing:?} with no prek hook. Add one at the \
          stage matching its cost, so the failure happens before the push."
     );
     Ok(())
 }
 
-/// The workflows that run no `cargo make` task must be listed as deliberate.
+/// The workflows that run no `./mk` task must be listed as deliberate.
 ///
 /// Asserted in both directions: a workflow in the repository that is in neither
 /// `MAPPED_WORKFLOWS` nor `UNMAPPED_WORKFLOWS` has no statement about whether it
@@ -611,7 +616,7 @@ fn the_exceptions_are_all_real() -> Result<()> {
         );
         assert!(
             !run.contains(*task),
-            "AGGREGATES names `{task}`, which `cargo make ci` runs -- it is an \
+            "AGGREGATES names `{task}`, which `./mk ci` runs -- it is an \
              entry point, not a leaf"
         );
     }
@@ -646,8 +651,8 @@ fn the_failing_checks_still_fail_on_failure() -> Result<()> {
         "`lint-wasm-upload` must lint `upload` on its own, tests included"
     );
     assert!(
-        ci.contains("cargo make ci"),
-        "the CI gate job must run `cargo make ci` rather than its own list of \
+        ci.contains("./mk ci"),
+        "the CI gate job must run `./mk ci` rather than its own list of \
          checks, or the two can drift"
     );
 
@@ -698,10 +703,10 @@ fn the_failing_checks_still_fail_on_failure() -> Result<()> {
             .take_while(|l| l.starts_with("   ") || l.trim().is_empty())
             .collect::<Vec<_>>()
             .join("\n");
-        if block.contains("cargo make ") {
+        if block.contains("./mk ") {
             assert!(
                 block.contains("cargo-make@"),
-                "the {job} job runs `cargo make` but does not install cargo-make"
+                "the {job} job runs `./mk` but does not install cargo-make"
             );
         }
     }
@@ -814,10 +819,92 @@ fn the_local_data_files_are_ignored() -> Result<()> {
     Ok(())
 }
 
+/// `./mk` must exist, be executable, and hold `--no-workspace`.
+///
+/// Without the flag cargo-make re-runs every task once per workspace member:
+/// eight executions of everything that is not a Cargo task, and the whole gate
+/// measured at ~2 min against ~17s. There is no config key and no environment
+/// variable for it in 0.37 -- `CARGO_MAKE_CRATE_IS_WORKSPACE`,
+/// `CARGO_MAKE_WORKSPACE_EMULATION` and `CARGO_MAKE_WORKSPACE_SKIP_MEMBERS` were
+/// all tried and all left the fan-out in place -- so the flag in this one file is
+/// the whole mechanism, and a task run without it is a task run eight times.
+#[test]
+fn mk_holds_the_no_workspace_flag() -> Result<()> {
+    let path = repo_root().join("mk");
+    assert!(
+        path.exists(),
+        "`./mk` is missing: nothing has a way to run a task once"
+    );
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&path)?.permissions().mode();
+        assert!(
+            mode & 0o111 != 0,
+            "`./mk` is not executable (mode {mode:o}); the hooks and the workflow \
+             call it directly, so they would fail with 126"
+        );
+    }
+
+    let mk = read("mk")?;
+    assert!(
+        mk.contains("--no-workspace"),
+        "`./mk` does not pass `--no-workspace`. Without it every task runs once \
+         per workspace member; see the header comment in the file."
+    );
+    assert!(
+        mk.contains("exec cargo make"),
+        "`./mk` should `exec` the runner so a signal reaches it and the exit code \
+         is the runner's"
+    );
+    Ok(())
+}
+
+/// Nothing in the hooks or the workflows may invoke `cargo make` directly.
+///
+/// Every one of them delegates to `./mk`, and a bare `cargo make` in a hook is a
+/// check that runs eight times — which reads as a slow hook and is not noticed,
+/// because a check that runs eight times still passes.
+#[test]
+fn no_hook_or_workflow_bypasses_mk() -> Result<()> {
+    for file in [
+        ".github/workflows/ci.yml",
+        ".github/workflows/deploy.yml",
+        ".github/workflows/scheduled.yml",
+    ] {
+        let yaml = read(file)?;
+        for (n, line) in yaml.lines().enumerate() {
+            let code = line.split('#').next().unwrap_or("");
+            if code.contains("cargo make") {
+                return Err(format!(
+                    "{file}:{} invokes `cargo make` directly. Use `./mk`, which holds \
+                     `--no-workspace`: {line}",
+                    n + 1
+                )
+                .into());
+            }
+        }
+    }
+
+    let hooks = read("prek.toml")?;
+    for (n, line) in hooks.lines().enumerate() {
+        if line.contains("entry = \"cargo make") {
+            return Err(format!(
+                "prek.toml:{} is a hook that runs `cargo make` directly, so it \
+                 pays the eight-member fan-out on every commit: {line}",
+                n + 1
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
 /// The `extend` indirection must actually name every file in `make/`.
 ///
 /// A file added to `make/` and not added to `make/all.toml` is a task file
-/// nothing loads, and `cargo make --list-all-steps` shows the omission as an
+/// nothing loads, and `./mk --list-all-steps` shows the omission as an
 /// absence rather than as an error.
 #[test]
 fn every_task_file_is_extended() -> Result<()> {
@@ -862,7 +949,7 @@ fn every_task_file_is_extended() -> Result<()> {
 fn the_declarations_are_not_vacuous() -> Result<()> {
     let makefiles = makefiles()?;
     let ci = task_dependencies(&makefiles, "ci")?;
-    assert!(ci.len() >= 12, "`cargo make ci` looks truncated: {ci:?}");
+    assert!(ci.len() >= 12, "`./mk ci` looks truncated: {ci:?}");
     assert!(MAPPING.len() >= 6, "MAPPING looks truncated");
     assert!(
         all_tasks(&makefiles).len() >= 40,
@@ -882,7 +969,7 @@ fn the_declarations_are_not_vacuous() -> Result<()> {
 
 /// Reads the token pair rather than the structure around it, because the same
 /// command is written once as a task's inline script and once as a folded YAML
-/// scalar whose first line holds only `cargo make` and whose arguments are on
+/// scalar whose first line holds only `./mk` and whose arguments are on
 /// the lines after it.
 fn mutated_packages(text: &str) -> BTreeSet<String> {
     let mut names = std::collections::BTreeSet::new();

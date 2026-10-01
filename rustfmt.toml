@@ -1,7 +1,7 @@
 # rustfmt configuration. Stable options only.
 # See https://rust-lang.github.io/rustfmt/
 #
-# Stable-only is a hard constraint rather than a preference: `cargo make
+# Stable-only is a hard constraint rather than a preference: `./mk
 # fmt-check` runs on every commit and in CI on the pinned stable toolchain, and
 # rustfmt *silently ignores* an option the running toolchain considers unstable.
 # A contributor on nightly would then have their files formatted one way and CI

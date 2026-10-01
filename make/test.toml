@@ -1,7 +1,7 @@
 # Tests, coverage and mutation testing.
 #
 # nextest does not run doctests. That is not a small gap here: several crates
-# carry examples in their module docs, and `cargo make test` therefore runs
+# carry examples in their module docs, and `./mk test` therefore runs
 # nextest and then `cargo test --doc`, in that order, and so does everything
 # else that runs tests. Dropping the second line leaves those examples unchecked
 # and nothing notices.
@@ -26,7 +26,7 @@ cwd = "${REPO_ROOT}"
 description = "The CI test run: nextest with the ci profile, then the doctests."
 script = """
 cargo nextest run --workspace --locked --profile ci --no-fail-fast
-cargo make test-doc
+./mk test-doc
 """
 
 # The doctests, on their own. `cargo test --doc` rather than nextest, because
@@ -156,8 +156,8 @@ cargo mutants --package json-count-rs --package cxsmiles-yoga --list
 #
 # Sharding is the third lever, and the reason the shard is a parameter:
 #
-#   cargo make mutants-safe 0/4      # a quarter of the scope, ~10 min
-#   cargo make mutants-safe 3/4      # a different quarter
+#   ./mk mutants-safe 0/4      # a quarter of the scope, ~10 min
+#   ./mk mutants-safe 3/4      # a different quarter
 #
 # Randomization happens *after* sharding, so each shard is a real random subset
 # and the four together are the same mutants in a different order. One shard is

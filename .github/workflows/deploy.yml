@@ -1,6 +1,6 @@
 # Deploy the wasm bundles to GitHub Pages.
 #
-# Every build here is a `cargo make web-build` task, the same one a contributor
+# Every build here is a `./mk web-build` task, the same one a contributor
 # runs, so the artifact that is published is the artifact that was checked. The
 # deploy adds one thing to it: `BASE_PATH`, because each app is served from its
 # own subdirectory and an app built for `/` resolves its assets from `/`.
@@ -84,7 +84,7 @@ jobs:
         env:
           APP: ${{ matrix.pkg }}
           BASE_PATH: /${{ github.event.repository.name }}/${{ matrix.pkg }}
-        run: cargo make web-build
+        run: ./mk web-build
 
       # `dx` writes into the one workspace target directory, not under the app's
       # own directory.

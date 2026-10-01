@@ -2,8 +2,8 @@
 # See https://prek.j178.dev for more information.
 #:schema https://www.schemastore.org/prek.json
 #
-# Every Rust check is a `cargo make` task; these hooks delegate to them
-# (`cargo make <task>`) so there is one source of truth for the cargo flags. The
+# Every Rust check is a task in `Makefile.toml`; these hooks delegate to them
+# (`./mk <task>`) so there is one source of truth for the cargo flags. The
 # drift that happened when prek and the justfile each hardcoded the cargo flags
 # is what the delegation exists to prevent.
 #
@@ -35,46 +35,46 @@ hooks = [{ id = "typos" }]
 repo = "local"
 hooks = [
   # ── Fast Rust checks (pre-commit) — delegate to Makefile.toml ─────────────
-  # `cargo make ci-fast` is the whole pre-push gate, and the pre-commit set is
+  # `./mk ci-fast` is the whole pre-push gate, and the pre-commit set is
   # the part of it that is seconds rather than minutes. A commit that passes
-  # these and fails `cargo make ci` is one that needs a feature-combination
+  # these and fails `./mk ci` is one that needs a feature-combination
   # sweep or a supply-chain check, both of which only move when a manifest does.
-  { id = "cargo-fmt-check", name = "cargo-fmt-check", language = "system", entry = "cargo make fmt-check", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
+  { id = "cargo-fmt-check", name = "cargo-fmt-check", language = "system", entry = "./mk fmt-check", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
   # Text-only, so it belongs on the fast path: without it a commit lands with a
   # missing header and CI rejects it, which is a pointless round trip.
-  { id = "license-headers", name = "license-headers", language = "system", entry = "cargo make license-headers", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
-  { id = "verify-tasks", name = "verify-tasks", language = "system", entry = "cargo make verify-tasks", pass_filenames = false, always_run = true, files = "(Makefile\\.toml|make/.*)" },
-  { id = "cargo-check", name = "cargo-check", language = "system", entry = "cargo make check", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
-  { id = "cargo-clippy", name = "cargo-clippy", language = "system", entry = "cargo make lint", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
+  { id = "license-headers", name = "license-headers", language = "system", entry = "./mk license-headers", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
+  { id = "verify-tasks", name = "verify-tasks", language = "system", entry = "./mk verify-tasks", pass_filenames = false, always_run = true, files = "(Makefile\\.toml|make/.*)" },
+  { id = "cargo-check", name = "cargo-check", language = "system", entry = "./mk check", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
+  { id = "cargo-clippy", name = "cargo-clippy", language = "system", entry = "./mk lint", pass_filenames = false, always_run = true, files = "(?!.*public/assets/).*$" },
 
   # ── Heavy Rust checks (pre-push only) — delegate to Makefile.toml ─────────
-  { id = "cargo-test", name = "cargo-test", language = "system", entry = "cargo make test", pass_filenames = false, always_run = true, stages = ["pre-push"] },
-  { id = "cargo-doc", name = "cargo-doc", language = "system", entry = "cargo make doc", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "cargo-test", name = "cargo-test", language = "system", entry = "./mk test", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "cargo-doc", name = "cargo-doc", language = "system", entry = "./mk doc", pass_filenames = false, always_run = true, stages = ["pre-push"] },
   # Per-app WASM checks, and the clippy run over the `#[cfg(wasm32)]` branches
   # that the host run never compiles -- including the three `crates/upload`
   # modules that exist only on wasm, and their tests.
-  { id = "check-wasm", name = "check-wasm", language = "system", entry = "cargo make check-wasm", pass_filenames = false, always_run = true, stages = ["pre-push"] },
-  { id = "lint-wasm", name = "lint-wasm", language = "system", entry = "cargo make lint-wasm", pass_filenames = false, always_run = true, stages = ["pre-push"] },
-  { id = "feature-powerset", name = "feature-powerset", language = "system", entry = "cargo make feature-powerset", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "check-wasm", name = "check-wasm", language = "system", entry = "./mk check-wasm", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "lint-wasm", name = "lint-wasm", language = "system", entry = "./mk lint-wasm", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "feature-powerset", name = "feature-powerset", language = "system", entry = "./mk feature-powerset", pass_filenames = false, always_run = true, stages = ["pre-push"] },
   # The READMEs are generated from the crates' `//!` docs, so a doc change that
   # was not regenerated lands a README CI will reject.
-  { id = "readme-check", name = "readme-check", language = "system", entry = "cargo make readme-check", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "readme-check", name = "readme-check", language = "system", entry = "./mk readme-check", pass_filenames = false, always_run = true, stages = ["pre-push"] },
 
   # ── Supply chain (pre-push only) ───────────────────────────────────────────
-  { id = "cargo-machete", name = "cargo-machete", language = "system", entry = "cargo make machete", pass_filenames = false, always_run = true, stages = ["pre-push"] },
-  { id = "cargo-audit", name = "cargo-audit", language = "system", entry = "cargo make audit", pass_filenames = false, always_run = true, stages = ["pre-push"] },
-  { id = "cargo-deny", name = "cargo-deny", language = "system", entry = "cargo make deny", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "cargo-machete", name = "cargo-machete", language = "system", entry = "./mk machete", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "cargo-audit", name = "cargo-audit", language = "system", entry = "./mk audit", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "cargo-deny", name = "cargo-deny", language = "system", entry = "./mk deny", pass_filenames = false, always_run = true, stages = ["pre-push"] },
   # `outdated` is deliberately not a hook: it is a version report, so on every
   # push it would print noise nobody reads and fail on any dependency at all.
   # It is on the weekly workflow, where the answer is a list someone reads, and
-  # `cargo make outdated` is one command away.
+  # `./mk outdated` is one command away.
 
   # ── TOML (pre-push for the lint, pre-commit for the format) ───────────────
-  { id = "tombi-check", name = "tombi-check", language = "system", entry = "cargo make tombi-check", pass_filenames = false, always_run = true, stages = ["pre-push"] },
-  { id = "tombi-lint", name = "tombi-lint", language = "system", entry = "cargo make tombi-lint", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "tombi-check", name = "tombi-check", language = "system", entry = "./mk tombi-check", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  { id = "tombi-lint", name = "tombi-lint", language = "system", entry = "./mk tombi-lint", pass_filenames = false, always_run = true, stages = ["pre-push"] },
 ]
 
-# The `rev` here is the single source of the tombi version: `cargo make setup`
+# The `rev` here is the single source of the tombi version: `./mk setup`
 # reads it out of this file, so the hook and the installer cannot be pinned to
 # different releases.
 [[repos]]

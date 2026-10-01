@@ -24,6 +24,6 @@ remediation plan within 7 business days.
 
 1. Reproduce and triage the report on a private branch.
 2. Patch with tests.
-3. Run `cargo make ci`, which includes the supply-chain checks.
+3. Run `./mk ci`, which includes the supply-chain checks.
 4. Publish a fixed release and rotate any impacted credentials.
 5. Publish an advisory/changelog note after patch availability.

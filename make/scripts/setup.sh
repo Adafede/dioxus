@@ -131,4 +131,4 @@ fi
 echo
 echo "Installed. The tasks are:"
 echo
-cargo make --list-all-steps
+./mk --list-all-steps

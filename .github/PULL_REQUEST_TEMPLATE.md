@@ -29,22 +29,22 @@ Closes #<!-- issue number, if applicable -->
 
 <!-- Describe how you verified this change. -->
 
-- [ ] Existing tests still pass (`cargo make test`)
+- [ ] Existing tests still pass (`./mk test`)
 - [ ] New tests added for new or fixed behavior
-  - [ ] Manually tested with `cargo make web-dev APP=<app>`
+  - [ ] Manually tested with `./mk web-dev APP=<app>`
 
 --------------------------------------------------------------------------------
 
 ## Quality gate
 
 ```bash
-cargo make ci        # what CI runs
-cargo make ci-fast   # the pre-push subset
+./mk ci        # what CI runs
+./mk ci-fast   # the pre-push subset
 ```
 
-Run `cargo make --list-all-steps` for the full task list.
+Run `./mk --list-all-steps` for the full task list.
 
-- [ ] `cargo make ci` passes locally on a clean tree
+- [ ] `./mk ci` passes locally on a clean tree
 
 --------------------------------------------------------------------------------
 
