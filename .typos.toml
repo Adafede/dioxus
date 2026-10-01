@@ -7,4 +7,11 @@ extend-exclude = [
 ]
 
 [default.extend-words]
+# Part of `mgf-precursor-erro-rs` and every path under `apps/*/erro*`; the crate
+# name is upstream's spelling and renaming it locally would break every
+# `--package` flag, every Dioxus.toml and every CI matrix entry.
 erro = "erro"
+# The first half of `flate2`, the compression crate behind `zip` and
+# `async-compression`. typos splits at the digit, so the word it sees is
+# `flate`, and the crates.io spelling is what every manifest uses.
+flate = "flate"

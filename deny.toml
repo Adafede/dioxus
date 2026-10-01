@@ -3,8 +3,15 @@ all-features = true
 
 # ── Advisories ────────────────────────────────────────────────────────────────
 [advisories]
-db-path = "$CARGO_HOME/advisory-dbs"
-db-urls = ["https://github.com/rustsec/advisory-db"]
+# `db-path` and `db-urls` are deliberately absent: both are cargo-deny's own
+# defaults ($CARGO_HOME/advisory-dbs and the RustSec advisory-db), verified by
+# deleting them and deleting ~/.cargo/advisory-dbs -- cargo-deny recreated the
+# same directory and checked the same advisories. A setting that equals its
+# default is a line to keep in sync for nothing.
+#
+# `ignore` is empty and stated, because `ignore = []` is not the default: the
+# default inherits cargo-audit's ignores, and an empty list here says that no
+# advisory is accepted without a written reason.
 ignore = []
 
 # ── Licenses ──────────────────────────────────────────────────────────────────
@@ -38,38 +45,58 @@ ignore = true
 [bans]
 # Deny wildcard version requirements — they are unpinnable and unsafe.
 wildcards = "deny"
-# Highlight all transitive duplication in output.
+# Report a duplicated crate with the tree that pulls it in, not as a bare name:
+# the whole use of the skip list below is that someone can check it against the
+# graph, and a bare name cannot be checked against anything.
 highlight = "all"
 
 # Duplicates: deny by default; carve out intentional exceptions below.
 multiple-versions = "deny"
 
-# Only allow the duplicate crates that are actually present in the current
-# dependency graph. Re-audit this list whenever Cargo.lock changes.
+# Only the crates that are *actually* duplicated in the current lockfile.
+#
+# Every entry here was verified by deleting this list and reading what
+# `cargo deny check bans` reported: 16 crates, 2 versions each, no third. An
+# entry for a crate that is not duplicated is an `unnecessary-skip` warning, so
+# this list is the set and not a habit — cargo-deny says so out loud when it is
+# wrong, which is why the warnings are fixed rather than ignored.
+#
+# `cargo deny check bans` is not in `./mk ci`, only `cargo deny check
+# advisories bans licenses sources` is — and that runs the same `bans` check, so
+# a stale entry here fails the gate.
 skip = [
-  { name = "base64" },
-  { name = "block-buffer" },
-  { name = "const-serialize" },
-  { name = "const-serialize-macro" },
-  { name = "core-foundation" },
-  { name = "cpufeatures" },
-  { name = "crypto-common" },
-  { name = "digest" },
-  { name = "geometric-traits" },
-  { name = "getrandom" },
+  # ── dioxus's optional feature sets ────────────────────────────────────────
+  # `dioxus` turns on optional subsystems that pin their own older majors.
+  # Unfixable here: it is upstream's feature set, not a version this workspace
+  # chooses. Every one of these is reachable only because
+  # `cargo tree --all-features` is what the graph is built from.
+  { name = "const-serialize" },  # manganis 0.7 vs 0.8-alpha
+  { name = "const-serialize-macro" },  # the proc macro half of the above
+  { name = "miniz_oxide" },  # png 0.18 (tiny-skia) vs 0.9 (flate2)
+  { name = "rand" },  # rand 0.9 (tungstenite) vs 0.10
+  { name = "rand_core" },  # rand's own split, same two majors
+  { name = "getrandom" },  # rand_core 0.3's backend vs 0.4's
+  { name = "syn" },  # darling/enumset vs const-serialize
+  { name = "winnow" },  # manganis-macro 0.7 vs 1.0
+  { name = "rustc-hash" },  # sledgehammer_utils (dioxus) vs 2.x
+
+  # ── Windows and JNI ───────────────────────────────────────────────────────
+  # Not compiled for either of this repository's targets (wasm32 and the host
+  # for tests), and present only because `--all-features` pulls in dioxus's
+  # desktop and mobile subsystems. They will disappear with the versions above.
+  { name = "windows-sys" },
   { name = "jni" },
   { name = "jni-sys" },
-  { name = "miniz_oxide" },
-  { name = "r-efi" },
-  { name = "rand" },
-  { name = "rand_core" },
-  { name = "rustc-hash" },
-  { name = "sha2" },
-  { name = "syn" },
-  { name = "thiserror" },
-  { name = "thiserror-impl" },
-  { name = "windows-sys" },
-  { name = "winnow" },
+  { name = "r-efi" },  # getrandom's no_std EFI backend, both majors
+
+  # ── The git dependencies ──────────────────────────────────────────────────
+  # `mascot-rs` and `lotus-explore-rs` are tracked on a branch, not a rev, so
+  # they move under us; these two majors are a consequence of that and would be
+  # fixed by pinning a rev, which is the decision deferred until the git
+  # dependencies stop being actively developed upstream.
+  { name = "thiserror" },  # 1.x (upstream) vs 2.x (this workspace)
+  { name = "thiserror-impl" },  # the derive half of the above
+  { name = "geometric-traits" },  # same git rev under two source spellings
 ]
 
 # ── Source policy ─────────────────────────────────────────────────────────────
