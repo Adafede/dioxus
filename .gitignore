@@ -76,3 +76,6 @@ SESSION_LOG.md
 
 # Knowledge graph outputs
 graphify-out/
+
+.mcp.json
+AGENTS.md
