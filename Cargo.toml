@@ -67,29 +67,31 @@ tokio = { version = "1.53", features = ["fs"] }
 urlencoding = "2.1"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys = {
-  version = "0.3",
-  features = [
-    "Blob",
-    "BlobPropertyBag",
-    "Document",
-    "Element",
-    "File",
-    "FileList",
-    "FileReader",
-    "HtmlAnchorElement",
-    "HtmlCollection",
-    "HtmlElement",
-    "HtmlFormElement",
-    "HtmlInputElement",
-    "HtmlTextAreaElement",
-    "Location",
-    "MediaQueryList",
-    "Performance",
-    "Url",
-    "Window",
-  ]
-}
+# A dotted key rather than an inline table, because a multi-line inline table is
+# TOML 1.1 and Cargo accepts it while most other tools do not: taplo reports a
+# syntax error on it, and cargo-make prints "Unable to parse Cargo.toml" on
+# every invocation. This form is TOML 1.0 and parses everywhere.
+web-sys.version = "0.3"
+web-sys.features = [
+  "Blob",
+  "BlobPropertyBag",
+  "Document",
+  "Element",
+  "File",
+  "FileList",
+  "FileReader",
+  "HtmlAnchorElement",
+  "HtmlCollection",
+  "HtmlElement",
+  "HtmlFormElement",
+  "HtmlInputElement",
+  "HtmlTextAreaElement",
+  "Location",
+  "MediaQueryList",
+  "Performance",
+  "Url",
+  "Window",
+]
 zip = "8.6"
 
 # ── Clippy lints ───────────────────────────────────────────────────────────────

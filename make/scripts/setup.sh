@@ -23,7 +23,11 @@ if command -v cargo-binstall >/dev/null 2>&1; then
   have_binstall=true
 fi
 
-install() {
+# Named `install_tool`, not `install`: a shell function called `install` shadows
+# the coreutils `install` for the rest of the script, and the tombi step below
+# calls `install -m 755` — which then runs *this* function with `-m` as the crate
+# name and fails with "unexpected argument '-m' found". Cost one confused run.
+install_tool() {
   local crate="$1" version="$2"
   local spec="$crate@$version"
   echo "==> $spec"
@@ -40,34 +44,34 @@ install() {
 
 # Test runner and task runner. Without these every other task that mentions
 # tests, or that is a task at all, is wrong.
-install cargo-nextest 0.9.146
-install cargo-make 0.37.24
+install_tool cargo-nextest 0.9.146
+install_tool cargo-make 0.37.24
 
 # Lints and manifest hygiene.
-install cargo-hack 0.6.45    # feature combinations
-install cargo-edit 0.13.13   # `cargo upgrade`, `cargo add`, `cargo rm`
-install cargo-msrv 0.19.3    # the real MSRV, rather than the asserted one
-install typos-cli 1.50.3    # spelling
+install_tool cargo-hack 0.6.45    # feature combinations
+install_tool cargo-edit 0.13.13   # `cargo upgrade`, `cargo add`, `cargo rm`
+install_tool cargo-msrv 0.19.3    # the real MSRV, rather than the asserted one
+install_tool typos-cli 1.50.3    # spelling
 
 # Supply chain.
-install cargo-deny 0.20.2
-install cargo-audit 0.22.2
-install cargo-machete 0.9.2
-install cargo-outdated 0.19.0
+install_tool cargo-deny 0.20.2
+install_tool cargo-audit 0.22.2
+install_tool cargo-machete 0.9.2
+install_tool cargo-outdated 0.19.0
 # `cargo geiger` for the transitive unsafe audit and `cargo udeps` for unused
 # dependencies the manifest scan cannot see. Both are on the weekly schedule
 # rather than the gate, so a slow or advisory-heavy run cannot turn the gate red.
-install cargo-geiger 0.13.0
-install cargo-udeps 0.1.61
+install_tool cargo-geiger 0.13.0
+install_tool cargo-udeps 0.1.61
 
 # Coverage and mutation testing. The nextest integration is what makes the
 # coverage report describe the same run the suite performs.
-install cargo-llvm-cov 0.9.1
-install cargo-mutants 27.1.0
+install_tool cargo-llvm-cov 0.9.1
+install_tool cargo-mutants 27.1.0
 
 # Build size. `wasm-opt` supersedes `twiggy` for wasm and `cargo bloat` covers
 # the native side; neither is in the gate.
-install cargo-bloat 0.12.1
+install_tool cargo-bloat 0.12.1
 
 # The crate READMEs are generated from each crate's `README.tpl` plus its module
 # docs, and the diff is taken against the `panache`-formatted file because a
@@ -77,8 +81,8 @@ install cargo-bloat 0.12.1
 # `version` from `[workspace.package]` with "invalid type: map, expected a string
 # for key `package.version`", and every crate here inherits it. The check then
 # reports drift against an empty document rather than saying why.
-install cargo-readme 3.4.0
-install panache 3.12.0
+install_tool cargo-readme 3.4.0
+install_tool panache 3.12.0
 
 # TOML is handled by tombi, which is the tool the git hooks already run through
 # `tombi-pre-commit`. It is NOT on crates.io: the `tombi-cli` crate there is a
