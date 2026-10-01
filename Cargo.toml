@@ -340,8 +340,33 @@ codegen-units = 1
 inherits = "release"
 # See the measurement above for why this is "s" and not "z".
 opt-level = "s"
-# wasm has no unwinder, so the unwinding tables are dead weight in the download.
-# The catch_unwind sites are `#[cfg]`-gated to the host build for the same
-# reason.
-strip = "symbols"
+# `strip = "debuginfo"`, overriding the `"symbols"` inherited from `release`.
+# Not `"none"`, and not `"symbols"`, and the difference between the three is
+# worth the paragraph.
+#
+# LLVM 23 — the one in Rust 1.99 — changed the `strip` codegen option so that
+# removing symbols also removes *all* custom sections. One of them is
+# `__wasm_bindgen_unstable`, the metadata `wasm-bindgen` reads to generate the
+# bindings, so `"symbols"` makes the very next step fail:
+#
+#   error: failed to read wasm-bindgen data from cxsmiles-yoga.wasm
+#   the `__wasm_bindgen_unstable` custom section is missing, but the module
+#   still contains wasm-bindgen shims
+#
+# wasm-bindgen's message names the cause. On Rust 1.98 (LLVM 22) `"symbols"`
+# removed only the symbol sections, so it worked and nobody looked.
+#
+# `"debuginfo"` is the value that keeps the custom sections and still strips the
+# DWARF, and the DWARF is where the size was. Measured across all six bundles,
+# after `dx build`'s own `wasm-opt -Oz --debuginfo`:
+#
+#   strip = "symbols"    4 499 987 bytes   broken on 1.99, wasm-bindgen errors
+#   strip = "none"       6 875 025 bytes   +53%: the custom sections and the
+#                                          unstripped debug info
+#   strip = "debuginfo"  4 481 148 bytes   this one, and 0.4% smaller than
+#                                          "symbols" ever produced
+#
+# So "symbols" was buying nothing that "debuginfo" does not buy, and costing the
+# ability to build at all.
+strip = "debuginfo"
 panic = "unwind"
