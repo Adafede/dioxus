@@ -1,26 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the index project
 
-//! Accessibility utilities and components.
-//!
-//! This module provides reusable accessibility patterns:
-//! - Skip link for keyboard navigation
-//! - ARIA annotations
-//! - Focus management helpers
+//! Accessibility components for the landing page.
 
 use dioxus::prelude::*;
 use ui::prelude::*;
 
-/// Skip link component for keyboard users.
+/// Skip link pointing at `#main-content`.
 ///
-/// Provides a hidden link that appears on keyboard focus, allowing users to skip
-/// directly to the main content. This is a WCAG AAA best practice.
-///
-/// # Accessibility
-///
-/// - Keyboard navigable: Jump directly to `#main-content` with Tab key
-/// - Screen reader friendly: Properly announced as a navigation link
-/// - Visible on focus: Becomes visible when focused via keyboard
+/// The inline style parks the link at `top: -100%`. Bringing it back on focus
+/// relies on a `.skip-link:focus { top: 0 !important; ... }` rule, which this
+/// crate does not currently emit — see `apps/json-count-rs/src/main.rs` for the
+/// only copy in the workspace that does.
 #[component]
 pub(crate) fn SkipLink() -> Element {
     rsx! {

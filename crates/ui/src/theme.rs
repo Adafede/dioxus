@@ -21,25 +21,20 @@ use core::fmt;
 /// All colors meet WCAG AAA contrast ratios (7:1 minimum for text).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ColorScheme {
-    /// Main background color
     pub bg: &'static str,
-    /// Secondary background for depth
+    /// The light and dark palettes use the same value here, so `bg`/`bg2` and
+    /// `surface`/`surface2` exist to be overridden per-theme by an app that wants
+    /// a visible distinction between page and panel.
     pub bg2: &'static str,
-    /// Card/panel backgrounds
     pub surface: &'static str,
-    /// Subtle secondary surface
     pub surface2: &'static str,
-    /// Border colors
     pub border: &'static str,
-    /// Primary text color
     pub text: &'static str,
-    /// Secondary text color (slightly muted)
+    /// Muted steps of `text`, for progressively less important copy.
     pub text2: &'static str,
-    /// Tertiary text color (more muted)
     pub text3: &'static str,
-    /// Primary accent color (interactive elements)
     pub accent: &'static str,
-    /// Darker accent for hover states
+    /// Hover/active state of `accent`.
     pub accent2: &'static str,
     /// Success/taxon state color (Wikidata green: #396 = #339966)
     pub green: &'static str,
@@ -47,9 +42,7 @@ pub struct ColorScheme {
     pub red: &'static str,
     /// Info/reference color (Wikidata blue: #069 = #006699)
     pub blue: &'static str,
-    /// Warning color
     pub yellow: &'static str,
-    /// Secondary accent color
     pub(crate) purple: &'static str,
 }
 
@@ -102,13 +95,9 @@ impl ColorScheme {
 pub struct Spacing;
 
 impl Spacing {
-    /// Small spacing (10px)
     pub const SM: &'static str = "10px";
-    /// Medium spacing (14px)
     pub const MD: &'static str = "14px";
-    /// Large spacing (20px)
     pub const LG: &'static str = "20px";
-    /// Extra-large spacing (28px)
     pub const XL: &'static str = "28px";
 }
 
@@ -171,20 +160,16 @@ impl Typography {
     pub const SANS: &'static str = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif";
 }
 
-/// Accessibility and interaction constants following WCAG 2.1 AAA standards.
+/// Motion settings shared by every component.
 ///
-/// These values ensure:
-/// - Sufficient color contrast (7:1 text contrast minimum)
-/// - Perceivable focus indicators (3px minimum width)
-/// - Sufficient touch/click targets (48px minimum per WCAG)
-/// - Motion-safe defaults with prefers-reduced-motion support
-/// - Proper semantic focus management
+/// The contrast, focus-indicator and touch-target guarantees the palette and the
+/// components aim at are not encoded here — they are properties of the values in
+/// [`ColorScheme`] and of the component markup, and nothing in this module
+/// enforces or checks them.
 #[derive(Clone, Copy, Debug)]
 pub struct Interaction;
 
 impl Interaction {
-    /// Default transition for standard interactions (200ms).
-    /// Used for card hovers, menu opens, typical state changes.
     pub const TRANSITION_DEFAULT: &'static str = "200ms ease-in-out";
 }
 
@@ -208,160 +193,129 @@ pub struct StyleBuilder {
 }
 
 impl StyleBuilder {
-    /// Create a new style builder.
     pub const fn new() -> Self {
         Self {
             properties: Vec::new(),
         }
     }
 
-    /// Add a property to the style
     pub fn property(mut self, name: &str, value: &str) -> Self {
         self.properties.push((name.to_string(), value.to_string()));
         self
     }
 
-    /// Set color
     pub fn color(self, color: &str) -> Self {
         self.property("color", color)
     }
 
-    /// Set background color
     pub fn background_color(self, color: &str) -> Self {
         self.property("background-color", color)
     }
 
-    /// Set padding
     pub fn padding(self, padding: &str) -> Self {
         self.property("padding", padding)
     }
 
-    /// Set margin
     pub fn margin(self, margin: &str) -> Self {
         self.property("margin", margin)
     }
 
-    /// Set border radius
     pub fn border_radius(self, radius: &str) -> Self {
         self.property("border-radius", radius)
     }
 
-    /// Set display
     pub fn display(self, display: &str) -> Self {
         self.property("display", display)
     }
 
-    /// Set flex properties
     pub fn flex(self, flex: &str) -> Self {
         self.property("flex", flex)
     }
 
-    /// Set flex direction
     pub fn flex_direction(self, direction: &str) -> Self {
         self.property("flex-direction", direction)
     }
 
-    /// Set flex wrap
     pub fn flex_wrap(self, wrap: &str) -> Self {
         self.property("flex-wrap", wrap)
     }
 
-    /// Set align items
     pub fn align_items(self, align: &str) -> Self {
         self.property("align-items", align)
     }
 
-    /// Set justify content
     pub fn justify_content(self, justify: &str) -> Self {
         self.property("justify-content", justify)
     }
 
-    /// Set gap (flex gap)
     pub fn gap(self, gap: &str) -> Self {
         self.property("gap", gap)
     }
 
-    /// Set border
     pub fn border(self, border: &str) -> Self {
         self.property("border", border)
     }
 
-    /// Set font size
     pub fn font_size(self, size: &str) -> Self {
         self.property("font-size", size)
     }
 
-    /// Set font family
     pub fn font_family(self, family: &str) -> Self {
         self.property("font-family", family)
     }
 
-    /// Set font weight
     pub fn font_weight(self, weight: &str) -> Self {
         self.property("font-weight", weight)
     }
 
-    /// Set line height
     pub fn line_height(self, height: &str) -> Self {
         self.property("line-height", height)
     }
 
-    /// Set text align
     pub fn text_align(self, align: &str) -> Self {
         self.property("text-align", align)
     }
 
-    /// Set width
     pub fn width(self, width: &str) -> Self {
         self.property("width", width)
     }
 
-    /// Set height
     pub fn height(self, height: &str) -> Self {
         self.property("height", height)
     }
 
-    /// Set minimum height
     pub fn min_height(self, height: &str) -> Self {
         self.property("min-height", height)
     }
 
-    /// Set box shadow
     pub fn box_shadow(self, shadow: &str) -> Self {
         self.property("box-shadow", shadow)
     }
 
-    /// Set transition
     pub fn transition(self, transition: &str) -> Self {
         self.property("transition", transition)
     }
 
-    /// Set opacity
     pub fn opacity(self, opacity: &str) -> Self {
         self.property("opacity", opacity)
     }
 
-    /// Set text decoration
     pub fn text_decoration(self, decoration: &str) -> Self {
         self.property("text-decoration", decoration)
     }
 
-    /// Set cursor style
     pub fn cursor(self, cursor: &str) -> Self {
         self.property("cursor", cursor)
     }
 
-    /// Set border bottom
     pub fn border_bottom(self, border: &str) -> Self {
         self.property("border-bottom", border)
     }
 
-    /// Set border left
     pub fn border_left(self, border: &str) -> Self {
         self.property("border-left", border)
     }
 
-    /// Build the final style string
     #[must_use]
     pub fn build(&self) -> String {
         self.properties

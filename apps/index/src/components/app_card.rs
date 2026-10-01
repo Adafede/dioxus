@@ -1,29 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the index project
 
-//! Application card component.
-//!
-//! Displays a single application with title, link, and description.
-//! Includes hover effects, keyboard focus indicators, and proper ARIA annotations.
+//! Application card: title, link and description for one workspace entry.
 
 use super::AppInfo;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
-/// Card component for a single application.
-///
-/// Renders an accessible card with:
-/// - Semantic `<article>` element
-/// - Interactive link within heading
-/// - Hover and focus states
-/// - High contrast colors (WCAG AAA)
-///
-/// # Accessibility
-///
-/// - Proper heading hierarchy (h2)
-/// - Link focus indicators
-/// - Color contrast >= 7:1 ratio
-/// - Keyboard navigation support
+/// Card for a single application: `<article>` wrapping an `<h2>` link and a
+/// description.
 #[component]
 pub(crate) fn AppCard(app: AppInfo) -> Element {
     let colors = ColorScheme::LIGHT;

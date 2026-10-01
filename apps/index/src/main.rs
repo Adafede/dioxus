@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the index project
 
-//! Type-safe, accessible landing page for Dioxus experiments.
-//!
-//! This module provides the root application component and demonstrates best
-//! practices for:
-//!
-//! - Semantic HTML with ARIA annotations
-//! - Reusable, accessible component patterns
-//! - Clean separation of concerns
-//! - Comprehensive documentation
+//! Landing page for the Dioxus experiments in this workspace.
 //!
 //! # Run locally
 //!
@@ -23,9 +15,6 @@
 //! dx build --release --platform web --package index
 //! ```
 
-// Note: All items are scoped to this bin crate (`struct`/`fn`, no `pub`) —
-// nothing here is consumed outside `index`.
-
 use dioxus::prelude::*;
 use ui::prelude::*;
 
@@ -35,25 +24,7 @@ mod components;
 use accessibility::SkipLink;
 use components::{AppCard, AppInfo};
 
-/// Root application component.
-///
-/// Renders a fully accessible, theme-aware landing page showcasing Dioxus experiments.
-/// Implements WCAG AAA accessibility standards with:
-/// - Semantic HTML structure
-/// - Keyboard navigation support
-/// - Proper focus management
-/// - Color contrast compliance
-/// - Responsive design
-///
-/// # Example
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// #[component]
-/// fn MyApp() -> Element {
-///     rsx! { "Hello world" }
-/// }
-/// ```
+/// Root application component: theme-aware landing page.
 #[component]
 fn app() -> Element {
     let container_style = StyleBuilder::new()
