@@ -55,9 +55,9 @@ checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
 
 [[package]]
 name = "async-compression"
-version = "0.4.48"
+version = "0.4.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb61aea1a7def73ee7c350a184f0e70b32c182344e2e75bf70c9b621b83417fd"
+checksum = "ee19bd99b43e3691acbad4e840420a4881cea6c0b66a208125a824f8fd53f5a1"
 dependencies = [
  "compression-codecs",
  "compression-core",
@@ -519,9 +519,9 @@ dependencies = [
 
 [[package]]
 name = "compression-codecs"
-version = "0.4.43"
+version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bef16c47ba2797aa6a909cc37d39911f3a6743811fe7408ac0b0cc0276b656e9"
+checksum = "98fc98460ba0ad5317075d3632b8dfc45d0be8c4a49347c2a38272019717614a"
 dependencies = [
  "compression-core",
  "flate2",
@@ -1584,7 +1584,7 @@ dependencies = [
 [[package]]
 name = "geometric-traits"
 version = "0.1.0"
-source = "git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main#2d8742268bab6b58536ebd2b41e2878720f4123c"
+source = "git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main#89fdf0727c4c877f17983d178ae8837d09fa5efd"
 dependencies = [
  "barnes-hut-tree",
  "bitvec",
@@ -1599,7 +1599,7 @@ dependencies = [
 [[package]]
 name = "geometric-traits"
 version = "0.1.0"
-source = "git+https://github.com/earth-metabolome-initiative/geometric-traits#2d8742268bab6b58536ebd2b41e2878720f4123c"
+source = "git+https://github.com/earth-metabolome-initiative/geometric-traits#89fdf0727c4c877f17983d178ae8837d09fa5efd"
 dependencies = [
  "barnes-hut-tree",
  "bitvec",
@@ -2154,9 +2154,9 @@ checksum = "51cdaa5abc885e2d606e6985281ace220778bde190be20aab1ec2346ed8bd1fa"
 
 [[package]]
 name = "lazy_static"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
+checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "lender"
@@ -2249,7 +2249,7 @@ checksum = "b3bd0dd2cd90571056fdb71f6275fada10131182f84899f4b2a916e565d81d86"
 [[package]]
 name = "lotus-model"
 version = "0.1.0"
-source = "git+https://github.com/lotusnprod/lotus-explore-rs?branch=main#124c31d60443e886b2e75fd518a91af6a21fa8b8"
+source = "git+https://github.com/lotusnprod/lotus-explore-rs?branch=main#681162a2d0381caea61af4683c9786203da2765f"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -2258,7 +2258,7 @@ dependencies = [
 [[package]]
 name = "lotus-query"
 version = "0.1.0"
-source = "git+https://github.com/lotusnprod/lotus-explore-rs?branch=main#124c31d60443e886b2e75fd518a91af6a21fa8b8"
+source = "git+https://github.com/lotusnprod/lotus-explore-rs?branch=main#681162a2d0381caea61af4683c9786203da2765f"
 dependencies = [
  "csv",
  "lotus-model",
@@ -2268,7 +2268,7 @@ dependencies = [
 [[package]]
 name = "lotus-search"
 version = "0.1.0"
-source = "git+https://github.com/lotusnprod/lotus-explore-rs?branch=main#124c31d60443e886b2e75fd518a91af6a21fa8b8"
+source = "git+https://github.com/lotusnprod/lotus-explore-rs?branch=main#681162a2d0381caea61af4683c9786203da2765f"
 dependencies = [
  "bytes",
  "futures-timer",
@@ -2343,7 +2343,7 @@ dependencies = [
 [[package]]
 name = "mascot-rs"
 version = "0.1.0"
-source = "git+https://github.com/earth-metabolome-initiative/mascot-rs.git?branch=main#c38f18bc0053b7a59acce5b9bb283e7ea45e6d2f"
+source = "git+https://github.com/earth-metabolome-initiative/mascot-rs.git?branch=main#049f98347a92f081344edd1bca032c7454d673fb"
 dependencies = [
  "mass_spectrometry",
  "molecular-formulas",
@@ -2817,9 +2817,9 @@ dependencies = [
 
 [[package]]
 name = "quinn-proto"
-version = "0.11.18"
+version = "0.11.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9746dbde176634f4f2f1faf2404e30a31b2bc1e9cafb5329c95d8177a18c9fc"
+checksum = "0e750cca55fe4f0439a15d0bb529da9651e79993e8e72c61a899a36d462befbe"
 dependencies = [
  "aws-lc-rs",
  "bytes",
@@ -2840,9 +2840,9 @@ dependencies = [
 
 [[package]]
 name = "quinn-udp"
-version = "0.5.15"
+version = "0.5.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35a133f956daabe89a61a685c2649f13d82d5aa4bd5d12d1277e1072a21c0694"
+checksum = "af66907df18639dcf4db56ca65490cabc4b27a97dbadd96f2926cca73298f016"
 dependencies = [
  "cfg_aliases",
  "libc",
@@ -4459,9 +4459,9 @@ dependencies = [
 
 [[package]]
 name = "yoke-derive"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33811428bee40dbceb6d545e95754741d17a6aef9a4849f0fd62e2ba4f412a78"
+checksum = "ec8ebde2db3681e8c9980cc27822030e68752690ddfa9473e739aeb4dbde6d71"
 dependencies = [
  "proc-macro2",
  "quote",
