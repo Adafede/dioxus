@@ -3,8 +3,9 @@
 
 //! Throttled progress reporting for long-running browser-side work.
 //!
-//! A single `ProgressThrottler` instance is shared by all upload apps to
-//! avoid each app maintaining its own byte-count / time-throttle logic.
+//! One implementation, used by both chunked readers, so no app has to maintain
+//! its own byte-count / time-throttle logic. Apps never name this type; they
+//! pass an `on_progress` closure to `BlobCursor::new` or `BlobLines::new`.
 //!
 //! # Throttling strategy
 //!

@@ -10,8 +10,10 @@
 //!   keeping exactly one 16 MiB chunk in memory regardless of file size.
 //! - `BlobLines` — line-oriented chunked streaming for text formats (MGF,
 //!   SMILES, CSV).
-//! - **`ProgressThrottler`** — byte+time throttled progress callbacks, shared by
-//!   all upload apps.
+//! - Throttled progress callbacks on both readers — byte- and time-gated so a
+//!   multi-gigabyte upload does not flood the UI thread. The throttling type is
+//!   crate-private; apps pass a closure to [`BlobCursor::new`] or
+//!   [`BlobLines::new`].
 //! - **`extract_blob_from_file_data`** — unified file-input / drag-drop
 //!   extraction over `&[FileData]`.
 //! - **`download_text`** — browser download of text content.
@@ -47,7 +49,10 @@ mod event;
 ///
 /// Portable: the clock is injected as a `fn() -> f64` rather than being
 /// `js_sys::Date::now`, which is what let this move off wasm.
-pub mod progress;
+///
+/// Private: every item in it is crate-private, and apps reach the behaviour
+/// through the `on_progress` argument of the two readers.
+mod progress;
 
 pub use blob_cursor::BlobCursor;
 pub use blob_lines::BlobLines;
