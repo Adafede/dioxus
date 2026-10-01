@@ -45,13 +45,11 @@ pub fn download_text(content: &str, filename: &str) -> Result<(), String> {
     let safe_name = sanitize_filename(filename);
     let url = blob_url_from_str(content, "text/plain;charset=utf-8")?;
 
-    click_download_anchor(&url, &safe_name, false)
-        .map(|_| ())
-        .map_err(|e| format!("download failed: {e}"))
+    click_download_anchor(&url, &safe_name).map_err(|e| format!("download failed: {e}"))
 }
 
 #[cfg(target_arch = "wasm32")]
-fn click_download_anchor(href: &str, filename: &str, new_tab: bool) -> Result<bool, String> {
+fn click_download_anchor(href: &str, filename: &str) -> Result<(), String> {
     let window = web_sys::window().ok_or("no window object")?;
     let document = window.document().ok_or("no document object")?;
     let anchor: HtmlAnchorElement = document
@@ -63,9 +61,6 @@ fn click_download_anchor(href: &str, filename: &str, new_tab: bool) -> Result<bo
     anchor.set_href(href);
     anchor.set_download(filename);
     anchor.set_rel("noopener noreferrer");
-    if new_tab {
-        anchor.set_target("_blank");
-    }
 
     let body = document.body().ok_or("no document body")?;
     body.append_child(&anchor)
@@ -77,23 +72,26 @@ fn click_download_anchor(href: &str, filename: &str, new_tab: bool) -> Result<bo
     // the second as an accidental early drop.
     drop(body.remove_child(&anchor));
 
-    Ok(true)
+    Ok(())
 }
 
 /// Sanitizes a filename for safe browser download.
 ///
 /// Removes control characters and replaces path separators and quotes with
-/// underscores.  No external crate required.
+/// underscores.
 #[must_use]
 #[cfg(any(target_arch = "wasm32", test))]
 fn sanitize_filename(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for c in input.trim().chars() {
+        // Runs first, so it is also what decides newlines: they are control
+        // characters, so they are dropped here rather than reaching the
+        // `_`-substitution below.
         if c.is_control() {
             continue;
         }
         match c {
-            '/' | '\\' | '"' | '\'' | '\n' | '\r' => out.push('_'),
+            '/' | '\\' | '"' | '\'' => out.push('_'),
             _ => out.push(c),
         }
     }
@@ -152,6 +150,15 @@ mod tests {
     fn sanitize_strips_trailing_whitespace() {
         assert_eq!(sanitize_filename("file.txt "), "file.txt");
         assert_eq!(sanitize_filename(" file.txt"), "file.txt");
+    }
+
+    #[test]
+    fn sanitize_drops_newlines_rather_than_underscoring_them() {
+        // `is_control` runs before the match, so `\n` and `\r` never reach the
+        // `_`-substitution arm and are removed, not replaced.
+        assert_eq!(sanitize_filename("a\nb"), "ab");
+        assert_eq!(sanitize_filename("a\r\nb"), "ab");
+        assert_ne!(sanitize_filename("a\nb"), "a_b");
     }
 
     #[test]
