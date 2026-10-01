@@ -52,8 +52,11 @@ fn json_string(s: &str) -> String {
 
 /// Returns the inline `<script>` body that registers one read-only tool on
 /// the page's `WebMCP` document context (guarded IIFE).
+///
+/// Crate-private: [`DocumentHead`](crate::DocumentHead) builds this from the
+/// `webmcp` prop, and apps pass a [`WebMcpConfig`] rather than a script.
 #[must_use]
-pub fn capabilities_script(cfg: WebMcpConfig) -> String {
+pub(crate) fn capabilities_script(cfg: WebMcpConfig) -> String {
     let tool_name = format!("{}_capabilities", cfg.app_id);
     let name = json_string(&tool_name);
     let title = json_string(cfg.title);

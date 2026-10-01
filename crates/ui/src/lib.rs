@@ -54,7 +54,7 @@ mod webmcp;
 
 /// Convenience re-exports of the most commonly used UI primitives.
 pub mod prelude {
-    pub use crate::common::{SKIP_LINK_STYLE, skip_link, skip_link_main};
+    pub use crate::common::{SKIP_LINK_STYLE, skip_link};
     pub use crate::components::{
         Button, ButtonVariant, Card, Footer, Header, NoticeBar, NoticeTone, SegmentedControl,
         SegmentedControlItem, UploadZone,
@@ -63,5 +63,7 @@ pub mod prelude {
     pub use crate::theme::{
         ColorScheme, Interaction, Radius, Shadow, Spacing, StyleBuilder, Typography,
     };
-    pub use crate::webmcp::{WebMcpConfig, capabilities_script};
+    /// `capabilities_script` stays crate-private: apps opt in by passing
+    /// `webmcp: Some(..)` to [`DocumentHead`], which builds the script itself.
+    pub use crate::webmcp::WebMcpConfig;
 }

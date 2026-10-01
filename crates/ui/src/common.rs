@@ -14,27 +14,14 @@ pub const SKIP_LINK_STYLE: &str = "position:absolute;top:-100%;left:0.5rem;z-ind
 
 /// Skip navigation link pointing at `#main-content`.
 ///
-/// Some apps give their main landmark a different id (`id="main"` in
-/// lotus-explore and mgf-precursor-erro-rs); [`skip_link_main`] covers that
-/// case.
+/// The `href` is fixed. `lipid-selecto-rs` and `mgf-precursor-erro-rs` give
+/// their main landmark `id="main"` instead, and each hand-rolls its own skip
+/// link rather than using this one.
 #[component]
 pub fn skip_link() -> Element {
     rsx! {
         a {
             href: "#main-content",
-            class: "skip-link",
-            style: SKIP_LINK_STYLE,
-            "Skip to main content"
-        }
-    }
-}
-
-/// [`skip_link`] for apps whose main landmark is `id="main"`.
-#[component]
-pub fn skip_link_main() -> Element {
-    rsx! {
-        a {
-            href: "#main",
             class: "skip-link",
             style: SKIP_LINK_STYLE,
             "Skip to main content"
