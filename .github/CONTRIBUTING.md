@@ -53,13 +53,17 @@ git hooks in `prek.toml` delegate to those same tasks, so the hook and the
 pipeline cannot disagree about a cargo flag.
 
 One cargo-make behaviour worth knowing: `CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE`
-in `Makefile.toml` makes each of the eight workspace members able to invoke these
-tasks, and cargo-make then runs the task **once per member** — eight times, with
-seven of them no-ops after the first because Cargo has cached everything. A warm
-`cargo make ci` is about 16 s of real work and about 2 min of wall clock.
-`cargo make --no-workspace ci` runs it once and is the same gate; use it when the
-repeated output is in the way. It is not the default because the per-member
-invocation is what makes `cargo make lint` work from inside `crates/upload`.
+in `Makefile.toml` is load-bearing — remove it and `cargo make ci` reports
+`Task "ci" not found` — and it also means each task is *executed* once per
+workspace member. Eight members, so eight runs, seven of them no-ops because
+Cargo has cached the build. A warm `cargo make ci` is about 16 s of work behind
+about 2 min of wall clock, which reads as the gate being slow and is not.
+`cargo make --no-workspace ci` is the same gate once, in 17 s.
+
+Note that a task is still not reachable *from inside* a member directory
+(`cd crates/upload && cargo make lint` reports "not found") — the env var merges
+the makefile per member for the root invocation, it does not make the root
+makefile visible downward. Run the tasks from the repository root.
 
 The gate, in order:
 

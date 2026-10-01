@@ -43,6 +43,14 @@ CARGO_TERM_COLOR = "always"
 # cwd-sensitive task needs, and deriving it in seven places is seven chances to
 # derive it differently.
 REPO_ROOT = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+# cargo-make loads this file once per workspace member and merges the results, so
+# without this the tasks are not visible at all and `cargo make ci` reports
+# `Task "ci" not found`. Verified by removing the line.
+#
+# It also means a task is *executed* once per member -- eight times, seven of
+# them no-ops because Cargo has cached the build -- which is why a warm
+# `cargo make ci` is ~16 s of work behind ~2 min of wall clock.
+# `cargo make --no-workspace ci` is the same gate once. See CONTRIBUTING.
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = "true"
 
 # ── The gate ─────────────────────────────────────────────────────────────────
@@ -50,6 +58,7 @@ CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = "true"
 # order. Everything in it needs no network access.
 
 [tasks."ci"]
+cwd = "${REPO_ROOT}"
 description = "Every check CI runs, in CI's order. No network access needed."
 dependencies = [
   "fmt-check",
@@ -74,6 +83,7 @@ dependencies = [
 # What the pre-push hook runs: the gate minus the supply-chain checks, which are
 # the slowest part of it and the ones that only change when a dependency does.
 [tasks."ci-fast"]
+cwd = "${REPO_ROOT}"
 description = "What a pre-push hook runs: the gate minus the supply-chain checks."
 dependencies = [
   "fmt-check",
@@ -99,10 +109,12 @@ dependencies = [
 # it blocking would mean shipping a permanently red job. `cov` rebuilds the whole
 # crate graph under instrumentation, so it is minutes as well.
 [tasks."ci-slow"]
+cwd = "${REPO_ROOT}"
 description = "The slow CI jobs: mutation testing and coverage."
 dependencies = ["mutants", "cov"]
 
 [tasks."setup"]
+cwd = "${REPO_ROOT}"
 description = "Install every tool the other tasks call, at a pinned version."
 script = """
 #!/usr/bin/env bash
