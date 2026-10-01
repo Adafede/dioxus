@@ -29,23 +29,22 @@ Closes #<!-- issue number, if applicable -->
 
 <!-- Describe how you verified this change. -->
 
-- [ ] Existing tests still pass
-  (`cargo test --workspace --all-targets --locked`)
+- [ ] Existing tests still pass (`cargo make test`)
 - [ ] New tests added for new or fixed behavior
-  - [ ] Manually tested with `dx serve --package <app>` /
-    `cargo run --locked --features server -p lotus-explore-rs`
+  - [ ] Manually tested with `cargo make web-dev APP=<app>`
 
 --------------------------------------------------------------------------------
 
 ## Quality gate
 
 ```bash
-prek run cargo-qa
-prek run cargo-supply-chain
+cargo make ci        # what CI runs
+cargo make ci-fast   # the pre-push subset
 ```
 
-- [ ] `prek run cargo-qa` passes locally on a clean tree
-- [ ] `prek run cargo-supply-chain` passes (or changes are dependency-free)
+Run `cargo make --list-all-steps` for the full task list.
+
+- [ ] `cargo make ci` passes locally on a clean tree
 
 --------------------------------------------------------------------------------
 

@@ -24,7 +24,7 @@ dx build --release --platform web --package smellfish-rs
 ## Tests
 
 ```bash
-cargo test --lib -p smellfish-rs
+cargo nextest run -p smellfish-rs
 ```
 
 ## License

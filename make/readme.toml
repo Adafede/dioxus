@@ -1,0 +1,70 @@
+# README sync.
+#
+# The crate READMEs are generated from each crate's `README.tpl` plus the `//!`
+# doc comments in its source, so a doc change that was not regenerated lands a
+# README that CI rejects and nothing else catches.
+#
+# The generated file is run through `panache format` before the diff, because a
+# `panache-format` pre-commit hook reformats the committed README and raw
+# `cargo readme` output does not. Diffing the raw output against the formatted
+# file reports drift that does not exist, which is the same shape of failure as a
+# check that cannot pass: it would be red from the day it was added.
+#
+# `README.tpl` is globbed rather than the crates being named: a crate with a
+# template has a README generated from its `lib.rs` docs, and one without has no
+# README to check. That is why the no-templates case is a pass rather than a
+# failure, and why adding a crate cannot leave this task silently skipping it.
+[tasks."readme-check"]
+cwd = "${REPO_ROOT}"
+description = "Fail if any generated crate README is out of date."
+script = """
+#!/usr/bin/env bash
+set -euo pipefail
+if ! command -v cargo-readme >/dev/null 2>&1; then
+  echo "cargo-readme is not installed; run 'cargo make setup'" >&2
+  exit 1
+fi
+if ! command -v panache >/dev/null 2>&1; then
+  echo "panache is not installed; run 'cargo make setup'" >&2
+  exit 1
+fi
+cd "${REPO_ROOT}"
+found=0
+for template in crates/*/README.tpl apps/*/README.tpl; do
+  [ -e "$template" ] || continue
+  dir=$(dirname "$template")
+  found=1
+  if ! ( cd "$dir" \\
+         && cargo readme -t README.tpl -o /tmp/readme_panache.md 2>/dev/null \\
+         && panache format /tmp/readme_panache.md > /dev/null \\
+         && panache lint /tmp/readme_panache.md \\
+         && diff -q /tmp/readme_panache.md README.md > /dev/null 2>&1 ); then
+    echo "README.md out of date for $dir" >&2
+    echo "  run: cargo make readme-write" >&2
+    exit 1
+  fi
+done
+[ "$found" = 1 ] || echo "no crate READMEs to check"
+"""
+
+# The write side. Not in the gate, because a gate that rewrites files is a gate
+# that changes files.
+[tasks."readme-write"]
+cwd = "${REPO_ROOT}"
+description = "Regenerate every crate README from its template and module docs."
+script = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd "${REPO_ROOT}"
+for template in crates/*/README.tpl apps/*/README.tpl; do
+  [ -e "$template" ] || continue
+  dir=$(dirname "$template")
+  # `cargo readme` writes raw output and `panache format` is what a
+  # `panache-format` pre-commit hook applies to the committed file, so the
+  # formatting has to happen here or every run reports drift that is not there.
+  ( cd "$dir" \\
+    && cargo readme -t README.tpl -o README.md \\
+    && panache format README.md > /dev/null )
+  echo "regenerated $dir/README.md"
+done
+"""

@@ -1,0 +1,145 @@
+# The scheduled checks.
+#
+# Everything here is a question that is expensive to answer and cheap to be wrong
+# about for a while. None of it belongs in the per-push gate: a version being
+# behind is not a defect, an advisory-heavy audit run is minutes, and mutation
+# testing is minutes with a result that is a to-do list rather than a verdict.
+#
+# Weekly, Monday, on the hours the per-push gate is idle.
+#
+# Each job calls a `cargo make` task, so a task added here is also the task a
+# contributor runs by hand -- see `cargo make --list-all-steps`.
+
+name: Scheduled
+
+on:
+  schedule:
+    # Not on the hour: a scheduled workflow that fires at :00 joins every other
+    # one on the platform and waits for a runner.
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-${{ github.workflow }}
+  # Never cancel: a run someone dispatched by hand should finish, and the weekly
+  # one has nothing superseding it.
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── Mutation testing ────────────────────────────────────────────────────────
+  # Non-blocking, on purpose. `cargo mutants` exits non-zero when any mutant
+  # survives, and 13 of `cxsmiles-yoga`'s 290 do today. They are the to-do list,
+  # and making this blocking before they are either covered by a test or
+  # excluded in `.cargo/mutants.toml` would mean a permanently red job. Each run
+  # is the list of behaviours the suite is not pinning down.
+  mutants:
+    name: Mutation tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with: { persist-credentials: false, fetch-depth: 1 }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
+        with: { shared-key: ci }
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with: { components: llvm-tools-preview }
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
+        with:
+          tool: |
+            cargo-make@0.37.24
+            cargo-nextest@0.9.146
+            cargo-mutants@27.1.0
+      - run: cargo make mutants
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        if: always()
+        with:
+          name: mutants-report
+          path: mutants.out/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ── Coverage ────────────────────────────────────────────────────────────────
+  # Scoped to the logic crates: the apps are mostly Dioxus rendering, where an
+  # executed line is not a tested line, so the number is high there and says
+  # nothing. `llvm-tools-preview` is what cargo-llvm-cov shells out to.
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: mutants
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with: { persist-credentials: false, fetch-depth: 1 }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
+        with: { shared-key: ci }
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with: { components: llvm-tools-preview }
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
+        with:
+          tool: |
+            cargo-make@0.37.24
+            cargo-nextest@0.9.146
+            cargo-llvm-cov@0.9.1
+      - run: cargo make cov
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        with:
+          name: coverage-report
+          path: target/llvm-cov-report/
+          retention-days: 14
+
+  # ── Dependency drift ────────────────────────────────────────────────────────
+  # Three questions about the same thing, kept as three steps because they fail
+  # for different reasons and the answers are read at different times.
+  dependencies:
+    name: Dependency drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with: { persist-credentials: false, fetch-depth: 1 }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
+        with: { shared-key: ci }
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
+        with:
+          tool: |
+            cargo-make@0.37.24
+            cargo-outdated@0.19.0
+            cargo-udeps@0.1.61
+            cargo-geiger@0.13.0
+            cargo-msrv@0.19.3
+
+      # Which direct dependencies have a newer release. Not a gate: a version
+      # being behind is not a defect, and this step is where the answer is a
+      # list someone reads rather than a red X.
+      - name: Outdated direct dependencies
+        run: cargo make outdated
+
+      # Unused dependencies the manifest scan cannot see. `cargo machete` is in
+      # the per-push gate and reads the manifest and the source text; this one
+      # needs nightly and looks at what the compiler actually emitted, which is
+      # the only way to catch a dependency used solely behind a `#[cfg]`.
+      - name: Unused dependencies, by emitted code
+        run: cargo make udeps
+        continue-on-error: true
+
+      # The transitive unsafe audit. `unsafe_code = "forbid"` in the workspace
+      # lints covers this repository's own code; this is the dependency tree,
+      # which is a different question.
+      - name: Unsafe code in the dependency tree
+        run: cargo make geiger
+
+      # The real MSRV, bisected with a build per toolchain. Minutes, and the
+      # number only moves when a dependency does, so it is a schedule answer.
+      - name: The lowest toolchain the workspace builds on
+        run: cargo make msrv

@@ -42,7 +42,7 @@
 //! ### Tests
 //!
 //! ```bash
-//! cargo test --lib -p lipid-selecto-rs
+//! cargo nextest run -p lipid-selecto-rs
 //! ```
 //!
 //! ## Classification strategy

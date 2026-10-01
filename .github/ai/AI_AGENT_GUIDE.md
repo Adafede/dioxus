@@ -8,9 +8,6 @@ back them.
 **Shared crates (`crates/`)** --- consumed by the apps; the source of truth, not
 the apps:
 
-- `crates/lotus` --- LOTUS domain models, SPARQL query builders, and
-  platform-agnostic SPARQL-over-HTTP transport. The single shared data core for
-  `lotus-explore-rs`.
 - `crates/ui` --- unified, type-safe Dioxus design system: reusable components
   (`Button`, `Card`, `Footer`, `Header`, `NoticeBar`, `SegmentedControl`),
   `DocumentHead`/`DocumentLinks`, pure-Rust style builders (`styles::*`), and
@@ -36,37 +33,42 @@ the apps:
   (WASM).
 - `apps/cxsmiles-yoga` --- CX-SMILES generation from related structures (WASM).
 - `apps/smellfish-rs` --- NP-likeness scoring with RDKit.js + QLever (WASM).
-- `apps/lotus-explore-rs` --- LOTUS Knowledge Explorer, LOTUS/Wikidata/QLever
-  SPARQL explorer (WASM). Its `src/` is layered: `main.rs` exposes top-level
-  *canonical* facades (`api`, `models`, `queries`, `sparql`, `state`,
-  `repositories`, `services`) that are shared app-wide, while `src/features/`
-  holds *feature-scoped* modules (`explore` engine, `curation` workflow) --- the
-  `features/*/state|repositories|services` trees are **not** dead duplicates of
-  the top-level ones; they are curation/explore specific. The `src/ui/` module
-  holds LOTUS-specific style constants (`layout_styles`, `table_styles`,
-  `search_controls`, `style_constants`, a11y contracts); the dead triplicate
-  style-directory tree (`src/styles/`, `src/lotus_styles/`, `src/ui/styles/`)
-  was consolidated in phase 6f --- only the LOTUS-specific helpers above remain
-  (generics belong in `crates/ui`). `src/components/` and `src/pages/` are the
-  UI layer.
 - `apps/mgf-precursor-erro-rs` --- MGF precursor mass-error analysis (WASM +
   lib).
-- `apps/lotus-explore-rs` --- LOTUS Knowledge Explorer (WASM). Its `server`
-  feature builds an in-package native Axum API for LOTUS search and exports.
 
 ## Stable commands
 
+The task runner is cargo-make. `cargo make ci` is the single list of what CI
+runs, so verifying a change means running that rather than assembling a command
+from memory. Run `cargo make --list-all-steps` for the current task list.
+
 ```bash
-cargo check --workspace --all-targets --locked
-cargo test --workspace --all-targets --locked
-cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo doc --workspace --no-deps --locked
+cargo make setup      # once: the pinned toolchain and every tool the gate calls
+cargo make check      # cargo check --workspace --all-targets
+cargo make test       # nextest, then cargo test --doc (nextest skips doctests)
+cargo make lint       # clippy, all targets, all features, warnings denied
+cargo make lint-wasm  # the cfg(wasm32) branches the host run never compiles
+cargo make doc        # rustdoc with -D warnings
+cargo make ci         # all of the above plus the hygiene and supply-chain checks
+cargo make ci-fast    # the pre-push subset, without the supply-chain checks
 ```
 
 ```bash
-dx serve --package lotus-explore-rs
-  cargo run --locked --features server -p lotus-explore-rs
+cargo make web-dev APP=cxsmiles-yoga   # or the other five apps
+cargo make web-build-all
+cargo make cli -- --help               # anything else the Dioxus CLI can do
 ```
+
+Two things that are easy to get wrong and are worth not having to remember:
+
+- **nextest does not run doctests.** `cargo make test` runs nextest and then
+  `cargo test --doc`, and so does everything else that runs tests. A dropped
+  doctest step leaves the examples in the module docs unchecked and nothing
+  reports a failure.
+- **The host lint never compiles `#[cfg(target_arch = "wasm32")]` branches.**
+  `cargo make check-wasm` and `cargo make lint-wasm` are the tasks that do, one
+  package at a time rather than `--workspace --target wasm32`, which cannot pass
+  because `upload` has a host-only path.
 
 ## Change protocol
 
@@ -86,9 +88,9 @@ dx serve --package lotus-explore-rs
 
 ## References
 
-- Architecture: `apps/lotus-explore-rs/docs/ARCHITECTURE.md`
+- Task list: `cargo make --list-all-steps`
+- The gate, and what each check is for: `.github/CONTRIBUTING.md`
 - AI contribution guide: `.github/ai/CONTRIBUTING_AI.md`
-- Agent efficiency guide: `.github/ai/AI_EFFICIENCY_GUIDE.md`
 
 ## Phase status
 
@@ -136,7 +138,7 @@ dx serve --package lotus-explore-rs
   `.unwrap_or_default()`; the 9 stale `# Panics` doc blocks converted to
   `# Errors` (summary_text got a new `# Errors` block); redundant `#[must_use]`
   dropped from the `Result`-returning renderers; workspace
-  `cargo clippy`/`cargo test`/`cargo check` + 3-app wasm all green.
+  `cargo make lint`/`cargo make test`/`cargo make check` + 3-app wasm all green.
 - **Phase 6f (lotus-sparql styles/services consolidation):** complete
   (triplicate style dir removed; only LOTUS-specific helpers remain).
 

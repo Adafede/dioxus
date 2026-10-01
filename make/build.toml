@@ -1,0 +1,91 @@
+# Compiling without running anything: the checks whose value is that they are
+# fast enough to run on every commit.
+
+[tasks."check"]
+cwd = "${REPO_ROOT}"
+description = "Type-check the whole workspace, all targets."
+script = "cargo check --workspace --all-targets --locked"
+
+# One `cargo check -p <app>` per app, never `--workspace --target wasm32`.
+#
+# `upload` is `cfg`-gated to wasm for the blob readers and `download.rs` has a
+# host-only path, so a workspace-wide wasm *test* target is meaningless; a
+# workspace-wide wasm check would have to agree with both. One package at a time
+# keeps the wasm build green for exactly the crates that are wasm apps.
+[tasks."check-wasm"]
+cwd = "${REPO_ROOT}"
+description = "Type-check each wasm app for wasm32-unknown-unknown."
+dependencies = [
+  "check-wasm-cxsmiles-yoga",
+  "check-wasm-index",
+  "check-wasm-json-count-rs",
+  "check-wasm-lipid-selecto-rs",
+  "check-wasm-mgf",
+  "check-wasm-smellfish-rs",
+]
+
+[tasks."check-wasm-cxsmiles-yoga"]
+cwd = "${REPO_ROOT}"
+description = "Type-check cxsmiles-yoga for wasm32-unknown-unknown."
+script = "cargo check -p cxsmiles-yoga --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-index"]
+cwd = "${REPO_ROOT}"
+description = "Type-check index for wasm32-unknown-unknown."
+script = "cargo check -p index --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-json-count-rs"]
+cwd = "${REPO_ROOT}"
+description = "Type-check json-count-rs for wasm32-unknown-unknown."
+script = "cargo check -p json-count-rs --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-lipid-selecto-rs"]
+cwd = "${REPO_ROOT}"
+description = "Type-check lipid-selecto-rs for wasm32-unknown-unknown."
+script = "cargo check -p lipid-selecto-rs --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-mgf"]
+cwd = "${REPO_ROOT}"
+description = "Type-check mgf-precursor-erro-rs for wasm32-unknown-unknown."
+script = "cargo check -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --locked"
+
+[tasks."check-wasm-smellfish-rs"]
+cwd = "${REPO_ROOT}"
+description = "Type-check smellfish-rs for wasm32-unknown-unknown."
+script = "cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked"
+
+# rustdoc with warnings denied. Without `-D warnings` a rustdoc warning is
+# printed and the build still succeeds, so the task proves only that the docs
+# build, not that they are warning-free -- and a broken intra-doc link is a 404
+# in the generated docs, which no test here would notice.
+[tasks."doc"]
+cwd = "${REPO_ROOT}"
+description = "Build the documentation with rustdoc warnings denied."
+script = """
+RUSTDOCFLAGS="-D warnings -D rustdoc::broken_intra_doc_links" \\
+  cargo doc --workspace --no-deps --locked
+"""
+
+# Every feature combination in the workspace.
+#
+# No feature in this workspace enables another, so the powerset is the product
+# of the per-crate counts rather than an explosion, and the whole workspace is
+# checked -- which is also the only version that would catch a feature in a
+# crate somebody forgot to think of as a library. If that ever stops being true
+# the answer is `--each-feature`, not narrowing the scope.
+[tasks."feature-powerset"]
+cwd = "${REPO_ROOT}"
+description = "Check every feature combination in the workspace."
+script = "cargo hack check --workspace --feature-powerset --locked"
+
+[tasks."clean"]
+cwd = "${REPO_ROOT}"
+description = "Remove the build output, the nextest store and the coverage report."
+script = """
+#!/usr/bin/env bash
+set -euo pipefail
+cd "${REPO_ROOT}"
+echo "removing target/nextest, the coverage report and the build output"
+rm -rf target/nextest target/llvm-cov-report target/llvm-cov-target
+cargo clean
+"""

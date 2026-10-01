@@ -4,7 +4,7 @@
 license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![Tests](https://img.shields.io/badge/tests-536-brightgreen)]() [![clippy: 0
 warnings](https://img.shields.io/badge/clippy-0%20warnings-brightgreen)]()
-[![WASM](https://img.shields.io/badge/WASM-5%20apps-brightgreen)]() [![cargo
+[![WASM](https://img.shields.io/badge/WASM-6%20apps-brightgreen)]() [![cargo
 deny](https://img.shields.io/badge/cargo%20deny-ok-brightgreen)]()
 [![machete](https://img.shields.io/badge/machete-0%20unused-brightgreen)]()
 
@@ -13,11 +13,6 @@ A Cargo workspace for reproducible Dioxus web apps, pinned by
 
 - **index** is the accessible landing page. **json-count-rs** counts non-null
   fields in uploaded JSON files.
-- **lotus-explore-rs** explores the LOTUS compounds knowledge graph from
-  Wikidata via SPARQL.
-- **lotus-explore-rs** explores the LOTUS compounds knowledge graph from
-  Wikidata via SPARQL. Its `server` feature builds an in-package native HTTP API
-  for advanced search and export.
 - **mgf-precursor-erro-rs** analyzes uploaded MGF files and reports precursor
   mass errors in Da and ppm.
 - **lipid-selecto-rs** classifies and filters lipid mass-spec data using LIPID
@@ -31,13 +26,14 @@ A Cargo workspace for reproducible Dioxus web apps, pinned by
 ## Prerequisites
 
 ```bash
-rustup toolchain install 1.97 --profile minimal
-rustup target add wasm32-unknown-unknown
-cargo install dioxus-cli --version 0.7.10 --locked
+cargo make setup
 ```
 
-The repo pins Rust 1.97, `clippy`, `rustfmt`, and `wasm32-unknown-unknown` in
-`rust-toolchain.toml`.
+That installs the pinned toolchain from `rust-toolchain.toml` (Rust 1.98.1, with
+`clippy`, `rustfmt`, `llvm-tools-preview` and the `wasm32-unknown-unknown`
+target), the task runner, the test runner, the Dioxus CLI at the version the
+lockfile resolves, and every tool the gate calls — each at a pinned version,
+through `cargo binstall` where it is available.
 
 ## Structure
 
@@ -52,103 +48,111 @@ dioxus-apps/
 │   ├── json-count-rs/        ← upload a JSON file and count non-null values (WASM)
 │   ├── lipid-selecto-rs/     ← lipid classification and filtering via SMARTS (WASM)
 │   ├── mgf-precursor-erro-rs/← MGF precursor mass-error analysis (WASM + lib)
-│   ├── mgf-precursor-erro-rs/← MGF precursor mass-error analysis (WASM + lib)
-│   ├── lotus-explore-rs/     ← LOTUS Wikidata natural-product explorer (WASM + server feature)
-│   ├── smellfish-rs/         ← NP-likeness scoring, RDKit.js integration (WASM + lib)
-│   └── cxsmiles-yoga/        ← CX-SMILES generation from related structures (WASM + lib)
+│   ├── smellfish-rs/         ← NP-likeness scoring, RDKit.js, QLever (WASM + lib)
 │   └── cxsmiles-yoga/        ← CX-SMILES generation from related structures (WASM + lib)
 └── crates/
-    ├── lotus/                ← SPARQL client, LOTUS models, transport, export
     ├── upload/               ← shared file-upload, progress, and blob utilities
     └── ui/                   ← shared accessibility-focused UI helpers (DocumentHead, etc.)
 ```
 
-Apps marked **(WASM + lib)** have a `lib.rs` alongside `main.rs` to enable
-`cargo test --lib`. Apps without extensive unit tests use `main.rs` only.
+The task runner's own configuration:
+
+```
+├── Makefile.toml            ← cargo make: shared config and the ci/ci-fast gates
+├── make/                    ← the tasks, split by concern
+├── .config/nextest.toml     ← nextest profiles
+└── .cargo/                  ← cargo config and the cargo-mutants exclusions
+```
+
+Apps marked **(WASM + lib)** have a `lib.rs` alongside `main.rs`, which is what
+makes their logic testable from the host. Apps without extensive unit tests use
+`main.rs` only.
 
 ## Running apps locally
 
 ```bash
-dx serve --package lotus-explore-rs
-dx serve --package cxsmiles-yoga
-  cargo run --locked --features server -p lotus-explore-rs
-dx serve --package json-count-rs
-dx serve --package index
-dx serve --package lipid-selecto-rs
-dx serve --package mgf-precursor-erro-rs
-dx serve --package smellfish-rs
+cargo make web-dev APP=cxsmiles-yoga       # or index, json-count-rs,
+                                            # lipid-selecto-rs, mgf-precursor-erro-rs,
+                                            # smellfish-rs
+```
+
+Anything else the Dioxus CLI can do goes through the passthrough task:
+
+```bash
+cargo make cli -- --help
 ```
 
 ## Building for production
 
 ```bash
-dx build --release --package lotus-explore-rs
-dx build --release --package cxsmiles-yoga
-dx build --release --package json-count-rs
-dx build --release --package index
-dx build --release --package lipid-selecto-rs
-dx build --release --package mgf-precursor-erro-rs
-dx build --release --package smellfish-rs
+cargo make web-build APP=cxsmiles-yoga      # one app
+cargo make web-build-all                    # all six
+cargo make web-size                         # report each bundle, raw and wasm-opt'd
 ```
 
-Output lands under `target/dx/<package>/release/web/public/`.
+Output lands under `apps/<package>/target/dx/<package>/release/web/public/`.
 
 ## Quality gate and local checks
 
-Install the repo hooks once:
+The task runner is **cargo-make**. Install the tools and the git hooks once:
 
 ```bash
-cargo install prek --locked
-prek install
+cargo make setup
+cargo install prek --locked && prek install
 ```
 
-Run the repo quality gate manually:
+The gate is one command, and it is the same command CI runs:
 
 ```bash
-prek run cargo-qa
+cargo make ci
 ```
 
-The `cargo-qa` hook chain runs the following checks (matching CI):
+`cargo make ci-fast` is the pre-push subset (the gate without the
+supply-chain checks). For the full current list of tasks rather than a copy of
+it, run `cargo make --list-all-steps` -- that is the one that cannot go stale.
+The individual checks it depends on are also tasks: `fmt-check`, `lint`,
+`check`, `test`, `doc`, `check-wasm`, `lint-wasm`, `machete`, `deny`, `audit`,
+`typos`, `tombi-check`, `tombi-lint`, `license-headers`, `feature-powerset`,
+`readme-check`.
 
-```bash
-prek run cargo-fmt-check         # rustfmt --all -- --check
-prek run cargo-check             # cargo check --workspace --all-targets --locked
-prek run cargo-clippy             # cargo clippy --workspace --all-targets --locked -- -D warnings
-prek run cargo-test               # cargo test --workspace --all-targets --locked --quiet
-prek run cargo-check-wasm-all     # cargo check for all 5 WASM apps
-prek run cargo-doc               # cargo doc --workspace --no-deps --locked
-prek run cargo-machete           # cargo machete
-prek run cargo-audit             # cargo audit
-prek run cargo-deny              # cargo deny check advisories bans licenses sources
-prek run cargo-readme-panache    # cargo-readme sync + panache lint
-```
+The hooks in `prek.toml` delegate to those tasks rather than spelling out cargo
+flags, so the two cannot drift.
 
 ## Adding a new app
 
 1. Copy an existing app directory (e.g. `apps/index`) as a starting point.
 2. Edit `Cargo.toml` and `Dioxus.toml` to set `name` and `title`.
 3. Add `"apps/my-new-app"` to `members` in the workspace `Cargo.toml`.
-4. Add a `cargo check` line to the **wasm** job and a `dx build` line to the
-   **wasm-build** job in `.github/workflows/ci.yml`.
-5. `dx serve --package my-new-app`
+4. Add the app to `check-wasm`, `lint-wasm`, `web-build-all` and the `MAPPING`
+   row in `crates/upload/tests/gate_consistency.rs`. That test fails the build
+   otherwise, which is the point of it.
+5. `cargo make web-dev APP=my-new-app`
 
 ## Continuous integration
 
-On every push to `main`:
+Every job runs a `cargo make` task, and the per-push gate is the single task
+`cargo make ci`, so what CI runs is what the local gate runs:
 
-- `cargo fmt --all -- --check`
-- `cargo check --workspace --all-targets --locked`
-- `cargo clippy --workspace --all-targets --locked -- -D warnings`
-- `cargo test --workspace --all-targets --locked`
-- `cargo check` for all 7 WASM apps (`cxsmiles-yoga`, `index`, `json-count-rs`,
-  `lipid-selecto-rs`, `lotus-explore-rs`, `mgf-precursor-erro-rs`,
-  `smellfish-rs`)
-- `cargo doc --workspace --no-deps --locked`
-- `cargo machete`
-- `cargo audit`
-- `cargo deny check advisories bans licenses sources`
-- WASM build and deploy artifact for all 7 WASM apps (with Ketcher fetch for
-  `lotus-explore-rs`)
+- **Gate** (`cargo make ci`): formatting, TOML validity and schema, spelling,
+  SPDX headers, task-list sanity, `cargo check`, clippy on the host and on
+  wasm32, the test suite (nextest, then the doctests), rustdoc with warnings
+  denied, the feature powerset, the generated-README check, and the
+  supply-chain checks.
+- **MSRV** (`cargo make check`, `cargo make test`): the same builds on the
+  oldest toolchain `rust-version` claims to support.
+- **WASM bundle** (`cargo make web-build-all`, `cargo make web-size`): the only
+  job that links a `.wasm`, and the one that reports how large it is.
+- **Scheduled**, weekly: mutation testing, coverage, and the dependency-drift
+  questions (`outdated`, `udeps`, `geiger`, `msrv`).
+
+Artifacts: the nextest JUnit report from every gate run, the coverage report,
+the mutants report, and the built wasm bundles.
+
+There is **no release workflow**, and deliberately so: every crate is
+`publish = false` and the public APIs are still moving. Release automation,
+semver gates and packaging checks are deferred until a first release is
+actually planned — see the "Deferred" note in
+[`.github/CONTRIBUTING.md`](./.github/CONTRIBUTING.md).
 
 ## MCP
 

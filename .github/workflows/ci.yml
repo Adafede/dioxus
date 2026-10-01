@@ -1,3 +1,24 @@
+# The CI gate.
+#
+# Every job here runs a `cargo make` task. The task definitions live in
+# `Makefile.toml` and `make/*.toml`, and the local gate is `cargo make ci`, so
+# there is one list of what "green" means and this file is the runner for it.
+# That is the whole point of the arrangement: when the workflow and the local
+# command each spelled out the cargo flags, they drifted, and a check that was
+# supposed to run locally did not.
+#
+# `crates/upload/tests/gate_consistency.rs` checks that this file, the `ci` task
+# and `prek.toml` name the same set of checks, and fails the build if they do
+# not.
+#
+# Actions are pinned by SHA, not by tag, so a tag that moves cannot change what
+# runs on a pull request from a fork. The comment on each pin is the tag.
+#
+# There is no release workflow. Every crate is `publish = false` and the public
+# APIs are still moving, so release, packaging and semver tooling is deferred
+# until a first release is actually planned -- see the "Deferred" note in the
+# developer docs.
+
 name: CI
 
 on:
@@ -5,9 +26,14 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege. Nothing here writes to the repository, creates a release or
+# reads a secret, so `contents: read` is the whole grant.
 permissions:
   contents: read
 
+# A superseded run on the same ref is cancelled: a push that lands while a
+# previous push is still building makes the newer commit's result the one that
+# matters, and the older one has nothing left to say.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -18,212 +44,136 @@ defaults:
 
 env:
   CARGO_TERM_COLOR: always
+  # Every warning is an error. The lint task also passes `-D warnings`; this is
+  # what covers rustc's own default-warn group, which that flag does not reach
+  # for build scripts and proc macros.
   RUSTFLAGS: "-D warnings"
 
 jobs:
-  # ── Pre-commit checks: fast, block every commit/PR ──────────────────────────
-
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-        with: { components: rustfmt }
-      - run: cargo fmt --all -- --check
-
-  license-headers:
-    name: License headers
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false, fetch-depth: 1 }
-      # Without this setup step `just` is not on the runner, so the job exits 127
-      # before reading a single file — and reports nothing about license headers.
-      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
-        with:
-          tool: just
-      - name: Every .rs file carries both AGPL headers on lines 1 and 2
-        run: just license-headers
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-        with: { components: clippy }
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-
-  # ── Pre-push checks: heavy — run on every PR and push ─────────────────────
-
-  test:
-    name: Test (native)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-      # This is also where `crates/upload/tests/gate_consistency.rs` runs: the
-      # workspace has no root package, so this is the one `tests/` directory the
-      # `--workspace` test build is guaranteed to compile and run.
-      - run: cargo test --workspace --all-targets --locked --quiet
-
-  doc:
-    name: Docs
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      # Without this a rustdoc warning is printed and the job still passes, so
-      # the job proves only that the docs build, not that they are warning-free —
-      # and a broken intra-doc link is a 404 in the generated docs, which no
-      # test here would notice.
-      RUSTDOCFLAGS: -D warnings
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo doc --workspace --no-deps --locked
-
-  mutants:
-    name: Mutation tests
+  # ── The gate ────────────────────────────────────────────────────────────────
+  # One job that runs `cargo make ci`. It is deliberately not eleven jobs: the
+  # reason the eleven existed was to report *which* check failed, and a named
+  # step plus a JUnit artifact does that without eleven toolchain installs,
+  # eleven cargo caches and eleven chances for the runner to be the slow part.
+  ci:
+    name: Gate
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # Non-blocking, on purpose. `cargo mutants` exits non-zero when any mutant
-    # survives, and 13 of `cxsmiles-yoga`'s 290 do today. They are the to-do
-    # list, and making this blocking before they are either covered by a test or
-    # excluded in `.cargo/mutants.toml` would mean shipping a permanently red
-    # job. Each run is the list of behaviours the suite is not pinning down.
-    #
-    # `cxsmiles-yoga` was at 45 survivors of 296 before its 100 new tests; the
-    # 13 left are end-to-end arithmetic that no current fixture distinguishes.
-    # `json-count-rs` earns its place in the scope by having found a hang: its
-    # string-escaping functions were wasm-gated despite touching no browser API,
-    # and the test written once they were host-buildable exposed a trailing
-    # backslash that made the scanner loop forever.
-    continue-on-error: true
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
         with:
-          tool: cargo-mutants@27.1.0
-      # Same two packages, same flags and the same `.cargo/mutants.toml` as
-      # `just mutants`; the exclusions live in that file so the two cannot
-      # disagree. `mgf-precursor-erro-rs` is `just mutants-mgf`: 717 more
-      # mutants, another half hour, and it is the one that does not fit.
-      - run: >-
-          cargo mutants
-          --package json-count-rs
-          --package cxsmiles-yoga
-          --jobs 4
-          --timeout 300
+          # One key shared by every job on the branch, so the first job to run
+          # pays for compiling the dependency graph and the rest reuse it. The
+          # default is per-job, which shares nothing.
+          shared-key: ci
 
-  wasm:
-    name: WASM type-check
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-        with: { targets: wasm32-unknown-unknown }
-      - name: Check all WASM apps
-        run: |
-          cargo check -p cxsmiles-yoga --target wasm32-unknown-unknown --locked
-          cargo check -p index --target wasm32-unknown-unknown --locked
-          cargo check -p json-count-rs --target wasm32-unknown-unknown --locked
-          cargo check -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --locked
-          cargo check -p lipid-selecto-rs --target wasm32-unknown-unknown --locked
-          cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked
+      # The toolchain is pinned in `rust-toolchain.toml` and rustup reads that
+      # file, so this step does not repeat the version: a job that named it here
+      # as well would be a second answer to which compiler is in use.
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          components: clippy, rustfmt, llvm-tools-preview
+          targets: wasm32-unknown-unknown
 
-  clippy-wasm:
-    name: Clippy (WASM)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-        with: { components: clippy, targets: wasm32-unknown-unknown }
-      - name: Lint all WASM apps
-        run: |
-          cargo clippy -p cxsmiles-yoga --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
-          cargo clippy -p index --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
-          cargo clippy -p json-count-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
-          cargo clippy -p mgf-precursor-erro-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
-          cargo clippy -p lipid-selecto-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
-          cargo clippy -p smellfish-rs --target wasm32-unknown-unknown --all-targets --locked -- -D warnings
-      # `crates/upload` is linted on its own, and this is the line that matters:
-      # `blob_cursor`, `blob_lines` and `progress` are `#[cfg(wasm32)]`, so no
-      # other command in this workflow compiles their code or their tests. That
-      # is how a test calling a method that does not exist sat here unnoticed.
-      - name: Lint the WASM-only upload crate, tests included
-        run: >-
-          cargo clippy -p upload
-          --target wasm32-unknown-unknown
-          --all-targets
-          --locked
-          -- -D warnings
-
-  readme:
-    name: README sync
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
+      # The tools the gate calls. `cargo make ci` fails on a missing one rather
+      # than skipping it, which is deliberate: a supply-chain check that is
+      # silently absent on a machine where it is not installed is a check that
+      # reports nothing about the code.
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
         with:
           tool: |
-            just
+            cargo-make@0.37.24
+            cargo-nextest@0.9.146
+            tombi-cli@1.6.1
+            typos-cli@1.50.3
+            cargo-hack@0.6.45
+            cargo-deny@0.20.2
+            cargo-audit@0.22.2
+            cargo-machete@0.9.2
             cargo-readme@3.4.0
             panache@3.12.0
-      # The READMEs are generated from the crates' `//!` docs, so a doc change
-      # that was not regenerated lands a README nothing else would catch.
-      - run: just readme
 
-  supply-chain:
-    name: Supply-chain
+      - name: cargo make ci
+        run: cargo make ci
+
+      # Without this a failure is a red dot and a scrollback. The path is set in
+      # `.config/nextest.toml` as `junit.path`, so the file lands under a
+      # per-profile store directory next to the build output.
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        if: always()
+        with:
+          name: nextest-junit
+          path: target/nextest/ci/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ── MSRV ────────────────────────────────────────────────────────────────────
+  # The `rust-version` in the root manifest is a claim; this is the job that
+  # checks it. It builds on the oldest toolchain the workspace claims to
+  # support, which is the toolchain a downstream consumer is holding.
+  #
+  # `cargo msrv find` is how that number was arrived at; it is not run here
+  # because it bisects with a build per toolchain and belongs on a schedule
+  # rather than on every push.
+  msrv:
+    name: MSRV (1.97)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
+        with: { shared-key: msrv }
+      # Deliberately NOT the pinned toolchain: this job exists to build with the
+      # oldest supported one, and `rust-toolchain.toml` would override it. The
+      # `RUSTUP_TOOLCHAIN` env is what actually selects it, because rustup
+      # reads the file before any action runs.
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with: { toolchain: 1.97.1 }
+        env:
+          RUSTUP_TOOLCHAIN: 1.97.1
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
         with:
           tool: |
-            cargo-audit@0.22.2
-            cargo-deny@0.19.4
-      - name: Cargo deny
-        run: cargo deny check advisories bans licenses sources
-      - name: Cargo audit
-        run: cargo audit
+            cargo-nextest@0.9.146
+            cargo-make@0.37.24
+      - run: cargo make check
+      - run: cargo make test
 
-  machete:
-    name: Unused dependencies
+  # ── The WASM bundle ─────────────────────────────────────────────────────────
+  # Nothing in the gate produces a `.wasm`: the apps are checked and linted for
+  # wasm32 but never linked. So nothing in the gate would notice a change that
+  # doubled the bundle, and the one build that does produce it is not one
+  # anybody runs routinely.
+  wasm:
+    name: WASM bundle size
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with: { persist-credentials: false, fetch-depth: 1 }
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
+        with: { shared-key: ci }
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with: { targets: wasm32-unknown-unknown }
+      # `dioxus-cli` is the crate; `dx` is the binary it installs and is not on
+      # crates.io, so `dx@0.7.10` does not resolve. The version is the resolved
+      # `dioxus` in `Cargo.lock`, which is the one `dx` has to agree with.
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
         with:
-          tool: cargo-machete@0.9.2
-      # `machete`, and not the `unused_crate_dependencies` lint, is what holds
-      # this workspace's dependencies honest: a host build does not compile the
-      # `#[cfg(target_arch = "wasm32")]` branches where most of them are used,
-      # so the lint calls them unused in exactly the builds that cannot see the
-      # use. `machete` reads the source text, so it does not have that blind
-      # spot. See the note in the root `Cargo.toml`.
-      - run: cargo machete
+          tool: |
+            cargo-make@0.37.24
+            dioxus-cli@0.7.10
+      - name: Install binaryen for wasm-opt
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends binaryen
+      - run: cargo make web-build-all
+      - name: Report the optimized size of each app
+        run: cargo make web-size
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        with:
+          name: wasm-bundles
+          path: apps/*/target/dx/*/release/web/
+          retention-days: 14

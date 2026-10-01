@@ -1,0 +1,123 @@
+# Task runner for the dioxus workspace. `cargo make <task>`.
+#
+# This is the single list of what CI runs. The workflow calls `cargo make ci` and
+# nothing else, so a check that is green locally and red in a pipeline, or the
+# reverse, cannot happen by drift: there is one command.
+#
+# `crates/upload/tests/gate_consistency.rs` holds the local gate, the git hooks
+# and CI to the same set of checks, and fails the build if they disagree.
+#
+# The tasks are split across `make/*.toml` by concern. This file holds the shared
+# configuration and the gate itself.
+#
+# Run `cargo make --list-all-steps` for the current list rather than reading this
+# file: it is the one that cannot go stale.
+
+# The task files, one per concern.
+#
+# `extend` has to be the first key in this file. Put `[config]` above it and
+# cargo-make parses the file without complaint and loads none of the task files,
+# so every task is "not found" and the gate appears to have no tasks at all.
+# `make/all.toml` is the one-line indirection that lets this name more than one.
+# Verified against cargo-make 0.37.24.
+extend = "make/all.toml"
+
+[config]
+# The task runner's own built-in tasks (`make`, `run`, `build`, `watch`, ...) are
+# noise in a list meant to describe this repository's checks.
+skip_core_tasks = true
+
+[env]
+# Every task passes `--locked`, so the lockfile is authoritative. Set once here
+# rather than repeated in each task.
+CARGO_TERM_COLOR = "always"
+
+# The absolute path to the workspace root.
+#
+# cargo-make runs a task once per member crate with the working directory set to
+# that member, so a task cannot assume it is at the root. The `cwd =` value and
+# every script path below are written against this rather than a relative path,
+# which is what makes them work from a member directory.
+#
+# Set here rather than derived in each task because it is the one fact every
+# cwd-sensitive task needs, and deriving it in seven places is seven chances to
+# derive it differently.
+REPO_ROOT = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = "true"
+
+# ── The gate ─────────────────────────────────────────────────────────────────
+# `cargo make ci` is exactly what .github/workflows/ci.yml runs, in the same
+# order. Everything in it needs no network access.
+
+[tasks."ci"]
+description = "Every check CI runs, in CI's order. No network access needed."
+dependencies = [
+  "fmt-check",
+  "tombi-check",
+  "tombi-lint",
+  "typos",
+  "license-headers",
+  "verify-tasks",
+  "check",
+  "lint",
+  "test",
+  "doc",
+  "check-wasm",
+  "lint-wasm",
+  "readme-check",
+  "feature-powerset",
+  "machete",
+  "deny",
+  "audit",
+]
+
+# What the pre-push hook runs: the gate minus the supply-chain checks, which are
+# the slowest part of it and the ones that only change when a dependency does.
+[tasks."ci-fast"]
+description = "What a pre-push hook runs: the gate minus the supply-chain checks."
+dependencies = [
+  "fmt-check",
+  "tombi-check",
+  "tombi-lint",
+  "typos",
+  "license-headers",
+  "verify-tasks",
+  "check",
+  "lint",
+  "test",
+  "doc",
+  "check-wasm",
+  "lint-wasm",
+  "readme-check",
+  "feature-powerset",
+]
+
+# The CI jobs `ci` leaves out, and why.
+#
+# `mutants` is minutes rather than seconds, and its survivors are a to-do list
+# rather than a verdict -- 13 of `cxsmiles-yoga`'s 290 survive today, so making
+# it blocking would mean shipping a permanently red job. `cov` rebuilds the whole
+# crate graph under instrumentation, so it is minutes as well.
+[tasks."ci-slow"]
+description = "The slow CI jobs: mutation testing and coverage."
+dependencies = ["mutants", "cov"]
+
+[tasks."setup"]
+description = "Install every tool the other tasks call, at a pinned version."
+script = """
+#!/usr/bin/env bash
+set -euo pipefail
+exec bash make/scripts/setup.sh
+"""
+
+# `cargo make --list-all-steps` must work from a clean checkout, and no task may
+# call a tool that is not in `setup`. That is what this asserts, in the place
+# where a contributor will actually see the failure.
+[tasks."verify-tasks"]
+cwd = "${REPO_ROOT}"
+description = "Check the task list loads and every gate task names an installed tool."
+script = """
+#!/usr/bin/env bash
+set -euo pipefail
+exec bash make/scripts/verify-tasks.sh
+"""

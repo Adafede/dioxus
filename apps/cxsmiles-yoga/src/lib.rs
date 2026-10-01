@@ -4,8 +4,8 @@
 //! `cxsmiles-yoga` — generate CX-SMILES from lists of related structures.
 //!
 //! Core algorithm lives in [`cxsmiles`] (a pure-Rust, UI-free module that can
-//! be unit-tested and reused outside the Dioxus tree — see `cargo test -p
-//! cxsmiles-yoga --lib`).  The Dioxus `app` entry point ([`app::app`]) is a
+//! be unit-tested and reused outside the Dioxus tree — see `cargo nextest
+//! run -p cxsmiles-yoga`).  The Dioxus `app` entry point ([`app::app`]) is a
 //! thin shell: a textarea, a "generate" button, and a results panel that shows
 //! the produced CX-SMILES, the detected construct type(s), a round-trip
 //! confidence indicator, and 2D depiction of the core scaffold.
@@ -41,7 +41,7 @@
 //! ### Tests
 //!
 //! ```bash
-//! cargo test --lib -p cxsmiles-yoga
+//! cargo nextest run -p cxsmiles-yoga
 //! ```
 
 pub mod app;

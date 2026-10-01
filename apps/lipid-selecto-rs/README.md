@@ -46,7 +46,7 @@ dx build --release --platform web --package lipid-selecto-rs
 ### Tests
 
 ```bash
-cargo test --lib -p lipid-selecto-rs
+cargo nextest run -p lipid-selecto-rs
 ```
 
 ## Classification strategy

@@ -1,0 +1,101 @@
+# Linting. The lint *levels* live in `[workspace.lints]` in the root `Cargo.toml`
+# so every crate inherits them; this file is about running them, and about the
+# targets a single workspace-wide run cannot reach.
+
+[tasks."lint"]
+cwd = "${REPO_ROOT}"
+description = "Clippy over the whole workspace, all targets, all features, warnings denied."
+script = "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings"
+
+# The WASM lint surface, one package at a time.
+#
+# A host `cargo clippy --workspace` never compiles a `#[cfg(target_arch =
+# "wasm32")]` branch, so dead code behind a cfg gate, a redundant `pub(crate)`
+# re-export and a `clippy::indexing_slicing` in a streaming scanner all compile
+# cleanly here and are linted by nothing. `cargo check --target wasm32` only
+# type-checks them, so clippy runs too.
+#
+# `upload` is linted on its own and *with* `--all-targets`, which is the line
+# that matters: `blob_cursor`, `blob_lines` and `progress` are compiled only for
+# wasm, so without this their code and their tests are never built by any
+# command in the gate. That is how a test calling a method that does not exist
+# survived here -- the host build never sees those modules at all.
+#
+# Not `--workspace --target wasm32`: `upload`'s `download.rs` has a host-only
+# path, so a workspace-wide wasm lint cannot pass.
+[tasks."lint-wasm"]
+cwd = "${REPO_ROOT}"
+description = "Clippy each wasm crate for wasm32-unknown-unknown, warnings denied."
+dependencies = [
+  "lint-wasm-cxsmiles-yoga",
+  "lint-wasm-index",
+  "lint-wasm-json-count-rs",
+  "lint-wasm-lipid-selecto-rs",
+  "lint-wasm-mgf",
+  "lint-wasm-smellfish-rs",
+  "lint-wasm-upload",
+]
+
+[tasks."lint-wasm-cxsmiles-yoga"]
+cwd = "${REPO_ROOT}"
+description = "Clippy cxsmiles-yoga for wasm32, warnings denied."
+script = """
+cargo clippy -p cxsmiles-yoga --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-index"]
+cwd = "${REPO_ROOT}"
+description = "Clippy index for wasm32, warnings denied."
+script = """
+cargo clippy -p index --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-json-count-rs"]
+cwd = "${REPO_ROOT}"
+description = "Clippy json-count-rs for wasm32, warnings denied."
+script = """
+cargo clippy -p json-count-rs --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-lipid-selecto-rs"]
+cwd = "${REPO_ROOT}"
+description = "Clippy lipid-selecto-rs for wasm32, warnings denied."
+script = """
+cargo clippy -p lipid-selecto-rs --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-mgf"]
+cwd = "${REPO_ROOT}"
+description = "Clippy mgf-precursor-erro-rs for wasm32, warnings denied."
+script = """
+cargo clippy -p mgf-precursor-erro-rs --target wasm32-unknown-unknown \\
+  --all-targets --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-smellfish-rs"]
+cwd = "${REPO_ROOT}"
+description = "Clippy smellfish-rs for wasm32, warnings denied."
+script = """
+cargo clippy -p smellfish-rs --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+[tasks."lint-wasm-upload"]
+cwd = "${REPO_ROOT}"
+description = "Clippy the wasm-only upload crate for wasm32, tests included."
+script = """
+cargo clippy -p upload --target wasm32-unknown-unknown --all-targets \\
+  --locked -- -D warnings
+"""
+
+# The unsafe audit. `unsafe_code = "forbid"` in the workspace lints covers this
+# repository's own code; this is the transitive question, which is a different
+# one, and it is the only reason `cargo geiger` is here.
+[tasks."geiger"]
+cwd = "${REPO_ROOT}"
+description = "Report the unsafe code in the dependency tree."
+script = "cargo geiger --output-format stdout"

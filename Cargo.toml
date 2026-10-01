@@ -30,7 +30,8 @@ js-sys = "0.3"
 # The transport and query crates of the LOTUS explorer, consumed by
 # `apps/smellfish-rs`. Tracked on a branch rather than a rev so the app keeps
 # up with a crate that is still being split up; the lockfile pins the exact
-# commit, and `just mutants` and CI are what notice an API moving underneath.
+# commit, and `cargo make mutants` and CI are what notice an API moving
+# underneath.
 lotus-search = { git = "https://github.com/lotusnprod/lotus-explore-rs", branch = "main", version = "0.1" }
 rand = "0.10"
 rayon = "1.12"
@@ -220,7 +221,8 @@ unused_must_use = "deny"
 # lint reports `chematic`, `gloo-timers`, `csv`, `futures` and `lotus-search` as
 # unused in exactly the builds that cannot see the use. The question it asks —
 # "is this dependency referenced by any of this crate's source?" — is the one
-# `cargo machete` already answers correctly from the source text, and `just ci`
+# `cargo machete` already answers correctly from the source text, and
+# `cargo make ci`
 # runs that. Turning the lint on here would mean either `use x as _;` in every
 # app or a permanently red gate, and neither makes an unused dependency go away.
 

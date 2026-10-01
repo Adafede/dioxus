@@ -1,0 +1,180 @@
+# Tests, coverage and mutation testing.
+#
+# nextest does not run doctests. That is not a small gap here: several crates
+# carry examples in their module docs, and `cargo make test` therefore runs
+# nextest and then `cargo test --doc`, in that order, and so does everything
+# else that runs tests. Dropping the second line leaves those examples unchecked
+# and nothing notices.
+
+# The everyday loop: fail at the first failure. A red run you are about to read
+# in full is not a run worth spending the time on.
+[tasks."test"]
+cwd = "${REPO_ROOT}"
+description = "Run every test: nextest, then the doctests."
+dependencies = ["test-nextest", "test-doc"]
+
+[tasks."test-nextest"]
+cwd = "${REPO_ROOT}"
+description = "Run the test suite with cargo-nextest, fail-fast."
+script = "cargo nextest run --workspace --locked"
+
+# What CI runs, as one command. The `ci` task calls `test` instead, which is
+# the same two steps by way of its own dependencies; this is for a human who
+# wants the CI profile without the rest of the gate.
+[tasks."test-ci"]
+cwd = "${REPO_ROOT}"
+description = "The CI test run: nextest with the ci profile, then the doctests."
+script = """
+cargo nextest run --workspace --locked --profile ci --no-fail-fast
+cargo make test-doc
+"""
+
+# The doctests, on their own. `cargo test --doc` rather than nextest, because
+# nextest does not run them; `--workspace` because the examples live in
+# individual crates rather than in a default workspace member.
+[tasks."test-doc"]
+cwd = "${REPO_ROOT}"
+description = "Run the doctests, including the examples in the module docs."
+script = "cargo test --workspace --doc --locked --quiet"
+
+# The `#[ignore]`d network tests.
+#
+# There are none today: the SPARQL layer is tested through `lotus-search`'s
+# scripted transport against a recorded conversation, so no test needs to reach
+# a live endpoint. A test that genuinely has to reach the network goes here,
+# opt-in, never in CI.
+#
+# `--run-ignored only` has no profile equivalent in nextest, which is why this
+# is a task and not just a profile: without the flag the `live` profile would run
+# every ordinary test under a different name.
+[tasks."test-live"]
+cwd = "${REPO_ROOT}"
+description = "Run the #[ignore]d network tests. Needs a network and an endpoint."
+script = """
+cargo nextest run --workspace --profile live --run-ignored only \\
+  --locked --no-fail-fast
+"""
+
+# Coverage, for the crates where a line count says something.
+#
+# `cargo llvm-cov nextest` rather than `cargo llvm-cov test`: it runs the suite
+# under nextest, so the report describes the same run CI performs and the
+# parallel overhead is not paid twice. `llvm-tools-preview` is in
+# `rust-toolchain.toml` because this needs it.
+#
+# Scoped to the logic crates for the same reason mutation testing is: the apps
+# are mostly Dioxus rendering, where an executed line is not a tested line, so
+# the number is high there and says nothing.
+[tasks."cov"]
+cwd = "${REPO_ROOT}"
+description = "Coverage report for the logic crates, via nextest."
+script = """
+cargo llvm-cov nextest run --locked \\
+  -p json-count-rs -p cxsmiles-yoga -p upload \\
+  --profile ci --no-fail-fast
+"""
+
+# The report as text rather than HTML, which is what a diff of two runs needs.
+[tasks."cov-summary"]
+cwd = "${REPO_ROOT}"
+description = "Print the coverage summary table without writing HTML."
+script = "cargo llvm-cov nextest run --locked --summary-only --workspace"
+
+# Mutation testing. `cargo mutants` rewrites one expression at a time and
+# re-runs the tests: a mutant that survives is a behaviour the suite does not
+# actually pin down, which a passing test run cannot tell you. Coverage counts
+# executed lines; this checks that they are asserted on.
+#
+# `--test-tool nextest` because nextest is what the suite runs under elsewhere,
+# and a mutant evaluated against a different harness is a mutant evaluated
+# against a different suite.
+#
+# Its two result words are worth learning, because they are the opposite of what
+# they look like. `CAUGHT` is the test failing on the mutant -- killed, good.
+# `MISSED` is the test still passing -- survived, and that is a gap in the suite.
+#
+# `--jobs 8` is pinned for the ordinary reason that eight concurrent cargo builds
+# is eight compilers. `.cargo/mutants.toml` records the per-mutant timeout and
+# what is excluded from mutation; an exclusion written down is a decision someone
+# can argue with, an omission is not.
+[tasks."mutants"]
+cwd = "${REPO_ROOT}"
+description = "Mutation testing over the logic crates, using nextest."
+script = """
+cargo mutants --test-tool nextest \\
+  --package json-count-rs --package cxsmiles-yoga --jobs 8 --timeout 300
+"""
+
+# The crate that did not fit in a CI job's budget: 717 mutants, about half an
+# hour. A separate task so `mutants` stays inside the job.
+[tasks."mutants-mgf"]
+cwd = "${REPO_ROOT}"
+description = "Mutation testing for mgf-precursor-erro-rs. About half an hour."
+script = """
+cargo mutants --test-tool nextest --package mgf-precursor-erro-rs \\
+  --jobs 8 --timeout 300
+"""
+
+# The Dioxus rendering crates, on request. `.cargo/mutants.toml` excludes their
+# rendering modules, so what is left is their parsing and their numerics; a
+# surviving mutant in a `class` attribute is not worth a test per component.
+[tasks."mutants-ui"]
+cwd = "${REPO_ROOT}"
+description = "Mutation testing for the rendering crates, on request."
+script = """
+cargo mutants --test-tool nextest \\
+  --package lipid-selecto-rs --package smellfish-rs --jobs 8 --timeout 300
+"""
+
+# The default scope, listed without running it. Instant, and it is what to run
+# after touching a mutated file: it shows what a change added before paying for
+# the run.
+[tasks."mutants-list"]
+cwd = "${REPO_ROOT}"
+description = "List the mutants in the logic crates without running them."
+script = """
+cargo mutants --package json-count-rs --package cxsmiles-yoga --list
+"""
+
+# ── Mutation testing, sized for a laptop ─────────────────────────────────────
+#
+# The tasks above are the CI-sized ones. These are the same runs with the width
+# taken out, for when the machine is a person's machine.
+#
+# The reason is memory, not slowness: `mutants` at `--jobs 8` exhausted memory
+# and took the machine down more than once, at 17 GB per job on only two jobs.
+# The cause was `enumerate_repeating` capping the *number* of repeat counts when
+# what it needed to cap was the size of one expanded molecule, and
+# canonicalisation being superlinear in molecule size. That is fixed
+# (`MAX_MOLECULE_ATOMS`, on both expansions), and the ceilings are `const`s,
+# which cargo-mutants does not emit mutants for.
+#
+# "Fixed" is a statement about the code as written, and worth being honest about
+# what it is not: a mutation run finds mutants nobody predicted. So the width is
+# pinned for the ordinary reason, and the timeout is pinned because a runaway
+# mutant should cost a timeout rather than the session.
+#
+# Sharding is the third lever, and the reason the shard is a parameter:
+#
+#   cargo make mutants-safe 0/4      # a quarter of the scope, ~10 min
+#   cargo make mutants-safe 3/4      # a different quarter
+#
+# Randomization happens *after* sharding, so each shard is a real random subset
+# and the four together are the same mutants in a different order. One shard is
+# a sample, not a biased prefix, which is what makes it worth running on its own.
+[tasks."mutants-safe"]
+cwd = "${REPO_ROOT}"
+description = "Mutation testing at two jobs, shardable. Arg: SHARD, default 1/1."
+script = """
+cargo mutants --test-tool nextest \\
+  --package json-count-rs --package cxsmiles-yoga \\
+  --jobs 2 --timeout 180 --shard "${SHARD:-1/1}"
+"""
+
+[tasks."mutants-safe-mgf"]
+cwd = "${REPO_ROOT}"
+description = "mgf-precursor-erro-rs at two jobs, shardable. Arg: SHARD, default 1/1."
+script = """
+cargo mutants --test-tool nextest --package mgf-precursor-erro-rs \\
+  --jobs 2 --timeout 180 --shard "${SHARD:-1/1}"
+"""

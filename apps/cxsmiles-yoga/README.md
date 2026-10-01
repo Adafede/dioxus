@@ -61,10 +61,10 @@ drawn inline in the results panel.
 
 ```bash
 # Run the test suite (covers all six fixtures + a parse/write round-trip)
-cargo test -p cxsmiles-yoga --lib
+cargo nextest run -p cxsmiles-yoga
 ```
 
-The headless core is exercised by seven unit tests in `src/cxsmiles.rs` covering
+The headless core is exercised by the unit tests in `src/cxsmiles/`, covering
 the six seed fixtures --- biphenyl-Cl, moving -OCH₃, the double-`m:` acetyl
 case, the PFAS repeat, the alkyl repeat, and the six constitutional PFOS isomers ---
 plus a parse/write round-trip.
