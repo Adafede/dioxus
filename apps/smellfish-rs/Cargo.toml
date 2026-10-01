@@ -1,10 +1,12 @@
 [package]
 name = "smellfish-rs"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.97"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 description = "Smellfish-rs literature-backed NP-likeness scoring with RDKit.js, QLever enrichment, and explicit endpoint health checks"
-license = "AGPL-3.0-only"
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
 keywords = ["dioxus", "qlever", "rdkit", "smiles", "sparql"]
 categories = ["science", "wasm", "web-programming"]
 build = "build.rs"

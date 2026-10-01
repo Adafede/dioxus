@@ -1,10 +1,12 @@
 [package]
 name = "mgf-precursor-erro-rs"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.97"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 description = "Web app for summarizing precursor mass errors from uploaded MGF files"
-license = "AGPL-3.0-only"
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
 keywords = ["dioxus", "mass-spectrometry", "mgf", "precursor", "wasm"]
 categories = ["science", "wasm", "web-programming"]
 publish = false

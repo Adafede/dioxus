@@ -1,109 +1,130 @@
+# Deploy the wasm bundles to GitHub Pages.
+#
+# Every build here is a `cargo make web-build` task, the same one a contributor
+# runs, so the artifact that is published is the artifact that was checked. The
+# deploy adds one thing to it: `BASE_PATH`, because each app is served from its
+# own subdirectory and an app built for `/` resolves its assets from `/`.
+#
+# This is a deploy, not a gate: it runs on `main` and on demand, and nothing
+# waits for it. `ci.yml` is what has to be green.
+
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
+# Least privilege, and the only reason this file asks for more than `read`:
+# deploying to Pages needs a write to Pages and an OIDC token to prove the deploy
+# came from this workflow rather than from somebody with a shell.
 permissions:
   contents: read
   pages: write
   id-token: write
 
+# One deploy at a time, and the older one is pointless once a newer push lands.
 concurrency:
   group: "pages"
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   build-apps:
+    name: Build ${{ matrix.app }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
     strategy:
+      fail-fast: false
       matrix:
         include:
           - app: index
-            path: "/${REPONAME}"
-            dir: "apps/index"
-            pkg: "index"
+            pkg: index
           - app: json-count-rs
-            path: "/${REPONAME}/json-count-rs"
-            dir: "apps/json-count-rs"
-            pkg: "json-count-rs"
+            pkg: json-count-rs
           - app: mgf-precursor-erro-rs
-            path: "/${REPONAME}/mgf-precursor-erro-rs"
-            dir: "apps/mgf-precursor-erro-rs"
-            pkg: "mgf-precursor-erro-rs"
+            pkg: mgf-precursor-erro-rs
           - app: smellfish-rs
-            path: "/${REPONAME}/smellfish-rs"
-            dir: "apps/smellfish-rs"
-            pkg: "smellfish-rs"
+            pkg: smellfish-rs
           - app: lipid-selecto-rs
-            path: "/${REPONAME}/lipid-selecto-rs"
-            dir: "apps/lipid-selecto-rs"
-            pkg: "lipid-selecto-rs"
+            pkg: lipid-selecto-rs
+          - app: cxsmiles-yoga
+            pkg: cxsmiles-yoga
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with: { persist-credentials: false, fetch-depth: 1 }
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
+        with:
+          # One key shared by every matrix leg, so the first leg to run pays for
+          # compiling the dependency graph and the rest reuse it.
+          shared-key: pages
+
+      # The toolchain comes from `rust-toolchain.toml` through rustup; naming it
+      # here as well would be a second answer to which compiler is in use.
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
         with:
-          key: ${{ matrix.app }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.app }}-cargo-
+          tool: |
+            cargo-make@0.37.24
+            dioxus-cli@0.7.10
 
-      - uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa
+      - name: Build the app
+        env:
+          APP: ${{ matrix.pkg }}
+          BASE_PATH: /${{ github.event.repository.name }}/${{ matrix.pkg }}
+        run: cargo make web-build
 
-      - name: Install dioxus-cli
-        run: cargo binstall dioxus-cli --version 0.7.10 --locked --no-confirm
-
-      # Only run fetch-ketcher for the app that actually uses it
-      - name: Fetch Ketcher (lotus-explore-rs only)
-        if: matrix.app == 'lotus-explore-rs'
-        run: cargo run --release -p lotus-deploy --bin fetch-ketcher
-        working-directory: ${{ matrix.dir }}
-
-      - name: Build App
-        run: |
-          REPONAME="${GITHUB_REPOSITORY#*/}"
-          EVAL_PATH=$(eval echo "${{ matrix.path }}")
-          dx build --release --platform web --debug-symbols false --base-path "$EVAL_PATH" --package ${{ matrix.pkg }}
-        working-directory: ${{ matrix.dir }}
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      # `dx` writes into the one workspace target directory, not under the app's
+      # own directory.
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         with:
           name: app-${{ matrix.app }}
           path: target/dx/${{ matrix.pkg }}/release/web/public
+          retention-days: 7
 
   deploy:
+    name: Deploy
     needs: build-apps
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      - uses: actions/download-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         with:
           path: _site
 
-      - name: Structure _site directory
+      # The landing page is the site root; every other app keeps its own
+      # subdirectory, which is what `BASE_PATH` above was built for.
+      - name: Arrange the site directory
         run: |
+          set -euo pipefail
           mkdir -p _final_site
-
-          # Move base index contents to root of final site directory
           cp -r _site/app-index/* _final_site/
           rm -rf _site/app-index
-
-          # Move remaining apps to subdirectories
           for dir in _site/app-*; do
-            app_name="${dir#_site/app-}"
-            mv "$dir" "_final_site/$app_name"
+            mv "$dir" "_final_site/$(basename "${dir#_site/app-}")"
           done
+          ls _final_site
 
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v3
         with:
           path: _final_site
 
-      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346
+      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v4
         id: deployment

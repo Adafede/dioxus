@@ -72,6 +72,11 @@ install cargo-bloat 0.12.1
 # The crate READMEs are generated from each crate's `README.tpl` plus its module
 # docs, and the diff is taken against the `panache`-formatted file because a
 # pre-commit hook formats them. Both tools are needed, in that order.
+#
+# `cargo-readme` 3.4.0 specifically: 3.2.0 fails on a manifest that inherits
+# `version` from `[workspace.package]` with "invalid type: map, expected a string
+# for key `package.version`", and every crate here inherits it. The check then
+# reports drift against an empty document rather than saying why.
 install cargo-readme 3.4.0
 install panache 3.12.0
 

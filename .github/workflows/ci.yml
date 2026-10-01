@@ -175,5 +175,7 @@ jobs:
       - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         with:
           name: wasm-bundles
-          path: apps/*/target/dx/*/release/web/
+          # `dx` writes into the one workspace target directory, not under each
+          # app's own, so the path is not `apps/*/target/...`.
+          path: target/dx/*/release/web/
           retention-days: 14

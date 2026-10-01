@@ -1,10 +1,12 @@
 [package]
 name = "upload"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.97"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 description = "Streaming file upload, blob scanning, progress reporting, and download primitives for WASM apps"
-license = "AGPL-3.0-only"
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
 keywords = ["blob", "drag-drop", "file-upload", "streaming", "wasm"]
 categories = ["asynchronous", "web-programming"]
 publish = false

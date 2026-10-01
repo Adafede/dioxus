@@ -1,11 +1,12 @@
 [package]
 name = "ui"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.97"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 description = "Unified UI design system for Dioxus applications using pure Rust styling"
-repository = "https://github.com/adafede/dioxus"
-license = "AGPL-3.0-only"
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
 keywords = ["accessibility", "components", "design-system", "dioxus", "ui"]
 categories = ["gui", "web-programming"]
 publish = false

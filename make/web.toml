@@ -3,11 +3,19 @@
 # `dx` is `dioxus-cli`, and the version matters: `dx` building an app against a
 # different `dioxus` dependency than the one in the lockfile is a build that
 # succeeds and an app that does not run. `cargo make setup` installs the version
-# read out of the root manifest, and the same number is written in the README's
-# prerequisites.
+# read out of `Cargo.lock`.
 #
 # Each app has its own `Dioxus.toml`, so `dx` needs a package rather than a
 # directory when it runs from the workspace root.
+#
+# The production builds pass `--profile wasm-release`, not `--release`. The
+# difference is `panic`: `release` aborts on a panic, and two of the six apps
+# recover from a panic in a third-party SMILES parser with `catch_unwind`, so
+# under `--release` a malformed structure would take the whole tab down instead
+# of falling back to the formula classifier. That is a behaviour change made by a
+# profile flag, which is the worst place to find one. `wasm-release` is otherwise
+# the same profile, with `opt-level = "s"` rather than `"z"` — see the
+# measurement in the root `Cargo.toml`.
 
 [tasks."web-dev"]
 cwd = "${REPO_ROOT}"
@@ -19,14 +27,18 @@ set -euo pipefail
 dx serve --package "$APP"
 """
 
+# `BASE_PATH` is the prefix the app is served under, and the Pages deploy needs
+# one per app: an app served from `/dioxus/json-count-rs` has to resolve its own
+# assets from there, not from `/`. Unset locally, where every app sits at the
+# root of the dev server.
 [tasks."web-build"]
 cwd = "${REPO_ROOT}"
-description = "Build one wasm app for production. Arg: APP."
+description = "Build one wasm app for production. Args: APP, and optionally BASE_PATH."
 script = """
 #!/usr/bin/env bash
 set -euo pipefail
 : "${APP:?usage: cargo make web-build APP=<cxsmiles-yoga|index|json-count-rs|lipid-selecto-rs|mgf-precursor-erro-rs|smellfish-rs>}"
-dx build --release --package "$APP"
+dx build --profile wasm-release --package "$APP" ${BASE_PATH:+--base-path "$BASE_PATH"}
 """
 
 # The whole bundle, for the size report and for a change that might have grown
@@ -46,50 +58,55 @@ dependencies = [
 [tasks."web-build-cxsmiles-yoga"]
 cwd = "${REPO_ROOT}"
 description = "Build cxsmiles-yoga for production."
-script = "dx build --release --package cxsmiles-yoga"
+script = "dx build --profile wasm-release --package cxsmiles-yoga"
 
 [tasks."web-build-index"]
 cwd = "${REPO_ROOT}"
 description = "Build index for production."
-script = "dx build --release --package index"
+script = "dx build --profile wasm-release --package index"
 
 [tasks."web-build-json-count-rs"]
 cwd = "${REPO_ROOT}"
 description = "Build json-count-rs for production."
-script = "dx build --release --package json-count-rs"
+script = "dx build --profile wasm-release --package json-count-rs"
 
 [tasks."web-build-lipid-selecto-rs"]
 cwd = "${REPO_ROOT}"
 description = "Build lipid-selecto-rs for production."
-script = "dx build --release --package lipid-selecto-rs"
+script = "dx build --profile wasm-release --package lipid-selecto-rs"
 
 [tasks."web-build-mgf"]
 cwd = "${REPO_ROOT}"
 description = "Build mgf-precursor-erro-rs for production."
-script = "dx build --release --package mgf-precursor-erro-rs"
+script = "dx build --profile wasm-release --package mgf-precursor-erro-rs"
 
 [tasks."web-build-smellfish-rs"]
 cwd = "${REPO_ROOT}"
 description = "Build smellfish-rs for production."
-script = "dx build --release --package smellfish-rs"
+script = "dx build --profile wasm-release --package smellfish-rs"
 
 # The size of what each app ships, after `wasm-opt`. Binaryen is not in the gate:
 # it is a separate toolchain from the Rust one, and the number is wanted when
 # someone asks whether a change grew the bundle rather than on every commit.
 [tasks."web-size"]
 cwd = "${REPO_ROOT}"
-description = "Report the optimized wasm size of each built app."
+description = "Report the size of each built app's wasm bundle, raw and wasm-opt'd."
 script = """
 #!/usr/bin/env bash
 set -euo pipefail
+# `dx` writes to `target/dx/<package>/release/web/public/assets/`, not under the
+# app's own directory: it uses one workspace target directory for the whole
+# workspace, and the file name carries a content hash. The hash is dropped here
+# so the report is comparable between runs.
 found=0
-for wasm in apps/*/target/dx/*/release/web/*.wasm; do
+for wasm in target/dx/*/release/web/public/assets/*_bg-*.wasm; do
   [ -e "$wasm" ] || continue
   found=1
   tmp=$(mktemp -d)
   cp "$wasm" "$tmp/app.wasm"
   wasm-opt -Oz --strip-debug -o "$tmp/app.opt.wasm" "$tmp/app.wasm"
-  printf '%-40s %8s -> %8s bytes\\n' "$wasm" \\
+  printf '%-30s %10s -> %10s bytes\\n' \\
+    "$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$(dirname "$wasm")")")")")")" \\
     "$(wc -c < "$tmp/app.wasm" | tr -d ' ')" \\
     "$(wc -c < "$tmp/app.opt.wasm" | tr -d ' ')"
   rm -rf "$tmp"
