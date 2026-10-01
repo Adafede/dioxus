@@ -52,6 +52,15 @@ checks, which are the slowest part and only change when a dependency does. The
 git hooks in `prek.toml` delegate to those same tasks, so the hook and the
 pipeline cannot disagree about a cargo flag.
 
+One cargo-make behaviour worth knowing: `CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE`
+in `Makefile.toml` makes each of the eight workspace members able to invoke these
+tasks, and cargo-make then runs the task **once per member** — eight times, with
+seven of them no-ops after the first because Cargo has cached everything. A warm
+`cargo make ci` is about 16 s of real work and about 2 min of wall clock.
+`cargo make --no-workspace ci` runs it once and is the same gate; use it when the
+repeated output is in the way. It is not the default because the per-member
+invocation is what makes `cargo make lint` work from inside `crates/upload`.
+
 The gate, in order:
 
 | Task | What it checks |
