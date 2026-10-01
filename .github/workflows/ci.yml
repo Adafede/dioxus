@@ -63,20 +63,27 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with: { persist-credentials: false, fetch-depth: 1 }
 
+      # rustup is preinstalled on the runner, and it reads `rust-toolchain.toml`
+      # from the working directory on first use -- including `profile`,
+      # `components` and `targets`, verified by deleting a pinned toolchain and
+      # running `rustc` in a scratch directory. So the one file that names the
+      # compiler is the only file that names it, and this step is what turns a
+      # missing toolchain into a named failure rather than a surprise later in
+      # the job.
+      #
+      # It has to come before the cache step, which shells out to `rustc -vV` to
+      # key the cache: with no toolchain installed yet, that is the invocation
+      # that triggers the install, so the key would be derived from it anyway --
+      # but a named step that says so beats relying on a side effect.
+      - name: Install the pinned toolchain
+        run: rustup show active-toolchain
+
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
         with:
           # One key shared by every job on the branch, so the first job to run
           # pays for compiling the dependency graph and the rest reuse it. The
           # default is per-job, which shares nothing.
           shared-key: ci
-
-      # The toolchain is pinned in `rust-toolchain.toml` and rustup reads that
-      # file, so this step does not repeat the version: a job that named it here
-      # as well would be a second answer to which compiler is in use.
-      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
-        with:
-          components: clippy, rustfmt, llvm-tools-preview
-          targets: wasm32-unknown-unknown
 
       # The tools the gate calls. `./mk ci` fails on a missing one rather
       # than skipping it, which is deliberate: a supply-chain check that is
@@ -125,12 +132,18 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with: { persist-credentials: false, fetch-depth: 1 }
+
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
         with: { shared-key: msrv }
-      # Deliberately NOT the pinned toolchain: this job exists to build with the
-      # oldest supported one, and `rust-toolchain.toml` would override it. The
-      # `RUSTUP_TOOLCHAIN` env is what actually selects it, because rustup
-      # reads the file before any action runs.
+      # Deliberately NOT the pinned toolchain, and deliberately the one place in
+      # this workflow that installs a toolchain with the action rather than
+      # letting rustup read `rust-toolchain.toml`: the point of this job is the
+      # *oldest* supported compiler, so naming it here is the job.
+      #
+      # `RUSTUP_TOOLCHAIN` is what actually selects it. rustup reads
+      # `rust-toolchain.toml` before any action runs, so the env var is what
+      # wins, and setting only the action's `toolchain:` input is not enough on
+      # its own.
       - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with: { toolchain: 1.97.1 }
         env:
@@ -155,10 +168,23 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with: { persist-credentials: false, fetch-depth: 1 }
+
+      # rustup is preinstalled on the runner, and it reads `rust-toolchain.toml`
+      # from the working directory on first use -- including `profile`,
+      # `components` and `targets`, verified by deleting a pinned toolchain and
+      # running `rustc` in a scratch directory. So the one file that names the
+      # compiler is the only file that names it, and this step is what turns a
+      # missing toolchain into a named failure rather than a surprise later in
+      # the job.
+      #
+      # It has to come before the cache step, which shells out to `rustc -vV` to
+      # key the cache: with no toolchain installed yet, that is the invocation
+      # that triggers the install, so the key would be derived from it anyway --
+      # but a named step that says so beats relying on a side effect.
+      - name: Install the pinned toolchain
+        run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
         with: { shared-key: ci }
-      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
-        with: { targets: wasm32-unknown-unknown }
       # `dioxus-cli` is the crate; `dx` is the binary it installs and is not on
       # crates.io, so `dx@0.7.10` does not resolve. The version is the resolved
       # `dioxus` in `Cargo.lock`, which is the one `dx` has to agree with.

@@ -861,6 +861,53 @@ fn mk_holds_the_no_workspace_flag() -> Result<()> {
     Ok(())
 }
 
+/// Every `dtolnay/rust-toolchain` step must pass `toolchain:`.
+///
+/// The action's `toolchain` input is *required* and it does not fall back to
+/// `rust-toolchain.toml`: a step without it exits 1 with "'toolchain' is a
+/// required input", before a single check runs. Six steps across three workflows
+/// were written that way, on the reasoning that rustup reads the pinned
+/// file -- which is true, and is why those six steps do not exist any more, but
+/// the action cannot be left in place with its required input unset.
+///
+/// The MSRV job is the one that must keep the action, because its whole point
+/// is a toolchain other than the pinned one. That is why this asserts the input
+/// rather than the absence of the action.
+#[test]
+fn every_rust_toolchain_action_passes_its_required_input() -> Result<()> {
+    const REQUIRES_TOOLCHAIN: &str = "dtolnay/rust-toolchain";
+
+    for file in [
+        ".github/workflows/ci.yml",
+        ".github/workflows/deploy.yml",
+        ".github/workflows/scheduled.yml",
+    ] {
+        let yaml = read(file)?;
+        let mut saw = false;
+        for (n, line) in yaml.lines().enumerate() {
+            if !line.contains(REQUIRES_TOOLCHAIN) {
+                continue;
+            }
+            saw = true;
+            // The `with:` block is the lines indented further than the `- uses:`.
+            let rest = yaml.lines().skip(n + 1);
+            let inputs: Vec<&str> = rest
+                .take_while(|l| l.trim().is_empty() || l.starts_with("        "))
+                .collect();
+            assert!(
+                inputs.iter().any(|l| l.contains("toolchain:")),
+                "{file}:{} uses {REQUIRES_TOOLCHAIN} with no `toolchain:` input. \
+                 The input is required and the step exits 1 before anything runs. \
+                 Either give it the toolchain, or drop the action and let rustup \
+                 read `rust-toolchain.toml`.",
+                n + 1
+            );
+        }
+        let _ = saw;
+    }
+    Ok(())
+}
+
 /// Nothing in the hooks or the workflows may invoke `cargo make` directly.
 ///
 /// Every one of them delegates to `./mk`, and a bare `cargo make` in a hook is a

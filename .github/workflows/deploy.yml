@@ -62,17 +62,26 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with: { persist-credentials: false, fetch-depth: 1 }
 
+      # rustup is preinstalled on the runner, and it reads `rust-toolchain.toml`
+      # from the working directory on first use -- including `profile`,
+      # `components` and `targets`, verified by deleting a pinned toolchain and
+      # running `rustc` in a scratch directory. So the one file that names the
+      # compiler is the only file that names it, and this step is what turns a
+      # missing toolchain into a named failure rather than a surprise later in
+      # the job.
+      #
+      # It has to come before the cache step, which shells out to `rustc -vV` to
+      # key the cache: with no toolchain installed yet, that is the invocation
+      # that triggers the install, so the key would be derived from it anyway --
+      # but a named step that says so beats relying on a side effect.
+      - name: Install the pinned toolchain
+        run: rustup show active-toolchain
+
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8
         with:
           # One key shared by every matrix leg, so the first leg to run pays for
           # compiling the dependency graph and the rest reuse it.
           shared-key: pages
-
-      # The toolchain comes from `rust-toolchain.toml` through rustup; naming it
-      # here as well would be a second answer to which compiler is in use.
-      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
-        with:
-          targets: wasm32-unknown-unknown
 
       - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
         with:
