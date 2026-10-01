@@ -82,10 +82,13 @@ fn has_substructure(molecule: &Molecule, pattern: &str) -> bool {
 /// Returns `true` if the molecule has no ring atoms (aromatic or alicyclic).
 /// Used to reject aromatic rings, nucleotides, sugars, steroids, etc.
 ///
-/// The `[R]` ring-detect SMARTS pattern is pre-compiled once via `LazyLock`
-/// instead of being re-parsed on every call — this is called per-block in
-/// `compute_class_matches`, so avoiding re-parsing is significant for large
-/// datasets.
+/// The `[R]` pattern is pre-compiled once via `LazyLock` rather than re-parsed
+/// per call. Measured, that is tidy-up and not a win worth chasing further:
+/// parsing all ten `PATTERN_*` strings 200 times costs ~0.5 ms, while the
+/// 4,820 `classify_smiles` calls those parses would have accompanied cost
+/// ~347 ms. `find_matches` is ~99.5% of the work, so the other patterns in
+/// `has_substructure` still re-parsing on every call is not worth a cache — a
+/// shared cache for them was built and measured at under 0.5% and discarded.
 #[must_use]
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn is_acyclic(molecule: &Molecule) -> bool {
