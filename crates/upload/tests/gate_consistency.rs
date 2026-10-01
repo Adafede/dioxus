@@ -884,7 +884,7 @@ fn the_declarations_are_not_vacuous() -> Result<()> {
 /// command is written once as a task's inline script and once as a folded YAML
 /// scalar whose first line holds only `cargo make` and whose arguments are on
 /// the lines after it.
-fn mutated_packages(text: &str) -> std::collections::BTreeSet<String> {
+fn mutated_packages(text: &str) -> BTreeSet<String> {
     let mut names = std::collections::BTreeSet::new();
     for line in text.lines() {
         let mut words = line.split_whitespace();

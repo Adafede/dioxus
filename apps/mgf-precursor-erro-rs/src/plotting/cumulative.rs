@@ -46,15 +46,19 @@ fn draw_quartet_stage<DB: plotters::prelude::DrawingBackend>(
 {
     if let Some((mean, std_dev)) = mean_and_std_dev(values) {
         let style = plotters::style::ShapeStyle::from(&color);
-        let _ = chart.draw_series(std::iter::once(plotters::prelude::PathElement::new(
-            vec![(x, mean - std_dev), (x, mean + std_dev)],
-            style,
-        )));
-        let _ = chart.draw_series(std::iter::once(plotters::prelude::Circle::new(
-            (x, mean),
-            6,
-            style.filled(),
-        )));
+        drop(
+            chart.draw_series(std::iter::once(plotters::prelude::PathElement::new(
+                vec![(x, mean - std_dev), (x, mean + std_dev)],
+                style,
+            ))),
+        );
+        drop(
+            chart.draw_series(std::iter::once(plotters::prelude::Circle::new(
+                (x, mean),
+                6,
+                style.filled(),
+            ))),
+        );
     }
 }
 
@@ -79,20 +83,26 @@ fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
     }
 
     let style = plotters::style::ShapeStyle::from(&color).stroke_width(stroke_width);
-    let _ = chart.draw_series(
-        points
-            .iter()
-            .copied()
-            .zip(
-                points
-                    .iter()
-                    .skip(1)
-                    .copied()
-                    .chain(points.first().copied()),
-            )
-            .map(|((x1, y1), (x2, y2))| {
-                plotters::prelude::PathElement::new(vec![(x1, y1), (x2, y2)], style)
-            }),
+    // `drop`, not `let _ =`. The discard is deliberate — a plotters drawing
+    // error is not worth failing an SVG render over — and `drop` says that,
+    // where `let _ =` is the same statement that
+    // `clippy::let_underscore_drop` reads as an accidental early drop.
+    drop(
+        chart.draw_series(
+            points
+                .iter()
+                .copied()
+                .zip(
+                    points
+                        .iter()
+                        .skip(1)
+                        .copied()
+                        .chain(points.first().copied()),
+                )
+                .map(|((x1, y1), (x2, y2))| {
+                    plotters::prelude::PathElement::new(vec![(x1, y1), (x2, y2)], style)
+                }),
+        ),
     );
 }
 
@@ -189,10 +199,10 @@ pub fn render_error_quartet(
             .draw()?;
 
         let red_style = ShapeStyle::from(&RED).stroke_width(1);
-        let _ = chart.draw_series(std::iter::once(PathElement::new(
+        drop(chart.draw_series(std::iter::once(PathElement::new(
             vec![(-0.5, 0.0), (4.5, 0.0)],
             red_style,
-        )));
+        ))));
         draw_quartet_stage(&mut chart, 0.8, error_ms1, RGBColor(68, 119, 170));
         draw_quartet_stage(&mut chart, 1.8, error_ms2_before, RGBColor(255, 119, 0));
         draw_quartet_stage(&mut chart, 2.8, delta_ms2_ms1, RGBColor(204, 51, 51));

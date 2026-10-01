@@ -286,7 +286,7 @@ pub(crate) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     for block in &mut blocks {
         block.classify();
     }
-    let all_classes = crate::chemical_class::lmsd_all();
+    let all_classes = lmsd_all();
     for block in &mut blocks {
         block.compute_class_matches(&all_classes);
     }

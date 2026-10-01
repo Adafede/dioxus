@@ -55,7 +55,7 @@ async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
 /// Downloads SVG content as a file.
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn download_svg(svg: &str, filename: &str) {
-    let _ = upload::download_text(svg, filename);
+    drop(upload::download_text(svg, filename));
 }
 
 /// Downloads recalibrated MGF content as a `.mgf` file.

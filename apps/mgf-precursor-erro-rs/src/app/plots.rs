@@ -181,7 +181,13 @@ pub fn mass_bias_plot(
         )
     });
     let svg_markup = svg_markup.read().clone();
-    let _ = other_label;
+    // `other_label` names the second series this plot overlays, and
+    // `render_mass_bias_svg` does not draw one. The prop is still declared
+    // because the caller reads better passing it than not, and dropping it by
+    // name says that the omission is deliberate rather than an oversight —
+    // `let _ = other_label` is the same statement and is what
+    // `clippy::let_underscore_drop` rejects.
+    drop(other_label);
     let download_markup = Some(svg_markup.clone());
     plot_shell(title, subtitle, svg_markup, download_markup)
 }

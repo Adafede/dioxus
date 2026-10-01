@@ -227,7 +227,17 @@ unused_self = "deny"
 # An item nothing can reach is either unfinished work or a leftover. Either way
 # it should be a deliberate decision at review time, not silence.
 dead_code = "deny"
+# `_ = expr` drops the value immediately, which for a type with a `Drop` impl
+# skips whatever the drop was for — a lock released early, a file truncated
+# before the error is reported. The explicit form (`drop(x)`, or a real binding)
+# says which was meant.
+let_underscore_drop = "deny"
 missing_debug_implementations = "deny"
+# The 2021/2024 idiom lints as a group: `elided_lifetimes_in_paths`,
+# `bare_trait_objects`, `unused_extern_crates` and the rest. Enabled as a group
+# rather than one at a time because each is a one-line change when it fires and
+# the group is the set of things that edition 2024 made the default.
+rust_2018_idioms = { level = "deny", priority = -1 }
 # `missing_docs` is disabled because this is an internal project collection,
 # not a published library. Documentation is provided at module/API level
 # where it adds value, not on every private struct field.
@@ -237,6 +247,13 @@ unreachable_pub = "deny"
 unsafe_code = "forbid"
 unsafe_op_in_unsafe_fn = "deny"
 unused_must_use = "deny"
+# `unused_qualifications` is deliberately NOT enabled. It fires inside the
+# `rsx!` macro expansion, where a glob-imported type in a closure annotation
+# reads as an unnecessary path segment: 31 of the 36 sites it finds here are
+# `move |evt: Event<MouseData>|` inside an `rsx!` block, and the suggestion it
+# offers is to delete the `onclick:` attribute along with the path. A lint whose
+# fix is wrong on five sites out of six trains people to ignore it, so the five
+# real qualifications were fixed by hand and the lint stays off.
 # `unused_crate_dependencies` is deliberately NOT enabled. These apps are
 # browser targets: a host `cargo check` does not compile the
 # `#[cfg(target_arch = "wasm32")]` branches where most of them are used, so the

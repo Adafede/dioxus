@@ -478,7 +478,7 @@ mod tests {
     #[test]
     fn coverage_counts_only_the_inputs_that_came_back() {
         let group = [mol("CC"), mol("CO")];
-        let enumerated = vec![chematic::smiles::canonical_smiles(&group[0])];
+        let enumerated = vec![canonical_smiles(&group[0])];
         let (covered, cov) = roundtrip_coverage(&enumerated, &group);
         assert_eq!(covered, 1, "one of the two came back");
         assert_eq!(cov.covered, 1, "the report agrees");
@@ -518,7 +518,7 @@ mod tests {
         // The inputs are counted, not the distinct SMILES: two identical
         // molecules are two rows the user typed, and covering both is the point.
         let group = [mol("CC"), mol("CC")];
-        let enumerated = vec![chematic::smiles::canonical_smiles(&group[0])];
+        let enumerated = vec![canonical_smiles(&group[0])];
         let (_, cov) = roundtrip_coverage(&enumerated, &group);
         assert_eq!(cov.covered, 2, "both rows are covered by one arrangement");
         assert_eq!(cov.total, 2, "out of two");

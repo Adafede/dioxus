@@ -54,7 +54,7 @@ pub(super) fn download_filtered_mgf(
         mgf_content.push_str(&tagged);
         mgf_content.push('\n');
     }
-    let _ = upload::download_text(&mgf_content, "lipids_filtered.mgf");
+    drop(upload::download_text(&mgf_content, "lipids_filtered.mgf"));
 }
 
 /// Download filtered SMILES content with class tags, applying all filter selections.
@@ -97,7 +97,7 @@ pub(super) fn download_filtered_smiles(
         )
         .collect();
     let smiles_content = build_smiles_from_gallery(&filtered);
-    let _ = upload::download_text(&smiles_content, "lipids.smi");
+    drop(upload::download_text(&smiles_content, "lipids.smi"));
 }
 
 /// Check if any of the selected class names match the gallery item matches.

@@ -1,0 +1,33 @@
+# Clippy thresholds that the lint table cannot express.
+# See https://rust-lang.github.io/rust-clippy/master/clippy.toml
+#
+# Read by `cargo clippy` from the workspace root and from every member
+# directory, which is what `cargo make lint` and `cargo make lint-wasm` rely on:
+# the numbers below are one answer, not one answer per crate.
+
+# The lowest toolchain the workspace claims to support, which is what
+# `rust-version` says and what the MSRV CI job builds on. Clippy uses this for
+# `msrv`-gated lints and suggestions: without it, a suggestion that needs a
+# newer compiler than `rust-version` is still offered, and taking it silently
+# raises the real MSRV. `cargo make msrv` measures the floor; this records it.
+msrv = "1.97"
+
+# A function whose branches add up past this reads worse than a decomposed one.
+# The default is 25. This is 30: several of the parsers here are a flat sequence
+# of guard clauses over a token stream, where the branching is the algorithm and
+# a decomposition would hide it behind a name. Anything that trips this at 30
+# is worth looking at anyway, which is why it is a warning rather than a deny.
+cognitive-complexity-threshold = 30
+
+# Arguments before the lint complains. The default is 7. This is 8, because one
+# function legitimately takes a `ChemicalFormula<u32, i32>` plus a charge plus a
+# mass type plus tolerances, and four of those would be an options struct used
+# once.
+too-many-arguments-threshold = 8
+
+# Not enabled, and why: `disallowed_methods` and `disallowed_types` would each be
+# a second place to answer "what does this workspace not use", next to the
+# workspace lint table. Every restriction lint that earns its place here is
+# already in `[workspace.lints.clippy]` with the reason beside it, and a method
+# banned in one file and not another is a rule that holds on the day it is
+# written.

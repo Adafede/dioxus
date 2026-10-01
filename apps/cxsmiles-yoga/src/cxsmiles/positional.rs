@@ -643,7 +643,7 @@ mod tests {
         // branch, and an empty answer here would produce a `m:` field with no
         // positions at all.
         let c = mol("CC");
-        let scaffold_q = super::super::graph::molecule_to_query(&c);
+        let scaffold_q = molecule_to_query(&c);
         let positions = equiv_positions(&[], std::slice::from_ref(&c), &scaffold_q);
         assert_eq!(
             positions,

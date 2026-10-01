@@ -37,7 +37,7 @@ fn copy_to_clipboard(text: &str) -> bool {
         let cb = nav.clipboard();
         // `write_text` returns a JS Promise; fire-and-forget is fine for a
         // best-effort copy — the `copied` flash only reflects the attempt.
-        let _ = cb.write_text(text);
+        drop(cb.write_text(text));
         return true;
     }
     false

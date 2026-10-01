@@ -75,7 +75,11 @@ fn click_download_anchor(href: &str, filename: &str, new_tab: bool) -> Result<bo
     body.append_child(&anchor)
         .map_err(|e| format!("failed to append anchor: {e:?}"))?;
     anchor.click();
-    let _ = body.remove_child(&anchor);
+    // The anchor exists only to carry the click, so it is removed immediately
+    // afterwards. `drop` rather than `let _ =` says the removal is the point;
+    // the two are the same statement and `clippy::let_underscore_drop` reads
+    // the second as an accidental early drop.
+    drop(body.remove_child(&anchor));
 
     Ok(true)
 }

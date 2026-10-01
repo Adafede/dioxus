@@ -135,7 +135,7 @@ pub(crate) fn download_csv(rows: &[MoleculeRow]) {
     let script = format!(
         r"(function(){{var a=document.createElement('a');a.href='{url}';a.download='smellfish-results.csv';a.click();}})()"
     );
-    let _ = js_sys::eval(&script);
+    drop(js_sys::eval(&script));
 }
 
 #[cfg(not(target_arch = "wasm32"))]

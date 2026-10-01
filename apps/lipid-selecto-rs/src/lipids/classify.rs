@@ -197,7 +197,7 @@ pub(crate) fn classify_smiles(smiles: &str) -> Option<LipidClassification> {
     let molecule =
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| smiles::parse(trimmed)))
             .ok()
-            .and_then(std::result::Result::ok)?;
+            .and_then(Result::ok)?;
 
     let (class, _counts) = classify_molecule(&molecule)?;
 
