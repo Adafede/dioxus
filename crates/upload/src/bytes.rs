@@ -106,6 +106,15 @@ impl ChunkSource for SliceSource<'_> {
         self.bytes.len() as u64
     }
 
+    // The trait method is `async fn` in a trait, so the impl is `async fn` too.
+    // Clippy is right that this one never suspends, and wrong about the fix:
+    // returning `impl Future` here to satisfy it would make the one host
+    // implementation of the seam the only one whose signature differs from the
+    // trait's, which is the property the seam exists to guarantee.
+    #[expect(
+        clippy::unused_async_trait_impl,
+        reason = "an `async fn` in a trait impl must stay `async fn`; the trait's signature is the contract"
+    )]
     async fn read_chunk(&self, start: u64, end: u64) -> Result<Vec<u8>, UploadError> {
         // `u64 -> usize` is fallible on wasm32 and a silent truncation there would
         // slice at the wrong offset, so it is checked rather than cast. The
@@ -119,6 +128,9 @@ impl ChunkSource for SliceSource<'_> {
         Ok(self.bytes.get(start..end).unwrap_or_default().to_vec())
     }
 
+    // No `#[expect]` here, unlike `read_chunk` above: an empty `async` body is
+    // not reported by `unused_async_trait_impl`, so an expectation would be
+    // unfulfilled and would itself be a warning.
     async fn yield_now(&self) {
         // Nothing to yield to. See the trait method.
     }

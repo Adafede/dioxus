@@ -1,5 +1,13 @@
+# Pinned Rust toolchain: compiler version, components and targets, installed by
+# `rustup` on every machine and CI runner that touches this workspace.
 [toolchain]
-channel = "1.97.0"
+# Newest stable, verified against
+# https://static.rust-lang.org/dist/channel-rust-stable.toml (1.98.1, 2026-09-01).
+# `cargo make msrv` measures the floor (1.97.1) separately; that is what
+# `rust-version` claims, and this is what CI compiles with.
+channel = "1.98.1"
 profile = "minimal"
-components = ["clippy", "rustfmt"]
+# `llvm-tools-preview` supplies the `llvm-profdata`/`llvm-cov` pair that
+# `cargo llvm-cov nextest` shells out to for the coverage report.
+components = ["clippy", "rustfmt", "llvm-tools-preview"]
 targets = ["wasm32-unknown-unknown"]
