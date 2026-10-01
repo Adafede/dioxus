@@ -19,7 +19,7 @@ use crate::parser::{
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
 #[cfg(target_arch = "wasm32")]
-use upload::{BlobLines, UploadError};
+use upload::{BlobLines, BlobSource, UploadError};
 #[cfg(target_arch = "wasm32")]
 use web_sys::Blob;
 
@@ -53,7 +53,7 @@ fn start_analysis(
         // Stream the blob line-by-line via BlobLines, collecting only the
         // parsed blocks (not the raw file text) so memory stays bounded by
         // the parsed output, not the raw file size.
-        let mut reader = BlobLines::new(&blob, |processed, total| {
+        let mut reader = BlobLines::new(BlobSource::new(&blob), |processed, total| {
             status.set(format!(
                 "Reading file… {}/{} bytes",
                 processed.min(total),

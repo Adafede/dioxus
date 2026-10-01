@@ -4,13 +4,29 @@
 //! Streaming JSON field scanner.
 //!
 //! Counts non-null values per top-level key of an uploaded JSON object using a
-//! streaming `BlobCursor` (wasm), keeping memory bounded for multi-gigabyte
-//! files.
+//! streaming `BlobCursor`, keeping memory bounded for multi-gigabyte files.
 //!
-//! The platform-agnostic counting core (`count_non_null_leaves`) is separated
-//! from the wasm-only streaming glue so it can be unit-tested natively.
+//! # Two implementations of one grammar, and why that was a mistake
+//!
+//! This file used to hold two: `count_non_null_leaves`, an in-memory scanner over
+//! a `&str`, and the streaming one above it, which is the one that actually runs
+//! in the browser over files too large to hold in memory. The first was tested and
+//! the second was not, and the reason was not a decision — it was that the second
+//! took a browser `Blob`, once through `BlobCursor`, so `cfg(target_arch =
+//! "wasm32")` was the only honest gate and every test of it would have needed a
+//! browser.
+//!
+//! `upload::bytes::ChunkSource` removes that reason. The streaming reader now
+//! takes a source rather than a `Blob`, so the streaming scanner compiles and runs
+//! on the host, and `mod streaming` tests it — including at chunk boundaries,
+//! which the 16 MiB default put permanently out of reach.
+//!
+//! `count_non_null_leaves` is still here and still tested. Whether one grammar
+//! should be two implementations is a real question and this change is not the
+//! answer to it; what it removes is the excuse for not knowing which one the
+//! browser was using.
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use crate::ColumnResult;
 
 // ── Pure, platform-agnostic JSON value counter ───────────────────────
@@ -134,7 +150,13 @@ fn scan_json_value(input: &[u8], start: usize) -> (u64, usize) {
 #[cfg(target_arch = "wasm32")]
 use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
-use upload::{Blob, BlobCursor, UploadError};
+use upload::{Blob, BlobSource};
+
+// The reader itself, not the browser: needed by the three scanners, which are
+// `cfg(any(test, wasm32))` so a host test can reach the code that runs in the
+// browser. `Blob` and `BlobSource` stay wasm-only because they are the browser.
+#[cfg(any(test, target_arch = "wasm32"))]
+use upload::{BlobCursor, ChunkSource, UploadError};
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn begin_scan_from_blob(
@@ -351,10 +373,17 @@ fn unicode_escape(raw: &[u8], at: usize) -> Option<char> {
 }
 
 /// Reads a JSON string key from the cursor using the shared `BlobCursor`.
-#[cfg(target_arch = "wasm32")]
+///
+/// Compiled for tests as well as wasm. It scans bytes and nothing else — no
+/// browser API, no `Blob` — and until the reader became source-generic there was
+/// no way to say so: it was `cfg(target_arch = "wasm32")` because its *parameter*
+/// was, and one wasm parameter took the whole function down with it. That is why
+/// this grammar had a second, in-memory implementation next to it: this one, the
+/// one that runs in the browser, had no reachable test at all.
+#[cfg(any(test, target_arch = "wasm32"))]
 #[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
-async fn read_json_key<F: FnMut(u64, u64)>(
-    cursor: &mut BlobCursor<F>,
+async fn read_json_key<F: FnMut(u64, u64), S: ChunkSource>(
+    cursor: &mut BlobCursor<F, S>,
 ) -> Result<String, UploadError> {
     if cursor.next_byte().await? != Some(b'"') {
         return Err(UploadError::other("Expected opening quote for string"));
@@ -386,9 +415,23 @@ async fn read_json_key<F: FnMut(u64, u64)>(
             i += 1;
         }
         if closed {
-            cursor.advance(1); // consume closing quote
+            // The key body *and* its closing quote. Advancing only 1 — which is
+            // what this did — leaves the cursor sitting on the closing quote, so
+            // the caller's colon check reads `"` and every non-empty key fails
+            // with "Expected ':' after object key". It works for `{"":1}`, where
+            // the body is empty and the two advances coincide, which is why
+            // nothing noticed: no test could reach this function at all.
+            cursor.advance(i - start + 1);
             break;
         }
+
+        // Consume what was scanned before refilling. Without this the buffer is
+        // never drained — `fill` drains `0..pos`, and `pos` has not moved — so the
+        // next pass re-scans the same bytes and appends them to `raw` again: a key
+        // split across a chunk boundary came back as `nn` for `"n"` and
+        // `sststrstr` for `"str"`, and a key long enough to span many chunks grew
+        // `raw` without bound. `skip_string_nonempty` has always had this line.
+        cursor.advance(i - start);
 
         if !cursor.fill().await? {
             return Err(UploadError::other("Unexpected EOF while reading string"));
@@ -400,10 +443,15 @@ async fn read_json_key<F: FnMut(u64, u64)>(
 
 /// Skips over a JSON string (consuming opening/closing quotes) and
 /// reports only whether it had at least one character. No allocation.
-#[cfg(target_arch = "wasm32")]
+///
+/// Compiled for tests as well as wasm; see [`read_json_key`]. The `b'\\'` arm
+/// below is the one that makes a body ending in a lone backslash scan forever,
+/// and it is the arm mutants delete most often, so having a test that reaches it
+/// is the point.
+#[cfg(any(test, target_arch = "wasm32"))]
 #[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
-async fn skip_string_nonempty<F: FnMut(u64, u64)>(
-    cursor: &mut BlobCursor<F>,
+async fn skip_string_nonempty<F: FnMut(u64, u64), S: ChunkSource>(
+    cursor: &mut BlobCursor<F, S>,
 ) -> Result<bool, UploadError> {
     if cursor.next_byte().await? != Some(b'"') {
         return Err(UploadError::other("Expected opening quote for string"));
@@ -450,37 +498,44 @@ async fn skip_string_nonempty<F: FnMut(u64, u64)>(
     Ok(any)
 }
 
-/// Counts the number of non-null "leaf" values inside a JSON value.
-/// Nested objects/arrays are flattened and counted recursively in a
-/// single synchronous pass; strings count as 1 if non-empty; numbers
-/// and booleans count as 1; `null` counts as 0.
-#[cfg(target_arch = "wasm32")]
+/// Counts the leaves inside one `{...}` or `[...]`, the cursor sitting on its
+/// opening bracket.
+///
+/// Split out of [`count_value`] because the two are different jobs: this one is a
+/// single-pass tokeniser with four pieces of state to carry across chunk
+/// boundaries, and folding it into its caller put it over the line limit where
+/// neither could be read on its own.
+///
+/// It counts tokens, not values, which is why a nested object's key is counted
+/// — see the test named for that.
+#[cfg(any(test, target_arch = "wasm32"))]
 #[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
-async fn count_value<F: FnMut(u64, u64)>(cursor: &mut BlobCursor<F>) -> Result<u64, UploadError> {
-    if !cursor.ensure_any().await? {
-        return Ok(0);
-    }
+async fn scan_container<F, S>(cursor: &mut BlobCursor<F, S>) -> Result<u64, UploadError>
+where
+    F: FnMut(u64, u64),
+    S: ChunkSource,
+{
+    cursor.advance(1);
+    let mut depth: i32 = 1;
+    let mut count: u64 = 0;
+    let mut in_string = false;
+    let mut escaped = false;
+    let mut in_token = false;
+    let mut token_first_byte = 0u8;
 
-    let first = cursor
-        .current_byte()
-        .ok_or_else(|| UploadError::other("Unexpected end of buffer"))?;
-
-    if first == b'"' {
-        return Ok(u64::from(skip_string_nonempty(cursor).await?));
-    }
-
-    if first == b'{' || first == b'[' {
-        cursor.advance(1);
-        let mut depth: i32 = 1;
-        let mut count: u64 = 0;
-        let mut in_string = false;
-        let mut escaped = false;
-        let mut in_token = false;
-        let mut token_first_byte = 0u8;
-
-        loop {
-            let buf = cursor.buffer().to_vec(); // Copy to avoid borrow issues
-            let mut i = cursor.pos();
+    loop {
+        let start = cursor.pos();
+        // Scanned through a borrow of the buffer rather than a clone of it.
+        // The clone was there to dodge a borrow conflict with the `advance`
+        // calls below, and it cost a copy of the whole chunk — up to 16 MiB,
+        // transiently doubling the reader's peak — once per chunk, for a
+        // scanner whose entire reason to exist is bounded memory. Scoping
+        // the borrow and applying the advance afterwards removes both the
+        // copy and the conflict.
+        let (scanned_to, closed) = {
+            let buf = cursor.buffer();
+            let mut i = start;
+            let mut closed = false;
 
             while let Some(&b) = buf.get(i) {
                 if in_string {
@@ -521,9 +576,8 @@ async fn count_value<F: FnMut(u64, u64)>(cursor: &mut BlobCursor<F>) -> Result<u
                         depth -= 1;
                         i += 1;
                         if depth == 0 {
-                            let advance_by = i - cursor.pos();
-                            cursor.advance(advance_by);
-                            return Ok(count);
+                            closed = true;
+                            break;
                         }
                     }
                     b':' | b',' | b' ' | b'\t' | b'\n' | b'\r' => {
@@ -537,46 +591,100 @@ async fn count_value<F: FnMut(u64, u64)>(cursor: &mut BlobCursor<F>) -> Result<u
                 }
             }
 
-            let advance_by = i - cursor.pos();
-            cursor.advance(advance_by);
+            (i, closed)
+        };
+        cursor.advance(scanned_to - start);
 
-            if !cursor.fill().await? {
-                return Err(UploadError::other(
-                    "Unexpected EOF while scanning nested JSON value",
-                ));
-            }
+        if closed {
+            return Ok(count);
         }
+
+        if !cursor.fill().await? {
+            return Err(UploadError::other(
+                "Unexpected EOF while scanning nested JSON value",
+            ));
+        }
+    }
+}
+
+/// Counts the number of non-null "leaf" values inside a JSON value.
+/// Nested objects/arrays are flattened and counted recursively in a
+/// single synchronous pass; strings count as 1 if non-empty; numbers
+/// and booleans count as 1; `null` counts as 0.
+///
+/// Compiled for tests as well as wasm; see [`read_json_key`].
+#[cfg(any(test, target_arch = "wasm32"))]
+#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
+async fn count_value<F: FnMut(u64, u64), S: ChunkSource>(
+    cursor: &mut BlobCursor<F, S>,
+) -> Result<u64, UploadError> {
+    if !cursor.ensure_any().await? {
+        return Ok(0);
+    }
+
+    let first = cursor
+        .current_byte()
+        .ok_or_else(|| UploadError::other("Unexpected end of buffer"))?;
+
+    if first == b'"' {
+        return Ok(u64::from(skip_string_nonempty(cursor).await?));
+    }
+
+    if first == b'{' || first == b'[' {
+        return scan_container(cursor).await;
     }
 
     // Bare scalar at this position: number, true, false, or null.
     let first = cursor.current_byte().unwrap_or(b'n');
     cursor.advance(1);
     loop {
-        let buf = cursor.buffer().to_vec(); // Copy to avoid borrow issues
-        let i = cursor.pos();
-        while let Some(&b) = buf.get(i) {
-            if matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']') {
-                return Ok(u64::from(first != b'n'));
+        // `i` tracked the cursor but was never itself advanced, while `buf` was a
+        // snapshot: the loop read the same byte forever and advanced the cursor
+        // past the end of the stream. A scalar with no delimiter in the rest of
+        // its chunk — which is every scalar at a chunk boundary — spun here
+        // forever. On a multi-gigabyte upload that is a frozen tab, and no test
+        // could reach it. Scanned by index instead, and the borrow scoped so the
+        // `advance` does not need a clone of the chunk to escape it.
+        let (consumed, at_delimiter) = {
+            let buf = cursor.buffer();
+            let mut i = cursor.pos();
+            let mut consumed = 0;
+            let mut at_delimiter = false;
+            while let Some(&b) = buf.get(i) {
+                if matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']') {
+                    at_delimiter = true;
+                    break;
+                }
+                i += 1;
+                consumed += 1;
             }
-            cursor.advance(1);
-        }
-        if !cursor.fill().await? {
+            (consumed, at_delimiter)
+        };
+
+        cursor.advance(consumed);
+
+        if at_delimiter || !cursor.fill().await? {
             return Ok(u64::from(first != b'n'));
         }
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+/// The JSON column grammar, over any [`ChunkSource`].
+///
+/// This is the scanner that runs in the browser, with the browser taken out.
+/// `scan_blob_with_progress` is now three lines that open a `Blob` and hand the
+/// cursor over.
+///
+/// Extracted rather than tested through the wasm entry point, because that entry
+/// point takes a browser `Blob` and so can only run in a browser. Everything that
+/// made this grammar hard to test was downstream of that one parameter.
+#[cfg(any(test, target_arch = "wasm32"))]
 #[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
-async fn scan_blob_with_progress(
-    blob: &Blob,
-    on_progress: impl FnMut(u64, u64),
-) -> Result<Vec<ColumnResult>, String> {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    // browser Blob.size() returns f64, cast to u64 for byte counts
-    let total_bytes = blob.size() as u64;
-    let mut cur = BlobCursor::new(blob, total_bytes, on_progress);
-
+async fn scan_columns<F, S>(cur: &mut BlobCursor<F, S>) -> Result<Vec<ColumnResult>, String>
+where
+    F: FnMut(u64, u64),
+    S: ChunkSource,
+{
     cur.skip_ws().await.map_err(|e| e.to_string())?;
     let Some(open) = cur.next_byte().await.map_err(|e| e.to_string())? else {
         return Ok(Vec::new());
@@ -593,7 +701,7 @@ async fn scan_blob_with_progress(
             break;
         }
 
-        let key = read_json_key(&mut cur).await.map_err(|e| e.to_string())?;
+        let key = read_json_key(cur).await.map_err(|e| e.to_string())?;
         cur.skip_ws().await.map_err(|e| e.to_string())?;
 
         let colon = cur.next_byte().await.map_err(|e| e.to_string())?;
@@ -602,7 +710,7 @@ async fn scan_blob_with_progress(
         }
 
         cur.skip_ws().await.map_err(|e| e.to_string())?;
-        let count = count_value(&mut cur).await.map_err(|e| e.to_string())?;
+        let count = count_value(cur).await.map_err(|e| e.to_string())?;
         fields.push(ColumnResult { key, count });
 
         cur.skip_ws().await.map_err(|e| e.to_string())?;
@@ -619,6 +727,21 @@ async fn scan_blob_with_progress(
     }
 
     Ok(fields)
+}
+
+/// Opens a browser `Blob` and scans it. See [`scan_columns`], which is the part
+/// with the grammar in it.
+#[cfg(target_arch = "wasm32")]
+#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
+async fn scan_blob_with_progress(
+    blob: &Blob,
+    on_progress: impl FnMut(u64, u64),
+) -> Result<Vec<ColumnResult>, String> {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    // browser Blob.size() returns f64, cast to u64 for byte counts
+    let total_bytes = blob.size() as u64;
+    let mut cur = BlobCursor::new(BlobSource::new(blob), total_bytes, on_progress);
+    scan_columns(&mut cur).await
 }
 
 #[cfg(test)]
@@ -960,5 +1083,253 @@ mod escaping {
             out.contains('\u{FFFD}'),
             "and it is the replacement: {out:?}"
         );
+    }
+}
+
+/// Tests for the *streaming* scanner — the one that runs in the browser.
+///
+/// They live here, beside `mod tests` and `mod escaping`, for the same reason
+/// those do: `cargo mutants` discovers tests by path, so a test in the same file
+/// as the function it covers is what lets a mutant be attributed to it.
+///
+/// Everything below is reachable only because the reader became source-generic.
+/// Before, these functions took a browser `Blob`, so this module could not exist:
+/// a test of the production JSON parser needed a browser, which is why a second
+/// in-memory implementation of the same grammar was written and tested instead,
+/// and the two were free to disagree.
+#[cfg(test)]
+mod streaming {
+    use futures_executor::block_on;
+    use upload::{BlobCursor, SliceSource};
+
+    use super::scan_columns;
+
+    /// A cursor over `bytes` with a deliberately tiny chunk size.
+    fn cursor(bytes: &[u8], chunk: usize) -> BlobCursor<fn(u64, u64), SliceSource<'_>> {
+        let on_progress: fn(u64, u64) = |_, _| {};
+        BlobCursor::new(SliceSource::new(bytes), bytes.len() as u64, on_progress)
+            .with_chunk_size(chunk)
+    }
+
+    /// Scans `json` as a column document with `chunk`-byte chunks.
+    fn columns(json: &str, chunk: usize) -> Result<Vec<(String, u64)>, String> {
+        let mut cur = cursor(json.as_bytes(), chunk);
+        block_on(scan_columns(&mut cur)).map(|cols| {
+            cols.into_iter()
+                .map(|c| (c.key, c.count))
+                .collect::<Vec<_>>()
+        })
+    }
+
+    /// The error `columns` produced, for asserting on rather than unwrapping.
+    fn error_of(json: &str, chunk: usize) -> Option<String> {
+        columns(json, chunk).err()
+    }
+
+    // ── the grammar ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn one_column_per_top_level_key() {
+        assert_eq!(
+            columns(r#"{"a":1,"b":2,"c":3}"#, 64),
+            Ok(vec![
+                ("a".to_string(), 1),
+                ("b".to_string(), 1),
+                ("c".to_string(), 1)
+            ]),
+            "one entry per key, in document order"
+        );
+    }
+
+    /// Pinned as it behaves, not as it should: the streaming scanner counts a
+    /// nested object's *key* as a leaf, so `{"y":3}` contributes 2 rather than the
+    /// 1 that `count_non_null_leaves` gives it. The two implementations of this
+    /// grammar disagree, and this is the difference.
+    ///
+    /// Not decided here: it is a question about what the app should report, not
+    /// about the reader — and there was no working result to preserve before the
+    /// `read_json_key` fix, so nothing depended on the old number. The name says
+    /// what it is so nobody reads it as intent.
+    #[test]
+    fn a_nested_objects_key_is_counted_as_a_leaf_which_may_not_be_intended() {
+        assert_eq!(
+            columns(r#"{"x":[1,null,2,{"y":3},null]}"#, 64),
+            Ok(vec![("x".to_string(), 4)]),
+            r#"1 + 2 + the key "y" + 3, with both nulls counting 0"#
+        );
+    }
+
+    #[test]
+    fn nulls_count_nothing_and_everything_else_counts_one() {
+        assert_eq!(
+            columns(r#"{"x":[1,null,2,null,3]}"#, 64),
+            Ok(vec![("x".to_string(), 3)]),
+            "a column of five rows with two nulls is three"
+        );
+    }
+
+    #[test]
+    fn an_empty_object_has_no_columns() {
+        assert_eq!(columns("{}", 64), Ok(Vec::new()));
+    }
+
+    // ── chunk boundaries, which is what the source seam is for ──────────────
+
+    /// The reader's one real obligation: a token means the same thing whether it
+    /// falls inside a chunk or straddles two.
+    ///
+    /// Swept at every chunk size from 1 upward, so every byte offset in the
+    /// document is a boundary somewhere in the sweep. This is the test that found
+    /// all three of the boundary bugs below, each of which hangs or corrupts the
+    /// result at one specific chunk size and looks correct at every other.
+    #[test]
+    fn the_result_does_not_depend_on_where_the_chunks_fall() {
+        const DOC: &str = r#"{"str":"a\"b\\c","arr":[1,[2,{"k":"v"}]],"n":null,"t":true}"#;
+        let whole = columns(DOC, DOC.len());
+        for chunk in 1..=DOC.len() {
+            assert_eq!(
+                columns(DOC, chunk),
+                whole,
+                "chunk size {chunk} changed the answer; the reader is \
+                 boundary-dependent"
+            );
+        }
+    }
+
+    /// The three bugs this module's first run turned up, each pinned at the chunk
+    /// size that triggers it. They are listed together because they are one
+    /// mistake repeated — `read_json_key` and `skip_string_nonempty` implement the
+    /// same scan, and only one of them was right about where the cursor ends up.
+    #[test]
+    fn a_key_split_across_a_chunk_boundary_is_one_key() {
+        // Every third byte is a boundary. `read_json_key` refilled without
+        // draining, so each chunk re-scanned the last one's bytes: this key came
+        // back as "sststrstr".
+        assert_eq!(
+            columns(r#"{"keyname":1}"#, 3),
+            Ok(vec![("keyname".to_string(), 1)]),
+            "each chunk contributes its own bytes exactly once"
+        );
+    }
+
+    #[test]
+    fn a_long_key_spanning_many_chunks_is_not_repeated() {
+        // The same defect with a key long enough to span many chunks, where the
+        // unread `raw` buffer grows on every one of them.
+        let key = "k".repeat(200);
+        let json = format!(r#"{{"{key}":1}}"#);
+        assert_eq!(
+            columns(&json, 4),
+            Ok(vec![(key, 1)]),
+            "the key is read once, not once per chunk it spans"
+        );
+    }
+
+    #[test]
+    fn a_number_split_across_a_chunk_boundary_is_one_number() {
+        assert_eq!(
+            columns(r#"{"n":123456789}"#, 3),
+            Ok(vec![("n".to_string(), 1)]),
+            "digits split three ways are still one leaf"
+        );
+    }
+
+    // ── the escape arm mutants delete most ──────────────────────────────────
+
+    /// The `b'\\'` arm in `skip_string_nonempty` decides whether the next byte is
+    /// a literal, and `delete` on it is among the most common survivors found
+    /// here. Removing it makes `a"b` scan as `a` plus a syntax error.
+    #[test]
+    fn an_escaped_quote_does_not_end_the_string() {
+        assert_eq!(
+            columns(r#"{"k":"a\"b"}"#, 64),
+            Ok(vec![("k".to_string(), 1)]),
+            r#""a\"b" is one string of three characters, not a then an error"#
+        );
+    }
+
+    /// A body ending in a lone backslash: the escape flag is set and the stream
+    /// ends with no closing quote. Truncated multi-gigabyte uploads are ordinary,
+    /// not adversarial, so this must terminate with an error rather than loop
+    /// looking for the quote a whole file would have had.
+    #[test]
+    fn a_body_ending_in_a_lone_backslash_is_an_error_and_not_a_hang() {
+        assert!(
+            error_of(r#"{"k":"a\"#, 64).is_some_and(|e| e.contains("EOF")),
+            "expected an EOF error, got {:?}",
+            error_of(r#"{"k":"a\"#, 64)
+        );
+    }
+
+    #[test]
+    fn an_unterminated_string_is_an_error() {
+        assert!(
+            error_of(r#"{"k":"abc"#, 64).is_some_and(|e| e.contains("EOF")),
+            "expected an EOF error, got {:?}",
+            error_of(r#"{"k":"abc"#, 64)
+        );
+    }
+
+    // ── malformed input is reported, not guessed at ──────────────────────────
+
+    #[test]
+    fn a_document_that_is_not_an_object_is_rejected() {
+        assert_eq!(
+            columns("[1,2,3]", 64),
+            Err("Expected a top-level JSON object".to_string())
+        );
+    }
+
+    #[test]
+    fn a_missing_colon_is_rejected() {
+        assert_eq!(
+            columns(r#"{"k" 1}"#, 64),
+            Err("Expected ':' after object key".to_string())
+        );
+    }
+
+    #[test]
+    fn a_trailing_comma_does_not_invent_a_column() {
+        // The loop breaks on a `,` and then finds EOF. It must stop, not loop
+        // asking for a key that is not there, and it must not report an empty
+        // column as a real one.
+        assert_eq!(
+            columns(r#"{"a":1,}"#, 64),
+            Ok(vec![("a".to_string(), 1)]),
+            "one column read, and the trailing comma added none"
+        );
+    }
+
+    /// The two implementations of this grammar, on the same value.
+    ///
+    /// This is the equivalence that actually exists: `count_non_null_leaves`
+    /// counts the leaves of one JSON value and so does `count_value`. At a
+    /// four-byte chunk the streaming side crosses boundaries throughout.
+    #[test]
+    fn the_streaming_value_counter_matches_the_in_memory_one() {
+        for value in [
+            "1",
+            "null",
+            "true",
+            "false",
+            r#""x""#,
+            r#""""#,
+            r#""a\"b""#,
+            "[]",
+            "{}",
+            "[1,2,3]",
+            "[1,null,2]",
+            r#"[{"y":3}]"#,
+            r#"{"a":null,"b":2}"#,
+            r#"[[1,[2]],{"k":"v"}]"#,
+        ] {
+            let mut cur = cursor(value.as_bytes(), 4);
+            let streamed = block_on(super::count_value(&mut cur));
+            assert_eq!(
+                streamed.as_ref().copied().ok(),
+                Some(super::count_non_null_leaves(value)),
+                "the two implementations disagree on {value:?}: {streamed:?}"
+            );
+        }
     }
 }

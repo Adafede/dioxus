@@ -185,9 +185,10 @@ pub(crate) async fn scan_blob_with_progress(
     blob: &Blob,
     mut on_progress: impl FnMut(u64, u64),
 ) -> std::result::Result<PrecursorStats, UploadError> {
-    let mut reader = upload::BlobLines::new(blob, move |processed, total| {
-        on_progress(processed, total);
-    });
+    let mut reader =
+        upload::BlobLines::new(upload::BlobSource::new(blob), move |processed, total| {
+            on_progress(processed, total);
+        });
 
     let mut current_state = BlockParseState::default();
     let mut current_is_in_block = false;

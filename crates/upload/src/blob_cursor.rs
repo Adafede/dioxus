@@ -15,27 +15,30 @@
 //! file size.  The only `.await` point is `fill()` / `next_line()`, called when
 //! the current buffer is exhausted — never per-byte.
 
-use gloo_timers::future::sleep;
-use js_sys::Uint8Array;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::Blob;
-
+use crate::bytes::ChunkSource;
 use crate::error::UploadError;
 use crate::progress::{PROGRESS_BYTE_INTERVAL, PROGRESS_TIME_INTERVAL_MS, ProgressThrottler};
 
-/// Default chunk size for Blob reads (16 MiB).
+/// Default chunk size per read (16 MiB).
 pub(crate) const CHUNK_SIZE: usize = 16 * 1024 * 1024;
 
-/// Buffered, chunked reader over a [`Blob`] with byte-level access.
+/// Buffered, chunked reader with byte-level access.
 ///
-/// Holds a single in-flight chunk (`buf[pos..]`) and only performs an async
-/// Blob read when that chunk is exhausted.  All parsing happens synchronously
-/// on the buffer content.
+/// Holds a single in-flight chunk (`buf[pos..]`) and only performs an async read
+/// when that chunk is exhausted. All parsing happens synchronously on the buffer
+/// content.
+///
+/// Generic over its [`ChunkSource`], so the browser reads a `Blob` and a host
+/// test reads a slice, through identical code. `total_bytes` is a separate
+/// constructor argument rather than the source's length because the browser
+/// callers pass an upload total that is not the file's size — the denominator of
+/// a progress bar is often a multi-file total.
 #[derive(Debug)]
-pub struct BlobCursor<F> {
-    blob: Blob,
+pub struct BlobCursor<F, S: ChunkSource> {
+    source: S,
     total_bytes: u64,
-    blob_read: u64,
+    chunk_size: usize,
+    source_read: u64,
     buf: Vec<u8>,
     pos: usize,
     processed_before_buf: u64,
@@ -43,28 +46,43 @@ pub struct BlobCursor<F> {
     progress: ProgressThrottler<F, fn() -> f64>,
 }
 
-impl<F> BlobCursor<F>
+impl<F, S> BlobCursor<F, S>
 where
     F: FnMut(u64, u64),
+    S: ChunkSource,
 {
-    /// Creates a new cursor for reading from a `Blob` with progress reporting.
+    /// Creates a new cursor reading from `source` with progress reporting.
     #[must_use]
-    pub fn new(blob: &Blob, total_bytes: u64, on_progress: F) -> Self {
+    pub fn new(source: S, total_bytes: u64, on_progress: F) -> Self {
         Self {
-            blob: blob.clone(),
+            source,
             total_bytes,
-            blob_read: 0,
+            chunk_size: CHUNK_SIZE,
+            source_read: 0,
             buf: Vec::with_capacity(CHUNK_SIZE),
             pos: 0,
             processed_before_buf: 0,
             eof: false,
             progress: ProgressThrottler::new(
                 on_progress,
-                js_sys::Date::now,
+                S::clock(),
                 PROGRESS_BYTE_INTERVAL,
                 PROGRESS_TIME_INTERVAL_MS,
             ),
         }
+    }
+
+    /// Overrides the chunk size, for testing.
+    ///
+    /// The reader's one real obligation is that it behaves identically whether a
+    /// token falls inside one chunk or straddles two, and that obligation is
+    /// untestable at 16 MiB — the only way to reach a boundary is to supply more
+    /// data than any test should hold. A four-byte chunk puts boundaries
+    /// everywhere a short input can reach, which is the only reason this exists.
+    #[must_use]
+    pub fn with_chunk_size(mut self, bytes: usize) -> Self {
+        self.chunk_size = bytes.max(1);
+        self
     }
 
     /// Current position in the stream (including bytes in previous buffers).
@@ -79,15 +97,14 @@ where
         self.total_bytes
     }
 
-    /// Drops consumed bytes and pulls the next chunk from the blob.
+    /// Drops consumed bytes and pulls the next chunk from the source.
     ///
     /// Returns `Ok(true)` if data is available to read, `Ok(false)` when the
     /// stream is fully exhausted and the buffer is empty.
     ///
     /// # Errors
     ///
-    /// Returns [`UploadError`] if the browser `Blob.slice` or `array_buffer`
-    /// call fails.
+    /// Returns [`UploadError`] if the underlying chunk read fails.
     pub async fn fill(&mut self) -> Result<bool, UploadError> {
         if self.pos > 0 {
             self.buf.drain(0..self.pos);
@@ -99,34 +116,18 @@ where
             return Ok(!self.buf.is_empty());
         }
 
-        let start = self.blob_read;
-        let end = (self.blob_read + CHUNK_SIZE as u64).min(self.total_bytes);
+        let start = self.source_read;
+        let end = (self.source_read + self.chunk_size as u64).min(self.total_bytes);
         if start >= end {
             self.eof = true;
             return Ok(!self.buf.is_empty());
         }
 
-        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-        let slice = self
-            .blob
-            .slice_with_f64_and_f64(start as f64, end as f64)
-            .map_err(UploadError::from)?;
-        let array_buffer = JsFuture::from(slice.array_buffer()).await?;
-        let array = Uint8Array::new(&array_buffer);
+        let chunk = self.source.read_chunk(start, end).await?;
+        self.buf.extend_from_slice(&chunk);
 
-        let old_len = self.buf.len();
-        #[allow(clippy::cast_possible_truncation)]
-        let add_len = (end - start) as usize;
-        self.buf.resize(old_len + add_len, 0);
-        // The resize above is what makes the tail slot exist, so this cannot
-        // miss; `get_mut` is here so that if it ever did, the chunk is dropped
-        // rather than the whole upload panicking mid-stream.
-        if let Some(tail) = self.buf.get_mut(old_len..old_len + add_len) {
-            array.copy_to(tail);
-        }
-
-        self.blob_read = end;
-        if self.blob_read >= self.total_bytes {
+        self.source_read = end;
+        if self.source_read >= self.total_bytes {
             self.eof = true;
         }
 
@@ -135,7 +136,7 @@ where
             .maybe_report(self.processed(), self.total_bytes)
         {
             // Yield to the event loop only when progress is reported.
-            sleep(std::time::Duration::from_millis(0)).await;
+            self.source.yield_now().await;
         }
 
         Ok(true)

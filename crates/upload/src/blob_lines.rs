@@ -8,55 +8,67 @@
 //! splits the stream into `\n`-delimited lines, which is the natural unit for
 //! text-based formats such as MGF blocks, SMILES lists, and CSV records.
 
-use gloo_timers::future::TimeoutFuture;
-use js_sys::Uint8Array;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::Blob;
-
+use crate::bytes::ChunkSource;
 use crate::error::UploadError;
 use crate::progress::ProgressThrottler;
 use crate::progress::{PROGRESS_BYTE_INTERVAL, PROGRESS_TIME_INTERVAL_MS};
 
-/// A line-oriented, chunked reader over a browser [`Blob`].
+/// A line-oriented, chunked reader.
 ///
 /// Yields `String` lines (without trailing `\n` or `\r`) one at a time via
-/// [`next_line`](Self::next_line).  Internally buffers one 16 MiB chunk.
+/// [`next_line`](Self::next_line). Internally buffers one 16 MiB chunk.
+///
+/// Generic over its [`ChunkSource`], so the browser reads a `Blob` and a host
+/// test reads a slice, through identical code.
 #[derive(Debug)]
-pub struct BlobLines<F> {
-    blob: Blob,
+pub struct BlobLines<F, S: ChunkSource> {
+    source: S,
     total_bytes: u64,
     offset: u64,
     buffer: Vec<u8>,
     buf_start: usize,
+    chunk_size: usize,
     processed: u64,
     progress: ProgressThrottler<F, fn() -> f64>,
 }
 
-impl<F> BlobLines<F>
+impl<F, S> BlobLines<F, S>
 where
     F: FnMut(u64, u64),
+    S: ChunkSource,
 {
-    /// Creates a new line reader for the given blob.
+    /// Creates a new line reader over `source`.
     #[must_use]
-    pub fn new(blob: &Blob, on_progress: F) -> Self {
+    pub fn new(source: S, on_progress: F) -> Self {
+        let total_bytes = source.total_bytes();
         Self {
-            blob: blob.clone(),
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            total_bytes: blob.size() as u64,
+            source,
+            total_bytes,
             offset: 0,
+            chunk_size: crate::blob_cursor::CHUNK_SIZE,
             buffer: Vec::with_capacity(crate::blob_cursor::CHUNK_SIZE),
             buf_start: 0,
             processed: 0,
             progress: ProgressThrottler::new(
                 on_progress,
-                js_sys::Date::now,
+                S::clock(),
                 PROGRESS_BYTE_INTERVAL,
                 PROGRESS_TIME_INTERVAL_MS,
             ),
         }
     }
 
-    /// Total blob size in bytes.
+    /// Overrides the chunk size, for testing.
+    ///
+    /// See [`BlobLines`]' reason: a line straddling a chunk boundary is the one
+    /// thing a line reader can get wrong, and at 16 MiB no test can reach one.
+    #[must_use]
+    pub fn with_chunk_size(mut self, bytes: usize) -> Self {
+        self.chunk_size = bytes.max(1);
+        self
+    }
+
+    /// Total bytes in the source.
     #[must_use]
     pub const fn total_bytes(&self) -> u64 {
         self.total_bytes
@@ -113,23 +125,14 @@ where
 
     async fn load_next_chunk(&mut self) -> Result<(), UploadError> {
         let start = self.offset;
-        let end = (self.offset + crate::blob_cursor::CHUNK_SIZE as u64).min(self.total_bytes);
-        #[allow(clippy::cast_precision_loss)]
-        let slice = self
-            .blob
-            .slice_with_f64_and_f64(start as f64, end as f64)
-            .map_err(UploadError::from)?;
-        let bytes = JsFuture::from(slice.array_buffer()).await?;
-        let array = Uint8Array::new(&bytes);
-        let chunk_len = array.byte_length() as usize;
-        let mut chunk_bytes = vec![0u8; chunk_len];
-        array.copy_to(&mut chunk_bytes);
+        let end = (self.offset + self.chunk_size as u64).min(self.total_bytes);
+        let chunk_bytes = self.source.read_chunk(start, end).await?;
         self.buffer.extend_from_slice(&chunk_bytes);
         self.offset = end;
         self.processed = self.processed.saturating_add((end - start).max(1));
         if self.progress.maybe_report(self.processed, self.total_bytes) {
             // Yield to the event loop so the UI stays responsive.
-            TimeoutFuture::new(0).await;
+            self.source.yield_now().await;
         }
         Ok(())
     }

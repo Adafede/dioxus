@@ -28,12 +28,18 @@
 #![cfg_attr(target_arch = "wasm32", allow(clippy::future_not_send))]
 #![warn(missing_docs)]
 
-/// WASM-only: byte-level chunked reader over a browser `Blob`.
-#[cfg(target_arch = "wasm32")]
+/// Byte-level chunked reader.
+///
+/// Not wasm-gated, and that is the point: it reads from a
+/// [`ChunkSource`](bytes::ChunkSource), so it compiles — and can be tested —
+/// anywhere. Gating it on `cfg(test)` would not have worked, because `cfg(test)`
+/// applies to this crate's own unit tests and not to a downstream crate's, which
+/// is where the parser that needed testing lives.
 pub mod blob_cursor;
-/// WASM-only: line-oriented chunked reader over a browser `Blob`.
-#[cfg(target_arch = "wasm32")]
+/// Line-oriented chunked reader. See [`blob_cursor`].
 pub mod blob_lines;
+/// Where the chunked readers get their bytes.
+pub mod bytes;
 /// Download helpers (browser-triggered and native stubs).
 mod download;
 /// Unified error type for all upload operations.
@@ -41,13 +47,16 @@ mod error;
 /// Drag-and-drop / file-input event extraction.
 mod event;
 /// Throttled progress reporting.
-#[cfg(target_arch = "wasm32")]
+///
+/// Portable: the clock is injected as a `fn() -> f64` rather than being
+/// `js_sys::Date::now`, which is what let this move off wasm.
 pub mod progress;
 
-#[cfg(target_arch = "wasm32")]
 pub use blob_cursor::BlobCursor;
-#[cfg(target_arch = "wasm32")]
 pub use blob_lines::BlobLines;
+#[cfg(target_arch = "wasm32")]
+pub use bytes::BlobSource;
+pub use bytes::{ChunkSource, SliceSource};
 pub use download::download_text;
 pub use error::UploadError;
 pub use event::{Blob, ExtractedFile, extract_blob_from_file_data};

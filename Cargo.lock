@@ -2113,6 +2113,7 @@ name = "json-count-rs"
 version = "0.1.0"
 dependencies = [
  "dioxus",
+ "futures-executor",
  "js-sys",
  "ui",
  "upload",

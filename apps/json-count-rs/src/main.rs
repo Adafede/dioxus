@@ -31,7 +31,7 @@ fn main() {
     launch(app);
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 struct ColumnResult {
     key: String,
     count: u64,
