@@ -94,13 +94,25 @@ jobs:
           tool: |
             cargo-make@0.37.24
             cargo-nextest@0.9.146
-            tombi-cli@1.6.1
             typos-cli@1.50.3
             cargo-hack@0.6.45
             cargo-deny@0.20.2
             cargo-audit@0.22.2
             cargo-machete@0.9.2
             cargo-readme@3.4.0
+
+      # `tombi` comes from its GitHub release, not from install-action: the
+      # `tombi-cli` crate on crates.io is a 0.0.1 placeholder with no binary, so
+      # `tombi-cli@1.6.1` here fails with "no version matching requirement
+      # '=1.6.1'". That is what this run's Gate job died on. `install-tombi.sh`
+      # is the same script `setup.sh` uses, so the two cannot fetch differently;
+      # the version comes out of `prek.toml`, which is also where the git hook
+      # reads it from, so there is one pin.
+      - name: Install tombi from its GitHub release
+        run: |
+          TOMBI_VERSION=$(sed -n '/tombi-pre-commit/{n;s/rev = "v\([^"]*\)"/\1/p;}' prek.toml | head -1)
+          echo "tombi ${TOMBI_VERSION}"
+          TOMBI_VERSION="$TOMBI_VERSION" bash make/scripts/install-tombi.sh
 
       # `panache` is installed from source, not through install-action, and the
       # reason is an upstream packaging bug rather than a preference.

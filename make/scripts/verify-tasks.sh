@@ -41,19 +41,22 @@ if [ -n "$missing" ]; then
 fi
 echo "    ${gate} listed"
 
-# Task -> the crate or release `setup` installs for it. A gate task whose tool is
-# not installed by `setup` is the drift this catches.
+# Task -> the exact line in `setup.sh` that installs the tool it calls.
 #
-# The identifier is the crate name rather than the command, because that is what
-# the `install <crate> <version>` lines in `setup.sh` name. `cargo fmt`,
-# `cargo check`, `cargo clippy`, `cargo test` and `cargo doc` are the pinned
-# toolchain itself -- rustup installs them from `rust-toolchain.toml`, so there is
-# nothing for `setup` to install and nothing to check.
+# The line, not the tool's name. A grep for `tombi` is satisfied by the word
+# appearing in a comment, which is how this check passed while `setup.sh` had no
+# working tombi install at all: the sentence explaining why tombi cannot be
+# installed the usual way contained the word. So each marker below is a command,
+# and a comment does not contain one.
+#
+# `cargo fmt`, `cargo check`, `cargo clippy`, `cargo test` and `cargo doc` are
+# the pinned toolchain itself -- rustup installs them from `rust-toolchain.toml`,
+# so there is nothing for `setup` to install and nothing to check.
 echo "==> gate tasks vs ./mk setup"
-declare -a crate_of_task=(
+declare -a install_line_of_task=(
   "fmt-check=rustup"
-  "tombi-check=tombi"
-  "tombi-lint=tombi"
+  "tombi-check=bash make/scripts/install-tombi.sh"
+  "tombi-lint=bash make/scripts/install-tombi.sh"
   "typos=typos-cli"
   "check=rustup"
   "lint=rustup"
@@ -62,7 +65,7 @@ declare -a crate_of_task=(
   "doc=rustup"
   "check-wasm=rustup"
   "lint-wasm=rustup"
-  "readme-check=cargo-readme"
+  "readme-check=cargo-readme 3.4.0"
   "feature-powerset=cargo-hack"
   "machete=cargo-machete"
   "deny=cargo-deny"
@@ -70,11 +73,14 @@ declare -a crate_of_task=(
 )
 
 undeclared=""
-for entry in "${crate_of_task[@]}"; do
+for entry in "${install_line_of_task[@]}"; do
   task="${entry%%=*}"
-  crate="${entry#*=}"
-  if ! grep -qF "$crate" make/scripts/setup.sh; then
-    undeclared="$undeclared\n  $task calls '$crate', which './mk setup' does not install"
+  line="${entry#*=}"
+  if [ "$line" = "rustup" ]; then
+    continue
+  fi
+  if ! grep -qF "$line" make/scripts/setup.sh; then
+    undeclared="$undeclared\n  $task needs '$line', which is not in ./mk setup"
   fi
 done
 if [ -n "$undeclared" ]; then

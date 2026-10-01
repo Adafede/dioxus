@@ -92,32 +92,22 @@ install_tool cargo-readme 3.4.0
 echo "==> panache 3.13.0"
 cargo install --locked panache --version 3.13.0 --bin panache
 
-# TOML is handled by tombi, which is the tool the git hooks already run through
-# `tombi-pre-commit`. It is NOT on crates.io: the `tombi-cli` crate there is a
-# 0.0.1 placeholder with no binary, so `cargo install tombi-cli` produces
-# nothing. The real binary is a GitHub release, and the version is read from
-# `prek.toml` so the hook and this cannot be pinned to different releases -- the
-# same reasoning as `dx` below, and for the same reason.
+# TOMBI is the TOML formatter and linter, and the tool the git hooks run through
+# `tombi-pre-commit`. It cannot be installed the way everything above is: the
+# `tombi-cli` crate on crates.io is a 0.0.1 placeholder with no binary, so
+# `cargo binstall tombi-cli@1.6.1` fails with "no version matching requirement"
+# and `cargo install tombi-cli` produces nothing. The real one is a GitHub
+# release, and `install-tombi.sh` is the one place that knows how to fetch it.
+#
+# The CI workflow calls the same script, because when its install list said
+# `tombi-cli@1.6.1` the Gate job died with exactly that error -- the knowledge was
+# written down here and not acted on there.
+#
+# The version is read from `prek.toml` so the hook and the installer cannot be
+# pinned to different releases.
 TOMBI_VERSION=$(sed -n '/tombi-pre-commit/{n;s/rev = "v\([^"]*\)"/\1/p;}' prek.toml | head -1)
 : "${TOMBI_VERSION:?could not read the tombi version from prek.toml}"
-echo "==> tombi ${TOMBI_VERSION}"
-if ! command -v tombi >/dev/null 2>&1 || [ "$(tombi --version 2>/dev/null)" != "tombi ${TOMBI_VERSION} "* ]; then
-  case "$(uname -s)/$(uname -m)" in
-    Darwin/arm64) tombi_asset="tombi-cli-${TOMBI_VERSION}-aarch64-apple-darwin.tar.gz" ;;
-    Darwin/x86_64) tombi_asset="tombi-cli-${TOMBI_VERSION}-x86_64-apple-darwin.tar.gz" ;;
-    Linux/aarch64|Linux/arm64) tombi_asset="tombi-cli-${TOMBI_VERSION}-aarch64-unknown-linux-musl.tar.gz" ;;
-    Linux/x86_64) tombi_asset="tombi-cli-${TOMBI_VERSION}-x86_64-unknown-linux-musl.tar.gz" ;;
-    *) echo "no tombi release asset for $(uname -s)/$(uname -m)" >&2; exit 1 ;;
-  esac
-  tombi_dir=$(mktemp -d)
-  curl -fsSL --retry 3 --retry-all-errors \
-    "https://github.com/tombi-toml/tombi/releases/download/v${TOMBI_VERSION}/${tombi_asset}" \
-    | tar xz -C "$tombi_dir"
-  install -m 755 "$tombi_dir"/*/tombi "${CARGO_HOME:-$HOME/.cargo}/bin/tombi"
-  rm -rf "$tombi_dir"
-else
-  echo "    tombi is already ${TOMBI_VERSION}"
-fi
+TOMBI_VERSION="$TOMBI_VERSION" bash make/scripts/install-tombi.sh
 
 # The Dioxus CLI, for the `web-*` and `cli` tasks. The version is read out of the
 # lockfile rather than the manifest: the manifest says `0.7`, and the resolved
