@@ -14,9 +14,9 @@ pub(crate) use app_card::AppCard;
 pub(crate) struct AppInfo {
     /// Unique identifier, used as the Dioxus list key in [`AppCard`].
     pub(crate) id: &'static str,
-    /// Emoji and title (e.g., "🪷 LOTUS Wikidata Explorer").
+    /// Emoji and title (e.g., "🧀 Lipid Selecto-rs").
     pub(crate) title: &'static str,
-    /// Relative path to application (e.g., "./lotus-explore-rs/").
+    /// Path under the deployed root (e.g., "./lipid-selecto-rs/").
     pub(crate) path: &'static str,
     /// Short, clear description of functionality.
     pub(crate) description: &'static str,

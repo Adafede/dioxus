@@ -160,14 +160,12 @@ struct UploadCtx {
     input_format: Signal<Option<LipidFormat>>,
 }
 
-/// Shared WASM/native branch previously inlined in both `file_change` and
-/// `on_drop`; collapses the duplicated `#[cfg(target_arch = "wasm32")]` block.
-/// `ctx` is taken by value (`Signal`s are `Copy` handles, so `.set` mutates the
-/// shared state the snapshot points at).
-/// Resolves a dropped or browsed file: extracts its blob and delegates to the
-/// wasm/native `process_file_upload` branch, reporting status on empty/failed
-/// extraction. Collapses the match previously duplicated in both the `file_change`
-/// and `drop` handlers.
+/// Acts on an already-extracted file: sniffs its format from the name and hands it
+/// to the wasm/native `process_file_upload` branch, reporting status when
+/// extraction produced nothing.
+///
+/// `Signals` are `Copy` handles, so taking `ctx` by value and calling `.set` on
+/// its fields still mutates the shared state the caller's snapshot points at.
 fn handle_uploaded_files(
     mut ctx: UploadCtx,
     result: Result<Option<upload::ExtractedFile>, String>,

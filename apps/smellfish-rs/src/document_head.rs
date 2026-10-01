@@ -3,9 +3,10 @@
 
 //! Programmatic document `<head>` management for smellfish-rs.
 //!
-//! Replaces the static `index.html` with Rust code that sets meta tags,
-//! loads CDN scripts, the local motif-library bridge, and inline
-//! RDKit/NP-likeness bridge code (now extracted to [`crate::rdkit_bridge`]).
+//! Sets meta tags, loads CDN scripts, the local motif-library bridge, and the
+//! stylesheet from [`crate::styles::CSS`].
+//!
+//! The RDKit/NP-likeness bridge JavaScript lives in [`crate::rdkit_bridge`].
 
 use crate::rdkit_bridge::RDKIT_BRIDGE_JS;
 use crate::styles::CSS;
@@ -13,10 +14,6 @@ use dioxus::prelude::*;
 use ui::prelude::*;
 
 /// Renders the document `<head>` for smellfish-rs.
-///
-/// Replaces `<meta>`, `<script>`, `<link>` tags from `index.html` with
-/// `dioxus::document` elements.  The `RDKit` bridge JS, motif-library loader,
-/// and NP-likeness model are added programmatically.
 #[component]
 pub fn SmellfishDocumentHead() -> Element {
     let description = "Drop a CSV of SMILES, render molecules with RDKit.js, and score \

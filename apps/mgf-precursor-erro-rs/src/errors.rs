@@ -3,10 +3,9 @@
 
 //! Typed error type for `mgf-precursor-erro-rs`.
 //!
-//! Replaces the bare `.unwrap()` panics on plotters drawing back-end operations
-//! (`fill` / `present` / `draw`) with explicit `Result` propagation via
-//! [`MgfError`] and the `?` operator, matching the typed-error convention used
-//! by `crates/lotus` and `crates/upload`.
+//! Failures from plotters' drawing back-end operations (`fill` / `present` /
+//! `draw`) propagate as [`MgfError`] through `?` rather than panicking,
+//! matching the convention in `crates/upload`.
 use std::fmt;
 
 use plotters::drawing::DrawingAreaErrorKind;

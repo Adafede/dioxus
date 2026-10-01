@@ -6,25 +6,19 @@
 //! Counts non-null values per top-level key of an uploaded JSON object using a
 //! streaming `BlobCursor`, keeping memory bounded for multi-gigabyte files.
 //!
-//! # Two implementations of one grammar, and why that was a mistake
+//! # Two implementations of one grammar
 //!
-//! This file used to hold two: `count_non_null_leaves`, an in-memory scanner over
-//! a `&str`, and the streaming one above it, which is the one that actually runs
-//! in the browser over files too large to hold in memory. The first was tested and
-//! the second was not, and the reason was not a decision — it was that the second
-//! took a browser `Blob`, once through `BlobCursor`, so `cfg(target_arch =
-//! "wasm32")` was the only honest gate and every test of it would have needed a
-//! browser.
+//! Two, and only the second one ships: `count_value` is the streaming scanner the
+//! browser runs, over files too large to hold in memory. `count_non_null_leaves`
+//! is `#[cfg(test)]`-only and exists as its oracle — `mod streaming` asserts the
+//! two agree, which is what makes the one difference between them (the streaming
+//! side counts a nested object's *key* as a leaf) visible at all. That
+//! divergence is pinned, not endorsed; see
+//! `a_nested_objects_key_is_counted_as_a_leaf_which_may_not_be_intended`.
 //!
-//! `upload::bytes::ChunkSource` removes that reason. The streaming reader now
-//! takes a source rather than a `Blob`, so the streaming scanner compiles and runs
-//! on the host, and `mod streaming` tests it — including at chunk boundaries,
-//! which the 16 MiB default put permanently out of reach.
-//!
-//! `count_non_null_leaves` is still here and still tested. Whether one grammar
-//! should be two implementations is a real question and this change is not the
-//! answer to it; what it removes is the excuse for not knowing which one the
-//! browser was using.
+//! The streaming reader takes an `upload::bytes::ChunkSource` rather than a
+//! `Blob`, so `count_value` compiles and runs on the host and can be tested at
+//! chunk boundaries the 16 MiB default would otherwise put out of reach.
 
 #[cfg(any(test, target_arch = "wasm32"))]
 use crate::ColumnResult;

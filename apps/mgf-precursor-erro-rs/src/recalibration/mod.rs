@@ -3,7 +3,7 @@
 
 //! MS2 fragment recalibration over MGF content.
 //!
-//! Split by responsibility (previously a single 833-line file):
+//! Split by responsibility:
 //! - `types` — `CalibrationModel` / `Peak` definitions.
 //! - `parsing` — MGF line parsing (pepmass directives + fragment lines).
 //! - `calibration` — per-fragment calibration math.

@@ -3,7 +3,7 @@
 
 //! Plotting / SVG rendering helpers for mgf-precursor-erro-rs.
 //!
-//! Previously a single 1477-line god-file; split by responsibility into:
+//! Split by responsibility into:
 //! - `color` — colour palettes + adduct-family / tolerance-step colours.
 //! - `data` — numeric + data-preparation primitives (ECDF, scatter, legends).
 //! - `scatter` — scatter & ECDF chart renderers.

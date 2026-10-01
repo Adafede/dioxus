@@ -4,12 +4,11 @@
 //! The SPARQL this app sends, built from a list of InChIKeys.
 //!
 //! These three functions build strings and nothing else — no browser API, no
-//! HTTP, no Dioxus — and they used to live in `qlever`, which is
-//! `#[cfg(target_arch = "wasm32")]`. The host test build never compiled them,
-//! so a query that is wrong in a way only the endpoint notices is exactly the
-//! failure with no test. They are here, ungated, because query construction and
-//! transport are separate concerns: `sparql` is the transport, this is the
-//! query, and `qlever` is what puts the two together.
+//! HTTP, no Dioxus — and they are deliberately ungated, because `qlever`, which
+//! owns the transport and is `#[cfg(target_arch = "wasm32")]`, is the only thing
+//! that combines them. A host build compiles none of that, so a query malformed
+//! in a way only the endpoint notices would otherwise be the one failure with no
+//! test.
 
 /// Build Wikidata LOTUS query for WDQS (standard nested SELECT approach).
 pub(crate) fn build_lotus_query_wdqs(inchikeys: &[String]) -> String {

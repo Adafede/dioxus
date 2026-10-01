@@ -3,10 +3,8 @@
 
 //! Unified error type for all upload/read/download operations.
 //!
-//! Replaces the ad-hoc `ScanError(JsValue)` from the old `file-upload` crate
-//! and the `String` error plumbing scattered across apps.  The WASM-specific
-//! `JsValue` is converted to a human-readable string at the boundary so the
-//! error type itself is platform-agnostic.
+//! The WASM-specific `JsValue` is converted to a human-readable string at the
+//! boundary so the error type itself is platform-agnostic.
 
 use thiserror::Error;
 

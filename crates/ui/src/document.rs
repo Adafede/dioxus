@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Programmatic document head management — replaces static `index.html` files.
+//! Programmatic document head management.
 //!
 //! Uses [`dioxus::document`] to set `<head>` content from Rust code.
 //! All elements are deduplicated and inserted once after first render.
@@ -227,8 +227,8 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
             );
         }
 
-        // CSS is loaded as external <link> tags in the custom index.html template
-        // (apps/lotus-explore-rs/index.html), no longer injected inline here.
+        // No CSS is injected here. An app that wants it supplies its own rule:
+        // smellfish-rs passes its stylesheet through `document::Style`.
 
         // Inline JavaScript — wrapped in an IIFE so `const`/`let` declarations
         // don't leak into the global scope (which causes

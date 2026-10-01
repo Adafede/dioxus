@@ -2,10 +2,6 @@
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
 //! Browser download helpers — text content.
-//!
-//! Consolidates the per-app download patterns that were previously inlined in
-//! `json-count-rs`, `mgf-precursor-erro-rs`, `lipid-selecto-rs`, and
-//! `lotus-explore-rs`.
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::Array;
