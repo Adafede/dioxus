@@ -12,8 +12,8 @@
 //!   SMILES, CSV).
 //! - Throttled progress callbacks on both readers — byte- and time-gated so a
 //!   multi-gigabyte upload does not flood the UI thread. The throttling type is
-//!   crate-private; apps pass a closure to [`BlobCursor::new`] or
-//!   [`BlobLines::new`].
+//!   crate-private; apps pass a closure to `BlobCursor::new` or
+//!   `BlobLines::new`.
 //! - **`extract_blob_from_file_data`** — unified file-input / drag-drop
 //!   extraction over `&[FileData]`.
 //! - **`download_text`** — browser download of text content.
