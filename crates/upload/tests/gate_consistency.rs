@@ -1116,3 +1116,70 @@ fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
     );
     Ok(())
 }
+
+/// `smarts-evoliposuction` is excluded from the workspace, so nothing in CI
+/// compiles it, tests it, or lints it. It sat that way while not compiling at
+/// all: it imported `smiles_parser`, which is not in its manifest, and the root
+/// `Cargo.toml` claimed it "builds when the line above is uncommented".
+///
+/// Neither claim is checkable from here -- building it needs its three git
+/// dependencies and a network -- so what this asserts is the part that is: that
+/// it is *excluded* rather than half-membered, that it declares itself a
+/// standalone workspace (without which Cargo refuses to build it at all), and
+/// that it no longer inherits anything, because inheritance requires membership
+/// and would silently reintroduce the state this test exists to catch.
+///
+/// `cargo build` in that directory is still the real check, and still not
+/// something `./mk ci` can run. Kept here so the exclusion is at least a
+/// decision that is written down and checked, rather than a stale comment.
+#[test]
+fn the_excluded_tool_declares_itself_a_standalone_workspace() -> Result<()> {
+    const TOOL: &str = "apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction";
+
+    let root_manifest = read("Cargo.toml")?;
+    assert!(
+        root_manifest.contains(&format!("exclude = [\"{TOOL}\"]")),
+        "{TOOL} is not in the root `exclude`. Either it was added to `members`, \
+         which changes the shipped dependency graph, or it is neither a member \
+         nor excluded -- in which case Cargo refuses to build it."
+    );
+    assert!(
+        !root_manifest.contains(&format!("\"{TOOL}\",")),
+        "{TOOL} is back in `members`"
+    );
+
+    let tool_manifest = read(&format!("{TOOL}/Cargo.toml"))?;
+
+    // Comments are stripped before anything is searched. The manifest explains at
+    // length why it neither inherits nor joins the workspace, and that prose
+    // quotes `[workspace]` and `workspace = true` verbatim -- so a search over the
+    // raw text finds this test's own subject matter in a comment and passes a
+    // manifest that has the very problem being looked for. Not hypothetical:
+    // deleting the `[workspace]` table left the test green until this.
+    let code: String = tool_manifest
+        .lines()
+        .filter(|l| !l.trim_start().starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    assert!(
+        code.contains("[workspace]"),
+        "{TOOL}/Cargo.toml has no `[workspace]` table, so Cargo walks up to the \
+         root, finds it is not a member, and refuses to build it"
+    );
+
+    for inherit in [
+        ".workspace = true",  // [package] and [lints] inheritance
+        "{ workspace = true", // dependency inheritance
+        "{ workspace = true,",
+    ] {
+        assert!(
+            !code.contains(inherit),
+            "{TOOL}/Cargo.toml contains `{inherit}` outside a comment, so it \
+             still inherits from the workspace, which requires being a member. \
+             Either the values are spelled out or it is back in `members`."
+        );
+    }
+
+    Ok(())
+}

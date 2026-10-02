@@ -81,6 +81,7 @@ pub enum SdfConvertError {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used)] // tests unwrap fixtures to fail-fast rather than assert on the error
 mod tests {
     use super::*;
 

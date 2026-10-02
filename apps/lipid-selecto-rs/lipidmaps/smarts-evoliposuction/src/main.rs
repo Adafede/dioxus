@@ -224,11 +224,11 @@ fn split_step(
 
     // Parse TSV (tab-delimited) manually since parse_csv uses comma delimiter
     let lines: Vec<&str> = tsv_text.lines().collect();
-    if lines.is_empty() {
-        return Err("Empty input file".into());
-    }
 
-    let header: Vec<&str> = lines[0].split('\t').collect();
+    let Some(header_line) = lines.first() else {
+        return Err("Empty input file".into());
+    };
+    let header: Vec<&str> = header_line.split('\t').collect();
     let smiles_idx = header
         .iter()
         .position(|&h| h == "SMILES")
@@ -244,21 +244,30 @@ fn split_step(
         .ok_or("Missing SUB_CLASS column")?;
 
     let mut rows = Vec::new();
-    for line in &lines[1..] {
+    for line in lines.iter().skip(1) {
         let cols: Vec<&str> = line.split('\t').collect();
         let max_idx = smiles_idx.max(main_idx).max(sub_idx);
-        if cols.len() > max_idx {
-            let smiles = cols[smiles_idx].trim();
-            if !smiles.is_empty() {
-                rows.push(smarts_evoliposuction::DatasetRow {
-                    smiles: smiles.to_string(),
-                    category: cat_idx
-                        .map_or("", |i| cols.get(i).map_or("", |v| v.trim()))
-                        .to_string(),
-                    main_class: cols[main_idx].trim().to_string(),
-                    subclass: cols[sub_idx].trim().to_string(),
-                });
-            }
+        if cols.len() <= max_idx {
+            continue;
+        }
+        // The length check above already proves all three indices are in range;
+        // saying so with `get` rather than trusting it means the compiler does
+        // too, and a short row is skipped instead of panicking.
+        let (Some(smiles), Some(main_class), Some(subclass)) =
+            (cols.get(smiles_idx), cols.get(main_idx), cols.get(sub_idx))
+        else {
+            continue;
+        };
+        let smiles = smiles.trim();
+        if !smiles.is_empty() {
+            rows.push(smarts_evoliposuction::DatasetRow {
+                smiles: smiles.to_string(),
+                category: cat_idx
+                    .map_or("", |i| cols.get(i).map_or("", |v| v.trim()))
+                    .to_string(),
+                main_class: main_class.trim().to_string(),
+                subclass: subclass.trim().to_string(),
+            });
         }
     }
 

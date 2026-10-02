@@ -164,12 +164,14 @@ pub fn parse_csv(csv_text: &str, columns: &ColumnNames) -> Result<Dataset, Split
     if !missing.is_empty() {
         return Err(SplitError::MissingColumns(missing));
     }
-    let (smiles_idx, cat_idx, main_idx, sub_idx) = (
-        smiles_idx.unwrap(),
-        cat_idx,
-        main_idx.unwrap(),
-        sub_idx.unwrap(),
-    );
+    // One `match` instead of three `unwrap`s. Each of those was unreachable --
+    // `missing` is empty only when all three are `Some` -- but "provably safe
+    // unwrap" is a thing a reader has to re-derive, and this states it. The
+    // `_` arm is the one that reports `missing`, so the error still names every
+    // absent column rather than just the first.
+    let (Some(smiles_idx), Some(main_idx), Some(sub_idx)) = (smiles_idx, main_idx, sub_idx) else {
+        return Err(SplitError::MissingColumns(missing));
+    };
 
     let mut rows = Vec::new();
     for record in reader.records() {
@@ -461,15 +463,19 @@ fn target_negative_count(positive_count: usize, config: &SplitConfig) -> usize {
 /// Sample `k` items from `pool` without replacement (partial Fisher-Yates),
 /// or the whole pool if it has `k` or fewer items.
 fn sample(pool: &[String], k: usize, rng: &mut StdRng) -> Vec<String> {
-    if k >= pool.len() {
-        return pool.to_vec();
+    // Drawn from a shrinking copy rather than from a shuffled index vector:
+    // same partial Fisher-Yates, same uniform choice without replacement, but
+    // there is no index array to slice at the end and no `pool[i]` to bounds
+    // check. The earlier version proved both of those in bounds by construction
+    // -- `k < pool.len()` above, and indices built from `0..pool.len()` -- which
+    // is true but is not something the code said.
+    let mut remaining = pool.to_vec();
+    let mut out = Vec::with_capacity(k.min(remaining.len()));
+    for _ in 0..out.capacity() {
+        let j = rng.random_range(0..remaining.len());
+        out.push(remaining.swap_remove(j));
     }
-    let mut indices: Vec<usize> = (0..pool.len()).collect();
-    for i in 0..k {
-        let j = i + rng.random_range(0..(pool.len() - i));
-        indices.swap(i, j);
-    }
-    indices[..k].iter().map(|&i| pool[i].clone()).collect()
+    out
 }
 
 /// Lowercase, non-alphanumeric runs collapsed to `_`, trimmed, capped at
@@ -537,6 +543,9 @@ fn dedupe_slug(slug: String, original_label: &str, owner: &mut HashMap<String, S
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used)] // tests unwrap fixtures to fail-fast rather than assert on the error
+#[expect(clippy::indexing_slicing)] // tests reach into fixture rows and columns by index
+#[expect(clippy::panic)] // the panic is the assertion
 mod tests {
     use super::*;
 

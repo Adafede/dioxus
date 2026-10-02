@@ -24,7 +24,7 @@ use smarts_evolution::{
     EvolutionTask, FoldData, FoldSample, SeedCorpus, TaskResult,
 };
 use smarts_rs::PreparedTarget;
-use smiles_parser::Smiles;
+use smiles_rs::Smiles;
 
 /// Configuration passed through to `smarts-evolution`'s `EvolutionConfig`.
 ///
@@ -385,6 +385,8 @@ fn prepare_all(lines: &[String]) -> (Vec<PreparedTarget>, usize) {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used)] // tests unwrap fixtures to fail-fast rather than assert on the error
+#[expect(clippy::assert_is_empty)] // the empty case is the thing under test here
 mod tests {
     use super::*;
     use std::io::Write;

@@ -67,6 +67,8 @@ pub fn write_manifest(path: &Path, rows: &[ManifestRow]) -> Result<(), csv::Erro
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used)] // tests unwrap fixtures to fail-fast rather than assert on the error
+#[expect(clippy::indexing_slicing)] // tests reach into fixture rows and columns by index
 mod tests {
     use super::*;
     use std::io::Write;

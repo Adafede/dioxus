@@ -1,43 +1,107 @@
 [package]
 name = "smarts-evoliposuction"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
 description = "Batch SMARTS evolution runner for lipid class classification using smarts-evolution by Luca Cappelletti"
 documentation = "https://docs.rs/smarts-evoliposuction"
 repository = "https://github.com/earth-metabolome-initiative/smarts-evolution"
-license.workspace = true
+license = "AGPL-3.0-only"
 publish = false
+
+# Deliberately NOT a workspace member; see `exclude` in the root `Cargo.toml` for
+# why. That means no `workspace = true` inheritance and no shared lint table --
+# both of which require being a member -- so every value this crate needs is
+# spelled out here instead. It is a standalone binary crate with its own
+# `Cargo.lock`.
+#
+# It previously inherited all of that while being neither a member nor excluded,
+# which is not a working combination: `cargo` refuses to build it, reporting
+# "current package believes it's in a workspace when it's not". The source also
+# did not compile, for the separate reason in `src/evolve.rs`.
+# Opts this crate out of the parent workspace from the inside. `exclude` in the
+# root `Cargo.toml` covers the other direction -- it stops this path being pulled
+# in as a member -- but Cargo still walks up from this directory, finds the root
+# `[workspace]`, finds this package is not a member, and refuses: "current
+# package believes it's in a workspace when it's not". This table is what makes
+# `cargo build` work here.
+[workspace]
 
 [[bin]]
 name = "smarts-evoliposuction"
 path = "src/main.rs"
 
 [dependencies]
-clap = { workspace = true }
-csv = { workspace = true }
-rand = { workspace = true }
-rayon = { workspace = true }
-serde = { workspace = true }
-thiserror = { workspace = true }
+clap = { version = "4.6", features = ["derive"] }
+csv = "1.4"
+rand = "0.10"
+rayon = "1.12"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-reqwest = { workspace = true, features = ["blocking"] }
-thiserror = { workspace = true }
-tokio = { workspace = true, features = ["fs", "io-util", "macros", "rt-multi-thread"] }
-zip = { workspace = true }
+reqwest = { version = "0.13", features = ["blocking"] }
+thiserror = "2.0"
+tokio = { version = "1.53", features = ["fs", "io-util", "macros", "rt-multi-thread"] }
+zip = "8.6"
 
 # External crates by Luca Cappelletti (@LucaCappelletti94) / Earth Metabolome Initiative
 # See README.md for full credit and links.
+#
+# `smarts-rs` is declared as `branch = "main"` rather than pinned to a `rev`
+# because `smarts-evolution` declares it that way, and Cargo treats two source
+# specs as two packages even at the same commit: pinning ours to `rev = ...`
+# while upstream floats on `branch = main` puts two `smarts_rs` in one graph and
+# `PreparedTarget` from one is not the type `FoldSample` expects from the other.
+# Matching the spec upstream uses keeps exactly one. The resolved commit is in
+# `Cargo.lock`, so `--locked` builds stay reproducible; only `cargo update` can
+# move it, which is the ordinary Cargo guarantee and not something a `rev`
+# achieves here.
 smarts-evolution = { git = "https://github.com/earth-metabolome-initiative/smarts-evolution", branch = "main", version = "0.1", features = ["tui"] }
 smarts-rs = { git = "https://github.com/earth-metabolome-initiative/smarts-rs", branch = "main", version = "0.1" }
-smiles-rs = { git = "https://github.com/earth-metabolome-initiative/smiles-rs", branch = "main", version = "0.1" }
+
+# `smiles-rs` comes from crates.io, not from git, because `smarts-rs` takes it
+# from there: `smarts-rs` declares `smiles-rs = "0.1.5"` with no git source, so
+# depending on the git checkout as well put two different crates named
+# `smiles_rs` in one graph. They are distinct types, and passing a git-`Smiles`
+# to `PreparedTarget::new`, which wants the crates.io one, is a type error whose
+# only note is "there are multiple different versions of crate `smiles_rs` in
+# the dependency graph".
+smiles-rs = "0.1.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tempfile = { workspace = true }
+tempfile = "3.27"
 
 [features]
 default = []
 
-[lints]
-workspace = true
+# The workspace's lint table, restated rather than inherited. `#[expect(...)]`
+# attributes in this crate's test modules were added against these, so they are
+# load-bearing: relaxing one of these fails the build rather than the lint.
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+cargo = { level = "deny", priority = -1 }
+# The one lint in that group this crate cannot satisfy. The workspace discharges
+# it through an explicit skip list in `deny.toml`; a standalone crate has no such
+# list, and the duplicates -- `base64` 0.22/0.23, `sha2` 0.10/0.11, `rand`
+# 0.8/0.10 -- all come from `reqwest`, `tokio`, `zip` and the TUI stack, whose
+# manifests this crate does not control.
+#
+# Stated as a specific override rather than by dropping the `cargo` group: the
+# group is what turns the other members on. `[lints.cargo]` would be the tidier
+# spelling and is not available -- that table is nightly-only (`-Zcargo-lints`),
+# so on stable it is ignored with an "unused manifest key" warning, which is
+# what made this look ineffective at `allow` before.
+multiple_crate_versions = "warn"
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+
+[lints.rust]
+dead_code = "deny"
+let_underscore_drop = "deny"
+missing_debug_implementations = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
+unreachable_pub = "deny"
+unsafe_code = "forbid"
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
