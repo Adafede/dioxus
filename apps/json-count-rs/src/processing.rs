@@ -496,12 +496,20 @@ async fn skip_string_nonempty<F: FnMut(u64, u64), S: ChunkSource>(
 /// opening bracket.
 ///
 /// Split out of [`count_value`] because the two are different jobs: this one is a
-/// single-pass tokeniser with four pieces of state to carry across chunk
+/// single-pass tokeniser with five pieces of state to carry across chunk
 /// boundaries, and folding it into its caller put it over the line limit where
 /// neither could be read on its own.
 ///
-/// It counts tokens, not values, which is why a nested object's key is counted
-/// — see the test named for that.
+/// It counts a nested object's key as well as its value, which is why
+/// `{"y":3}` is 2 and not 1. `count_value` counts the same way, and the
+/// test named for it pins that.
+///
+/// A string counts only if it has content, matching [`count_value`] and the
+/// doc on that function: `""` is 0. The count is therefore deferred to the
+/// closing quote rather than added at the opening one, which is what
+/// `string_has_content` tracks. It used to be added at the opening quote
+/// unconditionally, so `{"":1}` was 2 here and 1 through `count_value` —
+/// the one place the two implementations of this grammar disagreed.
 #[cfg(any(test, target_arch = "wasm32"))]
 #[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
 async fn scan_container<F, S>(cursor: &mut BlobCursor<F, S>) -> Result<u64, UploadError>
@@ -513,6 +521,7 @@ where
     let mut depth: i32 = 1;
     let mut count: u64 = 0;
     let mut in_string = false;
+    let mut string_has_content = false;
     let mut escaped = false;
     let mut in_token = false;
     let mut token_first_byte = 0u8;
@@ -533,12 +542,21 @@ where
 
             while let Some(&b) = buf.get(i) {
                 if in_string {
+                    // Mirrors `skip_string_nonempty`: a backslash and the byte
+                    // it escapes both count as content, so `"\""` is 1.
                     if escaped {
                         escaped = false;
+                        string_has_content = true;
                     } else if b == b'\\' {
                         escaped = true;
+                        string_has_content = true;
                     } else if b == b'"' {
                         in_string = false;
+                        if string_has_content {
+                            count += 1;
+                        }
+                    } else {
+                        string_has_content = true;
                     }
                     i += 1;
                     continue;
@@ -559,7 +577,7 @@ where
                 match b {
                     b'"' => {
                         in_string = true;
-                        count += 1;
+                        string_has_content = false;
                         i += 1;
                     }
                     b'{' | b'[' => {
@@ -602,9 +620,15 @@ where
 }
 
 /// Counts the number of non-null "leaf" values inside a JSON value.
-/// Nested objects/arrays are flattened and counted recursively in a
-/// single synchronous pass; strings count as 1 if non-empty; numbers
-/// and booleans count as 1; `null` counts as 0.
+///
+/// Nested objects and arrays are flattened and counted recursively in a single
+/// pass, and a nested object's key counts like any other string in it. Strings
+/// count as 1 if non-empty and 0 if empty, numbers and booleans count as 1,
+/// and `null` counts as 0.
+///
+/// The empty-string rule is the one that was once inconsistent: this function
+/// applied it via [`skip_string_nonempty`] while [`scan_container`] counted
+/// every string token, so `{"":1}` was 1 here and 2 there.
 ///
 /// Compiled for tests as well as wasm; see [`read_json_key`].
 #[cfg(any(test, target_arch = "wasm32"))]
@@ -1135,17 +1159,16 @@ mod streaming {
         );
     }
 
-    /// Pinned as it behaves, not as it should: the streaming scanner counts a
-    /// nested object's *key* as a leaf, so `{"y":3}` contributes 2 rather than the
-    /// 1 that `count_non_null_leaves` gives it. The two implementations of this
-    /// grammar disagree, and this is the difference.
+    /// A nested object's key counts as a leaf, so `{"y":3}` is 2.
     ///
-    /// Not decided here: it is a question about what the app should report, not
-    /// about the reader — and there was no working result to preserve before the
-    /// `read_json_key` fix, so nothing depended on the old number. The name says
-    /// what it is so nobody reads it as intent.
+    /// Both implementations of this grammar do this, which is why it is pinned
+    /// as intended rather than as a discrepancy. The claim on this test used to
+    /// be that `count_non_null_leaves` gave 1 here and disagreed with the
+    /// streaming scanner; a differential run over both showed they agree on
+    /// every nested-key input. The one input where they really did differ was
+    /// the empty string, and that is fixed.
     #[test]
-    fn a_nested_objects_key_is_counted_as_a_leaf_which_may_not_be_intended() {
+    fn a_nested_objects_key_is_counted_as_a_leaf() {
         assert_eq!(
             columns(r#"{"x":[1,null,2,{"y":3},null]}"#, 64),
             Ok(vec![("x".to_string(), 4)]),
@@ -1160,6 +1183,47 @@ mod streaming {
             Ok(vec![("x".to_string(), 3)]),
             "a column of five rows with two nulls is three"
         );
+    }
+
+    /// An empty string is present but holds nothing, so it is not a value.
+    ///
+    /// This is the rule that chose between the two implementations. It reads as
+    /// "1 if non-empty" on `count_value` and was applied there and not in
+    /// `scan_container`, so a column whose nested rows had an empty key or an
+    /// empty string value was over-reported by one per empty string. Those
+    /// numbers move with this fix, which is the point of pinning them.
+    #[test]
+    fn an_empty_string_counts_nothing_wherever_it_appears() {
+        for (json, expected, why) in [
+            (r#"{"x":[""]}"#, 0, "a lone empty string is not a leaf"),
+            (r#"{"x":["","a"]}"#, 1, "one of two strings is empty"),
+            (
+                r#"{"x":[{"":1}]}"#,
+                1,
+                "the empty key is not a leaf, the 1 is",
+            ),
+            (
+                r#"{"x":[{"y":""}]}"#,
+                1,
+                "the key counts, the empty value does not",
+            ),
+            (
+                r#"{"x":[{"y":""},{"z":1}]}"#,
+                3,
+                "one empty string and two populated",
+            ),
+            (
+                r#"{"x":["\\"]}"#,
+                1,
+                "a lone backslash is an escape, so it is not empty",
+            ),
+        ] {
+            assert_eq!(
+                columns(json, 64),
+                Ok(vec![("x".to_string(), expected)]),
+                "{why}: {json}"
+            );
+        }
     }
 
     #[test]
@@ -1299,6 +1363,13 @@ mod streaming {
     /// This is the equivalence that actually exists: `count_non_null_leaves`
     /// counts the leaves of one JSON value and so does `count_value`. At a
     /// four-byte chunk the streaming side crosses boundaries throughout.
+    ///
+    /// Every empty-string case is in here on purpose. That was the only rule
+    /// the two ever disagreed on, and the list above had no empty string
+    /// anywhere in it — not as a key, not as a value, not nested — so the
+    /// cross-check passed for the whole time the two were returning different
+    /// answers for `[{"":1}]`. A disagreement test only covers the inputs it
+    /// lists; this one was listing the wrong ones.
     #[test]
     fn the_streaming_value_counter_matches_the_in_memory_one() {
         for value in [
@@ -1316,6 +1387,23 @@ mod streaming {
             r#"[{"y":3}]"#,
             r#"{"a":null,"b":2}"#,
             r#"[[1,[2]],{"k":"v"}]"#,
+            // Empty strings, in every position they can appear: as a nested
+            // key, as a nested value, as both, and inside an empty container.
+            r#"[{"":1}]"#,
+            r#"{"a":{"":1}}"#,
+            r#"{"":1,"b":2}"#,
+            r#"{"a":1,"":2}"#,
+            r#"[{"":""}]"#,
+            r#"[{"":null}]"#,
+            r#"{"":{}}"#,
+            r#"[{"":[]}]"#,
+            r#"{"x":[{"":1}]}"#,
+            r#"[{"y":""}]"#,
+            r#"[[{"":1}]]"#,
+            r#"[{"":1},{"":2}]"#,
+            // A backslash makes a string non-empty even when the escaped byte
+            // is the quote that looks like the end of it.
+            r#"["\\"]"#,
         ] {
             let mut cur = cursor(value.as_bytes(), 4);
             let streamed = block_on(super::count_value(&mut cur));
