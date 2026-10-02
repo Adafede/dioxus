@@ -33,16 +33,20 @@ pub const SKIP_LINK_STYLE: &str = "position:absolute;top:-100%;left:0.5rem;z-ind
 /// per-app copy that caused the bug.
 pub(crate) const SKIP_LINK_FOCUS_CSS: &str = ".skip-link:focus { top: 0 !important; left: 0.5rem !important; outline: 3px solid #0b5cab; outline-offset: 2px; }";
 
-/// Skip navigation link pointing at `#main-content`.
+/// Skip navigation link to the app's main landmark.
 ///
-/// The `href` is fixed. `lipid-selecto-rs` and `mgf-precursor-erro-rs` give
-/// their main landmark `id="main"` instead, and each hand-rolls its own skip
-/// link rather than using this one.
+/// The link only works if `target` is the `id` of a `main` element on the same
+/// page, so the two are one decision rather than two: `target` names the
+/// landmark, and the page gives that landmark that `id`.
+///
+/// `target` exists because two ids are in use across the workspace — `#main`
+/// and `#main-content` — and the alternative to the prop was a second copy of
+/// this component differing in one string.
 #[component]
-pub fn skip_link() -> Element {
+pub fn skip_link(#[props(default = "#main-content".to_string())] target: String) -> Element {
     rsx! {
         a {
-            href: "#main-content",
+            href: "{target}",
             class: "skip-link",
             style: SKIP_LINK_STYLE,
             "Skip to main content"

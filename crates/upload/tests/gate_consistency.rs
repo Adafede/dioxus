@@ -1032,3 +1032,102 @@ fn mutated_packages(text: &str) -> BTreeSet<String> {
     }
     names
 }
+
+/// Every app that renders a `DocumentHead`, against what its skip link points
+/// at.
+///
+/// A skip link is two things that have to agree: an `href`, and a `main`
+/// element carrying that id. Both are invisible to every linter, both are in a
+/// different crate from the component that renders the link, and the failure
+/// mode is a link that looks right in the source and goes nowhere in the
+/// browser. The rule that un-hides it on focus lives in `ui`, so this only has
+/// to check the pairing.
+///
+/// It also fails an app that renders a skip link pointing at nothing, and an
+/// app with no skip link at all -- which is how `cxsmiles-yoga`,
+/// `lipid-selecto-rs` and `smellfish-rs` had none until this test existed.
+#[test]
+fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
+    let root = repo_root();
+    let mut apps: Vec<String> = std::fs::read_dir(root.join("apps"))?
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.path().join("Cargo.toml").is_file())
+        .filter_map(|e| e.file_name().into_string().ok())
+        .collect();
+    apps.sort();
+
+    let mut missing: Vec<String> = Vec::new();
+
+    for app in &apps {
+        let src_dir = root.join("apps").join(app).join("src");
+        let mut body = String::new();
+        let mut stack = vec![src_dir];
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_dir() {
+                    stack.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    body.push_str(&std::fs::read_to_string(&path)?);
+                    body.push('\n');
+                }
+            }
+        }
+
+        // An app with no `DocumentHead` is not rendering the head rules that
+        // un-hide the link, so a skip link there would be broken by default.
+        if !body.contains("DocumentHead") {
+            if body.contains("skip_link {") {
+                missing.push(format!("{app}: renders a skip link but no DocumentHead"));
+            }
+            continue;
+        }
+
+        let links = body.matches("skip_link {").count();
+        // Scoped to the lines that actually open a `skip_link {` call: `target:`
+        // is a common attribute name and the apps use it for other things.
+        let targets: Vec<String> = body
+            .lines()
+            .filter(|line| line.contains("skip_link {"))
+            .filter_map(|line| {
+                line.find("target: \"").map(|i| {
+                    line[i + 9..]
+                        .split('"')
+                        .next()
+                        .unwrap_or_default()
+                        .to_string()
+                })
+            })
+            .collect();
+
+        match (links, targets.len()) {
+            (0, _) => missing.push(format!("{app}: no skip link at all")),
+            (1, 0) => {
+                if !body.contains("id: \"main-content\"") {
+                    missing.push(format!(
+                        "{app}: skip_link defaults to #main-content but no element has that id"
+                    ));
+                }
+            }
+            (1, 1) => {
+                if let Some(target) = targets.first().map(|t| t.trim_start_matches('#')) {
+                    let needle = format!("id: \"{target}\"");
+                    if !body.contains(&needle) {
+                        missing.push(format!("{app}: skip_link points at #{target}, no {needle}"));
+                    }
+                }
+            }
+            (n, t) => missing.push(format!(
+                "{app}: {n} skip_link uses but {t} explicit targets, expected 1 and at most 1"
+            )),
+        }
+    }
+
+    assert!(
+        missing.is_empty(),
+        "skip-link wiring is wrong:\n  {}",
+        missing.join("\n  ")
+    );
+    Ok(())
+}

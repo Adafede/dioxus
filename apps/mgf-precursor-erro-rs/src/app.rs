@@ -17,18 +17,6 @@ use crate::diagnostics::RecalibrationStats;
 use crate::metrics::PrecursorStats;
 use crate::recalibration::CalibrationModel;
 
-#[component]
-fn skip_link() -> Element {
-    rsx! {
-        a {
-            href: "#main",
-            class: "skip-link",
-            style: SKIP_LINK_STYLE,
-            "Skip to main content"
-        }
-    }
-}
-
 /// Renders the MGF precursor-error analysis UI.
 ///
 /// # Errors
@@ -90,7 +78,7 @@ pub fn app() -> Element {
 
         div {
             style: StyleBuilder::new().min_height("100vh").padding("2rem 1rem 3rem").property("background", "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)").color("#0f172a").build(),
-            skip_link {}
+            skip_link { target: "#main" }
 
             main { id: "main",
                 style: StyleBuilder::new().property("max-width", "960px").margin("0 auto").build(),

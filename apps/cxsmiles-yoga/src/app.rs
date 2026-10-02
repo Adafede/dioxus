@@ -278,7 +278,9 @@ pub fn app() -> Element {
             subtitle: Some("Generate CX-SMILES from a list of related structures".to_string()),
         }
 
-        main { style: StyleBuilder::new().property("max-width", "1000px").margin("0 auto").padding("1.5rem 1rem 3rem").build(),
+        skip_link {}
+
+        main { id: "main-content", style: StyleBuilder::new().property("max-width", "1000px").margin("0 auto").padding("1.5rem 1rem 3rem").build(),
             p { style: StyleBuilder::new().color("#475569").font_size("0.95rem").property("max-width", "60rem").build(),
                 "Paste a list of related SMILES (one per line). The tool finds the shared scaffold, "
                 "classifies each variable region as a positional isomer (m:) or a variable-length "

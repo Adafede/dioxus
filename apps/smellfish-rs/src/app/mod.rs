@@ -15,7 +15,7 @@ use crate::model::{EndpointStatus, MoleculeRow, MotifSummary};
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
-use ui::prelude::{Button, ButtonVariant};
+use ui::prelude::{Button, ButtonVariant, skip_link};
 
 mod browser;
 mod csv_export;
@@ -124,97 +124,100 @@ pub fn app() -> Element {
 
     rsx! {
         SmellfishDocumentHead {}
+        skip_link {}
         div { class: "shell",
 
             Hero {}
 
-            section { class: "panel input-panel",
-                div { class: "input-split",
-                    label { class: if *drag_active.read() { "input-card dropzone dragging" } else { "input-card dropzone" },
-                        r#for: "smiles-csv",
-                        ondragenter: on_drag_enter,
-                        ondragover: on_drag_over,
-                        ondragleave: on_drag_leave,
-                        ondrop: on_drop,
+            main { id: "main-content",
+                section { class: "panel input-panel",
+                    div { class: "input-split",
+                        label { class: if *drag_active.read() { "input-card dropzone dragging" } else { "input-card dropzone" },
+                            r#for: "smiles-csv",
+                            ondragenter: on_drag_enter,
+                            ondragover: on_drag_over,
+                            ondragleave: on_drag_leave,
+                            ondrop: on_drop,
 
-                        div { class: "input-card-body",
-                            strong { "Drop a CSV or click to browse" }
-                            div { class: "small muted", "CSV with a smiles column" }
-                        }
-
-                        input {
-                            id: "smiles-csv",
-                            r#type: "file",
-                            accept: ".csv,text/csv",
-                            disabled: *busy.read(),
-                            onchange: on_file_change,
-                        }
-                    }
-
-                    div { class: "input-card paste-card",
-                        div { class: "input-card-body",
-                            div { class: "paste-head",
-                                strong { "Paste SMILES" }
-                                span { class: "small muted", "One per line" }
+                            div { class: "input-card-body",
+                                strong { "Drop a CSV or click to browse" }
+                                div { class: "small muted", "CSV with a smiles column" }
                             }
-                            label { r#for: "smiles-paste", class: "visually-hidden", "SMILES structures, one per line" }
-                            textarea {
-                                id: "smiles-paste",
-                                class: "smiles-textarea",
-                                placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
+
+                            input {
+                                id: "smiles-csv",
+                                r#type: "file",
+                                accept: ".csv,text/csv",
                                 disabled: *busy.read(),
-                                value: "{pasted_smiles_value}",
-                                onfocus: move |_| {
-                                    if !*demo_cleared.read() {
-                                        demo_cleared.set(true);
-                                        pasted_smiles.set(String::new());
-                                    }
-                                },
-                                oninput: move |evt| pasted_smiles.set(evt.value()),
+                                onchange: on_file_change,
                             }
                         }
-                        div { class: "paste-actions",
-                            Button {
-                                label: "Analyze pasted SMILES",
-                                variant: ButtonVariant::Primary,
-                                disabled: *busy.read(),
-                                onclick: Some(EventHandler::new(submit_pasted_smiles)),
+
+                        div { class: "input-card paste-card",
+                            div { class: "input-card-body",
+                                div { class: "paste-head",
+                                    strong { "Paste SMILES" }
+                                    span { class: "small muted", "One per line" }
+                                }
+                                label { r#for: "smiles-paste", class: "visually-hidden", "SMILES structures, one per line" }
+                                textarea {
+                                    id: "smiles-paste",
+                                    class: "smiles-textarea",
+                                    placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
+                                    disabled: *busy.read(),
+                                    value: "{pasted_smiles_value}",
+                                    onfocus: move |_| {
+                                        if !*demo_cleared.read() {
+                                            demo_cleared.set(true);
+                                            pasted_smiles.set(String::new());
+                                        }
+                                    },
+                                    oninput: move |evt| pasted_smiles.set(evt.value()),
+                                }
+                            }
+                            div { class: "paste-actions",
+                                Button {
+                                    label: "Analyze pasted SMILES",
+                                    variant: ButtonVariant::Primary,
+                                    disabled: *busy.read(),
+                                    onclick: Some(EventHandler::new(submit_pasted_smiles)),
+                                }
                             }
                         }
                     }
-                }
 
-                if !status.read().is_empty() || *busy.read() {
-                    p { class: "status", role: "status", aria_live: "polite", aria_atomic: "true",
-                        if *busy.read() {
-                            span { class: "spinner" }
-                        }
-                        "{status}"
-                    }
-                }
-                if !ep_list.is_empty() {
-                    div { class: "endpoint-status",
-                        for ep in &ep_list {
-                            span { class: "endpoint-chip", class: if ep.reachable { "ok" } else { "down" }, "{ep.name}: {ep.detail} ({ep.endpoint})" }
+                    if !status.read().is_empty() || *busy.read() {
+                        p { class: "status", role: "status", aria_live: "polite", aria_atomic: "true",
+                            if *busy.read() {
+                                span { class: "spinner" }
+                            }
+                            "{status}"
                         }
                     }
+                    if !ep_list.is_empty() {
+                        div { class: "endpoint-status",
+                            for ep in &ep_list {
+                                span { class: "endpoint-chip", class: if ep.reachable { "ok" } else { "down" }, "{ep.name}: {ep.detail} ({ep.endpoint})" }
+                            }
+                        }
+                    }
+
+                    if !file_name_value.is_empty() {
+                        p { class: "small muted", "Loaded: {file_name_value}" }
+                    }
+
+                    if !warning_text.is_empty() {
+                        div { class: "alert", "{warning_text}" }
+                    }
                 }
 
-                if !file_name_value.is_empty() {
-                    p { class: "small muted", "Loaded: {file_name_value}" }
+                if !motifs.read().is_empty() {
+                    MotifPanel { motifs }
                 }
 
-                if !warning_text.is_empty() {
-                    div { class: "alert", "{warning_text}" }
+                if !rows.read().is_empty() {
+                    ResultsView { rows }
                 }
-            }
-
-            if !motifs.read().is_empty() {
-                MotifPanel { motifs }
-            }
-
-            if !rows.read().is_empty() {
-                ResultsView { rows }
             }
 
             Footer {}

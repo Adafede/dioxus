@@ -18,10 +18,8 @@
 use dioxus::prelude::*;
 use ui::prelude::*;
 
-mod accessibility;
 mod components;
 
-use accessibility::SkipLink;
 use components::{AppCard, AppInfo};
 
 /// Root application component: theme-aware landing page.
@@ -100,7 +98,7 @@ fn app() -> Element {
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],        }
 
         div { style: container_style,
-            SkipLink {}
+            skip_link {}
 
             Header {
                 title: "🦀 Dioxus Experiments".to_string(),
