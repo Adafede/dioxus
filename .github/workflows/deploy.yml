@@ -45,26 +45,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `subpath` is the directory an app is served under, appended to the
+        # repository name to form `BASE_PATH`. It is written out per row rather
+        # than derived from `pkg`, because the landing page is the one app whose
+        # path is not its package name: it is served from the site root, so its
+        # subpath is empty. Deriving it produced the bug this fixes -- index was
+        # built for `/dioxus/index` and the arrange step below then moved the
+        # file to `/dioxus/` still pointing at `/dioxus/index/assets/...`, so
+        # every asset 404ed and the page was blank.
         include:
-          # The landing page is served from the site root, so its `BASE_PATH` is
-          # the repository root and not a subdirectory named after the package.
-          # Without this it is built for `/dioxus/index`, and the arrange step
-          # below then moves the file to `/dioxus/` still pointing at
-          # `/dioxus/index/assets/...`: every asset 404s, the module is refused
-          # for its MIME type, and the page is blank.
           - app: index
             pkg: index
-            base: /${{ github.event.repository.name }}
+            subpath: ""
           - app: json-count-rs
             pkg: json-count-rs
+            subpath: "/json-count-rs"
           - app: mgf-precursor-erro-rs
             pkg: mgf-precursor-erro-rs
+            subpath: "/mgf-precursor-erro-rs"
           - app: smellfish-rs
             pkg: smellfish-rs
+            subpath: "/smellfish-rs"
           - app: lipid-selecto-rs
             pkg: lipid-selecto-rs
+            subpath: "/lipid-selecto-rs"
           - app: cxsmiles-yoga
             pkg: cxsmiles-yoga
+            subpath: "/cxsmiles-yoga"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with: { persist-credentials: false, fetch-depth: 1 }
@@ -99,7 +106,7 @@ jobs:
       - name: Build the app
         env:
           APP: ${{ matrix.pkg }}
-          BASE_PATH: ${{ matrix.base || format!('/{0}/{1}', github.event.repository.name, matrix.pkg) }}
+          BASE_PATH: /${{ github.event.repository.name }}${{ matrix.subpath }}
         run: ./mk web-build
 
       # `dx` writes into the one workspace target directory, not under the app's

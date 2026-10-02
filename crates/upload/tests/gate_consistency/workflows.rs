@@ -177,3 +177,121 @@ fn no_hook_or_workflow_bypasses_mk() -> Result<()> {
     }
     Ok(())
 }
+
+/// Nothing inside a `${{ ... }}` may be Rust.
+///
+/// The gap this closes is real and was hit here: a deploy fix used
+/// `format!('/{0}/{1}', repo, pkg)` in an `env:` value. That is a Rust macro, and
+/// GitHub Actions rejected the workflow with "Unrecognized named-value: 'format'".
+/// Every gate in `./mk ci` passed first -- the YAML is well-formed, `actionlint`
+/// is not in the toolchain, and nothing here evaluates an expression. A file that
+/// GitHub refuses to parse is a broken deploy, and it reached review.
+///
+/// GitHub's expression language has functions (`format(...)`, `join(...)`) and
+/// no macros. So the shape to reject is a call with a `!` on its name, plus the
+/// Rust spellings that have no meaning there at all.
+#[test]
+fn no_workflow_expression_contains_rust() -> Result<()> {
+    let mut offenders: Vec<String> = Vec::new();
+
+    for name in workflow_files()? {
+        let text = read(&format!(".github/workflows/{name}"))?;
+        for (line_no, line) in text.lines().enumerate() {
+            for expr in expression_bodies(line) {
+                for call in re_macros(&expr) {
+                    offenders.push(format!(
+                        "{name}:{}: `{call}!` is a Rust macro; GitHub's function is \
+                         `{call}(...)` with no bang",
+                        line_no + 1
+                    ));
+                }
+                for token in ["::", "let ", ".unwrap", ".expect", "Some(", "None", "&mut "] {
+                    if expr.contains(token) {
+                        offenders.push(format!(
+                            "{name}:{}: `{token}` has no meaning in a GitHub expression",
+                            line_no + 1
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    assert!(
+        offenders.is_empty(),
+        "GitHub Actions expressions are not Rust:\n  {}",
+        offenders.join("\n  ")
+    );
+    Ok(())
+}
+
+/// Workflow file names, read from the directory so a new workflow is covered
+/// without editing this list.
+fn workflow_files() -> Result<Vec<String>> {
+    let dir = repo_root().join(".github/workflows");
+    let mut names: Vec<String> = std::fs::read_dir(&dir)
+        .map_err(|e| format!("{}: {e}", dir.display()))?
+        .filter_map(std::result::Result::ok)
+        .filter(|e| {
+            // Extension compared case-insensitively, because `.YML` is a workflow
+            // to GitHub and would otherwise slip past this gate.
+            e.path()
+                .extension()
+                .and_then(std::ffi::OsStr::to_str)
+                .is_some_and(|ext| {
+                    ext.eq_ignore_ascii_case("yml") || ext.eq_ignore_ascii_case("yaml")
+                })
+        })
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    Ok(names)
+}
+
+/// The bodies of every `${{ ... }}` on one line.
+fn expression_bodies(line: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = line;
+    while let Some(open) = rest.find("${{") {
+        let after = &rest[open + 3..];
+        match after.find("}}") {
+            Some(close) => {
+                out.push(after[..close].to_string());
+                rest = &after[close + 2..];
+            }
+            None => break,
+        }
+    }
+    out
+}
+
+/// Names called with a `!` inside an expression body, ignoring anything in
+/// single quotes.
+///
+/// Scanning forward for `!` and reading the identifier backwards off the front of
+/// it is enough: a name only ever ends in one, and `take_while` over reversed
+/// chars stops at the first thing that cannot be part of an identifier.
+fn re_macros(expr: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut in_quotes = false;
+    for (i, c) in expr.char_indices() {
+        if c == '\'' {
+            in_quotes = !in_quotes;
+        }
+        if c != '!' || in_quotes {
+            continue;
+        }
+        let name: String = expr[..i]
+            .chars()
+            .rev()
+            .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '_')
+            .collect::<Vec<char>>()
+            .into_iter()
+            .rev()
+            .collect();
+        if !name.is_empty() {
+            found.push(name);
+        }
+    }
+    found
+}
