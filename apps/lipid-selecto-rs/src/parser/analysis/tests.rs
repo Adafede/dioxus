@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
+
 // The `tests` tests, extracted from `analysis.rs`.
 //
 // They were inline, and together they were several times the size of the
