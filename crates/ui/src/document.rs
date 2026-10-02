@@ -227,8 +227,20 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
             );
         }
 
-        // No CSS is injected here. An app that wants it supplies its own rule:
-        // smellfish-rs passes its stylesheet through `document::Style`.
+        // No app-wide stylesheet is injected here; an app that wants one supplies
+        // its own (smellfish-rs passes its stylesheet through `document::Style`).
+        //
+        // The skip-link rule is the exception, because `ui` owns both halves of
+        // it — `skip_link` and `SKIP_LINK_STYLE` — and a rule that lives with
+        // the components it styles is the one an app cannot forget. It was
+        // inlined in `json-count-rs`'s rsx, which is the only reason that app's
+        // skip link worked and the ones in `index` and `mgf-precursor-erro-rs`
+        // did not.
+        doc.create_head_element(
+            "style",
+            &[],
+            Some(crate::common::SKIP_LINK_FOCUS_CSS.to_string()),
+        );
 
         // Inline JavaScript — wrapped in an IIFE so `const`/`let` declarations
         // don't leak into the global scope (which causes

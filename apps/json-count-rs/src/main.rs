@@ -253,7 +253,6 @@ fn app() -> Element {
                 }
             }
 
-            style { ".skip-link:focus {{ top: 0 !important; outline: 3px solid #0b5cab; outline-offset: 2px; }}" }
         }
     }
 }

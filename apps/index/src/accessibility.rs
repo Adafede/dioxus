@@ -8,10 +8,11 @@ use ui::prelude::*;
 
 /// Skip link pointing at `#main-content`.
 ///
-/// The inline style parks the link at `top: -100%`. Bringing it back on focus
-/// relies on a `.skip-link:focus { top: 0 !important; ... }` rule, which this
-/// crate does not currently emit — see `apps/json-count-rs/src/main.rs` for the
-/// only copy in the workspace that does.
+/// The inline style parks the link at `top: -100%`; the rule that brings it
+/// back on focus comes from `ui::document::DocumentHead`, which every app
+/// rendering a `DocumentHead` gets. This component used to inline its own copy
+/// of nothing at all and stayed invisible, because the rule was only ever
+/// written into `json-count-rs`'s rsx.
 #[component]
 pub(crate) fn SkipLink() -> Element {
     rsx! {
