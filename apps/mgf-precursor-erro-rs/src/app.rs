@@ -78,9 +78,9 @@ pub fn app() -> Element {
 
         div {
             style: StyleBuilder::new().min_height("100vh").padding("2rem 1rem 3rem").property("background", "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)").color("#0f172a").build(),
-            skip_link { target: "#main" }
+            skip_link {}
 
-            main { id: "main",
+            main { id: "main-content",
                 style: StyleBuilder::new().property("max-width", "960px").margin("0 auto").build(),
                 h1 { style: StyleBuilder::new().margin("0 0 0.35rem").font_size("1.7rem").property("letter-spacing", "-0.02em").build(), "MGF Precursor Error" }
                 p {

@@ -51,6 +51,12 @@ use std::path::PathBuf;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
+/// The `id` every app's `<main>` must carry, because it is the `href`
+/// `ui::skip_link` hardcodes. Duplicated from `crates/ui/src/common.rs` on
+/// purpose: this test reads app source as text and cannot import the constant
+/// out of the component that renders it.
+const MAIN_LANDMARK_ID: &str = "id: \"main-content\"";
+
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -1033,19 +1039,21 @@ fn mutated_packages(text: &str) -> BTreeSet<String> {
     names
 }
 
-/// Every app that renders a `DocumentHead`, against what its skip link points
-/// at.
+/// Every app, against the two halves of its skip link.
 ///
-/// A skip link is two things that have to agree: an `href`, and a `main`
-/// element carrying that id. Both are invisible to every linter, both are in a
-/// different crate from the component that renders the link, and the failure
-/// mode is a link that looks right in the source and goes nowhere in the
-/// browser. The rule that un-hides it on focus lives in `ui`, so this only has
-/// to check the pairing.
+/// A working skip link needs three things in three different places: an app
+/// that renders the link, a `main` element whose `id` is what the link's
+/// `href` says, and a `DocumentHead` -- which is what injects the focus rule
+/// that un-hides the link, since `ui` parks it at `top: -100%`. None of the
+/// three is visible to a linter from any of the others, and the failure mode
+/// is a link that reads correctly in the source and goes nowhere in the
+/// browser.
 ///
-/// It also fails an app that renders a skip link pointing at nothing, and an
-/// app with no skip link at all -- which is how `cxsmiles-yoga`,
-/// `lipid-selecto-rs` and `smellfish-rs` had none until this test existed.
+/// This is what found that `index` and `mgf-precursor-erro-rs` rendered no
+/// un-hiding rule, that `cxsmiles-yoga`, `lipid-selecto-rs` and `smellfish-rs`
+/// rendered no skip link at all, that `smellfish-rs` had no `main` element to
+/// point at, and that `lipid-selecto-rs` and `mgf-precursor-erro-rs` named
+/// theirs `#main` while the other four named theirs `#main-content`.
 #[test]
 fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
     let root = repo_root();
@@ -1055,8 +1063,9 @@ fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
         .filter_map(|e| e.file_name().into_string().ok())
         .collect();
     apps.sort();
+    assert!(!apps.is_empty(), "found no apps to check");
 
-    let mut missing: Vec<String> = Vec::new();
+    let mut broken: Vec<String> = Vec::new();
 
     for app in &apps {
         let src_dir = root.join("apps").join(app).join("src");
@@ -1064,8 +1073,7 @@ fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
         let mut stack = vec![src_dir];
         while let Some(dir) = stack.pop() {
             for entry in std::fs::read_dir(&dir)? {
-                let entry = entry?;
-                let path = entry.path();
+                let path = entry?.path();
                 if path.is_dir() {
                     stack.push(path);
                 } else if path.extension().is_some_and(|e| e == "rs") {
@@ -1075,59 +1083,36 @@ fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
             }
         }
 
-        // An app with no `DocumentHead` is not rendering the head rules that
-        // un-hide the link, so a skip link there would be broken by default.
+        let mut fail = |reason: &str| broken.push(format!("{app}: {reason}"));
+
+        if !body.contains("skip_link {") {
+            fail("renders no skip link");
+        }
+        if body.matches("skip_link {").count() > 1 {
+            fail("renders more than one skip link");
+        }
+        if !body.contains(MAIN_LANDMARK_ID) {
+            fail("nothing carries id=\"main-content\" for the link to point at");
+        }
         if !body.contains("DocumentHead") {
-            if body.contains("skip_link {") {
-                missing.push(format!("{app}: renders a skip link but no DocumentHead"));
-            }
-            continue;
+            fail("renders no DocumentHead, so nothing injects the focus rule");
         }
 
-        let links = body.matches("skip_link {").count();
-        // Scoped to the lines that actually open a `skip_link {` call: `target:`
-        // is a common attribute name and the apps use it for other things.
-        let targets: Vec<String> = body
+        // The link's href is fixed in `ui::skip_link`. An app that spells out a
+        // target is not using that component, and so is not covered by the
+        // focus rule or by the id checked above.
+        if body
             .lines()
-            .filter(|line| line.contains("skip_link {"))
-            .filter_map(|line| {
-                line.find("target: \"").map(|i| {
-                    line[i + 9..]
-                        .split('"')
-                        .next()
-                        .unwrap_or_default()
-                        .to_string()
-                })
-            })
-            .collect();
-
-        match (links, targets.len()) {
-            (0, _) => missing.push(format!("{app}: no skip link at all")),
-            (1, 0) => {
-                if !body.contains("id: \"main-content\"") {
-                    missing.push(format!(
-                        "{app}: skip_link defaults to #main-content but no element has that id"
-                    ));
-                }
-            }
-            (1, 1) => {
-                if let Some(target) = targets.first().map(|t| t.trim_start_matches('#')) {
-                    let needle = format!("id: \"{target}\"");
-                    if !body.contains(&needle) {
-                        missing.push(format!("{app}: skip_link points at #{target}, no {needle}"));
-                    }
-                }
-            }
-            (n, t) => missing.push(format!(
-                "{app}: {n} skip_link uses but {t} explicit targets, expected 1 and at most 1"
-            )),
+            .any(|l| l.contains("skip_link {") && l.contains("target:"))
+        {
+            fail("passes a target to skip_link, but ui::skip_link takes no props");
         }
     }
 
     assert!(
-        missing.is_empty(),
+        broken.is_empty(),
         "skip-link wiring is wrong:\n  {}",
-        missing.join("\n  ")
+        broken.join("\n  ")
     );
     Ok(())
 }

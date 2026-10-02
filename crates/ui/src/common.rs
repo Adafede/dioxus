@@ -35,18 +35,23 @@ pub(crate) const SKIP_LINK_FOCUS_CSS: &str = ".skip-link:focus { top: 0 !importa
 
 /// Skip navigation link to the app's main landmark.
 ///
-/// The link only works if `target` is the `id` of a `main` element on the same
-/// page, so the two are one decision rather than two: `target` names the
-/// landmark, and the page gives that landmark that `id`.
+/// The target is fixed, and every app in this workspace gives its `<main>`
+/// element `id="main-content"` to match. `every_app_pairs_its_skip_link_with_a_
+/// main_landmark` in `crates/upload/tests/gate_consistency.rs` is what keeps
+/// that true; it is not checkable from here, because the `main` element is in
+/// a different crate.
 ///
-/// `target` exists because two ids are in use across the workspace — `#main`
-/// and `#main-content` — and the alternative to the prop was a second copy of
-/// this component differing in one string.
+/// This took a `target` prop while two ids were in use — `#main` in
+/// `lipid-selecto-rs` and `mgf-precursor-erro-rs`, `#main-content` in the
+/// other four, which had produced a second copy of this component differing in
+/// one string. Standardising on one id left the prop with no callers, and a
+/// `pub` prop with no callers in a `publish = false` crate is the same
+/// unreachable surface as a `pub` fn with no callers.
 #[component]
-pub fn skip_link(#[props(default = "#main-content".to_string())] target: String) -> Element {
+pub fn skip_link() -> Element {
     rsx! {
         a {
-            href: "{target}",
+            href: "#main-content",
             class: "skip-link",
             style: SKIP_LINK_STYLE,
             "Skip to main content"
