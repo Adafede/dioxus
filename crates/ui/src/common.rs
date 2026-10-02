@@ -9,10 +9,11 @@ use dioxus::prelude::*;
 ///
 /// Off-screen rather than `display: none` on purpose: a hidden or display-less
 /// element is removed from the tab order, so the link could not be focused and
-/// this rule could not bring it back.
+/// the rule that returns it could not apply.
 ///
-/// [`SKIP_LINK_FOCUS_CSS`] is what returns it on focus; [`DocumentHead`]
-/// injects that rule, so an app rendering a skip link needs nothing else.
+/// The rule that returns it on focus is private to this crate and is injected
+/// by [`DocumentHead`](crate::document::DocumentHead), so an app rendering a skip link
+/// needs nothing else.
 pub const SKIP_LINK_STYLE: &str = "position:absolute;top:-100%;left:0.5rem;z-index:9999;padding:0.5rem 1rem;background:transparent;color:#0b5cab;font-size:0.875rem;font-weight:600;border-radius:0 0 4px 4px;text-decoration:underline;";
 
 /// Brings a link styled by [`SKIP_LINK_STYLE`] back on screen when focused.
