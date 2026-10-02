@@ -32,6 +32,7 @@ apps/*/.dioxus/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+!.vscode/README.md
 
 # `.idea/` is the JetBrains one and is still ignored: the files in it are per
 # machine (window layout, index state) and a shared one is noise.
