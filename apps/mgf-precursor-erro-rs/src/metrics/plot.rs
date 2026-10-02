@@ -165,16 +165,17 @@ pub(crate) struct ErrorMeasurement<'a> {
 
 #[cfg(target_arch = "wasm32")]
 #[derive(Clone, Copy, Debug)]
-// `pub(super)` because `stats` folds these in; it was module-private when
-// the three files were one.
+// `pub(super)`, fields included, because `stats` folds these in. They were
+// module-private when all three files were one, and `merge` reaches the two
+// `push_*` helpers on `PrecursorStats` in `stats` the same way.
 pub(super) struct HighErrorSmilesUpdate<'a> {
-    abs_error_da: f64,
-    abs_ppm: f64,
-    pepmass_header: f64,
-    smiles: Option<&'a str>,
-    calculated_mass: Option<f64>,
-    expected_mass: Option<f64>,
-    formula: Option<&'a str>,
+    pub(super) abs_error_da: f64,
+    pub(super) abs_ppm: f64,
+    pub(super) pepmass_header: f64,
+    pub(super) smiles: Option<&'a str>,
+    pub(super) calculated_mass: Option<f64>,
+    pub(super) expected_mass: Option<f64>,
+    pub(super) formula: Option<&'a str>,
 }
 
 #[cfg(target_arch = "wasm32")]

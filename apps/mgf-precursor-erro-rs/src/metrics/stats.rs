@@ -285,7 +285,7 @@ impl Default for PrecursorStats {
 
 #[cfg(target_arch = "wasm32")]
 impl PrecursorStats {
-    fn push_sampled_value(value: f64, values: &mut Vec<f64>, seen: &mut usize) {
+    pub(super) fn push_sampled_value(value: f64, values: &mut Vec<f64>, seen: &mut usize) {
         *seen = seen.saturating_add(1);
         if values.len() < MAX_ECDF_POINTS {
             values.push(value);
@@ -306,7 +306,7 @@ impl PrecursorStats {
         }
     }
 
-    fn push_plot_point(&mut self, point: PlotPoint) {
+    pub(super) fn push_plot_point(&mut self, point: PlotPoint) {
         self.plot_point_stream_seen = self.plot_point_stream_seen.saturating_add(1);
         if self.plot_points.len() < MAX_PLOT_POINTS {
             self.plot_points.push(point);
