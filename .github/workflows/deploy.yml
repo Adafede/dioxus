@@ -46,8 +46,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # The landing page is served from the site root, so its `BASE_PATH` is
+          # the repository root and not a subdirectory named after the package.
+          # Without this it is built for `/dioxus/index`, and the arrange step
+          # below then moves the file to `/dioxus/` still pointing at
+          # `/dioxus/index/assets/...`: every asset 404s, the module is refused
+          # for its MIME type, and the page is blank.
           - app: index
             pkg: index
+            base: /${{ github.event.repository.name }}
           - app: json-count-rs
             pkg: json-count-rs
           - app: mgf-precursor-erro-rs
@@ -92,7 +99,7 @@ jobs:
       - name: Build the app
         env:
           APP: ${{ matrix.pkg }}
-          BASE_PATH: /${{ github.event.repository.name }}/${{ matrix.pkg }}
+          BASE_PATH: ${{ matrix.base || format!('/{0}/{1}', github.event.repository.name, matrix.pkg) }}
         run: ./mk web-build
 
       # `dx` writes into the one workspace target directory, not under the app's
