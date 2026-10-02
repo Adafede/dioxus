@@ -4021,6 +4021,7 @@ name = "upload"
 version = "0.1.0"
 dependencies = [
  "dioxus",
+ "futures-executor",
  "gloo-timers",
  "js-sys",
  "thiserror 2.0.21",

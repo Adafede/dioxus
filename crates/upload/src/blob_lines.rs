@@ -90,12 +90,26 @@ where
             // buffer is the last line, unterminated; `take_line_from_buffer` has
             // already drained everything above `buf_start`.
             if self.offset >= self.total_bytes {
-                if let Some(remaining) = self.buffer.get(self.buf_start..) {
-                    let remaining = String::from_utf8_lossy(remaining).into_owned();
-                    self.buf_start = self.buffer.len();
-                    return Ok(Some(remaining));
+                // The last line of a file that does not end in a newline is
+                // whatever is left here, and it is returned once.
+                //
+                // An *empty* remainder means there is no line to return, and
+                // `buffer.get(buf_start..)` cannot tell those two cases apart:
+                // once `buf_start == buffer.len()` it yields `Some(&[])`, which
+                // used to come back as `Some("")`. The caller pushes that into
+                // its line vector and asks again, so this branch returned an
+                // empty string forever -- a spin that grows the caller's
+                // `Vec<String>` until its capacity computation overflows a 32-bit
+                // `usize`, which is where `capacity overflow` came from. The
+                // same loop is what made mgf-precursor-erro-rs eat memory on a
+                // small file.
+                let remaining = self.buffer.get(self.buf_start..).unwrap_or_default();
+                if remaining.is_empty() {
+                    return Ok(None);
                 }
-                return Ok(None);
+                let remaining = String::from_utf8_lossy(remaining).into_owned();
+                self.buf_start = self.buffer.len();
+                return Ok(Some(remaining));
             }
 
             self.load_next_chunk().await?;
@@ -137,3 +151,9 @@ where
         Ok(())
     }
 }
+
+#[cfg(test)]
+// A fixture that stops parsing is a failing test, not something to assert
+// around, and an `Err` out of `next_line` has nowhere better to be reported.
+#[expect(clippy::unwrap_used)]
+mod tests;

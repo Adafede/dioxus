@@ -22,5 +22,11 @@ wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
 web-sys = { workspace = true, features = ["Blob", "BlobPropertyBag", "File", "FileList", "FileReader", "HtmlAnchorElement", "HtmlFormElement", "HtmlInputElement", "Location", "Url", "Window"] }
 
+# `blob_lines`'s tests drive its async reader on the host. `futures-executor` is
+# already in the workspace lock through json-count-rs, so this resolves to a
+# package the workspace already has; only the crate moves.
+[dev-dependencies]
+futures-executor = { workspace = true }
+
 [lints]
 workspace = true
