@@ -89,7 +89,7 @@ jobs:
       # than skipping it, which is deliberate: a supply-chain check that is
       # silently absent on a machine where it is not installed is a check that
       # reports nothing about the code.
-      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
+      - uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2
         with:
           tool: |
             cargo-make@0.37.24
@@ -141,7 +141,7 @@ jobs:
       # Without this a failure is a red dot and a scrollback. The path is set in
       # `.config/nextest.toml` as `junit.path`, so the file lands under a
       # per-profile store directory next to the build output.
-      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: nextest-junit
@@ -176,11 +176,11 @@ jobs:
       # `rust-toolchain.toml` before any action runs, so the env var is what
       # wins, and setting only the action's `toolchain:` input is not enough on
       # its own.
-      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master
         with: { toolchain: 1.97.1 }
         env:
           RUSTUP_TOOLCHAIN: 1.97.1
-      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
+      - uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2
         with:
           tool: |
             cargo-nextest@0.9.146
@@ -220,7 +220,7 @@ jobs:
       # `dioxus-cli` is the crate; `dx` is the binary it installs and is not on
       # crates.io, so `dx@0.7.10` does not resolve. The version is the resolved
       # `dioxus` in `Cargo.lock`, which is the one `dx` has to agree with.
-      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
+      - uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2
         with:
           tool: |
             cargo-make@0.37.24
@@ -228,7 +228,7 @@ jobs:
       - run: ./mk web-build-all
       - name: Report the optimized size of each app
         run: ./mk web-size
-      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: wasm-bundles
           # `dx` writes into the one workspace target directory, not under each

@@ -97,7 +97,7 @@ jobs:
           # compiling the dependency graph and the rest reuse it.
           shared-key: pages
 
-      - uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2
+      - uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2
         with:
           tool: |
             cargo-make@0.37.24
@@ -111,7 +111,7 @@ jobs:
 
       # `dx` writes into the one workspace target directory, not under the app's
       # own directory.
-      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: app-${{ matrix.app }}
           path: target/dx/${{ matrix.pkg }}/release/web/public
@@ -133,7 +133,7 @@ jobs:
       # with "unable to find version b4b15b8c..." because this line carried
       # upload-artifact's SHA. `./mk action-pins` checks every pin against the
       # repository that owns it, on the weekly schedule.
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: _site
 
