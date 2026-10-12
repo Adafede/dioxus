@@ -102,12 +102,23 @@ pub(crate) fn components(atoms: &[u32], mol: &Molecule) -> Vec<Vec<u32>> {
         seen.insert(start);
         while let Some(cur) = stack.pop() {
             comp.push(cur);
-            for (nbr, _) in mol.neighbors(AtomIdx(cur)) {
-                if set.contains(&nbr.0) && !seen.contains(&nbr.0) {
-                    seen.insert(nbr.0);
-                    stack.push(nbr.0);
-                }
-            }
+            // Admitted by *marking* rather than by testing and then marking.
+            //
+            // The two steps used to be separate — `set.contains(&nbr.0) &&
+            // !seen.contains(&nbr.0)`, then `seen.insert` inside the body —
+            // which leaves a window in which the same atom can be pushed twice,
+            // and dropping either half of the guard opens it: with the `!`
+            // gone, every neighbour already seen is pushed again, for ever.
+            // `insert` returns whether it was the one that added the atom, so
+            // there is no separate "have I seen it" question left to answer
+            // wrongly, and no way to push an atom twice.
+            let fresh: Vec<u32> = mol
+                .neighbors(AtomIdx(cur))
+                .map(|(nbr, _)| nbr.0)
+                .filter(|&n| set.contains(&n))
+                .filter(|&n| seen.insert(n))
+                .collect();
+            stack.extend(fresh);
         }
         comps.push(comp);
     }

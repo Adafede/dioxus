@@ -44,8 +44,16 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> CxResult_ {
 
     let nonrepeat = scaffold.atom_count() - repeat_atoms.len();
     let count_max = (longest.atom_count() - nonrepeat) / unit_size;
-    let count_min = (shortest.atom_count() - nonrepeat) / unit_size;
-    let count_min = count_min.max(1);
+    // The smallest input is the scaffold with the unit in it once, so its count
+    // is 1. That is arithmetic rather than an assumption: `scaffold` is a
+    // re-parse of `shortest`, so `shortest.atom_count()` is `scaffold`'s,
+    // `nonrepeat` is the scaffold minus the unit, and the difference is
+    // `repeat_atoms.len()`, which `locate_repeat_in_scaffold` only ever returns
+    // at `unit_size`. Divided by `unit_size` that is 1, and a `.max(1)` over it
+    // was belt and braces on top — with the belt and braces there, the `-` and
+    // the `/` were two mutants on a line that is 1 for every input, which is
+    // the definition of a mutant no test can kill.
+    let count_min = 1usize;
     let repeat_unit = RepeatUnit {
         atoms: repeat_atoms,
         min: count_min,

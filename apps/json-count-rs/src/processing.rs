@@ -142,74 +142,62 @@ fn scan_json_value(input: &[u8], start: usize) -> (u64, usize) {
 // ── Wasm-only streaming scanner ──────────────────────────────────────
 
 #[cfg(target_arch = "wasm32")]
-use dioxus::prelude::*;
+mod wasm_entry;
 #[cfg(target_arch = "wasm32")]
-use upload::{Blob, BlobSource};
+pub(crate) use wasm_entry::begin_scan_from_blob;
 
 // The reader itself, not the browser: needed by the three scanners, which are
 // `cfg(any(test, wasm32))` so a host test can reach the code that runs in the
-// browser. `Blob` and `BlobSource` stay wasm-only because they are the browser.
+// browser. `Blob` and `BlobSource` stay wasm-only because they are the browser,
+// and the two functions that name them live in `wasm_entry` for the reason
+// `.cargo/mutants.toml` gives: a mutant in them cannot be killed by a host test
+// run, because there is no host test run that can reach them.
+#[cfg(any(test, target_arch = "wasm32"))]
+mod strings;
+
 #[cfg(any(test, target_arch = "wasm32"))]
 use upload::{BlobCursor, ChunkSource, UploadError};
 
-#[cfg(target_arch = "wasm32")]
-pub(crate) fn begin_scan_from_blob(
-    blob: Blob,
-    file_name: String,
-    mut file_name_signal: Signal<String>,
-    mut status: Signal<String>,
-    mut results: Signal<Vec<ColumnResult>>,
-    mut busy: Signal<bool>,
-    mut drag_active: Signal<bool>,
-) {
-    file_name_signal.set(file_name);
-    busy.set(true);
-    drag_active.set(false);
-    status.set("Reading file...".to_string());
-    results.set(vec![]);
-    spawn_scan(blob, status, results, busy);
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(crate) use strings::{read_json_key, skip_string_nonempty};
+
+/// The progress line the scanner shows while it reads.
+///
+/// Split out of the callback that used to build it inline, and out of the
+/// browser with it, for the reason the rest of this file is `cfg(any(test, …))`:
+/// three arithmetic steps — the divide-by-zero guard, the clamp on both the byte
+/// count and the percentage — that decide what the user reads on screen, and
+/// that had no test because the function holding them took a browser `Blob`.
+///
+/// The guard matters for an empty upload, where `total` is zero and the
+/// percentage is the only thing that would divide by it.
+#[cfg(any(test, target_arch = "wasm32"))]
+fn progress_message(processed: u64, total: u64) -> String {
+    let safe_total = total.max(1);
+    let displayed = processed.min(safe_total);
+    let percent = (displayed * 100 / safe_total).min(100);
+    format!("Scanning {displayed}/{safe_total} bytes ({percent}%)...")
 }
 
-#[cfg(target_arch = "wasm32")]
-fn spawn_scan(
-    blob: Blob,
-    mut status: Signal<String>,
-    mut results: Signal<Vec<ColumnResult>>,
-    mut busy: Signal<bool>,
-) {
-    spawn(async move {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        // browser Blob.size() returns f64, cast to u64 for byte counts
-        let total_bytes = blob.size() as u64;
-        status.set(format!("Scanning {total_bytes} bytes..."));
-
-        let cols = match scan_blob_with_progress(&blob, move |processed, total| {
-            let safe_total = total.max(1);
-            let displayed = processed.min(safe_total);
-            let percent = (displayed * 100 / safe_total).min(100);
-            status.set(format!(
-                "Scanning {displayed}/{safe_total} bytes ({percent}%)..."
-            ));
-        })
-        .await
-        {
-            Ok(cols) => cols,
-            Err(error) => {
-                status.set(format!("Error reading file: {error:?}"));
-                Vec::new()
-            }
-        };
-
-        let total: u64 = cols.iter().map(|col| col.count).sum();
-        status.set(format!(
-            "Done — {} columns, {} total non-null values",
-            cols.len(),
-            total
-        ));
-        results.set(cols);
-        busy.set(false);
-    });
+/// The column grammar over any [`ChunkSource`], reporting progress.
+///
+/// The browser version is this with a `BlobSource` in the first argument; see
+/// [`scan_columns`], which has the grammar in it.
+#[cfg(any(test, target_arch = "wasm32"))]
+#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
+async fn scan_source_with_progress<F, S>(
+    source: S,
+    total_bytes: u64,
+    on_progress: F,
+) -> Result<Vec<ColumnResult>, String>
+where
+    F: FnMut(u64, u64),
+    S: ChunkSource,
+{
+    let mut cur = BlobCursor::new(source, total_bytes, on_progress);
+    scan_columns(&mut cur).await
 }
+
 // ---------------------------------------------------------------------------
 // Streaming JSON scanner - uses BlobCursor from upload crate
 // ---------------------------------------------------------------------------
@@ -366,130 +354,28 @@ fn unicode_escape(raw: &[u8], at: usize) -> Option<char> {
     char::from_u32(code)
 }
 
-/// Reads a JSON string key from the cursor using the shared `BlobCursor`.
+/// How many buffer passes one scan of a value may take.
 ///
-/// Compiled for tests as well as wasm. It scans bytes and nothing else — no
-/// browser API, no `Blob` — and until the reader became source-generic there was
-/// no way to say so: it was `cfg(target_arch = "wasm32")` because its *parameter*
-/// was, and one wasm parameter took the whole function down with it. That is why
-/// this grammar had a second, in-memory implementation next to it: this one, the
-/// one that runs in the browser, had no reachable test at all.
-#[cfg(any(test, target_arch = "wasm32"))]
-#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
-async fn read_json_key<F: FnMut(u64, u64), S: ChunkSource>(
-    cursor: &mut BlobCursor<F, S>,
-) -> Result<String, UploadError> {
-    if cursor.next_byte().await? != Some(b'"') {
-        return Err(UploadError::other("Expected opening quote for string"));
-    }
-
-    let mut raw = Vec::new();
-    let mut escaped = false;
-    loop {
-        let start = cursor.pos();
-        let buf = cursor.buffer();
-        let mut i = start;
-        let mut closed = false;
-
-        while let Some(&byte) = buf.get(i) {
-            match byte {
-                _ if escaped => {
-                    escaped = false;
-                }
-                b'\\' => escaped = true,
-                b'"' => {
-                    closed = true;
-                    break;
-                }
-                _ if !escaped => {
-                    raw.push(byte);
-                }
-                _ => {}
-            }
-            i += 1;
-        }
-        if closed {
-            // The key body *and* its closing quote. Advancing only 1 — which is
-            // what this did — leaves the cursor sitting on the closing quote, so
-            // the caller's colon check reads `"` and every non-empty key fails
-            // with "Expected ':' after object key". It works for `{"":1}`, where
-            // the body is empty and the two advances coincide, which is why
-            // nothing noticed: no test could reach this function at all.
-            cursor.advance(i - start + 1);
-            break;
-        }
-
-        // Consume what was scanned before refilling. Without this the buffer is
-        // never drained — `fill` drains `0..pos`, and `pos` has not moved — so the
-        // next pass re-scans the same bytes and appends them to `raw` again: a key
-        // split across a chunk boundary came back as `nn` for `"n"` and
-        // `sststrstr` for `"str"`, and a key long enough to span many chunks grew
-        // `raw` without bound. `skip_string_nonempty` has always had this line.
-        cursor.advance(i - start);
-
-        if !cursor.fill().await? {
-            return Err(UploadError::other("Unexpected EOF while reading string"));
-        }
-    }
-
-    Ok(unescape_json_string(&raw))
-}
-
-/// Skips over a JSON string (consuming opening/closing quotes) and
-/// reports only whether it had at least one character. No allocation.
+/// Every pass of a scan either consumes at least one byte or ends the scan, and
+/// no pass can consume a byte the stream does not have, so the stream's own byte
+/// count is a bound no well-formed input reaches. It is there for the pass that
+/// consumes none: a reader that has stopped handing out chunks, or a loop whose
+/// exit condition has been mutated away, ends after this many passes rather than
+/// repeating the same pass for ever.
 ///
-/// Compiled for tests as well as wasm; see [`read_json_key`]. The `b'\\'` arm
-/// below is the one that makes a body ending in a lone backslash scan forever,
-/// and it is the arm mutants delete most often, so having a test that reaches it
-/// is the point.
+/// That is not a hypothetical. Before these loops were bounded, every timeout a
+/// `cargo mutants` run reported in this file was one of them — a `+=` mutated to
+/// `*=` in the cursor the loop advanced by — and a timeout is the mutation
+/// report's version of a hang, which is a defect this scanner is supposed to
+/// not have on a truncated upload.
+///
+/// One extra pass, because the pass that finds the closing quote consumes it
+/// without having consumed a delimiter first.
 #[cfg(any(test, target_arch = "wasm32"))]
-#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
-async fn skip_string_nonempty<F: FnMut(u64, u64), S: ChunkSource>(
-    cursor: &mut BlobCursor<F, S>,
-) -> Result<bool, UploadError> {
-    if cursor.next_byte().await? != Some(b'"') {
-        return Err(UploadError::other("Expected opening quote for string"));
-    }
-
-    let mut escaped = false;
-    let mut any = false;
-    loop {
-        let start = cursor.pos();
-        let buf = cursor.buffer();
-        let mut i = start;
-        let mut closed = false;
-
-        while let Some(&byte) = buf.get(i) {
-            match byte {
-                _ if escaped => {
-                    escaped = false;
-                }
-                b'\\' => escaped = true,
-                b'"' => {
-                    closed = true;
-                    break;
-                }
-                _ => {}
-            }
-            i += 1;
-        }
-
-        if i > start {
-            any = true;
-        }
-        cursor.advance(i - start);
-
-        if closed {
-            cursor.advance(1); // consume closing quote
-            break;
-        }
-
-        if !cursor.fill().await? {
-            return Err(UploadError::other("Unexpected EOF while reading string"));
-        }
-    }
-
-    Ok(any)
+fn pass_bound<F: FnMut(u64, u64), S: ChunkSource>(cursor: &BlobCursor<F, S>) -> usize {
+    usize::try_from(cursor.total_bytes())
+        .unwrap_or(usize::MAX)
+        .saturating_add(1)
 }
 
 /// Counts the leaves inside one `{...}` or `[...]`, the cursor sitting on its
@@ -526,7 +412,7 @@ where
     let mut in_token = false;
     let mut token_first_byte = 0u8;
 
-    loop {
+    for _ in 0..pass_bound(cursor) {
         let start = cursor.pos();
         // Scanned through a borrow of the buffer rather than a clone of it.
         // The clone was there to dodge a borrow conflict with the `advance`
@@ -535,12 +421,18 @@ where
         // scanner whose entire reason to exist is bounded memory. Scoping
         // the borrow and applying the advance afterwards removes both the
         // copy and the conflict.
-        let (scanned_to, closed) = {
-            let buf = cursor.buffer();
-            let mut i = start;
+        let (consumed, closed) = {
+            let Some(tail) = cursor.buffer().get(start..) else {
+                break;
+            };
+            // Iterator-indexed, for the reason `read_json_key` gives: five
+            // `i += 1` sites in here, and every one of them was a way for the
+            // scan to stop moving and read the same byte for ever.
+            let mut consumed = 0usize;
             let mut closed = false;
 
-            while let Some(&b) = buf.get(i) {
+            for (i, &b) in tail.iter().enumerate() {
+                consumed = i + 1;
                 if in_string {
                     // Mirrors `skip_string_nonempty`: a backslash and the byte
                     // it escapes both count as content, so `"\""` is 1.
@@ -558,7 +450,6 @@ where
                     } else {
                         string_has_content = true;
                     }
-                    i += 1;
                     continue;
                 }
 
@@ -569,7 +460,6 @@ where
                         }
                         in_token = false;
                     } else {
-                        i += 1;
                         continue;
                     }
                 }
@@ -578,34 +468,28 @@ where
                     b'"' => {
                         in_string = true;
                         string_has_content = false;
-                        i += 1;
                     }
                     b'{' | b'[' => {
                         depth += 1;
-                        i += 1;
                     }
                     b'}' | b']' => {
                         depth -= 1;
-                        i += 1;
                         if depth == 0 {
                             closed = true;
                             break;
                         }
                     }
-                    b':' | b',' | b' ' | b'\t' | b'\n' | b'\r' => {
-                        i += 1;
-                    }
+                    b':' | b',' | b' ' | b'\t' | b'\n' | b'\r' => {}
                     _ => {
                         in_token = true;
                         token_first_byte = b;
-                        i += 1;
                     }
                 }
             }
 
-            (i, closed)
+            (consumed, closed)
         };
-        cursor.advance(scanned_to - start);
+        cursor.advance(consumed);
 
         if closed {
             return Ok(count);
@@ -617,6 +501,10 @@ where
             ));
         }
     }
+
+    Err(UploadError::other(
+        "Nested JSON value did not close within the document",
+    ))
 }
 
 /// Counts the number of non-null "leaf" values inside a JSON value.
@@ -655,25 +543,27 @@ async fn count_value<F: FnMut(u64, u64), S: ChunkSource>(
     // Bare scalar at this position: number, true, false, or null.
     let first = cursor.current_byte().unwrap_or(b'n');
     cursor.advance(1);
-    loop {
-        // `i` tracked the cursor but was never itself advanced, while `buf` was a
-        // snapshot: the loop read the same byte forever and advanced the cursor
-        // past the end of the stream. A scalar with no delimiter in the rest of
-        // its chunk — which is every scalar at a chunk boundary — spun here
-        // forever. On a multi-gigabyte upload that is a frozen tab, and no test
-        // could reach it. Scanned by index instead, and the borrow scoped so the
-        // `advance` does not need a clone of the chunk to escape it.
+    for _ in 0..pass_bound(cursor) {
+        // Scanned by iterator rather than by a hand-kept `i`, for the reason
+        // `read_json_key` gives. This loop had the earlier version already —
+        // `i` tracked the cursor but was never itself advanced, while `buf` was
+        // a snapshot: the loop read the same byte forever and advanced the
+        // cursor past the end of the stream. A scalar with no delimiter in the
+        // rest of its chunk — which is every scalar at a chunk boundary — spun
+        // here forever. On a multi-gigabyte upload that is a frozen tab, and no
+        // test could reach it. The borrow is scoped so the `advance` does not
+        // need a clone of the chunk to escape it.
         let (consumed, at_delimiter) = {
-            let buf = cursor.buffer();
-            let mut i = cursor.pos();
-            let mut consumed = 0;
+            let Some(tail) = cursor.buffer().get(cursor.pos()..) else {
+                break;
+            };
+            let mut consumed = 0usize;
             let mut at_delimiter = false;
-            while let Some(&b) = buf.get(i) {
+            for &b in tail {
                 if matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']') {
                     at_delimiter = true;
                     break;
                 }
-                i += 1;
                 consumed += 1;
             }
             (consumed, at_delimiter)
@@ -685,13 +575,16 @@ async fn count_value<F: FnMut(u64, u64), S: ChunkSource>(
             return Ok(u64::from(first != b'n'));
         }
     }
+
+    Err(UploadError::other(
+        "Scalar ran past the end of the document",
+    ))
 }
 
 /// The JSON column grammar, over any [`ChunkSource`].
 ///
 /// This is the scanner that runs in the browser, with the browser taken out.
-/// `scan_blob_with_progress` is now three lines that open a `Blob` and hand the
-/// cursor over.
+/// The browser entry point is [`scan_source_with_progress`] plus a `BlobSource`.
 ///
 /// Extracted rather than tested through the wasm entry point, because that entry
 /// point takes a browser `Blob` and so can only run in a browser. Everything that
@@ -732,34 +625,18 @@ where
         fields.push(ColumnResult { key, count });
 
         cur.skip_ws().await.map_err(|e| e.to_string())?;
-        match cur.peek().await.map_err(|e| e.to_string())? {
-            Some(b',') => {
-                cur.next_byte().await.map_err(|e| e.to_string())?;
-            }
-            Some(b'}') => {
-                cur.next_byte().await.map_err(|e| e.to_string())?;
-                break;
-            }
-            _ => break,
+        // Only a comma continues. A `}` ends the document and needs no arm of
+        // its own: consuming it changed nothing that anything downstream could
+        // observe, because this function returns `fields` either way, and the
+        // arm that consumed it was a mutant nothing could kill.
+        if cur.peek().await.map_err(|e| e.to_string())? == Some(b',') {
+            cur.next_byte().await.map_err(|e| e.to_string())?;
+        } else {
+            break;
         }
     }
 
     Ok(fields)
-}
-
-/// Opens a browser `Blob` and scans it. See [`scan_columns`], which is the part
-/// with the grammar in it.
-#[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
-async fn scan_blob_with_progress(
-    blob: &Blob,
-    on_progress: impl FnMut(u64, u64),
-) -> Result<Vec<ColumnResult>, String> {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    // browser Blob.size() returns f64, cast to u64 for byte counts
-    let total_bytes = blob.size() as u64;
-    let mut cur = BlobCursor::new(BlobSource::new(blob), total_bytes, on_progress);
-    scan_columns(&mut cur).await
 }
 
 #[cfg(test)]

@@ -44,15 +44,23 @@ fn an_expansion_past_the_ceiling_is_refused_with_the_count_in_the_message() {
 }
 
 #[test]
-fn a_few_arrangements_of_an_enormous_scaffold_are_refused_too() {
+fn a_few_arrangements_of_a_scaffold_past_the_atom_ceiling_are_refused_too() {
     // The same ceiling on the other function. Four arrangements is a factor
     // of 2,500 below the count ceiling, which therefore says nothing, and one
-    // of those arrangements is a 20,000-atom molecule. Four arrangements of
+    // of those arrangements is a molecule past the ceiling. Four arrangements of
     // one atom would be nothing at all, which is the point: the count is a
     // proxy here, and this is what bounds it.
-    let scaffold = mol(&"C".repeat(20_000));
+    //
+    // Four arrangements rather than one, and a scaffold barely past the
+    // ceiling rather than five times past it, for a reason that only shows up
+    // under mutation: with this check broken the four arrangements really are
+    // built, and at 20,000 atoms each takes a minute to canonicalise, which
+    // turns a killed mutant into a 300-second timeout. Four arrangements of
+    // 4,097 atoms is four canonicalisations, and it is the difference between
+    // a timeout and a kill.
+    let scaffold = mol(&"C".repeat(MAX_MOLECULE_ATOMS + 1));
     let err = enumerate(&scaffold, &[], &targets_of(&[2, 2]))
-        .expect_err("a 20,000-atom scaffold is past the ceiling");
+        .expect_err("one atom past the ceiling is past it");
     assert!(
         err.to_string().contains(&MAX_MOLECULE_ATOMS.to_string()),
         "the error names the ceiling that refused it: {err}"
@@ -126,11 +134,19 @@ fn a_repeat_range_sitting_exactly_on_the_count_ceiling_is_still_refused() {
     // only two jobs.
     //
     // `count_max` reaches those values honestly: it is an atom-count
-    // difference over the unit size, so a long input over a one-atom unit
-    // gives a long range without giving a long *count*.
-    let scaffold = mol("C");
+    // difference over the unit size, so a long input over a large unit gives a
+    // long range without giving a long *count*.
+    //
+    // The unit is `MAX_MOLECULE_ATOMS` atoms rather than one, which is what
+    // keeps the mutant cheap. With the molecule ceiling broken this test's
+    // 10,000 counts are walked for real, and over a one-atom unit that is
+    // 10,000 canonicalisations of chains up to 4,096 atoms long — minutes,
+    // and a timeout rather than a kill. Over a ceiling-sized unit the loop is
+    // capped at a single count whatever happens to the checks, because a
+    // molecule has to stay inside `MAX_MOLECULE_ATOMS` to be built at all.
+    let scaffold = mol(&"C".repeat(MAX_MOLECULE_ATOMS + 1));
     let unit = RepeatUnit {
-        atoms: vec![0],
+        atoms: (0..MAX_MOLECULE_ATOMS).collect(),
         min: 1,
         max: MAX_ARRANGEMENTS,
     };
@@ -206,3 +222,91 @@ fn an_ordinary_repeat_range_is_expanded() {
 // `an_ordinary_*` cases above: a ceiling small enough to refuse them would
 // make them fail. Asserting the constant against another constant would only
 // say the same thing at compile time.
+
+// ── the two sides of a ceiling, one atom and one arrangement apart ─────────
+//
+// Every ceiling above is `x > LIMIT`, and `>` has two mutants that no test in
+// the file was reaching: `>=` refuses an input sitting exactly on the ceiling,
+// which is legal, and `==` refuses only that one input, which lets everything
+// above it through — the 17 GB, once more.
+//
+// Reaching them is not a matter of writing a slow test. Every arrangement of a
+// one-atom scaffold is a one-atom molecule, so ten thousand of them is eleven
+// milliseconds, and ten thousand *plus one* is the same eleven milliseconds
+// rather than the minute it takes when the guard is what is missing. Both sides
+// of both ceilings are therefore cheap to stand on, and these four tests are
+// what stand on them.
+
+#[test]
+fn an_expansion_sitting_exactly_on_the_count_ceiling_is_expanded() {
+    // 100 x 100 is 10,000, which is the ceiling, and `>` is `>`.
+    let scaffold = mol("C");
+    let out = enumerate(&scaffold, &[], &targets_of(&[100, 100]))
+        .expect("sitting on the ceiling is legal; only past it is not");
+    assert_eq!(out.len(), 1, "all identical, so one distinct molecule");
+}
+
+#[test]
+fn one_past_the_count_ceiling_is_refused() {
+    // 73 x 137 is 10,001: the first integer above the ceiling that factors
+    // into two group widths. With `>` mutated to `==` this expands, in about
+    // the time the ten thousand above it takes.
+    let scaffold = mol("C");
+    let err = enumerate(&scaffold, &[], &targets_of(&[73, 137]))
+        .expect_err("10,001 arrangements is one past the ceiling");
+    assert!(
+        err.to_string().contains("arrangements to expand"),
+        "and it is the count ceiling that says so: {err}"
+    );
+}
+
+#[test]
+fn a_scaffold_sitting_exactly_on_the_atom_ceiling_is_expanded() {
+    // 4,096 atoms is the ceiling, and one arrangement of it is one
+    // canonicalisation of one four-thousand-atom chain.
+    let scaffold = mol(&"C".repeat(MAX_MOLECULE_ATOMS));
+    let out = enumerate(&scaffold, &[], &targets_of(&[1]))
+        .expect("sitting on the ceiling is legal; only past it is not");
+    assert_eq!(out.len(), 1, "one arrangement, one molecule");
+}
+
+#[test]
+fn one_atom_past_the_atom_ceiling_is_refused() {
+    let scaffold = mol(&"C".repeat(MAX_MOLECULE_ATOMS + 1));
+    let err = enumerate(&scaffold, &[], &targets_of(&[1]))
+        .expect_err("one atom past the ceiling is past it");
+    assert!(
+        err.to_string().contains(&MAX_MOLECULE_ATOMS.to_string()),
+        "and the message names the ceiling: {err}"
+    );
+}
+
+#[test]
+fn an_expansion_sitting_exactly_on_the_atom_ceiling_is_expanded() {
+    // The same boundary on `enumerate_repeating`, where it is `max x unit_size`
+    // rather than the scaffold's own size. One count of a 4,096-atom unit, so
+    // the largest molecule is the ceiling and nothing is being multiplied.
+    let scaffold = mol(&"C".repeat(MAX_MOLECULE_ATOMS + 1));
+    let unit = RepeatUnit {
+        atoms: (0..MAX_MOLECULE_ATOMS).collect(),
+        min: 1,
+        max: 1,
+    };
+    let out = enumerate_repeating(&scaffold, &unit).expect("exactly on the ceiling");
+    assert_eq!(out.len(), 1, "one count, one molecule");
+}
+
+#[test]
+fn one_atom_past_the_atom_ceiling_is_refused_on_the_repeat_side_too() {
+    let scaffold = mol(&"C".repeat(MAX_MOLECULE_ATOMS + 2));
+    let unit = RepeatUnit {
+        atoms: (0..=MAX_MOLECULE_ATOMS).collect(),
+        min: 1,
+        max: 1,
+    };
+    let err = enumerate_repeating(&scaffold, &unit).expect_err("one atom past the ceiling");
+    assert!(
+        err.to_string().contains("largest expansion"),
+        "and it is the molecule ceiling that says so: {err}"
+    );
+}

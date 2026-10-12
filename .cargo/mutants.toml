@@ -52,6 +52,15 @@ exclude_globs = [
   "**/depict_simple.rs",
   "**/examples.rs",
   "**/plotting/**",
+  # The browser entry points of `json-count-rs`, in a file of their own for this
+  # reason. Every function in it takes a `Blob`, a Dioxus `Signal`, or both, and
+  # `dioxus` is a wasm-only dependency of that crate, so the host test run that
+  # `cargo mutants` performs cannot link it. That is why it is a file: the
+  # grammar and the arithmetic were taken out of it and into `processing.rs`,
+  # where they can be reached, and what is left is `blob.size()`,
+  # `BlobSource::new` and three `spawn`s. The exclusion is one name rather than
+  # eight survivors reported every week.
+  "**/processing/wasm_entry.rs",
 ]
 
 # A mutant that hangs has found an infinite loop, which is worth knowing about,

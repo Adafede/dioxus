@@ -281,3 +281,130 @@ fn an_empty_group_is_an_error_and_not_a_panic() {
         "the error says which precondition failed: {err}"
     );
 }
+
+// ── repeat_pattern: which unmatched component is the repeat unit ─────────
+
+/// The pattern for `longest` given a `scaffold` query, in one call.
+fn pattern_of(longest: &str, scaffold: &str, unit_size: usize) -> Vec<u32> {
+    let long = mol(longest);
+    let q = molecule_to_query(&mol(scaffold));
+    repeat_pattern(&mol(scaffold), &long, unit_size, &q).expect("the scaffold is in the longest")
+}
+
+#[test]
+fn the_pattern_is_the_whole_of_the_extra_atoms() {
+    // "CC" aligned into "CCCCCC" leaves four carbons, one component of four,
+    // and a unit of two divides it.
+    assert_eq!(
+        pattern_of("CCCCCC", "CC", 2),
+        vec![2, 3, 4, 5],
+        "the four atoms the scaffold did not match"
+    );
+}
+
+/// A component that is *not* a whole number of units must not be chosen.
+///
+/// "CCCCCCO" aligned on "CC" leaves a chain of four carbons and a lone oxygen —
+/// two components, one of four atoms and one of one. A unit of two divides the
+/// four and not the one, so the four is the repeat and the oxygen is not.
+///
+/// This is the case the filter in `repeat_pattern` exists for, and every one
+/// of its six mutants is invisible without it: the smallest component is the
+/// oxygen, so a filter that lets anything through picks it, and the fallback
+/// `min_by_key` picks it too. `min_by_key` alone — or a filter that only
+/// checked the divisibility, or only the size — answers `vec![6]`.
+#[test]
+fn a_component_that_is_not_a_whole_number_of_units_is_not_the_pattern() {
+    assert_eq!(
+        pattern_of("CCCCCC.O", "CC", 2),
+        vec![2, 3, 4, 5],
+        "four carbons, not the single oxygen"
+    );
+}
+
+/// And the same, for a component that is long enough but not divisible.
+///
+/// "CCCCCCC.O" aligned on "CC" leaves five carbons and an oxygen. The filter
+/// asks for `len % unit_size == 0`, and seven is not even — but it is
+/// certainly not *less than* a unit of two either, so a filter that asked only
+/// the size question, or that accepted either condition rather than both, walks
+/// straight past the divisibility and takes the seven.
+#[test]
+fn a_long_component_that_does_not_divide_is_not_the_pattern() {
+    assert_eq!(
+        pattern_of("CCCCCCC.O", "CC", 2),
+        vec![7],
+        "the oxygen, because nothing else is a whole number of units"
+    );
+}
+
+/// The fallback, for the case where nothing divides.
+///
+/// With no component satisfying the filter the answer is the smallest one, so
+/// `repeat_pattern` has something to say rather than refusing. "CC.CCO" over
+/// "CC" with a unit of two leaves three atoms, which is one and a half units.
+#[test]
+fn the_smallest_component_is_used_when_nothing_divides() {
+    assert_eq!(
+        pattern_of("CC.CCO", "CC", 2),
+        vec![2, 3, 4],
+        "nothing is a whole number of two-atom units, so the smallest wins"
+    );
+}
+
+// ── add_scaffold_bonds: which scaffold bonds survive the splice ──────────
+
+/// The bonds `add_scaffold_bonds` copies out of a four-carbon chain, given
+/// two anchor/endpoint pairs.
+fn copied_bonds(scaffold: &Molecule, a: (u32, u32), b: (u32, u32)) -> Vec<(u32, u32)> {
+    let mut builder = MoleculeBuilder::new();
+    let mapped: Vec<AtomIdx> = scaffold
+        .atoms()
+        .map(|(_, atom)| builder.add_atom(atom.clone()))
+        .collect();
+    add_scaffold_bonds(&mut builder, scaffold, &mapped, a.0, a.1, b.0, b.1);
+    let out = builder.build();
+    out.bonds()
+        .map(|(_, be)| (be.atom1.0, be.atom2.0))
+        .collect()
+}
+
+/// Both anchor bonds are dropped, and only those.
+///
+/// CCCC is 0-1-2-3. Anchors (0,1) and (2,3) name the two bonds the splice
+/// replaces, and 1-2 is the one in the middle that it keeps. All four disjuncts
+/// of `is_anchor_bond` have a bond of their own here — the first pair forwards,
+/// the second pair reversed — so the expression cannot be answered by three of
+/// them, and joining them with `&&` instead of `||` copies all four bonds back
+/// and leaves the unit attached at both ends of the original.
+#[test]
+fn both_anchor_bonds_are_dropped_and_the_rest_are_kept() {
+    let chain = mol("CCCC");
+    let copied = copied_bonds(&chain, (0, 1), (2, 3));
+    assert_eq!(
+        copied,
+        vec![(1, 2)],
+        "the middle bond survives; the two anchor bonds do not"
+    );
+}
+
+/// One anchor pair on its own, to say the pairs are independent.
+///
+/// A single pair drops one bond and keeps the other two, which is what the
+/// reversed disjunction in the middle of `is_anchor_bond` is for: the bond is
+/// named from the anchor's side and from the endpoint's side, and both orderings
+/// are the same bond.
+#[test]
+fn one_anchor_bond_is_dropped_either_way_round() {
+    let chain = mol("CCCC");
+    assert_eq!(
+        copied_bonds(&chain, (0, 1), (9, 9)),
+        vec![(1, 2), (2, 3)],
+        "naming the bond forwards drops it"
+    );
+    assert_eq!(
+        copied_bonds(&chain, (1, 0), (9, 9)),
+        vec![(1, 2), (2, 3)],
+        "and naming it backwards drops the same bond"
+    );
+}

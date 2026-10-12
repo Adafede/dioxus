@@ -73,8 +73,31 @@ fn escapes_advance_past_both_characters() {
 #[test]
 fn a_unicode_escape_is_the_character_it_names() {
     // 0041 is 'A'; 00e9 is 'é'. Both are BMP, which is all this handles.
-    assert_eq!(unescape(r"A"), "A", r"A is A");
-    assert_eq!(unescape(r"é"), "é", "00e9 is e-acute");
+    //
+    // The `\u` has to be *in* these literals. They were written as `r"A"` and
+    // `r"é"` — the escapes missing, so what they actually asserted was that
+    // `unescape` returns its argument unchanged, which the pass-through branch
+    // above already covers and no `\u` code runs for. Every mutant of the
+    // `\u` arm survived on that: a `b'u'` arm that expands nothing still passes
+    // a test that never names a `\u`.
+    assert_eq!(unescape(r"\u0041"), "A", r"\u0041 is A");
+    assert_eq!(unescape(r"\u00e9"), "é", r"\u00e9 is e-acute");
+}
+
+#[test]
+fn a_unicode_escape_is_expanded_wherever_it_sits_in_the_body() {
+    // The offset passed to `unicode_escape` is `i + 2`, relative to the
+    // backslash, so an escape that follows literals and one that follows
+    // another escape are both checked here: reading the digits from `i` rather
+    // than from `i + 2` picks up the backslash and yields nothing, and reading
+    // them from `i * 2` reaches past the end of the body.
+    assert_eq!(unescape(r"a\u0042b"), "aBb", "between literals");
+    assert_eq!(unescape(r"\u0041\u0042"), "AB", "after another escape");
+    assert_eq!(
+        unescape(r"\u0041tail\u0042"),
+        "AtailB",
+        "two, with a run between"
+    );
 }
 
 #[test]

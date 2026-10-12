@@ -320,9 +320,9 @@ const MAPPING: &[Job] = &[
         name: "mutants",
         tasks: &["mutants"],
         in_local_gate: false,
-        note: "non-blocking in CI: 13 of cxsmiles-yoga's 290 mutants survive \
-               today, so a gate would be permanently red; 421 mutants also take \
-               ~25 min",
+        note: "non-blocking in CI: 411 mutants over two crates, minutes of \
+               rebuilding the world once per expression, and every one of them \
+               has to be caught by the suite for the run to be green",
     },
     Job {
         file: ".github/workflows/scheduled.yml",

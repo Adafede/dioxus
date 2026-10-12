@@ -214,3 +214,67 @@ fn molecules_sharing_a_root_land_in_the_same_bucket() {
         "and every molecule is still in exactly one bucket"
     );
 }
+
+// ── find_root ───────────────────────────────────────────────────────────
+
+/// `parent` is the union-find as `cluster` builds it: every slot starts as its
+/// own root and a union writes `parent[ri] = rj`.
+fn chain_parents(links: &[(usize, usize)]) -> Vec<usize> {
+    let mut parent: Vec<usize> = (0..4).collect();
+    for &(from, to) in links {
+        parent[from] = to;
+    }
+    parent
+}
+
+#[test]
+fn find_root_walks_a_chain_to_the_end_of_it() {
+    // 3 -> 2 -> 1 -> 0, and 0 is its own root. Walking 3 has to come back 0,
+    // and the loop that does the walking is the one bounded by the length of
+    // the array.
+    let mut parent = chain_parents(&[(3, 2), (2, 1), (1, 0)]);
+    assert_eq!(find_root(&mut parent, 3), 0, "the far end of the chain");
+    assert_eq!(find_root(&mut parent, 2), 0, "and every point on it");
+    assert_eq!(find_root(&mut parent, 1), 0, "up to the last hop");
+}
+
+#[test]
+fn find_root_leaves_an_element_that_is_already_a_root_alone() {
+    let mut parent = chain_parents(&[(2, 0)]);
+    assert_eq!(find_root(&mut parent, 0), 0, "a root is itself");
+    assert_eq!(parent[0], 0, "and its own slot still says so");
+}
+
+/// The compression pass, on its own: reaching a root that is *not* self.
+///
+/// This is the half of `find_root` that no call from `cluster` exercised in a
+/// way a mutant could see, because `cluster` always calls it on an element that
+/// is already a root — `parent[ri]` is written, never `parent[i]` — so the
+/// `p[x] == r` guard was reached only when it was true and the loop below it
+/// never ran. Its mutants were equivalent on every input the suite had.
+#[test]
+fn find_root_points_a_middle_of_the_chain_straight_at_the_root() {
+    let mut parent = chain_parents(&[(3, 2), (2, 1), (1, 0)]);
+    assert_eq!(find_root(&mut parent, 3), 0, "the root is unchanged");
+    assert_eq!(
+        parent[3], 0,
+        "and the element the walk started from now points there directly"
+    );
+
+    // The second call is the one that would have caught a compression that
+    // does nothing: `3` is already at the root, so walking it changes nothing,
+    // while `2` — still one hop away — does.
+    let mut parent = chain_parents(&[(3, 2), (2, 1), (1, 0)]);
+    find_root(&mut parent, 2);
+    assert_eq!(parent[2], 0, "one hop is collapsed to no hops");
+}
+
+#[test]
+fn find_root_on_a_flat_array_returns_each_element() {
+    // Nothing has been unioned yet, so every element is its own root and the
+    // walk has nowhere to go. Every clustering starts from this.
+    let mut parent: Vec<usize> = (0..5).collect();
+    for i in 0..5 {
+        assert_eq!(find_root(&mut parent, i), i, "element {i} is its own root");
+    }
+}

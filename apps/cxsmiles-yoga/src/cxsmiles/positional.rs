@@ -82,15 +82,17 @@ pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
     // `floating_comps` as `comp_defs`, so the two are the same length and can be
     // walked together rather than indexed in step.
     let mut targets: Vec<Target> = Vec::with_capacity(defs.len());
-    let mut di = 0usize;
     for (cdefs, positions) in comp_defs.iter().zip(&comp_positions) {
         targets.push(Target::Variable(positions.clone()));
-        if cdefs.len() == 1 {
-            di += 1;
-        } else {
-            let g1 = di;
+        if cdefs.len() != 1 {
+            // The `Variable` just pushed is group 1, so its index is one
+            // before the end. It used to be a running `di` counter that had to
+            // be advanced by 1 on one branch and by 2 on the other, and both of
+            // those `+=` were mutants nothing could kill: getting them wrong
+            // only moves which earlier group a second group attaches to, and
+            // every fixture had one group to point at either way.
+            let g1 = targets.len() - 1;
             targets.push(Target::Fixed(g1)); // group2 attaches to group1's atom
-            di += 2;
         }
     }
 
@@ -224,12 +226,16 @@ fn floating_defs(rep: &Molecule, frag: &[u32], keep: &[bool]) -> Vec<FloatingDef
         .or_else(|| frag.first().copied())
         .unwrap_or(0);
     let in_frag = |a: u32| frag.contains(&a);
-    let is_chain = frag.len() > 1
-        && rep
-            .neighbors(AtomIdx(attach))
-            .filter(|(n, _)| in_frag(n.0) && n.0 != attach)
-            .count()
-            == 1;
+    // No `frag.len() > 1` in front of this. A one-atom fragment has no
+    // neighbour of itself in the fragment, so the count below is zero and
+    // never one, and the guard could only ever be false in the one case where
+    // it made a difference — which is what left `> 1` with a `>=` mutant that
+    // was equivalent and so unkillable.
+    let is_chain = rep
+        .neighbors(AtomIdx(attach))
+        .filter(|(n, _)| in_frag(n.0) && n.0 != attach)
+        .count()
+        == 1;
     if !is_chain {
         let (atoms, bonds, att) = extract_subgraph(rep, frag);
         // reorder so attachment is index 0

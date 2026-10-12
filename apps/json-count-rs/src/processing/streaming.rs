@@ -9,7 +9,7 @@
 use futures_executor::block_on;
 use upload::{BlobCursor, SliceSource};
 
-use super::scan_columns;
+use super::{progress_message, scan_columns, scan_source_with_progress};
 
 /// A cursor over `bytes` with a deliberately tiny chunk size.
 fn cursor(bytes: &[u8], chunk: usize) -> BlobCursor<fn(u64, u64), SliceSource<'_>> {
@@ -194,6 +194,95 @@ fn an_escaped_quote_does_not_end_the_string() {
     );
 }
 
+/// The same escape, with something after it for the mistake to swallow.
+///
+/// Every mutant of the escape arms in `skip_string_nonempty` — the `b'\\'`
+/// arm deleted, the `escaped` guard forced to `false`, the `!escaped` guard
+/// forced to `true` — makes the escaped quote end the string early. On
+/// `"a\"b"` alone that is invisible: the count is 1 either way, because a
+/// non-empty string counts one whether it is three characters or one, and the
+/// `b` left over becomes a bare scalar that `scan_columns` then trips over and
+/// stops on. Two columns is what it takes — the trailing one is missing under
+/// the mutation and present without it.
+#[test]
+fn an_escaped_quote_does_not_eat_the_columns_after_it() {
+    for (json, expected, why) in [
+        (
+            r#"{"k":"a\"b","z":2}"#,
+            vec![("k".to_string(), 1), ("z".to_string(), 1)],
+            "an escaped quote inside the first value",
+        ),
+        (
+            r#"{"k":"\"","z":2}"#,
+            vec![("k".to_string(), 1), ("z".to_string(), 1)],
+            "a string that is nothing but an escaped quote",
+        ),
+        (
+            r#"{"k":"a\\","z":2}"#,
+            vec![("k".to_string(), 1), ("z".to_string(), 1)],
+            "an escaped backslash: the quote after it really does close",
+        ),
+        (
+            r#"{"k":"a\"b","z":"c\"d","y":null}"#,
+            vec![
+                ("k".to_string(), 1),
+                ("z".to_string(), 1),
+                ("y".to_string(), 0),
+            ],
+            "two values with an escaped quote each",
+        ),
+    ] {
+        assert_eq!(columns(json, 64), Ok(expected), "{why}: {json}");
+    }
+}
+
+/// The same three mutants in `read_json_key`, on the key rather than the value.
+///
+/// A key is read with its escapes kept and its body handed to
+/// `unescape_json_string`, so `"a\"b"` is the two-character key `a"b`. Any of
+/// the three mutations ends the key at the escaped quote, leaves the rest of it
+/// in the stream, and the colon check then reads a letter rather than a colon —
+/// which is an error, and an error the test below does not expect.
+#[test]
+fn an_escaped_quote_in_a_key_is_part_of_the_key() {
+    for (json, expected, why) in [
+        (r#"{"a\"b":1}"#, vec![("a\"b", 1)], "an escaped quote"),
+        (r#"{"a\\b":1}"#, vec![("a\\b", 1)], "an escaped backslash"),
+        (r#"{"a\u0041b":1}"#, vec![("aAb", 1)], "a unicode escape"),
+        (
+            r#"{"a\"b":1,"c":2}"#,
+            vec![("a\"b", 1), ("c", 1)],
+            "an escaped quote, with a second column",
+        ),
+    ] {
+        assert_eq!(
+            columns(json, 64),
+            Ok(expected
+                .into_iter()
+                .map(|(k, c)| (k.to_string(), c))
+                .collect()),
+            "{why}: {json}"
+        );
+    }
+}
+
+/// The key escapes above, swept over every chunk size like the value ones.
+///
+/// A key split across a boundary has to keep its escape flag between passes,
+/// and that state is carried in the same variable as everything else.
+#[test]
+fn an_escaped_quote_in_a_key_survives_every_chunk_boundary() {
+    const DOC: &str = r#"{"a\"b":1,"c\\d":2}"#;
+    let whole = columns(DOC, DOC.len());
+    for chunk in 1..=DOC.len() {
+        assert_eq!(
+            columns(DOC, chunk),
+            whole,
+            "chunk size {chunk} changed the answer; the reader is boundary-dependent"
+        );
+    }
+}
+
 /// A body ending in a lone backslash: the escape flag is set and the stream
 /// ends with no closing quote. Truncated multi-gigabyte uploads are ordinary,
 /// not adversarial, so this must terminate with an error rather than loop
@@ -301,4 +390,87 @@ fn the_streaming_value_counter_matches_the_in_memory_one() {
             "the two implementations disagree on {value:?}: {streamed:?}"
         );
     }
+}
+
+// ── the browser shell, with the browser taken out ──────────────────────────
+
+/// The progress line, and the three arithmetic decisions in it.
+///
+/// This was inside the callback the browser passed to the scanner, which is a
+/// closure in a function that takes a `Blob`. Nothing could reach it. Each of
+/// these is a mutant: `total.max(1)` losing its `max` divides by zero on an
+/// empty upload, `processed.min(safe_total)` losing its `min` shows a count past
+/// the end, and the `.min(100)` losing its clamp shows 100% while it is not.
+#[test]
+fn the_progress_line_is_clamped_at_both_ends() {
+    assert_eq!(
+        progress_message(0, 1000),
+        "Scanning 0/1000 bytes (0%)...",
+        "nothing read yet"
+    );
+    assert_eq!(
+        progress_message(500, 1000),
+        "Scanning 500/1000 bytes (50%)...",
+        "halfway"
+    );
+    assert_eq!(
+        progress_message(1000, 1000),
+        "Scanning 1000/1000 bytes (100%)...",
+        "the whole of it"
+    );
+    assert_eq!(
+        progress_message(1500, 1000),
+        "Scanning 1000/1000 bytes (100%)...",
+        "a count past the total is shown as the total, not as 150%"
+    );
+    assert_eq!(
+        progress_message(1001, 1000),
+        "Scanning 1000/1000 bytes (100%)...",
+        "and the percentage stops at 100 rather than running past it"
+    );
+}
+
+/// An empty upload has a total of zero, and the guard is what keeps the
+/// percentage from dividing by it.
+#[test]
+fn an_empty_upload_reports_zero_of_zero_and_not_a_division() {
+    assert_eq!(
+        progress_message(0, 0),
+        "Scanning 0/1 bytes (0%)...",
+        "the denominator is one when the total is zero"
+    );
+}
+
+/// The browser scanner with the browser removed: a slice where a `Blob` was.
+///
+/// Same call, same columns, and the only thing that changed is that a host test
+/// can make it — which is the point of [`super::scan_source_with_progress`]
+/// existing separately from the entry point that wraps it.
+#[test]
+fn the_browser_scanner_is_the_slice_scanner() {
+    let on_progress: fn(u64, u64) = |_, _| {};
+    let json = r#"{"a":1,"b":[2,null,3]}"#;
+    let scanned = block_on(scan_source_with_progress(
+        SliceSource::new(json.as_bytes()),
+        json.len() as u64,
+        on_progress,
+    ));
+    assert_eq!(
+        scanned.map(|cols| {
+            cols.into_iter()
+                .map(|c| (c.key, c.count))
+                .collect::<Vec<_>>()
+        }),
+        Ok(vec![("a".to_string(), 1), ("b".to_string(), 2)]),
+        "the same columns the in-browser scanner reports"
+    );
+    assert_eq!(
+        block_on(scan_source_with_progress(
+            SliceSource::new(b"not an object"),
+            12,
+            on_progress
+        )),
+        Err("Expected a top-level JSON object".to_string()),
+        "and the same refusal"
+    );
 }

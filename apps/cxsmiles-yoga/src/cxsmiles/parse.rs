@@ -44,30 +44,17 @@ pub(crate) fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
     }
     let fps: Vec<BitVec2048> = mols.iter().map(ecfp4).collect();
     let mut parent: Vec<usize> = (0..n).collect();
-    let find = |p: &mut [usize], x: usize| -> usize {
-        let mut r = x;
-        while p[r] != r {
-            r = p[r];
-        }
-        let mut x = x;
-        while p[x] != r {
-            let next = p[x];
-            p[x] = r;
-            x = next;
-        }
-        r
-    };
     for i in 0..n {
-        for j in (i + 1)..n {
+        for j in i.saturating_add(1)..n {
             if fps[i].tanimoto(&fps[j]) >= threshold {
-                let (ri, rj) = (find(&mut parent, i), find(&mut parent, j));
+                let (ri, rj) = (find_root(&mut parent, i), find_root(&mut parent, j));
                 if ri != rj {
                     parent[ri] = rj;
                 }
             }
         }
     }
-    let roots: Vec<usize> = (0..n).map(|i| find(&mut parent, i)).collect();
+    let roots: Vec<usize> = (0..n).map(|i| find_root(&mut parent, i)).collect();
     let mut order: Vec<usize> = (0..n).collect();
     order.sort_by_key(|&i| roots[i]);
     let mut buckets: Vec<Vec<Molecule>> = Vec::new();
@@ -84,6 +71,42 @@ pub(crate) fn cluster(mols: &[Molecule], threshold: f64) -> Vec<Vec<Molecule>> {
     }
     buckets.push(bucket);
     buckets
+}
+
+/// The root of `x`'s set in the union-find `p`, compressing the path walked.
+///
+/// Split out of `cluster` and bounded, both of which matter.
+///
+/// Bounded: the two loops below climb `parent` pointers, and each iteration
+/// takes one, so `p.len()` of them is all the chain there can be — the parents
+/// are indices into `p` and every pointer in a chain leads strictly closer to a
+/// root. Written as `for` over that bound rather than `while p[r] != r` because
+/// the `while` is a loop whose *exit condition* is the only thing holding it up,
+/// and `cargo mutants` found the two mutants of it that a single operator
+/// change produces: `!=` to `==` makes it climb a pointer that points at itself
+/// for ever. Both were timeouts, and a timeout in that report is a hang. With
+/// the bound, the same mutation leaves the loop after `p.len()` passes having
+/// walked the wrong number of steps, and the clustering that comes out is wrong
+/// in a way a test sees.
+#[allow(clippy::indexing_slicing)]
+fn find_root(p: &mut [usize], x: usize) -> usize {
+    let mut r = x;
+    for _ in 0..p.len() {
+        if p[r] == r {
+            break;
+        }
+        r = p[r];
+    }
+    let mut x = x;
+    for _ in 0..p.len() {
+        if p[x] == r {
+            break;
+        }
+        let next = p[x];
+        p[x] = r;
+        x = next;
+    }
+    r
 }
 
 #[cfg(test)]

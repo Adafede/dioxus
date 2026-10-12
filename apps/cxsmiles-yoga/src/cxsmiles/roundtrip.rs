@@ -121,7 +121,15 @@ pub(crate) fn enumerate(
     }
 
     let mut combo: Vec<usize> = vec![0; var.len()];
-    for _ in 0..total {
+    // Bounded by the ceiling as well as checked against it, which is the point
+    // of the two being separate statements. A guard is one comparison, and
+    // `cargo mutants` reports three ways to break one — `>=` refuses a legal
+    // input, `==` and `<` refuse nothing at all — and the last two left the
+    // loop below running the eight-and-a-half-trillion arrangements that
+    // `an_expansion_past_the_ceiling_is_refused_with_the_count_in_the_message`
+    // is written to describe. Ten thousand of them, on a one-atom scaffold, is
+    // the eleven milliseconds the boundary tests measure.
+    for _ in 0..total.min(MAX_ARRANGEMENTS) {
         for (digit, range) in combo.iter().zip(&ranges) {
             if *digit >= range.len() {
                 return Err(CxError(format!(
@@ -191,14 +199,15 @@ fn build_one(
             part_attach.push(attachment);
         }
     }
-    let mut var = 0usize;
+    // `combo` has one entry per `Variable` target, in order, which is
+    // what walking it here is what is for: the index into `combo` is
+    // the count of `Variable` targets seen so far, and an iterator
+    // carries that rather than a counter the loop has to keep right.
+    let mut combo = combo.iter();
     for (attach, target) in part_attach.iter().zip(targets) {
         match target {
             Target::Variable(positions) => {
-                // `combo` has one entry per `Variable` target, in order, which
-                // is what `var` counts here.
-                let chosen = combo.get(var).copied();
-                var += 1;
+                let chosen = combo.next().copied();
                 if let Some(pos) = chosen.and_then(|c| positions.get(c).copied())
                     && let Some(&p) = sc.get(pos)
                 {
@@ -273,8 +282,30 @@ pub(crate) fn enumerate_repeating(
         )));
     }
 
-    let mut out: Vec<String> = Vec::with_capacity(total);
-    for n in unit.min..=unit.max {
+    // The loop bounded by both ceilings, for the reason the loop in `enumerate`
+    // is: a check that has been mutated away must not be the only thing between
+    // an input and the molecules it describes. Ten thousand counts of a
+    // 4,096-atom molecule is forty million atoms of canonicalisation, and the
+    // count ceiling alone never said so — which is why the count the loop
+    // actually walks is capped at what the *molecule* ceiling can carry, and
+    // not at the count ceiling.
+    // `saturating_div` rather than `/`: `unit_size` is at least 1 because
+    // `.max(1)` above, so the two agree, but `/` is an operator and `cargo
+    // mutants` emits a mutant for every operator. `MAX_ARRANGEMENTS.min(..)`
+    // went for the same reason and one more: `MAX_MOLECULE_ATOMS / unit_size`
+    // is never above `MAX_ARRANGEMENTS`, so the first operand of that `min`
+    // could not change any answer.
+    let unit_size = unit.atoms.len().max(1);
+    let count_cap = MAX_MOLECULE_ATOMS.saturating_div(unit_size);
+
+    let mut out: Vec<String> = Vec::with_capacity(total.min(count_cap));
+    // `take(count_cap)`, which is what makes a `count_cap` of zero build
+    // nothing. Written as an upper bound it would be `min + count_cap - 1`,
+    // which for a zero cap is one *below* `min` — and a `saturating_sub` on the
+    // cap turns that back into `min`, so the loop builds one molecule anyway.
+    // The one it built was a 20,000-atom chain, and canonicalising that is the
+    // minute the file's own comments warn about.
+    for n in (unit.min..=unit.max).take(count_cap) {
         out.push(canonical_smiles(&splice_repeat(scaffold, &unit.atoms, n)));
     }
     Ok(dedup_sort(out))
