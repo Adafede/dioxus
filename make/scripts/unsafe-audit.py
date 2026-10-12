@@ -18,7 +18,6 @@ import json
 import os
 import re
 import sys
-from collections import defaultdict
 
 # `unsafe` as a word, not as the start of `unsafety` or `unsafe_code` spelled
 # inside a longer identifier, and not inside a string or a comment. The last of
@@ -64,13 +63,6 @@ def count_in(crate_root: str) -> tuple[int, int, bool]:
 def main() -> int:
     metadata = json.load(sys.stdin)
     workspace_members = set(metadata["workspace_members"])
-
-    # Manifest path -> package, so a path dependency that appears more than
-    # once is only read once.
-    by_root: dict[str, str] = {}
-    for package in metadata["packages"]:
-        root = os.path.dirname(package["manifest_path"])
-        by_root.setdefault(root, package["name"])
 
     # Which packages the workspace's own crates depend on, so the report can
     # separate "unsafe in something we asked for" from "unsafe four crates
