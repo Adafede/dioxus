@@ -58,10 +58,11 @@ install_tool cargo-deny 0.20.2
 install_tool cargo-audit 0.22.2
 install_tool cargo-machete 0.9.2
 install_tool cargo-outdated 0.19.0
-# `cargo geiger` for the transitive unsafe audit and `cargo udeps` for unused
-# dependencies the manifest scan cannot see. Both are on the weekly schedule
-# rather than the gate, so a slow or advisory-heavy run cannot turn the gate red.
-install_tool cargo-geiger 0.13.0
+# `cargo udeps` for unused dependencies the manifest scan cannot see. It is on
+# the weekly schedule rather than the gate, so a slow or advisory-heavy run
+# cannot turn the gate red. The transitive unsafe audit beside it used to be
+# `cargo geiger` and is now `make/scripts/unsafe-audit.sh`, which needs nothing
+# installed — `cargo-geiger` 0.13.0 cannot parse this workspace's manifests.
 install_tool cargo-udeps 0.1.61
 
 # Coverage and mutation testing. The nextest integration is what makes the

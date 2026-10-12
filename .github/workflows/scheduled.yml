@@ -156,7 +156,6 @@ jobs:
             cargo-make@0.37.24
             cargo-outdated@0.19.0
             cargo-udeps@0.1.61
-            cargo-geiger@0.13.0
             cargo-msrv@0.19.3
 
       # Which direct dependencies have a newer release. Not a gate: a version
@@ -175,7 +174,9 @@ jobs:
 
       # The transitive unsafe audit. `unsafe_code = "forbid"` in the workspace
       # lints covers this repository's own code; this is the dependency tree,
-      # which is a different question.
+      # which is a different question. It reads `cargo metadata` rather than
+      # `cargo geiger`, which cannot parse this workspace's manifests — see
+      # the top of `make/scripts/unsafe-audit.sh`.
       - name: Unsafe code in the dependency tree
         run: ./mk geiger
 
