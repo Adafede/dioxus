@@ -2,11 +2,8 @@
 
 [![AGPL-3.0
 license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
-[![Tests](https://img.shields.io/badge/tests-536-brightgreen)]() [![clippy: 0
-warnings](https://img.shields.io/badge/clippy-0%20warnings-brightgreen)]()
-[![WASM](https://img.shields.io/badge/WASM-6%20apps-brightgreen)]() [![cargo
-deny](https://img.shields.io/badge/cargo%20deny-ok-brightgreen)]()
-[![machete](https://img.shields.io/badge/machete-0%20unused-brightgreen)]()
+[![CI](https://github.com/Adafede/dioxus/actions/workflows/ci.yml/badge.svg)](https://github.com/Adafede/dioxus/actions/workflows/ci.yml)
+[![Dependency review](https://github.com/Adafede/dioxus/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/Adafede/dioxus/actions/workflows/dependency-review.yml)
 
 A Cargo workspace for reproducible Dioxus web apps, pinned by
 `rust-toolchain.toml`.

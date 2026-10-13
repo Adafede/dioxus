@@ -2,7 +2,7 @@
 
 [![AGPL-3.0
 license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
-[![Tests](https://img.shields.io/badge/tests-14-brightgreen)](https://github.com/adafede/dioxus/actions)
+[![CI](https://github.com/Adafede/dioxus/actions/workflows/ci.yml/badge.svg)](https://github.com/Adafede/dioxus/actions/workflows/ci.yml)
 
 > **Note:** Most of the upload crate's API is WASM-only (`BlobCursor`,
 > `BlobLines`, browser `download_*` helpers). Native-test coverage is limited to
