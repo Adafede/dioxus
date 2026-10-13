@@ -178,7 +178,7 @@ jobs:
       # `cargo geiger`, which cannot parse this workspace's manifests — see
       # the top of `make/scripts/unsafe-audit.sh`.
       - name: Unsafe code in the dependency tree
-        run: ./mk geiger
+        run: ./mk unsafe
 
       # The real MSRV, bisected with a build per toolchain. Minutes, and the
       # number only moves when a dependency does, so it is a schedule answer.

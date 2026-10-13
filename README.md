@@ -140,7 +140,7 @@ Every job runs a `./mk` task, and the per-push gate is the single task
 - **WASM bundle** (`./mk web-build-all`, `./mk web-size`): the only
   job that links a `.wasm`, and the one that reports how large it is.
 - **Scheduled**, weekly: mutation testing, coverage, and the dependency-drift
-  questions (`outdated`, `udeps`, `geiger`, `msrv`).
+  questions (`outdated`, `udeps`, `unsafe`, `msrv`).
 
 Artifacts: the nextest JUnit report from every gate run, the coverage report,
 the mutants report, and the built wasm bundles.

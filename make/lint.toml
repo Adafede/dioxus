@@ -99,8 +99,10 @@ cargo clippy -p upload --target wasm32-unknown-unknown --all-targets \\
 # It is `make/scripts/unsafe-audit.sh` and not `cargo geiger`, for the reason
 # written at the top of that script: cargo-geiger 0.13.0 carries a TOML 0.5
 # manifest parser and cannot read a workspace with a multi-line inline table in
-# any dependency's manifest, which this one has.
-[tasks."geiger"]
+# any dependency's manifest, which this one has. The task is called `unsafe`
+# because it no longer runs geiger, and a name that says what a tool is when the
+# tool is gone is the kind of thing a reader believes.
+[tasks."unsafe"]
 cwd = "${REPO_ROOT}"
 description = "Report the unsafe code in the dependency tree."
 script = "make/scripts/unsafe-audit.sh"

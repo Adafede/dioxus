@@ -116,7 +116,7 @@ Run on purpose, not in the gate. Each has a stated reason in `make/*.toml`.
 | --- | --- |
 | `outdated` | a version report; it fails on any dependency at all, so as a gate it is red from the day it is added |
 | `udeps` | needs nightly and is slow; it catches a dependency used only behind a `#[cfg]`, which `machete` cannot |
-| `geiger` | the transitive unsafe audit — advisory, and `unsafe_code = "forbid"` already covers this repository's own code; `make/scripts/unsafe-audit.sh`, over `cargo metadata` |
+| `unsafe` | the transitive unsafe audit — advisory, and `unsafe_code = "forbid"` already covers this repository's own code; `make/scripts/unsafe-audit.sh`, over `cargo metadata` |
 | `msrv` | bisects a build per toolchain; minutes |
 | `action-pins` | needs the network and the GitHub API; a pin is a commit SHA and stays valid forever, so the only thing this catches is a pin in the wrong repository |
 | `minimal-versions` | a second resolution that frequently fails for reasons unrelated to this code |

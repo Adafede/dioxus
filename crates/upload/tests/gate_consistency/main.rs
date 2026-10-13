@@ -335,7 +335,7 @@ const MAPPING: &[Job] = &[
     Job {
         file: ".github/workflows/scheduled.yml",
         name: "dependencies",
-        tasks: &["outdated", "udeps", "geiger", "msrv", "action-pins"],
+        tasks: &["outdated", "udeps", "unsafe", "msrv", "action-pins"],
         in_local_gate: false,
         note: "four questions about the dependency tree, three of which are \
                reports rather than gates and one of which bisects a build per \
