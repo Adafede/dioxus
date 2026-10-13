@@ -652,16 +652,21 @@ mod tests;
 /// could be killed.
 ///
 /// Being a module of its own is what does that; being a separate *file* is not.
-/// These three moved to `processing/` so that this file is 791 lines instead of
-/// 1418. `cargo mutants --list` was compared before and after: the same 451
-/// mutants in the same files, this one still carrying 139 of them.
+/// These three moved to `processing/` so that this file was 1,418 lines and is
+/// now 672, with `strings.rs` beside them for the two string scanners. `cargo
+/// mutants --list` before and after the split: the same 451 mutants in the same
+/// files, this one carrying 139 of them then and 113 in total across
+/// `processing.rs` and `strings.rs` now. The other 26 are not gone to a
+/// different file: most were `i += 1` on a scan cursor, which is a mutant that
+/// cannot be killed except by removing it, so it was removed.
 #[cfg(test)]
 mod escaping;
 
 /// Tests for the *streaming* scanner — the one that runs in the browser.
 ///
-/// A module of its own, beside `mod tests` and `mod escaping`, for the same
-/// reason those are: so `cargo mutants` attributes them to the scanner above.
+/// A module of its own, beside `mod tests`, `mod escaping` and `mod strings`, for
+/// the same reason those are: so `cargo mutants` attributes them to the scanner
+/// above.
 ///
 /// Everything below is reachable only because the reader became source-generic.
 /// Before, these functions took a browser `Blob`, so this module could not exist:

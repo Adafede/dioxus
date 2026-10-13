@@ -83,10 +83,11 @@ The gate, in order:
 | `feature-powerset` | every feature combination |
 | `machete`, `deny`, `audit` | unused dependencies, advisories, licences, sources |
 
-`./mk ci-slow` is what the weekly workflow runs: mutation testing and
-coverage. Both are minutes rather than seconds, and mutation testing's survivors
-are a to-do list rather than a verdict — 13 of `cxsmiles-yoga`'s 290 survive
-today, so it is deliberately not a gate.
+`./mk ci-slow` is what the weekly workflow runs: mutation testing and coverage.
+Both are minutes rather than seconds — mutation testing is 411 mutants and about
+a quarter of an hour. Its survivors are a to-do list rather than a verdict, and
+the run is clean as of the change that took it from 35 missed and 23 timeouts to
+none, so what keeps it out of the gate is the minutes rather than one red job.
 
 `crates/upload/tests/gate_consistency.rs` holds the local gate, the hooks and
 the workflow to one mapping and fails the build if they disagree. Adding a check

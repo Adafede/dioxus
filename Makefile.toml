@@ -104,10 +104,12 @@ dependencies = [
 
 # The CI jobs `ci` leaves out, and why.
 #
-# `mutants` is minutes rather than seconds, and its survivors are a to-do list
-# rather than a verdict -- 13 of `cxsmiles-yoga`'s 290 survive today, so making
-# it blocking would mean shipping a permanently red job. `cov` rebuilds the whole
-# crate graph under instrumentation, so it is minutes as well.
+# `mutants` is minutes rather than seconds -- 411 of them, about a quarter of an
+# hour. It is clean as of the run that took the suite from 35 missed and 23
+# timeouts to none, and that is not what keeps it out: a survivor is a
+# behaviour nobody has pinned down, which is a fact worth reading rather than a
+# verdict worth a red build. The cost of it is minutes per push. `cov` rebuilds
+# the whole crate graph under instrumentation, so it is minutes as well.
 [tasks."ci-slow"]
 cwd = "${REPO_ROOT}"
 description = "The slow CI jobs: mutation testing and coverage."
