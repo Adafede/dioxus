@@ -127,6 +127,11 @@ pub fn generate_recalibrated_mgf(
             result.push_str("END IONS");
             result.push('\n');
             idx += 1;
+            // The block is closed and `idx` already points past its `END
+            // IONS`. Falling through would let the tail below advance a second
+            // time and emit a blank line, which consumed the next line — and
+            // the next line after an `END IONS` is the following `BEGIN IONS`.
+            continue;
         } else {
             result.push_str(line);
         }

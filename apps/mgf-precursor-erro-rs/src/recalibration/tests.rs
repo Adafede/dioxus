@@ -444,3 +444,64 @@ END IONS";
 
     assert_eq!(input, output);
 }
+
+/// Regression: `generate_recalibrated_mgf` walked the index twice at the end of
+/// each spectrum, so the `BEGIN IONS` line that follows an `END IONS` was
+/// consumed and dropped rather than written. The output of an N-block file had
+/// N-1 `BEGIN IONS` headers, which merges two spectra into one and mis-scopes
+/// every parameter after the first block. A spurious blank line was injected at
+/// the same place.
+///
+/// The single-block fixtures the other tests here use cannot see this: their
+/// loop ends one line later, so the extra increment reads past the end.
+#[test]
+fn test_generate_recalibrated_mgf_preserves_every_block_boundary() {
+    let input = "BEGIN IONS\nTITLE=a\nPEPMASS=500.0\n100.0 5\nEND IONS\n\
+                 BEGIN IONS\nTITLE=b\nPEPMASS=600.0\n100.0 5\nEND IONS\n\
+                 BEGIN IONS\nTITLE=c\nPEPMASS=700.0\n100.0 5\nEND IONS";
+
+    let output = generate_recalibrated_mgf(input, CalibrationModel::TOFDa { lambda: 1.0 }, None);
+
+    assert_eq!(
+        input.matches("BEGIN IONS").count(),
+        output.matches("BEGIN IONS").count(),
+        "a BEGIN IONS header was dropped, so two spectra merged into one"
+    );
+    assert_eq!(
+        input.matches("END IONS").count(),
+        output.matches("END IONS").count(),
+        "an END IONS terminator was dropped"
+    );
+    for title in ["a", "b", "c"] {
+        assert!(
+            output.contains(&format!("TITLE={title}")),
+            "block {title} lost its TITLE, so it was folded into the previous block"
+        );
+    }
+    assert!(
+        !output.contains("\n\n"),
+        "a blank line was injected between blocks: {output:?}"
+    );
+}
+
+/// The exact structure a real MGF carries: global parameters before the first
+/// block, and a blank separator line between blocks. Both are lines the outer
+/// loop has to copy verbatim, and both used to be reachable only past the
+/// off-by-one.
+#[test]
+fn test_generate_recalibrated_mgf_preserves_global_params_and_separators() {
+    let input = "COM=test\nBEGIN IONS\nTITLE=a\nPEPMASS=500.0\n100.0 5\nEND IONS\n\n\
+                 BEGIN IONS\nTITLE=b\nPEPMASS=600.0\n100.0 5\nEND IONS";
+
+    let output = generate_recalibrated_mgf(input, CalibrationModel::TOFDa { lambda: 1.0 }, None);
+
+    assert!(
+        output.starts_with("COM=test\n"),
+        "the global header was dropped: {output:?}"
+    );
+    assert_eq!(
+        input.matches("BEGIN IONS").count(),
+        output.matches("BEGIN IONS").count()
+    );
+    assert!(output.contains("END IONS\n\nBEGIN IONS"), "the blank separator between blocks was lost: {output:?}");
+}
