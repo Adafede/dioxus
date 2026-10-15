@@ -96,9 +96,30 @@ SESSION_LOG.md
 /smarts_results_tested_smarts/
 /smiles_sets/
 
-# Knowledge graph outputs
+# --- local agent tooling (not for publication) ---
+# Knowledge graph output, the review ledger, and the per-agent instruction
+# files. Nothing here is source: it is regenerated per machine, and shipping it
+# would make the repository carry a second, silently-stale copy of its own rules.
+#
+# These entries are a convenience, not a lock. `git add -f` overrides them and an
+# already-tracked file stays tracked however many rules are added. The tracked
+# exceptions are listed in .kb/ledger.md under "agent tooling still tracked" and
+# are a human decision, not something to `git rm` in passing.
+.kb/
 graphify-out/
-
-.mcp.json
 AGENTS.md
+CLAUDE.md
+GEMINI.md
+.claude/
+.cursor/
+.opencode/
+.codex/
+.aider*
+.mcp.json
+.mcp/
 opencode.json
+.code-review-graph/
+.claudeignore
+.agentignore
+.obsidian/
+*.agent-scratch*
