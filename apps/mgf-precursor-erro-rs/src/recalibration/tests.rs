@@ -448,7 +448,7 @@ END IONS";
 /// Regression: `generate_recalibrated_mgf` walked the index twice at the end of
 /// each spectrum, so the `BEGIN IONS` line that follows an `END IONS` was
 /// consumed and dropped rather than written. The output of an N-block file had
-/// N-1 `BEGIN IONS` headers, which merges two spectra into one and mis-scopes
+/// N-1 `BEGIN IONS` headers, which merges two spectra into one and re-scopes
 /// every parameter after the first block. A spurious blank line was injected at
 /// the same place.
 ///
@@ -503,5 +503,8 @@ fn test_generate_recalibrated_mgf_preserves_global_params_and_separators() {
         input.matches("BEGIN IONS").count(),
         output.matches("BEGIN IONS").count()
     );
-    assert!(output.contains("END IONS\n\nBEGIN IONS"), "the blank separator between blocks was lost: {output:?}");
+    assert!(
+        output.contains("END IONS\n\nBEGIN IONS"),
+        "the blank separator between blocks was lost: {output:?}"
+    );
 }

@@ -13,6 +13,9 @@ use mascot_rs::prelude::*;
 use molecular_formulas::molecular_formula::MolecularFormula;
 #[cfg(target_arch = "wasm32")]
 use web_sys::console;
+// Nothing else in this module needs the browser: the parse paths are pure
+// arithmetic over `&str`, so the whole thing is testable off-wasm. Only the
+// logging hooks are gated.
 
 #[must_use]
 pub(crate) fn smiles_is_supported(smiles: &str) -> bool {

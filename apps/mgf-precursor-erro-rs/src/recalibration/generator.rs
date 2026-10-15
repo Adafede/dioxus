@@ -77,7 +77,14 @@ pub fn generate_recalibrated_mgf(
     while let Some(&line) = lines.get(idx) {
         let trimmed = line.trim();
 
-        if trimmed.eq_ignore_ascii_case("BEGIN IONS") {
+        if !trimmed.eq_ignore_ascii_case("BEGIN IONS") {
+            result.push_str(line);
+            result.push('\n');
+            idx += 1;
+            continue;
+        }
+
+        {
             pepmass = None;
             spectrum_frags.clear();
             result.push_str(line);
@@ -127,16 +134,7 @@ pub fn generate_recalibrated_mgf(
             result.push_str("END IONS");
             result.push('\n');
             idx += 1;
-            // The block is closed and `idx` already points past its `END
-            // IONS`. Falling through would let the tail below advance a second
-            // time and emit a blank line, which consumed the next line — and
-            // the next line after an `END IONS` is the following `BEGIN IONS`.
-            continue;
-        } else {
-            result.push_str(line);
         }
-        result.push('\n');
-        idx += 1;
     }
 
     result
@@ -202,3 +200,9 @@ pub fn recalibrate_fragments(
         }
     }
 }
+// BOUNDARY NOTE (kept out of the hot path): the `BEGIN IONS` branch advances
+// `idx` itself as it walks the block, so it must not fall through to the
+// loop-level advance. The line after an `END IONS` is the following
+// `BEGIN IONS`, and consuming it merged two spectra into one.
+//
+// Do not re-add a shared tail advance to this loop.

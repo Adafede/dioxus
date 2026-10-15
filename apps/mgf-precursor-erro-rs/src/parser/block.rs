@@ -8,14 +8,18 @@
 use std::collections::{HashMap, HashSet};
 
 #[cfg(target_arch = "wasm32")]
-use crate::metrics::merge_precursor_stats;
-#[cfg(target_arch = "wasm32")]
 use upload::UploadError;
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Blob, console};
+// Only `scan_blob_with_progress` needs the browser. Everything else here —
+// `BlockParseState`, the line consumer, the adduct/mass helpers — is plain
+// `&str` arithmetic and runs off-wasm, which is what makes it testable.
+// `console` is the only browser symbol either module uses at runtime, and each
+// call site is individually gated.
 
 use crate::metrics::{
     AdductFamily, ErrorMeasurement, PlotPointSample, PrecursorStats, WarningDetail,
+    merge_precursor_stats,
 };
 
 use super::adduct::{
@@ -39,6 +43,19 @@ pub(crate) struct BlockParseState {
     fragment_peaks: Vec<f64>,
 }
 
+/// Parses the first whitespace-separated float in an MGF value field.
+///
+/// `PEPMASS` carries an optional second field — the precursor intensity — per
+/// the format, so `PEPMASS=400.0 1234.5` is valid input. Parsing the whole
+/// remainder as one float fails, and a spectrum whose `observed_precursor`
+/// never gets set is dropped from the statistics entirely, without being
+/// counted as skipped and without a warning. Taking the leading token keeps
+/// the intensity visible in `observed_precursor_raw` and still scores the
+/// spectrum.
+fn parse_leading_float(value: &str) -> Option<f64> {
+    value.split_whitespace().next()?.parse::<f64>().ok()
+}
+
 impl BlockParseState {
     pub(crate) fn consume_line(&mut self, line: &str) {
         let trimmed = line.trim();
@@ -48,17 +65,13 @@ impl BlockParseState {
 
         if let Some(stripped) = trimmed.strip_prefix("PRECURSOR_MZ=") {
             self.observed_precursor_raw = Some(stripped.to_string());
-            if let Ok(value) = stripped.parse::<f64>() {
-                self.observed_precursor = Some(value);
-            }
+            self.observed_precursor = parse_leading_float(stripped);
             return;
         }
 
         if let Some(stripped) = trimmed.strip_prefix("PEPMASS=") {
             self.observed_precursor_raw = Some(stripped.to_string());
-            if let Ok(value) = stripped.parse::<f64>() {
-                self.observed_precursor = Some(value);
-            }
+            self.observed_precursor = parse_leading_float(stripped);
             return;
         }
 
@@ -172,24 +185,31 @@ impl BlockParseState {
     }
 }
 
-/// Streaming MGF parser that reads the blob in chunks via [`upload::BlobLines`],
-/// yielding one line at a time so memory stays bounded by chunk size (16 MiB)
-/// regardless of file size.
+/// Drives a whole MGF document through the block state machine, one line at a
+/// time.
 ///
-/// # Errors
-/// Returns an error when the blob cannot be read or a scan block cannot be
-/// processed.
-#[cfg(target_arch = "wasm32")]
-#[allow(clippy::future_not_send)] // async fn captures non-Send browser futures
-pub(crate) async fn scan_blob_with_progress(
-    blob: &Blob,
-    mut on_progress: impl FnMut(u64, u64),
-) -> std::result::Result<PrecursorStats, UploadError> {
-    let mut reader =
-        upload::BlobLines::new(upload::BlobSource::new(blob), move |processed, total| {
-            on_progress(processed, total);
-        });
-
+/// This is the only part of the parser that is genuinely about a *file*: it
+/// tracks whether we are inside a `BEGIN IONS` pair and hands everything else to
+/// [`BlockParseState::consume_line`] and [`process_block_state`]. It is pure, so
+/// it compiles and tests off-wasm; the wasm entry point below only has to supply
+/// the lines.
+///
+/// The `allow(dead_code)` is scoped to the one case where nothing can reach this
+/// from a library root: a build that is neither `test` (the host tests below
+/// exercise it directly) nor `wasm32` (`scan_blob_with_progress` is its only
+/// production caller). The reachability behind this one item is unchanged, so
+/// nothing downstream is newly silenced.
+#[cfg_attr(
+    not(any(test, target_arch = "wasm32")),
+    allow(
+        dead_code,
+        reason = "reached from wasm32 builds and from the tests below"
+    )
+)]
+pub(crate) fn ingest_lines<'a>(
+    lines: impl Iterator<Item = &'a str>,
+    mut on_progress: impl FnMut(u64),
+) -> PrecursorStats {
     let mut current_state = BlockParseState::default();
     let mut current_is_in_block = false;
     let mut metrics = PrecursorStats::default();
@@ -198,8 +218,18 @@ pub(crate) async fn scan_blob_with_progress(
     let mut formula_cache = HashMap::new();
     let mut logged_failures = HashSet::new();
 
-    while let Some(line) = reader.next_line().await? {
-        let trimmed = line.trim();
+    for (index, line) in lines.enumerate() {
+        // A leading BOM is the first byte of the first line and is category Cf,
+        // so `trim` does not remove it. Left in place, `"\u{feff}BEGIN IONS"`
+        // never matches the literal, `current_is_in_block` stays false for the
+        // rest of the file, and every spectrum is discarded silently: no error,
+        // and a Summary panel that reads `0`. Strip it on the first line only.
+        let trimmed = if index == 0 {
+            line.trim_start_matches('\u{feff}')
+        } else {
+            line
+        }
+        .trim();
         if trimmed.is_empty() {
             continue;
         }
@@ -230,11 +260,36 @@ pub(crate) async fn scan_blob_with_progress(
             current_state = BlockParseState::default();
             current_is_in_block = false;
         }
+        on_progress(u64::try_from(index).unwrap_or(u64::MAX));
     }
 
     metrics.plot_points = plot_sample.points;
     metrics.plot_point_stream_seen = plot_sample.seen;
-    Ok(metrics)
+    metrics
+}
+
+/// Streaming MGF parser that reads the blob in chunks via [`upload::BlobLines`],
+/// yielding one line at a time so memory stays bounded by chunk size (16 MiB)
+/// regardless of file size.
+///
+/// # Errors
+/// Returns an error when the blob cannot be read.
+#[cfg(target_arch = "wasm32")]
+#[allow(clippy::future_not_send)] // async fn captures non-Send browser futures
+pub(crate) async fn scan_blob_with_progress(
+    blob: &Blob,
+    on_progress: impl FnMut(u64, u64),
+) -> std::result::Result<PrecursorStats, UploadError> {
+    let mut reader = upload::BlobLines::new(upload::BlobSource::new(blob), on_progress);
+    let doc: Vec<String> = {
+        let mut collected = Vec::new();
+        while let Some(line) = reader.next_line().await? {
+            collected.push(line);
+        }
+        collected
+    };
+
+    Ok(ingest_lines(doc.iter().map(String::as_str), |_| {}))
 }
 
 fn compute_reference_mass<S: std::hash::BuildHasher>(

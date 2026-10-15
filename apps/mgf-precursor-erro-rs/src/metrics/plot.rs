@@ -9,12 +9,9 @@
 // [`PrecursorStats`](super::PrecursorStats) is the only thing that builds
 // these, so the dependency runs one way: `stats` knows about `plot`, and
 // `plot` knows nothing about `stats`.
-#[cfg(target_arch = "wasm32")]
 pub(crate) const MAX_PLOT_POINTS: usize = 10_000;
-#[cfg(target_arch = "wasm32")]
 pub(crate) const MAX_ECDF_POINTS: usize = 20_000;
 
-#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct HistogramData {
     pub bins: Vec<usize>,
@@ -22,14 +19,12 @@ pub(crate) struct HistogramData {
     pub max: f64,
 }
 
-#[cfg(target_arch = "wasm32")]
 // `pub(super)`, not private: `merge` reaches this through the module, and it
 // was module-private when all three files were one.
 pub(super) fn usize_to_f64(value: usize) -> f64 {
     f64::from(u32::try_from(value).unwrap_or(u32::MAX))
 }
 
-#[cfg(target_arch = "wasm32")]
 fn floor_to_usize(value: f64) -> usize {
     if !value.is_finite() || value <= 0.0 {
         return 0;
@@ -46,7 +41,6 @@ fn floor_to_usize(value: f64) -> usize {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl HistogramData {
     #[must_use]
     pub(crate) fn new(bin_count: usize, min: f64, max: f64) -> Self {
@@ -90,7 +84,6 @@ pub enum AdductFamily {
 
 impl AdductFamily {
     #[must_use]
-    #[cfg(target_arch = "wasm32")]
     pub(crate) fn from_label(label: &str) -> Self {
         let normalized = label.trim().replace(' ', "").to_ascii_uppercase();
         if normalized.contains("[M+H]")
@@ -140,14 +133,12 @@ pub struct PlotPoint {
     pub expected_mass: Option<f64>, // Theoretical precursor mass for error calculation
 }
 
-#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug, Default)]
 pub(crate) struct PlotPointSample {
     pub seen: usize,
     pub points: Vec<PlotPoint>,
 }
 
-#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ErrorMeasurement<'a> {
     pub abs_error_da: f64,
@@ -163,7 +154,6 @@ pub(crate) struct ErrorMeasurement<'a> {
     pub formula: Option<&'a str>,
 }
 
-#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Copy, Debug)]
 // `pub(super)`, fields included, because `stats` folds these in. They were
 // module-private when all three files were one, and `merge` reaches the two
@@ -178,7 +168,6 @@ pub(super) struct HighErrorSmilesUpdate<'a> {
     pub(super) formula: Option<&'a str>,
 }
 
-#[cfg(target_arch = "wasm32")]
 impl PlotPointSample {
     pub(crate) fn push(&mut self, point: PlotPoint) {
         self.seen = self.seen.saturating_add(1);

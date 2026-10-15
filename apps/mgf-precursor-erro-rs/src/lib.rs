@@ -23,7 +23,12 @@ pub(crate) mod app;
 pub mod diagnostics;
 pub(crate) mod errors;
 pub mod metrics;
-#[cfg(target_arch = "wasm32")]
+// Deliberately NOT gated on `target_arch = "wasm32"`. The parser is pure
+// `&str` arithmetic with one browser entry point (`scan_blob_with_progress`),
+// which is the part that stays gated. Gating the whole module meant
+// `cargo test` on every non-wasm target compiled none of it: the streaming
+// scanner, the adduct grammar and the tolerance buckets all carried untested
+// defects that only a wasm build could have surfaced. Testability wins.
 pub(crate) mod parser;
 /// Externally consumed by `examples/recalibration_demo.rs`.
 pub mod plotting;

@@ -144,7 +144,7 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     let normalized = adduct.trim().replace(' ', "").to_ascii_uppercase();
     let body = normalized.find(']').map_or_else(
         || normalized.clone(),
-        |index| normalized[1..index].to_string(),
+        |index| normalized.get(1..index).unwrap_or("").to_string(),
     );
     let charge_sign = parse_adduct_charge_sign(Some(adduct));
     let uses_double_mg_mass = charge_sign == Some(false);
@@ -338,7 +338,11 @@ pub(crate) fn normalize_adduct_label(adduct: &str) -> String {
     let (body, suffix) = normalized
         .find(']')
         .map_or((normalized.as_str(), ""), |idx| {
-            let body = &normalized[1..idx];
+            // `find` gives a byte offset that need not be a char boundary, and
+            // can be `0` for something like `"]+H]"`. Slicing either way is a
+            // panic; `.get` degrades to an empty body, which the caller already
+            // tolerates.
+            let body = normalized.get(1..idx).unwrap_or("");
             let suffix = &normalized[idx + 1..];
             (body, suffix)
         });

@@ -48,6 +48,26 @@ fn merge_precursor_source(current: &mut PrecursorStats, next: &PrecursorStats) {
     }
 }
 
+/// Reweights two per-block means into their pooled mean.
+///
+/// The weights are spectrum counts and `total` is their sum, so `total == 0.0`
+/// means *neither* block described a spectrum: the skipped-spectrum path leaves
+/// `spectra` at its `Default` `0` while still carrying `total_spectra: 1`, and
+/// the scanner starts its accumulator at `Default`. Dividing by zero there gave
+/// `0.0 / 0.0`, which is `NaN` — and every later merge folds a `NaN` back into a
+/// finite value and stays `NaN`, so one skipped block poisons the whole summary
+/// (`n/a` in the Summary panel) for the rest of the run.
+///
+/// With no weight there is nothing to pool, so the running value is kept.
+#[inline]
+fn blend(current: f64, next: f64, current_weight: f64, next_weight: f64, total: f64) -> f64 {
+    if total > 0.0 && total.is_finite() {
+        (current * current_weight + next * next_weight) / total
+    } else {
+        current
+    }
+}
+
 fn merge_precursor_scalar_stats(
     current: &mut PrecursorStats,
     next: &PrecursorStats,
@@ -61,11 +81,13 @@ fn merge_precursor_scalar_stats(
     current.observed_precursor_max = current
         .observed_precursor_max
         .max(next.observed_precursor_max);
-    current.observed_precursor_mean = f64::mul_add(
+    current.observed_precursor_mean = blend(
         current.observed_precursor_mean,
+        next.observed_precursor_mean,
         current_spectra,
-        next.observed_precursor_mean * next_spectra,
-    ) / total_spectra;
+        next_spectra,
+        total_spectra,
+    );
     current
         .observed_precursor_median_tracker
         .merge(next.observed_precursor_median_tracker.clone());
@@ -73,58 +95,70 @@ fn merge_precursor_scalar_stats(
 
     current.abs_error_da_min = current.abs_error_da_min.min(next.abs_error_da_min);
     current.abs_error_da_max = current.abs_error_da_max.max(next.abs_error_da_max);
-    current.abs_error_da_mean = f64::mul_add(
+    current.abs_error_da_mean = blend(
         current.abs_error_da_mean,
+        next.abs_error_da_mean,
         current_spectra,
-        next.abs_error_da_mean * next_spectra,
-    ) / total_spectra;
+        next_spectra,
+        total_spectra,
+    );
     current
         .abs_error_da_median_tracker
         .merge(next.abs_error_da_median_tracker.clone());
     current.abs_error_da_median = current.abs_error_da_median_tracker.median();
     let current_da_rms_sq = current.abs_error_da_rms * current.abs_error_da_rms;
     let next_da_rms_sq = next.abs_error_da_rms * next.abs_error_da_rms;
-    current.abs_error_da_rms = f64::mul_add(
+    current.abs_error_da_rms = blend(
         current_da_rms_sq,
+        next_da_rms_sq,
         current_spectra,
-        next_da_rms_sq * next_spectra,
-    ) / total_spectra;
+        next_spectra,
+        total_spectra,
+    );
     current.abs_error_da_rms = current.abs_error_da_rms.sqrt();
 
     current.abs_error_ppm_min = current.abs_error_ppm_min.min(next.abs_error_ppm_min);
     current.abs_error_ppm_max = current.abs_error_ppm_max.max(next.abs_error_ppm_max);
-    current.abs_error_ppm_mean = f64::mul_add(
+    current.abs_error_ppm_mean = blend(
         current.abs_error_ppm_mean,
+        next.abs_error_ppm_mean,
         current_spectra,
-        next.abs_error_ppm_mean * next_spectra,
-    ) / total_spectra;
+        next_spectra,
+        total_spectra,
+    );
     current
         .abs_error_ppm_median_tracker
         .merge(next.abs_error_ppm_median_tracker.clone());
     current.abs_error_ppm_median = current.abs_error_ppm_median_tracker.median();
     let current_ppm_rms_sq = current.abs_error_ppm_rms * current.abs_error_ppm_rms;
     let next_ppm_rms_sq = next.abs_error_ppm_rms * next.abs_error_ppm_rms;
-    current.abs_error_ppm_rms = f64::mul_add(
+    current.abs_error_ppm_rms = blend(
         current_ppm_rms_sq,
+        next_ppm_rms_sq,
         current_spectra,
-        next_ppm_rms_sq * next_spectra,
-    ) / total_spectra;
+        next_spectra,
+        total_spectra,
+    );
     current.abs_error_ppm_rms = current.abs_error_ppm_rms.sqrt();
 
-    current.signed_error_da_mean = f64::mul_add(
+    current.signed_error_da_mean = blend(
         current.signed_error_da_mean,
+        next.signed_error_da_mean,
         current_spectra,
-        next.signed_error_da_mean * next_spectra,
-    ) / total_spectra;
+        next_spectra,
+        total_spectra,
+    );
     current
         .signed_error_da_median_tracker
         .merge(next.signed_error_da_median_tracker.clone());
     current.signed_error_da_median = current.signed_error_da_median_tracker.median();
-    current.signed_error_ppm_mean = f64::mul_add(
+    current.signed_error_ppm_mean = blend(
         current.signed_error_ppm_mean,
+        next.signed_error_ppm_mean,
         current_spectra,
-        next.signed_error_ppm_mean * next_spectra,
-    ) / total_spectra;
+        next_spectra,
+        total_spectra,
+    );
     current
         .signed_error_ppm_median_tracker
         .merge(next.signed_error_ppm_median_tracker.clone());
