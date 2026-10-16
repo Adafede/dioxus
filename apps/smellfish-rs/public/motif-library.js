@@ -3,7 +3,14 @@ window.__SMELLFISH_MOTIFS = {
   GROUP_NAMES: [],
   ERTL_SUBSTUENTS: [],
   ready: (async () => {
-    const [ertlSourceText, ertlKingdomText, userSourceText, userKingdomText, namesText, substText] = await Promise.all([
+    const [
+      ertlSourceText,
+      ertlKingdomText,
+      userSourceText,
+      userKingdomText,
+      namesText,
+      substText,
+    ] = await Promise.all([
       fetch("ertl_source_vs_synthetic.txt").then((r) => r.text()),
       fetch("ertl_kingdom_enrichment.txt").then((r) => r.text()),
       fetch("user_source_vs_synthetic.txt").then((r) => r.text()),
@@ -22,7 +29,7 @@ window.__SMELLFISH_MOTIFS = {
       ertlKingdomRows,
       userSourceRows,
       userKingdomRows,
-      nameRows
+      nameRows,
     );
     const substituents = parseSubstituents(substText);
 
@@ -40,16 +47,28 @@ function parseTable(text) {
     const parts = line.split(/\s+/);
     const label = parts.shift();
     if (!label || label === "FG") continue;
-    const values = parts.map((part) => Number(part)).filter((n) => Number.isFinite(n));
+    const values = parts
+      .map((part) => Number(part))
+      .filter((n) => Number.isFinite(n));
     if (!values.length) continue;
     rows.push({ label, values });
   }
   return rows;
 }
 
-function buildMotifLibrary(ertlSourceRows, ertlKingdomRows, userSourceRows, userKingdomRows, nameRows) {
-  const sourceMap = new Map([...ertlSourceRows, ...userSourceRows].map((row) => [row.label, row]));
-  const kingdomMap = new Map([...ertlKingdomRows, ...userKingdomRows].map((row) => [row.label, row]));
+function buildMotifLibrary(
+  ertlSourceRows,
+  ertlKingdomRows,
+  userSourceRows,
+  userKingdomRows,
+  nameRows,
+) {
+  const sourceMap = new Map(
+    [...ertlSourceRows, ...userSourceRows].map((row) => [row.label, row]),
+  );
+  const kingdomMap = new Map(
+    [...ertlKingdomRows, ...userKingdomRows].map((row) => [row.label, row]),
+  );
   const nameMap = new Map(nameRows.map((row) => [row.smarts, row]));
   const labels = new Set([...sourceMap.keys(), ...kingdomMap.keys()]);
   const motifs = [];
@@ -75,10 +94,12 @@ function buildMotifLibrary(ertlSourceRows, ertlKingdomRows, userSourceRows, user
   }
 
   motifs.sort((left, right) => {
-    return (right.source_score || 0) - (left.source_score || 0) ||
+    return (
+      (right.source_score || 0) - (left.source_score || 0) ||
       (right.kingdom_score || 0) - (left.kingdom_score || 0) ||
       left.kind.localeCompare(right.kind) ||
-      left.label.localeCompare(right.label);
+      left.label.localeCompare(right.label)
+    );
   });
   return motifs;
 }
@@ -104,7 +125,11 @@ function classifyKingdom(values) {
     if (delta > bestDelta) {
       bestDelta = delta;
     }
-    if (value >= 5 && delta >= 5 && (synthetic === 0 || value >= synthetic * 1.5)) {
+    if (
+      value >= 5 &&
+      delta >= 5 &&
+      (synthetic === 0 || value >= synthetic * 1.5)
+    ) {
       enriched.push(labels[i]);
     }
   }

@@ -27,22 +27,22 @@ families:
 Characterized by a terminal carboxylic acid (`COOH`) and a long hydrocarbon
 chain. Rules distinguish by degree of unsaturation:
 
-  | Rule     | Criteria                   | SMARTS                                     | Example                        |
-  | -------- | -------------------------- | ------------------------------------------ | ------------------------------ |
-  | **FA**   | Saturated (0 double bonds) | `[#6]...[#6][#6][#6][#6][CX3](=[OX1])[OH]` | Palmitic C16:0, Stearic C18:0  |
-  | **MUFA** | 1 C=C double bond          | `[#6]=[#6]...[CX3](=[OX1])[OH]`            | Oleic C18:1, Palmitoleic C16:1 |
-  | **PUFA** | 2+ C=C double bonds        | `[#6]=[#6][#6]=[#6]...[CX3](=[OX1])[OH]`   | Arachidonic C20:4, EPA C20:5   |
+| Rule     | Criteria                   | SMARTS                                     | Example                        |
+| -------- | -------------------------- | ------------------------------------------ | ------------------------------ |
+| **FA**   | Saturated (0 double bonds) | `[#6]...[#6][#6][#6][#6][CX3](=[OX1])[OH]` | Palmitic C16:0, Stearic C18:0  |
+| **MUFA** | 1 C=C double bond          | `[#6]=[#6]...[CX3](=[OX1])[OH]`            | Oleic C18:1, Palmitoleic C16:1 |
+| **PUFA** | 2+ C=C double bonds        | `[#6]=[#6][#6]=[#6]...[CX3](=[OX1])[OH]`   | Arachidonic C20:4, EPA C20:5   |
 
 ### Glycerolipids (GL)
 
 Fatty acyl esters of glycerol (3-carbon backbone). Rules distinguish by acyl
 ester count:
 
-  | Rule        | Acyl Count | SMARTS Core                                                                   | Example              |
-  | ----------- | ---------- | ----------------------------------------------------------------------------- | -------------------- |
-  | **TG(AAA)** | 3          | `[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]` | Triolein             |
-  | **DG(AA)**  | 2          | `[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]`                         | 1,2-Dioleoylglycerol |
-  | **MG(A)**   | 1          | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]`                                  | 1-Oleoylglycerol     |
+| Rule        | Acyl Count | SMARTS Core                                                                   | Example              |
+| ----------- | ---------- | ----------------------------------------------------------------------------- | -------------------- |
+| **TG(AAA)** | 3          | `[CX4]([OX2][CX3](=[OX1])[#6])([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]` | Triolein             |
+| **DG(AA)**  | 2          | `[CX4]([OX2][CX3](=[OX1])[#6])[OX2][CX3](=[OX1])[#6]`                         | 1,2-Dioleoylglycerol |
+| **MG(A)**   | 1          | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]`                                  | 1-Oleoylglycerol     |
 
 ### Glycerophospholipids (GP)
 
@@ -50,60 +50,60 @@ Glycerol backbone with phosphate group and variable headgroup. Rules distinguish
 by: - Headgroup type (choline, ethanolamine, serine, inositol, glycerol, none) -
 Acyl ester count (2 = normal, 1 = lyso, 4 = cardiolipin)
 
-  | Rule         | Headgroup      | Acyls | SMARTS Core                                                               | Example                 |
-  | ------------ | -------------- | ----- | ------------------------------------------------------------------------- | ----------------------- |
-  | **PC(AA)**   | Choline        | 2     | `[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]`                    | DPPC, POPC              |
-  | **PE(AA)**   | Ethanolamine   | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CH2X4][NX3;H2,H1,H0]`                 | DPPE, POPE              |
-  | **PS(AA)**   | Serine         | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([CX3](=[OX1])[OX2H,OX1-])[NX3]` | DPPS                    |
-  | **PI(AA)**   | Inositol       | 2     | `[PX4](=[OX1])([OX2])([OX2])[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1`  | PdfIns                  |
-  | **PG(AA)**   | Glycerol       | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]` | DPPG                    |
-  | **PA(AA)**   | None (just P)  | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4][CH2X4][OX2H,OX1-]`              | PA(16:0/16:0)           |
-  | **LPC(A)**   | Choline        | 1     | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]` + phosphate                  | LPC(16:0)               |
-  | **LPE(A)**   | Ethanolamine   | 1     | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]` + phosphate                  | LPE(16:0)               |
-  | **CL(AAAA)** | Diphosphatidyl | 4     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2])[CH2X4][OX2]` × 2         | CL(16:0/16:0/16:0/16:0) |
+| Rule         | Headgroup      | Acyls | SMARTS Core                                                               | Example                 |
+| ------------ | -------------- | ----- | ------------------------------------------------------------------------- | ----------------------- |
+| **PC(AA)**   | Choline        | 2     | `[PX4](=[OX1])([OX2])([OX2])[NX4+]([CH3])([CH3])[CH3]`                    | DPPC, POPC              |
+| **PE(AA)**   | Ethanolamine   | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CH2X4][NX3;H2,H1,H0]`                 | DPPE, POPE              |
+| **PS(AA)**   | Serine         | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([CX3](=[OX1])[OX2H,OX1-])[NX3]` | DPPS                    |
+| **PI(AA)**   | Inositol       | 2     | `[PX4](=[OX1])([OX2])([OX2])[C;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1`  | PdfIns                  |
+| **PG(AA)**   | Glycerol       | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2H,OX1-])[CH2X4][OX2H,OX1-]` | DPPG                    |
+| **PA(AA)**   | None (just P)  | 2     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4][CH2X4][OX2H,OX1-]`              | PA(16:0/16:0)           |
+| **LPC(A)**   | Choline        | 1     | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]` + phosphate                  | LPC(16:0)               |
+| **LPE(A)**   | Ethanolamine   | 1     | `[CH2X4][CHX4][CH2X4][OX2][CX3](=[OX1])[#6]` + phosphate                  | LPE(16:0)               |
+| **CL(AAAA)** | Diphosphatidyl | 4     | `[PX4](=[OX1])([OX2])([OX2])[CH2X4][CHX4]([OX2])[CH2X4][OX2]` × 2         | CL(16:0/16:0/16:0/16:0) |
 
 ### Sphingolipids (SP)
 
 Sphingoid base (long-chain amine) with amide-linked fatty acid. Rules
 distinguish by headgroup attachment:
 
-  | Rule           | Headgroup         | SMARTS Core                                                | Example            |
-  | -------------- | ----------------- | ---------------------------------------------------------- | ------------------ |
-  | **Cer(AS)**    | None (just amide) | `[NX3][CX3](=[OX1])[CX4]`                                  | Cer(d18:1/16:0)    |
-  | **SM(AS)**     | Phosphocholine    | `[NX4+][CX4][CX4][OX2][PX4](=[OX1])[OX2]`                  | SM(d18:1/16:0)     |
-  | **HexCer(AS)** | Hexose sugar      | `[NX3][CX3](=[OX1])[CX4][CH1X4][CH1X4][OX2][CH1X4][CH1X4]` | GlcCer(d18:1/16:0) |
+| Rule           | Headgroup         | SMARTS Core                                                | Example            |
+| -------------- | ----------------- | ---------------------------------------------------------- | ------------------ |
+| **Cer(AS)**    | None (just amide) | `[NX3][CX3](=[OX1])[CX4]`                                  | Cer(d18:1/16:0)    |
+| **SM(AS)**     | Phosphocholine    | `[NX4+][CX4][CX4][OX2][PX4](=[OX1])[OX2]`                  | SM(d18:1/16:0)     |
+| **HexCer(AS)** | Hexose sugar      | `[NX3][CX3](=[OX1])[CX4][CH1X4][CH1X4][OX2][CH1X4][CH1X4]` | GlcCer(d18:1/16:0) |
 
 ### Sterol Lipids (ST)
 
 4-Ring steroid core (cholestane skeleton) with lipophilic side chain.
 
-  | Rule   | Structure      | SMARTS Core                                            | Example                   |
-  | ------ | -------------- | ------------------------------------------------------ | ------------------------- |
-  | **ST** | Steroid/Sterol | `[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6]` | Cholesterol, β-Sitosterol |
+| Rule   | Structure      | SMARTS Core                                            | Example                   |
+| ------ | -------------- | ------------------------------------------------------ | ------------------------- |
+| **ST** | Steroid/Sterol | `[#6]1[#6][#6][#6]2[#6]([#6]1)[#6][#6][#6]2([#6])[#6]` | Cholesterol, β-Sitosterol |
 
 ### Prenol Lipids (PR)
 
 Isoprenoid-derived (isoprene repeat units). Pattern: repeating C=C conjugation.
 
-  | Rule   | Characteristic         | SMARTS Core              | Example                               |
-  | ------ | ---------------------- | ------------------------ | ------------------------------------- |
-  | **PR** | Conjugated isoprenoids | `[#6]=[#6][#6]=[#6][#6]` | Retinol (Vit A), α-Tocopherol (Vit E) |
+| Rule   | Characteristic         | SMARTS Core              | Example                               |
+| ------ | ---------------------- | ------------------------ | ------------------------------------- |
+| **PR** | Conjugated isoprenoids | `[#6]=[#6][#6]=[#6][#6]` | Retinol (Vit A), α-Tocopherol (Vit E) |
 
 ### Saccharolipids (SL)
 
 Lipids with complex carbohydrate core and phosphate/acyl modifications.
 
-  | Rule   | Structure     | SMARTS Core                       | Example           |
-  | ------ | ------------- | --------------------------------- | ----------------- |
-  | **SL** | Lipid A / LPS | `[#6][OX2][PX4](=[OX1])[OX2][#6]` | Lipid A, LPS core |
+| Rule   | Structure     | SMARTS Core                       | Example           |
+| ------ | ------------- | --------------------------------- | ----------------- |
+| **SL** | Lipid A / LPS | `[#6][OX2][PX4](=[OX1])[OX2][#6]` | Lipid A, LPS core |
 
 ### Polyketides (PK)
 
 Large cyclic structures with ketone groups (produced by polyketide synthase).
 
-  | Rule   | Structure      | SMARTS Core                                         | Example                    |
-  | ------ | -------------- | --------------------------------------------------- | -------------------------- |
-  | **PK** | Macrolide ring | `[#6;R]1[#6]([#6](=[OX1])[#6])[#6;R]...(14+ atoms)` | Atorvastatin, Erythromycin |
+| Rule   | Structure      | SMARTS Core                                         | Example                    |
+| ------ | -------------- | --------------------------------------------------- | -------------------------- |
+| **PK** | Macrolide ring | `[#6;R]1[#6]([#6](=[OX1])[#6])[#6;R]...(14+ atoms)` | Atorvastatin, Erythromycin |
 
 ## Understanding SMARTS Patterns
 
@@ -112,25 +112,25 @@ structures and substructures using a simple syntax.
 
 ### Common Symbols
 
-  | Symbol     | Meaning                                  |
-  | ---------- | ---------------------------------------- |
-  | `[X]`      | Atom with specific connectivity          |
-  | `[#6]`     | Any carbon atom                          |
-  | `[#7]`     | Any nitrogen atom                        |
-  | `[#8]`     | Any oxygen atom                          |
-  | `[CX3]`    | Carbon with 3 connections                |
-  | `[CX4]`    | Carbon with 4 connections                |
-  | `(=[OX1])` | Double-bonded oxygen (single attachment) |
-  | `[OX2]`    | Oxygen with 2 connections (ether/ester)  |
-  | `[NX3]`    | Nitrogen with 3 connections              |
-  | `[NX4+]`   | Quaternary nitrogen (charged)            |
-  | `~`        | Any bond (single, double, aromatic)      |
-  | `=`        | Double bond                              |
-  | `,`        | OR operator                              |
-  | `;`        | AND operator                             |
-  | `!`        | NOT operator                             |
-  | `[!R]`     | NOT in a ring                            |
-  | `[!a]`     | NOT aromatic                             |
+| Symbol     | Meaning                                  |
+| ---------- | ---------------------------------------- |
+| `[X]`      | Atom with specific connectivity          |
+| `[#6]`     | Any carbon atom                          |
+| `[#7]`     | Any nitrogen atom                        |
+| `[#8]`     | Any oxygen atom                          |
+| `[CX3]`    | Carbon with 3 connections                |
+| `[CX4]`    | Carbon with 4 connections                |
+| `(=[OX1])` | Double-bonded oxygen (single attachment) |
+| `[OX2]`    | Oxygen with 2 connections (ether/ester)  |
+| `[NX3]`    | Nitrogen with 3 connections              |
+| `[NX4+]`   | Quaternary nitrogen (charged)            |
+| `~`        | Any bond (single, double, aromatic)      |
+| `=`        | Double bond                              |
+| `,`        | OR operator                              |
+| `;`        | AND operator                             |
+| `!`        | NOT operator                             |
+| `[!R]`     | NOT in a ring                            |
+| `[!a]`     | NOT aromatic                             |
 
 ### Example Breakdown
 
@@ -212,13 +212,13 @@ To verify a rule works correctly:
 2. Add a new entry under `lipid_classes`:
 
 ```yaml
-  - name: "My_Custom_Lipid"
-    family: "GL"
-    architecture: "DiAcyl"
-    description: "My custom lipid rule"
-    smarts: "[your_smarts_pattern_here]"
-    color: "#ff0000"
-    priority: 5
+- name: "My_Custom_Lipid"
+  family: "GL"
+  architecture: "DiAcyl"
+  description: "My custom lipid rule"
+  smarts: "[your_smarts_pattern_here]"
+  color: "#ff0000"
+  priority: 5
 ```
 
 3. Save and restart the application
@@ -373,6 +373,6 @@ If you discover issues or improvements:
 3. Consider adding examples to the `examples.rs` file
 4. File an issue or PR with documentation
 
---------------------------------------------------------------------------------
+---
 
 **Questions?** Check the main README.md for API usage and building instructions.

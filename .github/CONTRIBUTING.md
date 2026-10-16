@@ -54,34 +54,34 @@ pipeline cannot disagree about a cargo flag.
 
 One cargo-make behaviour worth knowing: `CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE`
 in `Makefile.toml` is load-bearing — remove it and `./mk ci` reports
-`Task "ci" not found` — and it also means each task is *executed* once per
+`Task "ci" not found` — and it also means each task is _executed_ once per
 workspace member. Eight members, so eight runs, seven of them no-ops because
 Cargo has cached the build. A warm `./mk ci` is about 16 s of work behind
 about 2 min of wall clock, which reads as the gate being slow and is not.
 `./mk --no-workspace ci` is the same gate once, in 17 s.
 
-Note that a task is still not reachable *from inside* a member directory
+Note that a task is still not reachable _from inside_ a member directory
 (run from a member directory, `./mk lint` reports "not found") — the env var merges
 the makefile per member for the root invocation, it does not make the root
 makefile visible downward. Run the tasks from the repository root.
 
 The gate, in order:
 
-| Task | What it checks |
-| --- | --- |
-| `fmt-check` | rustfmt, no writes |
-| `tombi-check`, `tombi-lint` | every TOML file is formatted, and valid against its schema — for a `Cargo.toml`, Cargo's own |
-| `typos` | spelling |
-| `license-headers` | both AGPL SPDX headers on every `.rs` file |
-| `verify-tasks` | the task list loads, every gate task names a tool `setup` installs, and `test` still runs the doctests |
-| `check` | `cargo check --workspace --all-targets` |
-| `lint` | clippy, all targets, all features, warnings denied |
-| `test` | nextest, then `cargo test --doc` — nextest does not run doctests, so the second step is not optional |
-| `doc` | rustdoc with `-D warnings`, so a broken intra-doc link fails rather than prints |
-| `check-wasm`, `lint-wasm` | each wasm crate for `wasm32-unknown-unknown`, one package at a time. Not `--workspace --target wasm32`: `upload` has a host-only path |
-| `readme-check` | the generated crate READMEs match their templates and module docs |
-| `feature-powerset` | every feature combination |
-| `machete`, `deny`, `audit` | unused dependencies, advisories, licences, sources |
+| Task                        | What it checks                                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `fmt-check`                 | rustfmt, no writes                                                                                                                    |
+| `tombi-check`, `tombi-lint` | every TOML file is formatted, and valid against its schema — for a `Cargo.toml`, Cargo's own                                          |
+| `typos`                     | spelling                                                                                                                              |
+| `license-headers`           | both AGPL SPDX headers on every `.rs` file                                                                                            |
+| `verify-tasks`              | the task list loads, every gate task names a tool `setup` installs, and `test` still runs the doctests                                |
+| `check`                     | `cargo check --workspace --all-targets`                                                                                               |
+| `lint`                      | clippy, all targets, all features, warnings denied                                                                                    |
+| `test`                      | nextest, then `cargo test --doc` — nextest does not run doctests, so the second step is not optional                                  |
+| `doc`                       | rustdoc with `-D warnings`, so a broken intra-doc link fails rather than prints                                                       |
+| `check-wasm`, `lint-wasm`   | each wasm crate for `wasm32-unknown-unknown`, one package at a time. Not `--workspace --target wasm32`: `upload` has a host-only path |
+| `readme-check`              | the generated crate READMEs match their templates and module docs                                                                     |
+| `feature-powerset`          | every feature combination                                                                                                             |
+| `machete`, `deny`, `audit`  | unused dependencies, advisories, licences, sources                                                                                    |
 
 `./mk ci-slow` is what the weekly workflow runs: mutation testing and coverage.
 Both are minutes rather than seconds — mutation testing is 411 mutants and about
@@ -99,10 +99,10 @@ These are the checks a pull request has to pass. `ci` is the gate above;
 `msrv` builds the same things on the oldest supported toolchain; `wasm` is the
 only job that links a `.wasm` and reports the bundle sizes.
 
-| Check | What it protects |
-| --- | --- |
-| `Gate` | everything in the table above, in one job |
-| `MSRV (1.97)` | the `rust-version` claim in the root manifest |
+| Check              | What it protects                                                |
+| ------------------ | --------------------------------------------------------------- |
+| `Gate`             | everything in the table above, in one job                       |
+| `MSRV (1.97)`      | the `rust-version` claim in the root manifest                   |
 | `WASM bundle size` | the apps' shipped size, which nothing else in the gate produces |
 
 `crates/upload/tests/gate_consistency.rs` names every workflow job and every
@@ -112,17 +112,17 @@ task, so this list cannot silently fall out of date with the workflow.
 
 Run on purpose, not in the gate. Each has a stated reason in `make/*.toml`.
 
-| Task | Why it is not a gate |
-| --- | --- |
-| `outdated` | a version report; it fails on any dependency at all, so as a gate it is red from the day it is added |
-| `udeps` | needs nightly and is slow; it catches a dependency used only behind a `#[cfg]`, which `machete` cannot |
-| `unsafe` | the transitive unsafe audit — advisory, and `unsafe_code = "forbid"` already covers this repository's own code; `make/scripts/unsafe-audit.sh`, over `cargo metadata` |
-| `msrv` | bisects a build per toolchain; minutes |
-| `action-pins` | needs the network and the GitHub API; a pin is a commit SHA and stays valid forever, so the only thing this catches is a pin in the wrong repository |
-| `minimal-versions` | a second resolution that frequently fails for reasons unrelated to this code |
-| `mutants`, `mutants-mgf`, `mutants-ui`, `mutants-safe*` | minutes, and the survivors are a to-do list |
-| `cov` | rebuilds the whole crate graph under instrumentation |
-| `readme-write` | a gate that rewrites files is a gate that changes files |
+| Task                                                    | Why it is not a gate                                                                                                                                                  |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outdated`                                              | a version report; it fails on any dependency at all, so as a gate it is red from the day it is added                                                                  |
+| `udeps`                                                 | needs nightly and is slow; it catches a dependency used only behind a `#[cfg]`, which `machete` cannot                                                                |
+| `unsafe`                                                | the transitive unsafe audit — advisory, and `unsafe_code = "forbid"` already covers this repository's own code; `make/scripts/unsafe-audit.sh`, over `cargo metadata` |
+| `msrv`                                                  | bisects a build per toolchain; minutes                                                                                                                                |
+| `action-pins`                                           | needs the network and the GitHub API; a pin is a commit SHA and stays valid forever, so the only thing this catches is a pin in the wrong repository                  |
+| `minimal-versions`                                      | a second resolution that frequently fails for reasons unrelated to this code                                                                                          |
+| `mutants`, `mutants-mgf`, `mutants-ui`, `mutants-safe*` | minutes, and the survivors are a to-do list                                                                                                                           |
+| `cov`                                                   | rebuilds the whole crate graph under instrumentation                                                                                                                  |
+| `readme-write`                                          | a gate that rewrites files is a gate that changes files                                                                                                               |
 
 ## Dependencies
 

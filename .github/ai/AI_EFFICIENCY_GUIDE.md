@@ -7,7 +7,7 @@ How to drive the codemutation agent efficiently. It does its strongest work on
 
 - **One phase / one task per message.** Don't bundle "review X, do Y, plan Z,
   fix the build, verify". Batch a phase together, let the agent complete + gate
-  it, *then* hand off the next.
+  it, _then_ hand off the next.
 - **State the target gate explicitly.** Native
   (`cargo clippy --workspace --all-targets --locked -- -D warnings`) vs wasm
   (`cargo check -p <pkg> --target wasm32-unknown-unknown --locked`). Mixing them

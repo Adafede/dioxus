@@ -1,11 +1,7 @@
 {
   "name": "dioxus-apps",
   "primary_language": "Rust",
-  "secondary_languages": [
-    "Markdown",
-    "JSON",
-    "YAML"
-  ],
+  "secondary_languages": ["Markdown", "JSON", "YAML"],
   "packages": [
     {
       "name": "index",

@@ -3,12 +3,12 @@
 Generate a single **CX-SMILES** from a list of related structures --- and
 validate it back by re-expansion.
 
-A CX-SMILES encodes *structural uncertainty*: a positional isomer (`m:` block)
+A CX-SMILES encodes _structural uncertainty_: a positional isomer (`m:` block)
 or a variable-length repeat (`Sg:n:` block). Hand-crafting these does not scale,
 so this app derives them automatically from a candidate structure list using the
 **maximum common substructure** as the shared scaffold.
 
---------------------------------------------------------------------------------
+---
 
 ## How it works
 
@@ -34,17 +34,17 @@ unit-tested module (`src/cxsmiles.rs`) so it can be reused outside the browser.
 
 ### Construct families
 
-  | Family                          | CX-SMILES construct                         | Example                                                                                   |
-  | ------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
-  | Positional isomers              | `m:<starIdx>:<pos1>.<pos2>.…`               | `…Cl* \|m:13:0.2.3\|` for Cl on a biphenyl at three positions                             |
-  | Variable-length repeat          | `Sg:n:<atomRange>:n:ht`                     | `OC(=O)C(F)(F)C(F)F \|Sg:n:3,4,5:n:ht\|` (PFAS) / `CCCCCCC \|Sg:n:3:n:ht\|` (alkyl chain) |
-  | Best-effort (no clean scaffold) | `m:` from the MCS, flagged lower-confidence | the six PFOS constitutional isomers                                                       |
+| Family                          | CX-SMILES construct                         | Example                                                                                   |
+| ------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Positional isomers              | `m:<starIdx>:<pos1>.<pos2>.…`               | `…Cl* \|m:13:0.2.3\|` for Cl on a biphenyl at three positions                             |
+| Variable-length repeat          | `Sg:n:<atomRange>:n:ht`                     | `OC(=O)C(F)(F)C(F)F \|Sg:n:3,4,5:n:ht\|` (PFAS) / `CCCCCCC \|Sg:n:3:n:ht\|` (alkyl chain) |
+| Best-effort (no clean scaffold) | `m:` from the MCS, flagged lower-confidence | the six PFOS constitutional isomers                                                       |
 
 ### Confidence
 
 The round-trip stage enumerates the generated CX-SMILES back into concrete
 structures and counts how many of the original inputs are recovered (**coverage =
-covered / total**). When every input re-expands, confidence is *clean* (100%);
+covered / total**). When every input re-expands, confidence is _clean_ (100%);
 otherwise the construct is flagged as lower-confidence --- this is how the "no
 clean shared scaffold" constitutional-isomer case is surfaced.
 
@@ -55,7 +55,7 @@ All molecule rendering uses `chematic::depict` (`depict_svg` /
 remote service, no network calls. The scaffold and each enumerated candidate are
 drawn inline in the results panel.
 
---------------------------------------------------------------------------------
+---
 
 ## Try it
 
@@ -76,7 +76,7 @@ cargo build --release --target wasm32-unknown-unknown -p cxsmiles-yoga
 # then `dx serve -p cxsmiles-yoga` or serve the .wasm with Dioxus SSR/wasm
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## Limitations & out of scope
 
@@ -85,7 +85,7 @@ cargo build --release --target wasm32-unknown-unknown -p cxsmiles-yoga
   enumeration for equivalent ring positions is left for a follow-up.
 - **CX-SMILES hand-rolled.** `chematic::cx` (`CxSmiles` / `parse_cxsmiles` /
   `write_cxsmiles`) does not support `m:` / `Sg:n:` constructs, so the
-  atom-index logic is implemented directly (see the *Findings* note in the
+  atom-index logic is implemented directly (see the _Findings_ note in the
   session summary: chematic's SMILES writer also never emits `*` for wildcard
   atoms, so the base scaffold is assembled as a string, not via `write`).
 - **Hashing / fingerprint library search** --- comparing a generated CX-SMILES
@@ -94,7 +94,7 @@ cargo build --release --target wasm32-unknown-unknown -p cxsmiles-yoga
   this app. Use the `crates/lotus` / `crates/upload` plumbing + `chematic::fp`
   elsewhere in the workspace for that.
 
---------------------------------------------------------------------------------
+---
 
 ## Dependencies
 

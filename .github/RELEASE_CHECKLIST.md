@@ -13,7 +13,7 @@
 
 Use this checklist every time you publish a new release to the organization.
 
---------------------------------------------------------------------------------
+---
 
 ## 1. Pre-release quality gate
 
@@ -26,7 +26,7 @@ Must succeed **on a clean working tree** before continuing. It includes the
 supply-chain checks (advisories, licences, bans, sources), so there is no second
 command to remember.
 
---------------------------------------------------------------------------------
+---
 
 ## 2. CHANGELOG
 
@@ -34,7 +34,7 @@ command to remember.
   `## [0.2.0] --- YYYY-MM-DD`.
 - Update the comparison URLs at the bottom of `CHANGELOG.md`.
 
---------------------------------------------------------------------------------
+---
 
 ## 3. Version bump
 
@@ -46,7 +46,7 @@ inherit this version automatically via `workspace = true`.
 grep -r '^version' apps/*/Cargo.toml crates/*/Cargo.toml
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## 4. Commit, tag, push
 
@@ -57,9 +57,9 @@ git tag -s vX.Y.Z -m "Release vX.Y.Z"   # signed tag (preferred)
 git push origin main --follow-tags
 ```
 
-*Annotated, signed tags (`-s`) are required for org-policy compliance.*
+_Annotated, signed tags (`-s`) are required for org-policy compliance._
 
---------------------------------------------------------------------------------
+---
 
 ## 5. CI green light
 
@@ -71,7 +71,7 @@ separate workflow and does not depend on `ci`, so that a deploy is not blocked b
 a slow MSRV bisect — which also means the ordering is on purpose and must stay
 understood.
 
---------------------------------------------------------------------------------
+---
 
 ## 6. Container images
 
@@ -79,7 +79,7 @@ There is no container image for this repository and no registry behind one: the
 deployable artefacts are static wasm bundles, published by `deploy.yml` to GitHub
 Pages. Nothing to pull.
 
---------------------------------------------------------------------------------
+---
 
 ## 7. GitHub / Codeberg release
 
@@ -88,7 +88,7 @@ Pages. Nothing to pull.
 - Body: paste the relevant `CHANGELOG.md` section.
 - Attach any binary artifacts if applicable.
 
---------------------------------------------------------------------------------
+---
 
 ## 8. Post-release
 
@@ -98,7 +98,7 @@ Pages. Nothing to pull.
 - If the release addressed security issues, make sure `SECURITY.md` advisory
   notes are published.
 
---------------------------------------------------------------------------------
+---
 
 ## Dependency update cycle
 

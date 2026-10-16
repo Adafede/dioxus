@@ -4,7 +4,7 @@
 
 Closes #<!-- issue number, if applicable -->
 
---------------------------------------------------------------------------------
+---
 
 ## Type of change
 
@@ -15,7 +15,7 @@ Closes #<!-- issue number, if applicable -->
 - [ ] Documentation update
 - [ ] Dependency update
 
---------------------------------------------------------------------------------
+---
 
 ## Changes
 
@@ -23,7 +23,7 @@ Closes #<!-- issue number, if applicable -->
 
 - Change 1
 
---------------------------------------------------------------------------------
+---
 
 ## Testing
 
@@ -33,7 +33,7 @@ Closes #<!-- issue number, if applicable -->
 - [ ] New tests added for new or fixed behavior
   - [ ] Manually tested with `./mk web-dev APP=<app>`
 
---------------------------------------------------------------------------------
+---
 
 ## Quality gate
 
@@ -46,7 +46,7 @@ Run `./mk --list-all-steps` for the full task list.
 
 - [ ] `./mk ci` passes locally on a clean tree
 
---------------------------------------------------------------------------------
+---
 
 ## Documentation
 
@@ -54,7 +54,7 @@ Run `./mk --list-all-steps` for the full task list.
 - [ ] API docs updated (OpenAPI annotations, doc comments) if applicable
 - [ ] `README.md` or `CONTRIBUTING.md` updated if behavior changed
 
---------------------------------------------------------------------------------
+---
 
 ## License
 

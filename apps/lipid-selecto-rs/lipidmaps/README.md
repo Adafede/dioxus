@@ -60,19 +60,19 @@ cargo run --release -- \
 
 The result is `smarts_results.csv` --- one row per class with columns:
 
-  | Column                | Description                                   |
-  | --------------------- | --------------------------------------------- |
-  | `level`               | `main_class` or `subclass`                    |
-  | `label`               | Human-readable class label                    |
-  | `main_class`          | LIPID MAPS main class code (e.g. `FA01`)      |
-  | `subclass`            | Subclass code (e.g. `FA0101`)                 |
-  | `slug`                | URL-safe identifier for resume tracking       |
-  | `positive_count`      | Number of positive SMILES used                |
-  | `negative_count`      | Number of negative SMILES used                |
-  | `best_smarts`         | The evolved SMARTS pattern                    |
-  | `best_mcc`            | MCC score of the best result                  |
-  | `best_coverage_score` | Coverage of the pattern on the positive set   |
-  | `status`              | `ok`, `empty_after_parse`, `read_error`, etc. |
+| Column                | Description                                   |
+| --------------------- | --------------------------------------------- |
+| `level`               | `main_class` or `subclass`                    |
+| `label`               | Human-readable class label                    |
+| `main_class`          | LIPID MAPS main class code (e.g. `FA01`)      |
+| `subclass`            | Subclass code (e.g. `FA0101`)                 |
+| `slug`                | URL-safe identifier for resume tracking       |
+| `positive_count`      | Number of positive SMILES used                |
+| `negative_count`      | Number of negative SMILES used                |
+| `best_smarts`         | The evolved SMARTS pattern                    |
+| `best_mcc`            | MCC score of the best result                  |
+| `best_coverage_score` | Coverage of the pattern on the positive set   |
+| `status`              | `ok`, `empty_after_parse`, `read_error`, etc. |
 
 ### 2. Use the evolved SMARTS in lipid-selecto-rs
 
@@ -118,16 +118,16 @@ The `LipidRuleLibrary` is wired into the UI through two entry points:
 
 All eight LIPID MAPS structural families are represented:
 
-  | Rank | Code | Family               | Classes                                                                  |
-  | ---- | ---- | -------------------- | ------------------------------------------------------------------------ |
-  | 0    | FA   | Fatty Acyls          | FA, MUFA, PUFA                                                           |
-  | 1    | GL   | Glycerolipids        | TG(AAA), DG(AA), MG(A)                                                   |
-  | 2    | GP   | Glycerophospholipids | PC(AA), PE(AA), PS(AA), PI(AA), PG(AA), PA(AA), LPC(A), LPE(A), CL(AAAA) |
-  | 3    | SP   | Sphingolipids        | Cer(AS), SM(AS), HexCer(AS)                                              |
-  | 4    | ST   | Sterol Lipids        | ST                                                                       |
-  | 5    | PR   | Prenol Lipids        | PR                                                                       |
-  | 6    | SL   | Saccharolipids       | SL                                                                       |
-  | 7    | PK   | Polyketides          | PK                                                                       |
+| Rank | Code | Family               | Classes                                                                  |
+| ---- | ---- | -------------------- | ------------------------------------------------------------------------ |
+| 0    | FA   | Fatty Acyls          | FA, MUFA, PUFA                                                           |
+| 1    | GL   | Glycerolipids        | TG(AAA), DG(AA), MG(A)                                                   |
+| 2    | GP   | Glycerophospholipids | PC(AA), PE(AA), PS(AA), PI(AA), PG(AA), PA(AA), LPC(A), LPE(A), CL(AAAA) |
+| 3    | SP   | Sphingolipids        | Cer(AS), SM(AS), HexCer(AS)                                              |
+| 4    | ST   | Sterol Lipids        | ST                                                                       |
+| 5    | PR   | Prenol Lipids        | PR                                                                       |
+| 6    | SL   | Saccharolipids       | SL                                                                       |
+| 7    | PK   | Polyketides          | PK                                                                       |
 
 ## Data Sources
 

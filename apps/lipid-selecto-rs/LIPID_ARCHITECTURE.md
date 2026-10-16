@@ -12,16 +12,16 @@ chemical classes.
 
 The top level contains the 8 major LIPID MAPS categories:
 
-  | Code   | Family               | Classes                              | Examples                              |
-  | ------ | -------------------- | ------------------------------------ | ------------------------------------- |
-  | **FA** | Fatty Acyls          | FA, MUFA, PUFA                       | Palmitic, Oleic, Arachidonic          |
-  | **GL** | Glycerolipids        | TG(AAA), DG(AA), MG(A)               | Triglycerides, Diglycerides           |
-  | **GP** | Glycerophospholipids | PC, PE, PS, PG, PI, PA, LPC, LPE, CL | Phosphatidylcholine, Cardiolipin      |
-  | **SP** | Sphingolipids        | Cer(AS), SM(AS), HexCer(AS)          | Ceramides, Sphingomyelins             |
-  | **ST** | Sterol Lipids        | ST                                   | Cholesterol, Progesterone             |
-  | **PR** | Prenol Lipids        | PR                                   | Retinol (Vit A), α-Tocopherol (Vit E) |
-  | **SL** | Saccharolipids       | SL                                   | Lipid A, LPS Core                     |
-  | **PK** | Polyketides          | PK                                   | Statins, Macrolides                   |
+| Code   | Family               | Classes                              | Examples                              |
+| ------ | -------------------- | ------------------------------------ | ------------------------------------- |
+| **FA** | Fatty Acyls          | FA, MUFA, PUFA                       | Palmitic, Oleic, Arachidonic          |
+| **GL** | Glycerolipids        | TG(AAA), DG(AA), MG(A)               | Triglycerides, Diglycerides           |
+| **GP** | Glycerophospholipids | PC, PE, PS, PG, PI, PA, LPC, LPE, CL | Phosphatidylcholine, Cardiolipin      |
+| **SP** | Sphingolipids        | Cer(AS), SM(AS), HexCer(AS)          | Ceramides, Sphingomyelins             |
+| **ST** | Sterol Lipids        | ST                                   | Cholesterol, Progesterone             |
+| **PR** | Prenol Lipids        | PR                                   | Retinol (Vit A), α-Tocopherol (Vit E) |
+| **SL** | Saccharolipids       | SL                                   | Lipid A, LPS Core                     |
+| **PK** | Polyketides          | PK                                   | Statins, Macrolides                   |
 
 ## Classification Rules by Family
 
@@ -141,16 +141,16 @@ Hexosylceramide (HexCer)
 
 ## Color Scheme (CVD-Friendly Microshades)
 
-  | Family                    | Color Palette       | Hex Codes                        |
-  | ------------------------- | ------------------- | -------------------------------- |
-  | Fatty Acyls (FA)          | cvd_orange          | #9D654C, #C17754, #F09163        |
-  | Glycerolipids (GL)        | cvd_blue            | #098BD9, #56B4E9, #7DCCFF        |
-  | Glycerophospholipids (GP) | cvd_green/turquoise | #4E7705–#DDFFA0, #148F77–#43BA8F |
-  | Sphingolipids (SP)        | cvd_purple          | #7D3560, #A1527F, #CC79A7        |
-  | Sterol Lipids (ST)        | purple              | #6a51a3                          |
-  | Prenol Lipids (PR)        | orange              | #ff7f00                          |
-  | Saccharolipids (SL)       | blue                | #4292c6                          |
-  | Polyketides (PK)          | green               | #238b45                          |
+| Family                    | Color Palette       | Hex Codes                        |
+| ------------------------- | ------------------- | -------------------------------- |
+| Fatty Acyls (FA)          | cvd_orange          | #9D654C, #C17754, #F09163        |
+| Glycerolipids (GL)        | cvd_blue            | #098BD9, #56B4E9, #7DCCFF        |
+| Glycerophospholipids (GP) | cvd_green/turquoise | #4E7705–#DDFFA0, #148F77–#43BA8F |
+| Sphingolipids (SP)        | cvd_purple          | #7D3560, #A1527F, #CC79A7        |
+| Sterol Lipids (ST)        | purple              | #6a51a3                          |
+| Prenol Lipids (PR)        | orange              | #ff7f00                          |
+| Saccharolipids (SL)       | blue                | #4292c6                          |
+| Polyketides (PK)          | green               | #238b45                          |
 
 All palettes are colorblind-accessible (CVD-friendly).
 

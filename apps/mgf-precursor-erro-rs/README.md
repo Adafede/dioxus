@@ -6,7 +6,7 @@ license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.
 
 `mgf-precursor-erro-rs` --- MGF precursor mass-error analysis.
 
-Uploads an MGF file, recalibrates precursor *m/z* values, and visualises the
+Uploads an MGF file, recalibrates precursor _m/z_ values, and visualises the
 resulting mass-error distribution as an interactive histogram.
 
 ## Run locally

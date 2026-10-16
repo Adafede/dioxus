@@ -204,9 +204,9 @@ lipid_classes:
     color: "#6D9F06"
     priority: 4
 
-# === Glycerolipids (GL) — cvd_blue palette ===
-# Evolved SMARTS: [CX3](=[OX1])[OX2][#6;!a;!R] (MCC=0.9146)
-# Common-sense filter: no nitrogen or phosphorus.
+  # === Glycerolipids (GL) — cvd_blue palette ===
+  # Evolved SMARTS: [CX3](=[OX1])[OX2][#6;!a;!R] (MCC=0.9146)
+  # Common-sense filter: no nitrogen or phosphorus.
   - name: "TG(AAA)"
     family: "GL"
     architecture: "TriAcylGlycerol"
@@ -240,8 +240,8 @@ lipid_classes:
     color: "#BCE1FF"
     priority: 5
 
-# === Glycerophospholipids (GP) — cvd_purple palette ===
-# Evolved SMARTS: [PX4](=[OX1])([OX2])([OX2]) (MCC=1.0)
+  # === Glycerophospholipids (GP) — cvd_purple palette ===
+  # Evolved SMARTS: [PX4](=[OX1])([OX2])([OX2]) (MCC=1.0)
   - name: "PC(AA)"
     family: "GP"
     architecture: "DiAcyl"
@@ -357,9 +357,9 @@ lipid_classes:
     color: "#E794C1"
     priority: 2
 
-# === Sphingolipids (SP) — cvd_orange palette ===
-# Evolved SMARTS: [NX3][CX3](=[OX1]) for amide (MCC=0.9994)
-#                 [NX3][CX4] for free amine
+  # === Sphingolipids (SP) — cvd_orange palette ===
+  # Evolved SMARTS: [NX3][CX3](=[OX1]) for amide (MCC=0.9994)
+  #                 [NX3][CX4] for free amine
   - name: "Cer(AS)"
     family: "SP"
     architecture: "Ceramide"
@@ -426,9 +426,9 @@ lipid_classes:
     color: "#F09163"
     priority: 4
 
-# === Sterol Lipids (ST) — green palette ===
-# Evolved SMARTS: [*;R2] (MCC=0.994) — atoms in exactly 2 rings
-# Common-sense filters: N=0, P=0, aromatic_ring_count=0
+  # === Sterol Lipids (ST) — green palette ===
+  # Evolved SMARTS: [*;R2] (MCC=0.994) — atoms in exactly 2 rings
+  # Common-sense filters: N=0, P=0, aromatic_ring_count=0
   - name: "ST"
     family: "ST"
     architecture: "Steroid"
@@ -478,9 +478,9 @@ lipid_classes:
     color: "#238b45"
     priority: 4
 
-# === Prenol Lipids (PR) — blue palette ===
-# Evolved SMARTS: C=CC=CC=C (MCC=0.871) — conjugated triene system
-# Common-sense filters: no phosphorus, no fatty acyl pattern, no aromatic rings
+  # === Prenol Lipids (PR) — blue palette ===
+  # Evolved SMARTS: C=CC=CC=C (MCC=0.871) — conjugated triene system
+  # Common-sense filters: no phosphorus, no fatty acyl pattern, no aromatic rings
   - name: "PR"
     family: "PR"
     architecture: "Isoprenoid"
@@ -506,9 +506,9 @@ lipid_classes:
     color: "#9ecae1"
     priority: 7
 
-# === Saccharolipids (SL) — purple palette ===
-# Placeholder SMARTS: [*;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1 — 6-membered ring
-# Common-sense filter: must have phosphorus (phosphate-linked sugar)
+  # === Saccharolipids (SL) — purple palette ===
+  # Placeholder SMARTS: [*;R1]1[CH;R1][CH;R1][CH;R1][CH;R1][CH;R1]1 — 6-membered ring
+  # Common-sense filter: must have phosphorus (phosphate-linked sugar)
   - name: "SL"
     family: "SL"
     architecture: " Acyclic"
@@ -533,10 +533,10 @@ lipid_classes:
     color: "#9e9ac8"
     priority: 5
 
-# === Polyketides (PK) — orange palette ===
-# Evolved SMARTS: [CX3](=[OX1])([#6;!a;!R])[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R] (MCC=0.9544)
-# This requires a ketone (carbonyl C with two aliphatic C neighbors) + two more aliphatic Cs
-# Common-sense filter: not a fatty acid, not aromatic, not in rings
+  # === Polyketides (PK) — orange palette ===
+  # Evolved SMARTS: [CX3](=[OX1])([#6;!a;!R])[#6;!a;!R]~[#6;!a;!R]~[#6;!a;!R] (MCC=0.9544)
+  # This requires a ketone (carbonyl C with two aliphatic C neighbors) + two more aliphatic Cs
+  # Common-sense filter: not a fatty acid, not aromatic, not in rings
   - name: "PK"
     family: "PK"
     architecture: " Acyclic"

@@ -149,10 +149,10 @@ permanent IP 429 from `https://qlever.dev/api/wikidata`. Captured logs
 (15:00:06--07) showed 5 SPARQL POSTs within \~150 ms (3×200 in 30--135 ms +
 2×429 in 24--25 ms).
 
-**Root cause:** an anonymous-quota *burst*, not heavy queries --- the 200s
+**Root cause:** an anonymous-quota _burst_, not heavy queries --- the 200s
 returned in 30--135 ms. Two sites fired Qlever POSTs concurrently: 1. **search** ---
 `try_join!(count, display)` ran the COUNT(DISTINCT ...) over the full base
-("dumb pagination" request) *concurrently* with the display query, and the 429
+("dumb pagination" request) _concurrently_ with the display query, and the 429
 retry re-ran the whole pipeline with only a short backoff, amplifying it. 2.
 **curation** --- `buffer_unordered(CURATION_CONCURRENCY = 8)` fired up to 8
 rows' Qlever POSTs at the same time (compound fetch + ASK per row). (The
@@ -168,7 +168,7 @@ error" waste. - **Respect the endpoint on 429.** `rate_limit_backoff_ms` (1 s
 base, doubling, capped at 10 s) + `plan_retry` caps 429 retries at **1**
 (`effective_max = 1` for `ErrorClass::RateLimit`) instead of the generic 3. -
 **COUNT restored, but serialized + best-effort** (no `try_join!`): the display
-query runs first; the COUNT (`query_counts_from_base`) fires strictly *after*,
+query runs first; the COUNT (`query_counts_from_base`) fires strictly _after_,
 sequentially, and a 429 on it is swallowed → `None` (falls back to
 `rows.len()`). Rationale inline in
 `apps/lotus-explore-rs/src/features/explore/service/fetch_results/wasm.rs`. -
