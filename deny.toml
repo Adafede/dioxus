@@ -97,6 +97,7 @@ skip = [
   { name = "thiserror" },  # 1.x (upstream) vs 2.x (this workspace)
   { name = "thiserror-impl" },  # the derive half of the above
   { name = "geometric-traits" },  # same git rev under two source spellings
+  { name = "wasm-streams" },  # 0.5 (reqwest 0.13, upstream) vs 0.4 (dioxus-web)
 ]
 
 # ── Source policy ─────────────────────────────────────────────────────────────

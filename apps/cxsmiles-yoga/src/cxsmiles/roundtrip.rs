@@ -48,15 +48,19 @@ const MAX_ARRANGEMENTS: usize = 10_000;
 /// produces: a range sitting on the ceiling, expanding to nothing the count could
 /// see.
 ///
-/// Canonicalisation is also superlinear in molecule size, which is the reason
-/// this is a separate ceiling at all rather than a larger count. One 20,000-atom
-/// chain took over a minute to canonicalise, where 20,000 one-atom molecules take
-/// milliseconds — so a single huge molecule is worth refusing well before the
-/// aggregate gets anywhere near 10^7.
+/// Canonicalisation is superlinear in molecule size, which is the reason this
+/// is a separate ceiling at all rather than a larger count. One 20,000-atom
+/// chain took over a minute to canonicalise, where 20,000 one-atom molecules
+/// take milliseconds — so a single huge molecule is worth refusing well before
+/// the aggregate gets anywhere near 10^7.
 ///
-/// 4,096 atoms is far past any molecule worth encoding here, so this does not
-/// fire on input that means anything.
-const MAX_MOLECULE_ATOMS: usize = 4_096;
+/// 512 is chosen against the canonicaliser rather than against chemistry: a
+/// 512-atom chain canonicalises in single-digit milliseconds in a debug build,
+/// and past about 4,000 atoms the search stops being polynomial and a single
+/// such molecule stops finishing at all. The tests below sit on the ceiling
+/// itself and really do build it, so a ceiling large enough to be
+/// uncannonicalisable is a ceiling the suite cannot reach.
+const MAX_MOLECULE_ATOMS: usize = 512;
 
 /// Enumerate every distinct molecule implied by a positional CX-SMILES.
 ///
@@ -285,7 +289,7 @@ pub(crate) fn enumerate_repeating(
     // The loop bounded by both ceilings, for the reason the loop in `enumerate`
     // is: a check that has been mutated away must not be the only thing between
     // an input and the molecules it describes. Ten thousand counts of a
-    // 4,096-atom molecule is forty million atoms of canonicalisation, and the
+    // ceiling-sized molecule is five million atoms of canonicalisation, and the
     // count ceiling alone never said so — which is why the count the loop
     // actually walks is capped at what the *molecule* ceiling can carry, and
     // not at the count ceiling.
