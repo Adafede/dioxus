@@ -3,9 +3,9 @@
 
 //! Lipid classification algorithm.
 //!
-//! SMARTS substructure patterns and the `is_acyclic` / `classify_smiles` /
-//! `classify_formula` / `classify_spectrum` entry points over molecules and
-//! spectra.  Domain types come from [`super::types`].
+//! SMARTS substructure patterns and the `classify_smiles` /
+//! `classify_spectrum` entry points over molecules and spectra (plus the
+//! test-only `classify_formula`).  Domain types come from [`super::types`].
 
 #[cfg(any(test, target_arch = "wasm32"))]
 use super::types::LipidClassification;
@@ -212,9 +212,9 @@ pub(crate) fn classify_smiles(smiles: &str) -> Option<LipidClassification> {
 
 /// Formula-based classification decision from pre-computed element counts.
 ///
-/// Shared by [`classify_formula`] (public API) and [`classify_spectrum`]
-/// (which already parsed the formula) to avoid duplicating the decision tree
-/// or re-parsing the formula string.
+/// Shared by [`classify_spectrum`] (which already parsed the formula) and
+/// `classify_formula` (the test-only entry point), to avoid duplicating the
+/// decision tree or re-parsing the formula string.
 #[cfg(any(test, target_arch = "wasm32"))]
 fn classify_from_counts(counts: &ElementCounts) -> Option<LipidClass> {
     let c = counts.carbon as i32;
@@ -271,8 +271,10 @@ fn classify_from_counts(counts: &ElementCounts) -> Option<LipidClass> {
     None
 }
 
-/// Conservative formula-only fallback (used when a SMILES is absent/unparseable
-/// but a Hill-notation `FORMULA=` is available).
+/// Conservative formula-only fallback (kept test-only: live input reaches the
+/// classifier through [`classify_spectrum`], which tries the SMILES first and
+/// falls back to the Hill-notation `FORMULA=` value when the SMILES is absent
+/// or unparseable).
 #[must_use]
 #[cfg(test)]
 pub(crate) fn classify_formula(formula: &str) -> Option<LipidClass> {
