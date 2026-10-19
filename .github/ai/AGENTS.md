@@ -12,16 +12,17 @@ relationships and `graphify explain "<concept>"` for focused concepts. These
 return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep
 output. - Dirty graphify-out/ files are expected after hooks or incremental
 updates; dirty graph files are not a reason to skip graphify. Only skip graphify
-if the task is about stale or incorrect graph output, or the user explicitly
-says not to use it. - If graphify-out/wiki/index.md exists, use it for broad
-navigation instead of raw source browsing. - Read graphify-out/GRAPH_REPORT.md
+ if the task is about stale or incorrect graph output, or the user explicitly
+says not to use it. - Read graphify-out/GRAPH_REPORT.md
 only for broad architecture review or when query/path/explain do not surface
 enough context. - After modifying code, run `graphify update .` to keep the
 graph current (AST-only, no API cost).
 
 ## TypeSafe AI
 
-A `typesafe-ai` skill is installed at `.agents/skills/typesafe-ai/`.
+These are integration opportunities for when the TypeSafe AI skill is
+installed (at `.agents/skills/typesafe-ai/`). Until then the primitives below
+are aspirational guidance for what a typed-AI integration could look like.
 
 **Available primitives:** - **Choice**: select one option from a defined set
 (useful for lipid class categorization, format detection) - **Noul**:
