@@ -9,6 +9,26 @@
       ],
       "description": "Read-only MCP filesystem access to the AI collaboration guides under .github/ai/.",
       "disabled": false
+    },
+    "graphify": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "graphifyy",
+        "python",
+        "-m",
+        "graphify.serve",
+        "graphify-out/graph.json"
+      ]
+    },
+    "code-review-graph": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "code-review-graph",
+        "serve"
+      ]
     }
   }
 }
