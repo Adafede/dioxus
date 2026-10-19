@@ -26,7 +26,7 @@ A Cargo workspace for reproducible Dioxus web apps, pinned by
 ./mk setup
 ```
 
-That installs the pinned toolchain from `rust-toolchain.toml` (Rust 1.98.1, with
+That installs the pinned toolchain from `rust-toolchain.toml` (Rust 1.99.0, with
 `clippy`, `rustfmt`, `llvm-tools-preview` and the `wasm32-unknown-unknown`
 target), the task runner, the test runner, the Dioxus CLI at the version the
 lockfile resolves, and every tool the gate calls — each at a pinned version,
