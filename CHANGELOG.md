@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **CSV export hardening (smellfish-rs)**: `escape_csv` now quotes fields
+  containing a line break (`\n` or `\r`), not only commas and quotes — a
+  multi-line label previously started a new row mid-record and corrupted every
+  row after it. Its tests now also run in the host gate, matching the
+  `category` precedent.
+- **MCP config repair**: `.mcp/mcp.json` dropped the `apps/lotus-explore-rs/docs`
+  filesystem root externalized out of this repo in
+  b5e4ea12; a nonexistent root kept the filesystem MCP server from starting.
+  The root README section repeated the same stale path.
+- **Root README accuracy**: the pinned toolchain line now says Rust 1.99.0
+  (what `rust-toolchain.toml` actually pins), not the stale 1.98.1.
+
 - **Document head in Rust**: All static `index.html` files replaced with
   `ui::document::DocumentHead` (meta tags, scripts, styles, JSON-LD) and
   `ui::document::DocumentLinks` (link tags, preconnect, favicons). The `index`,
