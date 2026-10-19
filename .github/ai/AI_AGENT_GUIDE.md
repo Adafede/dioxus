@@ -83,7 +83,7 @@ Two things that are easy to get wrong and are worth not having to remember:
 - Do not add new dependencies unless required by the architecture.
 - Keep user-facing behavior stable unless a change is explicitly requested.
 - Favor typed contracts, explicit errors, and narrow ownership.
-- Prefer `crates/ui` components/styles and `crates/upload`/`crates/lotus` over
+- Prefer `crates/ui` components/styles and `crates/upload` over
   reimplementing the same concern in an app.
 
 ## References
@@ -94,17 +94,23 @@ Two things that are easy to get wrong and are worth not having to remember:
 
 ## Phase status
 
+> **Note:** The file paths below are historical. `crates/lotus` and
+> `apps/lotus-explore-rs` were removed from the workspace in the Phase 1
+> cleanup (see `Cargo.toml` -- only `crates/ui` and `crates/upload` remain
+> under `crates/`, and the six apps under `apps/` are `cxsmiles-yoga`,
+> `index`, `json-count-rs`, `lipid-selecto-rs`, `mgf-precursor-erro-rs`, and
+> `smellfish-rs`). Do not chase those paths.
+
 - **Phase 1 (inventory + docs):** complete. Workspace map above revised;
-  `apps/lotus-explore-rs` dead triplicate style tree removed; `crates/ui` =
-  shared design system, `crates/upload` = shared upload crate, `crates/lotus` =
-  shared SPARQL core.
+  the removed `apps/lotus-explore-rs` had a dead triplicate style tree;
+  `crates/ui` = shared design system, `crates/upload` = shared upload crate.
 - **Phase 2 (shared UI --- upload):** complete. `ui::UploadZone` extracted into
   `crates/ui`; `json-count-rs`, `mgf-precursor-erro-rs`, and `lipid-selecto-rs`
   migrated to it (the `StyleBuilder` inline drop-zone pattern is now deduped to
   one place). `smellfish-rs` keeps its CSS-class CSV drop zone (different
   aesthetic --- flagged for a class-based `UploadZone` variant if desired).
 - **Phase 2/6e (Footer/Card):** `ui::Footer` + `ui::Card` rich surface extracted
-  into `crates/ui`; migrating lotus-explore and remaining apps off local
+  into `crates/ui`; migrating remaining apps off local
   reimplementations.
 - **Phase 3 (god-file splitting):** `mgf app.rs` (684→137) split complete ---
   `app/results.rs` (`ResultsPanel`), `app/browser.rs` (shared
@@ -113,18 +119,16 @@ Two things that are easy to get wrong and are worth not having to remember:
   `app()` body < 100 lines, `#[allow(clippy::too_many_lines)]` removed,
   `# Errors` doc added. `cxsmiles/app.rs`,
   `mgf plotting.rs`→`plotting/{mod,data,scatter,diagnostics,cumulative,color}`,
-  `mgf parser.rs`→`parser/{mod,adduct,mass,block}`, `mgf metrics.rs`
+  `mgf parser.rs`→`parser/{mod,adduct,mass,block}`,   `mgf metrics.rs`
   (850→`metrics/{mod,merge}`) splits also complete, as well as
   `recalibration.rs` (833→`calibration/{types,parsing,calibration,generator}` +
-  re-export `mod.rs`) and `apps/lotus-explore-rs` `sections.rs`
-  (521→`sections/{mod,styles}`); the `plotting/diagnostics.rs` histogram
+  re-export `mod.rs`); the `plotting/diagnostics.rs` histogram
   `bin_count==0` div-by-zero is guarded. Remaining larger god-files:
-  `crates/lotus/src/sparql.rs` (840), `crates/ui/styles/lotus/responsive.rs`
-  (910), smellfish `app.rs`/`verdict.rs`, lotus-explore-rs server `tests.rs`
+  smellfish `app.rs`/`verdict.rs`
   (tests only).
 - **Phase 4 (shared signals):** complete (verified) --- `mgf-precursor-erro-rs` +
   `json-count-rs` declare signals via `ui::shared_signal!` / `shared_signals!`;
-  `cxsmiles-yoga`, `lipid-selecto-rs`, and `lotus-explore-rs` use plain
+  `cxsmiles-yoga`, `lipid-selecto-rs`, and other apps use plain
   `let`/`let mut use_signal` (a workspace-wide grep confirms no
   `#[cfg(target_arch = "wasm32")]` signal-declaration duplication remains in any
   app).
@@ -138,9 +142,13 @@ Two things that are easy to get wrong and are worth not having to remember:
   `.unwrap_or_default()`; the 9 stale `# Panics` doc blocks converted to
   `# Errors` (summary_text got a new `# Errors` block); redundant `#[must_use]`
   dropped from the `Result`-returning renderers; workspace
-  `./mk lint`/`./mk test`/`./mk check` + 3-app wasm all green.
-- **Phase 6f (lotus-sparql styles/services consolidation):** complete
-  (triplicate style dir removed; only LOTUS-specific helpers remain).
+   `./mk lint`/`./mk test`/`./mk check` + 3-app wasm all green.
+- **Phase 6f (styles/services consolidation):** complete
+   (triplicate style dir removed; only app-specific helpers remain).
+> The Phase 6f entry above was originally labeled "lotus-sparql styles/services
+> consolidation" and referenced `crates/lotus`, which was removed from the
+> workspace. It is kept for historical record; the code described here no
+> longer exists.
 
 ## Incident: lotus-explore Qlever 429 storm (FIXED)
 
@@ -167,11 +175,12 @@ base URL is explicitly configured
 error" waste. - **Respect the endpoint on 429.** `rate_limit_backoff_ms` (1 s
 base, doubling, capped at 10 s) + `plan_retry` caps 429 retries at **1**
 (`effective_max = 1` for `ErrorClass::RateLimit`) instead of the generic 3. -
-**COUNT restored, but serialized + best-effort** (no `try_join!`): the display
-query runs first; the COUNT (`query_counts_from_base`) fires strictly _after_,
-sequentially, and a 429 on it is swallowed → `None` (falls back to
-`rows.len()`). Rationale inline in
-`apps/lotus-explore-rs/src/features/explore/service/fetch_results/wasm.rs`. -
+  **COUNT restored, but serialized + best-effort** (no `try_join!`): the display
+  query runs first; the COUNT (`query_counts_from_base`) fires strictly _after_,
+  sequentially, and a 429 on it is swallowed → `None` (falls back to
+  `rows.len()`). Rationale was inline in
+  `apps/lotus-explore-rs/src/features/explore/service/fetch_results/wasm.rs`
+  (now removed from the workspace; the principle remains). -
 **Curation serialized.** `CURATION_CONCURRENCY` `8 → 1` in
 `features/curation/services/pipeline.rs`: rows are curated one at a time so
 Qlever POSTs never overlap. (This also unblocks the mass/RDKit step, which was
