@@ -112,7 +112,7 @@ for `.gemini/` and `.agents/` risk accidental commits of local agent config.
 - **Evidence:**
   - `graphify-out/graph.json` exists (2.0 MB, 2284 nodes, 4148 edges, 147 communities)
   - Last updated: Oct 19 06:17 (today, fresh)
-  - `graphify` CLI installed: `graphify v0.9.90` at `/Users/adrutz/.local/bin/graphify`
+  - `graphify` CLI installed: `graphify v0.9.90`
   - `graphify query "what is the project about"` → returns 12 nodes, <1s
   - `graphify update .` → works, "Code graph updated. For doc/paper/image changes run /graphify --update in your AI assistant."
   - `.graphifyignore` (tracked) excludes `mutants.out/`, `mutants.out.old/`, `target/`
