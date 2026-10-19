@@ -119,7 +119,8 @@ GEMINI.md
 .opencode/
 .codex/
 .aider*
-.mcp.json
+!.mcp.json
+!.mcp/
 .mcp/
 opencode.json
 .code-review-graph/

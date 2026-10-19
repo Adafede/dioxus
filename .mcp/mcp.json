@@ -1,34 +1,14 @@
 {
   "mcpServers": {
-    "ai-guides": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        ".github/ai"
-      ],
-      "description": "Read-only MCP filesystem access to the AI collaboration guides under .github/ai/.",
-      "disabled": false
+    "code-review-graph": {
+      "command": "uvx",
+      "args": ["code-review-graph", "serve"],
+      "type": "stdio"
     },
     "graphify": {
-      "type": "stdio",
       "command": "uvx",
-      "args": [
-        "--from",
-        "graphifyy",
-        "python",
-        "-m",
-        "graphify.serve",
-        "graphify-out/graph.json"
-      ]
-    },
-    "code-review-graph": {
-      "type": "stdio",
-      "command": "uvx",
-      "args": [
-        "code-review-graph",
-        "serve"
-      ]
+      "args": ["--from", "graphifyy[mcp]", "python", "-m", "graphify.serve", "graphify-out/graph.json"],
+      "type": "stdio"
     }
   }
 }
