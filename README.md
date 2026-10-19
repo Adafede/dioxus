@@ -157,9 +157,8 @@ A project-level MCP config lives at `.mcp/mcp.json` --- the canonical
 `mcpServers` convention (read by Claude Code / Cline). It registers a read-only
 filesystem MCP server exposing the AI collaboration guides (`.github/ai/`) as
 MCP resources, so agent tooling can read them through the Model Context
-Protocol.
-In-page web agents instead use the page's JSON-LD / `llms.txt` / `.well-known/`
-discovery.
+Protocol. The graphify and code-review-graph MCP servers are also configured
+here for scoped codebase queries.
 
 ## Governance
 
