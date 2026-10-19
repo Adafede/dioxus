@@ -274,7 +274,7 @@ fn classify_from_counts(counts: &ElementCounts) -> Option<LipidClass> {
 /// Conservative formula-only fallback (kept test-only: live input reaches the
 /// classifier through [`classify_spectrum`], which tries the SMILES first and
 /// falls back to the Hill-notation `FORMULA=` value when the SMILES is absent
-/// or unparseable).
+/// or unparsable).
 #[must_use]
 #[cfg(test)]
 pub(crate) fn classify_formula(formula: &str) -> Option<LipidClass> {
