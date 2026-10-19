@@ -107,7 +107,11 @@ SESSION_LOG.md
 # are a human decision, not something to `git rm` in passing.
 .kb/
 graphify-out/
-AGENTS.md
+# `.gemini/` and `.agents/` hold local skill/plugin configs that are not
+# source. They are not listed in setup.sh or CI, so a file that lands here
+# without an explicit `git add -f` is someone's machine-local state.
+.gemini/
+.agents/
 CLAUDE.md
 GEMINI.md
 .claude/
