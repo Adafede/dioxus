@@ -104,3 +104,21 @@ fn chemical_classes_have_all_required_fields() {
         assert!(class.color.starts_with('#'), "Color should be hex code");
     }
 }
+
+#[test]
+fn a_stray_end_ions_outside_any_block_is_not_a_smiles_row() {
+    // "END IONS" outside a block is malformed MGF; the letters N, O and S
+    // sit inside the SMILES-alphabet heuristic, so without a guard the flat
+    // fallback forges a block out of the line. It must be dropped instead,
+    // matching how the mgf-precursor-erro-rs parser treats lines that are
+    // not inside a block.
+    let blocks = extract_blocks("CCCO\nEND IONS\nCCO\n");
+    assert_eq!(blocks.len(), 2, "only the two real rows survive");
+    assert_eq!(blocks[0].index, 1);
+    assert_eq!(blocks[1].index, 2);
+    assert_eq!(
+        blocks[1].psm_smiles.as_deref(),
+        Some("CCO"),
+        "the line after the orphan is unchanged"
+    );
+}

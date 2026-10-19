@@ -194,7 +194,6 @@ impl SpectrumBlock {
 }
 
 #[cfg(any(test, target_arch = "wasm32"))]
-#[cfg(any(test, target_arch = "wasm32"))]
 fn parse_first_float(text: &str) -> Option<f64> {
     text.split_whitespace()
         .next()
@@ -202,7 +201,6 @@ fn parse_first_float(text: &str) -> Option<f64> {
 }
 
 /// Detect the `BEGIN IONS` header (case-insensitive, tolerate inline tokens).
-#[cfg(any(test, target_arch = "wasm32"))]
 #[cfg(any(test, target_arch = "wasm32"))]
 fn is_begin_ions(line: &str) -> bool {
     let trimmed = line.trim();
@@ -212,7 +210,6 @@ fn is_begin_ions(line: &str) -> bool {
 }
 
 /// Detect the `END IONS` terminus (case-insensitive).
-#[cfg(any(test, target_arch = "wasm32"))]
 #[cfg(any(test, target_arch = "wasm32"))]
 fn is_end_ions(line: &str) -> bool {
     let trimmed = line.trim();
@@ -276,6 +273,15 @@ pub(crate) fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> +
             if trimmed.is_empty() || trimmed.starts_with('#') {
                 continue;
             }
+            // A stray `END IONS` outside any block is malformed MGF. It looks
+            // SMILES-ish (N, O, S are in the alphabet), so without this guard
+            // the fallback below would forge a block from it — parse it,
+            // classify it unclassifyable, and emit a nonsense row. The peer
+            // parser in mgf-precursor-erro-rs skips out-of-block lines for the
+            // same reason.
+            if is_end_ions(line) {
+                continue;
+            }
             index += 1;
             if let Some(block) = parse_smiles_line(index, trimmed) {
                 blocks.push(block);
@@ -291,7 +297,6 @@ pub(crate) fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> +
 }
 
 /// Parse a single SMILES-format line into an optional [`SpectrumBlock`].
-#[cfg(any(test, target_arch = "wasm32"))]
 #[cfg(any(test, target_arch = "wasm32"))]
 fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
     let mut parts = trimmed.split('\t');
