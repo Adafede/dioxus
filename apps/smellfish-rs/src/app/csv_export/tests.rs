@@ -61,23 +61,38 @@ fn categorizes_lotus_scaffold_hint_as_skeptical() {
     assert_eq!(category(verdict), "skeptical");
 }
 
-#[cfg(target_arch = "wasm32")]
 #[test]
 fn escape_csv_wraps_fields_with_commas() {
     let escaped = super::escape_csv("hello, world");
     assert_eq!(escaped, "\"hello, world\"");
 }
 
-#[cfg(target_arch = "wasm32")]
 #[test]
 fn escape_csv_does_not_wrap_simple_fields() {
     let escaped = super::escape_csv("hello");
     assert_eq!(escaped, "hello");
 }
 
-#[cfg(target_arch = "wasm32")]
 #[test]
 fn escape_csv_escapes_internal_quotes() {
     let escaped = super::escape_csv("say \"hi\"");
     assert_eq!(escaped, "\"say \"\"hi\"\"\"");
+}
+
+#[test]
+fn escape_csv_wraps_fields_with_a_newline() {
+    // A newline inside a value silently splits the row in two: the fields
+    // after it land on the next line under the wrong header. RFC 4180 says a
+    // writer quotes any field holding a line break, so this is the assertion
+    // that the writer does.
+    let escaped = super::escape_csv("two\nlines");
+    assert_eq!(escaped, "\"two\nlines\"");
+}
+
+#[test]
+fn escape_csv_wraps_fields_with_a_carriage_return() {
+    // `\r` on its own is also a line break to a CSV reader, so a bare CR is
+    // quoted the same way a bare LF is.
+    let escaped = super::escape_csv("old\rmac");
+    assert_eq!(escaped, "\"old\rmac\"");
 }

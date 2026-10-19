@@ -70,11 +70,16 @@ pub(super) fn category(verdict: &str) -> &'static str {
     "neutral"
 }
 
-/// Escape a field for CSV output: if it contains a comma or double-quote,
-/// wrap in quotes and double any inner quotes.
-#[cfg(target_arch = "wasm32")]
+/// Escape a field for CSV output: if it contains a comma, double-quote, or
+/// line break, wrap in quotes and double any inner quotes.
+///
+/// The line break matters even though `build_csv` writes `writeln!`: a field
+/// whose *value* holds `\n` or `\r` — a SMILES comment, a label pasted from a
+/// spreadsheet — silently starts a new row otherwise, corrupting every row
+/// after it. Matching it here is what RFC 4180 requires a writer to do.
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn escape_csv(s: &str) -> String {
-    if s.contains(',') || s.contains('"') {
+    if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
         let escaped = s.replace('"', "\"\"");
         format!("\"{escaped}\"")
     } else {
