@@ -46,6 +46,7 @@ from memory. Run `./mk --list-all-steps` for the current task list.
 ./mk setup      # once: the pinned toolchain and every tool the gate calls
 ./mk check      # cargo check --workspace --all-targets
 ./mk test       # nextest, then cargo test --doc (nextest skips doctests)
+./mk dejadoc    # duplicate doctests, functions and context blocks
 ./mk lint       # clippy, all targets, all features, warnings denied
 ./mk lint-wasm  # the cfg(wasm32) branches the host run never compiles
 ./mk doc        # rustdoc with -D warnings
@@ -69,6 +70,30 @@ Two things that are easy to get wrong and are worth not having to remember:
   `./mk check-wasm` and `./mk lint-wasm` are the tasks that do, one
   package at a time rather than `--workspace --target wasm32`, which cannot pass
   because `upload` has a host-only path.
+- **`cargo dejadoc` compares for doctests only unless it is asked for more.**
+  `./mk dejadoc` passes `--functions` and `--context-blocks`, which are
+  opt-in since 0.6.0, so dropping either leaves the gate green while checking
+  less. It also passes `--context-dependency-depth 1` to compare against the
+  crates this workspace depends on, and `--context-check-latest false` because
+  that option defaults to true and checks the latest published release — a
+  network call this gate must not make. `dejadoc` is pinned to 0.6.0 in
+  `ci.yml` and `make/scripts/setup.sh` for the same reason: the version decides
+  whether the gate checks anything at all.
+
+  A **doctest** group is shared code examples; a **function** group is one body
+  at two sites (fix with `delete`, `helper-or-macro`, or `generic-or-macro`);
+  and a **context** group is a fragment inside two functions, which has no copy
+  to keep, so move the shared code into one helper. A deliberate copy needs
+  `// dejadoc: allow` on the line right above it. There is no `.dejadoc.toml`,
+  so nothing is filtered by a token threshold.
+
+  Dependency findings are advisory, not gated: `smellfish-rs` has an
+  `html_title` matching one in `lotus-search`, but the dependency's copy is
+  private, so the report names it as `request public extraction` and stays at
+  exit 0. It also warns that the git checkout's origin does not match the
+  declared repository — cargo clones git dependencies through a local bare DB,
+  so the recorded origin is a `file://` URL. That warning is expected here and
+  does not fail the gate.
 
 ## Change protocol
 

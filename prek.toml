@@ -50,6 +50,9 @@ hooks = [
   # ── Heavy Rust checks (pre-push only) — delegate to Makefile.toml ─────────
   { id = "cargo-test", name = "cargo-test", language = "system", entry = "./mk test", pass_filenames = false, always_run = true, stages = ["pre-push"] },
   { id = "cargo-doc", name = "cargo-doc", language = "system", entry = "./mk doc", pass_filenames = false, always_run = true, stages = ["pre-push"] },
+  # Duplicate doctests, functions and context blocks. Cheap (it reads the source
+  # rather than compiling it), so it rides along with the pre-push set.
+  { id = "cargo-dejadoc", name = "cargo-dejadoc", language = "system", entry = "./mk dejadoc", pass_filenames = false, always_run = true, stages = ["pre-push"] },
   # Per-app WASM checks, and the clippy run over the `#[cfg(wasm32)]` branches
   # that the host run never compiles -- including the three `crates/upload`
   # modules that exist only on wasm, and their tests.
