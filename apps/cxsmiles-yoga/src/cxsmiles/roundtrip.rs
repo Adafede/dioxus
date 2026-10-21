@@ -12,7 +12,7 @@
 use chematic::core::{AtomIdx, BondOrder, Molecule, MoleculeBuilder};
 use chematic::smiles::canonical_smiles;
 
-use super::positional::{FloatingDef, Target};
+use super::positional::{FloatingDef, Target, add_atoms_and_bonds};
 use super::repeating::splice_repeat;
 use super::types::{Coverage, CxError, RepeatUnit};
 
@@ -190,15 +190,7 @@ fn build_one(
     }
     let mut part_attach: Vec<AtomIdx> = Vec::with_capacity(defs.len());
     for def in defs {
-        let mut pmap: Vec<AtomIdx> = Vec::with_capacity(def.atoms.len());
-        for atom in &def.atoms {
-            pmap.push(b.add_atom(atom.clone()));
-        }
-        for (a1, a2, order) in &def.bonds {
-            if let (Some(m1), Some(m2)) = (pmap.get(*a1), pmap.get(*a2)) {
-                let _ = b.add_bond(*m1, *m2, *order);
-            }
-        }
+        let pmap = add_atoms_and_bonds(&mut b, &def.atoms, &def.bonds);
         if let Some(&attachment) = pmap.get(def.attachment) {
             part_attach.push(attachment);
         }

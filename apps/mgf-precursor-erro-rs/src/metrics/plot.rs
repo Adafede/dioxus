@@ -19,27 +19,10 @@ pub(crate) struct HistogramData {
     pub max: f64,
 }
 
-// `pub(super)`, not private: `merge` reaches this through the module, and it
-// was module-private when all three files were one.
-pub(super) fn usize_to_f64(value: usize) -> f64 {
-    f64::from(u32::try_from(value).unwrap_or(u32::MAX))
-}
-
-fn floor_to_usize(value: f64) -> usize {
-    if !value.is_finite() || value <= 0.0 {
-        return 0;
-    }
-
-    let mut result = 0usize;
-    let mut remaining = value.floor();
-    loop {
-        if remaining < 1.0 {
-            break result;
-        }
-        result = result.saturating_add(1);
-        remaining -= 1.0;
-    }
-}
+// `usize_to_f64` and `floor_to_usize` live in [`crate::plotting::data`], which
+// is where the other two callers already reach them from. Kept here as
+// re-exports so `merge` and this module's other users do not have to know.
+pub(super) use crate::plotting::data::{floor_to_usize, usize_to_f64};
 
 impl HistogramData {
     #[must_use]

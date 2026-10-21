@@ -15,7 +15,6 @@ use crate::chemical_class::ChemicalClass;
 use super::analysis::{collect_adduct_options, group_classes_by_family};
 #[cfg(target_arch = "wasm32")]
 use super::download::{download_filtered_mgf, download_filtered_smiles};
-use super::family::family_rank;
 use super::gallery::prepare_block_class_tags;
 #[cfg(target_arch = "wasm32")]
 use super::gallery::prepare_gallery_smiles;
@@ -47,15 +46,7 @@ pub(super) fn lipid_classes_card() -> Element {
     let all_classes = crate::chemical_class::lmsd_all();
 
     // Group classes by family, then sort families by LIPID MAPS rank order.
-    let mut families: Vec<(String, Vec<ChemicalClass>)> = Vec::new();
-    for class in &all_classes {
-        if let Some(entry) = families.iter_mut().find(|(f, _)| f == &class.family) {
-            entry.1.push(class.clone());
-        } else {
-            families.push((class.family.clone(), vec![class.clone()]));
-        }
-    }
-    families.sort_by_key(|(f, _)| family_rank(f));
+    let families = group_classes_by_family(&all_classes);
 
     let family_display: Vec<(String, Vec<ChemicalClass>, usize, String)> = families
         .iter()

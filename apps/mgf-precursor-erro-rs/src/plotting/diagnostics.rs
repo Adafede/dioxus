@@ -96,6 +96,22 @@ pub fn render_recalibration_diagnostic_ppm(
     Ok(buffer)
 }
 
+/// Bins `values` into `bins`, normalising against `min`/`max`.
+///
+/// Extracted because the before/after passes were the same arithmetic twice,
+/// differing only in which vector they filled.
+fn fill_histogram(bins: &mut [usize], values: &[f64], min: f64, max: f64, bin_count: usize) {
+    for &error in values {
+        if error.is_finite() {
+            let normalized = (error - min) / (max - min + f64::EPSILON);
+            let bin = floor_to_usize((normalized * (usize_to_f64(bin_count) - 1.0)).floor());
+            if let Some(count) = bins.get_mut(bin) {
+                *count += 1;
+            }
+        }
+    }
+}
+
 /// Renders a histogram comparing error distributions before and after recalibration.
 ///
 /// # Errors
@@ -132,25 +148,20 @@ pub fn render_recalibration_diagnostic_histogram(
     let mut hist_before = vec![0usize; bin_count];
     let mut hist_after = vec![0usize; bin_count];
 
-    for &error in errors_before {
-        if error.is_finite() {
-            let normalized = (error - error_min) / (error_max - error_min + f64::EPSILON);
-            let bin = floor_to_usize((normalized * (usize_to_f64(bin_count) - 1.0)).floor());
-            if let Some(count) = hist_before.get_mut(bin) {
-                *count += 1;
-            }
-        }
-    }
-
-    for &error in errors_after {
-        if error.is_finite() {
-            let normalized = (error - error_min) / (error_max - error_min + f64::EPSILON);
-            let bin = floor_to_usize((normalized * (usize_to_f64(bin_count) - 1.0)).floor());
-            if let Some(count) = hist_after.get_mut(bin) {
-                *count += 1;
-            }
-        }
-    }
+    fill_histogram(
+        &mut hist_before,
+        errors_before,
+        error_min,
+        error_max,
+        bin_count,
+    );
+    fill_histogram(
+        &mut hist_after,
+        errors_after,
+        error_min,
+        error_max,
+        bin_count,
+    );
 
     let max_count = hist_before
         .iter()

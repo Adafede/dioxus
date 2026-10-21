@@ -144,17 +144,27 @@ fn all_tasks(makefiles: &str) -> BTreeSet<String> {
 fn hooked_tasks(hooks: &str) -> BTreeSet<String> {
     let mut tasks = BTreeSet::new();
     for line in hooks.lines() {
-        if let Some((_, rest)) = line.split_once("entry = \"./mk ") {
-            let name: String = rest
-                .chars()
-                .take_while(|c| c.is_ascii_alphanumeric() || *c == '-')
-                .collect();
-            if !name.is_empty() {
-                tasks.insert(name);
-            }
-        }
+        collect_mk_task(line, "entry = \"./mk ", &mut tasks);
     }
     tasks
+}
+
+/// Records the `./mk <task>` name on `line`, if there is one.
+///
+/// `prefix` is what precedes the task name: `./mk ` for a workflow `run:` line,
+/// `entry = "./mk ` for a `prek.toml` hook. Both callers then read the same
+/// command the same way, so a task name that stopped being parseable cannot
+/// silently drop out of one set and not the other.
+fn collect_mk_task(line: &str, prefix: &str, tasks: &mut BTreeSet<String>) {
+    if let Some((_, rest)) = line.split_once(prefix) {
+        let name: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '-')
+            .collect();
+        if !name.is_empty() {
+            let _ = tasks.insert(name);
+        }
+    }
 }
 
 /// Every task a hook covers, whether by `./mk` delegation or by prek
@@ -256,16 +266,7 @@ fn tasks_a_job_runs(yaml: &str, job: &str) -> BTreeSet<String> {
         if !inside {
             continue;
         }
-        // Both `run: ./mk x` and `- run: ./mk x` appear.
-        if let Some((_, rest)) = line.split_once("./mk ") {
-            let name: String = rest
-                .chars()
-                .take_while(|c| c.is_ascii_alphanumeric() || *c == '-')
-                .collect();
-            if !name.is_empty() {
-                tasks.insert(name);
-            }
-        }
+        collect_mk_task(line, "./mk ", &mut tasks);
     }
     tasks
 }

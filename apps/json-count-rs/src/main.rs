@@ -37,63 +37,96 @@ struct ColumnResult {
     count: u64,
 }
 
+/// The signals the file-accepting handlers write to.
+///
+/// `Signals` are `Copy` handles, so taking this by value and calling `.set` on
+/// the fields mutates the same state the component reads.
+///
+/// The three scanning signals are `wasm32`-only because the branch that reads
+/// them is: on native there is no scan to run, only the "needs a browser"
+/// status, and an unread field is a warning under `-D warnings`.
+#[derive(Clone, Copy)]
+struct JsonCountCtx {
+    file_name: Signal<String>,
+    status: Signal<String>,
+    #[cfg(target_arch = "wasm32")]
+    results: Signal<Vec<ColumnResult>>,
+    #[cfg(target_arch = "wasm32")]
+    busy: Signal<bool>,
+    #[cfg(target_arch = "wasm32")]
+    drag_active: Signal<bool>,
+}
+
+/// Acts on an already-extracted file, reporting status when extraction
+/// produced nothing.
+///
+/// Shared by the file-picker and drag-drop handlers, which are identical
+/// apart from the event type they receive.
+fn handle_uploaded_files(
+    mut ctx: JsonCountCtx,
+    result: Result<Option<upload::ExtractedFile>, String>,
+) {
+    match result {
+        Ok(Some(file)) => {
+            #[cfg(target_arch = "wasm32")]
+            begin_scan_from_blob(
+                file.blob,
+                file.name,
+                ctx.file_name,
+                ctx.status,
+                ctx.results,
+                ctx.busy,
+                ctx.drag_active,
+            );
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                ctx.file_name.set(file.name);
+                ctx.status
+                    .set("This app needs to run in a browser.".to_string());
+            }
+        }
+        Ok(None) => ctx.status.set("No file selected.".to_string()),
+        Err(msg) => ctx.status.set(msg),
+    }
+}
+
 #[component]
 fn app() -> Element {
     ui::shared_signal!(file_name, String::new);
 
     let results = use_signal(Vec::<ColumnResult>::new);
-    let mut status = use_signal(|| "Choose a JSON file to begin.".to_string());
+    let status = use_signal(|| "Choose a JSON file to begin.".to_string());
     let busy = use_signal(|| false);
     let drag_active = use_signal(|| false);
 
-    let on_file_change = move |evt: Event<FormData>| match upload::extract_blob_from_file_data(
-        &evt.data().files(),
-    ) {
-        Ok(Some(file)) => {
-            #[cfg(target_arch = "wasm32")]
-            begin_scan_from_blob(
-                file.blob,
-                file.name,
-                file_name,
-                status,
-                results,
-                busy,
-                drag_active,
-            );
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                file_name.set(file.name);
-                status.set("This app needs to run in a browser.".to_string());
-            }
-        }
-        Ok(None) => status.set("No file selected.".to_string()),
-        Err(msg) => status.set(msg),
+    // The two handlers below differ only in the event type they take, so the
+    // whole match lives in `handle_uploaded_files` once. A change to how a
+    // chosen file is scanned then cannot land in the drag path but not the
+    // picker path. `Signals` are `Copy` handles, so bundling them is free.
+    let ctx = JsonCountCtx {
+        file_name,
+        status,
+        #[cfg(target_arch = "wasm32")]
+        results,
+        #[cfg(target_arch = "wasm32")]
+        busy,
+        #[cfg(target_arch = "wasm32")]
+        drag_active,
     };
 
-    let on_drop = move |evt: Event<DragData>| match upload::extract_blob_from_file_data(
-        &evt.data().files(),
-    ) {
-        Ok(Some(file)) => {
-            #[cfg(target_arch = "wasm32")]
-            begin_scan_from_blob(
-                file.blob,
-                file.name,
-                file_name,
-                status,
-                results,
-                busy,
-                drag_active,
-            );
+    let on_file_change = move |evt: Event<FormData>| {
+        handle_uploaded_files(
+            ctx,
+            upload::extract_blob_from_file_data(&evt.data().files()),
+        );
+    };
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                file_name.set(file.name);
-                status.set("This app needs to run in a browser.".to_string());
-            }
-        }
-        Ok(None) => status.set("No file selected.".to_string()),
-        Err(msg) => status.set(msg),
+    let on_drop = move |evt: Event<DragData>| {
+        handle_uploaded_files(
+            ctx,
+            upload::extract_blob_from_file_data(&evt.data().files()),
+        );
     };
 
     rsx! {

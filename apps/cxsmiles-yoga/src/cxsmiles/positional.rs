@@ -396,6 +396,29 @@ fn is_matched(matched: &[bool], a: u32) -> bool {
     matched.get(a as usize) == Some(&true)
 }
 
+/// Adds `atoms` to `builder`, then bonds them by index pair.
+///
+/// Returns the builder indices of the added atoms. Bond endpoints that fall
+/// outside `atoms` are skipped rather than panicking, which is what the
+/// out-of-range reads at the call sites relied on.
+///
+/// Shared because the same "add atoms, then bond by index pair" step appeared in
+/// the positional tests and in `roundtrip`'s expansion, with only the local
+/// names differing.
+pub(crate) fn add_atoms_and_bonds(
+    builder: &mut MoleculeBuilder,
+    atoms: &[Atom],
+    bonds: &[(usize, usize, BondOrder)],
+) -> Vec<AtomIdx> {
+    let idx: Vec<AtomIdx> = atoms.iter().map(|a| builder.add_atom(a.clone())).collect();
+    for (a1, a2, order) in bonds {
+        if let (Some(x), Some(y)) = (idx.get(*a1), idx.get(*a2)) {
+            let _ = builder.add_bond(*x, *y, *order);
+        }
+    }
+    idx
+}
+
 #[cfg(test)]
 // `expect` on a fixture that stopped parsing is a broken test, not a defect in
 // the code under test; the out-of-range reads below are the assertions failing.

@@ -197,12 +197,7 @@ fn reordering_preserves_the_molecule() {
 /// Rebuild a molecule from atoms and index pairs, for the two tests above.
 fn molecule_of(atoms: &[Atom], bonds: &[(usize, usize, BondOrder)]) -> Molecule {
     let mut b = MoleculeBuilder::new();
-    let idx: Vec<_> = atoms.iter().map(|a| b.add_atom(a.clone())).collect();
-    for (a1, a2, order) in bonds {
-        if let (Some(x), Some(y)) = (idx.get(*a1), idx.get(*a2)) {
-            let _ = b.add_bond(*x, *y, *order);
-        }
-    }
+    let _indices = add_atoms_and_bonds(&mut b, atoms, bonds);
     b.build()
 }
 

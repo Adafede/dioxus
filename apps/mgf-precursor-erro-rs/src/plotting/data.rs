@@ -11,11 +11,14 @@ use crate::metrics::{AdductFamily, PlotPoint, ScatterPlotData};
 
 use super::color::{adduct_family_color_hex, adduct_family_rank};
 
-pub(super) fn usize_to_f64(value: usize) -> f64 {
+// `pub(crate)`, not `pub(super)`: `metrics::plot` reaches these too, and a
+// reader editing one has no way to know a second copy exists if the check
+// cannot see both.
+pub(crate) fn usize_to_f64(value: usize) -> f64 {
     f64::from(u32::try_from(value).unwrap_or(u32::MAX))
 }
 
-pub(super) fn floor_to_usize(value: f64) -> usize {
+pub(crate) fn floor_to_usize(value: f64) -> usize {
     if !value.is_finite() || value <= 0.0 {
         return 0;
     }
