@@ -269,7 +269,7 @@ for `.gemini/` and `.agents/` risk accidental commits of local agent config.
 - **Fix:** **NEEDS-DECISION** — add a doc-link checker or a lightweight path-validator test.
 
 #### D8-04: `.kb/ledger.md` is a local lessons-learned log
-- **Evidence:** `.kb/ledger.md` (25KB) documents findings, phases, and incidents. It's gitignored (not tracked). 
+- **Evidence:** `.kb/ledger.md` (25KB) documents findings, phases, and incidents. It's gitignored (not tracked).
 - **Impact:** Valuable knowledge but not shared with the team via git. The `.gitignore` comment says ".kb/ is regenerated per machine."
 - **Fix:** **NEEDS-DECISION** — whether to track `.kb/` (it would help onboarding but might grow stale).
 
