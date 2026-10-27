@@ -9,6 +9,7 @@ See the full AI agent guide at `.github/ai/AI_AGENT_GUIDE.md`.
 ./mk setup     # once: install pinned toolchain and all tools
 ./mk check     # type-check
 ./mk dejadoc   # fail on duplicate doctests, functions or context blocks
+./mk refquiem  # fail on names the git history removed
 ./mk lint      # clippy, all targets, all features, -D warnings
 ./mk test      # nextest + doctests (480 tests, ~4s)
 ./mk ci        # the full gate (same as CI)

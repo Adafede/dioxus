@@ -70,6 +70,25 @@ cargo dejadoc --functions --context-blocks \\
   --context-dependency-depth 1 --context-check-latest false
 """
 
+# `cargo refquiem` is the complementary drift check: it reads the git history
+# and reports the names it removed -- functions, types, dependencies, features,
+# binaries -- that the working tree still mentions in comments, doc comments,
+# string literals and Markdown. Where dejadoc asks whether the *same* code was
+# written twice, refquiem asks whether a copy was ever deleted. It exits 1 on
+# findings, 2 on error, and compiles nothing, so it rides the fast path rather
+# than the compile-heavy half of the gate.
+[tasks."refquiem"]
+cwd = "${REPO_ROOT}"
+description = "Fail if the working tree still mentions names git history removed."
+script = """
+set -e
+if ! command -v cargo-refquiem >/dev/null 2>&1; then
+  echo "cargo-refquiem is not installed; run './mk setup'" >&2
+  exit 1
+fi
+cargo refquiem
+"""
+
 # The `#[ignore]`d network tests.
 #
 # There are none today: the SPARQL layer is tested through `lotus-search`'s

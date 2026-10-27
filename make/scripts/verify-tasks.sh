@@ -63,6 +63,7 @@ declare -a install_line_of_task=(
   "test=cargo-nextest"
   "test-doc=rustup"
   "dejadoc=dejadoc 0.6.0"
+  "refquiem=refquiem 0.3.0"
   "doc=rustup"
   "check-wasm=rustup"
   "lint-wasm=rustup"

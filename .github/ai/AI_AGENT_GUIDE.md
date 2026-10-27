@@ -47,6 +47,7 @@ from memory. Run `./mk --list-all-steps` for the current task list.
 ./mk check      # cargo check --workspace --all-targets
 ./mk test       # nextest, then cargo test --doc (nextest skips doctests)
 ./mk dejadoc    # duplicate doctests, functions and context blocks
+./mk refquiem   # stale names the git history removed
 ./mk lint       # clippy, all targets, all features, warnings denied
 ./mk lint-wasm  # the cfg(wasm32) branches the host run never compiles
 ./mk doc        # rustdoc with -D warnings
