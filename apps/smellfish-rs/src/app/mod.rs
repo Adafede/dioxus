@@ -15,7 +15,7 @@ use crate::model::{EndpointStatus, MoleculeRow, MotifSummary};
 use dioxus::events::{DragData, FormData};
 use dioxus::html::HasFileData;
 use dioxus::prelude::*;
-use ui::prelude::{Button, ButtonVariant, skip_link};
+use ui::prelude::{Button, ButtonVariant, SimpleAnalyticsBadge, skip_link};
 
 mod browser;
 mod csv_export;
@@ -222,5 +222,6 @@ pub fn app() -> Element {
 
             Footer {}
         }
+        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
     }
 }

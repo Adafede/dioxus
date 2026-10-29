@@ -147,6 +147,7 @@ pub fn app() -> Element {
                 }
             }
         }
+        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
     }
 }
 /// Shared upload-related `Signal`s, passed by value (`Signal` is `Copy`, so this

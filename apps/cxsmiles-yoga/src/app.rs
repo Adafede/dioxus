@@ -318,5 +318,6 @@ pub fn app() -> Element {
             }
         }
         Footer {}
+        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
     }
 }

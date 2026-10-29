@@ -287,5 +287,6 @@ fn app() -> Element {
             }
 
         }
+        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
     }
 }

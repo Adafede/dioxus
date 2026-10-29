@@ -11,6 +11,7 @@ mod footer;
 mod header;
 mod notice;
 mod segmented_control;
+mod simple_analytics_badge;
 mod upload_zone;
 
 pub use button::{Button, ButtonVariant};
@@ -19,4 +20,5 @@ pub use footer::Footer;
 pub use header::Header;
 pub use notice::{NoticeBar, NoticeTone};
 pub use segmented_control::{SegmentedControl, SegmentedControlItem};
+pub use simple_analytics_badge::SimpleAnalyticsBadge;
 pub use upload_zone::UploadZone;
