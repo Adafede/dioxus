@@ -147,6 +147,8 @@ fn summarise(body: &[u8]) -> String {
     format!("{truncated}…")
 }
 
+// Same as `lotus_search::html_title`: call that instead once lotus-search's main
+// branch exports it (see `exclude` in .echoes.toml).
 /// The `<title>` of an error page, which is where a gateway states the failure.
 fn html_title(text: &str) -> Option<&str> {
     if !text.contains('<') {

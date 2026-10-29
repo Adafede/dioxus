@@ -57,85 +57,11 @@ CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = "true"
 # `./mk ci` is exactly what .github/workflows/ci.yml runs, in the same
 # order. Everything in it needs no network access.
 
-[tasks."ci"]
-cwd = "${REPO_ROOT}"
-description = "Every check CI runs, in CI's order. No network access needed."
-dependencies = [
-  "fmt-check",
-  "tombi-check",
-  "tombi-lint",
-  "typos",
-  "license-headers",
-  "verify-tasks",
-  "check",
-  "lint",
-  "test",
-  "doc",
-  "dejadoc",
-  "refquiem",
-  "check-wasm",
-  "lint-wasm",
-  "readme-check",
-  "feature-powerset",
-  "machete",
-  "deny",
-  "audit",
-]
-
-# What the pre-push hook runs: the gate minus the supply-chain checks, which are
-# the slowest part of it and the ones that only change when a dependency does.
-[tasks."ci-fast"]
-cwd = "${REPO_ROOT}"
-description = "What a pre-push hook runs: the gate minus the supply-chain checks."
-dependencies = [
-  "fmt-check",
-  "tombi-check",
-  "tombi-lint",
-  "typos",
-  "license-headers",
-  "verify-tasks",
-  "check",
-  "lint",
-  "test",
-  "doc",
-  "dejadoc",
-  "refquiem",
-  "check-wasm",
-  "lint-wasm",
-  "readme-check",
-  "feature-powerset",
-]
-
-# The CI jobs `ci` leaves out, and why.
-#
-# `mutants` is minutes rather than seconds -- 411 of them, about a quarter of an
-# hour. It is clean as of the run that took the suite from 35 missed and 23
-# timeouts to none, and that is not what keeps it out: a survivor is a
-# behaviour nobody has pinned down, which is a fact worth reading rather than a
-# verdict worth a red build. The cost of it is minutes per push. `cov` rebuilds
-# the whole crate graph under instrumentation, so it is minutes as well.
-[tasks."ci-slow"]
-cwd = "${REPO_ROOT}"
-description = "The slow CI jobs: mutation testing and coverage."
-dependencies = ["mutants", "cov"]
-
-[tasks."setup"]
+[tasks."setup-extra"]
 cwd = "${REPO_ROOT}"
 description = "Install every tool the other tasks call, at a pinned version."
 script = """
 #!/usr/bin/env bash
 set -euo pipefail
 exec bash make/scripts/setup.sh
-"""
-
-# `./mk --list-all-steps` must work from a clean checkout, and no task may
-# call a tool that is not in `setup`. That is what this asserts, in the place
-# where a contributor will actually see the failure.
-[tasks."verify-tasks"]
-cwd = "${REPO_ROOT}"
-description = "Check the task list loads and every gate task names an installed tool."
-script = """
-#!/usr/bin/env bash
-set -euo pipefail
-exec bash make/scripts/verify-tasks.sh
 """

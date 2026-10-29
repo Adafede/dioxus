@@ -71,3 +71,20 @@ for template in crates/*/README.tpl apps/*/README.tpl; do
   echo "regenerated $dir/README.md"
 done
 """
+
+# `panache` is installed with `--bin panache` rather than through cargo-binstall
+# or mk.local's LOCAL_CARGO_TOOLS: its release archives miss a binary its own
+# manifest declares as required, so cargo-binstall exits 76 ("When resolving
+# panache bin distill_quarto_schema is not found"). `--bin` skips that binary.
+# `./mk setup` runs this task in every tier (LOCAL_SETUP in mk.local).
+[tasks."install-panache"]
+cwd = "${REPO_ROOT}"
+description = "Install panache 3.13.0, which readme-check needs."
+script = """
+set -euo pipefail
+if [ "$(panache --version 2>/dev/null || true)" = "panache 3.13.0" ]; then
+  echo "panache 3.13.0 is installed"
+else
+  cargo install --locked panache --version 3.13.0 --bin panache
+fi
+"""

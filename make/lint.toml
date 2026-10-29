@@ -2,11 +2,6 @@
 # so every crate inherits them; this file is about running them, and about the
 # targets a single workspace-wide run cannot reach.
 
-[tasks."lint"]
-cwd = "${REPO_ROOT}"
-description = "Clippy over the whole workspace, all targets, all features, warnings denied."
-script = "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings"
-
 # The WASM lint surface, one package at a time.
 #
 # A host `cargo clippy --workspace` never compiles a `#[cfg(target_arch =

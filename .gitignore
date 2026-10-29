@@ -128,3 +128,4 @@ opencode.json
 .agentignore
 .obsidian/
 *.agent-scratch*
+mutants.out*/

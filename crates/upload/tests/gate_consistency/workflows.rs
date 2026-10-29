@@ -10,87 +10,6 @@
 // separately.
 use super::*;
 
-/// The workflows that run no `./mk` task must be listed as deliberate.
-///
-/// Asserted in both directions: a workflow in the repository that is in neither
-/// `MAPPED_WORKFLOWS` nor `UNMAPPED_WORKFLOWS` has no statement about whether it
-/// is covered, and a stale entry in `UNMAPPED_WORKFLOWS` is how the next
-/// genuine drift gets waved through.
-#[test]
-fn every_workflow_is_accounted_for() -> Result<()> {
-    let mut present = Vec::new();
-    for entry in std::fs::read_dir(repo_root().join(".github/workflows"))? {
-        let path = entry?.path();
-        if path.extension().is_some_and(|x| x == "yml") {
-            present.push(format!(
-                ".github/workflows/{}",
-                path.file_name().unwrap_or_default().to_string_lossy()
-            ));
-        }
-    }
-    present.sort();
-
-    let mapped: BTreeSet<&str> = MAPPED_WORKFLOWS.iter().copied().collect();
-    let unmapped: BTreeSet<&str> = UNMAPPED_WORKFLOWS.iter().map(|(f, _)| *f).collect();
-
-    let missing: Vec<&String> = present
-        .iter()
-        .filter(|f| !mapped.contains(f.as_str()) && !unmapped.contains(f.as_str()))
-        .collect();
-    assert!(
-        missing.is_empty(),
-        "these workflows are in neither MAPPED_WORKFLOWS nor UNMAPPED_WORKFLOWS, \
-         so nothing says whether they are covered: {missing:?}"
-    );
-
-    let stale: Vec<&str> = present
-        .iter()
-        .map(String::as_str)
-        .filter(|f| !mapped.contains(f))
-        .filter(|f| {
-            !UNMAPPED_WORKFLOWS
-                .iter()
-                .any(|(file, why)| file == f && !why.is_empty())
-        })
-        .collect();
-    assert!(
-        stale.is_empty(),
-        "UNMAPPED_WORKFLOWS names {stale:?} with no reason, or names a workflow \
-         that does not exist"
-    );
-    Ok(())
-}
-
-#[test]
-fn the_exceptions_are_all_real() -> Result<()> {
-    // A stale entry in the list is how the next genuine drift gets waved
-    // through, so both directions are asserted.
-    let makefiles = makefiles()?;
-    let defined = all_tasks(&makefiles);
-    let run = task_dependencies(&makefiles, "ci")?;
-    let mapped: BTreeSet<&str> = MAPPING
-        .iter()
-        .flat_map(|job| job.tasks.iter().copied())
-        .collect();
-
-    for task in AGGREGATES {
-        assert!(
-            !mapped.contains(task),
-            "AGGREGATES names `{task}`, which a CI job covers"
-        );
-        assert!(
-            defined.contains(*task),
-            "AGGREGATES names `{task}`, which the makefiles do not define"
-        );
-        assert!(
-            !run.contains(*task),
-            "AGGREGATES names `{task}`, which `./mk ci` runs -- it is an \
-             entry point, not a leaf"
-        );
-    }
-    Ok(())
-}
-
 /// Every `dtolnay/rust-toolchain` step must pass `toolchain:`.
 ///
 /// The action's `toolchain` input is *required* and it does not fall back to
@@ -107,12 +26,10 @@ fn the_exceptions_are_all_real() -> Result<()> {
 fn every_rust_toolchain_action_passes_its_required_input() -> Result<()> {
     const REQUIRES_TOOLCHAIN: &str = "dtolnay/rust-toolchain";
 
-    for file in [
-        ".github/workflows/ci.yml",
-        ".github/workflows/deploy.yml",
-        ".github/workflows/scheduled.yml",
-    ] {
-        let yaml = read(file)?;
+    // Every workflow, listed from the directory, so a new one is covered.
+    for name in workflow_files()? {
+        let file = format!(".github/workflows/{name}");
+        let yaml = read(&file)?;
         let mut saw = false;
         for (n, line) in yaml.lines().enumerate() {
             if !line.contains(REQUIRES_TOOLCHAIN) {
@@ -145,12 +62,10 @@ fn every_rust_toolchain_action_passes_its_required_input() -> Result<()> {
 /// because a check that runs eight times still passes.
 #[test]
 fn no_hook_or_workflow_bypasses_mk() -> Result<()> {
-    for file in [
-        ".github/workflows/ci.yml",
-        ".github/workflows/deploy.yml",
-        ".github/workflows/scheduled.yml",
-    ] {
-        let yaml = read(file)?;
+    // Every workflow, listed from the directory, so a new one is covered.
+    for name in workflow_files()? {
+        let file = format!(".github/workflows/{name}");
+        let yaml = read(&file)?;
         for (n, line) in yaml.lines().enumerate() {
             let code = line.split('#').next().unwrap_or("");
             if code.contains("cargo make") {

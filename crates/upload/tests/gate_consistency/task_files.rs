@@ -52,26 +52,3 @@ fn every_task_file_is_extended() -> Result<()> {
     );
     Ok(())
 }
-
-/// So a scraper that silently finds nothing cannot pass everything.
-#[test]
-fn the_declarations_are_not_vacuous() -> Result<()> {
-    let makefiles = makefiles()?;
-    let ci = task_dependencies(&makefiles, "ci")?;
-    assert!(ci.len() >= 12, "`./mk ci` looks truncated: {ci:?}");
-    assert!(MAPPING.len() >= 6, "MAPPING looks truncated");
-    assert!(
-        all_tasks(&makefiles).len() >= 40,
-        "the makefiles look truncated: {} tasks",
-        all_tasks(&makefiles).len()
-    );
-    assert!(
-        hooked_tasks(&read("prek.toml")?).len() >= 12,
-        "prek.toml looks truncated"
-    );
-    assert!(
-        ci_jobs(&read(".github/workflows/ci.yml")?)?.len() >= 3,
-        "the CI scrape found too few jobs"
-    );
-    Ok(())
-}

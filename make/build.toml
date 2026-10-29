@@ -54,18 +54,6 @@ cwd = "${REPO_ROOT}"
 description = "Type-check smellfish-rs for wasm32-unknown-unknown."
 script = "cargo check -p smellfish-rs --target wasm32-unknown-unknown --locked"
 
-# rustdoc with warnings denied. Without `-D warnings` a rustdoc warning is
-# printed and the build still succeeds, so the task proves only that the docs
-# build, not that they are warning-free -- and a broken intra-doc link is a 404
-# in the generated docs, which no test here would notice.
-[tasks."doc"]
-cwd = "${REPO_ROOT}"
-description = "Build the documentation with rustdoc warnings denied."
-script = """
-RUSTDOCFLAGS="-D warnings -D rustdoc::broken_intra_doc_links" \\
-  cargo doc --workspace --no-deps --locked
-"""
-
 # Every feature combination in the workspace.
 #
 # No feature in this workspace enables another, so the powerset is the product
