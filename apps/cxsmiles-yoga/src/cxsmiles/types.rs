@@ -51,7 +51,7 @@ pub(crate) struct Confidence {
 ///
 /// `build_positional` fills it in and [`CxResult::floating`] carries it, and the
 /// only consumer anywhere in the workspace is the test suite in
-/// [`super::mod`]: the UI renders `cx_smiles` and `construct` and never looks at
+/// `super::mod`: the UI renders `cx_smiles` and `construct` and never looks at
 /// `floating`. So in a build without tests these fields are written and dropped.
 ///
 /// The alternative to the `allow` is deleting the field and the type, which

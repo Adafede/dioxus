@@ -5,7 +5,7 @@
 //!
 //! This module provides two complementary classification systems:
 //!
-//! - **Broad classes** ([`ChemicalClass::defaults`]): coarse-grained family-level
+//! - **Broad classes** (`ChemicalClass::defaults`): coarse-grained family-level
 //!   SMARTS patterns (e.g. "FA", "PC(AA)") used for color attribution and
 //!   simple lipid detection.
 //! - **LMSD subclasses** ([`lmsd_all`]): the 58 LIPID MAPS Structure Database

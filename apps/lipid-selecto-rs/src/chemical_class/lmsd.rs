@@ -452,7 +452,7 @@ const LMSD_FAMILY_PALETTES: &[(&str, &[&str; 5])] = &[
 ///
 /// Each LMSD subclass (FA01-FA13, GL01-GL07, GP01-GP20, SP01-SP08,
 /// ST01-ST05, PR01-PR04, SL01-SL05, PK11-PK15) gets its own distinct
-/// SMARTS pattern so that [`ChemicalClass::matches`] identifies the
+/// SMARTS pattern so that `ChemicalClass::matches` identifies the
 /// correct subclass directly — no post-hoc family filtering needed.
 ///
 /// Colors are assigned using microshades palettes:

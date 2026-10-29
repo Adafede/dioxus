@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! SimpleAnalytics visitor badge, shown as a discreet page footer next to the analytics script.
+//! `SimpleAnalytics` visitor badge, shown as a discreet page footer next to the analytics script.
 
 use dioxus::prelude::*;
 
 use crate::theme::StyleBuilder;
 
-/// Renders the SimpleAnalytics badge for `domain` as a centered footer.
+/// Renders the `SimpleAnalytics` badge for `domain` as a centered footer.
 ///
 /// The badge follows the reader's color scheme: a dark variant under
 /// `prefers-color-scheme: dark` and a light variant otherwise. Render it last in

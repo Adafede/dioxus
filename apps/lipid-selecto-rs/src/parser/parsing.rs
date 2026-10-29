@@ -53,7 +53,7 @@ pub(crate) struct SpectrumBlock {
     /// Observed precursor m/z from `PEPMASS=` / `PRECURSOR_MZ=`.
     #[cfg(any(test, target_arch = "wasm32"))]
     pub precursor_mz: Option<f64>,
-    /// Result of lipid classification (populated by [`SpectrumBlock::classify`]).
+    /// Result of lipid classification (populated by `SpectrumBlock::classify`).
     pub classification: Option<LipidClassification>,
     /// Maps chemical class name -> bool (does this spectrum match?)
     pub gallery_item_matches: Option<HashMap<String, bool>>,

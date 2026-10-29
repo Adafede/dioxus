@@ -23,7 +23,7 @@ pub const SKIP_LINK_STYLE: &str = "position:absolute;top:-100%;left:0.5rem;z-ind
 /// that is not also `!important`. Without that, this rule parses and applies
 /// and changes nothing.
 ///
-/// Injected by [`DocumentHead`] rather than by each app. It used to be inlined
+/// Injected by `DocumentHead` rather than by each app. It used to be inlined
 /// in `json-count-rs`'s rsx and nowhere else, which left the skip links in
 /// `index` and `mgf-precursor-erro-rs` permanently off-screen: focusable and
 /// announced by a screen reader, but never once visible. One app in three had

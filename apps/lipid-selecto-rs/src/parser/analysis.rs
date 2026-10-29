@@ -17,7 +17,7 @@ use crate::chemical_class::lmsd_all;
 use crate::lipids::LipidClassification;
 use std::collections::HashMap;
 
-/// Aggregated counts produced by [`summarize`] / [`analyze`].
+/// Aggregated counts produced by `summarize` / `analyze`.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Summary {
     /// Total number of blocks parsed from the input.
