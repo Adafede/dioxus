@@ -81,6 +81,7 @@ done
 cwd = "${REPO_ROOT}"
 description = "Install panache 3.13.0, which readme-check needs."
 script = """
+#!/usr/bin/env bash
 set -euo pipefail
 if [ "$(panache --version 2>/dev/null || true)" = "panache 3.13.0" ]; then
   echo "panache 3.13.0 is installed"
