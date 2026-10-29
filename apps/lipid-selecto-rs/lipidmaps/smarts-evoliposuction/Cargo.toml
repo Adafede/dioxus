@@ -43,7 +43,7 @@ thiserror = "2.0"
 reqwest = { version = "0.13", features = ["blocking"] }
 thiserror = "2.0"
 tokio = { version = "1.53", features = ["fs", "io-util", "macros", "rt-multi-thread"] }
-zip = "8.6"
+zip = "9.0"
 
 # External crates by Luca Cappelletti (@LucaCappelletti94) / Earth Metabolome Initiative
 # See README.md for full credit and links.
