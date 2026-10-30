@@ -65,6 +65,9 @@ multiple-versions = "deny"
 # advisories bans licenses sources` is — and that runs the same `bans` check, so
 # a stale entry here fails the gate.
 skip = [
+  # lotus-search (smellfish-rs) moved to gloo-timers 0.4; dioxus-web still uses 0.3.
+  # Drop once dioxus-web moves.
+  { name = "gloo-timers" },
   # ── dioxus's optional feature sets ────────────────────────────────────────
   # `dioxus` turns on optional subsystems that pin their own older majors.
   # Unfixable here: it is upstream's feature set, not a version this workspace
