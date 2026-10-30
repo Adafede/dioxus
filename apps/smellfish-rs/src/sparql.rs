@@ -136,7 +136,7 @@ fn form_body(query: &str, format: ResponseFormat) -> String {
 fn summarise(body: &[u8]) -> String {
     let text = String::from_utf8_lossy(body);
 
-    let line = html_title(&text)
+    let line = lotus_search::html_title(&text)
         .or_else(|| text.lines().map(str::trim).find(|l| !l.is_empty()))
         .unwrap_or("the endpoint gave no reason");
 
@@ -145,19 +145,6 @@ fn summarise(body: &[u8]) -> String {
     }
     let truncated: String = line.chars().take(MAX_MESSAGE_CHARS).collect();
     format!("{truncated}…")
-}
-
-// Same as `lotus_search::html_title`: call that instead once lotus-search's main
-// branch exports it (see `exclude` in .echoes.toml).
-/// The `<title>` of an error page, which is where a gateway states the failure.
-fn html_title(text: &str) -> Option<&str> {
-    if !text.contains('<') {
-        return None;
-    }
-    let rest = text.split_once("<title>")?.1;
-    let end = rest.find("</title>")?;
-    let title = rest[..end].trim();
-    (!title.is_empty()).then_some(title)
 }
 
 #[cfg(test)]

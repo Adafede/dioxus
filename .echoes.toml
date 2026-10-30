@@ -1,11 +1,6 @@
 # cargo-echoes, deepest scan. Read by `./mk echoes` (unknown keys are rejected).
 # Keep an intentional copy with a `// echoes: allow` line above it, with a reason.
 
-# Recorded exception. `smellfish-rs` copies `html_title`, which lotus-search
-# exports from its next main (lotus-explore-rs branch chore/rusti-graben-gates).
-# Once `cargo update -p lotus-search` brings it in, call `lotus_search::html_title`
-# and delete this line. echoes 0.10 ignores `// echoes: allow` for dependency reuse.
-exclude = ["apps/smellfish-rs/src/sparql.rs"]
 functions = true
 context-blocks = true
 # Compare every context of the workspace against every other.
