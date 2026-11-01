@@ -6,7 +6,7 @@
 # channel manifest dated 2026-10-01).
 # `./mk msrv` measures the floor (1.97.1) separately; that is what
 # `rust-version` claims, and this is what CI compiles with.
-channel = "1.99.0"
+channel = "1.99.1"
 profile = "minimal"
 # `llvm-tools-preview` supplies the `llvm-profdata`/`llvm-cov` pair that
 # `cargo llvm-cov nextest` shells out to for the coverage report.
