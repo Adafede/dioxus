@@ -20,7 +20,11 @@ LOCAL_OVERRIDES=()      # standard gates this repository runs as its own cargo-m
 LOCAL_SETUP=()          # cargo-make tasks ./mk setup runs in every tier (installs mk cannot pin)
 LOCAL_CARGO_TOOLS=()    # extra crate@version tools, pinned like mk.versions
 LOCAL_SYSTEM_PACKAGES=() # apt packages ./mk setup installs on CI (Linux runners)
+MIRI_PACKAGES=()        # crates miri tests (default: the whole workspace)
+MUTANTS_PACKAGES=()     # crates cargo-mutants mutates (default: the whole workspace)
 COVERAGE_FAIL_UNDER_LINES=100
+ECHOES_MAX_APPROXIMATE=0 # legacy approximate duplicate blocks (ratchet: only down)
+ECHOES_MAX_REUSE=0       # legacy dependency-reuse opportunities (ratchet: only down)
 # shellcheck source=mk.local
 if [ -f mk.local ]; then . ./mk.local; fi
 
@@ -50,7 +54,8 @@ skip() {
 }
 
 has_lib() { cargo metadata --no-deps --format-version 1 --locked | grep -q '"kind":\["lib"\]'; }
-has_wasm() { grep -q 'wasm32' rust-toolchain.toml Cargo.toml 2>/dev/null; }
+# Declared outside comments (the template's toolchain file mentions it in one).
+has_wasm() { grep -Eq '^[^#]*wasm32' rust-toolchain.toml Cargo.toml 2>/dev/null; }
 msrv() { sed -n 's/^rust-version *= *"\([^"]*\)".*/\1/p' Cargo.toml | head -1; }
 
 # Branch this work merges into: MK_BASE, the PR base on CI, origin/HEAD, origin/main, origin/master.
@@ -163,6 +168,112 @@ install_cargo_tools() {
     done
 }
 
+# --- mutation testing -------------------------------------------------------
+
+# cargo-mutants rebuilds a crate once per mutant, in scratch copies, for hours.
+# Unbounded, that wedged developer machines (twice, once at --jobs 2) and cost a
+# CI runner its connection to GitHub (lotus-explore-rs, 2026-11-01). So every
+# run is bounded by construction, whatever the caller passes:
+# - concurrency: MUTANTS_JOBS mutants at once (default 1 locally, half the cores
+#   on CI), the cores split between them for cargo and nextest, and locally half
+#   of them left to the rest of the machine;
+# - size: no debuginfo and no incremental cache, most of a test build's memory,
+#   link time and disk, and nothing a mutant needs;
+# - priority: nice 19, so the desktop stays responsive;
+# - a watchdog: it refuses to start, and stops a running mutation run with
+#   SIGINT (so cargo-mutants removes its scratch copies), when available memory
+#   or free disk falls below a floor, rather than let the machine swap itself to
+#   a halt. Floors: MUTANTS_MIN_FREE_MEM_PCT (default 15) and
+#   MUTANTS_MIN_FREE_DISK_GB (default 10), on the repository's and TMPDIR's volumes.
+MUTANTS_MIN_FREE_MEM_PCT="${MUTANTS_MIN_FREE_MEM_PCT:-15}"
+MUTANTS_MIN_FREE_DISK_GB="${MUTANTS_MIN_FREE_DISK_GB:-10}"
+
+cores() { getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2; }
+
+# Available memory as a whole percentage, or nothing where it cannot be read.
+# macOS: the kernel's own availability level, the figure jetsam acts on, read
+# as 0 once the kernel reports critical pressure.
+free_mem_pct() {
+    if [ -r /proc/meminfo ]; then
+        awk '/^MemTotal:/ { t = $2 } /^MemAvailable:/ { a = $2 } END { if (t) print int(a * 100 / t) }' /proc/meminfo
+    elif [ "$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null)" = 4 ]; then
+        echo 0
+    else
+        sysctl -n kern.memorystatus_level 2>/dev/null || true
+    fi
+}
+
+free_disk_gb() { df -Pk "$1" 2>/dev/null | awk 'NR == 2 { print int($4 / 1048576) }'; }
+
+# Why the machine is below a floor, or nothing when it is not.
+mutants_starved() {
+    local mem disk dir
+    mem="$(free_mem_pct)"
+    if [ -n "$mem" ] && [ "$mem" -lt "$MUTANTS_MIN_FREE_MEM_PCT" ]; then
+        echo "available memory ${mem}% < ${MUTANTS_MIN_FREE_MEM_PCT}% (MUTANTS_MIN_FREE_MEM_PCT)"
+        return
+    fi
+    for dir in "$ROOT_DIR" "${TMPDIR:-/tmp}"; do
+        disk="$(free_disk_gb "$dir")"
+        if [ -n "$disk" ] && [ "$disk" -lt "$MUTANTS_MIN_FREE_DISK_GB" ]; then
+            echo "free disk ${disk} GB on $dir < ${MUTANTS_MIN_FREE_DISK_GB} GB (MUTANTS_MIN_FREE_DISK_GB)"
+            return
+        fi
+    done
+}
+
+# run_mutants <cargo-mutants args...>: the only way mk starts cargo-mutants.
+run_mutants() {
+    need cargo-mutants
+    local n jobs threads reason pid rc=0
+    n="$(cores)"
+    if [ -n "${CI:-}" ]; then
+        jobs="${MUTANTS_JOBS:-$((n > 3 ? n / 2 : 1))}"
+        threads=$((n / jobs))
+    else
+        jobs="${MUTANTS_JOBS:-1}"
+        threads=$((n / jobs / 2))
+    fi
+    [ "$threads" -ge 1 ] || threads=1
+    reason="$(mutants_starved)"
+    [ -z "$reason" ] || die "not starting cargo-mutants: $reason"
+    local -a scope=(--workspace)
+    if [ "${#MUTANTS_PACKAGES[@]}" -gt 0 ]; then scope=("${MUTANTS_PACKAGES[@]/#/--package=}"); fi
+    # A caller naming its own packages (`./mk mutants -p crate`) replaces the default.
+    local arg
+    for arg in "$@"; do
+        case "$arg" in -p | --package | --package=* | --workspace) scope=() ;; esac
+    done
+    echo "mutants: $jobs at a time, $threads build/test threads each, $n cores;" \
+        "stops below ${MUTANTS_MIN_FREE_MEM_PCT}% memory or ${MUTANTS_MIN_FREE_DISK_GB} GB disk"
+    # Its own process group, so the watchdog and Ctrl-C reach every rustc and test.
+    set -m
+    CARGO_BUILD_JOBS="$threads" NEXTEST_TEST_THREADS="$threads" CARGO_INCREMENTAL=0 \
+        CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 \
+        nice -n 19 cargo mutants --jobs "$jobs" ${scope[@]+"${scope[@]}"} --all-features "$@" &
+    pid=$!
+    set +m
+    trap 'kill -INT -- "-$pid" 2>/dev/null || true' INT TERM
+    while kill -0 "$pid" 2>/dev/null; do
+        reason="$(mutants_starved)"
+        if [ -n "$reason" ]; then
+            echo "ERROR: stopping cargo-mutants: $reason" >&2
+            kill -INT -- "-$pid" 2>/dev/null || true
+            for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+                kill -0 "$pid" 2>/dev/null || break
+                sleep 2 || true
+            done
+            kill -KILL -- "-$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+            exit 1
+        fi
+        sleep 2 || true
+    done
+    wait "$pid" || rc=$?
+    trap - INT TERM
+    return "$rc"
+}
+
 # --- tiers ------------------------------------------------------------------
 
 # Runs every gate as its own process (so `set -e` holds inside each), keeps
@@ -192,6 +303,11 @@ run_tier() {
 
 # A standard gate this repository implements itself: `gate` or `gate=task`.
 for override in "${LOCAL_OVERRIDES[@]}"; do
+    case "${override%%=*}" in
+        # Overriding them would bypass run_mutants' limits and watchdog.
+        mutants | mutants-diff)
+            die "LOCAL_OVERRIDES cannot replace ${override%%=*}: scope it with MUTANTS_PACKAGES, configure it in .cargo/mutants.toml" ;;
+    esac
     if [ "${override%%=*}" = "$cmd" ]; then
         echo "($cmd: this repository's own task '${override#*=}', see LOCAL_OVERRIDES in mk.local)"
         cargo_make "${override#*=}" "$@"
@@ -201,7 +317,7 @@ done
 case "$cmd" in
     --list | --list-all-steps)
         printf '%s\n' setup tools "${CI_GATES[@]}" "${NIGHTLY_GATES[@]}" "${EXPERIMENTAL_GATES[@]}" \
-            ci ci-nightly ci-release ci-experimental coverage-baseline selftest | sort -u
+            ci ci-nightly ci-release ci-experimental coverage-baseline echoes-baseline selftest | sort -u
         for t in "${LOCAL_CI_GATES[@]}" "${LOCAL_NIGHTLY_GATES[@]}"; do echo "local:$t"; done
         if [ -f Makefile.toml ]; then echo "(any other name runs that cargo-make task)"; fi
         ;;
@@ -251,12 +367,22 @@ case "$cmd" in
         shellcheck --external-sources --severity=style "${scripts[@]}"
         ;;
     ratchet)
-        # The coverage floor in mk.local may only go up relative to the base branch.
+        # The ratchets in mk.local may only tighten relative to the base branch:
+        # the coverage floor goes up, the echoes legacy counts go down.
         base="$(base_ref)" || skip "no base branch to compare with (set MK_BASE)"
-        old="$( (git show "$(git merge-base "$base" HEAD):mk.local" 2>/dev/null || true) | sed -n 's/^COVERAGE_FAIL_UNDER_LINES="*\([0-9]*\)"*/\1/p')"
-        [ -n "$old" ] || skip "no ratchet on $base yet"
-        [ "$COVERAGE_FAIL_UNDER_LINES" -ge "$old" ] ||
+        base_local="$(git show "$(git merge-base "$base" HEAD):mk.local" 2>/dev/null || true)"
+        [ -n "$base_local" ] || skip "no mk.local on $base yet"
+        old_value() { sed -n "s/^$1=\"*\([0-9]*\)\"*.*/\1/p" <<<"$base_local"; }
+        old="$(old_value COVERAGE_FAIL_UNDER_LINES)"
+        if [ -n "$old" ] && [ "$COVERAGE_FAIL_UNDER_LINES" -lt "$old" ]; then
             die "COVERAGE_FAIL_UNDER_LINES went down from $old to $COVERAGE_FAIL_UNDER_LINES"
+        fi
+        for key in ECHOES_MAX_APPROXIMATE ECHOES_MAX_REUSE; do
+            old="$(old_value "$key")"
+            if [ -n "$old" ] && [ "${!key}" -gt "$old" ]; then
+                die "$key went up from $old to ${!key}"
+            fi
+        done
         ;;
     commits)
         base="$(base_ref)" || skip "no base branch to compare with (set MK_BASE)"
@@ -269,7 +395,9 @@ case "$cmd" in
         done < <(git log --no-merges --format=%s "$(git merge-base "$base" HEAD)..HEAD")
         [ "$bad" = 0 ]
         ;;
-    fmt) cargo fmt --all -- --check ;;
+    # Workspace members only: --all would also check (and `cargo fmt --all` rewrite)
+    # path dependencies that live in other repositories.
+    fmt) cargo fmt -- --check ;;
     tombi)
         require tombi "$TOMBI_VERSION"
         tombi format --check
@@ -311,7 +439,41 @@ case "$cmd" in
         done
         grep -Eq '^depth = [1-9]' .echoes.toml || die ".echoes.toml must set [context-dependencies] depth > 0"
         if [ "${GITHUB_ACTIONS:-}" = true ]; then set -- --github; fi
-        cargo echoes --all-targets --config .echoes.toml "$@"
+        # --no-fail: the counts are judged here, against the ratchet in mk.local.
+        # An incomplete analysis still exits non-zero and fails the gate.
+        rc=0
+        out="$(cargo echoes --all-targets --config .echoes.toml --no-fail "$@" 2>&1)" || rc=$?
+        printf '%s\n' "$out"
+        [ "$rc" = 0 ] || die "echoes could not complete its analysis (exit $rc)"
+        count() { grep -oE "[0-9]+ $1" <<<"$out" | head -1 | cut -d' ' -f1; }
+        exact="$(count 'duplicated groups')"
+        approximate="$(count 'approximate groups')"
+        reuse="$(count 'dependency reuse')"
+        [ -n "$exact" ] && [ -n "$approximate" ] && [ -n "$reuse" ] || die "could not read the echoes summary"
+        [ "$exact" = 0 ] || die "$exact exact duplicate group(s): delete all but one copy"
+        [ "$approximate" -le "$ECHOES_MAX_APPROXIMATE" ] ||
+            die "$approximate approximate duplicate groups, more than ECHOES_MAX_APPROXIMATE=$ECHOES_MAX_APPROXIMATE in mk.local"
+        [ "$reuse" -le "$ECHOES_MAX_REUSE" ] ||
+            die "$reuse dependency reuse opportunities, more than ECHOES_MAX_REUSE=$ECHOES_MAX_REUSE in mk.local"
+        if [ "$approximate" -lt "$ECHOES_MAX_APPROXIMATE" ] || [ "$reuse" -lt "$ECHOES_MAX_REUSE" ]; then
+            echo "note: lower the echoes ratchet in mk.local to approximate=$approximate reuse=$reuse (./mk echoes-baseline)"
+        fi
+        ;;
+    echoes-baseline)
+        # Adoption: record today's legacy echoes counts as the ratchet (exact duplicates stay 0).
+        out="$(MK_NESTED=0 "$0" echoes 2>&1 || true)"
+        approximate="$(grep -oE '[0-9]+ approximate groups' <<<"$out" | head -1 | cut -d' ' -f1)"
+        reuse="$(grep -oE '[0-9]+ dependency reuse' <<<"$out" | head -1 | cut -d' ' -f1)"
+        [ -n "$approximate" ] && [ -n "$reuse" ] || die "could not read the echoes summary"
+        for kv in "ECHOES_MAX_APPROXIMATE=$approximate" "ECHOES_MAX_REUSE=$reuse"; do
+            key="${kv%%=*}"
+            if grep -q "^$key=" mk.local 2>/dev/null; then
+                sed -i.bak "s/^$key=.*/$kv/" mk.local && rm mk.local.bak
+            else
+                printf '%s\n' "$kv" >>mk.local
+            fi
+        done
+        echo "echoes ratchet: approximate=$approximate reuse=$reuse (mk.local)"
         ;;
     refquiem)
         # Experimental: not in any tier until refquiem matures (see EXPERIMENTAL_GATES).
@@ -336,9 +498,9 @@ case "$cmd" in
         cargo check --workspace --target wasm32-unknown-unknown --all-features --locked
         ;;
     mutants)
-        need cargo-mutants
         # Exit 2 = missed mutants, 3 = timeouts: both fail. Exclusions live in .cargo/mutants.toml.
-        cargo mutants --workspace --all-features
+        # Extra arguments go to cargo-mutants: `./mk mutants -p crate` runs one crate.
+        run_mutants "$@"
         ;;
     mutants-diff)
         # Mutants in code changed against the base branch (and uncommitted changes), on every PR.
@@ -348,7 +510,7 @@ case "$cmd" in
         trap 'rm -f "$diff"' EXIT
         git diff --no-ext-diff --no-color "$(git merge-base "$base" HEAD)" -- '*.rs' >"$diff"
         [ -s "$diff" ] || skip "no Rust changes against $base"
-        cargo mutants --workspace --all-features --in-diff "$diff"
+        run_mutants --in-diff "$diff"
         ;;
     coverage)
         need cargo-llvm-cov
@@ -368,7 +530,17 @@ case "$cmd" in
         echo "COVERAGE_FAIL_UNDER_LINES: $COVERAGE_FAIL_UNDER_LINES -> $pct (the ratchet gate rejects a decrease against the base branch)"
         ;;
     powerset) need cargo-hack; cargo hack --workspace --feature-powerset --no-dev-deps check ;;
-    miri) cargo "+$RUST_NIGHTLY" miri test --workspace --all-features --locked ;;
+    miri)
+        # Undefined behaviour, not sandboxing: tests may read the clock and the
+        # environment. MIRI_PACKAGES in mk.local limits it to the crates where
+        # it means something (miri cannot spawn processes or open sockets).
+        export MIRIFLAGS="${MIRIFLAGS:--Zmiri-disable-isolation}"
+        if [ "${#MIRI_PACKAGES[@]}" -gt 0 ]; then
+            cargo "+$RUST_NIGHTLY" miri test --all-features --locked "${MIRI_PACKAGES[@]/#/--package=}"
+        else
+            cargo "+$RUST_NIGHTLY" miri test --workspace --all-features --locked
+        fi
+        ;;
     outdated) need cargo-outdated; cargo outdated --workspace --root-deps-only --exit-code 1 ;;
     ci) run_tier ci "${CI_GATES[@]}" "${LOCAL_CI_GATES[@]/#/local:}" ;;
     ci-nightly) run_tier ci-nightly "${NIGHTLY_GATES[@]}" "${LOCAL_NIGHTLY_GATES[@]/#/local:}" ;;

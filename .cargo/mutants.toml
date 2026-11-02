@@ -72,3 +72,7 @@ timeout_multiplier = 1.5
 # Fail rather than shrug: a mutant whose test run could not be executed is not
 # a pass, and reporting it as one is how a gap in the suite goes unnoticed.
 minimum_test_timeout = 20
+
+# nextest is what the suite runs under elsewhere, and a mutant evaluated against
+# a different harness is evaluated against a different suite.
+test_tool = "nextest"

@@ -23,10 +23,12 @@ LOCAL_SETUP=(install-panache)
 LOCAL_OVERRIDES=(
   test             # nextest, then the doctests
   wasm=check-wasm  # each app for wasm32, one by one with its own features
-  mutants          # scoped to the logic crates, via nextest
 )
 # Repository gates added to ./mk ci.
 LOCAL_CI_GATES=(license-headers check readme-check lint-wasm feature-powerset)
 
 # Ratchet: may only go up (./mk ratchet). Set with ./mk coverage-baseline.
 COVERAGE_FAIL_UNDER_LINES="67"
+# Mutation testing covers the logic crates; the apps are mostly Dioxus rendering
+# (`./mk local:mutants-ui` and `./mk local:mutants-mgf` run the rest on request).
+MUTANTS_PACKAGES=(json-count-rs cxsmiles-yoga)

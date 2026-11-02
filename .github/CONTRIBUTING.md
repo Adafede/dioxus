@@ -120,7 +120,7 @@ Run on purpose, not in the gate. Each has a stated reason in `make/*.toml`.
 | `msrv`                                                  | bisects a build per toolchain; minutes                                                                                                                                |
 | `action-pins`                                           | needs the network and the GitHub API; a pin is a commit SHA and stays valid forever, so the only thing this catches is a pin in the wrong repository                  |
 | `minimal-versions`                                      | a second resolution that frequently fails for reasons unrelated to this code                                                                                          |
-| `mutants`, `mutants-mgf`, `mutants-ui`, `mutants-safe*` | minutes, and the survivors are a to-do list                                                                                                                           |
+| `mutants`, `mutants-mgf`, `mutants-ui`                  | minutes, and the survivors are a to-do list                                                                                                                           |
 | `cov`                                                   | rebuilds the whole crate graph under instrumentation                                                                                                                  |
 | `readme-write`                                          | a gate that rewrites files is a gate that changes files                                                                                                               |
 

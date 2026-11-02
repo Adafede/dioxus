@@ -80,40 +80,21 @@ cwd = "${REPO_ROOT}"
 description = "Print the coverage summary table without writing HTML."
 script = "cargo llvm-cov nextest run --locked --summary-only --workspace"
 
-# Mutation testing. `cargo mutants` rewrites one expression at a time and
-# re-runs the tests: a mutant that survives is a behaviour the suite does not
-# actually pin down, which a passing test run cannot tell you. Coverage counts
-# executed lines; this checks that they are asserted on.
-#
-# `--test-tool nextest` because nextest is what the suite runs under elsewhere,
-# and a mutant evaluated against a different harness is a mutant evaluated
-# against a different suite.
+# Mutation testing is the standard `./mk mutants` gate: mk's bounded runner
+# over MUTANTS_PACKAGES (mk.local), with nextest, the timeouts and the
+# exclusions in `.cargo/mutants.toml`. The tasks below go through it too, so no
+# run here escapes its limits and watchdog.
 #
 # Its two result words are worth learning, because they are the opposite of what
 # they look like. `CAUGHT` is the test failing on the mutant -- killed, good.
 # `MISSED` is the test still passing -- survived, and that is a gap in the suite.
-#
-# `--jobs 8` is pinned for the ordinary reason that eight concurrent cargo builds
-# is eight compilers. `.cargo/mutants.toml` records the per-mutant timeout and
-# what is excluded from mutation; an exclusion written down is a decision someone
-# can argue with, an omission is not.
-[tasks."mutants"]
-cwd = "${REPO_ROOT}"
-description = "Mutation testing over the logic crates, using nextest."
-script = """
-cargo mutants --test-tool nextest \\
-  --package json-count-rs --package cxsmiles-yoga --jobs 8 --timeout 300
-"""
 
 # The crate that did not fit in a CI job's budget: 717 mutants, about half an
 # hour. A separate task so `mutants` stays inside the job.
 [tasks."mutants-mgf"]
 cwd = "${REPO_ROOT}"
 description = "Mutation testing for mgf-precursor-erro-rs. About half an hour."
-script = """
-cargo mutants --test-tool nextest --package mgf-precursor-erro-rs \\
-  --jobs 8 --timeout 300
-"""
+script = "./mk mutants -p mgf-precursor-erro-rs"
 
 # The Dioxus rendering crates, on request. `.cargo/mutants.toml` excludes their
 # rendering modules, so what is left is their parsing and their numerics; a
@@ -121,10 +102,7 @@ cargo mutants --test-tool nextest --package mgf-precursor-erro-rs \\
 [tasks."mutants-ui"]
 cwd = "${REPO_ROOT}"
 description = "Mutation testing for the rendering crates, on request."
-script = """
-cargo mutants --test-tool nextest \\
-  --package lipid-selecto-rs --package smellfish-rs --jobs 8 --timeout 300
-"""
+script = "./mk mutants -p lipid-selecto-rs -p smellfish-rs"
 
 # The default scope, listed without running it. Instant, and it is what to run
 # after touching a mutated file: it shows what a change added before paying for
@@ -136,45 +114,22 @@ script = """
 cargo mutants --package json-count-rs --package cxsmiles-yoga --list
 """
 
-# ── Mutation testing, sized for a laptop ─────────────────────────────────────
+# ── Mutation testing on a laptop ─────────────────────────────────────────────
 #
-# The tasks above are the CI-sized ones. These are the same runs with the width
-# taken out, for when the machine is a person's machine.
+# There are no separate laptop-sized tasks any more: every run goes through mk's
+# bounded runner, which is laptop-sized by default. It is still worth knowing why
+# this repository needed one. `mutants` at `--jobs 8` exhausted memory and took
+# the machine down more than once, at 17 GB per job on only two jobs: a mutant
+# in `enumerate_repeating` capped the *number* of repeat counts rather than the
+# size of one expanded molecule, and canonicalisation is superlinear in molecule
+# size. That is fixed (`MAX_MOLECULE_ATOMS`, on both expansions, `const`s that
+# cargo-mutants does not mutate), and a mutant nobody predicted that runs away
+# the same way now meets the runner's memory watchdog instead of the session.
 #
-# The reason is memory, not slowness: `mutants` at `--jobs 8` exhausted memory
-# and took the machine down more than once, at 17 GB per job on only two jobs.
-# The cause was `enumerate_repeating` capping the *number* of repeat counts when
-# what it needed to cap was the size of one expanded molecule, and
-# canonicalisation being superlinear in molecule size. That is fixed
-# (`MAX_MOLECULE_ATOMS`, on both expansions), and the ceilings are `const`s,
-# which cargo-mutants does not emit mutants for.
+# Sharding still works, through the runner:
 #
-# "Fixed" is a statement about the code as written, and worth being honest about
-# what it is not: a mutation run finds mutants nobody predicted. So the width is
-# pinned for the ordinary reason, and the timeout is pinned because a runaway
-# mutant should cost a timeout rather than the session.
-#
-# Sharding is the third lever, and the reason the shard is a parameter:
-#
-#   ./mk mutants-safe 0/4      # a quarter of the scope, ~10 min
-#   ./mk mutants-safe 3/4      # a different quarter
+#   ./mk mutants --shard 0/4                            # a quarter of the scope
+#   ./mk mutants -p mgf-precursor-erro-rs --shard 3/4
 #
 # Randomization happens *after* sharding, so each shard is a real random subset
-# and the four together are the same mutants in a different order. One shard is
-# a sample, not a biased prefix, which is what makes it worth running on its own.
-[tasks."mutants-safe"]
-cwd = "${REPO_ROOT}"
-description = "Mutation testing at two jobs, shardable. Arg: SHARD, default 1/1."
-script = """
-cargo mutants --test-tool nextest \\
-  --package json-count-rs --package cxsmiles-yoga \\
-  --jobs 2 --timeout 180 --shard "${SHARD:-1/1}"
-"""
-
-[tasks."mutants-safe-mgf"]
-cwd = "${REPO_ROOT}"
-description = "mgf-precursor-erro-rs at two jobs, shardable. Arg: SHARD, default 1/1."
-script = """
-cargo mutants --test-tool nextest --package mgf-precursor-erro-rs \\
-  --jobs 2 --timeout 180 --shard "${SHARD:-1/1}"
-"""
+# and the four together are the same mutants in a different order.
