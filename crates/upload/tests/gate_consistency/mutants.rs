@@ -30,23 +30,37 @@ fn the_mutants_config_is_where_cargo_mutants_looks_for_it() {
     );
 }
 
-/// The mutation scope is written out once in the `mutants` task and is what the
-/// weekly job's survivor count is a claim about. If the scope and the claim
-/// drift, the reported number is about a run nobody made.
+/// The mutation scope is written out once, as `MUTANTS_PACKAGES` in `mk.local`,
+/// which `./mk mutants` -- the bounded runner -- mutates, and which the weekly
+/// job's survivor count is a claim about. The `mutants-list` task, which shows
+/// that scope without running it, writes it out a second time; if the two
+/// drift, the list is of a run nobody makes.
 #[test]
 fn the_mutants_task_names_a_scope() -> Result<()> {
-    let makefiles = makefiles()?;
-    let scope = mutated_packages(&makefiles);
+    let scope: BTreeSet<String> = read("mk.local")?
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("MUTANTS_PACKAGES=("))
+        .and_then(|rest| rest.split(')').next())
+        .map(|names| names.split_whitespace().map(str::to_string).collect())
+        .unwrap_or_default();
     assert!(
         !scope.is_empty(),
-        "no `--package` in the makefiles, so `cargo mutants` has no scope to run"
+        "no `MUTANTS_PACKAGES` in `mk.local`, so `./mk mutants` mutates the whole \
+         workspace, rendering crates included"
     );
-    for package in &scope {
-        assert!(
-            all_tasks(&makefiles).contains("mutants"),
-            "the makefiles name `{package}` for mutation but define no `mutants` \
-             task to run it"
-        );
-    }
+    assert!(
+        read("mk")?.contains("    mutants)"),
+        "`./mk` has no `mutants` gate to run the scope in `mk.local`"
+    );
+    let listed: String = makefiles()?
+        .lines()
+        .filter(|line| line.contains("cargo mutants") && line.contains("--list"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert_eq!(
+        mutated_packages(&listed),
+        scope,
+        "`mutants-list` lists a different scope from `MUTANTS_PACKAGES` in `mk.local`"
+    );
     Ok(())
 }

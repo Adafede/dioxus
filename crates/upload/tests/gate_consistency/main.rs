@@ -80,18 +80,6 @@ fn makefiles() -> Result<String> {
     Ok(all)
 }
 
-/// Every task name defined in the makefiles.
-fn all_tasks(makefiles: &str) -> BTreeSet<String> {
-    makefiles
-        .lines()
-        .filter_map(|line| {
-            let rest = line.strip_prefix("[tasks.")?;
-            let name = rest.split(']').next()?.trim_matches('"');
-            (!name.is_empty() && !name.contains(char::is_whitespace)).then(|| name.to_string())
-        })
-        .collect()
-}
-
 /// Data that must never be committed, and the reason each one exists.
 ///
 /// This is a list of paths, not a list of rules: it is here so that deleting a
