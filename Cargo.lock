@@ -1563,7 +1563,7 @@ dependencies = [
 [[package]]
 name = "geometric-traits"
 version = "0.2.3"
-source = "git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main#18dbbe0862f478098f8728da43d7efa1e6e327bf"
+source = "git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main#72c9e5f6fcc40127549813725c1849c5ddf4cf86"
 dependencies = [
  "barnes-hut-tree",
  "hashbrown",
@@ -1577,7 +1577,7 @@ dependencies = [
 [[package]]
 name = "geometric-traits"
 version = "0.2.3"
-source = "git+https://github.com/earth-metabolome-initiative/geometric-traits#18dbbe0862f478098f8728da43d7efa1e6e327bf"
+source = "git+https://github.com/earth-metabolome-initiative/geometric-traits#72c9e5f6fcc40127549813725c1849c5ddf4cf86"
 dependencies = [
  "barnes-hut-tree",
  "hashbrown",
@@ -2336,7 +2336,7 @@ dependencies = [
 [[package]]
 name = "mascot-rs"
 version = "0.1.0"
-source = "git+https://github.com/earth-metabolome-initiative/mascot-rs.git?branch=main#a4635bb5403546915c92ca237b345a59bf8d2e74"
+source = "git+https://github.com/earth-metabolome-initiative/mascot-rs.git?branch=main#9964298633224615f0ccbec75024fc83ea65e809"
 dependencies = [
  "mass_spectrometry",
  "molecular-formulas",
