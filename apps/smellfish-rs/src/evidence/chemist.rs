@@ -184,23 +184,7 @@ const DECORATION_MOTIFS: &[&str] = &[
     "allyl",
 ];
 
-/// Returns `true` if `haystack` contains `needle` (ASCII case-insensitive),
-/// without allocating a lowercased `String`.
-#[must_use]
-pub(super) fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
-    if needle.is_empty() {
-        return true;
-    }
-    haystack
-        .as_bytes()
-        .windows(needle.len())
-        .any(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
-}
-
-/// Returns `true` if `label` contains any of `motifs` (ASCII case-insensitive).
-pub(super) fn matches_any(label: &str, motifs: &[&str]) -> bool {
-    motifs.iter().any(|m| contains_ignore_ascii_case(label, m))
-}
+pub(super) use crate::model::{contains_ignore_ascii_case, matches_any};
 
 /// Motif labels that are known to be enriched in natural products.
 ///

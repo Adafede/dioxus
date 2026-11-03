@@ -14,22 +14,6 @@ use crate::rdkit::{rdkit_inspect, read_file_text};
 use dioxus::prelude::{Signal, WritableExt, spawn};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-/// A molecule that has been processed by `RDKit` but not yet assessed for NP
-/// evidence.  This intermediate representation lets us compute dataset-level
-/// motif prevalence *before* evaluating each row.
-struct RawInspectRow {
-    index: usize,
-    motif_labels: Vec<String>,
-    motif_hits: Vec<crate::model::RdkitMotifHit>,
-    substituents_counts: SubstituentCounts,
-    lotus_scaffolds: Vec<String>,
-    descriptors: RdkitDescriptors,
-    stereo_tags: Vec<String>,
-    np_score: Option<f64>,
-    np_confidence: Option<f64>,
-    num_atoms: usize,
-}
-
 /// Import a [`web_sys::Blob`] CSV, parsing and inspecting each row.
 ///
 /// # Errors
@@ -62,7 +46,6 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
     let raw_rows = parse_csv_rows(text)?;
     let total = raw_rows.len();
 
-    let mut inspect_rows = Vec::with_capacity(total);
     let mut motif_counts: HashMap<
         String,
         (
@@ -73,7 +56,6 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
         ),
     > = HashMap::new();
     let mut inchikeys = BTreeSet::new();
-    let mut smiles_list = Vec::new();
     let mut rows = Vec::with_capacity(total);
 
     // ═══════════════════════════════════════════════════════════════════
@@ -113,64 +95,46 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                 if !inchikey.is_empty() {
                     inchikeys.insert(inchikey.clone());
                 }
-                smiles_list.push(raw.smiles.clone());
 
-                let canonical = inspect.canonicalsmiles.unwrap_or_default();
                 let descriptors = inspect.descriptors.unwrap_or_default();
                 let stereo_tags = inspect.stereo_tags.unwrap_or_default();
                 // Count substituent occurrences for proper multiplicity display
-                let substituents_counts: SubstituentCounts =
-                    inspect
-                        .substituents
-                        .iter()
-                        .fold(SubstituentCounts::new(), |mut acc, s| {
-                            *acc.entry(s.clone()).or_insert(0) += 1;
-                            acc
-                        });
-                let lotus_scaffolds = inspect.lotus_scaffolds;
-
-                inspect_rows.push(RawInspectRow {
-                    index: raw.index,
-                    motif_labels: motif_labels.clone(),
-                    motif_hits: motifs_list.clone(),
-                    substituents_counts,
-                    lotus_scaffolds,
-                    descriptors,
-                    stereo_tags,
-                    np_score: inspect.np_score,
-                    np_confidence: inspect.np_confidence,
-                    num_atoms: inspect.num_atoms.unwrap_or(0),
-                });
+                let substituents_counts: SubstituentCounts = inspect.substituents.into_iter().fold(
+                    SubstituentCounts::new(),
+                    |mut acc, s| {
+                        *acc.entry(s).or_insert(0) += 1;
+                        acc
+                    },
+                );
 
                 // Placeholder row — evidence is filled in pass 2.
                 rows.push(MoleculeRow {
                     index: raw.index,
                     label: raw.label,
                     smiles: raw.smiles,
-                    canonical_smiles: canonical,
                     inchikey,
                     svg: inspect.svg,
                     motifs: motif_labels,
                     motif_hits: motifs_list,
-                    substituents_counts: SubstituentCounts::new(),
-                    lotus_scaffolds: Vec::new(),
+                    substituents_counts,
+                    lotus_scaffolds: inspect.lotus_scaffolds,
                     lotus_taxa: Vec::new(),
                     lotus_compounds: Vec::new(),
                     lotus_compounds_with_taxa: BTreeSet::new(),
                     pubchem_cids: Vec::new(),
-                    np_likeness: 0.0,
+                    np_likeness: inspect.np_score.unwrap_or(0.0),
                     np_label: String::new(),
-                    np_confidence: 0.0,
-                    np_score_available: false,
+                    np_confidence: inspect.np_confidence.unwrap_or(0.0),
+                    np_score_available: inspect.np_score.is_some(),
                     ring_family: String::new(),
                     evidence_notes: Vec::new(),
                     motif_context: String::new(),
                     chemist_checks: Vec::new(),
                     verdict: String::new(),
                     error: None,
-                    descriptors: RdkitDescriptors::default(),
-                    stereo_tags: Vec::new(),
-                    num_atoms: 0,
+                    descriptors,
+                    stereo_tags,
+                    num_atoms: inspect.num_atoms.unwrap_or(0),
                 });
             }
             Err(err) => rows.push(error_row(raw.index, raw.label, raw.smiles, err)),
@@ -220,8 +184,7 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
         map
     };
 
-    let enrichment_outcome =
-        enrich_sources(&unique_keys, &smiles_list, |msg| status.set(msg)).await;
+    let enrichment_outcome = enrich_sources(&unique_keys, |msg| status.set(msg)).await;
     let mut rows = merge_enrichment(rows, &enrichment_outcome, &inchikey_to_indices);
 
     // ═══════════════════════════════════════════════════════════════════
@@ -230,36 +193,21 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
     status.set("Assessing NP evidence…".to_string());
 
     // Count unique Ertl substituents found across the dataset.
-    let unique_substituents: usize = inspect_rows
+    let unique_substituents: usize = rows
         .iter()
         .flat_map(|r| r.substituents_counts.keys())
         .collect::<std::collections::HashSet<_>>()
         .len();
 
-    // Merge the stored raw inspect data back onto the rows.
-    let mut raw_by_index: HashMap<usize, RawInspectRow> =
-        inspect_rows.into_iter().map(|r| (r.index, r)).collect();
-
     for row in &mut rows {
-        if let Some(raw) = raw_by_index.remove(&row.index) {
-            row.descriptors = raw.descriptors;
-            row.substituents_counts = raw.substituents_counts;
-            row.lotus_scaffolds = raw.lotus_scaffolds;
-            row.stereo_tags = raw.stereo_tags;
-            row.num_atoms = raw.num_atoms;
-            row.motif_hits = raw.motif_hits;
-            row.np_score_available = raw.np_score.is_some();
-
-            // Build motif label vec for dataset-common detection.
-            let motif_labels = &raw.motif_labels;
-
+        if row.error.is_none() {
             let evidence = assess_np_evidence(EvidenceInputs {
                 descriptors: &row.descriptors,
-                motifs: motif_labels,
+                motifs: &row.motifs,
                 motif_hits: &row.motif_hits,
                 stereo_tags: &row.stereo_tags,
-                np_score: raw.np_score,
-                np_confidence: raw.np_confidence,
+                np_score: row.np_score_available.then_some(row.np_likeness),
+                np_confidence: row.np_score_available.then_some(row.np_confidence),
                 dataset_context: &dataset_context,
                 lotus_scaffolds: &row.lotus_scaffolds,
             });
@@ -272,17 +220,8 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
             let mut notes = evidence.evidence_notes;
             notes.push(evidence.motif_context);
             row.evidence_notes = notes;
+            row.chemist_checks = run_checks(row);
         }
-    }
-
-    // Compute chemist's checklist — needs database evidence + Ertl score +
-    // structural descriptors, all of which are now available.
-    for row in &mut rows {
-        row.chemist_checks = run_checks(row);
-    }
-
-    // Compute verdicts — needs database evidence + Ertl score + model flag.
-    for row in &mut rows {
         row.verdict = row_verdict(row);
     }
 
@@ -302,18 +241,13 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
 /// `common_threshold` molecules, where `common_threshold` is the larger of
 /// `ceil(total / 10)` and 2 — i.e. at least 10 % of the set (minimum 2).
 #[cfg(target_arch = "wasm32")]
-#[allow(
-    clippy::cast_possible_truncation,  // numeric feature math: ratio computation
-    clippy::cast_sign_loss,           // numeric feature math: ratio computation
-    clippy::cast_precision_loss      // numeric feature math: usize -> f64 (no lossless From)
-)]
 fn compute_dataset_context(motif_summaries: &[MotifSummary], total: usize) -> DatasetMotifContext {
-    let mut motif_counts: HashMap<String, usize> = HashMap::new();
+    let mut motif_counts: HashMap<String, usize> = HashMap::with_capacity(motif_summaries.len());
     for motif in motif_summaries {
         motif_counts.insert(motif.label.clone(), motif.count);
     }
 
-    let common_threshold = ((total as f64 / 10.0).ceil() as usize).max(2);
+    let common_threshold = total.div_ceil(10).max(2);
 
     DatasetMotifContext {
         motif_counts,
@@ -330,6 +264,35 @@ pub(crate) struct ImportOutcome {
     pub unique_substituents: usize,
     pub endpoints: Vec<EndpointStatus>,
     pub warnings: Vec<String>,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn apply_import_outcome(
+    outcome: ImportOutcome,
+    prefix: &str,
+    mut status: Signal<String>,
+    mut rows: Signal<Vec<MoleculeRow>>,
+    mut motifs: Signal<Vec<MotifSummary>>,
+    mut endpoints: Signal<Vec<EndpointStatus>>,
+    mut warnings: Signal<Vec<String>>,
+) {
+    let row_count = outcome.rows.len();
+    let motif_count = outcome.motifs.len();
+    let sub_count = outcome.unique_substituents;
+    let unique = outcome.unique_inchikeys;
+    let has_warnings = !outcome.warnings.is_empty();
+    rows.set(outcome.rows);
+    motifs.set(outcome.motifs);
+    endpoints.set(outcome.endpoints);
+    warnings.set(outcome.warnings);
+    let suffix = if has_warnings {
+        " with QLever warnings"
+    } else {
+        ""
+    };
+    status.set(format!(
+        "{prefix}{suffix} — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys"
+    ));
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -358,25 +321,7 @@ pub(crate) fn begin_import(
     spawn(async move {
         match import_csv(file, status).await {
             Ok(outcome) => {
-                let row_count = outcome.rows.len();
-                let motif_count = outcome.motifs.len();
-                rows.set(outcome.rows);
-                motifs.set(outcome.motifs);
-                endpoints.set(outcome.endpoints);
-                warnings.set(outcome.warnings.clone());
-                if outcome.warnings.is_empty() {
-                    status.set(format!(
-                        "Done — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys",
-                        unique = outcome.unique_inchikeys,
-                        sub_count = outcome.unique_substituents
-                    ));
-                } else {
-                    status.set(format!(
-                        "Done with QLever warnings — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys",
-                        unique = outcome.unique_inchikeys,
-                        sub_count = outcome.unique_substituents
-                    ));
-                }
+                apply_import_outcome(outcome, "Done", status, rows, motifs, endpoints, warnings);
             }
             Err(err) => {
                 status.set(format!("Error reading CSV: {err}"));
@@ -412,25 +357,15 @@ pub(crate) fn begin_import_from_text(
     spawn(async move {
         match import_csv_text(&text, status).await {
             Ok(outcome) => {
-                let row_count = outcome.rows.len();
-                let motif_count = outcome.motifs.len();
-                rows.set(outcome.rows);
-                motifs.set(outcome.motifs);
-                endpoints.set(outcome.endpoints);
-                warnings.set(outcome.warnings.clone());
-                if outcome.warnings.is_empty() {
-                    status.set(format!(
-                        "Demo loaded — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys",
-                        unique = outcome.unique_inchikeys,
-                        sub_count = outcome.unique_substituents
-                    ));
-                } else {
-                    status.set(format!(
-                        "Demo loaded with QLever warnings — {row_count} results, {motif_count} motifs, {sub_count} Ertl substituents, {unique} unique InChIKeys",
-                        unique = outcome.unique_inchikeys,
-                        sub_count = outcome.unique_substituents
-                    ));
-                }
+                apply_import_outcome(
+                    outcome,
+                    "Demo loaded",
+                    status,
+                    rows,
+                    motifs,
+                    endpoints,
+                    warnings,
+                );
             }
             Err(err) => {
                 status.set(format!("Error loading demo data: {err}"));
@@ -498,7 +433,6 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         index,
         label,
         smiles,
-        canonical_smiles: String::new(),
         inchikey: String::new(),
         svg: None,
         motifs: Vec::new(),

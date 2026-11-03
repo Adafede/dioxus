@@ -5,6 +5,8 @@
 //!
 //! Each function is a small, pure transformation — no DOM, no signals.
 
+use crate::model::{contains_ignore_ascii_case, matches_any};
+
 /// Format an NP-likeness score with a `+` or `−` sign and two decimals.
 #[must_use]
 pub(super) fn format_score(score: f64) -> String {
@@ -18,17 +20,17 @@ pub(super) fn format_score(score: f64) -> String {
 /// that still requires a citation renders as skeptical rather than green.
 #[must_use]
 pub(super) fn verdict_color(verdict: &str) -> &'static str {
-    let l = verdict.to_ascii_lowercase();
-    if l.contains("smells fishy") || l.contains("highly synthetic") {
+    if matches_any(verdict, &["smells fishy", "highly synthetic"]) {
         "verdict-fishy"
-    } else if l.contains("synthetic-leaning") {
+    } else if contains_ignore_ascii_case(verdict, "synthetic-leaning") {
         "verdict-caution"
-    } else if l.contains("citation needed") {
+    } else if contains_ignore_ascii_case(verdict, "citation needed") {
         "verdict-skeptical"
-    } else if l.contains("likely") || l.contains("strong natural") || l.contains("lotus") {
+    } else if matches_any(verdict, &["likely", "strong natural", "lotus"]) {
         "verdict-likely"
-    } else if l.contains("weak np signals")
-        || (l.contains("ertl") && (l.contains("-1") || l.contains("\u{2212}1")))
+    } else if contains_ignore_ascii_case(verdict, "weak np signals")
+        || (contains_ignore_ascii_case(verdict, "ertl")
+            && (verdict.contains("-1") || verdict.contains("\u{2212}1")))
     {
         "verdict-caution"
     } else {
@@ -40,16 +42,19 @@ pub(super) fn verdict_color(verdict: &str) -> &'static str {
 /// ⚠ for polyaromatic (synthetic-typical).
 #[must_use]
 pub(super) fn scaffold_emoji(family: &str) -> &'static str {
-    let l = family.to_ascii_lowercase();
-    if l.contains("polyaromatic") {
+    if contains_ignore_ascii_case(family, "polyaromatic") {
         "\u{26a0}"
-    } else if l.contains("polycyclic")
-        || l.contains("steroid")
-        || l.contains("sugar")
-        || l.contains("macrolide")
-        || l.contains("flavonoid")
-        || l.contains("heteroaromatic")
-    {
+    } else if matches_any(
+        family,
+        &[
+            "polycyclic",
+            "steroid",
+            "sugar",
+            "macrolide",
+            "flavonoid",
+            "heteroaromatic",
+        ],
+    ) {
         "\u{1f33f}"
     } else {
         "\u{2014}"

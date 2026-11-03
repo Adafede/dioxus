@@ -39,9 +39,6 @@ pub(crate) struct MoleculeRow {
     pub index: usize,
     pub label: String,
     pub smiles: String,
-    /// Canonical SMILES — used for InChIKey→row mapping during enrichment.
-    #[cfg(target_arch = "wasm32")]
-    pub canonical_smiles: String,
     /// `InChIKey` — used for database lookups during enrichment.
     #[cfg(target_arch = "wasm32")]
     pub inchikey: String,
@@ -157,7 +154,6 @@ pub(crate) struct EnrichmentOutcome {
 #[derive(Debug, Deserialize)]
 #[cfg(target_arch = "wasm32")]
 pub(crate) struct RdkitInspectResponse {
-    pub canonicalsmiles: Option<String>,
     pub inchikey: Option<String>,
     pub svg: Option<String>,
     pub motifs: Option<Vec<RdkitMotifHit>>,
@@ -209,4 +205,23 @@ pub(crate) fn normalized_source_class(source_class: &str) -> &str {
         "natural" | "synthetic" | "unknown" => source_class,
         _ => "unknown",
     }
+}
+
+/// Returns `true` if `haystack` contains `needle` (ASCII case-insensitive),
+/// without allocating a lowercased `String`.
+#[must_use]
+pub(crate) fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
+    if needle.is_empty() {
+        return true;
+    }
+    haystack
+        .as_bytes()
+        .windows(needle.len())
+        .any(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
+}
+
+/// Returns `true` if `label` contains any of `motifs` (ASCII case-insensitive).
+#[must_use]
+pub(crate) fn matches_any(label: &str, motifs: &[&str]) -> bool {
+    motifs.iter().any(|m| contains_ignore_ascii_case(label, m))
 }

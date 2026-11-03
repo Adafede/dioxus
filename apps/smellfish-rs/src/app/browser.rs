@@ -76,12 +76,10 @@ pub(super) fn attempt_import_from_text(
         return;
     }
 
-    let file_name_value = "pasted-smiles.txt".to_string();
-
     #[cfg(target_arch = "wasm32")]
     begin_import_from_text(
         text.to_string(),
-        file_name_value,
+        "pasted-smiles.txt".to_string(),
         file_name,
         status,
         busy,

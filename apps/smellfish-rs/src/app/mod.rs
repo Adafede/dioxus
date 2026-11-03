@@ -117,10 +117,7 @@ pub fn app() -> Element {
         );
     };
 
-    let file_name_value = file_name.read().clone();
-    let warning_text = warnings.read().join(" • ");
-    let pasted_smiles_value = pasted_smiles.read().clone();
-    let ep_list = endpoints.read().clone();
+    let ep_list = endpoints.read();
 
     rsx! {
         SmellfishDocumentHead {}
@@ -165,7 +162,7 @@ pub fn app() -> Element {
                                     class: "smiles-textarea",
                                     placeholder: "CCO\nC1CCCCC1\nCOC1=CC=CC=C1",
                                     disabled: *busy.read(),
-                                    value: "{pasted_smiles_value}",
+                                    value: "{pasted_smiles}",
                                     onfocus: move |_| {
                                         if !*demo_cleared.read() {
                                             demo_cleared.set(true);
@@ -196,18 +193,18 @@ pub fn app() -> Element {
                     }
                     if !ep_list.is_empty() {
                         div { class: "endpoint-status",
-                            for ep in &ep_list {
+                            for ep in ep_list.iter() {
                                 span { class: "endpoint-chip", class: if ep.reachable { "ok" } else { "down" }, "{ep.name}: {ep.detail} ({ep.endpoint})" }
                             }
                         }
                     }
 
-                    if !file_name_value.is_empty() {
-                        p { class: "small muted", "Loaded: {file_name_value}" }
+                    if !file_name.read().is_empty() {
+                        p { class: "small muted", "Loaded: {file_name}" }
                     }
 
-                    if !warning_text.is_empty() {
-                        div { class: "alert", "{warning_text}" }
+                    if !warnings.read().is_empty() {
+                        div { class: "alert", "{warnings.read().join(\" • \")}" }
                     }
                 }
 

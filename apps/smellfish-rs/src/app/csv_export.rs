@@ -8,7 +8,7 @@
 //! (which parses CSV *input*).  Kept separate so the parsing and
 //! serialisation concerns never co-mingle in one file.
 
-use crate::model::MoleculeRow;
+use crate::model::{MoleculeRow, contains_ignore_ascii_case, matches_any};
 use std::fmt::Write;
 
 /// Machine-readable category for CSV export — strips emojis and
@@ -20,47 +20,43 @@ use std::fmt::Write;
 /// warning is an orange `caution`, not green.
 #[must_use]
 pub(super) fn category(verdict: &str) -> &'static str {
-    let l = verdict.to_ascii_lowercase();
-
     // RED — Highly synthetic / fishy (check first!).
-    if l.contains("highly synthetic") || l.contains("smells fishy") {
+    if matches_any(verdict, &["highly synthetic", "smells fishy"]) {
         return "fishy";
     }
 
     // ORANGE — Synthetic-leaning structural warning.
-    if l.contains("synthetic-leaning") {
+    if contains_ignore_ascii_case(verdict, "synthetic-leaning") {
         return "caution";
     }
 
     // YELLOW — Skeptical (needs citation). Before `lotus` so a LOTUS-backed
     // molecule that still reads "citation needed" is not filed as "likely".
-    if l.contains("citation needed") {
+    if contains_ignore_ascii_case(verdict, "citation needed") {
         return "skeptical";
     }
 
     // GREEN — High NP confidence (LOTUS or strong structural + Ertl score).
-    if l.contains("lotus") {
+    if matches_any(
+        verdict,
+        &["lotus", "likely hit", "likely novel", "pubchem + strong"],
+    ) {
         return "likely";
     }
-    if l.contains("likely hit") || l.contains("likely novel") {
-        return "likely";
-    }
-    if l.contains("pubchem + strong") {
-        return "likely";
-    }
-    if l.contains("strong np score") && !l.contains("weak") {
+    let has_weak = contains_ignore_ascii_case(verdict, "weak");
+    if contains_ignore_ascii_case(verdict, "strong np score") && !has_weak {
         return "likely";
     }
 
     // BLUE — Moderate NP confidence (PubChem with some NP features).
-    if l.contains("pubchem with") || l.contains("pubchem + np") {
+    if matches_any(verdict, &["pubchem with", "pubchem + np"]) {
         return "neutral";
     }
 
     // RED — Low/weak NP confidence.
-    if l.contains("weak np signals")
-        || (l.contains("pubchem") && l.contains("weak"))
-        || (l.contains("ertl") && l.contains("-1"))
+    if contains_ignore_ascii_case(verdict, "weak np signals")
+        || (contains_ignore_ascii_case(verdict, "pubchem") && has_weak)
+        || (contains_ignore_ascii_case(verdict, "ertl") && verdict.contains("-1"))
     {
         return "caution";
     }

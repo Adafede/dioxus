@@ -21,7 +21,6 @@ const QUERY_CHUNK_SIZE: usize = 50;
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn enrich_sources(
     inchikeys: &[String],
-    _smiles_list: &[String],
     mut set_status: impl FnMut(String),
 ) -> EnrichmentOutcome {
     // One client for the whole run, so the three endpoints' connections are

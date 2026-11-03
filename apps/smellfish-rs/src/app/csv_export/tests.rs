@@ -104,8 +104,6 @@ fn build_csv_formats_rows_and_headers() {
         label: "Caffeine, test".to_string(),
         smiles: "CN1C=NC2=C1C(=O)N(C(=O)N2C)C".to_string(),
         #[cfg(target_arch = "wasm32")]
-        canonical_smiles: String::new(),
-        #[cfg(target_arch = "wasm32")]
         inchikey: String::new(),
         svg: None,
         motifs: Vec::new(),

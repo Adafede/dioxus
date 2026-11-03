@@ -54,14 +54,13 @@ pub(super) fn display_label(
     kingdoms: &[String],
 ) -> String {
     if is_natural_source(source_class) {
-        let kingdoms_str = if let [only] = kingdoms {
-            only.clone()
+        if let [only] = kingdoms {
+            format!("{only} \u{00b7} {label}")
         } else if kingdoms.is_empty() {
-            kingdom.to_string()
+            format!("{kingdom} \u{00b7} {label}")
         } else {
-            kingdoms.join(" + ")
-        };
-        format!("{kingdoms_str} \u{00b7} {label}")
+            format!("{} \u{00b7} {label}", kingdoms.join(" + "))
+        }
     } else if is_synthetic_source(source_class) {
         format!("synthetic \u{00b7} {label}")
     } else {
