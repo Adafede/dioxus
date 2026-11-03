@@ -130,8 +130,6 @@ impl Shadow {
 
     /// Dark-mode small shadow (higher opacity)
     pub(crate) const SM_DARK: &'static str = "0 4px 14px rgba(0, 0, 0, 0.35)";
-    /// Dark-mode medium shadow (higher opacity)
-    pub(crate) const MD_DARK: &'static str = "0 10px 30px rgba(0, 0, 0, 0.35)";
 }
 
 /// Typography scale with responsive fluid sizing

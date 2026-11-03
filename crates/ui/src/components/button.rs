@@ -72,14 +72,14 @@ pub fn Button(props: ButtonProps) -> Element {
     };
 
     let border_value = match props.variant {
-        ButtonVariant::Primary | ButtonVariant::Secondary => "1px solid var(--border)".to_string(),
-        ButtonVariant::Tertiary => "none".to_string(),
+        ButtonVariant::Primary | ButtonVariant::Secondary => "1px solid var(--border)",
+        ButtonVariant::Tertiary => "none",
     };
 
     let button_style = StyleBuilder::new()
         .background_color(bg_color)
         .color(text_color)
-        .border(&border_value)
+        .border(border_value)
         .box_shadow(match props.variant {
             ButtonVariant::Primary | ButtonVariant::Secondary => "var(--shadow-xs)",
             ButtonVariant::Tertiary => "none",

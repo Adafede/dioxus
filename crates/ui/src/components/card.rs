@@ -64,19 +64,6 @@ pub fn Card(props: CardProps) -> Element {
         .gap(Spacing::MD)
         .build();
 
-    let card_hover_style = if props.href.is_some() {
-        StyleBuilder::new()
-            .background_color(colors.surface2)
-            .box_shadow(if props.dark {
-                Shadow::MD_DARK
-            } else {
-                Shadow::MD
-            })
-            .build()
-    } else {
-        String::new()
-    };
-
     let title_style = StyleBuilder::new()
         .font_size(Typography::H2)
         .font_family(Typography::SANS)
@@ -98,7 +85,7 @@ pub fn Card(props: CardProps) -> Element {
         rsx! {
             article {
                 style: card_style,
-                class: if card_hover_style.is_empty() { "" } else { "card-hover" },
+                class: "card-hover",
                 a {
                     href: href,
                     style: StyleBuilder::new()

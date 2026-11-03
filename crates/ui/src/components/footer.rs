@@ -53,13 +53,11 @@ pub fn Footer(props: FooterProps) -> Element {
         .line_height(Typography::LINE_HEIGHT)
         .build();
 
-    let link_style_value = || {
-        StyleBuilder::new()
-            .color(colors.accent)
-            .text_decoration("none")
-            .border_bottom("1px solid transparent")
-            .build()
-    };
+    let link_style = StyleBuilder::new()
+        .color(colors.accent)
+        .text_decoration("none")
+        .border_bottom("1px solid transparent")
+        .build();
 
     rsx! {
         footer { style: footer_style,
@@ -69,7 +67,7 @@ pub fn Footer(props: FooterProps) -> Element {
                     href: "https://dioxuslabs.com",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    style: link_style_value(),
+                    style: &link_style,
                     "Dioxus"
                 }
                 " • "
@@ -77,7 +75,7 @@ pub fn Footer(props: FooterProps) -> Element {
                     href: "https://github.com/adafede/dioxus",
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    style: link_style_value(),
+                    style: &link_style,
                     "View source"
                 }
             }

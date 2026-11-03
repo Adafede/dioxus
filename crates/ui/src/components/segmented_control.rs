@@ -44,10 +44,16 @@ pub struct SegmentedControlProps {
 /// A segmented button control for selecting one option from multiple.
 #[component]
 pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
-    let selected_value = props.selected_value.clone();
-    let stretch = props.stretch;
-    let wrap = props.wrap;
-    let on_select = props.on_select;
+    let SegmentedControlProps {
+        aria_label,
+        selected_value,
+        items,
+        on_select,
+        dark,
+        stretch,
+        wrap,
+        active_aria_current,
+    } = props;
 
     let group_classes = if wrap {
         "inline-flex flex-wrap items-center gap-1 shrink-0"
@@ -58,16 +64,16 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
     rsx! {
         div {
             role: "group",
-            aria_label: props.aria_label,
+            aria_label,
             class: "{group_classes}",
-            for item in &props.items {
+            for item in items {
                 SegmentedButton {
-                    label: item.label.clone(),
-                    value: item.value.clone(),
+                    label: item.label,
+                    value: item.value,
                     selected_value: selected_value.clone(),
-                    dark: props.dark,
+                    dark,
                     stretch,
-                    active_aria_current: props.active_aria_current,
+                    active_aria_current,
                     on_select,
                 }
             }
@@ -92,16 +98,20 @@ struct SegmentedButtonProps {
 
 #[component]
 fn SegmentedButton(props: SegmentedButtonProps) -> Element {
-    let active = props.value == props.selected_value;
-
-    let stretch = props.stretch;
-    let on_select = props.on_select;
-    let value = props.value.clone();
-    let label = props.label.clone();
+    let SegmentedButtonProps {
+        label,
+        value,
+        selected_value,
+        on_select,
+        dark,
+        stretch,
+        active_aria_current,
+    } = props;
+    let active = value == selected_value;
 
     let active_classes = if active {
         "bg-accent text-bg border-accent shadow-xs"
-    } else if props.dark {
+    } else if dark {
         "bg-surface2 text-text2 border-border"
     } else {
         "bg-surface text-text border-border"
@@ -121,7 +131,7 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
         button {
             r#type: "button",
             aria_pressed: if active { "true" } else { "false" },
-            aria_current: if active { props.active_aria_current } else { "false" },
+            aria_current: if active { active_aria_current } else { "false" },
             class: "{classes}",
             onclick: move |_| on_select.call(value.clone()),
             "{label}"

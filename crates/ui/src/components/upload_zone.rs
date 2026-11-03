@@ -52,6 +52,7 @@ pub fn UploadZone(
     let on_file_change = on_file_change;
     let on_drop = on_drop;
 
+    let is_drag_active = *drag_active.read();
     let upload_style = StyleBuilder::new()
         .display("flex")
         .flex_direction("column")
@@ -64,7 +65,7 @@ pub fn UploadZone(
         .property("position", "relative")
         .border(&format!(
             "2px dashed {}",
-            if *drag_active.read() {
+            if is_drag_active {
                 colors.blue
             } else {
                 colors.border
@@ -73,7 +74,7 @@ pub fn UploadZone(
         .border_radius(Radius::MD)
         .padding(Spacing::LG)
         .cursor("pointer")
-        .background_color(if *drag_active.read() {
+        .background_color(if is_drag_active {
             colors.surface2
         } else {
             colors.surface
@@ -81,7 +82,11 @@ pub fn UploadZone(
         .color(colors.text2)
         .build();
 
-    let status_color = if status.read().contains("Error") {
+    let status_text = status.read();
+    let status_color = if status_text.contains("Error")
+        || status_text.contains("error")
+        || status_text.contains("Unexpected")
+    {
         colors.red
     } else {
         colors.text

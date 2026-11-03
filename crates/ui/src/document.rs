@@ -83,23 +83,24 @@ pub struct DocumentHeadProps {
 /// lazily via `use_hook` + `document()` after the first render.
 #[component]
 pub fn DocumentHead(props: DocumentHeadProps) -> Element {
-    let title = props.title.clone();
-    let lang = props.lang.trim().to_string();
+    let DocumentHeadProps {
+        title,
+        lang,
+        description,
+        og_type,
+        og_url,
+        theme_colors,
+        scripts,
+        inline_script,
+        webmcp,
+        og_site_name,
+        json_ld,
+        canonical,
+    } = props;
+    let lang = lang.trim().to_string();
     let lang_for_hook = lang.clone();
     let lang_for_effect = lang;
-    let description = props.description.clone();
-    let og_type = props
-        .og_type
-        .clone()
-        .unwrap_or_else(|| "website".to_string());
-    let og_url = props.og_url.clone();
-    let og_site_name = props.og_site_name.clone();
-    let theme_colors = props.theme_colors;
-    let scripts = props.scripts.clone();
-    let inline_script = props.inline_script.clone();
-    let webmcp = props.webmcp;
-    let json_ld = props.json_ld.clone();
-    let canonical = props.canonical.clone();
+    let og_type = og_type.unwrap_or_else(|| "website".to_string());
 
     use_hook(move || {
         let doc = document();
@@ -107,7 +108,7 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         sync_document_lang(&lang_for_hook);
 
         // <meta name="description"> + og:description
-        if let Some(desc) = &description {
+        if let Some(desc) = description {
             doc.create_head_element(
                 "meta",
                 &[
@@ -120,7 +121,7 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
                 "meta",
                 &[
                     ("property", "og:description".to_string()),
-                    ("content", desc.clone()),
+                    ("content", desc),
                 ],
                 None,
             );
@@ -136,30 +137,27 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         // og:title
         doc.create_head_element(
             "meta",
-            &[
-                ("property", "og:title".to_string()),
-                ("content", title.clone()),
-            ],
+            &[("property", "og:title".to_string()), ("content", title)],
             None,
         );
 
         // og:site_name
-        if let Some(site_name) = &og_site_name {
+        if let Some(site_name) = og_site_name {
             doc.create_head_element(
                 "meta",
                 &[
                     ("property", "og:site_name".to_string()),
-                    ("content", site_name.clone()),
+                    ("content", site_name),
                 ],
                 None,
             );
         }
 
         // og:url
-        if let Some(url) = &og_url {
+        if let Some(url) = og_url {
             doc.create_head_element(
                 "meta",
-                &[("property", "og:url".to_string()), ("content", url.clone())],
+                &[("property", "og:url".to_string()), ("content", url)],
                 None,
             );
         }
@@ -195,10 +193,10 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         }
 
         // canonical <link>
-        if let Some(url) = &canonical {
+        if let Some(url) = canonical {
             doc.create_head_element(
                 "link",
-                &[("rel", "canonical".to_string()), ("href", url.clone())],
+                &[("rel", "canonical".to_string()), ("href", url)],
                 None,
             );
         }
@@ -215,11 +213,11 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         // `crossorigin="anonymous"`: prevents `nosniff` MIME-type errors on CDN
         // resources that send CORS headers.  Browsers also deduplicate
         // duplicate `async` script `src` URLs naturally.
-        for url in &scripts {
+        for url in scripts {
             doc.create_head_element(
                 "script",
                 &[
-                    ("src", url.clone()),
+                    ("src", url),
                     ("async", String::new()),
                     ("crossorigin", "anonymous".to_string()),
                 ],
@@ -246,7 +244,7 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         // don't leak into the global scope (which causes
         // `SyntaxError: redeclaration` when the component re-renders or
         // hot-reloads in dev mode and the hook runs again).
-        if let Some(js) = &inline_script {
+        if let Some(js) = inline_script {
             let wrapped = format!("(function(){{{js}}})();");
             doc.create_head_element("script", &[], Some(wrapped));
         }
@@ -263,11 +261,11 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         }
 
         // JSON-LD structured data
-        if let Some(ld) = &json_ld {
+        if let Some(ld) = json_ld {
             doc.create_head_element(
                 "script",
                 &[("type", "application/ld+json".to_string())],
-                Some(ld.clone()),
+                Some(ld),
             );
         }
     });

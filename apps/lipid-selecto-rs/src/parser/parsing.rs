@@ -5,10 +5,11 @@
 //! type.
 //!
 // A `SpectrumBlock` owns both its parsed metadata and the chemical-class
-// classification derived from it, so `classify` / `compute_class_matches` live
-// alongside the block structure (rather than in the aggregating `analysis`
-// module). This keeps block-level parsing and per-block classification in one
-// cohesive unit; cross-block aggregation lives in `super::analysis`.
+// classification derived from it, so `classify_with_compiled` and
+// `compute_class_matches_with_compiled` live alongside the block structure
+// (rather than in the aggregating `analysis` module). This keeps block-level
+// parsing and per-block classification in one cohesive unit; cross-block
+// aggregation lives in `super::analysis`.
 
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 
@@ -53,7 +54,7 @@ pub(crate) struct SpectrumBlock {
     /// Observed precursor m/z from `PEPMASS=` / `PRECURSOR_MZ=`.
     #[cfg(any(test, target_arch = "wasm32"))]
     pub precursor_mz: Option<f64>,
-    /// Result of lipid classification (populated by `SpectrumBlock::classify`).
+    /// Result of lipid classification (populated by `SpectrumBlock::classify_with_compiled`).
     pub classification: Option<LipidClassification>,
     /// Maps chemical class name -> bool (does this spectrum match?)
     pub gallery_item_matches: Option<HashMap<String, bool>>,
