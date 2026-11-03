@@ -7,9 +7,9 @@ use ui::prelude::*;
 use crate::app::browser::download_recalibrated_mgf;
 use crate::app::diagnostics::update_recalibration_diagnostics;
 use crate::app::plots::{
-    absolute_mass_bias_plot, ecdf_plot, estimate_compliance_mda, estimate_compliance_ppm,
-    format_bucket_text as format_cumulative_bucket_count, format_value_text as format_value,
-    tolerance_style as tolerance_card_style,
+    absolute_mass_bias_plot, ecdf_plot, format_cumulative_bucket_count,
+    format_recalibrated_compliance_mda, format_recalibrated_compliance_ppm, format_value,
+    tolerance_card_style,
 };
 use crate::diagnostics::RecalibrationStats;
 use crate::metrics::PrecursorStats;
@@ -280,54 +280,54 @@ pub fn ResultsPanel(
                     }
                 }
 
-                // Tolerance-band compliance AFTER recalibration (duplicated)
-                div {
-                    style: StyleBuilder::new().property("margin-top", "1rem").padding("0.95rem 1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
-                    h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "Tolerance-band compliance (Recalibrated)" }
-                    p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Estimated compliance after MS2 fragment recalibration (preview)" }
-                    div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
-                        if let Some(diag) = recalibration_diagnostics.read().as_ref() {
+                // Tolerance-band compliance AFTER recalibration
+                if let Some(diag) = recalibration_diagnostics.read().as_ref() {
+                    div {
+                        style: StyleBuilder::new().property("margin-top", "1rem").padding("0.95rem 1rem").border("1px solid #e2e8f0").border_radius("16px").property("background", "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)").box_shadow("0 10px 24px rgba(15, 23, 42, 0.06)").build(),
+                        h4 { style: StyleBuilder::new().margin("0 0 0.25rem").font_size("0.95rem").color("#0f172a").build(), "Tolerance-band compliance (Recalibrated)" }
+                        p { style: StyleBuilder::new().margin("0 0 0.7rem").color("#64748b").font_size("0.84rem").build(), "Estimated compliance after MS2 fragment recalibration (preview)" }
+                        div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fit, minmax(150px, 1fr))").gap("0.6rem").build(),
                             // mDa after
                             div { style: tolerance_card_style(0),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.1 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_mda(&diag.error_da_after, 0.1))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 0.1, false)}" }
                             }
                             div { style: tolerance_card_style(1),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_mda(&diag.error_da_after, 0.5))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 0.5, false)}" }
                             }
                             div { style: tolerance_card_style(2),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_mda(&diag.error_da_after, 1.0))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 1.0, false)}" }
                             }
                             div { style: tolerance_card_style(3),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_mda(&diag.error_da_after, 5.0))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 5.0, false)}" }
                             }
                             div { style: tolerance_card_style(4),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 5.0 mDa" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(100.0 - estimate_compliance_mda(&diag.error_da_after, 5.0))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_mda(&diag.error_da_after, 5.0, true)}" }
                             }
                             // ppm after
                             div { style: tolerance_card_style(0),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 0.5 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 0.5))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 0.5, false)}" }
                             }
                             div { style: tolerance_card_style(1),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 1.0 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 1.0))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 1.0, false)}" }
                             }
                             div { style: tolerance_card_style(2),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 5.0 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 5.0))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 5.0, false)}" }
                             }
                             div { style: tolerance_card_style(3),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "≤ 10.0 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(estimate_compliance_ppm(&diag.error_ppm_after, 10.0))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 10.0, false)}" }
                             }
                             div { style: tolerance_card_style(4),
                                 strong { style: StyleBuilder::new().display("block").font_size("0.8rem").property("margin-bottom", "0.25rem").build(), "> 10.0 ppm" }
-                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_value(100.0 - estimate_compliance_ppm(&diag.error_ppm_after, 10.0))}" }
+                                span { style: StyleBuilder::new().font_size("0.88rem").font_weight("700").build(), "{format_recalibrated_compliance_ppm(&diag.error_ppm_after, 10.0, true)}" }
                             }
                         }
                     }
@@ -337,12 +337,12 @@ pub fn ResultsPanel(
                 if !original_mgf_content.read().is_empty() && !matches!(*calibration_model.read(), CalibrationModel::None) {
                     button {
                         r#type: "button",
-                        style: StyleBuilder::new().property("margin-top", "1rem").width("100%").padding("0.75rem 1rem").border("2px solid #10b981").border_radius("8px").property("background", "#10b981").color("white").font_size("0.95rem").font_weight("700").cursor("pointer").transition("background 0.2s").property("hover", "background #059669").build(),
+                        style: StyleBuilder::new().property("margin-top", "1rem").width("100%").padding("0.75rem 1rem").border("2px solid #10b981").border_radius("8px").property("background", "#10b981").color("white").font_size("0.95rem").font_weight("700").cursor("pointer").transition("background 0.2s").build(),
                         onclick: move |_| {
                             let file_name = file_name.read();
                             let original = original_mgf_content.read();
                             let model = *calibration_model.read();
-                            let diag = recalibration_diagnostics.read().clone();
+                            let diag = recalibration_diagnostics.read();
 
                             let recalibrated = crate::recalibration::generate_recalibrated_mgf(
                                 &original, model, diag.as_ref(),
@@ -425,13 +425,18 @@ pub fn ResultsPanel(
                                 }
                                 if *cumulative_dist_tab.read() == "mda" {
                                     div {
-                                        dangerous_inner_html: render_cumulative_error_three_curves(
-                                            &diag.error_da_ms1,
-                                            &diag.error_da_before,
-                                            &diag.error_da_after,
-                                            "mDa",
-                                            vec![0.1, 0.5, 1.0, 5.0],
-                                        ).unwrap_or_default(),
+                                        dangerous_inner_html: {
+                                            let ms1_mda: Vec<f64> = diag.error_da_ms1.iter().map(|v| v * 1000.0).collect();
+                                            let before_mda: Vec<f64> = diag.error_da_before.iter().map(|v| v * 1000.0).collect();
+                                            let after_mda: Vec<f64> = diag.error_da_after.iter().map(|v| v * 1000.0).collect();
+                                            render_cumulative_error_three_curves(
+                                                &ms1_mda,
+                                                &before_mda,
+                                                &after_mda,
+                                                "mDa",
+                                                vec![0.1, 0.5, 1.0, 5.0],
+                                            ).unwrap_or_default()
+                                        },
                                     }
                                 } else {
                                     div {
@@ -486,48 +491,48 @@ pub fn ResultsPanel(
                 div {
                     if let Some(diag) = recalibration_diagnostics.read().as_ref() {
                         ecdf_plot {
-                            title: "Absolute precursor-error cumulative distribution (mDa)".to_string(),
-                            subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale".to_string(),
+                            title: "Absolute precursor-error cumulative distribution (mDa)",
+                            subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale",
                             values: diag.error_da_after.iter().map(|value| value.abs() * 1000.0).collect::<Vec<_>>(),
-                            thresholds: vec![0.1, 0.5, 1.0, 5.0],
-                            unit: "mDa".to_string(),
+                            thresholds: &[0.1, 0.5, 1.0, 5.0],
+                            unit: "mDa",
                         }
                         ecdf_plot {
-                            title: "Relative precursor-error cumulative distribution (ppm)".to_string(),
-                            subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale".to_string(),
+                            title: "Relative precursor-error cumulative distribution (ppm)",
+                            subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale",
                             values: diag.error_ppm_after.iter().map(|value| value.abs()).collect::<Vec<_>>(),
-                            thresholds: vec![0.5, 1.0, 5.0, 10.0],
-                            unit: "ppm".to_string(),
+                            thresholds: &[0.5, 1.0, 5.0, 10.0],
+                            unit: "ppm",
                         }
                     } else {
                         ecdf_plot {
-                            title: "Absolute precursor-error cumulative distribution (mDa)".to_string(),
-                            subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale".to_string(),
+                            title: "Absolute precursor-error cumulative distribution (mDa)",
+                            subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale",
                             values: metrics.absolute_error_da_values.iter().map(|value| value * 1000.0).collect::<Vec<_>>(),
-                            thresholds: vec![0.1, 0.5, 1.0, 5.0],
-                            unit: "mDa".to_string(),
+                            thresholds: &[0.1, 0.5, 1.0, 5.0],
+                            unit: "mDa",
                         }
                         ecdf_plot {
-                            title: "Relative precursor-error cumulative distribution (ppm)".to_string(),
-                            subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale".to_string(),
+                            title: "Relative precursor-error cumulative distribution (ppm)",
+                            subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale",
                             values: metrics.absolute_error_ppm_values.clone(),
-                            thresholds: vec![0.5, 1.0, 5.0, 10.0],
-                            unit: "ppm".to_string(),
+                            thresholds: &[0.5, 1.0, 5.0, 10.0],
+                            unit: "ppm",
                         }
                     }
                     absolute_mass_bias_plot {
-                        title: "Signed error vs. precursor 𝑚/𝑧 (mDa)".to_string(),
-                        subtitle: "Signed error at each precursor 𝑚/𝑧, centered on zero and shown with a symmetric y-axis".to_string(),
+                        title: "Signed error vs. precursor 𝑚/𝑧 (mDa)",
+                        subtitle: "Signed error at each precursor 𝑚/𝑧, centered on zero and shown with a symmetric y-axis",
                         points: metrics.plot_points.clone(),
-                        unit: "mDa".to_string(),
-                        ticks: vec![0.1, 0.5, 1.0, 5.0],
+                        unit: "mDa",
+                        ticks: &[0.1, 0.5, 1.0, 5.0],
                     }
                     absolute_mass_bias_plot {
-                        title: "Signed relative error vs. precursor 𝑚/𝑧 (ppm)".to_string(),
-                        subtitle: "Signed relative error at each precursor 𝑚/𝑧, centered on zero and shown with a symmetric y-axis".to_string(),
+                        title: "Signed relative error vs. precursor 𝑚/𝑧 (ppm)",
+                        subtitle: "Signed relative error at each precursor 𝑚/𝑧, centered on zero and shown with a symmetric y-axis",
                         points: metrics.plot_points.clone(),
-                        unit: "ppm".to_string(),
-                        ticks: vec![0.5, 1.0, 5.0, 10.0],
+                        unit: "ppm",
+                        ticks: &[0.5, 1.0, 5.0, 10.0],
                     }
                 }
             }

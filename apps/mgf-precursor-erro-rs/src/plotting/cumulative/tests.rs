@@ -122,8 +122,8 @@ fn cumulative_points_empty_returns_empty_vec() {
 
 #[test]
 fn cumulative_points_filters_non_finite() {
-    let result = cumulative_points(&[1.0, f64::NAN, 2.0, f64::INFINITY]);
-    // After filtering NaN/Inf: [1.0, 2.0] → cumulative percentages:
+    let result = cumulative_points(&[-2.0, f64::NAN, 1.0, f64::INFINITY]);
+    // After filtering NaN/Inf and taking magnitude: [1.0, 2.0] → cumulative percentages:
     // (1.0, 50.0), (2.0, 100.0)
     assert_eq!(result.len(), 2);
     assert_eq!(result[0], (1.0, 50.0));

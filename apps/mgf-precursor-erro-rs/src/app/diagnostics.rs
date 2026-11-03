@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-use dioxus::prelude::Signal;
-#[cfg(target_arch = "wasm32")]
-use dioxus::prelude::WritableExt;
+use dioxus::prelude::{Signal, WritableExt};
 
 use crate::diagnostics::RecalibrationStats;
 use crate::metrics::PrecursorStats;
-use crate::recalibration::CalibrationModel;
+use crate::recalibration::{CalibrationModel, recalibrate_fragment_mz};
 
-#[cfg(target_arch = "wasm32")]
 pub(crate) fn update_recalibration_diagnostics(
     metrics: &PrecursorStats,
     model: CalibrationModel,
@@ -54,13 +51,13 @@ pub(crate) fn update_recalibration_diagnostics(
             0.0
         };
 
-        let precursor_ms2_after = match model {
-            CalibrationModel::TOFDa { .. } => precursor_ms2 - lambda * delta_ms2_ms1_da,
-            CalibrationModel::OrbitrapPPM { .. } => {
-                precursor_ms2 * (1.0 - lambda * delta_ppm_ms2_ms1 / 1e6)
-            }
-            CalibrationModel::None => precursor_ms2,
-        };
+        let precursor_ms2_after = recalibrate_fragment_mz(
+            precursor_ms2,
+            delta_ms2_ms1_da,
+            precursor_ms1,
+            lambda,
+            model,
+        );
 
         let error_da_after = precursor_ms2_after - theoretical_mass;
         let error_ppm_after = if theoretical_mass > 0.0 {
@@ -97,12 +94,4 @@ pub(crate) fn update_recalibration_diagnostics(
 
     diag.compute_statistics();
     diagnostics_signal.set(Some(diag));
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(super) const fn update_recalibration_diagnostics(
-    _metrics: &PrecursorStats,
-    _model: CalibrationModel,
-    _diagnostics_signal: &mut Signal<Option<RecalibrationStats>>,
-) {
 }

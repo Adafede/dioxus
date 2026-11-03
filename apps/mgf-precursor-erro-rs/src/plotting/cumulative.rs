@@ -15,6 +15,7 @@ fn cumulative_points(values: &[f64]) -> Vec<(f64, f64)> {
         .iter()
         .copied()
         .filter(|value| value.is_finite())
+        .map(f64::abs)
         .collect();
     sorted.sort_unstable_by(f64::total_cmp);
     if sorted.is_empty() {
