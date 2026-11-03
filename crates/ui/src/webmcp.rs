@@ -75,9 +75,9 @@ pub struct WebMcpConfig {
     pub edam: EdamAnnotations,
 }
 
-/// Returns `s` as a JSON string literal (also valid as a JS string literal).
-fn json_string(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
+/// Writes `s` as a JSON string literal (also valid as a JS string literal) into `out`.
+fn write_json_string(out: &mut String, s: &str) {
+    out.reserve(s.len() + 2);
     out.push('"');
     for c in s.chars() {
         match c {
@@ -93,30 +93,64 @@ fn json_string(s: &str) -> String {
         }
     }
     out.push('"');
+}
+
+/// Returns `s` as a JSON string literal (also valid as a JS string literal).
+fn json_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    write_json_string(&mut out, s);
     out
 }
 
+fn json_string_list(items: &[&str]) -> String {
+    let mut out = String::new();
+    for (i, item) in items.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        write_json_string(&mut out, item);
+    }
+    out
+}
+
+fn write_json_edam_uri(out: &mut String, term: EdamTerm) {
+    out.push_str("\"http://edamontology.org/");
+    for c in term.id.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+}
+
 fn json_edam_terms(terms: &[EdamTerm]) -> String {
-    terms
-        .iter()
-        .map(|t| {
-            format!(
-                r#"{{"id": {}, "label": {}, "uri": {}}}"#,
-                json_string(t.id),
-                json_string(t.label),
-                json_string(&t.uri()),
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(", ")
+    let mut out = String::with_capacity(terms.len() * 80);
+    for (i, t) in terms.iter().copied().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(r#"{"id": "#);
+        write_json_string(&mut out, t.id);
+        out.push_str(r#", "label": "#);
+        write_json_string(&mut out, t.label);
+        out.push_str(r#", "uri": "#);
+        write_json_edam_uri(&mut out, t);
+        out.push('}');
+    }
+    out
 }
 
 fn json_edam_uris(terms: &[EdamTerm]) -> String {
-    terms
-        .iter()
-        .map(|t| json_string(&t.uri()))
-        .collect::<Vec<_>>()
-        .join(", ")
+    let mut out = String::with_capacity(terms.len() * 40);
+    for (i, t) in terms.iter().copied().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        write_json_edam_uri(&mut out, t);
+    }
+    out
 }
 
 /// Returns the inline `<script>` body that registers one read-only tool on
@@ -130,18 +164,8 @@ pub(crate) fn capabilities_script(cfg: WebMcpConfig) -> String {
     let name = json_string(&tool_name);
     let title = json_string(cfg.title);
     let description = json_string(cfg.description);
-    let inputs: String = cfg
-        .inputs
-        .iter()
-        .map(|s| json_string(s))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let outputs: String = cfg
-        .outputs
-        .iter()
-        .map(|s| json_string(s))
-        .collect::<Vec<_>>()
-        .join(", ");
+    let inputs = json_string_list(cfg.inputs);
+    let outputs = json_string_list(cfg.outputs);
     let topics = json_edam_terms(cfg.edam.topics);
     let operations = json_edam_terms(cfg.edam.operations);
     let input_data = json_edam_terms(cfg.edam.input_data);

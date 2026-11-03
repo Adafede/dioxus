@@ -98,15 +98,15 @@ pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
 
     // Assemble the base SMILES string (hand-built because chematic's writer
     // cannot emit `*`).
-    let (base_smiles, star_idx, attach_idx) =
+    let (base_smiles, star_indices, attach_idx) =
         build_base_smiles(&scaffold_smiles, &defs, scaffold_len);
 
-    // m: fields (one per star / def). `defs`, `targets` and `star_idx` all have
+    // m: fields (one per star / def). `defs`, `targets` and `star_indices` all have
     // one entry per floating group, so the three walk together.
     let fields: Vec<String> = defs
         .iter()
         .zip(&targets)
-        .zip(&star_idx)
+        .zip(&star_indices)
         .map(|((_, target), &star)| {
             let pos = match target {
                 Target::Variable(p) => p

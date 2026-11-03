@@ -149,22 +149,21 @@ async fn fetch_lotus_hits_by_inchikey(
 
     for binding in bindings {
         // Get the InChIKey we're querying for
-        let inchikey = binding_value(&binding, "inchikey");
+        let inchikey = binding_str(&binding, "inchikey");
         if inchikey.is_empty() {
             continue;
         }
-        let connectivity = inchikey.split('-').next().unwrap_or(&inchikey).to_string();
-
-        let entry = summary.entry(connectivity.clone()).or_default();
+        let connectivity = inchikey.split('-').next().unwrap_or(inchikey);
+        let entry = summary.entry(connectivity.to_string()).or_default();
 
         // Get the related item QID (main compound, or discovered stereoisomer/tautomer/parent)
-        let related_uri = binding_value(&binding, "related_item");
+        let related_uri = binding_str(&binding, "related_item");
 
         // Get taxon if available - insert BEFORE logging so count is accurate
-        let taxon_name = binding_value(&binding, "taxon_name");
+        let taxon_name = binding_str(&binding, "taxon_name");
         let has_taxon = !taxon_name.is_empty();
         if has_taxon {
-            entry.taxa.insert(taxon_name);
+            entry.taxa.insert(taxon_name.to_string());
         }
 
         if let Some(qid) = related_uri.strip_prefix("http://www.wikidata.org/entity/")
@@ -191,18 +190,18 @@ async fn fetch_pubchem_hits(
         let query = build_pubchem_query(chunk);
 
         for binding in sparql_bindings(http, QLEVER_PUBCHEM, &query).await? {
-            let inchikey = binding_value(&binding, "inchikey");
+            let inchikey = binding_str(&binding, "inchikey");
             if inchikey.is_empty() {
                 continue;
             }
             // Match on the 14-character skeleton hash only
-            let key = inchikey.split('-').next().unwrap_or(&inchikey).to_string();
-            let cid = binding_value(&binding, "related_cid");
+            let key = inchikey.split('-').next().unwrap_or(inchikey);
+            let cid = binding_str(&binding, "related_cid");
 
-            let entry = summary.entry(key).or_default();
+            let entry = summary.entry(key.to_string()).or_default();
 
             if !cid.is_empty() {
-                entry.cids.insert(cid);
+                entry.cids.insert(cid.to_string());
             }
         }
     }
@@ -218,26 +217,31 @@ async fn sparql_bindings(
     let response = run_query(http, endpoint, query, ResponseFormat::SparqlJson)
         .await
         .map_err(|err| err.to_string())?;
-    let json: Value = serde_json::from_str(&response).map_err(|err| err.to_string())?;
+    let mut json: Value = serde_json::from_str(&response).map_err(|err| err.to_string())?;
     let bindings = json
-        .get("results")
-        .and_then(|value| value.get("bindings"))
-        .and_then(Value::as_array)
+        .as_object_mut()
+        .and_then(|root| root.remove("results"))
+        .and_then(|mut results| results.as_object_mut()?.remove("bindings"))
+        .and_then(|bindings| match bindings {
+            Value::Array(arr) => Some(arr),
+            _ => None,
+        })
         .ok_or_else(|| "SPARQL response missing bindings".to_string())?;
     Ok(bindings
-        .iter()
-        .filter_map(Value::as_object)
-        .cloned()
+        .into_iter()
+        .filter_map(|v| match v {
+            Value::Object(map) => Some(map),
+            _ => None,
+        })
         .collect())
 }
 
 #[cfg(target_arch = "wasm32")]
-fn binding_value(binding: &serde_json::Map<String, Value>, key: &str) -> String {
+fn binding_str<'a>(binding: &'a serde_json::Map<String, Value>, key: &str) -> &'a str {
     binding
         .get(key)
         .and_then(|value| value.get("value"))
         .and_then(Value::as_str)
         .unwrap_or("")
         .trim()
-        .to_string()
 }

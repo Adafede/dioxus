@@ -12,12 +12,7 @@
 
 /// Build Wikidata LOTUS query for WDQS (standard nested SELECT approach).
 pub(crate) fn build_lotus_query_wdqs(inchikeys: &[String]) -> String {
-    let values = inchikeys
-        .iter()
-        .filter(|s| !s.is_empty())
-        .map(|v| format!("\"{}\"", escape_sparql_literal(v)))
-        .collect::<Vec<_>>()
-        .join(" ");
+    let values = format_sparql_values(inchikeys);
 
     if values.is_empty() {
         return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
@@ -49,12 +44,7 @@ SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
 
 /// Build Wikidata LOTUS query for qlever (optimized union structure).
 pub(crate) fn build_lotus_query_qlever(inchikeys: &[String]) -> String {
-    let values = inchikeys
-        .iter()
-        .filter(|s| !s.is_empty())
-        .map(|v| format!("\"{}\"", escape_sparql_literal(v)))
-        .collect::<Vec<_>>()
-        .join(" ");
+    let values = format_sparql_values(inchikeys);
 
     if values.is_empty() {
         return "SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {} # empty".to_string();
@@ -95,12 +85,7 @@ SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
 }
 
 pub(crate) fn build_pubchem_query(chunk: &[String]) -> String {
-    let values = chunk
-        .iter()
-        .filter(|s| !s.is_empty())
-        .map(|value| format!("\"{}\"", escape_sparql_literal(value)))
-        .collect::<Vec<_>>()
-        .join(" ");
+    let values = format_sparql_values(chunk);
     format!(
         r"
 PREFIX cheminf: <http://semanticscience.org/resource/>
@@ -129,8 +114,34 @@ SELECT DISTINCT ?inchikey ?related_cid WHERE {{
     )
 }
 
+fn format_sparql_values(inchikeys: &[String]) -> String {
+    let mut out = String::with_capacity(inchikeys.len() * 30);
+    for value in inchikeys.iter().filter(|s| !s.is_empty()) {
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push('"');
+        write_escaped_sparql_literal(&mut out, value);
+        out.push('"');
+    }
+    out
+}
+
+fn write_escaped_sparql_literal(out: &mut String, value: &str) {
+    for c in value.chars() {
+        match c {
+            '\\' => out.push_str(r"\\"),
+            '"' => out.push_str(r#"\""#),
+            other => out.push(other),
+        }
+    }
+}
+
+#[cfg(test)]
 pub(crate) fn escape_sparql_literal(value: &str) -> String {
-    value.replace('\\', r"\\").replace('"', r#"\""#)
+    let mut out = String::with_capacity(value.len());
+    write_escaped_sparql_literal(&mut out, value);
+    out
 }
 
 #[cfg(test)]

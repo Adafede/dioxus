@@ -153,11 +153,10 @@ fn summarise(body: &[u8]) -> String {
         .or_else(|| text.lines().map(str::trim).find(|l| !l.is_empty()))
         .unwrap_or("the endpoint gave no reason");
 
-    if line.chars().count() <= MAX_MESSAGE_CHARS {
-        return line.to_string();
+    match line.char_indices().nth(MAX_MESSAGE_CHARS) {
+        Some((byte_idx, _)) => format!("{}…", &line[..byte_idx]),
+        None => line.to_string(),
     }
-    let truncated: String = line.chars().take(MAX_MESSAGE_CHARS).collect();
-    format!("{truncated}…")
 }
 
 #[cfg(test)]

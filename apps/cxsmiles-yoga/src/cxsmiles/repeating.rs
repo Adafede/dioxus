@@ -95,9 +95,10 @@ pub(crate) fn repeat_pattern(
     scaffold_q: &QueryMolecule,
 ) -> Result<Vec<u32>, CxError> {
     // The first embedding, not the "best" one: an embedding covers every query
-    // atom, so every hit has the same length and `unmatched_count` is the same
-    // for all of them. Ranking by it chose the first entry while looking like a
-    // measurement. `graph::best_match` says the same about the same invariant.
+    // atom, so every hit has the same length and the number of unmatched atoms
+    // is the same for all of them. Ranking by it chose the first entry while
+    // looking like a measurement. `graph::best_match` says the same about the
+    // same invariant.
     let hits = find_matches(scaffold_q, longest);
     let hit = hits
         .into_iter()

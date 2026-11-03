@@ -117,18 +117,26 @@ fn finish_csv_row(
 }
 
 fn looks_like_smiles_list(text: &str) -> bool {
-    let lines = text
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .collect::<Vec<_>>();
-    !lines.is_empty()
-        && lines.iter().all(|line| {
-            !line.contains(',')
-                && !line.contains('\t')
-                && !line.contains(';')
-                && normalize_column_header(line) != "smiles"
-        })
+    let mut lines = text.lines().map(str::trim).filter(|line| !line.is_empty());
+    let Some(first) = lines.next() else {
+        return false;
+    };
+    is_plain_smiles_line(first) && lines.all(is_plain_smiles_line)
+}
+
+fn is_plain_smiles_line(line: &str) -> bool {
+    !line.contains(',')
+        && !line.contains('\t')
+        && !line.contains(';')
+        && !strip_header_prefix(line).eq_ignore_ascii_case("smiles")
+}
+
+fn strip_header_prefix(header: &str) -> &str {
+    header
+        .trim()
+        .trim_start_matches('\u{feff}')
+        .trim_start_matches(|c: char| ['>', '#', '"', '\'', ':', ';'].contains(&c))
+        .trim()
 }
 
 fn parse_smiles_lines(text: &str) -> Result<Vec<RawRow>, String> {
@@ -156,18 +164,13 @@ fn detect_column(headers: &[String], names: &[&str]) -> Option<usize> {
         let normalized = normalize_column_header(header);
         names
             .iter()
-            .any(|needle| normalized == *needle || normalized.contains(needle))
+            .any(|needle| normalized.contains(needle))
             .then_some(idx)
     })
 }
 
 fn normalize_column_header(header: &str) -> String {
-    header
-        .trim()
-        .trim_start_matches('\u{feff}')
-        .trim_start_matches(|c: char| ['>', '#', '"', '\'', ':', ';'].contains(&c))
-        .trim()
-        .to_ascii_lowercase()
+    strip_header_prefix(header).to_ascii_lowercase()
 }
 
 fn label_for_record(record: &[String], label_idx: Option<usize>, line_no: usize) -> String {

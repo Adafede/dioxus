@@ -11,10 +11,8 @@
 //! Two, and only the second one ships: `count_value` is the streaming scanner the
 //! browser runs, over files too large to hold in memory. `count_non_null_leaves`
 //! is `#[cfg(test)]`-only and exists as its oracle — `mod streaming` asserts the
-//! two agree, which is what makes the one difference between them (the streaming
-//! side counts a nested object's *key* as a leaf) visible at all. That
-//! divergence is pinned, not endorsed; see
-//! `a_nested_objects_key_is_counted_as_a_leaf_which_may_not_be_intended`.
+//! two agree, including counting a nested object's *key* as a leaf; see
+//! `a_nested_objects_key_is_counted_as_a_leaf`.
 //!
 //! The streaming reader takes an `upload::bytes::ChunkSource` rather than a
 //! `Blob`, so `count_value` compiles and runs on the host and can be tested at
