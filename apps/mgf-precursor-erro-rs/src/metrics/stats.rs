@@ -77,15 +77,11 @@ impl MedianTracker {
         }
     }
 
-    pub(crate) fn merge(&mut self, mut other: Self) {
-        let mut values = Vec::with_capacity(other.lower_len + other.upper_len);
-        while let Some(OrderedF64(value)) = other.lower.pop() {
-            values.push(value);
+    pub(crate) fn merge(&mut self, other: &Self) {
+        for &OrderedF64(value) in &other.lower {
+            self.push(value);
         }
-        while let Some(Reverse(OrderedF64(value))) = other.upper.pop() {
-            values.push(value);
-        }
-        for value in values {
+        for &Reverse(OrderedF64(value)) in &other.upper {
             self.push(value);
         }
     }

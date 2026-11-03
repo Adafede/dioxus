@@ -232,13 +232,23 @@ fn parse_multiplicity_token(token: &str) -> Option<f64> {
 }
 
 fn parse_adduct_mass_spec_cached(adduct: &str) -> Option<(f64, f64)> {
-    let normalized = adduct.trim().replace(' ', "");
-    if normalized.is_empty() {
+    let trimmed = adduct.trim();
+    if trimmed.is_empty() {
         return None;
     }
 
     ADDUCT_SPEC_CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
+        if !trimmed.contains(' ') {
+            if let Some(mass_spec) = cache.get(trimmed) {
+                return *mass_spec;
+            }
+            let mass_spec = parse_adduct_mass_spec(trimmed);
+            cache.insert(trimmed.to_string(), mass_spec);
+            return mass_spec;
+        }
+
+        let normalized = trimmed.replace(' ', "");
         if let Some(mass_spec) = cache.get(&normalized) {
             return *mass_spec;
         }
@@ -373,5 +383,5 @@ pub(crate) const fn is_excluded_adduct(adduct: &str) -> bool {
 
 #[must_use]
 pub(crate) fn is_supported_adduct(adduct: &str) -> bool {
-    parse_adduct_mass_spec(adduct).is_some()
+    parse_adduct_mass_spec_cached(adduct).is_some()
 }

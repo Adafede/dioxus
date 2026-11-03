@@ -7,6 +7,8 @@
 /// allowing users to assess the impact of recalibration on mass accuracy.
 use std::collections::BTreeMap;
 
+use crate::plotting::data::usize_to_f64;
+
 /// Statistics about precursor errors for diagnostic purposes.
 #[derive(Clone, Debug)]
 pub struct RecalibrationStats {
@@ -219,7 +221,7 @@ impl RecalibrationStats {
             self.sample_count += 1;
         } else {
             // Reservoir sampling for additional points
-            let index = reservoir_index(self.total_count, max_samples);
+            let index = reservoir_index(self.total_count);
             if index < max_samples {
                 write_reservoir_slot(&mut self.error_ppm_before, index, error_ppm_before);
                 write_reservoir_slot(&mut self.error_ppm_after, index, error_ppm_after);
@@ -277,7 +279,7 @@ impl RecalibrationStats {
             self.sample_count += 1;
         } else {
             // Reservoir sampling for additional points
-            let index = reservoir_index(self.total_count, max_samples);
+            let index = reservoir_index(self.total_count);
             if index < max_samples {
                 write_reservoir_slot(&mut self.error_ppm_ms1, index, error_ppm_ms1);
                 write_reservoir_slot(&mut self.delta_ppm_ms2_ms1, index, delta_ppm_ms2_ms1);
@@ -285,6 +287,11 @@ impl RecalibrationStats {
                 write_reservoir_slot(&mut self.error_ppm_after, index, error_ppm_after);
                 write_reservoir_slot(&mut self.error_da_ms1, index, error_da_ms1);
                 write_reservoir_slot(&mut self.delta_da_ms2_ms1, index, delta_da_ms2_ms1);
+                write_reservoir_slot(&mut self.error_da_before, index, error_da_before);
+                write_reservoir_slot(&mut self.error_da_after, index, error_da_after);
+                write_reservoir_slot(&mut self.precursor_ms1_values, index, precursor_ms1);
+                write_reservoir_slot(&mut self.precursor_ms2_before, index, precursor_ms2_before);
+                write_reservoir_slot(&mut self.precursor_ms2_after, index, precursor_ms2_after);
             }
         }
 
@@ -395,21 +402,12 @@ fn compute_max_abs(values: &[f64]) -> f64 {
     values.iter().map(|v| v.abs()).fold(0.0, f64::max)
 }
 
-fn usize_to_f64(value: usize) -> f64 {
-    f64::from(u32::try_from(value).unwrap_or(u32::MAX))
-}
-
-fn reservoir_index(seen: usize, modulo: usize) -> usize {
-    if modulo == 0 {
-        return 0;
-    }
-
+fn reservoir_index(seen: usize) -> usize {
     let stream_index = u64::try_from(seen).unwrap_or(u64::MAX).max(1);
     let mixed = stream_index
         .wrapping_mul(0x9e37_79b9_7f4a_7c15)
         .wrapping_add(0xbf58_476d_1ce4_e5b9);
-    let modulo_u64 = u64::try_from(modulo).unwrap_or(u64::MAX);
-    usize::try_from(mixed % modulo_u64).unwrap_or(0)
+    usize::try_from(mixed % stream_index).unwrap_or(0)
 }
 
 /// Overwrites reservoir slot `index` of one error series.

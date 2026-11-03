@@ -53,12 +53,7 @@ pub fn generate_recalibrated_mgf(
     calibration_model: CalibrationModel,
     _diagnostics: Option<&RecalibrationStats>,
 ) -> String {
-    #[cfg(target_arch = "wasm32")]
-    use web_sys::console;
-
     if matches!(calibration_model, CalibrationModel::None) {
-        #[cfg(target_arch = "wasm32")]
-        console::log_1(&"Recalibration: model is None, returning original".into());
         return original_content.to_string();
     }
 
@@ -67,7 +62,7 @@ pub fn generate_recalibrated_mgf(
         CalibrationModel::None => 0.0,
     };
 
-    let mut result = String::new();
+    let mut result = String::with_capacity(original_content.len());
     let mut pepmass: Option<f64>;
     let mut spectrum_frags: Vec<String> = Vec::new();
 

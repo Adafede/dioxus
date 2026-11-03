@@ -18,36 +18,31 @@ pub(crate) fn usize_to_f64(value: usize) -> f64 {
     f64::from(u32::try_from(value).unwrap_or(u32::MAX))
 }
 
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub(crate) fn floor_to_usize(value: f64) -> usize {
     if !value.is_finite() || value <= 0.0 {
         return 0;
     }
-
-    let mut result = 0usize;
-    let mut remaining = value.floor();
-    loop {
-        if remaining < 1.0 {
-            break result;
-        }
-        result = result.saturating_add(1);
-        remaining -= 1.0;
-    }
+    value.floor() as usize
 }
 
 pub(super) fn mean_and_std_dev(values: &[f64]) -> Option<(f64, f64)> {
-    let filtered = values
-        .iter()
-        .copied()
-        .filter(|value| value.is_finite())
-        .collect::<Vec<_>>();
-    if filtered.is_empty() {
+    let mut count = 0usize;
+    let mut sum = 0.0f64;
+    for value in values.iter().copied().filter(|v| v.is_finite()) {
+        count += 1;
+        sum += value;
+    }
+    if count == 0 {
         return None;
     }
 
-    let n = usize_to_f64(filtered.len());
-    let mean = filtered.iter().sum::<f64>() / n;
-    let variance = filtered
+    let n = usize_to_f64(count);
+    let mean = sum / n;
+    let variance = values
         .iter()
+        .copied()
+        .filter(|value| value.is_finite())
         .map(|value| (value - mean).powi(2))
         .sum::<f64>()
         / n;
@@ -66,8 +61,9 @@ where
     G: Fn(&PlotPoint) -> Option<f64>,
 {
     let mut family_points: HashMap<AdductFamily, Vec<(f64, f64)>> = HashMap::new();
-    let mut x_values = Vec::new();
-    let mut y_values = Vec::new();
+    let mut raw_x_min = f64::INFINITY;
+    let mut raw_x_max = f64::NEG_INFINITY;
+    let mut data_max = 0.0f64;
 
     for point in points {
         let Some(x_value) = x_value_fn(point) else {
@@ -79,29 +75,20 @@ where
         if !x_value.is_finite() || !y_value.is_finite() {
             continue;
         }
-        x_values.push(x_value);
-        y_values.push(y_value);
+        raw_x_min = raw_x_min.min(x_value);
+        raw_x_max = raw_x_max.max(x_value);
+        data_max = data_max.max(y_value.abs());
         family_points
             .entry(point.adduct_family)
             .or_default()
             .push((x_value, y_value));
     }
 
-    let x_min = x_values
-        .iter()
-        .copied()
-        .fold(f64::INFINITY, f64::min)
-        .min(1.0);
-    let x_max = x_values
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max)
-        .max(x_min + 1.0);
+    let x_min = raw_x_min.min(1.0);
+    let x_max = raw_x_max.max(x_min + 1.0);
     let x_span = (x_max - x_min).max(1.0);
     let x_min = x_min - x_span * 0.05;
     let x_max = x_max + x_span * 0.05;
-
-    let data_max = y_values.iter().copied().map(f64::abs).fold(0.0, f64::max);
     let y_limit = if fallback_y_limit > 0.0 {
         data_max.min(fallback_y_limit)
     } else {

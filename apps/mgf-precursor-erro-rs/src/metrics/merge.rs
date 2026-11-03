@@ -3,29 +3,28 @@
 
 use super::{HighErrorSmilesDetail, PrecursorStats, usize_to_f64};
 
+#[cfg(test)]
 #[must_use]
 pub(crate) fn merge_precursor_stats(
     mut current: PrecursorStats,
     next: &PrecursorStats,
 ) -> PrecursorStats {
+    merge_precursor_stats_in_place(&mut current, next);
+    current
+}
+
+pub(crate) fn merge_precursor_stats_in_place(current: &mut PrecursorStats, next: &PrecursorStats) {
     let current_spectra = usize_to_f64(current.spectra);
     let next_spectra = usize_to_f64(next.spectra);
     let total_spectra = current_spectra + next_spectra;
 
-    merge_precursor_counts(&mut current, next);
-    merge_precursor_source(&mut current, next);
-    merge_precursor_scalar_stats(
-        &mut current,
-        next,
-        current_spectra,
-        next_spectra,
-        total_spectra,
-    );
-    merge_precursor_histograms(&mut current, next);
-    merge_precursor_samples(&mut current, next);
-    merge_precursor_plot_points(&mut current, next);
-    merge_precursor_maps(&mut current, next);
-    current
+    merge_precursor_counts(current, next);
+    merge_precursor_source(current, next);
+    merge_precursor_scalar_stats(current, next, current_spectra, next_spectra, total_spectra);
+    merge_precursor_histograms(current, next);
+    merge_precursor_samples(current, next);
+    merge_precursor_plot_points(current, next);
+    merge_precursor_maps(current, next);
 }
 
 const fn merge_precursor_counts(current: &mut PrecursorStats, next: &PrecursorStats) {
@@ -75,12 +74,28 @@ fn merge_precursor_scalar_stats(
     next_spectra: f64,
     total_spectra: f64,
 ) {
-    current.observed_precursor_min = current
-        .observed_precursor_min
-        .min(next.observed_precursor_min);
-    current.observed_precursor_max = current
-        .observed_precursor_max
-        .max(next.observed_precursor_max);
+    if next_spectra == 0.0 {
+        return;
+    }
+    if current_spectra == 0.0 {
+        current.observed_precursor_min = next.observed_precursor_min;
+        current.observed_precursor_max = next.observed_precursor_max;
+        current.abs_error_da_min = next.abs_error_da_min;
+        current.abs_error_da_max = next.abs_error_da_max;
+        current.abs_error_ppm_min = next.abs_error_ppm_min;
+        current.abs_error_ppm_max = next.abs_error_ppm_max;
+    } else {
+        current.observed_precursor_min = current
+            .observed_precursor_min
+            .min(next.observed_precursor_min);
+        current.observed_precursor_max = current
+            .observed_precursor_max
+            .max(next.observed_precursor_max);
+        current.abs_error_da_min = current.abs_error_da_min.min(next.abs_error_da_min);
+        current.abs_error_da_max = current.abs_error_da_max.max(next.abs_error_da_max);
+        current.abs_error_ppm_min = current.abs_error_ppm_min.min(next.abs_error_ppm_min);
+        current.abs_error_ppm_max = current.abs_error_ppm_max.max(next.abs_error_ppm_max);
+    }
     current.observed_precursor_mean = blend(
         current.observed_precursor_mean,
         next.observed_precursor_mean,
@@ -90,11 +105,9 @@ fn merge_precursor_scalar_stats(
     );
     current
         .observed_precursor_median_tracker
-        .merge(next.observed_precursor_median_tracker.clone());
+        .merge(&next.observed_precursor_median_tracker);
     current.observed_precursor_median = current.observed_precursor_median_tracker.median();
 
-    current.abs_error_da_min = current.abs_error_da_min.min(next.abs_error_da_min);
-    current.abs_error_da_max = current.abs_error_da_max.max(next.abs_error_da_max);
     current.abs_error_da_mean = blend(
         current.abs_error_da_mean,
         next.abs_error_da_mean,
@@ -104,7 +117,7 @@ fn merge_precursor_scalar_stats(
     );
     current
         .abs_error_da_median_tracker
-        .merge(next.abs_error_da_median_tracker.clone());
+        .merge(&next.abs_error_da_median_tracker);
     current.abs_error_da_median = current.abs_error_da_median_tracker.median();
     let current_da_rms_sq = current.abs_error_da_rms * current.abs_error_da_rms;
     let next_da_rms_sq = next.abs_error_da_rms * next.abs_error_da_rms;
@@ -117,8 +130,6 @@ fn merge_precursor_scalar_stats(
     );
     current.abs_error_da_rms = current.abs_error_da_rms.sqrt();
 
-    current.abs_error_ppm_min = current.abs_error_ppm_min.min(next.abs_error_ppm_min);
-    current.abs_error_ppm_max = current.abs_error_ppm_max.max(next.abs_error_ppm_max);
     current.abs_error_ppm_mean = blend(
         current.abs_error_ppm_mean,
         next.abs_error_ppm_mean,
@@ -128,7 +139,7 @@ fn merge_precursor_scalar_stats(
     );
     current
         .abs_error_ppm_median_tracker
-        .merge(next.abs_error_ppm_median_tracker.clone());
+        .merge(&next.abs_error_ppm_median_tracker);
     current.abs_error_ppm_median = current.abs_error_ppm_median_tracker.median();
     let current_ppm_rms_sq = current.abs_error_ppm_rms * current.abs_error_ppm_rms;
     let next_ppm_rms_sq = next.abs_error_ppm_rms * next.abs_error_ppm_rms;
@@ -150,7 +161,7 @@ fn merge_precursor_scalar_stats(
     );
     current
         .signed_error_da_median_tracker
-        .merge(next.signed_error_da_median_tracker.clone());
+        .merge(&next.signed_error_da_median_tracker);
     current.signed_error_da_median = current.signed_error_da_median_tracker.median();
     current.signed_error_ppm_mean = blend(
         current.signed_error_ppm_mean,
@@ -161,7 +172,7 @@ fn merge_precursor_scalar_stats(
     );
     current
         .signed_error_ppm_median_tracker
-        .merge(next.signed_error_ppm_median_tracker.clone());
+        .merge(&next.signed_error_ppm_median_tracker);
     current.signed_error_ppm_median = current.signed_error_ppm_median_tracker.median();
 }
 

@@ -90,3 +90,35 @@ fn test_compute_max_abs() {
     let values = vec![1.0, -5.0, 3.0, -2.0];
     assert!((compute_max_abs(&values) - 5.0).abs() < 1e-10);
 }
+
+#[test]
+fn push_measurement_keeps_all_parallel_series_synchronized_on_reservoir_replacement() {
+    let mut diag = RecalibrationStats::new();
+    for i in 1..=25u32 {
+        let v = f64::from(i);
+        diag.push_measurement(RecalibrationMeasurement {
+            error_ppm_ms1: v,
+            delta_ppm_ms2_ms1: v * 2.0,
+            error_ppm_before: v * 3.0,
+            error_ppm_after: v * 4.0,
+            error_da_ms1: v * 5.0,
+            delta_da_ms2_ms1: v * 6.0,
+            error_da_before: v * 7.0,
+            error_da_after: v * 8.0,
+            precursor_ms1: v * 100.0,
+            precursor_ms2_before: v * 101.0,
+            precursor_ms2_after: v * 102.0,
+            adduct_family: Some("protonated"),
+            max_samples: 5,
+        });
+    }
+    assert_eq!(diag.sample_count, 5);
+    for idx in 0..diag.sample_count {
+        let base = diag.error_ppm_ms1[idx];
+        assert!((diag.error_da_before[idx] - base * 7.0).abs() < 1e-9);
+        assert!((diag.error_da_after[idx] - base * 8.0).abs() < 1e-9);
+        assert!((diag.precursor_ms1_values[idx] - base * 100.0).abs() < 1e-9);
+        assert!((diag.precursor_ms2_before[idx] - base * 101.0).abs() < 1e-9);
+        assert!((diag.precursor_ms2_after[idx] - base * 102.0).abs() < 1e-9);
+    }
+}

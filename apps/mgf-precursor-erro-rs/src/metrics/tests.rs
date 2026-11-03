@@ -106,3 +106,24 @@ fn merge_is_commutative_for_identical_inputs() {
     assert_eq!(a_then_b.abs_error_da_rms, b_then_a.abs_error_da_rms);
     assert_ne!(a_then_b.abs_error_da_mean, 0.0);
 }
+
+#[test]
+fn merge_preserves_nonzero_min_when_empty_or_skipped_blocks_are_present() {
+    let mut single = stats_with_errors(&[0.5], &[5.0]);
+    single.observed_precursor_min = 412.25;
+    single.observed_precursor_max = 412.25;
+    single.abs_error_da_min = 0.5;
+    single.abs_error_da_max = 0.5;
+    single.abs_error_ppm_min = 5.0;
+    single.abs_error_ppm_max = 5.0;
+
+    let from_empty = merge_precursor_stats(PrecursorStats::default(), &single);
+    assert_eq!(from_empty.observed_precursor_min, 412.25);
+    assert_eq!(from_empty.abs_error_da_min, 0.5);
+    assert_eq!(from_empty.abs_error_ppm_min, 5.0);
+
+    let after_skipped = merge_precursor_stats(from_empty, &skipped_block());
+    assert_eq!(after_skipped.observed_precursor_min, 412.25);
+    assert_eq!(after_skipped.abs_error_da_min, 0.5);
+    assert_eq!(after_skipped.abs_error_ppm_min, 5.0);
+}

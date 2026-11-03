@@ -19,7 +19,7 @@ use web_sys::{Blob, console};
 
 use crate::metrics::{
     AdductFamily, ErrorMeasurement, PlotPointSample, PrecursorStats, WarningDetail,
-    merge_precursor_stats,
+    merge_precursor_stats_in_place,
 };
 
 use super::adduct::{
@@ -248,7 +248,7 @@ impl LineIngestor {
                 &mut self.logged_failures,
                 &mut block_plot_sample,
             ) {
-                self.metrics = merge_precursor_stats(std::mem::take(&mut self.metrics), &result);
+                merge_precursor_stats_in_place(&mut self.metrics, &result);
             }
             self.current_state = BlockParseState::default();
             self.current_is_in_block = false;
@@ -404,7 +404,6 @@ fn observed_metrics(
     };
     let error_da = observed_precursor - expected_precursor_mz;
     let abs_error_da = error_da.abs();
-    let error_milli_da = abs_error_da * 1000.0;
     let ppm = if expected_precursor_mz.abs() > f64::EPSILON {
         error_da / expected_precursor_mz * 1_000_000.0
     } else {
@@ -448,28 +447,6 @@ fn observed_metrics(
         },
         plot_sample,
     );
-    if error_milli_da <= 0.1 {
-        metrics.within_0_1_da = 1;
-    } else if error_milli_da <= 0.5 {
-        metrics.within_0_5_da = 1;
-    } else if error_milli_da <= 1.0 {
-        metrics.within_1_da = 1;
-    } else if error_milli_da <= 5.0 {
-        metrics.within_5_da = 1;
-    } else {
-        metrics.above_5_da = 1;
-    }
-    if abs_ppm <= 0.5 {
-        metrics.within_0_5_ppm = 1;
-    } else if abs_ppm <= 1.0 {
-        metrics.within_1_ppm = 1;
-    } else if abs_ppm <= 5.0 {
-        metrics.within_5_ppm = 1;
-    } else if abs_ppm <= 10.0 {
-        metrics.within_10_ppm = 1;
-    } else {
-        metrics.above_10_ppm = 1;
-    }
     metrics
 }
 
