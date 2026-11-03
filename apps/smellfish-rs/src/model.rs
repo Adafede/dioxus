@@ -62,7 +62,6 @@ pub(crate) struct MoleculeRow {
     /// Human-readable NP-likeness label.
     pub np_label: String,
     /// Confidence in the NP-likeness score.
-    #[cfg(target_arch = "wasm32")]
     pub np_confidence: f64,
     pub np_score_available: bool,
     pub ring_family: String,

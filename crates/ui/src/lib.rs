@@ -65,5 +65,5 @@ pub mod prelude {
     };
     /// `capabilities_script` stays crate-private: apps opt in by passing
     /// `webmcp: Some(..)` to [`DocumentHead`], which builds the script itself.
-    pub use crate::webmcp::WebMcpConfig;
+    pub use crate::webmcp::{EdamAnnotations, EdamTerm, WebMcpConfig};
 }

@@ -12,7 +12,7 @@ use super::parsing::SpectrumBlock;
 #[cfg(test)]
 use super::parsing::extract_blocks;
 use crate::chemical_class::ChemicalClass;
-#[cfg(any(test, target_arch = "wasm32"))]
+#[cfg(test)]
 use crate::chemical_class::lmsd_all;
 use crate::lipids::LipidClassification;
 use std::collections::HashMap;
@@ -68,7 +68,7 @@ pub(crate) fn summarize(blocks: &[SpectrumBlock]) -> Summary {
 /// 2D structure up-front.
 ///
 /// Reuses the `exact_mass` cached during
-/// [`SpectrumBlock::compute_class_matches`](super::parsing::SpectrumBlock::compute_class_matches)
+/// [`SpectrumBlock::classify_and_match`](super::parsing::SpectrumBlock::classify_and_match)
 /// to avoid re-parsing the SMILES — this is the dominant cost for large files.
 #[must_use]
 #[cfg(any(test, target_arch = "wasm32"))]
@@ -76,20 +76,22 @@ pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> 
     // Reuse pre-computed exact mass (no SMILES re-parsing)
     let exact_mass = block.exact_mass;
 
-    // Use precomputed class matches from compute_class_matches
+    // Use precomputed class matches from classify_and_match
     let class_matches = block.gallery_item_matches.clone().unwrap_or_default();
 
-    // Find first matching class — used for both color and name (ensures export matches UI)
-    let first_match = class_matches.iter().find(|(_, matches)| **matches);
-    let primary_class_color = first_match
-        .and_then(|(class_name, _)| {
-            classes
-                .iter()
-                .find(|c| &c.name == class_name)
-                .map(|c| c.color.clone())
-        })
-        .unwrap_or_else(|| "#f1f5f9".to_string());
-    let primary_class_name = first_match.map(|(name, _)| name.clone());
+    // Find first matching class in deterministic LMSD priority order — used for
+    // both color and name (ensures export matches UI).
+    let first_class = classes
+        .iter()
+        .find(|c| class_matches.get(&c.name).copied().unwrap_or(false));
+    let primary_class_color =
+        first_class.map_or_else(|| "#f1f5f9".to_string(), |c| c.color.clone());
+    let primary_class_name = first_class.map(|c| c.name.clone()).or_else(|| {
+        class_matches
+            .iter()
+            .find(|(_, matches)| **matches)
+            .map(|(name, _)| name.clone())
+    });
 
     let svg = block
         .psm_smiles
@@ -176,6 +178,7 @@ pub(crate) struct Analysis {
     /// Pre-rendered gallery cards, one per lipid-positive block.
     pub gallery: Vec<GalleryItem>,
     /// Filtered MGF text containing only blocks that match all selected classes.
+    #[cfg(test)]
     pub filtered_mgf: String,
     /// All parsed spectrum blocks (owned, for chunked re-processing in WASM).
     pub blocks: Vec<SpectrumBlock>,
@@ -200,8 +203,7 @@ pub(crate) fn build_analysis(mut blocks: Vec<SpectrumBlock>, gallery_limit: usiz
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn classify_blocks(blocks: &mut [SpectrumBlock], classes: &[ChemicalClass]) {
     for block in blocks {
-        block.classify();
-        block.compute_class_matches(classes);
+        block.classify_and_match(classes);
     }
 }
 
@@ -218,10 +220,12 @@ pub(crate) fn build_analysis_from_classified(
 ) -> Analysis {
     let summary = summarize(&blocks);
     let gallery = build_gallery(&blocks, gallery_limit, &all_classes);
+    #[cfg(test)]
     let filtered_mgf = build_filtered_mgf(&blocks);
     Analysis {
         summary,
         gallery,
+        #[cfg(test)]
         filtered_mgf,
         blocks,
         all_classes,
@@ -231,7 +235,7 @@ pub(crate) fn build_analysis_from_classified(
 /// Concatenate the verbatim text of all lipid-positive blocks into a filtered MGF.
 /// This uses all LMSD class names.
 #[must_use]
-#[cfg(any(test, target_arch = "wasm32"))]
+#[cfg(test)]
 pub(crate) fn build_filtered_mgf(blocks: &[SpectrumBlock]) -> String {
     // Include all LMSD class names
     let all_class_names: Vec<String> = lmsd_all().iter().map(|c| c.name.clone()).collect();
@@ -240,7 +244,7 @@ pub(crate) fn build_filtered_mgf(blocks: &[SpectrumBlock]) -> String {
 
 /// Concatenate the verbatim text of blocks matching selected class names.
 #[must_use]
-#[cfg(any(test, target_arch = "wasm32"))]
+#[cfg(test)]
 pub(crate) fn build_filtered_mgf_with_classes(
     blocks: &[SpectrumBlock],
     selected_class_names: &[String],
@@ -283,13 +287,8 @@ pub(crate) fn build_filtered_mgf_with_classes(
 #[must_use]
 pub(crate) fn analyze(content: &str) -> (Vec<SpectrumBlock>, Summary) {
     let mut blocks = extract_blocks(content);
-    for block in &mut blocks {
-        block.classify();
-    }
     let all_classes = lmsd_all();
-    for block in &mut blocks {
-        block.compute_class_matches(&all_classes);
-    }
+    classify_blocks(&mut blocks, &all_classes);
     let summary = summarize(&blocks);
     (blocks, summary)
 }

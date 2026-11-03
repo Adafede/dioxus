@@ -34,6 +34,25 @@ pub fn SmellfishDocumentHead() -> Element {
                 description: "Smellfish-rs literature-backed NP-likeness scoring with RDKit.js, QLever enrichment, and explicit endpoint health checks",
                 inputs: &["smiles_csv"],
                 outputs: &["np_likeness", "motifs", "enrichment"],
+                edam: EdamAnnotations {
+                    topics: &[
+                        EdamTerm { id: "topic_0154", label: "Small molecules" },
+                        EdamTerm { id: "topic_2258", label: "Cheminformatics" },
+                        EdamTerm { id: "topic_3172", label: "Metabolomics" },
+                    ],
+                    operations: &[
+                        EdamTerm { id: "operation_0250", label: "Molecular property calculation" },
+                        EdamTerm { id: "operation_2421", label: "Database search" },
+                        EdamTerm { id: "operation_0570", label: "Structure visualisation" },
+                    ],
+                    input_data: &[EdamTerm { id: "data_2301", label: "SMILES string" }],
+                    input_formats: &[
+                        EdamTerm { id: "format_3752", label: "CSV" },
+                        EdamTerm { id: "format_1196", label: "SMILES" },
+                    ],
+                    output_data: &[EdamTerm { id: "data_2048", label: "Report" }],
+                    output_formats: &[EdamTerm { id: "format_3752", label: "CSV" }],
+                },
             }),
             lang: "en".to_string(),
             description: Some(description.to_string()),

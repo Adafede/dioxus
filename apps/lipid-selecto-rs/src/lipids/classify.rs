@@ -7,7 +7,7 @@
 //! `classify_spectrum` entry points over molecules and spectra (plus the
 //! test-only `classify_formula`).  Domain types come from [`super::types`].
 
-#[cfg(any(test, target_arch = "wasm32"))]
+#[cfg(test)]
 use super::types::LipidClassification;
 #[cfg(any(test, target_arch = "wasm32"))]
 use super::types::{ElementCounts, LipidClass};
@@ -17,7 +17,7 @@ use chematic::chem;
 use chematic::core::Molecule;
 #[cfg(any(test, target_arch = "wasm32"))]
 use chematic::smarts;
-#[cfg(any(test, target_arch = "wasm32"))]
+#[cfg(test)]
 use chematic::smiles;
 #[cfg(any(test, target_arch = "wasm32"))]
 use std::sync::LazyLock;
@@ -102,7 +102,7 @@ pub(crate) fn is_acyclic(molecule: &Molecule) -> bool {
 
 /// Extract elemental counts from a parsed molecule using chematic's own
 /// descriptors (heavy atoms plus implicit/explicit hydrogens).
-#[cfg(any(test, target_arch = "wasm32"))]
+#[cfg(test)]
 fn counts_from_molecule(molecule: &Molecule) -> ElementCounts {
     ElementCounts {
         carbon: chem::num_carbons(molecule) as u32,
@@ -118,69 +118,76 @@ fn counts_from_molecule(molecule: &Molecule) -> ElementCounts {
     }
 }
 
+/// Structural (SMILES-based) lipid classification for an already-confirmed
+/// acyclic molecule.
+///
+/// Only matches REAL lipid backbones: long aliphatic chains + characteristic
+/// functional groups. Evaluates the 8-carbon aliphatic chain SMARTS at most
+/// once per molecule.
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(crate) fn classify_acyclic_molecule(molecule: &Molecule) -> Option<LipidClass> {
+    let mut chain_cached: Option<bool> = None;
+    let mut has_chain =
+        || *chain_cached.get_or_insert_with(|| has_substructure(molecule, PATTERN_ALIPHATIC_CHAIN));
+
+    // === PHOSPHOLIPIDS (PC/PE): phosphate + headgroup + aliphatic chain ===
+    // Require all three to avoid matching ATP, CoA, nucleotides
+    if has_substructure(molecule, PATTERN_PHOSPHATE) && has_chain() {
+        if has_substructure(molecule, PATTERN_CHOLINE) {
+            return Some(LipidClass::Glycerophospholipid);
+        }
+        if has_substructure(molecule, PATTERN_ETHANOLAMINE) {
+            return Some(LipidClass::Glycerophospholipid);
+        }
+    }
+
+    // === TRIGLYCERIDES: 3 ester groups on glycerol backbone ===
+    if has_substructure(molecule, PATTERN_TRIGLYCERIDE) {
+        return Some(LipidClass::Glycerolipid);
+    }
+
+    // === DIGLYCERIDES: 2 ester groups on glycerol backbone ===
+    if has_substructure(molecule, PATTERN_DIGLYCERIDE) {
+        return Some(LipidClass::Glycerolipid);
+    }
+
+    // === MONOGLYCERIDES: 1 ester group + long chain ===
+    if has_substructure(molecule, PATTERN_MONOGLYCERIDE) && has_chain() {
+        return Some(LipidClass::Glycerolipid);
+    }
+
+    // === CERAMIDES & SPHINGANINES: amide or amino group + long aliphatic chain ===
+    if has_chain() {
+        // True ceramides: amide linkage
+        if has_substructure(molecule, PATTERN_AMIDE) {
+            return Some(LipidClass::Sphingolipid);
+        }
+        // Sphinganine: amino group on aliphatic backbone
+        if has_substructure(molecule, PATTERN_AMINO) {
+            return Some(LipidClass::Sphingolipid);
+        }
+    }
+
+    // === FATTY ACIDS: carboxylic acid + long aliphatic chain ===
+    if has_substructure(molecule, PATTERN_CARBOXYLIC_ACID) && has_chain() {
+        return Some(LipidClass::FattyAcyl);
+    }
+
+    None
+}
+
 /// Structural (SMILES-based) lipid classification.
 /// Only matches REAL lipid backbones: long aliphatic chains + characteristic functional groups.
 /// NO RINGS. NO AROMATICS. NO NUCLEOTIDES. NO STEROIDS.
-#[cfg(any(test, target_arch = "wasm32"))]
-fn classify_molecule(molecule: &Molecule) -> Option<(LipidClass, ElementCounts)> {
-    let counts = counts_from_molecule(molecule);
-
+#[cfg(test)]
+fn classify_molecule(molecule: &Molecule) -> Option<LipidClass> {
     // === CRITICAL: Lipids are ACYCLIC ===
     // Reject any molecule with rings: nucleotides, sugars, steroids, aromatic rings
     if !is_acyclic(molecule) {
         return None;
     }
 
-    // === PHOSPHOLIPIDS (PC/PE): phosphate + headgroup + aliphatic chain ===
-    // Require all three to avoid matching ATP, CoA, nucleotides
-    if has_substructure(molecule, PATTERN_PHOSPHATE)
-        && has_substructure(molecule, PATTERN_ALIPHATIC_CHAIN)
-    {
-        if has_substructure(molecule, PATTERN_CHOLINE) {
-            return Some((LipidClass::Glycerophospholipid, counts));
-        }
-        if has_substructure(molecule, PATTERN_ETHANOLAMINE) {
-            return Some((LipidClass::Glycerophospholipid, counts));
-        }
-    }
-
-    // === TRIGLYCERIDES: 3 ester groups on glycerol backbone ===
-    if has_substructure(molecule, PATTERN_TRIGLYCERIDE) {
-        return Some((LipidClass::Glycerolipid, counts));
-    }
-
-    // === DIGLYCERIDES: 2 ester groups on glycerol backbone ===
-    if has_substructure(molecule, PATTERN_DIGLYCERIDE) {
-        return Some((LipidClass::Glycerolipid, counts));
-    }
-
-    // === MONOGLYCERIDES: 1 ester group + long chain ===
-    if has_substructure(molecule, PATTERN_MONOGLYCERIDE)
-        && has_substructure(molecule, PATTERN_ALIPHATIC_CHAIN)
-    {
-        return Some((LipidClass::Glycerolipid, counts));
-    }
-
-    // === CERAMIDES & SPHINGANINES: amide or amino group + long aliphatic chain ===
-    if has_substructure(molecule, PATTERN_ALIPHATIC_CHAIN) {
-        // True ceramides: amide linkage
-        if has_substructure(molecule, PATTERN_AMIDE) {
-            return Some((LipidClass::Sphingolipid, counts));
-        }
-        // Sphinganine: amino group on aliphatic backbone
-        if has_substructure(molecule, PATTERN_AMINO) {
-            return Some((LipidClass::Sphingolipid, counts));
-        }
-    }
-
-    // === FATTY ACIDS: carboxylic acid + long aliphatic chain ===
-    if has_substructure(molecule, PATTERN_CARBOXYLIC_ACID)
-        && has_substructure(molecule, PATTERN_ALIPHATIC_CHAIN)
-    {
-        return Some((LipidClass::FattyAcyl, counts));
-    }
-
-    None
+    classify_acyclic_molecule(molecule)
 }
 
 /// Classify a single SMILES string.
@@ -188,7 +195,7 @@ fn classify_molecule(molecule: &Molecule) -> Option<(LipidClass, ElementCounts)>
 /// Returns the classification (with formula and exact mass) when the molecule
 /// is recognized as a lipid, otherwise `None`.
 #[must_use]
-#[cfg(any(test, target_arch = "wasm32"))]
+#[cfg(test)]
 pub(crate) fn classify_smiles(smiles: &str) -> Option<LipidClassification> {
     let trimmed = smiles.trim();
     if trimmed.is_empty() {
@@ -202,7 +209,7 @@ pub(crate) fn classify_smiles(smiles: &str) -> Option<LipidClassification> {
             .ok()
             .and_then(Result::ok)?;
 
-    let (class, _counts) = classify_molecule(&molecule)?;
+    let class = classify_molecule(&molecule)?;
 
     Some(LipidClassification {
         class,
@@ -271,12 +278,10 @@ fn classify_from_counts(counts: &ElementCounts) -> Option<LipidClass> {
     None
 }
 
-/// Conservative formula-only fallback (kept test-only: live input reaches the
-/// classifier through [`classify_spectrum`], which tries the SMILES first and
-/// falls back to the Hill-notation `FORMULA=` value when the SMILES is absent
-/// or unparsable).
+/// Conservative formula-only fallback used when the SMILES is absent or
+/// unparsable.
 #[must_use]
-#[cfg(test)]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn classify_formula(formula: &str) -> Option<LipidClass> {
     let trimmed = formula.trim();
     if trimmed.is_empty() {
@@ -293,7 +298,7 @@ pub(crate) fn classify_formula(formula: &str) -> Option<LipidClass> {
 /// Tries the SMILES first (structural classification) and falls back to the
 /// `FORMULA=` value when the SMILES is missing or cannot be parsed.
 #[must_use]
-#[cfg(any(test, target_arch = "wasm32"))]
+#[cfg(test)]
 pub(crate) fn classify_spectrum(
     smiles: Option<&str>,
     formula: Option<&str>,
@@ -305,10 +310,7 @@ pub(crate) fn classify_spectrum(
     }
 
     let formula_str = formula.filter(|value| !value.trim().is_empty())?;
-    let trimmed = formula_str.trim();
-    let map = chem::parse_formula(trimmed).ok()?;
-    let counts = formula_counts(&map);
-    let class = classify_from_counts(&counts)?;
+    let class = classify_formula(formula_str)?;
     Some(LipidClassification {
         class,
         derived_from_smiles: false,

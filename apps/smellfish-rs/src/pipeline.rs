@@ -30,14 +30,14 @@ struct RawInspectRow {
     num_atoms: usize,
 }
 
-/// Import a [`web_sys::File`] CSV, parsing and inspecting each row.
+/// Import a [`web_sys::Blob`] CSV, parsing and inspecting each row.
 ///
 /// # Errors
 ///
 /// Returns an error if file reading or row processing fails.
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn import_csv(
-    file: web_sys::File,
+    file: web_sys::Blob,
     mut status: Signal<String>,
 ) -> Result<ImportOutcome, String> {
     status.set("Reading CSV file…".to_string());
@@ -334,7 +334,7 @@ pub(crate) struct ImportOutcome {
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_arguments)] // wasm entry point: signal handles for async import
 pub(crate) fn begin_import(
-    file: web_sys::File,
+    file: web_sys::Blob,
     file_name_value: String,
     mut file_name: Signal<String>,
     mut status: Signal<String>,
@@ -446,28 +446,6 @@ fn merge_enrichment(
     enrichment_outcome: &EnrichmentOutcome,
     inchikey_to_indices: &std::collections::HashMap<String, Vec<usize>>,
 ) -> Vec<MoleculeRow> {
-    web_sys::console::log_1(
-        &format!(
-            "merge_enrichment: {} inchikeys to process",
-            inchikey_to_indices.len()
-        )
-        .into(),
-    );
-    web_sys::console::log_1(
-        &format!(
-            "LOTUS hits available: {}",
-            enrichment_outcome.enrichment.lotus.len()
-        )
-        .into(),
-    );
-    web_sys::console::log_1(
-        &format!(
-            "PubChem hits available: {}",
-            enrichment_outcome.enrichment.pubchem.len()
-        )
-        .into(),
-    );
-
     for (inchikey_connectivity, indices) in inchikey_to_indices {
         // Check lotus by the InChIKey connectivity layer key
         if let Some(summary) = enrichment_outcome
@@ -475,14 +453,6 @@ fn merge_enrichment(
             .lotus
             .get(inchikey_connectivity)
         {
-            web_sys::console::log_1(
-                &format!(
-                    "Found LOTUS hit for {}: {} QIDs",
-                    inchikey_connectivity,
-                    summary.compounds.len()
-                )
-                .into(),
-            );
             for &idx in indices {
                 if let Some(row) = rows.get_mut(idx) {
                     row.lotus_taxa = summary.taxa.iter().cloned().collect();
@@ -497,14 +467,6 @@ fn merge_enrichment(
             .pubchem
             .get(inchikey_connectivity)
         {
-            web_sys::console::log_1(
-                &format!(
-                    "Found PubChem hit for {}: {} CIDs",
-                    inchikey_connectivity,
-                    summary.cids.len()
-                )
-                .into(),
-            );
             for &idx in indices {
                 if let Some(row) = rows.get_mut(idx) {
                     row.pubchem_cids = summary.cids.iter().cloned().collect();
@@ -512,7 +474,6 @@ fn merge_enrichment(
             }
         }
     }
-    web_sys::console::log_1(&"merge_enrichment complete".to_string().into());
     rows
 }
 

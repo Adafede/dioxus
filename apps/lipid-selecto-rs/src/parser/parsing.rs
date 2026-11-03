@@ -16,7 +16,7 @@
 use crate::chemical_class::ChemicalClass;
 use crate::lipids::LipidClassification;
 #[cfg(any(test, target_arch = "wasm32"))]
-use crate::lipids::{classify_spectrum, is_acyclic};
+use crate::lipids::{classify_acyclic_molecule, classify_formula, is_acyclic};
 #[cfg(any(test, target_arch = "wasm32"))]
 use chematic::chem;
 #[cfg(any(test, target_arch = "wasm32"))]
@@ -150,14 +150,6 @@ impl SpectrumBlock {
         }
     }
 
-    /// Run the lipid classifier over this block's SMILES (with `FORMULA=`
-    /// fallback) and store the result in [`SpectrumBlock::classification`].
-    #[cfg(any(test, target_arch = "wasm32"))]
-    pub(crate) fn classify(&mut self) {
-        self.classification =
-            classify_spectrum(self.psm_smiles.as_deref(), self.formula.as_deref());
-    }
-
     /// `true` when this spectrum has at least one matching chemical class.
     #[must_use]
     #[cfg(any(test, target_arch = "wasm32"))]
@@ -167,29 +159,47 @@ impl SpectrumBlock {
             .is_some_and(|matches| matches.values().any(|&m| m))
     }
 
-    /// Compute and store class matches for this block's SMILES.
+    /// Classify this block and compute its chemical-class matches in a single
+    /// pass.
     ///
-    /// Parses the SMILES once, caches the exact mass, and matches against all
-    /// chemical classes. Downstream code (e.g.
-    /// [`gallery_item`](super::analysis::gallery_item)) reuses the cached
-    /// `exact_mass` instead of re-parsing the SMILES. Only matches classes for
-    /// acyclic molecules (true lipids).
+    /// Parses the SMILES once, caches `exact_mass`, checks acyclicity once, and
+    /// evaluates both the broad lipid classifier (with `FORMULA=` fallback) and
+    /// all LMSD chemical classes against the same parsed [`chematic::core::Molecule`].
     #[cfg(any(test, target_arch = "wasm32"))]
-    pub(crate) fn compute_class_matches(&mut self, classes: &[ChemicalClass]) {
-        if let Some(smiles_str) = &self.psm_smiles
-            && let Ok(molecule) = smiles::parse(smiles_str.trim())
+    pub(crate) fn classify_and_match(&mut self, classes: &[ChemicalClass]) {
+        let mut smiles_classification = None;
+        let mut matches = HashMap::new();
+
+        if let Some(smiles_str) = self.psm_smiles.as_deref().map(str::trim)
+            && !smiles_str.is_empty()
+            && let Some(Ok(molecule)) =
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| smiles::parse(smiles_str)))
+                    .ok()
         {
             self.exact_mass = chem::exact_mass(&molecule);
-            let mut matches = HashMap::new();
             if is_acyclic(&molecule) {
+                smiles_classification =
+                    classify_acyclic_molecule(&molecule).map(|class| LipidClassification {
+                        class,
+                        derived_from_smiles: true,
+                    });
                 for class in classes {
-                    matches.insert(class.name.clone(), class.matches(&molecule));
+                    if class.matches(&molecule) {
+                        matches.insert(class.name.clone(), true);
+                    }
                 }
             }
-            self.gallery_item_matches = Some(matches);
-            return;
         }
-        self.gallery_item_matches = Some(HashMap::new());
+
+        self.classification = smiles_classification.or_else(|| {
+            let formula_str = self.formula.as_deref()?;
+            let class = classify_formula(formula_str)?;
+            Some(LipidClassification {
+                class,
+                derived_from_smiles: false,
+            })
+        });
+        self.gallery_item_matches = Some(matches);
     }
 }
 
@@ -218,6 +228,68 @@ fn is_end_ions(line: &str) -> bool {
             && trimmed["END IONS".len()..].starts_with(char::is_whitespace))
 }
 
+/// Incremental streaming builder that splits MGF or SMILES lines into
+/// [`SpectrumBlock`] records without buffering the entire file's lines first.
+#[cfg(any(test, target_arch = "wasm32"))]
+#[derive(Default)]
+pub(crate) struct BlockExtractor {
+    blocks: Vec<SpectrumBlock>,
+    index: usize,
+    current: Option<SpectrumBlock>,
+}
+
+#[cfg(any(test, target_arch = "wasm32"))]
+impl BlockExtractor {
+    /// Feed a single line into the block state machine.
+    pub(crate) fn push_line(&mut self, line: &str) {
+        if is_begin_ions(line) {
+            if let Some(block) = self.current.take() {
+                self.blocks.push(block);
+            }
+            self.index += 1;
+            let mut block = SpectrumBlock::new(self.index);
+            block.consume_inline_header(line);
+            block.raw.push_str(line);
+            block.raw.push('\n');
+            self.current = Some(block);
+            return;
+        }
+
+        if let Some(block) = self.current.as_mut() {
+            if is_end_ions(line) {
+                block.raw.push_str(line);
+                block.raw.push('\n');
+                if let Some(finished) = self.current.take() {
+                    self.blocks.push(finished);
+                }
+                return;
+            }
+            block.consume_metadata(line);
+            block.raw.push_str(line);
+            block.raw.push('\n');
+        } else {
+            // SMILES / flat format: each non-empty, non-comment line is a block.
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') || is_end_ions(line) {
+                return;
+            }
+            self.index += 1;
+            if let Some(block) = parse_smiles_line(self.index, trimmed) {
+                self.blocks.push(block);
+            }
+        }
+    }
+
+    /// Finish extraction and return all parsed blocks.
+    #[must_use]
+    pub(crate) fn finish(mut self) -> Vec<SpectrumBlock> {
+        if let Some(block) = self.current.take() {
+            self.blocks.push(block);
+        }
+        self.blocks
+    }
+}
+
 /// Split raw MGF or SMILES text into [`SpectrumBlock`] records.
 ///
 /// Accepts any iterator of line-like items so callers can stream from a
@@ -227,73 +299,15 @@ fn is_end_ions(line: &str) -> bool {
 /// For MGF: Each block's [`SpectrumBlock::raw`] preserves the original lines.
 /// For SMILES: Each line becomes a `SpectrumBlock` with SMILES in the `psm_smiles` field.
 #[must_use]
-#[cfg(any(test, target_arch = "wasm32"))]
+#[cfg(test)]
 pub(crate) fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> + 'a>>(
     lines: I,
 ) -> Vec<SpectrumBlock> {
-    let mut blocks = Vec::new();
-    let mut index = 0usize;
-    let mut current: Option<SpectrumBlock> = None;
-
+    let mut extractor = BlockExtractor::default();
     for line in lines {
-        let line = line.as_ref();
-
-        if is_begin_ions(line) {
-            if let Some(block) = current.take() {
-                blocks.push(block);
-            }
-            index += 1;
-            let mut block = SpectrumBlock::new(index);
-            block.consume_inline_header(line);
-            block.raw.push_str(line);
-            block.raw.push('\n');
-            current = Some(block);
-            continue;
-        }
-
-        if let Some(block) = current.as_mut() {
-            if is_end_ions(line) {
-                block.raw.push_str(line);
-                block.raw.push('\n');
-                // `current` is `Some` (the `as_mut()` guard above), so the
-                // let-else branch is unreachable in practice — the `else`
-                // exists only to keep this panic-free.
-                let Some(block) = current.take() else {
-                    continue;
-                };
-                blocks.push(block);
-                continue;
-            }
-            block.consume_metadata(line);
-            block.raw.push_str(line);
-            block.raw.push('\n');
-        } else {
-            // SMILES / flat format: each non-empty, non-comment line is a block.
-            let trimmed = line.trim();
-            if trimmed.is_empty() || trimmed.starts_with('#') {
-                continue;
-            }
-            // A stray `END IONS` outside any block is malformed MGF. It looks
-            // SMILES-ish (N, O, S are in the alphabet), so without this guard
-            // the fallback below would forge a block from it — parse it,
-            // classify it unclassifyable, and emit a nonsense row. The peer
-            // parser in mgf-precursor-erro-rs skips out-of-block lines for the
-            // same reason.
-            if is_end_ions(line) {
-                continue;
-            }
-            index += 1;
-            if let Some(block) = parse_smiles_line(index, trimmed) {
-                blocks.push(block);
-            }
-        }
+        extractor.push_line(line.as_ref());
     }
-
-    if let Some(block) = current {
-        blocks.push(block);
-    }
-
-    blocks
+    extractor.finish()
 }
 
 /// Parse a single SMILES-format line into an optional [`SpectrumBlock`].

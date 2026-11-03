@@ -120,9 +120,10 @@ flags, so the two cannot drift.
 1. Copy an existing app directory (e.g. `apps/index`) as a starting point.
 2. Edit `Cargo.toml` and `Dioxus.toml` to set `name` and `title`.
 3. Add `"apps/my-new-app"` to `members` in the workspace `Cargo.toml`.
-4. Add the app to `check-wasm`, `lint-wasm`, `web-build-all` and the `MAPPING`
-   row in `crates/upload/tests/gate_consistency.rs`. That test fails the build
-   otherwise, which is the point of it.
+4. Add the app to `check-wasm`, `lint-wasm`, and `web-build-all` in `make/`.
+   `crates/upload/tests/gate_consistency/` checks that every app under `apps/`
+   wires its `DocumentHead`, `skip_link`, `#main-content` landmark, and EDAM
+   annotations.
 5. `./mk web-dev APP=my-new-app`
 
 ## Continuous integration

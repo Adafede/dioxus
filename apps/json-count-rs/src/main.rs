@@ -139,6 +139,20 @@ fn app() -> Element {
                 description: "Web app for counting non-null JSON fields from uploaded files",
                 inputs: &["json_file"],
                 outputs: &["field_stats"],
+                edam: EdamAnnotations {
+                    topics: &[
+                        EdamTerm { id: "topic_3071", label: "Data management" },
+                        EdamTerm { id: "topic_3366", label: "Data integration and warehousing" },
+                    ],
+                    operations: &[
+                        EdamTerm { id: "operation_3438", label: "Calculating" },
+                        EdamTerm { id: "operation_0336", label: "File validation" },
+                    ],
+                    input_data: &[EdamTerm { id: "data_0006", label: "Data" }],
+                    input_formats: &[EdamTerm { id: "format_3464", label: "JSON" }],
+                    output_data: &[EdamTerm { id: "data_2048", label: "Report" }],
+                    output_formats: &[EdamTerm { id: "format_2331", label: "HTML" }],
+                },
             }),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),

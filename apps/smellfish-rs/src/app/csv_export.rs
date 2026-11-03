@@ -2,14 +2,13 @@
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 //! CSV export: build a downloadable CSV string from molecule rows and
-//! trigger a browser download via a data-URI `eval` call.
+//! trigger a browser download via [`upload::download_text`].
 //!
 //! This is the output-side counterpart to the crate-level `csv` module
 //! (which parses CSV *input*).  Kept separate so the parsing and
 //! serialisation concerns never co-mingle in one file.
 
 use crate::model::MoleculeRow;
-#[cfg(target_arch = "wasm32")]
 use std::fmt::Write;
 
 /// Machine-readable category for CSV export — strips emojis and
@@ -19,7 +18,6 @@ use std::fmt::Write;
 /// LOTUS-backed molecule that still reads "citation needed" is not misfiled
 /// as "likely"; `"synthetic-leaning"` is matched before both so a structural
 /// warning is an orange `caution`, not green.
-#[cfg(any(test, target_arch = "wasm32"))]
 #[must_use]
 pub(super) fn category(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
@@ -77,7 +75,6 @@ pub(super) fn category(verdict: &str) -> &'static str {
 /// whose *value* holds `\n` or `\r` — a SMILES comment, a label pasted from a
 /// spreadsheet — silently starts a new row otherwise, corrupting every row
 /// after it. Matching it here is what RFC 4180 requires a writer to do.
-#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn escape_csv(s: &str) -> String {
     if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
         let escaped = s.replace('"', "\"\"");
@@ -88,7 +85,7 @@ pub(crate) fn escape_csv(s: &str) -> String {
 }
 
 /// Build a CSV string from molecule rows.
-#[cfg(target_arch = "wasm32")]
+#[must_use]
 pub(crate) fn build_csv(rows: &[MoleculeRow]) -> String {
     let mut csv = String::from(
         "label,smiles,np_score,np_label,np_confidence,ring_family,substituents,locus,verdict_category,chemist_checks\n",
@@ -131,20 +128,11 @@ pub(crate) fn build_csv(rows: &[MoleculeRow]) -> String {
     csv
 }
 
-/// Build a CSV string from molecule rows and trigger a browser download
-/// via a data-URI injected through `eval`.
-#[cfg(target_arch = "wasm32")]
-pub(crate) fn download_csv(rows: &[MoleculeRow]) {
+/// Build a CSV string from molecule rows and trigger a browser download.
+pub(super) fn download_csv(rows: &[MoleculeRow]) {
     let csv = build_csv(rows);
-    let url = format!("data:text/csv;charset=utf-8,{}", urlencoding::encode(&csv));
-    let script = format!(
-        r"(function(){{var a=document.createElement('a');a.href='{url}';a.download='smellfish-results.csv';a.click();}})()"
-    );
-    drop(js_sys::eval(&script));
+    drop(upload::download_text(&csv, "smellfish-results.csv"));
 }
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(super) const fn download_csv(_rows: &[MoleculeRow]) {}
 
 #[cfg(test)]
 mod tests;

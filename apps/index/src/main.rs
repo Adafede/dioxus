@@ -91,6 +91,18 @@ fn app() -> Element {
                 description: "Landing page for Dioxus experiments — accessible, type-safe, showcasing best practices",
                 inputs: &[],
                 outputs: &["experiment_links"],
+                edam: EdamAnnotations {
+                    topics: &[
+                        EdamTerm { id: "topic_3332", label: "Computational chemistry" },
+                        EdamTerm { id: "topic_2258", label: "Cheminformatics" },
+                        EdamTerm { id: "topic_3172", label: "Metabolomics" },
+                    ],
+                    operations: &[EdamTerm { id: "operation_2422", label: "Data retrieval" }],
+                    input_data: &[],
+                    input_formats: &[],
+                    output_data: &[EdamTerm { id: "data_2048", label: "Report" }],
+                    output_formats: &[EdamTerm { id: "format_2331", label: "HTML" }],
+                },
             }),
             og_type: Some("website".to_string()),
             og_site_name: Some("Dioxus Experiments".to_string()),

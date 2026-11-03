@@ -29,37 +29,30 @@ pub(super) fn attempt_import(
     mut endpoints: Signal<Vec<EndpointStatus>>,
     mut warnings: Signal<Vec<String>>,
 ) {
-    let Some(file) = files.first() else {
-        status.set("No file selected.".to_string());
-        return;
-    };
+    match upload::extract_blob_from_file_data(files) {
+        Ok(Some(file)) => {
+            #[cfg(target_arch = "wasm32")]
+            begin_import(
+                file.blob,
+                file.name,
+                file_name,
+                status,
+                busy,
+                drag_active,
+                rows,
+                motifs,
+                endpoints,
+                warnings,
+            );
 
-    let file_name_value = file.name();
-
-    #[cfg(target_arch = "wasm32")]
-    let Some(web_file) = file.inner().downcast_ref::<web_sys::File>() else {
-        status.set("This file type is not supported in the browser.".to_string());
-        return;
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    begin_import(
-        web_file.clone(),
-        file_name_value,
-        file_name,
-        status,
-        busy,
-        drag_active,
-        rows,
-        motifs,
-        endpoints,
-        warnings,
-    );
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        file_name.set(file_name_value);
-        status.set("This app needs to run in a browser.".to_string());
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                file_name.set(file.name);
+                status.set("This app needs to run in a browser.".to_string());
+            }
+        }
+        Ok(None) => status.set("No file selected.".to_string()),
+        Err(msg) => status.set(msg),
     }
 }
 

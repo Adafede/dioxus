@@ -16,6 +16,32 @@ fn script_is_guarded_iife_with_readonly_tool() {
         description: "desc",
         inputs: &["in1", "in2"],
         outputs: &["out1"],
+        edam: EdamAnnotations {
+            topics: &[EdamTerm {
+                id: "topic_2258",
+                label: "Cheminformatics",
+            }],
+            operations: &[EdamTerm {
+                id: "operation_0366",
+                label: "Structure clustering",
+            }],
+            input_data: &[EdamTerm {
+                id: "data_2301",
+                label: "SMILES string",
+            }],
+            input_formats: &[EdamTerm {
+                id: "format_1196",
+                label: "SMILES",
+            }],
+            output_data: &[EdamTerm {
+                id: "data_2301",
+                label: "SMILES string",
+            }],
+            output_formats: &[EdamTerm {
+                id: "format_1196",
+                label: "SMILES",
+            }],
+        },
     };
     let script = capabilities_script(cfg);
 
@@ -30,10 +56,20 @@ fn script_is_guarded_iife_with_readonly_tool() {
     assert!(script.contains("\"test_app_capabilities\""));
     assert!(script.contains("readOnlyHint: true"));
     assert!(script.contains("inputSchema: { \"type\": \"object\""));
+    assert!(script.contains("http://edamontology.org/topic_2258"));
+    assert!(script.contains("http://edamontology.org/operation_0366"));
+    assert!(script.contains("http://edamontology.org/format_1196"));
     // JSON string escaping of a double quote inside the title.
     assert!(
         script.contains("\\\"Quote\\\""),
         "quote not escaped: {script}"
+    );
+
+    let ld = bioschemas_json_ld(cfg);
+    assert!(ld.contains("\"@type\":\"SoftwareApplication\""), "ld: {ld}");
+    assert!(
+        ld.contains("http://edamontology.org/topic_2258"),
+        "ld topic: {ld}"
     );
 }
 
@@ -45,6 +81,7 @@ fn empty_io_arrays_render_as_empty_js_arrays() {
         description: "x",
         inputs: &[],
         outputs: &["links"],
+        edam: EdamAnnotations::default(),
     };
     let script = capabilities_script(cfg);
     assert!(script.contains("inputs: []"), "empty inputs: {script}");

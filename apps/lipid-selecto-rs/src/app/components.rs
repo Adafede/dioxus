@@ -18,7 +18,7 @@ use super::download::{download_filtered_mgf, download_filtered_smiles};
 use super::gallery::prepare_block_class_tags;
 #[cfg(target_arch = "wasm32")]
 use super::gallery::prepare_gallery_smiles;
-use super::types::{GallerySmilesEntry, SummaryFilters};
+use super::types::SummaryFilters;
 
 pub(super) fn section_subheading() -> String {
     StyleBuilder::new()
@@ -247,25 +247,27 @@ fn filter_controls_row(
 /// Renders the family selection panel with a "Select All" checkbox.
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 fn family_filter_panel(
-    all_classes_owned: Vec<ChemicalClass>,
+    all_classes: &[ChemicalClass],
     mut selected_classes: Signal<Vec<String>>,
     families: &[(String, Vec<ChemicalClass>)],
 ) -> Element {
+    let all_names: Vec<String> = all_classes.iter().map(|c| c.name.clone()).collect();
+    let total_classes = all_names.len();
     rsx! {
-        if !all_classes_owned.is_empty() {
+        if total_classes > 0 {
             div { style: StyleBuilder::new().margin("0.8rem 0 0").padding("0.6rem").border("1px solid #e2e8f0").border_radius("10px").property("background", "#f8fafc").build(),
                 div { style: StyleBuilder::new().display("flex").align_items("center").justify_content("space-between").property("margin-bottom", "0.6rem").build(),
                     h3 { style: StyleBuilder::new().margin("0").font_size("0.85rem").color("#0f172a").font_weight("700").property("text-transform", "uppercase").property("letter-spacing", "0.05em").build(), "Filter by chemical family" }
                     label { style: StyleBuilder::new().display("flex").align_items("center").gap("0.4rem").cursor("pointer").font_size("0.75rem").color("#475569").font_weight("600").build(),
                         input {
                             r#type: "checkbox",
-                            checked: selected_classes.read().len() == all_classes_owned.len(),
+                            checked: selected_classes.read().len() == total_classes,
                             onchange: move |_| {
                                 let mut classes = selected_classes.read().clone();
-                                if classes.len() == all_classes_owned.len() {
+                                if classes.len() == total_classes {
                                     classes.clear();
                                 } else {
-                                    classes = all_classes_owned.iter().map(|c| c.name.clone()).collect();
+                                    classes.clone_from(&all_names);
                                 }
                                 selected_classes.set(classes);
                             },
@@ -367,10 +369,7 @@ pub(super) fn family_entry(
 fn download_buttons(
     filters: &SummaryFilters,
     input_format: crate::format::LipidFormat,
-    filtered_mgf: &str,
-    all_classes_owned: &[ChemicalClass],
-    gallery: &[crate::parser::GalleryItem],
-    blocks: &[crate::parser::SpectrumBlock],
+    analysis_signal: Signal<Option<crate::parser::Analysis>>,
 ) -> Element {
     let mz_min = filters.mz_min;
     let mz_max = filters.mz_max;
@@ -378,27 +377,6 @@ fn download_buttons(
     let precursor_max = filters.precursor_max;
     let adduct_filter = filters.adduct_filter;
     let selected_classes = filters.selected_classes;
-    // Clone gallery SMILES data for the download closure
-    #[cfg(target_arch = "wasm32")]
-    let gallery_smiles: Vec<GallerySmilesEntry> =
-        prepare_gallery_smiles(gallery, all_classes_owned);
-    #[cfg(not(target_arch = "wasm32"))]
-    let gallery_smiles: Vec<GallerySmilesEntry> = Vec::new();
-
-    // Clone block data for filtered MGF download
-    #[cfg(target_arch = "wasm32")]
-    let blocks_owned: Vec<crate::parser::SpectrumBlock> = blocks.to_vec();
-    #[cfg(not(target_arch = "wasm32"))]
-    let _blocks_owned: Vec<crate::parser::SpectrumBlock> = blocks.to_vec();
-
-    // Pre-compute class tags for each block (for MGF download tagging)
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused))]
-    let block_class_tags: Vec<Vec<(String, String)>> =
-        prepare_block_class_tags(blocks, gallery, all_classes_owned);
-
-    // Clone filtered_mgf for the non-WASM download stub
-    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
-    let filtered_mgf_owned = filtered_mgf.to_string();
 
     rsx! {
         div { style: StyleBuilder::new().display("flex").gap("0.5rem").property("margin-top", "0.75rem").build(),
@@ -407,10 +385,17 @@ fn download_buttons(
                     r#type: "button",
                     style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
                     onclick: move |_| {
-                        #[cfg(target_arch = "wasm32")]
-                        download_filtered_mgf(&blocks_owned, &block_class_tags, *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read(), &selected_classes.read());
-                        #[cfg(not(target_arch = "wasm32"))]
-                        { let _ = &filtered_mgf_owned; }
+                        if let Some(analysis) = analysis_signal.read().as_ref() {
+                            let block_class_tags = prepare_block_class_tags(
+                                &analysis.blocks,
+                                &analysis.gallery,
+                                &analysis.all_classes,
+                            );
+                            #[cfg(target_arch = "wasm32")]
+                            download_filtered_mgf(&analysis.blocks, &block_class_tags, *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read(), &selected_classes.read());
+                            #[cfg(not(target_arch = "wasm32"))]
+                            drop(block_class_tags);
+                        }
                     },
                     "Download Filtered Lipids"
                 }
@@ -421,7 +406,10 @@ fn download_buttons(
                     style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
                     onclick: move |_| {
                         #[cfg(target_arch = "wasm32")]
-                        download_filtered_smiles(&gallery_smiles, *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read(), &selected_classes.read());
+                        if let Some(analysis) = analysis_signal.read().as_ref() {
+                            let gallery_smiles = prepare_gallery_smiles(&analysis.gallery, &analysis.all_classes);
+                            download_filtered_smiles(&gallery_smiles, *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read(), &selected_classes.read());
+                        }
                     },
                     "Download SMILES"
                 }
@@ -435,9 +423,8 @@ pub(super) fn summary(
     summary_data: &crate::parser::Summary,
     filters: &SummaryFilters,
     all_classes: &[ChemicalClass],
-    filtered_mgf: &str,
     gallery: &[crate::parser::GalleryItem],
-    blocks: &[crate::parser::SpectrumBlock],
+    analysis_signal: Signal<Option<crate::parser::Analysis>>,
     input_format: crate::format::LipidFormat,
 ) -> Element {
     let selected_classes = filters.selected_classes;
@@ -451,9 +438,8 @@ pub(super) fn summary(
     let total_spectra = summary_data.total_items;
     let skipped = summary_data.skipped;
     let unclassified = summary_data.unclassified;
-    let all_classes_owned = all_classes.to_vec();
     let adduct_options = collect_adduct_options(gallery);
-    let families = group_classes_by_family(&all_classes_owned);
+    let families = group_classes_by_family(all_classes);
 
     rsx! {
         div {
@@ -470,8 +456,8 @@ pub(super) fn summary(
                 }
             }
             { filter_controls_row(mz_min, mz_max, precursor_min, precursor_max, adduct_filter, &adduct_options) }
-            { family_filter_panel(all_classes_owned.clone(), selected_classes, &families) }
-            { download_buttons(&SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, input_format, filtered_mgf, &all_classes_owned, gallery, blocks) }
+            { family_filter_panel(all_classes, selected_classes, &families) }
+            { download_buttons(&SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, input_format, analysis_signal) }
         }
     }
 }

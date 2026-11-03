@@ -56,8 +56,6 @@ license = "AGPL-3.0-only"
 
 # ── Shared dependency versions ────────────────────────────────────────────────
 [workspace.dependencies]
-clap = { version = "4.6", features = ["derive"] }
-csv = "1.4"
 dioxus = { version = "0.7", features = ["web"] }
 futures = "0.3"
 futures-executor = "0.3"
@@ -69,15 +67,10 @@ js-sys = "0.3"
 # commit, and `./mk mutants` and CI are what notice an API moving
 # underneath.
 lotus-search = { git = "https://github.com/lotusnprod/lotus-explore-rs", branch = "main", version = "0.1" }
-rand = "0.10"
-rayon = "1.12"
-reqwest = { version = "0.13", features = ["gzip"] }
 rustc-hash = "2.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tempfile = "3.27"
 thiserror = "2.0"
-tokio = { version = "1.54", features = ["fs"] }
 urlencoding = "2.1"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
@@ -106,7 +99,6 @@ web-sys.features = [
   "Url",
   "Window",
 ]
-zip = "8.6"
 
 # ── Clippy lints ───────────────────────────────────────────────────────────────
 # All, pedantic, cargo denied by default; nursery warned (unstable, evaluated per
@@ -282,7 +274,7 @@ unused_must_use = "deny"
 # `unused_crate_dependencies` is deliberately NOT enabled. These apps are
 # browser targets: a host `cargo check` does not compile the
 # `#[cfg(target_arch = "wasm32")]` branches where most of them are used, so the
-# lint reports `chematic`, `gloo-timers`, `csv`, `futures` and `lotus-search` as
+# lint reports `chematic`, `gloo-timers`, `futures` and `lotus-search` as
 # unused in exactly the builds that cannot see the use. The question it asks —
 # "is this dependency referenced by any of this crate's source?" — is the one
 # `cargo machete` already answers correctly from the source text, and

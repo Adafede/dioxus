@@ -30,3 +30,19 @@ fn parses_plain_smiles_lines() {
     assert_eq!(rows[0].smiles, "CCO");
     assert_eq!(rows[1].smiles, "C1CCCCC1");
 }
+
+#[test]
+fn parses_quoted_fields_and_escaped_quotes() {
+    let rows = parse_csv_rows("name,smiles\r\n\"alpha, \"\"1\"\"\",C1CCCCC1\r\n").expect("rows");
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].label, "alpha, \"1\"");
+    assert_eq!(rows[0].smiles, "C1CCCCC1");
+}
+
+#[test]
+fn rejects_unterminated_quoted_field() {
+    assert!(
+        parse_csv_rows("name,smiles\n\"unterminated,CCO").is_err(),
+        "unclosed quote should fail"
+    );
+}

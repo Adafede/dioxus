@@ -91,6 +91,34 @@ pub fn app() -> Element {
                 description: "Web app for filtering lipid mass spectrometry data by chemical class with interactive structure visualization",
                 inputs: &["lipid_file", "smarts_query"],
                 outputs: &["filtered_lipids", "structures"],
+                edam: EdamAnnotations {
+                    topics: &[
+                        EdamTerm { id: "topic_0153", label: "Lipids" },
+                        EdamTerm { id: "topic_3520", label: "Proteomics experiment" },
+                        EdamTerm { id: "topic_3172", label: "Metabolomics" },
+                    ],
+                    operations: &[
+                        EdamTerm { id: "operation_3695", label: "Filtering" },
+                        EdamTerm { id: "operation_2990", label: "Classification" },
+                        EdamTerm { id: "operation_0570", label: "Structure visualisation" },
+                    ],
+                    input_data: &[
+                        EdamTerm { id: "data_0943", label: "Mass spectrometry spectra" },
+                        EdamTerm { id: "data_2301", label: "SMILES string" },
+                    ],
+                    input_formats: &[
+                        EdamTerm { id: "format_3651", label: "MGF" },
+                        EdamTerm { id: "format_1196", label: "SMILES" },
+                    ],
+                    output_data: &[
+                        EdamTerm { id: "data_0943", label: "Mass spectrometry spectra" },
+                        EdamTerm { id: "data_2301", label: "SMILES string" },
+                    ],
+                    output_formats: &[
+                        EdamTerm { id: "format_3651", label: "MGF" },
+                        EdamTerm { id: "format_1196", label: "SMILES" },
+                    ],
+                },
             }),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
@@ -142,7 +170,7 @@ pub fn app() -> Element {
                     }
                 }
                 if let Some(analysis) = ctx.analysis.read().as_ref() {
-                    { summary(&analysis.summary, &types::SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, &analysis.all_classes, &analysis.filtered_mgf, &analysis.gallery, &analysis.blocks, (*ctx.input_format.read()).unwrap_or(crate::format::LipidFormat::Mgf)) }
+                    { summary(&analysis.summary, &types::SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, &analysis.all_classes, &analysis.gallery, ctx.analysis, (*ctx.input_format.read()).unwrap_or(crate::format::LipidFormat::Mgf)) }
                     { gallery_with_filter(&analysis.gallery, &selected_classes.read(), *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read()) }
                 }
             }

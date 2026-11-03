@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Contributors to the smellfish-rs project
 
 use crate::model::{EndpointStatus, Enrichment, EnrichmentOutcome, SourceSummary};
-use crate::query::{build_lotus_query_qlever, build_lotus_query_wdqs, escape_sparql_literal};
+use crate::query::{build_lotus_query_qlever, build_lotus_query_wdqs, build_pubchem_query};
 use crate::sparql::{QLEVER_PUBCHEM, QLEVER_WIKIDATA, WDQS_WIKIDATA, run_query};
 use futures::future::join;
 use lotus_search::ResponseFormat;
@@ -171,53 +171,13 @@ async fn fetch_lotus_hits_by_inchikey(
             && !qid.is_empty()
         {
             entry.compounds.insert(qid.to_string());
-            // If we have a taxon for this QID, also track it in compounds_with_taxa
             if has_taxon {
                 entry.compounds_with_taxa.insert(qid.to_string());
             }
-            // Log to console: taxon count next to QID (after taxon insertion)
-            web_sys::console::log_1(
-                &format!("LOTUS: QID:{} taxa:{}", qid, entry.taxa.len()).into(),
-            );
         }
     }
 
     Ok(summary)
-}
-
-#[cfg(target_arch = "wasm32")]
-fn build_pubchem_query(chunk: &[String]) -> String {
-    let values = chunk
-        .iter()
-        .map(|value| format!("\"{}\"", escape_sparql_literal(value)))
-        .collect::<Vec<_>>()
-        .join(" ");
-    format!(
-        r"
-PREFIX cheminf: <http://semanticscience.org/resource/>
-PREFIX dcterms: <http://purl.org/dc/terms/>
-PREFIX vocab: <http://rdf.ncbi.nlm.nih.gov/pubchem/vocabulary#>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
-SELECT DISTINCT ?inchikey ?related_cid WHERE {{
-  VALUES ?inchikey {{ {values} }}
-  ?compound vocab:inchikey ?inchikey .
-  {{
-    ?compound dcterms:identifier ?related_cid .
-  }}
-  UNION
-  {{
-    ?compound cheminf:CHEMINF_000461 ?stereoisomer .
-    ?stereoisomer dcterms:identifier ?related_cid .
-  }}
-  UNION
-  {{
-    ?compound cheminf:CHEMINF_000462 ?same_conn .
-    ?same_conn dcterms:identifier ?related_cid .
-  }}
-}}
-"
-    )
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -226,11 +186,9 @@ async fn fetch_pubchem_hits(
     inchikeys: &[String],
 ) -> Result<HashMap<String, SourceSummary>, String> {
     let mut summary: HashMap<String, SourceSummary> = HashMap::new();
-    web_sys::console::log_1(&format!("PubChem: Querying {} InChIKeys", inchikeys.len()).into());
 
     for chunk in inchikeys.chunks(QUERY_CHUNK_SIZE) {
         let query = build_pubchem_query(chunk);
-        web_sys::console::log_1(&format!("PubChem chunk query: {} InChIKeys", chunk.len()).into());
 
         for binding in sparql_bindings(http, QLEVER_PUBCHEM, &query).await? {
             let inchikey = binding_value(&binding, "inchikey");
@@ -241,22 +199,12 @@ async fn fetch_pubchem_hits(
             let key = inchikey.split('-').next().unwrap_or(&inchikey).to_string();
             let cid = binding_value(&binding, "related_cid");
 
-            if !cid.is_empty() {
-                web_sys::console::log_1(&format!("  PubChem: {key} -> CID {cid}").into());
-            }
-
-            let entry = summary.entry(key.clone()).or_default();
+            let entry = summary.entry(key).or_default();
 
             if !cid.is_empty() {
                 entry.cids.insert(cid);
             }
         }
-    }
-    web_sys::console::log_1(
-        &format!("PubChem FINAL: {} skeletons with hits", summary.len()).into(),
-    );
-    for key in summary.keys() {
-        web_sys::console::log_1(&format!("  Key: {key}").into());
     }
     Ok(summary)
 }

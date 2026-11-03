@@ -13,9 +13,7 @@ use crate::examples::example_smiles;
 #[cfg(target_arch = "wasm32")]
 use crate::format::LipidFormat;
 #[cfg(target_arch = "wasm32")]
-use crate::parser::{
-    Analysis, build_analysis_from_classified, classify_blocks, extract_blocks_from_lines,
-};
+use crate::parser::{Analysis, BlockExtractor, build_analysis_from_classified, classify_blocks};
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::future::TimeoutFuture;
 #[cfg(target_arch = "wasm32")]
@@ -61,10 +59,14 @@ fn start_analysis(
             ));
         });
 
-        let mut lines: Vec<String> = Vec::new();
+        let mut extractor = BlockExtractor::default();
+        let mut line_count = 0usize;
         loop {
             match reader.next_line().await {
-                Ok(Some(line)) => lines.push(line),
+                Ok(Some(line)) => {
+                    line_count += 1;
+                    extractor.push_line(&line);
+                }
                 Ok(None) | Err(UploadError::UnexpectedEof) => break,
                 Err(e) => {
                     status.set(format!("Error reading file: {e}"));
@@ -74,9 +76,9 @@ fn start_analysis(
             }
         }
 
-        status.set(format!("Parsed {} lines — classifying…", lines.len()));
+        status.set(format!("Parsed {line_count} lines — classifying…"));
 
-        let blocks = extract_blocks_from_lines(lines.into_iter());
+        let blocks = extractor.finish();
 
         if blocks.is_empty() {
             status.set("No valid entries found in the file.".to_string());

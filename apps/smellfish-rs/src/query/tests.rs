@@ -206,3 +206,16 @@ fn both_queries_derive_the_taxon_from_the_related_item() {
         );
     }
 }
+
+#[test]
+fn pubchem_query_selects_inchikey_and_related_cid() {
+    let q = build_pubchem_query(&keys(&["RYYVLZVUVIJVGH-UHFFFAOYSA-N"]));
+    assert!(
+        q.contains(r#"VALUES ?inchikey { "RYYVLZVUVIJVGH-UHFFFAOYSA-N" }"#),
+        "inchikey in VALUES clause: {q}"
+    );
+    assert!(
+        q.contains("SELECT DISTINCT ?inchikey ?related_cid"),
+        "selects expected columns: {q}"
+    );
+}

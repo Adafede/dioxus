@@ -13,7 +13,50 @@
 use dioxus::prelude::*;
 use std::fmt::Write;
 
-/// Metadata an app exposes as its read-only `WebMCP` `capabilities` tool.
+/// An [EDAM ontology](https://edamontology.org/) term (`topic_*`,
+/// `operation_*`, `data_*`, or `format_*`).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EdamTerm {
+    /// Short EDAM identifier (e.g. `"topic_2258"`, `"operation_0366"`,
+    /// `"data_2301"`, `"format_1196"`).
+    pub id: &'static str,
+    /// Human-readable preferred label (e.g. `"Cheminformatics"`).
+    pub label: &'static str,
+}
+
+impl EdamTerm {
+    /// Const constructor for an [`EdamTerm`].
+    #[must_use]
+    pub const fn new(id: &'static str, label: &'static str) -> Self {
+        Self { id, label }
+    }
+
+    /// Canonical EDAM URI (`http://edamontology.org/<id>`).
+    #[must_use]
+    pub fn uri(self) -> String {
+        format!("http://edamontology.org/{}", self.id)
+    }
+}
+
+/// EDAM bioinformatics and cheminformatics ontology annotations for a web tool.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct EdamAnnotations {
+    /// Scientific domain topics (`topic_*`).
+    pub topics: &'static [EdamTerm],
+    /// Computational operations performed (`operation_*`).
+    pub operations: &'static [EdamTerm],
+    /// Input data types (`data_*`).
+    pub input_data: &'static [EdamTerm],
+    /// Input file/string formats (`format_*`).
+    pub input_formats: &'static [EdamTerm],
+    /// Output data types (`data_*`).
+    pub output_data: &'static [EdamTerm],
+    /// Output file/string formats (`format_*`).
+    pub output_formats: &'static [EdamTerm],
+}
+
+/// Metadata an app exposes as its read-only `WebMCP` `capabilities` tool
+/// and `BioSchemas` / Schema.org `SoftwareApplication` JSON-LD.
 #[derive(Clone, Copy, Debug, Eq, Props, PartialEq)]
 pub struct WebMcpConfig {
     /// Stable kebab-case identifier used to derive the tool name
@@ -27,6 +70,9 @@ pub struct WebMcpConfig {
     pub inputs: &'static [&'static str],
     /// Human-readable output surface names (e.g. `"cx_smiles"`).
     pub outputs: &'static [&'static str],
+    /// EDAM ontology terms describing topics, operations, data, and formats.
+    #[props(default)]
+    pub edam: EdamAnnotations,
 }
 
 /// Returns `s` as a JSON string literal (also valid as a JS string literal).
@@ -48,6 +94,29 @@ fn json_string(s: &str) -> String {
     }
     out.push('"');
     out
+}
+
+fn json_edam_terms(terms: &[EdamTerm]) -> String {
+    terms
+        .iter()
+        .map(|t| {
+            format!(
+                r#"{{"id": {}, "label": {}, "uri": {}}}"#,
+                json_string(t.id),
+                json_string(t.label),
+                json_string(&t.uri()),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn json_edam_uris(terms: &[EdamTerm]) -> String {
+    terms
+        .iter()
+        .map(|t| json_string(&t.uri()))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// Returns the inline `<script>` body that registers one read-only tool on
@@ -73,6 +142,12 @@ pub(crate) fn capabilities_script(cfg: WebMcpConfig) -> String {
         .map(|s| json_string(s))
         .collect::<Vec<_>>()
         .join(", ");
+    let topics = json_edam_terms(cfg.edam.topics);
+    let operations = json_edam_terms(cfg.edam.operations);
+    let input_data = json_edam_terms(cfg.edam.input_data);
+    let input_formats = json_edam_terms(cfg.edam.input_formats);
+    let output_data = json_edam_terms(cfg.edam.output_data);
+    let output_formats = json_edam_terms(cfg.edam.output_formats);
 
     format!(
         r#"(function() {{
@@ -83,10 +158,31 @@ pub(crate) fn capabilities_script(cfg: WebMcpConfig) -> String {
     title: {title},
     description: {description},
     inputSchema: {{ "type": "object", "properties": {{}}, "additionalProperties": false }},
-    execute: async () => ({{ name: {title}, description: {description}, inputs: [{inputs}], outputs: [{outputs}] }}),
+    execute: async () => ({{ name: {title}, description: {description}, inputs: [{inputs}], outputs: [{outputs}], edam: {{ topics: [{topics}], operations: [{operations}], inputs: {{ data: [{input_data}], formats: [{input_formats}] }}, outputs: {{ data: [{output_data}], formats: [{output_formats}] }} }} }}),
     annotations: {{ readOnlyHint: true }}
   }}).catch(() => {{}});
 }})();"#
+    )
+}
+
+/// Returns a Schema.org / `BioSchemas` `SoftwareApplication` JSON-LD document
+/// enriched with EDAM ontology URIs and terms.
+#[must_use]
+pub(crate) fn bioschemas_json_ld(cfg: WebMcpConfig) -> String {
+    let id = json_string(cfg.app_id);
+    let name = json_string(cfg.title);
+    let description = json_string(cfg.description);
+    let topic_uris = json_edam_uris(cfg.edam.topics);
+    let operation_uris = json_edam_uris(cfg.edam.operations);
+    let topics = json_edam_terms(cfg.edam.topics);
+    let operations = json_edam_terms(cfg.edam.operations);
+    let input_data = json_edam_terms(cfg.edam.input_data);
+    let input_formats = json_edam_terms(cfg.edam.input_formats);
+    let output_data = json_edam_terms(cfg.edam.output_data);
+    let output_formats = json_edam_terms(cfg.edam.output_formats);
+
+    format!(
+        r#"{{"@context":"https://schema.org","@type":"SoftwareApplication","identifier":{id},"name":{name},"description":{description},"applicationCategory":"ScientificApplication","operatingSystem":"WebAssembly","applicationSubCategory":[{topic_uris}],"featureList":[{operation_uris}],"edam":{{"topics":[{topics}],"operations":[{operations}],"inputData":[{input_data}],"inputFormats":[{input_formats}],"outputData":[{output_data}],"outputFormats":[{output_formats}]}}}}"#
     )
 }
 

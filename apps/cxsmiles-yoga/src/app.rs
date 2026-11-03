@@ -221,6 +221,68 @@ fn results(res: &CxResult) -> Element {
     }
 }
 
+const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
+    app_id: "cxsmiles-yoga",
+    title: "CX-SMILES Yoga",
+    description: "Web app for generating CX-SMILES from lists of related structures — collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n: blocks) via maximum common substructure",
+    inputs: &["smiles_list"],
+    outputs: &["cx_smiles"],
+    edam: EdamAnnotations {
+        topics: &[
+            EdamTerm {
+                id: "topic_2258",
+                label: "Cheminformatics",
+            },
+            EdamTerm {
+                id: "topic_0154",
+                label: "Small molecules",
+            },
+        ],
+        operations: &[
+            EdamTerm {
+                id: "operation_0366",
+                label: "Structure clustering",
+            },
+            EdamTerm {
+                id: "operation_0335",
+                label: "Formatting",
+            },
+            EdamTerm {
+                id: "operation_0570",
+                label: "Structure visualisation",
+            },
+        ],
+        input_data: &[EdamTerm {
+            id: "data_2301",
+            label: "SMILES string",
+        }],
+        input_formats: &[EdamTerm {
+            id: "format_1196",
+            label: "SMILES",
+        }],
+        output_data: &[
+            EdamTerm {
+                id: "data_2301",
+                label: "SMILES string",
+            },
+            EdamTerm {
+                id: "data_1710",
+                label: "Structure image",
+            },
+        ],
+        output_formats: &[
+            EdamTerm {
+                id: "format_1196",
+                label: "SMILES",
+            },
+            EdamTerm {
+                id: "format_3604",
+                label: "SVG",
+            },
+        ],
+    },
+};
+
 /// The main `cxsmiles-yoga` UI. Entry point for `dioxus::launch(cxsmiles_yoga::app)`.
 ///
 /// # Errors
@@ -261,13 +323,7 @@ pub fn app() -> Element {
     rsx! {
         DocumentHead {
             title: "🧘 CX-SMILES Yoga".to_string(),
-            webmcp: Some(WebMcpConfig {
-                app_id: "cxsmiles-yoga",
-                title: "CX-SMILES Yoga",
-                description: "Web app for generating CX-SMILES from lists of related structures — collapsing positional isomers (m: blocks) and variable-length repeats (Sg:n: blocks) via maximum common substructure",
-                inputs: &["smiles_list"],
-                outputs: &["cx_smiles"],
-            }),
+            webmcp: Some(WEBMCP_CONFIG),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],

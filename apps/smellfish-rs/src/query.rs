@@ -94,6 +94,41 @@ SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
     )
 }
 
+pub(crate) fn build_pubchem_query(chunk: &[String]) -> String {
+    let values = chunk
+        .iter()
+        .filter(|s| !s.is_empty())
+        .map(|value| format!("\"{}\"", escape_sparql_literal(value)))
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!(
+        r"
+PREFIX cheminf: <http://semanticscience.org/resource/>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX vocab: <http://rdf.ncbi.nlm.nih.gov/pubchem/vocabulary#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT DISTINCT ?inchikey ?related_cid WHERE {{
+  VALUES ?inchikey {{ {values} }}
+  ?compound vocab:inchikey ?inchikey .
+  {{
+    ?compound dcterms:identifier ?related_cid .
+  }}
+  UNION
+  {{
+    ?compound cheminf:CHEMINF_000461 ?stereoisomer .
+    ?stereoisomer dcterms:identifier ?related_cid .
+  }}
+  UNION
+  {{
+    ?compound cheminf:CHEMINF_000462 ?same_conn .
+    ?same_conn dcterms:identifier ?related_cid .
+  }}
+}}
+"
+    )
+}
+
 pub(crate) fn escape_sparql_literal(value: &str) -> String {
     value.replace('\\', r"\\").replace('"', r#"\""#)
 }

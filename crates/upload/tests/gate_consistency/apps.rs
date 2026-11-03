@@ -3,10 +3,9 @@
 
 // The `apps` gates, extracted from `gate_consistency.rs`.
 //
-// They share the helpers in that file -- `read`, `makefiles`,
-// `task_dependencies` and the rest -- so each module opens with
-// `use super::*`. Split by what is being checked rather than by
-// size: the groups fail for different reasons and get read
+// They share the helpers in `main.rs` -- `read`, `makefiles` and the rest --
+// so each module opens with `use super::*`. Split by what is being checked
+// rather than by size: the groups fail for different reasons and get read
 // separately.
 use super::*;
 
@@ -67,6 +66,14 @@ fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
         }
         if !body.contains("DocumentHead") {
             fail("renders no DocumentHead, so nothing injects the focus rule");
+        }
+        if !body.contains("EdamAnnotations")
+            || !body.contains("topic_")
+            || !body.contains("operation_")
+        {
+            fail(
+                "declares no EDAM ontology annotations (EdamAnnotations with topic_ and operation_)",
+            );
         }
 
         // The link's href is fixed in `ui::skip_link`. An app that spells out a

@@ -3461,7 +3461,6 @@ checksum = "d0d5d4b1981b8bbbb7aed204cae5726d683d5d6ac7e74ec54122ea28f315e7c8"
 name = "smellfish-rs"
 version = "0.1.0"
 dependencies = [
- "csv",
  "dioxus",
  "futures",
  "js-sys",
@@ -3469,6 +3468,7 @@ dependencies = [
  "serde",
  "serde_json",
  "ui",
+ "upload",
  "urlencoding",
  "wasm-bindgen",
  "wasm-bindgen-futures",

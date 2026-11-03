@@ -6,14 +6,14 @@ use js_sys::{JSON, Promise, Reflect};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 
-/// Read a [`web_sys::File`] as text via the File API.
+/// Read a [`web_sys::Blob`] as text via the File API.
 ///
 /// # Errors
 ///
 /// Returns an error if the file read promise is rejected or does not resolve
 /// to a string.
 #[cfg(target_arch = "wasm32")]
-pub(crate) async fn read_file_text(file: &web_sys::File) -> Result<String, String> {
+pub(crate) async fn read_file_text(file: &web_sys::Blob) -> Result<String, String> {
     let promise = file.text();
     let value = JsFuture::from(promise)
         .await

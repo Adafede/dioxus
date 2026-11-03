@@ -17,6 +17,68 @@ use crate::diagnostics::RecalibrationStats;
 use crate::metrics::PrecursorStats;
 use crate::recalibration::CalibrationModel;
 
+const WEBMCP_CONFIG: WebMcpConfig = WebMcpConfig {
+    app_id: "mgf-precursor-erro-rs",
+    title: "MGF Precursor Erro-rs",
+    description: "Web app for summarizing precursor mass errors from uploaded MGF files",
+    inputs: &["mgf_file"],
+    outputs: &["precursor_error_stats"],
+    edam: EdamAnnotations {
+        topics: &[
+            EdamTerm {
+                id: "topic_3520",
+                label: "Proteomics experiment",
+            },
+            EdamTerm {
+                id: "topic_3172",
+                label: "Metabolomics",
+            },
+        ],
+        operations: &[
+            EdamTerm {
+                id: "operation_3628",
+                label: "Mass spectra calibration",
+            },
+            EdamTerm {
+                id: "operation_2428",
+                label: "Validation",
+            },
+            EdamTerm {
+                id: "operation_0337",
+                label: "Visualisation",
+            },
+        ],
+        input_data: &[EdamTerm {
+            id: "data_0943",
+            label: "Mass spectrometry spectra",
+        }],
+        input_formats: &[EdamTerm {
+            id: "format_3651",
+            label: "MGF",
+        }],
+        output_data: &[
+            EdamTerm {
+                id: "data_0943",
+                label: "Mass spectrometry spectra",
+            },
+            EdamTerm {
+                id: "data_2884",
+                label: "Plot",
+            },
+        ],
+        output_formats: &[
+            EdamTerm {
+                id: "format_3651",
+                label: "MGF",
+            },
+            EdamTerm {
+                id: "format_3604",
+                label: "SVG",
+            },
+        ],
+    },
+};
+
 /// Renders the MGF precursor-error analysis UI.
 ///
 /// # Errors
@@ -64,13 +126,7 @@ pub fn app() -> Element {
     rsx! {
         DocumentHead {
             title: "MGF Precursor Error".to_string(),
-            webmcp: Some(WebMcpConfig {
-                app_id: "mgf-precursor-erro-rs",
-                title: "MGF Precursor Erro-rs",
-                description: "Web app for summarizing precursor mass errors from uploaded MGF files",
-                inputs: &["mgf_file"],
-                outputs: &["precursor_error_stats"],
-            }),
+            webmcp: Some(WEBMCP_CONFIG),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
             scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],

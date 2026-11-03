@@ -185,20 +185,6 @@ impl BlockParseState {
     }
 }
 
-/// Drives a whole MGF document through the block state machine, one line at a
-/// time.
-///
-/// This is the only part of the parser that is genuinely about a *file*: it
-/// tracks whether we are inside a `BEGIN IONS` pair and hands everything else to
-/// [`BlockParseState::consume_line`] and [`process_block_state`]. It is pure, so
-/// it compiles and tests off-wasm; the wasm entry point below only has to supply
-/// the lines.
-///
-/// The `allow(dead_code)` is scoped to the one case where nothing can reach this
-/// from a library root: a build that is neither `test` (the host tests below
-/// exercise it directly) nor `wasm32` (`scan_blob_with_progress` is its only
-/// production caller). The reachability behind this one item is unchanged, so
-/// nothing downstream is newly silenced.
 #[cfg_attr(
     not(any(test, target_arch = "wasm32")),
     allow(
@@ -206,19 +192,26 @@ impl BlockParseState {
         reason = "reached from wasm32 builds and from the tests below"
     )
 )]
-pub(crate) fn ingest_lines<'a>(
-    lines: impl Iterator<Item = &'a str>,
-    mut on_progress: impl FnMut(u64),
-) -> PrecursorStats {
-    let mut current_state = BlockParseState::default();
-    let mut current_is_in_block = false;
-    let mut metrics = PrecursorStats::default();
-    let mut plot_sample = PlotPointSample::default();
-    let mut smiles_cache = HashMap::new();
-    let mut formula_cache = HashMap::new();
-    let mut logged_failures = HashSet::new();
+#[derive(Default)]
+struct LineIngestor {
+    current_state: BlockParseState,
+    current_is_in_block: bool,
+    metrics: PrecursorStats,
+    plot_sample: PlotPointSample,
+    smiles_cache: HashMap<String, Option<f64>>,
+    formula_cache: HashMap<String, Option<f64>>,
+    logged_failures: HashSet<String>,
+}
 
-    for (index, line) in lines.enumerate() {
+#[cfg_attr(
+    not(any(test, target_arch = "wasm32")),
+    allow(
+        dead_code,
+        reason = "reached from wasm32 builds and from the tests below"
+    )
+)]
+impl LineIngestor {
+    fn feed_line(&mut self, index: usize, line: &str) {
         // A leading BOM is the first byte of the first line and is category Cf,
         // so `trim` does not remove it. Left in place, `"\u{feff}BEGIN IONS"`
         // never matches the literal, `current_is_in_block` stays false for the
@@ -231,46 +224,64 @@ pub(crate) fn ingest_lines<'a>(
         }
         .trim();
         if trimmed.is_empty() {
-            continue;
+            return;
         }
 
         if trimmed == "BEGIN IONS" {
-            current_state = BlockParseState::default();
-            current_is_in_block = true;
-            continue;
+            self.current_state = BlockParseState::default();
+            self.current_is_in_block = true;
+            return;
         }
 
-        if !current_is_in_block {
-            continue;
+        if !self.current_is_in_block {
+            return;
         }
 
-        current_state.consume_line(trimmed);
+        self.current_state.consume_line(trimmed);
 
         if trimmed == "END IONS" {
-            let mut block_plot_sample = Some(&mut plot_sample);
+            let mut block_plot_sample = Some(&mut self.plot_sample);
             if let Some(result) = process_block_state(
-                &current_state,
-                &mut smiles_cache,
-                &mut formula_cache,
-                &mut logged_failures,
+                &self.current_state,
+                &mut self.smiles_cache,
+                &mut self.formula_cache,
+                &mut self.logged_failures,
                 &mut block_plot_sample,
             ) {
-                metrics = merge_precursor_stats(metrics, &result);
+                self.metrics = merge_precursor_stats(std::mem::take(&mut self.metrics), &result);
             }
-            current_state = BlockParseState::default();
-            current_is_in_block = false;
+            self.current_state = BlockParseState::default();
+            self.current_is_in_block = false;
         }
-        on_progress(u64::try_from(index).unwrap_or(u64::MAX));
     }
 
-    metrics.plot_points = plot_sample.points;
-    metrics.plot_point_stream_seen = plot_sample.seen;
-    metrics
+    fn finish(mut self) -> PrecursorStats {
+        self.metrics.plot_points = self.plot_sample.points;
+        self.metrics.plot_point_stream_seen = self.plot_sample.seen;
+        self.metrics
+    }
+}
+
+/// Drives a whole MGF document through the block state machine, one line at a
+/// time.
+#[cfg(test)]
+pub(crate) fn ingest_lines<'a>(
+    lines: impl Iterator<Item = &'a str>,
+    mut on_progress: impl FnMut(u64),
+) -> PrecursorStats {
+    let mut ingestor = LineIngestor::default();
+    for (index, line) in lines.enumerate() {
+        ingestor.feed_line(index, line);
+        if line.trim() == "END IONS" {
+            on_progress(u64::try_from(index).unwrap_or(u64::MAX));
+        }
+    }
+    ingestor.finish()
 }
 
 /// Streaming MGF parser that reads the blob in chunks via [`upload::BlobLines`],
-/// yielding one line at a time so memory stays bounded by chunk size (16 MiB)
-/// regardless of file size.
+/// yielding one line at a time so each line is parsed on the fly without
+/// collecting a `Vec<String>` of all lines or reading the blob a second time.
 ///
 /// # Errors
 /// Returns an error when the blob cannot be read.
@@ -279,17 +290,20 @@ pub(crate) fn ingest_lines<'a>(
 pub(crate) async fn scan_blob_with_progress(
     blob: &Blob,
     on_progress: impl FnMut(u64, u64),
-) -> std::result::Result<PrecursorStats, UploadError> {
+) -> std::result::Result<(PrecursorStats, String), UploadError> {
     let mut reader = upload::BlobLines::new(upload::BlobSource::new(blob), on_progress);
-    let doc: Vec<String> = {
-        let mut collected = Vec::new();
-        while let Some(line) = reader.next_line().await? {
-            collected.push(line);
-        }
-        collected
-    };
+    let mut ingestor = LineIngestor::default();
+    let mut raw_content = String::new();
+    let mut index = 0usize;
 
-    Ok(ingest_lines(doc.iter().map(String::as_str), |_| {}))
+    while let Some(line) = reader.next_line().await? {
+        ingestor.feed_line(index, &line);
+        raw_content.push_str(&line);
+        raw_content.push('\n');
+        index += 1;
+    }
+
+    Ok((ingestor.finish(), raw_content))
 }
 
 fn compute_reference_mass<S: std::hash::BuildHasher>(

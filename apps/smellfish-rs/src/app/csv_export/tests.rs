@@ -96,3 +96,57 @@ fn escape_csv_wraps_fields_with_a_carriage_return() {
     let escaped = super::escape_csv("old\rmac");
     assert_eq!(escaped, "\"old\rmac\"");
 }
+
+#[test]
+fn build_csv_formats_rows_and_headers() {
+    let row = crate::model::MoleculeRow {
+        index: 1,
+        label: "Caffeine, test".to_string(),
+        smiles: "CN1C=NC2=C1C(=O)N(C(=O)N2C)C".to_string(),
+        #[cfg(target_arch = "wasm32")]
+        canonical_smiles: String::new(),
+        #[cfg(target_arch = "wasm32")]
+        inchikey: String::new(),
+        svg: None,
+        motifs: Vec::new(),
+        substituents_counts: std::collections::HashMap::from([("methyl".to_string(), 3)]),
+        lotus_scaffolds: Vec::new(),
+        #[cfg(target_arch = "wasm32")]
+        lotus_taxa: Vec::new(),
+        lotus_compounds: vec!["Q60235".to_string()],
+        lotus_compounds_with_taxa: std::collections::BTreeSet::new(),
+        pubchem_cids: vec!["2519".to_string()],
+        np_likeness: 1.25,
+        np_label: "NP-like".to_string(),
+        np_confidence: 0.85,
+        np_score_available: true,
+        ring_family: "Purine".to_string(),
+        evidence_notes: Vec::new(),
+        motif_context: String::new(),
+        chemist_checks: vec![crate::model::ChemistCheck {
+            name: "NP-likeness",
+            status: "pass",
+            detail: "ok".to_string(),
+        }],
+        verdict: "🌿 LOTUS-backed (Ertl score +1.25).".to_string(),
+        error: None,
+        #[cfg(target_arch = "wasm32")]
+        descriptors: crate::model::RdkitDescriptors::default(),
+        #[cfg(target_arch = "wasm32")]
+        stereo_tags: Vec::new(),
+        num_atoms: 14,
+        motif_hits: Vec::new(),
+    };
+
+    let csv = super::build_csv(&[row]);
+    assert!(
+        csv.starts_with(
+            "label,smiles,np_score,np_label,np_confidence,ring_family,substituents,locus,verdict_category,chemist_checks\n"
+        ),
+        "CSV should start with header row"
+    );
+    assert!(
+        csv.contains("\"Caffeine, test\",CN1C=NC2=C1C(=O)N(C(=O)N2C)C,1.250,NP-like,85%,Purine,methyl(3),Q60235;2519,likely,NP-likeness:pass"),
+        "CSV row should match expected formatting: {csv}"
+    );
+}

@@ -22,11 +22,9 @@ pub(super) fn class_tags_from_gallery(
     item: &GalleryItem,
     classes: &[ChemicalClass],
 ) -> Vec<(String, String)> {
-    let matched: Vec<&ChemicalClass> = item
-        .class_matches
+    let matched: Vec<&ChemicalClass> = classes
         .iter()
-        .filter(|(_, matched)| **matched)
-        .filter_map(|(name, _)| classes.iter().find(|c| &c.name == name))
+        .filter(|c| item.class_matches.get(&c.name).copied().unwrap_or(false))
         .collect();
 
     if matched.is_empty() {
@@ -107,17 +105,16 @@ pub(super) fn class_tags_from_block(
         .gallery_item_matches
         .as_ref()
         .and_then(|matches| {
-            let matched_name = matches
+            classes
                 .iter()
-                .find(|(_, matched)| **matched)
-                .map(|(name, _)| name.clone());
-            matched_name.and_then(|name| {
-                classes
-                    .iter()
-                    .find(|c| c.name == name)
-                    .map(|c| c.name.clone())
-                    .or(Some(name))
-            })
+                .find(|c| matches.get(&c.name).copied().unwrap_or(false))
+                .map(|c| c.name.clone())
+                .or_else(|| {
+                    matches
+                        .iter()
+                        .find(|(_, matched)| **matched)
+                        .map(|(name, _)| name.clone())
+                })
         })
         .unwrap_or_else(|| "-".to_string());
 
@@ -150,3 +147,7 @@ pub(super) fn insert_class_comment(block_raw: &str, class_tags: &[(String, Strin
     }
     format!("{comment_block}{block_raw}")
 }
+
+#[cfg(test)]
+#[allow(clippy::indexing_slicing)]
+mod tests;

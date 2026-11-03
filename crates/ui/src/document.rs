@@ -253,6 +253,13 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
 
         if let Some(cfg) = webmcp {
             doc.create_head_element("script", &[], Some(crate::webmcp::capabilities_script(cfg)));
+            if json_ld.is_none() {
+                doc.create_head_element(
+                    "script",
+                    &[("type", "application/ld+json".to_string())],
+                    Some(crate::webmcp::bioschemas_json_ld(cfg)),
+                );
+            }
         }
 
         // JSON-LD structured data

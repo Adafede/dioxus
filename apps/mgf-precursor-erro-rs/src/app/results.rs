@@ -397,9 +397,9 @@ pub fn ResultsPanel(
                                 style: StyleBuilder::new().display("flex").gap("0.5rem").property("margin-bottom", "0.8rem").border_bottom("1px solid #e2e8f0").property("padding-bottom", "0.5rem").build(),
                                 button {
                                     style: if *cumulative_dist_tab.read() == "mda" {
-                                        "padding: 0.5rem 1rem; border: 2px solid #1e40af; background: #1e40af; color: white; border-radius: 6px; font-weight: 600; cursor: pointer;"
+                                        StyleBuilder::new().padding("0.5rem 1rem").border("2px solid #1e40af").property("background", "#1e40af").color("white").border_radius("6px").font_weight("600").cursor("pointer").build()
                                     } else {
-                                        "padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 6px; cursor: pointer;"
+                                        StyleBuilder::new().padding("0.5rem 1rem").border("1px solid #e2e8f0").property("background", "white").color("#64748b").border_radius("6px").cursor("pointer").build()
                                     },
                                     onclick: move |_| {
                                         cumulative_dist_tab.set("mda");
@@ -408,9 +408,9 @@ pub fn ResultsPanel(
                                 }
                                 button {
                                     style: if *cumulative_dist_tab.read() == "ppm" {
-                                        "padding: 0.5rem 1rem; border: 2px solid #1e40af; background: #1e40af; color: white; border-radius: 6px; font-weight: 600; cursor: pointer;"
+                                        StyleBuilder::new().padding("0.5rem 1rem").border("2px solid #1e40af").property("background", "#1e40af").color("white").border_radius("6px").font_weight("600").cursor("pointer").build()
                                     } else {
-                                        "padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 6px; cursor: pointer;"
+                                        StyleBuilder::new().padding("0.5rem 1rem").border("1px solid #e2e8f0").property("background", "white").color("#64748b").border_radius("6px").cursor("pointer").build()
                                     },
                                     onclick: move |_| {
                                         cumulative_dist_tab.set("ppm");

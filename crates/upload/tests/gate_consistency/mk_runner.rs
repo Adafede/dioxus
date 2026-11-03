@@ -3,10 +3,9 @@
 
 // The `mk_runner` gates, extracted from `gate_consistency.rs`.
 //
-// They share the helpers in that file -- `read`, `makefiles`,
-// `task_dependencies` and the rest -- so each module opens with
-// `use super::*`. Split by what is being checked rather than by
-// size: the groups fail for different reasons and get read
+// They share the helpers in `main.rs` -- `read`, `makefiles` and the rest --
+// so each module opens with `use super::*`. Split by what is being checked
+// rather than by size: the groups fail for different reasons and get read
 // separately.
 use super::*;
 
