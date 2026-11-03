@@ -35,6 +35,12 @@ fn render_ecdf_svg_empty_values_returns_ok() {
 #[test]
 fn render_ecdf_svg_nan_and_inf_values_returns_ok() {
     let values = [f64::NAN, f64::INFINITY, f64::NEG_INFINITY];
+    let points = super::super::data::build_ecdf_points(&values, 1e-6, 10.0);
+    assert_eq!(
+        points,
+        vec![(1e-6, 0.0), (10.0, 1.0)],
+        "non-finite values must be filtered before ECDF construction"
+    );
     let result = render_ecdf_svg("test", &values, &[1.0, 5.0, 10.0], "ppm");
     assert!(
         result.is_ok(),

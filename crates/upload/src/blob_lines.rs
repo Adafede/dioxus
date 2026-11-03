@@ -46,7 +46,7 @@ where
             total_bytes,
             offset: 0,
             chunk_size: crate::blob_cursor::CHUNK_SIZE,
-            buffer: Vec::with_capacity(crate::blob_cursor::CHUNK_SIZE),
+            buffer: Vec::new(),
             buf_start: 0,
             processed: 0,
             progress: ProgressThrottler::new(
@@ -138,10 +138,22 @@ where
     }
 
     async fn load_next_chunk(&mut self) -> Result<(), UploadError> {
+        if self.buf_start > 0 {
+            if self.buf_start >= self.buffer.len() {
+                self.buffer.clear();
+            } else {
+                self.buffer.drain(..self.buf_start);
+            }
+            self.buf_start = 0;
+        }
         let start = self.offset;
         let end = (self.offset + self.chunk_size as u64).min(self.total_bytes);
         let chunk_bytes = self.source.read_chunk(start, end).await?;
-        self.buffer.extend_from_slice(&chunk_bytes);
+        if self.buffer.is_empty() {
+            self.buffer = chunk_bytes;
+        } else {
+            self.buffer.extend_from_slice(&chunk_bytes);
+        }
         self.offset = end;
         self.processed = self.processed.saturating_add((end - start).max(1));
         if self.progress.maybe_report(self.processed, self.total_bytes) {

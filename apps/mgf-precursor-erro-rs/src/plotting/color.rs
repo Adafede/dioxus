@@ -23,37 +23,36 @@ pub(super) const fn adduct_family_rank(family: AdductFamily) -> usize {
 }
 
 /// Paul Tol's qualitative palette, wrapped cyclically by family rank.
-const fn paul_tol_palette(index: usize) -> &'static str {
+const fn paul_tol_entry(index: usize) -> (&'static str, (u8, u8, u8)) {
     // `index % 8` is below the eight-entry table above, so the slot exists.
     #[allow(clippy::indexing_slicing)] // see above
     [
-        "#4477AA", "#66CCEE", "#228833", "#CCBB44", "#EE6677", "#AA3377", "#BBBBBB", "#004488",
+        ("#4477AA", (0x44, 0x77, 0xAA)),
+        ("#66CCEE", (0x66, 0xCC, 0xEE)),
+        ("#228833", (0x22, 0x88, 0x33)),
+        ("#CCBB44", (0xCC, 0xBB, 0x44)),
+        ("#EE6677", (0xEE, 0x66, 0x77)),
+        ("#AA3377", (0xAA, 0x33, 0x77)),
+        ("#BBBBBB", (0xBB, 0xBB, 0xBB)),
+        ("#004488", (0x00, 0x44, 0x88)),
     ][index % 8]
 }
 
 #[must_use]
 pub fn adduct_family_color_hex(family: AdductFamily) -> String {
     let palette_index = adduct_family_rank(family);
-    paul_tol_palette(palette_index).to_string()
+    paul_tol_entry(palette_index).0.to_string()
 }
 
 #[must_use]
-pub fn adduct_family_color(family: AdductFamily) -> plotters::style::RGBColor {
-    let color = adduct_family_color_hex(family);
-    let hex = color.trim_start_matches('#');
-    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
-    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
-    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+pub const fn adduct_family_color(family: AdductFamily) -> plotters::style::RGBColor {
+    let (_, (r, g, b)) = paul_tol_entry(adduct_family_rank(family));
     plotters::style::RGBColor(r, g, b)
 }
 
 #[must_use]
 pub fn adduct_family_shape_style(family: AdductFamily, alpha: f32) -> plotters::style::ShapeStyle {
-    let color = adduct_family_color_hex(family);
-    let hex = color.trim_start_matches('#');
-    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
-    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
-    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+    let (_, (r, g, b)) = paul_tol_entry(adduct_family_rank(family));
     let alpha = f64::from(alpha.clamp(0.0, 1.0));
     plotters::style::ShapeStyle::from(&plotters::style::RGBAColor(r, g, b, alpha)).filled()
 }

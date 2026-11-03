@@ -263,15 +263,17 @@ pub fn make_svg_responsive(svg_markup: String) -> String {
 
 #[must_use]
 pub fn build_ecdf_points(values: &[f64], x_min: f64, x_max: f64) -> Vec<(f64, f64)> {
-    if values.is_empty() {
+    let mut sorted: Vec<f64> = values
+        .iter()
+        .copied()
+        .filter(|value| value.is_finite())
+        .take(50_000)
+        .collect();
+    if sorted.is_empty() {
         return vec![(x_min, 0.0), (x_max, 1.0)];
     }
 
-    let mut sorted = values.to_vec();
     sorted.sort_by(f64::total_cmp);
-    if sorted.len() > 50_000 {
-        sorted.truncate(50_000);
-    }
     let total = sorted.len();
     let mut points = Vec::with_capacity(sorted.len().saturating_mul(2) + 2);
     points.push((x_min, 0.0));

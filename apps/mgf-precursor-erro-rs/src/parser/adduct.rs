@@ -33,7 +33,9 @@ pub(crate) fn expected_precursor_mz(
     ion_mode: Option<&str>,
 ) -> f64 {
     let normalized_adduct = adduct.unwrap_or("").trim();
-    let normalized_ion_mode = ion_mode.unwrap_or("").trim().to_ascii_lowercase();
+    let ion_mode_trimmed = ion_mode.unwrap_or("").trim();
+    let is_negative_mode = ion_mode_trimmed.eq_ignore_ascii_case("negative");
+    let is_positive_mode = ion_mode_trimmed.eq_ignore_ascii_case("positive");
     let charge_sign =
         parse_charge_sign(charge, ion_mode).or_else(|| parse_adduct_charge_sign(adduct));
 
@@ -42,9 +44,9 @@ pub(crate) fn expected_precursor_mz(
     let (multiplier, shift, electron_adjustment) = if normalized_adduct.is_empty() {
         (
             1.0,
-            if charge_sign == Some(true) || normalized_ion_mode == "negative" {
+            if charge_sign == Some(true) || is_negative_mode {
                 -PROTON_MASS
-            } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
+            } else if charge_sign == Some(false) || is_positive_mode {
                 PROTON_MASS
             } else {
                 0.0
@@ -56,17 +58,20 @@ pub(crate) fn expected_precursor_mz(
             parse_adduct_mass_spec_cached(normalized_adduct).unwrap_or_else(|| {
                 (
                     1.0,
-                    if charge_sign == Some(true) || normalized_ion_mode == "negative" {
+                    if charge_sign == Some(true) || is_negative_mode {
                         -PROTON_MASS
-                    } else if charge_sign == Some(false) || normalized_ion_mode == "positive" {
+                    } else if charge_sign == Some(false) || is_positive_mode {
                         PROTON_MASS
                     } else {
                         0.0
                     },
                 )
             });
-        let uses_mg_charge_correction =
-            normalized_adduct.to_ascii_uppercase().contains("MG") && charge_sign == Some(false);
+        let uses_mg_charge_correction = normalized_adduct
+            .as_bytes()
+            .windows(2)
+            .any(|w| w.eq_ignore_ascii_case(b"MG"))
+            && charge_sign == Some(false);
         let electron_adjustment = match charge_sign {
             Some(false) if uses_mg_charge_correction => {
                 -ELECTRON_MASS * (charge_value - 1.0).max(0.0)
@@ -85,8 +90,7 @@ pub(crate) fn expected_precursor_mz(
 #[must_use]
 pub(crate) fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
     let adduct = adduct?.trim();
-    let cleaned = adduct.replace(' ', "");
-    let suffix = cleaned.split(']').nth(1).unwrap_or("").trim();
+    let suffix = adduct.split(']').nth(1).unwrap_or("").trim();
     if suffix.contains('-') {
         Some(true)
     } else if suffix.contains('+') {
@@ -99,20 +103,22 @@ pub(crate) fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
 fn parse_charge_sign(charge: Option<&str>, ion_mode: Option<&str>) -> Option<bool> {
     let charge_text = charge.unwrap_or("").trim();
     if charge_text.is_empty() {
-        return match ion_mode.unwrap_or("").trim().to_ascii_lowercase().as_str() {
-            "negative" => Some(true),
-            "positive" => Some(false),
-            _ => None,
+        let mode = ion_mode.unwrap_or("").trim();
+        return if mode.eq_ignore_ascii_case("negative") {
+            Some(true)
+        } else if mode.eq_ignore_ascii_case("positive") {
+            Some(false)
+        } else {
+            None
         };
     }
 
-    let normalized = charge_text.replace(' ', "");
-    let first_char = normalized.chars().next();
-    let last_char = normalized.chars().last();
+    let first_byte = charge_text.bytes().next();
+    let last_byte = charge_text.bytes().next_back();
 
-    if first_char == Some('-') || last_char == Some('-') {
+    if first_byte == Some(b'-') || last_byte == Some(b'-') {
         Some(true)
-    } else if first_char == Some('+') || last_char == Some('+') {
+    } else if first_byte == Some(b'+') || last_byte == Some(b'+') {
         Some(false)
     } else {
         None
@@ -310,27 +316,31 @@ fn parse_adduct_term_mass_with_context(
     Some(formula.isotopologue_mass() * multiplier)
 }
 
-fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {
-    if let Some(value) = charge {
-        let cleaned = value.trim();
-        let digits = cleaned
-            .chars()
-            .filter(char::is_ascii_digit)
-            .collect::<String>();
-        if let Ok(parsed) = digits.parse::<f64>() {
-            return Some(parsed.max(1.0));
+fn parse_ascii_digits_f64(text: &str) -> Option<f64> {
+    let mut acc = 0u64;
+    let mut saw_digit = false;
+    for byte in text.bytes() {
+        if byte.is_ascii_digit() {
+            saw_digit = true;
+            acc = acc
+                .saturating_mul(10)
+                .saturating_add(u64::from(byte - b'0'));
         }
+    }
+    saw_digit.then(|| f64::from(u32::try_from(acc).unwrap_or(u32::MAX)).max(1.0))
+}
+
+fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {
+    if let Some(value) = charge
+        && let Some(parsed) = parse_ascii_digits_f64(value.trim())
+    {
+        return Some(parsed);
     }
 
     if let Some(adduct) = adduct {
-        let cleaned = adduct.trim();
-        let suffix = cleaned.split(']').nth(1).unwrap_or("").trim();
-        let digits = suffix
-            .chars()
-            .filter(char::is_ascii_digit)
-            .collect::<String>();
-        if let Ok(parsed) = digits.parse::<f64>() {
-            return Some(parsed.max(1.0));
+        let suffix = adduct.trim().split(']').nth(1).unwrap_or("").trim();
+        if let Some(parsed) = parse_ascii_digits_f64(suffix) {
+            return Some(parsed);
         }
     }
 

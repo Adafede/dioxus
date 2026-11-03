@@ -59,7 +59,7 @@ where
             total_bytes,
             chunk_size: CHUNK_SIZE,
             source_read: 0,
-            buf: Vec::with_capacity(CHUNK_SIZE),
+            buf: Vec::new(),
             pos: 0,
             processed_before_buf: 0,
             eof: false,
@@ -107,7 +107,11 @@ where
     /// Returns [`UploadError`] if the underlying chunk read fails.
     pub async fn fill(&mut self) -> Result<bool, UploadError> {
         if self.pos > 0 {
-            self.buf.drain(0..self.pos);
+            if self.pos >= self.buf.len() {
+                self.buf.clear();
+            } else {
+                self.buf.drain(0..self.pos);
+            }
             self.processed_before_buf += self.pos as u64;
             self.pos = 0;
         }
@@ -124,7 +128,11 @@ where
         }
 
         let chunk = self.source.read_chunk(start, end).await?;
-        self.buf.extend_from_slice(&chunk);
+        if self.buf.is_empty() {
+            self.buf = chunk;
+        } else {
+            self.buf.extend_from_slice(&chunk);
+        }
 
         self.source_read = end;
         if self.source_read >= self.total_bytes {
