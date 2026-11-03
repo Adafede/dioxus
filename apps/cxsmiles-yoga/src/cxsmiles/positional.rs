@@ -12,7 +12,7 @@
 use chematic::core::{Atom, AtomIdx, BondOrder, Molecule, MoleculeBuilder};
 use chematic::smarts::{QueryMolecule, find_matches, find_mcs};
 use chematic::smiles::{parse, write};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use super::graph::{
     best_match, components, matched_mask, molecule_to_query, subgraph, unmatched_atoms,
@@ -379,11 +379,10 @@ fn split_floating_and_recovered(
 
 /// Count edges from `comp` to already-matched (scaffold) atoms.
 fn boundary_edges(comp: &[u32], matched: &[bool], mol: &Molecule) -> usize {
-    let set: HashSet<u32> = comp.iter().copied().collect();
     let mut count = 0;
     for &a in comp {
         for (nbr, _) in mol.neighbors(AtomIdx(a)) {
-            if !set.contains(&nbr.0) && is_matched(matched, nbr.0) {
+            if !comp.contains(&nbr.0) && is_matched(matched, nbr.0) {
                 count += 1;
             }
         }

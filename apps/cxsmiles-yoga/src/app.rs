@@ -203,8 +203,7 @@ fn results(res: &CxResult) -> Element {
                             div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fill, minmax(110px, 1fr))").gap("0.4rem").width("100%").property("overflow-y", "auto").build(),
                                 for smi in &res.enumerated {
                                     {
-                                        let s = smi.clone();
-                                        let svg = depict::render_smiles_svg(&s);
+                                        let svg = depict::render_smiles_svg(smi);
                                         rsx! {
                                             div { style: StyleBuilder::new().width("100%").height("90px").display("grid").property("place-items", "center").background_color("#f8fafc").border("1px solid #e2e8f0").border_radius("8px").property("overflow", "hidden").build(),
                                                 div { dangerous_inner_html: "{svg}" }
@@ -302,8 +301,9 @@ pub fn app() -> Element {
         let lines: Vec<String> = input
             .read()
             .lines()
-            .map(|l| l.trim().to_string())
+            .map(str::trim)
             .filter(|l| !l.is_empty())
+            .map(str::to_owned)
             .collect();
         match generate(&lines) {
             Ok(r) => result.set(Some(r)),

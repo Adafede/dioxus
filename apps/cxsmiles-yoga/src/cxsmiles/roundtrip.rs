@@ -310,10 +310,10 @@ pub(crate) fn enumerate_repeating(
 /// Round-trip report: how many original inputs re-appear after expanding CX-SMILES.
 #[must_use]
 pub(crate) fn roundtrip_coverage(enumerated: &[String], group: &[Molecule]) -> (usize, Coverage) {
-    let canon: Vec<String> = group.iter().map(canonical_smiles).collect();
     let mut covered = 0;
-    for c in &canon {
-        if enumerated.iter().any(|e| e == c) {
+    for mol in group {
+        let c = canonical_smiles(mol);
+        if enumerated.contains(&c) {
             covered += 1;
         }
     }
@@ -328,7 +328,7 @@ pub(crate) fn roundtrip_coverage(enumerated: &[String], group: &[Molecule]) -> (
 
 #[must_use]
 pub(crate) fn dedup_sort(mut v: Vec<String>) -> Vec<String> {
-    v.sort();
+    v.sort_unstable();
     v.dedup();
     v
 }

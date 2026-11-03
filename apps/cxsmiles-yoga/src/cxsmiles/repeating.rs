@@ -11,7 +11,7 @@
 use chematic::core::{AtomIdx, BondOrder, Molecule, MoleculeBuilder};
 use chematic::smarts::{QueryMolecule, find_matches};
 use chematic::smiles::{parse, write};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use super::graph::{components, matched_mask, molecule_to_query, unmatched_atoms};
 use super::roundtrip::{enumerate_repeating, roundtrip_coverage};
@@ -180,7 +180,7 @@ pub(crate) fn locate_repeat_in_scaffold(
     let mut budget = MAX_FRAGMENTS;
     for start in 0..n as u32 {
         let mut stack: Vec<Vec<u32>> = vec![vec![start]];
-        while let Some(frag) = stack.pop() {
+        while let Some(mut frag) = stack.pop() {
             // Charged on the way in rather than on the way out, so the ceiling
             // bounds the work and the memory together: every fragment pushed is
             // eventually popped exactly once.
@@ -194,15 +194,14 @@ pub(crate) fn locate_repeat_in_scaffold(
                 )));
             }
             if frag.len() == unit_size {
-                let mut f = frag.clone();
-                f.sort_unstable();
-                if is_internal(&f, scaffold)
-                    && multiset(&f, scaffold) == target
+                frag.sort_unstable();
+                if is_internal(&frag, scaffold)
+                    && multiset(&frag, scaffold) == target
                     && best
                         .as_ref()
-                        .is_none_or(|b| center_dist(&f, n) < center_dist(b, n))
+                        .is_none_or(|b| center_dist(&frag, n) < center_dist(b, n))
                 {
-                    best = Some(f);
+                    best = Some(frag);
                 }
                 continue;
             }
@@ -232,11 +231,10 @@ pub(crate) fn multiset(atoms: &[u32], mol: &Molecule) -> Vec<u8> {
 }
 
 pub(crate) fn is_internal(atoms: &[u32], mol: &Molecule) -> bool {
-    let set: HashSet<u32> = atoms.iter().copied().collect();
     let mut ext = 0usize;
     for &a in atoms {
         for (nbr, _) in mol.neighbors(AtomIdx(a)) {
-            if !set.contains(&nbr.0) && nbr.0 != a {
+            if !atoms.contains(&nbr.0) && nbr.0 != a {
                 ext += 1;
             }
         }
@@ -262,19 +260,18 @@ pub(crate) fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usiz
     if n <= 1 {
         return scaffold.clone();
     }
-    let set: HashSet<u32> = repeat_atoms.iter().copied().map(|a| a as u32).collect();
     let unit: Vec<u32> = repeat_atoms.iter().map(|&a| a as u32).collect();
-    let anchors: Vec<u32> = repeat_atoms
+    let mut anchors: Vec<u32> = unit
         .iter()
         .flat_map(|&a| {
             scaffold
-                .neighbors(AtomIdx(a as u32))
-                .filter(|(nb, _)| !set.contains(&nb.0))
+                .neighbors(AtomIdx(a))
+                .filter(|(nb, _)| !unit.contains(&nb.0))
                 .map(|(nb, _)| nb.0)
         })
-        .collect::<HashSet<_>>()
-        .into_iter()
         .collect();
+    anchors.sort_unstable();
+    anchors.dedup();
     let anchor_a = anchors.first().copied().unwrap_or(0);
     let anchor_b = anchors.get(1).copied().unwrap_or(0);
     let ep_a = endpoint_for(scaffold, &unit, anchor_a);
@@ -282,7 +279,7 @@ pub(crate) fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usiz
     let unit_internal: Vec<(u32, u32, BondOrder)> = scaffold
         .bonds()
         .filter_map(|(_, be)| {
-            if set.contains(&be.atom1.0) && set.contains(&be.atom2.0) {
+            if unit.contains(&be.atom1.0) && unit.contains(&be.atom2.0) {
                 Some((be.atom1.0, be.atom2.0, be.order))
             } else {
                 None
@@ -392,9 +389,8 @@ fn add_scaffold_bonds(
 /// — so the `0` stands only for the case that cannot occur, as `anchor_a` and
 /// `anchor_b` above already do.
 pub(crate) fn endpoint_for(scaffold: &Molecule, unit: &[u32], anchor: u32) -> u32 {
-    let uset: HashSet<u32> = unit.iter().copied().collect();
     for (nbr, _) in scaffold.neighbors(AtomIdx(anchor)) {
-        if uset.contains(&nbr.0) {
+        if unit.contains(&nbr.0) {
             return nbr.0;
         }
     }

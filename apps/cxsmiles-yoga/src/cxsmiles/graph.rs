@@ -112,13 +112,12 @@ pub(crate) fn components(atoms: &[u32], mol: &Molecule) -> Vec<Vec<u32>> {
             // `insert` returns whether it was the one that added the atom, so
             // there is no separate "have I seen it" question left to answer
             // wrongly, and no way to push an atom twice.
-            let fresh: Vec<u32> = mol
-                .neighbors(AtomIdx(cur))
-                .map(|(nbr, _)| nbr.0)
-                .filter(|&n| set.contains(&n))
-                .filter(|&n| seen.insert(n))
-                .collect();
-            stack.extend(fresh);
+            stack.extend(
+                mol.neighbors(AtomIdx(cur))
+                    .map(|(nbr, _)| nbr.0)
+                    .filter(|&n| set.contains(&n))
+                    .filter(|&n| seen.insert(n)),
+            );
         }
         comps.push(comp);
     }
