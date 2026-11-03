@@ -130,31 +130,25 @@ pub(super) fn class_tags_from_block(
 
 /// Insert `COMMENT=LIPID_MAPS_*` lines with class tags in the MGF header
 /// block (after `BEGIN IONS`, before the first peak line).
-// Reachable from the wasm download path and from the analysis pipeline, and
-// from neither in a host build. Not narrowed to `not(any(test, wasm32))`,
-// because the analysis tests are themselves `all(test, wasm32)`: a host *test*
-// build has no caller either, so the wasm condition is the whole of it.
-#[allow(dead_code)] // see above
 pub(super) fn insert_class_comment(block_raw: &str, class_tags: &[(String, String)]) -> String {
     use std::fmt::Write as _;
 
     let mut out = String::with_capacity(block_raw.len() + class_tags.len() * 32);
-    if let Some(begin_pos) = block_raw.find(|c: char| !c.is_whitespace())
-        && block_raw[begin_pos..].starts_with("BEGIN IONS")
-        && let Some(newline_pos) = block_raw[begin_pos..].find('\n')
-    {
-        let (before, after) = block_raw[begin_pos..].split_at(newline_pos + 1);
-        out.push_str(before);
-        for (k, v) in class_tags {
-            let _ = writeln!(out, "COMMENT=LIPID_MAPS_{k}={v}");
-        }
-        out.push_str(after);
-        return out;
-    }
+    let split_pos = block_raw
+        .find(|c: char| !c.is_whitespace())
+        .filter(|&begin_pos| block_raw[begin_pos..].starts_with("BEGIN IONS"))
+        .and_then(|begin_pos| {
+            block_raw[begin_pos..]
+                .find('\n')
+                .map(|newline_pos| begin_pos + newline_pos + 1)
+        })
+        .unwrap_or(0);
+    let (before, after) = block_raw.split_at(split_pos);
+    out.push_str(before);
     for (k, v) in class_tags {
         let _ = writeln!(out, "COMMENT=LIPID_MAPS_{k}={v}");
     }
-    out.push_str(block_raw);
+    out.push_str(after);
     out
 }
 

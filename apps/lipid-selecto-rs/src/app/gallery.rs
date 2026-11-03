@@ -9,84 +9,94 @@
 
 use crate::chemical_class::ChemicalClass;
 use crate::parser::{GalleryItem, SpectrumBlock};
-#[cfg(any(test, target_arch = "wasm32"))]
+use std::collections::HashMap;
 use std::fmt::Write;
 
 use super::class_tags::{class_tags_from_block, class_tags_from_gallery};
-#[cfg(any(test, target_arch = "wasm32"))]
-use super::types::GallerySmilesEntry;
 
-/// Pre-compute class tags for each block (for MGF download tagging).
+/// Shared filter predicate used across the gallery view and MGF/SMILES downloads.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn passes_item_filters(
+    class_matches: Option<&HashMap<String, bool>>,
+    exact_mass: f64,
+    precursor_mz: Option<f64>,
+    adduct: Option<&str>,
+    selected_classes: &[String],
+    mz_min: f64,
+    mz_max: f64,
+    prec_min: f64,
+    prec_max: f64,
+    adduct_filter: &str,
+) -> bool {
+    if selected_classes.is_empty() {
+        return false;
+    }
+    let Some(matches) = class_matches else {
+        return false;
+    };
+    if !selected_classes
+        .iter()
+        .any(|class_name| matches.get(class_name).copied().unwrap_or(false))
+    {
+        return false;
+    }
+    if exact_mass < mz_min || exact_mass > mz_max {
+        return false;
+    }
+    if let Some(pmz) = precursor_mz
+        && (pmz < prec_min || pmz > prec_max)
+    {
+        return false;
+    }
+    if !adduct_filter.is_empty() && adduct != Some(adduct_filter) {
+        return false;
+    }
+    true
+}
+
+/// Compute class tags for a single block (for MGF download tagging).
 ///
 /// Tries to find the corresponding `GalleryItem` by `block_index` to get
 /// the same class as the UI. Falls back to direct block classification.
-pub(super) fn prepare_block_class_tags(
-    blocks: &[SpectrumBlock],
+pub(super) fn block_class_tags(
+    block: &SpectrumBlock,
     gallery: &[GalleryItem],
     all_classes: &[ChemicalClass],
-) -> Vec<Vec<(String, String)>> {
-    blocks
-        .iter()
-        .map(|block| {
-            let gallery_item = gallery
-                .binary_search_by_key(&block.index, |item| item.block_index)
-                .ok()
-                .and_then(|idx| gallery.get(idx));
-            gallery_item.map_or_else(
-                || class_tags_from_block(block, all_classes),
-                |item| class_tags_from_gallery(item, all_classes),
-            )
-        })
-        .collect()
+) -> Vec<(String, String)> {
+    let gallery_item = gallery
+        .binary_search_by_key(&block.index, |item| item.block_index)
+        .ok()
+        .and_then(|idx| gallery.get(idx));
+    gallery_item.map_or_else(
+        || class_tags_from_block(block, all_classes),
+        |item| class_tags_from_gallery(item, all_classes),
+    )
 }
 
-/// Build a SMILES file content string from gallery-smiles entries for download.
-#[cfg(any(test, target_arch = "wasm32"))]
-pub(super) fn build_smiles_from_gallery(gallery: &[&GallerySmilesEntry]) -> String {
+/// Build a SMILES file content string from filtered gallery items for download.
+pub(super) fn build_smiles_from_gallery(
+    gallery: &[&GalleryItem],
+    all_classes: &[ChemicalClass],
+) -> String {
     let mut content = String::new();
-    for (title, smiles, category, main_class, _sub_class, _, _, _, _) in gallery {
-        if let Some(smiles) = smiles {
-            let cat_str = category.as_deref().filter(|s| !s.is_empty()).unwrap_or("-");
-            let mc_str = main_class
+    for item in gallery {
+        if let Some(smiles) = item.smiles.as_deref() {
+            let class_tags = class_tags_from_gallery(item, all_classes);
+            let cat_str = class_tags
+                .iter()
+                .find_map(|(k, v)| (k == "CATEGORY" && !v.is_empty()).then_some(v.as_str()))
+                .unwrap_or("-");
+            let mc_str = class_tags
+                .iter()
+                .find_map(|(k, v)| (k == "MAIN_CLASS" && !v.is_empty()).then_some(v.as_str()))
+                .unwrap_or("-");
+            let title_str = item
+                .title
                 .as_deref()
                 .filter(|s| !s.is_empty())
                 .unwrap_or("-");
-            let title_str = title.as_deref().filter(|s| !s.is_empty()).unwrap_or("-");
             let _ = writeln!(content, "{smiles}\t{title_str}\t{cat_str}\t{mc_str}\t-");
         }
     }
     content
-}
-
-/// Prepare gallery SMILES entries for WASM download closures.
-#[cfg(any(test, target_arch = "wasm32"))]
-pub(super) fn prepare_gallery_smiles(
-    gallery: &[GalleryItem],
-    all_classes: &[ChemicalClass],
-) -> Vec<GallerySmilesEntry> {
-    gallery
-        .iter()
-        .map(|item| {
-            let class_tags = class_tags_from_gallery(item, all_classes);
-            let category = class_tags
-                .iter()
-                .find_map(|(k, v)| (k == "CATEGORY").then(|| v.clone()))
-                .unwrap_or_else(|| "-".to_string());
-            let main_class = class_tags
-                .iter()
-                .find_map(|(k, v)| (k == "MAIN_CLASS").then(|| v.clone()))
-                .unwrap_or_else(|| "-".to_string());
-            (
-                item.title.clone(),
-                item.smiles.clone(),
-                Some(category),
-                Some(main_class),
-                Some("-".to_string()),
-                Some(item.exact_mass),
-                item.precursor_mz,
-                item.adduct.clone(),
-                item.class_matches.clone(),
-            )
-        })
-        .collect()
 }

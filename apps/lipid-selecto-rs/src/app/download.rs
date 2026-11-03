@@ -6,21 +6,17 @@
 //! WASM-only: uses the `upload` crate's `download_text` helper to trigger
 //! a browser download with the given filename.
 
-#[cfg(target_arch = "wasm32")]
 use super::class_tags::insert_class_comment;
-#[cfg(target_arch = "wasm32")]
-use super::gallery::build_smiles_from_gallery;
-#[cfg(target_arch = "wasm32")]
-use super::types::GallerySmilesEntry;
-#[cfg(target_arch = "wasm32")]
-use crate::parser::SpectrumBlock;
+use super::gallery::{block_class_tags, build_smiles_from_gallery, passes_item_filters};
+use crate::chemical_class::ChemicalClass;
+use crate::parser::{GalleryItem, SpectrumBlock};
 
 /// Download filtered MGF content with class tags, applying all filter selections.
-#[cfg(target_arch = "wasm32")]
 #[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
 pub(super) fn download_filtered_mgf(
     blocks: &[SpectrumBlock],
-    block_class_tags: &[Vec<(String, String)>],
+    gallery: &[GalleryItem],
+    all_classes: &[ChemicalClass],
     mz_min_val: f64,
     mz_max_val: f64,
     prec_min_val: f64,
@@ -29,38 +25,37 @@ pub(super) fn download_filtered_mgf(
     selected: &[String],
 ) {
     let mut mgf_content = String::new();
-    for (idx, block) in blocks.iter().enumerate() {
-        if !selected.is_empty()
-            && !passes_class_filter(block.gallery_item_matches.as_ref(), selected)
-        {
+    for block in blocks {
+        if !passes_item_filters(
+            block.gallery_item_matches.as_ref(),
+            block.exact_mass,
+            block.precursor_mz,
+            block.adduct.as_deref(),
+            selected,
+            mz_min_val,
+            mz_max_val,
+            prec_min_val,
+            prec_max_val,
+            adduct_val,
+        ) {
             continue;
         }
-        if block.exact_mass < mz_min_val || block.exact_mass > mz_max_val {
-            continue;
-        }
-        if let Some(pmz) = block.precursor_mz
-            && (pmz < prec_min_val || pmz > prec_max_val)
-        {
-            continue;
-        }
-        if !adduct_val.is_empty() && block.adduct.as_deref() != Some(adduct_val) {
-            continue;
-        }
-        // A caller that passes fewer tag lists than blocks gets an untagged
-        // block rather than a panic: the download is a best-effort export, and
-        // failing to produce the file at all helps nobody.
-        let class_tags = block_class_tags.get(idx).map_or(&[][..], Vec::as_slice);
-        let tagged = insert_class_comment(&block.raw, class_tags);
+        let class_tags = block_class_tags(block, gallery, all_classes);
+        let tagged = insert_class_comment(&block.raw, &class_tags);
         mgf_content.push_str(&tagged);
         mgf_content.push('\n');
     }
+    #[cfg(target_arch = "wasm32")]
     drop(upload::download_text(&mgf_content, "lipids_filtered.mgf"));
+    #[cfg(not(target_arch = "wasm32"))]
+    drop(mgf_content);
 }
 
 /// Download filtered SMILES content with class tags, applying all filter selections.
-#[cfg(target_arch = "wasm32")]
+#[allow(clippy::too_many_arguments)] // Dioxus Signal callbacks inherently require many params
 pub(super) fn download_filtered_smiles(
-    gallery_smiles: &[GallerySmilesEntry],
+    gallery: &[GalleryItem],
+    all_classes: &[ChemicalClass],
     mz_min_val: f64,
     mz_max_val: f64,
     prec_min_val: f64,
@@ -68,48 +63,26 @@ pub(super) fn download_filtered_smiles(
     adduct_val: &str,
     selected: &[String],
 ) {
-    let filtered: Vec<_> = gallery_smiles
+    let filtered: Vec<_> = gallery
         .iter()
-        .filter(
-            |(_, _, _, _, _, exact_mass, precursor_mz, adduct, class_matches)| {
-                if !selected.is_empty()
-                    && !selected
-                        .iter()
-                        .any(|class_name| class_matches.get(class_name).copied().unwrap_or(false))
-                {
-                    return false;
-                }
-                if let Some(mass) = exact_mass
-                    && (*mass < mz_min_val || *mass > mz_max_val)
-                {
-                    return false;
-                }
-                if let (Some(pmz), val) = (precursor_mz, prec_min_val)
-                    && (*pmz < val || *pmz > prec_max_val)
-                {
-                    return false;
-                }
-                if !adduct_val.is_empty() && adduct.as_deref() != Some(adduct_val) {
-                    return false;
-                }
-                true
-            },
-        )
+        .filter(|item| {
+            passes_item_filters(
+                Some(&item.class_matches),
+                item.exact_mass,
+                item.precursor_mz,
+                item.adduct.as_deref(),
+                selected,
+                mz_min_val,
+                mz_max_val,
+                prec_min_val,
+                prec_max_val,
+                adduct_val,
+            )
+        })
         .collect();
-    let smiles_content = build_smiles_from_gallery(&filtered);
+    let smiles_content = build_smiles_from_gallery(&filtered, all_classes);
+    #[cfg(target_arch = "wasm32")]
     drop(upload::download_text(&smiles_content, "lipids.smi"));
-}
-
-/// Check if any of the selected class names match the gallery item matches.
-#[cfg(target_arch = "wasm32")]
-fn passes_class_filter(
-    gallery_item_matches: Option<&std::collections::HashMap<String, bool>>,
-    selected: &[String],
-) -> bool {
-    selected.iter().any(|class_name| {
-        gallery_item_matches
-            .and_then(|m| m.get(class_name))
-            .copied()
-            .unwrap_or(false)
-    })
+    #[cfg(not(target_arch = "wasm32"))]
+    drop(smiles_content);
 }

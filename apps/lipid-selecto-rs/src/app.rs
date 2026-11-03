@@ -14,7 +14,7 @@ use dioxus::html::HasFileData;
 use dioxus::prelude::*;
 use ui::prelude::*;
 
-use crate::chemical_class::lmsd_all;
+use crate::chemical_class::lmsd_classes;
 use crate::format::LipidFormat;
 use crate::parser::Analysis;
 
@@ -45,11 +45,8 @@ pub fn app() -> Element {
     let analysis = use_signal(|| None::<Analysis>);
     let input_format = use_signal(|| None::<LipidFormat>);
 
-    // Initialize selected_classes with all LMSD class names (ensures all classes are available)
-    let all_class_names: Vec<_> = lmsd_all().iter().map(|c| c.name.clone()).collect();
-
-    // Start with all classes selected for initial load
-    let selected_classes = use_signal(|| all_class_names.clone());
+    // Start with all LMSD classes selected for initial load
+    let selected_classes = use_signal(|| lmsd_classes().iter().map(|c| c.name.clone()).collect());
 
     // Shared filter signals for m/z, precursor, and adduct
     let mz_min = use_signal(|| 50.0f64);

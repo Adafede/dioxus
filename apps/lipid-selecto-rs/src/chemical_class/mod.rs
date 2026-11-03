@@ -29,7 +29,9 @@ use defaults::{
     fatty_acyls, glycerolipids, glycerophospholipids, polyketides, prenol_lipids, saccharolipids,
     sphingolipids, sterol_lipids,
 };
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) use lmsd::lmsd_all;
+pub(crate) use lmsd::lmsd_classes;
 
 // === Palette constants ===
 

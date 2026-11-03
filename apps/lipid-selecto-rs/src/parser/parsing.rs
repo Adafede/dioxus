@@ -46,13 +46,11 @@ pub(crate) struct SpectrumBlock {
     #[cfg(any(test, target_arch = "wasm32"))]
     pub charge: Option<String>,
     /// `ADDUCT=` value, if present (e.g., "[M+H]+", "[M-H]-").
-    #[cfg(any(test, target_arch = "wasm32"))]
     pub adduct: Option<String>,
     /// `IONMODE=` value (normalized to lower case), if present.
     #[cfg(any(test, target_arch = "wasm32"))]
     pub ion_mode: Option<String>,
     /// Observed precursor m/z from `PEPMASS=` / `PRECURSOR_MZ=`.
-    #[cfg(any(test, target_arch = "wasm32"))]
     pub precursor_mz: Option<f64>,
     /// Result of lipid classification (populated by `SpectrumBlock::classify_with_compiled`).
     pub classification: Option<LipidClassification>,
@@ -60,10 +58,8 @@ pub(crate) struct SpectrumBlock {
     pub gallery_item_matches: Option<HashMap<String, bool>>,
     /// Pre-computed exact mass from the parsed SMILES (avoids re-parsing
     /// the SMILES in gallery rendering — the dominant cost for large files).
-    #[cfg(any(test, target_arch = "wasm32"))]
     pub exact_mass: f64,
     /// Verbatim text of the block, from `BEGIN IONS` through `END IONS`.
-    #[cfg(any(test, target_arch = "wasm32"))]
     pub raw: String,
 }
 

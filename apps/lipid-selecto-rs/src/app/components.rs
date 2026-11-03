@@ -13,11 +13,8 @@ use ui::prelude::*;
 use crate::chemical_class::ChemicalClass;
 
 use super::analysis::{collect_adduct_options, group_classes_by_family};
-#[cfg(target_arch = "wasm32")]
 use super::download::{download_filtered_mgf, download_filtered_smiles};
-use super::gallery::prepare_block_class_tags;
-#[cfg(target_arch = "wasm32")]
-use super::gallery::prepare_gallery_smiles;
+use super::gallery::passes_item_filters;
 use super::types::SummaryFilters;
 
 pub(super) fn section_subheading() -> String {
@@ -43,10 +40,10 @@ pub(super) fn lipid_classes_card() -> Element {
     const MAX_CLASSES_PER_FAMILY: usize = 4;
 
     // Load LMSD-based class scheme (same as Results panel)
-    let all_classes = crate::chemical_class::lmsd_all();
+    let all_classes = crate::chemical_class::lmsd_classes();
 
     // Group classes by family, then sort families by LIPID MAPS rank order.
-    let families = group_classes_by_family(&all_classes);
+    let families = group_classes_by_family(all_classes);
 
     let family_display: Vec<(String, Vec<ChemicalClass>, usize, String)> = families
         .iter()
@@ -386,15 +383,17 @@ fn download_buttons(
                     style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
                     onclick: move |_| {
                         if let Some(analysis) = analysis_signal.read().as_ref() {
-                            let block_class_tags = prepare_block_class_tags(
+                            download_filtered_mgf(
                                 &analysis.blocks,
                                 &analysis.gallery,
                                 &analysis.all_classes,
+                                *mz_min.read(),
+                                *mz_max.read(),
+                                *precursor_min.read(),
+                                *precursor_max.read(),
+                                &adduct_filter.read(),
+                                &selected_classes.read(),
                             );
-                            #[cfg(target_arch = "wasm32")]
-                            download_filtered_mgf(&analysis.blocks, &block_class_tags, *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read(), &selected_classes.read());
-                            #[cfg(not(target_arch = "wasm32"))]
-                            drop(block_class_tags);
                         }
                     },
                     "Download Filtered Lipids"
@@ -405,10 +404,17 @@ fn download_buttons(
                     r#type: "button",
                     style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("8px").property("background", "#f8fafc").color("#334155").font_size("0.85rem").font_weight("600").padding("0.45rem 0.8rem").cursor("pointer").build(),
                     onclick: move |_| {
-                        #[cfg(target_arch = "wasm32")]
                         if let Some(analysis) = analysis_signal.read().as_ref() {
-                            let gallery_smiles = prepare_gallery_smiles(&analysis.gallery, &analysis.all_classes);
-                            download_filtered_smiles(&gallery_smiles, *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read(), &selected_classes.read());
+                            download_filtered_smiles(
+                                &analysis.gallery,
+                                &analysis.all_classes,
+                                *mz_min.read(),
+                                *mz_max.read(),
+                                *precursor_min.read(),
+                                *precursor_max.read(),
+                                &adduct_filter.read(),
+                                &selected_classes.read(),
+                            );
                         }
                     },
                     "Download SMILES"
@@ -476,31 +482,18 @@ pub(super) fn gallery_with_filter(
     let filtered: Vec<_> = gallery
         .iter()
         .filter(|item| {
-            if selected_classes.is_empty() {
-                return false;
-            }
-            // Class filter
-            let class_match = selected_classes
-                .iter()
-                .any(|class_name| item.class_matches.get(class_name).copied().unwrap_or(false));
-            if !class_match {
-                return false;
-            }
-            // m/z (exact_mass) range filter
-            if item.exact_mass < mz_min || item.exact_mass > mz_max {
-                return false;
-            }
-            // precursor range filter
-            if let Some(pmz) = item.precursor_mz
-                && (pmz < precursor_min || pmz > precursor_max)
-            {
-                return false;
-            }
-            // adduct filter
-            if !adduct_filter.is_empty() && item.adduct.as_deref() != Some(adduct_filter) {
-                return false;
-            }
-            true
+            passes_item_filters(
+                Some(&item.class_matches),
+                item.exact_mass,
+                item.precursor_mz,
+                item.adduct.as_deref(),
+                selected_classes,
+                mz_min,
+                mz_max,
+                precursor_min,
+                precursor_max,
+                adduct_filter,
+            )
         })
         .collect();
 

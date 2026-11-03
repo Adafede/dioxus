@@ -448,22 +448,9 @@ const LMSD_FAMILY_PALETTES: &[(&str, &[&str; 5])] = &[
     ("Polyketides", &PK_PALETTE),
 ];
 
-/// Generate all LMSD subclass classes, each with a **specific** SMARTS pattern.
-///
-/// Each LMSD subclass (FA01-FA13, GL01-GL07, GP01-GP20, SP01-SP08,
-/// ST01-ST05, PR01-PR04, SL01-SL05, PK11-PK15) gets its own distinct
-/// SMARTS pattern so that `ChemicalClass::matches` identifies the
-/// correct subclass directly — no post-hoc family filtering needed.
-///
-/// Colors are assigned using microshades palettes:
-/// - First 4 classes per family get shades 0-3
-/// - All remaining classes get shade 4 (the lightest)
-///
-/// Names use the full LMSD format: "Description \[CODE]"
-/// (e.g., "Fatty Acyls and Conjugates \[FA01]").
-/// Within each family, classes are sorted by LMSD database count (descending).
+/// Return a static slice of all pre-compiled LMSD subclass classes.
 #[must_use]
-pub(crate) fn lmsd_all() -> Vec<ChemicalClass> {
+pub(crate) fn lmsd_classes() -> &'static [ChemicalClass] {
     static CLASSES: std::sync::LazyLock<Vec<ChemicalClass>> = std::sync::LazyLock::new(|| {
         let mut result = Vec::with_capacity(LMSD_ENTRIES.len());
         for (family_name, palette) in LMSD_FAMILY_PALETTES {
@@ -496,5 +483,25 @@ pub(crate) fn lmsd_all() -> Vec<ChemicalClass> {
         result
     });
 
-    CLASSES.clone()
+    &CLASSES
+}
+
+/// Generate all LMSD subclass classes, each with a **specific** SMARTS pattern.
+///
+/// Each LMSD subclass (FA01-FA13, GL01-GL07, GP01-GP20, SP01-SP08,
+/// ST01-ST05, PR01-PR04, SL01-SL05, PK11-PK15) gets its own distinct
+/// SMARTS pattern so that `ChemicalClass::matches` identifies the
+/// correct subclass directly — no post-hoc family filtering needed.
+///
+/// Colors are assigned using microshades palettes:
+/// - First 4 classes per family get shades 0-3
+/// - All remaining classes get shade 4 (the lightest)
+///
+/// Names use the full LMSD format: "Description \[CODE]"
+/// (e.g., "Fatty Acyls and Conjugates \[FA01]").
+/// Within each family, classes are sorted by LMSD database count (descending).
+#[must_use]
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(crate) fn lmsd_all() -> Vec<ChemicalClass> {
+    lmsd_classes().to_vec()
 }

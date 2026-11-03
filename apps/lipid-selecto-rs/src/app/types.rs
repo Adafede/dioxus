@@ -9,23 +9,6 @@
 
 use dioxus::prelude::Signal;
 
-/// Type alias for the packed gallery-entry tuple used in WASM download closures.
-///
-/// Fields: `title`, `smiles`, `category`, `main_class`, `sub_class`,
-/// `exact_mass`, `precursor_mz`, `adduct`, `class_matches`.
-#[cfg(any(test, target_arch = "wasm32"))]
-pub(super) type GallerySmilesEntry = (
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    Option<f64>,
-    Option<f64>,
-    Option<String>,
-    std::collections::HashMap<String, bool>,
-);
-
 /// Grouped mutable filter signals for the summary panel.
 ///
 /// Bundling the signals into a struct keeps the [`summary`](super::components::summary)
