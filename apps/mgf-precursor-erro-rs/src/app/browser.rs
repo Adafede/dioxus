@@ -124,6 +124,7 @@ fn start_analysis(
         .await
         {
             Ok((result, raw_content)) => {
+                status_for_progress.set(format!("Processed {} spectra.", result.total_spectra));
                 original_content_signal.set(raw_content);
                 metrics_for_results.set(Some(result));
             }

@@ -39,6 +39,7 @@ pub fn ResultsPanel(
     file_name: Signal<String>,
     status: Signal<String>,
 ) -> Element {
+    let metrics_signal = metrics;
     use_effect(move || {
         if let Some(m) = metrics.read().as_ref() {
             update_recalibration_diagnostics(
@@ -489,48 +490,33 @@ pub fn ResultsPanel(
                 }
 
                 div {
-                    if let Some(diag) = recalibration_diagnostics.read().as_ref() {
-                        ecdf_plot {
-                            title: "Absolute precursor-error cumulative distribution (mDa)",
-                            subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale",
-                            values: diag.error_da_after.iter().map(|value| value.abs() * 1000.0).collect::<Vec<_>>(),
-                            thresholds: &[0.1, 0.5, 1.0, 5.0],
-                            unit: "mDa",
-                        }
-                        ecdf_plot {
-                            title: "Relative precursor-error cumulative distribution (ppm)",
-                            subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale",
-                            values: diag.error_ppm_after.iter().map(|value| value.abs()).collect::<Vec<_>>(),
-                            thresholds: &[0.5, 1.0, 5.0, 10.0],
-                            unit: "ppm",
-                        }
-                    } else {
-                        ecdf_plot {
-                            title: "Absolute precursor-error cumulative distribution (mDa)",
-                            subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale",
-                            values: metrics.absolute_error_da_values.iter().map(|value| value * 1000.0).collect::<Vec<_>>(),
-                            thresholds: &[0.1, 0.5, 1.0, 5.0],
-                            unit: "mDa",
-                        }
-                        ecdf_plot {
-                            title: "Relative precursor-error cumulative distribution (ppm)",
-                            subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale",
-                            values: metrics.absolute_error_ppm_values.clone(),
-                            thresholds: &[0.5, 1.0, 5.0, 10.0],
-                            unit: "ppm",
-                        }
+                    ecdf_plot {
+                        title: "Absolute precursor-error cumulative distribution (mDa)",
+                        subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale",
+                        metrics: metrics_signal,
+                        recalibration_diagnostics,
+                        thresholds: &[0.1, 0.5, 1.0, 5.0],
+                        unit: "mDa",
+                    }
+                    ecdf_plot {
+                        title: "Relative precursor-error cumulative distribution (ppm)",
+                        subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale",
+                        metrics: metrics_signal,
+                        recalibration_diagnostics,
+                        thresholds: &[0.5, 1.0, 5.0, 10.0],
+                        unit: "ppm",
                     }
                     absolute_mass_bias_plot {
                         title: "Signed error vs. precursor 𝑚/𝑧 (mDa)",
                         subtitle: "Signed error at each precursor 𝑚/𝑧, centered on zero and shown with a symmetric y-axis",
-                        points: metrics.plot_points.clone(),
+                        metrics: metrics_signal,
                         unit: "mDa",
                         ticks: &[0.1, 0.5, 1.0, 5.0],
                     }
                     absolute_mass_bias_plot {
                         title: "Signed relative error vs. precursor 𝑚/𝑧 (ppm)",
                         subtitle: "Signed relative error at each precursor 𝑚/𝑧, centered on zero and shown with a symmetric y-axis",
-                        points: metrics.plot_points.clone(),
+                        metrics: metrics_signal,
                         unit: "ppm",
                         ticks: &[0.5, 1.0, 5.0, 10.0],
                     }

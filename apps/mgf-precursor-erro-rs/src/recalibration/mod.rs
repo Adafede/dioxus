@@ -19,6 +19,7 @@ pub use generator::{
     generate_recalibrated_mgf, recalibrate_fragments, write_fragments_as_is,
     write_recalibrated_fragments,
 };
+pub(crate) use parsing::closest_ms2_precursor_mz;
 pub use parsing::{extract_pepmass_from_line, find_ms2_precursor_peak, is_fragment_line};
 pub use types::{CalibrationModel, Peak};
 

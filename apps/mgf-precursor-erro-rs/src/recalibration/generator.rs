@@ -6,9 +6,30 @@
 use super::calibration::{
     apply_orbitrap_correction, apply_tof_correction, recalibrate_fragment_mz,
 };
-use super::parsing::{extract_pepmass_from_line, find_ms2_precursor_peak, is_fragment_line};
+use super::parsing::{closest_ms2_precursor_mz, extract_pepmass_from_line, parse_fragment_prefix};
 use super::types::{CalibrationModel, Peak};
 use crate::diagnostics::RecalibrationStats;
+
+fn write_recalibrated_fragment_line(
+    frag: &str,
+    mz: f64,
+    intensity: f64,
+    result: &mut String,
+    delta: f64,
+    pepmass: f64,
+    lambda: f64,
+    calibration_model: CalibrationModel,
+) {
+    use std::fmt::Write;
+
+    let corrected_mz = recalibrate_fragment_mz(mz, delta, pepmass, lambda, calibration_model);
+    let _ = write!(result, "{corrected_mz} {intensity}");
+    for field in frag.split_whitespace().skip(2) {
+        result.push(' ');
+        result.push_str(field);
+    }
+    result.push('\n');
+}
 
 pub fn write_recalibrated_fragments<S: AsRef<str>>(
     spectrum_frags: &[S],
@@ -18,26 +39,23 @@ pub fn write_recalibrated_fragments<S: AsRef<str>>(
     lambda: f64,
     calibration_model: CalibrationModel,
 ) {
-    use std::fmt::Write;
-
     for frag in spectrum_frags {
         let frag = frag.as_ref();
-        let mut fields = frag.split_whitespace();
-        let mz = fields.next().and_then(|field| field.parse::<f64>().ok());
-        let intensity = fields.next().and_then(|field| field.parse::<f64>().ok());
-        if let (Some(mz), Some(intensity)) = (mz, intensity) {
-            let corrected_mz =
-                recalibrate_fragment_mz(mz, delta, pepmass, lambda, calibration_model);
-            let _ = write!(result, "{corrected_mz} {intensity}");
-            for field in fields {
-                result.push(' ');
-                result.push_str(field);
-            }
+        if let Some((mz, intensity)) = parse_fragment_prefix(frag) {
+            write_recalibrated_fragment_line(
+                frag,
+                mz,
+                intensity,
+                result,
+                delta,
+                pepmass,
+                lambda,
+                calibration_model,
+            );
+        } else {
+            result.push_str(frag);
             result.push('\n');
-            continue;
         }
-        result.push_str(frag);
-        result.push('\n');
     }
 }
 
@@ -64,7 +82,7 @@ pub fn generate_recalibrated_mgf(
     };
 
     let mut result = String::with_capacity(original_content.len());
-    let mut spectrum_frags: Vec<&str> = Vec::new();
+    let mut spectrum_frags: Vec<(&str, f64, f64)> = Vec::new();
     let mut lines = original_content.lines();
 
     while let Some(line) = lines.next() {
@@ -93,30 +111,36 @@ pub fn generate_recalibrated_mgf(
                 continue;
             }
 
-            if is_fragment_line(spec_line) {
-                spectrum_frags.push(spec_line);
+            if let Some((mz, intensity)) = parse_fragment_prefix(spec_line) {
+                spectrum_frags.push((spec_line, mz, intensity));
             } else {
                 result.push_str(spec_line);
                 result.push('\n');
             }
         }
 
-        if let Some(pm) = pepmass {
-            if let Some(ms2_peak) = find_ms2_precursor_peak(&spectrum_frags, pm) {
-                let delta = ms2_peak - pm;
-                write_recalibrated_fragments(
-                    &spectrum_frags,
+        if let Some(pm) = pepmass
+            && let Some(ms2_peak) =
+                closest_ms2_precursor_mz(spectrum_frags.iter().map(|&(_, mz, _)| mz), pm)
+        {
+            let delta = ms2_peak - pm;
+            for &(frag, mz, intensity) in &spectrum_frags {
+                write_recalibrated_fragment_line(
+                    frag,
+                    mz,
+                    intensity,
                     &mut result,
                     delta,
                     pm,
                     lambda,
                     calibration_model,
                 );
-            } else {
-                write_fragments_as_is(&spectrum_frags, &mut result);
             }
         } else {
-            write_fragments_as_is(&spectrum_frags, &mut result);
+            for &(frag, _, _) in &spectrum_frags {
+                result.push_str(frag);
+                result.push('\n');
+            }
         }
 
         result.push_str("END IONS\n");

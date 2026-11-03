@@ -66,15 +66,6 @@ pub(crate) fn update_recalibration_diagnostics(
             0.0
         };
 
-        let adduct_str = match point.adduct_family {
-            crate::metrics::AdductFamily::Protonated => Some("[M+H]+"),
-            crate::metrics::AdductFamily::Deprotonated => Some("[M-H]-"),
-            crate::metrics::AdductFamily::AlkaliAmmonium => Some("[M+NH4]+"),
-            crate::metrics::AdductFamily::MetalComplex => Some("[M+Metal]"),
-            crate::metrics::AdductFamily::Halide => Some("[M-Hal]"),
-            crate::metrics::AdductFamily::Other => None,
-        };
-
         diag.push_measurement(crate::diagnostics::RecalibrationMeasurement {
             error_ppm_ms1,
             delta_ppm_ms2_ms1,
@@ -87,7 +78,7 @@ pub(crate) fn update_recalibration_diagnostics(
             precursor_ms1,
             precursor_ms2_before: precursor_ms2,
             precursor_ms2_after,
-            adduct_family: adduct_str,
+            adduct_family: None,
             max_samples: 5000,
         });
     }

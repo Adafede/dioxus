@@ -147,33 +147,10 @@ impl BlockParseState {
     /// Returns the closest fragment to PEPMASS if within ~0.02 Da (~100 ppm), otherwise None.
     #[must_use]
     pub(crate) fn get_ms2_precursor_peak(&self, pepmass_header: f64) -> Option<f64> {
-        const TOLERANCE_DA: f64 = 0.02;
-
-        self.fragment_peaks
-            .iter()
-            .copied()
-            .min_by(|a, b| {
-                let dist_a = (a - pepmass_header).abs();
-                let dist_b = (b - pepmass_header).abs();
-                dist_a
-                    .partial_cmp(&dist_b)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .and_then(|closest| {
-                let delta_da = (closest - pepmass_header).abs();
-                let delta_ppm = if pepmass_header.abs() > f64::EPSILON {
-                    delta_da * 1e6 / pepmass_header
-                } else {
-                    f64::INFINITY
-                };
-
-                // Return only if within both Da and ppm thresholds
-                if delta_da <= TOLERANCE_DA && delta_ppm <= 100.0 {
-                    Some(closest)
-                } else {
-                    None
-                }
-            })
+        crate::recalibration::closest_ms2_precursor_mz(
+            self.fragment_peaks.iter().copied(),
+            pepmass_header,
+        )
     }
 }
 

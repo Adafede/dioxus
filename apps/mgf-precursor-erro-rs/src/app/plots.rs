@@ -4,7 +4,8 @@
 use dioxus::prelude::*;
 use ui::theme::StyleBuilder;
 
-use crate::metrics::PlotPoint;
+use crate::diagnostics::RecalibrationStats;
+use crate::metrics::PrecursorStats;
 use crate::plotting::{
     make_svg_responsive, render_absolute_mass_bias_svg, render_ecdf_svg, tolerance_step_color,
 };
@@ -136,12 +137,47 @@ fn plot_shell(title: &'static str, subtitle: &'static str, svg_markup: Memo<Stri
 pub fn ecdf_plot(
     title: &'static str,
     subtitle: &'static str,
-    values: Vec<f64>,
+    metrics: Signal<Option<PrecursorStats>>,
+    recalibration_diagnostics: Signal<Option<RecalibrationStats>>,
     thresholds: &'static [f64],
     unit: &'static str,
 ) -> Element {
     let svg_markup = use_memo(move || {
-        make_svg_responsive(render_ecdf_svg(title, &values, thresholds, unit).unwrap_or_default())
+        if let Some(diag) = recalibration_diagnostics.read().as_ref() {
+            let values: Vec<f64> = if unit == "mDa" {
+                diag.error_da_after
+                    .iter()
+                    .map(|value| value.abs() * 1000.0)
+                    .collect()
+            } else {
+                diag.error_ppm_after
+                    .iter()
+                    .map(|value| value.abs())
+                    .collect()
+            };
+            return make_svg_responsive(
+                render_ecdf_svg(title, &values, thresholds, unit).unwrap_or_default(),
+            );
+        }
+        let metrics_guard = metrics.read();
+        let Some(m) = metrics_guard.as_ref() else {
+            return String::new();
+        };
+        if unit == "mDa" {
+            let values: Vec<f64> = m
+                .absolute_error_da_values
+                .iter()
+                .map(|value| value * 1000.0)
+                .collect();
+            make_svg_responsive(
+                render_ecdf_svg(title, &values, thresholds, unit).unwrap_or_default(),
+            )
+        } else {
+            make_svg_responsive(
+                render_ecdf_svg(title, &m.absolute_error_ppm_values, thresholds, unit)
+                    .unwrap_or_default(),
+            )
+        }
     });
     plot_shell(title, subtitle, svg_markup)
 }
@@ -150,13 +186,17 @@ pub fn ecdf_plot(
 pub fn absolute_mass_bias_plot(
     title: &'static str,
     subtitle: &'static str,
-    points: Vec<PlotPoint>,
+    metrics: Signal<Option<PrecursorStats>>,
     unit: &'static str,
     ticks: &'static [f64],
 ) -> Element {
     let svg_markup = use_memo(move || {
+        let metrics_guard = metrics.read();
+        let Some(m) = metrics_guard.as_ref() else {
+            return String::new();
+        };
         make_svg_responsive(
-            render_absolute_mass_bias_svg(title, &points, unit, ticks).unwrap_or_default(),
+            render_absolute_mass_bias_svg(title, &m.plot_points, unit, ticks).unwrap_or_default(),
         )
     });
     plot_shell(title, subtitle, svg_markup)
