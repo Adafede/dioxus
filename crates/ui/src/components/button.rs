@@ -3,7 +3,7 @@
 
 //! Button component with multiple variants and states.
 
-use crate::theme::{Radius, Spacing, StyleBuilder, Typography};
+use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Button variant enumeration
@@ -59,31 +59,29 @@ pub struct ButtonProps {
 /// ```
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
-    let _ = props.dark;
-
-    let (bg_color, text_color, _hover_bg) = match props.variant {
-        ButtonVariant::Primary => (
-            "var(--btn-primary-bg)",
-            "#fff",
-            "var(--btn-primary-hover-bg)",
-        ),
-        ButtonVariant::Secondary => ("var(--surface)", "var(--text)", "var(--surface2)"),
-        ButtonVariant::Tertiary => ("transparent", "var(--accent)", "var(--surface)"),
+    let colors = if props.dark {
+        ColorScheme::DARK
+    } else {
+        ColorScheme::LIGHT
     };
 
-    let border_value = match props.variant {
-        ButtonVariant::Primary | ButtonVariant::Secondary => "1px solid var(--border)",
-        ButtonVariant::Tertiary => "none",
+    let (bg_color, text_color, border_color, box_shadow) = match props.variant {
+        ButtonVariant::Primary => (colors.accent, colors.surface, colors.accent, Shadow::XS),
+        ButtonVariant::Secondary => (colors.surface, colors.text, colors.border, Shadow::XS),
+        ButtonVariant::Tertiary => ("transparent", colors.accent, "transparent", "none"),
+    };
+
+    let border_value = if props.variant == ButtonVariant::Tertiary {
+        "none".to_string()
+    } else {
+        format!("1px solid {border_color}")
     };
 
     let button_style = StyleBuilder::new()
         .background_color(bg_color)
         .color(text_color)
-        .border(border_value)
-        .box_shadow(match props.variant {
-            ButtonVariant::Primary | ButtonVariant::Secondary => "var(--shadow-xs)",
-            ButtonVariant::Tertiary => "none",
-        })
+        .border(&border_value)
+        .box_shadow(box_shadow)
         .padding(&format!("{} {}", Spacing::MD, Spacing::LG))
         .border_radius(Radius::SM)
         .font_size(Typography::UI)

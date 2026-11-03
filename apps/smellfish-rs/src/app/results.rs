@@ -33,6 +33,7 @@ pub fn Hero() -> Element {
 /// Motif chip summary panel (only rendered when motifs were detected).
 #[component]
 pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
+    let motifs_ref = motifs.read();
     rsx! {
         section { class: "panel",
             h2 { "Motifs" }
@@ -40,7 +41,7 @@ pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
                 div { class: "motif-group",
                     h3 { class: "small", "Natural" }
                     div { class: "chip-list",
-                        for motif in motifs.read().iter().filter(|m| summary_is_natural(m)).take(12) {
+                        for motif in motifs_ref.iter().filter(|m| summary_is_natural(m)).take(12) {
                             span { class: "{summary_chip_class(motif)}", title: "Natural-product motif", "{summary_display_label(motif)} ({motif.count})" }
                         }
                     }
@@ -48,7 +49,7 @@ pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
                 div { class: "motif-group",
                     h3 { class: "small", "Synthetic-leaning" }
                     div { class: "chip-list",
-                        for motif in motifs.read().iter().filter(|m| summary_is_synthetic(m)).take(12) {
+                        for motif in motifs_ref.iter().filter(|m| summary_is_synthetic(m)).take(12) {
                             span { class: "{summary_chip_class(motif)}", title: "Synthetic-leaning functional group", "{summary_display_label(motif)} ({motif.count})" }
                         }
                     }
@@ -56,7 +57,7 @@ pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
                 div { class: "motif-group",
                     h3 { class: "small", "Unclassified" }
                     div { class: "chip-list",
-                        for motif in motifs.read().iter().filter(|m| summary_is_unclassified(m)).take(12) {
+                        for motif in motifs_ref.iter().filter(|m| summary_is_unclassified(m)).take(12) {
                             span { class: "{summary_chip_class(motif)}", title: "Unclassified functional group", "{summary_display_label(motif)} ({motif.count})" }
                         }
                     }
@@ -69,17 +70,18 @@ pub fn MotifPanel(motifs: Signal<Vec<crate::model::MotifSummary>>) -> Element {
 /// Header + card list (rendered when `rows` is non-empty).
 #[component]
 pub fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
+    let rows_ref = rows.read();
     rsx! {
         section { class: "panel",
             div { class: "small",
-                strong { "{rows.read().len()}" }
+                strong { "{rows_ref.len()}" }
                 " results \u{00b7} "
                 a { href: "#", onclick: move |_| download_csv(&rows.read()), "Download CSV" }
             }
         }
         section { class: "cards",
-            for row in rows.read().iter() {
-                MoleculeCard { row: row.clone() }
+            for row in rows_ref.iter() {
+                MoleculeCard { key: "{row.index}", row: row.clone() }
             }
         }
     }

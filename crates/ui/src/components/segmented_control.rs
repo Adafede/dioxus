@@ -3,16 +3,17 @@
 
 //! Shared segmented button group.
 
+use crate::theme::{ColorScheme, Interaction, Shadow, StyleBuilder, Typography};
 use dioxus::prelude::*;
 
 /// Item rendered inside a segmented control.
 #[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SegmentedControlItem {
     /// The display label for this item.
-    pub label: String,
+    pub label: &'static str,
     /// The value used for comparison with `selected_value`.
-    pub value: String,
+    pub value: &'static str,
 }
 
 /// Properties for the [`SegmentedControl`] component.
@@ -24,7 +25,7 @@ pub struct SegmentedControlProps {
     /// Currently selected value.
     pub selected_value: String,
     /// Items to render in the control.
-    pub items: Vec<SegmentedControlItem>,
+    pub items: &'static [SegmentedControlItem],
     /// Callback fired when selection changes.
     pub on_select: EventHandler<String>,
     /// Use dark theme colors.
@@ -55,22 +56,24 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
         active_aria_current,
     } = props;
 
-    let group_classes = if wrap {
-        "inline-flex flex-wrap items-center gap-1 shrink-0"
-    } else {
-        "inline-flex items-center gap-1 shrink-0"
-    };
+    let group_style = StyleBuilder::new()
+        .display("inline-flex")
+        .flex_wrap(if wrap { "wrap" } else { "nowrap" })
+        .align_items("center")
+        .gap("6px")
+        .build();
 
     rsx! {
         div {
             role: "group",
             aria_label,
-            class: "{group_classes}",
+            style: group_style,
             for item in items {
                 SegmentedButton {
+                    key: "{item.value}",
                     label: item.label,
                     value: item.value,
-                    selected_value: selected_value.clone(),
+                    active: item.value == selected_value,
                     dark,
                     stretch,
                     active_aria_current,
@@ -84,9 +87,9 @@ pub fn SegmentedControl(props: SegmentedControlProps) -> Element {
 #[derive(Clone, Props, Debug, PartialEq)]
 #[allow(clippy::module_name_repetitions)] // UI component type intentionally matches module name
 struct SegmentedButtonProps {
-    pub label: String,
-    pub value: String,
-    pub selected_value: String,
+    pub label: &'static str,
+    pub value: &'static str,
+    pub active: bool,
     pub on_select: EventHandler<String>,
     #[props(default = false)]
     pub dark: bool,
@@ -101,39 +104,52 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
     let SegmentedButtonProps {
         label,
         value,
-        selected_value,
+        active,
         on_select,
         dark,
         stretch,
         active_aria_current,
     } = props;
-    let active = value == selected_value;
 
-    let active_classes = if active {
-        "bg-accent text-bg border-accent shadow-xs"
-    } else if dark {
-        "bg-surface2 text-text2 border-border"
+    let colors = if dark {
+        ColorScheme::DARK
     } else {
-        "bg-surface text-text border-border"
+        ColorScheme::LIGHT
+    };
+    let (bg, fg, border_color, shadow) = if active {
+        (colors.accent, colors.surface, colors.accent, Shadow::XS)
+    } else {
+        (colors.surface2, colors.text, colors.border, "none")
     };
 
-    let flex_class = if stretch {
-        "flex-1 min-w-0"
-    } else {
-        "flex-none"
-    };
-
-    let classes = format!(
-        "inline-flex items-center justify-center px-5 py-1.5 text-ui leading-none font-semibold rounded-full border transition-transform duration-150 active:scale-[0.98] min-h-[40px] whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/28 focus-visible:ring-offset-2 {flex_class} {active_classes}"
-    );
+    let button_style = StyleBuilder::new()
+        .display("inline-flex")
+        .align_items("center")
+        .justify_content("center")
+        .padding("6px 16px")
+        .min_height("38px")
+        .font_size(Typography::UI)
+        .font_family(Typography::SANS)
+        .font_weight("600")
+        .line_height("1")
+        .border_radius("999px")
+        .background_color(bg)
+        .color(fg)
+        .border(&format!("1px solid {border_color}"))
+        .box_shadow(shadow)
+        .cursor("pointer")
+        .transition(Interaction::TRANSITION_DEFAULT)
+        .flex(if stretch { "1 1 0%" } else { "0 0 auto" })
+        .property("white-space", "nowrap")
+        .build();
 
     rsx! {
         button {
             r#type: "button",
             aria_pressed: if active { "true" } else { "false" },
             aria_current: if active { active_aria_current } else { "false" },
-            class: "{classes}",
-            onclick: move |_| on_select.call(value.clone()),
+            style: button_style,
+            onclick: move |_| on_select.call(value.to_string()),
             "{label}"
         }
     }

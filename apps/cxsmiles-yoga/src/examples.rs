@@ -71,14 +71,35 @@ pub fn example_smiles(id: &str) -> Option<&'static str> {
     EXAMPLE_SETS.iter().find(|e| e.id == id).map(|e| e.smiles)
 }
 
+const EXAMPLE_ITEMS: &[ui::prelude::SegmentedControlItem] = &[
+    ui::prelude::SegmentedControlItem {
+        label: "Cl on a biphenyl (m: block)",
+        value: "biphenyl_cl",
+    },
+    ui::prelude::SegmentedControlItem {
+        label: "Methoxy on a triol (m: block)",
+        value: "omf_moving",
+    },
+    ui::prelude::SegmentedControlItem {
+        label: "Acetate on a biphenyl (double m: block)",
+        value: "acetyl",
+    },
+    ui::prelude::SegmentedControlItem {
+        label: "PFAS -CF2- repeats (Sg:n:)",
+        value: "pfas",
+    },
+    ui::prelude::SegmentedControlItem {
+        label: "Alkyl -CH2- repeats (Sg:n:)",
+        value: "alkyl",
+    },
+    ui::prelude::SegmentedControlItem {
+        label: "Constitutional isomers (best-effort)",
+        value: "constitutional",
+    },
+];
+
 /// The `SegmentedControl` items for the example picker.
 #[must_use]
-pub fn example_items() -> Vec<ui::prelude::SegmentedControlItem> {
-    EXAMPLE_SETS
-        .iter()
-        .map(|e| ui::prelude::SegmentedControlItem {
-            label: e.label.to_string(),
-            value: e.id.to_string(),
-        })
-        .collect()
+pub const fn example_items() -> &'static [ui::prelude::SegmentedControlItem] {
+    EXAMPLE_ITEMS
 }

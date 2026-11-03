@@ -85,7 +85,6 @@ pub fn Card(props: CardProps) -> Element {
         rsx! {
             article {
                 style: card_style,
-                class: "card-hover",
                 a {
                     href: href,
                     style: StyleBuilder::new()

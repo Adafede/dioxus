@@ -127,7 +127,11 @@ fn field_label(with_margin: bool) -> String {
 /// Split out of [`app`] so `app` stays small enough to satisfy
 /// `clippy::too_many_lines` without an `#[allow]` attribute.
 fn input_card(mut input: Signal<String>, mut aromatic: Signal<bool>) -> Element {
-    let line_count = input.read().lines().count();
+    let line_count = input
+        .read()
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .count();
     rsx! {
         div { style: StyleBuilder::new().background_color("#fff").border("1px solid #e2e8f0").border_radius("20px").box_shadow("0 12px 40px rgba(15,23,42,0.06)").padding("1.25rem").property("margin-bottom", "1.25rem").build(),
             div { style: StyleBuilder::new().display("flex").justify_content("space-between").align_items("baseline").property("margin-bottom", "0.5rem").build(),
@@ -348,7 +352,7 @@ pub fn app() -> Element {
             div { style: StyleBuilder::new().margin("1rem 0").build(),
                 SegmentedControl {
                     aria_label: "Pick an example".to_string(),
-                    selected_value: "{selected.read()}",
+                    selected_value: selected.read().clone(),
                     items: examples::example_items(),
                     on_select: on_example_select,
                 }
