@@ -145,3 +145,9 @@ fn render_summary_text_normal_values() {
     let html = result.unwrap();
     assert!(html.contains("Recalibration Summary"));
 }
+
+#[test]
+fn render_summary_text_marks_mean_regression_as_negative_red() {
+    let html = render_recalibration_summary_text(2.0, 5.0, 8.0, 1.0, 12.0, 3.0).unwrap();
+    assert!(html.contains("color: red;\">-3.0000"));
+}

@@ -24,19 +24,22 @@ pub fn render_recalibration_diagnostic_ppm(
     let mut buffer = String::new();
 
     // Compute ranges
-    let all_errors: Vec<f64> = errors_before
+    let mut error_min = f64::INFINITY;
+    let mut error_max = f64::NEG_INFINITY;
+    for value in errors_before
         .iter()
         .chain(errors_after.iter())
         .copied()
         .filter(|v| v.is_finite())
-        .collect();
+    {
+        error_min = error_min.min(value);
+        error_max = error_max.max(value);
+    }
 
-    if all_errors.is_empty() {
+    if !error_min.is_finite() {
         return Ok(buffer);
     }
 
-    let error_min = all_errors.iter().copied().fold(f64::INFINITY, f64::min);
-    let error_max = all_errors.iter().copied().fold(f64::NEG_INFINITY, f64::max);
     let error_span = (error_max - error_min).max(1.0);
     let error_min = error_min - error_span * 0.1;
     let error_max = error_max + error_span * 0.1;
@@ -66,24 +69,36 @@ pub fn render_recalibration_diagnostic_ppm(
 
         // Plot errors before recalibration
         chart
-            .draw_series(errors_before.iter().enumerate().map(|(i, &error)| {
-                Circle::new(
-                    (usize_to_f64(i), error),
-                    3,
-                    ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
-                )
-            }))?
+            .draw_series(
+                errors_before
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, error)| error.is_finite())
+                    .map(|(i, &error)| {
+                        Circle::new(
+                            (usize_to_f64(i), error),
+                            3,
+                            ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
+                        )
+                    }),
+            )?
             .label("Before");
 
         // Plot errors after recalibration
         chart
-            .draw_series(errors_after.iter().enumerate().map(|(i, &error)| {
-                Circle::new(
-                    (usize_to_f64(i), error),
-                    2,
-                    ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
-                )
-            }))?
+            .draw_series(
+                errors_after
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, error)| error.is_finite())
+                    .map(|(i, &error)| {
+                        Circle::new(
+                            (usize_to_f64(i), error),
+                            2,
+                            ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
+                        )
+                    }),
+            )?
             .label("After");
 
         chart
@@ -127,22 +142,28 @@ pub fn render_recalibration_diagnostic_histogram(
     let mut buffer = String::new();
 
     // Compute ranges and histograms
-    let all_errors: Vec<f64> = errors_before
-        .iter()
-        .chain(errors_after.iter())
-        .copied()
-        .filter(|v| v.is_finite())
-        .collect();
-
-    if all_errors.is_empty() || bin_count == 0 {
+    if bin_count == 0 {
         // `bin_count == 0` would make `usize_to_f64(bin_count)` zero at the
         // `bin_width` division below, yielding `NaN` rectangle coordinates and a
         // garbage SVG — bail out with an empty canvas instead.
         return Ok(buffer);
     }
 
-    let error_min = all_errors.iter().copied().fold(f64::INFINITY, f64::min);
-    let error_max = all_errors.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let mut error_min = f64::INFINITY;
+    let mut error_max = f64::NEG_INFINITY;
+    for value in errors_before
+        .iter()
+        .chain(errors_after.iter())
+        .copied()
+        .filter(|v| v.is_finite())
+    {
+        error_min = error_min.min(value);
+        error_max = error_max.max(value);
+    }
+
+    if !error_min.is_finite() {
+        return Ok(buffer);
+    }
 
     // Compute histograms
     let mut hist_before = vec![0usize; bin_count];
@@ -244,20 +265,22 @@ pub fn render_recalibration_diagnostic_mz_comparison(
     }
 
     // Compute range for both axes (should be equal for diagonal line)
-    let all_values: Vec<f64> = precursor_ms1_values
+    let mut min_mz = f64::INFINITY;
+    let mut max_mz = f64::NEG_INFINITY;
+    for value in precursor_ms1_values
         .iter()
         .chain(precursor_ms2_before.iter())
         .chain(precursor_ms2_after.iter())
         .copied()
         .filter(|v| v.is_finite() && *v > 0.0)
-        .collect();
-
-    if all_values.is_empty() {
-        return Ok(buffer);
+    {
+        min_mz = min_mz.min(value);
+        max_mz = max_mz.max(value);
     }
 
-    let min_mz = all_values.iter().copied().fold(f64::INFINITY, f64::min);
-    let max_mz = all_values.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    if !min_mz.is_finite() {
+        return Ok(buffer);
+    }
     let span = (max_mz - min_mz).max(1.0);
     let min_mz = min_mz - span * 0.05;
     let max_mz = max_mz + span * 0.05;
@@ -351,7 +374,7 @@ pub fn render_recalibration_summary_text(
     max_before: f64,
     max_after: f64,
 ) -> Result<String, MgfError> {
-    let mean_improvement = (mean_before.abs() - mean_after.abs()).abs();
+    let mean_improvement = mean_before.abs() - mean_after.abs();
     let rms_improvement = rms_before - rms_after;
     let max_improvement = max_before - max_after;
 

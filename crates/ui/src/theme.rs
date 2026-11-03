@@ -189,18 +189,21 @@ impl Interaction {
 #[must_use]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StyleBuilder {
-    properties: Vec<(String, String)>,
+    css: String,
 }
 
 impl StyleBuilder {
     pub const fn new() -> Self {
-        Self {
-            properties: Vec::new(),
-        }
+        Self { css: String::new() }
     }
 
     pub fn property(mut self, name: &str, value: &str) -> Self {
-        self.properties.push((name.to_string(), value.to_string()));
+        if !self.css.is_empty() {
+            self.css.push_str("; ");
+        }
+        self.css.push_str(name);
+        self.css.push_str(": ");
+        self.css.push_str(value);
         self
     }
 
@@ -317,12 +320,8 @@ impl StyleBuilder {
     }
 
     #[must_use]
-    pub fn build(&self) -> String {
-        self.properties
-            .iter()
-            .map(|(name, value)| format!("{name}: {value}"))
-            .collect::<Vec<_>>()
-            .join("; ")
+    pub fn build(self) -> String {
+        self.css
     }
 }
 
@@ -334,7 +333,7 @@ impl Default for StyleBuilder {
 
 impl fmt::Display for StyleBuilder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.build())
+        f.write_str(&self.css)
     }
 }
 

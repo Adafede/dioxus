@@ -45,7 +45,10 @@ pub fn download_text(content: &str, filename: &str) -> Result<(), String> {
     let safe_name = sanitize_filename(filename);
     let url = blob_url_from_str(content, "text/plain;charset=utf-8")?;
 
-    click_download_anchor(&url, &safe_name).map_err(|e| format!("download failed: {e}"))
+    let result =
+        click_download_anchor(&url, &safe_name).map_err(|e| format!("download failed: {e}"));
+    drop(Url::revoke_object_url(&url));
+    result
 }
 
 #[cfg(target_arch = "wasm32")]

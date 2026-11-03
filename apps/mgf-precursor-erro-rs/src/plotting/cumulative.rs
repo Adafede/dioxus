@@ -16,7 +16,7 @@ fn cumulative_points(values: &[f64]) -> Vec<(f64, f64)> {
         .copied()
         .filter(|value| value.is_finite())
         .collect();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    sorted.sort_unstable_by(f64::total_cmp);
     if sorted.is_empty() {
         return Vec::new();
     }
@@ -71,13 +71,12 @@ fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
             plotters::coord::types::RangedCoordf64,
         >,
     >,
-    values: &[f64],
+    points: Vec<(f64, f64)>,
     color: plotters::style::RGBColor,
     stroke_width: u32,
 ) where
     DB::ErrorType: 'static,
 {
-    let points = cumulative_points(values);
     if points.is_empty() {
         return;
     }
@@ -87,23 +86,7 @@ fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
     // error is not worth failing an SVG render over — and `drop` says that,
     // where `let _ =` is the same statement that
     // `clippy::let_underscore_drop` reads as an accidental early drop.
-    drop(
-        chart.draw_series(
-            points
-                .iter()
-                .copied()
-                .zip(
-                    points
-                        .iter()
-                        .skip(1)
-                        .copied()
-                        .chain(points.first().copied()),
-                )
-                .map(|((x1, y1), (x2, y2))| {
-                    plotters::prelude::PathElement::new(vec![(x1, y1), (x2, y2)], style)
-                }),
-        ),
-    );
+    drop(chart.draw_series(plotters::series::LineSeries::new(points, style)));
 }
 
 fn append_cumulative_legend(svg: &str) -> String {
@@ -160,21 +143,24 @@ pub fn render_error_quartet(
 
     let mut buffer = String::new();
 
-    let all_values: Vec<f64> = error_ms1
+    let mut min_val = f64::INFINITY;
+    let mut max_val = f64::NEG_INFINITY;
+    for value in error_ms1
         .iter()
         .chain(delta_ms2_ms1.iter())
         .chain(error_ms2_before.iter())
         .chain(error_ms2_after.iter())
         .copied()
         .filter(|v| v.is_finite())
-        .collect();
+    {
+        min_val = min_val.min(value);
+        max_val = max_val.max(value);
+    }
 
-    if all_values.is_empty() {
+    if !min_val.is_finite() {
         return Ok(buffer);
     }
 
-    let min_val = all_values.iter().copied().fold(f64::INFINITY, f64::min);
-    let max_val = all_values.iter().copied().fold(f64::NEG_INFINITY, f64::max);
     let margin = (max_val - min_val).abs().max(0.5) * 0.15;
 
     {
@@ -230,36 +216,20 @@ pub fn render_cumulative_error_curves(
 
     let mut buffer = String::new();
 
-    // Filter finite values and sort for CDF
-    let mut ms1_errors: Vec<f64> = error_ppm_ms1
-        .iter()
-        .copied()
-        .filter(|v| v.is_finite())
-        .collect();
-    let mut ms2_errors: Vec<f64> = error_ppm_after
-        .iter()
-        .copied()
-        .filter(|v| v.is_finite())
-        .collect();
+    let ms1_points = cumulative_points(error_ppm_ms1);
+    let ms2_points = cumulative_points(error_ppm_after);
 
-    if ms1_errors.is_empty() || ms2_errors.is_empty() {
+    let (Some(&(ms1_min, _)), Some(&(ms1_max, _)), Some(&(ms2_min, _)), Some(&(ms2_max, _))) = (
+        ms1_points.first(),
+        ms1_points.last(),
+        ms2_points.first(),
+        ms2_points.last(),
+    ) else {
         return Ok(buffer);
-    }
+    };
 
-    ms1_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    ms2_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    let min_error = ms1_errors
-        .iter()
-        .chain(ms2_errors.iter())
-        .copied()
-        .fold(f64::INFINITY, f64::min);
-    let max_error = ms1_errors
-        .iter()
-        .chain(ms2_errors.iter())
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max);
-
+    let min_error = ms1_min.min(ms2_min);
+    let max_error = ms1_max.max(ms2_max);
     let margin = (max_error - min_error).abs().max(1.0) * 0.1;
 
     {
@@ -282,8 +252,8 @@ pub fn render_cumulative_error_curves(
             .y_desc("Cumulative Percentage (%)")
             .draw()?;
 
-        draw_cumulative_curve(&mut chart, &ms1_errors, RGBColor(68, 119, 170), 1);
-        draw_cumulative_curve(&mut chart, &ms2_errors, RGBColor(51, 153, 51), 1);
+        draw_cumulative_curve(&mut chart, ms1_points, RGBColor(68, 119, 170), 1);
+        draw_cumulative_curve(&mut chart, ms2_points, RGBColor(51, 153, 51), 1);
 
         root.present()?;
     }
@@ -307,43 +277,31 @@ pub fn render_cumulative_error_three_curves(
 
     let mut buffer = String::new();
 
-    // Filter finite values and sort for CDF
-    let mut ms1_errors: Vec<f64> = error_ms1
-        .iter()
-        .copied()
-        .filter(|v| v.is_finite())
-        .collect();
-    let mut before_errors: Vec<f64> = error_before
-        .iter()
-        .copied()
-        .filter(|v| v.is_finite())
-        .collect();
-    let mut after_errors: Vec<f64> = error_after
-        .iter()
-        .copied()
-        .filter(|v| v.is_finite())
-        .collect();
+    let ms1_points = cumulative_points(error_ms1);
+    let before_points = cumulative_points(error_before);
+    let after_points = cumulative_points(error_after);
 
-    if ms1_errors.is_empty() || before_errors.is_empty() || after_errors.is_empty() {
+    let (
+        Some(&(ms1_min, _)),
+        Some(&(ms1_max, _)),
+        Some(&(before_min, _)),
+        Some(&(before_max, _)),
+        Some(&(after_min, _)),
+        Some(&(after_max, _)),
+    ) = (
+        ms1_points.first(),
+        ms1_points.last(),
+        before_points.first(),
+        before_points.last(),
+        after_points.first(),
+        after_points.last(),
+    )
+    else {
         return Ok(buffer);
-    }
+    };
 
-    ms1_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    before_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    after_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    let min_error = ms1_errors
-        .iter()
-        .chain(before_errors.iter())
-        .chain(after_errors.iter())
-        .copied()
-        .fold(f64::INFINITY, f64::min);
-    let max_error = ms1_errors
-        .iter()
-        .chain(before_errors.iter())
-        .chain(after_errors.iter())
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max);
+    let min_error = ms1_min.min(before_min).min(after_min);
+    let max_error = ms1_max.max(before_max).max(after_max);
 
     let margin = (max_error - min_error).abs().max(1.0) * 0.1;
 
@@ -365,9 +323,9 @@ pub fn render_cumulative_error_three_curves(
             .y_desc("Cumulative Percentage (%)")
             .draw()?;
 
-        draw_cumulative_curve(&mut chart, &ms1_errors, RGBColor(68, 119, 170), 1);
-        draw_cumulative_curve(&mut chart, &before_errors, RGBColor(255, 140, 0), 1);
-        draw_cumulative_curve(&mut chart, &after_errors, RGBColor(51, 153, 51), 1);
+        draw_cumulative_curve(&mut chart, ms1_points, RGBColor(68, 119, 170), 1);
+        draw_cumulative_curve(&mut chart, before_points, RGBColor(255, 140, 0), 1);
+        draw_cumulative_curve(&mut chart, after_points, RGBColor(51, 153, 51), 1);
 
         root.present()?;
     }
