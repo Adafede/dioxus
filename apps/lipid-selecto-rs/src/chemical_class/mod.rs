@@ -8,7 +8,7 @@
 //! - **Broad classes** (`ChemicalClass::defaults`): coarse-grained family-level
 //!   SMARTS patterns (e.g. "FA", "PC(AA)") used for color attribution and
 //!   simple lipid detection.
-//! - **LMSD subclasses** ([`lmsd_all`]): the 58 LIPID MAPS Structure Database
+//! - **LMSD subclasses** ([`lmsd_classes`]): the 58 LIPID MAPS Structure Database
 //!   subclasses (FA01–FA13, GL01–GL07, …) with specific SMARTS patterns, used
 //!   for precise class assignment in exports and gallery matching.
 //!

@@ -5,7 +5,7 @@
 //!
 //! Contains the 58 standard LMSD subclasses (FA01–FA13, GL01–GL07, GP01–GP20,
 //! SP01–SP08, ST01–ST05, PR01–PR04, SL01–SL05, PK11–PK15) with specific SMARTS
-//! patterns. This is the primary classification system used by [`super::lmsd_all`].
+//! patterns. This is the primary classification system used by [`super::lmsd_classes`].
 
 use super::{
     ChemicalClass, FA_PALETTE, GL_PALETTE, GP_PALETTE, PK_PALETTE, PR_PALETTE, SL_PALETTE,
@@ -15,7 +15,7 @@ use super::{
 /// Combined LMSD entry: family, code, human-readable description,
 /// SMARTS pattern, and LMSD database count.
 ///
-/// This is the single source of truth for [`lmsd_all`] and the LMSD SMARTS
+/// This is the single source of truth for [`lmsd_classes`] and the LMSD SMARTS
 /// counts — no duplication.
 struct LmsdEntry {
     family: &'static str,
