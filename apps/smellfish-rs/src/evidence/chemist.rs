@@ -62,14 +62,19 @@ pub(crate) fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     }
 
     // 2 — Skeleton / scaffold classification
-    let family = row.ring_family.to_ascii_lowercase();
-    let is_polyaromatic = family.contains("polyaromatic");
-    let is_np_skeleton = family.contains("polycyclic")
-        || family.contains("steroid")
-        || family.contains("sugar")
-        || family.contains("macrolide")
-        || family.contains("flavonoid")
-        || family.contains("heteroaromatic");
+    let family = &row.ring_family;
+    let is_polyaromatic = contains_ignore_ascii_case(family, "polyaromatic");
+    let is_np_skeleton = matches_any(
+        family,
+        &[
+            "polycyclic",
+            "steroid",
+            "sugar",
+            "macrolide",
+            "flavonoid",
+            "heteroaromatic",
+        ],
+    );
     if is_polyaromatic {
         checks.push(ChemistCheck {
             name: "Skeleton",
@@ -152,9 +157,49 @@ const SCAFFOLD_MOTIFS: &[&str] = &[
     "tetrahydropyran",
 ];
 
-/// Returns `true` if `lowercase_label` contains any of `motifs`.
-fn matches_any(lowercase_label: &str, motifs: &[&str]) -> bool {
-    motifs.iter().any(|m| lowercase_label.contains(m))
+/// Decoration motifs (functional groups or side-chain fragments).
+const DECORATION_MOTIFS: &[&str] = &[
+    "aldehyde",
+    "ketone",
+    "carboxylic acid",
+    "ester",
+    "amide",
+    "carbamate",
+    "urea",
+    "sulfonamide",
+    "sulfone",
+    "sulfoxide",
+    "alcohol",
+    "phenol",
+    "ether",
+    "methoxy",
+    "amine",
+    "halogen",
+    "nitrile",
+    "nitro",
+    "thiol",
+    "phosphate",
+    "acetal",
+    "epoxide",
+    "allyl",
+];
+
+/// Returns `true` if `haystack` contains `needle` (ASCII case-insensitive),
+/// without allocating a lowercased `String`.
+#[must_use]
+pub(super) fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
+    if needle.is_empty() {
+        return true;
+    }
+    haystack
+        .as_bytes()
+        .windows(needle.len())
+        .any(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
+}
+
+/// Returns `true` if `label` contains any of `motifs` (ASCII case-insensitive).
+pub(super) fn matches_any(label: &str, motifs: &[&str]) -> bool {
+    motifs.iter().any(|m| contains_ignore_ascii_case(label, m))
 }
 
 /// Motif labels that are known to be enriched in natural products.
@@ -166,71 +211,21 @@ fn matches_any(lowercase_label: &str, motifs: &[&str]) -> bool {
 /// Used to highlight motifs characteristic of NP biosynthesis in the UI.
 #[must_use]
 pub(crate) fn is_known_np_motif(label: &str) -> bool {
-    matches_any(&label.to_ascii_lowercase(), SCAFFOLD_MOTIFS)
-}
-
-pub(crate) fn count_core_np_motifs(motifs: &[String]) -> usize {
-    motifs.iter().filter(|m| is_known_np_motif(m)).count()
-}
-
-pub(crate) fn count_scaffold_hits(hits: &[RdkitMotifHit]) -> usize {
-    hits.iter()
-        .filter(|hit| is_scaffold_motif(&hit.label))
-        .count()
-}
-
-pub(crate) fn count_source_hits(hits: &[RdkitMotifHit], source_class: &str) -> usize {
-    hits.iter()
-        .filter(|hit| normalized_source_class(&hit.source_class) == source_class)
-        .count()
-}
-
-pub(crate) fn count_kingdom_enriched_hits(hits: &[RdkitMotifHit]) -> usize {
-    hits.iter()
-        .filter(|hit| {
-            normalized_source_class(&hit.source_class) == "natural" && !hit.kingdoms.is_empty()
-        })
-        .count()
-}
-
-pub(crate) fn count_decoration_motifs(motifs: &[String]) -> usize {
-    motifs.iter().filter(|m| is_decoration_motif(m)).count()
+    matches_any(label, SCAFFOLD_MOTIFS)
 }
 
 /// Scaffold motifs are ring systems or cores characteristic of natural-product
 /// scaffold classes.
 #[must_use]
 pub(crate) fn is_scaffold_motif(label: &str) -> bool {
-    let l = label.to_ascii_lowercase();
-    matches_any(&l, SCAFFOLD_MOTIFS) || l.contains("ring") || l.contains("cyclohexane")
+    matches_any(label, SCAFFOLD_MOTIFS)
+        || contains_ignore_ascii_case(label, "ring")
+        || contains_ignore_ascii_case(label, "cyclohexane")
 }
 
 /// Decoration motifs are functional groups or side-chain fragments.
 pub(crate) fn is_decoration_motif(label: &str) -> bool {
-    let l = label.to_ascii_lowercase();
-    l.contains("aldehyde")
-        || l.contains("ketone")
-        || l.contains("carboxylic acid")
-        || l.contains("ester")
-        || l.contains("amide")
-        || l.contains("carbamate")
-        || l.contains("urea")
-        || l.contains("sulfonamide")
-        || l.contains("sulfone")
-        || l.contains("sulfoxide")
-        || l.contains("alcohol")
-        || l.contains("phenol")
-        || l.contains("ether")
-        || l.contains("methoxy")
-        || l.contains("amine")
-        || l.contains("halogen")
-        || l.contains("nitrile")
-        || l.contains("nitro")
-        || l.contains("thiol")
-        || l.contains("phosphate")
-        || l.contains("acetal")
-        || l.contains("epoxide")
-        || l.contains("allyl")
+    matches_any(label, DECORATION_MOTIFS)
 }
 
 /// Per-molecule structural evidence counts.
@@ -267,13 +262,32 @@ pub(crate) struct EvidenceCounts {
 /// side-chains, and the natural/synthetic/unknown source split with kingdom
 /// taxonomy.
 pub(crate) fn count_evidence(motifs: &[String], motif_hits: &[RdkitMotifHit]) -> EvidenceCounts {
-    EvidenceCounts {
-        np_core_hits: count_core_np_motifs(motifs),
-        scaffold_hits: count_scaffold_hits(motif_hits),
-        decoration_hits: count_decoration_motifs(motifs),
-        natural_hits: count_source_hits(motif_hits, "natural"),
-        synthetic_hits: count_source_hits(motif_hits, "synthetic"),
-        unknown_hits: count_source_hits(motif_hits, "unknown"),
-        kingdom_enriched_hits: count_kingdom_enriched_hits(motif_hits),
+    let mut counts = EvidenceCounts::default();
+
+    for motif in motifs {
+        if is_known_np_motif(motif) {
+            counts.np_core_hits += 1;
+        }
+        if is_decoration_motif(motif) {
+            counts.decoration_hits += 1;
+        }
     }
+
+    for hit in motif_hits {
+        if is_scaffold_motif(&hit.label) {
+            counts.scaffold_hits += 1;
+        }
+        match normalized_source_class(&hit.source_class) {
+            "natural" => {
+                counts.natural_hits += 1;
+                if !hit.kingdoms.is_empty() {
+                    counts.kingdom_enriched_hits += 1;
+                }
+            }
+            "synthetic" => counts.synthetic_hits += 1,
+            _ => counts.unknown_hits += 1,
+        }
+    }
+
+    counts
 }

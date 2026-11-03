@@ -206,20 +206,20 @@ fn motif_evidence_notes(
     if kingdom_enriched_hits > 0 || natural_only_hits > 0 || synthetic_hits > 0 || unknown_hits > 0
     {
         let total = kingdom_enriched_hits + natural_only_hits + synthetic_hits + unknown_hits;
-        let natural_ratio = if total > 0 {
-            (kingdom_enriched_hits + natural_only_hits) as f64 / total as f64
+        let natural_pct = if total > 0 {
+            (kingdom_enriched_hits + natural_only_hits) as f64 * 100.0 / total as f64
         } else {
             0.0
         };
-        let synthetic_ratio = if total > 0 {
-            synthetic_hits as f64 / total as f64
+        let synthetic_pct = if total > 0 {
+            synthetic_hits as f64 * 100.0 / total as f64
         } else {
             0.0
         };
         notes.push(format!(
             "motif balance: {kingdom_enriched_hits} kingdom-enriched / {natural_only_hits} \
              natural-only / {synthetic_hits} synthetic / {unknown_hits} unclassified \
-             ({natural_ratio:.0}% natural, {synthetic_ratio:.0}% synthetic)"
+             ({natural_pct:.0}% natural, {synthetic_pct:.0}% synthetic)"
         ));
     }
     if decoration_hits > 0 && np_core_hits == 0 {

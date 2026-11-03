@@ -9,43 +9,42 @@
 
 use crate::model::RdkitDescriptors;
 
+use super::chemist::matches_any;
+
 /// Classify the core scaffold family using motif labels and descriptor
 /// heuristics.
 #[must_use]
 pub(crate) fn classify_ring_family(descriptors: &RdkitDescriptors, motifs: &[String]) -> String {
-    let motif_text = motifs.join(" ").to_ascii_lowercase();
+    let has_any = |keywords: &[&str]| motifs.iter().any(|m| matches_any(m, keywords));
 
     // Steroids — tetracyclic fused ring system.
-    if motif_text.contains("steroid") {
+    if has_any(&["steroid"]) {
         return "steroid-like fused ring system".to_string();
     }
     // Monosaccharides and THF rings — common in glycosylated NPs.
-    if motif_text.contains("sugar") || motif_text.contains("tetrahydrofuran") {
+    if has_any(&["sugar", "tetrahydrofuran"]) {
         return "sugar-like oxygenated ring system".to_string();
     }
     // Macrocycles, lactones, lactams — hallmark macrocyclic NP scaffolds.
-    if motif_text.contains("macrolide")
-        || motif_text.contains("macrocycle")
-        || motif_text.contains("lactone")
-        || motif_text.contains("lactam")
-    {
+    if has_any(&["macrolide", "macrocycle", "lactone", "lactam"]) {
         return "macrolide-like oxygenated macrocycle".to_string();
     }
     // Benzopyran, flavone, flavonoid — plant secondary metabolite cores.
-    if motif_text.contains("flavone") || motif_text.contains("flavonoid") {
+    if has_any(&["flavone", "flavonoid"]) {
         return "flavonoid-like scaffold".to_string();
     }
     // N-heteroaromatic scaffolds — common in both NPs and synthetic drugs.
-    if motif_text.contains("indole")
-        || motif_text.contains("quinoline")
-        || motif_text.contains("isoquinoline")
-        || motif_text.contains("benzofuran")
-        || motif_text.contains("benzothiophene")
-        || motif_text.contains("quinoxaline")
-        || motif_text.contains("purine")
-        || motif_text.contains("chromone")
-        || motif_text.contains("coumarin")
-    {
+    if has_any(&[
+        "indole",
+        "quinoline",
+        "isoquinoline",
+        "benzofuran",
+        "benzothiophene",
+        "quinoxaline",
+        "purine",
+        "chromone",
+        "coumarin",
+    ]) {
         return "fused heteroaromatic scaffold".to_string();
     }
 

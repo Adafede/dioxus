@@ -262,3 +262,35 @@ fn decoration_motifs_stay_neutral() {
     assert!(is_decoration_motif("Methoxy"));
     assert!(!is_scaffold_motif("Methoxy"));
 }
+
+#[test]
+fn motif_balance_formats_true_percentages() {
+    let assessment = assess_np_evidence(EvidenceInputs {
+        descriptors: &empty_descriptors(),
+        motifs: &[
+            "Steroid".to_string(),
+            "Lactone".to_string(),
+            "Sugar".to_string(),
+            "Sulfonamide".to_string(),
+        ],
+        motif_hits: &[
+            motif_hit("Steroid", "natural", "plants"),
+            motif_hit("Lactone", "natural", ""),
+            motif_hit("Sugar", "natural", "fungi"),
+            motif_hit("Sulfonamide", "synthetic", ""),
+        ],
+        stereo_tags: &[],
+        np_score: Some(1.5),
+        np_confidence: Some(0.9),
+        dataset_context: &empty_dataset_context(),
+        lotus_scaffolds: &[],
+    });
+    assert!(
+        assessment
+            .evidence_notes
+            .iter()
+            .any(|n| n.contains("(75% natural, 25% synthetic)")),
+        "expected 75% natural / 25% synthetic in motif balance note: {:?}",
+        assessment.evidence_notes
+    );
+}

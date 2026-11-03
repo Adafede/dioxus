@@ -12,16 +12,24 @@ pub(super) fn format_score(score: f64) -> String {
 }
 
 /// CSS-safe verdict color class based on the verdict text.
+///
+/// Order mirrors [`super::csv_export::category`]: `"synthetic-leaning"` and
+/// `"citation needed"` are checked before `"lotus"` so a LOTUS-scaffold hint
+/// that still requires a citation renders as skeptical rather than green.
 #[must_use]
 pub(super) fn verdict_color(verdict: &str) -> &'static str {
     let l = verdict.to_ascii_lowercase();
     if l.contains("smells fishy") || l.contains("highly synthetic") {
         "verdict-fishy"
-    } else if l.contains("likely") || l.contains("strong natural") || l.contains("lotus") {
-        "verdict-likely"
+    } else if l.contains("synthetic-leaning") {
+        "verdict-caution"
     } else if l.contains("citation needed") {
         "verdict-skeptical"
-    } else if l.contains("weak np signals") || l.contains("ertl") && l.contains("\u{2212}1") {
+    } else if l.contains("likely") || l.contains("strong natural") || l.contains("lotus") {
+        "verdict-likely"
+    } else if l.contains("weak np signals")
+        || (l.contains("ertl") && (l.contains("-1") || l.contains("\u{2212}1")))
+    {
         "verdict-caution"
     } else {
         "verdict-neutral"
@@ -65,6 +73,14 @@ mod tests {
         assert_eq!(verdict_color("highly synthetic"), "verdict-fishy");
         assert_eq!(verdict_color("Likely novel NP"), "verdict-likely");
         assert_eq!(verdict_color("Citation needed"), "verdict-skeptical");
+        assert_eq!(
+            verdict_color("👃 Citation needed — LOTUS scaffold hint, Ertl-only (Ertl +1.20)"),
+            "verdict-skeptical"
+        );
+        assert_eq!(
+            verdict_color("🟧 Synthetic-leaning structure (Ertl +1.50)"),
+            "verdict-caution"
+        );
         assert_eq!(verdict_color("Weak NP signals"), "verdict-caution");
         assert_eq!(verdict_color("Everything else"), "verdict-neutral");
     }

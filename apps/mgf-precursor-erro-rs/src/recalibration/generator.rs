@@ -10,8 +10,8 @@ use super::parsing::{extract_pepmass_from_line, find_ms2_precursor_peak, is_frag
 use super::types::{CalibrationModel, Peak};
 use crate::diagnostics::RecalibrationStats;
 
-pub fn write_recalibrated_fragments(
-    spectrum_frags: &[String],
+pub fn write_recalibrated_fragments<S: AsRef<str>>(
+    spectrum_frags: &[S],
     result: &mut String,
     delta: f64,
     pepmass: f64,
@@ -21,6 +21,7 @@ pub fn write_recalibrated_fragments(
     use std::fmt::Write;
 
     for frag in spectrum_frags {
+        let frag = frag.as_ref();
         let mut fields = frag.split_whitespace();
         let mz = fields.next().and_then(|field| field.parse::<f64>().ok());
         let intensity = fields.next().and_then(|field| field.parse::<f64>().ok());
@@ -40,9 +41,9 @@ pub fn write_recalibrated_fragments(
     }
 }
 
-pub fn write_fragments_as_is(spectrum_frags: &[String], result: &mut String) {
+pub fn write_fragments_as_is<S: AsRef<str>>(spectrum_frags: &[S], result: &mut String) {
     for frag in spectrum_frags {
-        result.push_str(frag);
+        result.push_str(frag.as_ref());
         result.push('\n');
     }
 }
@@ -63,73 +64,62 @@ pub fn generate_recalibrated_mgf(
     };
 
     let mut result = String::with_capacity(original_content.len());
-    let mut pepmass: Option<f64>;
-    let mut spectrum_frags: Vec<String> = Vec::new();
+    let mut spectrum_frags: Vec<&str> = Vec::new();
+    let mut lines = original_content.lines();
 
-    let lines: Vec<&str> = original_content.lines().collect();
-    let mut idx = 0;
-
-    while let Some(&line) = lines.get(idx) {
+    while let Some(line) = lines.next() {
         let trimmed = line.trim();
 
         if !trimmed.eq_ignore_ascii_case("BEGIN IONS") {
             result.push_str(line);
             result.push('\n');
-            idx += 1;
             continue;
         }
 
-        {
-            pepmass = None;
-            spectrum_frags.clear();
-            result.push_str(line);
-            result.push('\n');
-            idx += 1;
+        let mut pepmass: Option<f64> = None;
+        spectrum_frags.clear();
+        result.push_str(line);
+        result.push('\n');
 
-            while let Some(&spec_line) = lines.get(idx) {
-                if spec_line.trim().eq_ignore_ascii_case("END IONS") {
-                    break;
-                }
-
-                if let Some(pm) = extract_pepmass_from_line(spec_line) {
-                    pepmass = Some(pm);
-                    result.push_str(spec_line);
-                    result.push('\n');
-                    idx += 1;
-                    continue;
-                }
-
-                if is_fragment_line(spec_line) {
-                    spectrum_frags.push(spec_line.to_string());
-                } else {
-                    result.push_str(spec_line);
-                    result.push('\n');
-                }
-                idx += 1;
+        for spec_line in lines.by_ref() {
+            if spec_line.trim().eq_ignore_ascii_case("END IONS") {
+                break;
             }
 
-            if let Some(pm) = pepmass {
-                if let Some(ms2_peak) = find_ms2_precursor_peak(&spectrum_frags, pm) {
-                    let delta = ms2_peak - pm;
-                    write_recalibrated_fragments(
-                        &spectrum_frags,
-                        &mut result,
-                        delta,
-                        pm,
-                        lambda,
-                        calibration_model,
-                    );
-                } else {
-                    write_fragments_as_is(&spectrum_frags, &mut result);
-                }
+            if let Some(pm) = extract_pepmass_from_line(spec_line) {
+                pepmass = Some(pm);
+                result.push_str(spec_line);
+                result.push('\n');
+                continue;
+            }
+
+            if is_fragment_line(spec_line) {
+                spectrum_frags.push(spec_line);
+            } else {
+                result.push_str(spec_line);
+                result.push('\n');
+            }
+        }
+
+        if let Some(pm) = pepmass {
+            if let Some(ms2_peak) = find_ms2_precursor_peak(&spectrum_frags, pm) {
+                let delta = ms2_peak - pm;
+                write_recalibrated_fragments(
+                    &spectrum_frags,
+                    &mut result,
+                    delta,
+                    pm,
+                    lambda,
+                    calibration_model,
+                );
             } else {
                 write_fragments_as_is(&spectrum_frags, &mut result);
             }
-
-            result.push_str("END IONS");
-            result.push('\n');
-            idx += 1;
+        } else {
+            write_fragments_as_is(&spectrum_frags, &mut result);
         }
+
+        result.push_str("END IONS\n");
     }
 
     result

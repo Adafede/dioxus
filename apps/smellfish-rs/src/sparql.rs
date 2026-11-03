@@ -118,7 +118,20 @@ async fn post(
 /// browser still treats the request as simple and sends no preflight, and
 /// `WDQS` honours `Accept` where `QLever` honours `action`.
 fn form_body(query: &str, format: ResponseFormat) -> String {
-    let mut body = format!("query={}", urlencoding::encode(query));
+    use std::fmt::Write as _;
+
+    let mut body = String::with_capacity(query.len() + 32);
+    body.push_str("query=");
+    for &byte in query.as_bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                body.push(char::from(byte));
+            }
+            other => {
+                let _ = write!(body, "%{other:02X}");
+            }
+        }
+    }
     if let Some(action) = format.qlever_action() {
         body.push_str("&action=");
         body.push_str(action);

@@ -16,8 +16,10 @@ pub fn recalibrate_fragment_mz(
     match calibration_model {
         CalibrationModel::TOFDa { .. } => lambda.mul_add(-delta, mz),
         CalibrationModel::OrbitrapPPM { .. } => {
-            let dppm = delta * 1e6 / pepmass;
-            mz * (1.0 - lambda * dppm / 1e6)
+            if !pepmass.is_finite() || pepmass <= 0.0 {
+                return mz;
+            }
+            mz * (1.0 - lambda * delta / pepmass)
         }
         CalibrationModel::None => mz,
     }

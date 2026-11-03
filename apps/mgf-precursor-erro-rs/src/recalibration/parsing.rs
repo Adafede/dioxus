@@ -31,12 +31,20 @@ pub fn is_fragment_line(line: &str) -> bool {
 }
 
 #[must_use]
-pub fn find_ms2_precursor_peak(spectrum_frags: &[String], pepmass: f64) -> Option<f64> {
+pub fn find_ms2_precursor_peak<S: AsRef<str>>(spectrum_frags: &[S], pepmass: f64) -> Option<f64> {
+    if !pepmass.is_finite() || pepmass <= 0.0 {
+        return None;
+    }
     let mut best_mz: Option<f64> = None;
     let mut best_delta = f64::INFINITY;
 
     for frag in spectrum_frags {
-        if let Some(Ok(mz)) = frag.split_whitespace().next().map(str::parse::<f64>) {
+        if let Some(Ok(mz)) = frag
+            .as_ref()
+            .split_whitespace()
+            .next()
+            .map(str::parse::<f64>)
+        {
             let da = (mz - pepmass).abs();
             let ppm = da * 1e6 / pepmass;
             if da <= 0.02 && ppm <= 100.0 && da < best_delta {
