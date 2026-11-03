@@ -5,7 +5,7 @@
 //! [`PrecursorStats`]. Depends on the `mass` and `adduct` layers for
 //! reference-mass derivation and adduct classification.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[cfg(target_arch = "wasm32")]
 use upload::UploadError;
@@ -29,6 +29,7 @@ use super::mass::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached}
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct BlockParseState {
+    #[cfg(test)]
     observed_precursor_raw: Option<String>,
     observed_precursor: Option<f64>,
     reference_mass: Option<f64>,
@@ -38,8 +39,6 @@ pub(crate) struct BlockParseState {
     ion_mode: Option<String>,
     smiles: Option<String>,
     formula: Option<String>,
-    feature_id: Option<String>,
-    scans: Option<String>,
     fragment_peaks: Vec<f64>,
 }
 
@@ -57,6 +56,22 @@ fn parse_leading_float(value: &str) -> Option<f64> {
 }
 
 impl BlockParseState {
+    pub(crate) fn clear(&mut self) {
+        #[cfg(test)]
+        {
+            self.observed_precursor_raw = None;
+        }
+        self.observed_precursor = None;
+        self.reference_mass = None;
+        self.reference_mass_source = None;
+        self.charge = None;
+        self.adduct = None;
+        self.ion_mode = None;
+        self.smiles = None;
+        self.formula = None;
+        self.fragment_peaks.clear();
+    }
+
     pub(crate) fn consume_line(&mut self, line: &str) {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed == "BEGIN IONS" || trimmed == "END IONS" {
@@ -64,13 +79,19 @@ impl BlockParseState {
         }
 
         if let Some(stripped) = trimmed.strip_prefix("PRECURSOR_MZ=") {
-            self.observed_precursor_raw = Some(stripped.to_string());
+            #[cfg(test)]
+            {
+                self.observed_precursor_raw = Some(stripped.to_string());
+            }
             self.observed_precursor = parse_leading_float(stripped);
             return;
         }
 
         if let Some(stripped) = trimmed.strip_prefix("PEPMASS=") {
-            self.observed_precursor_raw = Some(stripped.to_string());
+            #[cfg(test)]
+            {
+                self.observed_precursor_raw = Some(stripped.to_string());
+            }
             self.observed_precursor = parse_leading_float(stripped);
             return;
         }
@@ -115,26 +136,6 @@ impl BlockParseState {
 
         if let Some(stripped) = trimmed.strip_prefix("IONMODE=") {
             self.ion_mode = Some(stripped.to_string());
-            return;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("FEATURE_ID=") {
-            self.feature_id = Some(stripped.to_string());
-            return;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("SCANS=") {
-            self.scans = Some(stripped.to_string());
-            return;
-        }
-
-        if let Some(stripped) = trimmed.strip_prefix("EXTRACTSCAN=") {
-            if self.feature_id.is_none() {
-                self.feature_id = Some(stripped.to_string());
-            }
-            if self.scans.is_none() {
-                self.scans = Some(stripped.to_string());
-            }
             return;
         }
 
@@ -200,7 +201,6 @@ struct LineIngestor {
     plot_sample: PlotPointSample,
     smiles_cache: HashMap<String, Option<f64>>,
     formula_cache: HashMap<String, Option<f64>>,
-    logged_failures: HashSet<String>,
 }
 
 #[cfg_attr(
@@ -228,7 +228,7 @@ impl LineIngestor {
         }
 
         if trimmed == "BEGIN IONS" {
-            self.current_state = BlockParseState::default();
+            self.current_state.clear();
             self.current_is_in_block = true;
             return;
         }
@@ -245,12 +245,11 @@ impl LineIngestor {
                 &self.current_state,
                 &mut self.smiles_cache,
                 &mut self.formula_cache,
-                &mut self.logged_failures,
                 &mut block_plot_sample,
             ) {
                 merge_precursor_stats_in_place(&mut self.metrics, &result);
             }
-            self.current_state = BlockParseState::default();
+            self.current_state.clear();
             self.current_is_in_block = false;
         }
     }
@@ -310,7 +309,6 @@ fn compute_reference_mass<S: std::hash::BuildHasher>(
     state: &BlockParseState,
     smiles_cache: &mut HashMap<String, Option<f64>, S>,
     formula_cache: &mut HashMap<String, Option<f64>, S>,
-    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
 ) -> Option<(f64, Option<String>)> {
     state
         .reference_mass
@@ -327,15 +325,14 @@ fn compute_reference_mass<S: std::hash::BuildHasher>(
             state
                 .formula
                 .as_deref()
-                .and_then(|value| {
-                    exact_mass_from_formula_cached(value, formula_cache, logged_failures)
-                })
+                .and_then(|value| exact_mass_from_formula_cached(value, formula_cache))
                 .map(|mass| (mass, Some("FORMULA".to_string())))
         })
         .or_else(|| {
-            let parsed_smiles = state.smiles.as_deref().and_then(|value| {
-                exact_mass_from_smiles_cached(value, smiles_cache, logged_failures)
-            });
+            let parsed_smiles = state
+                .smiles
+                .as_deref()
+                .and_then(|value| exact_mass_from_smiles_cached(value, smiles_cache));
             if state.smiles.is_some() && parsed_smiles.is_none() {
                 return None;
             }
@@ -345,10 +342,7 @@ fn compute_reference_mass<S: std::hash::BuildHasher>(
 
 /// Build metrics for a block whose reference mass could not be derived from the
 /// precursor's SMILES or formula.
-fn unparsable_smiles_metrics(
-    state: &BlockParseState,
-    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
-) -> PrecursorStats {
+fn unparsable_smiles_metrics(state: &BlockParseState) -> PrecursorStats {
     let mut metrics = PrecursorStats {
         total_spectra: 1,
         skipped_spectra: 1,
@@ -365,19 +359,20 @@ fn unparsable_smiles_metrics(
             .unparsed_smiles_warnings
             .entry(trimmed_smiles.to_string())
             .and_modify(|detail| detail.count = detail.count.saturating_add(1))
-            .or_insert_with(|| WarningDetail {
-                count: 1,
-                formula: state.formula.as_deref().map(str::to_string),
+            .or_insert_with(|| {
+                #[cfg(target_arch = "wasm32")]
+                console::warn_1(
+                    &format!(
+                        "Unable to derive reference mass from SMILES/formula for: {trimmed_smiles} (formula: {})",
+                        state.formula.as_deref().unwrap_or("n/a")
+                    )
+                    .into(),
+                );
+                WarningDetail {
+                    count: 1,
+                    formula: state.formula.as_deref().map(str::to_string),
+                }
             });
-        let warning_key = format!(
-            "missing-reference-mass:{}|{}",
-            trimmed_smiles,
-            state.formula.as_deref().unwrap_or("n/a")
-        );
-        if logged_failures.insert(warning_key) {
-            #[cfg(target_arch = "wasm32")]
-            console::warn_1(&format!("Unable to derive reference mass from SMILES/formula for: {trimmed_smiles} (formula: {})", state.formula.as_deref().unwrap_or("n/a")).into());
-        }
     }
     metrics
 }
@@ -454,15 +449,14 @@ fn process_block_state<S: std::hash::BuildHasher>(
     state: &BlockParseState,
     smiles_cache: &mut HashMap<String, Option<f64>, S>,
     formula_cache: &mut HashMap<String, Option<f64>, S>,
-    logged_failures: &mut HashSet<String, std::collections::hash_map::RandomState>,
     plot_sample: &mut Option<&mut PlotPointSample>,
 ) -> Option<PrecursorStats> {
     let observed_precursor = state.observed_precursor?;
 
     let Some((reference_mass, reference_mass_source)) =
-        compute_reference_mass(state, smiles_cache, formula_cache, logged_failures)
+        compute_reference_mass(state, smiles_cache, formula_cache)
     else {
-        return Some(unparsable_smiles_metrics(state, logged_failures));
+        return Some(unparsable_smiles_metrics(state));
     };
 
     let reference_mass_source = reference_mass_source.unwrap_or_else(|| "unknown".to_string());

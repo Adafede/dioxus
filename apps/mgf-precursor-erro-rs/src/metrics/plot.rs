@@ -68,25 +68,36 @@ pub enum AdductFamily {
 impl AdductFamily {
     #[must_use]
     pub(crate) fn from_label(label: &str) -> Self {
-        let normalized = label.trim().replace(' ', "").to_ascii_uppercase();
-        if normalized.contains("[M+H]")
-            || normalized.contains("[M+2H]")
-            || normalized.contains("[M+NH4]")
-        {
+        fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
+            haystack
+                .as_bytes()
+                .windows(needle.len())
+                .any(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
+        }
+
+        let trimmed = label.trim();
+        let compact: std::borrow::Cow<'_, str> = if trimmed.contains(' ') {
+            std::borrow::Cow::Owned(trimmed.replace(' ', ""))
+        } else {
+            std::borrow::Cow::Borrowed(trimmed)
+        };
+        let s = compact.as_ref();
+        if contains_ignore_ascii_case(s, "[M+H]") || contains_ignore_ascii_case(s, "[M+2H]") {
             Self::Protonated
-        } else if normalized.contains("[M-H]") || normalized.contains("[M-2H]") {
+        } else if contains_ignore_ascii_case(s, "[M-H]") || contains_ignore_ascii_case(s, "[M-2H]")
+        {
             Self::Deprotonated
-        } else if normalized.contains("[M+NA]")
-            || normalized.contains("[M+K]")
-            || normalized.contains("[M+NH4]")
+        } else if contains_ignore_ascii_case(s, "[M+NA]")
+            || contains_ignore_ascii_case(s, "[M+K]")
+            || contains_ignore_ascii_case(s, "[M+NH4]")
         {
             Self::AlkaliAmmonium
-        } else if normalized.contains("MG")
-            || normalized.contains("CA")
-            || normalized.contains("FE")
+        } else if contains_ignore_ascii_case(s, "MG")
+            || contains_ignore_ascii_case(s, "CA")
+            || contains_ignore_ascii_case(s, "FE")
         {
             Self::MetalComplex
-        } else if normalized.contains("CL") || normalized.contains("BR") {
+        } else if contains_ignore_ascii_case(s, "CL") || contains_ignore_ascii_case(s, "BR") {
             Self::Halide
         } else {
             Self::Other

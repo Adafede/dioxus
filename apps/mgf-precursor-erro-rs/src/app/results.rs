@@ -494,14 +494,14 @@ pub fn ResultsPanel(
                         ecdf_plot {
                             title: "Absolute precursor-error cumulative distribution (mDa)".to_string(),
                             subtitle: "Cumulative fraction below each tolerance cutoff, shown on a log10 scale".to_string(),
-                            values: diag.error_da_before.iter().chain(diag.error_da_after.iter()).copied().collect::<Vec<_>>(),
+                            values: diag.error_da_after.iter().map(|value| value.abs() * 1000.0).collect::<Vec<_>>(),
                             thresholds: vec![0.1, 0.5, 1.0, 5.0],
                             unit: "mDa".to_string(),
                         }
                         ecdf_plot {
                             title: "Relative precursor-error cumulative distribution (ppm)".to_string(),
                             subtitle: "Cumulative fraction below each ppm tolerance cutoff, shown on a log10 scale".to_string(),
-                            values: diag.error_ppm_before.iter().chain(diag.error_ppm_after.iter()).copied().collect::<Vec<_>>(),
+                            values: diag.error_ppm_after.iter().map(|value| value.abs()).collect::<Vec<_>>(),
                             thresholds: vec![0.5, 1.0, 5.0, 10.0],
                             unit: "ppm".to_string(),
                         }

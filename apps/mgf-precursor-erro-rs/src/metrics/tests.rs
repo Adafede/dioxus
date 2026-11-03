@@ -127,3 +127,22 @@ fn merge_preserves_nonzero_min_when_empty_or_skipped_blocks_are_present() {
     assert_eq!(after_skipped.abs_error_da_min, 0.5);
     assert_eq!(after_skipped.abs_error_ppm_min, 5.0);
 }
+
+#[test]
+fn adduct_family_classifies_ammonium_under_alkali_ammonium() {
+    assert_eq!(AdductFamily::from_label("[M+H]+"), AdductFamily::Protonated);
+    assert_eq!(
+        AdductFamily::from_label("[M-H]-"),
+        AdductFamily::Deprotonated
+    );
+    assert_eq!(
+        AdductFamily::from_label("[M+NH4]+"),
+        AdductFamily::AlkaliAmmonium,
+        "[M+NH4]+ must classify as AlkaliAmmonium rather than being shadowed by Protonated"
+    );
+    assert_eq!(
+        AdductFamily::from_label("[M+Na]+"),
+        AdductFamily::AlkaliAmmonium
+    );
+    assert_eq!(AdductFamily::from_label("[M+Cl]-"), AdductFamily::Halide);
+}

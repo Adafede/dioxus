@@ -31,8 +31,7 @@ pub(super) fn prepare_block_class_tags(
             let gallery_item = gallery
                 .binary_search_by_key(&block.index, |item| item.block_index)
                 .ok()
-                .and_then(|idx| gallery.get(idx))
-                .or_else(|| gallery.iter().find(|item| item.block_index == block.index));
+                .and_then(|idx| gallery.get(idx));
             gallery_item.map_or_else(
                 || class_tags_from_block(block, all_classes),
                 |item| class_tags_from_gallery(item, all_classes),

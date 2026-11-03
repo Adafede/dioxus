@@ -21,14 +21,12 @@ fn keeps_full_precision_when_computing_error() {
 
     let mut smiles_cache = HashMap::new();
     let mut formula_cache = HashMap::new();
-    let mut logged_failures = HashSet::new();
     let mut plot_sample = None;
 
     let metrics = process_block_state(
         &state,
         &mut smiles_cache,
         &mut formula_cache,
-        &mut logged_failures,
         &mut plot_sample,
     )
     .expect("metrics should be produced");

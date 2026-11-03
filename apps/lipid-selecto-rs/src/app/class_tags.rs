@@ -133,19 +133,26 @@ pub(super) fn class_tags_from_block(
 // build has no caller either, so the wasm condition is the whole of it.
 #[allow(dead_code)] // see above
 pub(super) fn insert_class_comment(block_raw: &str, class_tags: &[(String, String)]) -> String {
-    let comment_block: String = class_tags
-        .iter()
-        .map(|(k, v)| format!("COMMENT=LIPID_MAPS_{k}={v}\n"))
-        .collect::<Vec<_>>()
-        .concat();
+    use std::fmt::Write as _;
+
+    let mut out = String::with_capacity(block_raw.len() + class_tags.len() * 32);
     if let Some(begin_pos) = block_raw.find(|c: char| !c.is_whitespace())
         && block_raw[begin_pos..].starts_with("BEGIN IONS")
         && let Some(newline_pos) = block_raw[begin_pos..].find('\n')
     {
         let (before, after) = block_raw[begin_pos..].split_at(newline_pos + 1);
-        return format!("{before}{comment_block}{after}");
+        out.push_str(before);
+        for (k, v) in class_tags {
+            let _ = writeln!(out, "COMMENT=LIPID_MAPS_{k}={v}");
+        }
+        out.push_str(after);
+        return out;
     }
-    format!("{comment_block}{block_raw}")
+    for (k, v) in class_tags {
+        let _ = writeln!(out, "COMMENT=LIPID_MAPS_{k}={v}");
+    }
+    out.push_str(block_raw);
+    out
 }
 
 #[cfg(test)]
