@@ -434,7 +434,7 @@ pub fn ResultsPanel(
                                                 &before_mda,
                                                 &after_mda,
                                                 "mDa",
-                                                vec![0.1, 0.5, 1.0, 5.0],
+                                                &[0.1, 0.5, 1.0, 5.0],
                                             ).unwrap_or_default()
                                         },
                                     }
@@ -445,7 +445,7 @@ pub fn ResultsPanel(
                                             &diag.error_ppm_before,
                                             &diag.error_ppm_after,
                                             "ppm",
-                                            vec![0.5, 1.0, 5.0, 10.0],
+                                            &[0.5, 1.0, 5.0, 10.0],
                                         ).unwrap_or_default(),
                                     }
                                 }

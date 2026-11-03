@@ -84,7 +84,7 @@ fn render_cumulative_error_curves_single_point_returns_ok_with_svg() {
 
 #[test]
 fn render_cumulative_error_three_curves_empty_arrays_returns_ok_empty() {
-    let result = render_cumulative_error_three_curves(&[], &[], &[], "ppm", vec![]);
+    let result = render_cumulative_error_three_curves(&[], &[], &[], "ppm", &[]);
     assert!(
         result.is_ok(),
         "empty three-curves input should return Ok, not panic"
@@ -95,7 +95,7 @@ fn render_cumulative_error_three_curves_empty_arrays_returns_ok_empty() {
 #[test]
 fn render_cumulative_error_three_curves_all_nan_returns_ok_empty() {
     let result =
-        render_cumulative_error_three_curves(&[f64::NAN], &[f64::NAN], &[f64::NAN], "ppm", vec![]);
+        render_cumulative_error_three_curves(&[f64::NAN], &[f64::NAN], &[f64::NAN], "ppm", &[]);
     assert!(
         result.is_ok(),
         "all-NaN three-curves should return Ok empty, not panic"
@@ -105,7 +105,7 @@ fn render_cumulative_error_three_curves_all_nan_returns_ok_empty() {
 
 #[test]
 fn render_cumulative_error_three_curves_single_point_returns_ok_with_svg() {
-    let result = render_cumulative_error_three_curves(&[1.0], &[2.0], &[0.5], "ppm", vec![5.0]);
+    let result = render_cumulative_error_three_curves(&[1.0], &[2.0], &[0.5], "ppm", &[5.0]);
     assert!(
         result.is_ok(),
         "single-point three-curves should produce SVG, got {result:?}"
@@ -133,6 +133,6 @@ fn cumulative_points_filters_non_finite() {
 #[test]
 fn append_cumulative_legend_no_svg_tag_is_noop() {
     let input = "no svg here";
-    let result = append_cumulative_legend(input);
+    let result = append_cumulative_legend(input.to_string());
     assert_eq!(result, input);
 }

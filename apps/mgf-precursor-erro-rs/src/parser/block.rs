@@ -17,10 +17,7 @@ use web_sys::{Blob, console};
 // `console` is the only browser symbol either module uses at runtime, and each
 // call site is individually gated.
 
-use crate::metrics::{
-    AdductFamily, ErrorMeasurement, PlotPointSample, PrecursorStats, WarningDetail,
-    merge_precursor_stats_in_place,
-};
+use crate::metrics::{AdductFamily, ErrorMeasurement, PrecursorStats, WarningDetail};
 
 use super::adduct::{expected_precursor_mz, is_supported_adduct, normalize_adduct_label};
 use super::mass::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached};
@@ -192,7 +189,6 @@ struct LineIngestor {
     current_state: BlockParseState,
     current_is_in_block: bool,
     metrics: PrecursorStats,
-    plot_sample: PlotPointSample,
     smiles_cache: HashMap<String, Option<f64>>,
     formula_cache: HashMap<String, Option<f64>>,
 }
@@ -234,23 +230,18 @@ impl LineIngestor {
         self.current_state.consume_line(trimmed);
 
         if trimmed == "END IONS" {
-            let mut block_plot_sample = Some(&mut self.plot_sample);
-            if let Some(result) = process_block_state(
+            record_block_state(
+                &mut self.metrics,
                 &self.current_state,
                 &mut self.smiles_cache,
                 &mut self.formula_cache,
-                &mut block_plot_sample,
-            ) {
-                merge_precursor_stats_in_place(&mut self.metrics, &result);
-            }
+            );
             self.current_state.clear();
             self.current_is_in_block = false;
         }
     }
 
-    fn finish(mut self) -> PrecursorStats {
-        self.metrics.plot_points = self.plot_sample.points;
-        self.metrics.plot_point_stream_seen = self.plot_sample.seen;
+    fn finish(self) -> PrecursorStats {
         self.metrics
     }
 }
@@ -320,51 +311,51 @@ fn compute_reference_mass<S: std::hash::BuildHasher>(
         })
 }
 
-/// Build metrics for a block whose reference mass could not be derived from the
-/// precursor's SMILES or formula.
-fn unparsable_smiles_metrics(state: &BlockParseState) -> PrecursorStats {
-    let mut metrics = PrecursorStats {
-        total_spectra: 1,
-        skipped_spectra: 1,
-        unparsed_smiles: 1,
-        ..PrecursorStats::default()
-    };
+/// Record metrics for a block whose reference mass could not be derived from
+/// the precursor's SMILES or formula.
+fn record_unparsable_smiles(metrics: &mut PrecursorStats, state: &BlockParseState) {
+    metrics.total_spectra += 1;
+    metrics.skipped_spectra += 1;
+    metrics.unparsed_smiles += 1;
     if let Some(smiles_text) = state
         .smiles
         .as_deref()
-        .filter(|value| !value.trim().is_empty())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
     {
-        let trimmed_smiles = smiles_text.trim();
-        metrics
-            .unparsed_smiles_warnings
-            .entry(trimmed_smiles.to_string())
-            .and_modify(|detail| detail.count = detail.count.saturating_add(1))
-            .or_insert_with(|| {
-                #[cfg(target_arch = "wasm32")]
-                console::warn_1(
-                    &format!(
-                        "Unable to derive reference mass from SMILES/formula for: {trimmed_smiles} (formula: {})",
-                        state.formula.as_deref().unwrap_or("n/a")
-                    )
-                    .into(),
-                );
+        if let Some(detail) = metrics.unparsed_smiles_warnings.get_mut(smiles_text) {
+            detail.count = detail.count.saturating_add(1);
+            if detail.formula.is_none() {
+                detail.formula = state.formula.as_deref().map(str::to_string);
+            }
+        } else {
+            #[cfg(target_arch = "wasm32")]
+            console::warn_1(
+                &format!(
+                    "Unable to derive reference mass from SMILES/formula for: {smiles_text} (formula: {})",
+                    state.formula.as_deref().unwrap_or("n/a")
+                )
+                .into(),
+            );
+            metrics.unparsed_smiles_warnings.insert(
+                smiles_text.to_string(),
                 WarningDetail {
                     count: 1,
                     formula: state.formula.as_deref().map(str::to_string),
-                }
-            });
+                },
+            );
+        }
     }
-    metrics
 }
 
-/// Build metrics for an observed precursor that has a usable reference mass.
-fn observed_metrics(
+/// Record metrics for an observed precursor that has a usable reference mass.
+fn record_observed_metrics(
+    metrics: &mut PrecursorStats,
     observed_precursor: f64,
     reference_mass: f64,
     adduct_label: &str,
     state: &BlockParseState,
-    plot_sample: &mut Option<&mut PlotPointSample>,
-) -> PrecursorStats {
+) {
     let expected_precursor_mz = expected_precursor_mz(
         reference_mass,
         state.adduct.as_deref(),
@@ -385,79 +376,59 @@ fn observed_metrics(
     };
     let abs_ppm = ppm.abs();
 
-    let mut metrics = PrecursorStats {
-        total_spectra: 1,
-        spectra: 1,
-        spectra_with_reference_mass: 1,
-        observed_precursor_min: observed_precursor,
-        observed_precursor_max: observed_precursor,
-        observed_precursor_mean: observed_precursor,
-        abs_error_da_min: abs_error_da,
-        abs_error_da_max: abs_error_da,
-        abs_error_da_mean: abs_error_da,
-        abs_error_da_rms: abs_error_da,
-        abs_error_ppm_min: abs_ppm,
-        abs_error_ppm_max: abs_ppm,
-        abs_error_ppm_mean: abs_ppm,
-        abs_error_ppm_rms: abs_ppm,
-        ..PrecursorStats::default()
-    };
-    metrics.record_error_with_plot_sample(
-        ErrorMeasurement {
-            abs_error_da,
-            abs_ppm,
-            adduct_family: AdductFamily::from_label(adduct_label),
-            ppm_error: ppm,
-            signed_error_da: error_da,
-            pepmass_header: observed_precursor,
-            ms2_precursor_peak: state.get_ms2_precursor_peak(observed_precursor),
-            smiles: state.smiles.as_deref(),
-            calculated_mass: Some(reference_mass),
-            expected_mass: Some(expected_precursor_mz),
-            formula: state.formula.as_deref(),
-        },
-        plot_sample,
-    );
-    metrics
+    metrics.record_error(ErrorMeasurement {
+        abs_error_da,
+        abs_ppm,
+        adduct_family: AdductFamily::from_label(adduct_label),
+        ppm_error: ppm,
+        signed_error_da: error_da,
+        pepmass_header: observed_precursor,
+        ms2_precursor_peak: state.get_ms2_precursor_peak(observed_precursor),
+        smiles: state.smiles.as_deref(),
+        calculated_mass: Some(reference_mass),
+        expected_mass: Some(expected_precursor_mz),
+        formula: state.formula.as_deref(),
+    });
 }
 
-fn process_block_state<S: std::hash::BuildHasher>(
+fn record_block_state<S: std::hash::BuildHasher>(
+    metrics: &mut PrecursorStats,
     state: &BlockParseState,
     smiles_cache: &mut HashMap<String, Option<f64>, S>,
     formula_cache: &mut HashMap<String, Option<f64>, S>,
-    plot_sample: &mut Option<&mut PlotPointSample>,
-) -> Option<PrecursorStats> {
-    let observed_precursor = state.observed_precursor?;
+) {
+    let Some(observed_precursor) = state.observed_precursor else {
+        return;
+    };
 
     let Some(reference_mass) = compute_reference_mass(state, smiles_cache, formula_cache) else {
-        return Some(unparsable_smiles_metrics(state));
+        record_unparsable_smiles(metrics, state);
+        return;
     };
 
     let adduct_text = state.adduct.as_deref().unwrap_or("").trim();
     if !adduct_text.is_empty() && !is_supported_adduct(adduct_text) {
-        let mut metrics = PrecursorStats {
-            total_spectra: 1,
-            skipped_spectra: 1,
-            ..PrecursorStats::default()
-        };
-        metrics
-            .unrecognized_adducts
-            .entry(adduct_text.to_string())
-            .and_modify(|count| *count += 1)
-            .or_insert(1);
-        return Some(metrics);
+        metrics.total_spectra += 1;
+        metrics.skipped_spectra += 1;
+        if let Some(count) = metrics.unrecognized_adducts.get_mut(adduct_text) {
+            *count += 1;
+        } else {
+            metrics
+                .unrecognized_adducts
+                .insert(adduct_text.to_string(), 1);
+        }
+        return;
     }
 
     let adduct_label = normalize_adduct_label(adduct_text);
-    Some(observed_metrics(
+    record_observed_metrics(
+        metrics,
         observed_precursor,
         reference_mass,
         adduct_label,
         state,
-        plot_sample,
-    ))
+    );
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used)] // test asserts the pipeline always yields metrics
 mod tests;

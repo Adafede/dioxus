@@ -114,12 +114,7 @@ where
 
     let legend_items = series
         .iter()
-        .map(|(family, _)| {
-            (
-                family.as_str().to_string(),
-                adduct_family_color_hex(*family),
-            )
-        })
+        .map(|(family, _)| (family.as_str(), adduct_family_color_hex(*family)))
         .collect();
 
     ScatterPlotData {
@@ -131,9 +126,9 @@ where
     }
 }
 
-pub(super) fn embed_svg_legend(
+pub(super) fn embed_svg_legend<L: AsRef<str>, C: AsRef<str>>(
     mut svg_markup: String,
-    legend_items: &[(String, String)],
+    legend_items: &[(L, C)],
     title: &str,
     width: f64,
     height: f64,
@@ -153,7 +148,7 @@ pub(super) fn embed_svg_legend(
     let padding_y = 10.0;
     let label_width = legend_items
         .iter()
-        .map(|(label, _)| label.len())
+        .map(|(label, _)| label.as_ref().len())
         .max()
         .unwrap_or(0);
     let label_width = f64::from(u32::try_from(label_width).unwrap_or(u32::MAX));
@@ -186,6 +181,8 @@ pub(super) fn embed_svg_legend(
     );
 
     for (index, (family, color)) in legend_items.iter().enumerate() {
+        let family = family.as_ref();
+        let color = color.as_ref();
         let row = index / items_per_row;
         let col = index % items_per_row;
         let item_x = usize_to_f64(col).mul_add(entry_width, items_start_x);

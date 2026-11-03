@@ -12,7 +12,7 @@
 // wasm-gated, because the plotters that consume them are.
 use super::plot::{
     ErrorMeasurement, HighErrorSmilesDetail, HighErrorSmilesUpdate, MAX_ECDF_POINTS,
-    MAX_PLOT_POINTS, PlotPoint, PlotPointSample, WarningDetail,
+    MAX_PLOT_POINTS, PlotPoint, WarningDetail, usize_to_f64,
 };
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
@@ -68,6 +68,7 @@ impl MedianTracker {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn merge(&mut self, other: &Self) {
         for &OrderedF64(value) in &other.lower {
             self.push(value);
@@ -227,11 +228,7 @@ impl PrecursorStats {
         }
     }
 
-    pub(crate) fn record_error_with_plot_sample(
-        &mut self,
-        measurement: ErrorMeasurement<'_>,
-        plot_sample: &mut Option<&mut PlotPointSample>,
-    ) {
+    pub(crate) fn record_error(&mut self, measurement: ErrorMeasurement<'_>) {
         let ErrorMeasurement {
             abs_error_da,
             abs_ppm,
@@ -245,6 +242,45 @@ impl PrecursorStats {
             expected_mass,
             formula,
         } = measurement;
+
+        let prev_spectra = usize_to_f64(self.spectra);
+        self.total_spectra += 1;
+        self.spectra += 1;
+        self.spectra_with_reference_mass += 1;
+        let total_spectra = usize_to_f64(self.spectra);
+
+        if prev_spectra == 0.0 {
+            self.observed_precursor_min = pepmass_header;
+            self.observed_precursor_max = pepmass_header;
+            self.abs_error_da_min = abs_error_da;
+            self.abs_error_da_max = abs_error_da;
+            self.abs_error_ppm_min = abs_ppm;
+            self.abs_error_ppm_max = abs_ppm;
+        } else {
+            self.observed_precursor_min = self.observed_precursor_min.min(pepmass_header);
+            self.observed_precursor_max = self.observed_precursor_max.max(pepmass_header);
+            self.abs_error_da_min = self.abs_error_da_min.min(abs_error_da);
+            self.abs_error_da_max = self.abs_error_da_max.max(abs_error_da);
+            self.abs_error_ppm_min = self.abs_error_ppm_min.min(abs_ppm);
+            self.abs_error_ppm_max = self.abs_error_ppm_max.max(abs_ppm);
+        }
+
+        self.observed_precursor_mean = self
+            .observed_precursor_mean
+            .mul_add(prev_spectra, pepmass_header)
+            / total_spectra;
+        self.abs_error_da_mean =
+            self.abs_error_da_mean.mul_add(prev_spectra, abs_error_da) / total_spectra;
+        let current_da_rms_sq = self.abs_error_da_rms * self.abs_error_da_rms;
+        self.abs_error_da_rms =
+            (current_da_rms_sq.mul_add(prev_spectra, abs_error_da * abs_error_da) / total_spectra)
+                .sqrt();
+
+        self.abs_error_ppm_mean =
+            self.abs_error_ppm_mean.mul_add(prev_spectra, abs_ppm) / total_spectra;
+        let current_ppm_rms_sq = self.abs_error_ppm_rms * self.abs_error_ppm_rms;
+        self.abs_error_ppm_rms =
+            (current_ppm_rms_sq.mul_add(prev_spectra, abs_ppm * abs_ppm) / total_spectra).sqrt();
 
         Self::push_sampled_value(
             abs_error_da,
@@ -275,19 +311,14 @@ impl PrecursorStats {
             formula,
         });
 
-        let point = PlotPoint {
+        self.push_plot_point(PlotPoint {
             adduct_family,
             pepmass_header,
             ms2_precursor_peak,
             signed_error_da,
             signed_error_ppm: ppm_error,
             expected_mass,
-        };
-        if let Some(sample) = plot_sample.as_mut() {
-            sample.push(point);
-        } else {
-            self.push_plot_point(point);
-        }
+        });
     }
 
     fn update_error_buckets(&mut self, abs_error_milli_da: f64, abs_ppm: f64) {

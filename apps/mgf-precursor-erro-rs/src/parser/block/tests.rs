@@ -20,16 +20,11 @@ fn keeps_full_precision_when_computing_error() {
 
     let mut smiles_cache = HashMap::new();
     let mut formula_cache = HashMap::new();
-    let mut plot_sample = None;
+    let mut metrics = PrecursorStats::default();
 
-    let metrics = process_block_state(
-        &state,
-        &mut smiles_cache,
-        &mut formula_cache,
-        &mut plot_sample,
-    )
-    .expect("metrics should be produced");
+    record_block_state(&mut metrics, &state, &mut smiles_cache, &mut formula_cache);
 
+    assert_eq!(metrics.spectra, 1);
     let expected_error = 100.1234_f64 - 100.123_456_789_f64;
     assert!((metrics.abs_error_da_mean - expected_error.abs()).abs() < 1e-12);
 }
@@ -124,4 +119,40 @@ fn a_crlf_document_is_scored_the_same_as_a_lf_one() {
         "CRLF terminators defeated block detection"
     );
     assert_eq!(lf.total_spectra, crlf.total_spectra);
+}
+
+#[test]
+fn duplicate_unparsed_smiles_and_unrecognized_adducts_accumulate_in_place() {
+    let input = "\
+BEGIN IONS
+PEPMASS=500.0
+SMILES=not_a_smiles
+FORMULA=C6H12O6_bad
+END IONS
+BEGIN IONS
+PEPMASS=500.0
+SMILES=not_a_smiles
+END IONS
+BEGIN IONS
+PEPMASS=500.0
+EXACTMASS=500.0
+ADDUCT=[M+Bogus]+
+END IONS
+BEGIN IONS
+PEPMASS=500.0
+EXACTMASS=500.0
+ADDUCT=[M+Bogus]+
+END IONS";
+    let stats = ingest_lines(input.lines(), |_| {});
+    assert_eq!(stats.total_spectra, 4);
+    assert_eq!(stats.skipped_spectra, 4);
+    assert_eq!(stats.unparsed_smiles, 2);
+    assert_eq!(
+        stats.unparsed_smiles_warnings.get("not_a_smiles"),
+        Some(&WarningDetail {
+            count: 2,
+            formula: Some("C6H12O6_bad".to_string()),
+        })
+    );
+    assert_eq!(stats.unrecognized_adducts.get("[M+Bogus]+"), Some(&2));
 }

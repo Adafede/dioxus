@@ -7,6 +7,16 @@
 use super::data::{floor_to_usize, usize_to_f64};
 use crate::errors::MgfError;
 
+fn combined_finite_bounds(a: &[f64], b: &[f64]) -> Option<(f64, f64)> {
+    let mut min_val = f64::INFINITY;
+    let mut max_val = f64::NEG_INFINITY;
+    for value in a.iter().chain(b.iter()).copied().filter(|v| v.is_finite()) {
+        min_val = min_val.min(value);
+        max_val = max_val.max(value);
+    }
+    min_val.is_finite().then_some((min_val, max_val))
+}
+
 /// Renders a diagnostic plot comparing precursor errors before and after recalibration.
 ///
 /// Creates a scatter plot with two overlaid series showing precursor errors in ppm,
@@ -23,22 +33,9 @@ pub fn render_recalibration_diagnostic_ppm(
 
     let mut buffer = String::new();
 
-    // Compute ranges
-    let mut error_min = f64::INFINITY;
-    let mut error_max = f64::NEG_INFINITY;
-    for value in errors_before
-        .iter()
-        .chain(errors_after.iter())
-        .copied()
-        .filter(|v| v.is_finite())
-    {
-        error_min = error_min.min(value);
-        error_max = error_max.max(value);
-    }
-
-    if !error_min.is_finite() {
+    let Some((error_min, error_max)) = combined_finite_bounds(errors_before, errors_after) else {
         return Ok(buffer);
-    }
+    };
 
     let error_span = (error_max - error_min).max(1.0);
     let error_min = error_min - error_span * 0.1;
@@ -149,21 +146,9 @@ pub fn render_recalibration_diagnostic_histogram(
         return Ok(buffer);
     }
 
-    let mut error_min = f64::INFINITY;
-    let mut error_max = f64::NEG_INFINITY;
-    for value in errors_before
-        .iter()
-        .chain(errors_after.iter())
-        .copied()
-        .filter(|v| v.is_finite())
-    {
-        error_min = error_min.min(value);
-        error_max = error_max.max(value);
-    }
-
-    if !error_min.is_finite() {
+    let Some((error_min, error_max)) = combined_finite_bounds(errors_before, errors_after) else {
         return Ok(buffer);
-    }
+    };
 
     // Compute histograms
     let mut hist_before = vec![0usize; bin_count];
@@ -214,22 +199,17 @@ pub fn render_recalibration_diagnostic_histogram(
             .y_desc("Count")
             .draw()?;
 
-        // Draw histogram bars
-        for (i, &count) in hist_before.iter().enumerate() {
+        let before_style = ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled();
+        chart.draw_series(hist_before.iter().enumerate().map(|(i, &count)| {
             let x = usize_to_f64(i).mul_add(bin_width, error_min);
-            chart.draw_series(std::iter::once(Rectangle::new(
-                [(x, 0), (bin_width.mul_add(0.9, x), count)],
-                ShapeStyle::from(&RGBAColor(68, 119, 170, 0.4)).filled(),
-            )))?;
-        }
+            Rectangle::new([(x, 0), (bin_width.mul_add(0.9, x), count)], before_style)
+        }))?;
 
-        for (i, &count) in hist_after.iter().enumerate() {
+        let after_style = ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled();
+        chart.draw_series(hist_after.iter().enumerate().map(|(i, &count)| {
             let x = bin_width.mul_add(0.45, usize_to_f64(i).mul_add(bin_width, error_min));
-            chart.draw_series(std::iter::once(Rectangle::new(
-                [(x, 0), (bin_width.mul_add(0.45, x), count)],
-                ShapeStyle::from(&RGBAColor(34, 136, 51, 0.6)).filled(),
-            )))?;
-        }
+            Rectangle::new([(x, 0), (bin_width.mul_add(0.45, x), count)], after_style)
+        }))?;
 
         root.present()?;
     }
@@ -309,7 +289,7 @@ pub fn render_recalibration_diagnostic_mz_comparison(
         // Draw perfect calibration line (y = x)
         chart
             .draw_series(std::iter::once(PathElement::new(
-                vec![(min_mz, min_mz), (max_mz, max_mz)],
+                [(min_mz, min_mz), (max_mz, max_mz)],
                 ShapeStyle::from(&RGBAColor(200, 50, 50, 0.5)),
             )))?
             .label("Perfect calibration");

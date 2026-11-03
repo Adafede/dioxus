@@ -6,14 +6,14 @@
 #[must_use]
 pub fn extract_pepmass_from_line(line: &str) -> Option<f64> {
     let trimmed = line.trim();
-    if let Some(prefix) = trimmed.get(..13)
+    if let Some((prefix, rest)) = trimmed.split_at_checked(13)
         && prefix.eq_ignore_ascii_case("PRECURSOR_MZ=")
     {
-        trimmed[13..].split_whitespace().next()?.parse().ok()
-    } else if let Some(prefix) = trimmed.get(..8)
+        rest.split_whitespace().next()?.parse().ok()
+    } else if let Some((prefix, rest)) = trimmed.split_at_checked(8)
         && prefix.eq_ignore_ascii_case("PEPMASS=")
     {
-        trimmed[8..].split_whitespace().next()?.parse().ok()
+        rest.split_whitespace().next()?.parse().ok()
     } else {
         None
     }

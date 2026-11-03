@@ -39,9 +39,9 @@ const fn paul_tol_entry(index: usize) -> (&'static str, (u8, u8, u8)) {
 }
 
 #[must_use]
-pub fn adduct_family_color_hex(family: AdductFamily) -> String {
+pub const fn adduct_family_color_hex(family: AdductFamily) -> &'static str {
     let palette_index = adduct_family_rank(family);
-    paul_tol_entry(palette_index).0.to_string()
+    paul_tol_entry(palette_index).0
 }
 
 #[must_use]

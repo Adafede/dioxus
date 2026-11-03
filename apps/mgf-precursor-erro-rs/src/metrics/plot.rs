@@ -86,12 +86,6 @@ pub struct PlotPoint {
     pub expected_mass: Option<f64>, // Theoretical precursor mass for error calculation
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct PlotPointSample {
-    pub seen: usize,
-    pub points: Vec<PlotPoint>,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ErrorMeasurement<'a> {
     pub abs_error_da: f64,
@@ -121,32 +115,9 @@ pub(super) struct HighErrorSmilesUpdate<'a> {
     pub(super) formula: Option<&'a str>,
 }
 
-impl PlotPointSample {
-    pub(crate) fn push(&mut self, point: PlotPoint) {
-        self.seen = self.seen.saturating_add(1);
-        if self.points.len() < MAX_PLOT_POINTS {
-            self.points.push(point);
-        } else {
-            let stream_index = u64::try_from(self.seen).unwrap_or(u64::MAX);
-            let replacement_index = usize::try_from(
-                (stream_index
-                    .wrapping_mul(0x9e37_79b9_7f4a_7c15)
-                    .wrapping_add(0xbf58_476d_1ce4_e5b9))
-                    % stream_index,
-            )
-            .unwrap_or(0);
-            if replacement_index < MAX_PLOT_POINTS
-                && let Some(existing) = self.points.get_mut(replacement_index)
-            {
-                *existing = point;
-            }
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ScatterPlotData {
-    pub legend_items: Vec<(String, String)>,
+    pub legend_items: Vec<(&'static str, &'static str)>,
     pub x_min: f64,
     pub x_max: f64,
     pub y_limit: f64,

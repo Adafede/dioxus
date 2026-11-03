@@ -93,7 +93,7 @@ pub fn render_ecdf_svg(
             .draw()?;
 
         chart.draw_series(LineSeries::new(
-            vec![(x_min, y_min), (x_max, y_min)],
+            [(x_min, y_min), (x_max, y_min)],
             ShapeStyle::from(&RGBColor(203, 213, 225)).stroke_width(1),
         ))?;
 
@@ -107,7 +107,7 @@ pub fn render_ecdf_svg(
             let x = threshold.clamp(x_min, x_max);
             let color = tolerance_step_rgb(index, thresholds.len());
             chart.draw_series(LineSeries::new(
-                vec![(x, y_min), (x, y_max)],
+                [(x, y_min), (x, y_max)],
                 ShapeStyle::from(&color).stroke_width(1),
             ))?;
         }
@@ -182,7 +182,7 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String,
             .draw()?;
 
         chart.draw_series(LineSeries::new(
-            vec![(x_min, 0.0f64), (x_max, 0.0f64)],
+            [(x_min, 0.0f64), (x_max, 0.0f64)],
             ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
         ))?;
 
@@ -275,7 +275,7 @@ pub fn render_absolute_mass_bias_svg(
             .draw()?;
 
         chart.draw_series(LineSeries::new(
-            vec![(x_min, 0.0), (x_max, 0.0)],
+            [(x_min, 0.0), (x_max, 0.0)],
             ShapeStyle::from(&RGBColor(148, 163, 184)).stroke_width(1),
         ))?;
 
@@ -289,11 +289,11 @@ pub fn render_absolute_mass_bias_svg(
                 continue;
             }
             chart.draw_series(LineSeries::new(
-                vec![(x_min, positive_tick), (x_max, positive_tick)],
+                [(x_min, positive_tick), (x_max, positive_tick)],
                 ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
             ))?;
             chart.draw_series(LineSeries::new(
-                vec![(x_min, negative_tick), (x_max, negative_tick)],
+                [(x_min, negative_tick), (x_max, negative_tick)],
                 ShapeStyle::from(&RGBColor(226, 232, 240)).stroke_width(1),
             ))?;
         }

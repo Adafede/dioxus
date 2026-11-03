@@ -49,7 +49,7 @@ fn draw_quartet_stage<DB: plotters::prelude::DrawingBackend>(
         let style = plotters::style::ShapeStyle::from(&color);
         drop(
             chart.draw_series(std::iter::once(plotters::prelude::PathElement::new(
-                vec![(x, mean - std_dev), (x, mean + std_dev)],
+                [(x, mean - std_dev), (x, mean + std_dev)],
                 style,
             ))),
         );
@@ -90,38 +90,37 @@ fn draw_cumulative_curve<DB: plotters::prelude::DrawingBackend>(
     drop(chart.draw_series(plotters::series::LineSeries::new(points, style)));
 }
 
-fn append_cumulative_legend(svg: &str) -> String {
+fn append_cumulative_legend(mut svg: String) -> String {
+    let Some(pos) = svg.rfind("</svg>") else {
+        return svg;
+    };
+    let tail = svg.split_off(pos);
+
     let legend_items = [
         ("MS1 Precursor (PEPMASS)", (68u8, 119u8, 170u8)),
         ("MS2 Before Correction", (255u8, 140u8, 0u8)),
         ("MS2 After Correction", (51u8, 153u8, 51u8)),
     ];
 
-    let mut legend_svg = String::new();
-    legend_svg.push_str(r#"<g id="legend" font-size="12" font-family="sans-serif">"#);
+    svg.push_str(r#"<g id="legend" font-size="12" font-family="sans-serif">"#);
 
     for (idx, (label, (r, g, b))) in legend_items.iter().enumerate() {
         let y = 30 + (idx * 20);
         let x = 1050;
         let _ = write!(
-            legend_svg,
+            svg,
             r#"<rect x="{x}" y="{}" width="15" height="15" fill="rgb({r},{g},{b})" stroke="none"/>"#,
             y - 10
         );
         let _ = write!(
-            legend_svg,
+            svg,
             r#"<text x="{}" y="{y}" fill="black" font-size="12">{label}</text>"#,
             x + 20
         );
     }
-    legend_svg.push_str("</g>");
-
-    if let Some(pos) = svg.rfind("</svg>") {
-        let (before, after) = svg.split_at(pos);
-        return format!("{before}{legend_svg}{after}");
-    }
-
-    svg.to_string()
+    svg.push_str("</g>");
+    svg.push_str(&tail);
+    svg
 }
 
 /// Four-stage error analysis showing the complete recalibration story.
@@ -187,7 +186,7 @@ pub fn render_error_quartet(
 
         let red_style = ShapeStyle::from(&RED).stroke_width(1);
         drop(chart.draw_series(std::iter::once(PathElement::new(
-            vec![(-0.5, 0.0), (4.5, 0.0)],
+            [(-0.5, 0.0), (4.5, 0.0)],
             red_style,
         ))));
         draw_quartet_stage(&mut chart, 0.8, error_ms1, RGBColor(68, 119, 170));
@@ -272,7 +271,7 @@ pub fn render_cumulative_error_three_curves(
     error_before: &[f64],
     error_after: &[f64],
     unit: &str,
-    _thresholds: Vec<f64>,
+    _thresholds: &[f64],
 ) -> Result<String, MgfError> {
     use plotters::prelude::*;
 
@@ -331,7 +330,7 @@ pub fn render_cumulative_error_three_curves(
         root.present()?;
     }
 
-    Ok(append_cumulative_legend(&buffer))
+    Ok(append_cumulative_legend(buffer))
 }
 
 #[cfg(test)]

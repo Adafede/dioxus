@@ -16,6 +16,7 @@
 // the accumulator, which is where the NaN and min/max defects live.
 //
 // Items that are genuinely browser-facing carry their own individual gates.
+#[cfg(test)]
 mod merge;
 mod plot;
 mod stats;
@@ -23,6 +24,7 @@ mod stats;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
 pub(crate) use merge::*;
 pub(crate) use plot::*;
 pub(crate) use stats::*;
