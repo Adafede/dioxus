@@ -16,8 +16,18 @@ fn detects_mgf_by_extension() {
 
 #[test]
 fn detects_smiles_by_extension() {
-    let format = LipidFormat::from_path("compounds.smi");
-    assert_eq!(format, Some(LipidFormat::Smiles));
+    assert_eq!(
+        LipidFormat::from_path("compounds.smi"),
+        Some(LipidFormat::Smiles)
+    );
+    assert_eq!(
+        LipidFormat::from_path("compounds.SMILES"),
+        Some(LipidFormat::Smiles)
+    );
+    assert_eq!(
+        LipidFormat::from_path("compounds.smi.txt"),
+        Some(LipidFormat::Smiles)
+    );
 }
 
 #[test]

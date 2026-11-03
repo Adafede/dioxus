@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 
 /// Type alias for substituent occurrence tracking.
 /// Maps substituent pattern name to the number of times it appears in a molecule.
-pub(crate) type SubstituentCounts = std::collections::HashMap<String, usize>;
+pub(crate) type SubstituentCounts = std::collections::BTreeMap<String, usize>;
 
 #[cfg(any(test, target_arch = "wasm32"))]
 #[derive(Clone, Debug)]

@@ -24,11 +24,22 @@ impl LipidFormat {
     #[must_use]
     pub(crate) fn from_path<P: AsRef<Path>>(path: P) -> Option<Self> {
         let path = path.as_ref();
-        let ext = path.extension()?.to_str()?.to_lowercase();
-        match ext.as_str() {
-            "mgf" => Some(Self::Mgf),
-            "smi" | "smiles" | "smi.txt" => Some(Self::Smiles),
-            _ => None,
+        if let Some(name) = path.file_name().and_then(|n| n.to_str())
+            && name.len() >= 8
+            && name
+                .as_bytes()
+                .get(name.len() - 8..)
+                .is_some_and(|suffix| suffix.eq_ignore_ascii_case(b".smi.txt"))
+        {
+            return Some(Self::Smiles);
+        }
+        let ext = path.extension()?.to_str()?;
+        if ext.eq_ignore_ascii_case("mgf") {
+            Some(Self::Mgf)
+        } else if ext.eq_ignore_ascii_case("smi") || ext.eq_ignore_ascii_case("smiles") {
+            Some(Self::Smiles)
+        } else {
+            None
         }
     }
 

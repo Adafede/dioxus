@@ -152,7 +152,9 @@ pub(super) fn load_example_dataset(
 ) {
     let mut status = status;
     let mut busy = busy;
-    let fmt = *input_format.read();
+    let mut input_format = input_format;
+    input_format.set(Some(LipidFormat::Smiles));
+    let fmt = Some(LipidFormat::Smiles);
     let smiles_lines = example_smiles();
     let text = smiles_lines.join("\n");
 

@@ -72,11 +72,14 @@ fn class_tags_from_matched(
         }
     };
 
-    let category = selected
-        .iter()
-        .map(|c| format!("{} [{}]", c.family, family_code(&c.family)))
-        .collect::<Vec<_>>()
-        .join(" | ");
+    let mut categories: Vec<String> = Vec::new();
+    for c in &selected {
+        let label = format!("{} [{}]", c.family, family_code(&c.family));
+        if !categories.contains(&label) {
+            categories.push(label);
+        }
+    }
+    let category = categories.join(" | ");
     let main_class = selected
         .iter()
         .map(|c| c.name.as_str())

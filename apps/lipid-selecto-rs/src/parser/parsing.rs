@@ -214,18 +214,24 @@ fn parse_first_float(text: &str) -> Option<f64> {
 #[cfg(any(test, target_arch = "wasm32"))]
 fn is_begin_ions(line: &str) -> bool {
     let trimmed = line.trim();
-    trimmed.eq_ignore_ascii_case("BEGIN IONS")
-        || (trimmed.starts_with("BEGIN IONS")
-            && trimmed["BEGIN IONS".len()..].starts_with(char::is_whitespace))
+    trimmed
+        .get(.."BEGIN IONS".len())
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("BEGIN IONS"))
+        && trimmed
+            .get("BEGIN IONS".len()..)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with(char::is_whitespace))
 }
 
 /// Detect the `END IONS` terminus (case-insensitive).
 #[cfg(any(test, target_arch = "wasm32"))]
 fn is_end_ions(line: &str) -> bool {
     let trimmed = line.trim();
-    trimmed.eq_ignore_ascii_case("END IONS")
-        || (trimmed.starts_with("END IONS")
-            && trimmed["END IONS".len()..].starts_with(char::is_whitespace))
+    trimmed
+        .get(.."END IONS".len())
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("END IONS"))
+        && trimmed
+            .get("END IONS".len()..)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with(char::is_whitespace))
 }
 
 /// Incremental streaming builder that splits MGF or SMILES lines into

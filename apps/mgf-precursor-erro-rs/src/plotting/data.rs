@@ -84,7 +84,11 @@ where
             .push((x_value, y_value));
     }
 
-    let x_min = raw_x_min.min(1.0);
+    let x_min = if raw_x_min.is_finite() {
+        raw_x_min
+    } else {
+        1.0
+    };
     let x_max = raw_x_max.max(x_min + 1.0);
     let x_span = (x_max - x_min).max(1.0);
     let x_min = x_min - x_span * 0.05;
@@ -128,17 +132,19 @@ where
 }
 
 pub(super) fn embed_svg_legend(
-    svg_markup: &str,
+    mut svg_markup: String,
     legend_items: &[(String, String)],
     title: &str,
     width: f64,
     height: f64,
 ) -> String {
     if legend_items.is_empty() {
-        return svg_markup.to_string();
+        return svg_markup;
     }
+    let Some(position) = svg_markup.rfind("</svg>") else {
+        return svg_markup;
+    };
 
-    let mut legend_entries = String::new();
     let item_height = 13.5;
     let inset = 18.0;
     let title_width = 44.0;
@@ -170,6 +176,14 @@ pub(super) fn embed_svg_legend(
     let title_x = legend_x + 10.0;
     let title_y = legend_y + 12.0;
     let items_start_x = title_x + title_width + 10.0;
+    let rect_x = legend_x;
+    let rect_y = legend_y - 2.0;
+
+    let tail = svg_markup.split_off(position);
+    let _ = write!(
+        svg_markup,
+        "\n<g>\n            <rect x=\"{rect_x}\" y=\"{rect_y}\" width=\"{box_width}\" height=\"{box_height}\" rx=\"8\" ry=\"8\" fill=\"#f8fafc\" fill-opacity=\"0.97\" stroke=\"#cbd5e1\" stroke-width=\"0.8\" />\n            <text x=\"{title_x}\" y=\"{title_y}\" font-family=\"Inter, sans-serif\" font-size=\"10.5\" font-weight=\"600\" fill=\"#0f172a\">{title}</text>\n            "
+    );
 
     for (index, (family, color)) in legend_items.iter().enumerate() {
         let row = index / items_per_row;
@@ -181,28 +195,14 @@ pub(super) fn embed_svg_legend(
         let text_y = item_y + 2.0;
         let marker_y = item_y - 2.0;
         let _ = write!(
-            legend_entries,
+            svg_markup,
             "<g>\n                <circle cx=\"{marker_x}\" cy=\"{marker_y}\" r=\"{marker_radius}\" fill=\"{color}\" />\n                <text x=\"{text_x}\" y=\"{text_y}\" font-family=\"Inter, sans-serif\" font-size=\"10\" fill=\"#334155\">{family}</text>\n            </g>"
         );
     }
 
-    let rect_x = legend_x;
-    let rect_y = legend_y - 2.0;
-    let legend_group = format!(
-        "<g>\n            <rect x=\"{rect_x}\" y=\"{rect_y}\" width=\"{box_width}\" height=\"{box_height}\" rx=\"8\" ry=\"8\" fill=\"#f8fafc\" fill-opacity=\"0.97\" stroke=\"#cbd5e1\" stroke-width=\"0.8\" />\n            <text x=\"{title_x}\" y=\"{title_y}\" font-family=\"Inter, sans-serif\" font-size=\"10.5\" font-weight=\"600\" fill=\"#0f172a\">{title}</text>\n            {legend_entries}\n        </g>"
-    );
-
-    svg_markup.rfind("</svg>").map_or_else(
-        || svg_markup.to_string(),
-        |position| {
-            let mut result = svg_markup[..position].to_string();
-            result.push('\n');
-            result.push_str(&legend_group);
-            result.push('\n');
-            result.push_str(&svg_markup[position..]);
-            result
-        },
-    )
+    svg_markup.push_str("\n        </g>\n");
+    svg_markup.push_str(&tail);
+    svg_markup
 }
 
 #[must_use]
@@ -238,9 +238,18 @@ pub(super) fn fallback_y_limit_for_unit(unit: &str) -> f64 {
 }
 
 #[must_use]
-pub fn make_svg_responsive(svg_markup: String) -> String {
-    let mut normalized = svg_markup;
-    normalized = normalized
+pub fn make_svg_responsive(mut svg_markup: String) -> String {
+    let Some(svg_start) = svg_markup.find("<svg") else {
+        return svg_markup;
+    };
+    let tag_end = svg_markup
+        .get(svg_start..)
+        .and_then(|rest| rest.find('>').map(|rel| svg_start + rel + 1))
+        .unwrap_or(svg_markup.len());
+    let Some(tag) = svg_markup.get(svg_start..tag_end) else {
+        return svg_markup;
+    };
+    let mut normalized = tag
         .replace("width=\"800\"", "width=\"100%\"")
         .replace("width=\"900\"", "width=\"100%\"")
         .replace("height=\"460\"", "")
@@ -258,7 +267,8 @@ pub fn make_svg_responsive(svg_markup: String) -> String {
             1,
         );
     }
-    normalized
+    svg_markup.replace_range(svg_start..tag_end, &normalized);
+    svg_markup
 }
 
 #[must_use]

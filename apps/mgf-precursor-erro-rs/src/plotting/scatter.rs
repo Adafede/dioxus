@@ -42,21 +42,18 @@ pub fn render_ecdf_svg(
         })
         .collect::<Vec<_>>();
 
-    let observed_min = values
+    let (observed_min, observed_max) = values
         .iter()
         .copied()
         .filter(|value| value.is_finite())
-        .fold(f64::INFINITY, f64::min);
+        .fold((f64::INFINITY, 0.0_f64), |(min, max), v| {
+            (min.min(v), max.max(v))
+        });
     let x_min = if observed_min.is_finite() {
         observed_min.max(1e-6)
     } else {
         1e-6
     };
-    let observed_max = values
-        .iter()
-        .copied()
-        .filter(|value| value.is_finite())
-        .fold(0.0, f64::max);
     let view_max = thresholds.iter().copied().fold(0.0, f64::max).max(1e-6);
     let plot_max = observed_max.max(view_max);
     let mut x_max = (plot_max * 1.03).max(x_min + 1e-3);
@@ -120,7 +117,7 @@ pub fn render_ecdf_svg(
 
     drop(root);
     Ok(embed_svg_legend(
-        &buffer,
+        buffer,
         &legend_items,
         "Thresholds",
         900.0,
@@ -204,7 +201,7 @@ pub fn render_mass_bias_svg(title: &str, points: &[PlotPoint]) -> Result<String,
 
     drop(root);
     Ok(embed_svg_legend(
-        &buffer,
+        buffer,
         &legend_items,
         "Adducts",
         900.0,
@@ -318,7 +315,7 @@ pub fn render_absolute_mass_bias_svg(
 
     drop(root);
     Ok(embed_svg_legend(
-        &buffer,
+        buffer,
         &legend_items,
         "Adducts",
         900.0,

@@ -39,3 +39,28 @@ END IONS
         "BEGIN IONS SMILES=CCCCCCCCCCCCCCCC(=O)O PEPMASS=256.2\nCOMMENT=LIPID_MAPS_CATEGORY="
     ));
 }
+
+#[test]
+fn build_smiles_from_gallery_preserves_smiles_first_and_keeps_untitled_rows() {
+    use crate::app::gallery::{build_smiles_from_gallery, prepare_gallery_smiles};
+
+    let smi_input = "CCCCCCCCCCCCCCCC(=O)O\tpalmitic_acid\nCCCCCCCCCCCCCCCCCC(=O)O\n";
+    let blocks = extract_blocks(smi_input);
+    let analysis = build_analysis(blocks, 16);
+    let entries = prepare_gallery_smiles(&analysis.gallery, &analysis.all_classes);
+    let refs: Vec<_> = entries.iter().collect();
+    let exported = build_smiles_from_gallery(&refs);
+
+    let lines: Vec<&str> = exported.lines().collect();
+    assert_eq!(lines.len(), 2, "both titled and untitled rows must be kept");
+    assert!(
+        lines[0].starts_with("CCCCCCCCCCCCCCCC(=O)O\tpalmitic_acid\tFatty Acyls [FA]\t"),
+        "expected SMILES followed by title, got: {}",
+        lines[0]
+    );
+    assert!(
+        lines[1].starts_with("CCCCCCCCCCCCCCCCCC(=O)O\t-\tFatty Acyls [FA]\t"),
+        "expected untitled row to use '-' placeholder, got: {}",
+        lines[1]
+    );
+}

@@ -5,7 +5,7 @@ use crate::csv::parse_csv_rows;
 use crate::evidence::{EvidenceInputs, assess_np_evidence, row_verdict, run_checks};
 use crate::model::{
     DatasetMotifContext, EndpointStatus, EnrichmentOutcome, MoleculeRow, MotifSummary,
-    RdkitDescriptors,
+    RdkitDescriptors, SubstituentCounts,
 };
 #[cfg(target_arch = "wasm32")]
 use crate::qlever::enrich_sources;
@@ -21,7 +21,7 @@ struct RawInspectRow {
     index: usize,
     motif_labels: Vec<String>,
     motif_hits: Vec<crate::model::RdkitMotifHit>,
-    substituents_counts: HashMap<String, usize>,
+    substituents_counts: SubstituentCounts,
     lotus_scaffolds: Vec<String>,
     descriptors: RdkitDescriptors,
     stereo_tags: Vec<String>,
@@ -119,13 +119,14 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                 let descriptors = inspect.descriptors.unwrap_or_default();
                 let stereo_tags = inspect.stereo_tags.unwrap_or_default();
                 // Count substituent occurrences for proper multiplicity display
-                let substituents_counts: std::collections::HashMap<String, usize> = inspect
-                    .substituents
-                    .iter()
-                    .fold(std::collections::HashMap::new(), |mut acc, s| {
-                        *acc.entry(s.clone()).or_insert(0) += 1;
-                        acc
-                    });
+                let substituents_counts: SubstituentCounts =
+                    inspect
+                        .substituents
+                        .iter()
+                        .fold(SubstituentCounts::new(), |mut acc, s| {
+                            *acc.entry(s.clone()).or_insert(0) += 1;
+                            acc
+                        });
                 let lotus_scaffolds = inspect.lotus_scaffolds;
 
                 inspect_rows.push(RawInspectRow {
@@ -151,7 +152,7 @@ async fn import_csv_text(text: &str, mut status: Signal<String>) -> Result<Impor
                     svg: inspect.svg,
                     motifs: motif_labels,
                     motif_hits: motifs_list,
-                    substituents_counts: std::collections::HashMap::new(),
+                    substituents_counts: SubstituentCounts::new(),
                     lotus_scaffolds: Vec::new(),
                     lotus_taxa: Vec::new(),
                     lotus_compounds: Vec::new(),
@@ -501,7 +502,7 @@ fn error_row(index: usize, label: String, smiles: String, error: String) -> Mole
         inchikey: String::new(),
         svg: None,
         motifs: Vec::new(),
-        substituents_counts: std::collections::HashMap::new(),
+        substituents_counts: SubstituentCounts::new(),
         lotus_scaffolds: Vec::new(),
         lotus_taxa: Vec::new(),
         lotus_compounds: Vec::new(),

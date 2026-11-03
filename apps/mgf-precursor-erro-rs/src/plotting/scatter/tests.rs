@@ -134,6 +134,17 @@ fn render_absolute_mass_bias_svg_valid_points_returns_ok() {
         sample_point(-0.3, -0.6),
         sample_point(1.2, 2.4),
     ];
+    let plot_data = super::super::data::prepare_scatter_plot_data(
+        &points,
+        |p| Some(p.pepmass_header),
+        |p| Some(p.signed_error_ppm),
+        10.0,
+    );
+    assert!(
+        plot_data.x_min > 400.0,
+        "scatter plot x_min should stay anchored near observed m/z (~500), got {}",
+        plot_data.x_min
+    );
     let result = render_absolute_mass_bias_svg("test", &points, "ppm", &[1.0, 2.0]);
     assert!(
         result.is_ok(),

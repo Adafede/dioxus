@@ -75,55 +75,88 @@ pub(super) fn category(verdict: &str) -> &'static str {
 /// whose *value* holds `\n` or `\r` — a SMILES comment, a label pasted from a
 /// spreadsheet — silently starts a new row otherwise, corrupting every row
 /// after it. Matching it here is what RFC 4180 requires a writer to do.
+#[cfg(test)]
 pub(crate) fn escape_csv(s: &str) -> String {
-    if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
-        let escaped = s.replace('"', "\"\"");
-        format!("\"{escaped}\"")
+    let mut out = String::new();
+    push_csv_escaped(&mut out, s);
+    out
+}
+
+fn push_csv_escaped(out: &mut String, s: &str) {
+    if s.bytes().any(|b| matches!(b, b',' | b'"' | b'\n' | b'\r')) {
+        out.reserve(s.len() + 2);
+        out.push('"');
+        for ch in s.chars() {
+            if ch == '"' {
+                out.push_str("\"\"");
+            } else {
+                out.push(ch);
+            }
+        }
+        out.push('"');
     } else {
-        s.to_string()
+        out.push_str(s);
     }
 }
 
 /// Build a CSV string from molecule rows.
 #[must_use]
 pub(crate) fn build_csv(rows: &[MoleculeRow]) -> String {
-    let mut csv = String::from(
+    let mut csv = String::with_capacity(128 + rows.len() * 128);
+    csv.push_str(
         "label,smiles,np_score,np_label,np_confidence,ring_family,substituents,locus,verdict_category,chemist_checks\n",
     );
+    let mut scratch = String::new();
     for r in rows {
-        let checks = r
-            .chemist_checks
-            .iter()
-            .map(|c| format!("{}:{}", c.name, c.status))
-            .collect::<Vec<_>>()
-            .join(";");
-        let substituents: String = r
-            .substituents_counts
-            .iter()
-            .map(|(label, count)| format!("{label}({count})"))
-            .collect::<Vec<_>>()
-            .join(";");
-        let locus = r
+        push_csv_escaped(&mut csv, &r.label);
+        csv.push(',');
+        push_csv_escaped(&mut csv, &r.smiles);
+        let _ = write!(
+            csv,
+            ",{:.3},{},{}%,",
+            r.np_likeness,
+            r.np_label,
+            (r.np_confidence * 100.0).round()
+        );
+        push_csv_escaped(&mut csv, &r.ring_family);
+        csv.push(',');
+
+        scratch.clear();
+        for (idx, (label, count)) in r.substituents_counts.iter().enumerate() {
+            if idx > 0 {
+                scratch.push(';');
+            }
+            let _ = write!(scratch, "{label}({count})");
+        }
+        push_csv_escaped(&mut csv, &scratch);
+        csv.push(',');
+
+        scratch.clear();
+        for (idx, item) in r
             .lotus_compounds
             .iter()
             .chain(r.pubchem_cids.iter())
-            .map(String::as_str)
-            .collect::<Vec<_>>()
-            .join(";");
-        let _ = writeln!(
-            csv,
-            "{},{},{:.3},{},{}%,{},{},{},{},{}",
-            escape_csv(&r.label),
-            escape_csv(&r.smiles),
-            r.np_likeness,
-            r.np_label,
-            (r.np_confidence * 100.0).round(),
-            escape_csv(&r.ring_family),
-            escape_csv(&substituents),
-            escape_csv(&locus),
-            category(&r.verdict),
-            escape_csv(&checks),
-        );
+            .enumerate()
+        {
+            if idx > 0 {
+                scratch.push(';');
+            }
+            scratch.push_str(item);
+        }
+        push_csv_escaped(&mut csv, &scratch);
+        let _ = write!(csv, ",{},", category(&r.verdict));
+
+        scratch.clear();
+        for (idx, c) in r.chemist_checks.iter().enumerate() {
+            if idx > 0 {
+                scratch.push(';');
+            }
+            scratch.push_str(c.name);
+            scratch.push(':');
+            scratch.push_str(c.status);
+        }
+        push_csv_escaped(&mut csv, &scratch);
+        csv.push('\n');
     }
     csv
 }

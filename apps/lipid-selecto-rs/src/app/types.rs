@@ -13,7 +13,7 @@ use dioxus::prelude::Signal;
 ///
 /// Fields: `title`, `smiles`, `category`, `main_class`, `sub_class`,
 /// `exact_mass`, `precursor_mz`, `adduct`, `class_matches`.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(super) type GallerySmilesEntry = (
     Option<String>,
     Option<String>,

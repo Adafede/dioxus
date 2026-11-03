@@ -109,7 +109,10 @@ fn build_csv_formats_rows_and_headers() {
         inchikey: String::new(),
         svg: None,
         motifs: Vec::new(),
-        substituents_counts: std::collections::HashMap::from([("methyl".to_string(), 3)]),
+        substituents_counts: std::collections::BTreeMap::from([
+            ("methyl".to_string(), 3),
+            ("ethyl".to_string(), 1),
+        ]),
         lotus_scaffolds: Vec::new(),
         #[cfg(target_arch = "wasm32")]
         lotus_taxa: Vec::new(),
@@ -146,7 +149,7 @@ fn build_csv_formats_rows_and_headers() {
         "CSV should start with header row"
     );
     assert!(
-        csv.contains("\"Caffeine, test\",CN1C=NC2=C1C(=O)N(C(=O)N2C)C,1.250,NP-like,85%,Purine,methyl(3),Q60235;2519,likely,NP-likeness:pass"),
+        csv.contains("\"Caffeine, test\",CN1C=NC2=C1C(=O)N(C(=O)N2C)C,1.250,NP-like,85%,Purine,ethyl(1);methyl(3),Q60235;2519,likely,NP-likeness:pass"),
         "CSV row should match expected formatting: {csv}"
     );
 }

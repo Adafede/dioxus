@@ -9,11 +9,11 @@
 
 use crate::chemical_class::ChemicalClass;
 use crate::parser::{GalleryItem, SpectrumBlock};
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use std::fmt::Write;
 
 use super::class_tags::{class_tags_from_block, class_tags_from_gallery};
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use super::types::GallerySmilesEntry;
 
 /// Pre-compute class tags for each block (for MGF download tagging).
@@ -41,28 +41,25 @@ pub(super) fn prepare_block_class_tags(
 }
 
 /// Build a SMILES file content string from gallery-smiles entries for download.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(super) fn build_smiles_from_gallery(gallery: &[&GallerySmilesEntry]) -> String {
     let mut content = String::new();
-    for (smiles, title, category, main_class, _sub_class, _, _, _, _) in gallery {
+    for (title, smiles, category, main_class, _sub_class, _, _, _, _) in gallery {
         if let Some(smiles) = smiles {
             let cat_str = category.as_deref().filter(|s| !s.is_empty()).unwrap_or("-");
             let mc_str = main_class
                 .as_deref()
                 .filter(|s| !s.is_empty())
                 .unwrap_or("-");
-            if let Some(title) = title {
-                let _ = writeln!(content, "{smiles}\t{title}\t{cat_str}\t{mc_str}\t-");
-            } else {
-                let _ = writeln!(content, "{smiles}\t-\t{cat_str}\t{mc_str}\t-");
-            }
+            let title_str = title.as_deref().filter(|s| !s.is_empty()).unwrap_or("-");
+            let _ = writeln!(content, "{smiles}\t{title_str}\t{cat_str}\t{mc_str}\t-");
         }
     }
     content
 }
 
 /// Prepare gallery SMILES entries for WASM download closures.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(super) fn prepare_gallery_smiles(
     gallery: &[GalleryItem],
     all_classes: &[ChemicalClass],

@@ -110,18 +110,6 @@ pub struct RecalibrationStats {
 
     /// Adduct family categorization for errors after recalibration.
     pub error_by_adduct_after: BTreeMap<String, Vec<f64>>,
-
-    /// All fragment m/z errors (in Da) before recalibration, sampled for ECDF.
-    pub fragment_error_da_before: Vec<f64>,
-
-    /// All fragment m/z errors (in Da) after recalibration, sampled for ECDF.
-    pub fragment_error_da_after: Vec<f64>,
-
-    /// All fragment m/z errors (in ppm) before recalibration, sampled for ECDF.
-    pub fragment_error_ppm_before: Vec<f64>,
-
-    /// All fragment m/z errors (in ppm) after recalibration, sampled for ECDF.
-    pub fragment_error_ppm_after: Vec<f64>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -177,10 +165,6 @@ impl Default for RecalibrationStats {
             max_abs_error_ppm_after: 0.0,
             error_by_adduct_before: BTreeMap::new(),
             error_by_adduct_after: BTreeMap::new(),
-            fragment_error_da_before: Vec::new(),
-            fragment_error_da_after: Vec::new(),
-            fragment_error_ppm_before: Vec::new(),
-            fragment_error_ppm_after: Vec::new(),
         }
     }
 }
@@ -232,14 +216,7 @@ impl RecalibrationStats {
 
         // Track by adduct family if provided
         if let Some(family) = adduct_family {
-            self.error_by_adduct_before
-                .entry(family.to_string())
-                .or_default()
-                .push(error_ppm_before);
-            self.error_by_adduct_after
-                .entry(family.to_string())
-                .or_default()
-                .push(error_ppm_after);
+            self.record_adduct_errors(family, error_ppm_before, error_ppm_after);
         }
     }
 
@@ -297,33 +274,22 @@ impl RecalibrationStats {
 
         // Track by adduct family if provided
         if let Some(family) = adduct_family {
-            self.error_by_adduct_before
-                .entry(family.to_string())
-                .or_default()
-                .push(error_ppm_before);
-            self.error_by_adduct_after
-                .entry(family.to_string())
-                .or_default()
-                .push(error_ppm_after);
+            self.record_adduct_errors(family, error_ppm_before, error_ppm_after);
         }
     }
 
-    /// Add fragment-level errors for ECDF plots.
-    pub fn push_fragment_errors(
-        &mut self,
-        fragment_error_ppm_before: f64,
-        fragment_error_ppm_after: f64,
-        fragment_error_da_before: f64,
-        fragment_error_da_after: f64,
-        max_samples: usize,
-    ) {
-        // Sample for plotting
-        if self.fragment_error_ppm_before.len() < max_samples {
-            self.fragment_error_ppm_before
-                .push(fragment_error_ppm_before);
-            self.fragment_error_ppm_after.push(fragment_error_ppm_after);
-            self.fragment_error_da_before.push(fragment_error_da_before);
-            self.fragment_error_da_after.push(fragment_error_da_after);
+    fn record_adduct_errors(&mut self, family: &str, error_ppm_before: f64, error_ppm_after: f64) {
+        if let Some(series) = self.error_by_adduct_before.get_mut(family) {
+            series.push(error_ppm_before);
+        } else {
+            self.error_by_adduct_before
+                .insert(family.to_string(), vec![error_ppm_before]);
+        }
+        if let Some(series) = self.error_by_adduct_after.get_mut(family) {
+            series.push(error_ppm_after);
+        } else {
+            self.error_by_adduct_after
+                .insert(family.to_string(), vec![error_ppm_after]);
         }
     }
 
