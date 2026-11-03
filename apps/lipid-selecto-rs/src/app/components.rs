@@ -36,38 +36,12 @@ pub(super) fn checkbox_sm() -> String {
 /// Renders the "Available Lipid Classes" card, showing LMSD-based classes
 /// grouped by family with collapsible sections for each family.
 pub(super) fn lipid_classes_card() -> Element {
-    // Pre-compute family display data: (family_name, shown_classes, others_count, others_color)
-    const MAX_CLASSES_PER_FAMILY: usize = 4;
-
     // Load LMSD-based class scheme (same as Results panel)
     let all_classes = crate::chemical_class::lmsd_classes();
 
     // Group classes by family, then sort families by LIPID MAPS rank order.
     let families = group_classes_by_family(all_classes);
 
-    let family_display: Vec<(String, Vec<ChemicalClass>, usize, String)> = families
-        .iter()
-        .map(|(family, classes)| {
-            let shown: Vec<ChemicalClass> = classes
-                .iter()
-                .take(MAX_CLASSES_PER_FAMILY)
-                .cloned()
-                .collect();
-            let others = classes.len() - shown.len();
-            // Use shade 4 color for "N others" - get it from the first "others" class
-            let others_color = classes.get(MAX_CLASSES_PER_FAMILY).map_or_else(
-                || {
-                    classes
-                        .last()
-                        .map_or_else(|| "#cbd5e1".to_string(), |c| c.color.clone())
-                },
-                |c| c.color.clone(),
-            );
-            (family.clone(), shown, others, others_color)
-        })
-        .collect();
-
-    // Use a single open-collapsed state for simplicity (all expanded by default)
     let family_expanded = use_signal(Vec::<usize>::new);
 
     rsx! {
@@ -78,11 +52,11 @@ pub(super) fn lipid_classes_card() -> Element {
 
                     // Family sections - stacked vertically with headers
                     div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.3rem").property("max-height", "320px").property("overflow-y", "auto").build(),
-                        for (idx, (family, shown_classes, others_count, others_color)) in family_display.iter().enumerate() {
+                        for (idx, (family, classes)) in families.iter().enumerate() {
                             // Family header with color bar
                             {
                                 let family_clone = family.clone();
-                                let family_color = shown_classes.first().map_or_else(|| others_color.clone(), |c| c.color.clone());
+                                let family_color = classes.first().map_or_else(|| "#cbd5e1".to_string(), |c| c.color.clone());
                                 let idx_copy = idx;
                                 let mut family_expanded_signal = family_expanded;
                                 let is_expanded = family_expanded.read().contains(&idx);
@@ -110,25 +84,17 @@ pub(super) fn lipid_classes_card() -> Element {
                                                 span { style: StyleBuilder::new().width("10px").height("10px").border_radius("50%").property("background", &family_color).build(), }
                                                 strong { style: StyleBuilder::new().font_size("0.82rem").font_weight("700").color("#0f172a").build(), "{family_clone}" }
                                             }
-                                            span { style: StyleBuilder::new().font_size("0.72rem").color("#94a3b8").build(), "{shown_classes.len() + others_count} classes" }
+                                            span { style: StyleBuilder::new().font_size("0.72rem").color("#94a3b8").build(), "{classes.len()} classes" }
                                         }
                                         if is_expanded {
                                             div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.3rem").property("padding", "0.4rem 0 0.2rem 0.8rem").build(),
-                                                for class in shown_classes.iter() {
+                                                for class in classes.iter() {
                                                     div {
+                                                        title: "{class.smarts}",
                                                         style: StyleBuilder::new().padding("0.3rem 0.5rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("6px").font_size("0.75rem").build(),
                                                         strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.25rem").build(),
                                                             span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", &class.color).build(), }
                                                             "{class.name}"
-                                                        }
-                                                    }
-                                                }
-                                                if *others_count > 0 {
-                                                    div {
-                                                        style: StyleBuilder::new().padding("0.3rem 0.5rem").property("background", "#f1f5f9").border("1px solid #e2e8f0").border_radius("6px").font_size("0.75rem").build(),
-                                                        strong { style: StyleBuilder::new().property("word-break", "break-word").display("inline-flex").align_items("center").gap("0.25rem").build(),
-                                                            span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", others_color).build(), }
-                                                            "{others_count} more"
                                                         }
                                                     }
                                                 }
@@ -348,7 +314,9 @@ pub(super) fn family_entry(
                                         },
                                         style: checkbox_sm(),
                                     }
-                                    span { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.2rem 0.5rem").border_radius("999px").property("background", "#f1f5f9").font_size("0.75rem").font_weight("500").build(),
+                                    span {
+                                        title: "{class.smarts}",
+                                        style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.3rem").padding("0.2rem 0.5rem").border_radius("999px").property("background", "#f1f5f9").font_size("0.75rem").font_weight("500").build(),
                                         span { style: StyleBuilder::new().width("8px").height("8px").border_radius("50%").property("background", &color).build(), }
                                         "{class.name}"
                                     }
@@ -541,7 +509,13 @@ pub(super) fn gallery_with_filter(
                                             }
                                             div { style: StyleBuilder::new().flex("1 1 auto").property("min-width", "0").build(),
                                                 if let Some(title) = &item.title {
-                                                    div { style: StyleBuilder::new().property("margin-bottom", "0.25rem").color("#0f172a").font_size("0.82rem").font_weight("600").build(), "{title}" }
+                                                    div { style: StyleBuilder::new().property("margin-bottom", "0.2rem").color("#0f172a").font_size("0.82rem").font_weight("600").build(), "{title}" }
+                                                }
+                                                if let Some(class_name) = &item.primary_class_name {
+                                                    div { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.25rem").padding("0.1rem 0.45rem").property("margin-bottom", "0.2rem").border_radius("999px").property("background", &format!("{bg_color}22")).border(&format!("1px solid {bg_color}55")).color("#0f172a").font_size("0.68rem").font_weight("600").build(),
+                                                        span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", bg_color).build(), }
+                                                        "{class_name}"
+                                                    }
                                                 }
                                                 if let Some(smiles) = &item.smiles {
                                                     div { style: StyleBuilder::new().property("margin-bottom", "0.15rem").color("#64748b").font_size("0.72rem").property("font-family", "ui-monospace, monospace").property("max-width", "100%").property("overflow", "hidden").property("text-overflow", "ellipsis").property("white-space", "nowrap").build(), "{smiles}" }

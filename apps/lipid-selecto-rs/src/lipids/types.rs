@@ -34,14 +34,22 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(not(any(test, target_arch = "wasm32")), allow(dead_code))] // see below
 pub(crate) enum LipidClass {
-    /// Free fatty acid (RCOOH) — the simplest fatty acyl.
+    /// Free fatty acid (RCOOH) and other fatty acyls.
     FattyAcyl,
-    /// Di-/tri-acylglycerol (no phosphorus, ester-linked acyl chains).
+    /// Mono-/di-/tri-radylglycerols and glycosylglycerols.
     Glycerolipid,
-    /// Glycerophospholipids & sphingomyelin (contain phosphorus).
+    /// Glycerophospholipids (contain phosphorus).
     Glycerophospholipid,
     /// Ceramides, sphingoid bases, gangliosides and other sphingolipids.
     Sphingolipid,
+    /// Sterols, steroids, bile acids, secosteroids and conjugates.
+    SterolLipid,
+    /// Isoprenoids, quinones, polyprenols and hopanoids.
+    PrenolLipid,
+    /// Acylaminosugars, acyltrehaloses and other acyl sugars.
+    Saccharolipid,
+    /// Flavonoids, macrolides, acetogenins and other polyketides.
+    Polyketide,
 }
 
 impl LipidClass {
@@ -53,6 +61,27 @@ impl LipidClass {
             Self::Glycerolipid => "Glycerolipids [GL]",
             Self::Glycerophospholipid => "Glycerophospholipids [GP]",
             Self::Sphingolipid => "Sphingolipids [SP]",
+            Self::SterolLipid => "Sterol Lipids [ST]",
+            Self::PrenolLipid => "Prenol Lipids [PR]",
+            Self::Saccharolipid => "Saccharolipids [SL]",
+            Self::Polyketide => "Polyketides [PK]",
+        }
+    }
+
+    /// Map a LIPID MAPS broad family name to its [`LipidClass`] variant.
+    #[must_use]
+    #[cfg(any(test, target_arch = "wasm32"))]
+    pub(crate) fn from_family(family: &str) -> Option<Self> {
+        match family {
+            "Fatty Acyls" => Some(Self::FattyAcyl),
+            "Glycerolipids" => Some(Self::Glycerolipid),
+            "Glycerophospholipids" => Some(Self::Glycerophospholipid),
+            "Sphingolipids" => Some(Self::Sphingolipid),
+            "Sterol Lipids" => Some(Self::SterolLipid),
+            "Prenol Lipids" => Some(Self::PrenolLipid),
+            "Saccharolipids" => Some(Self::Saccharolipid),
+            "Polyketides" => Some(Self::Polyketide),
+            _ => None,
         }
     }
 }

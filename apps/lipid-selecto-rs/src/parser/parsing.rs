@@ -15,6 +15,8 @@
 
 #[cfg(any(test, target_arch = "wasm32"))]
 use crate::chemical_class::ChemicalClass;
+#[cfg(any(test, target_arch = "wasm32"))]
+use crate::lipids::LipidClass;
 use crate::lipids::LipidClassification;
 #[cfg(any(test, target_arch = "wasm32"))]
 use crate::lipids::{classify_acyclic_molecule, classify_formula, is_acyclic};
@@ -180,10 +182,18 @@ impl SpectrumBlock {
                         class,
                         derived_from_smiles: true,
                     });
-                for class in classes {
-                    if class.matches(&molecule) {
-                        matches.insert(class.name.clone(), true);
+            }
+            for class in classes {
+                if class.matches(&molecule) {
+                    if smiles_classification.is_none()
+                        && let Some(broad) = LipidClass::from_family(&class.family)
+                    {
+                        smiles_classification = Some(LipidClassification {
+                            class: broad,
+                            derived_from_smiles: true,
+                        });
                     }
+                    matches.insert(class.name.clone(), true);
                 }
             }
         }
@@ -317,28 +327,48 @@ pub(crate) fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> +
 #[cfg(any(test, target_arch = "wasm32"))]
 fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
     let mut parts = trimmed.split('\t');
-    let first = parts.next()?;
+    let first = parts.next()?.trim();
+    if first.is_empty() {
+        return None;
+    }
+    let second = parts.next().map(str::trim).filter(|s| !s.is_empty());
 
-    let looks_like_smiles = first.contains(|c: char| {
-        matches!(
-            c,
-            'C' | 'N' | 'O' | 'S' | 'P' | '=' | '#' | '[' | ']' | '(' | ')' | '@'
-        )
-    });
-    let second = parts.next();
-    let looks_like_id = second.is_some_and(|id| {
-        id.chars()
+    let is_valid_smiles = |s: &str| {
+        !s.contains(char::is_whitespace)
+            && std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| smiles::parse(s).is_ok()))
+                .ok()
+                .unwrap_or(false)
+    };
+    let looks_like_id = |s: &str| {
+        s.chars()
             .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
-    });
+    };
 
     // A tab-separated line is either `smiles<TAB>id` or `id<TAB>smiles`; the
-    // field that looks like a SMILES is the one that goes in `psm_smiles`. A
-    // line with no second field has only the first, whatever it looks like.
-    let (smiles_str, id_str) = match (looks_like_smiles && looks_like_id, second) {
-        (true, Some(id)) => (first, id),
-        (_, Some(smiles)) => (smiles, first),
-        (_, None) => (first, ""),
-    };
+    // field that parses as a SMILES (and is not a bare alphanumeric identifier
+    // when both parse) goes in `psm_smiles`.
+    let (smiles_str, id_str) = second.map_or((first, ""), |sec| {
+        let first_ok = is_valid_smiles(first);
+        let sec_ok = is_valid_smiles(sec);
+        match (first_ok, sec_ok) {
+            (true, false) => (first, sec),
+            (false, true) => (sec, first),
+            (true, true) => {
+                if looks_like_id(first) && !looks_like_id(sec) {
+                    (sec, first)
+                } else {
+                    (first, sec)
+                }
+            }
+            (false, false) => {
+                if looks_like_id(sec) {
+                    (first, sec)
+                } else {
+                    (sec, first)
+                }
+            }
+        }
+    });
 
     let mut block = SpectrumBlock::new(index);
     block.psm_smiles = Some(smiles_str.to_string());

@@ -122,3 +122,31 @@ fn a_stray_end_ions_outside_any_block_is_not_a_smiles_row() {
         "the line after the orphan is unchanged"
     );
 }
+
+#[test]
+fn cyclic_lipids_and_smiles_titles_with_spaces_are_supported() {
+    let input = "\
+CC(C)CCCC(C)C1CCC2C1(CCC3C2CC=C4C3(CCC(C4)O)C)C\tCholesterol standard
+Colneleic acid\tOC(=O)CCCCCC/C=C/O/C=C/C=C\\CCCCC
+";
+    let (blocks, summary) = analyze(input);
+    assert_eq!(blocks.len(), 2);
+    assert_eq!(blocks[0].title.as_deref(), Some("Cholesterol standard"));
+    assert_eq!(blocks[1].title.as_deref(), Some("Colneleic acid"));
+    assert!(
+        blocks[0].is_lipid(),
+        "Cholesterol should be classified as a lipid"
+    );
+    assert!(
+        blocks[1].is_lipid(),
+        "Colneleic acid should be classified as a lipid"
+    );
+    assert_eq!(
+        blocks[0]
+            .classification
+            .as_ref()
+            .map(|c| c.class.lipidmaps_category()),
+        Some("Sterol Lipids [ST]")
+    );
+    assert_eq!(summary.lipid_items, 2);
+}

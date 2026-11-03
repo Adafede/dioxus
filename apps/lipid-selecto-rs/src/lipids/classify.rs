@@ -74,7 +74,7 @@ fn has_substructure(molecule: &Molecule, pattern: &str) -> bool {
     let Ok(query) = smarts::parse_smarts(pattern) else {
         return false;
     };
-    !smarts::find_matches(&query, molecule).is_empty()
+    smarts::has_match_with_config(&query, molecule, &smarts::MatchConfig::default())
 }
 
 /// Check if a molecule is acyclic (contains no rings).
@@ -97,7 +97,7 @@ pub(crate) fn is_acyclic(molecule: &Molecule) -> bool {
     let Some(query) = &*RING_QUERY else {
         return true; // If we can't parse, assume acyclic
     };
-    smarts::find_matches(query, molecule).is_empty()
+    !smarts::has_match_with_config(query, molecule, &smarts::MatchConfig::default())
 }
 
 /// Extract elemental counts from a parsed molecule using chematic's own

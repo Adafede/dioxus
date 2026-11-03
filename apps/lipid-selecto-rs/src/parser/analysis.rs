@@ -160,7 +160,7 @@ pub(crate) struct GalleryItem {
     pub primary_class_color: String,
     /// Primary class name (from first matching class, used for export tagging)
     pub primary_class_name: Option<String>,
-    /// Broad lipid classification (`LipidClass`) for LIPID MAPS category mapping
+    /// Broad lipid classification (`LipidClass`) across the 8 LIPID MAPS categories
     pub classification: Option<LipidClassification>,
 }
 

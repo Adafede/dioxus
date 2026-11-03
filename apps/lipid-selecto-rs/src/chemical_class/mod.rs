@@ -8,8 +8,8 @@
 //! - **Broad classes** (`ChemicalClass::defaults`): coarse-grained family-level
 //!   SMARTS patterns (e.g. "FA", "PC(AA)") used for color attribution and
 //!   simple lipid detection.
-//! - **LMSD subclasses** ([`lmsd_classes`]): the 58 LIPID MAPS Structure Database
-//!   subclasses (FA01–FA13, GL01–GL07, …) with specific SMARTS patterns, used
+//! - **LMSD subclasses** ([`lmsd_classes`]): the 86 LIPID MAPS Structure Database
+//!   main classes (FA00–FA13, GL00–GL07, …) with specific SMARTS patterns, used
 //!   for precise class assignment in exports and gallery matching.
 //!
 //! Both systems share the [`ChemicalClass`] type and the same pre-compiled
@@ -56,7 +56,6 @@ pub(crate) struct ChemicalClass {
     /// Display name of the lipid class (e.g. "FA", "Cer(AS)").
     pub name: String,
     /// SMARTS pattern string (as defined in the constructor).
-    #[cfg(test)]
     pub smarts: String,
     /// Hex color code for UI rendering.
     pub color: String,
@@ -96,14 +95,21 @@ impl ChemicalClass {
         // `drop(smarts_str)` to keep an unused variable quiet — the value is
         // always read.
         let smarts = smarts_str.into();
+        let compiled = smarts::parse_smarts(&smarts).ok();
         Self {
             name: name.into(),
-            #[cfg(test)]
-            smarts: smarts.clone(),
+            smarts,
             color: color.into(),
             family: family.into(),
-            compiled: smarts::parse_smarts(&smarts).ok(),
+            compiled,
         }
+    }
+
+    /// Returns `true` when the SMARTS pattern parsed into a valid query molecule.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) const fn is_compiled(&self) -> bool {
+        self.compiled.is_some()
     }
 
     /// Check if a molecule matches this class's pre-compiled SMARTS pattern.
@@ -116,7 +122,7 @@ impl ChemicalClass {
         let Some(query) = &self.compiled else {
             return false;
         };
-        !smarts::find_matches(query, molecule).is_empty()
+        smarts::has_match_with_config(query, molecule, &smarts::MatchConfig::default())
     }
 
     /// Return the default lipid classes.

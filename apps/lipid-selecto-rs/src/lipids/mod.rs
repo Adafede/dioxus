@@ -38,4 +38,6 @@ mod types;
 
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) use classify::{classify_acyclic_molecule, classify_formula, is_acyclic};
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(crate) use types::LipidClass;
 pub(crate) use types::LipidClassification;
