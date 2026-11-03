@@ -50,7 +50,9 @@ pub(crate) use types::{Confidence, Construct, Coverage, CxError, CxResult, CxRes
 // re-exported *value* (the chematic parser); there is no namespace clash because
 // the submodule lives in the type namespace.
 use parse::{cluster, parse_list};
+#[cfg(test)]
 use positional::build_positional;
+use positional::build_positional_with_options;
 use repeating::build_repeating;
 
 /// Minimum ECFP4/Tanimoto similarity for two structures to share a coherent
@@ -66,7 +68,18 @@ const CLUSTER_TANIMOTO: f64 = 0.3;
 /// # Errors
 ///
 /// Returns a [`CxError`] if any input fails to parse as SMILES.
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn generate(smiles: &[String]) -> CxResult_ {
+    generate_with_options(smiles, false)
+}
+
+/// Generate a CX-SMILES from a list of related SMILES, optionally expanding
+/// symmetry-equivalent aromatic ring positions.
+///
+/// # Errors
+///
+/// Returns a [`CxError`] if any input fails to parse as SMILES.
+pub(crate) fn generate_with_options(smiles: &[String], aromatic: bool) -> CxResult_ {
     let mols = parse_list(smiles)?;
     if mols.is_empty() {
         return Err(CxError("no parseable SMILES in input".into()));
@@ -101,14 +114,15 @@ pub(crate) fn generate(smiles: &[String]) -> CxResult_ {
         .unwrap_or(mols);
 
     // Positional construction needs every input in the group to have the same
-    // atom count; anything else is a repeating unit instead.
+    // atom count; anything else tries repeating units first and falls back to
+    // best-effort MCS positional construction if no internal repeat unit exists.
     let uniform = group
         .first()
         .is_some_and(|first| group.iter().all(|m| m.atom_count() == first.atom_count()));
     if uniform {
-        build_positional(&group)
+        build_positional_with_options(&group, aromatic)
     } else {
-        build_repeating(&group)
+        build_repeating(&group).or_else(|_| build_positional_with_options(&group, aromatic))
     }
 }
 

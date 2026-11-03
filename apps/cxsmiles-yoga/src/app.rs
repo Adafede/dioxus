@@ -24,7 +24,7 @@ use dioxus::prelude::*;
 use gloo_timers::future::TimeoutFuture;
 use ui::prelude::*;
 
-use crate::cxsmiles::{Construct, CxResult, generate};
+use crate::cxsmiles::{Construct, CxResult, generate_with_options};
 use crate::depict;
 use crate::examples;
 
@@ -122,7 +122,7 @@ fn field_label(with_margin: bool) -> String {
     }
 }
 
-/// The SMILES-textarea input card (value, line count, NYI aromatic checkbox).
+/// The SMILES-textarea input card (value, line count, aromatic-equivalence checkbox).
 ///
 /// Split out of [`app`] so `app` stays small enough to satisfy
 /// `clippy::too_many_lines` without an `#[allow]` attribute.
@@ -154,7 +154,34 @@ fn input_card(mut input: Signal<String>, mut aromatic: Signal<bool>) -> Element 
                     aromatic.set(!cur);
                 },
                 }
-                label { r#for: "aromatic-equiv", "(NYI) Enumerate equivalent aromatic positions" }
+                label { r#for: "aromatic-equiv", "Enumerate equivalent aromatic positions" }
+            }
+        }
+    }
+}
+
+/// Renders the variable pendant groups (`m:` blocks) beneath the shared scaffold.
+fn floating_badges(res: &CxResult) -> Element {
+    if res.floating.is_empty() {
+        return rsx! {};
+    }
+    rsx! {
+        div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.4rem").property("margin-top", "0.4rem").build(),
+            for part in &res.floating {
+                {
+                    let target_desc = if part.split {
+                        "attached to parent group".to_string()
+                    } else {
+                        let idx = part.equiv.iter().map(ToString::to_string).collect::<Vec<_>>().join(".");
+                        format!("atoms {idx}")
+                    };
+                    rsx! {
+                        span {
+                            style: StyleBuilder::new().font_family("ui-monospace, monospace").font_size("0.72rem").padding("2px 0.5rem").border_radius("999px").background_color("#f1f5f9").border("1px solid #cbd5e1").color("#334155").build(),
+                            "{part.fragment_smiles} → {target_desc}"
+                        }
+                    }
+                }
             }
         }
     }
@@ -176,7 +203,14 @@ fn results(res: &CxResult) -> Element {
     };
 
     let n_enum = res.enumerated.len();
-    let scaffold_svg = depict::render_smiles_svg(&res.scaffold_smiles);
+    let highlight_atoms: Vec<usize> = res
+        .floating
+        .iter()
+        .flat_map(|f| f.equiv.iter().copied())
+        .collect();
+    let scaffold_svg =
+        depict::render_smiles_svg_highlighted(&res.scaffold_smiles, &highlight_atoms);
+    let all_enumerated = res.enumerated.join("\n");
 
     rsx! {
         Card {
@@ -200,16 +234,22 @@ fn results(res: &CxResult) -> Element {
                         div { style: StyleBuilder::new().width("100%").display("flex").justify_content("center").align_items("center").build(),
                             div { dangerous_inner_html: "{scaffold_svg}" }
                         }
+                        { floating_badges(res) }
                     }
                     if !res.enumerated.is_empty() {
                         div { style: card_surface(true),
-                            div { style: field_label(false), "Enumerated candidates ({n_enum})" }
+                            div { style: StyleBuilder::new().display("flex").justify_content("space-between").align_items("center").build(),
+                                div { style: field_label(false), "Enumerated candidates ({n_enum})" }
+                                CopyCell { text: Arc::<str>::from(all_enumerated.as_str()) }
+                            }
                             div { style: StyleBuilder::new().display("grid").property("grid-template-columns", "repeat(auto-fill, minmax(110px, 1fr))").gap("0.4rem").width("100%").property("overflow-y", "auto").build(),
                                 for smi in &res.enumerated {
                                     {
                                         let svg = depict::render_smiles_svg(smi);
                                         rsx! {
-                                            div { style: StyleBuilder::new().width("100%").height("90px").display("grid").property("place-items", "center").background_color("#f8fafc").border("1px solid #e2e8f0").border_radius("8px").property("overflow", "hidden").build(),
+                                            div {
+                                                title: "{smi}",
+                                                style: StyleBuilder::new().width("100%").height("90px").display("grid").property("place-items", "center").background_color("#f8fafc").border("1px solid #e2e8f0").border_radius("8px").property("overflow", "hidden").build(),
                                                 div { dangerous_inner_html: "{svg}" }
                                             }
                                         }
@@ -297,7 +337,7 @@ pub fn app() -> Element {
     let mut result = use_signal(|| None::<CxResult>);
     let mut error = use_signal(|| None::<String>);
     let mut selected = use_signal(String::new);
-    let aromatic = use_signal(|| false); // NYI: "enumerate equivalent aromatic positions"
+    let aromatic = use_signal(|| false);
 
     let on_generate = move |_| {
         error.set(None);
@@ -309,7 +349,7 @@ pub fn app() -> Element {
             .filter(|l| !l.is_empty())
             .map(str::to_owned)
             .collect();
-        match generate(&lines) {
+        match generate_with_options(&lines, *aromatic.read()) {
             Ok(r) => result.set(Some(r)),
             Err(e) => error.set(Some(e.to_string())),
         }

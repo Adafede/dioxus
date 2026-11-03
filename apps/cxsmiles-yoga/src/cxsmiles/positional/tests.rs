@@ -346,3 +346,51 @@ fn an_empty_group_is_an_error_and_not_a_panic() {
 fn the_chain_helper_is_the_indices_in_order() {
     assert_eq!(chain(3), vec![0, 1, 2], "0, 1, 2");
 }
+
+// ── same_aromatic_ring / expand_aromatic_equiv ──────────────────────────
+
+#[test]
+fn same_aromatic_ring_stays_within_one_aromatic_component() {
+    let biphenyl = mol("c1ccccc1-c2ccccc2");
+    assert!(
+        same_aromatic_ring(&biphenyl, 0, 4),
+        "atoms 0 and 4 are in the first phenyl ring"
+    );
+    assert!(
+        !same_aromatic_ring(&biphenyl, 0, 6),
+        "atom 6 is in the second phenyl ring across a single bond"
+    );
+    let propane = mol("CCC");
+    assert!(
+        !same_aromatic_ring(&propane, 0, 1),
+        "aliphatic single bonds do not connect an aromatic ring"
+    );
+}
+
+#[test]
+fn expand_aromatic_equiv_adds_equivalent_ring_positions_only() {
+    // First phenyl ring of biphenyl is 0..=5, with 5 as the degree-3 ipso
+    // carbon bonded to atom 6 of the second phenyl ring.
+    let biphenyl = mol("c1ccccc1-c2ccccc2");
+    assert_eq!(
+        expand_aromatic_equiv(&[0, 2, 3], &biphenyl),
+        vec![0, 1, 2, 3, 4],
+        "expands to all 5 unsubstituted aromatic CH carbons of the first ring, excluding ipso (5) and ring 2 (6..11)"
+    );
+    // In 2-phenylpyridine (`c1ccncc1-c2ccccc2`), atom 3 is aromatic N (element 7)
+    // and atom 5 is ipso C (degree 3); a CH attachment at 0 expands only to
+    // the unsubstituted aromatic CH carbons {0, 1, 2, 4}.
+    let phenylpyridine = mol("c1ccncc1-c2ccccc2");
+    assert_eq!(
+        expand_aromatic_equiv(&[0], &phenylpyridine),
+        vec![0, 1, 2, 4],
+        "excludes heteroatom N (3), ipso C (5), and the second ring (6..11)"
+    );
+    // Aliphatic positions stay unchanged.
+    let propane = mol("CCC");
+    assert_eq!(
+        expand_aromatic_equiv(&[0], &propane),
+        vec![0],
+        "aliphatic position does not expand across single bonds"
+    );
+}

@@ -39,7 +39,12 @@ pub(crate) enum Target {
     Fixed(usize),
 }
 
+#[cfg(test)]
 pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
+    build_positional_with_options(group, false)
+}
+
+pub(crate) fn build_positional_with_options(group: &[Molecule], aromatic: bool) -> CxResult_ {
     let Some(rep) = group.first() else {
         return Err(CxError("build_positional: group is empty".into()));
     };
@@ -75,7 +80,14 @@ pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
     // since the base begins with the scaffold) per component.
     let comp_positions: Vec<Vec<usize>> = floating_comps
         .iter()
-        .map(|fc| equiv_positions(fc, group, &scaffold_q))
+        .map(|fc| {
+            let pos = equiv_positions(fc, group, &scaffold_q);
+            if aromatic {
+                expand_aromatic_equiv(&pos, &scaffold)
+            } else {
+                pos
+            }
+        })
         .collect();
 
     // Targets per flat def. `comp_positions` is built by mapping over the same
@@ -148,14 +160,19 @@ pub(crate) fn build_positional(group: &[Molecule]) -> CxResult_ {
         })
         .collect();
 
+    let clean = frac >= 1.0;
     Ok(CxResult {
         cx_smiles: format!("{base_smiles} |{ext}|"),
-        construct: Construct::Positional,
+        construct: if clean {
+            Construct::Positional
+        } else {
+            Construct::BestEffort
+        },
         scaffold_smiles,
         floating,
         confidence: Confidence {
             coverage: cov,
-            clean: frac >= 1.0,
+            clean,
         },
         enumerated,
     })
@@ -354,6 +371,48 @@ fn equiv_positions(_comp: &[u32], group: &[Molecule], scaffold_q: &QueryMolecule
         positions = (0..scaffold_q.atoms.len()).collect();
     }
     positions
+}
+
+/// Expand `positions` with all equivalent positions (same element and degree in
+/// `scaffold`) in the same aromatic ring component of `scaffold`.
+pub(crate) fn expand_aromatic_equiv(positions: &[usize], scaffold: &Molecule) -> Vec<usize> {
+    let mut out = Vec::new();
+    let n = scaffold.atom_count() as u32;
+    for &p in positions {
+        let p_u32 = p as u32;
+        let p_el = scaffold.atom(AtomIdx(p_u32)).element.atomic_number();
+        let p_deg = scaffold.neighbors(AtomIdx(p_u32)).count();
+        for q in 0..n {
+            if scaffold.atom(AtomIdx(q)).element.atomic_number() == p_el
+                && scaffold.neighbors(AtomIdx(q)).count() == p_deg
+                && same_aromatic_ring(scaffold, p_u32, q)
+            {
+                out.push(q as usize);
+            }
+        }
+    }
+    out.sort_unstable();
+    out.dedup();
+    out
+}
+
+/// Whether `start` and `target` lie in the same aromatic-bond component of `scaffold`.
+pub(crate) fn same_aromatic_ring(scaffold: &Molecule, start: u32, target: u32) -> bool {
+    let mut seen = std::collections::HashSet::from([start]);
+    let mut stack = vec![start];
+    while let Some(cur) = stack.pop() {
+        if cur == target {
+            return true;
+        }
+        stack.extend(
+            scaffold
+                .neighbors(AtomIdx(cur))
+                .filter(|&(_, bond_idx)| scaffold.bond(bond_idx).order == BondOrder::Aromatic)
+                .map(|(nbr, _)| nbr.0)
+                .filter(|&n| seen.insert(n)),
+        );
+    }
+    false
 }
 
 /// Partition connected components into floating (boundary = single scaffold

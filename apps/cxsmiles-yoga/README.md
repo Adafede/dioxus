@@ -80,9 +80,10 @@ cargo build --release --target wasm32-unknown-unknown -p cxsmiles-yoga
 
 ## Limitations & out of scope
 
-- **Aromatic equivalence is NYI.** The "enumerate equivalent aromatic positions"
-  checkbox is wired but not yet implemented --- CX-SMILES aromatic `m:`
-  enumeration for equivalent ring positions is left for a follow-up.
+- **Aromatic equivalence.** The "Enumerate equivalent aromatic positions"
+  checkbox expands `m:` attachment lists across symmetry-equivalent positions
+  within each aromatic ring component of the shared scaffold (via graph
+  automorphisms restricted to `BondOrder::Aromatic` components).
 - **CX-SMILES hand-rolled.** `chematic::cx` (`CxSmiles` / `parse_cxsmiles` /
   `write_cxsmiles`) does not support `m:` / `Sg:n:` constructs, so the
   atom-index logic is implemented directly (see the _Findings_ note in the

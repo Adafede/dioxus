@@ -248,10 +248,35 @@ OCCCC
 CCOCC
 COCCC";
     let r = generate(&lines(input)).unwrap();
+    assert_eq!(r.construct, Construct::BestEffort);
     assert!(
         r.confidence.coverage.fraction() < 1.0,
         "expected sub-100% coverage, got {:?}; cx={}",
         r.confidence,
         r.cx_smiles
     );
+}
+
+#[test]
+fn positional_biphenyl_cl_with_aromatic_equivalence() {
+    let input = "Clc1ccccc1-c2ccccc2\nClc1cccc(-c2ccccc2)c1\nClc1ccc(-c2ccccc2)cc1";
+    let mols = parse_list(&lines(input)).unwrap();
+    let r = generate_with_options(&lines(input), true).unwrap();
+    assert_eq!(r.construct, Construct::Positional);
+    assert_roundtrip(&r, &mols);
+    assert!(r.confidence.clean);
+    assert_eq!(r.floating[0].equiv, vec![0, 1, 2, 3, 4]);
+    assert_eq!(r.cx_smiles, "c1ccccc1-c2ccccc2.[*]Cl |m:12:0.1.2.3.4|");
+}
+
+#[test]
+fn non_uniform_group_without_internal_repeat_falls_back_to_positional() {
+    // Fluorobenzene (7 atoms) and chlorobenzene (7 atoms) vs 1,2-dichlorobenzene (8 atoms):
+    // extra Cl has atomic number 17, which is absent from fluorobenzene, so
+    // `locate_repeat_in_scaffold` fails and `generate_with_options` falls back
+    // to `build_positional_with_options`.
+    let input = "Fc1ccccc1\nFc1ccccc1Cl";
+    let r = generate_with_options(&lines(input), false).unwrap();
+    assert_eq!(r.construct, Construct::BestEffort);
+    assert_ne!(r.cx_smiles, "");
 }
