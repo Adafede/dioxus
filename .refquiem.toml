@@ -1,0 +1,31 @@
+# cargo-refquiem configuration (./mk refquiem).
+# Fails CI on any stale mention of a deleted Rust item across the full git history,
+# and on any untouched mention of an item whose signature or value changed on the branch.
+#
+# When a historical mention is intentional (e.g. a changelog or migration note),
+# record an inline `// refquiem: allow(item_name)` or `<!-- refquiem: allow(item_name) -->`
+# right above the mention rather than weakening this file.
+
+scan-commented-code = true
+
+# Standard LIPID MAPS / chemistry abbreviations (FA, PC, LPC, Cer, HexCer, MUFA,
+# PUFA, DiAcyl, ...) and CSV header column name ("verdict_category") that match
+# the names of removed prototype enum variants.
+allow = [
+  "AlkylAcyl",
+  "Cer",
+  "DiAcyl",
+  "DiEther",
+  "FA",
+  "HexCer",
+  "LPC",
+  "MUFA",
+  "MonoAcyl",
+  "PC",
+  "PUFA",
+  "verdict_category",
+]
+
+[changed]
+compare = "values"
+level = "deny"

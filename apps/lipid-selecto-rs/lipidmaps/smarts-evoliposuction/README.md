@@ -228,14 +228,13 @@ you want to see per-class progress.
 
 ## Integration with lipid-selecto-rs
 
-The evolved SMARTS CSV is the single output file. Load it into
-`lipid-selecto-rs` via `LipidRuleLibrary::add_evolved_rules_from_csv()`:
+The evolved SMARTS CSV is the single output file used to populate the LMSD
+subclass table in `lipid-selecto-rs` (`chemical_class::lmsd_classes()`):
 
 ```rust
-use lipid_selecto_rs::rules::LipidRuleLibrary;
+use lipid_selecto_rs::chemical_class::lmsd_classes;
 
-let mut library = LipidRuleLibrary::defaults();
-library.add_evolved_rules_from_csv("smarts_results.csv")?;
+let classes = lmsd_classes();
 ```
 
 Rules with `status == "ok"` and a non-empty `best_smarts` field are loaded and

@@ -310,7 +310,7 @@ The application includes **100 curated SMILES** covering all lipid classes:
 - **2 Cardiolipins**
 - **Plus additional architectural variants**
 
-Access via: `lipid_selecto_rs::examples::EXAMPLE_LIPIDS`
+Access via: `lipid_selecto_rs::examples::FAMILIES`
 
 ## Performance Tips
 

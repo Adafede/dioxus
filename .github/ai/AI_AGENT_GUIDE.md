@@ -135,7 +135,7 @@ Two things that are easy to get wrong and are worth not having to remember:
   migrated to it (the `StyleBuilder` inline drop-zone pattern is now deduped to
   one place). `smellfish-rs` keeps its CSS-class CSV drop zone (different
   aesthetic --- flagged for a class-based `UploadZone` variant if desired).
-- **Phase 2/6e (Footer/Card):** `ui::Footer` + `ui::Card` extracted
+- **Phase 2/6e (Footer/Card):** `ui::Footer` + `shared_ui::Card` extracted
   into `crates/ui`; migrating remaining apps off local
   reimplementations.
 - **Phase 3 (god-file splitting):** `mgf app.rs` (684→137) split complete ---

@@ -31,7 +31,7 @@ fn keeps_full_precision_when_computing_error() {
 
 /// `PEPMASS`'s second field is the precursor intensity, so
 /// `PEPMASS=400.0 1234.5` is well-formed MGF. Parsing the whole remainder as
-/// one float failed, `observed_precursor` stayed `None`, and `process_block_state`
+/// one float failed, `observed_precursor` stayed `None`, and `record_block_state`
 /// dropped the block ungently — not counted as skipped, no warning, and the
 /// Summary panel showed fewer spectra than the file contained.
 #[test]

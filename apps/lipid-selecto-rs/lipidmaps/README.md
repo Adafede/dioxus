@@ -76,42 +76,29 @@ The result is `smarts_results.csv` --- one row per class with columns:
 
 ### 2. Use the evolved SMARTS in lipid-selecto-rs
 
-The evolved SMARTS can be loaded directly into the `LipidRuleLibrary`:
+The evolved SMARTS from `smarts_results.csv` populate the LMSD subclass definitions in `chemical_class::lmsd_classes()`:
 
 ```rust
-use lipid_selecto_rs::rules::LipidRuleLibrary;
+use lipid_selecto_rs::chemical_class::{ChemicalClass, lmsd_classes};
 
-let mut library = LipidRuleLibrary::defaults();
-
-// Load evolved SMARTS from the smarts-evoliposuction CSV output.
-// Rules with status == "ok" and non-empty best_smarts are loaded.
-library.add_evolved_rules_from_csv(
-    "lipidmaps/smarts-evoliposuction/results/smarts_results.csv"
-)?;
-
-// The evolved rules replace or supplement the built-in defaults.
-// Each rule is pre-compiled once for fast matching.
-assert!(library.get_rule("FA").is_some());
+let classes: &[ChemicalClass] = lmsd_classes();
+assert!(classes.iter().any(|c| c.category == "FA"));
 ```
 
 The evolved rules are **pre-compiled** at load time (via
-`chematic::smarts::parse_smarts`) so they're as fast as the built-in defaults
-for runtime matching. Higher `best_mcc` values indicate tighter, more selective
-patterns.
+`chematic::smarts::parse_smarts`) so they're fast for runtime matching. Higher
+`best_mcc` values indicate tighter, more selective patterns.
 
 ### 3. UI integration
 
-The `LipidRuleLibrary` is wired into the UI through two entry points:
+The `ChemicalClass` table in `chemical_class::lmsd` is wired into the UI through two entry points:
 
-- **"Available Lipid Classes" card** --- Displays all rules from the library
-  (defaults + evolved), sorted by priority. Each card shows the rule name,
-  description (including MCC/coverage metrics for evolved rules), and family
-  tag.
+- **"Available Lipid Classes" card** --- Displays all LMSD rules from `lmsd_classes()`.
+  Each card shows the rule name, description, and family tag.
 
 - **Classification pipeline** --- The `ChemicalClass` system (used by the
-  browser analysis pipeline in `parser/analysis.rs`) mirrors the rule priorities
-  in `rules.rs` so that evolved SMARTS can be reflected in the classification
-  ordering. The Results UI groups matches by LIPID MAPS family (FA → GL → GP →
+  browser analysis pipeline in `parser/analysis.rs`) matches molecules against
+  `lmsd_classes()`. The Results UI groups matches by LIPID MAPS family (FA → GL → GP →
   SP → ST → PR → SL → PK) and sorts alphabetically within each family.
 
 ### LIPID MAPS Family Hierarchy

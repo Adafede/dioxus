@@ -285,6 +285,17 @@ unused_must_use = "deny"
 # The three below are the only ones; everything else is a Cargo default, and a
 # setting that equals its default is a line to keep in sync for nothing.
 
+[workspace.lints.rustdoc]
+bare_urls = "warn"
+broken_intra_doc_links = "deny"
+invalid_codeblock_attributes = "deny"
+invalid_html_tags = "warn"
+invalid_rust_codeblocks = "deny"
+missing_crate_level_docs = "warn"
+private_intra_doc_links = "warn"
+redundant_explicit_links = "warn"
+unescaped_backticks = "warn"
+
 # `dx serve` and `cargo test` both run through `dev`, and both are dominated by
 # dependency code rather than by this workspace's own. Debug builds of a
 # dependency at `opt-level = 0` are the reason `./mk test` takes seconds

@@ -14,7 +14,7 @@
 #
 # Any ./mk task name the standard runner does not know runs that cargo-make task.
 
-LOCAL_CARGO_TOOLS=(cargo-make@0.37.24 cargo-nextest@0.9.146 cargo-readme@3.4.0)
+LOCAL_CARGO_TOOLS=(cargo-make@0.37.24 cargo-nextest@0.9.151 cargo-readme@3.4.1)
 # panache cannot be installed through cargo-binstall (see make/readme.toml).
 LOCAL_SETUP=(install-panache)
 # Dev tools for working on the apps (dx, cargo-edit, ...): ./mk setup-extra
