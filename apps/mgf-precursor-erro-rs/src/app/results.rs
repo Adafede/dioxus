@@ -348,19 +348,13 @@ pub fn ResultsPanel(
                                 &original, model, diag.as_ref(),
                             );
 
-                            if let Err(e) =
-                                download_recalibrated_mgf(&file_name, &recalibrated)
-                            {
-                                status.set(format!("Download error: {e}"));
-                            } else {
-                                status.set(format!(
-                                    "Downloaded: {}_recalibrated.mgf",
-                                    if file_name.ends_with(".mgf") {
-                                        &file_name[..file_name.len() - 4]
-                                    } else {
-                                        &file_name
-                                    }
-                                ));
+                            match download_recalibrated_mgf(&file_name, &recalibrated) {
+                                Ok(download_name) => {
+                                    status.set(format!("Downloaded: {download_name}"));
+                                }
+                                Err(e) => {
+                                    status.set(format!("Download error: {e}"));
+                                }
                             }
                         },
                         "Download Recalibrated MGF"

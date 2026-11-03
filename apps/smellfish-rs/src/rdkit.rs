@@ -33,8 +33,11 @@ pub(crate) async fn read_file_text(file: &web_sys::Blob) -> Result<String, Strin
 #[allow(clippy::module_name_repetitions)] // RdkitInspectResponse preserves domain naming
 pub(crate) async fn rdkit_inspect(smiles: &str) -> Result<RdkitInspectResponse, String> {
     let value = rdkit_bridge_call("inspect", smiles).await?;
-    let json = js_value_to_json(value)?;
-    serde_json::from_value(json).map_err(|err| err.to_string())
+    let text = JSON::stringify(&value)
+        .ok()
+        .and_then(|value| value.as_string())
+        .ok_or_else(|| "rdkit.js returned a non-serializable value".to_string())?;
+    serde_json::from_str(&text).map_err(|err| err.to_string())
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -70,17 +73,4 @@ async fn rdkit_bridge_call(method: &str, smiles: &str) -> Result<JsValue, String
             .map_err(|err| format!("rdkit.js {method} failed: {err:?}")),
         Err(val) => Ok(val),
     }
-}
-
-/// # Errors
-///
-/// Returns an error if the value cannot be serialized or parsed as JSON.
-#[cfg(target_arch = "wasm32")]
-#[allow(clippy::needless_pass_by_value)] // JsValue is consumed by JSON::stringify, clippy can't see through wasm-bindgen macros
-fn js_value_to_json(value: JsValue) -> Result<serde_json::Value, String> {
-    let text = JSON::stringify(&value)
-        .ok()
-        .and_then(|value| value.as_string())
-        .ok_or_else(|| "rdkit.js returned a non-serializable value".to_string())?;
-    serde_json::from_str(&text).map_err(|err| err.to_string())
 }

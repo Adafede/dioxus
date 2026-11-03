@@ -46,8 +46,6 @@ impl PartialOrd for OrderedF64 {
 pub(crate) struct MedianTracker {
     lower: BinaryHeap<OrderedF64>,
     upper: BinaryHeap<Reverse<OrderedF64>>,
-    lower_len: usize,
-    upper_len: usize,
 }
 
 impl MedianTracker {
@@ -56,24 +54,18 @@ impl MedianTracker {
             self.lower.is_empty() || self.lower.peek().is_none_or(|entry| value <= entry.0);
         if should_go_lower {
             self.lower.push(OrderedF64(value));
-            self.lower_len += 1;
         } else {
             self.upper.push(Reverse(OrderedF64(value)));
-            self.upper_len += 1;
         }
 
-        if self.lower_len > self.upper_len + 1 {
+        if self.lower.len() > self.upper.len() + 1 {
             if let Some(OrderedF64(value)) = self.lower.pop() {
                 self.upper.push(Reverse(OrderedF64(value)));
             }
-            self.lower_len -= 1;
-            self.upper_len += 1;
-        } else if self.upper_len > self.lower_len {
-            if let Some(Reverse(OrderedF64(value))) = self.upper.pop() {
-                self.lower.push(OrderedF64(value));
-            }
-            self.upper_len -= 1;
-            self.lower_len += 1;
+        } else if self.upper.len() > self.lower.len()
+            && let Some(Reverse(OrderedF64(value))) = self.upper.pop()
+        {
+            self.lower.push(OrderedF64(value));
         }
     }
 
@@ -88,9 +80,9 @@ impl MedianTracker {
 
     #[must_use]
     pub(crate) fn median(&self) -> f64 {
-        if self.lower_len == 0 && self.upper_len == 0 {
+        if self.lower.is_empty() && self.upper.is_empty() {
             0.0
-        } else if self.lower_len > self.upper_len {
+        } else if self.lower.len() > self.upper.len() {
             self.lower.peek().map_or(0.0, |entry| entry.0)
         } else {
             let lower = self.lower.peek().map_or(0.0, |entry| entry.0);
@@ -357,46 +349,51 @@ impl PrecursorStats {
     }
 
     fn update_high_error_smiles(&mut self, update: HighErrorSmilesUpdate<'_>) {
-        let Some(smiles) = update.smiles.filter(|value| !value.trim().is_empty()) else {
+        let Some(smiles) = update
+            .smiles
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        else {
             return;
         };
         if update.abs_error_da <= 0.01 {
             return;
         }
 
-        let key = smiles.trim().to_owned();
-        self.high_error_smiles
-            .entry(key)
-            .and_modify(|entry| {
-                entry.count = entry.count.saturating_add(1);
-                if entry.calculated_mass.is_none() && update.calculated_mass.is_some() {
+        if let Some(entry) = self.high_error_smiles.get_mut(smiles) {
+            entry.count = entry.count.saturating_add(1);
+            if entry.calculated_mass.is_none() && update.calculated_mass.is_some() {
+                entry.calculated_mass = update.calculated_mass;
+            }
+            if entry.expected_mass.is_none() && update.expected_mass.is_some() {
+                entry.expected_mass = update.expected_mass;
+            }
+            if entry.formula.is_none() {
+                entry.formula = update.formula.map(str::to_string);
+            }
+            if entry.observed_precursor_mz.is_none() {
+                entry.observed_precursor_mz = Some(update.pepmass_header);
+            }
+            if entry
+                .max_abs_error_da
+                .is_none_or(|existing| update.abs_error_da > existing)
+            {
+                entry.max_abs_error_da = Some(update.abs_error_da);
+                entry.max_abs_error_ppm = Some(update.abs_ppm);
+                if update.calculated_mass.is_some() {
                     entry.calculated_mass = update.calculated_mass;
                 }
-                if entry.expected_mass.is_none() && update.expected_mass.is_some() {
+                if update.expected_mass.is_some() {
                     entry.expected_mass = update.expected_mass;
                 }
-                if entry.formula.is_none() {
-                    entry.formula = update.formula.map(str::to_string);
-                }
-                if entry.observed_precursor_mz.is_none() {
-                    entry.observed_precursor_mz = Some(update.pepmass_header);
-                }
-                if entry
-                    .max_abs_error_da
-                    .is_none_or(|existing| update.abs_error_da > existing)
-                {
-                    entry.max_abs_error_da = Some(update.abs_error_da);
-                    entry.max_abs_error_ppm = Some(update.abs_ppm);
-                    if update.calculated_mass.is_some() {
-                        entry.calculated_mass = update.calculated_mass;
-                    }
-                    if update.expected_mass.is_some() {
-                        entry.expected_mass = update.expected_mass;
-                    }
-                    entry.observed_precursor_mz = Some(update.pepmass_header);
-                }
-            })
-            .or_insert_with(|| HighErrorSmilesDetail {
+                entry.observed_precursor_mz = Some(update.pepmass_header);
+            }
+            return;
+        }
+
+        self.high_error_smiles.insert(
+            smiles.to_owned(),
+            HighErrorSmilesDetail {
                 count: 1,
                 calculated_mass: update.calculated_mass,
                 expected_mass: update.expected_mass,
@@ -404,6 +401,7 @@ impl PrecursorStats {
                 max_abs_error_da: Some(update.abs_error_da),
                 max_abs_error_ppm: Some(update.abs_ppm),
                 observed_precursor_mz: Some(update.pepmass_header),
-            });
+            },
+        );
     }
 }

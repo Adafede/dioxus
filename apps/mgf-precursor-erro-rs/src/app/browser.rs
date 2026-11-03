@@ -56,12 +56,30 @@ pub(crate) fn download_svg(svg: &str, filename: &str) {
     drop(upload::download_text(svg, filename));
 }
 
-/// Downloads recalibrated MGF content as a `.mgf` file.
+/// Builds the output filename for a recalibrated MGF export, stripping any
+/// trailing `.mgf` extension case-insensitively before appending
+/// `_recalibrated.mgf`.
+#[must_use]
+pub(crate) fn recalibrated_mgf_filename(filename: &str) -> String {
+    let base = if filename.len() >= 4
+        && filename
+            .get(filename.len() - 4..)
+            .is_some_and(|ext| ext.eq_ignore_ascii_case(".mgf"))
+    {
+        filename.get(..filename.len() - 4).unwrap_or(filename)
+    } else {
+        filename
+    };
+    format!("{base}_recalibrated.mgf")
+}
+
+/// Downloads recalibrated MGF content as a `.mgf` file, returning the
+/// generated download filename on success.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn download_recalibrated_mgf(filename: &str, content: &str) -> Result<(), String> {
-    let base = filename.strip_suffix(".mgf").unwrap_or(filename);
-    let download_name = format!("{base}_recalibrated.mgf");
-    upload::download_text(content, &download_name)
+pub(crate) fn download_recalibrated_mgf(filename: &str, content: &str) -> Result<String, String> {
+    let download_name = recalibrated_mgf_filename(filename);
+    upload::download_text(content, &download_name)?;
+    Ok(download_name)
 }
 
 /// Downloads recalibrated MGF content (native stub — returns `Err`).
@@ -69,7 +87,8 @@ pub(crate) fn download_recalibrated_mgf(filename: &str, content: &str) -> Result
 /// # Errors
 /// Always returns an error on native targets.
 #[cfg(not(target_arch = "wasm32"))]
-pub(super) fn download_recalibrated_mgf(_filename: &str, _content: &str) -> Result<(), String> {
+pub(super) fn download_recalibrated_mgf(filename: &str, _content: &str) -> Result<String, String> {
+    let _download_name = recalibrated_mgf_filename(filename);
     Err("Download is only available in the browser".to_string())
 }
 
@@ -233,4 +252,25 @@ pub(crate) fn load_example_mgf(
             }
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::recalibrated_mgf_filename;
+
+    #[test]
+    fn recalibrated_mgf_filename_strips_mgf_suffix_case_insensitively() {
+        assert_eq!(
+            recalibrated_mgf_filename("spectra.mgf"),
+            "spectra_recalibrated.mgf"
+        );
+        assert_eq!(
+            recalibrated_mgf_filename("spectra.MGF"),
+            "spectra_recalibrated.mgf"
+        );
+        assert_eq!(
+            recalibrated_mgf_filename("spectra"),
+            "spectra_recalibrated.mgf"
+        );
+    }
 }

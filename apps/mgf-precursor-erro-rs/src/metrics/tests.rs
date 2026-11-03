@@ -146,3 +146,24 @@ fn adduct_family_classifies_ammonium_under_alkali_ammonium() {
     );
     assert_eq!(AdductFamily::from_label("[M+Cl]-"), AdductFamily::Halide);
 }
+
+#[test]
+fn median_tracker_balances_odd_and_even_streams_and_merges() {
+    let mut tracker = stats::MedianTracker::default();
+    assert_eq!(tracker.median(), 0.0);
+
+    tracker.push(10.0);
+    assert_eq!(tracker.median(), 10.0);
+
+    tracker.push(2.0);
+    assert_eq!(tracker.median(), 6.0);
+
+    tracker.push(7.0);
+    assert_eq!(tracker.median(), 7.0);
+
+    let mut other = stats::MedianTracker::default();
+    other.push(1.0);
+    other.push(20.0);
+    tracker.merge(&other);
+    assert_eq!(tracker.median(), 7.0);
+}

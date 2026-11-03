@@ -67,6 +67,15 @@ function numericField(descriptors, names) {
  *   confidence = bitsFound / totalBitsSet
  */
 const N_MODEL_BITS = 1048576; /* 2^20 */
+const FP_OPTS = JSON.stringify({ radius: 2, nBits: N_MODEL_BITS });
+const CANONICAL_SMILES_OPTS = JSON.stringify({
+  canonical: true,
+  isomericSmiles: false,
+});
+const ISOMERIC_SMILES_OPTS = JSON.stringify({
+  canonical: true,
+  isomericSmiles: true,
+});
 let npModelKeys = null; /* Uint32Array (sorted) */
 let npModelScores = null; /* Float32Array (parallel) */
 
@@ -130,14 +139,12 @@ function computeNpLikeness(mol) {
     let rawScore = 0;
     let bitsFound = 0;
     let totalBits = 0;
-    const fp = mol.get_morgan_fp_as_uint8array(
-      JSON.stringify({ radius: 2, nBits: N_MODEL_BITS })
-    );
+    const fp = mol.get_morgan_fp_as_uint8array(FP_OPTS);
     for (let i = 0; i < fp.length; i++) {
       const byte = fp[i];
       if (byte === 0) continue;
       for (let b = 0; b < 8; b++) {
-        if (byte && (1 << b)) {
+        if ((byte & (1 << b)) !== 0) {
           totalBits++;
           const bitId = i * 8 + b;
           const idx = binarySearch(npModelKeys, bitId);
@@ -249,15 +256,9 @@ const rdkitReady = (async () => {
 
   return {
     inspect(smiles) {
-      const result = withMol(smiles, (mol) => {
-        const canonicalsmiles = mol.get_smiles(JSON.stringify({
-          canonical: true,
-          isomericSmiles: false,
-        }));
-        const isomericsmiles = mol.get_smiles(JSON.stringify({
-          canonical: true,
-          isomericSmiles: true,
-        }));
+      return withMol(smiles, (mol) => {
+        const canonicalsmiles = mol.get_smiles(CANONICAL_SMILES_OPTS);
+        const isomericsmiles = mol.get_smiles(ISOMERIC_SMILES_OPTS);
         const inchi = mol.get_inchi();
         if (!inchi) {
           throw new Error("rdkit.js could not generate InChI");
@@ -327,7 +328,6 @@ const rdkitReady = (async () => {
           return COL_DECO;
         }
 
-        let primaryColour = COL_DECO;
         for (const motif of compiledMotifs) {
           const raw = typeof mol.get_substruct_match === "function"
             ? mol.get_substruct_match(motif.qmol)
@@ -440,10 +440,6 @@ const rdkitReady = (async () => {
           substituents: matchedSubstituents,
         };
       });
-      if (result && typeof result.error === "string") {
-        return result;
-      }
-      return result;
     },
   };
 })();
@@ -456,3 +452,20 @@ window.__smilesRdkit = {
   },
 };
 "##;
+
+#[cfg(test)]
+mod tests {
+    use super::RDKIT_BRIDGE_JS;
+
+    #[test]
+    fn compute_np_likeness_tests_fingerprint_bits_with_bitwise_and() {
+        assert!(
+            RDKIT_BRIDGE_JS.contains("(byte & (1 << b)) !== 0"),
+            "fingerprint bit extraction must use bitwise `&`, not logical `&&`"
+        );
+        assert!(
+            !RDKIT_BRIDGE_JS.contains("byte && (1 << b)"),
+            "logical `&&` treats all 8 bits of any non-zero byte as set"
+        );
+    }
+}

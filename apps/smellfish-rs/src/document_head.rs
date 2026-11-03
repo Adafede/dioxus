@@ -69,7 +69,7 @@ pub fn SmellfishDocumentHead() -> Element {
         document::Script { src: "motif-library.js" }
 
         // Resource hints — preconnect for external origins
-        document::Link { rel: "preconnect", href: "https://www.rdkitjs.com", crossorigin: "anonymous" }
+        document::Link { rel: "preconnect", href: "https://unpkg.com", crossorigin: "anonymous" }
         document::Link { rel: "preconnect", href: "https://qlever.dev", crossorigin: "anonymous" }
         document::Link { rel: "preconnect", href: "https://qlever.cs.uni-freiburg.de", crossorigin: "anonymous" }
     }

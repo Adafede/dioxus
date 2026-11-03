@@ -102,12 +102,7 @@ pub(super) fn estimate_compliance_ppm(errors: &[f64], threshold_ppm: f64) -> f64
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 #[allow(clippy::needless_pass_by_value)] // rsx! macro captures by move, clippy cannot see through macro expansion
-fn plot_shell(
-    title: String,
-    subtitle: String,
-    svg_markup: String,
-    download_markup: Option<String>,
-) -> Element {
+fn plot_shell(title: String, subtitle: String, svg_markup: Memo<String>) -> Element {
     let title_for_display = title;
     let title_for_download = title_for_display.clone();
     let subtitle_for_display = subtitle;
@@ -124,15 +119,13 @@ fn plot_shell(
                     style: StyleBuilder::new().border("1px solid #cbd5e1").border_radius("999px").property("background", "white").color("#334155").font_size("0.76rem").font_weight("700").padding("0.35rem 0.65rem").cursor("pointer").build(),
                     onclick: move |_| {
                         #[cfg(target_arch = "wasm32")]
-                        if let Some(download_markup) = download_markup.as_ref() {
-                            download_svg(download_markup, &title_for_download);
-                        }
+                        download_svg(&svg_markup.read(), &title_for_download);
                     },
                     "Download"
                 }
             }
             div { style: StyleBuilder::new().border_radius("16px").property("overflow", "visible").border("1px solid #e2e8f0").property("background", "#fcfdff").build(),
-                dangerous_inner_html: svg_markup
+                dangerous_inner_html: svg_markup.read().clone()
             }
         }
     }
@@ -161,9 +154,7 @@ pub fn ecdf_plot(
             .unwrap_or_default(),
         )
     });
-    let svg_markup = svg_markup.read().clone();
-    let download_markup = Some(svg_markup.clone());
-    plot_shell(title, subtitle, svg_markup, download_markup)
+    plot_shell(title, subtitle, svg_markup)
 }
 
 #[component]
@@ -180,7 +171,6 @@ pub fn mass_bias_plot(
             render_mass_bias_svg(&title_for_svg, &points_for_svg).unwrap_or_default(),
         )
     });
-    let svg_markup = svg_markup.read().clone();
     // `other_label` names the second series this plot overlays, and
     // `render_mass_bias_svg` does not draw one. The prop is still declared
     // because the caller reads better passing it than not, and dropping it by
@@ -188,8 +178,7 @@ pub fn mass_bias_plot(
     // `let _ = other_label` is the same statement and is what
     // `clippy::let_underscore_drop` rejects.
     drop(other_label);
-    let download_markup = Some(svg_markup.clone());
-    plot_shell(title, subtitle, svg_markup, download_markup)
+    plot_shell(title, subtitle, svg_markup)
 }
 
 #[component]
@@ -215,9 +204,7 @@ pub fn absolute_mass_bias_plot(
             .unwrap_or_default(),
         )
     });
-    let svg_markup = svg_markup.read().clone();
-    let download_markup = Some(svg_markup.clone());
-    plot_shell(title, subtitle, svg_markup, download_markup)
+    plot_shell(title, subtitle, svg_markup)
 }
 
 pub(super) fn format_value_text(value: f64) -> String {

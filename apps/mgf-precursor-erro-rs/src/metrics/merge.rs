@@ -232,32 +232,34 @@ fn merge_precursor_plot_points(current: &mut PrecursorStats, next: &PrecursorSta
 
 fn merge_precursor_maps(current: &mut PrecursorStats, next: &PrecursorStats) {
     for (smiles, detail) in &next.unparsed_smiles_warnings {
-        current
-            .unparsed_smiles_warnings
-            .entry(smiles.clone())
-            .and_modify(|existing| {
-                existing.count = existing.count.saturating_add(detail.count);
-                if existing.formula.is_none() {
-                    existing.formula.clone_from(&detail.formula);
-                }
-            })
-            .or_insert_with(|| (*detail).clone());
+        if let Some(existing) = current.unparsed_smiles_warnings.get_mut(smiles) {
+            existing.count = existing.count.saturating_add(detail.count);
+            if existing.formula.is_none() {
+                existing.formula.clone_from(&detail.formula);
+            }
+        } else {
+            current
+                .unparsed_smiles_warnings
+                .insert(smiles.clone(), (*detail).clone());
+        }
     }
 
     for (adduct, count) in &next.unrecognized_adducts {
-        current
-            .unrecognized_adducts
-            .entry(adduct.clone())
-            .and_modify(|existing| *existing += count)
-            .or_insert(*count);
+        if let Some(existing) = current.unrecognized_adducts.get_mut(adduct) {
+            *existing += count;
+        } else {
+            current.unrecognized_adducts.insert(adduct.clone(), *count);
+        }
     }
 
     for (smiles, detail) in &next.high_error_smiles {
-        current
-            .high_error_smiles
-            .entry(smiles.clone())
-            .and_modify(|existing| merge_high_error_detail(existing, detail))
-            .or_insert_with(|| (*detail).clone());
+        if let Some(existing) = current.high_error_smiles.get_mut(smiles) {
+            merge_high_error_detail(existing, detail);
+        } else {
+            current
+                .high_error_smiles
+                .insert(smiles.clone(), (*detail).clone());
+        }
     }
 }
 
