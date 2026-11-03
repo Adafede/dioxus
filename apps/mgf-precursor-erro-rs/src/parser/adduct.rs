@@ -148,10 +148,9 @@ fn apply_adduct_token(
 
 fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     let normalized = adduct.trim().replace(' ', "").to_ascii_uppercase();
-    let body = normalized.find(']').map_or_else(
-        || normalized.clone(),
-        |index| normalized.get(1..index).unwrap_or("").to_string(),
-    );
+    let body = normalized.find(']').map_or(normalized.as_str(), |index| {
+        normalized.get(1..index).unwrap_or("")
+    });
     let charge_sign = parse_adduct_charge_sign(Some(adduct));
     let uses_double_mg_mass = charge_sign == Some(false);
     let mut multiplier = 1.0f64;
@@ -281,8 +280,7 @@ fn parse_adduct_term_mass_with_context(
         .unwrap_or(trimmed.len());
     let multiplier_str = &trimmed[..digits_end];
     let multiplier = multiplier_str.parse::<f64>().unwrap_or(1.0);
-    let formula = trimmed[digits_end..].trim().to_ascii_uppercase();
-    let formula = match formula.as_str() {
+    let formula = match trimmed[digits_end..].trim() {
         "FA" | "FORMAT" | "HCOO" => "CHO2",
         "HCOONA" | "NACHO2" | "NAHCOO" | "NAHCO2" | "CHNAO2" => "CHNaO2",
         "HCOOH" | "FORMICACID" | "HFA" => "CH2O2",
@@ -348,47 +346,52 @@ fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64>
 }
 
 #[must_use]
-pub(crate) fn normalize_adduct_label(adduct: &str) -> String {
+pub(crate) fn normalize_adduct_label(adduct: &str) -> &str {
     let trimmed = adduct.trim();
     if trimmed.is_empty() {
-        return "unknown".to_string();
+        return "unknown";
     }
 
-    let normalized = trimmed.replace(' ', "").to_ascii_uppercase();
-    let (body, suffix) = normalized
-        .find(']')
-        .map_or((normalized.as_str(), ""), |idx| {
-            // `find` gives a byte offset that need not be a char boundary, and
-            // can be `0` for something like `"]+H]"`. Slicing either way is a
-            // panic; `.get` degrades to an empty body, which the caller already
-            // tolerates.
-            let body = normalized.get(1..idx).unwrap_or("");
-            let suffix = &normalized[idx + 1..];
-            (body, suffix)
-        });
-    let body = body.trim_matches(|ch| ch == '[' || ch == ']');
+    let (body, suffix) = trimmed.find(']').map_or((trimmed, ""), |idx| {
+        // `find` gives a byte offset that need not be a char boundary, and
+        // can be `0` for something like `"]+H]"`. Slicing either way is a
+        // panic; `.get` degrades to an empty body, which the caller already
+        // tolerates.
+        let body = trimmed.get(1..idx).unwrap_or("");
+        let suffix = trimmed.get(idx + 1..).unwrap_or("");
+        (body, suffix)
+    });
+    let body = body.trim().trim_matches(|ch| ch == '[' || ch == ']').trim();
     let suffix = suffix.trim();
 
-    match (body, suffix) {
-        ("M", "" | "+") => "[M]+".to_string(),
-        ("M", "++" | "2+") => "[M]2+".to_string(),
-        ("M+2NA", "" | "2+" | "++") => "[M+2Na]2+".to_string(),
-        ("M+H", "" | "+") => "[M+H]+".to_string(),
-        ("M+K", "" | "+") => "[M+K]+".to_string(),
-        ("M+NH4", "" | "+") => "[M+NH4]+".to_string(),
-        ("M+NA", "" | "+") => "[M+Na]+".to_string(),
-        ("M+2H", "" | "+" | "++" | "2+") => "[M+2H]2+".to_string(),
-        ("M-H", "" | "-" | "1-" | "--") => "[M-H]-".to_string(),
-        ("M-2H", "" | "2-" | "--") => "[M-2H]2-".to_string(),
-        ("4M-H", "" | "-" | "1-" | "--") => "[4M-H]-".to_string(),
-        _ => trimmed.to_string(),
+    if body.eq_ignore_ascii_case("M") {
+        if matches!(suffix, "" | "+") {
+            return "[M]+";
+        }
+        if matches!(suffix, "++" | "2+") {
+            return "[M]2+";
+        }
+    } else if body.eq_ignore_ascii_case("M+2NA") && matches!(suffix, "" | "2+" | "++") {
+        return "[M+2Na]2+";
+    } else if body.eq_ignore_ascii_case("M+H") && matches!(suffix, "" | "+") {
+        return "[M+H]+";
+    } else if body.eq_ignore_ascii_case("M+K") && matches!(suffix, "" | "+") {
+        return "[M+K]+";
+    } else if body.eq_ignore_ascii_case("M+NH4") && matches!(suffix, "" | "+") {
+        return "[M+NH4]+";
+    } else if body.eq_ignore_ascii_case("M+NA") && matches!(suffix, "" | "+") {
+        return "[M+Na]+";
+    } else if body.eq_ignore_ascii_case("M+2H") && matches!(suffix, "" | "+" | "++" | "2+") {
+        return "[M+2H]2+";
+    } else if body.eq_ignore_ascii_case("M-H") && matches!(suffix, "" | "-" | "1-" | "--") {
+        return "[M-H]-";
+    } else if body.eq_ignore_ascii_case("M-2H") && matches!(suffix, "" | "2-" | "--") {
+        return "[M-2H]2-";
+    } else if body.eq_ignore_ascii_case("4M-H") && matches!(suffix, "" | "-" | "1-" | "--") {
+        return "[4M-H]-";
     }
-}
 
-#[must_use]
-pub(crate) const fn is_excluded_adduct(adduct: &str) -> bool {
-    let _ = adduct;
-    false
+    trimmed
 }
 
 #[must_use]

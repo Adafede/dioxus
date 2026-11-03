@@ -11,10 +11,9 @@
 // rest -- the histograms, the sample and measurement types, the two caps -- are
 // wasm-gated, because the plotters that consume them are.
 use super::plot::{
-    ErrorMeasurement, HighErrorSmilesUpdate, HistogramData, MAX_ECDF_POINTS, MAX_PLOT_POINTS,
-    PlotPointSample,
+    ErrorMeasurement, HighErrorSmilesDetail, HighErrorSmilesUpdate, MAX_ECDF_POINTS,
+    MAX_PLOT_POINTS, PlotPoint, PlotPointSample, WarningDetail,
 };
-use super::plot::{HighErrorSmilesDetail, PlotPoint, WarningDetail};
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::collections::BinaryHeap;
@@ -98,7 +97,6 @@ pub(crate) struct PrecursorStats {
     pub total_spectra: usize,
     pub skipped_spectra: usize,
     pub spectra_with_reference_mass: usize,
-    pub reference_mass_source: String,
     pub unparsed_smiles: usize,
     pub unparsed_smiles_warnings: BTreeMap<String, WarningDetail>,
     pub observed_precursor_min: f64,
@@ -106,29 +104,18 @@ pub(crate) struct PrecursorStats {
     pub observed_precursor_mean: f64,
     pub observed_precursor_median: f64,
     pub observed_precursor_median_tracker: MedianTracker,
-    pub sample_observed_precursor: f64,
     pub abs_error_da_min: f64,
     pub abs_error_da_max: f64,
     pub abs_error_da_mean: f64,
     pub abs_error_da_median: f64,
     pub abs_error_da_median_tracker: MedianTracker,
-    pub sample_abs_error_da: f64,
     pub abs_error_da_rms: f64,
     pub abs_error_ppm_min: f64,
     pub abs_error_ppm_max: f64,
     pub abs_error_ppm_mean: f64,
     pub abs_error_ppm_median: f64,
     pub abs_error_ppm_median_tracker: MedianTracker,
-    pub sample_abs_error_ppm: f64,
     pub abs_error_ppm_rms: f64,
-    pub signed_error_da_mean: f64,
-    pub signed_error_da_median: f64,
-    pub signed_error_da_median_tracker: MedianTracker,
-    pub sample_signed_error_da: f64,
-    pub signed_error_ppm_mean: f64,
-    pub signed_error_ppm_median: f64,
-    pub signed_error_ppm_median_tracker: MedianTracker,
-    pub sample_signed_error_ppm: f64,
     pub within_0_1_da: usize,
     pub within_0_5_da: usize,
     pub within_1_da: usize,
@@ -139,8 +126,6 @@ pub(crate) struct PrecursorStats {
     pub within_5_ppm: usize,
     pub within_10_ppm: usize,
     pub above_10_ppm: usize,
-    pub da_error_histogram: HistogramData,
-    pub ppm_error_histogram: HistogramData,
     pub absolute_error_da_values: Vec<f64>,
     pub absolute_error_ppm_values: Vec<f64>,
     pub absolute_error_da_sample_seen: usize,
@@ -158,7 +143,6 @@ impl Default for PrecursorStats {
             total_spectra: 0,
             skipped_spectra: 0,
             spectra_with_reference_mass: 0,
-            reference_mass_source: "none".to_string(),
             unparsed_smiles: 0,
             unparsed_smiles_warnings: BTreeMap::new(),
             observed_precursor_min: 0.0,
@@ -166,29 +150,18 @@ impl Default for PrecursorStats {
             observed_precursor_mean: 0.0,
             observed_precursor_median: 0.0,
             observed_precursor_median_tracker: MedianTracker::default(),
-            sample_observed_precursor: 0.0,
             abs_error_da_min: 0.0,
             abs_error_da_max: 0.0,
             abs_error_da_mean: 0.0,
             abs_error_da_median: 0.0,
             abs_error_da_median_tracker: MedianTracker::default(),
-            sample_abs_error_da: 0.0,
             abs_error_da_rms: 0.0,
             abs_error_ppm_min: 0.0,
             abs_error_ppm_max: 0.0,
             abs_error_ppm_mean: 0.0,
             abs_error_ppm_median: 0.0,
             abs_error_ppm_median_tracker: MedianTracker::default(),
-            sample_abs_error_ppm: 0.0,
             abs_error_ppm_rms: 0.0,
-            signed_error_da_mean: 0.0,
-            signed_error_da_median: 0.0,
-            signed_error_da_median_tracker: MedianTracker::default(),
-            sample_signed_error_da: 0.0,
-            signed_error_ppm_mean: 0.0,
-            signed_error_ppm_median: 0.0,
-            signed_error_ppm_median_tracker: MedianTracker::default(),
-            sample_signed_error_ppm: 0.0,
             within_0_1_da: 0,
             within_0_5_da: 0,
             within_1_da: 0,
@@ -199,8 +172,6 @@ impl Default for PrecursorStats {
             within_5_ppm: 0,
             within_10_ppm: 0,
             above_10_ppm: 0,
-            da_error_histogram: HistogramData::new(48, 0.0, 0.5),
-            ppm_error_histogram: HistogramData::new(48, 0.0, 50.0),
             absolute_error_da_values: Vec::new(),
             absolute_error_ppm_values: Vec::new(),
             absolute_error_da_sample_seen: 0,
@@ -275,8 +246,6 @@ impl PrecursorStats {
             formula,
         } = measurement;
 
-        self.da_error_histogram.add_value(abs_error_da);
-        self.ppm_error_histogram.add_value(abs_ppm);
         Self::push_sampled_value(
             abs_error_da,
             &mut self.absolute_error_da_values,
@@ -287,21 +256,12 @@ impl PrecursorStats {
             &mut self.absolute_error_ppm_values,
             &mut self.absolute_error_ppm_sample_seen,
         );
-        self.sample_observed_precursor = pepmass_header;
-        self.sample_abs_error_da = abs_error_da;
-        self.sample_abs_error_ppm = abs_ppm;
-        self.sample_signed_error_da = signed_error_da;
-        self.sample_signed_error_ppm = ppm_error;
         self.observed_precursor_median_tracker.push(pepmass_header);
         self.abs_error_da_median_tracker.push(abs_error_da);
         self.abs_error_ppm_median_tracker.push(abs_ppm);
-        self.signed_error_da_median_tracker.push(signed_error_da);
-        self.signed_error_ppm_median_tracker.push(ppm_error);
         self.observed_precursor_median = self.observed_precursor_median_tracker.median();
         self.abs_error_da_median = self.abs_error_da_median_tracker.median();
         self.abs_error_ppm_median = self.abs_error_ppm_median_tracker.median();
-        self.signed_error_da_median = self.signed_error_da_median_tracker.median();
-        self.signed_error_ppm_median = self.signed_error_ppm_median_tracker.median();
 
         let abs_error_milli_da = abs_error_da * 1000.0;
         self.update_error_buckets(abs_error_milli_da, abs_ppm);

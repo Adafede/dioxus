@@ -22,9 +22,7 @@ use crate::metrics::{
     merge_precursor_stats_in_place,
 };
 
-use super::adduct::{
-    expected_precursor_mz, is_excluded_adduct, is_supported_adduct, normalize_adduct_label,
-};
+use super::adduct::{expected_precursor_mz, is_supported_adduct, normalize_adduct_label};
 use super::mass::{exact_mass_from_formula_cached, exact_mass_from_smiles_cached};
 
 #[derive(Clone, Debug, Default)]
@@ -33,7 +31,6 @@ pub(crate) struct BlockParseState {
     observed_precursor_raw: Option<String>,
     observed_precursor: Option<f64>,
     reference_mass: Option<f64>,
-    reference_mass_source: Option<String>,
     charge: Option<String>,
     adduct: Option<String>,
     ion_mode: Option<String>,
@@ -63,7 +60,6 @@ impl BlockParseState {
         }
         self.observed_precursor = None;
         self.reference_mass = None;
-        self.reference_mass_source = None;
         self.charge = None;
         self.adduct = None;
         self.ion_mode = None;
@@ -99,7 +95,6 @@ impl BlockParseState {
         if let Some(stripped) = trimmed.strip_prefix("EXACTMASS=") {
             if let Ok(value) = stripped.parse::<f64>() {
                 self.reference_mass = Some(value);
-                self.reference_mass_source = Some("EXACTMASS".to_string());
             }
             return;
         }
@@ -109,7 +104,6 @@ impl BlockParseState {
                 && self.reference_mass.is_none()
             {
                 self.reference_mass = Some(value);
-                self.reference_mass_source = Some("MOLECULEMASS".to_string());
             }
             return;
         }
@@ -309,34 +303,20 @@ fn compute_reference_mass<S: std::hash::BuildHasher>(
     state: &BlockParseState,
     smiles_cache: &mut HashMap<String, Option<f64>, S>,
     formula_cache: &mut HashMap<String, Option<f64>, S>,
-) -> Option<(f64, Option<String>)> {
+) -> Option<f64> {
     state
         .reference_mass
-        .map(|mass| {
-            (
-                mass,
-                state
-                    .reference_mass_source
-                    .clone()
-                    .or_else(|| Some("unknown".to_string())),
-            )
-        })
         .or_else(|| {
             state
                 .formula
                 .as_deref()
                 .and_then(|value| exact_mass_from_formula_cached(value, formula_cache))
-                .map(|mass| (mass, Some("FORMULA".to_string())))
         })
         .or_else(|| {
-            let parsed_smiles = state
+            state
                 .smiles
                 .as_deref()
-                .and_then(|value| exact_mass_from_smiles_cached(value, smiles_cache));
-            if state.smiles.is_some() && parsed_smiles.is_none() {
-                return None;
-            }
-            parsed_smiles.map(|mass| (mass, Some("SMILES".to_string())))
+                .and_then(|value| exact_mass_from_smiles_cached(value, smiles_cache))
         })
 }
 
@@ -381,7 +361,6 @@ fn unparsable_smiles_metrics(state: &BlockParseState) -> PrecursorStats {
 fn observed_metrics(
     observed_precursor: f64,
     reference_mass: f64,
-    reference_mass_label: String,
     adduct_label: &str,
     state: &BlockParseState,
     plot_sample: &mut Option<&mut PlotPointSample>,
@@ -410,7 +389,6 @@ fn observed_metrics(
         total_spectra: 1,
         spectra: 1,
         spectra_with_reference_mass: 1,
-        reference_mass_source: reference_mass_label,
         observed_precursor_min: observed_precursor,
         observed_precursor_max: observed_precursor,
         observed_precursor_mean: observed_precursor,
@@ -422,8 +400,6 @@ fn observed_metrics(
         abs_error_ppm_max: abs_ppm,
         abs_error_ppm_mean: abs_ppm,
         abs_error_ppm_rms: abs_ppm,
-        signed_error_da_mean: error_da,
-        signed_error_ppm_mean: ppm,
         ..PrecursorStats::default()
     };
     metrics.record_error_with_plot_sample(
@@ -453,42 +429,30 @@ fn process_block_state<S: std::hash::BuildHasher>(
 ) -> Option<PrecursorStats> {
     let observed_precursor = state.observed_precursor?;
 
-    let Some((reference_mass, reference_mass_source)) =
-        compute_reference_mass(state, smiles_cache, formula_cache)
-    else {
+    let Some(reference_mass) = compute_reference_mass(state, smiles_cache, formula_cache) else {
         return Some(unparsable_smiles_metrics(state));
     };
 
-    let reference_mass_source = reference_mass_source.unwrap_or_else(|| "unknown".to_string());
-    let reference_mass_label = state.adduct.as_deref().map_or_else(
-        || reference_mass_source.clone(),
-        |adduct| format!("{reference_mass_source} + {adduct}"),
-    );
-    let adduct_label = normalize_adduct_label(state.adduct.as_deref().unwrap_or("unknown"));
     let adduct_text = state.adduct.as_deref().unwrap_or("").trim();
-    let adduct_is_excluded = is_excluded_adduct(adduct_text);
-    let adduct_is_supported = adduct_text.is_empty() || is_supported_adduct(adduct_text);
-    if adduct_is_excluded || !adduct_is_supported && !adduct_text.is_empty() {
+    if !adduct_text.is_empty() && !is_supported_adduct(adduct_text) {
         let mut metrics = PrecursorStats {
             total_spectra: 1,
             skipped_spectra: 1,
             ..PrecursorStats::default()
         };
-        if !adduct_is_excluded && !adduct_text.is_empty() {
-            metrics
-                .unrecognized_adducts
-                .entry(adduct_text.to_string())
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
-        }
+        metrics
+            .unrecognized_adducts
+            .entry(adduct_text.to_string())
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
         return Some(metrics);
     }
 
+    let adduct_label = normalize_adduct_label(adduct_text);
     Some(observed_metrics(
         observed_precursor,
         reference_mass,
-        reference_mass_label,
-        &adduct_label,
+        adduct_label,
         state,
         plot_sample,
     ))

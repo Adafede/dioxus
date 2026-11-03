@@ -16,8 +16,6 @@ use super::*;
 fn stats_with_errors(da: &[f64], ppm: &[f64]) -> PrecursorStats {
     let mut s = PrecursorStats::default();
     for (&da_err, &ppm_err) in da.iter().zip(ppm) {
-        s.da_error_histogram.add_value(da_err);
-        s.ppm_error_histogram.add_value(ppm_err);
         PrecursorStats::push_sampled_value(
             da_err,
             &mut s.absolute_error_da_values,

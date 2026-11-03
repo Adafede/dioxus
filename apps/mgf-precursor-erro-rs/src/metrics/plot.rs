@@ -12,48 +12,7 @@
 pub(crate) const MAX_PLOT_POINTS: usize = 10_000;
 pub(crate) const MAX_ECDF_POINTS: usize = 20_000;
 
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct HistogramData {
-    pub bins: Vec<usize>,
-    pub min: f64,
-    pub max: f64,
-}
-
-// `usize_to_f64` and `floor_to_usize` live in [`crate::plotting::data`], which
-// is where the other two callers already reach them from. Kept here as
-// re-exports so `merge` and this module's other users do not have to know.
-pub(super) use crate::plotting::data::{floor_to_usize, usize_to_f64};
-
-impl HistogramData {
-    #[must_use]
-    pub(crate) fn new(bin_count: usize, min: f64, max: f64) -> Self {
-        Self {
-            bins: vec![0; bin_count],
-            min,
-            max,
-        }
-    }
-
-    pub(crate) fn add_value(&mut self, value: f64) {
-        if self.bins.is_empty() || !value.is_finite() {
-            return;
-        }
-        let clamped = value.clamp(self.min, self.max);
-        let idx = if (self.max - self.min).abs() < f64::EPSILON {
-            0
-        } else {
-            let bins_last = usize_to_f64(self.bins.len().saturating_sub(1));
-            let index = (((clamped - self.min) / (self.max - self.min)) * bins_last).floor();
-            floor_to_usize(index)
-        };
-        let idx = idx.min(self.bins.len().saturating_sub(1));
-        // An empty histogram has nowhere to count into, which is a degenerate
-        // configuration rather than a value that fell out of the bin index.
-        if let Some(bin) = self.bins.get_mut(idx) {
-            *bin = bin.saturating_add(1);
-        }
-    }
-}
+pub(super) use crate::plotting::data::usize_to_f64;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum AdductFamily {

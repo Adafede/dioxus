@@ -19,9 +19,8 @@ pub(crate) fn merge_precursor_stats_in_place(current: &mut PrecursorStats, next:
     let total_spectra = current_spectra + next_spectra;
 
     merge_precursor_counts(current, next);
-    merge_precursor_source(current, next);
     merge_precursor_scalar_stats(current, next, current_spectra, next_spectra, total_spectra);
-    merge_precursor_histograms(current, next);
+    merge_precursor_buckets(current, next);
     merge_precursor_samples(current, next);
     merge_precursor_plot_points(current, next);
     merge_precursor_maps(current, next);
@@ -33,18 +32,6 @@ const fn merge_precursor_counts(current: &mut PrecursorStats, next: &PrecursorSt
     current.skipped_spectra += next.skipped_spectra;
     current.spectra_with_reference_mass += next.spectra_with_reference_mass;
     current.unparsed_smiles += next.unparsed_smiles;
-}
-
-fn merge_precursor_source(current: &mut PrecursorStats, next: &PrecursorStats) {
-    if current.reference_mass_source == "none" {
-        current
-            .reference_mass_source
-            .clone_from(&next.reference_mass_source);
-    } else if current.reference_mass_source != next.reference_mass_source
-        && !next.reference_mass_source.is_empty()
-    {
-        current.reference_mass_source = "mixed".to_string();
-    }
 }
 
 /// Reweights two per-block means into their pooled mean.
@@ -151,32 +138,9 @@ fn merge_precursor_scalar_stats(
         total_spectra,
     );
     current.abs_error_ppm_rms = current.abs_error_ppm_rms.sqrt();
-
-    current.signed_error_da_mean = blend(
-        current.signed_error_da_mean,
-        next.signed_error_da_mean,
-        current_spectra,
-        next_spectra,
-        total_spectra,
-    );
-    current
-        .signed_error_da_median_tracker
-        .merge(&next.signed_error_da_median_tracker);
-    current.signed_error_da_median = current.signed_error_da_median_tracker.median();
-    current.signed_error_ppm_mean = blend(
-        current.signed_error_ppm_mean,
-        next.signed_error_ppm_mean,
-        current_spectra,
-        next_spectra,
-        total_spectra,
-    );
-    current
-        .signed_error_ppm_median_tracker
-        .merge(&next.signed_error_ppm_median_tracker);
-    current.signed_error_ppm_median = current.signed_error_ppm_median_tracker.median();
 }
 
-fn merge_precursor_histograms(current: &mut PrecursorStats, next: &PrecursorStats) {
+const fn merge_precursor_buckets(current: &mut PrecursorStats, next: &PrecursorStats) {
     current.within_0_1_da += next.within_0_1_da;
     current.within_0_5_da += next.within_0_5_da;
     current.within_1_da += next.within_1_da;
@@ -187,23 +151,6 @@ fn merge_precursor_histograms(current: &mut PrecursorStats, next: &PrecursorStat
     current.above_5_da += next.above_5_da;
     current.within_10_ppm += next.within_10_ppm;
     current.above_10_ppm += next.above_10_ppm;
-
-    for (current_count, count) in current
-        .da_error_histogram
-        .bins
-        .iter_mut()
-        .zip(next.da_error_histogram.bins.iter())
-    {
-        *current_count += count;
-    }
-    for (current_count, count) in current
-        .ppm_error_histogram
-        .bins
-        .iter_mut()
-        .zip(next.ppm_error_histogram.bins.iter())
-    {
-        *current_count += count;
-    }
 }
 
 fn merge_precursor_samples(current: &mut PrecursorStats, next: &PrecursorStats) {
