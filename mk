@@ -46,7 +46,7 @@ cargo_make() {
     fi
     [ -f Makefile.toml ] || die "no Makefile.toml or task_$1 function for local task '$1'"
     need cargo-make
-    cargo make --no-workspace "$@"
+    exec cargo make --no-workspace "$@"
 }
 
 
@@ -336,7 +336,7 @@ case "$cmd" in
             fi
         fi
         install_cargo_tools "${LOCAL_CARGO_TOOLS[@]}"
-        for t in "${LOCAL_SETUP[@]}"; do cargo_make "$t"; done
+        for t in "${LOCAL_SETUP[@]}"; do (cargo_make "$t"); done
         rustup toolchain install # from rust-toolchain.toml
         rustup toolchain install "$(msrv)" --profile minimal
         install_tombi
