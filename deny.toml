@@ -113,6 +113,6 @@ allow-git = [
   "https://github.com/earth-metabolome-initiative/geometric-traits",
   "https://github.com/earth-metabolome-initiative/mascot-rs.git",
   "https://github.com/earth-metabolome-initiative/mass-spectrometry-traits",
-  "https://github.com/earth-metabolome-initiative/smiles-parser",
+  "https://github.com/earth-metabolome-initiative/smiles-rs",
   "https://github.com/lotusnprod/lotus-explore-rs",
 ]

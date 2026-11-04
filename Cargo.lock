@@ -1563,7 +1563,7 @@ dependencies = [
 [[package]]
 name = "geometric-traits"
 version = "0.2.3"
-source = "git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main#72c9e5f6fcc40127549813725c1849c5ddf4cf86"
+source = "git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main#2f2a39d9534bfeb115b0e489c7ba614e29fa3c48"
 dependencies = [
  "barnes-hut-tree",
  "hashbrown",
@@ -1577,7 +1577,7 @@ dependencies = [
 [[package]]
 name = "geometric-traits"
 version = "0.2.3"
-source = "git+https://github.com/earth-metabolome-initiative/geometric-traits#72c9e5f6fcc40127549813725c1849c5ddf4cf86"
+source = "git+https://github.com/earth-metabolome-initiative/geometric-traits#2f2a39d9534bfeb115b0e489c7ba614e29fa3c48"
 dependencies = [
  "barnes-hut-tree",
  "hashbrown",
@@ -3477,7 +3477,7 @@ dependencies = [
 [[package]]
 name = "smiles-parser"
 version = "0.1.0"
-source = "git+https://github.com/earth-metabolome-initiative/smiles-parser?rev=ad15ce7205f4e3ad842f5eaa153d562f3548bd79#ad15ce7205f4e3ad842f5eaa153d562f3548bd79"
+source = "git+https://github.com/earth-metabolome-initiative/smiles-rs?rev=ad15ce7205f4e3ad842f5eaa153d562f3548bd79#ad15ce7205f4e3ad842f5eaa153d562f3548bd79"
 dependencies = [
  "elements_rs",
  "geometric-traits 0.2.3 (git+https://github.com/earth-metabolome-initiative/geometric-traits?branch=main)",

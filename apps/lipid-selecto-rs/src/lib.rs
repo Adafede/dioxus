@@ -13,12 +13,13 @@
 //!
 //! # Features
 //!
-//! - Built-in SMARTS patterns covering all 8 LIPID MAPS families (FA, GL, GP, SP, ST, PR, SL, PK)
+//! - Built-in SMARTS patterns covering all 8 LIPID MAPS families (FA, GL, GP, SP,
+//!   ST, PR, SL, PK) and all 86 LMSD main classes
 //! - Auto-detects input format: MGF or SMILES list; preserves output format
 //! - Real-time class selection with live gallery/count updates
 //! - 2D molecular structure rendering (no external rendering service)
 //! - Download filtered output (MGF or SMILES) with all metadata preserved
-//! - 100 curated example lipids from LIPID MAPS
+//! - 204 curated example lipids across all 8 LIPID MAPS families
 //!
 //! # Usage
 //!

@@ -24,6 +24,14 @@
 # disk.
 git-fetch-with-cli = true
 
+# `earth-metabolome-initiative/smiles-parser` was renamed to `smiles-rs` on
+# `main`, so historical unpinned `branch = "main"` specs for `smiles-parser`
+# (resolved by `cargo refquiem` when checking removed dependencies) fail with
+# "no matching package named `smiles-parser` found" unless pinned to the last
+# commit on that repository where the package was still named `smiles-parser`.
+[patch."https://github.com/earth-metabolome-initiative/smiles-parser"]
+smiles-parser = { git = "https://github.com/earth-metabolome-initiative/smiles-rs", rev = "ad15ce7205f4e3ad842f5eaa153d562f3548bd79" }
+
 # Dependencies come from the sparse index rather than a full git clone of
 # crates.io. It is several gigabytes smaller and the difference is minutes on a
 # cold machine; see https://doc.rust-lang.org/cargo/reference/registries.html.
