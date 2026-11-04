@@ -436,6 +436,36 @@ pub(super) fn summary(
     }
 }
 
+fn gallery_class_badge(item: &crate::parser::GalleryItem) -> Element {
+    let bg_color = &item.primary_class_color;
+    let badge_label = item.primary_class_name.as_deref().or_else(|| {
+        item.classification
+            .as_ref()
+            .map(|c| c.class.lipidmaps_category())
+    });
+    let badge_title = item.classification.as_ref().map_or_else(String::new, |c| {
+        let src = if c.derived_from_smiles {
+            "SMILES"
+        } else {
+            "formula"
+        };
+        format!("{} ({src})", c.class.lipidmaps_category())
+    });
+    badge_label.map_or_else(
+        || rsx! {},
+        |class_name| {
+            rsx! {
+                div {
+                    title: "{badge_title}",
+                    style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.25rem").padding("0.1rem 0.45rem").property("margin-bottom", "0.2rem").border_radius("999px").property("background", &format!("{bg_color}22")).border(&format!("1px solid {bg_color}55")).color("#0f172a").font_size("0.68rem").font_weight("600").build(),
+                    span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", bg_color).build(), }
+                    "{class_name}"
+                }
+            }
+        },
+    )
+}
+
 /// Builds a SMILES file content string from cloned gallery data with class tags.
 pub(super) fn gallery_with_filter(
     gallery: &[crate::parser::GalleryItem],
@@ -511,12 +541,7 @@ pub(super) fn gallery_with_filter(
                                                 if let Some(title) = &item.title {
                                                     div { style: StyleBuilder::new().property("margin-bottom", "0.2rem").color("#0f172a").font_size("0.82rem").font_weight("600").build(), "{title}" }
                                                 }
-                                                if let Some(class_name) = &item.primary_class_name {
-                                                    div { style: StyleBuilder::new().display("inline-flex").align_items("center").gap("0.25rem").padding("0.1rem 0.45rem").property("margin-bottom", "0.2rem").border_radius("999px").property("background", &format!("{bg_color}22")).border(&format!("1px solid {bg_color}55")).color("#0f172a").font_size("0.68rem").font_weight("600").build(),
-                                                        span { style: StyleBuilder::new().width("6px").height("6px").border_radius("50%").property("background", bg_color).build(), }
-                                                        "{class_name}"
-                                                    }
-                                                }
+                                                { gallery_class_badge(item) }
                                                 if let Some(smiles) = &item.smiles {
                                                     div { style: StyleBuilder::new().property("margin-bottom", "0.15rem").color("#64748b").font_size("0.72rem").property("font-family", "ui-monospace, monospace").property("max-width", "100%").property("overflow", "hidden").property("text-overflow", "ellipsis").property("white-space", "nowrap").build(), "{smiles}" }
                                                 }

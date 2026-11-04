@@ -160,11 +160,21 @@ fn input_card(mut input: Signal<String>, mut aromatic: Signal<bool>) -> Element 
     }
 }
 
-/// Renders the variable pendant groups (`m:` blocks) beneath the shared scaffold.
+/// Renders the variable pendant groups (`m:` blocks) and repeat units (`Sg:n:`)
+/// beneath the shared scaffold.
 fn floating_badges(res: &CxResult) -> Element {
-    if res.floating.is_empty() {
+    if res.floating.is_empty() && res.repeat_unit.is_none() {
         return rsx! {};
     }
+    let badge_style = StyleBuilder::new()
+        .font_family("ui-monospace, monospace")
+        .font_size("0.72rem")
+        .padding("2px 0.5rem")
+        .border_radius("999px")
+        .background_color("#f1f5f9")
+        .border("1px solid #cbd5e1")
+        .color("#334155")
+        .build();
     rsx! {
         div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.4rem").property("margin-top", "0.4rem").build(),
             for part in &res.floating {
@@ -177,8 +187,19 @@ fn floating_badges(res: &CxResult) -> Element {
                     };
                     rsx! {
                         span {
-                            style: StyleBuilder::new().font_family("ui-monospace, monospace").font_size("0.72rem").padding("2px 0.5rem").border_radius("999px").background_color("#f1f5f9").border("1px solid #cbd5e1").color("#334155").build(),
+                            style: "{badge_style}",
                             "{part.fragment_smiles} → {target_desc}"
+                        }
+                    }
+                }
+            }
+            if let Some(unit) = &res.repeat_unit {
+                {
+                    let atoms = unit.atoms.iter().map(ToString::to_string).collect::<Vec<_>>().join(",");
+                    rsx! {
+                        span {
+                            style: "{badge_style}",
+                            "Sg:n → atoms {atoms} ({unit.min}–{unit.max} repeats)"
                         }
                     }
                 }
@@ -207,6 +228,7 @@ fn results(res: &CxResult) -> Element {
         .floating
         .iter()
         .flat_map(|f| f.equiv.iter().copied())
+        .chain(res.repeat_unit.iter().flat_map(|u| u.atoms.iter().copied()))
         .collect();
     let scaffold_svg =
         depict::render_smiles_svg_highlighted(&res.scaffold_smiles, &highlight_atoms);

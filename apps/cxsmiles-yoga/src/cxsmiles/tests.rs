@@ -101,6 +101,10 @@ fn repeating_pfas() {
     assert!(r.confidence.clean);
     assert_eq!(r.scaffold_smiles, "OC(=O)C(F)(F)C(F)F");
     assert_eq!(r.cx_smiles, "OC(=O)C(F)(F)C(F)F |Sg:n:3,4,5:n:ht|");
+    let unit = r.repeat_unit.expect("repeat unit is populated");
+    assert_eq!(unit.atoms, vec![3, 4, 5]);
+    assert_eq!(unit.min, 1);
+    assert_eq!(unit.max, 3);
 }
 
 #[test]

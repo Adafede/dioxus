@@ -68,7 +68,7 @@ const CLUSTER_TANIMOTO: f64 = 0.3;
 /// # Errors
 ///
 /// Returns a [`CxError`] if any input fails to parse as SMILES.
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 pub(crate) fn generate(smiles: &[String]) -> CxResult_ {
     generate_with_options(smiles, false)
 }
@@ -91,6 +91,7 @@ pub(crate) fn generate_with_options(smiles: &[String], aromatic: bool) -> CxResu
             construct: Construct::BestEffort,
             scaffold_smiles: smi.clone(),
             floating: Vec::new(),
+            repeat_unit: None,
             confidence: Confidence {
                 coverage: Coverage {
                     covered: 1,

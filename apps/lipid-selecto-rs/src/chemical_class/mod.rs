@@ -78,7 +78,7 @@ pub(crate) struct ChemicalClass {
     /// Kept as an `allow` rather than a `cfg` on the field, because the
     /// constructor above is one shape on every target and gating the field is
     /// what made it four.
-    #[allow(dead_code)] // see above
+    #[cfg_attr(not(any(test, target_arch = "wasm32")), allow(dead_code))] // see above
     compiled: Option<smarts::QueryMolecule>,
 }
 

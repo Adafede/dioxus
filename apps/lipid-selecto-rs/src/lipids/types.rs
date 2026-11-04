@@ -160,18 +160,7 @@ impl ElementCounts {
 pub(crate) struct LipidClassification {
     /// The broad lipid class assignment.
     pub class: LipidClass,
-    /// Whether the classification came from a structural (SMILES) analysis.
-    /// Written by the classifier and read by nothing at all — not the UI, not
-    /// another module. `classify_spectrum` sets it, and the only reader in the
-    /// workspace is one assertion in `classify`'s own tests.
-    ///
-    /// So this is not a `cfg`-away: the field is genuinely produced and dropped
-    /// in *every* build, wasm included, which is the same finding as
-    /// `CxResult::floating` in `cxsmiles-yoga`. It is a fact about the app —
-    /// it knows whether a classification came from structure or from a formula
-    /// and never says so — so the field stays and the lint is silenced with the
-    /// reason written down, rather than the fact being deleted by a linter
-    /// cleanup.
-    #[allow(dead_code)] // see above
+    /// Whether the classification came from a structural (SMILES) analysis
+    /// (`true`) or was inferred from the molecular formula (`false`).
     pub derived_from_smiles: bool,
 }

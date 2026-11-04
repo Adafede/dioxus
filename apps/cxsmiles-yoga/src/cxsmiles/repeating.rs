@@ -78,6 +78,7 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> CxResult_ {
         construct: Construct::Repeating,
         scaffold_smiles,
         floating: Vec::new(),
+        repeat_unit: Some(repeat_unit),
         confidence: Confidence {
             coverage: cov,
             clean: frac >= 1.0,

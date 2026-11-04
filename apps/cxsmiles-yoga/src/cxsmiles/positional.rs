@@ -141,26 +141,22 @@ pub(crate) fn build_positional_with_options(group: &[Molecule], aromatic: bool) 
     // Round-trip enumeration.
     let enumerated = enumerate(&scaffold, &defs, &targets)?;
     let (_, cov) = roundtrip_coverage(&enumerated, group);
-    let frac = cov.fraction();
+    let clean = cov.fraction() >= 1.0;
 
     // Display FloatingParts (one per star).
     let floating: Vec<FloatingPart> = defs
         .iter()
         .zip(&targets)
-        .map(|(def, target)| {
-            let equiv = match target {
+        .map(|(def, target)| FloatingPart {
+            equiv: match target {
                 Target::Variable(p) => p.clone(),
                 Target::Fixed(_) => Vec::new(),
-            };
-            FloatingPart {
-                equiv,
-                fragment_smiles: fragment_smiles(def),
-                split: def.split,
-            }
+            },
+            fragment_smiles: fragment_smiles(def),
+            split: def.split,
         })
         .collect();
 
-    let clean = frac >= 1.0;
     Ok(CxResult {
         cx_smiles: format!("{base_smiles} |{ext}|"),
         construct: if clean {
@@ -170,6 +166,7 @@ pub(crate) fn build_positional_with_options(group: &[Molecule], aromatic: bool) 
         },
         scaffold_smiles,
         floating,
+        repeat_unit: None,
         confidence: Confidence {
             coverage: cov,
             clean,

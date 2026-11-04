@@ -57,7 +57,7 @@ pub(crate) struct FloatingPart {
 }
 
 /// A repeating unit marked with `Sg:n:`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RepeatUnit {
     /// Atom indices (into the base SMILES) of one copy of the repeat unit.
     pub(crate) atoms: Vec<usize>,
@@ -72,6 +72,7 @@ pub(crate) struct CxResult {
     pub(crate) construct: Construct,
     pub(crate) scaffold_smiles: String,
     pub(crate) floating: Vec<FloatingPart>,
+    pub(crate) repeat_unit: Option<RepeatUnit>,
     pub(crate) confidence: Confidence,
     /// All distinct molecules enumerated from the generated CX-SMILES
     /// (canonical SMILES) — used by the UI to depict candidates.
