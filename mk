@@ -46,7 +46,7 @@ cargo_make() {
     fi
     [ -f Makefile.toml ] || die "no Makefile.toml or task_$1 function for local task '$1'"
     need cargo-make
-    exec cargo make --no-workspace "$@"
+    cargo make --no-workspace "$@"
 }
 
 
