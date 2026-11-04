@@ -117,6 +117,24 @@ fn an_empty_string_counts_nothing_wherever_it_appears() {
 #[test]
 fn an_empty_object_has_no_columns() {
     assert_eq!(columns("{}", 64), Ok(Vec::new()));
+    assert_eq!(columns("[]", 64), Ok(Vec::new()));
+}
+
+#[test]
+fn a_top_level_array_of_objects_counts_non_null_rows_per_key() {
+    let doc = r#"[{"id":"0","qc":null,"peaks":[[91.0,0.1],[125.0,0.3]]},{},{"id":"1","qc":"ok","peaks":[]},{"id":"2","qc":"","peaks":[[100.0,1.0]]}]"#;
+    let whole = Ok(vec![
+        ("id".to_string(), 3),
+        ("qc".to_string(), 1),
+        ("peaks".to_string(), 2),
+    ]);
+    for chunk in 1..=doc.len() {
+        assert_eq!(
+            columns(doc, chunk),
+            whole,
+            "chunk size {chunk} changed the row-array result"
+        );
+    }
 }
 
 // ── chunk boundaries, which is what the source seam is for ──────────────

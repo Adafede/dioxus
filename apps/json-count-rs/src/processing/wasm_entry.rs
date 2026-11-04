@@ -63,7 +63,7 @@ fn spawn_scan(
         let total_bytes = blob.size() as u64;
         status.set(format!("Scanning {total_bytes} bytes..."));
 
-        let cols = match scan_source_with_progress(
+        match scan_source_with_progress(
             BlobSource::new(&blob),
             total_bytes,
             move |processed, total| {
@@ -72,20 +72,20 @@ fn spawn_scan(
         )
         .await
         {
-            Ok(cols) => cols,
+            Ok(cols) => {
+                let total: u64 = cols.iter().map(|col| col.count).sum();
+                status.set(format!(
+                    "Done — {} columns, {} total non-null values",
+                    cols.len(),
+                    total
+                ));
+                results.set(cols);
+            }
             Err(error) => {
                 status.set(format!("Error reading file: {error:?}"));
-                Vec::new()
+                results.set(Vec::new());
             }
-        };
-
-        let total: u64 = cols.iter().map(|col| col.count).sum();
-        status.set(format!(
-            "Done — {} columns, {} total non-null values",
-            cols.len(),
-            total
-        ));
-        results.set(cols);
+        }
         busy.set(false);
     });
 }

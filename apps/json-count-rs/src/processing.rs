@@ -579,7 +579,68 @@ async fn count_value<F: FnMut(u64, u64), S: ChunkSource>(
     ))
 }
 
+/// Scans one JSON object (after its opening `{` has been consumed), adding
+/// each key's non-null count to `fields` in first-seen key order.
+///
+/// When `per_row` is `false` (top-level column object), a key's value adds its
+/// full leaf count; when `true` (an element of a top-level array of row
+/// objects), a key's value adds `1` if non-null/non-empty and `0` otherwise.
+#[cfg(any(test, target_arch = "wasm32"))]
+#[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
+async fn scan_object<F, S>(
+    cur: &mut BlobCursor<F, S>,
+    fields: &mut Vec<ColumnResult>,
+    index_by_key: &mut std::collections::HashMap<String, usize>,
+    per_row: bool,
+) -> Result<(), String>
+where
+    F: FnMut(u64, u64),
+    S: ChunkSource,
+{
+    loop {
+        cur.skip_ws().await.map_err(|e| e.to_string())?;
+        if cur.peek().await.map_err(|e| e.to_string())? == Some(b'}') {
+            cur.next_byte().await.map_err(|e| e.to_string())?;
+            break;
+        }
+
+        let key = read_json_key(cur).await.map_err(|e| e.to_string())?;
+        cur.skip_ws().await.map_err(|e| e.to_string())?;
+
+        let colon = cur.next_byte().await.map_err(|e| e.to_string())?;
+        if colon != Some(b':') {
+            return Err("Expected ':' after object key".to_string());
+        }
+
+        cur.skip_ws().await.map_err(|e| e.to_string())?;
+        let raw_count = count_value(cur).await.map_err(|e| e.to_string())?;
+        let count = if per_row {
+            u64::from(raw_count > 0)
+        } else {
+            raw_count
+        };
+        if let Some(&idx) = index_by_key.get(&key) {
+            if let Some(col) = fields.get_mut(idx) {
+                col.count += count;
+            }
+        } else {
+            index_by_key.insert(key.clone(), fields.len());
+            fields.push(ColumnResult { key, count });
+        }
+
+        cur.skip_ws().await.map_err(|e| e.to_string())?;
+        if cur.next_byte().await.map_err(|e| e.to_string())? != Some(b',') {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
 /// The JSON column grammar, over any [`ChunkSource`].
+///
+/// Accepts both a top-level column object (`{"col": [...]}`) and a top-level
+/// array of row objects (`[{"col": ...}, ...]`).
 ///
 /// This is the scanner that runs in the browser, with the browser taken out.
 /// The browser entry point is [`scan_source_with_progress`] plus a `BlobSource`.
@@ -598,40 +659,31 @@ where
     let Some(open) = cur.next_byte().await.map_err(|e| e.to_string())? else {
         return Ok(Vec::new());
     };
-    if open != b'{' {
-        return Err("Expected a top-level JSON object".to_string());
-    }
 
     let mut fields = Vec::new();
-    loop {
-        cur.skip_ws().await.map_err(|e| e.to_string())?;
-        if cur.peek().await.map_err(|e| e.to_string())? == Some(b'}') {
-            cur.next_byte().await.map_err(|e| e.to_string())?;
-            break;
+    let mut index_by_key = std::collections::HashMap::new();
+
+    match open {
+        b'{' => {
+            scan_object(cur, &mut fields, &mut index_by_key, false).await?;
         }
-
-        let key = read_json_key(cur).await.map_err(|e| e.to_string())?;
-        cur.skip_ws().await.map_err(|e| e.to_string())?;
-
-        let colon = cur.next_byte().await.map_err(|e| e.to_string())?;
-        if colon != Some(b':') {
-            return Err("Expected ':' after object key".to_string());
+        b'[' => {
+            for _ in 0..pass_bound(cur) {
+                cur.skip_ws().await.map_err(|e| e.to_string())?;
+                if cur.peek().await.map_err(|e| e.to_string())? == Some(b']') {
+                    break;
+                }
+                if cur.next_byte().await.map_err(|e| e.to_string())? != Some(b'{') {
+                    return Err("Expected a top-level JSON object".to_string());
+                }
+                scan_object(cur, &mut fields, &mut index_by_key, true).await?;
+                cur.skip_ws().await.map_err(|e| e.to_string())?;
+                if cur.next_byte().await.map_err(|e| e.to_string())? != Some(b',') {
+                    break;
+                }
+            }
         }
-
-        cur.skip_ws().await.map_err(|e| e.to_string())?;
-        let count = count_value(cur).await.map_err(|e| e.to_string())?;
-        fields.push(ColumnResult { key, count });
-
-        cur.skip_ws().await.map_err(|e| e.to_string())?;
-        // Only a comma continues. A `}` ends the document and needs no arm of
-        // its own: consuming it changed nothing that anything downstream could
-        // observe, because this function returns `fields` either way, and the
-        // arm that consumed it was a mutant nothing could kill.
-        if cur.peek().await.map_err(|e| e.to_string())? == Some(b',') {
-            cur.next_byte().await.map_err(|e| e.to_string())?;
-        } else {
-            break;
-        }
+        _ => return Err("Expected a top-level JSON object".to_string()),
     }
 
     Ok(fields)
