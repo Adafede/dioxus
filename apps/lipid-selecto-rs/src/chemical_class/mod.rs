@@ -70,10 +70,10 @@ pub(crate) struct ChemicalClass {
     /// build.
     ///
     /// Read only where a molecule can be matched, which is the analysis pipeline:
-    /// the wasm app, and tests that are themselves `all(test, wasm32)`. A host
-    /// build — with or without a test harness — writes this field and never looks
-    /// at it, so `not(wasm32)` is the exact set of builds in which the lint
-    /// fires.
+    /// the wasm app and unit tests (`any(test, target_arch = "wasm32")`). A host
+    /// build without a test harness writes this field and never looks at it, so
+    /// `not(any(test, target_arch = "wasm32"))` is the exact set of builds in
+    /// which the lint fires.
     ///
     /// Kept as an `allow` rather than a `cfg` on the field, because the
     /// constructor above is one shape on every target and gating the field is

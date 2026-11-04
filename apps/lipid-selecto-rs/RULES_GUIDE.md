@@ -1,7 +1,7 @@
 # Lipid Classification Rules - User Guide
 
 This document explains the lipid classification rules in `lipid-selecto-rs`
-covering **all 8 LIPID MAPS categories** with 22 chemical classes.
+covering **all 8 LIPID MAPS categories** with **86 LMSD main classes** (`lmsd_classes` in `src/chemical_class/lmsd.rs`) plus 22 broad chemical classes (`defaults.rs`).
 
 ## Quick Start
 
@@ -299,18 +299,9 @@ CCCCCCCCCCCCCCCC(=O)OC(COP(=O)(O)OCC[N+](C)(C)C)OC(=O)CCCCCCCCCCCCCCCC
 
 ## Example Dataset
 
-The application includes **100 curated SMILES** covering all lipid classes:
+The application includes **86 curated SMILES** (one representative per LMSD main class across all 8 LIPID MAPS categories: `FA00–FA13`, `GL00–GL07`, `GP00–GP25`, `SP00–SP08`, `ST01–ST05`, `PR01–PR04`, `SL01–SL05`, `PK00–PK15`).
 
-- **18 Fatty Acids**: Saturated, MUFA, PUFA variants
-- **14 Triglycerides**: Various chain compositions
-- **10 Diglycerides & Monoglycerides**
-- **16 Phospholipids**: PC, PE, PS, PI, PG, PA + lyso + plasmalogen + ether
-  variants
-- **14 Sphingolipids**: Ceramides, sphingomyelins, hexosylceramides
-- **2 Cardiolipins**
-- **Plus additional architectural variants**
-
-Access via: `lipid_selecto_rs::examples::FAMILIES`
+Access via: `lipid_selecto_rs::examples::example_smiles`
 
 ## Performance Tips
 
@@ -335,7 +326,6 @@ Access via: `lipid_selecto_rs::examples::FAMILIES`
 2. **Test on known molecules**: Compare with ChemSpider or PubChem
 3. **Check priority**: Lower-priority rules won't match if higher rules match
    first
-4. **Verify acyclic check**: All rules reject molecules with rings
 
 ### False positives
 
@@ -356,7 +346,7 @@ If non-lipids are being matched:
 
 Rules are curated to match the **LIPID MAPS classification system**:
 
-- **Structural families**: FA, GL, GP, SP (+ future: ST, PR, SL, PK)
+- **Structural families**: FA, GL, GP, SP, ST, PR, SL, PK (all 86 LMSD main classes)
 - **Architectures**: DiAcyl, MonoAcyl, Plasmalogen, AlkylAcyl, DiEther
 - **Chain naming**: Fatty acids denoted as `C#:#` (carbons:double bonds)
 

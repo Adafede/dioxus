@@ -3,8 +3,9 @@
 ## Overview
 
 This document describes the hierarchical lipid classification system aligned
-with LIPID MAPS standards, covering **all 8 major structural families** and 22
-chemical classes.
+with LIPID MAPS standards, covering **all 8 major structural families** and **86
+LMSD main classes** (`FA00–FA13`, `GL00–GL07`, `GP00–GP25`, `SP00–SP08`,
+`ST01–ST05`, `PR01–PR04`, `SL01–SL05`, `PK00–PK15`).
 
 ## LIPID MAPS Categories (8 Families)
 

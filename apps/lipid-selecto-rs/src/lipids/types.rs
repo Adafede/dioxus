@@ -10,25 +10,15 @@
 //!
 //! # The `allow(dead_code)` attributes here
 //!
-//! Three, for three different reasons, and none of them is "this is disabled
-//! work".
-//!
-//! `LipidClass` and `ElementCounts` are narrowed to
-//! `not(any(test, wasm32))` — a host build with no test harness, which is the
-//! only configuration in which nothing constructs them. They were
-//! `not(target_arch = "wasm32")`, one configuration wider than needed, because
-//! the test build *does* construct them: it compiles `classify`, and `classify`
-//! is what builds them.
+//! Two, narrowed to `not(any(test, wasm32))` — a host build with no test
+//! harness, which is the only configuration in which nothing constructs
+//! `LipidClass` or `ElementCounts`.
 //!
 //! They cannot be `cfg`s on the items, which is the better answer where it is
 //! available. `LipidClass` is a field type of `SpectrumBlock`, which is
 //! reachable from the app, which is reachable from `main`, and the host build
 //! compiles `main` — so this module is compiled in every build, and "nothing
 //! constructs this yet" cannot be expressed as "do not compile this".
-//!
-//! `derived_from_smiles` is a different thing entirely and is not narrowed,
-//! because it has no reader in *any* build, wasm included. See its own
-//! documentation.
 
 /// The broad lipid category a spectrum's molecule belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
