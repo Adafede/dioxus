@@ -22,7 +22,7 @@ performance in the browser.
 - Real-time class selection with live gallery/count updates
 - 2D molecular structure rendering (no external rendering service)
 - Download filtered output (MGF or SMILES) with all metadata preserved
-- 86 curated example lipids (one per LMSD main class) from LIPID MAPS
+- 204 curated example lipids across all 8 LIPID MAPS families
 
 ## Usage
 

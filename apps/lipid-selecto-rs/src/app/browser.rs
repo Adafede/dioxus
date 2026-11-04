@@ -140,7 +140,7 @@ pub(super) fn begin_analysis_from_blob(
     );
 }
 
-/// Loads the curated example lipid dataset (86 SMILES) and runs analysis.
+/// Loads the curated example lipid dataset (204 SMILES) and runs analysis.
 #[cfg(target_arch = "wasm32")]
 pub(super) fn load_example_dataset(
     file_name_signal: Signal<String>,

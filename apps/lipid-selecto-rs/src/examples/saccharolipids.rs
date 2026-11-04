@@ -5,7 +5,7 @@
 ///
 /// One family per file: the corpus is 204 entries and the flat version
 /// was a single 1001-line constant.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) const LIPIDS: &[(&str, &str, &str)] = &[
     (
         "DAT(16:0/21:0(2Me[R],3OH[R],4Me[S],6Me[S]))",

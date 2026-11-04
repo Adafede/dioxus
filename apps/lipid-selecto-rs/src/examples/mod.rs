@@ -17,7 +17,7 @@ mod sterol_lipids;
 // LIPID MAPS order. A slice of slices rather than one flat array: a `const`
 // cannot be built from other consts, so composing the families needs this
 // shape. `example_smiles` is the only consumer either way.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) const FAMILIES: &[&[(&str, &str, &str)]] = &[
     fatty_acyls::LIPIDS,
     glycerolipids::LIPIDS,
@@ -31,7 +31,7 @@ pub(crate) const FAMILIES: &[&[(&str, &str, &str)]] = &[
 
 /// Convert example list to query format (just SMILES + description lines separated by newlines).
 #[must_use]
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) fn example_smiles() -> Vec<String> {
     // `copied()` before `flatten`: `FAMILIES.iter()` yields `&&[T]`, and `&&[T]`
     // does not satisfy `IntoIterator`, so the bound on `flatten` is not met
@@ -40,6 +40,6 @@ pub(crate) fn example_smiles() -> Vec<String> {
         .iter()
         .copied()
         .flatten()
-        .map(|(id, smiles, _)| format!("{id}\t{smiles}"))
+        .map(|(id, smiles, _)| format!("{smiles}\t{id}"))
         .collect()
 }

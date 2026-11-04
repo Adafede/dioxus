@@ -299,7 +299,7 @@ CCCCCCCCCCCCCCCC(=O)OC(COP(=O)(O)OCC[N+](C)(C)C)OC(=O)CCCCCCCCCCCCCCCC
 
 ## Example Dataset
 
-The application includes **86 curated SMILES** (one representative per LMSD main class across all 8 LIPID MAPS categories: `FA00–FA13`, `GL00–GL07`, `GP00–GP25`, `SP00–SP08`, `ST01–ST05`, `PR01–PR04`, `SL01–SL05`, `PK00–PK15`).
+The application includes **204 curated SMILES** covering all 8 LIPID MAPS categories (`FA`, `GL`, `GP`, `SP`, `ST`, `PR`, `SL`, `PK`).
 
 Access via: `lipid_selecto_rs::examples::example_smiles`
 

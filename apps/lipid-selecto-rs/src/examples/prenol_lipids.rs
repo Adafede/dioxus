@@ -5,7 +5,7 @@
 ///
 /// One family per file: the corpus is 204 entries and the flat version
 /// was a single 1001-line constant.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) const LIPIDS: &[(&str, &str, &str)] = &[
     (
         "Juvenile Hormone II",

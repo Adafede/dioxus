@@ -150,3 +150,19 @@ Colneleic acid\tOC(=O)CCCCCC/C=C/O/C=C/C=C\\CCCCC
     );
     assert_eq!(summary.lipid_items, 2);
 }
+
+#[test]
+fn example_smiles_and_asset_file_parse_and_classify() {
+    let example_text = crate::examples::example_smiles().join("\n");
+    let (blocks, summary) = analyze(&example_text);
+    assert_eq!(blocks.len(), 204);
+    assert_eq!(summary.total_items, 204);
+    assert_eq!(summary.lipid_items, 195);
+    assert_eq!(summary.unclassified, 9);
+
+    let asset_text = include_str!("../../../assets/example_lipids.smi");
+    let (asset_blocks, asset_summary) = analyze(asset_text);
+    assert_eq!(asset_blocks.len(), 204);
+    assert_eq!(asset_summary.lipid_items, 195);
+    assert_eq!(asset_summary.unclassified, 9);
+}
