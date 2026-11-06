@@ -43,7 +43,7 @@ version = "0.1.0"
 edition = "2024"
 # The real floor, measured: `./mk msrv` bisects the workspace to 1.97.1.
 # 1.97 is what is claimed so that any 1.97.x satisfies it.
-rust-version = "1.97"
+rust-version = "1.99.1"
 readme = "README.md"
 repository = "https://github.com/Adafede/dioxus"
 # `homepage` is deliberately not set: the Cargo book says it should only be used

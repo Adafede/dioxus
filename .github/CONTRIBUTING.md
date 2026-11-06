@@ -102,7 +102,7 @@ only job that links a `.wasm` and reports the bundle sizes.
 | Check              | What it protects                                                |
 | ------------------ | --------------------------------------------------------------- |
 | `Gate`             | everything in the table above, in one job                       |
-| `MSRV (1.97)`      | the `rust-version` claim in the root manifest                   |
+| `MSRV (1.99.1)`    | the `rust-version` claim in the root manifest                   |
 | `WASM bundle size` | the apps' shipped size, which nothing else in the gate produces |
 
 `crates/upload/tests/gate_consistency.rs` names every workflow job and every

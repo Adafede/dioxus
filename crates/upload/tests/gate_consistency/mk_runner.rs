@@ -44,9 +44,9 @@ fn mk_holds_the_no_workspace_flag() -> Result<()> {
          per workspace member; see the header comment in the file."
     );
     assert!(
-        mk.contains("exec cargo make"),
-        "`./mk` should `exec` the runner so a signal reaches it and the exit code \
-         is the runner's"
+        !mk.contains("exec cargo make"),
+        "`cargo_make()` in `./mk` must not `exec`, otherwise `LOCAL_CI_GATES` exits \
+         after the first `local:*` task instead of running the full loop"
     );
     Ok(())
 }

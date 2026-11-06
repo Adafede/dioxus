@@ -10,7 +10,7 @@
 # `msrv`-gated lints and suggestions: without it, a suggestion that needs a
 # newer compiler than `rust-version` is still offered, and taking it silently
 # raises the real MSRV. `./mk msrv` measures the floor; this records it.
-msrv = "1.97"
+msrv = "1.99.1"
 
 # A function whose branches add up past this reads worse than a decomposed one.
 # The default is 25. This is 30: several of the parsers here are a flat sequence
