@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::str::FromStr;
 
-use mascot_rs::prelude::*;
-use molecular_formulas::molecular_formula::MolecularFormula;
+use chematic::{chem, smiles};
+use molecular_formulas::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use web_sys::console;
 // Nothing else in this module needs the browser: the parse paths are pure
@@ -48,8 +48,9 @@ fn exact_mass_from_smiles_uncached(smiles: &str) -> Option<f64> {
     }
 
     let parsed = catch_unwind(AssertUnwindSafe(|| {
-        let parsed = Smiles::from_str(smiles).ok()?;
-        let formula: ChemicalFormula<u32, i32> = ChemicalFormula::from(&parsed);
+        let mol = smiles::parse(smiles).ok()?;
+        let formula_str = chem::calc_mol_formula(&mol);
+        let formula: ChemicalFormula<u32, i32> = ChemicalFormula::from_str(&formula_str).ok()?;
         Some(formula.isotopologue_mass())
     }));
 

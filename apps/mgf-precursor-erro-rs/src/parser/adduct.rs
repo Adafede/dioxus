@@ -7,14 +7,13 @@
 //! the adduct parsers (`parse_charge_sign`, `parse_adduct_mass_spec_cached`,
 //! `parse_charge_value`, ...) — keeping it with its dependencies avoids a
 //! mass↔adduct module cycle, while `mass` stays a pure leaf that depends on
-//! nothing but `mascot_rs` / `molecular_formulas`.
+//! nothing but `chematic` / `molecular_formulas`.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use mascot_rs::prelude::*;
-use molecular_formulas::molecular_formula::MolecularFormula;
+use molecular_formulas::prelude::*;
 
 use super::{
     AMMONIUM_MASS, ELECTRON_MASS, HYDROGEN_MASS, POTASSIUM_MASS, PROTON_MASS, SODIUM_MASS,

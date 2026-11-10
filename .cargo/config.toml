@@ -17,11 +17,10 @@
 # `-- -D warnings` on every clippy task.
 
 [net]
-# `git fetch` rather than `git fetch --unreachable`: the two git dependencies
-# (`lotus-search`, `mascot-rs`) are tracked on a branch rather than a rev, so a
-# new commit on that branch has to be fetched for `cargo update` to see it. The
-# default keeps unreachable objects, which for a workspace this size is real
-# disk.
+# `git fetch` rather than `git fetch --unreachable`: the git dependency
+# (`lotus-search`) is tracked on a branch rather than a rev, so a new commit on
+# that branch has to be fetched for `cargo update` to see it. The default keeps
+# unreachable objects, which for a workspace this size is real disk.
 git-fetch-with-cli = true
 
 # `earth-metabolome-initiative/smiles-parser` was renamed to `smiles-rs` on
