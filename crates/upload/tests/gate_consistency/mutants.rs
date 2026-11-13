@@ -40,8 +40,7 @@ fn the_mutants_task_names_a_scope() -> Result<()> {
         .lines()
         .find_map(|line| line.trim().strip_prefix("MUTANTS_PACKAGES=("))
         .and_then(|rest| rest.split(')').next())
-        .map(|names| names.split_whitespace().map(str::to_string).collect())
-        .unwrap_or_default();
+        .map_or_default(|names| names.split_whitespace().map(str::to_string).collect());
     assert!(
         !scope.is_empty(),
         "no `MUTANTS_PACKAGES` in `mk.local`, so `./mk mutants` mutates the whole \

@@ -48,10 +48,7 @@ pub(super) fn passes_item_filters(
     {
         return false;
     }
-    if !adduct_filter.is_empty() && adduct != Some(adduct_filter) {
-        return false;
-    }
-    true
+    adduct_filter.is_empty() || adduct == Some(adduct_filter)
 }
 
 /// Compute class tags for a single block (for MGF download tagging).

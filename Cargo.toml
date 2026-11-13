@@ -161,6 +161,10 @@ unnecessary_wraps = "deny"
 unwrap_used = "deny"
 use_self = "deny"
 
+# Dioxus 0.7 `Props` derive macro generates helper enums that trigger Rust 1.100's
+# `clippy::empty_enums` lint in macro-expanded code.
+empty_enums = "allow"
+
 # Cargo hygiene
 cargo_common_metadata = "warn"
 lint_groups_priority = "warn"
