@@ -11,7 +11,7 @@
   filesystem root externalized out of this repo in
   b5e4ea12; a nonexistent root kept the filesystem MCP server from starting.
   The root README section repeated the same stale path.
-- **Root README accuracy**: the pinned toolchain line now says Rust 1.99.0
+- **Root README accuracy**: the pinned toolchain line now says Rust 1.100.0
   (what `rust-toolchain.toml` actually pins), not the stale 1.98.1.
 
 - **Document head in Rust**: All static `index.html` files replaced with

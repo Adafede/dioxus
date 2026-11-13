@@ -2,7 +2,7 @@
 name = "smarts-evoliposuction"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.99.1"
+rust-version = "1.100.0"
 description = "Batch SMARTS evolution runner for lipid class classification using smarts-evolution by Luca Cappelletti"
 documentation = "https://docs.rs/smarts-evoliposuction"
 repository = "https://github.com/earth-metabolome-initiative/smarts-evolution"

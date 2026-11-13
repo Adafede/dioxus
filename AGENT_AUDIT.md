@@ -542,7 +542,7 @@ All fast gate checks pass on the branch:
 - `.config/nextest.toml` (tracked — test profiles)
 - `.cargo/config.toml` (tracked — cargo config)
 - `.cargo/mutants.toml` (tracked — mutation testing config)
-- `rust-toolchain.toml` (tracked — Rust 1.99.0)
+- `rust-toolchain.toml` (tracked — Rust 1.100.0)
 - `clippy.toml`, `rustfmt.toml`, `.tombi.toml`, `.typos.toml`, `deny.toml` (tracked)
 - `.vscode/settings.json`, `.vscode/extensions.json`, `.vscode/README.md` (tracked)
 - `crates/upload/tests/gate_consistency.rs` (tracked — 413-line consistency test suite)

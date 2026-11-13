@@ -64,7 +64,7 @@ _Annotated, signed tags (`-s`) are required for org-policy compliance._
 ## 5. CI green light
 
 Wait for every check in [`CONTRIBUTING.md`](./CONTRIBUTING.md) to pass on the
-tagged commit: `Gate`, `MSRV (1.99.1)` and `WASM bundle size`.
+tagged commit: `Gate`, `MSRV (1.100.0)` and `WASM bundle size`.
 
 **Do not let `deploy.yml` publish anything until the gate is green.** It is a
 separate workflow and does not depend on `ci`, so that a deploy is not blocked by

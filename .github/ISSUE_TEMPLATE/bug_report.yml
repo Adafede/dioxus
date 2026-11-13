@@ -55,7 +55,7 @@ body:
       label: Environment
       placeholder: |
         - OS: macOS 14.x / Ubuntu 24.04 / ...
-        - Rust: 1.99.1
+        - Rust: 1.100.0
         - dioxus-cli: 0.7.10
         - Browser (if frontend): Firefox 126 / Chrome 125
     validations:
