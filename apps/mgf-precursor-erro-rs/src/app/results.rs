@@ -365,6 +365,11 @@ pub fn ResultsPanel(
                         },
                         "Download Recalibrated MGF"
                     }
+                } else if metrics.raw_retention_capped && !matches!(*calibration_model.read(), CalibrationModel::None) {
+                    div {
+                        style: StyleBuilder::new().property("margin-top", "1rem").padding("0.75rem 0.9rem").border("1px solid #fcd34d").border_radius("10px").property("background", "#fffbeb").color("#92400e").font_size("0.88rem").build(),
+                        "Recalibrated MGF export is disabled for files larger than 64 MiB because raw spectrum lines are not retained above that limit; precursor error diagnostics above still cover the entire file."
+                    }
                 }
 
                 // Recalibration diagnostics display

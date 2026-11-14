@@ -32,6 +32,7 @@ const fn merge_precursor_counts(current: &mut PrecursorStats, next: &PrecursorSt
     current.skipped_spectra += next.skipped_spectra;
     current.spectra_with_reference_mass += next.spectra_with_reference_mass;
     current.unparsed_smiles += next.unparsed_smiles;
+    current.raw_retention_capped |= next.raw_retention_capped;
 }
 
 /// Reweights two per-block means into their pooled mean.

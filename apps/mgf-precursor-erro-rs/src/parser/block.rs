@@ -240,9 +240,39 @@ pub(crate) fn ingest_lines<'a>(
     ingestor.finish()
 }
 
+/// Upper bound on retained raw MGF text kept in browser memory for recalibrated export.
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(crate) const MAX_RAW_RETENTION_BYTES: usize = 64 * 1024 * 1024;
+
+/// Appends `line` to `raw_content` unless doing so would exceed `max_bytes`.
+///
+/// Once the cap is exceeded, clears and shrinks `raw_content` and sets
+/// `raw_retention_capped = true` so large inputs do not trigger unbounded
+/// browser string growth while streaming diagnostics continue over every block.
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(crate) fn append_retained_line(
+    raw_content: &mut String,
+    raw_retention_capped: &mut bool,
+    line: &str,
+    max_bytes: usize,
+) {
+    if *raw_retention_capped {
+        return;
+    }
+    let incoming = line.len().saturating_add(1);
+    if raw_content.len().saturating_add(incoming) > max_bytes {
+        raw_content.clear();
+        raw_content.shrink_to_fit();
+        *raw_retention_capped = true;
+        return;
+    }
+    raw_content.push_str(line);
+    raw_content.push('\n');
+}
+
 /// Streaming MGF parser that reads the blob in chunks via [`upload::BlobLines`],
-/// yielding one line at a time so each line is parsed on the fly without
-/// collecting a `Vec<String>` of all lines or reading the blob a second time.
+/// analyzing every block incrementally while retaining raw MGF text only up to
+/// [`MAX_RAW_RETENTION_BYTES`] (64 MiB) for recalibrated export.
 ///
 /// # Errors
 /// Returns an error when the blob cannot be read.
@@ -255,16 +285,23 @@ pub(crate) async fn scan_blob_with_progress(
     let mut reader = upload::BlobLines::new(upload::BlobSource::new(blob), on_progress);
     let mut ingestor = LineIngestor::default();
     let mut raw_content = String::new();
+    let mut raw_retention_capped = false;
     let mut index = 0usize;
 
     while let Some(line) = reader.next_line().await? {
         ingestor.feed_line(index, &line);
-        raw_content.push_str(&line);
-        raw_content.push('\n');
+        append_retained_line(
+            &mut raw_content,
+            &mut raw_retention_capped,
+            &line,
+            MAX_RAW_RETENTION_BYTES,
+        );
         index += 1;
     }
 
-    Ok((ingestor.finish(), raw_content))
+    let mut result = ingestor.finish();
+    result.raw_retention_capped = raw_retention_capped;
+    Ok((result, raw_content))
 }
 
 fn compute_reference_mass<S: std::hash::BuildHasher>(

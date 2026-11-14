@@ -77,9 +77,10 @@ fn batlow_entry(index: usize, total_steps: usize) -> [u8; 3] {
         let discrete_positions = [200usize, 150, 100, 50];
         discrete_positions[normalized.min(discrete_positions.len().saturating_sub(1))]
     } else {
-        let span = u32::try_from(total.saturating_sub(1)).unwrap_or(u32::MAX);
-        let normalized = u32::try_from(normalized).unwrap_or(u32::MAX);
-        let inverted = 255_u32.saturating_sub((normalized * 255_u32) / span.max(1));
+        let span = u64::try_from(total.saturating_sub(1)).unwrap_or(u64::MAX);
+        let normalized = u64::try_from(normalized).unwrap_or(u64::MAX);
+        let scaled = normalized.saturating_mul(255) / span.max(1);
+        let inverted = 255_u64.saturating_sub(scaled);
         usize::try_from(inverted).unwrap_or(usize::MAX)
     };
     BATLOW.lut[lut_index]
@@ -95,4 +96,25 @@ pub fn tolerance_step_color(index: usize, total_steps: usize) -> String {
 pub fn tolerance_step_rgb(index: usize, total_steps: usize) -> plotters::style::RGBColor {
     let [r, g, b] = batlow_entry(index, total_steps);
     plotters::style::RGBColor(r, g, b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tolerance_step_color_handles_endpoints_and_large_step_counts_without_overflow() {
+        for total in [2usize, 4, 10, 100_000_000] {
+            let first = tolerance_step_color(0, total);
+            let mid = tolerance_step_color(total / 2, total);
+            let last = tolerance_step_color(total - 1, total);
+            assert!(first.starts_with('#') && first.len() == 7);
+            assert!(mid.starts_with('#') && mid.len() == 7);
+            assert!(last.starts_with('#') && last.len() == 7);
+            assert_ne!(
+                first, last,
+                "endpoints must map to distinct palette colors for total={total}"
+            );
+        }
+    }
 }

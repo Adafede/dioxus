@@ -156,3 +156,22 @@ END IONS";
     );
     assert_eq!(stats.unrecognized_adducts.get("[M+Bogus]+"), Some(&2));
 }
+
+#[test]
+fn append_retained_line_caps_buffer_and_clears_when_limit_exceeded() {
+    assert_eq!(MAX_RAW_RETENTION_BYTES, 64 * 1024 * 1024);
+    let mut buf = String::new();
+    let mut capped = false;
+    append_retained_line(&mut buf, &mut capped, "BEGIN IONS", 32);
+    append_retained_line(&mut buf, &mut capped, "TITLE=ok", 32);
+    assert!(!capped);
+    assert_eq!(buf, "BEGIN IONS\nTITLE=ok\n");
+
+    append_retained_line(&mut buf, &mut capped, "1234567890123456", 32);
+    assert!(capped);
+    assert_eq!(buf, "", "oversized retention buffer must be cleared");
+
+    append_retained_line(&mut buf, &mut capped, "after_cap", 32);
+    assert!(capped);
+    assert_eq!(buf, "");
+}

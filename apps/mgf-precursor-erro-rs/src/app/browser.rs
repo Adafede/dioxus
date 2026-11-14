@@ -50,10 +50,33 @@ async fn fetch_remote_blob(url: &str) -> Result<Blob, String> {
         })
 }
 
-/// Downloads SVG content as a file.
+/// Sanitizes a plot title into a `.svg` filename.
+#[cfg(any(test, target_arch = "wasm32"))]
+#[must_use]
+pub(crate) fn svg_download_filename(title: &str) -> String {
+    let mut slug = String::new();
+    for ch in title.trim().chars() {
+        if ch.is_ascii_alphanumeric() {
+            slug.push(ch.to_ascii_lowercase());
+        } else if !slug.is_empty() && !slug.ends_with('_') {
+            slug.push('_');
+        }
+    }
+    let trimmed = slug.trim_matches('_');
+    let stem = if trimmed.is_empty() {
+        "plot"
+    } else {
+        trimmed.strip_suffix("_svg").unwrap_or(trimmed)
+    };
+    let stem = if stem.is_empty() { "plot" } else { stem };
+    format!("{stem}.svg")
+}
+
+/// Downloads SVG markup with an `image/svg+xml` MIME type and `.svg` extension.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn download_svg(svg: &str, filename: &str) {
-    drop(upload::download_text(svg, filename));
+pub(crate) fn download_svg(svg: &str, title: &str) {
+    let filename = svg_download_filename(title);
+    drop(upload::download_svg(svg, &filename));
 }
 
 /// Builds the output filename for a recalibrated MGF export, stripping any
@@ -92,9 +115,9 @@ pub(super) fn download_recalibrated_mgf(filename: &str, _content: &str) -> Resul
     Err("Download is only available in the browser".to_string())
 }
 
-/// Uses [`upload::BlobLines`] to read the blob in 16 MiB chunks and process
-/// one MGF block line at a time, keeping memory bounded regardless of file
-/// size.
+/// Uses [`upload::BlobLines`] to read the blob in streaming chunks and process
+/// one MGF block line at a time, retaining raw text up to 64 MiB for
+/// recalibrated MGF export while analyzing all spectra regardless of size.
 #[cfg(target_arch = "wasm32")]
 fn start_analysis(
     blob: Blob,
@@ -257,7 +280,7 @@ pub(crate) fn load_example_mgf(
 
 #[cfg(test)]
 mod tests {
-    use super::recalibrated_mgf_filename;
+    use super::{recalibrated_mgf_filename, svg_download_filename};
 
     #[test]
     fn recalibrated_mgf_filename_strips_mgf_suffix_case_insensitively() {
@@ -273,5 +296,19 @@ mod tests {
             recalibrated_mgf_filename("spectra"),
             "spectra_recalibrated.mgf"
         );
+    }
+
+    #[test]
+    fn svg_download_filename_sanitizes_titles_and_appends_svg() {
+        assert_eq!(
+            svg_download_filename("Absolute Mass Error Distribution"),
+            "absolute_mass_error_distribution.svg"
+        );
+        assert_eq!(
+            svg_download_filename("Error (ppm / mDa)"),
+            "error_ppm_mda.svg"
+        );
+        assert_eq!(svg_download_filename("chart.svg"), "chart.svg");
+        assert_eq!(svg_download_filename("   "), "plot.svg");
     }
 }

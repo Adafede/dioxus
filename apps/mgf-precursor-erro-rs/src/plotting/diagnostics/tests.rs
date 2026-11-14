@@ -32,10 +32,11 @@ fn render_ppm_all_nan_returns_ok_empty() {
 
 #[test]
 fn render_ppm_valid_values_returns_ok_with_svg() {
-    let result = render_recalibration_diagnostic_ppm(&[1.0, -2.0, 3.0], &[0.5, -0.3]);
+    let svg = render_recalibration_diagnostic_ppm(&[1.0, -2.0, 3.0], &[0.5, -0.3]).unwrap();
+    assert!(svg.contains("<svg"), "expected SVG root element");
     assert!(
-        result.is_ok(),
-        "valid ppm values should produce SVG, got {result:?}"
+        svg.contains("<polyline") || svg.contains("<path"),
+        "expected drawn plot lines"
     );
 }
 
@@ -84,10 +85,19 @@ fn render_histogram_all_nan_returns_ok_empty() {
 
 #[test]
 fn render_histogram_single_bin_single_value_returns_ok() {
-    let result = render_recalibration_diagnostic_histogram(&[1.0], &[], 1);
-    assert!(
-        result.is_ok(),
-        "single-value histogram should produce SVG, got {result:?}"
+    let svg = render_recalibration_diagnostic_histogram(&[1.0], &[], 1).unwrap();
+    assert!(svg.contains("<svg"), "expected SVG root element");
+    assert!(svg.contains("<rect"), "expected histogram bar <rect>");
+}
+
+#[test]
+fn fill_histogram_populates_first_middle_and_final_bins() {
+    let mut bins = vec![0usize; 4];
+    fill_histogram(&mut bins, &[0.0, 1.0, 2.5, 3.0, 4.0], 0.0, 4.0, 4);
+    assert_eq!(
+        bins,
+        vec![1, 1, 1, 2],
+        "all four bins including max endpoint must be populated"
     );
 }
 
@@ -113,15 +123,14 @@ fn render_mz_comparison_only_ms1_returns_ok_empty() {
 
 #[test]
 fn render_mz_comparison_valid_values_returns_ok_with_svg() {
-    let result = render_recalibration_diagnostic_mz_comparison(
+    let svg = render_recalibration_diagnostic_mz_comparison(
         &[100.0, 200.0, 300.0],
         &[102.0, 198.0, 299.0],
         &[100.5, 199.5, 299.5],
-    );
-    assert!(
-        result.is_ok(),
-        "valid mz comparison should produce SVG, got {result:?}"
-    );
+    )
+    .unwrap();
+    assert!(svg.contains("<svg"), "expected SVG root element");
+    assert!(svg.contains("<circle"), "expected scatter point <circle>");
 }
 
 // ── render_recalibration_summary_text ────────────────────────────

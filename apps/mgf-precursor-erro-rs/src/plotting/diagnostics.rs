@@ -113,13 +113,22 @@ pub fn render_recalibration_diagnostic_ppm(
 /// Extracted because the before/after passes were the same arithmetic twice,
 /// differing only in which vector they filled.
 fn fill_histogram(bins: &mut [usize], values: &[f64], min: f64, max: f64, bin_count: usize) {
+    if bin_count == 0 {
+        return;
+    }
+    let span = max - min;
     for &error in values {
-        if error.is_finite() {
-            let normalized = (error - min) / (max - min + f64::EPSILON);
-            let bin = floor_to_usize((normalized * (usize_to_f64(bin_count) - 1.0)).floor());
-            if let Some(count) = bins.get_mut(bin) {
-                *count += 1;
-            }
+        if !error.is_finite() {
+            continue;
+        }
+        let bin = if span <= 0.0 {
+            0
+        } else {
+            let normalized = ((error - min) / span).clamp(0.0, 1.0);
+            floor_to_usize((normalized * usize_to_f64(bin_count)).floor()).min(bin_count - 1)
+        };
+        if let Some(count) = bins.get_mut(bin) {
+            *count += 1;
         }
     }
 }

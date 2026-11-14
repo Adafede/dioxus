@@ -147,7 +147,10 @@ fn render_absolute_mass_bias_svg_valid_points_returns_ok() {
     );
     let result = render_absolute_mass_bias_svg("test", &points, "ppm", &[1.0, 2.0]);
     assert!(
-        result.is_ok(),
-        "valid points should produce SVG, got {result:?}"
+        matches!(
+            &result,
+            Ok(svg) if svg.contains("<svg") && svg.contains("<circle")
+        ),
+        "expected SVG with scatter points, got {result:?}"
     );
 }

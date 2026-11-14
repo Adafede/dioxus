@@ -135,6 +135,7 @@ pub(crate) struct PrecursorStats {
     pub plot_point_stream_seen: usize,
     pub unrecognized_adducts: BTreeMap<String, usize>,
     pub high_error_smiles: BTreeMap<String, HighErrorSmilesDetail>,
+    pub raw_retention_capped: bool,
 }
 
 impl Default for PrecursorStats {
@@ -181,6 +182,7 @@ impl Default for PrecursorStats {
             plot_point_stream_seen: 0,
             unrecognized_adducts: BTreeMap::new(),
             high_error_smiles: BTreeMap::new(),
+            raw_retention_capped: false,
         }
     }
 }

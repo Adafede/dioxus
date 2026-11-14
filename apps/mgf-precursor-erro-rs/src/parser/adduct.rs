@@ -66,15 +66,7 @@ pub(crate) fn expected_precursor_mz(
                     },
                 )
             });
-        let uses_mg_charge_correction = normalized_adduct
-            .as_bytes()
-            .windows(2)
-            .any(|w| w.eq_ignore_ascii_case(b"MG"))
-            && charge_sign == Some(false);
         let electron_adjustment = match charge_sign {
-            Some(false) if uses_mg_charge_correction => {
-                -ELECTRON_MASS * (charge_value - 1.0).max(0.0)
-            }
             Some(false) => -ELECTRON_MASS * charge_value,
             Some(true) => ELECTRON_MASS * charge_value,
             None => 0.0,
@@ -127,35 +119,70 @@ fn parse_charge_sign(charge: Option<&str>, ion_mode: Option<&str>) -> Option<boo
 fn apply_adduct_token(
     current: &str,
     sign: f64,
-    uses_double_mg_mass: bool,
     multiplier: &mut f64,
     shift: &mut f64,
+    saw_molecule_term: &mut bool,
     saw_unsupported_token: &mut bool,
 ) {
-    if let Some(token_mass) =
-        parse_adduct_term_mass_with_context(current, sign, uses_double_mg_mass)
-    {
+    if let Some(token_mass) = parse_adduct_term_mass(current) {
         *shift = sign.mul_add(token_mass, *shift);
-    } else if let Some(token_multiplier) = parse_multiplicity_token(current) {
+    } else if let Some(token_multiplier) = parse_multiplicity_token(current)
+        && sign > 0.0
+    {
         *multiplier = token_multiplier;
-    } else if current.eq_ignore_ascii_case("H") {
-        *shift = sign.mul_add(HYDROGEN_MASS, *shift);
+        *saw_molecule_term = true;
     } else if !current.is_empty() {
         *saw_unsupported_token = true;
     }
 }
 
+fn is_valid_adduct_suffix(suffix: &str) -> bool {
+    suffix
+        .chars()
+        .all(|c| c.is_ascii_digit() || c == '+' || c == '-')
+        && !(suffix.contains('+') && suffix.contains('-'))
+}
+
 fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     let normalized = adduct.trim().replace(' ', "").to_ascii_uppercase();
-    let body = normalized.find(']').map_or(normalized.as_str(), |index| {
-        normalized.get(1..index).unwrap_or("")
-    });
+    if normalized.is_empty() {
+        return None;
+    }
+
+    let body = if normalized.contains('[') || normalized.contains(']') {
+        let close_idx = normalized.find(']')?;
+        if !normalized.starts_with('[') || close_idx <= 1 {
+            return None;
+        }
+        let body = &normalized[1..close_idx];
+        let suffix = &normalized[close_idx + 1..];
+        if body.contains('[')
+            || suffix.contains('[')
+            || suffix.contains(']')
+            || !is_valid_adduct_suffix(suffix)
+        {
+            return None;
+        }
+        body
+    } else {
+        normalized.as_str()
+    };
+
     let charge_sign = parse_adduct_charge_sign(Some(adduct));
-    let uses_double_mg_mass = charge_sign == Some(false);
+    if charge_sign == Some(true) {
+        if body == "M+FA" {
+            return parse_adduct_term_mass("HCOO").map(|m| (1.0, m));
+        }
+        if body == "M+HAC" {
+            return parse_adduct_term_mass("CH3COO").map(|m| (1.0, m));
+        }
+    }
+
     let mut multiplier = 1.0f64;
     let mut shift = 0.0f64;
     let mut current = String::new();
     let mut sign = 1.0f64;
+    let mut saw_molecule_term = false;
     let mut saw_unsupported_token = false;
 
     for ch in body.chars() {
@@ -164,9 +191,9 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
                 apply_adduct_token(
                     &current,
                     sign,
-                    uses_double_mg_mass,
                     &mut multiplier,
                     &mut shift,
+                    &mut saw_molecule_term,
                     &mut saw_unsupported_token,
                 );
                 current.clear();
@@ -176,9 +203,9 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
                 apply_adduct_token(
                     &current,
                     sign,
-                    uses_double_mg_mass,
                     &mut multiplier,
                     &mut shift,
+                    &mut saw_molecule_term,
                     &mut saw_unsupported_token,
                 );
                 current.clear();
@@ -191,17 +218,13 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
     apply_adduct_token(
         &current,
         sign,
-        uses_double_mg_mass,
         &mut multiplier,
         &mut shift,
+        &mut saw_molecule_term,
         &mut saw_unsupported_token,
     );
 
-    if saw_unsupported_token {
-        None
-    } else if shift.abs() < f64::EPSILON && (multiplier - 1.0).abs() < f64::EPSILON && body == "M" {
-        Some((1.0, 0.0))
-    } else if body.is_empty() || body == "M" {
+    if saw_unsupported_token || !saw_molecule_term || body.is_empty() {
         None
     } else {
         Some((multiplier, shift))
@@ -263,11 +286,7 @@ fn parse_adduct_mass_spec_cached(adduct: &str) -> Option<(f64, f64)> {
     })
 }
 
-fn parse_adduct_term_mass_with_context(
-    token: &str,
-    sign: f64,
-    uses_double_mg_mass: bool,
-) -> Option<f64> {
+fn parse_adduct_term_mass(token: &str) -> Option<f64> {
     let trimmed = token.trim();
     if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("M") {
         return None;
@@ -280,10 +299,16 @@ fn parse_adduct_term_mass_with_context(
     let multiplier_str = &trimmed[..digits_end];
     let multiplier = multiplier_str.parse::<f64>().unwrap_or(1.0);
     let formula = match trimmed[digits_end..].trim() {
-        "FA" | "FORMAT" | "HCOO" => "CHO2",
+        "FA" | "HCOOH" | "FORMICACID" | "HFA" => "CH2O2",
+        "HCOO" | "FORMAT" | "FORMATE" => "CHO2",
         "HCOONA" | "NACHO2" | "NAHCOO" | "NAHCO2" | "CHNAO2" => "CHNaO2",
-        "HCOOH" | "FORMICACID" | "HFA" => "CH2O2",
         "HAC" | "HACETIC" | "ACETICACID" | "CH3COOH" => "C2H4O2",
+        "CH3COO" | "ACETATE" | "OAC" => "C2H3O2",
+        "ACN" | "CH3CN" => "C2H3N",
+        "DMSO" => "C2H6OS",
+        "ISOPROP" | "IPA" | "C3H8O" => "C3H8O",
+        "TFA" | "CF3COOH" => "C2HF3O2",
+        "CF3COO" => "C2F3O2",
         "MEOH" | "CH3OH" => "CH4O",
         "H2O" => "H2O",
         "NH3" => "NH3",
@@ -294,13 +319,7 @@ fn parse_adduct_term_mass_with_context(
         "H" => return Some(HYDROGEN_MASS * multiplier),
         "NA" => return Some(SODIUM_MASS * multiplier),
         "K" => return Some(POTASSIUM_MASS * multiplier),
-        "MG" => {
-            let base = 23.985_041_7 * multiplier;
-            if sign > 0.0 && uses_double_mg_mass {
-                return Some(23.985_041_7f64.mul_add(multiplier, base));
-            }
-            return Some(base);
-        }
+        "MG" => return Some(23.985_041_7 * multiplier),
         "CA" => return Some(39.962_590_98 * multiplier),
         "FE" => return Some(55.934_937_5 * multiplier),
         "CL" => return Some(34.968_852_68 * multiplier),
@@ -397,3 +416,6 @@ pub(crate) fn normalize_adduct_label(adduct: &str) -> &str {
 pub(crate) fn is_supported_adduct(adduct: &str) -> bool {
     parse_adduct_mass_spec_cached(adduct).is_some()
 }
+
+#[cfg(test)]
+mod tests;

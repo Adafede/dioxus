@@ -105,10 +105,11 @@ fn render_cumulative_error_three_curves_all_nan_returns_ok_empty() {
 
 #[test]
 fn render_cumulative_error_three_curves_single_point_returns_ok_with_svg() {
-    let result = render_cumulative_error_three_curves(&[1.0], &[2.0], &[0.5], "ppm", &[5.0]);
+    let svg = render_cumulative_error_three_curves(&[1.0], &[2.0], &[0.5], "ppm", &[5.0]).unwrap();
+    assert!(svg.contains("<svg"), "expected SVG root element");
     assert!(
-        result.is_ok(),
-        "single-point three-curves should produce SVG, got {result:?}"
+        svg.contains("<polyline") || svg.contains("<path"),
+        "expected curve geometry"
     );
 }
 
