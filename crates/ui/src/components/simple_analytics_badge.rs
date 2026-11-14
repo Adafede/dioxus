@@ -3,6 +3,11 @@
 
 //! `SimpleAnalytics` visitor badge, shown as a discreet page footer next to the analytics script.
 
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus component macro generates a Props helper empty enum"
+)]
+
 use dioxus::prelude::*;
 
 use crate::theme::StyleBuilder;

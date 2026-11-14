@@ -19,6 +19,11 @@
 //! The blob extraction (`upload::extract_blob_from_file_data`) is intentionally
 //! kept in the apps — so `crates/ui` stays free of the `crates/upload` dep.
 
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus component macro generates a Props helper empty enum"
+)]
+
 use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
 use dioxus::events::{DragData, FormData};
 use dioxus::prelude::*;

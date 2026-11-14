@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus component macro generates a Props helper empty enum"
+)]
+
 use dioxus::prelude::*;
 use ui::prelude::*;
 

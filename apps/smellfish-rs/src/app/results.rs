@@ -7,6 +7,11 @@
 //! signals and composes them. Formatting helpers live in [`super::formatting`],
 //! motif classification in [`super::motif_display`], and CSV export in
 //! [`super::csv_export`].
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus component macro generates Props helper empty enums"
+)]
+
 use crate::literature::LITERATURE;
 use crate::model::MoleculeRow;
 use dioxus::prelude::*;

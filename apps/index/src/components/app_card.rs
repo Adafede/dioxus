@@ -3,6 +3,11 @@
 
 //! Application card: title, link and description for one workspace entry.
 
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus component macro generates a Props helper empty enum"
+)]
+
 use super::AppInfo;
 use dioxus::prelude::*;
 use ui::prelude::*;

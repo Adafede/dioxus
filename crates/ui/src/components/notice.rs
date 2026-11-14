@@ -3,6 +3,11 @@
 
 //! Shared notice bar component.
 
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus Props derive macro generates an empty helper enum"
+)]
+
 use crate::theme::{ColorScheme, Radius, Shadow, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 

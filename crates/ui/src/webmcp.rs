@@ -10,6 +10,11 @@
 //! no-op in browsers without a `WebMCP` context, so it is safe to inject
 //! unconditionally via [`DocumentHead`](crate::document::DocumentHead).
 
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus Props derive macro generates an empty helper enum"
+)]
+
 use dioxus::prelude::*;
 use std::fmt::Write;
 

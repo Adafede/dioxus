@@ -3,6 +3,11 @@
 
 //! Footer component with semantic HTML and external link security.
 
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus Props derive macro generates an empty helper enum"
+)]
+
 use crate::theme::{ColorScheme, Radius, Spacing, StyleBuilder, Typography};
 use dioxus::prelude::*;
 

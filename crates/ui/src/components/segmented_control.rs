@@ -3,6 +3,11 @@
 
 //! Shared segmented button group.
 
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus Props derive macro generates empty helper enums"
+)]
+
 use crate::theme::{ColorScheme, Interaction, Shadow, StyleBuilder, Typography};
 use dioxus::prelude::*;
 

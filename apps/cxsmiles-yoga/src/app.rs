@@ -18,6 +18,11 @@
 //! into `input_card` and `StyleBuilder` chains are kept on single lines so
 //! both `results` and `app` stay within the lint threshold.
 
+#![expect(
+    clippy::empty_enums,
+    reason = "Dioxus Props derive macro generates an empty helper enum"
+)]
+
 use std::sync::Arc;
 
 use dioxus::prelude::*;
