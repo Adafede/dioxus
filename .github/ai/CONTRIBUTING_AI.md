@@ -1,28 +1,28 @@
 # Contributing with AI Assistance
 
-## What to optimize for
+## Commit Discipline
 
-- correctness first
-- minimal, reviewable diffs
-- stable interfaces
-- tests that prove the change
-- documentation that matches the code
+- Use Conventional Commits with an imperative subject under 72 characters
+  (`feat`, `fix`, `refactor`, `test`, `docs`, `ci`, `chore`, `build`), verified
+  by `./mk commits`.
+- Scope each commit to one logical change that builds and passes tests.
+- Never add AI attribution lines, co-author trailers, or generated-by notes.
+- Commit agent-facing files (`AGENTS.md`, `.github/ai/*`, `.mcp.json`) in their
+  own `chore(agents): ...` commits, never mixed with application code or
+  human-facing documentation.
+- Keep local scratch notes or ledgers in `.agent-work/` (gitignored) and never
+  stage them.
 
-## Before you edit
+## Definition of Done
 
-- inspect the owning module
-- trace the data flow and error flow
-- confirm the target command for validation
-- decide whether the change belongs in code, docs, or both
+Before considering a change complete:
 
-## After you edit
-
-- run the smallest relevant test set
-- run the workspace validation commands when behavior changes
-- update the skill docs if boundary rules or collaboration rules changed
-
-## Repository conventions
-
-- `docs/skills/` held plain skill contracts (consolidated into this `ai/`
-  directory alongside the collaboration guides).
-- `.github/ai/AI_AGENT_GUIDE.md` is the entry point for autonomous work.
+1. Target unit/integration tests, doctests (`./mk test`), and `wasm32` lints
+   (`./mk local:lint-wasm`) pass after the final edit.
+2. When `//!` crate documentation changes, run `./mk local:readme-write` and
+   verify `./mk local:readme-check`.
+3. When lint allows or coverage floors change, tighten only (`./mk ratchet`) and
+   update [`docs/DEBT.md`](../../docs/DEBT.md) to match `mk.local` and
+   `Cargo.toml`.
+4. `./mk ci-fast` (or `./mk ci`) and `./mk commits` exit zero with a clean
+   working tree.
