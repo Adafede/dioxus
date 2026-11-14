@@ -4,14 +4,14 @@
 # nothing else, so a check that is green locally and red in a pipeline, or the
 # reverse, cannot happen by drift: there is one command.
 #
-# `crates/upload/tests/gate_consistency.rs` holds the local gate, the git hooks
+# `crates/upload/tests/gate_consistency/` holds the local gate, the git hooks
 # and CI to the same set of checks, and fails the build if they disagree.
 #
 # The tasks are split across `make/*.toml` by concern. This file holds the shared
 # configuration and the gate itself.
 #
-# Run `./mk --list-all-steps` for the current list rather than reading this
-# file: it is the one that cannot go stale.
+# Run `./mk --list` (or `cargo make --no-workspace --list-all-steps`) for the
+# current list rather than reading this file: it is the one that cannot go stale.
 
 # The task files, one per concern.
 #
@@ -47,10 +47,8 @@ REPO_ROOT = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
 # without this the tasks are not visible at all and `./mk ci` reports
 # `Task "ci" not found`. Verified by removing the line.
 #
-# It also means a task is *executed* once per member -- eight times, seven of
-# them no-ops because Cargo has cached the build -- which is why a warm
-# `./mk ci` is ~16 s of work behind ~2 min of wall clock.
-# `./mk --no-workspace ci` is the same gate once. See CONTRIBUTING.
+# `./mk` invokes `cargo make --no-workspace` so local tasks run once from the
+# workspace root rather than repeating across all eight workspace members.
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = "true"
 
 # ── The gate ─────────────────────────────────────────────────────────────────

@@ -13,9 +13,15 @@ body:
     attributes:
       label: Target component
       options:
-        - lotus-explorer (frontend / WASM)
-        - lotus-explore-rs server (backend / Axum)
-        - shared (SPARQL client / CSV parser)
+        - index
+        - cxsmiles-yoga
+        - json-count-rs
+        - lipid-selecto-rs
+        - mgf-precursor-erro-rs
+        - smellfish-rs
+        - crates/ui
+        - crates/upload
+        - smarts-evoliposuction
         - CI / build pipeline
         - Documentation
         - New app / crate

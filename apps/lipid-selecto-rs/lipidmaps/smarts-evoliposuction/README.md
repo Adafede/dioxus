@@ -4,66 +4,82 @@ Batch SMARTS evolution runner for lipid class classification using the
 [`smarts-evolution`](https://github.com/earth-metabolome-initiative/smarts-evolution)
 genetic algorithm.
 
-Evolves high-precision SMARTS patterns directly from LIPID MAPS data, then loads
-those patterns into [`lipid-selecto-rs`](../..) for use in the interactive web
-classification UI.
+`smarts-evoliposuction` is intentionally excluded from the root Cargo workspace
+so its native bioinformatics, HTTP, and ZIP dependencies never affect the WASM
+dependency graph. Always invoke Cargo with `--locked` (either from this
+directory or from the workspace root with `--manifest-path`).
 
 ## Architecture
 
-```
+```text
 smarts-evoliposuction/
-├── src/
-│   ├── lib.rs        — public API re-exports
-│   ├── main.rs       — CLI binary (download / split / evolve / all)
-│   ├── splitting.rs  — CSV parsing + positive/negative SMILES splitting
-│   ├── evolve.rs     — smarts-evolution wrapper with per-class error isolation
-│   ├── manifest.rs   — manifest CSV reading/writing
-│   └── download.rs   — LMSD.sdf.zip download + TSV conversion
+├── Cargo.toml
+├── Cargo.lock
+└── src/
+    ├── lib.rs         public API re-exports
+    ├── main.rs        CLI binary (download / split / evolve / all)
+    ├── download.rs    LMSD.sdf.zip download + TSV conversion
+    ├── splitting.rs   TSV parsing + positive/negative SMILES splitting
+    ├── evolve.rs      smarts-evolution wrapper with per-class error isolation
+    ├── manifest.rs    manifest CSV reading/writing
+    └── lipidsdl/      vendored SDF parser & async download module
 ```
 
-**Pipeline:**
+Pipeline stages:
 
-1. **Download** --- fetches `LMSD.sdf.zip` from LIPID MAPS and converts to TSV
-   via [`lipidsdl`](../../../crates/lipidsdl).
-2. **Split** --- parses the TSV and creates balanced positive/negative SMILES
-   file pairs for each LIPID MAPS `CATEGORY` (8 major families), `MAIN_CLASS`,
-   and `SUB_CLASS`. Categories correspond to the 8 major colors used in the
-   lipid-selecto-rs UI.
-3. **Evolve** --- runs `smarts-evolution`'s genetic algorithm on each pair,
-   catching parse failures and evolution errors per-class so the batch continues
-   even if one class fails. By default only `category` and `main_class` rows are
-   evolved; use `--with-subclasses` to include `subclass` rows.
-4. **Results** --- writes `smarts_results.csv` with one row per class containing
-   the best-evolved `best_smarts` pattern, MCC score, and coverage metrics.
-   Per-class `_tested_smarts.csv` files contain all evaluated SMARTS sorted by
-   MCC, coverage, and generation.
+1. **Download**: fetches `LMSD.sdf.zip` from LIPID MAPS and converts it to TSV
+   via `src/lipidsdl/`. Note that `download --dest LMSD.sdf.zip` writes the
+   converted TSV to `dest.with_extension("tsv")` (i.e. `LMSD.sdf.tsv`).
+2. **Split**: parses the TSV (`--input` defaults to `LMSD.tsv`) and writes
+   balanced positive/negative SMILES files per `category`, `main_class`, and
+   optionally `subclass`.
+3. **Evolve**: runs `smarts-evolution` on each class manifest row, isolating
+   parse/evolution errors per class. By default only `category` and `main_class`
+   rows are processed; pass `--with-subclasses` to include subclasses.
+4. **Results**: writes `smarts_results.csv` and per-class
+   `smarts_results_tested_smarts/<slug>_tested_smarts.csv` sorted by MCC
+   (descending), coverage score (descending), and generation (ascending).
+
+## Build and Tests
+
+Upstream `smarts-rs` `main` has moved to `smiles-rs` 0.2.1 while
+`smarts-evolution` still depends on `smiles-rs` 0.1.5, so do not run unpinned
+resolution updates (`cargo update`); pass `--locked`:
+
+```bash
+cargo clippy --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --all-targets --locked -- -D warnings
+cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --locked
+```
 
 ## CLI Usage
+
+Run from this directory (`cargo run --release --locked -- ...`), or pass
+`--manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --locked`:
 
 ### All-in-one pipeline
 
 ```bash
-cargo run --release -p smarts-evoliposuction -- \
+cargo run --release --locked -- \
     all \
     --output-dir ./results \
     --generations 500 \
-    --population 200
+    --population 100
 ```
 
 ### Individual steps
 
 ```bash
-# Download + convert
-cargo run --release -p smarts-evoliposuction -- download --dest LMSD.sdf.zip
+# 1. Download + convert (writes LMSD.sdf.tsv next to --dest)
+cargo run --release --locked -- download --dest LMSD.sdf.zip
 
-# Split into positive/negative SMILES pairs
-cargo run --release -p smarts-evoliposuction -- split --input LMSD.sdf.tsv --output-dir smiles_sets
+# 2. Split into positive/negative SMILES pairs
+cargo run --release --locked -- split --input LMSD.sdf.tsv --output-dir smiles_sets
 
-# Evolve SMARTS patterns from the manifest
-cargo run --release -p smarts-evoliposuction -- evolve \
+# 3. Evolve SMARTS patterns from the manifest
+cargo run --release --locked -- evolve \
     --manifest smiles_sets/manifest.csv \
     --output smarts_results.csv \
-    --population 200 \
+    --population 100 \
     --generations 500 \
     --stagnation 50 \
     --resume
@@ -71,190 +87,97 @@ cargo run --release -p smarts-evoliposuction -- evolve \
 
 ### CLI flags
 
-| Flag                | Default | Command     | Description                                                            |
-| ------------------- | ------- | ----------- | ---------------------------------------------------------------------- |
-| `--population`      | `200`   | All, Evolve | GA population size (individuals per generation)                        |
-| `--generations`     | `500`   | All, Evolve | Max generations per class                                              |
-| `--stagnation`      | `50`    | Evolve      | Stop after N generations with no MCC improvement                       |
-| `--seed`            | `None`  | All, Evolve | Fixed RNG seed for reproducibility                                     |
-| `--resume`          | `false` | Evolve      | Skip classes already in the output CSV                                 |
-| `--level`           | `None`  | Evolve      | Filter to `category`, `main_class`, or `subclass` rows                 |
-| `--match-timeout`   | `5`     | All, Evolve | Per-SMARTS evaluation timeout in seconds (0 = none)                    |
-| `--smiles-cap`      | `2000`  | Split       | Max SMILES per positive/negative set after shuffling                   |
-| `--max-negatives`   | `5000`  | Split       | Hard cap on negatives per class                                        |
-| `--no-tui`          | `false` | All, Evolve | Disable progress output; run classes in parallel                       |
-| `--with-subclasses` | `false` | All, Evolve | Include subclass-level evolution (default: category + main_class only) |
+  | Flag                | Default                           | Command     | Description                                                   |
+  | ---                 | ---                               | ---         | ---                                                           |
+  | `--dest`            | `LMSD.sdf.zip`                    | Download    | Destination path for downloaded zip                           |
+  | `--input`           | `LMSD.tsv`                        | Split       | Input TSV file path                                           |
+  | `--output-dir`      | `smiles_sets` (Split) / `.` (All) | Split, All  | Output directory                                              |
+  | `--population`      | `100`                             | All, Evolve | GA population size                                            |
+  | `--generations`     | `500`                             | All, Evolve | Max generations per class                                     |
+  | `--stagnation`      | `50`                              | Evolve      | Stop after N generations without MCC gain                     |
+  | `--seed`            | `None`                            | All, Evolve | Fixed RNG seed for reproducibility                            |
+  | `--resume`          | `false`                           | Evolve      | Skip classes already present in `--output`                    |
+  | `--level`           | `None`                            | Evolve      | Filter to `category`, `main_class`, or `subclass`             |
+  | `--match-timeout`   | `5`                               | All, Evolve | Per-SMARTS evaluation timeout in seconds                      |
+  | `--smiles-cap`      | `2000`                            | Split       | Max SMILES per positive/negative set                          |
+  | `--max-negatives`   | `5000`                            | Split       | Cap on negative SMILES per class                              |
+  | `--no-tui`          | `false`                           | All, Evolve | Disable stderr progress output; run classes in parallel       |
+  | `--with-subclasses` | `false`                           | All, Evolve | Include `subclass` rows (`category` + `main_class` otherwise) |
 
 ## Performance Tuning
 
-The default parameters (`population=100`, `generations=500`, `stagnation=50`,
-`smiles-cap=2000`, `max-negatives=5000`) are tuned for good quality with
-reasonable runtimes. The following optimizations are **already built into the
-CLI** --- no manual intervention required:
+Default parameters (`--population 100`, `--generations 500`, `--stagnation 50`,
+`--smiles-cap 2000`, `--max-negatives 5000`, `--match-timeout 5`) balance search
+depth and runtime:
 
-### 1. Parallel across classes (built-in, zero quality impact)
+### 1. Parallel batch mode (`--no-tui`)
 
-`evolve_step` uses `rayon` to evolve all classes concurrently by default. The
-`smarts-evolution` library already parallelises _within_ each generation via
-rayon; `smarts-evoliposuction` additionally parallelises _across_ classes.
-Rayon's work-stealing scheduler shares the same thread pool, so total thread
-count stays at `num_cpus()` --- no over-subscription.
-
-**Use `--no-tui` for parallel batch mode** (no progress output, runs all classes
-concurrently):
+Passing `--no-tui` suppresses stderr progress updates and lets `rayon` schedule
+across classes concurrently:
 
 ```bash
-# Sequential with text progress (default — prints generation/best MCC to stderr)
-cargo run --release -p smarts-evoliposuction -- evolve --manifest manifests/manifest.csv --resume
-
-# Parallel batch (no progress output, all classes at once)
-cargo run --release -p smarts-evoliposuction -- evolve --manifest manifests/manifest.csv --no-tui --resume
+cargo run --release --locked -- evolve --manifest smiles_sets/manifest.csv --no-tui --resume
 ```
 
-### 2. Reduced match time limit (built-in, zero quality impact)
+### 2. Per-SMARTS evaluation timeout (`--match-timeout`)
 
-The default `smarts-evolution` per-SMARTS `match_time_limit` is **30 seconds**.
-We now set it to **5 seconds** (`--match-timeout`). MCC is a binary true/false
-metric per molecule, so 5 seconds is plenty for patterns matching ≤1000
-molecules --- you either match or you don't. The 30s limit was wasting time on
-complex patterns that time out and contribute no fitness information.
+`--match-timeout` defaults to 5 seconds (down from `smarts-evolution`'s
+30-second default) to limit time spent on pathological patterns.
 
-### 3. Evaluation set limits (quality vs. speed tradeoff)
+### 3. Training set caps (`--smiles-cap` / `--max-negatives`)
 
-SMILES sets are capped at **2000** per side (`--smiles-cap`) and negatives are
-capped at **5000** per class (`--max-negatives`). For most classes, \~500
-positives + \~1000 negatives is sufficient --- MCC saturates well before these
-counts because the metric is dominated by true/false positive/negative counts,
-not raw volume. However, for very large classes (e.g. fatty acyls with thousands
-of members), using more examples improves convergence.
-
-To reduce runtime, lower these caps:
-
-````bash
-cargo run --release -p smarts-evoliposuction -- split --smiles-cap 500 --max-negatives 1000
-
-### 4. Start with categories and main classes, then add subclasses (workflow)
-
-Categories (the 8 LIPID MAPS families, e.g. `Fatty Acyls`) and main classes
-(e.g. `FA01`) have thousands of lipids and converge quickly. Subclasses
-(e.g. `FA01`) have fewer members, harder negatives, and take much longer.
-By default, `evolve` and `all` only process `category` + `main_class` rows.
-Run subclasses separately with `--with-subclasses`:
+Lower caps speed up splitting and evaluation on large classes:
 
 ```bash
-# Step 1: category + main classes (default — fast, broad coverage)
-cargo run --release -p smarts-evoliposuction -- evolve --manifest manifest.csv --output results.csv --resume
+cargo run --release --locked -- split --input LMSD.sdf.tsv --smiles-cap 500 --max-negatives 1000
+```
 
-# Step 2: subclasses (slower, more specific)
-cargo run --release -p smarts-evoliposuction -- evolve --manifest manifest.csv --output results.csv --level subclass --with-subclasses --resume
+### 4. Level staging
 
-# Or filter to a single level:
-cargo run --release -p smarts-evoliposuction -- evolve --manifest manifest.csv --level category --resume
-````
-
-### Parameter Reference
-
-| Parameter         | Default | Low/budget | High/quality | What it affects                                        |
-| ----------------- | ------- | ---------- | ------------ | ------------------------------------------------------ |
-| `--population`    | `100`   | `50`       | `200`        | Genetic diversity; higher = fewer local optima         |
-| `--generations`   | `500`   | `200`      | `1000`       | Evolution time; higher = more convergence              |
-| `--stagnation`    | `50`    | `30`       | `100`        | Early stopping patience; higher = more time at plateau |
-| `--smiles-cap`    | `2000`  | `500`      | `5000`       | Training set size per side; higher = more signal       |
-| `--max-negatives` | `5000`  | `1000`     | `10000`      | Negative set cap per class                             |
-| `--match-timeout` | `5`     | `3`        | `10`         | Per-SMARTS eval timeout; safety net only               |
-
-**Recommendation:** Increase `--population` first (diversity bottleneck), then
-`--generations` (convergence). Training set sizes (`--smiles-cap`) mainly matter
-for large categories/families with thousands of lipids.
-
-### 5. Reduce population and generations (quality trade-off)
-
-`population_size=200` is generous. For well-separated chemical classes,
-`population=50` often finds MCC > 0.9 just as reliably, cutting runtime by 4×.
-Similarly, `generations=200` instead of 500 still allows convergence while
-reducing time:
+Categories and main classes converge faster than finer subclasses. Run default
+`category` + `main_class` first, then run `--level subclass --with-subclasses`:
 
 ```bash
-cargo run --release -p smarts-evoliposuction -- evolve --manifest manifest.csv --population 50 --generations 200 --resume
+cargo run --release --locked -- evolve --manifest smiles_sets/manifest.csv --output smarts_results.csv --resume
+cargo run --release --locked -- evolve --manifest smiles_sets/manifest.csv --output smarts_results.csv --level subclass --with-subclasses --resume
 ```
 
-### 7. Incremental pipeline (skip existing)
+### 5. Smaller GA budgets
 
-The `all` command automatically skips steps that already have outputs:
-
-- **Download**: skips if `LMSD.sdf.zip` already exists and is non-empty (still
-  converts to TSV if the TSV is missing)
-- **Split**: skips if `smiles_sets/manifest.csv` already exists
-- **Evolve**: uses `--resume` by default; skips classes already in
-  `smarts_results.csv`
-
-This makes re-runs fast --- just re-run `all` after a crash or partial
-completion:
+To trade search depth for faster runs:
 
 ```bash
-cargo run --release -p smarts-evoliposuction -- all --output-dir ./results
+cargo run --release --locked -- evolve --manifest smiles_sets/manifest.csv --population 50 --generations 200 --resume
 ```
 
-The `all` pipeline always resumes --- it skips download, split, and
-already-completed classes automatically.
+### 6. Incremental resume (`all`)
 
-## Results & CSV output
+The `all` subcommand skips `download` if non-empty `LMSD.sdf.zip` already exists
+(still converting to `LMSD.sdf.tsv` if missing), skips `split` when
+`smiles_sets/manifest.csv` already exists, and resumes `evolve` against existing
+`smarts_results.csv` entries.
 
-Two CSV files are produced per class:
+## Results & CSV Output
 
-| File                       | Description                                                                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `smarts_results.csv`       | One row per class — best SMARTS, MCC, coverage, generations, status, and link to tested-SMARTS CSV                                 |
-| `<slug>_tested_smarts.csv` | All evaluated SMARTS for that class with metrics (`smarts`, `mcc`, `smarts_len`, `coverage_score`, `limit_exceeded`, `generation`) |
+  | Artifact                                                | Description                                                                                      |
+  | ---                                                     | ---                                                                                              |
+  | `smarts_results.csv`                                    | Best evolved SMARTS, MCC, coverage, generation count, and status per class                       |
+  | `smarts_results_tested_smarts/<slug>_tested_smarts.csv` | Evaluated SMARTS history sorted by MCC descending, coverage descending, and generation ascending |
 
-**Tested-SMARTS capture (both modes):**
+## Integration with `lipid-selecto-rs`
 
-Both progress and parallel modes use the `TestedSmartsObserver` which intercepts
-every genome evaluation during evolution. This captures **all** evaluated SMARTS ---
-including duplicates and ties --- with their generation numbers. No
-deduplication is performed, so the per-class CSV contains the complete history
-of every SMARTS evaluated.
+Evolved rules are curated offline from `smarts_results.csv` into static
+`LmsdEntry` rows in `apps/lipid-selecto-rs/src/chemical_class/lmsd.rs` (exposed
+internally inside `lipid-selecto-rs` via `lmsd_classes()` and `lmsd_all()`). The
+WASM frontend does not read CSV files at runtime.
 
-The per-class CSV is sorted by: 1. MCC (descending) --- most selective patterns
-first 2. `coverage_score` (descending) --- broader coverage preferred on ties 3.
-`generation` (ascending) --- earlier discoveries preferred on ties
+See [`../README.md`](../README.md) for the surrounding `lipidmaps/` directory
+overview.
 
-**Progress mode (default)**: Sequential, one class at a time. Prints text
-progress to stderr (generation, best MCC, best SMARTS). Safe in any terminal.
+## Credits
 
-**Parallel mode (`--no-tui`)**: All classes evolved concurrently via rayon. No
-stderr progress output (to avoid interleaved spam). Use `evolve` (not `all`) if
-you want to see per-class progress.
-
-## Integration with lipid-selecto-rs
-
-The evolved SMARTS CSV is the single output file used to populate the LMSD
-subclass table in `lipid-selecto-rs` (`chemical_class::lmsd_classes()`):
-
-```rust
-use lipid_selecto_rs::chemical_class::lmsd_classes;
-
-let classes = lmsd_classes();
-```
-
-Rules with `status == "ok"` and a non-empty `best_smarts` field are loaded and
-pre-compiled for fast matching. Each rule's `description` field includes the MCC
-score, coverage, and generation count so you can see which patterns are most
-selective.
-
-See [`../../README.md`](../../README.md) (parent `lipidmaps/` README) for the
-full end-to-end workflow documentation.
-
-## External Dependencies
-
-This project builds on the excellent work of **Luca Cappelletti**
-(@LucaCappelletti94), Earth Metabolome Initiative:
-
-- [`smarts-evolution`](https://github.com/earth-metabolome-initiative/smarts-evolution) ---
-  Genetic algorithm for evolving SMARTS patterns
-- [`smarts-rs`](https://github.com/earth-metabolome-initiative/smarts-rs) ---
-  High-performance SMARTS matching library
-- [`smiles-rs`](https://github.com/earth-metabolome-initiative/smiles-rs) ---
-  SMILES string parser
-
-Credit: Luca Cappelletti, Earth Metabolome Initiative.
+Built on
+[`smarts-evolution`](https://github.com/earth-metabolome-initiative/smarts-evolution),
+[`smarts-rs`](https://github.com/earth-metabolome-initiative/smarts-rs), and
+[`smiles-rs`](https://github.com/earth-metabolome-initiative/smiles-rs) by Luca
+Cappelletti (@LucaCappelletti94).

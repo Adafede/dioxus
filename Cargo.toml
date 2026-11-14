@@ -41,8 +41,6 @@ exclude = ["apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-# The real floor, measured: `./mk msrv` bisects the workspace to 1.97.1.
-# 1.97 is what is claimed so that any 1.97.x satisfies it.
 rust-version = "1.100.0"
 readme = "README.md"
 repository = "https://github.com/Adafede/dioxus"

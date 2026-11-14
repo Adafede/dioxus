@@ -1,137 +1,97 @@
 # LipidMaps Data & SMARTS Evolution
 
-This directory contains the LIPID MAPS lipid data and tooling for evolving
-SMARTS patterns that classify lipids with perfect precision.
+This directory holds tooling for downloading the LIPID MAPS Structure Database
+(LMSD) and evolving SMARTS classification rules offline for `lipid-selecto-rs`.
 
 ## Directory Layout
 
-```
+```text
 lipidmaps/
-├── README.md                     ← you are here
-├── LMSD.sdf.zip                  ← raw LIPID MAPS Structure Database (download)
-├── smarts-evoliposuction/        ← GA runner: evolve SMARTS from LIPID MAPS data
-│   ├── src/
-│   │   ├── download.rs           ← fetch LMSD.sdf.zip → convert to TSV
-│   │   ├── splitting.rs          ← split TSV into per-class +/− SMILES pairs
-│   │   ├── evolve.rs             ← run smarts-evolution GA per class
-│   │   ├── manifest.rs           ← CSV manifest I/O
-│   │   └── main.rs               ← CLI binary
-│   └── Cargo.toml
-└── sparql_lipids.ttl             ← RDF/Turtle LIPID MAPS ontology (if present)
+├── README.md                     this file
+└── smarts-evoliposuction/        standalone CLI for SMARTS evolution (excluded from workspace)
+    ├── Cargo.toml
+    ├── Cargo.lock
+    ├── README.md
+    └── src/
+        ├── download.rs           fetch LMSD.sdf.zip and convert to TSV
+        ├── splitting.rs          split TSV into per-class +/- SMILES pairs
+        ├── evolve.rs             run smarts-evolution GA per class
+        ├── manifest.rs           CSV manifest I/O
+        ├── main.rs               CLI binary (download / split / evolve / all)
+        └── lipidsdl/             vendored SDF/TSV download & conversion module
 ```
 
-## The Full Workflow
+Downloaded `LMSD.sdf.zip` and `LMSD.sdf.tsv` artifacts are gitignored and never
+committed to the repository.
 
-The pipeline has three stages:
+## Workflow
 
 ### 1. Evolve SMARTS from LIPID MAPS
 
-Use the `smarts-evoliposuction` binary to evolve high-quality SMARTS patterns
-from the LIPID MAPS Structure Database (LMSD).
+Use `smarts-evoliposuction` (with `--locked` and `--manifest-path` from the repo
+root, or `cargo run --release --locked` inside `smarts-evoliposuction/`):
 
 ```bash
-# All-in-one pipeline — download, split, and evolve:
-cd smarts-evoliposuction
-cargo run --release -- \
+cargo run --release --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --locked -- \
     all \
     --output-dir ./results \
     --generations 500 \
-    --population 200
+    --population 100
 ```
 
-**What this does:**
+Stages:
 
-1. **Download** --- fetches `LMSD.sdf.zip` from
-   `https://www.lipidmaps.org/files/?file=LMSD&ext=sdf.zip` and converts it to a
-   clean TSV with 19 standard columns (LM_ID, NAME, SYSTEMATIC_NAME, MAIN_CLASS,
-   SUB_CLASS, EXACT_MASS, FORMULA, INCHI, SMILES, etc.).
-
-2. **Split** --- parses the TSV and, for each LIPID MAPS main class and
-   subclass, creates balanced positive (matching the class) and negative (not
-   matching) `.smiles` file pairs. This mirrors the
-   `split_for_smarts_evolution.py` script but in idiomatic Rust with
-   deterministic seeded sampling.
-
-3. **Evolve** --- for each class pair, runs the
+1. **Download**: fetches `LMSD.sdf.zip` from
+   `https://www.lipidmaps.org/files/?file=LMSD&ext=sdf.zip` and converts the SDF
+   records into a 19-column TSV (`LMSD.sdf.tsv`).
+2. **Split**: parses the TSV and creates deterministic balanced positive and
+   negative SMILES files per LIPID MAPS category, main class, and (when enabled)
+   subclass.
+3. **Evolve**: runs
    [`smarts-evolution`](https://github.com/earth-metabolome-initiative/smarts-evolution)
-   genetic algorithm, which searches for the shortest SMARTS pattern that
-   maximizes the Matthews Correlation Coefficient (MCC) on the positive/negative
-   set. Errors are caught per-class so one failure doesn't abort the batch.
+   to search for compact SMARTS patterns maximizing Matthews Correlation
+   Coefficient (MCC), isolating per-class failures.
 
-The result is `smarts_results.csv` --- one row per class with columns:
+`smarts_results.csv` records one row per class with columns:
 
-| Column                | Description                                   |
-| --------------------- | --------------------------------------------- |
-| `level`               | `main_class` or `subclass`                    |
-| `label`               | Human-readable class label                    |
-| `main_class`          | LIPID MAPS main class code (e.g. `FA01`)      |
-| `subclass`            | Subclass code (e.g. `FA0101`)                 |
-| `slug`                | URL-safe identifier for resume tracking       |
-| `positive_count`      | Number of positive SMILES used                |
-| `negative_count`      | Number of negative SMILES used                |
-| `best_smarts`         | The evolved SMARTS pattern                    |
-| `best_mcc`            | MCC score of the best result                  |
-| `best_coverage_score` | Coverage of the pattern on the positive set   |
-| `status`              | `ok`, `empty_after_parse`, `read_error`, etc. |
+  | Column | Description |
+  | --- | --- |
+  | `level` | `category`, `main_class`, or `subclass` |
+  | `label` | Human-readable class label |
+  | `main_class` | LIPID MAPS main class code (e.g. `FA01`) |
+  | `subclass` | Subclass code (e.g. `FA0101`) |
+  | `slug` | URL-safe identifier for resume tracking |
+  | `positive_count` | Number of positive SMILES used |
+  | `negative_count` | Number of negative SMILES used |
+  | `best_smarts` | Evolved SMARTS pattern |
+  | `best_mcc` | Best MCC score |
+  | `best_coverage_score` | Positive-set coverage score |
+  | `status` | `ok`, `empty_after_parse`, `read_error`, etc. |
 
-### 2. Use the evolved SMARTS in lipid-selecto-rs
+### 2. Curated rules in `lipid-selecto-rs`
 
-The evolved SMARTS from `smarts_results.csv` populate the LMSD subclass definitions in `chemical_class::lmsd_classes()`:
-
-```rust
-use lipid_selecto_rs::chemical_class::{ChemicalClass, lmsd_classes};
-
-let classes: &[ChemicalClass] = lmsd_classes();
-assert!(classes.iter().any(|c| c.category == "FA"));
-```
-
-The evolved rules are **pre-compiled** at load time (via
-`chematic::smarts::parse_smarts`) so they're fast for runtime matching. Higher
-`best_mcc` values indicate tighter, more selective patterns.
+Selected SMARTS rules from LMSD evolution are stored statically in
+`apps/lipid-selecto-rs/src/chemical_class/lmsd.rs` (`LMSD_ENTRIES`, exposed
+crate-internally via `lmsd_classes()` and `lmsd_all()`). Each `ChemicalClass`
+carries `name`, `smarts`, `color`, and `family` (such as `"Fatty Acyls"`), and
+pre-compiles its SMARTS query at construction via `chematic::smarts`.
 
 ### 3. UI integration
 
-The `ChemicalClass` table in `chemical_class::lmsd` is wired into the UI through two entry points:
+Inside `apps/lipid-selecto-rs`, `chemical_class::lmsd_classes()` feeds the class
+selector cards and the browser MGF/SMILES classification logic under
+`src/parser/` and `src/app/`, grouping results in canonical LIPID MAPS family
+order (`FA`, `GL`, `GP`, `SP`, `ST`, `PR`, `SL`, `PK`).
 
-- **"Available Lipid Classes" card** --- Displays all LMSD rules from `lmsd_classes()`.
-  Each card shows the rule name, description, and family tag.
+## Data Sources and External Dependencies
 
-- **Classification pipeline** --- The `ChemicalClass` system (used by the
-  browser analysis pipeline in `parser/analysis.rs`) matches molecules against
-  `lmsd_classes()`. The Results UI groups matches by LIPID MAPS family (FA → GL → GP →
-  SP → ST → PR → SL → PK) and sorts alphabetically within each family.
-
-### LIPID MAPS Family Hierarchy
-
-All eight LIPID MAPS structural families are represented:
-
-| Rank | Code | Family               | Classes                                                                  |
-| ---- | ---- | -------------------- | ------------------------------------------------------------------------ |
-| 0    | FA   | Fatty Acyls          | FA, MUFA, PUFA                                                           |
-| 1    | GL   | Glycerolipids        | TG(AAA), DG(AA), MG(A)                                                   |
-| 2    | GP   | Glycerophospholipids | PC(AA), PE(AA), PS(AA), PI(AA), PG(AA), PA(AA), LPC(A), LPE(A), CL(AAAA) |
-| 3    | SP   | Sphingolipids        | Cer(AS), SM(AS), HexCer(AS)                                              |
-| 4    | ST   | Sterol Lipids        | ST                                                                       |
-| 5    | PR   | Prenol Lipids        | PR                                                                       |
-| 6    | SL   | Saccharolipids       | SL                                                                       |
-| 7    | PK   | Polyketides          | PK                                                                       |
-
-## Data Sources
-
-- **LMSD.sdf.zip**: Downloaded from
-  `https://www.lipidmaps.org/files/?file=LMSD&ext=sdf.zip`
-
-## External Dependencies
-
-This project builds on the work of **Luca Cappelletti** (@LucaCappelletti94),
-Earth Metabolome Initiative:
-
+- **LMSD.sdf.zip**: `https://www.lipidmaps.org/files/?file=LMSD&ext=sdf.zip`
 - [`smarts-evolution`](https://github.com/earth-metabolome-initiative/smarts-evolution) ---
-  Genetic algorithm for evolving SMARTS patterns
+  GA SMARTS search
 - [`smarts-rs`](https://github.com/earth-metabolome-initiative/smarts-rs) ---
-  High-performance SMARTS matching library
+  SMARTS matching library
 - [`smiles-rs`](https://github.com/earth-metabolome-initiative/smiles-rs) ---
-  SMILES string parser
+  SMILES parser
 
 See [`smarts-evoliposuction/README.md`](./smarts-evoliposuction/README.md) for
-the evoliposuction binary's build instructions and CLI reference.
+CLI options and `--locked` build requirements.

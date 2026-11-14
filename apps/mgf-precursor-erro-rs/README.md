@@ -18,7 +18,7 @@ dx serve --package mgf-precursor-erro-rs
 ## Build for the website
 
 ```bash
-dx build --release --platform web --package mgf-precursor-erro-rs
+dx build --profile wasm-release --platform web --package mgf-precursor-erro-rs
 ```
 
 ## License

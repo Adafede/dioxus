@@ -4,7 +4,7 @@
 
 Closes #<!-- issue number, if applicable -->
 
----
+--------------------------------------------------------------------------------
 
 ## Type of change
 
@@ -15,7 +15,7 @@ Closes #<!-- issue number, if applicable -->
 - [ ] Documentation update
 - [ ] Dependency update
 
----
+--------------------------------------------------------------------------------
 
 ## Changes
 
@@ -23,7 +23,7 @@ Closes #<!-- issue number, if applicable -->
 
 - Change 1
 
----
+--------------------------------------------------------------------------------
 
 ## Testing
 
@@ -33,7 +33,7 @@ Closes #<!-- issue number, if applicable -->
 - [ ] New tests added for new or fixed behavior
   - [ ] Manually tested with `./mk web-dev APP=<app>`
 
----
+--------------------------------------------------------------------------------
 
 ## Quality gate
 
@@ -42,19 +42,20 @@ Closes #<!-- issue number, if applicable -->
 ./mk ci-fast   # the pre-push subset
 ```
 
-Run `./mk --list-all-steps` for the full task list.
+Run `./mk --list` for available tasks (plus tasks in `make/*.toml`).
 
 - [ ] `./mk ci` passes locally on a clean tree
 
----
+--------------------------------------------------------------------------------
 
 ## Documentation
 
-- [ ] `CHANGELOG.md` updated under `[Unreleased]`
-- [ ] API docs updated (OpenAPI annotations, doc comments) if applicable
-- [ ] `README.md` or `CONTRIBUTING.md` updated if behavior changed
+- [ ] `CHANGELOG.md` updated under `## Unreleased`
+- [ ] Rustdoc comments and READMEs updated if behavior or public APIs changed
+  (run `./mk local:readme-write` if crate/app docs changed)
+- [ ] `README.md` or `.github/CONTRIBUTING.md` updated if workflows changed
 
----
+--------------------------------------------------------------------------------
 
 ## License
 

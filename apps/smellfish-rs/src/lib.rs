@@ -4,7 +4,7 @@
 //! `smellfish-rs` — literature-backed NP-likeness scoring.
 //!
 //! Scores natural-product-likeness of SMILES structures using machine-learned
-//! features, `Query` enrichment, and RDKit.js chemistry descriptors.
+//! features, QLever/LOTUS SPARQL enrichment, and RDKit.js chemistry descriptors.
 //!
 //! # Run locally
 //!
@@ -15,7 +15,7 @@
 //! # Build for deployment
 //!
 //! ```bash
-//! dx build --release --platform web --package smellfish-rs
+//! dx build --profile wasm-release --platform web --package smellfish-rs
 //! ```
 //!
 //! # Tests

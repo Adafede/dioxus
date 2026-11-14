@@ -3,10 +3,12 @@
 [![AGPL-3.0 license](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![CI](https://github.com/Adafede/dioxus/actions/workflows/ci.yml/badge.svg)](https://github.com/Adafede/dioxus/actions/workflows/ci.yml)
 
-> **Note:** Most of the upload crate's API is WASM-only (`BlobCursor`,
-> `BlobLines`, browser `download_*` helpers).  Native-test coverage is limited
-> to `ProgressThrottler`, `sanitize_filename`, `UploadError`, and the
-> non-WASM download stubs.
+> **Note:** `BlobCursor`, `BlobLines`, `ChunkSource`, `SliceSource`,
+> `ProgressThrottler`, `UploadError`, and `sanitize_filename` compile and run on
+> native targets as well as `wasm32`. Only `BlobSource`, DOM file-event
+> extraction (`extract_blob_from_file_data` on `wasm32`), and browser
+> `download_*` triggers target `wasm32` (with non-WASM no-op stubs for native
+> builds).
 
 {{readme}}
 

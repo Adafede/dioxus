@@ -17,8 +17,7 @@ use core::fmt;
 
 /// Color palette for light and dark themes.
 ///
-/// Based on lotus-explore-rs's proven design system with authentic Wikidata entity colors.
-/// All colors meet WCAG AAA contrast ratios (7:1 minimum for text).
+/// High-contrast light and dark color tokens shared across the workspace apps.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ColorScheme {
     pub bg: &'static str,

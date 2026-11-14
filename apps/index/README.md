@@ -15,7 +15,7 @@ dx serve --package index
 ## Build for deployment
 
 ```bash
-dx build --release --platform web --package index
+dx build --profile wasm-release --platform web --package index
 ```
 
 ## License

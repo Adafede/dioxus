@@ -15,7 +15,7 @@
 //! # Build for the website
 //!
 //! ```bash
-//! dx build --release --platform web --package json-count-rs
+//! dx build --profile wasm-release --platform web --package json-count-rs
 //! ```
 
 use dioxus::events::{DragData, FormData};

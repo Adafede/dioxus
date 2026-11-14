@@ -5,14 +5,10 @@
 - Conduct expectations: [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)
 - Support policy: [`SUPPORT.md`](./SUPPORT.md)
 - Security reporting: [`SECURITY.md`](./SECURITY.md)
-- AI-assisted contributions: [`ai/CONTRIBUTING_AI.md`](./ai/CONTRIBUTING_AI.md)
 
-There is no `CODEOWNERS` and no branch-protection baseline document, because
-there is one maintainer: a `CODEOWNERS` file with a single name in it is a
-review requirement that nobody can satisfy, and a policy document nobody
-maintains is worse than none. Required status checks are listed under
-[The gate](#required-status-checks) above, which is the part that would need
-reviewing if there were ever a second maintainer.
+There is no `CODEOWNERS` and no branch-protection baseline document because
+there is one active maintainer. Required status checks are listed under
+[Required status checks](#required-status-checks).
 
 ## License agreement
 
@@ -28,140 +24,129 @@ Add a `Signed-off-by` trailer to each commit:
 git commit --signoff -m "feat: your change"
 ```
 
-Every `.rs` file carries both SPDX headers, on lines 1 and 2. `./mk
-license-headers` checks them, and it is the only check in the gate that does not
-compile anything, so it is the one to run while writing rather than after.
+Every `.rs` file carries both SPDX headers on lines 1 and 2:
+
+```rust
+// SPDX-License-Identifier: AGPL-3.0-only
+```
 
 ## Development workflow
 
-1. `./mk setup` — install the pinned toolchain and every tool the gate
-   calls, then `cargo install prek --locked && prek install` for the hooks.
-2. Create a branch from `main`.
-3. Make focused commits with tests.
-4. `./mk ci` — the full gate, and the same command CI runs.
-5. Open a PR with rationale, risk notes, and validation output.
+1. `./mk setup` --- install the pinned toolchain and verification tools, then
+   `cargo install prek --locked && prek install` to enable git hooks.
+2. `./mk setup-extra` --- install `dx` (`dioxus-cli`) when running or bundling
+   WASM apps locally.
+3. Create a branch from `main`.
+4. Make focused commits with tests. Keep every `.rs` file at or below 800 lines
+   and ensure zero `ignore` doctest fences exist in workspace crates.
+5. `./mk ci` --- run the full CI gate from the workspace root before pushing.
+6. Open a PR with rationale, risk notes, and validation output.
 
 ## The gate
 
-The task runner is **cargo-make**, and `./mk ci` is the single list of
-what CI runs. Run `./mk --list-all-steps` for the current task list rather
-than reading one here: that is the only copy that cannot go stale.
+`./mk` is the single runner shared between local hooks (`prek.toml`) and GitHub
+Actions (`.github/workflows/ci.yml`). It invokes `cargo make --no-workspace`
+where needed so repository tasks run once from the workspace root rather than
+repeating per member crate.
 
-`./mk ci-fast` is the pre-push subset — the gate without the supply-chain
-checks, which are the slowest part and only change when a dependency does. The
-git hooks in `prek.toml` delegate to those same tasks, so the hook and the
-pipeline cannot disagree about a cargo flag.
+Run `./mk --list` for the available standard gates and `local:*` tasks, or
+`cargo make --no-workspace --list-all-steps` for every task in `make/*.toml`.
 
-One cargo-make behaviour worth knowing: `CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE`
-in `Makefile.toml` is load-bearing — remove it and `./mk ci` reports
-`Task "ci" not found` — and it also means each task is _executed_ once per
-workspace member. Eight members, so eight runs, seven of them no-ops because
-Cargo has cached the build. A warm `./mk ci` is about 16 s of work behind
-about 2 min of wall clock, which reads as the gate being slow and is not.
-`./mk --no-workspace ci` is the same gate once, in 17 s.
+`./mk ci-fast` is the pre-push subset (run by `prek.toml` on push) that omits
+`audit` and `mutants-diff`.
 
-Note that a task is still not reachable _from inside_ a member directory
-(run from a member directory, `./mk lint` reports "not found") — the env var merges
-the makefile per member for the root invocation, it does not make the root
-makefile visible downward. Run the tasks from the repository root.
+`./mk ci` runs the standard gate sequence plus `LOCAL_CI_GATES` from `mk.local`:
 
-The gate, in order:
+  | Check                                                                                  | What it verifies                                                                                                                                                                |
+  | ---                                                                                    | ---                                                                                                                                                                             |
+  | `./mk tools`, `./mk actions`, `./mk shell`                                             | pinned tool versions match `mk.versions`, workflow security (`zizmor`), shell scripts (`shellcheck`)                                                                            |
+  | `commits`, `ratchet`                                                                   | Conventional Commits subjects and non-decreasing coverage/debt ratchets (`mk.local`, `Cargo.toml`)                                                                              |
+  | `fmt`, `tombi`, `typos`                                                                | `rustfmt`, TOML formatting & schema (`tombi`), and spelling (`.typos.toml`)                                                                                                     |
+  | `lint`, `lints-inherit`, `wasm`, `local:lint-wasm`                                     | host `--all-targets --all-features` clippy (`-D warnings`), `[lints] workspace = true`, and per-app `wasm32-unknown-unknown` check & clippy                                     |
+  | `test`                                                                                 | `cargo nextest run --workspace --locked` (host unit & integration tests, including `crates/upload/tests/gate_consistency/`) followed by `cargo test --workspace --doc --locked` |
+  | `doc`                                                                                  | rustdoc across all workspace crates with `-D warnings`                                                                                                                          |
+  | `deny`, `audit`, `machete`, `msrv`, `echoes`, `refquiem`, `semver`                     | licenses/bans (`deny.toml`), advisories, unused deps, declared MSRV check, duplicate code/doctest detection, removed-name check, and semver check                               |
+  | `mutants-diff`                                                                         | mutation testing (`cargo-mutants`) on `.rs` diffs against the base branch                                                                                                       |
+  | `local:license-headers`, `local:check`, `local:readme-check`, `local:feature-powerset` | SPDX headers, JSON validation + unsafe audit, generated README sync (`./mk local:readme-write`), and feature powerset check (`cargo-hack`)                                      |
 
-| Task                        | What it checks                                                                                                                        |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `fmt-check`                 | rustfmt, no writes                                                                                                                    |
-| `tombi-check`, `tombi-lint` | every TOML file is formatted, and valid against its schema — for a `Cargo.toml`, Cargo's own                                          |
-| `typos`                     | spelling                                                                                                                              |
-| `license-headers`           | both AGPL SPDX headers on every `.rs` file                                                                                            |
-| `verify-tasks`              | the task list loads, every gate task names a tool `setup` installs, and `test` still runs the doctests                                |
-| `check`                     | `cargo check --workspace --all-targets`                                                                                               |
-| `lint`                      | clippy, all targets, all features, warnings denied                                                                                    |
-| `test`                      | nextest, then `cargo test --doc` — nextest does not run doctests, so the second step is not optional                                  |
-| `doc`                       | rustdoc with `-D warnings`, so a broken intra-doc link fails rather than prints                                                       |
-| `check-wasm`, `lint-wasm`   | each wasm crate for `wasm32-unknown-unknown`, one package at a time. Not `--workspace --target wasm32`: `upload` has a host-only path |
-| `readme-check`              | the generated crate READMEs match their templates and module docs                                                                     |
-| `feature-powerset`          | every feature combination                                                                                                             |
-| `machete`, `deny`, `audit`  | unused dependencies, advisories, licences, sources                                                                                    |
+`./mk ci-nightly` runs the slower scheduled suite (`mutants`, `coverage`,
+`powerset`, `miri`, `outdated`). `.cargo/mutants.toml` scopes heavy UI/SVG/WASM
+glue exclusions and `mk.local` sets `MUTANTS_PACKAGES` (`json-count-rs`,
+`cxsmiles-yoga`).
 
-`./mk ci-slow` is what the weekly workflow runs: mutation testing and coverage.
-Both are minutes rather than seconds — mutation testing is 411 mutants and about
-a quarter of an hour. Its survivors are a to-do list rather than a verdict, and
-the run is clean as of the change that took it from 35 missed and 23 timeouts to
-none, so what keeps it out of the gate is the minutes rather than one red job.
-
-`crates/upload/tests/gate_consistency.rs` holds the local gate, the hooks and
-the workflow to one mapping and fails the build if they disagree. Adding a check
-to one of the three and forgetting the others is now a test failure.
+`crates/upload/tests/gate_consistency/` checks structural invariants across the
+repository (`apps`, `.gitignore` data exclusions, `mk`, `mutants` scope,
+`make/*.toml`, workflows, documentation surface separation, resolved relative
+links, and `docs/DEBT.md` ratchets).
 
 ## Required status checks
 
-These are the checks a pull request has to pass. `ci` is the gate above;
-`msrv` builds the same things on the oldest supported toolchain; `wasm` is the
-only job that links a `.wasm` and reports the bundle sizes.
+`.github/workflows/ci.yml` defines two blocking CI jobs:
 
-| Check              | What it protects                                                |
-| ------------------ | --------------------------------------------------------------- |
-| `Gate`             | everything in the table above, in one job                       |
-| `MSRV (1.100.0)`    | the `rust-version` claim in the root manifest                   |
-| `WASM bundle size` | the apps' shipped size, which nothing else in the gate produces |
+  | Job                | Command                                | What it protects                                                                          |
+  | ---                | ---                                    | ---                                                                                       |
+  | `./mk ci`          | `./mk ci`                              | Full lint, test, doctest, WASM check/lint, hygiene, MSRV, and supply-chain gate           |
+  | `WASM bundle size` | `./mk web-build-all` + `./mk web-size` | Links all six production WASM bundles (`--profile wasm-release`) and reports bundle sizes |
 
-`crates/upload/tests/gate_consistency.rs` names every workflow job and every
-task, so this list cannot silently fall out of date with the workflow.
+## Standalone CLI crate
+
+`apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction` is intentionally
+excluded from `[workspace]` in `Cargo.toml` because it pulls native
+bioinformatics and HTTP/archive crates incompatible with `wasm32`. Run checks
+there with `--locked`:
+
+```bash
+cargo clippy --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --all-targets --locked -- -D warnings
+cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction/Cargo.toml --locked
+```
 
 ## Local-only tasks
 
-Run on purpose, not in the gate. Each has a stated reason in `make/*.toml`.
+Run manually when needed (not part of every PR gate unless listed above):
 
-| Task                                                    | Why it is not a gate                                                                                                                                                  |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `outdated`                                              | a version report; it fails on any dependency at all, so as a gate it is red from the day it is added                                                                  |
-| `udeps`                                                 | needs nightly and is slow; it catches a dependency used only behind a `#[cfg]`, which `machete` cannot                                                                |
-| `unsafe`                                                | the transitive unsafe audit — advisory, and `unsafe_code = "forbid"` already covers this repository's own code; `make/scripts/unsafe-audit.sh`, over `cargo metadata` |
-| `msrv`                                                  | bisects a build per toolchain; minutes                                                                                                                                |
-| `action-pins`                                           | needs the network and the GitHub API; a pin is a commit SHA and stays valid forever, so the only thing this catches is a pin in the wrong repository                  |
-| `minimal-versions`                                      | a second resolution that frequently fails for reasons unrelated to this code                                                                                          |
-| `mutants`, `mutants-mgf`, `mutants-ui`                  | minutes, and the survivors are a to-do list                                                                                                                           |
-| `cov`                                                   | rebuilds the whole crate graph under instrumentation                                                                                                                  |
-| `readme-write`                                          | a gate that rewrites files is a gate that changes files                                                                                                               |
+- `./mk local:readme-write`: regenerates the seven `README.md` files from
+  `README.tpl` + `//!` docs and formats them with `panache`.
+- `./mk local:mutants-ui` / `./mk local:mutants-mgf`: opt-in mutation sweeps
+  outside `MUTANTS_PACKAGES`.
+- `./mk outdated` / `./mk udeps`: advisory dependency freshness / nightly
+  unused-dependency checks.
+- `./mk unsafe` / `make/scripts/unsafe-audit.sh`: advisory transitive `unsafe`
+  audit (`unsafe_code = "forbid"` applies to all workspace code).
 
 ## Dependencies
 
-`./mk upgrade` takes the newest compatible versions; `./mk
-upgrade-major` takes the majors, which need a changelog read and usually a code
-change. Do majors **one at a time**, each in its own commit, with the build
-green at each — a commit that upgrades five crates and fixes the fallout is not
-reviewable and not revertable in a piece.
+Upgrade compatible versions with `./mk upgrade` or inspect majors one at a time
+with `./mk upgrade-major`. Keep commits atomic so every upgrade can be built and
+tested independently.
 
-`cargo deny check advisories licenses` is the gate. If a new dependency is
-unmaintained or carries a licence incompatible with AGPL-3.0, deny says so
-before it is merged rather than after.
+`cargo deny check` verifies license compatibility (`AGPL-3.0-only` workspace)
+and duplicate bans (`deny.toml`). Any temporary `[bans] skip` entry must be
+recorded in [`../docs/DEBT.md`](../docs/DEBT.md).
 
 ## Commit standards
 
-- Keep commits atomic and reversible, one concern each: toolchain, test runner,
-  task runner, dependencies, lints, CI, docs.
-- Update docs when behavior, config, or interfaces change.
-- Prefer explicit error handling and avoid panic-style control flow.
+- Follow Conventional Commits (checked by `./mk commits`): `feat`, `fix`,
+  `refactor`, `test`, `docs`, `ci`, `chore`, `build`, `style`, `revert`, with
+  imperative subjects under 72 characters.
+- Keep commits atomic and keep tests and CI checks passing on every commit.
 
 ## Deferred until a first release is planned
 
-None of the following is configured, referenced or stubbed, on purpose:
+`.github/workflows/release.yml` runs `./mk ci-release` on `v*` tags, which skips
+`cargo publish --workspace --dry-run` while every crate sets `publish = false`.
+None of the following is configured yet:
 
-- `cargo semver-checks`, `cargo public-api`, or any semver gate in CI
-- `release-plz`, `cargo-release`, `git-cliff`, or a generated `CHANGELOG.md`
-- `cargo-dist`, release workflows producing binaries, SBOMs, provenance or
-  attestation, signed tags, or image push on tags
-- crates.io packaging checks (`cargo package --list`, `include`/`exclude`,
-  `[package.metadata.binstall]`)
-
-Every crate is `publish = false` and the public APIs and crate boundaries are
-still moving, so none of that would be checking anything real yet. They are
-picked up when a release is actually being made.
+- crates.io publishing (`publish = true`) and packaging metadata checks
+- `release-plz`, `cargo-release`, `git-cliff`, or automated changelog tooling
+- `cargo-dist`, release binary uploads, SBOMs, provenance attestations, or
+  container images
 
 ## Pull request checklist
 
-- [ ] Tests added/updated for behavior changes
-- [ ] `./mk ci` passes locally
-- [ ] New env vars and operational changes documented
-- [ ] Any new dependency passes `cargo deny check licenses` and is used, not just
-      declared
+- [ ] Tests added or updated for behavior changes
+- [ ] `./mk ci` and `./mk local:lint-wasm` pass locally
+- [ ] Standalone `smarts-evoliposuction` `--locked` tests/clippy run if touched
+- [ ] Any `//!` / `README.tpl` changes regenerated with
+  `./mk local:readme-write`
+- [ ] Any new dependency passes `cargo deny check` and is documented in
+  `docs/DEBT.md` if skipped

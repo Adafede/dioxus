@@ -35,7 +35,7 @@
 //! ### Build for deployment
 //!
 //! ```bash
-//! dx build --release --platform web --package cxsmiles-yoga
+//! dx build --profile wasm-release --platform web --package cxsmiles-yoga
 //! ```
 //!
 //! ### Tests

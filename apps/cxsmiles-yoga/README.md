@@ -1,19 +1,19 @@
-# 🧘 CX-SMILES Yoga
+# CX-SMILES Yoga
 
-Generate a single **CX-SMILES** from a list of related structures --- and
-validate it back by re-expansion.
+Generate a single **CX-SMILES** from a list of related structures and validate
+it back by re-expansion.
 
-A CX-SMILES encodes _structural uncertainty_: a positional isomer (`m:` block)
+A CX-SMILES encodes *structural uncertainty*: a positional isomer (`m:` block)
 or a variable-length repeat (`Sg:n:` block). Hand-crafting these does not scale,
 so this app derives them automatically from a candidate structure list using the
 **maximum common substructure** as the shared scaffold.
 
----
+--------------------------------------------------------------------------------
 
 ## How it works
 
 The UI (`src/app.rs`) is intentionally thin. All chemistry lives in a headless,
-unit-tested module (`src/cxsmiles.rs`) so it can be reused outside the browser.
+unit-tested module (`src/cxsmiles/`) so it can be reused outside the browser.
 
 ```
  input SMILES list   ──▶  parse (chematic::smiles)
@@ -34,17 +34,17 @@ unit-tested module (`src/cxsmiles.rs`) so it can be reused outside the browser.
 
 ### Construct families
 
-| Family                          | CX-SMILES construct                         | Example                                                                                   |
-| ------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Positional isomers              | `m:<starIdx>:<pos1>.<pos2>.…`               | `…Cl* \|m:13:0.2.3\|` for Cl on a biphenyl at three positions                             |
-| Variable-length repeat          | `Sg:n:<atomRange>:n:ht`                     | `OC(=O)C(F)(F)C(F)F \|Sg:n:3,4,5:n:ht\|` (PFAS) / `CCCCCCC \|Sg:n:3:n:ht\|` (alkyl chain) |
-| Best-effort (no clean scaffold) | `m:` from the MCS, flagged lower-confidence | the six PFOS constitutional isomers                                                       |
+  | Family                          | CX-SMILES construct                         | Example                                                                                   |
+  | ------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
+  | Positional isomers              | `m:<starIdx>:<pos1>.<pos2>.…`               | `…Cl* \|m:13:0.2.3\|` for Cl on a biphenyl at three positions                             |
+  | Variable-length repeat          | `Sg:n:<atomRange>:n:ht`                     | `OC(=O)C(F)(F)C(F)F \|Sg:n:3,4,5:n:ht\|` (PFAS) / `CCCCCCC \|Sg:n:3:n:ht\|` (alkyl chain) |
+  | Best-effort (no clean scaffold) | `m:` from the MCS, flagged lower-confidence | the six PFOS constitutional isomers                                                       |
 
 ### Confidence
 
 The round-trip stage enumerates the generated CX-SMILES back into concrete
 structures and counts how many of the original inputs are recovered (**coverage =
-covered / total**). When every input re-expands, confidence is _clean_ (100%);
+covered / total**). When every input re-expands, confidence is *clean* (100%);
 otherwise the construct is flagged as lower-confidence --- this is how the "no
 clean shared scaffold" constitutional-isomer case is surfaced.
 
@@ -55,7 +55,7 @@ All molecule rendering uses `chematic::depict` (`depict_svg` /
 remote service, no network calls. The scaffold and each enumerated candidate are
 drawn inline in the results panel.
 
----
+--------------------------------------------------------------------------------
 
 ## Try it
 
@@ -72,11 +72,12 @@ plus a parse/write round-trip.
 ### Run in the browser
 
 ```bash
-cargo build --release --target wasm32-unknown-unknown -p cxsmiles-yoga
-# then `dx serve -p cxsmiles-yoga` or serve the .wasm with Dioxus SSR/wasm
+./mk web-dev APP=cxsmiles-yoga
+# Production bundle (uses --profile wasm-release):
+./mk web-build APP=cxsmiles-yoga
 ```
 
----
+--------------------------------------------------------------------------------
 
 ## Limitations & out of scope
 
@@ -85,28 +86,24 @@ cargo build --release --target wasm32-unknown-unknown -p cxsmiles-yoga
   within each aromatic ring component of the shared scaffold (via graph
   automorphisms restricted to `BondOrder::Aromatic` components).
 - **CX-SMILES hand-rolled.** `chematic::cx` (`CxSmiles` / `parse_cxsmiles` /
-  `write_cxsmiles`) does not support `m:` / `Sg:n:` constructs, so the
-  atom-index logic is implemented directly (see the _Findings_ note in the
-  session summary: chematic's SMILES writer also never emits `*` for wildcard
-  atoms, so the base scaffold is assembled as a string, not via `write`).
-- **Hashing / fingerprint library search** --- comparing a generated CX-SMILES
-  against a fingerprint library (e.g. ECFP4/Tanimoto nearest-neighbour lookup)
-  to find the best representative or to score candidates is out of scope for
-  this app. Use the `crates/lotus` / `crates/upload` plumbing + `chematic::fp`
-  elsewhere in the workspace for that.
+  `write_cxsmiles`) does not support `m:` / `Sg:n:` constructs, and `chematic`'s
+  SMILES writer does not emit `*` for wildcard atoms, so the base scaffold and
+  extension fields are serialized directly.
+- **Hashing / fingerprint library search.** Comparing a generated CX-SMILES
+  against an external fingerprint library (e.g., ECFP4/Tanimoto
+  nearest-neighbour lookup) to score or rank candidates is out of scope for this
+  app; only intra-input ECFP4 clustering is performed locally.
 
----
+--------------------------------------------------------------------------------
 
 ## Dependencies
 
-- [`chematic`](https://crates.io/crates/chematic) `0.4.27` (workspace-resolved
-  to `0.4.30`) --- SMILES parsing/writing, SMARTS/MCS (`find_mcs`,
-  `find_matches`), ECFP4 fingerprints, 2D depiction.
-- [`dioxus`](https://dioxuslabs.com) `0.7` --- UI.
+- [`chematic`](https://crates.io/crates/chematic) --- SMILES parsing/writing,
+  SMARTS/MCS (`find_mcs`, `find_matches`), ECFP4 fingerprints, 2D depiction.
+- [`dioxus`](https://dioxuslabs.com) `0.7` --- UI framework.
 - `web-sys` --- clipboard API (`Window` + `Navigator` + `Clipboard` features).
-- `gloo-timers` (workspace) --- async clipboard "Copied!" flash.
-- [`crates/ui`](../crates/ui) + [`crates/upload`](../crates/upload) --- shared
-  components (`Header` / `Footer` / `Card` / `NoticeBar` / `SegmentedControl` /
-  `DocumentHead`) and the file-upload plumbing, reused from `lipid-selecto-rs`.
+- `gloo-timers` --- async clipboard copy feedback timer.
+- [`crates/ui`](../../crates/ui) + [`crates/upload`](../../crates/upload) ---
+  shared UI components and upload/download helpers.
 - [`rustc-hash`](https://crates.io/crates/rustc-hash) --- `FxHashMap` for match
-  maps (`type Match = rustc_hash::FxHashMap<usize, AtomIdx>`).
+  maps.

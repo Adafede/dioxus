@@ -8,13 +8,12 @@
 //!
 //! # Design Philosophy
 //!
-//! - **CSS bundled as static assets**: App-wide CSS lives in external files
-//!   (e.g. `lotus-explore.css`) loaded via `<link rel="stylesheet">` in the
-//!   generated `index.html` for optimal mobile performance
-//! - **Type-safe theming**: Compile-time checked colors, spacing, typography
-//!   via `StyleBuilder`, `ColorScheme`, `Spacing` and `Typography`
-//! - **Accessible components**: WCAG AAA contrast, keyboard navigation, semantic HTML
-//! - **Lotus aesthetic**: Clean, professional design inspired by lotus-explore-rs
+//! - **Pure-Rust theme tokens**: Colors, spacing, and typography defined in
+//!   Rust via `StyleBuilder`, `ColorScheme`, `Spacing`, and `Typography`
+//! - **Document head helper**: [`DocumentHead`](prelude::DocumentHead) manages
+//!   page metadata, theme setup, and JSON-LD directly from Rust
+//! - **Accessible components**: Semantic HTML landmarks, keyboard navigation,
+//!   and high-contrast light/dark palettes
 //!
 //! # Example
 //!
