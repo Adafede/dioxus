@@ -70,15 +70,16 @@ pub(super) fn block_class_tags(
     )
 }
 
-/// Build a SMILES file content string from filtered gallery items for download.
-pub(super) fn build_smiles_from_gallery(
-    gallery: &[&GalleryItem],
+/// Build a SMILES file content string from filtered spectrum blocks for download.
+pub(super) fn build_smiles_from_blocks(
+    blocks: &[&SpectrumBlock],
+    gallery: &[GalleryItem],
     all_classes: &[ChemicalClass],
 ) -> String {
     let mut content = String::new();
-    for item in gallery {
-        if let Some(smiles) = item.smiles.as_deref() {
-            let class_tags = class_tags_from_gallery(item, all_classes);
+    for block in blocks {
+        if let Some(smiles) = block.psm_smiles.as_deref() {
+            let class_tags = block_class_tags(block, gallery, all_classes);
             let cat_str = class_tags
                 .iter()
                 .find_map(|(k, v)| (k == "CATEGORY" && !v.is_empty()).then_some(v.as_str()))
@@ -87,7 +88,7 @@ pub(super) fn build_smiles_from_gallery(
                 .iter()
                 .find_map(|(k, v)| (k == "MAIN_CLASS" && !v.is_empty()).then_some(v.as_str()))
                 .unwrap_or("-");
-            let title_str = item
+            let title_str = block
                 .title
                 .as_deref()
                 .filter(|s| !s.is_empty())

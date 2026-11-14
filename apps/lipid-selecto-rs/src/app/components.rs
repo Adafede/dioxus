@@ -109,13 +109,43 @@ pub(super) fn lipid_classes_card() -> Element {
     }
 }
 
-/// Renders the filter controls row: m/z range, precursor range, and adduct dropdown.
+pub(super) fn parse_filter_bound(raw: &str, empty_default: f64) -> Option<f64> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Some(empty_default);
+    }
+    trimmed.parse::<f64>().ok().filter(|v| v.is_finite())
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
+fn bound_input(
+    mut target: Signal<f64>,
+    placeholder: &'static str,
+    empty_default: f64,
+    width: &'static str,
+) -> Element {
+    rsx! {
+        input {
+            r#type: "number",
+            placeholder,
+            value: "{target.read()}",
+            oninput: move |evt| {
+                if let Some(val) = parse_filter_bound(&evt.value(), empty_default) {
+                    target.set(val);
+                }
+            },
+            style: StyleBuilder::new().width(width).padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
+        }
+    }
+}
+
+/// Renders the filter controls row: exact mass range, precursor m/z range, and adduct dropdown.
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables, unused_mut))]
 fn filter_controls_row(
-    mut mz_min: Signal<f64>,
-    mut mz_max: Signal<f64>,
-    mut precursor_min: Signal<f64>,
-    mut precursor_max: Signal<f64>,
+    mz_min: Signal<f64>,
+    mz_max: Signal<f64>,
+    precursor_min: Signal<f64>,
+    precursor_max: Signal<f64>,
     mut adduct_filter: Signal<String>,
     adduct_options: &[String],
 ) -> Element {
@@ -130,62 +160,22 @@ fn filter_controls_row(
 
     rsx! {
         div { style: StyleBuilder::new().display("flex").flex_wrap("wrap").gap("0.75rem").align_items("flex-end").property("margin", "0.75rem 0").build(),
-            // m/z range filter
+            // Exact mass range filter
             div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
-                span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "m/z range" }
+                span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "Exact mass (Da)" }
                 div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
-                    input {
-                        r#type: "number",
-                        placeholder: "min",
-                        value: "{mz_min.read()}",
-                        oninput: move |evt| {
-                            if let Ok(val) = evt.value().parse::<f64>() {
-                                mz_min.set(val);
-                            }
-                        },
-                        style: StyleBuilder::new().width("75px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
-                    }
+                    { bound_input(mz_min, "min", 0.0, "75px") }
                     span { style: StyleBuilder::new().color("#94a3b8").font_size("0.9rem").build(), "–" }
-                    input {
-                        r#type: "number",
-                        placeholder: "max",
-                        value: "{mz_max.read()}",
-                        oninput: move |evt| {
-                            if let Ok(val) = evt.value().parse::<f64>() {
-                                mz_max.set(val);
-                            }
-                        },
-                        style: StyleBuilder::new().width("75px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
-                    }
+                    { bound_input(mz_max, "max", 5000.0, "75px") }
                 }
             }
-            // precursor range filter
+            // Precursor m/z range filter
             div { style: StyleBuilder::new().display("flex").flex_direction("column").gap("0.25rem").build(),
-                span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "precursor range" }
+                span { style: StyleBuilder::new().font_size("0.7rem").color("#475569").font_weight("600").build(), "Precursor m/z" }
                 div { style: StyleBuilder::new().display("flex").gap("0.3rem").align_items("center").build(),
-                    input {
-                        r#type: "number",
-                        placeholder: "min",
-                        value: "{precursor_min.read()}",
-                        oninput: move |evt| {
-                            if let Ok(val) = evt.value().parse::<f64>() {
-                                precursor_min.set(val);
-                            }
-                        },
-                        style: StyleBuilder::new().width("80px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
-                    }
+                    { bound_input(precursor_min, "min", 0.0, "80px") }
                     span { style: StyleBuilder::new().color("#94a3b8").font_size("0.9rem").build(), "–" }
-                    input {
-                        r#type: "number",
-                        placeholder: "max",
-                        value: "{precursor_max.read()}",
-                        oninput: move |evt| {
-                            if let Ok(val) = evt.value().parse::<f64>() {
-                                precursor_max.set(val);
-                            }
-                        },
-                        style: StyleBuilder::new().width("80px").padding("0.3rem 0.5rem").border("1px solid #cbd5e1").border_radius("6px").font_size("0.8rem").build(),
-                    }
+                    { bound_input(precursor_max, "max", 5000.0, "80px") }
                 }
             }
             // adduct dropdown
@@ -374,6 +364,7 @@ fn download_buttons(
                     onclick: move |_| {
                         if let Some(analysis) = analysis_signal.read().as_ref() {
                             download_filtered_smiles(
+                                &analysis.blocks,
                                 &analysis.gallery,
                                 &analysis.all_classes,
                                 *mz_min.read(),
@@ -397,7 +388,7 @@ pub(super) fn summary(
     summary_data: &crate::parser::Summary,
     filters: &SummaryFilters,
     all_classes: &[ChemicalClass],
-    gallery: &[crate::parser::GalleryItem],
+    blocks: &[crate::parser::SpectrumBlock],
     analysis_signal: Signal<Option<crate::parser::Analysis>>,
     input_format: crate::format::LipidFormat,
 ) -> Element {
@@ -412,7 +403,7 @@ pub(super) fn summary(
     let total_spectra = summary_data.total_items;
     let skipped = summary_data.skipped;
     let unclassified = summary_data.unclassified;
-    let adduct_options = collect_adduct_options(gallery);
+    let adduct_options = collect_adduct_options(blocks);
     let families = group_classes_by_family(all_classes);
 
     rsx! {
@@ -546,8 +537,8 @@ pub(super) fn gallery_with_filter(
                                                     div { style: StyleBuilder::new().property("margin-bottom", "0.15rem").color("#64748b").font_size("0.72rem").property("font-family", "ui-monospace, monospace").property("max-width", "100%").property("overflow", "hidden").property("text-overflow", "ellipsis").property("white-space", "nowrap").build(), "{smiles}" }
                                                 }
                                                 div { style: StyleBuilder::new().color("#64748b").font_size("0.75rem").build(),
-                                                    "m/z "
-                                                    strong { style: StyleBuilder::new().color("#0f172a").build(), "{item.exact_mass:.3}" }
+                                                    "exact mass "
+                                                    strong { style: StyleBuilder::new().color("#0f172a").build(), "{item.exact_mass:.3} Da" }
                                                     " · precursor "
                                                     strong { style: StyleBuilder::new().color("#0f172a").build(), "{precursor_text}" }
                                                     " · adduct "

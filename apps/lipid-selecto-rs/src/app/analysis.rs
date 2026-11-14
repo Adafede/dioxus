@@ -6,13 +6,14 @@
 
 use super::family::family_rank;
 use crate::chemical_class::ChemicalClass;
-use crate::parser::GalleryItem;
+use crate::parser::SpectrumBlock;
 
-/// Collect unique adduct values from gallery items, sorted with `+` first.
-pub(super) fn collect_adduct_options(gallery: &[GalleryItem]) -> Vec<String> {
-    let adduct_values: std::collections::BTreeSet<String> = gallery
+/// Collect unique adduct values across all lipid blocks, sorted with `+` first.
+pub(super) fn collect_adduct_options(blocks: &[SpectrumBlock]) -> Vec<String> {
+    let adduct_values: std::collections::BTreeSet<String> = blocks
         .iter()
-        .filter_map(|item| item.adduct.as_ref())
+        .filter(|block| block.is_lipid())
+        .filter_map(|block| block.adduct.as_ref())
         .filter(|a| !a.is_empty())
         .cloned()
         .collect();

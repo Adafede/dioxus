@@ -1,58 +1,35 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the lipid-selecto-rs project
 
-//! Depiction using simolecule `CDKdepict` API.
-//!
-//! Returns HTML `img` tag that loads from the working simolecule service.
+//! Local 2D SMILES depiction via `chematic`.
 
-/// Render a SMILES string into an SVG `<img>` tag via the simolecule `CDKdepict` service.
+/// Fallback inline SVG used when SMILES parsing or depiction fails.
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(crate) fn empty_svg() -> String {
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 20\"><text x=\"20\" y=\"12\" fill=\"#94a3b8\" text-anchor=\"middle\" font-family=\"system-ui\" font-size=\"10\">no structure</text></svg>".to_string()
+}
+
+/// Render a SMILES string into an inline `<svg>` element locally via `chematic`.
 ///
-/// The returned HTML `<img>` tag fetches the structure from the remote
-/// `simolecule.com` `CDKdepict` endpoint.
-///
-/// `any(test, …)` rather than wasm-only, because `build_gallery` is the only
-/// caller and the host test build needs both. It builds a string and nothing
-/// else, and gating it wasm-only meant the host test build never compiled the
-/// URL encoder below — which is where the bug in its previous form was.
+/// Falls back to [`empty_svg`] when the SMILES string is empty, invalid, or
+/// fails layout.
 #[cfg(any(test, target_arch = "wasm32"))]
 #[must_use]
 pub(crate) fn render_svg(smiles: &str) -> String {
-    let url = format!(
-        "https://www.simolecule.com/cdkdepict/depict/bow/svg?smi={}",
-        encode(smiles)
-    );
-
-    format!(
-        r#"<img src="{url}" style="width: 100%; height: 100%; object-fit: contain;" alt="Depiction" loading="lazy" />"#
-    )
-}
-
-/// Percent-encode for a query-string value, leaving the unreserved set alone.
-///
-/// Over the *bytes*, not over `char`s. The previous version matched on `char`
-/// and then wrote `c as u8`, which for any character above U+00FF produced the
-/// encoding of its low byte rather than of the character — a SMILES with a
-/// non-ASCII atom label or a CX-SMILES extension in it would have asked
-/// simolecule for a different molecule than the one on screen. The unreserved
-/// set is the same one `application/x-www-form-urlencoded` defines.
-#[cfg(any(test, target_arch = "wasm32"))]
-fn encode(value: &str) -> String {
-    use std::fmt::Write as _;
-
-    let mut out = String::with_capacity(value.len());
-    for byte in value.as_bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(char::from(*byte));
-            }
-            other => {
-                // `write!` to a `String` is infallible; the `let _` says so
-                // rather than unwrapping, which is denied.
-                let _ = write!(out, "%{other:02X}");
-            }
-        }
+    let trimmed = smiles.trim();
+    if trimmed.is_empty() {
+        return empty_svg();
     }
-    out
+
+    let depicted = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        chematic::smiles::parse(trimmed)
+            .ok()
+            .map(|mol| chematic::depict::depict_svg(&mol))
+    }));
+    match depicted {
+        Ok(Some(svg)) if svg.trim_start().starts_with("<svg") => svg,
+        _ => empty_svg(),
+    }
 }
 
 #[cfg(test)]

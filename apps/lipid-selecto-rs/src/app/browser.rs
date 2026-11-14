@@ -37,7 +37,8 @@ fn start_analysis(
     mut busy: Signal<bool>,
     _drag_active: Signal<bool>,
     mut analysis: Signal<Option<Analysis>>,
-    _input_format: Option<LipidFormat>,
+    mut input_format_signal: Signal<Option<LipidFormat>>,
+    initial_format: Option<LipidFormat>,
 ) {
     file_name_signal.set(source_name);
 
@@ -59,7 +60,7 @@ fn start_analysis(
             ));
         });
 
-        let mut extractor = BlockExtractor::default();
+        let mut extractor = BlockExtractor::with_format(initial_format);
         let mut line_count = 0usize;
         loop {
             match reader.next_line().await {
@@ -78,6 +79,11 @@ fn start_analysis(
 
         status.set(format!("Parsed {line_count} lines — classifying…"));
 
+        if initial_format.is_none()
+            && let Some(detected) = extractor.detected_format()
+        {
+            input_format_signal.set(Some(detected));
+        }
         let blocks = extractor.finish();
 
         if blocks.is_empty() {
@@ -126,7 +132,8 @@ pub(super) fn begin_analysis_from_blob(
     busy: Signal<bool>,
     drag_active: Signal<bool>,
     analysis: Signal<Option<Analysis>>,
-    input_format: Option<LipidFormat>,
+    input_format_signal: Signal<Option<LipidFormat>>,
+    initial_format: Option<LipidFormat>,
 ) {
     start_analysis(
         blob,
@@ -136,7 +143,8 @@ pub(super) fn begin_analysis_from_blob(
         busy,
         drag_active,
         analysis,
-        input_format,
+        input_format_signal,
+        initial_format,
     );
 }
 
@@ -178,6 +186,7 @@ pub(super) fn load_example_dataset(
         busy,
         drag_active,
         analysis,
+        input_format,
         fmt,
     );
 }

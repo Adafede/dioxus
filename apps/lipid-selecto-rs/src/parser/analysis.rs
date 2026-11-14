@@ -93,10 +93,10 @@ pub(crate) fn gallery_item(block: &SpectrumBlock, classes: &[ChemicalClass]) -> 
             .map(|(name, _)| name.clone())
     });
 
-    let svg = block
-        .psm_smiles
-        .as_deref()
-        .map_or_else(empty_svg, crate::depict_simple::render_svg);
+    let svg = block.psm_smiles.as_deref().map_or_else(
+        crate::depict_simple::empty_svg,
+        crate::depict_simple::render_svg,
+    );
 
     GalleryItem {
         block_index: block.index,
@@ -162,12 +162,6 @@ pub(crate) struct GalleryItem {
     pub primary_class_name: Option<String>,
     /// Broad lipid classification (`LipidClass`) across the 8 LIPID MAPS categories
     pub classification: Option<LipidClassification>,
-}
-
-/// Fallback SVG shown when a structure cannot be rendered.
-#[cfg(any(test, target_arch = "wasm32"))]
-fn empty_svg() -> String {
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 20\"><text x=\"20\" y=\"12\" fill=\"#94a3b8\" text-anchor=\"middle\" font-family=\"system-ui\" font-size=\"10\">no structure</text></svg>".to_string()
 }
 
 /// Aggregate analysis result handed to the UI by the wasm worker / tests.

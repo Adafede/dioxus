@@ -24,7 +24,7 @@ pub(crate) use analysis::build_analysis;
 pub(crate) use analysis::{Analysis, GalleryItem, Summary};
 #[cfg(target_arch = "wasm32")]
 pub(crate) use analysis::{build_analysis_from_classified, classify_blocks};
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 pub(crate) use parsing::BlockExtractor;
 pub(crate) use parsing::SpectrumBlock;
 #[cfg(test)]

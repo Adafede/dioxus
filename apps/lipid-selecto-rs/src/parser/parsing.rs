@@ -36,10 +36,8 @@ pub(crate) struct SpectrumBlock {
     /// during filtered-MGF export.
     pub index: usize,
     /// Spectrum title (`TITLE=` / `NAME=`), if present.
-    #[cfg(any(test, target_arch = "wasm32"))]
     pub title: Option<String>,
     /// `SMILES=` value, if present.
-    #[cfg(any(test, target_arch = "wasm32"))]
     pub psm_smiles: Option<String>,
     /// `FORMULA=` value, if present.
     #[cfg(any(test, target_arch = "wasm32"))]
@@ -151,7 +149,6 @@ impl SpectrumBlock {
 
     /// `true` when this spectrum has at least one matching chemical class.
     #[must_use]
-    #[cfg(any(test, target_arch = "wasm32"))]
     pub(crate) fn is_lipid(&self) -> bool {
         self.gallery_item_matches
             .as_ref()
@@ -249,13 +246,51 @@ pub(crate) struct BlockExtractor {
     blocks: Vec<SpectrumBlock>,
     index: usize,
     current: Option<SpectrumBlock>,
+    format: Option<crate::format::LipidFormat>,
+    saw_mgf: bool,
 }
 
 #[cfg(any(test, target_arch = "wasm32"))]
 impl BlockExtractor {
+    /// Construct an extractor constrained to an optional known input format.
+    #[must_use]
+    pub(crate) fn with_format(format: Option<crate::format::LipidFormat>) -> Self {
+        Self {
+            format,
+            ..Self::default()
+        }
+    }
+
+    /// Return the resolved input format after inspecting pushed lines.
+    #[must_use]
+    pub(crate) fn detected_format(&self) -> Option<crate::format::LipidFormat> {
+        self.format
+            .or_else(|| (!self.blocks.is_empty()).then_some(crate::format::LipidFormat::Smiles))
+    }
+
     /// Feed a single line into the block state machine.
     pub(crate) fn push_line(&mut self, line: &str) {
+        if self.format == Some(crate::format::LipidFormat::Smiles) {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                return;
+            }
+            self.index += 1;
+            if let Some(block) = parse_smiles_line(self.index, trimmed) {
+                self.blocks.push(block);
+            }
+            return;
+        }
+
         if is_begin_ions(line) {
+            if !self.saw_mgf {
+                self.saw_mgf = true;
+                if self.format.is_none() {
+                    self.blocks.clear();
+                    self.index = 0;
+                    self.format = Some(crate::format::LipidFormat::Mgf);
+                }
+            }
             if let Some(block) = self.current.take() {
                 self.blocks.push(block);
             }
@@ -280,8 +315,8 @@ impl BlockExtractor {
             block.consume_metadata(line);
             block.raw.push_str(line);
             block.raw.push('\n');
-        } else {
-            // SMILES / flat format: each non-empty, non-comment line is a block.
+        } else if self.format.is_none() {
+            // Unknown extension before any `BEGIN IONS`: tentatively parse as SMILES lines.
             let trimmed = line.trim();
             if trimmed.is_empty() || trimmed.starts_with('#') || is_end_ions(line) {
                 return;

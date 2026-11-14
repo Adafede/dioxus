@@ -48,11 +48,11 @@ pub fn app() -> Element {
     // Start with all LMSD classes selected for initial load
     let selected_classes = use_signal(|| lmsd_classes().iter().map(|c| c.name.clone()).collect());
 
-    // Shared filter signals for m/z, precursor, and adduct
-    let mz_min = use_signal(|| 50.0f64);
-    let mz_max = use_signal(|| 1500.0f64);
+    // Shared filter signals for exact mass (Da), precursor m/z, and adduct
+    let mz_min = use_signal(|| 0.0f64);
+    let mz_max = use_signal(|| 5000.0f64);
     let precursor_min = use_signal(|| 0.0f64);
-    let precursor_max = use_signal(|| 1000.0f64);
+    let precursor_max = use_signal(|| 5000.0f64);
     let adduct_filter = use_signal(String::new);
 
     let ctx = UploadCtx {
@@ -167,7 +167,7 @@ pub fn app() -> Element {
                     }
                 }
                 if let Some(analysis) = ctx.analysis.read().as_ref() {
-                    { summary(&analysis.summary, &types::SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, &analysis.all_classes, &analysis.gallery, ctx.analysis, (*ctx.input_format.read()).unwrap_or(crate::format::LipidFormat::Mgf)) }
+                    { summary(&analysis.summary, &types::SummaryFilters { selected_classes, mz_min, mz_max, precursor_min, precursor_max, adduct_filter }, &analysis.all_classes, &analysis.blocks, ctx.analysis, (*ctx.input_format.read()).unwrap_or(crate::format::LipidFormat::Mgf)) }
                     { gallery_with_filter(&analysis.gallery, &selected_classes.read(), *mz_min.read(), *mz_max.read(), *precursor_min.read(), *precursor_max.read(), &adduct_filter.read()) }
                 }
             }
@@ -225,6 +225,7 @@ fn process_file_upload(
         ctx.busy,
         drag_active,
         ctx.analysis,
+        ctx.input_format,
         format,
     );
 }
