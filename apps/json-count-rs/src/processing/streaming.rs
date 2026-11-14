@@ -342,15 +342,77 @@ fn a_missing_colon_is_rejected() {
 }
 
 #[test]
-fn a_trailing_comma_does_not_invent_a_column() {
-    // The loop breaks on a `,` and then finds EOF. It must stop, not loop
-    // asking for a key that is not there, and it must not report an empty
-    // column as a real one.
+fn malformed_syntax_and_trailing_commas_are_rejected() {
+    for (input, label) in [
+        (r#"{"a":1,}"#, "trailing comma in object"),
+        (r#"[{"a":1},]"#, "trailing comma in row array"),
+        (r#"{"a":1"#, "truncated object without closing brace"),
+        (r#"[{"a":1}"#, "truncated array without closing bracket"),
+        (r#"{"a":1 "b":2}"#, "missing comma between object entries"),
+        (r#"[{"a":1}{"b":2}]"#, "missing comma between row objects"),
+        (r#"{"a":1]}"#, "mismatched bracket after entry"),
+        ("{}{}", "trailing object after root object"),
+        ("[]1", "trailing scalar after root array"),
+        (r#"{"a":[}]}"#, "mismatched closing brace in nested array"),
+        (
+            r#"{"a":{]}}"#,
+            "mismatched closing bracket in nested object",
+        ),
+        (r#"{"a":nulX}"#, "corrupted null literal"),
+        (r#"{"a":[nul]}"#, "truncated null literal inside array"),
+        (r#"{"a":tru}"#, "truncated true literal"),
+        (r#"{"a":-}"#, "lone minus"),
+        (r#"{"a":+1}"#, "leading plus"),
+        (r#"{"a":1.}"#, "trailing dot"),
+        (r#"{"a":1./}"#, "non-digit slash after dot"),
+        (r#"{"a":1.:}"#, "non-digit colon after dot"),
+        (r#"{"a":1e+}"#, "empty exponent"),
+        (r#"{"a":[1.5e]}"#, "invalid exponent in number"),
+        (r#"{"a":1/}"#, "non-digit slash in integer"),
+        (r#"{"a":1:}"#, "non-digit colon in integer"),
+        (r#"{"a":01}"#, "leading zero in number"),
+    ] {
+        assert!(
+            error_of(input, 4).is_some(),
+            "expected syntax error for {label}: {input}"
+        );
+    }
+}
+
+#[test]
+fn valid_numbers_and_oversized_key_limits_are_enforced() {
     assert_eq!(
-        columns(r#"{"a":1,}"#, 64),
-        Ok(vec![("a".to_string(), 1)]),
-        "one column read, and the trailing comma added none"
+        columns(r#"{"n":[-0,0,-19,1.23,1e12,12.34e+5,9E-2]}"#, 3),
+        Ok(vec![("n".to_string(), 7)])
     );
+    let max_scalar = "1".repeat(65_536);
+    let max_scalar_doc = format!(r#"{{"n":{max_scalar}}}"#);
+    assert_eq!(
+        columns(&max_scalar_doc, 65_536),
+        Ok(vec![("n".to_string(), 1)])
+    );
+    let over_scalar = "1".repeat(65_537);
+    let over_scalar_doc = format!(r#"{{"n":{over_scalar}}}"#);
+    assert!(columns(&over_scalar_doc, 65_536).is_err());
+
+    let max_key = "k".repeat(1_048_576);
+    let exact_ok = format!(r#"{{"{max_key}":1}}"#);
+    assert_eq!(
+        columns(&exact_ok, 65_536),
+        Ok(vec![(max_key, 1)]),
+        "key at MAX_KEY_BYTES succeeds"
+    );
+    let esc_ok = format!(r#"{{"{}\"":1}}"#, "k".repeat(1_048_574));
+    assert!(columns(&esc_ok, 65_536).is_ok());
+
+    let over_key = "k".repeat(1_048_577);
+    let too_long = format!(r#"{{"{over_key}":1}}"#);
+    assert!(
+        columns(&too_long, 65_536).is_err(),
+        "key exceeding MAX_KEY_BYTES is rejected"
+    );
+    let esc_over = format!(r#"{{"{}\"":1}}"#, "k".repeat(1_048_575));
+    assert!(columns(&esc_over, 65_536).is_err());
 }
 
 /// The two implementations of this grammar, on the same value.

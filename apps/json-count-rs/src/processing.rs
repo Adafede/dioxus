@@ -201,18 +201,7 @@ where
 // ---------------------------------------------------------------------------
 
 /// Unescapes a raw (still-escaped) JSON string body.
-/// Handles standard JSON escapes including `\uXXXX` (BMP).
-///
-/// Not `cfg`-gated to wasm, though it is only called from the streaming scanner
-/// that is. It takes bytes and returns a `String`, so it runs anywhere — and
-/// gating it meant `cargo mutants` could not reach a single one of its 125
-/// mutants from a host test run, because the whole of it was compiled out of
-/// the build the tests run in. The scanner's *tests* are wasm-only; this
-/// function's do not need to be.
-///
-/// `any(test, …)` rather than `target_arch` alone, because the only caller *is*
-/// the wasm scanner: without the test arm these two are dead code on the host,
-/// and `dead_code` is denied.
+/// Handles standard JSON escapes including `\uXXXX` and UTF-16 surrogate pairs.
 #[cfg(any(test, target_arch = "wasm32"))]
 fn unescape_json_string(raw: &[u8]) -> String {
     if !raw.contains(&b'\\') {
@@ -222,32 +211,8 @@ fn unescape_json_string(raw: &[u8]) -> String {
     let mut out = String::with_capacity(raw.len());
     let mut i = 0;
     while let Some(&byte) = raw.get(i) {
-        // `out` is grown inside this loop, so a branch that failed to move the
-        // cursor would not merely hang: it would allocate a `String` until the
-        // tab died. The trailing-backslash case below is exactly that bug, and
-        // it was live for the life of the function. Two invariants make the
-        // class checkable instead, both of which hold for every input and
-        // neither of which needs the loop to terminate to check:
-        //
-        // * `i` strictly increases, so the loop runs at most `raw.len()` times;
-        // * `out` is never longer than `raw`, because every escape consumes at
-        //   least two input bytes and emits at most one output byte, and every
-        //   run of literal characters is copied at its own length.
-        //
-        // Both are `debug_assert!` so they cost nothing in a release build and
-        // are checked in every test, which is where a regression in this
-        // function would be introduced.
         let entered_at = i;
-        let is_escape = byte == b'\\';
-        if is_escape {
-            // A backslash with nothing after it has no escape to expand, so it is
-            // literal text — and the scan has to leave it behind before
-            // continuing. The run below finds the *first* backslash in the tail
-            // and sets `next` to its offset, so for a trailing backslash `next`
-            // is `i` again and the loop would never terminate. This is the
-            // malformed-input case: the string body is whatever sat between two
-            // quotes in the file, and a file that ends one mid-escape produces
-            // exactly this.
+        if byte == b'\\' {
             let Some(&escaped) = raw.get(i + 1) else {
                 if let Some(chunk) = raw.get(i..) {
                     out.push_str(&String::from_utf8_lossy(chunk));
@@ -287,14 +252,29 @@ fn unescape_json_string(raw: &[u8]) -> String {
                     out.push('\t');
                     i += 2;
                 }
-                // A `\u` with fewer than four digits left is not a unicode
-                // escape at all, and falls through to the unknown-escape arm
-                // below rather than swallowing six bytes.
                 b'u' if raw.get(i + 2..i + 6).is_some() => {
-                    if let Some(c) = unicode_escape(raw, i + 2) {
-                        out.push(c);
+                    if let Some(code) = unicode_code_unit(raw, i + 2) {
+                        if (0xD800..=0xDBFF).contains(&code)
+                            && raw.get(i + 6..i + 8) == Some(b"\\u")
+                            && let Some(low) = unicode_code_unit(raw, i + 8)
+                            && (0xDC00..=0xDFFF).contains(&low)
+                        {
+                            let scalar = 0x10000
+                                + ((u32::from(code) - 0xD800) << 10)
+                                + (u32::from(low) - 0xDC00);
+                            out.push(char::from_u32(scalar).unwrap_or('\u{FFFD}'));
+                            i += 12;
+                        } else if (0xD800..=0xDFFF).contains(&code) {
+                            // Lone high or lone low UTF-16 surrogate emits U+FFFD.
+                            out.push('\u{FFFD}');
+                            i += 6;
+                        } else {
+                            out.push(char::from_u32(u32::from(code)).unwrap_or('\u{FFFD}'));
+                            i += 6;
+                        }
+                    } else {
+                        i += 6;
                     }
-                    i += 6;
                 }
                 other => {
                     out.push(other as char);
@@ -302,10 +282,6 @@ fn unescape_json_string(raw: &[u8]) -> String {
                 }
             }
         } else {
-            // `raw.get(i)` succeeded, so the tail from `i` exists; `next` is at
-            // least `i + 1` — this branch is only reached when `raw[i]` is not a
-            // backslash, so the first backslash in the tail is not at its offset
-            // zero — and at most `raw.len()`, so the span does too.
             let Some(rest) = raw.get(i..) else {
                 break;
             };
@@ -319,37 +295,26 @@ fn unescape_json_string(raw: &[u8]) -> String {
             i = next;
         }
 
-        // After both branches, because both are what move the cursor: checked
-        // earlier, the branch that does the advancing had not run yet.
         debug_assert!(
             i > entered_at,
-            "the scan must move forward: it entered at {entered_at} and is still \
-             at {i}, which would grow `out` without consuming input"
-        );
-        debug_assert!(
-            out.len() <= raw.len(),
-            "unescaping cannot lengthen a string: {} bytes out of {} in",
-            out.len(),
-            raw.len()
+            "the scan must move forward: it entered at {entered_at} and is still at {i}"
         );
     }
     out
 }
 
-/// The character a `\uXXXX` escape denotes, with `XXXX` starting at `at`.
-///
-/// `None` for any of the four ways this can fail — the digits are not there, are
-/// not ASCII, are not hex, or are a surrogate rather than a code point — because
-/// the caller's response is the same in every case: emit nothing and let the
-/// raw bytes stand. Written as one function rather than a chain of `if let`s so
-/// the four checks are each a line that can be read, and mutated, on its own.
-/// Host-buildable for the same reason as `unescape_json_string` above.
+/// Parses four ASCII hex digits starting at `at` into a UTF-16 code unit.
 #[cfg(any(test, target_arch = "wasm32"))]
-fn unicode_escape(raw: &[u8], at: usize) -> Option<char> {
+fn unicode_code_unit(raw: &[u8], at: usize) -> Option<u16> {
     let digits = raw.get(at..at + 4)?;
     let hex = std::str::from_utf8(digits).ok()?;
-    let code = u32::from_str_radix(hex, 16).ok()?;
-    char::from_u32(code)
+    u16::from_str_radix(hex, 16).ok()
+}
+
+/// The Unicode scalar a `\uXXXX` escape denotes, with `XXXX` starting at `at`.
+#[cfg(test)]
+fn unicode_escape(raw: &[u8], at: usize) -> Option<char> {
+    unicode_code_unit(raw, at).and_then(|code| char::from_u32(u32::from(code)))
 }
 
 /// How many buffer passes one scan of a value may take.
@@ -376,24 +341,79 @@ fn pass_bound<F: FnMut(u64, u64), S: ChunkSource>(cursor: &BlobCursor<F, S>) -> 
         .saturating_add(1)
 }
 
+#[cfg(any(test, target_arch = "wasm32"))]
+const MAX_SCALAR_BYTES: usize = 65_536;
+
+#[cfg(any(test, target_arch = "wasm32"))]
+fn push_scalar_byte(token_buf: &mut Vec<u8>, byte: u8) -> Result<(), UploadError> {
+    if token_buf.len() >= MAX_SCALAR_BYTES {
+        return Err(UploadError::other("JSON scalar exceeds maximum length"));
+    }
+    token_buf.push(byte);
+    Ok(())
+}
+
+#[cfg(any(test, target_arch = "wasm32"))]
+fn validate_bare_scalar(token: &[u8]) -> Result<u64, UploadError> {
+    if token == b"null" {
+        return Ok(0);
+    }
+    if token == b"true" || token == b"false" {
+        return Ok(1);
+    }
+    if is_valid_json_number(token) {
+        return Ok(1);
+    }
+    Err(UploadError::other("Invalid JSON literal or number"))
+}
+
+#[cfg(any(test, target_arch = "wasm32"))]
+fn is_valid_json_number(bytes: &[u8]) -> bool {
+    let rest = bytes.strip_prefix(b"-").unwrap_or(bytes);
+    let rest = if let Some(after_zero) = rest.strip_prefix(b"0") {
+        after_zero
+    } else if rest.first().is_some_and(u8::is_ascii_digit) {
+        let non_digit = rest
+            .iter()
+            .position(|b| !b.is_ascii_digit())
+            .unwrap_or(rest.len());
+        rest.get(non_digit..).unwrap_or_default()
+    } else {
+        return false;
+    };
+    let rest = if let Some(frac) = rest.strip_prefix(b".") {
+        let frac_digits = frac
+            .iter()
+            .position(|b| !b.is_ascii_digit())
+            .unwrap_or(frac.len());
+        if frac_digits == 0 {
+            return false;
+        }
+        frac.get(frac_digits..).unwrap_or_default()
+    } else {
+        rest
+    };
+    let rest = if let Some(exp) = rest.strip_prefix(b"e").or_else(|| rest.strip_prefix(b"E")) {
+        let exp = exp
+            .strip_prefix(b"+")
+            .or_else(|| exp.strip_prefix(b"-"))
+            .unwrap_or(exp);
+        let exp_digits = exp
+            .iter()
+            .position(|b| !b.is_ascii_digit())
+            .unwrap_or(exp.len());
+        if exp_digits == 0 {
+            return false;
+        }
+        exp.get(exp_digits..).unwrap_or_default()
+    } else {
+        rest
+    };
+    rest.is_empty()
+}
+
 /// Counts the leaves inside one `{...}` or `[...]`, the cursor sitting on its
 /// opening bracket.
-///
-/// Split out of [`count_value`] because the two are different jobs: this one is a
-/// single-pass tokeniser with five pieces of state to carry across chunk
-/// boundaries, and folding it into its caller put it over the line limit where
-/// neither could be read on its own.
-///
-/// It counts a nested object's key as well as its value, which is why
-/// `{"y":3}` is 2 and not 1. `count_value` counts the same way, and the
-/// test named for it pins that.
-///
-/// A string counts only if it has content, matching [`count_value`] and the
-/// doc on that function: `""` is 0. The count is therefore deferred to the
-/// closing quote rather than added at the opening one, which is what
-/// `string_has_content` tracks. It used to be added at the opening quote
-/// unconditionally, so `{"":1}` was 2 here and 1 through `count_value` —
-/// the one place the two implementations of this grammar disagreed.
 #[cfg(any(test, target_arch = "wasm32"))]
 #[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
 async fn scan_container<F, S>(cursor: &mut BlobCursor<F, S>) -> Result<u64, UploadError>
@@ -401,39 +421,31 @@ where
     F: FnMut(u64, u64),
     S: ChunkSource,
 {
+    let open = cursor
+        .current_byte()
+        .ok_or_else(|| UploadError::other("Expected '{' or '['"))?;
+    let initial_close = if open == b'{' { b'}' } else { b']' };
     cursor.advance(1);
-    let mut depth: i32 = 1;
+    let mut stack = vec![initial_close];
     let mut count: u64 = 0;
     let mut in_string = false;
     let mut string_has_content = false;
     let mut escaped = false;
     let mut in_token = false;
-    let mut token_first_byte = 0u8;
+    let mut token_buf = Vec::new();
 
     for _ in 0..pass_bound(cursor) {
         let start = cursor.pos();
-        // Scanned through a borrow of the buffer rather than a clone of it.
-        // The clone was there to dodge a borrow conflict with the `advance`
-        // calls below, and it cost a copy of the whole chunk — up to 16 MiB,
-        // transiently doubling the reader's peak — once per chunk, for a
-        // scanner whose entire reason to exist is bounded memory. Scoping
-        // the borrow and applying the advance afterwards removes both the
-        // copy and the conflict.
         let (consumed, closed) = {
             let Some(tail) = cursor.buffer().get(start..) else {
                 break;
             };
-            // Iterator-indexed, for the reason `read_json_key` gives: five
-            // `i += 1` sites in here, and every one of them was a way for the
-            // scan to stop moving and read the same byte for ever.
             let mut consumed = 0usize;
             let mut closed = false;
 
             for (i, &b) in tail.iter().enumerate() {
                 consumed = i + 1;
                 if in_string {
-                    // Mirrors `skip_string_nonempty`: a backslash and the byte
-                    // it escapes both count as content, so `"\""` is 1.
                     if escaped {
                         escaped = false;
                         string_has_content = true;
@@ -453,11 +465,11 @@ where
 
                 if in_token {
                     if matches!(b, b' ' | b'\t' | b'\n' | b'\r' | b',' | b':' | b'}' | b']') {
-                        if token_first_byte != b'n' {
-                            count += 1;
-                        }
+                        count += validate_bare_scalar(&token_buf)?;
+                        token_buf.clear();
                         in_token = false;
                     } else {
+                        push_scalar_byte(&mut token_buf, b)?;
                         continue;
                     }
                 }
@@ -467,12 +479,13 @@ where
                         in_string = true;
                         string_has_content = false;
                     }
-                    b'{' | b'[' => {
-                        depth += 1;
-                    }
+                    b'{' => stack.push(b'}'),
+                    b'[' => stack.push(b']'),
                     b'}' | b']' => {
-                        depth -= 1;
-                        if depth == 0 {
+                        if stack.pop() != Some(b) {
+                            return Err(UploadError::other("Mismatched closing delimiter in JSON"));
+                        }
+                        if stack.is_empty() {
                             closed = true;
                             break;
                         }
@@ -480,7 +493,8 @@ where
                     b':' | b',' | b' ' | b'\t' | b'\n' | b'\r' => {}
                     _ => {
                         in_token = true;
-                        token_first_byte = b;
+                        token_buf.clear();
+                        push_scalar_byte(&mut token_buf, b)?;
                     }
                 }
             }
@@ -539,18 +553,10 @@ async fn count_value<F: FnMut(u64, u64), S: ChunkSource>(
     }
 
     // Bare scalar at this position: number, true, false, or null.
-    let first = cursor.current_byte().unwrap_or(b'n');
+    let mut token_buf = Vec::new();
+    push_scalar_byte(&mut token_buf, first)?;
     cursor.advance(1);
     for _ in 0..pass_bound(cursor) {
-        // Scanned by iterator rather than by a hand-kept `i`, for the reason
-        // `read_json_key` gives. This loop had the earlier version already —
-        // `i` tracked the cursor but was never itself advanced, while `buf` was
-        // a snapshot: the loop read the same byte forever and advanced the
-        // cursor past the end of the stream. A scalar with no delimiter in the
-        // rest of its chunk — which is every scalar at a chunk boundary — spun
-        // here forever. On a multi-gigabyte upload that is a frozen tab, and no
-        // test could reach it. The borrow is scoped so the `advance` does not
-        // need a clone of the chunk to escape it.
         let (consumed, at_delimiter) = {
             let Some(tail) = cursor.buffer().get(cursor.pos()..) else {
                 break;
@@ -562,6 +568,7 @@ async fn count_value<F: FnMut(u64, u64), S: ChunkSource>(
                     at_delimiter = true;
                     break;
                 }
+                push_scalar_byte(&mut token_buf, b)?;
                 consumed += 1;
             }
             (consumed, at_delimiter)
@@ -570,7 +577,7 @@ async fn count_value<F: FnMut(u64, u64), S: ChunkSource>(
         cursor.advance(consumed);
 
         if at_delimiter || !cursor.fill().await? {
-            return Ok(u64::from(first != b'n'));
+            return validate_bare_scalar(&token_buf);
         }
     }
 
@@ -597,13 +604,14 @@ where
     F: FnMut(u64, u64),
     S: ChunkSource,
 {
+    cur.skip_ws().await.map_err(|e| e.to_string())?;
+    if cur.peek().await.map_err(|e| e.to_string())? == Some(b'}') {
+        cur.next_byte().await.map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
     loop {
         cur.skip_ws().await.map_err(|e| e.to_string())?;
-        if cur.peek().await.map_err(|e| e.to_string())? == Some(b'}') {
-            cur.next_byte().await.map_err(|e| e.to_string())?;
-            break;
-        }
-
         let key = read_json_key(cur).await.map_err(|e| e.to_string())?;
         cur.skip_ws().await.map_err(|e| e.to_string())?;
 
@@ -629,8 +637,16 @@ where
         }
 
         cur.skip_ws().await.map_err(|e| e.to_string())?;
-        if cur.next_byte().await.map_err(|e| e.to_string())? != Some(b',') {
-            break;
+        match cur.next_byte().await.map_err(|e| e.to_string())? {
+            Some(b',') => {
+                cur.skip_ws().await.map_err(|e| e.to_string())?;
+                if cur.peek().await.map_err(|e| e.to_string())? == Some(b'}') {
+                    return Err("Trailing comma in JSON object".to_string());
+                }
+            }
+            Some(b'}') => break,
+            Some(_) => return Err("Expected ',' or '}' in JSON object".to_string()),
+            None => return Err("Unexpected EOF: missing closing '}'".to_string()),
         }
     }
 
@@ -641,13 +657,6 @@ where
 ///
 /// Accepts both a top-level column object (`{"col": [...]}`) and a top-level
 /// array of row objects (`[{"col": ...}, ...]`).
-///
-/// This is the scanner that runs in the browser, with the browser taken out.
-/// The browser entry point is [`scan_source_with_progress`] plus a `BlobSource`.
-///
-/// Extracted rather than tested through the wasm entry point, because that entry
-/// point takes a browser `Blob` and so can only run in a browser. Everything that
-/// made this grammar hard to test was downstream of that one parameter.
 #[cfg(any(test, target_arch = "wasm32"))]
 #[allow(clippy::future_not_send)] // wasm async functions capture non-Send browser JS futures
 async fn scan_columns<F, S>(cur: &mut BlobCursor<F, S>) -> Result<Vec<ColumnResult>, String>
@@ -668,24 +677,38 @@ where
             scan_object(cur, &mut fields, &mut index_by_key, false).await?;
         }
         b'[' => {
-            for _ in 0..pass_bound(cur) {
-                cur.skip_ws().await.map_err(|e| e.to_string())?;
-                if cur.peek().await.map_err(|e| e.to_string())? == Some(b']') {
-                    break;
-                }
-                if cur.next_byte().await.map_err(|e| e.to_string())? != Some(b'{') {
-                    return Err("Expected a top-level JSON object".to_string());
-                }
-                scan_object(cur, &mut fields, &mut index_by_key, true).await?;
-                cur.skip_ws().await.map_err(|e| e.to_string())?;
-                if cur.next_byte().await.map_err(|e| e.to_string())? != Some(b',') {
-                    break;
+            cur.skip_ws().await.map_err(|e| e.to_string())?;
+            if cur.peek().await.map_err(|e| e.to_string())? == Some(b']') {
+                cur.next_byte().await.map_err(|e| e.to_string())?;
+            } else {
+                loop {
+                    cur.skip_ws().await.map_err(|e| e.to_string())?;
+                    if cur.next_byte().await.map_err(|e| e.to_string())? != Some(b'{') {
+                        return Err("Expected a top-level JSON object".to_string());
+                    }
+                    scan_object(cur, &mut fields, &mut index_by_key, true).await?;
+                    cur.skip_ws().await.map_err(|e| e.to_string())?;
+                    match cur.next_byte().await.map_err(|e| e.to_string())? {
+                        Some(b',') => {
+                            cur.skip_ws().await.map_err(|e| e.to_string())?;
+                            if cur.peek().await.map_err(|e| e.to_string())? == Some(b']') {
+                                return Err("Trailing comma in JSON array".to_string());
+                            }
+                        }
+                        Some(b']') => break,
+                        Some(_) => return Err("Expected ',' or ']' in JSON array".to_string()),
+                        None => return Err("Unexpected EOF: missing closing ']'".to_string()),
+                    }
                 }
             }
         }
         _ => return Err("Expected a top-level JSON object".to_string()),
     }
 
+    cur.skip_ws().await.map_err(|e| e.to_string())?;
+    if cur.peek().await.map_err(|e| e.to_string())?.is_some() {
+        return Err("Unexpected trailing content after JSON document".to_string());
+    }
     Ok(fields)
 }
 

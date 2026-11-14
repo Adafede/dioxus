@@ -157,19 +157,35 @@ fn a_truncated_unicode_escape_falls_through_to_the_literal_branch() {
 }
 
 #[test]
-fn an_invalid_unicode_escape_emits_nothing_and_still_advances() {
-    // Four digits are present but are not a character: `i += 6` happens
-    // either way, so a bad escape cannot make the scan loop forever.
-    assert_eq!(
-        unescape(r"\ud800"),
-        "",
-        "an unpaired surrogate contributes no character"
-    );
-    assert_eq!(
-        unescape(r"\ud800tail"),
-        "tail",
-        "and the scan carries on from after the escape"
-    );
+fn surrogate_pairs_decode_and_lone_surrogates_emit_replacement() {
+    for (input, expected, label) in [
+        (r"\ud83d\ude00", "😀", "emoji surrogate pair"),
+        (r"\ud800\udc00", "\u{10000}", "minimum supplementary scalar"),
+        (r"\udbff\udfff", "\u{10FFFF}", "maximum Unicode scalar"),
+        (r"\ud800", "\u{FFFD}", "lone high surrogate at end"),
+        (
+            r"\ud800tail",
+            "\u{FFFD}tail",
+            "lone high surrogate before text",
+        ),
+        (
+            r"\ud800\u0041",
+            "\u{FFFD}A",
+            "lone high surrogate before BMP escape keeps the BMP escape",
+        ),
+        (
+            r"\udc00tail",
+            "\u{FFFD}tail",
+            "lone low surrogate before text",
+        ),
+        (r"\udbff\udc00", "\u{10FC00}", "high boundary DBFF + DC00"),
+        (r"\udfff", "\u{FFFD}", "lone low surrogate max"),
+        (r"\ud7ff", "\u{D7FF}", "BMP just below surrogates"),
+        (r"\ue000", "\u{E000}", "BMP just above surrogates"),
+        (r"\u00zzB", "B", "invalid hex digits still advance by 6"),
+    ] {
+        assert_eq!(unescape(input), expected, "{label}: {input}");
+    }
 }
 
 // ── the literal run between escapes ─────────────────────────────────────

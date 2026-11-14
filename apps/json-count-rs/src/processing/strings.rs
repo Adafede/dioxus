@@ -20,6 +20,19 @@ use super::{pass_bound, unescape_json_string};
 #[cfg(any(test, target_arch = "wasm32"))]
 use upload::{BlobCursor, ChunkSource, UploadError};
 
+/// Hard upper bound on a top-level JSON key's escaped byte length (`1 MiB`).
+#[cfg(any(test, target_arch = "wasm32"))]
+const MAX_KEY_BYTES: usize = 1_048_576;
+
+#[cfg(any(test, target_arch = "wasm32"))]
+fn push_key_byte(raw: &mut Vec<u8>, byte: u8) -> Result<(), UploadError> {
+    if raw.len() >= MAX_KEY_BYTES {
+        return Err(UploadError::other("JSON object key exceeds maximum length"));
+    }
+    raw.push(byte);
+    Ok(())
+}
+
 /// Reads a JSON string key from the cursor using the shared `BlobCursor`.
 ///
 /// Compiled for tests as well as wasm. It scans bytes and nothing else — no
@@ -71,15 +84,15 @@ pub(crate) async fn read_json_key<F: FnMut(u64, u64), S: ChunkSource>(
                     // name contained an escaped character was mislabelled.
                     _ if escaped => {
                         escaped = false;
-                        raw.push(b'\\');
-                        raw.push(byte);
+                        push_key_byte(&mut raw, b'\\')?;
+                        push_key_byte(&mut raw, byte)?;
                     }
                     b'\\' => escaped = true,
                     b'"' => {
                         closed = true;
                         break;
                     }
-                    _ => raw.push(byte),
+                    _ => push_key_byte(&mut raw, byte)?,
                 }
             }
             (consumed, closed)

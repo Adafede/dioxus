@@ -37,6 +37,98 @@ struct ColumnResult {
     count: u64,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum SortColumn {
+    Key,
+    Count,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum SortDirection {
+    Asc,
+    Desc,
+}
+
+impl SortDirection {
+    #[must_use]
+    const fn toggled(self) -> Self {
+        match self {
+            Self::Asc => Self::Desc,
+            Self::Desc => Self::Asc,
+        }
+    }
+
+    #[must_use]
+    const fn aria_sort(self) -> &'static str {
+        match self {
+            Self::Asc => "ascending",
+            Self::Desc => "descending",
+        }
+    }
+
+    #[must_use]
+    const fn indicator(self) -> &'static str {
+        match self {
+            Self::Asc => " ▲",
+            Self::Desc => " ▼",
+        }
+    }
+}
+
+#[must_use]
+const fn next_sort_state(
+    current_col: Option<SortColumn>,
+    current_dir: SortDirection,
+    clicked: SortColumn,
+) -> (SortColumn, SortDirection) {
+    match current_col {
+        Some(col) if col as u8 == clicked as u8 => (clicked, current_dir.toggled()),
+        _ => {
+            let default_dir = match clicked {
+                SortColumn::Key => SortDirection::Asc,
+                SortColumn::Count => SortDirection::Desc,
+            };
+            (clicked, default_dir)
+        }
+    }
+}
+
+#[must_use]
+fn aria_sort_for(
+    active_col: Option<SortColumn>,
+    active_dir: SortDirection,
+    col: SortColumn,
+) -> &'static str {
+    if active_col == Some(col) {
+        active_dir.aria_sort()
+    } else {
+        "none"
+    }
+}
+
+#[must_use]
+fn sorted_results(
+    rows: &[ColumnResult],
+    sort_col: Option<SortColumn>,
+    sort_dir: SortDirection,
+) -> Vec<ColumnResult> {
+    let mut out = rows.to_vec();
+    let Some(col) = sort_col else {
+        return out;
+    };
+    out.sort_by(|a, b| {
+        let ord = match col {
+            SortColumn::Key => a.key.cmp(&b.key),
+            SortColumn::Count => a.count.cmp(&b.count).then_with(|| a.key.cmp(&b.key)),
+        };
+        match sort_dir {
+            SortDirection::Asc => ord,
+            SortDirection::Desc => ord.reverse(),
+        }
+    });
+    out
+}
+
 /// The signals the file-accepting handlers write to.
 ///
 /// `Signals` are `Copy` handles, so taking this by value and calling `.set` on
@@ -96,6 +188,8 @@ fn app() -> Element {
     ui::shared_signal!(file_name, String::new);
 
     let results = use_signal(Vec::<ColumnResult>::new);
+    let mut sort_col = use_signal(|| None::<SortColumn>);
+    let mut sort_dir = use_signal(|| SortDirection::Asc);
     let status = use_signal(|| "Choose a JSON file to begin.".to_string());
     let busy = use_signal(|| false);
     let drag_active = use_signal(|| false);
@@ -250,31 +344,77 @@ fn app() -> Element {
                             tr {
                                 th {
                                     scope: "col",
+                                    "aria-sort": aria_sort_for(*sort_col.read(), *sort_dir.read(), SortColumn::Key),
                                     style: StyleBuilder::new()
                                         .text_align("left")
                                         .border(&format!("2px solid {}", ColorScheme::LIGHT.border))
                                         .padding(Spacing::SM)
-                                        .font_weight("600")
-                                        .color(ColorScheme::LIGHT.text)
                                         .build(),
-                                    "Column"
+                                    button {
+                                        r#type: "button",
+                                        style: StyleBuilder::new()
+                                            .property("background", "transparent")
+                                            .border("none")
+                                            .padding("0")
+                                            .font_weight("600")
+                                            .color(ColorScheme::LIGHT.text)
+                                            .cursor("pointer")
+                                            .build(),
+                                        onclick: move |_| {
+                                            let (next_col, next_dir) = next_sort_state(
+                                                *sort_col.read(),
+                                                *sort_dir.read(),
+                                                SortColumn::Key,
+                                            );
+                                            sort_col.set(Some(next_col));
+                                            sort_dir.set(next_dir);
+                                        },
+                                        if *sort_col.read() == Some(SortColumn::Key) {
+                                            { format!("Column{}", sort_dir.read().indicator()) }
+                                        } else {
+                                            "Column"
+                                        }
+                                    }
                                 }
                                 th {
                                     scope: "col",
+                                    "aria-sort": aria_sort_for(*sort_col.read(), *sort_dir.read(), SortColumn::Count),
                                     style: StyleBuilder::new()
                                         .text_align("right")
                                         .border(&format!("2px solid {}", ColorScheme::LIGHT.border))
                                         .padding(Spacing::SM)
-                                        .font_weight("600")
-                                        .color(ColorScheme::LIGHT.text)
                                         .build(),
-                                    "Non-null count"
+                                    button {
+                                        r#type: "button",
+                                        style: StyleBuilder::new()
+                                            .property("background", "transparent")
+                                            .border("none")
+                                            .padding("0")
+                                            .font_weight("600")
+                                            .color(ColorScheme::LIGHT.text)
+                                            .cursor("pointer")
+                                            .build(),
+                                        onclick: move |_| {
+                                            let (next_col, next_dir) = next_sort_state(
+                                                *sort_col.read(),
+                                                *sort_dir.read(),
+                                                SortColumn::Count,
+                                            );
+                                            sort_col.set(Some(next_col));
+                                            sort_dir.set(next_dir);
+                                        },
+                                        if *sort_col.read() == Some(SortColumn::Count) {
+                                            { format!("Non-null count{}", sort_dir.read().indicator()) }
+                                        } else {
+                                            "Non-null count"
+                                        }
+                                    }
                                 }
                             }
                         }
 
                         tbody {
-                            for col in results.read().iter() {
+                            for col in sorted_results(&results.read(), *sort_col.read(), *sort_dir.read()) {
                                 tr {
                                     td {
                                         style: StyleBuilder::new()
@@ -302,5 +442,85 @@ fn app() -> Element {
 
         }
         SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sort_state_transitions_and_aria_labels() {
+        assert_eq!(
+            aria_sort_for(None, SortDirection::Asc, SortColumn::Key),
+            "none"
+        );
+        let (col, dir) = next_sort_state(None, SortDirection::Asc, SortColumn::Key);
+        assert_eq!((col, dir), (SortColumn::Key, SortDirection::Asc));
+        assert_eq!(aria_sort_for(Some(col), dir, SortColumn::Key), "ascending");
+        assert_eq!(aria_sort_for(Some(col), dir, SortColumn::Count), "none");
+        assert_eq!(dir.indicator(), " ▲");
+
+        let (col2, dir2) = next_sort_state(Some(col), dir, SortColumn::Key);
+        assert_eq!((col2, dir2), (SortColumn::Key, SortDirection::Desc));
+        assert_eq!(
+            aria_sort_for(Some(col2), dir2, SortColumn::Key),
+            "descending"
+        );
+        assert_eq!(dir2.indicator(), " ▼");
+
+        let (col3, dir3) = next_sort_state(Some(col2), dir2, SortColumn::Count);
+        assert_eq!((col3, dir3), (SortColumn::Count, SortDirection::Desc));
+        let (col4, dir4) = next_sort_state(Some(col3), dir3, SortColumn::Count);
+        assert_eq!((col4, dir4), (SortColumn::Count, SortDirection::Asc));
+    }
+
+    #[test]
+    fn sorted_results_orders_by_selected_column_and_direction() {
+        let rows = vec![
+            ColumnResult {
+                key: "zeta".to_string(),
+                count: 2,
+            },
+            ColumnResult {
+                key: "alpha".to_string(),
+                count: 10,
+            },
+            ColumnResult {
+                key: "beta".to_string(),
+                count: 2,
+            },
+        ];
+        assert_eq!(sorted_results(&rows, None, SortDirection::Asc), rows);
+
+        let key_asc = sorted_results(&rows, Some(SortColumn::Key), SortDirection::Asc);
+        assert_eq!(
+            key_asc.iter().map(|r| r.key.as_str()).collect::<Vec<_>>(),
+            vec!["alpha", "beta", "zeta"]
+        );
+
+        let key_desc = sorted_results(&rows, Some(SortColumn::Key), SortDirection::Desc);
+        assert_eq!(
+            key_desc.iter().map(|r| r.key.as_str()).collect::<Vec<_>>(),
+            vec!["zeta", "beta", "alpha"]
+        );
+
+        let count_desc = sorted_results(&rows, Some(SortColumn::Count), SortDirection::Desc);
+        assert_eq!(
+            count_desc
+                .iter()
+                .map(|r| (r.key.as_str(), r.count))
+                .collect::<Vec<_>>(),
+            vec![("alpha", 10), ("zeta", 2), ("beta", 2)]
+        );
+
+        let count_asc = sorted_results(&rows, Some(SortColumn::Count), SortDirection::Asc);
+        assert_eq!(
+            count_asc
+                .iter()
+                .map(|r| (r.key.as_str(), r.count))
+                .collect::<Vec<_>>(),
+            vec![("beta", 2), ("zeta", 2), ("alpha", 10)]
+        );
     }
 }
