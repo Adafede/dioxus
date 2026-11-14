@@ -49,15 +49,25 @@ fn the_backslash_is_escaped_before_the_quote() {
 }
 
 #[test]
-fn a_newline_is_not_escaped() {
-    // A gap, stated rather than hidden: a literal newline inside a SPARQL
-    // string is legal, so this is harmless, but it means the escaper is not
-    // a general string-literal encoder. An InChIKey cannot contain one.
+fn control_characters_are_escaped() {
     assert_eq!(
-        escape_sparql_literal("a\nb"),
-        "a\nb",
-        "a newline passes through: legal in a SPARQL literal"
+        escape_sparql_literal("a\nb\rc\td"),
+        r"a\nb\rc\td",
+        "newline, carriage return, and tab must be escaped inside SPARQL string literals"
     );
+}
+
+#[test]
+fn empty_pubchem_key_list_produces_empty_query() {
+    for batch in [keys(&[]), keys(&["", ""])] {
+        let q = build_pubchem_query(&batch);
+        assert!(q.contains("WHERE {}"), "empty PubChem pattern: {q}");
+        assert!(q.contains("# empty"), "explicit empty marker: {q}");
+        assert!(
+            !q.contains("VALUES ?inchikey {"),
+            "empty batch must not emit an empty VALUES clause: {q}"
+        );
+    }
 }
 
 // ── the VALUES clause both builders share ──────────────────────────────

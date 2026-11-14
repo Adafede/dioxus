@@ -294,3 +294,86 @@ fn motif_balance_formats_true_percentages() {
         assessment.evidence_notes
     );
 }
+
+fn sample_row() -> crate::model::MoleculeRow {
+    crate::model::MoleculeRow {
+        index: 1,
+        label: "Sample".to_string(),
+        smiles: "C".to_string(),
+        #[cfg(target_arch = "wasm32")]
+        inchikey: String::new(),
+        svg: None,
+        motifs: Vec::new(),
+        substituents_counts: std::collections::BTreeMap::new(),
+        lotus_scaffolds: Vec::new(),
+        lotus_taxa: Vec::new(),
+        lotus_compounds: Vec::new(),
+        lotus_compounds_with_taxa: std::collections::BTreeSet::new(),
+        pubchem_cids: Vec::new(),
+        np_likeness: 0.0,
+        np_label: String::new(),
+        np_confidence: 0.0,
+        np_score_available: false,
+        ring_family: String::new(),
+        evidence_notes: Vec::new(),
+        motif_context: String::new(),
+        chemist_checks: Vec::new(),
+        verdict: String::new(),
+        error: None,
+        #[cfg(target_arch = "wasm32")]
+        descriptors: crate::model::RdkitDescriptors::default(),
+        #[cfg(target_arch = "wasm32")]
+        stereo_tags: Vec::new(),
+        num_atoms: 1,
+        motif_hits: Vec::new(),
+    }
+}
+
+#[test]
+fn run_checks_evaluates_score_skeleton_and_databases() {
+    let mut row = sample_row();
+    row.ring_family = "Polyaromatic hydrocarbon".to_string();
+    let checks = run_checks(&row);
+    assert_eq!(
+        checks.iter().map(|c| c.status).collect::<Vec<_>>(),
+        vec!["warn", "fail", "fail"]
+    );
+
+    row.np_score_available = true;
+    row.np_likeness = 1.4;
+    row.ring_family = "Steroid tetracycle".to_string();
+    row.lotus_taxa = vec!["Taxus".to_string()];
+    row.pubchem_cids = vec!["441467".to_string()];
+    let pass_checks = run_checks(&row);
+    assert_eq!(
+        pass_checks.iter().map(|c| c.status).collect::<Vec<_>>(),
+        vec!["pass", "pass", "pass"]
+    );
+    assert_eq!(
+        pass_checks.get(2).map(|c| c.detail.as_str()),
+        Some("LOTUS + PubChem")
+    );
+}
+
+#[test]
+fn row_verdict_routes_errors_and_database_evidence() {
+    let mut err_row = sample_row();
+    err_row.error = Some("invalid SMILES".to_string());
+    assert_eq!(row_verdict(&err_row), "⚠ invalid SMILES");
+
+    let mut lotus_row = sample_row();
+    lotus_row.lotus_taxa = vec!["Plantae".to_string()];
+    assert!(
+        row_verdict(&lotus_row).contains("LOTUS organism record (Ertl unavailable)"),
+        "LOTUS row without Ertl score should report LOTUS organism record"
+    );
+
+    lotus_row.np_score_available = true;
+    lotus_row.np_likeness = 2.4;
+    lotus_row.motifs = vec!["Steroid".to_string()];
+    lotus_row.motif_hits = vec![motif_hit("Steroid", "natural", "plants")];
+    assert!(
+        row_verdict(&lotus_row).contains("LOTUS + strong NP evidence"),
+        "LOTUS row with strong Ertl + structural support should report strong evidence"
+    );
+}

@@ -98,6 +98,15 @@ fn escape_csv_wraps_fields_with_a_carriage_return() {
 }
 
 #[test]
+fn categorizes_likely_and_strong_natural_verdicts() {
+    assert_eq!(
+        category("🌿 Likely NP — Ertl + structural support"),
+        "likely"
+    );
+    assert_eq!(category("🌿 Strong natural product (Ertl +2.80)"), "likely");
+}
+
+#[test]
 fn build_csv_formats_rows_and_headers() {
     let row = crate::model::MoleculeRow {
         index: 1,
@@ -112,7 +121,7 @@ fn build_csv_formats_rows_and_headers() {
             ("ethyl".to_string(), 1),
         ]),
         lotus_scaffolds: Vec::new(),
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(any(test, target_arch = "wasm32"))]
         lotus_taxa: Vec::new(),
         lotus_compounds: vec!["Q60235".to_string()],
         lotus_compounds_with_taxa: std::collections::BTreeSet::new(),

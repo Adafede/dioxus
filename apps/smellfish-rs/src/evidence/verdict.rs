@@ -8,19 +8,19 @@
 //! helper (`category`) lives in `app::csv_export`.
 
 use super::chemist::EvidenceCounts;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use super::chemist::count_evidence;
 
 /// Verdict string shown prominently in the UI.
 ///
 /// Delegates the chemistry/structure classification to the native, unit-tested
-/// [`classify_np_evidence`]; this wasm-only wrapper only extracts the flat
-/// evidence signals from the RDKit-built [`MoleculeRow`](crate::model::MoleculeRow).
+/// [`classify_np_evidence`]; this wrapper extracts the flat evidence signals from
+/// [`MoleculeRow`](crate::model::MoleculeRow).
 /// Keeping the threshold logic in a `cfg`-free pure function means the
 /// assessment is chemistry-grounded and verifiable on native — it is not
 /// derived from any LLM heuristic, and a score-only signal is never elevated
 /// to "novel".
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 #[must_use]
 pub(crate) fn row_verdict(row: &crate::model::MoleculeRow) -> String {
     if let Some(err) = row.error.as_deref() {

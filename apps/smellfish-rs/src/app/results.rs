@@ -81,7 +81,14 @@ pub fn ResultsView(rows: Signal<Vec<MoleculeRow>>) -> Element {
             div { class: "small",
                 strong { "{rows_ref.len()}" }
                 " results \u{00b7} "
-                a { href: "#", onclick: move |_| download_csv(&rows.read()), "Download CSV" }
+                a {
+                    href: "#",
+                    onclick: move |evt| {
+                        evt.prevent_default();
+                        download_csv(&rows.read());
+                    },
+                    "Download CSV"
+                }
             }
         }
         section { class: "cards",

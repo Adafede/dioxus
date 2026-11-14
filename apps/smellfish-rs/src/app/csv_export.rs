@@ -39,7 +39,7 @@ pub(super) fn category(verdict: &str) -> &'static str {
     // GREEN — High NP confidence (LOTUS or strong structural + Ertl score).
     if matches_any(
         verdict,
-        &["lotus", "likely hit", "likely novel", "pubchem + strong"],
+        &["lotus", "likely", "strong natural", "pubchem + strong"],
     ) {
         return "likely";
     }

@@ -49,7 +49,7 @@ pub(crate) struct MoleculeRow {
     pub substituents_counts: SubstituentCounts,
     /// LOTUS 1-percent scaffold matches (Rutz et al.) — displayed as chips.
     pub lotus_scaffolds: Vec<String>,
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(test, target_arch = "wasm32"))]
     pub lotus_taxa: Vec<String>,
     pub lotus_compounds: Vec<String>,
     pub lotus_compounds_with_taxa: BTreeSet<String>,

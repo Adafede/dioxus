@@ -86,6 +86,9 @@ SELECT DISTINCT ?inchikey ?related_item ?taxon_name WHERE {{
 
 pub(crate) fn build_pubchem_query(chunk: &[String]) -> String {
     let values = format_sparql_values(chunk);
+    if values.is_empty() {
+        return "SELECT DISTINCT ?inchikey ?related_cid WHERE {} # empty".to_string();
+    }
     format!(
         r"
 PREFIX cheminf: <http://semanticscience.org/resource/>
@@ -132,6 +135,9 @@ fn write_escaped_sparql_literal(out: &mut String, value: &str) {
         match c {
             '\\' => out.push_str(r"\\"),
             '"' => out.push_str(r#"\""#),
+            '\n' => out.push_str(r"\n"),
+            '\r' => out.push_str(r"\r"),
+            '\t' => out.push_str(r"\t"),
             other => out.push(other),
         }
     }

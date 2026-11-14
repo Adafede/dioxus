@@ -7,7 +7,7 @@
 //! in `assessment`/`verdict`, so the dependency graph stays acyclic
 //! (assessment → verdict → chemist).
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 use crate::model::{ChemistCheck, MoleculeRow};
 use crate::model::{RdkitMotifHit, normalized_source_class};
 
@@ -29,7 +29,7 @@ use crate::model::{RdkitMotifHit, normalized_source_class};
 /// spectrometry annotation pipelines may not preserve stereochemical
 /// information, so the absence of stereo tags is not a reliable negative
 /// signal.
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(test, target_arch = "wasm32"))]
 #[must_use]
 pub(crate) fn run_checks(row: &MoleculeRow) -> Vec<ChemistCheck> {
     let mut checks: Vec<ChemistCheck> = Vec::with_capacity(3);
