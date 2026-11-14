@@ -15,8 +15,14 @@ dependencies = ["test-nextest", "test-doc"]
 
 [tasks."test-nextest"]
 cwd = "${REPO_ROOT}"
-description = "Run the test suite with cargo-nextest, fail-fast."
-script = "cargo nextest run --workspace --locked"
+description = "Run the test suite with cargo-nextest, fail-fast (uses ci profile when CI is set)."
+script = """
+if [ -n "${CI:-}" ]; then
+  cargo nextest run --workspace --locked --profile ci
+else
+  cargo nextest run --workspace --locked
+fi
+"""
 
 # What CI runs, as one command. The `ci` task calls `test` instead, which is
 # the same two steps by way of its own dependencies; this is for a human who
