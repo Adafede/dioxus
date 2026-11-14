@@ -71,17 +71,21 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> CxResult_ {
 
     let enumerated = enumerate_repeating(&scaffold, &repeat_unit)?;
     let (_, cov) = roundtrip_coverage(&enumerated, group);
-    let frac = cov.fraction();
+    let clean = cov.fraction() >= 1.0;
 
     Ok(CxResult {
         cx_smiles: cx,
-        construct: Construct::Repeating,
+        construct: if clean {
+            Construct::Repeating
+        } else {
+            Construct::BestEffort
+        },
         scaffold_smiles,
         floating: Vec::new(),
         repeat_unit: Some(repeat_unit),
         confidence: Confidence {
             coverage: cov,
-            clean: frac >= 1.0,
+            clean,
         },
         enumerated,
     })
@@ -120,7 +124,7 @@ pub(crate) fn repeat_pattern(
 
 /// Element multiset of ONE repeat unit (sorted), taken from the pattern.
 pub(crate) fn unit_multiset(pattern: &[u32], longest: &Molecule, unit_size: usize) -> Vec<u8> {
-    let k = pattern.len() / unit_size;
+    let k = pattern.len().saturating_div(unit_size).max(1);
     let mut counts: HashMap<u8, usize> = HashMap::new();
     for i in pattern {
         let el = longest.atom(AtomIdx(*i)).element.atomic_number();
@@ -259,7 +263,7 @@ pub(crate) fn gcd(a: usize, b: usize) -> usize {
 
 /// Splice `n` copies of the repeat unit between its two external anchors.
 pub(crate) fn splice_repeat(scaffold: &Molecule, repeat_atoms: &[usize], n: usize) -> Molecule {
-    if n <= 1 {
+    if n <= 1 || repeat_atoms.is_empty() {
         return scaffold.clone();
     }
     let unit: Vec<u32> = repeat_atoms.iter().map(|&a| a as u32).collect();

@@ -81,7 +81,7 @@ pub(crate) fn build_positional_with_options(group: &[Molecule], aromatic: bool) 
     let comp_positions: Vec<Vec<usize>> = floating_comps
         .iter()
         .map(|fc| {
-            let pos = equiv_positions(fc, group, &scaffold_q);
+            let pos = equiv_positions(rep, fc, group, &scaffold_q);
             if aromatic {
                 expand_aromatic_equiv(&pos, &scaffold)
             } else {
@@ -198,28 +198,14 @@ fn build_base_smiles(
 }
 
 /// Write a fragment molecule with the attachment atom first.
-// `order` is `once(attachment)` followed by every other index below `n`, so it is
-// a permutation of `0..n`; `map` and `def.atoms` both have `n` slots and every
-// index below is an element of `order`. The inversions are the point of the
-// function, and wrapping them in `Option` would mean a bond silently vanishing
-// for a state the two lines above have already excluded.
-#[allow(clippy::indexing_slicing)]
 fn write_fragment_first(def: &FloatingDef) -> String {
-    let n = def.atoms.len();
+    if def.atoms.is_empty() {
+        return String::new();
+    }
+    let (atoms, bonds, _) =
+        reorder_attachment_first(def.atoms.clone(), def.bonds.clone(), def.attachment);
     let mut b = MoleculeBuilder::new();
-    let order: Vec<usize> = std::iter::once(def.attachment)
-        .chain((0..n).filter(|&i| i != def.attachment))
-        .collect();
-    let mut map = vec![0usize; n];
-    for (new_i, &old_i) in order.iter().enumerate() {
-        map[old_i] = new_i;
-    }
-    for &old_i in &order {
-        let _ = b.add_atom(def.atoms[old_i].clone());
-    }
-    for (a1, a2, order_) in &def.bonds {
-        let _ = b.add_bond(AtomIdx(map[*a1] as u32), AtomIdx(map[*a2] as u32), *order_);
-    }
+    drop(add_atoms_and_bonds(&mut b, &atoms, &bonds));
     write(&b.build())
 }
 
@@ -283,29 +269,31 @@ fn floating_defs(rep: &Molecule, frag: &[u32], keep: &[bool]) -> Vec<FloatingDef
 }
 
 /// Reorder a (atoms, bonds, attachment) so that the attachment atom is index 0.
-// As in `write_fragment_first`, `order` is a permutation of `0..atoms.len()` and
-// `map`, `atoms` and the bond endpoints are all indexed by that permutation.
-#[allow(clippy::indexing_slicing)]
 fn reorder_attachment_first(
     atoms: Vec<Atom>,
     bonds: Vec<(usize, usize, BondOrder)>,
     attach: usize,
 ) -> (Vec<Atom>, Vec<(usize, usize, BondOrder)>, usize) {
-    if attach == 0 {
+    let n = atoms.len();
+    if attach == 0 || attach >= n {
         return (atoms, bonds, attach);
     }
-    let n = atoms.len();
     let order: Vec<usize> = std::iter::once(attach)
         .chain((0..n).filter(|&i| i != attach))
         .collect();
     let mut map = vec![0usize; n];
     for (new_i, &old_i) in order.iter().enumerate() {
-        map[old_i] = new_i;
+        if let Some(slot) = map.get_mut(old_i) {
+            *slot = new_i;
+        }
     }
-    let new_atoms: Vec<Atom> = order.iter().map(|&i| atoms[i].clone()).collect();
+    let new_atoms: Vec<Atom> = order
+        .iter()
+        .filter_map(|&i| atoms.get(i).cloned())
+        .collect();
     let new_bonds: Vec<(usize, usize, BondOrder)> = bonds
         .iter()
-        .map(|(a, c, o)| (map[*a], map[*c], *o))
+        .filter_map(|&(a, c, o)| Some((*map.get(a)?, *map.get(c)?, o)))
         .collect();
     (new_atoms, new_bonds, 0)
 }
@@ -343,7 +331,13 @@ fn extract_subgraph(
 
 /// Equivalent scaffold attachment positions for one floating component across
 /// all inputs (scaffold atom indices).
-fn equiv_positions(_comp: &[u32], group: &[Molecule], scaffold_q: &QueryMolecule) -> Vec<usize> {
+fn equiv_positions(
+    rep: &Molecule,
+    comp: &[u32],
+    group: &[Molecule],
+    scaffold_q: &QueryMolecule,
+) -> Vec<usize> {
+    let target_multiset = (!comp.is_empty()).then(|| super::repeating::multiset(comp, rep));
     let mut positions: Vec<usize> = Vec::new();
     for mol in group {
         let hits = find_matches(scaffold_q, mol);
@@ -352,12 +346,19 @@ fn equiv_positions(_comp: &[u32], group: &[Molecule], scaffold_q: &QueryMolecule
         };
         let matched = matched_mask(&hit, mol);
         let unf = unmatched_atoms(&matched);
-        for u in &unf {
-            for (nbr, _) in mol.neighbors(AtomIdx(*u)) {
-                if let Some((&qi, _)) = hit.iter().find(|(_, t)| t.0 == nbr.0)
-                    && !positions.contains(&qi)
-                {
-                    positions.push(qi);
+        for mc in components(&unf, mol) {
+            if let Some(target) = &target_multiset
+                && super::repeating::multiset(&mc, mol) != *target
+            {
+                continue;
+            }
+            for u in mc {
+                for (nbr, _) in mol.neighbors(AtomIdx(u)) {
+                    if let Some((&qi, _)) = hit.iter().find(|(_, t)| t.0 == nbr.0)
+                        && !positions.contains(&qi)
+                    {
+                        positions.push(qi);
+                    }
                 }
             }
         }

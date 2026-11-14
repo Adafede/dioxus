@@ -408,3 +408,45 @@ fn one_anchor_bond_is_dropped_either_way_round() {
         "and naming it backwards drops the same bond"
     );
 }
+
+#[test]
+fn splicing_an_empty_repeat_unit_returns_the_scaffold() {
+    let c = mol("CCC");
+    assert_eq!(
+        canonical_smiles(&splice_repeat(&c, &[], 3)),
+        canonical_smiles(&c),
+        "empty repeat unit with n > 1 must return the scaffold rather than panicking"
+    );
+}
+
+#[test]
+fn unit_multiset_does_not_divide_by_zero_when_pattern_is_shorter_than_unit() {
+    let long = mol("CCC");
+    assert_eq!(
+        unit_multiset(&[0], &long, 2),
+        vec![6],
+        "pattern shorter than unit_size clamps repeat count to 1 instead of dividing by zero"
+    );
+}
+
+#[test]
+fn incomplete_repeating_roundtrip_is_best_effort() {
+    // 6, 8, 10 linear alkanes plus a branched 10-carbon isomer: longest is C10
+    // (after the branched C10 by stable sort), so repeat finding succeeds on
+    // linear C2H4, enumerates C6/C8/C10, and misses the branched isomer.
+    let group = [
+        mol("CCCCCC"),
+        mol("CCCCCCCC"),
+        mol("CC(C)CCCCCCC"),
+        mol("CCCCCCCCCC"),
+    ];
+    let r = build_repeating(&group).expect("returns a best-effort repeating result");
+    assert!(!r.confidence.clean, "branched isomer is not reproduced");
+    assert_eq!(r.confidence.coverage.covered, 3);
+    assert_eq!(r.confidence.coverage.total, 4);
+    assert_eq!(
+        r.construct,
+        Construct::BestEffort,
+        "incomplete round-trip coverage must demote construct to BestEffort"
+    );
+}

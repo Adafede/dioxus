@@ -153,7 +153,7 @@ fn input_card(mut input: Signal<String>, mut aromatic: Signal<bool>) -> Element 
                 input {
                     r#type: "checkbox",
                     id: "aromatic-equiv",
-                    checked: "{aromatic.read()}",
+                    checked: *aromatic.read(),
                     onchange: move |_| {
                     let cur = *aromatic.read();
                     aromatic.set(!cur);

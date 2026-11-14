@@ -284,3 +284,38 @@ fn non_uniform_group_without_internal_repeat_falls_back_to_positional() {
     assert_eq!(r.construct, Construct::BestEffort);
     assert_ne!(r.cx_smiles, "");
 }
+
+#[test]
+fn generate_counts_dropped_outliers_in_coverage_and_demotes_to_best_effort() {
+    // Three clustered biphenyl positional isomers plus an unrelated small molecule:
+    // the outlier is excluded from the dominant cluster, so round-trip total must
+    // count all four inputs (3/4) and demote construct to BestEffort.
+    let pos_with_outlier = "\
+Clc1ccccc1-c2ccccc2
+Clc1cccc(-c2ccccc2)c1
+Clc1ccc(-c2ccccc2)cc1
+O=C=O";
+    let r_pos = generate(&lines(pos_with_outlier)).unwrap();
+    assert_eq!(r_pos.confidence.coverage.covered, 3);
+    assert_eq!(r_pos.confidence.coverage.total, 4);
+    assert!(
+        !r_pos.confidence.clean,
+        "dropped outlier prevents clean coverage"
+    );
+    assert_eq!(r_pos.construct, Construct::BestEffort);
+
+    // Three clustered repeating PFAS chains plus an unrelated outlier.
+    let rep_with_outlier = "\
+OC(=O)C(F)(F)C(F)F
+OC(=O)C(F)(F)C(F)(F)C(F)F
+OC(=O)C(F)(F)C(F)(F)C(F)(F)C(F)F
+O=C=O";
+    let r_rep = generate(&lines(rep_with_outlier)).unwrap();
+    assert_eq!(r_rep.confidence.coverage.covered, 3);
+    assert_eq!(r_rep.confidence.coverage.total, 4);
+    assert!(
+        !r_rep.confidence.clean,
+        "dropped outlier prevents clean coverage"
+    );
+    assert_eq!(r_rep.construct, Construct::BestEffort);
+}

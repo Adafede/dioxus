@@ -54,6 +54,7 @@ use parse::{cluster, parse_list};
 use positional::build_positional;
 use positional::build_positional_with_options;
 use repeating::build_repeating;
+use roundtrip::roundtrip_coverage;
 
 /// Minimum ECFP4/Tanimoto similarity for two structures to share a coherent
 /// candidate group (single-linkage). Biphenyl variants pairwise reach ≥0.37.
@@ -106,25 +107,31 @@ pub(crate) fn generate_with_options(smiles: &[String], aromatic: bool) -> CxResu
     let clusters = cluster(&mols, CLUSTER_TANIMOTO);
     // Largest cluster, but only if it actually contains ≥2 molecules (a
     // singleton "group" means no shared scaffold to collapse); otherwise fall
-    // back to treating every input as its own group. Non-panicking: `unwrap_or`
+    // back to treating every input as its own group. Non-panicking: `unwrap_or_else`
     // handles both the empty-cluster and singleton cases.
     let group: Vec<Molecule> = clusters
         .into_iter()
         .max_by_key(Vec::len)
         .filter(|c| c.len() >= 2)
-        .unwrap_or(mols);
+        .unwrap_or_else(|| mols.clone());
 
-    // Positional construction needs every input in the group to have the same
-    // atom count; anything else tries repeating units first and falls back to
-    // best-effort MCS positional construction if no internal repeat unit exists.
-    let uniform = group
-        .first()
-        .is_some_and(|first| group.iter().all(|m| m.atom_count() == first.atom_count()));
-    if uniform {
-        build_positional_with_options(&group, aromatic)
-    } else {
-        build_repeating(&group).or_else(|_| build_positional_with_options(&group, aromatic))
+    // Try repeating-unit construction first; when inputs share the same atom
+    // count or have no internal repeat unit, fall back to positional MCS.
+    let mut res =
+        build_repeating(&group).or_else(|_| build_positional_with_options(&group, aromatic))?;
+
+    // Always report round-trip coverage against every input molecule, including
+    // outliers dropped from `group` by clustering.
+    let (_, cov) = roundtrip_coverage(&res.enumerated, &mols);
+    let clean = cov.fraction() >= 1.0;
+    if !clean {
+        res.construct = Construct::BestEffort;
     }
+    res.confidence = Confidence {
+        coverage: cov,
+        clean,
+    };
+    Ok(res)
 }
 
 // ---------------------------------------------------------------------------

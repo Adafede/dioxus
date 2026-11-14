@@ -250,7 +250,7 @@ fn an_unmatched_scaffold_offers_every_position() {
     // positions at all.
     let c = mol("CC");
     let scaffold_q = molecule_to_query(&c);
-    let positions = equiv_positions(&[], std::slice::from_ref(&c), &scaffold_q);
+    let positions = equiv_positions(&c, &[], std::slice::from_ref(&c), &scaffold_q);
     assert_eq!(
         positions,
         vec![0, 1],
@@ -393,4 +393,64 @@ fn expand_aromatic_equiv_adds_equivalent_ring_positions_only() {
         vec![0],
         "aliphatic position does not expand across single bonds"
     );
+}
+
+#[test]
+fn equiv_positions_filters_to_matching_component() {
+    // Asymmetric CCCO scaffold: 0:C - 1:C - 2:C - 3:O.
+    // m1 has Cl at C0 (atom 0) and F at C1 (atom 3).
+    // m2 has Cl at C1 and F at C2.
+    let scaffold_q = molecule_to_query(&mol("CCCO"));
+    let m1 = mol("ClCC(F)CO");
+    let m2 = mol("CC(Cl)C(F)O");
+    assert_eq!(m1.atom(AtomIdx(0)).element.atomic_number(), 17, "Cl at 0");
+    assert_eq!(m1.atom(AtomIdx(3)).element.atomic_number(), 9, "F at 3");
+    let group = [m1.clone(), m2];
+    assert_eq!(
+        equiv_positions(&m1, &[0], &group, &scaffold_q),
+        vec![0, 1],
+        "Cl positions exclude F's attachment at C2"
+    );
+    assert_eq!(
+        equiv_positions(&m1, &[3], &group, &scaffold_q),
+        vec![1, 2],
+        "F positions exclude Cl's attachment at C0"
+    );
+}
+
+#[test]
+fn reorder_and_write_fragment_handle_empty_and_out_of_range_attachment() {
+    let empty_def = FloatingDef {
+        atoms: Vec::new(),
+        bonds: Vec::new(),
+        attachment: 0,
+        split: false,
+    };
+    assert_eq!(
+        write_fragment_first(&empty_def),
+        "",
+        "empty fragment writes empty SMILES without panicking"
+    );
+    let (a, b, att) = reorder_attachment_first(Vec::new(), Vec::new(), 2);
+    assert_eq!(a.len(), 0);
+    assert_eq!(b.len(), 0);
+    assert_eq!(att, 2);
+
+    let m = mol("CCO");
+    let (atoms, bonds, _) = extract_subgraph(&m, &[1, 2]);
+    let oob_def = FloatingDef {
+        atoms: atoms.clone(),
+        bonds: bonds.clone(),
+        attachment: 99,
+        split: false,
+    };
+    assert_eq!(
+        write_fragment_first(&oob_def),
+        "CO",
+        "out-of-range attachment still writes safely without panicking"
+    );
+    let (a2, b2, att2) = reorder_attachment_first(atoms, bonds, 99);
+    assert_eq!(a2.len(), 2);
+    assert_eq!(b2.len(), 1);
+    assert_eq!(att2, 99);
 }
