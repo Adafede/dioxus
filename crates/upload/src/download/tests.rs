@@ -25,8 +25,15 @@ fn sanitize_strips_leading_dots() {
 
 #[test]
 fn sanitize_empty_input() {
-    assert_eq!(sanitize_filename("   "), "");
-    assert_eq!(sanitize_filename("."), "");
+    assert_eq!(sanitize_filename("   "), "download.txt");
+    assert_eq!(sanitize_filename("."), "download.txt");
+    assert_eq!(sanitize_filename("..."), "download.txt");
+    assert_eq!(sanitize_filename("\x00\n"), "download.txt");
+}
+
+#[test]
+fn sanitize_replaces_windows_reserved_chars() {
+    assert_eq!(sanitize_filename("a:b*c?d<e>f|g"), "a_b_c_d_e_f_g");
 }
 
 #[test]
@@ -63,7 +70,11 @@ fn sanitize_unicode_passthrough() {
 }
 
 #[test]
-fn download_text_fails_on_native() {
+fn download_helpers_fail_on_native() {
     #[cfg(not(target_arch = "wasm32"))]
-    assert!(crate::download_text("test", "test.txt").is_err());
+    {
+        assert!(crate::download_text("test", "test.txt").is_err());
+        assert!(crate::download_svg("<svg/>", "plot.svg").is_err());
+        assert!(crate::download_with_mime("{}", "out.json", "application/json").is_err());
+    }
 }

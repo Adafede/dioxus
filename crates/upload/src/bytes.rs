@@ -191,8 +191,8 @@ impl ChunkSource for BlobSource {
     }
 
     // `Blob::slice` takes `f64` bounds because that is what the DOM's `Blob`
-    // takes, so the `u64` offsets are widened to it. Widening is exact; it is the
-    // narrowing back inside the browser that the DOM does, not us.
+    // takes, so the `u64` offsets are widened to it. `u64` values up to 2^53
+    // bytes (8 PiB) widen losslessly to IEEE-754 `f64`, exceeding any browser `Blob`.
     #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)] // see above
     async fn read_chunk(&self, start: u64, end: u64) -> Result<Vec<u8>, UploadError> {
         let slice = self

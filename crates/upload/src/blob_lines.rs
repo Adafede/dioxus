@@ -13,6 +13,12 @@ use crate::error::UploadError;
 use crate::progress::ProgressThrottler;
 use crate::progress::{PROGRESS_BYTE_INTERVAL, PROGRESS_TIME_INTERVAL_MS};
 
+/// Default cap on a single buffered line (`64 MiB`).
+///
+/// Prevents malformed inputs without newlines from buffering a multi-gigabyte
+/// file unboundedly in memory.
+pub const DEFAULT_MAX_LINE_BYTES: usize = 64 * 1024 * 1024;
+
 /// A line-oriented, chunked reader.
 ///
 /// Yields `String` lines (without trailing `\n` or `\r`) one at a time via
@@ -28,6 +34,7 @@ pub struct BlobLines<F, S: ChunkSource> {
     buffer: Vec<u8>,
     buf_start: usize,
     chunk_size: usize,
+    max_line_bytes: usize,
     processed: u64,
     progress: ProgressThrottler<F, fn() -> f64>,
 }
@@ -46,6 +53,7 @@ where
             total_bytes,
             offset: 0,
             chunk_size: crate::blob_cursor::CHUNK_SIZE,
+            max_line_bytes: DEFAULT_MAX_LINE_BYTES,
             buffer: Vec::new(),
             buf_start: 0,
             processed: 0,
@@ -68,6 +76,13 @@ where
         self
     }
 
+    /// Overrides the maximum allowed line length in bytes.
+    #[must_use]
+    pub const fn with_max_line_bytes(mut self, bytes: usize) -> Self {
+        self.max_line_bytes = if bytes == 0 { 1 } else { bytes };
+        self
+    }
+
     /// Total bytes in the source.
     #[must_use]
     pub const fn total_bytes(&self) -> u64 {
@@ -78,12 +93,25 @@ where
     ///
     /// # Errors
     ///
-    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
+    /// Returns [`UploadError`] if reading the next chunk from the blob fails or
+    /// a line exceeds the configured maximum byte length.
     pub async fn next_line(&mut self) -> Result<Option<String>, UploadError> {
         loop {
             // Try to extract a complete line from the current buffer.
-            if let Some(line) = self.take_line_from_buffer() {
+            if let Some(line) = self.take_line_from_buffer()? {
                 return Ok(Some(line));
+            }
+            let buffered = self.buffer.get(self.buf_start..).unwrap_or_default();
+            // Exclude a trailing `\r` mid-stream because `\r\n` may straddle a chunk boundary.
+            let pending_len = if self.offset < self.total_bytes && buffered.ends_with(b"\r") {
+                buffered.len().saturating_sub(1)
+            } else {
+                buffered.len()
+            };
+            if pending_len > self.max_line_bytes {
+                return Err(UploadError::LineTooLong {
+                    max_bytes: self.max_line_bytes,
+                });
             }
 
             // No complete line yet — check for EOF. Whatever is left in the
@@ -116,24 +144,29 @@ where
         }
     }
 
-    fn take_line_from_buffer(&mut self) -> Option<String> {
-        let available = self.buffer.get(self.buf_start..)?;
+    fn take_line_from_buffer(&mut self) -> Result<Option<String>, UploadError> {
+        let Some(available) = self.buffer.get(self.buf_start..) else {
+            return Ok(None);
+        };
         if let Some(pos) = available.iter().position(|b| *b == b'\n')
             && let Some(line_bytes) = available.get(..pos)
         {
-            let mut line = String::from_utf8_lossy(line_bytes).into_owned();
-            self.buf_start += pos + 1;
-            if line.ends_with('\r') {
-                line.pop();
+            let content_bytes = line_bytes.strip_suffix(b"\r").unwrap_or(line_bytes);
+            if content_bytes.len() > self.max_line_bytes {
+                return Err(UploadError::LineTooLong {
+                    max_bytes: self.max_line_bytes,
+                });
             }
+            let line = String::from_utf8_lossy(content_bytes).into_owned();
+            self.buf_start += pos + 1;
             // Compact buffer when it's more than half consumed.
             if self.buf_start > self.buffer.len() / 2 {
                 self.buffer.drain(..self.buf_start);
                 self.buf_start = 0;
             }
-            Some(line)
+            Ok(Some(line))
         } else {
-            None
+            Ok(None)
         }
     }
 

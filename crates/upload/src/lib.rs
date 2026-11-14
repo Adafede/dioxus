@@ -16,7 +16,7 @@
 //!   `BlobLines::new`.
 //! - **`extract_blob_from_file_data`** — unified file-input / drag-drop
 //!   extraction over `&[FileData]`.
-//! - **`download_text`** — browser download of text content.
+//! - **`download_text` / `download_svg` / `download_with_mime`** — browser download helpers.
 //!
 //! ## Design non-goals
 //!
@@ -59,6 +59,6 @@ pub use blob_lines::BlobLines;
 #[cfg(target_arch = "wasm32")]
 pub use bytes::BlobSource;
 pub use bytes::{ChunkSource, SliceSource};
-pub use download::download_text;
+pub use download::{download_svg, download_text, download_with_mime};
 pub use error::UploadError;
 pub use event::{Blob, ExtractedFile, extract_blob_from_file_data};

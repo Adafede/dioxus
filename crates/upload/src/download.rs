@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Browser download helpers — text content.
+//! Browser download helpers — text and SVG content.
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::Array;
@@ -32,6 +32,34 @@ fn blob_url_from_str(content: &str, mime: &str) -> Result<String, String> {
         .map_err(|e| format!("failed to create object URL: {e:?}"))
 }
 
+/// Triggers a browser download of `content` with an explicit MIME type.
+///
+/// # Arguments
+/// - `content`: The text content to download
+/// - `filename`: The full filename (including extension) for the download
+/// - `mime`: The MIME type (for example, `"image/svg+xml;charset=utf-8"`)
+///
+/// # Errors
+/// Returns a message if the download cannot be triggered.
+#[cfg(target_arch = "wasm32")]
+pub fn download_with_mime(content: &str, filename: &str, mime: &str) -> Result<(), String> {
+    let safe_name = sanitize_filename(filename);
+    let url = blob_url_from_str(content, mime)?;
+
+    if let Err(err) = click_download_anchor(&url, &safe_name) {
+        drop(Url::revoke_object_url(&url));
+        return Err(format!("download failed: {err}"));
+    }
+
+    // Defer revocation so the browser has time to initiate the download before
+    // the object URL is invalidated.
+    gloo_timers::callback::Timeout::new(1_000, move || {
+        drop(Url::revoke_object_url(&url));
+    })
+    .forget();
+    Ok(())
+}
+
 /// Triggers a browser download of `content` as a text file.
 ///
 /// # Arguments
@@ -40,15 +68,20 @@ fn blob_url_from_str(content: &str, mime: &str) -> Result<String, String> {
 ///
 /// # Errors
 /// Returns a message if the download cannot be triggered.
-#[cfg(target_arch = "wasm32")]
 pub fn download_text(content: &str, filename: &str) -> Result<(), String> {
-    let safe_name = sanitize_filename(filename);
-    let url = blob_url_from_str(content, "text/plain;charset=utf-8")?;
+    download_with_mime(content, filename, "text/plain;charset=utf-8")
+}
 
-    let result =
-        click_download_anchor(&url, &safe_name).map_err(|e| format!("download failed: {e}"));
-    drop(Url::revoke_object_url(&url));
-    result
+/// Triggers a browser download of SVG markup as an `image/svg+xml` file.
+///
+/// # Arguments
+/// - `content`: The SVG XML markup to download
+/// - `filename`: The full filename (including `.svg` extension) for the download
+///
+/// # Errors
+/// Returns a message if the download cannot be triggered.
+pub fn download_svg(content: &str, filename: &str) -> Result<(), String> {
+    download_with_mime(content, filename, "image/svg+xml;charset=utf-8")
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -80,8 +113,9 @@ fn click_download_anchor(href: &str, filename: &str) -> Result<(), String> {
 
 /// Sanitizes a filename for safe browser download.
 ///
-/// Removes control characters and replaces path separators and quotes with
-/// underscores.
+/// Removes control characters, replaces path separators, quotes, and
+/// Windows-reserved characters (`: * ? < > |`) with underscores, and falls
+/// back to `"download.txt"` if nothing remains after trimming dots/spaces.
 #[must_use]
 #[cfg(any(target_arch = "wasm32", test))]
 fn sanitize_filename(input: &str) -> String {
@@ -94,21 +128,26 @@ fn sanitize_filename(input: &str) -> String {
             continue;
         }
         match c {
-            '/' | '\\' | '"' | '\'' => out.push('_'),
+            '/' | '\\' | '"' | '\'' | ':' | '*' | '?' | '<' | '>' | '|' => out.push('_'),
             _ => out.push(c),
         }
     }
-    out.trim_matches('.').trim().to_string()
+    let cleaned = out.trim_matches('.').trim();
+    if cleaned.is_empty() {
+        "download.txt".to_string()
+    } else {
+        cleaned.to_string()
+    }
 }
 
-/// Triggers a browser download of text content (native stub — returns `Err`).
+/// Triggers a browser download with an explicit MIME type (native stub — returns `Err`).
 ///
 /// On non-WASM targets browsers aren't available, so this always returns `Err`.
 ///
 /// # Errors
 /// Always returns an error on native targets.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn download_text(_content: &str, _filename: &str) -> Result<(), String> {
+pub fn download_with_mime(_content: &str, _filename: &str, _mime: &str) -> Result<(), String> {
     Err("Download is only available in the browser".to_string())
 }
 

@@ -30,6 +30,13 @@ pub enum UploadError {
     #[error("download is only available in the browser")]
     BrowserOnly,
 
+    /// A line exceeded the configured maximum byte length.
+    #[error("line exceeds maximum length of {max_bytes} bytes")]
+    LineTooLong {
+        /// Configured line length limit in bytes.
+        max_bytes: usize,
+    },
+
     /// A generic, formatted error for app-level validation.
     #[error("{0}")]
     Other(String),
@@ -53,10 +60,13 @@ impl UploadError {
 impl From<wasm_bindgen::JsValue> for UploadError {
     fn from(value: wasm_bindgen::JsValue) -> Self {
         use wasm_bindgen::JsCast;
-        Self::Blob(value.dyn_ref::<js_sys::JsString>().map_or_else(
-            || format!("{value:?}"),
-            |s| s.as_string().unwrap_or_default(),
-        ))
+        if let Some(s) = value.as_string() {
+            return Self::Blob(s);
+        }
+        if let Some(err) = value.dyn_ref::<js_sys::Error>() {
+            return Self::Blob(String::from(err.message()));
+        }
+        Self::Blob(format!("{value:?}"))
     }
 }
 
@@ -73,6 +83,10 @@ mod tests {
         assert_eq!(
             UploadError::expected("opening quote").to_string(),
             "expected opening quote",
+        );
+        assert_eq!(
+            UploadError::LineTooLong { max_bytes: 128 }.to_string(),
+            "line exceeds maximum length of 128 bytes",
         );
         assert_eq!(UploadError::other("bad magic").to_string(), "bad magic",);
     }

@@ -108,3 +108,32 @@ fn strips_carriage_returns() {
 fn keeps_multibyte_characters_intact_across_a_boundary() {
     assert_eq!(drain("résumé\nαβγ\n", 2), ["résumé", "αβγ"]);
 }
+
+#[test]
+fn accepts_line_up_to_max_line_bytes_and_rejects_oversized_lines() {
+    block_on(async {
+        let mut ok_reader = BlobLines::new(SliceSource::new(b"12345\n12345\r\n"), |_, _| {})
+            .with_chunk_size(2)
+            .with_max_line_bytes(5);
+        assert_eq!(
+            ok_reader.next_line().await.unwrap().as_deref(),
+            Some("12345")
+        );
+        assert_eq!(
+            ok_reader.next_line().await.unwrap().as_deref(),
+            Some("12345")
+        );
+        assert!(ok_reader.next_line().await.unwrap().is_none());
+
+        for (input, chunk) in [("123456\n", 2), ("123456\n", 64), ("123456", 2)] {
+            let mut reader = BlobLines::new(SliceSource::new(input.as_bytes()), |_, _| {})
+                .with_chunk_size(chunk)
+                .with_max_line_bytes(5);
+            let err = reader.next_line().await.unwrap_err();
+            assert!(
+                matches!(err, crate::UploadError::LineTooLong { max_bytes: 5 }),
+                "expected LineTooLong for ({input:?}, chunk={chunk}), got {err:?}",
+            );
+        }
+    });
+}
