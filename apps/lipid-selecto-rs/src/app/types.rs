@@ -12,7 +12,7 @@ use dioxus::prelude::Signal;
 /// Grouped mutable filter signals for the summary panel.
 ///
 /// Bundling the signals into a struct keeps the [`summary`](super::components::summary)
-/// function signature readable and avoids passing twelve individual arguments.
+/// signature compact and avoids passing separate filter arguments.
 #[derive(Clone)]
 pub(super) struct SummaryFilters {
     pub selected_classes: Signal<Vec<String>>,

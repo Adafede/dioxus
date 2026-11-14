@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the mgf-precursor-erro-rs project
 
-// The shapes the plotters draw: histograms, ECDF points, scatter series, and
-// the per-family summaries that go into them. Extracted from `mod.rs`, which
-// held these alongside the statistics that produce them -- 200 lines of plot
-// vocabulary in the middle of 450 lines of median arithmetic.
+// Plot payload types for histograms, ECDF points, scatter series, and
+// per-family summaries built by [`PrecursorStats`](super::PrecursorStats).
 //
-// [`PrecursorStats`](super::PrecursorStats) is the only thing that builds
-// these, so the dependency runs one way: `stats` knows about `plot`, and
-// `plot` knows nothing about `stats`.
+// `plot` imports nothing from `stats` so plot serialization stays independent.
 pub(crate) const MAX_PLOT_POINTS: usize = 10_000;
 pub(crate) const MAX_ECDF_POINTS: usize = 20_000;
 
@@ -102,9 +98,8 @@ pub(crate) struct ErrorMeasurement<'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-// `pub(super)`, fields included, because `stats` folds these in. They were
-// module-private when all three files were one, and `merge` reaches the two
-// `push_*` helpers on `PrecursorStats` in `stats` the same way.
+// `pub(super)` because `stats` accumulates these records and `merge` reaches
+// the `push_*` helpers on `PrecursorStats` across modules.
 pub(super) struct HighErrorSmilesUpdate<'a> {
     pub(super) abs_error_da: f64,
     pub(super) abs_ppm: f64,

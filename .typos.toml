@@ -15,3 +15,8 @@ erro = "erro"
 # `async-compression`. typos splits at the digit, so the word it sees is
 # `flate`, and the crates.io spelling is what every manifest uses.
 flate = "flate"
+# Standard mass-spectrometry adduct abbreviations (acetonitrile, formate ion).
+acn = "acn"
+ACN = "ACN"
+formate = "formate"
+FORMATE = "FORMATE"

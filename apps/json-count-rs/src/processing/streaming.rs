@@ -360,7 +360,7 @@ fn malformed_syntax_and_trailing_commas_are_rejected() {
         ),
         (r#"{"a":nulX}"#, "corrupted null literal"),
         (r#"{"a":[nul]}"#, "truncated null literal inside array"),
-        (r#"{"a":tru}"#, "truncated true literal"),
+        (r#"{"a":tr}"#, "truncated true literal"),
         (r#"{"a":-}"#, "lone minus"),
         (r#"{"a":+1}"#, "leading plus"),
         (r#"{"a":1.}"#, "trailing dot"),

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 
-//! Chunked, buffering readers over browser [`Blob`]s.
+//! Chunked, buffering readers over a [`ChunkSource`].
 //!
 //! Two complementary readers:
 //!
 //! - [`BlobCursor`] — byte-level access for binary or mixed-content formats
 //!   where the parser needs random-ish byte lookahead.
-//! - [`BlobLines`] — line-oriented access for text formats (MGF blocks,
-//!   SMILES files, CSV) where the parser processes one `\n`-delimited line at
-//!   a time.
+//! - [`BlobLines`] — line-oriented streaming reader (`upload::BlobLines`) for
+//!   text formats (MGF blocks, SMILES files, CSV) where the parser processes
+//!   one `\n`-delimited line at a time.
 //!
-//! Both read the blob in 16 MiB chunks, keeping memory bounded regardless of
-//! file size.  The only `.await` point is `fill()` / `next_line()`, called when
-//! the current buffer is exhausted — never per-byte.
+//! Both read from the source in 16 MiB chunks, keeping memory bounded
+//! regardless of total byte size. The only `.await` point is `fill()` /
+//! `next_line()`, called when the current buffer is exhausted — never per-byte.
 
 use crate::bytes::ChunkSource;
 use crate::error::UploadError;
@@ -154,7 +154,7 @@ where
     ///
     /// # Errors
     ///
-    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
+    /// Returns [`UploadError`] if reading the next chunk from the source fails.
     pub async fn ensure_any(&mut self) -> Result<bool, UploadError> {
         while self.pos >= self.buf.len() {
             if !self.fill().await? {
@@ -168,7 +168,7 @@ where
     ///
     /// # Errors
     ///
-    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
+    /// Returns [`UploadError`] if reading the next chunk from the source fails.
     // `ensure_any` returning `true` *is* `self.pos < self.buf.len()`: it reads
     // until a byte is buffered and reports whether one is. Reading past that
     // would be a bug in this module rather than a runtime condition, and
@@ -186,7 +186,7 @@ where
     ///
     /// # Errors
     ///
-    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
+    /// Returns [`UploadError`] if reading the next chunk from the source fails.
     // As in `peek`: `ensure_any` having returned `true` is the bound.
     #[allow(clippy::indexing_slicing)] // see `peek`
     pub async fn next_byte(&mut self) -> Result<Option<u8>, UploadError> {
@@ -203,7 +203,7 @@ where
     ///
     /// # Errors
     ///
-    /// Returns [`UploadError`] if reading the next chunk from the blob fails.
+    /// Returns [`UploadError`] if reading the next chunk from the source fails.
     pub async fn skip_ws(&mut self) -> Result<(), UploadError> {
         loop {
             while self

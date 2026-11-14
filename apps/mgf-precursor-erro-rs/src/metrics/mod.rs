@@ -5,7 +5,8 @@
 //
 // Three concerns that were one file of 677 lines:
 //   - [`plot`] — what the plotters draw. Nothing here knows about statistics.
-//   - [`stats`] — the median machinery and the `PrecursorStats` accumulator.
+//   - [`stats`] — the median machinery, bounded raw-sample retention, and the
+//     `PrecursorStats` accumulator.
 //   - [`merge`] — combining two accumulators, for the two-file case.
 // None of these three modules touches the browser. `plot` imports nothing at
 // all; `stats` only uses `super::plot` and `std`; `merge` only uses `std`. The
