@@ -432,11 +432,7 @@ pub fn split_dataset(dataset: &Dataset, config: &SplitConfig) -> SplitResult {
 /// Derive the LIPID MAPS category abbreviation from a `MAIN_CLASS` label
 /// (e.g. `FA01` → `Fatty Acyls`). Returns the full category name.
 fn category_of_main(main_class: &str) -> &'static str {
-    let abbr = if main_class.len() >= 2 {
-        &main_class[..2]
-    } else {
-        main_class
-    };
+    let abbr = &main_class[..main_class.floor_char_boundary(2)];
     match abbr {
         "FA" => "Fatty Acyls",
         "GL" => "Glycerolipids",
@@ -506,7 +502,7 @@ fn slugify_with_len(label: &str, maxlen: usize) -> String {
     if slug.len() > maxlen {
         let hash = short_hash(label);
         let keep = maxlen.saturating_sub(hash.len() + 1);
-        format!("{}_{}", &slug[..keep.min(slug.len())], hash)
+        format!("{}_{}", &slug[..slug.floor_char_boundary(keep)], hash)
     } else {
         slug
     }
@@ -722,5 +718,26 @@ mod tests {
         // Positives: 25, Negatives: all from SUB2 (25) minus any duplicates
         assert_eq!(sub1.positive_count(), 25);
         assert!(sub1.negative_count() > 0);
+    }
+
+    #[test]
+    fn category_and_slugify_handle_multibyte_utf8_safely() {
+        assert_eq!(category_of_main("FA01"), "Fatty Acyls");
+        assert_eq!(category_of_main("Aµ01"), "Other");
+        assert_eq!(category_of_main("µA01"), "Other");
+        assert_eq!(category_of_main(""), "Other");
+
+        let unicode_label = format!("Fatty Acyls {} {}", "α".repeat(30), "b".repeat(80));
+        let truncated = slugify_with_len(&unicode_label, 30);
+        assert!(
+            truncated.len() <= 30,
+            "truncated slug exceeded maxlen: {truncated}"
+        );
+
+        let short_cap = slugify_with_len("very_long_lipid_class_name", 5);
+        assert!(
+            short_cap.starts_with('_'),
+            "tiny maxlen should still produce hash-suffixed slug: {short_cap}"
+        );
     }
 }

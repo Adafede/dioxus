@@ -710,17 +710,7 @@ fn write_tested_smarts_csv(
     // This groups the most selective patterns first, and within equal metrics
     // shows earlier generations first.
     let mut sorted: Vec<&TestedSmartsRecord> = tested_smarts.iter().collect();
-    sorted.sort_by(|a, b| {
-        b.mcc
-            .partial_cmp(&a.mcc)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| {
-                b.coverage_score
-                    .partial_cmp(&a.coverage_score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .then_with(|| a.generation.cmp(&b.generation))
-    });
+    sorted.sort_by(|a, b| a.cmp_priority(b));
 
     let mut writer = csv::Writer::from_path(output_path)?;
     writer.write_record([

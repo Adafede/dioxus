@@ -54,9 +54,9 @@ pub fn sdf_zip_to_tsv_from_bytes(data: &[u8]) -> Result<(String, usize), SdfConv
     let mut entry_name: Option<String> = None;
     for i in 0..archive.len() {
         let entry = archive.by_index(i)?;
-        let name = entry.name();
-        if name.to_lowercase().ends_with(".sdf") {
-            entry_name = Some(name.to_string());
+        let name = entry.name()?;
+        if name.to_ascii_lowercase().ends_with(".sdf") {
+            entry_name = Some(name.into_owned());
             break;
         }
     }

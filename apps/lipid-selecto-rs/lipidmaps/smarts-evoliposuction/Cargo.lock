@@ -3917,3 +3917,8 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "smiles-parser"
+version = "0.1.0"
+source = "git+https://github.com/earth-metabolome-initiative/smiles-rs?rev=ad15ce7205f4e3ad842f5eaa153d562f3548bd79#ad15ce7205f4e3ad842f5eaa153d562f3548bd79"

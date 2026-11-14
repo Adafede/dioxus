@@ -57,6 +57,18 @@ pub struct TestedSmartsRecord {
     pub generation: u64,
 }
 
+impl TestedSmartsRecord {
+    /// Total ordering by `mcc` descending, `coverage_score` descending, then `generation` ascending.
+    #[must_use]
+    pub fn cmp_priority(&self, other: &Self) -> std::cmp::Ordering {
+        other
+            .mcc
+            .total_cmp(&self.mcc)
+            .then_with(|| other.coverage_score.total_cmp(&self.coverage_score))
+            .then_with(|| self.generation.cmp(&other.generation))
+    }
+}
+
 /// Result of evolving one class split.
 #[derive(Debug)]
 pub enum EvolutionResult {
@@ -157,13 +169,13 @@ impl EvolutionProgressObserver for TestedSmartsObserver {
         let best = progress.best_so_far();
         let best_mcc = best.mcc();
         let best_smarts = best.smarts();
-        let display = if best_smarts.len() > 60 {
-            &best_smarts[..60]
-        } else {
-            best_smarts
-        };
+        let display = truncate_str(best_smarts, 60);
         eprintln!("  gen {generation:>4}/{total:<4}  best_mcc={best_mcc:.4}  best= {display}");
     }
+}
+
+fn truncate_str(s: &str, max_bytes: usize) -> &str {
+    &s[..s.floor_char_boundary(max_bytes)]
 }
 
 /// Shared setup: read SMILES files, parse, build evolution config and task.
@@ -425,16 +437,84 @@ mod tests {
     }
 
     #[test]
-    fn config_builds_successfully() {
-        let config = Config {
-            population_size: 8,
-            generation_limit: 2,
-            stagnation_limit: 2,
-            seed: None,
-            match_time_limit: Some(std::time::Duration::from_secs(5)),
+    fn truncate_str_respects_utf8_boundaries() {
+        assert_eq!(truncate_str("αβγ", 0), "");
+        assert_eq!(truncate_str("αβγ", 1), "");
+        assert_eq!(truncate_str("αβγ", 2), "α");
+        assert_eq!(truncate_str("αβγ", 3), "α");
+        assert_eq!(truncate_str("αβγ", 4), "αβ");
+        assert_eq!(truncate_str("αβγ", 100), "αβγ");
+    }
+
+    #[test]
+    fn error_variants_yield_no_task_result() {
+        let empty = EvolutionResult::EmptyAfterParse(3, 2, 1, 0);
+        let read_err = EvolutionResult::ReadError(0, 0, 0, 0);
+        let evo_err = EvolutionResult::EvolutionError("boom".to_owned(), 1, 1, 0, 0);
+        assert!(
+            empty.as_task_result().is_none(),
+            "EmptyAfterParse has no TaskResult"
+        );
+        assert!(
+            read_err.as_task_result().is_none(),
+            "ReadError has no TaskResult"
+        );
+        assert!(
+            evo_err.as_task_result().is_none(),
+            "EvolutionError has no TaskResult"
+        );
+    }
+
+    #[test]
+    fn cmp_priority_sorts_records_with_nan_deterministically() {
+        let make = |smarts: &str, mcc: f64, cov: f64, generation: u64| TestedSmartsRecord {
+            smarts: smarts.to_owned(),
+            mcc,
+            smarts_len: smarts.len(),
+            coverage_score: cov,
+            limit_exceeded: false,
+            generation,
         };
-        // Just verify the config struct is usable — the actual evolution
-        // test would require smarts-evolution to be compiled.
-        assert_eq!(config.population_size, 8);
+
+        let mut records = vec![
+            make("g_late", 0.7, 0.5, 5),
+            make("nan_cov", 0.7, f64::NAN, 1),
+            make("nan_mcc", f64::NAN, 0.9, 0),
+            make("best", 0.9, 0.2, 9),
+            make("g_early", 0.7, 0.5, 1),
+            make("cov_high", 0.7, 0.8, 4),
+        ];
+        for i in 0..18_u32 {
+            let mcc = if i % 5 == 0 {
+                f64::NAN
+            } else {
+                f64::from(i).mul_add(0.01, 0.1)
+            };
+            records.push(make(&format!("filler_{i}"), mcc, 0.1, u64::from(i)));
+        }
+
+        records.sort_by(TestedSmartsRecord::cmp_priority);
+
+        let top_six: Vec<&str> = records.iter().take(6).map(|r| r.smarts.as_str()).collect();
+        // f64::total_cmp places +NaN above finite numbers; descending sort puts NaN first without panicking.
+        assert_eq!(
+            top_six,
+            vec![
+                "nan_mcc",
+                "filler_0",
+                "filler_5",
+                "filler_10",
+                "filler_15",
+                "best"
+            ]
+        );
+
+        let finite: Vec<&str> = records
+            .iter()
+            .filter(|r| !r.mcc.is_nan() && !r.coverage_score.is_nan())
+            .take(4)
+            .map(|r| r.smarts.as_str())
+            .collect();
+        assert_eq!(finite, vec!["best", "cov_high", "g_early", "g_late"]);
     }
 }

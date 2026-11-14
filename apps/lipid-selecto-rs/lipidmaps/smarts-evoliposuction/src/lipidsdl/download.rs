@@ -71,10 +71,60 @@ pub enum Error {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use tempfile::NamedTempFile;
+
     use super::*;
 
-    #[test]
-    fn noop_progress_does_not_panic() {
+    static PROGRESS_CALLS: AtomicUsize = AtomicUsize::new(0);
+    static LAST_BYTES: AtomicUsize = AtomicUsize::new(0);
+
+    fn record_progress(downloaded: usize, _total: Option<usize>) {
+        PROGRESS_CALLS.fetch_add(1, Ordering::Relaxed);
+        LAST_BYTES.store(downloaded, Ordering::Relaxed);
+    }
+
+    #[tokio::test]
+    async fn download_to_skips_http_when_file_already_exists()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut temp = NamedTempFile::new()?;
+        std::io::Write::write_all(&mut temp, b"cached-sdf")?;
+
+        PROGRESS_CALLS.store(0, Ordering::Relaxed);
+        LAST_BYTES.store(usize::MAX, Ordering::Relaxed);
         noop_progress(0, None);
+
+        download_to(
+            "http://127.0.0.1:9/unreachable",
+            temp.path(),
+            record_progress,
+        )
+        .await?;
+
+        let contents = std::fs::read(temp.path())?;
+        assert_eq!(contents, b"cached-sdf", "existing file must stay intact");
+        assert_eq!(
+            PROGRESS_CALLS.load(Ordering::Relaxed),
+            1,
+            "cache hit should still emit initial progress callback"
+        );
+        assert_eq!(
+            LAST_BYTES.load(Ordering::Relaxed),
+            0,
+            "cache hit reports zero downloaded bytes"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn http_status_error_displays_status_and_url() {
+        let err = Error::HttpStatus(404, "https://example.test/data.sdf".to_owned());
+        let msg = err.to_string();
+        assert!(msg.contains("404"), "status code missing from: {msg}");
+        assert!(
+            msg.contains("https://example.test/data.sdf"),
+            "URL missing from: {msg}"
+        );
     }
 }
