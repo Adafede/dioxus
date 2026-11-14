@@ -127,6 +127,10 @@ fn the_excluded_tool_declares_itself_a_standalone_workspace() -> Result<()> {
     );
 
     let tool_manifest = read(&format!("{TOOL}/Cargo.toml"))?;
+    assert!(
+        repo_root().join(format!("{TOOL}/Cargo.lock")).exists(),
+        "{TOOL}/Cargo.lock is missing; standalone excluded crates must commit their lockfile for `--locked` builds"
+    );
 
     // Comments are stripped before anything is searched. The manifest explains at
     // length why it neither inherits nor joins the workspace, and that prose
@@ -204,7 +208,7 @@ fn no_source_file_is_longer_than_the_limit() {
             let name = path
                 .file_name()
                 .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-            if name == "target" || name.starts_with('.') || name == "smarts-evoliposuction" {
+            if name == "target" || name.starts_with('.') {
                 continue;
             }
             if path.is_dir() {

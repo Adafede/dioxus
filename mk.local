@@ -28,7 +28,7 @@ LOCAL_OVERRIDES=(
 LOCAL_CI_GATES=(license-headers check readme-check lint-wasm feature-powerset)
 
 # Ratchet: may only go up (./mk ratchet). Set with ./mk coverage-baseline.
-COVERAGE_FAIL_UNDER_LINES="67"
+COVERAGE_FAIL_UNDER_LINES="73"
 # Mutation testing covers the logic crates; the apps are mostly Dioxus rendering
 # (`./mk local:mutants-ui` and `./mk local:mutants-mgf` run the rest on request).
 MUTANTS_PACKAGES=(json-count-rs cxsmiles-yoga)

@@ -137,5 +137,6 @@ mod apps;
 mod data_files;
 mod mk_runner;
 mod mutants;
+mod surfaces;
 mod task_files;
 mod workflows;
