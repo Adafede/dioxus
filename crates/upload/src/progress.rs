@@ -23,7 +23,7 @@
 /// progress updates without flooding the callback.
 ///
 /// # Example (WASM)
-/// ```ignore
+/// ```text
 /// let mut reporter = ProgressThrottler::new(
 ///     |processed, total| status.set(format!("{processed}/{total}")),
 ///     js_sys::Date::now,

@@ -23,7 +23,8 @@ provides:
   crate-private; apps pass a closure to `BlobCursor::new` or `BlobLines::new`.
 - **`extract_blob_from_file_data`** --- unified file-input / drag-drop
   extraction over `&[FileData]`.
-- **`download_text`** --- browser download of text content.
+- **`download_text` / `download_svg` / `download_with_mime`** --- browser
+  download helpers.
 
 ### Design non-goals
 

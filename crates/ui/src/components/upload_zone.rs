@@ -178,3 +178,83 @@ pub fn UploadZone(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::components::render_debug;
+
+    fn render_idle_upload_zone() -> Element {
+        let file_name = use_signal(String::new);
+        let status = use_signal(|| "Ready".to_string());
+        let busy = use_signal(|| false);
+        let drag_active = use_signal(|| false);
+        rsx! {
+            UploadZone {
+                file_name,
+                status,
+                busy,
+                drag_active,
+                on_file_change: |_| {},
+                on_drop: |_| {},
+                accept: ".mgf",
+                label: "Drop MGF file",
+                hint: "Client-side only",
+                icon: "[MGF]",
+            }
+        }
+    }
+
+    fn render_active_error_upload_zone() -> Element {
+        let file_name = use_signal(|| "spectra.mgf".to_string());
+        let status = use_signal(|| "Error parsing header".to_string());
+        let busy = use_signal(|| true);
+        let drag_active = use_signal(|| true);
+        rsx! {
+            UploadZone {
+                file_name,
+                status,
+                busy,
+                drag_active,
+                on_file_change: |_| {},
+                on_drop: |_| {},
+                accept: ".json",
+                label: "Drop JSON",
+                hint: "Max 500 MB",
+                icon: "[JSON]",
+            }
+        }
+    }
+
+    #[test]
+    fn upload_zone_renders_idle_and_drag_error_states() {
+        let idle = render_debug(render_idle_upload_zone);
+        assert!(
+            idle.contains("[MGF] Drop MGF file"),
+            "missing icon/label in {idle}"
+        );
+        assert!(idle.contains(".mgf"), "missing accept attribute in {idle}");
+        assert!(
+            !idle.contains("Selected:"),
+            "idle upload zone should hide selected filename in {idle}"
+        );
+
+        let active = render_debug(render_active_error_upload_zone);
+        assert!(
+            active.contains("Selected: spectra.mgf"),
+            "populated upload zone should show filename in {active}"
+        );
+        assert!(
+            active.contains("Error parsing header"),
+            "missing error status message in {active}"
+        );
+        assert!(
+            active.contains(ColorScheme::LIGHT.red),
+            "error status should color text red in {active}"
+        );
+        assert!(
+            active.contains(ColorScheme::LIGHT.blue),
+            "active drag should highlight border blue in {active}"
+        );
+    }
+}

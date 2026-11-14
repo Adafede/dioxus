@@ -177,12 +177,17 @@ impl Interaction {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```rust
+/// use ui::theme::{ColorScheme, Radius, Spacing, StyleBuilder};
+///
+/// let colors = ColorScheme::LIGHT;
 /// let style = StyleBuilder::new()
 ///     .color(colors.accent)
 ///     .padding(Spacing::LG)
 ///     .border_radius(Radius::MD)
 ///     .build();
+/// assert!(style.contains("color: "));
+/// assert!(style.contains("padding: 20px"));
 /// ```
 #[must_use]
 #[derive(Clone, Debug, Eq, PartialEq)]

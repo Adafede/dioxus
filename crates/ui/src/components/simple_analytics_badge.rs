@@ -37,3 +37,32 @@ pub fn SimpleAnalyticsBadge(domain: String) -> Element {
         footer { style: "{footer_style}", dangerous_inner_html: "{html}" }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::components::render_debug;
+
+    fn render_badge() -> Element {
+        rsx! {
+            SimpleAnalyticsBadge { domain: "tools.example.org".to_string() }
+        }
+    }
+
+    #[test]
+    fn simple_analytics_badge_embeds_domain_and_dark_media_query() {
+        let rendered = render_debug(render_badge);
+        assert!(
+            rendered.contains("https://simpleanalyticsbadges.com/tools.example.org"),
+            "missing badge image domain in {rendered}"
+        );
+        assert!(
+            rendered.contains("utm_source=tools.example.org"),
+            "missing utm_source query parameter in {rendered}"
+        );
+        assert!(
+            rendered.contains("prefers-color-scheme: dark"),
+            "missing dark color-scheme source in {rendered}"
+        );
+    }
+}

@@ -22,12 +22,20 @@
 //! single declaration, emitting the identical cfg-gated arms so that
 //! mutability-per-platform behaviour is preserved exactly. Usage:
 //!
-//! ```ignore
-//! ui::shared_signal!(file_name, String::new);
-//! ui::shared_signals! {
-//!     metrics: || None::<PrecursorStats>,
-//!     busy: || false,
+//! ```rust
+//! use dioxus::prelude::*;
+//!
+//! fn app() -> Element {
+//!     ui::shared_signal!(file_name, String::new);
+//!     ui::shared_signals! {
+//!         metrics: || None::<u32>,
+//!         busy: || false,
+//!     }
+//!     rsx! { p { "{file_name} {metrics():?} {busy}" } }
 //! }
+//!
+//! let mut dom = VirtualDom::new(app);
+//! dom.rebuild_in_place();
 //! ```
 
 /// Declare a single local signal without duplicating the wasm/native

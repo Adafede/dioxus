@@ -159,3 +159,79 @@ fn SegmentedButton(props: SegmentedButtonProps) -> Element {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::components::render_debug;
+
+    static ITEMS: &[SegmentedControlItem] = &[
+        SegmentedControlItem {
+            label: "PPM",
+            value: "ppm",
+        },
+        SegmentedControlItem {
+            label: "Da",
+            value: "da",
+        },
+    ];
+
+    fn render_light_control() -> Element {
+        rsx! {
+            SegmentedControl {
+                aria_label: "Unit selector".to_string(),
+                selected_value: "ppm".to_string(),
+                items: ITEMS,
+                on_select: |_| {},
+            }
+        }
+    }
+
+    fn render_dark_stretched_nowrap() -> Element {
+        rsx! {
+            SegmentedControl {
+                aria_label: "Dark selector".to_string(),
+                selected_value: "da".to_string(),
+                items: ITEMS,
+                dark: true,
+                stretch: true,
+                wrap: false,
+                active_aria_current: "page",
+                on_select: |_| {},
+            }
+        }
+    }
+
+    #[test]
+    fn segmented_control_renders_active_state_and_layout_options() {
+        let light = render_debug(render_light_control);
+        assert!(
+            light.contains("Unit selector"),
+            "missing aria_label in {light}"
+        );
+        assert!(light.contains("PPM"), "missing first item in {light}");
+        assert!(light.contains("Da"), "missing second item in {light}");
+        assert!(
+            light.contains("flex-wrap: wrap"),
+            "default segmented control should wrap in {light}"
+        );
+
+        let dark = render_debug(render_dark_stretched_nowrap);
+        assert!(
+            dark.contains("flex-wrap: nowrap"),
+            "nowrap prop should apply flex-wrap: nowrap in {dark}"
+        );
+        assert!(
+            dark.contains("flex: 1 1 0%"),
+            "stretch prop should flex items equally in {dark}"
+        );
+        assert!(
+            dark.contains("page"),
+            "active item should emit custom aria_current in {dark}"
+        );
+        assert!(
+            dark.contains(ColorScheme::DARK.accent),
+            "dark active item should use dark accent in {dark}"
+        );
+    }
+}

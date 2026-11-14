@@ -54,13 +54,21 @@ pub struct ButtonProps {
 ///
 /// # Example
 ///
-/// ```ignore
-/// rsx! {
-///     Button {
-///         label: "Click me".to_string(),
-///         variant: ButtonVariant::Primary,
+/// ```rust
+/// use dioxus::prelude::*;
+/// use ui::prelude::{Button, ButtonVariant};
+///
+/// fn app() -> Element {
+///     rsx! {
+///         Button {
+///             label: "Click me".to_string(),
+///             variant: ButtonVariant::Primary,
+///         }
 ///     }
 /// }
+///
+/// let mut dom = VirtualDom::new(app);
+/// dom.rebuild_in_place();
 /// ```
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
@@ -120,21 +128,68 @@ pub fn Button(props: ButtonProps) -> Element {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::components::render_debug;
 
-    #[test]
-    fn button_variant_equality() {
-        assert_eq!(ButtonVariant::Primary, ButtonVariant::Primary);
-        assert_ne!(ButtonVariant::Primary, ButtonVariant::Secondary);
+    fn render_primary_submit() -> Element {
+        rsx! {
+            Button {
+                label: "Save result".to_string(),
+                variant: ButtonVariant::Primary,
+                r#type: "submit",
+            }
+        }
+    }
+
+    fn render_secondary_dark() -> Element {
+        rsx! {
+            Button {
+                label: "Inspect".to_string(),
+                variant: ButtonVariant::Secondary,
+                dark: true,
+            }
+        }
+    }
+
+    fn render_tertiary_disabled() -> Element {
+        rsx! {
+            Button {
+                label: "Skip".to_string(),
+                variant: ButtonVariant::Tertiary,
+                disabled: true,
+            }
+        }
     }
 
     #[test]
-    fn button_style_includes_padding() {
-        let style = StyleBuilder::new()
-            .padding(&format!("{} {}", Spacing::MD, Spacing::LG))
-            .border_radius(Radius::SM)
-            .build();
+    fn button_renders_variants_and_disabled_state() {
+        let primary = render_debug(render_primary_submit);
+        assert!(
+            primary.contains("Save result"),
+            "missing primary label in {primary}"
+        );
+        assert!(
+            primary.contains("submit"),
+            "missing submit type in {primary}"
+        );
 
-        assert!(style.contains("padding"));
-        assert!(style.contains("border-radius"));
+        let secondary = render_debug(render_secondary_dark);
+        assert!(
+            secondary.contains(ColorScheme::DARK.border),
+            "dark secondary should use dark border in {secondary}"
+        );
+
+        let tertiary = render_debug(render_tertiary_disabled);
+        assert!(
+            tertiary.contains("border: none"),
+            "tertiary button should omit border in {tertiary}"
+        );
+        assert!(
+            tertiary.contains("cursor: not-allowed"),
+            "disabled button should set not-allowed cursor in {tertiary}"
+        );
+        assert!(
+            tertiary.contains("opacity: 0.6"),
+            "disabled button should dim opacity in {tertiary}"
+        );
     }
 }

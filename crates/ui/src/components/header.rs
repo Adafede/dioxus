@@ -31,13 +31,21 @@ pub struct HeaderProps {
 ///
 /// # Example
 ///
-/// ```ignore
-/// rsx! {
-///     Header {
-///         title: "Welcome to Dioxus".to_string(),
-///         subtitle: Some("Fast, productive Rust UI".to_string()),
+/// ```rust
+/// use dioxus::prelude::*;
+/// use ui::prelude::Header;
+///
+/// fn app() -> Element {
+///     rsx! {
+///         Header {
+///             title: "Welcome to Dioxus".to_string(),
+///             subtitle: Some("Fast, productive Rust UI".to_string()),
+///         }
 ///     }
 /// }
+///
+/// let mut dom = VirtualDom::new(app);
+/// dom.rebuild_in_place();
 /// ```
 #[component]
 pub fn Header(props: HeaderProps) -> Element {
@@ -91,16 +99,49 @@ pub fn Header(props: HeaderProps) -> Element {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::components::render_debug;
+
+    fn render_light_header() -> Element {
+        rsx! {
+            Header {
+                title: "Lipid Selector".to_string(),
+                subtitle: Some("SMARTS lipid classification".to_string()),
+                dark: false,
+            }
+        }
+    }
+
+    fn render_dark_header_without_subtitle() -> Element {
+        rsx! {
+            Header {
+                title: "Compact Header".to_string(),
+                subtitle: None,
+                dark: true,
+            }
+        }
+    }
 
     #[test]
-    fn header_creates_valid_styles() {
-        let colors = ColorScheme::LIGHT;
-        let style = StyleBuilder::new()
-            .background_color(colors.bg)
-            .font_size(Typography::H1)
-            .build();
+    fn header_renders_title_optional_subtitle_and_theme() {
+        let light = render_debug(render_light_header);
+        assert!(light.contains("Lipid Selector"), "missing title in {light}");
+        assert!(
+            light.contains("SMARTS lipid classification"),
+            "missing subtitle in {light}"
+        );
+        assert!(
+            light.contains(ColorScheme::LIGHT.text),
+            "missing light heading color in {light}"
+        );
 
-        assert!(style.contains("background-color"));
-        assert!(style.contains("font-size"));
+        let dark = render_debug(render_dark_header_without_subtitle);
+        assert!(
+            dark.contains("Compact Header"),
+            "missing dark title in {dark}"
+        );
+        assert!(
+            dark.contains(ColorScheme::DARK.text),
+            "missing dark heading color in {dark}"
+        );
     }
 }

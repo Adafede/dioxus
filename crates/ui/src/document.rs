@@ -8,23 +8,25 @@
 //!
 //! # Example
 //!
-//! ```rust, ignore
+//! ```rust
 //! use dioxus::prelude::*;
-//! use ui::document::DocumentHead;
+//! use ui::prelude::DocumentHead;
 //!
-//! fn App() -> Element {
+//! fn app() -> Element {
 //!     rsx! {
 //!         DocumentHead {
 //!             title: "My App".to_string(),
-//!             description: "A cool Dioxus app".to_string(),
-//!             theme_colors: (Some("#f6f8fb"), Some("#10141b")),
+//!             description: Some("A chemistry web app".to_string()),
+//!             theme_colors: Some(("#f6f8fb", "#10141b")),
 //!             scripts: vec![
 //!                 "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js".to_string(),
 //!             ],
 //!         }
-//!         // ... rest of app
 //!     }
 //! }
+//!
+//! let mut dom = VirtualDom::new(app);
+//! dom.rebuild_in_place();
 //! ```
 
 #![expect(

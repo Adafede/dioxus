@@ -22,3 +22,9 @@ pub use notice::{NoticeBar, NoticeTone};
 pub use segmented_control::{SegmentedControl, SegmentedControlItem};
 pub use simple_analytics_badge::SimpleAnalyticsBadge;
 pub use upload_zone::UploadZone;
+
+#[cfg(test)]
+pub(super) fn render_debug(app: fn() -> dioxus::prelude::Element) -> String {
+    let mut dom = dioxus::prelude::VirtualDom::new(app);
+    format!("{:?}", dom.rebuild_to_vec())
+}

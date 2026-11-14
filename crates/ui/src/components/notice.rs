@@ -148,3 +148,66 @@ pub fn NoticeBar(props: NoticeBarProps) -> Element {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::components::render_debug;
+
+    fn render_danger_light() -> Element {
+        let retry = "Retry";
+        let body = "Invalid SMILES line 4";
+        rsx! {
+            NoticeBar {
+                label: "Failed".to_string(),
+                tone: NoticeTone::Danger,
+                role: "alert",
+                aria_live: "assertive",
+                trailing: Some(rsx! { span { "{retry}" } }),
+                "{body}"
+            }
+        }
+    }
+
+    fn render_all_dark_tones() -> Element {
+        rsx! {
+            NoticeBar { label: "N".to_string(), tone: NoticeTone::Neutral, dark: true }
+            NoticeBar { label: "I".to_string(), tone: NoticeTone::Info, dark: true }
+            NoticeBar { label: "S".to_string(), tone: NoticeTone::Success, dark: true }
+            NoticeBar { label: "W".to_string(), tone: NoticeTone::Warning, dark: true }
+        }
+    }
+
+    #[test]
+    fn notice_bar_renders_tones_aria_and_slots() {
+        let danger = render_debug(render_danger_light);
+        assert!(danger.contains("Failed"), "missing label in {danger}");
+        assert!(
+            danger.contains("Retry"),
+            "missing trailing slot in {danger}"
+        );
+        assert!(
+            danger.contains("Invalid SMILES line 4"),
+            "missing children text in {danger}"
+        );
+        assert!(danger.contains("alert"), "missing alert role in {danger}");
+        assert!(
+            danger.contains(ColorScheme::LIGHT.red),
+            "danger tone should use red token in {danger}"
+        );
+
+        let all_dark = render_debug(render_all_dark_tones);
+        assert!(
+            all_dark.contains(ColorScheme::DARK.blue),
+            "info tone should use blue token in {all_dark}"
+        );
+        assert!(
+            all_dark.contains(ColorScheme::DARK.green),
+            "success tone should use green token in {all_dark}"
+        );
+        assert!(
+            all_dark.contains(ColorScheme::DARK.yellow),
+            "warning tone should use yellow token in {all_dark}"
+        );
+    }
+}

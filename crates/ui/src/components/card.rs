@@ -35,15 +35,23 @@ pub struct CardProps {
 ///
 /// # Example
 ///
-/// ```ignore
-/// rsx! {
-///     Card {
-///         title: "My App".to_string(),
-///         href: Some("https://example.com".to_string()),
-///         dark: false,
-///         "Description of the app"
+/// ```rust
+/// use dioxus::prelude::*;
+/// use ui::prelude::Card;
+///
+/// fn app() -> Element {
+///     rsx! {
+///         Card {
+///             title: "My App".to_string(),
+///             href: Some("https://example.com".to_string()),
+///             dark: false,
+///             "Description of the app"
+///         }
 ///     }
 /// }
+///
+/// let mut dom = VirtualDom::new(app);
+/// dom.rebuild_in_place();
 /// ```
 #[component]
 pub fn Card(props: CardProps) -> Element {
@@ -120,15 +128,57 @@ pub fn Card(props: CardProps) -> Element {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::components::render_debug;
+
+    fn render_linked_light_card() -> Element {
+        let description = "Interactive spectrum inspection";
+        rsx! {
+            Card {
+                title: "MS/MS Viewer".to_string(),
+                href: Some("https://example.org/msms".to_string()),
+                dark: false,
+                "{description}"
+            }
+        }
+    }
+
+    fn render_plain_dark_card() -> Element {
+        rsx! {
+            Card {
+                title: "Summary".to_string(),
+                dark: true,
+            }
+        }
+    }
 
     #[test]
-    fn card_style_includes_spacing() {
-        let style = StyleBuilder::new()
-            .padding(Spacing::LG)
-            .border_radius(Radius::MD)
-            .build();
+    fn card_renders_linked_and_plain_variants() {
+        let linked = render_debug(render_linked_light_card);
+        assert!(
+            linked.contains("MS/MS Viewer"),
+            "missing linked card title in {linked}"
+        );
+        assert!(
+            linked.contains("https://example.org/msms"),
+            "missing card href in {linked}"
+        );
+        assert!(
+            linked.contains("Interactive spectrum inspection"),
+            "missing card body in {linked}"
+        );
 
-        assert!(style.contains("padding"));
-        assert!(style.contains("border-radius"));
+        let plain = render_debug(render_plain_dark_card);
+        assert!(
+            plain.contains("Summary"),
+            "missing plain card title in {plain}"
+        );
+        assert!(
+            plain.contains(ColorScheme::DARK.surface),
+            "dark card should use dark surface color in {plain}"
+        );
+        assert!(
+            !plain.contains("cursor: pointer"),
+            "non-linked card should not add link cursor style in {plain}"
+        );
     }
 }

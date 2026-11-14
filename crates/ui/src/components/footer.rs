@@ -27,12 +27,20 @@ pub struct FooterProps {
 ///
 /// # Example
 ///
-/// ```ignore
-/// rsx! {
-///     Footer {
-///         dark: false,
+/// ```rust
+/// use dioxus::prelude::*;
+/// use ui::prelude::Footer;
+///
+/// fn app() -> Element {
+///     rsx! {
+///         Footer {
+///             dark: false,
+///         }
 ///     }
 /// }
+///
+/// let mut dom = VirtualDom::new(app);
+/// dom.rebuild_in_place();
 /// ```
 #[component]
 pub fn Footer(props: FooterProps) -> Element {
@@ -91,16 +99,40 @@ pub fn Footer(props: FooterProps) -> Element {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::components::render_debug;
+
+    fn render_light_footer() -> Element {
+        rsx! {
+            Footer { dark: false }
+        }
+    }
+
+    fn render_dark_footer() -> Element {
+        rsx! {
+            Footer { dark: true }
+        }
+    }
 
     #[test]
-    fn footer_styles_compile() {
-        let colors = ColorScheme::LIGHT;
-        let style = StyleBuilder::new()
-            .color(colors.text3)
-            .background_color(colors.bg)
-            .build();
+    fn footer_renders_themed_styles() {
+        let light = render_debug(render_light_footer);
+        assert!(
+            light.contains(ColorScheme::LIGHT.bg),
+            "light footer should use light background in {light}"
+        );
+        assert!(
+            light.contains(ColorScheme::LIGHT.accent),
+            "light footer should style links with light accent in {light}"
+        );
 
-        assert!(style.contains("color"));
-        assert!(style.contains("background-color"));
+        let dark = render_debug(render_dark_footer);
+        assert!(
+            dark.contains(ColorScheme::DARK.bg),
+            "dark footer should use dark background in {dark}"
+        );
+        assert!(
+            dark.contains(ColorScheme::DARK.text3),
+            "dark footer should use dark muted text in {dark}"
+        );
     }
 }

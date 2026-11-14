@@ -18,12 +18,12 @@ pub enum CalibrationModel {
     /// Orbitrap-style recalibration using parts-per-million (ppm).
     ///
     /// The error is computed as:
-    /// ```ignore
+    /// ```text
     /// delta_ppm = 1e6 * (precursor_ms2 - precursor_ms1) / precursor_ms1
     /// ```
     ///
     /// Each fragment is corrected as:
-    /// ```ignore
+    /// ```text
     /// fragment_corrected = fragment * (1 - λ * delta_ppm / 1e6)
     /// ```
     ///
@@ -37,12 +37,12 @@ pub enum CalibrationModel {
     /// Time-of-flight-style recalibration using absolute mass difference in Da.
     ///
     /// The error is computed as:
-    /// ```ignore
+    /// ```text
     /// delta_da = precursor_ms2 - precursor_ms1
     /// ```
     ///
     /// Each fragment is corrected as:
-    /// ```ignore
+    /// ```text
     /// fragment_corrected = fragment - λ * delta_da
     /// ```
     ///

@@ -12,6 +12,19 @@ use super::*;
 fn color_scheme_light_has_values() {
     assert_ne!(ColorScheme::LIGHT.accent, "");
     assert_ne!(ColorScheme::LIGHT.accent, ColorScheme::DARK.accent);
+    assert_ne!(ColorScheme::LIGHT.bg, ColorScheme::DARK.bg);
+    assert_ne!(ColorScheme::LIGHT.surface, ColorScheme::DARK.surface);
+    assert_ne!(ColorScheme::LIGHT.text, ColorScheme::DARK.text);
+    assert!(!Spacing::XL.is_empty(), "spacing scale should be non-empty");
+    assert!(!Shadow::MD.is_empty(), "shadow tokens should be non-empty");
+    assert!(
+        !Typography::SANS.is_empty(),
+        "font stack should be non-empty"
+    );
+    assert!(
+        !Interaction::TRANSITION_DEFAULT.is_empty(),
+        "transition token should be non-empty"
+    );
 }
 
 #[test]
@@ -22,19 +35,51 @@ fn style_builder_creates_valid_css() {
         .border_radius(Radius::MD)
         .build();
 
-    assert!(style.contains("color: #fff"));
-    assert!(style.contains("padding: 20px"));
-    assert!(style.contains("border-radius: 10px"));
+    assert_eq!(style, "color: #fff; padding: 20px; border-radius: 10px");
 }
 
 #[test]
 fn style_builder_multiple_properties() {
-    let style = StyleBuilder::new()
+    let builder = StyleBuilder::new()
         .display("flex")
+        .flex("1 1 auto")
         .flex_direction("column")
+        .flex_wrap("wrap")
         .gap(Spacing::MD)
         .align_items("center")
-        .build();
+        .justify_content("space-between")
+        .background_color(ColorScheme::LIGHT.bg)
+        .margin("0")
+        .border("1px solid #000")
+        .border_bottom("2px solid #111")
+        .border_left("4px solid #222")
+        .font_size(Typography::BODY)
+        .font_family(Typography::SANS)
+        .font_weight("600")
+        .line_height(Typography::LINE_HEIGHT)
+        .text_align("left")
+        .width("100%")
+        .height("40px")
+        .min_height("30px")
+        .box_shadow(Shadow::XS)
+        .transition(Interaction::TRANSITION_DEFAULT)
+        .opacity("0.9")
+        .text_decoration("none")
+        .cursor("pointer");
 
-    assert_eq!(style.split("; ").count(), 4, "Should have 4 CSS properties");
+    let displayed = builder.to_string();
+    let style = builder.build();
+    assert_eq!(displayed, style);
+    assert_eq!(
+        style.split("; ").count(),
+        25,
+        "Should have 25 CSS properties"
+    );
+    assert!(style.contains("flex: 1 1 auto"), "missing flex: {style}");
+    assert!(
+        style.contains("border-left: 4px solid #222"),
+        "missing border-left: {style}"
+    );
+    assert!(style.contains("cursor: pointer"), "missing cursor: {style}");
+    assert_eq!(StyleBuilder::default().build(), "");
 }

@@ -25,11 +25,8 @@ constants, and styling utilities---all defined in pure Rust.
 ```rust
 use dioxus::prelude::*;
 use ui::prelude::*;
-use ui::theme::{ColorScheme, Spacing, StyleBuilder};
 
 fn app() -> Element {
-    let colors = ColorScheme::LIGHT;
-
     rsx! {
         Header {
             title: "My App".to_string(),
@@ -43,6 +40,9 @@ fn app() -> Element {
         Footer {}
     }
 }
+
+let mut dom = VirtualDom::new(app);
+dom.rebuild_in_place();
 ```
 
 ## License
