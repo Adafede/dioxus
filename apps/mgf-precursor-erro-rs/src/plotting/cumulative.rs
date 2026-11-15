@@ -106,7 +106,7 @@ fn append_cumulative_legend(mut svg: String) -> String {
 
     for (idx, (label, (r, g, b))) in legend_items.iter().enumerate() {
         let y = 30 + (idx * 20);
-        let x = 1050;
+        let x = 990;
         let _ = write!(
             svg,
             r#"<rect x="{x}" y="{}" width="15" height="15" fill="rgb({r},{g},{b})" stroke="none"/>"#,

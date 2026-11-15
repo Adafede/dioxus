@@ -234,6 +234,14 @@ pub(super) fn fallback_y_limit_for_unit(unit: &str) -> f64 {
     }
 }
 
+fn extract_svg_attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
+    let needle = format!("{name}=\"");
+    let start = tag.find(&needle)? + needle.len();
+    let rest = tag.get(start..)?;
+    let end = rest.find('"')?;
+    rest.get(..end)
+}
+
 #[must_use]
 pub fn make_svg_responsive(mut svg_markup: String) -> String {
     let Some(svg_start) = svg_markup.find("<svg") else {
@@ -246,13 +254,26 @@ pub fn make_svg_responsive(mut svg_markup: String) -> String {
     let Some(tag) = svg_markup.get(svg_start..tag_end) else {
         return svg_markup;
     };
-    let mut normalized = tag
-        .replace("width=\"800\"", "width=\"100%\"")
-        .replace("width=\"900\"", "width=\"100%\"")
-        .replace("height=\"460\"", "")
-        .replace("height=\"520\"", "");
+    let raw_width = extract_svg_attr(tag, "width").map(str::to_owned);
+    let raw_height = extract_svg_attr(tag, "height").map(str::to_owned);
+    let vw = raw_width
+        .as_deref()
+        .filter(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()))
+        .unwrap_or("900");
+    let vh = raw_height
+        .as_deref()
+        .filter(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()))
+        .unwrap_or("520");
+
+    let mut normalized = tag.to_string();
+    if let Some(w) = raw_width.as_deref() {
+        normalized = normalized.replace(&format!("width=\"{w}\""), "width=\"100%\"");
+    }
+    if let Some(h) = raw_height.as_deref() {
+        normalized = normalized.replace(&format!("height=\"{h}\""), "");
+    }
     if !normalized.contains("viewBox=") {
-        normalized = normalized.replacen("<svg", "<svg viewBox=\"0 0 900 520\"", 1);
+        normalized = normalized.replacen("<svg", &format!("<svg viewBox=\"0 0 {vw} {vh}\""), 1);
     }
     if !normalized.contains("preserveAspectRatio=") {
         normalized = normalized.replacen("<svg", "<svg preserveAspectRatio=\"xMidYMid meet\"", 1);
@@ -333,4 +354,18 @@ pub fn sample_scatter_points(points: Vec<(f64, f64)>, max_points: usize) -> Vec<
         sampled.push(*last);
     }
     sampled
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn make_svg_responsive_preserves_1200px_dimensions_in_viewbox() {
+        let raw = r#"<svg width="1200" height="400" xmlns="http://www.w3.org/2000/svg"></svg>"#;
+        let out = make_svg_responsive(raw.to_string());
+        assert!(out.contains(r#"width="100%""#), "got: {out}");
+        assert!(out.contains(r#"viewBox="0 0 1200 400""#), "got: {out}");
+        assert!(!out.contains(r#"height="400""#), "got: {out}");
+    }
 }

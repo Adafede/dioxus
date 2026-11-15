@@ -175,3 +175,21 @@ fn append_retained_line_caps_buffer_and_clears_when_limit_exceeded() {
     assert!(capped);
     assert_eq!(buf, "");
 }
+
+#[test]
+fn lowercase_mgf_delimiters_and_keys_are_parsed() {
+    let input = "\
+begin ions
+pepmass=501.007276
+exactmass=500.0
+charge=1+
+adduct=[M+H]+
+120.5 100.0
+end ions";
+    let stats = ingest_lines(input.lines(), |_| {});
+    assert_eq!(
+        stats.total_spectra, 1,
+        "case-insensitive MGF headers and delimiters should parse one spectrum"
+    );
+    assert_eq!(stats.spectra, 1);
+}

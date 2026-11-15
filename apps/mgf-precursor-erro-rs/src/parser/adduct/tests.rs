@@ -30,8 +30,8 @@ fn theoretical_precursor_mz_common_and_divalent_adducts() {
     );
     assert_mz_close(
         expected_precursor_mz(neutral, Some("[M+NH4]+"), None, None),
-        neutral + AMMONIUM_MASS - ELECTRON_MASS,
-        "[M+NH4]+",
+        neutral + 18.033_825_55,
+        "[M+NH4]+ exact IUPAC mass",
     );
     assert_mz_close(
         expected_precursor_mz(neutral, Some("[M+Mg]2+"), None, None),
@@ -83,7 +83,11 @@ fn formate_acetate_and_acetonitrile_adducts_agree_across_notations() {
     );
 
     let acn_mz = expected_precursor_mz(neutral, Some("[M+ACN+H]+"), None, None);
-    assert_mz_close(acn_mz, neutral + 41.026_549_10 + PROTON_MASS, "[M+ACN+H]+");
+    assert_mz_close(
+        acn_mz,
+        neutral + 41.026_549_10 + HYDROGEN_MASS - ELECTRON_MASS,
+        "[M+ACN+H]+",
+    );
 }
 
 #[test]
@@ -101,4 +105,88 @@ fn malformed_and_missing_molecule_adducts_are_rejected() {
     }
     assert!(is_supported_adduct("[M+Mg]2+"));
     assert!(is_supported_adduct("[M+ACN+H]+"));
+}
+
+#[test]
+fn multicharge_without_adduct_unbracketed_and_repeated_sign_charges() {
+    for (neutral, adduct, charge, ion_mode, expected, label) in [
+        (
+            1000.0,
+            None,
+            Some("2+"),
+            None,
+            f64::midpoint(1000.0, 2.0 * (HYDROGEN_MASS - ELECTRON_MASS)),
+            "CHARGE=2+ without ADDUCT",
+        ),
+        (
+            1000.0,
+            None,
+            Some("2-"),
+            Some("negative"),
+            (1000.0 - 2.0 * (HYDROGEN_MASS - ELECTRON_MASS)) / 2.0,
+            "CHARGE=2- negative without ADDUCT",
+        ),
+        (
+            1000.0,
+            None,
+            Some("++"),
+            None,
+            f64::midpoint(1000.0, 2.0 * (HYDROGEN_MASS - ELECTRON_MASS)),
+            "CHARGE=++ without ADDUCT",
+        ),
+        (
+            1000.0,
+            None,
+            Some("2"),
+            Some("positive"),
+            f64::midpoint(1000.0, 2.0 * (HYDROGEN_MASS - ELECTRON_MASS)),
+            "unsigned CHARGE=2 with IONMODE=positive",
+        ),
+        (
+            1000.0,
+            None,
+            Some("2"),
+            Some("negative"),
+            (1000.0 - 2.0 * (HYDROGEN_MASS - ELECTRON_MASS)) / 2.0,
+            "unsigned CHARGE=2 with IONMODE=negative",
+        ),
+        (
+            500.0,
+            Some("M+H"),
+            None,
+            None,
+            500.0 + HYDROGEN_MASS - ELECTRON_MASS,
+            "unbracketed M+H",
+        ),
+        (
+            500.0,
+            Some("M+Na"),
+            None,
+            None,
+            500.0 + SODIUM_MASS - ELECTRON_MASS,
+            "unbracketed M+Na",
+        ),
+        (
+            500.0,
+            Some("M-H"),
+            None,
+            None,
+            500.0 - HYDROGEN_MASS + ELECTRON_MASS,
+            "unbracketed M-H",
+        ),
+        (
+            500.0,
+            Some("[M+Bogus]+"),
+            Some("1+"),
+            None,
+            500.0 + HYDROGEN_MASS - ELECTRON_MASS,
+            "unparsable adduct fallback applies single electron adjustment",
+        ),
+    ] {
+        let actual = expected_precursor_mz(neutral, adduct, charge, ion_mode);
+        assert!(
+            (actual - expected).abs() < 1e-6,
+            "{label}: expected {expected:.7}, got {actual:.7}"
+        );
+    }
 }

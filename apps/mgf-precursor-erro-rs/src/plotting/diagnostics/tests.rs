@@ -160,3 +160,18 @@ fn render_summary_text_marks_mean_regression_as_negative_red() {
     let html = render_recalibration_summary_text(2.0, 5.0, 8.0, 1.0, 12.0, 3.0).unwrap();
     assert!(html.contains("color: red;\">-3.0000"));
 }
+
+#[test]
+fn render_histogram_uniform_dataset_produces_non_degenerate_bars() {
+    let svg = render_recalibration_diagnostic_histogram(&[5.0, 5.0, 5.0], &[5.0], 10).unwrap();
+    assert!(svg.contains("<svg"), "expected SVG root element");
+    assert!(
+        svg.contains("<rect"),
+        "uniform error values must render histogram bars without collapsing to 0 span"
+    );
+    assert!(
+        !svg.contains(r#"width="0""#),
+        "uniform histogram bars must have non-zero width: {svg}"
+    );
+    assert!(!svg.contains("NaN"), "histogram SVG must not contain NaN");
+}

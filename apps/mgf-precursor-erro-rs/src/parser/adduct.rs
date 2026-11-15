@@ -15,13 +15,20 @@ use std::str::FromStr;
 
 use molecular_formulas::prelude::*;
 
-use super::{
-    AMMONIUM_MASS, ELECTRON_MASS, HYDROGEN_MASS, POTASSIUM_MASS, PROTON_MASS, SODIUM_MASS,
-};
+use super::{AMMONIUM_MASS, ELECTRON_MASS, HYDROGEN_MASS, POTASSIUM_MASS, SODIUM_MASS};
 
 thread_local! {
     static ADDUCT_SPEC_CACHE: RefCell<HashMap<String, Option<(f64, f64)>>> =
         RefCell::new(HashMap::new());
+}
+
+fn fallback_proton_spec(charge_sign: Option<bool>, charge_value: f64) -> (f64, f64) {
+    let shift = match charge_sign {
+        Some(true) => -HYDROGEN_MASS * charge_value,
+        Some(false) => HYDROGEN_MASS * charge_value,
+        None => 0.0,
+    };
+    (1.0, shift)
 }
 
 #[must_use]
@@ -32,84 +39,88 @@ pub(crate) fn expected_precursor_mz(
     ion_mode: Option<&str>,
 ) -> f64 {
     let normalized_adduct = adduct.unwrap_or("").trim();
-    let ion_mode_trimmed = ion_mode.unwrap_or("").trim();
-    let is_negative_mode = ion_mode_trimmed.eq_ignore_ascii_case("negative");
-    let is_positive_mode = ion_mode_trimmed.eq_ignore_ascii_case("positive");
+    let charge_value = parse_charge_value(charge, adduct).unwrap_or(1.0);
     let charge_sign =
         parse_charge_sign(charge, ion_mode).or_else(|| parse_adduct_charge_sign(adduct));
 
-    let charge_value = parse_charge_value(charge, adduct).unwrap_or(1.0);
-
-    let (multiplier, shift, electron_adjustment) = if normalized_adduct.is_empty() {
-        (
-            1.0,
-            if charge_sign == Some(true) || is_negative_mode {
-                -PROTON_MASS
-            } else if charge_sign == Some(false) || is_positive_mode {
-                PROTON_MASS
-            } else {
-                0.0
-            },
-            0.0,
-        )
+    let (multiplier, shift) = if normalized_adduct.is_empty() {
+        fallback_proton_spec(charge_sign, charge_value)
     } else {
-        let (multiplier, shift) =
-            parse_adduct_mass_spec_cached(normalized_adduct).unwrap_or_else(|| {
-                (
-                    1.0,
-                    if charge_sign == Some(true) || is_negative_mode {
-                        -PROTON_MASS
-                    } else if charge_sign == Some(false) || is_positive_mode {
-                        PROTON_MASS
-                    } else {
-                        0.0
-                    },
-                )
-            });
-        let electron_adjustment = match charge_sign {
-            Some(false) => -ELECTRON_MASS * charge_value,
-            Some(true) => ELECTRON_MASS * charge_value,
-            None => 0.0,
-        };
-        (multiplier, shift, electron_adjustment)
+        parse_adduct_mass_spec_cached(normalized_adduct)
+            .unwrap_or_else(|| fallback_proton_spec(charge_sign, charge_value))
+    };
+    let electron_adjustment = match charge_sign {
+        Some(false) => -ELECTRON_MASS * charge_value,
+        Some(true) => ELECTRON_MASS * charge_value,
+        None => 0.0,
     };
 
     let base_mz = neutral_mass.mul_add(multiplier, shift) + electron_adjustment;
     base_mz / charge_value.max(1.0)
 }
 
+fn infer_unbracketed_charge_sign(adduct: &str) -> Option<bool> {
+    let compact = adduct.replace(' ', "").to_ascii_uppercase();
+    if compact.contains('[') || compact.contains(']') || compact.is_empty() {
+        return None;
+    }
+    if compact.ends_with("-H")
+        || compact.ends_with("-2H")
+        || compact.ends_with("+CL")
+        || compact.ends_with("+BR")
+        || compact.ends_with("+HCOO")
+        || compact.ends_with("+CH3COO")
+        || compact == "M+FA"
+        || compact == "M+HAC"
+    {
+        return Some(true);
+    }
+    if compact.contains("+H")
+        || compact.contains("+NA")
+        || compact.contains("+2NA")
+        || compact.contains("+K")
+        || compact.contains("+NH4")
+        || compact.contains("+MG")
+        || compact.contains("+CA")
+        || compact.contains("+FE")
+    {
+        return Some(false);
+    }
+    None
+}
+
 #[must_use]
 pub(crate) fn parse_adduct_charge_sign(adduct: Option<&str>) -> Option<bool> {
     let adduct = adduct?.trim();
-    let suffix = adduct.split(']').nth(1).unwrap_or("").trim();
-    if suffix.contains('-') {
-        Some(true)
-    } else if suffix.contains('+') {
-        Some(false)
-    } else {
-        None
+    if let Some((_, suffix)) = adduct.split_once(']') {
+        let suffix = suffix.trim();
+        if suffix.contains('-') {
+            return Some(true);
+        }
+        if suffix.contains('+') {
+            return Some(false);
+        }
+        return None;
     }
+    infer_unbracketed_charge_sign(adduct)
 }
 
 fn parse_charge_sign(charge: Option<&str>, ion_mode: Option<&str>) -> Option<bool> {
     let charge_text = charge.unwrap_or("").trim();
-    if charge_text.is_empty() {
-        let mode = ion_mode.unwrap_or("").trim();
-        return if mode.eq_ignore_ascii_case("negative") {
-            Some(true)
-        } else if mode.eq_ignore_ascii_case("positive") {
-            Some(false)
-        } else {
-            None
-        };
-    }
-
     let first_byte = charge_text.bytes().next();
     let last_byte = charge_text.bytes().next_back();
 
     if first_byte == Some(b'-') || last_byte == Some(b'-') {
+        return Some(true);
+    }
+    if first_byte == Some(b'+') || last_byte == Some(b'+') {
+        return Some(false);
+    }
+
+    let mode = ion_mode.unwrap_or("").trim();
+    if mode.eq_ignore_ascii_case("negative") {
         Some(true)
-    } else if first_byte == Some(b'+') || last_byte == Some(b'+') {
+    } else if mode.eq_ignore_ascii_case("positive") {
         Some(false)
     } else {
         None
@@ -324,6 +335,7 @@ fn parse_adduct_term_mass(token: &str) -> Option<f64> {
         "FE" => return Some(55.934_937_5 * multiplier),
         "CL" => return Some(34.968_852_68 * multiplier),
         "BR" => return Some(78.918_337_1 * multiplier),
+        // Neutral NH4 radical mass; expected_precursor_mz subtracts electrons once per charge.
         "NH4" => return Some(AMMONIUM_MASS * multiplier),
         "OH" => return Some(17.002_739_65 * multiplier),
         _ => return None,
@@ -346,18 +358,34 @@ fn parse_ascii_digits_f64(text: &str) -> Option<f64> {
     saw_digit.then(|| f64::from(u32::try_from(acc).unwrap_or(u32::MAX)).max(1.0))
 }
 
+fn parse_charge_magnitude(text: &str) -> Option<f64> {
+    let trimmed = text.trim();
+    if let Some(parsed) = parse_ascii_digits_f64(trimmed) {
+        return Some(parsed);
+    }
+    let plus_count = trimmed.bytes().filter(|&b| b == b'+').count();
+    let minus_count = trimmed.bytes().filter(|&b| b == b'-').count();
+    if plus_count > 0 && minus_count == 0 {
+        return Some(f64::from(u32::try_from(plus_count).unwrap_or(u32::MAX)));
+    }
+    if minus_count > 0 && plus_count == 0 {
+        return Some(f64::from(u32::try_from(minus_count).unwrap_or(u32::MAX)));
+    }
+    None
+}
+
 fn parse_charge_value(charge: Option<&str>, adduct: Option<&str>) -> Option<f64> {
     if let Some(value) = charge
-        && let Some(parsed) = parse_ascii_digits_f64(value.trim())
+        && let Some(parsed) = parse_charge_magnitude(value)
     {
         return Some(parsed);
     }
 
-    if let Some(adduct) = adduct {
-        let suffix = adduct.trim().split(']').nth(1).unwrap_or("").trim();
-        if let Some(parsed) = parse_ascii_digits_f64(suffix) {
-            return Some(parsed);
-        }
+    if let Some(adduct) = adduct
+        && let Some((_, suffix)) = adduct.trim().split_once(']')
+        && let Some(parsed) = parse_charge_magnitude(suffix)
+    {
+        return Some(parsed);
     }
 
     None

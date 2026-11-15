@@ -122,3 +122,39 @@ fn push_measurement_keeps_all_parallel_series_synchronized_on_reservoir_replacem
         assert!((diag.precursor_ms2_after[idx] - base * 102.0).abs() < 1e-9);
     }
 }
+
+#[test]
+fn mean_error_improvement_measures_mae_not_signed_bias() {
+    let mut diag = RecalibrationStats::new();
+    for (before, after) in [(-10.0, -1.0), (10.0, 1.0)] {
+        diag.push_error(before, after, before * 0.001, after * 0.001, None, 100);
+    }
+    diag.compute_statistics();
+
+    assert!(
+        (diag.mean_error_improvement_ppm() - 9.0).abs() < 1e-9,
+        "expected MAE improvement 9.0 ppm, got {}",
+        diag.mean_error_improvement_ppm()
+    );
+    assert!(
+        (diag.mean_error_improvement_da() - 0.009).abs() < 1e-9,
+        "expected MAE improvement 0.009 Da, got {}",
+        diag.mean_error_improvement_da()
+    );
+}
+
+#[test]
+fn compute_statistics_tracks_stream_wide_max_abs_beyond_reservoir_limit() {
+    let mut diag = RecalibrationStats::new();
+    for i in 0..40u32 {
+        let before = if i == 0 { 250.0 } else { 1.0 };
+        diag.push_error(before, 0.5, before * 0.001, 0.0005, None, 2);
+    }
+    diag.compute_statistics();
+
+    assert!(
+        (diag.max_abs_error_ppm_before - 250.0).abs() < 1e-9,
+        "stream max_abs should remain 250.0 regardless of reservoir sampling, got {}",
+        diag.max_abs_error_ppm_before
+    );
+}

@@ -10,14 +10,12 @@
 
 // 2022 CODATA
 pub(crate) const ELECTRON_MASS: f64 = 0.000_548_579_909_044_1;
-// 2022 CODATA
-pub(crate) const PROTON_MASS: f64 = 1.007_276_466_578_9;
 // CIAAW
 pub(crate) const HYDROGEN_MASS: f64 = 1.007_825_032_2;
 // CIAAW
 pub(crate) const NITROGEN_MASS: f64 = 14.003_074_004;
-// calculated
-pub(crate) const AMMONIUM_MASS: f64 = NITROGEN_MASS + (4_f64 * HYDROGEN_MASS) - ELECTRON_MASS;
+// calculated neutral NH4 mass (electron charge accounted for in expected_precursor_mz)
+pub(crate) const AMMONIUM_MASS: f64 = NITROGEN_MASS + (4_f64 * HYDROGEN_MASS);
 // CIAAW
 pub(crate) const SODIUM_MASS: f64 = 22.989_769_28;
 // CIAAW

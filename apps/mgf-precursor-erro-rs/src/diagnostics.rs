@@ -75,6 +75,18 @@ pub struct RecalibrationStats {
     /// Mean error in Da after recalibration.
     pub mean_error_da_after: f64,
 
+    /// Mean absolute error in ppm before recalibration.
+    pub mae_error_ppm_before: f64,
+
+    /// Mean absolute error in ppm after recalibration.
+    pub mae_error_ppm_after: f64,
+
+    /// Mean absolute error in Da before recalibration.
+    pub mae_error_da_before: f64,
+
+    /// Mean absolute error in Da after recalibration.
+    pub mae_error_da_after: f64,
+
     /// RMS (root-mean-square) error in ppm (Stage 1: PEPMASS vs theory).
     pub rms_error_ppm_ms1: f64,
 
@@ -110,6 +122,61 @@ pub struct RecalibrationStats {
 
     /// Adduct family categorization for errors after recalibration.
     pub error_by_adduct_after: BTreeMap<String, Vec<f64>>,
+
+    stream_ppm_ms1: RunningStats,
+    stream_delta_ppm: RunningStats,
+    stream_ppm_before: RunningStats,
+    stream_ppm_after: RunningStats,
+    stream_da_ms1: RunningStats,
+    stream_delta_da: RunningStats,
+    stream_da_before: RunningStats,
+    stream_da_after: RunningStats,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct RunningStats {
+    count: usize,
+    sum: f64,
+    sum_abs: f64,
+    sum_sq: f64,
+    max_abs: f64,
+}
+
+impl RunningStats {
+    fn push(&mut self, value: f64) {
+        if !value.is_finite() {
+            return;
+        }
+        self.count += 1;
+        self.sum += value;
+        let abs = value.abs();
+        self.sum_abs += abs;
+        self.sum_sq = value.mul_add(value, self.sum_sq);
+        self.max_abs = self.max_abs.max(abs);
+    }
+
+    fn finish(self, samples: &[f64]) -> (f64, f64, f64, f64) {
+        if self.count == 0 {
+            let mae = if samples.is_empty() {
+                0.0
+            } else {
+                samples.iter().map(|v| v.abs()).sum::<f64>() / usize_to_f64(samples.len())
+            };
+            return (
+                compute_mean(samples),
+                compute_rms(samples),
+                mae,
+                compute_max_abs(samples),
+            );
+        }
+        let n = usize_to_f64(self.count);
+        (
+            self.sum / n,
+            (self.sum_sq / n).sqrt(),
+            self.sum_abs / n,
+            self.max_abs,
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -153,6 +220,10 @@ impl Default for RecalibrationStats {
             mean_delta_da_ms2_ms1: 0.0,
             mean_error_da_before: 0.0,
             mean_error_da_after: 0.0,
+            mae_error_ppm_before: 0.0,
+            mae_error_ppm_after: 0.0,
+            mae_error_da_before: 0.0,
+            mae_error_da_after: 0.0,
             rms_error_ppm_ms1: 0.0,
             rms_delta_ppm_ms2_ms1: 0.0,
             rms_error_ppm_before: 0.0,
@@ -165,6 +236,14 @@ impl Default for RecalibrationStats {
             max_abs_error_ppm_after: 0.0,
             error_by_adduct_before: BTreeMap::new(),
             error_by_adduct_after: BTreeMap::new(),
+            stream_ppm_ms1: RunningStats::default(),
+            stream_delta_ppm: RunningStats::default(),
+            stream_ppm_before: RunningStats::default(),
+            stream_ppm_after: RunningStats::default(),
+            stream_da_ms1: RunningStats::default(),
+            stream_delta_da: RunningStats::default(),
+            stream_da_before: RunningStats::default(),
+            stream_da_after: RunningStats::default(),
         }
     }
 }
@@ -174,6 +253,19 @@ impl RecalibrationStats {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    fn record_before_after_stream(
+        &mut self,
+        error_ppm_before: f64,
+        error_ppm_after: f64,
+        error_da_before: f64,
+        error_da_after: f64,
+    ) {
+        self.stream_ppm_before.push(error_ppm_before);
+        self.stream_ppm_after.push(error_ppm_after);
+        self.stream_da_before.push(error_da_before);
+        self.stream_da_after.push(error_da_after);
     }
 
     /// Adds a precursor error measurement to the diagnostics.
@@ -195,6 +287,12 @@ impl RecalibrationStats {
         max_samples: usize,
     ) {
         self.total_count += 1;
+        self.record_before_after_stream(
+            error_ppm_before,
+            error_ppm_after,
+            error_da_before,
+            error_da_after,
+        );
 
         // Sample for plotting
         if self.sample_count < max_samples {
@@ -239,6 +337,16 @@ impl RecalibrationStats {
         } = measurement;
 
         self.total_count += 1;
+        self.stream_ppm_ms1.push(error_ppm_ms1);
+        self.stream_delta_ppm.push(delta_ppm_ms2_ms1);
+        self.stream_da_ms1.push(error_da_ms1);
+        self.stream_delta_da.push(delta_da_ms2_ms1);
+        self.record_before_after_stream(
+            error_ppm_before,
+            error_ppm_after,
+            error_da_before,
+            error_da_after,
+        );
 
         // Sample for plotting
         if self.sample_count < max_samples {
@@ -293,34 +401,52 @@ impl RecalibrationStats {
         }
     }
 
-    /// Computes summary statistics from the collected errors.
+    /// Computes summary statistics from the processed stream (falling back to
+    /// sampled vectors if stats were populated directly).
     pub fn compute_statistics(&mut self) {
-        self.mean_error_ppm_ms1 = compute_mean(&self.error_ppm_ms1);
-        self.mean_delta_ppm_ms2_ms1 = compute_mean(&self.delta_ppm_ms2_ms1);
-        self.mean_error_ppm_before = compute_mean(&self.error_ppm_before);
-        self.mean_error_ppm_after = compute_mean(&self.error_ppm_after);
-        self.mean_error_da_ms1 = compute_mean(&self.error_da_ms1);
-        self.mean_delta_da_ms2_ms1 = compute_mean(&self.delta_da_ms2_ms1);
-        self.mean_error_da_before = compute_mean(&self.error_da_before);
-        self.mean_error_da_after = compute_mean(&self.error_da_after);
+        (self.mean_error_ppm_ms1, self.rms_error_ppm_ms1, _, _) =
+            self.stream_ppm_ms1.finish(&self.error_ppm_ms1);
+        (
+            self.mean_delta_ppm_ms2_ms1,
+            self.rms_delta_ppm_ms2_ms1,
+            _,
+            _,
+        ) = self.stream_delta_ppm.finish(&self.delta_ppm_ms2_ms1);
+        (
+            self.mean_error_ppm_before,
+            self.rms_error_ppm_before,
+            self.mae_error_ppm_before,
+            self.max_abs_error_ppm_before,
+        ) = self.stream_ppm_before.finish(&self.error_ppm_before);
+        (
+            self.mean_error_ppm_after,
+            self.rms_error_ppm_after,
+            self.mae_error_ppm_after,
+            self.max_abs_error_ppm_after,
+        ) = self.stream_ppm_after.finish(&self.error_ppm_after);
 
-        self.rms_error_ppm_ms1 = compute_rms(&self.error_ppm_ms1);
-        self.rms_delta_ppm_ms2_ms1 = compute_rms(&self.delta_ppm_ms2_ms1);
-        self.rms_error_ppm_before = compute_rms(&self.error_ppm_before);
-        self.rms_error_ppm_after = compute_rms(&self.error_ppm_after);
-        self.rms_error_da_ms1 = compute_rms(&self.error_da_ms1);
-        self.rms_delta_da_ms2_ms1 = compute_rms(&self.delta_da_ms2_ms1);
-        self.rms_error_da_before = compute_rms(&self.error_da_before);
-        self.rms_error_da_after = compute_rms(&self.error_da_after);
-
-        self.max_abs_error_ppm_before = compute_max_abs(&self.error_ppm_before);
-        self.max_abs_error_ppm_after = compute_max_abs(&self.error_ppm_after);
+        (self.mean_error_da_ms1, self.rms_error_da_ms1, _, _) =
+            self.stream_da_ms1.finish(&self.error_da_ms1);
+        (self.mean_delta_da_ms2_ms1, self.rms_delta_da_ms2_ms1, _, _) =
+            self.stream_delta_da.finish(&self.delta_da_ms2_ms1);
+        (
+            self.mean_error_da_before,
+            self.rms_error_da_before,
+            self.mae_error_da_before,
+            _,
+        ) = self.stream_da_before.finish(&self.error_da_before);
+        (
+            self.mean_error_da_after,
+            self.rms_error_da_after,
+            self.mae_error_da_after,
+            _,
+        ) = self.stream_da_after.finish(&self.error_da_after);
     }
 
     /// Returns the improvement in mean absolute error after recalibration (in ppm).
     #[must_use]
     pub fn mean_error_improvement_ppm(&self) -> f64 {
-        self.mean_error_ppm_before.abs() - self.mean_error_ppm_after.abs()
+        self.mae_error_ppm_before - self.mae_error_ppm_after
     }
 
     /// Returns the improvement in RMS error after recalibration (in ppm).
@@ -332,7 +458,7 @@ impl RecalibrationStats {
     /// Returns the improvement in mean absolute error after recalibration (in Da).
     #[must_use]
     pub fn mean_error_improvement_da(&self) -> f64 {
-        self.mean_error_da_before.abs() - self.mean_error_da_after.abs()
+        self.mae_error_da_before - self.mae_error_da_after
     }
 
     /// Returns the improvement in RMS error after recalibration (in Da).

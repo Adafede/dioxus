@@ -49,6 +49,14 @@ fn parse_leading_float(value: &str) -> Option<f64> {
     value.split_whitespace().next()?.parse::<f64>().ok()
 }
 
+fn strip_header_ignore_case<'a>(line: &'a str, key: &str) -> Option<&'a str> {
+    let prefix = line.get(..key.len())?;
+    if !prefix.eq_ignore_ascii_case(key) {
+        return None;
+    }
+    line.get(key.len()..)?.strip_prefix('=')
+}
+
 impl BlockParseState {
     pub(crate) fn clear(&mut self) {
         #[cfg(test)]
@@ -67,11 +75,14 @@ impl BlockParseState {
 
     pub(crate) fn consume_line(&mut self, line: &str) {
         let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed == "BEGIN IONS" || trimmed == "END IONS" {
+        if trimmed.is_empty()
+            || trimmed.eq_ignore_ascii_case("BEGIN IONS")
+            || trimmed.eq_ignore_ascii_case("END IONS")
+        {
             return;
         }
 
-        if let Some(stripped) = trimmed.strip_prefix("PRECURSOR_MZ=") {
+        if let Some(stripped) = strip_header_ignore_case(trimmed, "PRECURSOR_MZ") {
             #[cfg(test)]
             {
                 self.observed_precursor_raw = Some(stripped.to_string());
@@ -80,7 +91,7 @@ impl BlockParseState {
             return;
         }
 
-        if let Some(stripped) = trimmed.strip_prefix("PEPMASS=") {
+        if let Some(stripped) = strip_header_ignore_case(trimmed, "PEPMASS") {
             #[cfg(test)]
             {
                 self.observed_precursor_raw = Some(stripped.to_string());
@@ -89,15 +100,15 @@ impl BlockParseState {
             return;
         }
 
-        if let Some(stripped) = trimmed.strip_prefix("EXACTMASS=") {
-            if let Ok(value) = stripped.parse::<f64>() {
+        if let Some(stripped) = strip_header_ignore_case(trimmed, "EXACTMASS") {
+            if let Ok(value) = stripped.trim().parse::<f64>() {
                 self.reference_mass = Some(value);
             }
             return;
         }
 
-        if let Some(stripped) = trimmed.strip_prefix("MOLECULEMASS=") {
-            if let Ok(value) = stripped.parse::<f64>()
+        if let Some(stripped) = strip_header_ignore_case(trimmed, "MOLECULEMASS") {
+            if let Ok(value) = stripped.trim().parse::<f64>()
                 && self.reference_mass.is_none()
             {
                 self.reference_mass = Some(value);
@@ -105,27 +116,27 @@ impl BlockParseState {
             return;
         }
 
-        if let Some(stripped) = trimmed.strip_prefix("CHARGE=") {
+        if let Some(stripped) = strip_header_ignore_case(trimmed, "CHARGE") {
             self.charge = Some(stripped.to_string());
             return;
         }
 
-        if let Some(stripped) = trimmed.strip_prefix("SMILES=") {
+        if let Some(stripped) = strip_header_ignore_case(trimmed, "SMILES") {
             self.smiles = Some(stripped.trim().to_string());
             return;
         }
 
-        if let Some(stripped) = trimmed.strip_prefix("FORMULA=") {
+        if let Some(stripped) = strip_header_ignore_case(trimmed, "FORMULA") {
             self.formula = Some(stripped.trim().to_string());
             return;
         }
 
-        if let Some(stripped) = trimmed.strip_prefix("ADDUCT=") {
+        if let Some(stripped) = strip_header_ignore_case(trimmed, "ADDUCT") {
             self.adduct = Some(stripped.to_string());
             return;
         }
 
-        if let Some(stripped) = trimmed.strip_prefix("IONMODE=") {
+        if let Some(stripped) = strip_header_ignore_case(trimmed, "IONMODE") {
             self.ion_mode = Some(stripped.to_string());
             return;
         }
@@ -194,7 +205,7 @@ impl LineIngestor {
             return;
         }
 
-        if trimmed == "BEGIN IONS" {
+        if trimmed.eq_ignore_ascii_case("BEGIN IONS") {
             self.current_state.clear();
             self.current_is_in_block = true;
             return;
@@ -206,7 +217,7 @@ impl LineIngestor {
 
         self.current_state.consume_line(trimmed);
 
-        if trimmed == "END IONS" {
+        if trimmed.eq_ignore_ascii_case("END IONS") {
             record_block_state(
                 &mut self.metrics,
                 &self.current_state,
@@ -233,7 +244,7 @@ pub(crate) fn ingest_lines<'a>(
     let mut ingestor = LineIngestor::default();
     for (index, line) in lines.enumerate() {
         ingestor.feed_line(index, line);
-        if line.trim() == "END IONS" {
+        if line.trim().eq_ignore_ascii_case("END IONS") {
             on_progress(u64::try_from(index).unwrap_or(u64::MAX));
         }
     }

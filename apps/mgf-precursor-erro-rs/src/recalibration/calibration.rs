@@ -13,6 +13,9 @@ pub fn recalibrate_fragment_mz(
     lambda: f64,
     calibration_model: CalibrationModel,
 ) -> f64 {
+    if !mz.is_finite() || !delta.is_finite() || !lambda.is_finite() {
+        return mz;
+    }
     match calibration_model {
         CalibrationModel::TOFDa { .. } => lambda.mul_add(-delta, mz),
         CalibrationModel::OrbitrapPPM { .. } => {

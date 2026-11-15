@@ -137,3 +137,12 @@ fn append_cumulative_legend_no_svg_tag_is_noop() {
     let result = append_cumulative_legend(input.to_string());
     assert_eq!(result, input);
 }
+
+#[test]
+fn cumulative_legend_text_starts_inside_1200px_canvas() {
+    let svg = render_cumulative_error_three_curves(&[1.0], &[2.0], &[0.5], "ppm", &[5.0]).unwrap();
+    assert!(
+        svg.contains(r#"x="990""#) || svg.contains(r#"x="980""#),
+        "legend rect must leave enough horizontal room for label inside 1200px canvas: {svg}"
+    );
+}

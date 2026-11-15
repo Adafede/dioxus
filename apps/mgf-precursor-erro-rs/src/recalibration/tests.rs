@@ -508,3 +508,21 @@ fn test_generate_recalibrated_mgf_preserves_global_params_and_separators() {
         "the blank separator between blocks was lost: {output:?}"
     );
 }
+
+#[test]
+fn recalibrate_fragment_mz_ignores_non_finite_delta_and_lambda() {
+    let tof = CalibrationModel::TOFDa { lambda: 1.0 };
+    assert!(
+        (recalibrate_fragment_mz(250.5, f64::NAN, 500.0, 1.0, tof) - 250.5).abs() < 1e-12,
+        "TOFDa must return original mz when delta is NaN"
+    );
+    assert!(
+        (recalibrate_fragment_mz(250.5, f64::INFINITY, 500.0, 1.0, tof) - 250.5).abs() < 1e-12,
+        "TOFDa must return original mz when delta is infinite"
+    );
+    let orbi = CalibrationModel::OrbitrapPPM { lambda: 1.0 };
+    assert!(
+        (recalibrate_fragment_mz(250.5, 0.01, 500.0, f64::NAN, orbi) - 250.5).abs() < 1e-12,
+        "OrbitrapPPM must return original mz when lambda is NaN"
+    );
+}

@@ -155,8 +155,13 @@ pub fn render_recalibration_diagnostic_histogram(
         return Ok(buffer);
     }
 
-    let Some((error_min, error_max)) = combined_finite_bounds(errors_before, errors_after) else {
+    let Some((raw_min, raw_max)) = combined_finite_bounds(errors_before, errors_after) else {
         return Ok(buffer);
+    };
+    let (error_min, error_max) = if (raw_max - raw_min).abs() <= f64::EPSILON {
+        (raw_min - 0.5, raw_max + 0.5)
+    } else {
+        (raw_min, raw_max)
     };
 
     // Compute histograms
