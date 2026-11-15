@@ -16,30 +16,25 @@ The rules for what is checked are `rustfmt.toml`, `clippy.toml` and
 
 ### rust-analyzer
 
-The workspace has no root package, so the server has to be told to run the cargo
-check for a file's own crate rather than for the workspace, or every keystroke
-tries to build the whole dependency graph. `cargo.features: "all"` is the same
-reasoning for the feature resolver.
+`cargo.allTargets: true` and `cargo.features: "all"` mirror `./mk lint` so library,
+binary, test, and example targets and all features are checked on save.
 
 One target directory for the whole workspace (`cargo.targetDir`), which is also
-what the Dioxus CLI uses; a per-crate target dir means building a dependency
+what the Dioxus CLI uses; a per-crate target directory rebuilds dependencies
 twice.
 
-Nextest is the test runner (`cargo.testRunner`). Without this the editor builds
-a test binary per crate with `cargo test`, which is the slow path the gate moved
-off. `testRunnerExtraEnv` exists because nextest does not run doctests, so the
-editor's "run doctest" needs the one runner that does.
+Nextest is the test runner (`cargo.testRunner: "nextest"` with
+`NEXTEST_PROFILE: "default"`), so editor test runs use `.config/nextest.toml`
+instead of compiling per-crate `cargo test` harnesses. Doctests still run via
+`cargo test --doc` (`./mk test`).
 
-`check.command: "clippy"` matches what the gate runs rather than plain
-`cargo check`, so a squiggle and a CI failure are the same finding.
+`check.command: "clippy"` (with `checkOnSave: true`) matches `./mk lint`, so a
+squiggle in the editor and a CI failure report the same finding.
 
-`procMacro.enable` is on because the crates are browser targets and half the
-workspace does not type-check for the host without its cfg gates; enabling the
-server outright turns every `crates/upload` error into a squiggle.
-
-`diagnostics.experimental.enable` is on because the workspace denies
-`unused_qualifications`, and an editor that shows it inline inside an `rsx!`
-block sends you to delete an attribute that is load-bearing.
+`procMacro.enable: true` and `cargo.buildScripts.enable: true` expand Dioxus
+`#[component]`/`rsx!`, `serde`, and `thiserror` macros;
+`diagnostics.experimental.enable: true` surfaces experimental `rust-analyzer`
+diagnostics in the editor.
 
 ### Formatting
 

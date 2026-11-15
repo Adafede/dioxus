@@ -18,6 +18,7 @@ lipidmaps/
         ├── evolve.rs             run smarts-evolution GA per class
         ├── manifest.rs           CSV manifest I/O
         ├── main.rs               CLI binary (download / split / evolve / all)
+        ├── results_io.rs         result CSV readers, writers, and resume filter
         └── lipidsdl/             vendored SDF/TSV download & conversion module
 ```
 

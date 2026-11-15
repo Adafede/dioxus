@@ -28,6 +28,7 @@ Every `.rs` file carries both SPDX headers on lines 1 and 2:
 
 ```rust
 // SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: Contributors to the dioxus-apps project
 ```
 
 ## Development workflow

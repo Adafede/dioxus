@@ -18,6 +18,7 @@ smarts-evoliposuction/
 └── src/
     ├── lib.rs         public API re-exports
     ├── main.rs        CLI binary (download / split / evolve / all)
+    ├── results_io.rs  verified CSV result readers, writers, and resume filter
     ├── download.rs    LMSD.sdf.zip download + TSV conversion
     ├── splitting.rs   TSV parsing + positive/negative SMILES splitting
     ├── evolve.rs      smarts-evolution wrapper with per-class error isolation
@@ -30,7 +31,7 @@ Pipeline stages:
 1. **Download**: fetches `LMSD.sdf.zip` from LIPID MAPS and converts it to TSV
    via `src/lipidsdl/`. Note that `download --dest LMSD.sdf.zip` writes the
    converted TSV to `dest.with_extension("tsv")` (i.e. `LMSD.sdf.tsv`).
-2. **Split**: parses the TSV (`--input` defaults to `LMSD.tsv`) and writes
+2. **Split**: parses the TSV (`--input` defaults to `LMSD.sdf.tsv`) and writes
    balanced positive/negative SMILES files per `category`, `main_class`, and
    optionally `subclass`.
 3. **Evolve**: runs `smarts-evolution` on each class manifest row, isolating
@@ -90,13 +91,13 @@ cargo run --release --locked -- evolve \
   | Flag                | Default                           | Command     | Description                                                   |
   | ---                 | ---                               | ---         | ---                                                           |
   | `--dest`            | `LMSD.sdf.zip`                    | Download    | Destination path for downloaded zip                           |
-  | `--input`           | `LMSD.tsv`                        | Split       | Input TSV file path                                           |
+  | `--input`           | `LMSD.sdf.tsv`                    | Split       | Input TSV file path                                           |
   | `--output-dir`      | `smiles_sets` (Split) / `.` (All) | Split, All  | Output directory                                              |
   | `--population`      | `100`                             | All, Evolve | GA population size                                            |
   | `--generations`     | `500`                             | All, Evolve | Max generations per class                                     |
   | `--stagnation`      | `50`                              | Evolve      | Stop after N generations without MCC gain                     |
   | `--seed`            | `None`                            | All, Evolve | Fixed RNG seed for reproducibility                            |
-  | `--resume`          | `false`                           | Evolve      | Skip classes already present in `--output`                    |
+  | `--resume`          | `false`                           | Evolve      | Skip classes with `status == "ok"` in `--output`              |
   | `--level`           | `None`                            | Evolve      | Filter to `category`, `main_class`, or `subclass`             |
   | `--match-timeout`   | `5`                               | All, Evolve | Per-SMARTS evaluation timeout in seconds                      |
   | `--smiles-cap`      | `2000`                            | Split       | Max SMILES per positive/negative set                          |
