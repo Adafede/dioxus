@@ -80,6 +80,9 @@ where
     /// O(1): single comparison and possible callback invocation.
     pub(crate) fn maybe_report(&mut self, processed: u64, total: u64) -> bool {
         let now = (self.time_fn)();
+        if now < self.last_reported_time {
+            self.last_reported_time = now;
+        }
         let bytes_delta = processed.saturating_sub(self.last_reported_bytes);
 
         if bytes_delta >= self.byte_threshold

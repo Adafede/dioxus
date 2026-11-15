@@ -554,3 +554,29 @@ fn the_browser_scanner_is_the_slice_scanner() {
         "and the same refusal"
     );
 }
+
+#[test]
+fn duplicate_keys_within_row_do_not_exceed_one_per_row() {
+    for chunk in [1, 4, 64] {
+        assert_eq!(
+            columns(r#"[{"a":1,"a":2},{"a":3}]"#, chunk),
+            Ok(vec![("a".to_string(), 2)]),
+            "array rows must count a key at most once per row (chunk {chunk})"
+        );
+        assert_eq!(
+            columns(r#"[{"a":null,"a":2}]"#, chunk),
+            Ok(vec![("a".to_string(), 1)]),
+            "null before non-null duplicate key still counts row once (chunk {chunk})"
+        );
+        assert_eq!(
+            columns(r#"[{"a":2,"a":null}]"#, chunk),
+            Ok(vec![("a".to_string(), 1)]),
+            "null after non-null duplicate key still counts row once (chunk {chunk})"
+        );
+        assert_eq!(
+            columns(r#"{"a":1,"a":2}"#, chunk),
+            Ok(vec![("a".to_string(), 2)]),
+            "top-level object counts all non-null leaves of duplicate key (chunk {chunk})"
+        );
+    }
+}

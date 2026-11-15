@@ -78,3 +78,30 @@ fn download_helpers_fail_on_native() {
         assert!(crate::download_with_mime("{}", "out.json", "application/json").is_err());
     }
 }
+
+#[test]
+fn sanitize_prefixes_windows_reserved_device_stems() {
+    assert_eq!(sanitize_filename("CON"), "_CON");
+    assert_eq!(sanitize_filename("con.txt"), "_con.txt");
+    assert_eq!(sanitize_filename("NUL.tar.gz"), "_NUL.tar.gz");
+    assert_eq!(sanitize_filename("COM1.csv"), "_COM1.csv");
+    assert_eq!(sanitize_filename("LPT9"), "_LPT9");
+    assert_eq!(sanitize_filename("console.txt"), "console.txt");
+}
+
+#[test]
+fn sanitize_caps_utf8_byte_length_preserving_extension() {
+    let long = format!("{}.csv", "é".repeat(200));
+    let sanitized = sanitize_filename(&long);
+    assert!(
+        sanitized.len() <= 255,
+        "sanitized length {} exceeded 255 bytes",
+        sanitized.len()
+    );
+    assert!(
+        std::path::Path::new(&sanitized)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("csv")),
+        "extension must be preserved: {sanitized}"
+    );
+}

@@ -88,7 +88,7 @@ fn app() -> Element {
             webmcp: Some(WebMcpConfig {
                 app_id: "index",
                 title: "Dioxus Experiments",
-                description: "Landing page for Dioxus experiments — accessible, type-safe, showcasing best practices",
+                description: "Landing page linking the client-side Rust/WebAssembly applications in this workspace",
                 inputs: &[],
                 outputs: &["experiment_links"],
                 edam: EdamAnnotations {
@@ -107,7 +107,8 @@ fn app() -> Element {
             og_type: Some("website".to_string()),
             og_site_name: Some("Dioxus Experiments".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],        }
+            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
+        }
 
         div { style: container_style,
             skip_link {}
@@ -191,4 +192,33 @@ const APPS: &[AppInfo] = &[
 
 fn main() {
     launch(app);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn catalog_is_non_empty_and_well_formed() {
+        assert_ne!(APPS, []);
+        for entry in APPS {
+            assert_ne!(entry.id, "");
+            assert_ne!(entry.title, "");
+            assert!(entry.path.starts_with("./") && entry.path.ends_with('/'));
+            assert_ne!(entry.description, "");
+        }
+    }
+
+    #[test]
+    fn app_renders_every_catalog_entry() {
+        let mut dom = VirtualDom::new(app);
+        let rendered = format!("{:?}", dom.rebuild_to_vec());
+        for entry in APPS {
+            assert!(
+                rendered.contains(entry.path),
+                "landing page missing link for {} ({rendered})",
+                entry.id
+            );
+        }
+    }
 }

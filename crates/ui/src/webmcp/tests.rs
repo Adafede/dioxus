@@ -87,3 +87,54 @@ fn empty_io_arrays_render_as_empty_js_arrays() {
     assert!(script.contains("inputs: []"), "empty inputs: {script}");
     assert!(script.contains("outputs: [\"links\"]"), "outputs: {script}");
 }
+
+#[test]
+fn script_and_json_ld_escape_script_breakout_and_line_separators() {
+    const PAYLOAD: &str = "</script><script>alert(1)&\"\\\u{2028}\u{2029}";
+    let cfg = WebMcpConfig {
+        app_id: "xss_app",
+        title: PAYLOAD,
+        description: PAYLOAD,
+        inputs: &[PAYLOAD],
+        outputs: &[PAYLOAD],
+        edam: EdamAnnotations {
+            topics: &[EdamTerm {
+                id: "topic_1</script>&\"\\",
+                label: PAYLOAD,
+            }],
+            operations: &[],
+            input_data: &[],
+            input_formats: &[],
+            output_data: &[],
+            output_formats: &[],
+        },
+    };
+
+    let script = capabilities_script(cfg);
+    assert!(
+        !script.contains("</script>"),
+        "script must escape closing tag: {script}"
+    );
+    assert!(
+        !script.contains('\u{2028}') && !script.contains('\u{2029}'),
+        "script must escape JS line/paragraph separators: {script}"
+    );
+    assert!(
+        script.contains(r"\u003c/script\u003e"),
+        "script should unicode-escape angle brackets: {script}"
+    );
+    assert!(
+        script.contains(r"topic_1\u003c/script\u003e\u0026"),
+        "EDAM term URI must escape angle brackets and ampersands: {script}"
+    );
+
+    let ld = bioschemas_json_ld(cfg);
+    assert!(
+        !ld.contains("</script>"),
+        "JSON-LD must escape closing script tags: {ld}"
+    );
+    assert!(
+        !ld.contains('\u{2028}') && !ld.contains('\u{2029}'),
+        "JSON-LD must escape line/paragraph separators: {ld}"
+    );
+}

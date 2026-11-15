@@ -118,3 +118,34 @@ fn an_unreachable_threshold_never_reports() {
     );
     assert!(r.reports.borrow().is_empty(), "and must not call back");
 }
+
+#[test]
+fn recovers_after_clock_rollback() {
+    let reports = Rc::new(RefCell::new(Vec::new()));
+    let time = Rc::new(RefCell::new(500.0));
+    let mut throttler = {
+        let reports = Rc::clone(&reports);
+        let time = Rc::clone(&time);
+        ProgressThrottler::new(
+            move |p, t| reports.borrow_mut().push((p, t)),
+            move || *time.borrow(),
+            u64::MAX,
+            100.0,
+        )
+    };
+
+    // Clock jumps backwards below initial timestamp.
+    *time.borrow_mut() = 100.0;
+    assert!(
+        !throttler.maybe_report(10, 1000),
+        "rollback check should reset baseline without spuriously firing at delta 0"
+    );
+
+    // After time_threshold_ms (100ms) past the rolled-back clock (at 200ms), reporting resumes.
+    *time.borrow_mut() = 200.0;
+    assert!(
+        throttler.maybe_report(20, 1000),
+        "throttler must recover within time_threshold_ms after clock rollback"
+    );
+    assert_eq!(*reports.borrow(), vec![(20, 1000)]);
+}

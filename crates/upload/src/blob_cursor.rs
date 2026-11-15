@@ -236,7 +236,7 @@ where
 
     /// Advances the cursor position by `n`, clamped to buffer length.
     pub fn advance(&mut self, n: usize) {
-        self.pos = (self.pos + n).min(self.buf.len());
+        self.pos = self.pos.saturating_add(n).min(self.buf.len());
     }
 
     /// Returns a reference to the internal buffer.
@@ -246,5 +246,24 @@ where
     #[must_use]
     pub fn buffer(&self) -> &[u8] {
         &self.buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BlobCursor;
+    use crate::bytes::SliceSource;
+    use futures_executor::block_on;
+
+    #[test]
+    fn advance_saturates_at_buffer_length() {
+        block_on(async {
+            let mut cursor = BlobCursor::new(SliceSource::new(b"abc"), 3, |_, _| {});
+            assert!(matches!(cursor.fill().await, Ok(true)));
+            cursor.advance(1);
+            assert_eq!(cursor.pos(), 1);
+            cursor.advance(usize::MAX);
+            assert_eq!(cursor.pos(), 3);
+        });
     }
 }

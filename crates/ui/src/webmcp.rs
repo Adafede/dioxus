@@ -81,9 +81,7 @@ pub struct WebMcpConfig {
 }
 
 /// Writes `s` as a JSON string literal (also valid as a JS string literal) into `out`.
-fn write_json_string(out: &mut String, s: &str) {
-    out.reserve(s.len() + 2);
-    out.push('"');
+fn write_json_escaped_body(out: &mut String, s: &str) {
     for c in s.chars() {
         match c {
             '"' => out.push_str("\\\""),
@@ -91,12 +89,23 @@ fn write_json_string(out: &mut String, s: &str) {
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
+            '<' => out.push_str("\\u003c"),
+            '>' => out.push_str("\\u003e"),
+            '&' => out.push_str("\\u0026"),
+            '\u{2028}' => out.push_str("\\u2028"),
+            '\u{2029}' => out.push_str("\\u2029"),
             c if (c as u32) < 0x20 => {
                 let _ = write!(out, "\\u{:04x}", c as u32);
             }
             c => out.push(c),
         }
     }
+}
+
+fn write_json_string(out: &mut String, s: &str) {
+    out.reserve(s.len() + 2);
+    out.push('"');
+    write_json_escaped_body(out, s);
     out.push('"');
 }
 
@@ -120,13 +129,7 @@ fn json_string_list(items: &[&str]) -> String {
 
 fn write_json_edam_uri(out: &mut String, term: EdamTerm) {
     out.push_str("\"http://edamontology.org/");
-    for c in term.id.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c => out.push(c),
-        }
-    }
+    write_json_escaped_body(out, term.id);
     out.push('"');
 }
 

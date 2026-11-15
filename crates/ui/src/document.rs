@@ -267,12 +267,12 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
             }
         }
 
-        // JSON-LD structured data
+        // JSON-LD structured data: escape `</` so caller payloads cannot close `<script>`.
         if let Some(ld) = json_ld {
             doc.create_head_element(
                 "script",
                 &[("type", "application/ld+json".to_string())],
-                Some(ld),
+                Some(ld.replace("</", "<\\/")),
             );
         }
     });

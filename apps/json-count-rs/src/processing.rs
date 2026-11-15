@@ -32,8 +32,7 @@ use crate::ColumnResult;
 /// - `null` → 0
 /// - objects/arrays → sum of all contained values recursively
 ///
-/// which counts every `"` occurrence as a leaf value).
-///
+/// The total leaf count is used for summary display and CSV export.
 /// Only compiled under `#[cfg(test)]` — the production wasm scanner has its
 /// own `count_value` implementation; this pure function exists solely as a
 /// reference for native unit testing.
@@ -610,6 +609,7 @@ where
         return Ok(());
     }
 
+    let mut counted_in_row = per_row.then(std::collections::HashSet::new);
     loop {
         cur.skip_ws().await.map_err(|e| e.to_string())?;
         let key = read_json_key(cur).await.map_err(|e| e.to_string())?;
@@ -627,13 +627,19 @@ where
         } else {
             raw_count
         };
-        if let Some(&idx) = index_by_key.get(&key) {
-            if let Some(col) = fields.get_mut(idx) {
-                col.count += count;
-            }
+        let idx = if let Some(&idx) = index_by_key.get(&key) {
+            idx
         } else {
-            index_by_key.insert(key.clone(), fields.len());
-            fields.push(ColumnResult { key, count });
+            let idx = fields.len();
+            index_by_key.insert(key.clone(), idx);
+            fields.push(ColumnResult { key, count: 0 });
+            idx
+        };
+        let add = counted_in_row
+            .as_mut()
+            .map_or(count, |seen| u64::from(count > 0 && seen.insert(idx)));
+        if let Some(col) = fields.get_mut(idx) {
+            col.count += add;
         }
 
         cur.skip_ws().await.map_err(|e| e.to_string())?;

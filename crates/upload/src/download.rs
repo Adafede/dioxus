@@ -111,11 +111,74 @@ fn click_download_anchor(href: &str, filename: &str) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(any(target_arch = "wasm32", test))]
+const MAX_FILENAME_BYTES: usize = 255;
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn is_windows_reserved_stem(stem: &str) -> bool {
+    if stem.eq_ignore_ascii_case("CON")
+        || stem.eq_ignore_ascii_case("PRN")
+        || stem.eq_ignore_ascii_case("AUX")
+        || stem.eq_ignore_ascii_case("NUL")
+    {
+        return true;
+    }
+    let prefix = stem.get(..3).unwrap_or("");
+    let suffix = stem.get(3..).unwrap_or("");
+    (prefix.eq_ignore_ascii_case("COM") || prefix.eq_ignore_ascii_case("LPT"))
+        && suffix.len() == 1
+        && matches!(suffix.as_bytes().first().copied(), Some(b'1'..=b'9'))
+}
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn floor_char_boundary(s: &str, max_bytes: usize) -> usize {
+    let mut end = max_bytes.min(s.len());
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    end
+}
+
+#[cfg(any(target_arch = "wasm32", test))]
+fn truncate_utf8_filename(name: String, max_bytes: usize) -> String {
+    if name.len() <= max_bytes {
+        return name;
+    }
+    let truncated = if let Some((stem, ext)) = name.rsplit_once('.')
+        && !stem.is_empty()
+        && !ext.is_empty()
+        && ext.len() + 1 < max_bytes
+        && ext.len() <= 32
+    {
+        let stem_budget = max_bytes - ext.len() - 1;
+        let cut = floor_char_boundary(stem, stem_budget);
+        if cut > 0 {
+            let mut out = stem.get(..cut).unwrap_or_default().to_string();
+            out.push('.');
+            out.push_str(ext);
+            out
+        } else {
+            let cut = floor_char_boundary(&name, max_bytes);
+            name.get(..cut).unwrap_or_default().to_string()
+        }
+    } else {
+        let cut = floor_char_boundary(&name, max_bytes);
+        name.get(..cut).unwrap_or_default().to_string()
+    };
+    if truncated.is_empty() {
+        "download.txt".to_string()
+    } else {
+        truncated
+    }
+}
+
 /// Sanitizes a filename for safe browser download.
 ///
 /// Removes control characters, replaces path separators, quotes, and
-/// Windows-reserved characters (`: * ? < > |`) with underscores, and falls
-/// back to `"download.txt"` if nothing remains after trimming dots/spaces.
+/// Windows-reserved characters (`: * ? < > |`) with underscores, prefixes
+/// Windows reserved device stems (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`,
+/// `LPT1`–`LPT9`), enforces a 255-byte UTF-8 limit (preserving short
+/// extensions), and falls back to `"download.txt"` if nothing remains.
 #[must_use]
 #[cfg(any(target_arch = "wasm32", test))]
 fn sanitize_filename(input: &str) -> String {
@@ -134,10 +197,15 @@ fn sanitize_filename(input: &str) -> String {
     }
     let cleaned = out.trim_matches('.').trim();
     if cleaned.is_empty() {
-        "download.txt".to_string()
+        return "download.txt".to_string();
+    }
+    let stem = cleaned.split('.').next().unwrap_or("");
+    let guarded = if is_windows_reserved_stem(stem) {
+        format!("_{cleaned}")
     } else {
         cleaned.to_string()
-    }
+    };
+    truncate_utf8_filename(guarded, MAX_FILENAME_BYTES)
 }
 
 /// Triggers a browser download with an explicit MIME type (native stub — returns `Err`).
