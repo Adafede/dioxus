@@ -259,7 +259,7 @@ pub(crate) fn classify_np_evidence(signals: &EvidenceSignals) -> String {
         );
     }
     if confident && structural_support {
-        return format!("👃 Citation needed — strong NP-likeness, no DB (Ertl {score:+.2})");
+        return format!("👃 Citation needed — moderate NP-likeness, no DB (Ertl {score:+.2})");
     }
     if score >= 0.5 {
         return format!("👃 Citation needed — borderline NP-likeness (Ertl {score:+.2})");

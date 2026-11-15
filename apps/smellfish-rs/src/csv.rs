@@ -160,13 +160,23 @@ fn parse_smiles_lines(text: &str) -> Result<Vec<RawRow>, String> {
 }
 
 fn detect_column(headers: &[String], names: &[&str]) -> Option<usize> {
-    headers.iter().enumerate().find_map(|(idx, header)| {
-        let normalized = normalize_column_header(header);
-        names
-            .iter()
-            .any(|needle| normalized.contains(needle))
-            .then_some(idx)
-    })
+    let normalized: Vec<String> = headers.iter().map(|h| normalize_column_header(h)).collect();
+    // Exact match first, then whole alphanumeric token, then substring so `"id"` beats `"lipid"`.
+    if let Some(idx) = normalized
+        .iter()
+        .position(|h| names.iter().any(|needle| h == needle))
+    {
+        return Some(idx);
+    }
+    if let Some(idx) = normalized.iter().position(|h| {
+        h.split(|c: char| !c.is_ascii_alphanumeric())
+            .any(|token| names.contains(&token))
+    }) {
+        return Some(idx);
+    }
+    normalized
+        .iter()
+        .position(|h| names.iter().any(|needle| h.contains(needle)))
 }
 
 fn normalize_column_header(header: &str) -> String {

@@ -26,7 +26,7 @@
 //! **Secondary evidence** — structural observations — uses only values that a
 //! practising natural-product chemist would recognise as NP-typical, drawn from
 //! the same Ertl papers and from the "escaping the *flatland*" literature
-//! (Ertl 2003, *J. Am. Chem. Soc.* 125, 10353; Ertl & Schuppenhauer 2011).
+//! (Ertl 2003, *J. Am. Chem. Soc.* 125, 10353; Ertl & Schuffenhauer 2009 / Lovering et al. 2009).
 
 pub(crate) mod assessment;
 pub(crate) mod chemist;

@@ -21,6 +21,7 @@ pub fn SmellfishDocumentHead() -> Element {
         and dataset-derived scaffold and decoration motifs.";
 
     let scripts = vec![
+        "motif-library.js".to_string(),
         "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js".to_string(),
         "https://scripts.simpleanalyticscdn.com/latest.js".to_string(),
     ];
@@ -64,9 +65,6 @@ pub fn SmellfishDocumentHead() -> Element {
         // Keep the local LOTUS-inspired styling in the initial HTML response so
         // the UI is not blank during the first WASM load.
         document::Style { "{CSS}" }
-
-        // Local motif-library script (must load before inline bridge JS)
-        document::Script { src: "motif-library.js" }
 
         // Resource hints — preconnect for external origins
         document::Link { rel: "preconnect", href: "https://unpkg.com", crossorigin: "anonymous" }

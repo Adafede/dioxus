@@ -28,6 +28,24 @@ function waitForInitRDKitModule(timeoutMs = 12000) {
     poll();
   });
 }
+function waitForSmellfishMotifs(timeoutMs = 5000) {
+  const start = Date.now();
+  return new Promise((resolve) => {
+    function poll() {
+      if (window.__SMELLFISH_MOTIFS) {
+        resolve(window.__SMELLFISH_MOTIFS);
+        return;
+      }
+      if (Date.now() - start >= timeoutMs) {
+        console.warn("motif-library.js did not initialize before timeout");
+        resolve(null);
+        return;
+      }
+      setTimeout(poll, 16);
+    }
+    poll();
+  });
+}
 function numericField(descriptors, names) {
   for (const name of names) {
     const value = descriptors?.[name];
@@ -82,6 +100,9 @@ let npModelScores = null; /* Float32Array (parallel) */
 async function loadNpModel() {
   try {
     const response = await fetch("np_model.bin");
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} loading np_model.bin`);
+    }
     const buffer = await response.arrayBuffer();
     const n = buffer.byteLength / 8;
     const dv = new DataView(buffer);
@@ -185,11 +206,12 @@ const rdkitReady = (async () => {
     loadNpModel(),
   ]);
   const RDKit = await init();
-  await (window.__SMELLFISH_MOTIFS?.ready ?? Promise.resolve());
-  const { MOTIF_LIBRARY, GROUP_NAMES, ERTL_SUBSTUENTS } = window.__SMELLFISH_MOTIFS || {
+  const motifsObj = await waitForSmellfishMotifs();
+  await (motifsObj?.ready ?? Promise.resolve());
+  const { MOTIF_LIBRARY, GROUP_NAMES, ERTL_SUBSTITUENTS } = motifsObj || {
     MOTIF_LIBRARY: [],
     GROUP_NAMES: [],
-    ERTL_SUBSTUENTS: [],
+    ERTL_SUBSTITUENTS: [],
   };
   function compilePattern(pattern, kind) {
     try {
@@ -205,14 +227,19 @@ const rdkitReady = (async () => {
     }
   }
   const compiledMotifs = MOTIF_LIBRARY.map((motif) => compilePattern(motif, "motif")).filter(Boolean);
-  const compiledSubstituents = ERTL_SUBSTUENTS.map((sub) => compilePattern(sub, "substituent")).filter(Boolean);
+  const compiledSubstituents = ERTL_SUBSTITUENTS.map((sub) => compilePattern(sub, "substituent")).filter(Boolean);
 
   /* ── LOTUS 1-percent scaffolds (Rutz et al. mortar fragmentation) ──
    * Fetch and compile the pre-filtered scaffold SMILES (MoleculePercentage
    * > 1 %) into RDKit query molecules for substructure searching. */
   let lotusScaffoldQueries = [];
   try {
-    const lotusText = await fetch("lotus_1percent_scaffolds.txt").then((r) => r.text());
+    const lotusText = await fetch("lotus_1percent_scaffolds.txt").then((r) => {
+      if (!r.ok) {
+        throw new Error(`HTTP ${r.status} loading lotus_1percent_scaffolds.txt`);
+      }
+      return r.text();
+    });
     for (const rawLine of lotusText.split(/\r?\n/)) {
       const s = rawLine.trim();
       if (!s || s.startsWith("#")) continue;
@@ -466,6 +493,27 @@ mod tests {
         assert!(
             !RDKIT_BRIDGE_JS.contains("byte && (1 << b)"),
             "logical `&&` treats all 8 bits of any non-zero byte as set"
+        );
+    }
+
+    #[test]
+    fn bridge_uses_spelled_ertl_substituents_checks_ok_and_waits_for_motifs() {
+        let typo = concat!("ERTL_", "SUBSTUENTS");
+        assert!(
+            !RDKIT_BRIDGE_JS.contains(typo),
+            "RDKIT_BRIDGE_JS must not misspell ERTL_SUBSTITUENTS"
+        );
+        assert!(
+            RDKIT_BRIDGE_JS.contains("ERTL_SUBSTITUENTS"),
+            "RDKIT_BRIDGE_JS must destructure and map ERTL_SUBSTITUENTS"
+        );
+        assert!(
+            RDKIT_BRIDGE_JS.contains("waitForSmellfishMotifs"),
+            "RDKIT_BRIDGE_JS should wait briefly for motif-library.js if script execution races"
+        );
+        assert!(
+            RDKIT_BRIDGE_JS.contains("response.ok") && RDKIT_BRIDGE_JS.contains("r.ok"),
+            "all bridge fetches (np_model.bin and lotus_1percent_scaffolds.txt) must check .ok"
         );
     }
 }

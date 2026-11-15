@@ -67,7 +67,7 @@ fn family_from_descriptors(descriptors: &RdkitDescriptors) -> String {
     if aromatic > 0.0 && aliphatic > 0.0 {
         return "mixed aromatic/aliphatic scaffold".to_string();
     }
-    if aliphatic >= 2.0 || csp3 >= 0.5 {
+    if rings >= 2.0 && (aliphatic >= 2.0 || csp3 >= 0.5) {
         return "natural-product-like polycyclic scaffold".to_string();
     }
     "compact ring scaffold".to_string()

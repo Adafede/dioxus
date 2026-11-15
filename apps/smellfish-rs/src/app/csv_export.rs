@@ -79,10 +79,24 @@ pub(crate) fn escape_csv(s: &str) -> String {
 }
 
 fn push_csv_escaped(out: &mut String, s: &str) {
-    if s.bytes().any(|b| matches!(b, b',' | b'"' | b'\n' | b'\r')) {
-        out.reserve(s.len() + 2);
+    // Prefix leading formula-trigger characters (CWE-1236) before CSV quoting so
+    // spreadsheet apps interpret exported text cells literally.
+    let safe = if matches!(
+        s.as_bytes().first(),
+        Some(b'=' | b'+' | b'-' | b'@' | b'\t' | b'\r')
+    ) {
+        std::borrow::Cow::Owned(format!("'{s}"))
+    } else {
+        std::borrow::Cow::Borrowed(s)
+    };
+    let text = safe.as_ref();
+    if text
+        .bytes()
+        .any(|b| matches!(b, b',' | b'"' | b'\n' | b'\r'))
+    {
+        out.reserve(text.len() + 2);
         out.push('"');
-        for ch in s.chars() {
+        for ch in text.chars() {
             if ch == '"' {
                 out.push_str("\"\"");
             } else {
@@ -91,7 +105,7 @@ fn push_csv_escaped(out: &mut String, s: &str) {
         }
         out.push('"');
     } else {
-        out.push_str(s);
+        out.push_str(text);
     }
 }
 

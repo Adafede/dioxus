@@ -274,3 +274,12 @@ fn count_evidence_feeds_classifier() {
     let v = classify_np_evidence(&ev(2.6, false, false, 0, counts));
     assert!(v.contains("🌿 Likely novel NP"), "got: {v}");
 }
+
+#[test]
+fn moderate_unbacked_structural_support_does_not_claim_strong_np_likeness() {
+    let v = classify_np_evidence(&ev(1.4, false, false, 0, counts(1, 1, 0, 1, 0, 0)));
+    assert!(
+        v.starts_with("👃 Citation needed — moderate NP-likeness, no DB"),
+        "score < 2.0 should report moderate NP-likeness, got: {v}"
+    );
+}

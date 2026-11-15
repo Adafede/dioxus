@@ -116,7 +116,7 @@ pub fn MoleculeCard(row: MoleculeRow) -> Element {
             }
             div { class: "card-body",
                 div { class: "svg-wrap",
-                    if let Some(svg) = row.svg.as_deref() {
+                    if let Some(svg) = row.svg.as_deref().filter(|s| is_safe_svg(s)) {
                         div { dangerous_inner_html: "{svg}" }
                     } else {
                         div { class: "small muted", "No structure." }
@@ -322,5 +322,91 @@ pub fn Footer() -> Element {
                 }
             }
         }
+    }
+}
+
+pub(crate) fn is_safe_svg(svg: &str) -> bool {
+    const FORBIDDEN: [&str; 8] = [
+        "<script",
+        "<foreignobject",
+        "<iframe",
+        "<object",
+        "<embed",
+        "javascript:",
+        "vbscript:",
+        "data:text/html",
+    ];
+    let lower = svg.to_ascii_lowercase();
+    let trimmed = lower.trim();
+    let body = trimmed
+        .strip_prefix("<?xml")
+        .and_then(|rest| rest.split_once("?>").map(|(_, after)| after.trim_start()))
+        .unwrap_or(trimmed);
+    if !body.starts_with("<svg") || !trimmed.ends_with("</svg>") {
+        return false;
+    }
+    if FORBIDDEN.iter().any(|needle| trimmed.contains(needle)) {
+        return false;
+    }
+    !has_inline_event_handler(body)
+}
+
+fn has_inline_event_handler(svg_lower: &str) -> bool {
+    for segment in svg_lower.split('<').skip(1) {
+        let Some((tag, _)) = segment.split_once('>') else {
+            return true;
+        };
+        for (eq_idx, _) in tag.match_indices('=') {
+            let Some(before_eq) = tag.get(..eq_idx) else {
+                continue;
+            };
+            let attr = before_eq
+                .trim_end()
+                .rsplit(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+                .next()
+                .unwrap_or("");
+            if let Some(rest) = attr.strip_prefix("on")
+                && !rest.is_empty()
+                && rest.bytes().all(|b| b.is_ascii_alphabetic())
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_safe_svg;
+
+    #[test]
+    fn is_safe_svg_accepts_rdkit_svg_and_blocks_active_payloads() {
+        assert!(
+            is_safe_svg(
+                r#"<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0" opacity="0.5"/></svg>"#
+            ),
+            "plain SVG markup must pass"
+        );
+        assert!(
+            !is_safe_svg(r"<svg><script>alert(1)</script></svg>"),
+            "must block <script>"
+        );
+        assert!(
+            !is_safe_svg(r#"<svg ONLOAD="alert(1)"></svg>"#),
+            "must block inline onload"
+        );
+        assert!(
+            !is_safe_svg(r#"<svg onload = "alert(1)"></svg>"#),
+            "must block spaced onload"
+        );
+        assert!(
+            !is_safe_svg(r#"<svg><a href="javascript:alert(1)">x</a></svg>"#),
+            "must block javascript:"
+        );
+        assert!(
+            !is_safe_svg(r"<svg><foreignObject><body/></foreignObject></svg>"),
+            "must block foreignObject"
+        );
     }
 }

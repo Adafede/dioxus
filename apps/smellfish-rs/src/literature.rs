@@ -39,6 +39,6 @@ pub(crate) const LITERATURE: &[LiteratureEntry] = &[
     LiteratureEntry {
         title: "Substituents of life: The most common substituent patterns present in natural products",
         doi: "10.1016/j.bmc.2021.116562",
-        note: "Ertl (2022, Bioorganic & Medicinal Chemistry 54, 116562). Most common substituent patterns in natural products. Provides the top-60 NP substituents (ertl_npsubstituents.txt), matched via RDKit substructure search in the inspect bridge.",
+        note: "Ertl (2022, Bioorganic & Medicinal Chemistry 54, 116562). Most common substituent patterns in natural products. Provides the 2,003 NP substituents (ertl_npsubstituents.txt), matched via RDKit substructure search in the inspect bridge.",
     },
 ];

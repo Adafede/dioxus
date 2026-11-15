@@ -1,41 +1,53 @@
+async function fetchText(path) {
+  const response = await fetch(path);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${path}: HTTP ${response.status}`);
+  }
+  return response.text();
+}
+
 window.__SMELLFISH_MOTIFS = {
   MOTIF_LIBRARY: [],
   GROUP_NAMES: [],
-  ERTL_SUBSTUENTS: [],
+  ERTL_SUBSTITUENTS: [],
   ready: (async () => {
-    const [
-      ertlSourceText,
-      ertlKingdomText,
-      userSourceText,
-      userKingdomText,
-      namesText,
-      substText,
-    ] = await Promise.all([
-      fetch("ertl_source_vs_synthetic.txt").then((r) => r.text()),
-      fetch("ertl_kingdom_enrichment.txt").then((r) => r.text()),
-      fetch("user_source_vs_synthetic.txt").then((r) => r.text()),
-      fetch("user_kingdom_enrichment.txt").then((r) => r.text()),
-      fetch("group_names.txt").then((r) => r.text()),
-      fetch("ertl_npsubstituents.txt").then((r) => r.text()),
-    ]);
+    try {
+      const [
+        ertlSourceText,
+        ertlKingdomText,
+        userSourceText,
+        userKingdomText,
+        namesText,
+        substText,
+      ] = await Promise.all([
+        fetchText("ertl_source_vs_synthetic.txt"),
+        fetchText("ertl_kingdom_enrichment.txt"),
+        fetchText("user_source_vs_synthetic.txt"),
+        fetchText("user_kingdom_enrichment.txt"),
+        fetchText("group_names.txt"),
+        fetchText("ertl_npsubstituents.txt"),
+      ]);
 
-    const ertlSourceRows = parseTable(ertlSourceText);
-    const ertlKingdomRows = parseTable(ertlKingdomText);
-    const userSourceRows = parseTable(userSourceText);
-    const userKingdomRows = parseTable(userKingdomText);
-    const nameRows = parseGroupNames(namesText);
-    const motifs = buildMotifLibrary(
-      ertlSourceRows,
-      ertlKingdomRows,
-      userSourceRows,
-      userKingdomRows,
-      nameRows,
-    );
-    const substituents = parseSubstituents(substText);
+      const ertlSourceRows = parseTable(ertlSourceText);
+      const ertlKingdomRows = parseTable(ertlKingdomText);
+      const userSourceRows = parseTable(userSourceText);
+      const userKingdomRows = parseTable(userKingdomText);
+      const nameRows = parseGroupNames(namesText);
+      const motifs = buildMotifLibrary(
+        ertlSourceRows,
+        ertlKingdomRows,
+        userSourceRows,
+        userKingdomRows,
+        nameRows,
+      );
+      const substituents = parseSubstituents(substText);
 
-    window.__SMELLFISH_MOTIFS.MOTIF_LIBRARY = motifs;
-    window.__SMELLFISH_MOTIFS.GROUP_NAMES = nameRows;
-    window.__SMELLFISH_MOTIFS.ERTL_SUBSTUENTS = substituents;
+      window.__SMELLFISH_MOTIFS.MOTIF_LIBRARY = motifs;
+      window.__SMELLFISH_MOTIFS.GROUP_NAMES = nameRows;
+      window.__SMELLFISH_MOTIFS.ERTL_SUBSTITUENTS = substituents;
+    } catch (err) {
+      console.error("Failed to initialize smellfish motif library:", err);
+    }
   })(),
 };
 

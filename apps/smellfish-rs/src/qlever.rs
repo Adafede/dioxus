@@ -47,44 +47,16 @@ pub(crate) async fn enrich_sources(
 
     // Probe qlever and pubchem endpoints (in parallel)
     let (qlever_probe, pubchem_probe) = join(
-        probe_endpoint(&http, "LOTUS", QLEVER_WIKIDATA),
+        probe_endpoint(&http, "QLever Wikidata", QLEVER_WIKIDATA),
         probe_endpoint(&http, "PubChem", QLEVER_PUBCHEM),
     )
     .await;
 
-    // Try WDQS first (most reliable for complex queries)
+    // Try WDQS first (most reliable for complex queries), falling back to QLever
+    // if WDQS errors; an HTTP-200 response with zero bindings still means the
+    // queried endpoint is reachable.
     set_status("Querying data sources…".to_string());
-
-    let lotus_result = fetch_lotus_hits_by_inchikey(&http, WDQS_WIKIDATA, inchikeys).await;
-
-    let lotus = match lotus_result {
-        Ok(data) => data,
-        Err(err) => {
-            warnings.push(format!(
-                "LOTUS WDQS failed, switched to Qlever fallback: {err}"
-            ));
-            // Fall back to qlever with optimized query
-            match fetch_lotus_hits_by_inchikey(&http, QLEVER_WIKIDATA, inchikeys).await {
-                Ok(data) => data,
-                Err(err) => {
-                    warnings.push(format!("LOTUS qlever also failed: {err}"));
-                    HashMap::new()
-                }
-            }
-        }
-    };
-
-    // Show WDQS as the primary endpoint since that's what we actually queried
-    let lotus_probe = EndpointStatus {
-        name: "LOTUS".to_string(),
-        endpoint: WDQS_WIKIDATA.to_string(),
-        reachable: !lotus.is_empty(), // Reachable if we got results
-        detail: if lotus.is_empty() {
-            "no results".to_string()
-        } else {
-            "online".to_string()
-        },
-    };
+    let (lotus, lotus_probe) = fetch_lotus_with_fallback(&http, inchikeys, &mut warnings).await;
 
     // Use classical InChIKey lookup for PubChem
     let pubchem = if pubchem_probe.reachable {
@@ -130,47 +102,102 @@ async fn probe_endpoint(http: &ReqwestClient, name: &str, endpoint: &str) -> End
 }
 
 #[cfg(target_arch = "wasm32")]
+async fn fetch_lotus_with_fallback(
+    http: &ReqwestClient,
+    inchikeys: &[String],
+    warnings: &mut Vec<String>,
+) -> (HashMap<String, SourceSummary>, EndpointStatus) {
+    match fetch_lotus_hits_by_inchikey(http, WDQS_WIKIDATA, inchikeys).await {
+        Ok(data) => {
+            let detail = if data.is_empty() {
+                "online (0 matches)"
+            } else {
+                "online"
+            };
+            let status = EndpointStatus {
+                name: "LOTUS".to_string(),
+                endpoint: WDQS_WIKIDATA.to_string(),
+                reachable: true,
+                detail: detail.to_string(),
+            };
+            (data, status)
+        }
+        Err(wdqs_err) => {
+            warnings.push(format!(
+                "LOTUS WDQS failed, switched to Qlever fallback: {wdqs_err}"
+            ));
+            match fetch_lotus_hits_by_inchikey(http, QLEVER_WIKIDATA, inchikeys).await {
+                Ok(data) => {
+                    let detail = if data.is_empty() {
+                        "online via QLever fallback (0 matches)"
+                    } else {
+                        "online (QLever fallback)"
+                    };
+                    let status = EndpointStatus {
+                        name: "LOTUS".to_string(),
+                        endpoint: QLEVER_WIKIDATA.to_string(),
+                        reachable: true,
+                        detail: detail.to_string(),
+                    };
+                    (data, status)
+                }
+                Err(qlever_err) => {
+                    warnings.push(format!("LOTUS qlever also failed: {qlever_err}"));
+                    let status = EndpointStatus {
+                        name: "LOTUS".to_string(),
+                        endpoint: WDQS_WIKIDATA.to_string(),
+                        reachable: false,
+                        detail: format!("WDQS: {wdqs_err}; QLever: {qlever_err}"),
+                    };
+                    (HashMap::new(), status)
+                }
+            }
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
 async fn fetch_lotus_hits_by_inchikey(
     http: &ReqwestClient,
     endpoint: &str,
     inchikeys: &[String],
 ) -> Result<HashMap<String, SourceSummary>, String> {
-    // Use WDQS query for WDQS, qlever-specific query for qlever
-    let query = if endpoint == WDQS_WIKIDATA {
-        build_lotus_query_wdqs(inchikeys)
-    } else {
-        build_lotus_query_qlever(inchikeys)
-    };
-
-    let bindings = sparql_bindings(http, endpoint, &query).await?;
-
     let mut summary: HashMap<String, SourceSummary> = HashMap::new();
 
-    for binding in bindings {
-        // Get the InChIKey we're querying for
-        let inchikey = binding_str(&binding, "inchikey");
-        if inchikey.is_empty() {
-            continue;
-        }
-        let connectivity = inchikey.split('-').next().unwrap_or(inchikey);
-        let entry = summary.entry(connectivity.to_string()).or_default();
+    for chunk in inchikeys.chunks(QUERY_CHUNK_SIZE) {
+        // Use WDQS query for WDQS, qlever-specific query for qlever
+        let query = if endpoint == WDQS_WIKIDATA {
+            build_lotus_query_wdqs(chunk)
+        } else {
+            build_lotus_query_qlever(chunk)
+        };
 
-        // Get the related item QID (main compound, or discovered stereoisomer/tautomer/parent)
-        let related_uri = binding_str(&binding, "related_item");
+        for binding in sparql_bindings(http, endpoint, &query).await? {
+            // Get the InChIKey we're querying for
+            let inchikey = binding_str(&binding, "inchikey");
+            if inchikey.is_empty() {
+                continue;
+            }
+            let connectivity = inchikey.split('-').next().unwrap_or(inchikey);
+            let entry = summary.entry(connectivity.to_string()).or_default();
 
-        // Get taxon if available - insert BEFORE logging so count is accurate
-        let taxon_name = binding_str(&binding, "taxon_name");
-        let has_taxon = !taxon_name.is_empty();
-        if has_taxon {
-            entry.taxa.insert(taxon_name.to_string());
-        }
+            // Get the related item QID (main compound, or discovered stereoisomer/tautomer/parent)
+            let related_uri = binding_str(&binding, "related_item");
 
-        if let Some(qid) = related_uri.strip_prefix("http://www.wikidata.org/entity/")
-            && !qid.is_empty()
-        {
-            entry.compounds.insert(qid.to_string());
+            // Get taxon if available - insert BEFORE logging so count is accurate
+            let taxon_name = binding_str(&binding, "taxon_name");
+            let has_taxon = !taxon_name.is_empty();
             if has_taxon {
-                entry.compounds_with_taxa.insert(qid.to_string());
+                entry.taxa.insert(taxon_name.to_string());
+            }
+
+            if let Some(qid) = related_uri.strip_prefix("http://www.wikidata.org/entity/")
+                && !qid.is_empty()
+            {
+                entry.compounds.insert(qid.to_string());
+                if has_taxon {
+                    entry.compounds_with_taxa.insert(qid.to_string());
+                }
             }
         }
     }

@@ -46,3 +46,10 @@ fn rejects_unterminated_quoted_field() {
         "unclosed quote should fail"
     );
 }
+
+#[test]
+fn detect_column_prefers_exact_id_over_lipid_substring() {
+    let rows = parse_csv_rows("lipid,id,smiles\nx,ID1,CCO\n")
+        .unwrap_or_else(|e| unreachable!("valid CSV fixture should parse: {e}"));
+    assert_eq!(rows.first().map(|r| r.label.as_str()), Some("ID1"));
+}

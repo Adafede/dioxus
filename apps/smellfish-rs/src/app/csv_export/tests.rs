@@ -160,3 +160,62 @@ fn build_csv_formats_rows_and_headers() {
         "CSV row should match expected formatting: {csv}"
     );
 }
+
+#[test]
+fn build_csv_neutralizes_formula_injection_in_text_fields_without_altering_scores() {
+    let row = crate::model::MoleculeRow {
+        index: 1,
+        label: "=cmd|'/C calc'!A0".to_string(),
+        smiles: "+CCO".to_string(),
+        #[cfg(target_arch = "wasm32")]
+        inchikey: String::new(),
+        svg: None,
+        motifs: Vec::new(),
+        substituents_counts: std::collections::BTreeMap::new(),
+        lotus_scaffolds: Vec::new(),
+        #[cfg(any(test, target_arch = "wasm32"))]
+        lotus_taxa: Vec::new(),
+        lotus_compounds: vec!["@evil".to_string()],
+        lotus_compounds_with_taxa: std::collections::BTreeSet::new(),
+        pubchem_cids: Vec::new(),
+        np_likeness: -1.25,
+        np_label: "Synthetic".to_string(),
+        np_confidence: 0.90,
+        np_score_available: true,
+        ring_family: "-dangerous, cell".to_string(),
+        evidence_notes: Vec::new(),
+        motif_context: String::new(),
+        chemist_checks: vec![crate::model::ChemistCheck {
+            name: "\tCheck",
+            status: "ok",
+            detail: "ok".to_string(),
+        }],
+        verdict: "👃 Smells fishy — highly synthetic (Ertl -1.25)".to_string(),
+        error: None,
+        #[cfg(target_arch = "wasm32")]
+        descriptors: crate::model::RdkitDescriptors::default(),
+        #[cfg(target_arch = "wasm32")]
+        stereo_tags: Vec::new(),
+        num_atoms: 3,
+        motif_hits: Vec::new(),
+    };
+
+    let csv = super::build_csv(&[row]);
+    let data_line = csv
+        .lines()
+        .nth(1)
+        .unwrap_or_else(|| unreachable!("expected header + 1 data row"));
+    assert!(
+        data_line
+            .starts_with("'=cmd|'/C calc'!A0,'+CCO,-1.250,Synthetic,90%,\"'-dangerous, cell\","),
+        "text cells must be neutralized while negative np_score stays numeric: {data_line}"
+    );
+    assert!(
+        data_line.contains(",'@evil,"),
+        "locus field starting with '@' must be neutralized: {data_line}"
+    );
+    assert!(
+        data_line.contains(",'\tCheck:ok"),
+        "chemist_checks starting with tab must be neutralized: {data_line}"
+    );
+}

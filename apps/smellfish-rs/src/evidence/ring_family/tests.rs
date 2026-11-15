@@ -56,3 +56,14 @@ fn motif_labels_override_descriptor_heuristics() {
         "sugar-like oxygenated ring system"
     );
 }
+
+#[test]
+fn saturated_monocycle_is_not_classified_as_polycyclic() {
+    let desc = RdkitDescriptors {
+        ring_count: Some(1.0),
+        aromatic_ring_count: Some(0.0),
+        aliphatic_ring_count: Some(1.0),
+        fraction_csp3: Some(1.0),
+    };
+    assert_eq!(classify_ring_family(&desc, &[]), "compact ring scaffold");
+}
