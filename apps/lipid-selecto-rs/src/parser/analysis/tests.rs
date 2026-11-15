@@ -166,3 +166,83 @@ fn example_smiles_and_asset_file_parse_and_classify() {
     assert_eq!(asset_summary.lipid_items, 195);
     assert_eq!(asset_summary.unclassified, 9);
 }
+
+#[test]
+fn formula_only_mgf_blocks_classify_compute_mass_and_filter() {
+    let mgf = "\
+BEGIN IONS
+TITLE=fa_only
+FORMULA=C16H32O2
+END IONS
+BEGIN IONS
+TITLE=gl_only
+FORMULA=C39H74O6
+END IONS
+BEGIN IONS
+TITLE=gp_only
+FORMULA=C20H38O8P
+END IONS
+";
+    let (blocks, summary) = analyze(mgf);
+    assert_eq!(blocks.len(), 3);
+    assert!(blocks[0].is_lipid(), "FA formula block must count as lipid");
+    assert!(blocks[1].is_lipid(), "GL formula block must count as lipid");
+    assert!(blocks[2].is_lipid(), "GP formula block must count as lipid");
+    assert!(
+        (blocks[0].exact_mass - 256.240_23).abs() < 0.01,
+        "expected C16H32O2 monoisotopic mass ~256.24, got {}",
+        blocks[0].exact_mass
+    );
+    assert!(blocks[1].exact_mass > 600.0);
+    assert!(blocks[2].exact_mass > 400.0);
+    assert_eq!(summary.lipid_items, 3);
+    assert_eq!(summary.unclassified, 0);
+    assert_eq!(
+        blocks[0]
+            .gallery_item_matches
+            .as_ref()
+            .and_then(|m| m.get("Other Fatty Acyls [FA00]").copied()),
+        Some(true)
+    );
+    assert_eq!(
+        blocks[1]
+            .gallery_item_matches
+            .as_ref()
+            .and_then(|m| m.get("Other Glycerolipids [GL00]").copied()),
+        Some(true)
+    );
+    assert_eq!(
+        blocks[2]
+            .gallery_item_matches
+            .as_ref()
+            .and_then(|m| m.get("Other Glycerophospholipids [GP00]").copied()),
+        Some(true)
+    );
+    let filtered = build_filtered_mgf(&blocks);
+    assert!(filtered.contains("TITLE=fa_only"));
+    assert!(filtered.contains("TITLE=gl_only"));
+    assert!(filtered.contains("TITLE=gp_only"));
+}
+
+#[test]
+fn space_delimited_smiles_lines_parse_smiles_and_title() {
+    let input = "\
+CCCCCCCCCCCCCCCC(=O)O palmitic_acid
+CCCCCCCCCCCCCCCC(=O)O\tPalmitic acid standard
+";
+    let (blocks, summary) = analyze(input);
+    assert_eq!(blocks.len(), 2);
+    assert_eq!(
+        blocks[0].psm_smiles.as_deref(),
+        Some("CCCCCCCCCCCCCCCC(=O)O")
+    );
+    assert_eq!(blocks[0].title.as_deref(), Some("palmitic_acid"));
+    assert!(blocks[0].is_lipid());
+    assert_eq!(
+        blocks[1].psm_smiles.as_deref(),
+        Some("CCCCCCCCCCCCCCCC(=O)O")
+    );
+    assert_eq!(blocks[1].title.as_deref(), Some("Palmitic acid standard"));
+    assert!(blocks[1].is_lipid());
+    assert_eq!(summary.lipid_items, 2);
+}

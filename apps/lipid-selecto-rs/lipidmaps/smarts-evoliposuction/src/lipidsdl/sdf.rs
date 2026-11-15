@@ -98,10 +98,15 @@ fn parse_one_record(text: &str) -> Option<ParsedRecord> {
     loop {
         let rest = &text[pos..];
 
-        // If "$$$$" (record separator) comes before the next "> ",
+        // If "$$$$" (record separator) comes before the next ">",
         // end of record.
         let dollar_pos = rest.find("$$$$");
-        let Some(gt_idx) = rest.find("> ") else {
+        let gt_idx = if rest.starts_with('>') {
+            Some(0)
+        } else {
+            rest.find("\n>").map(|idx| idx + 1)
+        };
+        let Some(gt_idx) = gt_idx else {
             break;
         };
 
@@ -113,22 +118,26 @@ fn parse_one_record(text: &str) -> Option<ParsedRecord> {
 
         let abs_gt = pos + gt_idx;
 
-        // Check that this is a property block: "> <NAME>" pattern.
-        let after_gt = &text[abs_gt..];
-        if !after_gt.starts_with("> <") {
+        // Check that this is a property block: "> <NAME>" (allowing extra spaces/tabs).
+        let line_end = text[abs_gt..].find('\n').map_or(text.len(), |p| abs_gt + p);
+        let header_line = text[abs_gt..line_end].trim_end_matches('\r');
+        let after_gt = header_line[1..].trim_start_matches([' ', '\t']);
+        let Some(tag_tail) = after_gt.strip_prefix('<') else {
             pos = abs_gt + 1;
             continue;
-        }
-
-        // Extract property name between < and >.
-        let name_start = abs_gt + 3; // skip "> <"
-        let name_end = text[name_start..].find('>')?;
-        let name = text[name_start..name_start + name_end].to_string();
+        };
+        let Some(name_end) = tag_tail.find('>') else {
+            pos = abs_gt + 1;
+            continue;
+        };
+        let name = tag_tail[..name_end].to_string();
 
         // Value starts on the next line.
-        let after_name = name_start + name_end + 1; // skip closing '>'
-        let newline_pos = text[after_name..].find('\n')? + after_name;
-        let value_start = newline_pos + 1; // skip the newline
+        let value_start = if line_end < text.len() {
+            line_end + 1
+        } else {
+            break;
+        };
 
         // Collect value lines until a blank line, next ">", or "$$$$".
         let mut value_lines: Vec<&str> = Vec::new();
@@ -219,10 +228,14 @@ pub mod lipidmaps {
                 if i > 0 {
                     out.push('\t');
                 }
-                // Replace newlines with "; " so multi-line SDF values
-                // (e.g. SYNONYMS, INCHI) don't break TSV row boundaries.
+                // Replace line breaks with "; " and tabs with spaces so
+                // multi-line or tabbed SDF values don't break TSV boundaries.
                 let val = record.get(col).unwrap_or("");
-                out.push_str(&val.replace('\n', "; "));
+                let sanitized = val
+                    .replace("\r\n", "\n")
+                    .replace(['\n', '\r'], "; ")
+                    .replace('\t', " ");
+                out.push_str(&sanitized);
             }
             out.push('\n');
             count += 1;
@@ -333,5 +346,22 @@ $$$$
             .position(|&c| c == "SYNONYMS")
             .unwrap();
         assert_eq!(cols[syn_idx], "Syn1; Syn2");
+    }
+
+    #[test]
+    fn parse_sdf_supports_extra_header_spaces_and_sanitizes_tabs_and_crlf() {
+        let sdf = ">  <LM_ID>\r\nLMFA01010001\r\n\r\n>   <SYNONYMS>\r\na\tb\r\nc\r\n\r\n>  <SMILES>\r\nCC\r\n\r\n$$$$\r\n";
+        let (tsv, count) = lipidmaps::to_lmsd_tsv(sdf);
+        assert_eq!(count, 1);
+        let lines: Vec<&str> = tsv.lines().collect();
+        assert_eq!(lines.len(), 2, "CRLF inside value must not split TSV rows");
+        let cols: Vec<&str> = lines[1].split('\t').collect();
+        assert_eq!(cols.len(), lipidmaps::COLUMNS.len());
+        assert_eq!(cols[0], "LMFA01010001");
+        let syn_idx = lipidmaps::COLUMNS
+            .iter()
+            .position(|&c| c == "SYNONYMS")
+            .unwrap();
+        assert_eq!(cols[syn_idx], "a b; c");
     }
 }

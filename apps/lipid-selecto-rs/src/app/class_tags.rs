@@ -136,10 +136,21 @@ pub(super) fn insert_class_comment(block_raw: &str, class_tags: &[(String, Strin
     let mut out = String::with_capacity(block_raw.len() + class_tags.len() * 32);
     let split_pos = block_raw
         .find(|c: char| !c.is_whitespace())
-        .filter(|&begin_pos| block_raw[begin_pos..].starts_with("BEGIN IONS"))
+        .filter(|&begin_pos| {
+            let prefix = "BEGIN IONS";
+            block_raw.get(begin_pos..).is_some_and(|rest| {
+                rest.get(..prefix.len())
+                    .is_some_and(|head| head.eq_ignore_ascii_case(prefix))
+                    && rest
+                        .get(prefix.len()..)
+                        .and_then(|tail| tail.chars().next())
+                        .is_none_or(char::is_whitespace)
+            })
+        })
         .and_then(|begin_pos| {
-            block_raw[begin_pos..]
-                .find('\n')
+            block_raw
+                .get(begin_pos..)
+                .and_then(|rest| rest.find('\n'))
                 .map(|newline_pos| begin_pos + newline_pos + 1)
         })
         .unwrap_or(0);

@@ -188,3 +188,32 @@ fn lmsd_classes_match_all_eight_lipid_families() {
         );
     }
 }
+
+#[test]
+fn default_classes_use_their_own_family_palette() {
+    use super::{
+        FA_PALETTE, GL_PALETTE, GP_PALETTE, PK_PALETTE, PR_PALETTE, SL_PALETTE, SP_PALETTE,
+        ST_PALETTE,
+    };
+
+    for class in ChemicalClass::defaults() {
+        let expected: Option<&[&str]> = match class.family.as_str() {
+            "Fatty Acyls" => Some(&FA_PALETTE),
+            "Glycerolipids" => Some(&GL_PALETTE),
+            "Glycerophospholipids" => Some(&GP_PALETTE),
+            "Sphingolipids" => Some(&SP_PALETTE),
+            "Sterol Lipids" => Some(&ST_PALETTE),
+            "Prenol Lipids" => Some(&PR_PALETTE),
+            "Saccharolipids" => Some(&SL_PALETTE),
+            "Polyketides" => Some(&PK_PALETTE),
+            _ => None,
+        };
+        assert!(
+            expected.is_some_and(|palette| palette.contains(&class.color.as_str())),
+            "class {} ({}) has color {} outside expected palette {expected:?}",
+            class.name,
+            class.family,
+            class.color
+        );
+    }
+}

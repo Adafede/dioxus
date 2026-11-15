@@ -188,3 +188,14 @@ fn parse_filter_bound_handles_empty_numbers_and_non_finite_text() {
     assert_eq!(parse_filter_bound("inf", 5000.0), None);
     assert_eq!(parse_filter_bound("abc", 0.0), None);
 }
+
+#[test]
+fn insert_class_comment_is_case_insensitive_for_begin_ions() {
+    let raw = "  begin ions\nTITLE=test\nend ions\n";
+    let tags = vec![("CATEGORY".to_string(), "Fatty Acyls [FA]".to_string())];
+    let tagged = insert_class_comment(raw, &tags);
+    assert_eq!(
+        tagged,
+        "  begin ions\nCOMMENT=LIPID_MAPS_CATEGORY=Fatty Acyls [FA]\nTITLE=test\nend ions\n"
+    );
+}

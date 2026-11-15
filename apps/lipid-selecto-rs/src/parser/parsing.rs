@@ -195,9 +195,18 @@ impl SpectrumBlock {
             }
         }
 
+        if self.exact_mass <= 0.0
+            && let Some(formula_str) = self.formula.as_deref()
+        {
+            self.exact_mass = formula_exact_mass(formula_str);
+        }
+
         self.classification = smiles_classification.or_else(|| {
             let formula_str = self.formula.as_deref()?;
             let class = classify_formula(formula_str)?;
+            if let Some(name) = formula_fallback_class_name(classes, class) {
+                matches.insert(name.to_string(), true);
+            }
             Some(LipidClassification {
                 class,
                 derived_from_smiles: false,
@@ -360,13 +369,62 @@ pub(crate) fn extract_blocks_from_lines<'a, I: Iterator<Item = impl AsRef<str> +
 
 /// Parse a single SMILES-format line into an optional [`SpectrumBlock`].
 #[cfg(any(test, target_arch = "wasm32"))]
+fn formula_exact_mass(formula_str: &str) -> f64 {
+    let Ok(counts) = chem::parse_formula(formula_str) else {
+        return 0.0;
+    };
+    counts
+        .into_iter()
+        .filter_map(|(symbol, count)| {
+            let element = chematic::core::Element::from_symbol(&symbol)?;
+            Some(element.atomic_mass() * f64::from(count))
+        })
+        .sum()
+}
+
+#[cfg(any(test, target_arch = "wasm32"))]
+fn formula_fallback_class_name(classes: &[ChemicalClass], broad: LipidClass) -> Option<&str> {
+    let code = match broad {
+        LipidClass::FattyAcyl => "[FA00]",
+        LipidClass::Glycerolipid => "[GL00]",
+        LipidClass::Glycerophospholipid => "[GP00]",
+        LipidClass::Sphingolipid => "[SP00]",
+        LipidClass::SterolLipid => "[ST00]",
+        LipidClass::PrenolLipid => "[PR00]",
+        LipidClass::Saccharolipid => "[SL00]",
+        LipidClass::Polyketide => "[PK00]",
+    };
+    classes
+        .iter()
+        .find(|class| class.name.contains(code))
+        .or_else(|| {
+            classes
+                .iter()
+                .find(|class| LipidClass::from_family(&class.family) == Some(broad))
+        })
+        .map(|class| class.name.as_str())
+}
+
+#[cfg(any(test, target_arch = "wasm32"))]
 fn parse_smiles_line(index: usize, trimmed: &str) -> Option<SpectrumBlock> {
-    let mut parts = trimmed.split('\t');
-    let first = parts.next()?.trim();
+    let (first, second) = if let Some((left, right)) = trimmed.split_once('\t') {
+        let first = left.trim();
+        let right_col = right
+            .split('\t')
+            .next()
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
+        (first, right_col)
+    } else if let Some((left, right)) = trimmed.split_once(char::is_whitespace) {
+        let first = left.trim();
+        let second = Some(right.trim()).filter(|s| !s.is_empty());
+        (first, second)
+    } else {
+        (trimmed.trim(), None)
+    };
     if first.is_empty() {
         return None;
     }
-    let second = parts.next().map(str::trim).filter(|s| !s.is_empty());
 
     let is_valid_smiles = |s: &str| {
         !s.contains(char::is_whitespace)

@@ -13,11 +13,11 @@
 //!
 //! # Individual steps
 //! cargo run --release -- download
-//! cargo run --release -- split --input LMSD.tsv
+//! cargo run --release -- split --input LMSD.sdf.tsv
 //! cargo run --release -p smarts-evoliposuction -- evolve --manifest `smiles_sets/manifest.csv`
 
 use std::collections::HashSet;
-use std::fs::{self, OpenOptions};
+use std::fs;
 use std::io::{BufRead, BufReader, Write as _};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -28,8 +28,9 @@ use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rayon::prelude::*;
 use smarts_evoliposuction::{
-    Config, EvolutionResult, Level, ManifestRow, SplitConfig, TestedSmartsRecord, evolve_all,
-    evolve_all_with_progress, read_manifest, sdf_zip_to_tsv, split_dataset, write_manifest,
+    Config, EvolutionResult, Level, ManifestRow, RESULTS_HEADERS, SplitConfig, TestedSmartsRecord,
+    already_done, evolve_all, evolve_all_with_progress, open_results_writer, read_manifest,
+    sdf_zip_to_tsv, split_dataset, write_manifest,
 };
 
 #[derive(Parser, Debug)]
@@ -48,7 +49,7 @@ enum Command {
     },
     /// Split dataset into positive/negative SMILES pairs
     Split {
-        #[arg(long, default_value = "LMSD.tsv")]
+        #[arg(long, default_value = "LMSD.sdf.tsv")]
         input: PathBuf,
         #[arg(long, default_value = "smiles_sets")]
         output_dir: PathBuf,
@@ -187,7 +188,7 @@ fn download_step(dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
     eprintln!(" Downloading LIPID MAPS LMSD.sdf.zip from lipidmaps.org...");
     let client = reqwest::blocking::Client::new();
     let url = "https://www.lipidmaps.org/files/?file=LMSD&ext=sdf.zip";
-    let resp = client.get(url).send()?;
+    let resp = client.get(url).send()?.error_for_status()?;
     let bytes = resp.bytes()?;
     fs::write(dest, &bytes)?;
     eprintln!(
@@ -387,34 +388,10 @@ fn evolve_step(
     ));
     fs::create_dir_all(&tested_smarts_dir)?;
 
-    let out_exists = output.exists();
-    let mut out = OpenOptions::new().create(true).append(true).open(output)?;
-    let mut writer = csv::WriterBuilder::new()
-        .has_headers(false)
-        .from_writer(&mut out);
+    let (mut writer, need_headers) = open_results_writer(output, resume)?;
 
-    if !out_exists {
-        writer.write_record([
-            "level",
-            "label",
-            "category",
-            "main_class",
-            "subclass",
-            "slug",
-            "positive_count",
-            "negative_count",
-            "positive_parse_failures",
-            "negative_parse_failures",
-            "best_smarts",
-            "best_mcc",
-            "best_coverage_score",
-            "best_smarts_len",
-            "generations",
-            "elapsed_secs",
-            "status",
-            "tested_smarts_count",
-            "tested_smarts_path",
-        ])?;
+    if need_headers {
+        writer.write_record(RESULTS_HEADERS)?;
     }
 
     let config = Config {
@@ -778,17 +755,5 @@ fn all_steps(
     Ok(())
 }
 
-fn already_done(output: &Path) -> HashSet<String> {
-    let mut done = HashSet::new();
-    if let Ok(mut reader) = csv::Reader::from_path(output) {
-        for record in reader
-            .deserialize::<std::collections::HashMap<String, String>>()
-            .flatten()
-        {
-            if let Some(slug) = record.get("slug") {
-                done.insert(slug.clone());
-            }
-        }
-    }
-    done
-}
+#[cfg(test)]
+mod cli_tests;

@@ -29,6 +29,7 @@ pub mod download;
 pub mod evolve;
 pub mod lipidsdl;
 pub mod manifest;
+pub mod results_io;
 pub mod splitting;
 
 pub use download::{SdfConvertError, download_lmsd, sdf_zip_to_tsv};
@@ -36,6 +37,7 @@ pub use evolve::{
     Config, EvolutionResult, TestedSmartsRecord, evolve_all, evolve_all_with_progress,
 };
 pub use manifest::{ManifestRow, read_manifest, write_manifest};
+pub use results_io::{RESULTS_HEADERS, already_done, open_results_writer};
 pub use splitting::{
     ClassSplit, ColumnNames, Dataset, DatasetRow, Level, SkippedClass, SplitConfig, SplitError,
     SplitResult, SubclassNegatives, parse_csv, split_dataset,

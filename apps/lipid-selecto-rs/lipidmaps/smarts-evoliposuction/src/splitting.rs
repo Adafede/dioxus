@@ -30,7 +30,7 @@ impl Default for ColumnNames {
             smiles: "SMILES".to_string(),
             category: "CATEGORY".to_string(),
             main_class: "MAIN_CLASS".to_string(),
-            subclass: "SUBCLASS".to_string(),
+            subclass: "SUB_CLASS".to_string(),
         }
     }
 }
@@ -149,7 +149,11 @@ pub fn parse_csv(csv_text: &str, columns: &ColumnNames) -> Result<Dataset, Split
     let smiles_idx = find(&columns.smiles);
     let cat_idx = find(&columns.category);
     let main_idx = find(&columns.main_class);
-    let sub_idx = find(&columns.subclass);
+    let sub_idx = find(&columns.subclass).or_else(|| {
+        (columns.subclass == "SUB_CLASS")
+            .then(|| find("SUBCLASS"))
+            .flatten()
+    });
 
     let mut missing = Vec::new();
     if smiles_idx.is_none() {
@@ -570,7 +574,7 @@ mod tests {
         let result = parse_csv(csv, &ColumnNames::default());
         assert!(result.is_err());
         match result {
-            Err(SplitError::MissingColumns(cols)) => assert_eq!(cols, vec!["SUBCLASS"]),
+            Err(SplitError::MissingColumns(cols)) => assert_eq!(cols, vec!["SUB_CLASS"]),
             _ => panic!("expected MissingColumns error"),
         }
     }
@@ -691,7 +695,7 @@ mod tests {
     #[test]
     fn split_dataset_subclass_siblings() {
         // Two subclasses in same main class
-        let csv = "SMILES,MAIN_CLASS,SUBCLASS\n";
+        let csv = "SMILES,MAIN_CLASS,SUB_CLASS\n";
         let mut csv = csv.to_string();
         for _ in 0..25 {
             csv.push_str("CCCC,GP,SUB1\n");
@@ -700,6 +704,7 @@ mod tests {
             csv.push_str("CCCO,GP,SUB2\n");
         }
 
+        assert_eq!(ColumnNames::default().subclass, "SUB_CLASS");
         let dataset = parse_csv(&csv, &ColumnNames::default()).unwrap();
         let config = SplitConfig {
             min_positive: 20,
