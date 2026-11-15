@@ -67,12 +67,14 @@ cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction
 1. **SPDX headers**: Every `.rs` file starts with the 2-line header checked by
    `./mk local:license-headers`:
    - `// SPDX-License-Identifier: AGPL-3.0-only`
-   - `// SPDX-FileCopyrightText: Contributors to the dioxus-apps project`
+   - `// SPDX-FileCopyrightText: Contributors to the <crate-or-dioxus-apps> project`
 2. **800-line file limit**: No `.rs` file in the repository (including
    `smarts-evoliposuction`) may exceed 800 lines unless explicitly justified in
    `gate_consistency::apps::OVERSIZED`.
-3. **Accessibility landmarks**: Every app pairs `skip_link` with
-   `id: "main-content"` (`gate_consistency::apps`).
+3. **Accessibility landmarks & `Dioxus.toml` config**: Every app pairs
+   `skip_link` with `id: "main-content"` (`gate_consistency::apps`), and
+   `apps/*/Dioxus.toml` `asset_dir`/`watch_path` paths must exist on disk with
+   an ASCII `title`.
 4. **Workspace lint discipline**: Root `Cargo.toml` forbids `unsafe_code` and
    denies `unwrap_used`, `expect_used`, `panic`, `indexing_slicing`, `todo`,
    `unimplemented`, `missing_assert_message`, and `clippy::pedantic` across
@@ -83,8 +85,10 @@ cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction
    `CHANGELOG.md`, `docs/*.md`, `.github/*.md`, `.github/ISSUE_TEMPLATE/*`,
    `.vscode/README.md`, and `.md`/`.tpl` files under `apps/` and `crates/`) must
    never cite `AGENTS.md`, `CLAUDE.md`, `AGENT_AUDIT.md`, `.github/ai`, `.mcp`,
-   or `graphify`, must not contain marketing fluff, and all relative markdown
-   links must resolve on disk (`gate_consistency::surfaces`).
+   or `graphify`, nor use marketing fluff (`FORBIDDEN_SLOP_WORDS`, including
+   `robust`, `comprehensive`, `powerful`), and all relative markdown links must
+   resolve on disk; `.vscode/settings.json` and `.vscode/extensions.json` must
+   likewise omit agent-surface tokens (`gate_consistency::surfaces`).
 7. **Generated crate READMEs**: Crate/app `README.md` files paired with
    `README.tpl` are generated from `//!` crate docs via
    `./mk local:readme-write` and checked by `./mk local:readme-check`.
@@ -110,7 +114,19 @@ cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction
 - **Standalone `--locked` builds**: Always pass `--locked` to Cargo for
   `apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction` so its pinned
   `Cargo.lock` keeps compatible transitive `smiles-rs` versions across
-  `smarts-rs` and `smarts-evolution`.
+  `smarts-rs` and `smarts-evolution`, and keep CLI I/O helpers in `src/results_io.rs`
+  so `src/main.rs` stays under 800 lines.
+- **Retain `.cargo/config.toml` `smiles-parser` patch**: Keep
+  `[patch."https://github.com/earth-metabolome-initiative/smiles-parser"]` so
+  `./mk refquiem` can resolve historical git specs after upstream's rename to
+  `smiles-rs`.
+- **Inline script & badge HTML safety (`crates/ui`)**: `webmcp.rs` and
+  `document.rs` must escape `<`, `>`, `&`, `\u{2028}`, `\u{2029}`, and `</` in
+  inline `<script>` / JSON-LD payloads; `SimpleAnalyticsBadge` uses typed `rsx!`
+  plus `is_valid_domain` rather than `dangerous_inner_html`.
+- **`VirtualDom::rebuild_to_vec()` omits static templates**: `Mutations` debug
+  output includes only dynamic attributes/slots; check `node.template` when
+  asserting static template attributes in component tests.
 - **QLever / WDQS burst limits (`apps/smellfish-rs/src/sparql.rs`)**: Serialize
   chunked `VALUES` queries, cap transient retries to one attempt, respect HTTP
   429 responses, and never issue concurrent POST bursts against public SPARQL
