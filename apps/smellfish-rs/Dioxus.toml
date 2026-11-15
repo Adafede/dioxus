@@ -7,7 +7,7 @@ asset_dir = "public"
 pre_compress = true
 
 [web.app]
-title = "🐟 Smellfish-rs"
+title = "Smellfish-rs"
 
 [web.watcher]
 reload_html = true

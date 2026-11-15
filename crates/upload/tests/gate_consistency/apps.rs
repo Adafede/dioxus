@@ -262,3 +262,76 @@ fn the_oversized_list_has_no_stale_entries() {
         );
     }
 }
+
+fn extract_quoted_values(raw: &str) -> Vec<&str> {
+    let mut values = Vec::new();
+    let mut rest = raw;
+    while let Some((_, after_open)) = rest.split_once('"') {
+        let Some((val, after_close)) = after_open.split_once('"') else {
+            break;
+        };
+        values.push(val);
+        rest = after_close;
+    }
+    values
+}
+
+#[test]
+fn every_app_dioxus_toml_references_existing_paths() -> Result<()> {
+    let root = repo_root();
+    let mut apps: Vec<String> = std::fs::read_dir(root.join("apps"))?
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.path().join("Dioxus.toml").is_file())
+        .filter_map(|e| e.file_name().into_string().ok())
+        .collect();
+    apps.sort();
+    assert!(!apps.is_empty(), "found no apps/*/Dioxus.toml files");
+
+    let mut problems = Vec::new();
+    for app in apps {
+        let app_dir = root.join("apps").join(&app);
+        let toml = std::fs::read_to_string(app_dir.join("Dioxus.toml"))?;
+        for (idx, raw) in toml.lines().enumerate() {
+            let line = raw.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some(rest) = line.strip_prefix("asset_dir")
+                && let Some(val) = extract_quoted_values(rest).first().copied()
+                && !app_dir.join(val).exists()
+            {
+                problems.push(format!(
+                    "apps/{app}/Dioxus.toml:{}: missing asset_dir `{val}`",
+                    idx + 1
+                ));
+            }
+            if let Some(rest) = line.strip_prefix("watch_path") {
+                for val in extract_quoted_values(rest) {
+                    if !app_dir.join(val).exists() {
+                        problems.push(format!(
+                            "apps/{app}/Dioxus.toml:{}: missing watch_path `{val}`",
+                            idx + 1
+                        ));
+                    }
+                }
+            }
+            if let Some(rest) = line.strip_prefix("title")
+                && rest.trim_start().starts_with('=')
+                && let Some(val) = extract_quoted_values(rest).first().copied()
+                && !val.is_ascii()
+            {
+                problems.push(format!(
+                    "apps/{app}/Dioxus.toml:{}: non-ASCII title `{val}`",
+                    idx + 1
+                ));
+            }
+        }
+    }
+
+    assert!(
+        problems.is_empty(),
+        "Dioxus.toml path/title check failed:\n  {}",
+        problems.join("\n  ")
+    );
+    Ok(())
+}

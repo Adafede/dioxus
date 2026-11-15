@@ -73,7 +73,7 @@ jobs:
             pkg: cxsmiles-yoga
             subpath: "/cxsmiles-yoga"
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false, fetch-depth: 1 }
 
       # rustup is preinstalled on the runner, and it reads `rust-toolchain.toml`
@@ -91,7 +91,7 @@ jobs:
       - name: Install the pinned toolchain
         run: rustup show active-toolchain
 
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.8
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           # One key shared by every matrix leg, so the first leg to run pays for
           # compiling the dependency graph and the rest reuse it.

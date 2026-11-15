@@ -21,13 +21,11 @@
     "**/target": true,
     "**/.dioxus": true,
     "**/dist": true,
-    "**/mutants.out": true,
-    "graphify-out": true
+    "**/mutants.out": true
   },
   "search.exclude": {
     "**/target": true,
-    "**/dist": true,
-    "graphify-out": true
+    "**/dist": true
   },
   "files.watcherExclude": {
     "**/target/**": true,

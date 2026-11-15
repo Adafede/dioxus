@@ -1,7 +1,6 @@
 [application]
 name = "index"
 default_platform = "web"
-asset_dir = "assets"
 
 [web]
 pre_compress = true
@@ -11,4 +10,4 @@ title = "Dioxus Experiments"
 
 [web.watcher]
 reload_html = true
-watch_path = ["src", "assets"]
+watch_path = ["src"]

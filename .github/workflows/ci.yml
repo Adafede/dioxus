@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false, fetch-depth: 1 }
 
       # rustup is preinstalled on the runner, and it reads `rust-toolchain.toml`
@@ -74,7 +74,7 @@ jobs:
       # but a named step that says so beats relying on a side effect.
       - name: Install the pinned toolchain
         run: rustup show active-toolchain
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.8
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with: { shared-key: ci }
       # `dioxus-cli` is the crate; `dx` is the binary it installs and is not on
       # crates.io, so `dx@0.7.10` does not resolve. The version is the resolved

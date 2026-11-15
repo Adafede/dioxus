@@ -22,7 +22,15 @@ const FORBIDDEN_AGENT_TOKENS: &[&str] = &[
     "graphify",
 ];
 
-const FORBIDDEN_SLOP_WORDS: &[&str] = &["seamless", "cutting-edge", "leveraging", "blazing-fast"];
+const FORBIDDEN_SLOP_WORDS: &[&str] = &[
+    "seamless",
+    "cutting-edge",
+    "leveraging",
+    "blazing-fast",
+    "robust",
+    "comprehensive",
+    "powerful",
+];
 
 fn normalize_rel(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
@@ -245,6 +253,19 @@ fn human_docs_do_not_reference_agent_surface_or_slop() -> Result<()> {
             for word in FORBIDDEN_SLOP_WORDS {
                 if is_ascii_word_match(&lower, word) {
                     hits.push(format!("{rel}:{line_no}: slop word `{word}`"));
+                }
+            }
+        }
+    }
+
+    let root = repo_root();
+    for rel in [".vscode/settings.json", ".vscode/extensions.json"] {
+        let text = std::fs::read_to_string(root.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
+        for (idx, line) in text.lines().enumerate() {
+            let line_no = idx + 1;
+            for token in FORBIDDEN_AGENT_TOKENS {
+                if line.contains(token) {
+                    hits.push(format!("{rel}:{line_no}: agent-surface token `{token}`"));
                 }
             }
         }

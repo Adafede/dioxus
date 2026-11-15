@@ -56,7 +56,7 @@ multiple-versions = "deny"
 # Only the crates that are *actually* duplicated in the current lockfile.
 #
 # Every entry here was verified by deleting this list and reading what
-# `cargo deny check bans` reported: 16 crates, 2 versions each, no third. An
+# `cargo deny check bans` reported: 14 crates, 2 versions each, no third. An
 # entry for a crate that is not duplicated is an `unnecessary-skip` warning, so
 # this list is the set and not a habit — cargo-deny says so out loud when it is
 # wrong, which is why the warnings are fixed rather than ignored.
@@ -98,7 +98,7 @@ skip = [
 ]
 
 # ── Source policy ─────────────────────────────────────────────────────────────
-# Only allow crates from crates.io. Deny all unknown registries and git deps.
+# Only allow crates from crates.io and explicitly listed git repositories.
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
