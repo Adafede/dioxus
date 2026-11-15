@@ -450,3 +450,33 @@ fn incomplete_repeating_roundtrip_is_best_effort() {
         "incomplete round-trip coverage must demote construct to BestEffort"
     );
 }
+
+#[test]
+fn non_single_external_bonds_are_not_internal_and_ring_repeats_are_rejected() {
+    let benzene = mol("c1ccccc1");
+    assert!(
+        !is_internal(&[1], &benzene),
+        "aromatic ring carbon has aromatic external bonds, not single chain bonds"
+    );
+    let propene = mol("C=CC");
+    assert!(
+        !is_internal(&[1], &propene),
+        "alkene carbon with a double external bond is not a single-bonded repeat link"
+    );
+
+    let aromatic_err = build_repeating(&[mol("Cc1ccccc1"), mol("CCc1ccccc1")]);
+    assert!(
+        aromatic_err.is_err(),
+        "must not fabricate an Sg:n repeat across aromatic ring carbons"
+    );
+    let cyclo_err = build_repeating(&[mol("CC1CCCCC1"), mol("CCC1CCCCC1")]);
+    assert!(
+        cyclo_err.is_err(),
+        "must reject aliphatic ring repeat when no homologue beyond scaffold round-trips"
+    );
+
+    let two_ok = build_repeating(&[mol("CCC"), mol("CCCC")])
+        .expect("a two-member alkane homologue pair with cov.covered == 2 must succeed");
+    assert_eq!(two_ok.construct, Construct::Repeating);
+    assert_eq!(two_ok.confidence.coverage.covered, 2);
+}

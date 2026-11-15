@@ -112,6 +112,7 @@ fn methyl() -> FloatingDef {
         atoms: vec![mol("C").atom(AtomIdx(0)).clone()],
         bonds: Vec::new(),
         attachment: 0,
+        attach_order: BondOrder::Single,
         split: false,
     }
 }

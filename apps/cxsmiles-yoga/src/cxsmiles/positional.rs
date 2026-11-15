@@ -27,6 +27,8 @@ pub(crate) struct FloatingDef {
     pub(crate) bonds: Vec<(usize, usize, BondOrder)>,
     /// Index into `atoms`, bonded to the scaffolding/* target.
     pub(crate) attachment: usize,
+    /// Bond order joining `attachment` to its scaffold or split-parent atom.
+    pub(crate) attach_order: BondOrder,
     /// Double-`m` variant.
     pub(crate) split: bool,
 }
@@ -144,21 +146,14 @@ pub(crate) fn build_positional_with_options(group: &[Molecule], aromatic: bool) 
     let clean = cov.fraction() >= 1.0;
 
     // Display FloatingParts (one per star).
-    let floating: Vec<FloatingPart> = defs
-        .iter()
-        .zip(&targets)
-        .map(|(def, target)| FloatingPart {
-            equiv: match target {
-                Target::Variable(p) => p.clone(),
-                Target::Fixed(_) => Vec::new(),
-            },
-            fragment_smiles: fragment_smiles(def),
-            split: def.split,
-        })
-        .collect();
+    let floating = build_floating_parts(&defs, &targets);
 
     Ok(CxResult {
-        cx_smiles: format!("{base_smiles} |{ext}|"),
+        cx_smiles: if ext.is_empty() {
+            base_smiles
+        } else {
+            format!("{base_smiles} |{ext}|")
+        },
         construct: if clean {
             Construct::Positional
         } else {
@@ -173,6 +168,20 @@ pub(crate) fn build_positional_with_options(group: &[Molecule], aromatic: bool) 
         },
         enumerated,
     })
+}
+
+fn build_floating_parts(defs: &[FloatingDef], targets: &[Target]) -> Vec<FloatingPart> {
+    defs.iter()
+        .zip(targets)
+        .map(|(def, target)| FloatingPart {
+            equiv: match target {
+                Target::Variable(p) => p.clone(),
+                Target::Fixed(_) => Vec::new(),
+            },
+            fragment_smiles: fragment_smiles(def),
+            split: def.split,
+        })
+        .collect()
 }
 
 /// Assemble the base SMILES string. Each floating fragment is written as
@@ -190,11 +199,18 @@ fn build_base_smiles(
     for def in defs {
         star_idx.push(offset); // `*` is the first atom of the fragment
         attach_idx.push(offset + 1); // attachment atom follows the `*`
-        let frag = write_fragment_first(def);
         offset += 1 + def.atoms.len(); // `*` + fragment atoms
-        frags.push(format!("[*]{frag}"));
+        frags.push(fragment_smiles(def));
     }
     (frags.join("."), star_idx, attach_idx)
+}
+
+const fn bond_symbol(order: BondOrder) -> &'static str {
+    match order {
+        BondOrder::Double => "=",
+        BondOrder::Triple => "#",
+        _ => "",
+    }
 }
 
 /// Write a fragment molecule with the attachment atom first.
@@ -209,9 +225,13 @@ fn write_fragment_first(def: &FloatingDef) -> String {
     write(&b.build())
 }
 
-/// Floating fragment SMILES for display: `[*]<frag>`.
+/// Floating fragment SMILES for display: `[*]<bond><frag>`.
 fn fragment_smiles(def: &FloatingDef) -> String {
-    format!("[*]{}", write_fragment_first(def))
+    format!(
+        "[*]{}{}",
+        bond_symbol(def.attach_order),
+        write_fragment_first(def)
+    )
 }
 
 /// A floating component (set of rep atoms) described as one or two defs.
@@ -225,6 +245,10 @@ fn floating_defs(rep: &Molecule, frag: &[u32], keep: &[bool]) -> Vec<FloatingDef
         })
         .or_else(|| frag.first().copied())
         .unwrap_or(0);
+    let scaffold_order = rep
+        .neighbors(AtomIdx(attach))
+        .find(|(n, _)| is_matched(keep, n.0))
+        .map_or(BondOrder::Single, |(_, bi)| rep.bond(bi).order);
     let in_frag = |a: u32| frag.contains(&a);
     // No `frag.len() > 1` in front of this. A one-atom fragment has no
     // neighbour of itself in the fragment, so the count below is zero and
@@ -244,11 +268,16 @@ fn floating_defs(rep: &Molecule, frag: &[u32], keep: &[bool]) -> Vec<FloatingDef
             atoms: def.0,
             bonds: def.1,
             attachment: def.2,
+            attach_order: scaffold_order,
             split: false,
         }];
     }
-    // Split: group1 = [attachment atom], group2 = rest (attached to group1's atom).
     let rest: Vec<u32> = frag.iter().copied().filter(|&a| a != attach).collect();
+    let split_order = rep
+        .neighbors(AtomIdx(attach))
+        .find(|(n, _)| rest.contains(&n.0))
+        .map_or(BondOrder::Single, |(_, bi)| rep.bond(bi).order);
+    // Split: group1 = [attachment atom], group2 = rest (attached to group1's atom).
     let (a1, _, _) = extract_subgraph(rep, std::slice::from_ref(&attach));
     let (a2, b2, att2) = extract_subgraph(rep, &rest);
     let (ra2, rb2, ratt2) = reorder_attachment_first(a2, b2, att2);
@@ -257,12 +286,14 @@ fn floating_defs(rep: &Molecule, frag: &[u32], keep: &[bool]) -> Vec<FloatingDef
             atoms: a1,
             bonds: Vec::new(),
             attachment: 0,
+            attach_order: scaffold_order,
             split: false,
         },
         FloatingDef {
             atoms: ra2,
             bonds: rb2,
             attachment: ratt2,
+            attach_order: split_order,
             split: true,
         },
     ]

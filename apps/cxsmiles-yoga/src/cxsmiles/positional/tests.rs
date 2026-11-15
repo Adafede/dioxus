@@ -272,6 +272,7 @@ fn a_fragment_is_written_with_a_star_and_the_attachment_first() {
         atoms,
         bonds,
         attachment: attach,
+        attach_order: BondOrder::Single,
         split: false,
     };
     let smi = write_fragment_first(&def);
@@ -293,6 +294,7 @@ fn base_smiles_offsets_the_star_indices_by_the_scaffold_length() {
         atoms,
         bonds,
         attachment: attach,
+        attach_order: BondOrder::Single,
         split: false,
     };
     let (_smiles, star_idx, attach_idx) = build_base_smiles("CO", &[def], 2);
@@ -313,6 +315,7 @@ fn two_defs_skip_past_each_fragments_star_and_atoms() {
         atoms,
         bonds,
         attachment: attach,
+        attach_order: BondOrder::Single,
         split: false,
     };
     let two = one.clone();
@@ -424,6 +427,7 @@ fn reorder_and_write_fragment_handle_empty_and_out_of_range_attachment() {
         atoms: Vec::new(),
         bonds: Vec::new(),
         attachment: 0,
+        attach_order: BondOrder::Single,
         split: false,
     };
     assert_eq!(
@@ -442,6 +446,7 @@ fn reorder_and_write_fragment_handle_empty_and_out_of_range_attachment() {
         atoms: atoms.clone(),
         bonds: bonds.clone(),
         attachment: 99,
+        attach_order: BondOrder::Single,
         split: false,
     };
     assert_eq!(

@@ -71,6 +71,11 @@ pub(crate) fn build_repeating(group: &[Molecule]) -> CxResult_ {
 
     let enumerated = enumerate_repeating(&scaffold, &repeat_unit)?;
     let (_, cov) = roundtrip_coverage(&enumerated, group);
+    if cov.covered < 2 {
+        return Err(CxError(
+            "repeat expansion did not reproduce any homologue beyond the scaffold".into(),
+        ));
+    }
     let clean = cov.fraction() >= 1.0;
 
     Ok(CxResult {
@@ -239,8 +244,11 @@ pub(crate) fn multiset(atoms: &[u32], mol: &Molecule) -> Vec<u8> {
 pub(crate) fn is_internal(atoms: &[u32], mol: &Molecule) -> bool {
     let mut ext = 0usize;
     for &a in atoms {
-        for (nbr, _) in mol.neighbors(AtomIdx(a)) {
+        for (nbr, bond_idx) in mol.neighbors(AtomIdx(a)) {
             if !atoms.contains(&nbr.0) && nbr.0 != a {
+                if mol.bond(bond_idx).order != BondOrder::Single {
+                    return false;
+                }
                 ext += 1;
             }
         }

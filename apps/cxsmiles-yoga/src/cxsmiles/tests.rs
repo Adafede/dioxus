@@ -317,5 +317,55 @@ O=C=O";
         !r_rep.confidence.clean,
         "dropped outlier prevents clean coverage"
     );
-    assert_eq!(r_rep.construct, Construct::BestEffort);
+    assert_eq!(
+        r_rep.construct,
+        Construct::BestEffort,
+        "dropped outlier prevents clean coverage"
+    );
+}
+
+#[test]
+fn omits_empty_cx_extension_and_preserves_double_and_triple_attachment_bonds() {
+    let identical = generate(&lines("CC\nCC")).unwrap();
+    assert!(
+        !identical.cx_smiles.contains('|'),
+        "empty CX fields must not emit bare `||`: {}",
+        identical.cx_smiles
+    );
+    assert_eq!(identical.cx_smiles, "CC");
+
+    let carbonyls = generate(&lines("CC1(F)CC(=O)CCC1\nCC1(F)CCC(=O)CC1")).unwrap();
+    assert_eq!(carbonyls.construct, Construct::Positional);
+    assert!(carbonyls.confidence.clean);
+    assert!(
+        carbonyls.cx_smiles.contains("[*]=O"),
+        "double-bonded moving oxygen must emit `[*]=O`: {}",
+        carbonyls.cx_smiles
+    );
+
+    let aldehydes = generate(&lines("c1ccc(C=O)cc1-c2ccccc2\nc1cc(C=O)ccc1-c2ccccc2")).unwrap();
+    assert_eq!(aldehydes.construct, Construct::Positional);
+    assert!(aldehydes.confidence.clean);
+    assert!(
+        aldehydes.cx_smiles.contains("[*]=O"),
+        "split formyl group must preserve C=O double bond: {}",
+        aldehydes.cx_smiles
+    );
+
+    let nitriles = generate(&lines("N#Cc1ccccc1-c2ccccc2\nN#Cc1cccc(-c2ccccc2)c1")).unwrap();
+    assert_eq!(nitriles.construct, Construct::Positional);
+    assert!(nitriles.confidence.clean);
+    assert!(
+        nitriles.cx_smiles.contains("[*]#N"),
+        "split cyano group must preserve C#N triple bond: {}",
+        nitriles.cx_smiles
+    );
+
+    let aryl_homologues = generate(&lines("Cc1ccccc1\nCCc1ccccc1")).unwrap();
+    assert_ne!(
+        aryl_homologues.construct,
+        Construct::Repeating,
+        "toluene/ethylbenzene must not emit an aromatic Sg:n repeat: {}",
+        aryl_homologues.cx_smiles
+    );
 }

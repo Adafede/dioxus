@@ -188,11 +188,11 @@ fn build_one(
             let _ = b.add_bond(ma, mc, be.order);
         }
     }
-    let mut part_attach: Vec<AtomIdx> = Vec::with_capacity(defs.len());
+    let mut part_attach: Vec<(AtomIdx, BondOrder)> = Vec::with_capacity(defs.len());
     for def in defs {
         let pmap = add_atoms_and_bonds(&mut b, &def.atoms, &def.bonds);
         if let Some(&attachment) = pmap.get(def.attachment) {
-            part_attach.push(attachment);
+            part_attach.push((attachment, def.attach_order));
         }
     }
     // `combo` has one entry per `Variable` target, in order, which is
@@ -200,19 +200,19 @@ fn build_one(
     // the count of `Variable` targets seen so far, and an iterator
     // carries that rather than a counter the loop has to keep right.
     let mut combo = combo.iter();
-    for (attach, target) in part_attach.iter().zip(targets) {
+    for (&(attach, order), target) in part_attach.iter().zip(targets) {
         match target {
             Target::Variable(positions) => {
                 let chosen = combo.next().copied();
                 if let Some(pos) = chosen.and_then(|c| positions.get(c).copied())
                     && let Some(&p) = sc.get(pos)
                 {
-                    let _ = b.add_bond(*attach, p, BondOrder::Single);
+                    let _ = b.add_bond(attach, p, order);
                 }
             }
             Target::Fixed(other) => {
-                if let Some(target_attach) = part_attach.get(*other) {
-                    let _ = b.add_bond(*attach, *target_attach, BondOrder::Single);
+                if let Some(&(target_attach, _)) = part_attach.get(*other) {
+                    let _ = b.add_bond(attach, target_attach, order);
                 }
             }
         }
