@@ -134,7 +134,6 @@ pub fn app() -> Element {
             webmcp: Some(WEBMCP_CONFIG),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
         }
 
         div {
@@ -189,7 +188,10 @@ pub fn app() -> Element {
                 }
             }
         }
-        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
+        SimpleAnalyticsBadge {
+            domain: "adafede.github.io".to_string(),
+            path: "/dioxus/mgf-precursor-erro-rs/".to_string(),
+        }
     }
 }
 

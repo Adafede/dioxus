@@ -250,7 +250,6 @@ fn app() -> Element {
             }),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
         }
 
         div {
@@ -441,7 +440,10 @@ fn app() -> Element {
             }
 
         }
-        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
+        SimpleAnalyticsBadge {
+            domain: "adafede.github.io".to_string(),
+            path: "/dioxus/json-count-rs/".to_string(),
+        }
     }
 }
 

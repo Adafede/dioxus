@@ -107,7 +107,6 @@ fn app() -> Element {
             og_type: Some("website".to_string()),
             og_site_name: Some("Dioxus Experiments".to_string()),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
         }
 
         div { style: container_style,
@@ -152,7 +151,10 @@ fn app() -> Element {
 
             Footer {}
         }
-        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
+        SimpleAnalyticsBadge {
+            domain: "adafede.github.io".to_string(),
+            path: "/dioxus/".to_string(),
+        }
     }
 }
 

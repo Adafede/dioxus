@@ -85,6 +85,12 @@ fn every_app_pairs_its_skip_link_with_a_main_landmark() -> Result<()> {
         {
             fail("passes a target to skip_link, but ui::skip_link takes no props");
         }
+        if body.contains("simpleanalyticscdn.com") || body.contains("latest.js") {
+            fail("still references Simple Analytics JS instead of the no-JS pixel");
+        }
+        if !body.contains("SimpleAnalyticsBadge {") || !body.contains("path:") {
+            fail("must pass per-app path to SimpleAnalyticsBadge for no-JS analytics");
+        }
     }
 
     assert!(

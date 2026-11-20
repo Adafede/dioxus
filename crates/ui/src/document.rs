@@ -244,7 +244,11 @@ pub fn DocumentHead(props: DocumentHeadProps) -> Element {
         doc.create_head_element(
             "style",
             &[],
-            Some(crate::common::SKIP_LINK_FOCUS_CSS.to_string()),
+            Some(format!(
+                "{}\n{}",
+                crate::common::SKIP_LINK_FOCUS_CSS,
+                crate::common::ANALYTICS_PIXEL_CSS,
+            )),
         );
 
         // Inline JavaScript — wrapped in an IIFE so `const`/`let` declarations

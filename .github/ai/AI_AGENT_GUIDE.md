@@ -123,7 +123,8 @@ cargo test --manifest-path apps/lipid-selecto-rs/lipidmaps/smarts-evoliposuction
 - **Inline script & badge HTML safety (`crates/ui`)**: `webmcp.rs` and
   `document.rs` must escape `<`, `>`, `&`, `\u{2028}`, `\u{2029}`, and `</` in
   inline `<script>` / JSON-LD payloads; `SimpleAnalyticsBadge` uses typed `rsx!`
-  plus `is_valid_domain` rather than `dangerous_inner_html`.
+  (badge plus the no-JS `noscript.gif` analytics pixel) and `is_valid_domain`
+  rather than `dangerous_inner_html`.
 - **`VirtualDom::rebuild_to_vec()` omits static templates**: `Mutations` debug
   output includes only dynamic attributes/slots; check `node.template` when
   asserting static template attributes in component tests.

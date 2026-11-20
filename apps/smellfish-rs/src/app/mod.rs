@@ -219,6 +219,9 @@ pub fn app() -> Element {
 
             Footer {}
         }
-        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
+        SimpleAnalyticsBadge {
+            domain: "adafede.github.io".to_string(),
+            path: "/dioxus/smellfish-rs/".to_string(),
+        }
     }
 }

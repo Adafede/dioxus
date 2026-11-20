@@ -397,7 +397,6 @@ pub fn app() -> Element {
             webmcp: Some(WEBMCP_CONFIG),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
         }
 
         skip_link {}
@@ -445,6 +444,9 @@ pub fn app() -> Element {
             }
         }
         Footer {}
-        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
+        SimpleAnalyticsBadge {
+            domain: "adafede.github.io".to_string(),
+            path: "/dioxus/cxsmiles-yoga/".to_string(),
+        }
     }
 }

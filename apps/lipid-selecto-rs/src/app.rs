@@ -119,7 +119,6 @@ pub fn app() -> Element {
             }),
             lang: "en".to_string(),
             theme_colors: Some(("#f6f8fb", "#10141b")),
-            scripts: vec!["https://scripts.simpleanalyticscdn.com/latest.js".to_string()],
         }
 
         div {
@@ -172,7 +171,10 @@ pub fn app() -> Element {
                 }
             }
         }
-        SimpleAnalyticsBadge { domain: "adafede.github.io".to_string() }
+        SimpleAnalyticsBadge {
+            domain: "adafede.github.io".to_string(),
+            path: "/dioxus/lipid-selecto-rs/".to_string(),
+        }
     }
 }
 /// Shared upload-related `Signal`s, passed by value (`Signal` is `Copy`, so this

@@ -33,6 +33,10 @@ pub const SKIP_LINK_STYLE: &str = "position:absolute;top:-100%;left:0.5rem;z-ind
 /// per-app copy that caused the bug.
 pub(crate) const SKIP_LINK_FOCUS_CSS: &str = ".skip-link:focus { top: 0 !important; left: 0.5rem !important; outline: 3px solid #0b5cab; outline-offset: 2px; }";
 
+/// Positions the JavaScript-free Simple Analytics pixel out of flow so global
+/// `img` styles cannot add bottom spacing or overflow.
+pub(crate) const ANALYTICS_PIXEL_CSS: &str = ".analytics-pixel { position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }";
+
 /// Skip navigation link to the app's main landmark.
 ///
 /// The target is fixed, and every app in this workspace gives its `<main>`

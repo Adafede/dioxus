@@ -23,7 +23,6 @@ pub fn SmellfishDocumentHead() -> Element {
     let scripts = vec![
         "motif-library.js".to_string(),
         "https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js".to_string(),
-        "https://scripts.simpleanalyticscdn.com/latest.js".to_string(),
     ];
 
     rsx! {
