@@ -9,6 +9,7 @@
 //! mass↔adduct module cycle, while `mass` stays a pure leaf that depends on
 //! nothing but `chematic` / `molecular_formulas`.
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -198,7 +199,7 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
 
     for ch in body.chars() {
         match ch {
-            '+' => {
+            '+' | '-' => {
                 apply_adduct_token(
                     &current,
                     sign,
@@ -208,19 +209,7 @@ fn parse_adduct_mass_spec(adduct: &str) -> Option<(f64, f64)> {
                     &mut saw_unsupported_token,
                 );
                 current.clear();
-                sign = 1.0;
-            }
-            '-' => {
-                apply_adduct_token(
-                    &current,
-                    sign,
-                    &mut multiplier,
-                    &mut shift,
-                    &mut saw_molecule_term,
-                    &mut saw_unsupported_token,
-                );
-                current.clear();
-                sign = -1.0;
+                sign = if ch == '+' { 1.0 } else { -1.0 };
             }
             _ => current.push(ch),
         }
@@ -275,24 +264,18 @@ fn parse_adduct_mass_spec_cached(adduct: &str) -> Option<(f64, f64)> {
         return None;
     }
 
+    let key: Cow<'_, str> = if trimmed.contains(' ') {
+        Cow::Owned(trimmed.replace(' ', ""))
+    } else {
+        Cow::Borrowed(trimmed)
+    };
     ADDUCT_SPEC_CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
-        if !trimmed.contains(' ') {
-            if let Some(mass_spec) = cache.get(trimmed) {
-                return *mass_spec;
-            }
-            let mass_spec = parse_adduct_mass_spec(trimmed);
-            cache.insert(trimmed.to_string(), mass_spec);
+        if let Some(&mass_spec) = cache.get(key.as_ref()) {
             return mass_spec;
         }
-
-        let normalized = trimmed.replace(' ', "");
-        if let Some(mass_spec) = cache.get(&normalized) {
-            return *mass_spec;
-        }
-
-        let mass_spec = parse_adduct_mass_spec(&normalized);
-        cache.insert(normalized, mass_spec);
+        let mass_spec = parse_adduct_mass_spec(&key);
+        cache.insert(key.into_owned(), mass_spec);
         mass_spec
     })
 }

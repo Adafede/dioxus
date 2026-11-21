@@ -23,6 +23,14 @@ pub(crate) fn update_recalibration_diagnostics(
         CalibrationModel::None => 0.0,
     };
 
+    let ppm = |delta: f64, reference: f64| {
+        if reference > 0.0 {
+            delta * 1e6 / reference
+        } else {
+            0.0
+        }
+    };
+
     for point in &metrics.plot_points {
         let Some(theoretical_mass) = point.expected_mass else {
             continue;
@@ -31,25 +39,13 @@ pub(crate) fn update_recalibration_diagnostics(
         let precursor_ms2 = point.ms2_precursor_peak.unwrap_or(point.pepmass_header);
         let precursor_ms1 = point.pepmass_header;
         let error_da_ms1 = precursor_ms1 - theoretical_mass;
-        let error_ppm_ms1 = if theoretical_mass > 0.0 {
-            error_da_ms1 * 1e6 / theoretical_mass
-        } else {
-            0.0
-        };
+        let error_ppm_ms1 = ppm(error_da_ms1, theoretical_mass);
 
         let error_da_before = precursor_ms2 - theoretical_mass;
-        let error_ppm_before = if theoretical_mass > 0.0 {
-            error_da_before * 1e6 / theoretical_mass
-        } else {
-            0.0
-        };
+        let error_ppm_before = ppm(error_da_before, theoretical_mass);
 
         let delta_ms2_ms1_da = precursor_ms2 - precursor_ms1;
-        let delta_ppm_ms2_ms1 = if precursor_ms1 > 0.0 {
-            delta_ms2_ms1_da * 1e6 / precursor_ms1
-        } else {
-            0.0
-        };
+        let delta_ppm_ms2_ms1 = ppm(delta_ms2_ms1_da, precursor_ms1);
 
         let precursor_ms2_after = recalibrate_fragment_mz(
             precursor_ms2,
@@ -60,11 +56,7 @@ pub(crate) fn update_recalibration_diagnostics(
         );
 
         let error_da_after = precursor_ms2_after - theoretical_mass;
-        let error_ppm_after = if theoretical_mass > 0.0 {
-            error_da_after * 1e6 / theoretical_mass
-        } else {
-            0.0
-        };
+        let error_ppm_after = ppm(error_da_after, theoretical_mass);
 
         diag.push_measurement(crate::diagnostics::RecalibrationMeasurement {
             error_ppm_ms1,

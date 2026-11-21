@@ -49,14 +49,6 @@ fn parse_leading_float(value: &str) -> Option<f64> {
     value.split_whitespace().next()?.parse::<f64>().ok()
 }
 
-fn strip_header_ignore_case<'a>(line: &'a str, key: &str) -> Option<&'a str> {
-    let prefix = line.get(..key.len())?;
-    if !prefix.eq_ignore_ascii_case(key) {
-        return None;
-    }
-    line.get(key.len()..)?.strip_prefix('=')
-}
-
 impl BlockParseState {
     pub(crate) fn clear(&mut self) {
         #[cfg(test)]
@@ -82,74 +74,39 @@ impl BlockParseState {
             return;
         }
 
-        if let Some(stripped) = strip_header_ignore_case(trimmed, "PRECURSOR_MZ") {
-            #[cfg(test)]
-            {
-                self.observed_precursor_raw = Some(stripped.to_string());
+        if let Some((key, stripped)) = trimmed.split_once('=') {
+            if key.eq_ignore_ascii_case("PRECURSOR_MZ") || key.eq_ignore_ascii_case("PEPMASS") {
+                #[cfg(test)]
+                {
+                    self.observed_precursor_raw = Some(stripped.to_string());
+                }
+                self.observed_precursor = parse_leading_float(stripped);
+            } else if key.eq_ignore_ascii_case("EXACTMASS") {
+                if let Ok(value) = stripped.trim().parse::<f64>() {
+                    self.reference_mass = Some(value);
+                }
+            } else if key.eq_ignore_ascii_case("MOLECULEMASS") {
+                if let Ok(value) = stripped.trim().parse::<f64>()
+                    && self.reference_mass.is_none()
+                {
+                    self.reference_mass = Some(value);
+                }
+            } else if key.eq_ignore_ascii_case("CHARGE") {
+                self.charge = Some(stripped.to_string());
+            } else if key.eq_ignore_ascii_case("SMILES") {
+                self.smiles = Some(stripped.trim().to_string());
+            } else if key.eq_ignore_ascii_case("FORMULA") {
+                self.formula = Some(stripped.trim().to_string());
+            } else if key.eq_ignore_ascii_case("ADDUCT") {
+                self.adduct = Some(stripped.to_string());
+            } else if key.eq_ignore_ascii_case("IONMODE") {
+                self.ion_mode = Some(stripped.to_string());
             }
-            self.observed_precursor = parse_leading_float(stripped);
-            return;
-        }
-
-        if let Some(stripped) = strip_header_ignore_case(trimmed, "PEPMASS") {
-            #[cfg(test)]
-            {
-                self.observed_precursor_raw = Some(stripped.to_string());
-            }
-            self.observed_precursor = parse_leading_float(stripped);
-            return;
-        }
-
-        if let Some(stripped) = strip_header_ignore_case(trimmed, "EXACTMASS") {
-            if let Ok(value) = stripped.trim().parse::<f64>() {
-                self.reference_mass = Some(value);
-            }
-            return;
-        }
-
-        if let Some(stripped) = strip_header_ignore_case(trimmed, "MOLECULEMASS") {
-            if let Ok(value) = stripped.trim().parse::<f64>()
-                && self.reference_mass.is_none()
-            {
-                self.reference_mass = Some(value);
-            }
-            return;
-        }
-
-        if let Some(stripped) = strip_header_ignore_case(trimmed, "CHARGE") {
-            self.charge = Some(stripped.to_string());
-            return;
-        }
-
-        if let Some(stripped) = strip_header_ignore_case(trimmed, "SMILES") {
-            self.smiles = Some(stripped.trim().to_string());
-            return;
-        }
-
-        if let Some(stripped) = strip_header_ignore_case(trimmed, "FORMULA") {
-            self.formula = Some(stripped.trim().to_string());
-            return;
-        }
-
-        if let Some(stripped) = strip_header_ignore_case(trimmed, "ADDUCT") {
-            self.adduct = Some(stripped.to_string());
-            return;
-        }
-
-        if let Some(stripped) = strip_header_ignore_case(trimmed, "IONMODE") {
-            self.ion_mode = Some(stripped.to_string());
-            return;
-        }
-
-        // Parse fragment line: "m/z intensity" (not a header)
-        if !trimmed.contains('=')
-            && trimmed.contains(char::is_whitespace)
-            && let Some(mz) = trimmed
-                .split_whitespace()
-                .next()
-                .and_then(|value| value.parse::<f64>().ok())
+        } else if trimmed.contains(char::is_whitespace)
+            && let Some(mz) = parse_leading_float(trimmed)
             && mz > 0.0
         {
+            // Parse fragment line: "m/z intensity" (not a header)
             self.fragment_peaks.push(mz);
         }
     }

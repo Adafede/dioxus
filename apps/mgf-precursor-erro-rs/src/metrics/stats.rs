@@ -136,47 +136,39 @@ pub(crate) struct PrecursorStats {
     pub raw_retention_capped: bool,
 }
 
+fn push_reservoir<T>(value: T, values: &mut Vec<T>, seen: &mut usize, max_points: usize) {
+    *seen = seen.saturating_add(1);
+    if values.len() < max_points {
+        values.push(value);
+        return;
+    }
+    let stream_index = u64::try_from(*seen).unwrap_or(u64::MAX);
+    let replacement_index = usize::try_from(
+        (stream_index
+            .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+            .wrapping_add(0xbf58_476d_1ce4_e5b9))
+            % stream_index,
+    )
+    .unwrap_or(0);
+    if replacement_index < max_points
+        && let Some(existing) = values.get_mut(replacement_index)
+    {
+        *existing = value;
+    }
+}
+
 impl PrecursorStats {
     pub(super) fn push_sampled_value(value: f64, values: &mut Vec<f64>, seen: &mut usize) {
-        *seen = seen.saturating_add(1);
-        if values.len() < MAX_ECDF_POINTS {
-            values.push(value);
-            return;
-        }
-        let stream_index = u64::try_from(*seen).unwrap_or(u64::MAX);
-        let replacement_index = usize::try_from(
-            (stream_index
-                .wrapping_mul(0x9e37_79b9_7f4a_7c15)
-                .wrapping_add(0xbf58_476d_1ce4_e5b9))
-                % stream_index,
-        )
-        .unwrap_or(0);
-        if replacement_index < MAX_ECDF_POINTS
-            && let Some(existing) = values.get_mut(replacement_index)
-        {
-            *existing = value;
-        }
+        push_reservoir(value, values, seen, MAX_ECDF_POINTS);
     }
 
     pub(super) fn push_plot_point(&mut self, point: PlotPoint) {
-        self.plot_point_stream_seen = self.plot_point_stream_seen.saturating_add(1);
-        if self.plot_points.len() < MAX_PLOT_POINTS {
-            self.plot_points.push(point);
-        } else {
-            let stream_index = u64::try_from(self.plot_point_stream_seen).unwrap_or(u64::MAX);
-            let replacement_index = usize::try_from(
-                (stream_index
-                    .wrapping_mul(0x9e37_79b9_7f4a_7c15)
-                    .wrapping_add(0xbf58_476d_1ce4_e5b9))
-                    % stream_index,
-            )
-            .unwrap_or(0);
-            if replacement_index < MAX_PLOT_POINTS
-                && let Some(existing) = self.plot_points.get_mut(replacement_index)
-            {
-                *existing = point;
-            }
-        }
+        push_reservoir(
+            point,
+            &mut self.plot_points,
+            &mut self.plot_point_stream_seen,
+            MAX_PLOT_POINTS,
+        );
     }
 
     pub(crate) fn record_error(&mut self, measurement: ErrorMeasurement<'_>) {
