@@ -341,71 +341,42 @@ fn app() -> Element {
 
                         thead {
                             tr {
-                                th {
-                                    scope: "col",
-                                    "aria-sort": aria_sort_for(*sort_col.read(), *sort_dir.read(), SortColumn::Key),
-                                    style: StyleBuilder::new()
-                                        .text_align("left")
-                                        .border(&format!("2px solid {}", ColorScheme::LIGHT.border))
-                                        .padding(Spacing::SM)
-                                        .build(),
-                                    button {
-                                        r#type: "button",
+                                for (col, label, align) in [
+                                    (SortColumn::Key, "Column", "left"),
+                                    (SortColumn::Count, "Non-null count", "right"),
+                                ] {
+                                    th {
+                                        scope: "col",
+                                        "aria-sort": aria_sort_for(*sort_col.read(), *sort_dir.read(), col),
                                         style: StyleBuilder::new()
-                                            .property("background", "transparent")
-                                            .border("none")
-                                            .padding("0")
-                                            .font_weight("600")
-                                            .color(ColorScheme::LIGHT.text)
-                                            .cursor("pointer")
+                                            .text_align(align)
+                                            .border(&format!("2px solid {}", ColorScheme::LIGHT.border))
+                                            .padding(Spacing::SM)
                                             .build(),
-                                        onclick: move |_| {
-                                            let (next_col, next_dir) = next_sort_state(
-                                                *sort_col.read(),
-                                                *sort_dir.read(),
-                                                SortColumn::Key,
-                                            );
-                                            sort_col.set(Some(next_col));
-                                            sort_dir.set(next_dir);
-                                        },
-                                        if *sort_col.read() == Some(SortColumn::Key) {
-                                            { format!("Column{}", sort_dir.read().indicator()) }
-                                        } else {
-                                            "Column"
-                                        }
-                                    }
-                                }
-                                th {
-                                    scope: "col",
-                                    "aria-sort": aria_sort_for(*sort_col.read(), *sort_dir.read(), SortColumn::Count),
-                                    style: StyleBuilder::new()
-                                        .text_align("right")
-                                        .border(&format!("2px solid {}", ColorScheme::LIGHT.border))
-                                        .padding(Spacing::SM)
-                                        .build(),
-                                    button {
-                                        r#type: "button",
-                                        style: StyleBuilder::new()
-                                            .property("background", "transparent")
-                                            .border("none")
-                                            .padding("0")
-                                            .font_weight("600")
-                                            .color(ColorScheme::LIGHT.text)
-                                            .cursor("pointer")
-                                            .build(),
-                                        onclick: move |_| {
-                                            let (next_col, next_dir) = next_sort_state(
-                                                *sort_col.read(),
-                                                *sort_dir.read(),
-                                                SortColumn::Count,
-                                            );
-                                            sort_col.set(Some(next_col));
-                                            sort_dir.set(next_dir);
-                                        },
-                                        if *sort_col.read() == Some(SortColumn::Count) {
-                                            { format!("Non-null count{}", sort_dir.read().indicator()) }
-                                        } else {
-                                            "Non-null count"
+                                        button {
+                                            r#type: "button",
+                                            style: StyleBuilder::new()
+                                                .property("background", "transparent")
+                                                .border("none")
+                                                .padding("0")
+                                                .font_weight("600")
+                                                .color(ColorScheme::LIGHT.text)
+                                                .cursor("pointer")
+                                                .build(),
+                                            onclick: move |_| {
+                                                let (next_col, next_dir) = next_sort_state(
+                                                    *sort_col.read(),
+                                                    *sort_dir.read(),
+                                                    col,
+                                                );
+                                                sort_col.set(Some(next_col));
+                                                sort_dir.set(next_dir);
+                                            },
+                                            if *sort_col.read() == Some(col) {
+                                                { format!("{label}{}", sort_dir.read().indicator()) }
+                                            } else {
+                                                "{label}"
+                                            }
                                         }
                                     }
                                 }
