@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use crate::plotting::data::usize_to_f64;
 
 /// Statistics about precursor errors for diagnostic purposes.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct RecalibrationStats {
     /// Precursor errors (in ppm) from PEPMASS vs theoretical.
     pub error_ppm_ms1: Vec<f64>,
@@ -194,58 +194,6 @@ pub struct RecalibrationMeasurement<'a> {
     pub precursor_ms2_after: f64,
     pub adduct_family: Option<&'a str>,
     pub max_samples: usize,
-}
-
-impl Default for RecalibrationStats {
-    fn default() -> Self {
-        Self {
-            error_ppm_ms1: Vec::new(),
-            error_da_ms1: Vec::new(),
-            delta_ppm_ms2_ms1: Vec::new(),
-            delta_da_ms2_ms1: Vec::new(),
-            error_ppm_before: Vec::new(),
-            error_ppm_after: Vec::new(),
-            error_da_before: Vec::new(),
-            error_da_after: Vec::new(),
-            precursor_ms1_values: Vec::new(),
-            precursor_ms2_before: Vec::new(),
-            precursor_ms2_after: Vec::new(),
-            sample_count: 0,
-            total_count: 0,
-            mean_error_ppm_ms1: 0.0,
-            mean_delta_ppm_ms2_ms1: 0.0,
-            mean_error_ppm_before: 0.0,
-            mean_error_ppm_after: 0.0,
-            mean_error_da_ms1: 0.0,
-            mean_delta_da_ms2_ms1: 0.0,
-            mean_error_da_before: 0.0,
-            mean_error_da_after: 0.0,
-            mae_error_ppm_before: 0.0,
-            mae_error_ppm_after: 0.0,
-            mae_error_da_before: 0.0,
-            mae_error_da_after: 0.0,
-            rms_error_ppm_ms1: 0.0,
-            rms_delta_ppm_ms2_ms1: 0.0,
-            rms_error_ppm_before: 0.0,
-            rms_error_ppm_after: 0.0,
-            rms_error_da_ms1: 0.0,
-            rms_delta_da_ms2_ms1: 0.0,
-            rms_error_da_before: 0.0,
-            rms_error_da_after: 0.0,
-            max_abs_error_ppm_before: 0.0,
-            max_abs_error_ppm_after: 0.0,
-            error_by_adduct_before: BTreeMap::new(),
-            error_by_adduct_after: BTreeMap::new(),
-            stream_ppm_ms1: RunningStats::default(),
-            stream_delta_ppm: RunningStats::default(),
-            stream_ppm_before: RunningStats::default(),
-            stream_ppm_after: RunningStats::default(),
-            stream_da_ms1: RunningStats::default(),
-            stream_delta_da: RunningStats::default(),
-            stream_da_before: RunningStats::default(),
-            stream_da_after: RunningStats::default(),
-        }
-    }
 }
 
 impl RecalibrationStats {

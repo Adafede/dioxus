@@ -49,9 +49,7 @@ pub(crate) struct MedianTracker {
 
 impl MedianTracker {
     pub(crate) fn push(&mut self, value: f64) {
-        let should_go_lower =
-            self.lower.is_empty() || self.lower.peek().is_none_or(|entry| value <= entry.0);
-        if should_go_lower {
+        if self.lower.peek().is_none_or(|entry| value <= entry.0) {
             self.lower.push(OrderedF64(value));
         } else {
             self.upper.push(Reverse(OrderedF64(value)));
@@ -92,7 +90,7 @@ impl MedianTracker {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct PrecursorStats {
     pub spectra: usize,
     pub total_spectra: usize,
@@ -136,55 +134,6 @@ pub(crate) struct PrecursorStats {
     pub unrecognized_adducts: BTreeMap<String, usize>,
     pub high_error_smiles: BTreeMap<String, HighErrorSmilesDetail>,
     pub raw_retention_capped: bool,
-}
-
-impl Default for PrecursorStats {
-    fn default() -> Self {
-        Self {
-            spectra: 0,
-            total_spectra: 0,
-            skipped_spectra: 0,
-            spectra_with_reference_mass: 0,
-            unparsed_smiles: 0,
-            unparsed_smiles_warnings: BTreeMap::new(),
-            observed_precursor_min: 0.0,
-            observed_precursor_max: 0.0,
-            observed_precursor_mean: 0.0,
-            observed_precursor_median: 0.0,
-            observed_precursor_median_tracker: MedianTracker::default(),
-            abs_error_da_min: 0.0,
-            abs_error_da_max: 0.0,
-            abs_error_da_mean: 0.0,
-            abs_error_da_median: 0.0,
-            abs_error_da_median_tracker: MedianTracker::default(),
-            abs_error_da_rms: 0.0,
-            abs_error_ppm_min: 0.0,
-            abs_error_ppm_max: 0.0,
-            abs_error_ppm_mean: 0.0,
-            abs_error_ppm_median: 0.0,
-            abs_error_ppm_median_tracker: MedianTracker::default(),
-            abs_error_ppm_rms: 0.0,
-            within_0_1_da: 0,
-            within_0_5_da: 0,
-            within_1_da: 0,
-            within_5_da: 0,
-            above_5_da: 0,
-            within_0_5_ppm: 0,
-            within_1_ppm: 0,
-            within_5_ppm: 0,
-            within_10_ppm: 0,
-            above_10_ppm: 0,
-            absolute_error_da_values: Vec::new(),
-            absolute_error_ppm_values: Vec::new(),
-            absolute_error_da_sample_seen: 0,
-            absolute_error_ppm_sample_seen: 0,
-            plot_points: Vec::new(),
-            plot_point_stream_seen: 0,
-            unrecognized_adducts: BTreeMap::new(),
-            high_error_smiles: BTreeMap::new(),
-            raw_retention_capped: false,
-        }
-    }
 }
 
 impl PrecursorStats {
