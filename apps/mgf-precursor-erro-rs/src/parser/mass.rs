@@ -17,11 +17,6 @@ use web_sys::console;
 // arithmetic over `&str`, so the whole thing is testable off-wasm. Only the
 // logging hooks are gated.
 
-#[must_use]
-pub(crate) fn smiles_is_supported(smiles: &str) -> bool {
-    !smiles.trim().is_empty()
-}
-
 pub(crate) fn exact_mass_from_smiles_cached<S: std::hash::BuildHasher>(
     smiles: &str,
     cache: &mut HashMap<String, Option<f64>, S>,
@@ -41,12 +36,6 @@ pub(crate) fn exact_mass_from_smiles_cached<S: std::hash::BuildHasher>(
 }
 
 fn exact_mass_from_smiles_uncached(smiles: &str) -> Option<f64> {
-    if !smiles_is_supported(smiles) {
-        #[cfg(target_arch = "wasm32")]
-        console::warn_1(&format!("Skipping unsupported SMILES for mass parsing: {smiles}").into());
-        return None;
-    }
-
     let parsed = catch_unwind(AssertUnwindSafe(|| {
         let mol = smiles::parse(smiles).ok()?;
         let formula_str = chem::calc_mol_formula(&mol);
