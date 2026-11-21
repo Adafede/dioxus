@@ -268,69 +268,11 @@ fn setup_evolution(
     ))
 }
 
-/// Run evolution for one positive/negative pair of `.smiles` files.
-///
-/// Uses an internal observer to capture **all** evaluated SMARTS
-/// (including duplicates and ties) with their generation numbers.
-/// No progress output is printed — use [`evolve_all_with_progress`] for
-/// text-based progress feedback to stderr.
-#[allow(clippy::module_name_repetitions, clippy::too_many_lines)]
-#[must_use]
-pub fn evolve_all(config: &Config, positive_path: &Path, negative_path: &Path) -> EvolutionResult {
-    let parsed = match setup_evolution(config, positive_path, negative_path) {
-        Ok(v) => v,
-        Err(e) => return e,
-    };
-    let (
-        task,
-        evolution_config,
-        seed_corpus,
-        total_positive,
-        total_negative,
-        positive_failed,
-        negative_failed,
-    ) = parsed;
-
-    let tested = Arc::new(Mutex::new(Vec::new()));
-    let observer = TestedSmartsObserver::new(Arc::clone(&tested), false);
-    match task.evolve_with_observer(&evolution_config, &seed_corpus, 1, observer) {
-        Ok(result) => EvolutionResult::Ok(
-            result,
-            tested
-                .lock()
-                .map_or_else(|_| Vec::new(), |records| records.clone()),
-            total_positive,
-            total_negative,
-            positive_failed,
-            negative_failed,
-        ),
-        Err(e) => EvolutionResult::EvolutionError(
-            e.to_string(),
-            total_positive,
-            total_negative,
-            positive_failed,
-            negative_failed,
-        ),
-    }
-}
-
-/// Run evolution for one positive/negative pair of `.smiles` files, with
-/// text-based progress output to stderr.
-///
-/// This function always captures **all** evaluated SMARTS via an internal
-/// observer. The progress output provides feedback
-/// (generation, best MCC) without taking over the terminal, so it is safe
-/// for use in both interactive and batch contexts.
-///
-/// Unlike the original ratatui TUI dashboard, this approach captures every
-/// genome evaluated — not just the final leaderboard — so the per-class CSV
-/// contains the complete set of tested SMARTS.
-#[allow(clippy::module_name_repetitions, clippy::too_many_lines)]
-#[must_use]
-pub fn evolve_all_with_progress(
+fn evolve_inner(
     config: &Config,
     positive_path: &Path,
     negative_path: &Path,
+    show_progress: bool,
 ) -> EvolutionResult {
     let parsed = match setup_evolution(config, positive_path, negative_path) {
         Ok(v) => v,
@@ -347,13 +289,13 @@ pub fn evolve_all_with_progress(
     ) = parsed;
 
     let tested = Arc::new(Mutex::new(Vec::new()));
-    let observer = TestedSmartsObserver::new(Arc::clone(&tested), true);
+    let observer = TestedSmartsObserver::new(Arc::clone(&tested), show_progress);
     match task.evolve_with_observer(&evolution_config, &seed_corpus, 1, observer) {
         Ok(result) => EvolutionResult::Ok(
             result,
             tested
                 .lock()
-                .map_or_else(|_| Vec::new(), |records| records.clone()),
+                .map_or_else(|_| Vec::new(), |mut records| std::mem::take(&mut *records)),
             total_positive,
             total_negative,
             positive_failed,
@@ -367,6 +309,39 @@ pub fn evolve_all_with_progress(
             negative_failed,
         ),
     }
+}
+
+/// Run evolution for one positive/negative pair of `.smiles` files.
+///
+/// Uses an internal observer to capture **all** evaluated SMARTS
+/// (including duplicates and ties) with their generation numbers.
+/// No progress output is printed — use [`evolve_all_with_progress`] for
+/// text-based progress feedback to stderr.
+#[allow(clippy::module_name_repetitions)]
+#[must_use]
+pub fn evolve_all(config: &Config, positive_path: &Path, negative_path: &Path) -> EvolutionResult {
+    evolve_inner(config, positive_path, negative_path, false)
+}
+
+/// Run evolution for one positive/negative pair of `.smiles` files, with
+/// text-based progress output to stderr.
+///
+/// This function always captures **all** evaluated SMARTS via an internal
+/// observer. The progress output provides feedback
+/// (generation, best MCC) without taking over the terminal, so it is safe
+/// for use in both interactive and batch contexts.
+///
+/// Unlike the original ratatui TUI dashboard, this approach captures every
+/// genome evaluated — not just the final leaderboard — so the per-class CSV
+/// contains the complete set of tested SMARTS.
+#[allow(clippy::module_name_repetitions)]
+#[must_use]
+pub fn evolve_all_with_progress(
+    config: &Config,
+    positive_path: &Path,
+    negative_path: &Path,
+) -> EvolutionResult {
+    evolve_inner(config, positive_path, negative_path, true)
 }
 
 fn read_smiles_lines(path: &Path) -> (Vec<String>, bool) {

@@ -29,8 +29,8 @@ use rand::seq::SliceRandom;
 use rayon::prelude::*;
 use smarts_evoliposuction::{
     Config, EvolutionResult, Level, ManifestRow, RESULTS_HEADERS, SplitConfig, TestedSmartsRecord,
-    already_done, evolve_all, evolve_all_with_progress, open_results_writer, read_manifest,
-    sdf_zip_to_tsv, split_dataset, write_manifest,
+    already_done, download::LIPIDMAPS_LMSD_URL, evolve_all, evolve_all_with_progress,
+    open_results_writer, read_manifest, sdf_zip_to_tsv, split_dataset, write_manifest,
 };
 
 #[derive(Parser, Debug)]
@@ -187,8 +187,7 @@ fn download_step(dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
     eprintln!(" Downloading LIPID MAPS LMSD.sdf.zip from lipidmaps.org...");
     let client = reqwest::blocking::Client::new();
-    let url = "https://www.lipidmaps.org/files/?file=LMSD&ext=sdf.zip";
-    let resp = client.get(url).send()?.error_for_status()?;
+    let resp = client.get(LIPIDMAPS_LMSD_URL).send()?.error_for_status()?;
     let bytes = resp.bytes()?;
     fs::write(dest, &bytes)?;
     eprintln!(
@@ -202,6 +201,17 @@ fn download_step(dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
     fs::write(&tsv_path, tsv)?;
     eprintln!("[OK] Converted: {count} records -> {}", tsv_path.display());
     Ok(())
+}
+
+fn cap_and_shuffle(smiles: &[String], cap: usize, rng: &mut StdRng) -> Vec<String> {
+    let mut items = smiles.to_vec();
+    items.shuffle(rng);
+    if items.len() > cap {
+        items.truncate(cap);
+    }
+    // Shuffle again after truncation
+    items.shuffle(rng);
+    items
 }
 
 #[allow(clippy::too_many_lines)]
@@ -310,20 +320,10 @@ fn split_step(
 
     for split in &result.classes {
         // Cap and shuffle positives
-        let mut positive = split.positive.clone();
-        positive.shuffle(&mut rng);
-        if positive.len() > smiles_cap {
-            positive.truncate(smiles_cap);
-        }
-        positive.shuffle(&mut rng); // Shuffle again after truncation
+        let positive = cap_and_shuffle(&split.positive, smiles_cap, &mut rng);
 
         // Cap and shuffle negatives
-        let mut negative = split.negative.clone();
-        negative.shuffle(&mut rng);
-        if negative.len() > smiles_cap {
-            negative.truncate(smiles_cap);
-        }
-        negative.shuffle(&mut rng); // Shuffle again after truncation
+        let negative = cap_and_shuffle(&split.negative, smiles_cap, &mut rng);
 
         let pos_path = output_dir.join(format!("{}_positive.smiles", split.slug));
         let neg_path = output_dir.join(format!("{}_negative.smiles", split.slug));
@@ -425,31 +425,7 @@ fn evolve_step(
 
             eprintln!("(done in {elapsed:.1}s)");
 
-            let (p, n, pf, nf, status, smarts, mcc, cov, slen, gens, tested_count, tested_path) =
-                process_evolution_result(&result, row, &tested_smarts_dir)?;
-
-            writer.write_record([
-                &row.level,
-                &row.label,
-                &row.category,
-                &row.main_class,
-                &row.subclass,
-                &row.slug,
-                &p.to_string(),
-                &n.to_string(),
-                &pf.to_string(),
-                &nf.to_string(),
-                &smarts,
-                &mcc,
-                &cov,
-                &slen,
-                &gens,
-                &format!("{elapsed:.3}"),
-                status,
-                &tested_count,
-                &tested_path,
-            ])?;
-            writer.flush()?;
+            write_evolution_row(&mut writer, row, &result, elapsed, &tested_smarts_dir)?;
         }
     } else {
         // Parallel mode — evolve classes concurrently via rayon.
@@ -484,37 +460,51 @@ fn evolve_step(
 
         // Write results sequentially (CSV writer is not thread-safe).
         for res in results {
-            let row = &res.row;
-            let elapsed = res.elapsed;
-
-            let (p, n, pf, nf, status, smarts, mcc, cov, slen, gens, tested_count, tested_path) =
-                process_evolution_result(&res.result, row, &tested_smarts_dir)?;
-
-            writer.write_record([
-                &row.level,
-                &row.label,
-                &row.category,
-                &row.main_class,
-                &row.subclass,
-                &row.slug,
-                &p.to_string(),
-                &n.to_string(),
-                &pf.to_string(),
-                &nf.to_string(),
-                &smarts,
-                &mcc,
-                &cov,
-                &slen,
-                &gens,
-                &format!("{elapsed:.3}"),
-                status,
-                &tested_count,
-                &tested_path,
-            ])?;
-            writer.flush()?;
+            write_evolution_row(
+                &mut writer,
+                &res.row,
+                &res.result,
+                res.elapsed,
+                &tested_smarts_dir,
+            )?;
         }
     }
     eprintln!("[OK] Results: {}", output.display());
+    Ok(())
+}
+
+fn write_evolution_row(
+    writer: &mut csv::Writer<fs::File>,
+    row: &ManifestRow,
+    result: &EvolutionResult,
+    elapsed: f64,
+    tested_smarts_dir: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (p, n, pf, nf, status, smarts, mcc, cov, slen, gens, tested_count, tested_path) =
+        process_evolution_result(result, row, tested_smarts_dir)?;
+
+    writer.write_record([
+        &row.level,
+        &row.label,
+        &row.category,
+        &row.main_class,
+        &row.subclass,
+        &row.slug,
+        &p.to_string(),
+        &n.to_string(),
+        &pf.to_string(),
+        &nf.to_string(),
+        &smarts,
+        &mcc,
+        &cov,
+        &slen,
+        &gens,
+        &format!("{elapsed:.3}"),
+        status,
+        &tested_count,
+        &tested_path,
+    ])?;
+    writer.flush()?;
     Ok(())
 }
 
@@ -540,6 +530,23 @@ type CsvFields = (
     String,
     String,
 );
+
+fn empty_csv_fields(p: usize, n: usize, pf: usize, nf: usize, status: &'static str) -> CsvFields {
+    (
+        p,
+        n,
+        pf,
+        nf,
+        status,
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+        "0".into(),
+        String::new(),
+    )
+}
 
 /// Extract CSV fields from an `EvolutionResult`, writing the tested-SMARTS CSV
 /// if evolution succeeded.
@@ -570,54 +577,15 @@ fn process_evolution_result(
         }
         EvolutionResult::EmptyAfterParse(p, n, pf, nf) => {
             eprintln!("SKIPPED {}", row.slug);
-            Ok((
-                *p,
-                *n,
-                *pf,
-                *nf,
-                "empty_after_parse",
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                "0".into(),
-                String::new(),
-            ))
+            Ok(empty_csv_fields(*p, *n, *pf, *nf, "empty_after_parse"))
         }
         EvolutionResult::ReadError(p, n, pf, nf) => {
             eprintln!("FAILED {}", row.slug);
-            Ok((
-                *p,
-                *n,
-                *pf,
-                *nf,
-                "read_error",
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                "0".into(),
-                String::new(),
-            ))
+            Ok(empty_csv_fields(*p, *n, *pf, *nf, "read_error"))
         }
         EvolutionResult::EvolutionError(msg, p, n, pf, nf) => {
             eprintln!("ERROR: {msg}");
-            Ok((
-                *p,
-                *n,
-                *pf,
-                *nf,
-                "evolution_error",
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                "0".into(),
-                String::new(),
-            ))
+            Ok(empty_csv_fields(*p, *n, *pf, *nf, "evolution_error"))
         }
     }
 }
